@@ -1,0 +1,98 @@
+APP-048 box 2 upgrade regression: evidence (s-2f/APP-048, 2026-11-01)
+
+Fixture: src-tauri/tests/fixtures/profile-v0.1.5/{settings.json,settings.json.bak,state.db}, written by the real v0.1.5 code (tag v0.1.5 = ed636846): the layout by v0.1.5 layoutOf, the files by v0.1.5 Store::open + patch_settings + save_projects + count_start. expected.json is read back from those files by scripts/profile-fixture-expected.mjs.
+Regenerate: scripts/profile-fixture.md. Throwaway worktree removed afterwards; nothing committed in it.
+
+Version guard (task item 3): NOT built. No reliable version source readable from a CI test: package.json, src-tauri/tauri.conf.json and src-tauri/Cargo.toml all say 0.1.0 on main (scripts/release.mjs setVersion rewrites them only inside the release checkout), there is no CHANGELOG, and git tags are not usable (shallow CI clone). The folder name profile-v0.1.5 and scripts/profile-fixture.md carry the version; refresh them each release.
+
+== Round 2 (review: B, changes needed), 2026-11-01 ==
+
+Findings fixed:
+1 The window side is now tested: src/terminal/layout.app048.test.ts runs today's restoreLayout / stillThere / readAppearance / readLook / stampLook (the functions src/main.tsx settle() calls) on the fixture's settings.json and asserts the exact panes, active tabs, focus, look, theme, mode and font.
+2 The fixture's layout was regenerated from v0.1.5's own layoutOf (no `workspaces` key any more): a pinned blue claude tab with a session id, title and group, two editor tabs (README.md, main.rs) in the same group, a green shell tab in a second group, active tab per group, focus, active folder, stacked folder. The settings names are v0.1.5's own FIELD / LOOK_FIELD names (appTheme, appearanceMode, appFont, uiLook); the old fixture used `theme` and `mode`, which the window never reads.
+3 cards_19.rs calls store.stamp_look() right after Store::open, as lib.rs does. The fixture already has uiLook and appearanceMode, so stamp_look writes nothing; the "settings.json not rewritten" assert stays and its text now says it covers open + stamp_look + read.
+4 The assert text now reads "a retired fixture key must be a conscious decision: update expected.json".
+5 expected.json is built by scripts/profile-fixture-expected.mjs from the generated settings.json and a read of state.db (Node's built-in sqlite), nothing typed by hand. kv now holds the real rows: `projects` (written by v0.1.5's save_projects, with workspacesDir, base and displayName) and `start_count` 7 (v0.1.5's onboarding::count_start called 7 times). The invented `worktrees` row is gone.
+6 PLAN.md names PR #71 instead of a branch that never existed; plan-check OK.
+7 "what today code" -> "today's code" in expected.json's note.
+
+Generators (both temporary, in the v0.1.5 checkout wt/2f-v015, removed afterwards, nothing committed there; sources in scripts/profile-fixture.md):
+  src/terminal/zzMakeFixture.test.ts (vitest, v0.1.5's layoutOf + FIELD) -> settings JSON
+  zz_make_profile_fixture in src-tauri/src/state.rs tests (v0.1.5's Store, save_projects, count_start) -> settings.json, settings.json.bak, state.db
+kv read back from the generated state.db:
+  projects = [{"id":"p1","name":"alpha","path":"C:/fixture/alpha","workspacesDir":"C:/fixture/alpha-workspaces","base":"origin/main"},{"id":"p2","name":"beta","path":"C:/fixture/beta","displayName":"Beta site"}]
+  start_count = 7
+
+== Window test can fail (scratch copies of settings.json, via FIXTURE_SETTINGS; the committed fixture is untouched) ==
+-- demo 1: a setting renamed (appFont -> appFontFamily) in a scratch copy of settings.json
+ RUN  v4.1.12 G:/Dev/kolux-rs-sessions/wt/2f-APP-048
+ ❯ src/terminal/layout.app048.test.ts (2 tests | 1 failed) 12ms
+   × app048: today's setting readers find the look, theme, mode and font the v0.1.5 window saved 6ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/terminal/layout.app048.test.ts > app048: today's setting readers find the look, theme, mode and font the v0.1.5 window saved
+AssertionError: expected '' to be 'Segoe UI' // Object.is equality
+- Expected
++ Received
+- Segoe UI
+ ❯ src/terminal/layout.app048.test.ts:46:21
+     44|   expect(a.theme).toBe("cobalt");
+     45|   expect(a.mode).toBe("dark");
+     46|   expect(a.appFont).toBe("Segoe UI");
+       |                     ^
+     47| });
+     48|
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  22:21:18
+   Duration  476ms (transform 112ms, setup 0ms, import 165ms, tests 12ms, environment 0ms)
+
+-- demo 2: a changed saved-layout shape (pane kind editor -> editorTab) in a scratch copy
+ RUN  v4.1.12 G:/Dev/kolux-rs-sessions/wt/2f-APP-048
+ ❯ src/terminal/layout.app048.test.ts (2 tests | 1 failed) 15ms
+   × app048: today's restoreLayout reads the v0.1.5 saved layout back as the panes, tabs and focus that were saved 12ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/terminal/layout.app048.test.ts > app048: today's restoreLayout reads the v0.1.5 saved layout back as the panes, tabs and focus that were saved
+AssertionError: expected [ { key: 1, …(12) }, { key: 4, …(8) } ] to deeply equal [ { branch: null, …(12) }, …(3) ]
+- Expected
++ Received
+@@ -16,34 +16,10 @@
+    },
+    {
+      "agent": "shell",
+      "args": [],
+      "branch": null,
+-     "cwd": "C:/fixture/alpha",
+-     "group": 1,
+-     "key": 2,
+-     "kind": "editor",
+-     "path": "C:/fixture/alpha/README.md",
+-     "program": null,
+-     "title": "README.md",
+-   },
+-   {
+-     "agent": "shell",
+-     "args": [],
+-     "branch": null,
+-     "cwd": "C:/fixture/alpha",
+-     "group": 1,
+-     "key": 3,
+-     "kind": "editor",
+
+== Rust test can fail: expected.json appTheme cobalt -> rose (restored afterwards; captured before the assert message got its final wording, now "every setting reads back identical to expected.json (...)") ==
+test app048_box2_a_profile_written_by_the_previous_release_reads_back_identical ... FAILED
+thread 'app048_box2_a_profile_written_by_the_previous_release_reads_back_identical' (45552) panicked at tests\cards_19.rs:133:5:
+assertion `left == right` failed: every setting reads back identical; a retired fixture key must be a conscious decision: update expected.json
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.11s
+
+== Final runs (round 2) ==
+$ cargo test --manifest-path src-tauri/Cargo.toml --test cards_19   (scratch homes)
+test result: ok. 4 passed; 0 failed (app048_box2_* with stamp_look, app048_box1_*, app048_child_writer, app054_box2_*)
+$ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+Finished, no warnings
+$ npx vitest run src/terminal
+Test Files 96 passed (96); Tests 596 passed (596) (includes layout.app048.test.ts: 2 tests)
+$ pnpm tsc --noEmit
+exit 0, no output
+$ node scripts/plan-check.mjs
+plan-check: OK

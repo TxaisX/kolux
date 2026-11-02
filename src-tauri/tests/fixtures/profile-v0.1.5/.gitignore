@@ -1,0 +1,2 @@
+# sqlite side files left by any read of state.db
+state.db-*

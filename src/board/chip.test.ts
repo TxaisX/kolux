@@ -35,6 +35,8 @@ test("a limit stop reads Stopped, never Done; a finish shows the first line of t
   expect(chipOf(sig({ state: "blocked", detail: "rate limit reached" }), now)).toMatchObject({ lane: "stopped", word: "Stopped", line: "rate limit reached" });
   expect(chipOf(sig({ state: "blocked", stop: { cause: "limit", detail: "rate_limit" } }), now)).toMatchObject({ lane: "stopped", word: "Stopped", line: "Limit reached · rate_limit" });
   expect(chipOf(sig({ state: "interrupted" }), now)).toMatchObject({ lane: "stopped", line: "Interrupted" });
+  // T-167-b: a restored row after an upgrade asks for a restart; it never blames the AI
+  expect(chipOf(sig({ state: "blocked", stop: { cause: "restart", detail: "Kolux was updated" } }), now)).toMatchObject({ lane: "stopped", word: "Stopped", line: "Restart this terminal · Kolux was updated" });
   expect(chipOf(sig({ state: "done", reply: "\n  All three tests pass.\nDetails below.", wrote: "G:/repo/src/b.ts" }), now)).toEqual({ lane: "done", word: "Done", line: "All three tests pass.", file: "G:/repo/src/b.ts", answer: false });
   expect(chipOf(sig({ state: "done", running: false }), now)).toMatchObject({ lane: "done" });
 });

@@ -475,6 +475,41 @@ mod tests {
         assert!(matches!(decide(&SignState::Unsigned, &SignState::Broken("HashMismatch".into()), None, false), Verdict::Stop(_)));
     }
 
+    // Follow-up guards (already correct on main): a "Valid" status with no publisher is a definite
+    // refusal, not an unclear answer that retries, whatever the running copy is.
+    #[test]
+    fn a_valid_signature_with_an_empty_publisher_is_refused_for_good() {
+        for json in [
+            r#"{"status":"Valid","subject":"","thumbprint":"AB"}"#,
+            r#"{"status":"Valid","subject":null,"thumbprint":"AB"}"#,
+            r#"{"status":"Valid","thumbprint":"AB"}"#,
+        ] {
+            let parsed = parse_report(json);
+            assert!(matches!(parsed, SignState::Broken(_)), "{json} -> {parsed:?}");
+            for running in [SignState::Unsigned, signed(ACME, "X"), unknown()] {
+                for build in [false, true] {
+                    assert!(matches!(decide(&running, &parsed, None, build), Verdict::Stop(_)), "{json} against {running:?}, signed_build {build}");
+                }
+            }
+            assert!(matches!(decide(&SignState::Unsigned, &parsed, Some(ACME), false), Verdict::Stop(_)), "{json} against a pinned publisher");
+        }
+    }
+
+    // Follow-up guards (already correct on main): an unsigned running copy still refuses a HashMismatch
+    // installer, with or without a pin, and whether or not it was built signed.
+    #[test]
+    fn an_unsigned_running_copy_still_refuses_a_hash_mismatch_installer() {
+        let mismatch = parse_report(r#"{"status":"HashMismatch","subject":"CN=Acme Tools Ltd","thumbprint":"AB12"}"#);
+        assert_eq!(mismatch, SignState::Broken("HashMismatch".into()));
+        for build in [false, true] {
+            for pin in [None, Some(ACME)] {
+                assert!(stopped(decide(&SignState::Unsigned, &mismatch, pin, build)).contains("HashMismatch"), "pin {pin:?}, signed_build {build}");
+            }
+        }
+        // A copy that cannot read its own signature counts as unsigned when not built signed: same refusal.
+        assert!(matches!(decide(&unknown(), &mismatch, None, false), Verdict::Stop(_)));
+    }
+
     // FIX-2 FS1: only a copy built signed is stopped by an unreadable own signature.
     #[test]
     fn a_copy_built_signed_never_updates_when_it_cannot_read_its_own_signature() {

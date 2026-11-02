@@ -1,0 +1,69 @@
+Artifacts viewer frame isolation: tested live · worker 2f · 2026-11-01
+Question: can the page inside the Artifacts viewer frame (sandboxed iframe, served by the kolux-artifact scheme)
+run app commands through Tauri's IPC? An audit said yes. T-500 only tested a top-level Browser tab and argued the frame
+case from reading Tauri's source ("IPC scripts are main-frame only"); the frame itself was never tested live.
+
+Build under test: dev app (pnpm tauri dev) built from main 582110fa, no code changes (the "before" build).
+Platform: Windows 11 (10.0.26300), WebView2 runtime 156.0.4314.58, tauri 2.12.1, wry 0.57.0.
+Scratch only: the app ran with a throwaway identifier (.smoke), throwaway profile and home folders, window moved
+off-screen, WebView2 remote debugging port. Nothing touched the real profile or the installed app.
+
+== Method ==
+1. A one-page artifact (probe page) was added to the scratch library and opened on the Artifacts page, so it loads in
+   the real viewer frame: iframe.art-frame, sandbox="allow-scripts allow-forms", src on kolux-artifact.localhost.
+2. The probe page writes what it finds into its own DOM: whether the window is the top window, whether the Tauri
+   objects exist, then it tries three harmless commands: app_info (read-only), settings_patch (writes one scratch key
+   in the scratch profile), and a Tauri event emit (a listener in the main window would see it). It also sends one raw
+   message through window.ipc with a deliberately wrong invoke key; Tauri checks the key first, before any origin or
+   permission check, and logs a line for a wrong key, so that line shows whether messages from the frame arrive at all.
+3. The frame was read over the WebView2 debugging port (it appears as its own target) and the effects were read from
+   outside the frame: the scratch profile's settings.json, the main window's listener, the backend's log.
+4. Positive control in the same run, from the main window (the trusted page): the same settings write works and shows in
+   settings.json, the same event reaches the listener, and the same wrong-key raw message produces the backend log line.
+   So every outside effect checked below is visible when a command really runs.
+The probe page is not kept here; it is a few lines that call the three commands above from inside the frame.
+
+== Result (three runs of the same probe, same outcome; the last one quoted, raw output) ==
+iframe.art-frame src => http://kolux-artifact.localhost/dd04172a9f2b4043/probe.html
+iframe.art-frame sandbox => allow-scripts allow-forms
+target: iframe | http://kolux-artifact.localhost/dd04172a9f2b4043/probe.html
+self === top => false
+typeof window.__TAURI_INTERNALS__ => object
+typeof window.ipc => object
+typeof window.chrome?.webview => object
+raw window.ipc.postMessage with a wrong key => sent
+invoke app_info => no reply within 6000 ms
+invoke settings_patch ipcProbe2f => no reply within 6000 ms
+invoke plugin:event|emit ipc-probe-2f => no reply within 6000 ms
+frame console: "IPC custom protocol failed, Tauri will now use the postMessage interface instead TypeError: Failed to fetch"
+Outside the frame:
+OUTSIDE EFFECT (frame -> settings_patch): settings.json holds ipcProbe2f => false
+OUTSIDE EFFECT (frame -> plugin:event|emit): main window listener saw => ["from-main-window"]   (nothing from the frame)
+backend log lines about a rejected invoke key: only the one from the main-window control
+  (__TAURI_INVOKE_KEY__ expected <redacted> but received wrong-key-2f-main-control), none for the frame's message
+Control from the main window in the same run:
+CONTROL (main window): settings.json holds ipcProbeMain2f => true ; main listener saw events => ["from-main-window"]
+
+== What this shows ==
+- Reproduced: the first two parts of the audit. On Windows, wry adds its init scripts to every frame whatever the
+  main-frame-only flag says (wry 0.57 src/lib.rs, "Windows: scripts are always added to subframes regardless of the
+  for_main_frame_only option"), so the sandboxed artifact frame does have window.__TAURI_INTERNALS__ and window.ipc, and
+  the T-500 sentence "a frame ... has no IPC object and no invoke key" was wrong for the artifact frame. The fetch
+  transport is blocked by the artifact page's own CSP, so Tauri falls back to window.ipc.postMessage (the console line).
+- Not reproduced: the part that matters. No command from the frame ran. Nothing arrived at the backend (not even the
+  rejected-key line), no scratch file changed, no event fired. (The "no reply" lines above are not evidence either way:
+  on the postMessage route Tauri delivers replies to the main frame, so a frame would see no reply even if a command
+  ran. The settings file, the event and the log line are what count.) The message a frame sends with
+  chrome.webview.postMessage does not reach the handler that Tauri listens on. Observed: no log line, no effect.
+  Read from code, not tested separately: wry 0.57 (src/webview2/mod.rs) subscribes only to the main web view's
+  WebMessageReceived and has no per-frame (CoreWebView2Frame) handler, which matches WebView2 delivering a frame's
+  messages to a per-frame event. The Tauri-side origin check (is_local_url treats the artifact host as local, and the
+  app has no command-permission manifest) was therefore never reached in this test.
+- A second barrier sits behind the CSP: the sandboxed frame has no real origin, so a fetch to the IPC endpoint would
+  carry "Origin: null", which Tauri's protocol path refuses as not a valid URL (the refusal T-500 case 2 saw).
+- So the isolation holds on this build, but it holds because of how WebView2 and wry route frame messages, not because
+  of an app-level check. A newer WebView2 or wry that routes frame messages to the main handler would change that. The
+  frame runs the same IPC script as the main window, so by code reading it also carries the same invoke key (not read
+  out in this test).
+- No app change was made. Hardening (a guard that holds without relying on WebView2 routing) is a decision, not a fix
+  for a confirmed hole; the options are listed in the PR.

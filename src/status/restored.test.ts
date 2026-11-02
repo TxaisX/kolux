@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { stopLine } from "../terminal/notify";
 import { restoration, shownState, RESTART_TEXT, type SavedRow } from "./restored";
 
 const row = (paneKey: number, state: string, extra: Partial<SavedRow> = {}): SavedRow => ({ paneKey, agent: "claude", state, at: 1, unconfirmed: true, restart: false, ...extra });
@@ -30,6 +31,10 @@ test("a pane whose hooks are from an older Kolux gets a blocked row asking to re
   const r = restoration([row(1, "working", { restart: true })], new Set([1]), new Set(), came(1));
   expect(r.hook[1]).toBe("blocked");
   expect(r.turn[1].stop.detail).toBe(RESTART_TEXT);
+  // T-167-b: it is a restart, not an AI error
+  expect(r.turn[1].stop.cause).toBe("restart");
+  expect(stopLine(r.turn[1].stop)).not.toMatch(/error/i);
+  expect(stopLine(r.turn[1].stop)).toMatch(/^Restart this terminal/);
 });
 
 // T-618 (F05-app-shell-launch.3): pane numbers are reused, so a saved row goes only to a pane that came back from the

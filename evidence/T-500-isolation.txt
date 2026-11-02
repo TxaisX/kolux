@@ -56,6 +56,13 @@ own scripts before any of ours and defines both non-configurable and non-writabl
 {"configurable":false,"writable":false}), so the objects stay; Tauri's origin check is what refuses them, and the gate
 is what keeps a tab off every origin that check trusts. Tauri's IPC scripts are main-frame only (tauri 2.12.1
 src/manager/webview.rs main_frame_script), so a frame inside a tab's page has no IPC object and no invoke key.
+[Correction 2026-11-01, worker 2f: the sentence above was code reading and is wrong on Windows. Tested live on main
+582110fa (evidence/artifact-ipc-isolation.txt): the sandboxed Artifacts frame does have window.__TAURI_INTERNALS__ and
+window.ipc, and so by code reading the same invoke key (wry adds init scripts to every frame on Windows, whatever
+main_frame_script says). The sentence was about frames inside a Browser tab's page; the same all-frames injection
+applies there, but that case was not tested live. In the Artifacts frame the commands did not run: messages from the
+frame never reached the backend, and no setting or event followed. The isolation holds because WebView2 and wry do not
+route frame messages to Tauri's handler, not because the frame has no IPC object or key.]
 
 == After (same dev app, rebuilt with the fix, read over CDP 9237) ==
 Remote http page (1): unchanged, every invoke "not allowed", the IPC endpoint "missing Tauri-Callback header".

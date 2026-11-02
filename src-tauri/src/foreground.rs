@@ -306,4 +306,123 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir.ancestors().nth(2).unwrap());
         assert_eq!(got, Front::Agent("claude"));
     }
+
+    /// T-128-b: the Unix path, checked for the first time. An interactive bash in a real PTY, in a
+    /// fresh temp folder; the "agent" is a program named `claude` (a link to `sleep`, so its
+    /// command line reads `./claude 30` as a native Claude binary's would). Dropping the pane ends
+    /// the job (`kill -9 %1`), kills the shell and removes the folder, so the cleanup also runs
+    /// when an assertion fails.
+    #[cfg(unix)]
+    struct UnixPane {
+        session: crate::pty::PtySession,
+        pid: u32,
+        dir: std::path::PathBuf,
+    }
+
+    #[cfg(unix)]
+    impl UnixPane {
+        fn start() -> Self {
+            let dir = std::env::temp_dir().join(format!("kolux-acct050-{}-{}", std::process::id(), std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+            std::fs::create_dir_all(&dir).unwrap();
+            std::os::unix::fs::symlink("/bin/sleep", dir.join("claude")).unwrap();
+            let mut cmd = portable_pty::CommandBuilder::new("bash");
+            cmd.args(["--norc", "--noprofile", "-i"]);
+            cmd.cwd(&dir);
+            cmd.env("PS1", "$ ");
+            let session = crate::pty::PtySession::spawn(cmd, 80, 24, |_| {}, |_| {}).expect("spawn an interactive bash in a pty");
+            let pid = session.pid().expect("the shell's pid");
+            Self { session, pid, dir }
+        }
+
+        fn group(&self) -> Option<i32> {
+            self.session.foreground_group()
+        }
+
+        /// One poll, as `poll` does it.
+        fn front(&self) -> Front {
+            front(self.pid, self.group())
+        }
+
+        /// Polls every 100 ms for up to `secs`, until `front` answers `want`.
+        fn front_within(&self, want: Front, secs: u64) -> Front {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
+            let mut got = self.front();
+            while got != want && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                got = self.front();
+            }
+            got
+        }
+
+        /// The id of the `./claude 30` job the shell started (a child of the shell).
+        fn job(&self) -> Option<u32> {
+            let out = std::process::Command::new("pgrep").args(["-P", &self.pid.to_string(), "-f", r"^\./claude 30"]).output().ok()?;
+            String::from_utf8_lossy(&out.stdout).lines().next()?.trim().parse().ok()
+        }
+    }
+
+    #[cfg(unix)]
+    impl Drop for UnixPane {
+        fn drop(&mut self) {
+            // The job (stopped or in the background) goes before the shell, so nothing outlives the test.
+            let _ = self.session.write(b"kill -9 %1\n");
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            self.session.kill();
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn acct_050_unix_an_agent_typed_into_a_shell_is_in_front_until_ctrl_z_hands_the_pane_back() {
+        let pane = UnixPane::start();
+        let pid = pane.pid;
+        // The shell owns the pane: its own process group is the terminal's foreground group.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while pane.group() != Some(pid as i32) && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        assert_eq!(pane.group(), Some(pid as i32), "the shell's group is the pane's foreground group");
+        assert_eq!(pane.front_within(Front::Shell, 2), Front::Shell, "a shell running nothing is the shell");
+        // Type the agent: within a few seconds its process group is in front and it is credited by name.
+        pane.session.write(b"./claude 30\n").unwrap();
+        assert_eq!(pane.front_within(Front::Agent("claude"), 3), Front::Agent("claude"));
+        let agent_group = pane.group().expect("the agent's group");
+        assert_ne!(agent_group, pid as i32, "the agent runs in its own process group, in front");
+        // Ctrl-Z: the agent is suspended, the shell takes the pane back, the agent no longer counts.
+        pane.session.write(b"\x1a").unwrap();
+        assert_eq!(pane.front_within(Front::Shell, 2), Front::Shell, "a suspended agent is not running");
+        assert_eq!(pane.group(), Some(pid as i32));
+        // `fg` brings it back in front.
+        pane.session.write(b"fg\n").unwrap();
+        assert_eq!(pane.front_within(Front::Agent("claude"), 2), Front::Agent("claude"), "fg puts the agent in front again");
+        pane.session.write(b"\x1a").unwrap();
+        assert_eq!(pane.front_within(Front::Shell, 2), Front::Shell);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn acct_050_unix_a_background_job_is_never_the_foreground_agent() {
+        let pane = UnixPane::start();
+        let pid = pane.pid;
+        assert_eq!(pane.front_within(Front::Shell, 2), Front::Shell);
+        pane.session.write(b"./claude 30 &\n").unwrap();
+        // Give the shell time to start the job; it must stay the shell's pane throughout.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        let mut job = pane.job();
+        while job.is_none() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            job = pane.job();
+        }
+        let job = job.expect("the background job is running under the shell");
+        assert_eq!(pane.front(), Front::Shell, "a background job is never the foreground agent");
+        assert_eq!(pane.group(), Some(pid as i32), "the foreground group stays the shell's");
+        // The job would be credited if it were in front: its command line reads as Claude's, and
+        // `front` names it when its own group is the one in front. It is not, so the pane is the shell's.
+        let line = imp::command_line(job).expect("the job's command line");
+        assert_eq!(crate::agents::credited_agent(&line), Some("claude"), "{line:?} reads as the agent");
+        assert_eq!(front(pid, Some(job as i32)), Front::Agent("claude"), "in front, the job would be the agent");
+        assert_eq!(pane.front(), Front::Shell);
+    }
+
 }
