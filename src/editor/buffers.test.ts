@@ -131,6 +131,40 @@ describe("one file in two panes (EDIT-001)", () => {
   });
 });
 
+describe("one file reached through WSL and through its drive alias (EDIT-044, T-062-b)", () => {
+  it("keys the WSL spellings of one file together, a drive alias with its drive, and keeps Linux names case-sensitive", () => {
+    const k = keyOf("\\\\wsl.localhost\\Ubuntu\\home\\me\\a.ts");
+    expect(keyOf("\\\\wsl$\\Ubuntu\\home\\me\\a.ts")).toBe(k);
+    expect(keyOf("//wsl.localhost/Ubuntu/home/me/a.ts")).toBe(k);
+    expect(keyOf("\\\\WSL$\\ubuntu\\home\\me\\a.ts")).toBe(k);
+    expect(keyOf("\\\\?\\UNC\\wsl$\\Ubuntu\\home\\me\\a.ts")).toBe(k);
+    expect(keyOf("\\\\wsl.localhost\\Ubuntu\\home\\Me\\a.ts")).not.toBe(k);
+    expect(keyOf("\\\\wsl.localhost\\Ubuntu\\home\\me\\A.ts")).not.toBe(k);
+    expect(keyOf("\\\\wsl.localhost\\Debian\\home\\me\\a.ts")).not.toBe(k);
+    // a Windows drive seen from inside the distribution is that drive, case-blind like the drive itself
+    expect(keyOf("\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\X\\a.ts")).toBe(keyOf("C:\\Users\\x\\A.TS"));
+    expect(keyOf("\\\\wsl$\\Ubuntu\\mnt\\d")).toBe(keyOf("D:\\"));
+    expect(keyOf("\\\\wsl$\\Ubuntu\\mnt\\wsl\\x")).not.toBe(keyOf("C:\\x"));
+    expect(keyOf("C:\\A")).toBe(keyOf("c:\\a"));
+    expect(keyOf("/home/Me")).not.toBe(keyOf("/home/me"));
+    expect(keyOf("\\\\server\\share\\A")).not.toBe(keyOf("\\\\server\\share\\a"));
+  });
+
+  it("a tab opened by the drive alias shares the text of the tab opened through WSL", () => {
+    const wsl = "\\\\wsl.localhost\\Ubuntu\\mnt\\c\\w\\alias.ts";
+    const drive = "C:\\w\\alias.ts";
+    const a = fakeView(wsl, "x");
+    attach(wsl, a, "x");
+    a.type(1, "y");
+    const b = fakeView(drive, "x");
+    attach(drive, b, "x");
+    expect(b.state.doc.toString()).toBe("xy");
+    expect(isDirty(drive)).toBe(true);
+    detach(wsl, a);
+    detach(drive, b);
+  });
+});
+
 describe("line ends (EDIT-001)", () => {
   it("a Windows file is clean as loaded and saved with its own line ends", async () => {
     const p = "C:\\w\\crlf.txt";

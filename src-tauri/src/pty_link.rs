@@ -630,6 +630,7 @@ pub(crate) mod tests {
 
     pub(crate) fn shell() -> Vec<CommandBuilder> {
         let mut cmds = crate::pty::shell_commands(None, None);
+        crate::pty::without_profile(&mut cmds);
         for c in &mut cmds {
             c.env("KOLUX_T184B", "routed");
             c.env_remove("PROMPT_COMMAND");
@@ -690,7 +691,8 @@ pub(crate) mod tests {
         assert!(remote.pid.is_some());
         let (text, ended) = pane(&first, &remote);
         crate::pty::write_shared(&remote.writer(), b"echo kolux-t184b-%KOLUX_T184B%$env:KOLUX_T184B\r\n").unwrap();
-        wait("the routed typing's output", 30, || lock(&text).contains("routed"));
+        // This wait includes the shell starting; the repo's real-shell tests give that 60 s (pty.rs).
+        wait("the routed typing's output", 60, || lock(&text).contains("routed"));
         remote.resize(120, 40).unwrap();
         // Quit: the window detaches; the terminal goes on in the service and its exit is never run.
         first.detach();

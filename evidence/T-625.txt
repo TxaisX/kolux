@@ -1,0 +1,98 @@
+T-625 · The left sidebar footer fits at its narrowest width · lane/sidebar-responsive (PR #43) · 2026-11-02
+Proved in the Linux cloud sandbox: Chromium 1243 (the Playwright build already installed under /opt/pw-browsers;
+nothing was installed) drawing a static copy of the sidebar footer and one session row with the app's own
+styles.css, Node 22, vitest 4.1.11. Nothing was run on Txais's PC. Written for the fresh review of PR #43 and
+its two findings; the first round of the PR (019f60e5) shipped the change with no task line and no evidence.
+
+WHAT IT FIXES
+The left sidebar resizes between LEFT_MIN 220 and LEFT_MAX 480 (src/chrome/RightSidebar.tsx). Its footer holds
+four 24 px icon buttons and the "Check for updates" button with its text. The footer was laid out from the
+window's width, not the sidebar's, so at 220 px the update button's right edge sat past the footer's right edge
+(229.6 px against 228 px in Chromium with the sandbox's fallback font) and the footer overflowed its card.
+
+WHAT CHANGED (first round, 019f60e5, kept)
+- src/styles.css: .sidebar is a size container (container-type: inline-size). Under 261 px of sidebar width
+  (@container (max-width: 260px)) the footer tightens its padding and gap and .sb-foot .upd .label is hidden; the
+  button keeps its icon, its title ("Check for a newer version of Kolux RS") and a new aria-label, so a screen
+  reader and the hover still name it. .upd can shrink (min-width 0, overflow hidden) and its label ellipsises.
+- src/projects/ProjectsPanel.tsx: the button's text is wrapped in <span class="label"> and the button carries
+  aria-label="Check for updates".
+- src/projects/sidebarResponsive.test.ts (new): pins the aria-label, the label span, the container query and the
+  label rule in the source.
+
+WHAT CHANGED (this round, after the fresh review)
+- Review finding 1 (verified): the first round also put min-width: 0 on .sess, and the test pinned the literal
+  substring 'width: 100%; min-width: 0; text-align: left;'. Every .sess row is a block child: its parents are plain
+  <div key={w.path}> / <div key={p.id}> wrappers (ProjectsPanel.tsx) and .sb-list is a block with overflow-y, so
+  min-width on .sess never takes part in layout; the ellipsis comes from .sess .name { flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; }, which was already on main. The no-op line is dropped and the test's
+  string pin of it is removed; the test keeps the .sess .name assertion and now says why that is the one that
+  matters. The probe below shows the session name clipped and ellipsised identically on main, on the pushed PR and
+  on the branch now, which is what a no-op looks like in the browser.
+- Review finding 2 (verified): no PLAN line, no evidence. This file; PLAN.md T-625 (section 8, product-ux lane);
+  docs/guide/projects-and-worktrees.md says the button shows its icon alone at the narrowest width.
+- The spec card for the resizable sidebar has no acceptance box for the footer at 220 px, so none is ticked.
+
+BEFORE (the branch's test against main's src/styles.css and src/projects/ProjectsPanel.tsx)
+  VITEST_MAX_WORKERS=2 npx vitest run src/projects/sidebarResponsive.test.ts
+   × the footer's update control keeps its name when the label is hidden
+     AssertionError: expected the source to contain 'aria-label="Check for updates"'
+   × the sidebar answers its own width with a container query, not the window
+     AssertionError: expected the source to contain '@container (max-width: 260px)'
+   Test Files  1 failed (1)
+        Tests  2 failed | 1 passed (3)
+  (the third test, the .sess .name rule, passes on main: that rule was already there, which is finding 1's point)
+
+AFTER
+  VITEST_MAX_WORKERS=2 npx vitest run src/projects
+   Test Files  58 passed (58)
+        Tests  301 passed (301)
+  npx tsc --noEmit                 -> exit 0
+  node scripts/plan-check.mjs      -> plan-check: OK
+  No Rust changed: cargo check / clippy not run for this unit. No Tauri command added: invoke-contract not run.
+  No dependency changed: license-check not run.
+
+BROWSER GEOMETRY (probe.cjs below; one row per --sidebar-w; footRight and updRight are getBoundingClientRect
+right edges in px, overflow = updRight - footRight, label = computed display of .sb-foot .upd .label,
+nameClipped = .sess .name scrollWidth > clientWidth with text-overflow ellipsis, menuAtViewport = a position:fixed
+.menu drawn inside .sb-foot at bottom 50 / left 20 lands at those viewport coordinates, backdropCoversViewport =
+the position:fixed .menu-backdrop inside .sb-foot covers the whole 1000x400 viewport)
+
+main 3af39cf3 (styles.css before the PR)
+220 footRight 228   updRight 229.6  overflow +1.6   updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+240 footRight 248   updRight 229.6  overflow -18.4  updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+260 footRight 268   updRight 229.6  overflow -38.4  updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+261 footRight 269   updRight 229.6  overflow -39.4  updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+289 footRight 297   updRight 229.6  overflow -67.4  updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+
+PR #43 as pushed (b1d0fe59, with min-width: 0 on .sess)
+220 footRight 228   updRight 117    overflow -111   updWidth 25     label none   nameClipped true  menuAtViewport true  backdropCoversViewport true
+240 footRight 248   updRight 117    overflow -131   updWidth 25     label none   nameClipped true  menuAtViewport true  backdropCoversViewport true
+260 footRight 268   updRight 117    overflow -151   updWidth 25     label none   nameClipped true  menuAtViewport true  backdropCoversViewport true
+261 footRight 269   updRight 229.6  overflow -39.4  updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+289 footRight 297   updRight 229.6  overflow -67.4  updWidth 125.6  label block  nameClipped true  menuAtViewport true  backdropCoversViewport true
+
+branch now (this round, min-width: 0 dropped from .sess): every row identical to "PR #43 as pushed".
+
+Reading: on main the button overshoots the footer by 1.6 px at 220 and fits from about 222 up. With the PR the
+label is gone at 220, 240 and 260 and back at 261 (the query is on the sidebar's own width, so the window's width
+does not matter); the button is a 25 px icon at the narrow end. The position:fixed Help menu and its backdrop,
+which HelpSheet draws inside .sb-foot, are not contained by container-type: inline-size (inline-size containment
+does not make a containing block for fixed descendants), so the menu still opens at viewport coordinates and the
+backdrop still covers the window. The session row's name is clipped with an ellipsis in all three runs.
+Font: the sandbox has neither Inter nor Segoe UI, so the fallback sans-serif sets the 229.6 figure; on Windows the
+text width differs by a few px and the fix does not depend on it (the label is hidden by the query, not measured).
+
+probe.cjs (run as: node probe.cjs <styles.css> <label>)
+  const { chromium } = require("<global playwright>");
+  const css = fs.readFileSync(process.argv[2], "utf8");
+  // static html: .body > .sidebar-wrap > aside.sidebar > .sb-list (one .proj, one div > .sess > .dot + .name with
+  // a 70-char name) + .sb-foot (three .ib buttons, #bd.menu-backdrop, #mn.menu at bottom:50px;left:20px,
+  // button.upd with a 13 px svg + span.label "Check for updates"); the whole styles.css inlined in <style>.
+  for (const w of [220, 240, 260, 261, 289]) {
+    page.evaluate: body.style.setProperty("--sidebar-w", w + "px"); read the rects and computed styles above.
+  }
+
+LEFT
+- A Windows screenshot of the footer at the 220 px sidebar width in the installed build (evidence/T-625.png); the
+  task line stays open until it exists.

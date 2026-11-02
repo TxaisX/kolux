@@ -57,14 +57,14 @@ pub struct Hit {
     len: usize,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug)]
 pub struct FileHits {
     /// Relative to the worktree, with forward slashes.
     path: String,
     hits: Vec<Hit>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Debug)]
 pub struct Found {
     files: Vec<FileHits>,
     total: usize,
@@ -190,24 +190,108 @@ pub fn parse_git(line: &str, fixed_len: Option<usize>) -> Option<(String, Vec<Hi
     Some((path, vec![hit(no, text, start, start + fixed_len.unwrap_or(0))]))
 }
 
-fn rg_command(root: &Path, a: &Ask) -> Command {
-    let mut cmd = Command::new("rg");
-    cmd.args(["--json", "--hidden", "--no-config", "--no-messages", "--max-filesize", MAX_FILESIZE, "-g", "!.git/"]);
-    cmd.arg(if a.match_case { "-s" } else { "-i" });
+/// ripgrep's arguments for `a`, searching the working folder; the same whether ripgrep runs here
+/// or inside a WSL distribution.
+fn rg_args(a: &Ask) -> Vec<String> {
+    let mut args: Vec<String> = ["--json", "--hidden", "--no-config", "--no-messages", "--max-filesize", MAX_FILESIZE, "-g", "!.git/"].map(String::from).to_vec();
+    args.push(if a.match_case { "-s" } else { "-i" }.into());
     if a.whole_word {
-        cmd.arg("-w");
+        args.push("-w".into());
     }
     if !a.regex {
-        cmd.arg("-F");
+        args.push("-F".into());
     }
     for p in split_patterns(&a.include) {
-        cmd.args(["-g", &p]);
+        args.extend(["-g".into(), p]);
     }
     for p in split_patterns(&a.exclude) {
-        cmd.args(["-g", &format!("!{p}")]);
+        args.extend(["-g".into(), format!("!{p}")]);
     }
-    cmd.args(["-e", &a.query, "--", "."]).current_dir(root);
+    args.extend(["-e".into(), a.query.clone(), "--".into(), ".".into()]);
+    args
+}
+
+fn rg_command(root: &Path, a: &Ask) -> Command {
+    let mut cmd = Command::new("rg");
+    cmd.args(rg_args(a)).current_dir(root);
     cmd
+}
+
+/// EDIT-044 (T-062-b): a root inside a WSL distribution, `\\wsl$\<distro>\...` or
+/// `\\wsl.localhost\<distro>\...` (either slash, the share's name case-blind, the long-path
+/// `\\?\UNC\` form too): the distribution's name and the folder as Linux spells it (`/` for the
+/// distribution's own root). None for every other path.
+pub fn wsl_root(root: &Path) -> Option<(String, String)> {
+    let s = root.to_string_lossy().replace('/', "\\");
+    let lower = s.to_ascii_lowercase();
+    let s = match lower.strip_prefix("\\\\?\\unc\\") {
+        Some(_) => format!("\\\\{}", &s[8..]),
+        None => s,
+    };
+    let lower = s.to_ascii_lowercase();
+    let head = ["\\\\wsl.localhost\\", "\\\\wsl$\\"].into_iter().find(|h| lower.starts_with(h))?.len();
+    let (distro, tail) = s[head..].split_once('\\').unwrap_or((&s[head..], ""));
+    if distro.is_empty() {
+        return None;
+    }
+    Some((distro.to_string(), format!("/{}", tail.replace('\\', "/"))))
+}
+
+/// EDIT-044: ripgrep inside the distribution, with the same arguments as a local search, run from
+/// the folder as Linux spells it so the hits come back `./relative` and map onto the root as they
+/// do locally. `-e` runs the command without the distribution's shell in between, so the query
+/// and the patterns reach ripgrep exactly as typed. ripgrep has to be installed in the
+/// distribution; the Windows side needs no working folder on the share.
+fn wsl_rg_command(distro: &str, linux_root: &str, a: &Ask) -> Command {
+    let mut cmd = Command::new("wsl.exe");
+    cmd.args(["-d", distro, "--cd", linux_root, "-e", "rg"]).args(rg_args(a));
+    cmd
+}
+
+/// EDIT-044: what a search command wrote to its error stream. wsl.exe writes its own messages
+/// (warnings, no such distribution, no such command) in UTF-16, ripgrep and git in UTF-8, and one
+/// stream can hold both. UTF-8 text never contains a NUL byte, so the first NUL marks where a UTF-16
+/// run starts; the run ends after its next line feed.
+fn stderr_text(bytes: &[u8]) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let rest = &bytes[i..];
+        let start = if rest.starts_with(&[0xFF, 0xFE]) { Some(0) } else { rest.iter().position(|&b| b == 0).map(|p| p.saturating_sub(1)) };
+        let Some(start) = start else {
+            out.push_str(&String::from_utf8_lossy(rest));
+            break;
+        };
+        out.push_str(&String::from_utf8_lossy(&rest[..start]));
+        let mut units = Vec::new();
+        let mut at = start;
+        while at + 2 <= rest.len() {
+            let unit = u16::from_le_bytes([rest[at], rest[at + 1]]);
+            at += 2;
+            units.push(unit);
+            if unit == 0x0A {
+                break;
+            }
+        }
+        out.push_str(String::from_utf16_lossy(&units).trim_start_matches('\u{FEFF}'));
+        if at == start {
+            out.push_str(&String::from_utf8_lossy(&rest[start..]));
+            break;
+        }
+        i += at;
+    }
+    out
+}
+
+/// EDIT-044: the first line of wsl.exe's own error forms (no distribution, wsl.exe not installed,
+/// a missing command or folder inside it). Inside the distribution these end with code 1, the code
+/// ripgrep uses for "nothing matched", so only these lines turn code 1 into a failure; a `wsl:`
+/// warning (printed on good calls too) does not.
+fn wsl_error_line(stderr: &str) -> Option<&str> {
+    stderr.lines().map(str::trim).filter(|l| !l.is_empty() && !l.to_ascii_lowercase().starts_with("wsl:")).find(|l| {
+        let l = l.to_ascii_lowercase();
+        ["execvpe(", "chdir(", "<3>wsl", "not installed", "no distribution"].iter().any(|m| l.contains(m))
+    })
 }
 
 fn git_command(root: &Path, a: &Ask) -> Command {
@@ -334,7 +418,10 @@ fn release(root: &Path, flag: &Arc<AtomicBool>) {
     }
 }
 
-fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>)>, source: &'static str, stop: &AtomicBool) -> Result<Found, std::io::Error> {
+/// `wsl`: the command is ripgrep run inside a WSL distribution through wsl.exe (EDIT-044). There a
+/// missing ripgrep or folder ends with code 1, the same code as "nothing matched", but with a
+/// message; such a search fails with that message instead of finding nothing.
+fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>)>, source: &'static str, stop: &AtomicBool, wsl: bool) -> Result<Found, std::io::Error> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -352,9 +439,9 @@ fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>
         }
     });
     let errs = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = err.read_to_string(&mut s);
-        s
+        let mut b = Vec::new();
+        let _ = err.read_to_end(&mut b);
+        stderr_text(&b)
     });
     let deadline = Instant::now() + TIMEOUT;
     let mut files: Vec<FileHits> = Vec::new();
@@ -403,9 +490,11 @@ fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>
         return Err(std::io::Error::other(format!("The search took longer than {} seconds and was stopped; narrow it with an include pattern.", TIMEOUT.as_secs())));
     }
     // ripgrep and git grep both end with 1 when nothing matched; more is a real failure.
-    if !capped && status.code().is_some_and(|c| c > 1) && total == 0 {
-        let why = stderr.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("the search command failed").to_string();
-        return Err(std::io::Error::other(why));
+    let wsl_err = if wsl { wsl_error_line(&stderr) } else { None };
+    let why = wsl_err.or_else(|| stderr.lines().map(str::trim).find(|l| !l.is_empty()));
+    let failed = status.code().is_some_and(|c| c > 1) || (status.code() == Some(1) && wsl_err.is_some());
+    if !capped && failed && total == 0 {
+        return Err(std::io::Error::other(why.unwrap_or("the search command failed").to_string()));
     }
     Ok(Found { files, total, capped, source })
 }
@@ -417,6 +506,12 @@ pub fn search(root: &Path, a: &Ask) -> Result<Found, String> {
 
 /// `search` for a call that took its generation number earlier (at command entry).
 pub fn search_gen(root: &Path, a: &Ask, gen: u64) -> Result<Found, String> {
+    search_with(root, a, gen, wsl_rg_command)
+}
+
+/// `search_gen` with the command that searches inside a WSL distribution passed in, so a test can
+/// stand in for wsl.exe (present or missing) instead of depending on the machine it runs on.
+fn search_with(root: &Path, a: &Ask, gen: u64, wsl_rg: impl Fn(&str, &str, &Ask) -> Command) -> Result<Found, String> {
     if a.query.is_empty() {
         return Ok(Found { files: vec![], total: 0, capped: false, source: "none" });
     }
@@ -428,13 +523,21 @@ pub fn search_gen(root: &Path, a: &Ask, gen: u64) -> Result<Found, String> {
         // a newer search (or a cancel) already holds this folder: nothing to start
         return Err(SUPERSEDED.into());
     }
-    let found = match run(rg_command(root, a), parse_rg, "rg", &stop) {
+    // EDIT-044 (T-062-b): a root inside a WSL distribution is searched by ripgrep inside it.
+    let wsl = wsl_root(root);
+    let cmd = match &wsl {
+        Some((distro, linux_root)) => wsl_rg(distro, linux_root, a),
+        None => rg_command(root, a),
+    };
+    let found = match run(cmd, parse_rg, "rg", &stop, wsl.is_some()) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            if !root.join(".git").exists() {
+            if let Some((distro, _)) = &wsl {
+                Err(format!("WSL is not installed here (wsl.exe was not found), so the {distro} distribution cannot be searched."))
+            } else if !root.join(".git").exists() {
                 Err("ripgrep is not installed and this folder is not a git repository, so there is nothing to search with.".into())
             } else {
                 let len = (!a.regex).then_some(a.query.len());
-                run(git_command(root, a), |l, _| parse_git(l, len), "git", &stop).map_err(|e| e.to_string())
+                run(git_command(root, a), |l, _| parse_git(l, len), "git", &stop, false).map_err(|e| e.to_string())
             }
         }
         other => other.map_err(|e| e.to_string()),
@@ -550,7 +653,7 @@ mod tests {
         big.push_str(&"x".repeat(11 * 1024 * 1024));
         std::fs::write(d.join("big.txt"), big).unwrap();
         std::fs::write(d.join("small.txt"), "needle\n").unwrap();
-        let f = run(rg_command(&d, &ask("needle")), parse_rg, "rg", &AtomicBool::new(false)).unwrap();
+        let f = run(rg_command(&d, &ask("needle")), parse_rg, "rg", &AtomicBool::new(false), false).unwrap();
         assert_eq!(f.files.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), vec!["small.txt"]);
         let _ = std::fs::remove_dir_all(&d);
     }
@@ -586,7 +689,7 @@ mod tests {
             slow.arg("20");
         }
         let t0 = Instant::now();
-        let err = run(slow, |_, _| None, "rg", &stop).err().unwrap();
+        let err = run(slow, |_, _| None, "rg", &stop, false).err().unwrap();
         assert_eq!(err.to_string(), SUPERSEDED);
         assert!(t0.elapsed() < Duration::from_secs(5), "{:?}", t0.elapsed());
     }
@@ -740,9 +843,9 @@ mod tests {
             let go = |a: &Ask| -> Result<Found, std::io::Error> {
                 if use_git {
                     let len = (!a.regex).then_some(a.query.len());
-                    run(git_command(&d, a), |l, _| parse_git(l, len), "git", &AtomicBool::new(false))
+                    run(git_command(&d, a), |l, _| parse_git(l, len), "git", &AtomicBool::new(false), false)
                 } else {
-                    run(rg_command(&d, a), parse_rg, "rg", &AtomicBool::new(false))
+                    run(rg_command(&d, a), parse_rg, "rg", &AtomicBool::new(false), false)
                 }
             };
             let count = |a: &Ask| go(a).unwrap().total;
@@ -765,5 +868,118 @@ mod tests {
             std::fs::remove_file(d.join("many.txt")).unwrap();
         }
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    // EDIT-044 (T-062-b): a root inside a WSL distribution names the distribution and the folder as
+    // Linux spells it, in either share spelling, either slash, the long-path form, and with spaces.
+    #[test]
+    fn edit044_a_wsl_root_names_its_distribution_and_linux_folder() {
+        let some = |p: &str| wsl_root(Path::new(p));
+        assert_eq!(some(r"\\wsl.localhost\Ubuntu\home\me\p"), Some(("Ubuntu".into(), "/home/me/p".into())));
+        assert_eq!(some(r"\\wsl$\Ubuntu\x y"), Some(("Ubuntu".into(), "/x y".into())));
+        assert_eq!(some("//wsl.localhost/Debian/srv/app"), Some(("Debian".into(), "/srv/app".into())));
+        assert_eq!(some(r"\\?\UNC\wsl$\Ubuntu\home"), Some(("Ubuntu".into(), "/home".into())));
+        assert_eq!(some(r"\\WSL.LOCALHOST\Ubuntu"), Some(("Ubuntu".into(), "/".into())), "the share's name is case-blind; the root of the distribution is /");
+        for not in [r"C:\work\p", "/home/me/p", r"\\server\share\p", r"\\wsl.localhost\", r"C:\wsl$\x"] {
+            assert_eq!(some(not), None, "{not}");
+        }
+    }
+
+    // EDIT-044: the search of a WSL root runs ripgrep inside the distribution (wsl.exe, no shell in
+    // between, so the query reaches ripgrep as typed) with the same arguments as a local search,
+    // relative to the folder as Linux spells it; a local root still runs ripgrep itself.
+    #[test]
+    fn edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments() {
+        let argv = |c: &Command| (c.get_program().to_string_lossy().into_owned(), c.get_args().map(|a| a.to_string_lossy().into_owned()).collect::<Vec<_>>());
+        let a = Ask { include: "*.rs".into(), exclude: "target".into(), whole_word: true, ..ask("needle here") };
+        let (prog, local) = argv(&rg_command(Path::new(r"C:\work\p"), &a));
+        assert_eq!(prog, "rg");
+        let (prog, wsl) = argv(&wsl_rg_command("Ubuntu", "/home/me/p", &a));
+        assert_eq!(prog, "wsl.exe");
+        assert_eq!(&wsl[..6], ["-d", "Ubuntu", "--cd", "/home/me/p", "-e", "rg"]);
+        assert_eq!(&wsl[6..], &local[..], "the same ripgrep arguments inside the distribution");
+        assert!(local.ends_with(&["-e".to_string(), "needle here".into(), "--".into(), ".".into()]), "{local:?}");
+        let (_, spaced) = argv(&wsl_rg_command("Ubuntu", "/x y", &ask("q")));
+        assert_eq!(&spaced[2..4], ["--cd", "/x y"], "a folder with a space is one argument");
+        assert!(wsl_rg_command("Ubuntu", "/x", &a).get_current_dir().is_none(), "the Windows side needs no working folder on the share");
+    }
+
+    // EDIT-044: wsl.exe writes its own messages as UTF-16; ripgrep's are UTF-8. Both read as text.
+    #[test]
+    fn edit044_wsl_messages_in_utf16_read_as_text() {
+        let utf16: Vec<u8> = "There is no distribution with the supplied name.\r\n".encode_utf16().flat_map(u16::to_le_bytes).collect();
+        assert_eq!(stderr_text(&utf16).trim(), "There is no distribution with the supplied name.");
+        let bom: Vec<u8> = [0xFF, 0xFE].into_iter().chain(utf16.iter().copied()).collect();
+        assert_eq!(stderr_text(&bom).trim(), "There is no distribution with the supplied name.");
+        assert_eq!(stderr_text("rg: regex parse error\n".as_bytes()).trim(), "rg: regex parse error");
+        assert_eq!(stderr_text(b""), "");
+    }
+
+    // A stand-in search command that writes `msg` to its error stream and ends with code 1, on both
+    // platforms (the WSL path only ever runs on Windows, so the Windows form is the one that counts).
+    fn ends_with_1_and(msg: &str) -> Command {
+        #[cfg(windows)]
+        {
+            let mut c = Command::new("cmd");
+            c.args(["/c", &format!("echo {msg} 1>&2 & exit /b 1")]);
+            c
+        }
+        #[cfg(not(windows))]
+        {
+            let mut c = Command::new("sh");
+            c.args(["-c", &format!("echo '{msg}' >&2; exit 1")]);
+            c
+        }
+    }
+
+    // EDIT-044: inside the distribution a missing ripgrep or folder ends with code 1 and a wsl.exe
+    // message, the same code as "nothing matched"; with that message the search says why instead of
+    // finding nothing. A local search keeps reading code 1 as no hits.
+    #[test]
+    fn edit044_a_wsl_search_that_ends_with_a_wsl_error_and_code_1_is_a_failure() {
+        for msg in ["execvpe(rg) failed: No such file or directory", "chdir(/gone) failed: No such file", "There is no distribution with the supplied name.", "The Windows Subsystem for Linux is not installed."] {
+            let err = run(ends_with_1_and(msg), parse_rg, "rg", &AtomicBool::new(false), true).unwrap_err();
+            assert!(err.to_string().contains(msg), "{msg}: {err}");
+            let found = run(ends_with_1_and(msg), parse_rg, "rg", &AtomicBool::new(false), false).unwrap();
+            assert_eq!(found.total, 0, "a local search keeps code 1 as no hits");
+        }
+    }
+
+    // EDIT-044: wsl.exe prints warnings of its own on a good call ("wsl: Detected localhost proxy
+    // configuration ..."); with code 1 that is still "no matches", not an error on every empty search.
+    #[test]
+    fn edit044_a_wsl_warning_with_code_1_is_no_matches() {
+        for msg in ["wsl: Detected localhost proxy configuration, but it is not mirrored into WSL.", "WSL: some other notice"] {
+            let found = run(ends_with_1_and(msg), parse_rg, "rg", &AtomicBool::new(false), true).unwrap();
+            assert_eq!(found.total, 0, "{msg}");
+        }
+    }
+
+    // EDIT-044: a wsl.exe warning (UTF-16) and ripgrep's own error (UTF-8) in one stream both read.
+    #[test]
+    fn edit044_a_mixed_utf16_and_utf8_error_stream_reads_both() {
+        let mut mixed: Vec<u8> = "wsl: Detected localhost proxy configuration.
+".encode_utf16().flat_map(u16::to_le_bytes).collect();
+        mixed.extend_from_slice("rg: regex parse error: unclosed group
+".as_bytes());
+        let text = stderr_text(&mixed);
+        assert!(text.contains("wsl: Detected localhost proxy configuration."), "{text:?}");
+        assert!(text.contains("rg: regex parse error: unclosed group"), "{text:?}");
+        let mut other: Vec<u8> = b"rg: a
+".to_vec();
+        other.extend("There is no distribution.
+".encode_utf16().flat_map(u16::to_le_bytes));
+        let text = stderr_text(&other);
+        assert!(text.contains("rg: a") && text.contains("There is no distribution."), "{text:?}");
+    }
+
+    // EDIT-044: searching a WSL root where wsl.exe is not installed says so instead of finding nothing.
+    // wsl.exe is stood in for by a program that does not exist, so the answer never depends on
+    // whether the machine running the test has WSL (a Windows runner does).
+    #[test]
+    fn edit044_without_wsl_a_wsl_search_says_so() {
+        let missing = |_: &str, _: &str, _: &Ask| Command::new("krs-no-such-wsl-exe-t062b");
+        let err = search_with(Path::new(r"\\wsl.localhost\Ubuntu\home\me"), &ask("needle"), next_gen(), missing).unwrap_err();
+        assert!(err.contains("WSL") && err.contains("Ubuntu") && err.contains("not installed"), "{err}");
     }
 }

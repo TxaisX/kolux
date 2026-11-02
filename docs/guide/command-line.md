@@ -31,11 +31,13 @@ The running app listens on a random port of your own computer (address `127.0.0.
 
 | Command | What it does |
 |---|---|
-| `kolux open` | Starts Kolux, or brings its window to the front, and waits up to 60 seconds until it answers |
+| `kolux open` | Starts Kolux, or brings its window to the front, and waits up to 60 seconds until it answers. It then says whether the window really came to the front (see below) |
 | `kolux status` | Says whether Kolux is up, without starting it. Works with the app closed (see below) |
 | `kolux diagnostics memory` | Shows how much memory Kolux and each terminal session use (see below) |
 | `kolux --version` | Prints the version |
 | `kolux --help` | Lists every command. `--help` also works on a group, such as `kolux terminal --help` |
+
+When Kolux was already running, `kolux open` restores its window and brings it forward itself, the way a second start of the app does, and reports what happened: "Kolux is ready; its window is in front" when Windows let it, or "Kolux is ready; its window was restored, but Windows kept another window in front" when it did not (Windows then flashes Kolux in the taskbar instead). With `--json`, `result.raised` is `true` or `false`; it is `null` when the question could not be asked (an answer naming no process, or a system other than Windows). When Kolux had to be started, the line reads "Kolux started and is ready".
 
 `kolux status` prints one line with one of four words. Scripts can rely on these words; they will not change.
 
@@ -228,7 +230,7 @@ One Windows quirk: the `kolux.cmd` helper refuses `kolux orchestration send` and
 | Command | What it does |
 |---|---|
 | `kolux agent-context` | Lists every command with its flags and usage, for an agent to read |
-| `kolux skills list`, `skills get <topic>`, `skills coverage` | Lists Kolux's skill documents, prints one, and shows which installed agents have the orchestration skill |
+| `kolux skills list`, `skills get <topic>`, `skills coverage` | Lists Kolux's five skill documents (kolux-cli, orchestration, koluxsecurity, koluxward and video, the guide to making a film or image with HyperFrames and Higgsfield), prints one (`skills get video --reference higgsfield` prints a reference page), and shows which installed agents have the orchestration skill |
 | `kolux agent hooks status` | Shows, for each agent, whether its status hooks are installed, partial, not installed or in error. Antigravity can also show "disabled" when its Kolux bundle is switched off in its own file (`"enabled": false`) |
 | `kolux agent hooks on`, `agent hooks off` | Switches the status hooks and brings every agent in line |
 | `kolux agent hooks prepare-codex` | Installs and trusts Kolux's Codex hooks before Codex is first started |

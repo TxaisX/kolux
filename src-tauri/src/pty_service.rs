@@ -1151,12 +1151,17 @@ mod tests {
         let mut first = Client::connect(&s.ep, Duration::from_secs(10)).unwrap();
         let mut ctl = Client::connect(&s.ep, Duration::from_secs(10)).unwrap();
         first.request(json!({ "op": "attach" }), &mut events).unwrap();
-        let row = ctl.request(json!({ "op": "spawn", "cols": 100, "rows": 30 }), &mut events).unwrap();
+        // The user's shell as the window would build it, minus the profile (see pty::without_profile).
+        let mut shell = crate::pty::shell_commands(None, None);
+        crate::pty::without_profile(&mut shell);
+        let commands: Vec<Value> = shell.iter().map(crate::pty::link::command_json).collect();
+        let row = ctl.request(json!({ "op": "spawn", "cols": 100, "rows": 30, "commands": commands }), &mut events).unwrap();
         let id = row["id"].as_u64().unwrap();
         assert_eq!(s.service.counts(), (1, 1));
         ctl.request(json!({ "op": "write", "id": id, "data": b64(b"echo kolux-t075b-before\r\n"), "generation": generation() }), &mut events).unwrap();
         let mut seen = String::new();
-        let until = Instant::now() + Duration::from_secs(30);
+        // This wait includes the shell starting; the repo's real-shell tests give that 60 s (pty.rs).
+        let until = Instant::now() + Duration::from_secs(60);
         while seen.matches("kolux-t075b-before").count() < 2 {
             assert!(Instant::now() < until, "marker not seen: {seen:?}");
             if let Ok(ev) = first.read() {
