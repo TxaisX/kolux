@@ -1,22 +1,10 @@
 {
-  "_note": "Snapshot of what today code must read from this v0.1.5 profile. settings = settings.json as written; kv = the kv table sorted by key. See scripts/profile-fixture.md.",
+  "_note": "Snapshot of what today's code must read from this release's profile. settings = settings.json as written; kv = the kv table sorted by key; both read from the generated files by scripts/profile-fixture-expected.mjs. See scripts/profile-fixture.md.",
   "settings": {
-    "theme": "dark",
-    "mode": "dark",
+    "appTheme": "cobalt",
+    "appearanceMode": "dark",
     "appFont": "Segoe UI",
     "uiLook": "new",
-    "projects": [
-      {
-        "id": "p1",
-        "name": "alpha",
-        "path": "C:/fixture/alpha"
-      },
-      {
-        "id": "p2",
-        "name": "beta",
-        "path": "C:/fixture/beta"
-      }
-    ],
     "savedLayout": {
       "panes": [
         {
@@ -24,10 +12,15 @@
           "cwd": "C:/fixture/alpha",
           "branch": null,
           "agent": "claude",
-          "program": null,
+          "program": "claude",
           "args": [],
+          "agentId": "claude",
+          "session": "5b0f6c1e-7a52-4c1d-9e0b-3f2a8d4c6b71",
+          "account": null,
           "title": "alpha main",
-          "pinned": true
+          "group": 1,
+          "pinned": true,
+          "color": "blue"
         },
         {
           "key": 2,
@@ -36,9 +29,10 @@
           "agent": "shell",
           "program": null,
           "args": [],
+          "title": "README.md",
+          "group": 1,
           "kind": "editor",
-          "path": "C:/fixture/alpha/README.md",
-          "title": "README.md"
+          "path": "C:/fixture/alpha/README.md"
         },
         {
           "key": 3,
@@ -47,9 +41,10 @@
           "agent": "shell",
           "program": null,
           "args": [],
+          "title": "main.rs",
+          "group": 1,
           "kind": "editor",
-          "path": "C:/fixture/alpha/src/main.rs",
-          "title": "main.rs"
+          "path": "C:/fixture/alpha/src/main.rs"
         },
         {
           "key": 4,
@@ -57,7 +52,10 @@
           "branch": null,
           "agent": "shell",
           "program": null,
-          "args": []
+          "args": [],
+          "title": "beta shell",
+          "group": 4,
+          "color": "green"
         }
       ],
       "activeTab": {
@@ -68,30 +66,11 @@
       "activeDir": "C:/fixture/alpha",
       "stacked": {
         "C:/fixture/beta": true
-      },
-      "workspaces": [
-        {
-          "name": "Alpha work",
-          "dir": "C:/fixture/alpha",
-          "panes": [
-            1,
-            2,
-            3
-          ]
-        },
-        {
-          "name": "Beta",
-          "dir": "C:/fixture/beta",
-          "panes": [
-            4
-          ]
-        }
-      ]
+      }
     }
   },
   "kv": {
-    "projects": "[{\"id\":\"p1\",\"name\":\"alpha\",\"path\":\"C:/fixture/alpha\"},{\"id\":\"p2\",\"name\":\"beta\",\"path\":\"C:/fixture/beta\"}]",
-    "start_count": "7",
-    "worktrees": "[\"C:/fixture/alpha\",\"C:/fixture/beta\"]"
+    "projects": "[{\"id\":\"p1\",\"name\":\"alpha\",\"path\":\"C:/fixture/alpha\",\"workspacesDir\":\"C:/fixture/alpha-workspaces\",\"base\":\"origin/main\"},{\"id\":\"p2\",\"name\":\"beta\",\"path\":\"C:/fixture/beta\",\"displayName\":\"Beta site\"}]",
+    "start_count": "7"
   }
 }
