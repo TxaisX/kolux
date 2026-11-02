@@ -104,6 +104,16 @@ export function viewerUrl(a: Pick<Artifact, "id" | "page">, windows = navigator.
 /** A link a viewer page asked for: the address and the host the user is shown. */
 export type LinkAsk = { url: string; host: string };
 
+/** Control, zero-width and bidirectional-override characters: they can reorder or hide what a person
+ * reads (U+202E turns "gpj.exe" around), so none is ever shown in the question. */
+const INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+
+/** What is shown of a page-supplied string: no control or bidi characters, at most `max` long. */
+export function displayText(text: string, max = 80): string {
+  const t = text.replace(INVISIBLE, "").trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
 /** The link a message from the viewer asks for, or null. Only our own frame may ask, and only for a
  * web or mail address. The page's script posts the message, so it says nothing about the user
  * (DT-C77): it is never a reason to open anything, only to ask. */
@@ -121,7 +131,8 @@ export function linkAsk(e: Pick<MessageEvent, "data" | "source">, frameWindow: W
   if (u.protocol === "mailto:") {
     try {
       // The whole address list is shown; the query (?body=, ?attach=) is not part of it and the opener drops it.
-      return { url: data.koluxOpen, host: decodeURIComponent(u.pathname.split("?")[0]) };
+      const host = displayText(decodeURIComponent(u.pathname.split("?")[0]));
+      return host ? { url: data.koluxOpen, host } : null;
     } catch {
       return null; // a malformed percent-escape: nothing worth asking about
     }
@@ -133,6 +144,9 @@ export function linkAsk(e: Pick<MessageEvent, "data" | "source">, frameWindow: W
  * meant for the page cannot land on Open (worker decision, 2f, 2026-11-01; Txais may veto). */
 export const LINK_OPEN_DELAY_MS = 1000;
 
+/** How many Cancels in a row from one entry silence its further questions. */
+export const LINK_BACKOFF = 3;
+
 /** DT-C77: a message from the viewer never opens the browser. It raises one Kolux-owned question
  * ("Open example.com?") and the browser opens only when the user clicks Open in Kolux. First ask wins:
  * while a question is pending, new asks are ignored (a page cannot swap the address under the user's
@@ -141,6 +155,7 @@ export const LINK_OPEN_DELAY_MS = 1000;
 export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: LinkAsk | null) => void, now: () => number = Date.now) {
   let pending: LinkAsk | null = null;
   let since = 0;
+  let cancels = 0;
   const set = (ask: LinkAsk | null) => {
     pending = ask;
     since = now();
@@ -149,7 +164,7 @@ export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: 
   const ready = () => pending !== null && now() - since >= LINK_OPEN_DELAY_MS;
   return {
     ask(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined) {
-      if (pending) return;
+      if (pending || cancels >= LINK_BACKOFF) return;
       const ask = linkAsk(e, frameWindow);
       if (ask) set(ask);
     },
@@ -157,10 +172,26 @@ export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: 
     async accept(): Promise<unknown> {
       const ask = pending;
       if (!ask || !ready()) return null;
+      cancels = 0;
       set(null);
       return open(ask.url);
     },
+    /** The user said no. After LINK_BACKOFF in a row from the same entry the page is not asked again
+     * (a page cannot nag until a click lands) until `reset`, when the entry is chosen again. */
     cancel() {
+      if (!pending) return;
+      cancels += 1;
+      set(null);
+    },
+    /** A key, a click or a focus change while Open is still disabled: the delay starts over, so input
+     * meant for the page cannot add up to a click on Open. */
+    touch() {
+      if (pending && !ready()) since = now();
+    },
+    /** A different entry (or the same one chosen again) is a new conversation: the question and the
+     * count of refusals are dropped. */
+    reset() {
+      cancels = 0;
       if (pending) set(null);
     },
   };
@@ -171,8 +202,8 @@ export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: 
  * disabled until `ready`. */
 export function LinkAskBar({ ask, ready, onOpen, onCancel }: { ask: LinkAsk; ready: boolean; onOpen: () => void; onCancel: () => void }) {
   return (
-    <div className="art-ask" role="alertdialog" aria-label="Open link">
-      <span className="art-ask-text" title={ask.url}>
+    <div className="art-ask" role="status" aria-label="Open link">
+      <span className="art-ask-text" title={displayText(ask.url, 200)}>
         Open <strong>{ask.host}</strong>?
       </span>
       <button className="btn" disabled={!ready} onClick={onOpen}>
@@ -242,6 +273,7 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
   // browser opens when the user clicks Open there, never from the message itself.
   const [asked, setAsked] = useState<LinkAsk | null>(null);
   const [askReady, setAskReady] = useState(false);
+  const [nudge, setNudge] = useState(0);
   const prompt = useRef<ReturnType<typeof linkPrompt> | null>(null);
   prompt.current ??= linkPrompt((url) => invoke("open_external", { url }), setAsked);
   useEffect(() => {
@@ -249,17 +281,37 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
-  // Open is disabled for the first second of each question (the same clock as linkPrompt.accept).
+  // Open is disabled for the first second of each question (the same clock as linkPrompt.accept), and
+  // the second starts over at any click, key or focus change while it is still disabled.
   useEffect(() => {
     setAskReady(false);
     if (!asked) return;
     const t = window.setTimeout(() => setAskReady(true), LINK_OPEN_DELAY_MS + 50);
     return () => window.clearTimeout(t);
-  }, [asked]);
-  // Another page, or none, is a different conversation: the old question is dropped.
+  }, [asked, nudge]);
   useEffect(() => {
-    prompt.current?.cancel();
+    if (!asked || askReady) return;
+    const again = () => {
+      prompt.current?.touch();
+      setNudge((n) => n + 1);
+    };
+    // Input inside the sandboxed frame never reaches this window; the focus leaving it for the frame does.
+    const events = ["pointerdown", "keydown", "blur"] as const;
+    for (const ev of events) window.addEventListener(ev, again, true);
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, again, true);
+    };
+  }, [asked, askReady]);
+  // Another page, or none, is a different conversation: the old question and the refusals are dropped.
+  useEffect(() => {
+    prompt.current?.reset();
   }, [selected]);
+  // Choosing the entry again counts as choosing it: its refusals start over.
+  const choose = (id: string) => {
+    prompt.current?.reset();
+    setSelected(id);
+    setLoaded(null);
+  };
 
   const shown = useMemo(() => group((list ?? []).filter((a) => matches(a.title, query))), [list, query]);
   const current = list?.find((a) => a.id === selected) ?? null;
@@ -296,7 +348,9 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
       onToast(`Could not remove ${a.title}: ${e}`);
     }
   };
-  const openFile = (a: Artifact) => invoke("open_path", { path: a.origin }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
+  // The library's own copy, never the workspace file it came from: that one may have changed since it was kept
+  // (T-624 round 5, S5), and the user is looking at the stored copy's name, size and date.
+  const openFile = (a: Artifact) => invoke("artifact_open", { id: a.id }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
 
   return (
     <div className="artifacts">
@@ -317,8 +371,8 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
               {s.items.map((a) => (
                 <div key={a.id} role="option" aria-selected={a.id === selected} className={`art-row${a.id === selected ? " sel" : ""}`}
                   tabIndex={0}
-                  onClick={() => (setSelected(a.id), setLoaded(null))}
-                  onKeyDown={(e) => e.key === "Enter" && (setSelected(a.id), setLoaded(null))}
+                  onClick={() => choose(a.id)}
+                  onKeyDown={(e) => e.key === "Enter" && choose(a.id)}
                 >
                   <div className="art-title">
                     <span className="name">{a.title}</span>

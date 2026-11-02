@@ -86,4 +86,27 @@ describe("Artifacts library (SKILL-036)", () => {
     expect(newlySkipped(["clip.mkv is larger than 100 MB", "could not read x.bin: denied"], told)).toEqual(["could not read x.bin: denied"]);
     expect(newlySkipped([], told)).toEqual([]);
   });
+
+  // T-624 round 5.
+  it("Open on a file that opens in its own app hands over the library copy, not the workspace file", () => {
+    const at = pageSource.indexOf("const openFile");
+    expect(at).toBeGreaterThan(0);
+    const body = pageSource.slice(at, pageSource.indexOf("\n", at));
+    expect(body).toContain('invoke("artifact_open", { id: a.id })');
+    expect(body).not.toMatch(/origin|open_path/);
+    expect(pageSource).not.toContain('invoke("open_path"');
+  });
+
+  it("a click, a key or the focus leaving restarts the Open delay while Open is disabled", () => {
+    for (const ev of ["pointerdown", "keydown", "blur"]) expect(pageSource, ev).toContain(`"${ev}"`);
+    expect(pageSource).toContain("addEventListener(ev, again, true)");
+    expect(pageSource).toContain("prompt.current?.touch()");
+  });
+
+  it("choosing an entry, even the one already shown, starts its link refusals over", () => {
+    const at = pageSource.indexOf("const choose = ");
+    expect(at).toBeGreaterThan(0);
+    expect(pageSource.slice(at, at + 160)).toContain("prompt.current?.reset()");
+    expect(pageSource).not.toMatch(/onClick=\{\(\) => (void )?setSelected\(/);
+  });
 });

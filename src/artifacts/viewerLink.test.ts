@@ -15,7 +15,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(async () => null) }));
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
-import { LINK_OPEN_DELAY_MS, LinkAskBar, linkAsk, linkPrompt, type LinkAsk } from "./ArtifactsPage";
+import { LINK_BACKOFF, LINK_OPEN_DELAY_MS, LinkAskBar, displayText, linkAsk, linkPrompt, type LinkAsk } from "./ArtifactsPage";
 
 const frame = { name: "artifact-a" } as unknown as Window;
 const msg = (over: Partial<{ data: unknown; source: unknown }>) => ({ data: { koluxOpen: "https://example.com/path?q=1" }, source: frame, ...over }) as MessageEvent;
@@ -130,6 +130,78 @@ describe("a link asked for by the viewer (SKILL-036, DT-C77)", () => {
   it("a mailto with a query shows the whole address, not the query", () => {
     expect(linkAsk(msg({ data: { koluxOpen: "mailto:a@example.com,b@example.com?body=hi&attach=C:/x" } }), frame)?.host).toBe("a@example.com,b@example.com");
   });
+
+  // T-624 round 5, S6.
+  it("a mailto address is shown without control or bidi characters, and no longer than 80", () => {
+    const rlo = "\u202E", lri = "\u2066", zw = "\u200B", nul = "%00", lf = "%0A";
+    const shownOf = (addr: string) => linkAsk(msg({ data: { koluxOpen: `mailto:${addr}` } }), frame)?.host;
+    expect(shownOf(`a@example.com${rlo}gpj.exe`)).toBe("a@example.comgpj.exe");
+    expect(shownOf(`${lri}x${zw}@example.com${lf}${nul}`)).toBe("x@example.com");
+    expect(shownOf(`${"a".repeat(300)}@example.com`)?.length).toBe(80);
+    expect(shownOf(`${"a".repeat(300)}@example.com`)?.endsWith("…")).toBe(true);
+    // An address that is nothing but invisible characters asks nothing.
+    expect(shownOf(`${rlo}${zw}`)).toBeUndefined();
+    expect(displayText("a\u200Eb\u2069c\u202Ad")).toBe("abcd");
+    expect(displayText(" ok ")).toBe("ok");
+  });
+
+  it("after three Cancels in a row the same entry is not asked again until it is chosen again", async () => {
+    const c = clock();
+    const shown: (LinkAsk | null)[] = [];
+    const p = linkPrompt(open, (a) => shown.push(a), c.now);
+    for (let i = 0; i < LINK_BACKOFF; i++) {
+      p.ask(msg({ data: { koluxOpen: `https://spam.example/${i}` } }), frame);
+      p.cancel();
+    }
+    const before = shown.length;
+    p.ask(msg({}), frame);
+    c.tick(5 * LINK_OPEN_DELAY_MS);
+    expect(p.ready()).toBe(false);
+    await p.accept();
+    expect(shown.length).toBe(before);
+    expect(invoke).not.toHaveBeenCalled();
+    // Choosing the entry (again) is a new conversation.
+    p.reset();
+    p.ask(msg({}), frame);
+    c.tick(LINK_OPEN_DELAY_MS);
+    await p.accept();
+    expect(invoke.mock.calls).toEqual([["open_external", { url: "https://example.com/path?q=1" }]]);
+  });
+
+  it("an Open (or two Cancels and an Open) clears the count; fewer than three Cancels never silence a page", async () => {
+    const c = clock();
+    const p = linkPrompt(open, () => {}, c.now);
+    for (let round = 0; round < 3; round++) {
+      p.ask(msg({}), frame);
+      p.cancel();
+      p.ask(msg({}), frame);
+      p.cancel();
+      p.ask(msg({}), frame);
+      c.tick(LINK_OPEN_DELAY_MS);
+      await p.accept();
+    }
+    expect(invoke).toHaveBeenCalledTimes(3);
+  });
+
+  it("a click, key or focus change while Open is disabled restarts the delay", async () => {
+    const c = clock();
+    const p = linkPrompt(open, () => {}, c.now);
+    p.ask(msg({}), frame);
+    c.tick(LINK_OPEN_DELAY_MS - 100);
+    p.touch(); // input that was meant for the page
+    c.tick(LINK_OPEN_DELAY_MS - 100);
+    expect(p.ready()).toBe(false);
+    await p.accept();
+    expect(invoke).not.toHaveBeenCalled();
+    p.touch();
+    c.tick(LINK_OPEN_DELAY_MS);
+    expect(p.ready()).toBe(true);
+    p.touch(); // once Open is ready a touch changes nothing
+    expect(p.ready()).toBe(true);
+    await p.accept();
+    expect(invoke).toHaveBeenCalledTimes(1);
+    p.touch(); // nothing pending: nothing happens
+  });
 });
 
 describe("the question strip (M1)", () => {
@@ -145,6 +217,12 @@ describe("the question strip (M1)", () => {
     expect(wait).toMatch(/<button[^>]*disabled=""[^>]*>Open<\/button>/);
     expect(wait).not.toMatch(/<button[^>]*disabled=""[^>]*>Cancel<\/button>/);
     expect(html(true)).not.toContain("disabled");
+  });
+
+  it("the strip is a status line, not a dialog that asks for the focus", () => {
+    const out = html(true);
+    expect(out).toContain('role="status"');
+    expect(out).not.toContain("alertdialog");
   });
 
   it("the strip sits in normal layout above the frame, never positioned over it", () => {
