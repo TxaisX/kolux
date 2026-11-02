@@ -8,13 +8,13 @@ const SOURCES: Record<string, string[]> = {
   accounts: ["SettingsPage.tsx", "ConnectGrid.tsx", "AgentCredentials.tsx"],
   agents: ["AgentsPage.tsx"],
   terminal: ["TerminalPage.tsx", "InputCards.tsx"],
-  git: ["GitPage.tsx"],
+  git: ["GitPage.tsx", "AiRecipesSection.tsx"],
   safety: ["SafetyPage.tsx"],
   notifications: ["NotificationsPage.tsx", "SettingsPage.tsx"],
   shortcuts: ["ShortcutsPage.tsx"],
   usage: ["SettingsPage.tsx"],
 };
-const FILES = import.meta.glob(["./*Page.tsx", "./InputCards.tsx", "./ConnectGrid.tsx", "./AgentCredentials.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const FILES = import.meta.glob(["./*Page.tsx", "./AiRecipesSection.tsx", "./InputCards.tsx", "./ConnectGrid.tsx", "./AgentCredentials.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 const read = (f: string) => FILES[`./${f}`] ?? "";
 
 describe("search all settings (SET-007)", () => {

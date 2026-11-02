@@ -49,7 +49,7 @@ export default function AiRecipesSection({ settings, save }: Props) {
   const modes = (settings[REPO_AI_KEY] as Record<string, RepoAiMode> | undefined) ?? {};
   return (
     <section className="conn-card" data-section="ai-recipes">
-      <h2 className="conn-name">Source Control AI actions</h2>
+      <h2 className="conn-name">Let AI write Git text (branch names, pull request titles and descriptions)</h2>
       <label className="look-select">
         <input type="checkbox" checked={aiControlsShown(settings)} onChange={(e) => void save({ [SCM_AI_HIDDEN_KEY]: !e.target.checked })} /> Show the AI actions in Source Control
       </label>
