@@ -356,8 +356,8 @@ export async function startPlain(id, opts) {
     log(`startPlain failed; closed the app it started: ${JSON.stringify(closed)}`);
     throw e;
   }
-  // The first-run guide is a modal dialog; close it so key chords reach the grid.
-  await dismissFirstRun(app, log);
+  // The first-run guide is a modal dialog; close it so key chords reach the grid (opts.keepFirstRun: a proof that drives it).
+  if (!opts.keepFirstRun) await dismissFirstRun(app, log);
   const shotDir = LIVE_LOGS;
   mkdirSync(shotDir, { recursive: true });
   const ctx = {
