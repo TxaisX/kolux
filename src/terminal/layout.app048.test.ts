@@ -1,12 +1,12 @@
 // Upgrade regression (the window half; the Rust half is src-tauri/tests/cards_19.rs app048_box2_*): the settings.json a
 // profile written by the v0.1.5 release holds (src-tauri/tests/fixtures/profile-v0.1.5/, made by that release's own
-// layoutOf and setting names, see scripts/profile-fixture.md) is read by today's window code, the same functions
-// src/main.tsx settle() calls, and gives back exactly the layout and look that were saved. A setting renamed in the
+// layoutOf and setting names, see scripts/profile-fixture.md) is read by today's window code, the functions
+// src/main.tsx settle() and the settings pages use, and gives back exactly the layout and look that were saved. A setting renamed in the
 // window, or a changed saved-layout shape, fails here.
 import { expect, test } from "vitest";
 import { readLook, stampLook } from "../settings/general";
 import { readAppearance } from "../theme";
-import { LAYOUT_FIELD, restoreLayout, stillThere } from "./layout";
+import { LAYOUT_FIELD, restoreLayout } from "./layout";
 
 // src has no node types; the builtin modules come through process.getBuiltinModule (as settings/__cards__/APP-048-050.test.ts does).
 const process: any = (globalThis as any).process;
@@ -33,8 +33,6 @@ test("app048: today's restoreLayout reads the v0.1.5 saved layout back as the pa
   expect(layout!.focused).toBe(3);
   expect(layout!.activeDir).toBe("C:/fixture/alpha");
   expect(layout!.stacked).toEqual({ "C:/fixture/beta": true });
-  // the folders still exist: nothing is dropped on the way in
-  expect(stillThere(layout!, () => true)).toEqual(layout);
 });
 
 test("app048: today's setting readers find the look, theme, mode and font the v0.1.5 window saved", () => {

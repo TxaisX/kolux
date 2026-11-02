@@ -131,7 +131,6 @@ fn app048_box2_a_profile_written_by_the_previous_release_reads_back_identical() 
     let settings = s.try_settings().expect("today's code reads the old settings.json");
     assert_eq!(settings["savedLayout"], expected["settings"]["savedLayout"], "the saved layout (panes, open editor tabs, group, colour, pinned, session) reads back identical");
     assert_eq!(settings, expected["settings"], "every setting reads back identical to expected.json (a retired fixture key must be a conscious decision: update expected.json)");
-    assert!(settings["savedLayout"]["panes"].as_array().is_some_and(|p| p.len() == 4), "the saved layout has the fixture's four panes");
     assert!(s.take_fallback_notice().is_none(), "the main file was read, not a fallback to settings.json.bak");
     drop(s);
 

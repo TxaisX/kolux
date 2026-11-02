@@ -20,7 +20,7 @@ Do this when a new version is released (the fixture should always be from the ne
 If a step below no longer compiles in the release, adapt the temporary code to its renamed API; do not change the fixture by hand.
 
 1. Make a throwaway checkout of the release tag (replace `vNEW` and the folder name) and install in it:
-   `git -C G:/Dev/kolux-rs worktree add --detach G:/Dev/kolux-rs-sessions/wt/fx-vNEW vNEW` then `pnpm install --frozen-lockfile` there.
+   `git -C <repo> worktree add --detach <scratch>/fx-vNEW vNEW` then `pnpm install --frozen-lockfile` there.
 2. **Window half.** Put the file in "Generator 1" below at `src/terminal/zzMakeFixture.test.ts` in that checkout and run
    `FIXTURE_JSON=<scratch>/settings-ts.json npx vitest run src/terminal/zzMakeFixture.test.ts`.
    It writes the settings the release's window would save, layout included.
@@ -32,7 +32,7 @@ If a step below no longer compiles in the release, adapt the temporary code to i
 5. Build `expected.json` from the generated files: `node scripts/profile-fixture-expected.mjs src-tauri/tests/fixtures/profile-vNEW`
    (settings = the parsed `settings.json`; kv = every row of `state.db`, read with Node's built-in sqlite). Then update the literal
    expected values in `layout.app048.test.ts` if the layout or look changed in Generator 1.
-6. Remove the throwaway checkout: `git -C G:/Dev/kolux-rs worktree remove --force G:/Dev/kolux-rs-sessions/wt/fx-vNEW`. Commit nothing in it.
+6. Remove the throwaway checkout: `git -C <repo> worktree remove --force <scratch>/fx-vNEW`. Commit nothing in it.
 7. Run `cargo test --manifest-path src-tauri/Cargo.toml --test cards_19 app048_box2` (under the scratch homes of `scripts/test-env.ps1`)
    and `npx vitest run src/terminal/layout.app048.test.ts`.
 

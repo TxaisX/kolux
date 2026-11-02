@@ -1,51 +1,9 @@
 APP-048 box 2 upgrade regression: evidence (s-2f/APP-048, 2026-11-01)
 
-Fixture: src-tauri/tests/fixtures/profile-v0.1.5/{settings.json,settings.json.bak,state.db}, written by the real v0.1.5 code (tag v0.1.5 = ed636846, Store::open + patch_settings + set/set_all). expected.json is the snapshot; its kv part was written by hand from the generator's values, not read back from the database.
-Regenerate: scripts/profile-fixture.md. Throwaway worktree wt/2f-v015 removed afterwards; nothing committed in it. (Round 1 text below is superseded by the Round 2 section at the end: the fixture was regenerated, expected.json is now read from the files.)
+Fixture: src-tauri/tests/fixtures/profile-v0.1.5/{settings.json,settings.json.bak,state.db}, written by the real v0.1.5 code (tag v0.1.5 = ed636846): the layout by v0.1.5 layoutOf, the files by v0.1.5 Store::open + patch_settings + save_projects + count_start. expected.json is read back from those files by scripts/profile-fixture-expected.mjs.
+Regenerate: scripts/profile-fixture.md. Throwaway worktree removed afterwards; nothing committed in it.
 
 Version guard (task item 3): NOT built. No reliable version source readable from a CI test: package.json, src-tauri/tauri.conf.json and src-tauri/Cargo.toml all say 0.1.0 on main (scripts/release.mjs setVersion rewrites them only inside the release checkout), there is no CHANGELOG, and git tags are not usable (shallow CI clone). The folder name profile-v0.1.5 and scripts/profile-fixture.md carry the version; refresh them each release.
-
-== Failing first: expected.json deliberately changed (theme dark -> light), same test ==
-$ cargo test --manifest-path src-tauri/Cargo.toml --test cards_19 app048_box2   (scratch homes as scripts/test-env.ps1)
-
-failures:
-
----- app048_box2_a_profile_written_by_the_previous_release_reads_back_identical stdout ----
-
-thread 'app048_box2_a_profile_written_by_the_previous_release_reads_back_identical' (44312) panicked at tests\cards_19.rs:130:5:
-assertion `left == right` failed: every setting reads back identical (retired keys aside)
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-
-failures:
-    app048_box2_a_profile_written_by_the_previous_release_reads_back_identical
-
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.01s
-
-error: test failed, to rerun pass `--test cards_19`
-  left:  theme = dark (what today's code read from the v0.1.5 file)
-  right: theme = light (the deliberately wrong snapshot); every other field identical
-
-== Real snapshot restored ==
-     Running tests\cards_19.rs (G:/Dev/kolux-rs-sessions/target-2f-b\debug\deps\cards_19-70ca7127fc84b499.exe)
-running 1 test
-test app048_box2_a_profile_written_by_the_previous_release_reads_back_identical ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.01s
-
-== Whole file ==
-test app048_child_writer ... ok
-test app048_box2_a_profile_written_by_the_previous_release_reads_back_identical ... ok
-test app054_box2_ending_one_of_three_sessions_stops_only_that_one ... ok
-test app048_box1_a_setting_and_the_layout_are_there_after_the_process_is_killed_two_seconds_later ... ok
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.10s
-
-== Lints ==
-$ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-   Compiling kolux-rs v0.1.0 (G:\Dev\kolux-rs-sessions\wt\2f-APP-048\src-tauri)
-    Finished `dev` profile [unoptimized] target(s) in 1m 43s
-
-Finding: today's code reads the v0.1.5 profile identically (settings, savedLayout, kv rows); no fallback notice, no .tmp, no set-aside file, settings.json and settings.json.bak bytes unchanged by the read.
-Still open: the live D-3 tick (docs/live-proofs-windows.md). The spec box stays unticked.
 
 == Round 2 (review: B, changes needed), 2026-11-01 ==
 
@@ -121,7 +79,7 @@ AssertionError: expected [ { key: 1, …(12) }, { key: 4, …(8) } ] to deeply e
 -     "key": 3,
 -     "kind": "editor",
 
-== Rust test can fail: expected.json appTheme cobalt -> rose (restored afterwards) ==
+== Rust test can fail: expected.json appTheme cobalt -> rose (restored afterwards; captured before the assert message got its final wording, now "every setting reads back identical to expected.json (...)") ==
 test app048_box2_a_profile_written_by_the_previous_release_reads_back_identical ... FAILED
 thread 'app048_box2_a_profile_written_by_the_previous_release_reads_back_identical' (45552) panicked at tests\cards_19.rs:133:5:
 assertion `left == right` failed: every setting reads back identical; a retired fixture key must be a conscious decision: update expected.json
