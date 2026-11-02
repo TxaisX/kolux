@@ -22,7 +22,8 @@ the installed app yet because the cycle made no release.
 | DT/T number collisions | 3 numbers renumbered at merge (cloud phase) | **0** in the local phase |
 | Release in your hands | v0.1.5 | **v0.1.5** (no release this cycle) |
 
-<!-- TODO(STATE): replace the two score rows with plan-check on main after PR #77 merges. -->
+Scores are from `node scripts/plan-check.mjs` on `main` at `a4593c03`, after the STATE update (#77) merged.
+STATE.md now says the same.
 
 ## How the cycle ran
 
