@@ -19,6 +19,11 @@ const MAX_PAGE: u64 = 10 * 1024 * 1024;
 /// hands the rest to the system.
 const MAX_FILE: u64 = 100 * 1024 * 1024;
 const MAX_ASSETS: usize = 100;
+/// The most distinct references a page's scan looks at, and how many in a row may fail before the
+/// scan gives up on the rest. A hostile page can name thousands of files that are not there; each
+/// look is a file-system call on the worker that holds the scan lock (T-624 round 5).
+const MAX_REFS: usize = 400;
+const MAX_MISSES: usize = 32;
 const MAX_ASSET: u64 = 10 * 1024 * 1024;
 const MAX_TOTAL: u64 = 50 * 1024 * 1024;
 /// Script hosts whose files are fetched into an entry so it still runs offline (SKILL-035). Each
@@ -31,6 +36,12 @@ const MAX_SCRIPT: usize = 5 * 1024 * 1024;
 /// memory on the web view's thread for each; Content-Range tells it the real length and it asks
 /// again from where the answer ended.
 const CHUNK: u64 = 8 * 1024 * 1024;
+/// The most `serve` reads into memory whole for a file that is not video or audio. Bigger is a 413: the
+/// gate bounds how many reads run at once, not how big each is, so this is the size bound (4 x 20 MB at
+/// most in flight; pages are capped at 10 MB when they are stored).
+const WHOLE_MAX: u64 = 20 * 1024 * 1024;
+/// How many requests may wait for a read slot (each parks one blocking thread); the next one is a 503.
+const MAX_WAITING: usize = 64;
 
 /// Where a page came from: a file added by hand, or a Claude publish (one entry per URL).
 pub struct Origin {
@@ -253,21 +264,45 @@ pub fn relative_refs(html: &str) -> Vec<String> {
                 i += 1;
             }
             let v = unescape(html[start..i].trim());
-            let v = v.split(['?', '#']).next().unwrap_or("").to_string();
-            let scheme = v.find(':').is_some_and(|c| !v[..c].contains('/'));
-            if v.is_empty() || scheme || v.starts_with('/') || v.starts_with('\\') {
-                continue;
+            let v = v.split(['?', '#']).next().unwrap_or("");
+            // Decode first, then judge what the file system would see: `%2F%2Fhost%2Fs%2Fa.png` is a
+            // UNC path and `C%3A/x` a drive path once decoded (T-624 round 5).
+            let v = pct(v);
+            if safe_ref(&v) {
+                out.push(v);
             }
-            out.push(pct(&v));
         }
     }
     out
 }
 
-/// A path inside an entry's folder from forward-slash parts; None if a part would climb out.
+/// Whether a decoded reference is a plain path under the page's own folder: not empty, no scheme,
+/// drive or stream colon, no leading separator (a root path or a `//host/share` UNC path), no `..`,
+/// no control character, no Windows device name, and nothing a platform would call absolute or
+/// prefixed.
+fn safe_ref(rel: &str) -> bool {
+    let device = |part: &str| {
+        let stem = part.split('.').next().unwrap_or("").trim_end().to_ascii_lowercase();
+        matches!(stem.as_str(), "con" | "prn" | "aux" | "nul" | "conin$" | "conout$")
+            || ((stem.starts_with("com") || stem.starts_with("lpt")) && stem.len() == 4 && stem.as_bytes()[3].is_ascii_digit())
+    };
+    !rel.is_empty()
+        && !rel.starts_with(['/', '\\'])
+        && !rel.chars().any(|c| c == ':' || c.is_control())
+        && !rel.split(['/', '\\']).any(|p| p == ".." || device(p))
+        && Path::new(rel).is_relative()
+        && !Path::new(rel).has_root()
+        && !matches!(Path::new(rel).components().next(), Some(Component::Prefix(_) | Component::RootDir | Component::ParentDir))
+}
+
+/// A path inside an entry's folder from forward-slash parts; None if a part would climb out. On
+/// Windows a part with a colon (a drive, or an alternate data stream `a.png:s`) is refused too.
 fn inside(base: &Path, rel: &str) -> Option<PathBuf> {
     let mut p = base.to_path_buf();
     for part in rel.split(['/', '\\']).filter(|s| !s.is_empty() && *s != ".") {
+        if cfg!(windows) && part.contains(':') {
+            return None;
+        }
         if matches!(Path::new(part).components().next(), Some(Component::Normal(_))) && Path::new(part).components().count() == 1 {
             p.push(part);
         } else {
@@ -424,42 +459,60 @@ fn path_under(real: &Path, root: &Path) -> bool {
     }
 }
 
-/// A small counting gate: at most `max` holders at once, the rest wait. The scheme handler spawns one
-/// blocking read per request, so without it a page that asks for many large files at once would hold
-/// many chunks in memory together. (std only; tokio is not a direct dependency.)
+/// A small counting gate: at most `max` holders at once. Holders are counted, not sized: what bounds
+/// the memory is the size cap on each read (`CHUNK`, `WHOLE_MAX`) times `max`. A caller that finds the
+/// gate full waits (parking the thread it runs on), but only while fewer than `max_waiting` others
+/// already wait; past that it is told to give up, so a flood cannot park every blocking thread.
+/// (std only; tokio is not a direct dependency.)
 pub struct Gate {
-    held: std::sync::Mutex<usize>,
+    state: std::sync::Mutex<GateState>,
     freed: std::sync::Condvar,
     max: usize,
+}
+
+struct GateState {
+    held: usize,
+    waiting: usize,
 }
 
 pub struct GateGuard<'a>(&'a Gate);
 
 impl Gate {
     pub const fn new(max: usize) -> Self {
-        Gate { held: std::sync::Mutex::new(0), freed: std::sync::Condvar::new(), max }
+        Gate { state: std::sync::Mutex::new(GateState { held: 0, waiting: 0 }), freed: std::sync::Condvar::new(), max }
     }
 
-    /// Waits for a free slot; the slot is given back when the guard drops.
-    pub fn enter(&self) -> GateGuard<'_> {
-        let mut held = self.held.lock().unwrap_or_else(|e| e.into_inner());
-        while *held >= self.max {
-            held = self.freed.wait(held).unwrap_or_else(|e| e.into_inner());
+    /// Takes a free slot; when none is free, waits for one unless `max_waiting` callers already wait,
+    /// then None. The slot is given back when the guard drops.
+    pub fn enter_bounded(&self, max_waiting: usize) -> Option<GateGuard<'_>> {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.held >= self.max {
+            if s.waiting >= max_waiting {
+                return None;
+            }
+            s.waiting += 1;
+            while s.held >= self.max {
+                s = self.freed.wait(s).unwrap_or_else(|e| e.into_inner());
+            }
+            s.waiting -= 1;
         }
-        *held += 1;
-        GateGuard(self)
+        s.held += 1;
+        Some(GateGuard(self))
     }
 }
 
 impl Drop for GateGuard<'_> {
     fn drop(&mut self) {
-        let mut held = self.0.held.lock().unwrap_or_else(|e| e.into_inner());
-        *held -= 1;
+        let mut s = self.0.state.lock().unwrap_or_else(|e| e.into_inner());
+        s.held -= 1;
         self.0.freed.notify_one();
     }
 }
 
-/// The scheme's reads in flight: at most 4 chunks (8 MB each) are in memory at once.
+/// The scheme's reads in flight. This bounds how many run at once (4), not how big each is: a ranged
+/// or first-chunk read is at most `CHUNK` (8 MB), a whole read at most `WHOLE_MAX` (20 MB), so at most
+/// about 80 MB of file data is in memory at once. Up to `MAX_WAITING` (64) more requests wait, one
+/// blocking thread each; past that `serve` answers 503.
 static READS: Gate = Gate::new(4);
 
 /// The folder a page's assets are copied from: the parent of the page's own real path (read from the
@@ -764,14 +817,34 @@ impl Library {
     fn copy_assets(&self, folder: Option<&Path>, html: &str, page: &str, tmp: &Path, mut total: u64) -> u64 {
         let Some(folder) = folder else { return total };
         let mut seen = std::collections::HashSet::from([page.to_string()]);
+        let mut asked = std::collections::HashSet::new();
+        let mut misses = 0;
         for r in relative_refs(html) {
-            if seen.len() > MAX_ASSETS {
+            if seen.len() > MAX_ASSETS || asked.len() >= MAX_REFS || misses >= MAX_MISSES {
                 break;
             }
-            let Ok(real) = fs::canonicalize(folder.join(&r)) else { continue };
-            let Ok(rel) = real.strip_prefix(folder) else { continue }; // outside the page's own folder
+            if !asked.insert(r.clone()) {
+                continue;
+            }
+            // The path is built from the folder and the plain parts of the reference only (`inside`), and
+            // nothing is canonicalised before it is opened: a path that is not under the folder is never
+            // handed to the file system. The opened handle then says where the file really is.
+            let src = inside(folder, &r);
+            let opened = src.as_deref().and_then(|src| open_source(src, &r, Some(folder)).ok().map(|o| (src, o)));
+            let Some((src, (mut file, md))) = opened else {
+                misses += 1;
+                continue;
+            };
+            let Some(real) = page_real_path(&file, src) else {
+                misses += 1;
+                continue;
+            };
+            let Ok(rel) = real.strip_prefix(folder) else {
+                misses += 1; // the handle is outside the page's own folder
+                continue;
+            };
             let rel = rel.to_string_lossy().replace('\\', "/");
-            let Ok((mut file, md)) = open_source(&real, &rel, Some(folder)) else { continue };
+            misses = 0;
             if md.len() > MAX_ASSET || total + md.len() > MAX_TOTAL || !seen.insert(rel.clone()) {
                 continue;
             }
@@ -832,6 +905,15 @@ impl Library {
     pub fn file(&self, url_path: &str) -> Option<(Vec<u8>, &'static str)> {
         let (file, kind) = self.open(url_path)?;
         Some((fs::read(file).ok()?, kind))
+    }
+
+    /// The library's own copy of an entry's page (never the workspace file it came from), when the
+    /// entry was read and the copy is still there.
+    pub fn stored_file(&self, id: &str) -> Option<PathBuf> {
+        let _g = self.lock.lock();
+        let e = self.read().into_iter().find(|e| e.id == id && e.state == "ok")?;
+        let file = inside(&self.dir.join(&e.id), &e.page)?;
+        file.is_file().then_some(file)
     }
 }
 
@@ -1105,12 +1187,24 @@ fn read_range(file: &Path, start: u64, end: u64) -> Option<Vec<u8>> {
 /// Media answers byte ranges, so a video or an audio track can seek without loading the whole file.
 /// A ranged answer is at most a chunk. Video or audio bigger than a chunk answers its first chunk as a
 /// 206 even when no range was asked, and the media element asks for the rest; any other file asked for
-/// whole is answered whole (an <img> or a font does not re-ask, so a 206 would truncate it). A page (HTML) is the exception: it is
-/// answered whole because the link script is appended to it, and its size is capped when it is stored.
-/// Reads wait for a slot (`READS`, 4 at once). Only the app-owned library folder is read: `Library::open`
-/// resolves the URL inside `<library>/<id>/` and nowhere else. A file that cannot be measured or read
-/// is a 500, never an empty 200.
+/// whole is answered whole (an <img> or a font does not re-ask, so a 206 would truncate it) up to
+/// `WHOLE_MAX` (20 MB); a bigger one is a 413 with a text reason. A page (HTML) is answered whole
+/// because the link script is appended to it; it is stored at 10 MB at most, so it is always under that cap.
+/// The 206 to an un-ranged video or audio request is a deliberate trade-off: RFC 9110 lets a server
+/// ignore a Range header but gives no way to answer a request that has none with a part, and the other
+/// choices (read 100 MB at once, or refuse the clip) are worse; every media element re-asks with a
+/// range from where the answer ended.
+/// Reads take a slot (`READS`, 4 at once): that bounds how many are in memory together (each at most a
+/// chunk or `WHOLE_MAX`), not their size. Up to `MAX_WAITING` (64) more requests wait, one blocking
+/// thread each; the next gets a 503 with `Retry-After`. Only the app-owned library folder is read:
+/// `Library::open` resolves the URL inside `<library>/<id>/` and nowhere else. A file that cannot be
+/// measured or read is a 500, never an empty 200.
 pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
+    serve_with(lib, req, &READS, MAX_WAITING)
+}
+
+/// `serve` against a given gate, so a test can fill a small one.
+fn serve_with(lib: &Library, req: &tauri::http::Request<Vec<u8>>, gate: &Gate, max_waiting: usize) -> tauri::http::Response<Vec<u8>> {
     use tauri::http::Response;
     let plain = |status: u16, text: &str| Response::builder().status(status).header("Content-Type", "text/plain").header("X-Content-Type-Options", "nosniff").body(text.as_bytes().to_vec()).unwrap();
     let uri = req.uri();
@@ -1118,7 +1212,9 @@ pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http:
     let Some((file, kind)) = lib.open(path) else {
         return Response::builder().status(404).header("Content-Type", "text/plain").body(b"not in this artifact".to_vec()).unwrap();
     };
-    let _slot = READS.enter();
+    let Some(_slot) = gate.enter_bounded(max_waiting) else {
+        return Response::builder().status(503).header("Content-Type", "text/plain").header("Retry-After", "1").header("X-Content-Type-Options", "nosniff").body(b"too many files are being read at once".to_vec()).unwrap();
+    };
     let Ok(total) = fs::metadata(&file).map(|m| m.len()) else { return plain(500, "could not read this file") };
     let is_page = kind.starts_with("text/html");
     let ask = if is_page { RangeAsk::Whole } else { req.headers().get("range").and_then(|v| v.to_str().ok()).map_or(RangeAsk::Whole, |v| parse_range(v, total)) };
@@ -1135,6 +1231,7 @@ pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http:
             Some(b) => (b, 206, Some(format!("bytes {start}-{end}/{total}"))),
             None => return plain(500, "could not read this file"),
         },
+        None if total > WHOLE_MAX => return plain(413, "this file is too big to show whole; open it with the system instead"),
         None => match fs::read(&file) {
             Ok(b) => (b, 200, None),
             Err(_) => return plain(500, "could not read this file"),
@@ -1171,6 +1268,25 @@ pub fn artifacts_list(lib: tauri::State<'_, Library>) -> Vec<Listed> {
 pub async fn artifact_add(app: tauri::AppHandle, path: String) -> Result<Entry, String> {
     use tauri::Manager;
     tauri::async_runtime::spawn_blocking(move || app.state::<Library>().add(Path::new(&path), Origin::hand(Path::new(&path)), &|u| fetch_script(&app, u))).await.map_err(|e| e.to_string())?
+}
+
+/// Hands an entry's stored copy to the system, the way `open_path` hands a file over: a program-like
+/// file is revealed in its folder, anything else is opened in its own app. It is the library's copy,
+/// not the workspace file the entry came from (T-624 round 5): the workspace file may have changed or
+/// gone since it was kept. Answers "revealed" or "opened".
+#[tauri::command]
+pub async fn artifact_open(app: tauri::AppHandle, id: String) -> Result<&'static str, String> {
+    use tauri::Manager;
+    tauri::async_runtime::spawn_blocking(move || {
+        let file = app.state::<Library>().stored_file(&id).ok_or("its stored copy is missing")?;
+        let path = file.to_string_lossy().into_owned();
+        match crate::links::open_choice(&path)? {
+            crate::links::OpenChoice::Reveal => crate::links::reveal(&file).map(|_| "revealed"),
+            crate::links::OpenChoice::Open => system_open(&path).map(|_| "opened"),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Off the window's thread like `artifact_add`: the remove stats the file it leaves a note for and
@@ -1279,7 +1395,153 @@ mod tests {
         assert_eq!(title_of("<title> </title>"), None);
         assert_eq!(title_of(&format!("<title>{}</title>", "x".repeat(300))).unwrap().len(), 200);
         let refs = relative_refs("<img src=\"img/a%20b.png?v=1\"><link href='s.css'><a href=\"#top\"> <a href=\"https://x.io\"> <script src=/abs.js></script> <img data-src=\"no.png\"> <video poster=p.jpg> <a href=\"mailto:a@b\"> <img src=\"../out.png\">");
-        assert_eq!(refs, ["img/a b.png", "../out.png", "s.css", "p.jpg"]);
+        assert_eq!(refs, ["img/a b.png", "s.css", "p.jpg"], "a climbing reference is not followed");
+    }
+
+    #[test]
+    fn a_reference_is_judged_after_it_is_decoded() {
+        // Each of these is a UNC, drive, stream, root or climbing path once percent-decoded; none may
+        // reach the file system (T-624 round 5, S2).
+        let hostile = [
+            "%2F%2Fhost%2Fs%2Fa.png",
+            "%5C%5Chost%5Cs%5Ca.png",
+            "%2f%2fhost/s/a.png",
+            "C%3A/Windows/win.ini",
+            "C%3a%5Cx.png",
+            "x.png%3Astream",
+            "x.png%3A%3A%24DATA",
+            "%2E%2E/out.png",
+            "a/%2e%2e%2f%2e%2e/out.png",
+            "a%5C..%5Cout.png",
+            "%2Fabs.png",
+            "..%5Cout.png",
+            "NUL",
+            "con.txt",
+            "sub/COM1",
+            "a%00b.png",
+            "https%3A%2F%2Fx.io%2Fa.png",
+        ];
+        for h in hostile {
+            let html = format!("<img src=\"{h}\"><link href='{h}'><video poster={h}>");
+            assert!(relative_refs(&html).is_empty(), "{h} must not be a reference, got {:?}", relative_refs(&html));
+        }
+        // Plain references, including ones that only look odd, still come through.
+        let ok = relative_refs("<img src=\"a%20b/c%2Ed.png\"><img src=\"./x/../y.png\"> <img src=\"CONSOLE.png\"> <img src=\"sub/dir/f.svg?x=1#h\">");
+        assert_eq!(ok, ["a b/c.d.png", "CONSOLE.png", "sub/dir/f.svg"], "got {ok:?}");
+        for r in ["//h/s/a.png", "C:/x.png", "a/../../b.png", "x.png:s", ""] {
+            assert!(!safe_ref(r), "{r:?}");
+        }
+        assert!(safe_ref("a/b.png") && safe_ref("a b/c.d.png"));
+        #[cfg(windows)]
+        {
+            assert!(inside(Path::new(r"C:\f"), "x.png:stream").is_none(), "a stream name is refused in a part");
+            assert!(inside(Path::new(r"C:\f"), "C:/x.png").is_none());
+        }
+    }
+
+    #[test]
+    fn a_decoded_unc_reference_is_never_opened_or_copied() {
+        let root = temp_dir("unc-ref");
+        let lib = Library::new(root.join("lib"));
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("sub")).unwrap();
+        fs::write(ws.join("artifacts").join("sub").join("ok.png"), "OK").unwrap();
+        fs::write(ws.join("artifacts").join("ok2.png"), "OK2").unwrap();
+        // The hostile references come first: if one were followed, a Windows build would try the share.
+        let html = "<title>P</title><img src=\"%2F%2F192.0.2.1%2Fs%2Fa.png\"><img src=\"%5C%5C192.0.2.1%5Cs%5Ca.png\"><img src=\"C%3A/x.png\"><img src=\"ok2.png%3Astream\"><img src=\"sub%2Fok.png\"><img src=\"ok2.png\">";
+        fs::write(ws.join("artifacts").join("p.html"), html).unwrap();
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert!(got.changed >= 1, "{:?}", got.skipped);
+        let id = lib.list().into_iter().find(|l| l.entry.page == "p.html").expect("the page was kept").entry.id;
+        assert!(lib.open(&format!("/{id}/sub/ok.png")).is_some(), "a decoded plain reference is still copied");
+        assert!(lib.open(&format!("/{id}/ok2.png")).is_some());
+        let stored: Vec<_> = fs::read_dir(lib.dir.join(&id)).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        assert!(stored.iter().all(|n| !n.contains(':') && !n.contains("192.0.2.1")), "{stored:?}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_asset_reached_through_a_linked_subfolder_is_not_copied() {
+        let root = temp_dir("link-sub");
+        let lib = Library::new(root.join("lib"));
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("secret.png"), "SECRET").unwrap();
+        fs::write(ws.join("artifacts").join("own.png"), "OWN").unwrap();
+        fs::write(ws.join("artifacts").join("p.html"), "<title>P</title><img src=\"sub/secret.png\"><img src=\"own.png\">").unwrap();
+        let link = ws.join("artifacts").join("sub");
+        #[cfg(windows)]
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&link).arg(&outside).output().map(|o| o.status.success()).unwrap_or(false);
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(&outside, &link).is_ok();
+        assert!(made, "could not make the link");
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert!(got.changed >= 1, "{:?}", got.skipped);
+        let id = lib.list().into_iter().find(|l| l.entry.page == "p.html").expect("the page was kept").entry.id;
+        assert!(lib.open(&format!("/{id}/own.png")).is_some(), "the page's own plain asset is copied");
+        assert!(lib.open(&format!("/{id}/sub/secret.png")).is_none(), "a file behind a linked subfolder is not copied");
+        #[cfg(windows)]
+        fs::remove_dir(&link).unwrap();
+        #[cfg(unix)]
+        fs::remove_file(&link).unwrap();
+        assert!(outside.join("secret.png").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_page_naming_thousands_of_missing_files_stops_the_scan_early() {
+        let root = temp_dir("many-refs");
+        let lib = Library::new(root.join("lib"));
+        let folder = root.join("f");
+        fs::create_dir_all(&folder).unwrap();
+        fs::write(folder.join("late.png"), "LATE").unwrap();
+        fs::write(folder.join("early.png"), "EARLY").unwrap();
+        let folder = fs::canonicalize(&folder).unwrap();
+        let run = |name: &str, html: &str| {
+            let tmp = root.join(name);
+            fs::create_dir_all(&tmp).unwrap();
+            lib.copy_assets(Some(&folder), html, "p.html", &tmp, 0);
+            tmp
+        };
+        // Failures in a row: early.png is read, then MAX_MISSES missing names, then late.png is never looked at.
+        let mut html = String::from("<img src=\"early.png\">");
+        for i in 0..(MAX_MISSES + 5) {
+            html.push_str(&format!("<img src=\"missing-{i}.png\">"));
+        }
+        html.push_str("<img src=\"late.png\">");
+        let tmp = run("t1", &html);
+        assert!(tmp.join("early.png").is_file());
+        assert!(!tmp.join("late.png").exists(), "the scan gives up after {MAX_MISSES} failures in a row");
+        // A hit in between resets the count.
+        let mut html = String::new();
+        for i in 0..(MAX_MISSES - 1) {
+            html.push_str(&format!("<img src=\"gone-a{i}.png\">"));
+        }
+        html.push_str("<img src=\"early.png\">");
+        for i in 0..(MAX_MISSES - 1) {
+            html.push_str(&format!("<img src=\"gone-b{i}.png\">"));
+        }
+        html.push_str("<img src=\"late.png\">");
+        assert!(run("t2", &html).join("late.png").is_file(), "a hit resets the run of failures");
+        // Distinct spellings of one file are not failures, but only MAX_REFS distinct references are looked at.
+        let mut html = String::new();
+        for i in 0..MAX_REFS {
+            html.push_str(&format!("<img src=\"{}early.png\">", "./".repeat(i + 1)));
+        }
+        html.push_str("<img src=\"late.png\">");
+        let tmp = run("t3", &html);
+        assert!(tmp.join("early.png").is_file());
+        assert!(!tmp.join("late.png").exists(), "no more than {MAX_REFS} distinct references are examined");
+        // The same reference twice counts once.
+        let mut html = String::new();
+        for _ in 0..(MAX_REFS * 2) {
+            html.push_str("<img src=\"early.png\">");
+        }
+        html.push_str("<img src=\"late.png\">");
+        assert!(run("t4", &html).join("late.png").is_file(), "repeats are not counted against the cap");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -1824,6 +2086,44 @@ mod tests {
         assert!(src[at..at + 400].contains("spawn_blocking"), "the remove runs on a blocking worker");
     }
 
+    #[test]
+    fn open_hands_over_the_stored_copy_never_the_workspace_file() {
+        // T-624 round 5, S5: the entry's origin may have changed or gone since it was kept; "Open" uses
+        // the library's own copy. An unknown id, or an entry the library never read, has none.
+        let root = temp_dir("open-stored");
+        let lib = Library::new(root.join("lib"));
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::write(ws.join("artifacts").join("data.csv"), "a,b;1,2").unwrap();
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert!(got.changed >= 1, "{:?}", got.skipped);
+        let kept = lib.list().into_iter().find(|l| l.entry.page == "data.csv").expect("the file was kept").entry;
+        let stored = lib.stored_file(&kept.id).expect("a kept entry has a stored copy");
+        assert!(stored.starts_with(&lib.dir), "{stored:?} must sit in the library folder");
+        assert_ne!(stored, PathBuf::from(&kept.origin), "not the workspace file");
+        assert_eq!(fs::read_to_string(&stored).unwrap(), "a,b;1,2");
+        // The workspace file is edited, then removed; the stored copy is what Open would hand over.
+        fs::write(ws.join("artifacts").join("data.csv"), "changed").unwrap();
+        fs::remove_file(ws.join("artifacts").join("data.csv")).unwrap();
+        assert_eq!(fs::read_to_string(lib.stored_file(&kept.id).unwrap()).unwrap(), "a,b;1,2");
+        assert!(lib.stored_file("nope").is_none() && lib.stored_file("../x").is_none());
+        let o = ws.join("share.html").to_string_lossy().into_owned();
+        let e = Entry { id: id_of(&o), title: "S".into(), source: "hand".into(), kind: "page".into(), origin: o, project: None, session: None, added: 1, size: 0, page: "share.html".into(), state: "unavailable".into(), stamp: None };
+        lib.write(&[kept.clone(), e.clone()]).unwrap();
+        assert!(lib.stored_file(&e.id).is_none(), "an unavailable entry has no stored copy to open");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_open_command_runs_off_the_window_thread_and_never_reads_the_origin() {
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = src.find("pub async fn artifact_open(").expect("artifact_open must be an async command: it opens a file");
+        let body = &src[at..at + 900];
+        assert!(body.contains("spawn_blocking") && body.contains("stored_file("), "the open runs on a blocking worker and takes the stored copy");
+        assert!(!body.contains("origin"), "the open never goes to the workspace file");
+    }
+
     // ---- T-624 round 3 (PR #37 review) ----
 
     #[cfg(windows)]
@@ -2085,37 +2385,111 @@ mod tests {
 
     #[test]
     fn the_scheme_reads_go_through_the_four_wide_gate() {
-        let src = include_str!("artifacts.rs");
+        let src = include_str!("artifacts.rs").replace("\r\n", "\n");
         let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        assert!(src.contains("static READS: Gate = Gate::new(4)"), "at most 4 reads in flight");
         let at = src.find("pub fn serve(").expect("serve exists");
         let end = src[at..].find("\n}\n").map_or(src.len(), |e| at + e);
+        assert!(src[at..end].contains("serve_with(lib, req, &READS, MAX_WAITING)"), "serve runs against the shared 4-wide gate with a bounded queue");
+        let at = src.find("fn serve_with(").expect("serve_with exists");
+        let end = src[at..].find("\n}\n").map_or(src.len(), |e| at + e);
         let body = &src[at..end];
-        assert!(body.contains("READS.enter()"), "serve takes a read slot before it reads");
-        assert!(src.contains("static READS: Gate = Gate::new(4)"), "at most 4 reads in flight");
+        let slot = body.find("gate.enter_bounded(").expect("serve_with takes a slot");
+        // Every way the body reads a file or its size comes after the slot is taken.
+        for read in ["fs::metadata(", "read_range(", "fs::read("] {
+            let first = body.find(read).unwrap_or_else(|| panic!("{read} is in serve_with"));
+            assert!(slot < first, "the slot is taken before {read}");
+        }
+        assert!(body.contains("503") && body.contains("Retry-After"), "a full queue is answered 503");
     }
 
     #[test]
-    fn the_gate_never_lets_more_than_its_width_in_at_once() {
-        use std::sync::atomic::{AtomicUsize, Ordering};
+    fn the_gate_never_lets_more_than_its_width_in_at_once_and_does_let_that_many_in() {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
         static GATE: Gate = Gate::new(4);
         static NOW: AtomicUsize = AtomicUsize::new(0);
         static PEAK: AtomicUsize = AtomicUsize::new(0);
+        static STARVED: AtomicBool = AtomicBool::new(false);
         let mut threads = Vec::new();
         for _ in 0..16 {
             threads.push(std::thread::spawn(|| {
-                let _slot = GATE.enter();
+                let _slot = GATE.enter_bounded(usize::MAX).unwrap();
                 let n = NOW.fetch_add(1, Ordering::SeqCst) + 1;
                 PEAK.fetch_max(n, Ordering::SeqCst);
-                std::thread::sleep(std::time::Duration::from_millis(20));
+                // Hold the slot until the gate has had `width` holders at once (it never will if it admits fewer).
+                let until = std::time::Instant::now() + std::time::Duration::from_secs(10);
+                while PEAK.load(Ordering::SeqCst) < 4 {
+                    if std::time::Instant::now() > until {
+                        STARVED.store(true, Ordering::SeqCst);
+                        break;
+                    }
+                    std::thread::yield_now();
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
                 NOW.fetch_sub(1, Ordering::SeqCst);
             }));
         }
         for t in threads {
             t.join().unwrap();
         }
-        let peak = PEAK.load(Ordering::SeqCst);
-        assert!((1..=4).contains(&peak), "peak in flight was {peak}");
+        assert!(!STARVED.load(Ordering::SeqCst), "four holders were never in at once");
+        assert_eq!(PEAK.load(Ordering::SeqCst), 4, "the peak in flight is exactly the width");
         assert_eq!(NOW.load(Ordering::SeqCst), 0, "every slot is given back");
+    }
+
+    #[test]
+    fn a_full_gate_queues_only_so_many_and_then_says_no() {
+        static GATE: Gate = Gate::new(1);
+        let held = GATE.enter_bounded(2).unwrap();
+        let waiters: Vec<_> = (0..2)
+            .map(|_| std::thread::spawn(|| drop(GATE.enter_bounded(2).expect("a waiter within the bound gets its turn"))))
+            .collect();
+        // Two are parked; the third is refused at once instead of parking a thread.
+        let until = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while GATE.state.lock().unwrap().waiting < 2 {
+            assert!(std::time::Instant::now() < until, "the waiters never parked");
+            std::thread::yield_now();
+        }
+        assert!(GATE.enter_bounded(2).is_none(), "past the bound the caller is refused");
+        assert!(GATE.enter_bounded(0).is_none(), "a zero bound never waits");
+        drop(held);
+        for w in waiters {
+            w.join().unwrap();
+        }
+        let s = GATE.state.lock().unwrap();
+        assert_eq!((s.held, s.waiting), (0, 0), "slots and queue are given back");
+    }
+
+    #[test]
+    fn serve_answers_503_when_its_queue_is_full_and_413_for_a_file_too_big_to_read_whole() {
+        let root = temp_dir("serve-bounds");
+        let lib = Library::new(root.join("lib"));
+        let pic = root.join("huge.png");
+        fs::File::create(&pic).unwrap().set_len(WHOLE_MAX + 1).unwrap();
+        let e = lib.add(&pic, Origin::hand(&pic), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/huge.png", e.id);
+        let whole = tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap();
+        let r = serve(&lib, &whole);
+        assert_eq!(r.status(), 413, "a non-media file over the whole-read cap is not read into memory");
+        assert!(!r.body().is_empty() && r.body().len() < 200, "the reason is text, not the file");
+        let ranged = tauri::http::Request::builder().uri(&uri).header("range", "bytes=0-9").body(Vec::new()).unwrap();
+        let r = serve(&lib, &ranged);
+        assert_eq!((r.status().as_u16(), r.body().len()), (206, 10), "a ranged ask of the same file is still answered");
+        // A video over the cap is chunked, not refused.
+        let clip = root.join("huge.mp4");
+        fs::File::create(&clip).unwrap().set_len(WHOLE_MAX + 1).unwrap();
+        let e2 = lib.add(&clip, Origin::hand(&clip), &|_| None).unwrap();
+        let r = serve(&lib, &tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/huge.mp4", e2.id)).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().len() as u64), (206, CHUNK));
+        // A full gate with no room to wait: 503 and a retry hint, without touching the file.
+        let gate = Gate::new(1);
+        let _busy = gate.enter_bounded(0).unwrap();
+        let r = serve_with(&lib, &whole, &gate, 0);
+        assert_eq!(r.status(), 503);
+        assert_eq!(r.headers().get("retry-after").and_then(|v| v.to_str().ok()), Some("1"));
+        drop(_busy);
+        assert_eq!(serve_with(&lib, &whole, &gate, 0).status(), 413, "once the gate is free the request is judged on its merits");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
