@@ -442,6 +442,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-216-a | Pin workspaces to a section; sort by recent activity. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-217-a | Put a workspace to sleep and rename it inline. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-224-a | A Tasks page button and shortcut; find pull requests and checks from the palette. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-226 | Git history in the sidebar, a pull request from Checks, and the Ports item in the status bar with a Stop that ends only the program it showed. | [Terminals](terminals.md#ports-in-the-status-bar) |
 | T-227-a | Commit with push, sync or force push; hand a failed push to an agent. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-227-b | The branch row compares the workspace with its base branch. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-227-c | An AI writes the commit message from what is staged. | [Projects and worktrees](projects-and-worktrees.md) |

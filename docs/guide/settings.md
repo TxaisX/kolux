@@ -156,7 +156,7 @@ The Zoom control under Interface is the only way to change the size of the whole
 | Show Skills button in the sidebar | Off | `skillsButton` |
 | Draw terminals with the GPU (up to six at a time; applies to new terminals) | On | `terminalGpu` |
 | Show status bar | On | `statusBarVisible` |
-| Status bar items: Agent status, Resource Manager, Terminals running, Agents running (tick the ones you want) | All shown | `statusBarHidden` |
+| Status bar items: Agent status, Resource Manager, Terminals running, Agents running, Keep awake, Ports (see [Ports in the status bar](terminals.md#ports-in-the-status-bar)), Claude and Codex usage in the top pill (tick the ones you want) | All shown | `statusBarHidden` |
 | Usage percentages: Used or Remaining (changes only the Agents screen footer) | Used | `usagePercentages` |
 
 ## Accounts & keys
