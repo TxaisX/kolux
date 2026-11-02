@@ -125,7 +125,7 @@ test("T-085-f: the dialog offers pull request opens, checks fail and an agent fi
 });
 
 // T-193-b: the Kolux / Hermes switch. A Hermes job needs a cron timetable and none of Kolux's agent, session, event or precheck settings.
-const hermesJob: Automation = { id: "hermes:j1", jobId: "j1", source: "hermes", local: true, name: "Nightly digest", prompt: "summarise the inbox", provider: "hermes", projectId: "", enabled: true, trigger: { kind: "schedule", cron: "0 9 * * *", timezone: "UTC" }, actions: ["run", "delete", "create", "pause", "resume"] };
+const hermesJob: Automation = { id: "hermes:j1", jobId: "j1", source: "hermes", local: true, name: "Nightly digest", prompt: "summarise the inbox", provider: "hermes", projectId: "", enabled: true, trigger: { kind: "schedule", cron: "0 9 * * *", timezone: "UTC" }, form: { preset: "daily", time: "09:00", day: null, custom: "" }, actions: ["run", "edit", "delete", "create", "pause", "resume"] };
 
 test("T-193-b a new automation offers the Kolux / Hermes switch, on Kolux with the agent settings", () => {
   const html = render(null);
@@ -136,12 +136,43 @@ test("T-193-b a new automation offers the Kolux / Hermes switch, on Kolux with t
   expect(html).toContain("Continue in the session");
 });
 
-test("T-193-b a Hermes row is never opened for editing: it offers no Edit, and the dialog would show the Kolux form, not a default Hermes one", () => {
-  expect(canDo(hermesJob, "edit")).toBe(false);
-  expect(rowActions(hermesJob)).toEqual(["run", "toggle", "delete"]);
+test("T-193-b a Hermes job opens on Hermes with its own name, prompt and timetable: a timetable, no agent, session reuse, event trigger, precheck or time zone", () => {
+  expect(canDo(hermesJob, "edit")).toBe(true);
+  expect(rowActions(hermesJob)).toEqual(["run", "toggle", "edit", "delete"]);
   const html = render(hermesJob);
+  expect(html).toContain("Edit automation");
+  expect(html).toContain('value="Nightly digest"');
+  expect(html).toContain("summarise the inbox");
+  expect(html).toContain("Cron timetable");
+  expect(html).toMatch(/<option value="daily" selected="">/);
+  expect(html).toContain("Hermes keeps this job");
+  expect(html).not.toContain("Runs in");
+  for (const gone of [">Agent<", "Continue in the session", "Precheck command", "Precheck time limit", "When a pull request opens", "If Kolux was away", "Workspace", "Work folder", "Time zone"]) expect(html).not.toContain(gone);
+});
+
+test("T-193-b editing a Hermes job with a cron line the presets cannot say opens it in Custom, not on the default timetable", () => {
+  const job: Automation = { ...hermesJob, trigger: { kind: "schedule", cron: "*/30 * * * *", timezone: "UTC" }, form: { preset: "custom", time: "", day: null, custom: "*/30 * * * *" } };
+  const html = render(job);
+  expect(html).toMatch(/<option value="custom" selected="">/);
+  expect(html).toContain('value="*/30 * * * *"');
+  expect(html).not.toMatch(/<option value="weekdays" selected="">/);
+});
+
+test("T-193-b a Hermes job whose timetable is not cron shows it as text and offers no timetable fields to change", () => {
+  const job: Automation = { ...hermesJob, trigger: { kind: "schedule", cron: "", timezone: "" }, form: undefined, timetable: "every 120m" };
+  const html = render(job);
+  expect(html).toContain("every 120m");
+  expect(html).toContain("Hermes keeps this timetable");
   expect(html).not.toContain("Cron timetable");
-  expect(html).not.toContain("Hermes keeps this job");
+  expect(html).not.toContain("Cron line or RRULE");
+  expect(html).not.toContain('aria-label="Hour"');
+  expect(html).not.toMatch(/<button class="btn primary" disabled=""/);
+});
+
+test("T-193-b the time zone field is hidden when Hermes is the target and shown for a Kolux automation", () => {
+  expect(render(hermesJob)).not.toContain("Time zone");
+  expect(render({ ...hermesJob, id: "auto-9", source: undefined, provider: "claude", projectId: "p1" })).toContain("Time zone");
+  expect(render(null)).toContain("Time zone");
 });
 
 test("T-193-b hermesSchedule takes a five-field cron line and refuses an RRULE or a short line", () => {

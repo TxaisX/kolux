@@ -121,7 +121,22 @@ export function hermesSchedule(line: string): string | null {
   return /^rrule:|^freq=/i.test(t) || t.split(" ").length !== 5 ? null : t;
 }
 
-/** The tool notes ("hermes failed: ...") taken out of the rows so they show as a banner. */
+/** Whether the dialog's timetable fields differ from the ones the job opened with. A job with no form (its timetable is not cron) never counts as changed: its schedule is not offered. */
+export function scheduleChanged(job: Automation, now: ScheduleForm): boolean {
+  const was = job.form;
+  return !!was && (was.preset !== now.preset || was.time !== now.time || was.day !== now.day || was.custom !== now.custom);
+}
+
+/** What Edit sends for a Hermes job: only the fields the user changed (the schedule only when the timetable fields moved, and only as a cron line). Empty means nothing changed. */
+export function hermesEdit(job: Automation, now: { name: string; prompt: string; form: ScheduleForm; cron: string | null }): { name?: string; prompt?: string; schedule?: string } {
+  const out: { name?: string; prompt?: string; schedule?: string } = {};
+  if (now.name.trim() !== job.name.trim()) out.name = now.name;
+  if (now.prompt.trim() !== job.prompt.trim()) out.prompt = now.prompt;
+  if (scheduleChanged(job, now.form) && now.cron) out.schedule = now.cron;
+  return out;
+}
+
+/** The tool notes ("hermes was not found on the PATH", "hermes did not answer in time") taken out of the rows so they show as a banner. */
 export function splitWarnings(list: Automation[]): { rows: Automation[]; warnings: string[] } {
   const rows = list.filter((a) => a.kind !== "warning");
   return { rows, warnings: list.filter((a) => a.kind === "warning").map((a) => a.warning ?? `${a.source ?? "A tool"} could not be read`) };

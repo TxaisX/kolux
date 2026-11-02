@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { confirmDelete, keepSelection, runActions, runStep, pageKey, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, findNext, lastRun, agentChoices, canDo, rowActions, splitWarnings, whereItRuns, matches, normalizeQuery, noFilters, passes, preselect, PROMPT_SEARCH_CHARS, sortRows, statusWord, triggerLabel, upcoming, GRACE, graceWord, PRECHECK, precheckWord, type Automation, type Names, type Run } from "./model";
+import { hermesEdit, scheduleChanged, confirmDelete, keepSelection, runActions, runStep, pageKey, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, findNext, lastRun, agentChoices, canDo, rowActions, splitWarnings, whereItRuns, matches, normalizeQuery, noFilters, passes, preselect, PROMPT_SEARCH_CHARS, sortRows, statusWord, triggerLabel, upcoming, GRACE, graceWord, PRECHECK, precheckWord, type Automation, type Names, type Run } from "./model";
 
 test("T-085-h a run reconnected after a restart says its output is the replay so far, not the end", () => {
   const r: Run = { id: "run-1", automationId: "a", number: 1, trigger: "schedule", status: "dispatched", at: 0, output: "hi", outputFrom: "replay", reconnected: true };
@@ -182,7 +182,7 @@ test("AUTO-013: Up and Down step through runs, Down with none selected picks the
 });
 
 // T-193-b: Hermes and OpenClaw rows live on this computer; Kolux does not own their agent or their runs.
-const hermes = (extra: Partial<Automation> = {}): Automation => auto("hermes:j1", "Nightly digest", { provider: "hermes", projectId: "", source: "hermes", jobId: "j1", local: true, actions: ["run", "delete", "create", "pause", "resume"], ...extra });
+const hermes = (extra: Partial<Automation> = {}): Automation => auto("hermes:j1", "Nightly digest", { provider: "hermes", projectId: "", source: "hermes", jobId: "j1", local: true, actions: ["run", "edit", "delete", "create", "pause", "resume"], ...extra });
 const claw = (extra: Partial<Automation> = {}): Automation => auto("openclaw:c1", "Sweep", { provider: "openclaw", projectId: "", source: "openclaw", jobId: "c1", local: true, actions: ["run", "delete", "pause", "resume"], ...extra });
 
 test("T-193-b an agent filter does not list or keep external rows, and no filter keeps them", () => {
@@ -214,9 +214,9 @@ test("T-193-b state filter still works on external rows; a result filter reads t
   expect(passes(odd, noFilters, [])).toBe(true);
 });
 
-test("T-193-b which actions a row offers: Kolux rows everything, Hermes and OpenClaw no edit", () => {
+test("T-193-b which actions a row offers: Kolux rows everything, Hermes can be edited, OpenClaw cannot", () => {
   expect(canDo(auto("a", "A"), "edit")).toBe(true);
-  expect(canDo(hermes(), "edit")).toBe(false);
+  expect(canDo(hermes(), "edit")).toBe(true);
   expect(canDo(hermes(), "create")).toBe(true);
   expect(canDo(claw(), "edit")).toBe(false);
   expect(canDo(claw(), "pause")).toBe(true);
@@ -239,9 +239,37 @@ test("T-193-b external rows sort by their own last run time and say where they r
   expect(whereItRuns(auto("a", "A"))).toBe("");
 });
 
-test("T-193-b the quick-action menu: Hermes and OpenClaw rows have no Edit, a paused row offers Resume, Kolux rows have all four", () => {
+test("T-193-b the quick-action menu: Hermes rows have Edit, OpenClaw rows do not, a paused row offers Resume, Kolux rows have all four", () => {
   expect(rowActions(auto("a", "A"))).toEqual(["run", "toggle", "edit", "delete"]);
-  expect(rowActions(hermes())).toEqual(["run", "toggle", "delete"]);
+  expect(rowActions(hermes())).toEqual(["run", "toggle", "edit", "delete"]);
   expect(rowActions(claw())).toEqual(["run", "toggle", "delete"]);
   expect(rowActions(claw({ enabled: false, actions: ["run", "delete", "pause"] }))).toEqual(["run", "delete"]);
+});
+
+// T-193-b: Edit on a Hermes job sends only what the user changed.
+const cronJob = (cron: string, form: Automation["form"]) => hermes({ prompt: "summarise", trigger: { kind: "schedule", cron, timezone: "UTC" }, form });
+const every30 = cronJob("*/30 * * * *", { preset: "custom", time: "", day: null, custom: "*/30 * * * *" });
+
+test("T-193-b changing only the name sends no schedule and no prompt", () => {
+  const sent = hermesEdit(every30, { name: "Renamed", prompt: "summarise", form: every30.form!, cron: "*/30 * * * *" });
+  expect(sent).toEqual({ name: "Renamed" });
+  expect("schedule" in sent).toBe(false);
+});
+
+test("T-193-b nothing changed sends nothing, and the schedule is sent only once its fields moved", () => {
+  expect(hermesEdit(every30, { name: "Nightly digest", prompt: " summarise ", form: every30.form!, cron: "*/30 * * * *" })).toEqual({});
+  const moved = { ...every30.form!, custom: "*/15 * * * *" };
+  expect(scheduleChanged(every30, moved)).toBe(true);
+  expect(hermesEdit(every30, { name: "Nightly digest", prompt: "summarise", form: moved, cron: "*/15 * * * *" })).toEqual({ schedule: "*/15 * * * *" });
+  // moved to something that is not a cron line: nothing to send
+  expect(hermesEdit(every30, { name: "Nightly digest", prompt: "summarise", form: moved, cron: null })).toEqual({});
+});
+
+test("T-193-b a job whose timetable is not cron never has a schedule sent", () => {
+  const interval = hermes({ prompt: "tick", trigger: { kind: "schedule", cron: "", timezone: "" }, timetable: "every 120m" });
+  expect(interval.form).toBeUndefined();
+  // whatever the dialog's (default, hidden) fields say, the schedule stays out
+  const sent = hermesEdit(interval, { name: "New name", prompt: "tick", form: { preset: "weekdays", time: "09:00", day: 1, custom: "" }, cron: "0 9 * * 1-5" });
+  expect(sent).toEqual({ name: "New name" });
+  expect(scheduleChanged(interval, { preset: "daily", time: "10:00", day: null, custom: "" })).toBe(false);
 });

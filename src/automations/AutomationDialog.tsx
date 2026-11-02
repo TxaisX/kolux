@@ -12,7 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { noteUse } from "../onboarding/features";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { folderName, type Project, type Worktree } from "../projects/model";
-import { defaultForm, EVENT_CHOICES, findNext, hermesSchedule, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
+import { defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
 import { probeSetup } from "../settings/setupProbe";
 import SearchPick from "../editor/SearchPick";
 import { clampBox, cronWords, fieldNames, from12, nudge, templates, to12, toPreset, weekdayNames, type Template } from "./timetable";
@@ -196,10 +196,15 @@ export default function AutomationDialog({ projects, agents, editing, template, 
 
   // T-193-b: a job can live in Hermes instead; an existing job keeps the tool it came from. These two
   // states sit after every older hook so the saved-card tests that address hooks by number still line up.
-  const [where, setWhere] = useState<"kolux" | "hermes">("kolux");
+  const [where, setWhere] = useState<"kolux" | "hermes">(editing?.source === "hermes" ? "hermes" : "kolux");
   const [folder, setFolder] = useState(editing?.workspace ?? "");
   const hermes = where === "hermes";
   const timed = hermes || starts === "schedule";
+  // A Hermes job whose timetable is not a cron line (for example "every 120m") shows it as text and keeps it as it is.
+  const fixedSchedule = hermes && !!editing && !editing.form;
+  const showTimetable = timed && !fixedSchedule;
+  // Editing a Hermes job: the timetable is a need only when the user moved its fields.
+  const needsCron = hermes && !fixedSchedule && (!editing || scheduleChanged(editing, form));
 
   const findFrom = (from: number) => {
     const at = findNext(prompt, findQuery, from);
@@ -226,20 +231,24 @@ export default function AutomationDialog({ projects, agents, editing, template, 
 
   const ready = hermes || (worktrees !== null && setupError === null);
   const cron = hermesSchedule(preview?.trigger?.cron ?? "");
-  const hermesError = hermes && preview && !cron ? "Hermes takes a cron timetable (five fields, like 0 9 * * 1-5), not an RRULE." : null;
+  const hermesError = hermes && needsCron && preview && !cron ? "Hermes takes a cron timetable (five fields, like 0 9 * * 1-5), not an RRULE." : null;
   const save = () => {
     if (saving || !ready) return;
     setSaving(true);
     setSaveError(null);
     if (hermes) {
-      // Hermes creates its own job (and keeps it: Kolux offers no Edit on it); Kolux only passes the name, prompt, timetable and folder on.
-      // Hermes takes no time zone, so none is sent.
-      const input = { name, prompt, schedule: cron, workspace: folder.trim() || null };
-      invoke("automation_external_act", { tool: "hermes", action: "create", id: "", input })
+      // Hermes makes and changes its own job; Kolux only passes things on. Hermes takes no time zone, so none is sent.
+      // An edit sends only the fields that changed, so the schedule it already has is never rewritten by accident.
+      const input = editing ? hermesEdit(editing, { name, prompt, form, cron }) : { name, prompt, schedule: cron, workspace: folder.trim() || null };
+      if (editing && Object.keys(input).length === 0) {
+        onClose();
+        return;
+      }
+      invoke("automation_external_act", { tool: "hermes", action: editing ? "edit" : "create", id: editing?.jobId ?? "", input })
         .then(() => invoke("automations_external_refresh").catch(() => {}))
         .then(() => {
           noteUse("automations");
-          onSaved({ ...hermesStub, name, prompt });
+          onSaved({ ...(editing ?? hermesStub), name, prompt });
           onClose();
         })
         .catch((e) => {
@@ -327,8 +336,8 @@ export default function AutomationDialog({ projects, agents, editing, template, 
                 </select>
               </label>
             )}
-            {hermes && <span className="muted">Hermes keeps this job and runs it on this computer on its own schedule. Kolux lists it and can pause, run or remove it.</span>}
-            {hermes && (
+            {hermes && <span className="muted">Hermes keeps this job and runs it on this computer on its own schedule. Kolux lists it and can pause, run, edit or remove it.</span>}
+            {hermes && !editing && (
               <label className="auto-label">
                 Work folder
                 <input className="field" value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="Optional, for example C:\work\notes" />
@@ -400,7 +409,13 @@ export default function AutomationDialog({ projects, agents, editing, template, 
               </select>
             </label>
             )}
-            {timed && (
+            {fixedSchedule && (
+              <div className="auto-label">
+                <span>Timetable</span>
+                <span className="muted">{editing?.timetable || "Set in Hermes"}. Hermes keeps this timetable; change it in Hermes.</span>
+              </div>
+            )}
+            {showTimetable && (
               <>
               <label className="auto-label">
                 {hermes ? "Cron timetable" : "Timetable"}
@@ -510,7 +525,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
                 {hermesError}
               </div>
             )}
-            {!timed ? null : previewError ? (
+            {!showTimetable ? null : previewError ? (
               <div className="note error" role="alert">
                 {form.preset === "custom" ? `Invalid: ${previewError}` : previewError}
               </div>
@@ -536,7 +551,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
           <button className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn primary" disabled={saving || !ready || (timed && previewError !== null) || (hermes && (!cron || !prompt.trim()))} onClick={save} title={ready ? undefined : "Waiting for the project's worktrees"}>
+          <button className="btn primary" disabled={saving || !ready || (showTimetable && previewError !== null) || (hermes && (!prompt.trim() || (needsCron && !cron)))} onClick={save} title={ready ? undefined : "Waiting for the project's worktrees"}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
