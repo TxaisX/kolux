@@ -50,3 +50,59 @@ TypeError: Cannot read properties of undefined (reading '0')
    Start at  21:24:59
    Duration  2.33s (transform 1.01s, setup 0ms, import 1.77s, tests 163ms, environment 1ms)
 
+
+=== T-167-b part 2 BEFORE fix (stub ignores start time) ===
+   Compiling trash v5.2.9
+   Compiling toml_edit v0.25.16+spec-1.1.0
+    Finished `test` profile [unoptimized] target(s) in 8m 49s
+     Running unittests src\lib.rs (G:/Dev/kolux-rs-sessions/target-2f-b\debug\deps\kolux_rs_lib-ee541b9f7613656f.exe)
+
+running 8 tests
+test hooks::agent_hooks::tests::t167b_sleeping_takes_the_rows_at_or_below_each_sleeping_folder_only ... ok
+test hooks::agent_hooks::tests::t167b_the_hook_version_stamp_reads_from_the_identity_and_marks_older_panes ... ok
+test hooks::agent_hooks::tests::t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_rows ... FAILED
+test hooks::agent_hooks::tests::t167b_a_gone_process_has_no_start_time ... FAILED
+test hooks::agent_hooks::tests::t167b_a_restored_row_is_unconfirmed_until_its_pane_reports_and_holds_nothing_to_approve ... ok
+test hooks::agent_hooks::tests::t167b_a_save_from_before_the_new_fields_still_reads_and_the_new_fields_round_trip ... ok
+test hooks::agent_hooks::tests::t167b_child_rows_are_kept_only_while_the_panes_process_may_live ... ok
+test hooks::agent_hooks::tests::t167b_sleep_records_the_workspace_agents_before_clearing_their_rows_and_quit_keeps_them ... ok
+
+failures:
+
+---- hooks::agent_hooks::tests::t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_rows stdout ----
+
+thread 'hooks::agent_hooks::tests::t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_rows' (36956) panicked at src\agent_hooks\tests.rs:421:5:
+assertion `left == right` failed: an alive id with a different start time is a stranger
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- hooks::agent_hooks::tests::t167b_a_gone_process_has_no_start_time stdout ----
+
+thread 'hooks::agent_hooks::tests::t167b_a_gone_process_has_no_start_time' (35792) panicked at src\agent_hooks\tests.rs:446:5:
+assertion `left == right` failed: a process that ended cannot be read
+  left: Some(134380713245627525)
+ right: None
+
+
+failures:
+    hooks::agent_hooks::tests::t167b_a_gone_process_has_no_start_time
+    hooks::agent_hooks::tests::t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_rows
+
+test result: FAILED. 6 passed; 2 failed; 0 ignored; 0 measured; 2649 filtered out; finished in 0.07s
+
+error: test failed, to rerun pass `--lib`
+
+=== T-167-b part 2 AFTER fix ===
+test hooks::agent_hooks::tests::t167b_child_rows_are_kept_only_while_the_panes_process_may_live ... ok
+test hooks::agent_hooks::tests::t167b_sleeping_takes_the_rows_at_or_below_each_sleeping_folder_only ... ok
+test hooks::agent_hooks::tests::t167b_the_hook_version_stamp_reads_from_the_identity_and_marks_older_panes ... ok
+test hooks::agent_hooks::tests::t167b_a_save_from_before_the_new_fields_still_reads_and_the_new_fields_round_trip ... ok
+test hooks::agent_hooks::tests::t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_rows ... ok
+test hooks::agent_hooks::tests::t167b_a_gone_process_has_no_start_time ... ok
+test hooks::agent_hooks::tests::t167b_a_restored_row_is_unconfirmed_until_its_pane_reports_and_holds_nothing_to_approve ... ok
+test hooks::agent_hooks::tests::t167b_sleep_records_the_workspace_agents_before_clearing_their_rows_and_quit_keeps_them ... ok
+--- saved (--lib): 60 passed; 0 failed ---
+
+--- clippy --all-targets -D warnings: Finished, 0 warnings/errors; vitest src/terminal src/status src/board: 123 files, 752 tests passed; pnpm tsc --noEmit: clean ---
+(note: plain 'cargo test saved' also matches tests/cards_17 set032..., which fails here only for a missing .kolux-rs-scratch marker above the home folder; not touched by this change)
