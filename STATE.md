@@ -3,7 +3,7 @@ Status: RUNNING            (RUNNING | PAUSED | BLOCKED: reason)
 Phase: 3                   (Phase 1 was done by the dirty-room team on 2026-10-06; Phase 2, the plan, on 2026-10-07)
 Budget: 6 passes per day   (today: 25, date: 2026-10-09)
 Next task: T-152 · Hooks go only to agents that are installed and switched on, and installing them never damages the user's own settings (STAT-004, STAT-005; first open task on the cutline)
-Done: 719 / 775 tasks  ·  P0 cards passing: 209 / 228 cards  ·  cutline 0 / 18 left  ·  merge gate 0 waiting  (node scripts/plan-check.mjs --write-state)
+Done: 723 / 779 tasks  ·  P0 cards passing: 217 / 228 cards  ·  cutline 0 / 18 left  ·  merge gate 1 waiting  (node scripts/plan-check.mjs --write-state)
 
 How to read this: `PLAN.md` holds the 533 tasks in build order; each names the spec cards it must
 make pass. Progress is counted in tasks ticked there and in P0 cards whose acceptance boxes all pass.
@@ -34,6 +34,9 @@ agent mark, name, branch (a detached checkout shows its short commit; a plain fo
 13 open decisions in `DECISIONS.md` section 2 are marked "confirm". The loop builds each one's
 recorded default until told otherwise; nothing here blocks a pass.
 
+- [coordinator] 2026-11-02 · **Cycle 5 is merged.** One merger (fa) took, in order, #54 #53 #55 #56 #57 #58 #59 #61 #43 #38 (squash) #60 #62 #63 #64 #65 #66 #67 #68 #70 #71 #73 #72 #74 #75 #76 #69, each with main merged in first and Windows CI green on that exact commit. Conflicts in PLAN, DECISIONS and PROVENANCE kept both sides; DECISIONS rows DT-C60 onward are back in number order. #46 was closed in favour of #66.
+- [coordinator] 2026-11-02 · **#37 parked, see PR comment 6571248516.** It was not merged in cycle 5 and comes back in cycle 6.
+- [skills] 2026-11-02 · **The spec still says four bundled skills.** DT-C64 (#38) added a fifth, video (HyperFrames and Higgsfield), but spec/15 SKILL-029 (lines 557, 562 and 564: Rules, Compat) and SKILL-032 box 1 (line 792) still name only kolux-cli, orchestration, koluxsecurity and koluxward. The spec text needs bringing in line with DT-C64.
 - [coordinator] 2026-10-31 · **Live proofs have started on the real PC.** `docs/live-proofs-results-2026-10-31.md`
   holds the first results: VIEW-002 box 1 passes (P0 208 → 209), T-608's consent line passes on a fresh profile,
   and APP-070 box 1 passes so far. The rest need the app closed in bursts; Txais asked to keep using it for now.
@@ -179,6 +182,14 @@ recorded default until told otherwise; nothing here blocks a pass.
 
 ## Decisions made for Txais
 
+- 2026-11-01 · [skills] T-180-b · DT-C66: deleting a skill inside a WSL distribution runs inside that distribution. Txais confirmed it on 2026-11-01.
+- 2026-11-02 · [editor] T-062-b · DT-C70: a worktree inside a WSL distribution is read every 4 s, never watched.
+- 2026-11-02 · [editor] T-235-b · DT-C71: JPX (JPEG 2000) images in PDFs are decoded (Txais, 2026-11-01: allow JPX).
+- 2026-11-02 · [help] T-248-c-rest · DT-C80: the Help menu's three web links.
+- 2026-11-02 · [editor] T-316-b · DT-C81: a notebook cell runs in a fresh Python each time; there is no kernel.
+- 2026-11-01 · [cli] CLI-011 · DT-C69: `kolux open` grants the running copy the foreground and reports whether its window came forward.
+- 2026-11-01 · [view] T-610 · DT-C68: View > Workspace View lists the switcher's four and Floor.
+- 2026-11-01 · [view] VIEW-078 · DT-C67: a Stop in the Ports popover ends only the program the row showed (replacing PR #42).
 - 2026-10-30 · [safety] T-606 · AI writer agents (the commit-message button, the one-click flow, agent recipes, PR text, branch naming) run from an empty temp folder with Claude limited to user settings (`--setting-sources user`) and no project MCP (`--strict-mcp-config`). Custom commands and recipe templates still run in the workspace.
 - 2026-10-30 · [status-hooks] T-583 · The order of a pane's status events is kept by one app-wide lock held only around the status step, the emit and the after-queue; a protected-command reply is worked out per connection, outside that lock, so one slow hook never holds up another pane.
 - 2026-10-30 · [release-ci] T-588 · CI release signing acts only on the build this run's `--build-only` recorded, never on the newest output folder; a run on an already-released main ends with "nothing was built, nothing to sign".
@@ -243,13 +254,13 @@ recorded default until told otherwise; nothing here blocks a pass.
   the two richCodeColourTime timing tests, failing on main too), so it is not green yet (evidence/T-ENG-test-time.txt).
 
 ## Last 10 passes  (date · task · result · evidence)
-- 2026-10-13 · [main] T-543-b · done: no default pane, 5 unbuilt controls hidden, real hooks badge, Codex pill needs an account, Reopen closed tab unbound and hidden (T-164-b not wired), first screen Terminals (DT-C40); smoke 5/5 first run; evidence/T-543-b.txt
-- 2026-10-13 · [main] T-543 · done: App.tsx agent status, settings, workspaces, palette/notice/toast, kits and wizard moved into six hooks as they were, hook order unchanged; lib.rs save_settings deleted, setup log lines go to diag, handler list grouped by module (per-module start() left: needs files outside the pass) · evidence/smoke-2e6821b.txt + evidence/smoke-97bb712.txt
-- 2026-10-13 · [accounts] T-265-b · not started, left open: the proof needs a real Claude agent going idle, and live checks may not launch agent CLIs; Needs Txais to run it once (the steps are on the PLAN line)
-- 2026-10-13 · [accounts] T-043-f · not started, left open: reading Claude Code's keychain entry names from a real install, the system security tool and the live proof all need a Mac, and this PC is Windows
-- 2026-10-13 · [accounts] T-206-c · not started, left open: there are no remote or SSH workspaces in the app, and no PLAN task builds them, so there is no workspace for the kit entry point to be hidden in; build it with remote workspaces
-- 2026-10-13 · [accounts] T-201-d · not started, left open: a web search on 2026-10-13 again found only the TRAE editor (trae.ai, docs.trae.ai) and third-party pages, no official TRAE CLI page to check a docs link against; add it to install_page when one appears
-- 2026-10-13 · [accounts] test-folder leak · fixed: the key test and the command-line account tests now use the self-removing test folder (test_dir.rs), which also retries its removal for a moment, since Windows can hold a just-closed database; a full cargo test run left no kolux-key or kolux-rs-cli-acct folder in the temp folder. Other tests still leave folders (cli.rs dry/cli038/cli117/cli118/cli/cli129, projects.rs proj-*, scm.rs gh-hang/bare/other/remote, files.rs krs-files-*): not accounts code, left to their lanes
-- 2026-10-13 · [accounts] T-265 · done: cache.ts (promptCacheTimer, promptCacheMinutes, cacheDue over idle Claude panes, cacheShown), CacheTimer.tsx on the sidebar row via RowInfo.cache, Agents page CachePick; DT-C19; T-265-b split (live card proof needs a Claude pane) · evidence/T-265.txt, T-265-1-prompt-cache-timer-on-1-hour.png
-- 2026-10-13 · [accounts] T-264 · not started, left open: ACCT 022 picks the Codex folder that past-session history and resume read, but neither exists yet (T-168, T-169), so the field would change nothing; noted on T-169. ACCT 028 (MiniMax cookie or key) and ACCT 029 (Gemini CLI sign-in) are there only to ask those providers' usage services, which OD-01 turns off (confirm); build them if OD-01 is reversed
-- 2026-10-13 · [accounts] T-263 · done: countdown drops zero parts and says under 1m, nextTick + useResetTick tick both pills; meter.ts PERCENT_FIELD/percentMode/shownPercent and the Usage percentages choice on Appearance; T-263-b and T-263-c split · evidence/T-263.txt, T-263-1-pill-with-an-invented-report.png, T-263-2-usage-percentages-choice.png
+- 2026-11-02 · [cycle5] T-235-b · merged #69: CI check details tab (steps, annotations, Fix with AI); check tab code loads on demand to stay under the bundle budget · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-316-b · merged #76: notebook cells run Python after you trust the notebook · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-547 · merged #75: Check now asks Kimi and MiniMax for the balance on a key you added · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-248-c-rest · merged #74: Help menu: Settings, docs links, diagnostics copy and Restart Kolux · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-193-b · merged #72: Hermes and OpenClaw automations in the list · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] artifact-ipc-isolation · merged #73: Artifacts viewer frame isolation, tested live · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] APP-048 · merged #71: a profile saved by v0.1.5 is opened by today's code in a test and reads back identical · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-548-b · merged #70: Claude plan figures per account · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-167-b · merged #68: a restored row after an upgrade says restart this terminal; a reused process id no longer keeps old child rows · Windows CI green, evidence in the PR
+- 2026-11-02 · [cycle5] T-300 · merged #67: tray icon follows the app icon pick; macOS menu bar switch · Windows CI green, evidence in the PR
