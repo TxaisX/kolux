@@ -28,7 +28,7 @@ const PANEL = `(() => {
   const over = ins ? [...ins.querySelectorAll("*")].filter((n) => n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).overflowX !== "visible" && getComputedStyle(n).textOverflow !== "ellipsis").map((n) => n.className).slice(0, 5) : null;
   const cut = ins ? [...ins.querySelectorAll("*")].filter((n) => { const b = n.getBoundingClientRect(); return b.width > 0 && (b.right > innerWidth + 1 || b.left < -1); }).length : null;
   const flat = (e) => e.innerText.split(String.fromCharCode(10)).join(" ").replace(/ +/g, " ").trim();
-  return { vw: innerWidth, pageScroll: document.documentElement.scrollWidth > innerWidth + 1, side: r(side), ins: r(ins), insScroll: ins ? ins.scrollWidth > ins.clientWidth + 1 : null, over, cut,
+  return { vw: innerWidth, pageScroll: document.documentElement.scrollWidth > innerWidth + 1, side: r(side), ins: r(ins), now: r(document.querySelector(".insights button.ins-row")), insScroll: ins ? ins.scrollWidth > ins.clientWidth + 1 : null, over, cut,
     tiles: [...document.querySelectorAll(".insights .ins-tile")].map(flat),
     text: ins ? flat(ins).slice(0, 600) : null };
 })()`;
@@ -84,7 +84,7 @@ async function at(width, scale = 1, expr = PANEL, tag = "insights") {
 
 try {
   // startPlain adds the project and starts a Terminal from the session chooser it opens.
-  ctx = await startPlain("T-647", { report: rep });
+  ctx = await startPlain("T-647", { report: rep, standin: [] });
   const { app } = ctx;
   log(`project added and a shell started: ${ctx.repo}`);
   const projects = join(app.paths.claudeConfig, "projects");
@@ -112,6 +112,10 @@ try {
     log(`Insights tab clicked: ${picked}`);
   }
   await waitFor("the Insights panel with its tiles", () => app.exists(".insights .ins-tile"), 20000, 500);
+  // A stand-in claude (banner, then waits) in the shell, so the Now list has a row to measure and click.
+  await ctx.typeInto(0, "claude");
+  await waitFor("a Now row for the stand-in agent", () => app.exists(".insights button.ins-row"), 30000, 500);
+  log(`Now row: ${await app.evalJs(`document.querySelector(".insights button.ins-row").innerText.split(String.fromCharCode(10)).join(" | ")`)}`);
   await sleep(1500);
 
   for (const [width, scale] of [[900, 1], [1400, 1], [1920, 1], [1536, 1.25], [1280, 1.5], [900, 1.5]]) {
@@ -123,7 +127,17 @@ try {
     check(`${w}: no horizontal scroll on the page or in the panel, nothing past the edge`, !m.pageScroll && !m.insScroll && m.cut === 0 && m.over.length === 0, JSON.stringify({ page: m.pageScroll, ins: m.insScroll, cut: m.cut, over: m.over }));
     check(`${w}: Today, 7 days and All time tiles, each priced as an estimate`, m.tiles.length === 3 && m.tiles.every((x) => /est\./.test(x)), JSON.stringify(m.tiles));
     check(`${w}: both fake sessions are listed`, /alpha/.test(m.text) && /beta/.test(m.text), m.text);
+    check(`${w}: the Now row is inside the panel`, m.now && m.now.l >= m.ins.l && m.now.r <= m.ins.r, JSON.stringify({ now: m.now, ins: m.ins }));
   }
+
+  // Clicking the Now row brings its pane forward with the keyboard focus in it.
+  const where = `(() => { const p = document.activeElement && document.activeElement.closest("section.pane"); return p ? "pane: " + (p.getAttribute("aria-label") || p.className) : "outside a pane: " + (document.activeElement ? document.activeElement.tagName : "none"); })()`;
+  await app.evalJs(`(() => { if (document.activeElement) document.activeElement.blur(); return "blurred"; })()`);
+  log(`focus before the click: ${await app.evalJs(where)}`);
+  await app.click(".insights button.ins-row");
+  await sleep(800);
+  const focused = await app.evalJs(where);
+  check("clicking the Now row focuses its pane", typeof focused === "string" && focused.startsWith("pane: "), JSON.stringify(focused));
 
   // The Explorer tab of the same sidebar: every header button inside the window and the panel.
   log(`Explorer tab clicked: ${await app.clickWhere(".rside-tab", "/^\\s*Explorer\\s*$/")}`);
