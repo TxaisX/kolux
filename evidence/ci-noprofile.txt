@@ -45,7 +45,9 @@ These tests only flaked on GitHub's cold Windows runner, so the proof is that ru
 job on this PR's head, run and rerun. Runs:
   run 41388811959 on acded89b: Rust job pass (21m), 2651 passed, 0 failed, including
     t184b_a_pane_routed, t075b_a_terminal_outlives, t153f and the new helper test.
-  Later runs are listed on the PR.
+  run 41390859592 on da29d668 (evidence-only change): pass, 2651 passed, 0 failed, both tests ok.
+  run 41390859592 attempt 2 (full rerun, same head): pass.
+  Three green Windows runs in a row; the head after merging main gets one more, named on the PR.
 
 RECORD
 #48 left no record beyond its commit and PR; this file is the record of this CI fix. No PLAN tick
