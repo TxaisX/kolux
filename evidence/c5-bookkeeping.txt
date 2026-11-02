@@ -1,0 +1,65 @@
+c5-bookkeeping (lane5/bookkeeping, 2026-11-01): T-025-d-rest, T-206-c, APP-052
+Bookkeeping only: no code, no tests, no Rust, no Tauri command, no dependency changed. Nothing ran live.
+
+WHAT WAS CHECKED (the triage brief was verified against the tree and git before anything was written)
+- git show --stat e5aeccaf: "T-568 Remove starter kits entirely", author Txais Xiong, Wed Oct 28 18:25:49 2026 -0700, a direct commit on main (git log --ancestry-path shows it between becfb85e T-575 and a5782e35 T-569, both his too). 33 files, +94/-3345: src-tauri/src/kits.rs, src/kits/** (KitStrip, Kits, catalog, milestones, run, useKits and tests), src/chat/kitPrompt.ts(+test), src/chat/KitNotice.tsx deleted; lib.rs lost `mod kits;` and the eight kit commands; ChooserPane lost the kit row, Advanced fold, kit roles list and Set up kit; App.tsx lost the kit state, strip and dialogs; ProjectsPanel lost the Starter kits row.
+- grep -rn 'KitStrip|useKits|src/kits|kit_samples|mod kits' src src-tauri/src: no match on origin/main 3af39cf3. grep -i 'kit' src/launch/ChooserPane.tsx: no match.
+- src/onboarding/firstRun.ts SCREENS: Welcome, Connect an AI, Your work ("Pick the folder your AIs will work in."), Open a session ("Start with an AI or a plain terminal in your folder."). src/onboarding/Wizard.tsx: main buttons Get started / Continue / Continue / Open a session, secondary only "I'll do this later" on screen 2, screen 3 holds a Pick a folder button, screen 4 the "Tell me whenever an AI finishes" switch.
+- Card tiers (spec/15-skills-plugins-kits.md, spec/16-onboarding.md): SKILL-001..015 P1, SKILL-016 P2, ONB-005 P1. No P0, so no strike is needed and the P0 scoreboard is untouched by the drop.
+- Area 18 (remote hosts) rows in DECISIONS.md section 4: SESS-047 (line 224), TERM-128 (230), SKILL-033 (298), all dropped 2026-10-05. STATE.md line 250 already said T-206-c had no workspace to show the entry point on.
+- The limit and sign-in stop causes still reach the window without kits: src-tauri/src/agent_hooks/more.rs StopFailure sets kolux_cause "limit" for a rate-limit error (STAT-015), and src/board/paneStatus.test.ts "DT-C52 answer 1" proves a pane blocked by a usage limit or a sign-in on the Board, Inbox, bell and Tower.
+- T-568, T-569, T-570, T-572 and T-575 (all Txais's own commits of 2026-10-28) had no line in PLAN.md, PLAN-done.md, STATE.md or DECISIONS.md. Only T-568 is recorded here (it is what closes this unit's items); the others are left for the coordinator.
+- Highest DT-C row before this unit: DT-C61. DT-C62 was free (grep -rn DT-C62 --include=*.md: none).
+- evidence/T-544.txt read in full (98 lines).
+
+APP-052 (both boxes ticked in spec/19-app-lifecycle.md lines 279-281)
+- The run: evidence/T-544.txt lines 1-6: installed NSIS build 06242e15 at %LOCALAPPDATA%\Kolux RS, scripts/prove/live-T-544.mjs, the app started through WMI Win32_Process.Create outside the harness job (line 11), so the terminal service is not killed with the harness; 2026-10-28T19:30:15Z.
+- Box 1 "Print a marker in a terminal, then quit and relaunch three times → the marker is visible after each launch": lines 30-67. Quit rounds at lines 30, 40, 59 (window close over CDP, the service pid 25632 still running after each quit); relaunches at 32, 42, 61; reattach lines 37, 56, 65 ("2 terminals taken back" each time, the same service pid linked, lines 36/55/64); PASS b1 at lines 38, 57, 66: the marker on screen and in scrollback after every relaunch. Screenshots lines 39, 58, 67 (on Txais's PC, G:/Temp/live-v15-logs).
+- Box 2 "Kill the terminal service and relaunch → terminals come back from their saved history": lines 68-79. Line 68: exactly one service tied to the install (its command line names the install's kolux-rs.exe --terminal-service and the data folder); line 71: only pid 25632 killed, the install's other services [] before and after; lines 72-78: quit, relaunch, a new service pid 6260 linked with 0 terminals taken back and both panes marked restored; PASS b2 line 79: 92 buffer rows, marker 1 kept, tail shows the saved history, "── restored after a restart · the shell below is new ──" and a new prompt. Screenshot line 80.
+- ITEM-RESULT b1 PASS (line 95), b2 PASS (line 96), RESULT: PASS (line 98). PLAN.md T-544 (line 94) records the same pass.
+- Ticked as "(live; evidence/T-544.txt lines 30-67)" and "(live; evidence/T-544.txt lines 68-79)". evidence/cards-APP-052.txt has a dated TICKED section pointing at those lines; the earlier "ownership stays with T-544" note is settled by it. docs/live-proofs-windows.md B-9 says the APP-052 items are already proven and are only for a repeat on a newer release (T-566 and T-612 still need the run).
+- Not re-run on the current v0.1.5 release; `node scripts/prove/live-T-544.mjs` against the installed build repeats it.
+
+T-025-d-rest (PLAN.md line 43, closed as moot, ticked)
+- The task asks for a kit seat row showing a limit or sign-in label and its Move to or Sign in action. The kit strip and its rows do not exist since e5aeccaf, so there is nothing to show and nothing to prove. The underlying stop causes are proved on the Board, Inbox, bell and Tower (above). No code written, no live run.
+
+T-206-c (PLAN.md line 228, closed as moot, ticked)
+- The task asks for no kit entry point in a remote or SSH workspace. Remote, SSH and remote-runtime workspaces are dropped with area 18 (DECISIONS.md section 4.2) and every kit entry point is gone with T-568, so no workspace of any kind has one. SKILL-015 box 2 stays unticked in the spec: nothing was shown. No code written, no live run.
+
+RECORD MADE CONSISTENT
+- PLAN.md: new line T-568 (ticked, section 7 after T-567) naming what the commit removed and the cards it carried, in the space form ("SKILL 001 to 016 and ONB 005") so plan-check does not count them twice.
+- PLAN-done.md lines 403-407: T-204, T-205, T-206, T-206-b get "· REMOVED 2026-10-28 by T-568 (commit e5aeccaf, Txais; DECISIONS.md DT-C62)"; T-207 gets a CHANGED note (the fourth screen is Open a session now). They stay ticked as the record of what was built and proved at the time.
+- DECISIONS.md section 7: DT-C62 "Starter kits are gone from the product (T-568, Txais, 2026-10-28)". No "strikes" wording (no P0 card). Txais's own act is clear from the commit author and message, so the row is not marked "confirm"; no Needs-Txais note.
+- docs/guide: getting-started.md first-launch table (steps 3 and 4 as the code has them, with a line that the Choose a kit step and the kits were removed on 2026-10-28), terminals.md (the Kits row of the chooser table removed), feature-index.md rows T-201-b, T-204, T-205, T-206, T-206-b marked "Removed 2026-10-28 (T-568)".
+
+COMMANDS
+- node scripts/plan-check.mjs (before, origin/main 3af39cf3):
+    cards in spec: 1264 · expected in plan: 1030 · planned ids: 1030 · tasks: 775
+    head: cutline left 0/18 · merge gate 0 waiting · P0 cards passing 216/228 · done 719/775 tasks
+    plan-check: OK
+- node scripts/plan-check.mjs (after):
+    cards in spec: 1264 · expected in plan: 1030 · planned ids: 1030 · tasks: 776
+    head: cutline left 0/18 · merge gate 0 waiting · P0 cards passing 217/228 · done 722/776 tasks
+    plan-check: OK
+  (APP-052 joins the passing P0 cards; the three ticks are T-025-d-rest, T-206-c and the new T-568 line.)
+  Two failing runs on the way, both fixed before the commit: naming SESS-047/TERM-128/SKILL-033 on the T-206-c line made plan-check say "dropped card planned"; naming SKILL-001, SKILL-015 and ONB-005 with hyphens on the T-568, T-206-c and T-207 notes made them "appear 2/3 times". Both are the checker reading card ids off the notes; the notes now use the section reference and the space form.
+- npx tsc --noEmit: 0 errors (no TS changed; run because the gate asks for it).
+- vitest, cargo test, clippy, windows-gnu check, invoke-contract, license-check: not run, nothing they cover changed (no src/, src-tauri/, command or dependency change).
+
+LEFT
+- A fresh APP-052 run on the current release is one command on Txais's PC (`node scripts/prove/live-T-544.mjs`); not needed for the ticks, which rest on the 2026-10-28 installed-build run.
+- T-569, T-570, T-572, T-575 (Txais's other 2026-10-28 commits) still have no PLAN line; coordinator's call.
+- STATE.md line 250 (T-206-c "left open") and the T-025-d-rest/T-206-c counts are the integrator's to update.
+- The B-9 run in docs/live-proofs-windows.md is still owed for T-566 and T-612.
+
+REVIEW FIXES (PR #54, 2026-11-01)
+Finding 1 (minor): DT-C62 and the T-568 PLAN line listed the dropped cards incompletely. Checked before changing anything:
+- spec/02-sessions-launching.md line 586 SESS-019 (P1): both acceptance boxes describe the chooser's kit row and Advanced fold; `git grep -i 'advanced\|kit' origin/main -- src/launch/ChooserPane.tsx` is empty.
+- spec/16-onboarding.md line 78 ONB-004 (P1): the sample-cards half; origin/main src/onboarding/firstRun.test.ts line 57 "ONB-004: the work screen offers Pick a folder and Continue; kits and sample data are gone" (asserts no onb-sample, no "sample data").
+- PLAN-done.md line 399 (T-201-b · SESS-019) carried no REMOVED note although docs/guide/feature-index.md line 418 already said Removed; the T-207 CHANGED note named only screen 4.
+- Neither card is P0, so the no-strike conclusion stands.
+Changed: DECISIONS.md DT-C62 lists "SESS 019 (P1: the chooser's kit row and Advanced fold ...) and the sample-data half of ONB 004 (P1: the sample cards on the Your work screen ...)"; PLAN.md T-568 names the same two in the space form; PLAN-done.md line 399 (T-201-b) gets "· REMOVED 2026-10-28 by T-568 (commit e5aeccaf, Txais; DECISIONS.md DT-C62): the chooser's kit row and Advanced fold are gone; this line stays as the record of what was built at the time"; the T-207 CHANGED note adds "and the third screen (ONB 004) lost its sample cards and offers only Pick a folder".
+- grep -c 'SESS-019\|ONB-004' PLAN.md PLAN-done.md DECISIONS.md after: 0 / 2 / 0 (the two PLAN-done hits are the original T-201-b and T-207 card ids, unchanged; the new mentions are in the space form, so the checker counts nothing new).
+- node scripts/plan-check.mjs after: cards in spec: 1264 · expected in plan: 1030 · planned ids: 1030 · tasks: 776 · head: cutline left 0/18 · merge gate 0 waiting · P0 cards passing 217/228 · done 722/776 tasks · plan-check: OK (the same numbers as before the fix, as expected: no tick changed).
+- npx tsc --noEmit: 0 errors (nothing in src/ changed; run because the gate asks).
+Finding 2 (minor, process): the PR #54 body ended with the comment footer ("---" / "_Generated by_"). The body now ends with the two PR footer lines; nothing in the repo changed for it.
