@@ -64,9 +64,6 @@ export const classic = {
  *  the fallbacks written beside `var(--accent, ...)` keep deciding the look for everyone else. */
 export type Theme = Record<keyof typeof classic, string> & { accent?: string };
 
-const ANSI_NAMES = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
-/** The terminal colours a theme may set: text, ground, cursor, selection and the 16 palette slots. */
-export const TERMINAL_KEYS = ["foreground", "background", "cursor", "selectionBackground", ...ANSI_NAMES, ...ANSI_NAMES.map((c) => "bright" + c[0].toUpperCase() + c.slice(1))];
 /** Every colour name a custom theme may set (the palette, plus the optional accent). */
 export const TOKEN_KEYS: readonly string[] = [...Object.keys(classic), "accent"];
 
@@ -236,7 +233,7 @@ export function buildTheme(a: Appearance, dark = true): Theme {
   if (!c) return builtIn(a, dark);
   // T-648: a custom theme is its base with the colours resolved when it was saved laid over it.
   const t: Record<string, string> = builtIn({ ...a, theme: baseOf(c) }, c.dark !== false);
-  for (const [k, v] of Object.entries(hexMap(c.vars, (k) => /^--[a-z0-9-]+$/.test(k) && TOKEN_KEYS.includes(k.slice(2))))) t[k.slice(2)] = v;
+  for (const [k, v] of Object.entries(hexMap(c.vars, (k) => k.startsWith("--") && TOKEN_KEYS.includes(k.slice(2))))) t[k.slice(2)] = v;
   return t as Theme;
 }
 function builtIn(a: Appearance, dark: boolean): Theme {
@@ -267,6 +264,9 @@ export function mix(a: string, b: string, t: number): string {
 }
 
 const ANSI = { red: 0, green: 135, yellow: 45, blue: 215, magenta: 300, cyan: 185 } as const;
+/** The terminal colours a theme may set: text, ground, cursor, selection and the 16 palette slots. */
+const ANSI_NAMES = ["black", ...Object.keys(ANSI), "white"];
+export const TERMINAL_KEYS = ["foreground", "background", "cursor", "selectionBackground", ...ANSI_NAMES, ...ANSI_NAMES.map((c) => "bright" + c[0].toUpperCase() + c.slice(1))];
 
 /** SET-003: the terminal colours for an appearance. "match" works background, text and the 16-colour
  *  palette out of the app hue; "default" is Kolux's own dark scheme whatever the app hue. SET-023: in
@@ -396,8 +396,8 @@ export function applyAppearance(a: Appearance, root: StyleHost = document.docume
   lastDark = dark;
   const vars = { ...themeVars(buildTheme(a, dark)), ...appearanceVars(a, dark), "color-scheme": dark ? "dark" : "light" };
   if (typeof document !== "undefined") document.documentElement.dataset.mode = dark ? "dark" : "light";
+  root.style.removeProperty?.("--accent"); // a custom theme's accent must not outlive it; set again just below when the theme has one
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-  if (!("--accent" in vars)) root.style.removeProperty?.("--accent"); // a custom theme's accent must not outlive it
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ vars, appearance: a }));
   } catch {
