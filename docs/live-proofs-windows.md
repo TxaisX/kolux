@@ -125,9 +125,10 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 ### B-2 · T-610 · Every screen can be reached from the palette
 - [ ] Run
 - Press: open the palette with Ctrl+Shift+J. Type and pick each of these in turn: "Show Floor", "Show Space",
-  "Show Workspace Statuses", "Show Artifacts", "Show Skills".
-- Should happen: each one opens its own page.
-- Fail if: any is missing from the palette or opens nothing.
+  "Show Workspace Statuses", "Show Artifacts", "Show Skills". Then open the Kolux menu and pick View >
+  Workspace View > Floor (DT-08; the submenu lists Agents, Board, Terminals, Tower and Floor).
+- Should happen: each one opens its own page; the menu's Floor opens the Floor and the submenu ticks Floor.
+- Fail if: any is missing from the palette or the menu, or opens nothing.
 - Result: ______________________________________________
 
 ### B-3 · T-611 · The palette's Commands section runs actions
@@ -199,6 +200,11 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 This needs the installed build (not a test copy). About 25 minutes. One set of three relaunches covers three
 checks; on each launch, look at the panes **before** you press any key or click anything.
 
+Already done for APP-052: both of its boxes (the marker after three relaunches, and the kill of the terminal
+service) passed on the installed build on 2026-10-28, run by `node scripts/prove/live-T-544.mjs`
+(evidence/T-544.txt lines 30-79), and are ticked in the spec. The two APP-052 items below are only for a repeat on a
+newer release; the T-566 and T-612 items still need this run.
+
 - Set up: a plain terminal pane where you type a word you will recognise (for example `echo MARKER-ONE`), one or two
   other panes with some output, and one Claude pane (Claude signed in).
 - Press: quit Kolux, start it again. Do this three times. Tip cards appear on early launches; make sure a Tip is
@@ -212,8 +218,9 @@ checks; on each launch, look at the panes **before** you press any key or click 
 - [ ] T-566: every restored pane shows its chip
 - Should happen: every pane that came back shows its "restored" chip, on every launch.
 - Fail if: any restored pane, on any launch, has its output back but no chip.
-- The other half (each pane's key matching the saved layout) cannot be seen by hand; it waits for the prover fix in
-  STATE.md.
+- The other half (each pane's key matching the saved layout) cannot be seen by hand: run `node scripts/prove/live-T-544.mjs`
+  and read its `reattach relaunch <n>: ... panes [...]` lines, which list every pane's key and chip as they were before the
+  script closed any dialog (the `after dialogs` line that follows shows what the Escape did).
 - Result: ______________________________________________
 
 - [ ] T-612: Escape and the Tip card (on a launch where a Tip shows)

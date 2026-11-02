@@ -124,7 +124,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-047 | Expand a pane to fill the grid; every pane has a header with title and usage. | [Terminals](terminals.md) |
 | T-048 | The terminal grid has a clean, uncluttered look. | [Terminals](terminals.md) |
 | T-049-a | Three workspace screens, Agents, Board and Terminals, switch from the keyboard. | [Getting started](getting-started.md) |
-| T-049-b | The Kolux menu's View menu has a Workspace View choice for Agents, Board and Terminals, with the current screen ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
+| T-049-b | The Kolux menu's View menu has a Workspace View choice for Agents, Board, Terminals, Tower and Floor, with the current screen ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
 | T-050 | The Agents screen lists sessions by saved agent with chat, terminal and composer. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-051 | The left sidebar shows, hides and resizes, listing projects and their sessions. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-053 | Pick the app colour theme: Classic or one of 16 hues, with sliders. | [Settings](settings.md) |
@@ -415,14 +415,14 @@ Tasks not yet ticked off in the build plan are not listed.
 |---|---|---|
 | T-200 | Add Project opens on cloning, with browse and create one step away. | [Getting started](getting-started.md) |
 | T-201-a | Featured agent cards show what is missing and how to set it up. | [Getting started](getting-started.md) |
-| T-201-b | The older launch dialog offers starter kits and an Advanced section. | [Getting started](getting-started.md) |
+| T-201-b | Removed 2026-10-28 (T-568): the chooser no longer offers starter kits or an Advanced section. | [Getting started](getting-started.md) |
 | T-201-c | Every supported agent has a checked documentation link. | [Getting started](getting-started.md) |
 | T-202 | Disconnect removes only what Kolux made. | [Settings](settings.md) |
 | T-203 | Turn a plain folder into a Git repository. | [Getting started](getting-started.md) |
-| T-204 | Six ready-made starter kits cover common business jobs, in a gallery. | [Getting started](getting-started.md) |
-| T-205 | Starting a kit opens one titled session per role. | [Getting started](getting-started.md) |
-| T-206 | Rescue a stuck kit role and preview its result files. | [Getting started](getting-started.md) |
-| T-206-b | Kit rows show usage-limit and sign-in problems with a fix action. | [Getting started](getting-started.md) |
+| T-204 | Removed 2026-10-28 (T-568): the starter kits and their gallery are gone. | [Getting started](getting-started.md) |
+| T-205 | Removed 2026-10-28 (T-568): kits no longer exist, so nothing starts one. | [Getting started](getting-started.md) |
+| T-206 | Removed 2026-10-28 (T-568): kit roles and their result files are gone. | [Getting started](getting-started.md) |
+| T-206-b | Removed 2026-10-28 (T-568): kit rows are gone; a usage limit or sign-in stop shows on the pane and the Board instead. | [Getting started](getting-started.md) |
 | T-207 | A four-screen guided first run floats over the app. | [Getting started](getting-started.md) |
 | T-207-b | The first AI connected during the wizard is recorded as a milestone. | [Getting started](getting-started.md) |
 | T-207-c | The first-connection milestone is also recorded from the wizard's Connect cards. | [Getting started](getting-started.md) |
