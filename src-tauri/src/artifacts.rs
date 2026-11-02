@@ -97,8 +97,22 @@ pub struct Library {
     lock: Mutex<()>,
 }
 
+/// An origin that is a Windows path is written one way before it is hashed, so the same file reached as
+/// `c:/Users/me/a.html`, `C:\Users\me\a.html` or `\\?\C:\Users\me\a.html` is one entry, not two. The
+/// usual form (upper-case drive letter, backslashes) is the one kept, so ids already stored do not
+/// change. A URL or a Unix path is left alone.
+fn normalized_origin(origin: &str) -> std::borrow::Cow<'_, str> {
+    let o = origin.strip_prefix(r"\\?\").unwrap_or(origin);
+    let b = o.as_bytes();
+    if b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'/' || b[2] == b'\\') {
+        return format!("{}{}", (b[0] as char).to_ascii_uppercase(), o[1..].replace('/', "\\")).into();
+    }
+    origin.into()
+}
+
 /// FNV-1a: a short id that stays the same for the same origin on every run and every build.
 fn id_of(origin: &str) -> String {
+    let origin = normalized_origin(origin);
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for b in origin.bytes() {
         h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
@@ -391,7 +405,30 @@ fn reparse_is_cloud_file(tag: u32) -> bool {
     tag & 0xFFFF_0FFF == 0x9000_001A
 }
 
-/// One source file, opened once and judged by its handle, so what is checked is what is copied: a
+/// Whether the real path of an opened file is acceptable: not on a network share, and (when the caller
+/// names a root) under it.
+fn real_path_ok(real: &Path, root: Option<&Path>) -> bool {
+    !on_network_share(real) && root.is_none_or(|r| path_under(real, r))
+}
+
+/// `real` is `root` or inside it. Windows paths differ by case only, so they are compared in lower case.
+fn path_under(real: &Path, root: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        let lower = |p: &Path| PathBuf::from(p.to_string_lossy().to_lowercase());
+        lower(real).starts_with(lower(root))
+    }
+    #[cfg(not(windows))]
+    {
+        real.starts_with(root)
+    }
+}
+
+/// One source file, opened once and judged by its handle, so what is checked is what is copied. Its
+/// real path is read from the handle too (GetFinalPathNameByHandleW), after every link on the way has
+/// been followed or swapped, and has to be local and, when `root` is given, under it: a junction in
+/// the middle of the path, or one swapped in after the path was checked, cannot reach a network share
+/// or a file outside the workspace (T-624 round 3): a
 /// link where the file should be is refused at open (O_NOFOLLOW; on Windows the reparse point is
 /// opened itself and refused unless its tag is a cloud placeholder), a folder or device is not a file,
 /// and a hard link to a file elsewhere (a second name for the same data, which no path check can
@@ -399,7 +436,7 @@ fn reparse_is_cloud_file(tag: u32) -> bool {
 /// the path. On Windows a cloud placeholder (a OneDrive file) is opened again without
 /// the reparse flag so the cloud filter can bring it down, and read only if that second handle is
 /// the same file as the first (same volume and file index), so a link swapped in between is refused.
-fn open_source(path: &Path, name: &str) -> Result<(fs::File, fs::Metadata), String> {
+fn open_source(path: &Path, name: &str, root: Option<&Path>) -> Result<(fs::File, fs::Metadata), String> {
     let mut opts = fs::File::options();
     opts.read(true);
     #[cfg(unix)]
@@ -428,6 +465,16 @@ fn open_source(path: &Path, name: &str) -> Result<(fs::File, fs::Metadata), Stri
             }
         }
     };
+    #[cfg(windows)]
+    {
+        let real = windows_file::final_path(&file).ok_or_else(|| format!("could not read {name}: its real path is unknown"))?;
+        if !real_path_ok(&real, root) {
+            return Err(format!("{name} is on a network share or outside the folder it has to stay in, so it is not kept"));
+        }
+    }
+    // The handle's real path is a Windows call; the other platforms keep the O_NOFOLLOW check above.
+    #[cfg(not(windows))]
+    let _ = root;
     let md = file.metadata().map_err(|e| format!("could not read {name}: {e}"))?;
     if !md.is_file() {
         return Err(format!("could not read {name}: it is not a file"));
@@ -438,15 +485,20 @@ fn open_source(path: &Path, name: &str) -> Result<(fs::File, fs::Metadata), Stri
     Ok((file, md))
 }
 
+/// How many names a file has; a count that could not be read is treated as more than one.
+fn link_count(n: Option<u64>) -> u64 {
+    n.unwrap_or(u64::MAX)
+}
+
 #[cfg(unix)]
 fn links_of(_file: &fs::File, md: &fs::Metadata) -> u64 {
     use std::os::unix::fs::MetadataExt;
-    md.nlink()
+    link_count(Some(md.nlink()))
 }
 
 #[cfg(windows)]
 fn links_of(file: &fs::File, _md: &fs::Metadata) -> u64 {
-    windows_file::info(file).map_or(1, |i| i.nNumberOfLinks as u64)
+    link_count(windows_file::info(file).map(|i| i.nNumberOfLinks as u64))
 }
 
 /// What a Windows file handle says about itself.
@@ -454,13 +506,31 @@ fn links_of(file: &fs::File, _md: &fs::Metadata) -> u64 {
 mod windows_file {
     use std::fs;
     use std::os::windows::io::AsRawHandle;
-    use windows_sys::Win32::Storage::FileSystem::{FileAttributeTagInfo, GetFileInformationByHandle, GetFileInformationByHandleEx, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO};
+    use windows_sys::Win32::Storage::FileSystem::{FileAttributeTagInfo, GetFileInformationByHandle, GetFinalPathNameByHandleW, GetFileInformationByHandleEx, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO};
 
     pub fn info(file: &fs::File) -> Option<BY_HANDLE_FILE_INFORMATION> {
         // SAFETY: an open handle and a zeroed struct of the documented size, which the call fills.
         unsafe {
             let mut info: BY_HANDLE_FILE_INFORMATION = std::mem::zeroed();
             (GetFileInformationByHandle(file.as_raw_handle() as _, &mut info) != 0).then_some(info)
+        }
+    }
+
+    /// The handle's real path (`\\?\C:\...`, or `\\?\UNC\...` on a share), with every link resolved.
+    pub fn final_path(file: &fs::File) -> Option<std::path::PathBuf> {
+        use std::os::windows::ffi::OsStringExt;
+        let mut buf = vec![0u16; 1024];
+        loop {
+            // SAFETY: an open handle and a buffer of the length passed; flags 0 are VOLUME_NAME_DOS | FILE_NAME_NORMALIZED.
+            let n = unsafe { GetFinalPathNameByHandleW(file.as_raw_handle() as _, buf.as_mut_ptr(), buf.len() as u32, 0) } as usize;
+            if n == 0 {
+                return None;
+            }
+            if n < buf.len() {
+                buf.truncate(n);
+                return Some(std::ffi::OsString::from_wide(&buf).into());
+            }
+            buf.resize(n + 1, 0);
         }
     }
 
@@ -558,7 +628,11 @@ impl Library {
     /// that wrote the file replaces a newer workspace-scan one (the 3 s scan can reach the file before
     /// the Write capture does). A scan's refresh of an entry someone else made keeps who made it: its
     /// source, session and project.
-    pub fn add(&self, src: &Path, mut from: Origin, fetch: &dyn Fn(&str) -> Option<Vec<u8>>) -> Result<Entry, String> {
+    pub fn add(&self, src: &Path, from: Origin, fetch: &dyn Fn(&str) -> Option<Vec<u8>>) -> Result<Entry, String> {
+        self.add_in(src, from, fetch, None)
+    }
+
+    pub fn add_in(&self, src: &Path, mut from: Origin, fetch: &dyn Fn(&str) -> Option<Vec<u8>>, root: Option<&Path>) -> Result<Entry, String> {
         let id = id_of(&from.origin);
         if let Some(old) = self.read().into_iter().find(|e| e.id == id) {
             if old.added > from.at && !(old.source == "workspace" && from.session.is_some()) {
@@ -576,7 +650,7 @@ impl Library {
         if !src.is_absolute() {
             entry.state = "remote".into();
         } else if !on_network_share(src) {
-            let (mut file, md) = open_source(src, &name)?;
+            let (mut file, md) = open_source(src, &name, root)?;
             let len = md.len();
             let cap = if kind == "page" { MAX_PAGE } else { MAX_FILE };
             if len > cap {
@@ -632,7 +706,7 @@ impl Library {
             let Ok(real) = fs::canonicalize(folder.join(&r)) else { continue };
             let Ok(rel) = real.strip_prefix(&folder) else { continue }; // outside the page's own folder
             let rel = rel.to_string_lossy().replace('\\', "/");
-            let Ok((mut file, md)) = open_source(&real, &rel) else { continue };
+            let Ok((mut file, md)) = open_source(&real, &rel, Some(&folder)) else { continue };
             if md.len() > MAX_ASSET || total + md.len() > MAX_TOTAL || !seen.insert(rel.clone()) {
                 continue;
             }
@@ -762,8 +836,14 @@ pub fn scan_workspace(lib: &Library, workspace: &Path, project: Option<String>, 
 /// The cap counts the folder's files the library already holds as well as the ones stored now, so a
 /// later tick does not top the library up past it.
 fn scan_capped(lib: &Library, workspace: &Path, project: Option<String>, fetch: &dyn Fn(&str) -> Option<Vec<u8>>, seen: &mut HashMap<String, (u64, u64)>, max_bytes: u64) -> Scanned {
+    // The real folder, judged as a path on disk: an ancestor junction to a share is a share, whatever the typed path says.
+    let Ok(real_ws) = fs::canonicalize(workspace) else { return Scanned::default() };
+    if on_network_share(&real_ws) {
+        return Scanned::default();
+    }
     let project = project.filter(|p| !p.trim().is_empty()).or_else(|| workspace.file_name().map(|n| n.to_string_lossy().into_owned()));
-    let known: HashMap<String, Option<(u64, u64)>> = lib.list().into_iter().map(|e| (e.entry.origin, e.entry.stamp)).collect();
+    // Per stored origin: the file's stamp and the whole entry's stored size (page, copied assets and scripts).
+    let known: HashMap<String, (Option<(u64, u64)>, u64)> = lib.list().into_iter().map(|e| (e.entry.origin, (e.entry.stamp, e.entry.size))).collect();
     let removed = {
         let _g = lib.lock.lock();
         lib.removed()
@@ -773,25 +853,23 @@ fn scan_capped(lib: &Library, workspace: &Path, project: Option<String>, fetch: 
     if over {
         out.skipped.push(format!("the artifacts folder holds more than {MAX_WORKSPACE_FILES} files; only the first {MAX_WORKSPACE_FILES} by name are kept"));
     }
-    let mut kept: u64 = 0;
+    // Everything this folder already has in the library counts first, whatever order the files come in.
+    let mut kept: u64 = files.iter().filter_map(|f| known.get(f.to_string_lossy().as_ref())).map(|k| k.1).sum();
     let mut full = false;
     for file in files {
         let Ok(meta) = fs::metadata(&file) else { continue };
         let stamp = (modified_ms(&file), meta.len());
         let key = file.to_string_lossy().into_owned();
-        if known.contains_key(&key) {
-            kept += stamp.1;
-        }
         if seen.get(&key) == Some(&stamp) {
             continue;
         }
         // The library already holds this exact file, or the user removed this exact file: move on.
-        if known.get(&key) == Some(&Some(stamp)) || removed.get(&key) == Some(&stamp) {
+        if known.get(&key).map(|k| k.0) == Some(Some(stamp)) || removed.get(&key) == Some(&stamp) {
             seen.insert(key, stamp);
             continue;
         }
         // Over the folder's byte cap: left out, not remembered in `seen`, so it is stored once room is made.
-        let held = if known.contains_key(&key) { kept - stamp.1 } else { kept };
+        let held = kept - known.get(&key).map_or(0, |k| k.1);
         if held + stamp.1 > max_bytes {
             if !full {
                 full = true;
@@ -801,12 +879,10 @@ fn scan_capped(lib: &Library, workspace: &Path, project: Option<String>, fetch: 
         }
         // Added now: `added` is when the entry was stored, the file's own time lives in its stamp.
         let from = Origin { origin: key.clone(), source: "workspace", project: project.clone(), session: None, at: now_ms() };
-        match lib.add(&file, from, fetch) {
-            Ok(_) => {
+        match lib.add_in(&file, from, fetch, Some(&real_ws)) {
+            Ok(entry) => {
                 out.changed += 1;
-                if !known.contains_key(&key) {
-                    kept += stamp.1;
-                }
+                kept = held + entry.size;
             }
             Err(e) => {
                 eprintln!("artifacts: could not keep {}: {e}", file.display());
@@ -907,27 +983,48 @@ fn link_script(base: &str) -> String {
     )
 }
 
+/// What a `Range` header asks for.
+#[derive(Debug, PartialEq)]
+enum RangeAsk {
+    /// No usable range: the whole file.
+    Whole,
+    /// These bytes, both ends inclusive and clamped to the file.
+    Part(u64, u64),
+    /// A start at or past the end of the file: 416.
+    Past,
+}
+
 /// A `Range: bytes=start-end` request against a file of `total` bytes, clamped to the file. A
 /// suffix (`bytes=-N`) asks for the last N bytes; malformed, reversed and multi-part ranges get the
-/// whole file instead of an error, which every browser can still play.
-fn parse_range(header: &str, total: u64) -> Option<(u64, u64)> {
-    let spec = header.trim().strip_prefix("bytes=")?;
+/// whole file instead of an error, which every browser can still play; a start past the end is a 416.
+fn parse_range(header: &str, total: u64) -> RangeAsk {
+    let Some(spec) = header.trim().strip_prefix("bytes=") else { return RangeAsk::Whole };
     if spec.contains(',') || total == 0 {
-        return None;
+        return RangeAsk::Whole;
     }
-    let (a, b) = spec.split_once('-')?;
-    let (start, end) = if a.trim().is_empty() {
-        let n: u64 = b.trim().parse().ok()?;
-        if n == 0 {
-            return None;
-        }
-        (total.saturating_sub(n), total - 1)
+    let Some((a, b)) = spec.split_once('-') else { return RangeAsk::Whole };
+    if a.trim().is_empty() {
+        return match b.trim().parse::<u64>() {
+            Ok(n) if n > 0 => RangeAsk::Part(total.saturating_sub(n), total - 1),
+            _ => RangeAsk::Whole,
+        };
+    }
+    let Ok(start) = a.trim().parse::<u64>() else { return RangeAsk::Whole };
+    let end = if b.trim().is_empty() {
+        None
     } else {
-        let start: u64 = a.trim().parse().ok()?;
-        let end = if b.trim().is_empty() { total - 1 } else { b.trim().parse::<u64>().ok()?.min(total - 1) };
-        (start, end)
+        match b.trim().parse::<u64>() {
+            Ok(end) => Some(end),
+            Err(_) => return RangeAsk::Whole,
+        }
     };
-    (start <= end && start < total).then_some((start, end))
+    if end.is_some_and(|end| end < start) {
+        return RangeAsk::Whole;
+    }
+    if start >= total {
+        return RangeAsk::Past;
+    }
+    RangeAsk::Part(start, end.map_or(total - 1, |end| end.min(total - 1)))
 }
 
 fn read_range(file: &Path, start: u64, end: u64) -> Option<Vec<u8>> {
@@ -949,10 +1046,14 @@ pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http:
     };
     let total = fs::metadata(&file).map(|m| m.len()).unwrap_or(0);
     let wants_range = !kind.starts_with("text/html");
-    let range = wants_range
-        .then(|| req.headers().get("range").and_then(|v| v.to_str().ok()).and_then(|v| parse_range(v, total)))
-        .flatten()
-        .map(|(start, end)| (start, end.min(start + CHUNK - 1)));
+    let ask = if wants_range { req.headers().get("range").and_then(|v| v.to_str().ok()).map_or(RangeAsk::Whole, |v| parse_range(v, total)) } else { RangeAsk::Whole };
+    if ask == RangeAsk::Past {
+        return Response::builder().status(416).header("Content-Type", "text/plain").header("Content-Range", format!("bytes */{total}")).header("X-Content-Type-Options", "nosniff").body(Vec::new()).unwrap();
+    }
+    let range = match ask {
+        RangeAsk::Part(start, end) => Some((start, end.min(start + CHUNK - 1))),
+        _ => None,
+    };
     let (mut body, status, content_range) = match range.and_then(|(start, end)| read_range(&file, start, end).map(|b| (start, end, b))) {
         Some((start, end, b)) => (b, 206, Some(format!("bytes {start}-{end}/{total}"))),
         None => (fs::read(&file).unwrap_or_default(), 200, None),
@@ -972,7 +1073,7 @@ pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http:
         .header("Content-Length", body.len().to_string())
         .header("Accept-Ranges", "bytes")
         .header("Content-Security-Policy", csp)
-        .header("Access-Control-Allow-Origin", "*");
+        .header("X-Content-Type-Options", "nosniff");
     if let Some(cr) = content_range {
         out = out.header("Content-Range", cr);
     }
@@ -998,14 +1099,27 @@ pub async fn artifact_remove(app: tauri::AppHandle, id: String) -> Result<(), St
     tauri::async_runtime::spawn_blocking(move || app.state::<Library>().remove(&id)).await.map_err(|e| e.to_string())?
 }
 
+/// The address `open_external` opens: a clean http, https or mailto link, in its parsed form. A control
+/// character (the parser would quietly drop a tab or newline) or a double quote is refused before parsing.
+fn external_url(url: &str) -> Result<String, String> {
+    if url.chars().any(|c| c.is_control() || c == '"') {
+        return Err("That link holds a character Kolux never opens".into());
+    }
+    let not_a_link = || format!("{url} is not a web or mail link");
+    let parsed = tauri::Url::parse(url).map_err(|_| not_a_link())?;
+    match parsed.scheme() {
+        "http" | "https" if parsed.host_str().is_some() => {}
+        "mailto" => {}
+        _ => return Err(not_a_link()),
+    }
+    Ok(parsed.as_str().to_string())
+}
+
 /// Opens a web or mail link in the system's own handler; nothing else is let through, and no more than a
 /// handful in a row (links::admit_browser_open). The command runs on a worker, never the window's thread.
 #[tauri::command(async)]
 pub fn open_external(url: String) -> Result<(), String> {
-    let low = url.to_ascii_lowercase();
-    if !(low.starts_with("http://") || low.starts_with("https://") || low.starts_with("mailto:")) {
-        return Err(format!("{url} is not a web or mail link"));
-    }
+    let url = external_url(&url)?;
     crate::links::admit_browser_open()?;
     system_open(&url)
 }
@@ -1168,14 +1282,14 @@ mod tests {
         assert_eq!(mime("clip.mp4"), "video/mp4");
         assert_eq!(mime("track.mp3"), "audio/mpeg");
         assert_eq!(mime("paper.pdf"), "application/pdf");
-        assert_eq!(parse_range("bytes=0-99", 1000), Some((0, 99)));
-        assert_eq!(parse_range("bytes=100-", 1000), Some((100, 999)));
-        assert_eq!(parse_range("bytes=-100", 1000), Some((900, 999)));
-        assert_eq!(parse_range("bytes=0-2000", 1000), Some((0, 999)));
-        assert_eq!(parse_range("bytes=1000-", 1000), None);
-        assert_eq!(parse_range("bytes=10-5", 1000), None);
-        assert_eq!(parse_range("items=0-5", 1000), None);
-        assert_eq!(parse_range("bytes=0-5,10-15", 1000), None);
+        assert_eq!(parse_range("bytes=0-99", 1000), RangeAsk::Part(0, 99));
+        assert_eq!(parse_range("bytes=100-", 1000), RangeAsk::Part(100, 999));
+        assert_eq!(parse_range("bytes=-100", 1000), RangeAsk::Part(900, 999));
+        assert_eq!(parse_range("bytes=0-2000", 1000), RangeAsk::Part(0, 999));
+        assert_eq!(parse_range("bytes=1000-", 1000), RangeAsk::Past);
+        assert_eq!(parse_range("bytes=10-5", 1000), RangeAsk::Whole);
+        assert_eq!(parse_range("items=0-5", 1000), RangeAsk::Whole);
+        assert_eq!(parse_range("bytes=0-5,10-15", 1000), RangeAsk::Whole);
         let root = temp_dir("range");
         let file = root.join("clip.mp4");
         fs::write(&file, (0..=255).collect::<Vec<u8>>()).unwrap();
@@ -1274,7 +1388,7 @@ mod tests {
         fs::write(ws.join("artifacts").join("a.txt"), "ok").unwrap();
         std::os::unix::fs::symlink(outside.join("id_rsa"), ws.join("artifacts").join("key.txt")).unwrap();
         assert_eq!(workspace_files(&ws).0, vec![ws.join("artifacts").join("a.txt")]);
-        assert!(open_source(&ws.join("artifacts").join("key.txt"), "key.txt").is_err(), "a link is refused at open, not only by its path");
+        assert!(open_source(&ws.join("artifacts").join("key.txt"), "key.txt", None).is_err(), "a link is refused at open, not only by its path");
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1513,10 +1627,10 @@ mod tests {
         let link = ws.join("artifacts").join("key.txt");
         if std::os::windows::fs::symlink_file(outside.join("id_rsa"), &link).is_ok() {
             assert_eq!(workspace_files(&ws).0, vec![ws.join("artifacts").join("a.txt")], "a linked file is not a file");
-            assert!(open_source(&link, "key.txt").is_err(), "a symlink is refused at open, not only by its path");
+            assert!(open_source(&link, "key.txt", None).is_err(), "a symlink is refused at open, not only by its path");
         }
         // A plain file still opens (its handle has no reparse tag).
-        assert!(open_source(&ws.join("artifacts").join("a.txt"), "a.txt").is_ok());
+        assert!(open_source(&ws.join("artifacts").join("a.txt"), "a.txt", None).is_ok());
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1620,5 +1734,192 @@ mod tests {
         let src = &src[..src.find("#[cfg(test)]").unwrap()];
         let at = src.find("pub async fn artifact_remove(").expect("artifact_remove must be an async command: it stats the removed file and deletes its stored folder");
         assert!(src[at..at + 400].contains("spawn_blocking"), "the remove runs on a blocking worker");
+    }
+
+    // ---- T-624 round 3 (PR #37 review) ----
+
+    #[cfg(windows)]
+    #[test]
+    fn a_real_path_must_be_local_and_under_the_root() {
+        let ok = |real: &str, root: Option<&str>| real_path_ok(Path::new(real), root.map(Path::new));
+        assert!(ok(r"\\?\C:\ws\artifacts\a.txt", Some(r"\\?\C:\ws")));
+        assert!(ok(r"\\?\c:\WS\artifacts\a.txt", Some(r"\\?\C:\ws")), "Windows paths differ by case only");
+        assert!(ok(r"\\?\C:\anywhere\a.txt", None), "no root: only the share check applies");
+        assert!(!ok(r"\\?\C:\other\a.txt", Some(r"\\?\C:\ws")));
+        assert!(!ok(r"\\?\C:\ws2\a.txt", Some(r"\\?\C:\ws")), "a sibling that shares a name prefix is outside");
+        assert!(!ok(r"\\?\UNC\server\share\a.txt", None), "a network share is never read");
+        assert!(!ok(r"\\?\UNC\server\share\ws\a.txt", Some(r"\\?\UNC\server\share\ws")), "even when the root itself is on the share");
+        assert!(ok(r"\\?\UNC\wsl.localhost\Ubuntu\home\a.txt", None), "WSL's own shares count as this machine");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_in_the_path_never_takes_a_stored_file_out_of_the_workspace() {
+        let root = temp_dir("junction-anc");
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("secret.txt"), "SECRET").unwrap();
+        fs::write(ws.join("artifacts").join("a.txt"), "ok").unwrap();
+        let real_ws = fs::canonicalize(&ws).unwrap();
+        // A folder junction on the path (mklink /J needs no privilege): the last component is a plain file, so
+        // the open itself follows the junction.
+        let jn = root.join("jn");
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&jn).arg(&outside).output().unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        let through = jn.join("secret.txt");
+        assert!(open_source(&through, "secret.txt", Some(&real_ws)).is_err(), "a file reached through a junction outside the workspace is refused at open");
+        assert!(open_source(&through, "secret.txt", None).is_ok(), "a hand add of a file elsewhere on this PC is still allowed");
+        assert!(open_source(&ws.join("artifacts").join("a.txt"), "a.txt", Some(&real_ws)).is_ok());
+
+        // The same swap seen by the library: `artifacts` becomes a junction after the scan listed the file.
+        let lib = Library::new(root.join("lib"));
+        let swapped = root.join("Swapped");
+        fs::create_dir_all(&swapped).unwrap();
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(swapped.join("artifacts")).arg(&outside).output().unwrap();
+        assert!(made.status.success());
+        let via = swapped.join("artifacts").join("secret.txt");
+        let from = Origin { origin: via.to_string_lossy().into_owned(), source: "workspace", project: None, session: None, at: now_ms() };
+        let real_swapped = fs::canonicalize(&swapped).unwrap();
+        let err = lib.add_in(&via, from, &|_| None, Some(&real_swapped)).unwrap_err();
+        assert!(err.contains("secret.txt"), "{err}");
+        assert!(lib.list().is_empty(), "nothing from outside the workspace is stored");
+
+        // A page's asset folder that is a junction to outside: the page is kept, the outside file is not copied.
+        let ws2 = root.join("Project2");
+        fs::create_dir_all(ws2.join("artifacts")).unwrap();
+        fs::write(outside.join("x.js"), "SECRET()").unwrap();
+        fs::write(ws2.join("artifacts").join("p.html"), "<title>P</title><script src=\"assets/x.js\"></script>").unwrap();
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(ws2.join("artifacts").join("assets")).arg(&outside).output().unwrap();
+        assert!(made.status.success());
+        let got = scan_workspace(&lib, &ws2, None, &|_| None, &mut HashMap::new());
+        assert_eq!(got.changed, 1, "{:?}", got.skipped);
+        let id = lib.list()[0].entry.id.clone();
+        assert!(lib.open(&format!("/{id}/p.html")).is_some());
+        assert!(lib.open(&format!("/{id}/assets/x.js")).is_none(), "an asset reached through a junction is not copied");
+        // Unlink the junctions (rmdir removes the link, not the folder it points at).
+        for j in [&jn, &swapped.join("artifacts"), &ws2.join("artifacts").join("assets")] {
+            fs::remove_dir(j).unwrap();
+        }
+        assert!(outside.join("secret.txt").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_scan_counts_every_stored_byte_toward_the_folder_cap() {
+        let root = temp_dir("fullsize");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("assets")).unwrap();
+        fs::write(ws.join("artifacts").join("assets").join("s.bin"), vec![b'x'; 50]).unwrap();
+        for n in ["p1", "p2", "p3", "p4"] {
+            fs::write(ws.join("artifacts").join(format!("{n}.html")), "<script src=\"assets/s.bin\"></script>").unwrap();
+        }
+        // Each page is 36 bytes on its own and 86 with the asset copied beside it.
+        let lib = Library::new(root.join("lib"));
+        let got = scan_capped(&lib, &ws, None, &|_| None, &mut HashMap::new(), 200);
+        let stored: u64 = lib.list().iter().map(|l| l.entry.size).sum();
+        assert_eq!(got.changed, 2, "two pages (172 bytes) fit under 200, a third would be 258: {:?}", got.skipped);
+        assert!(stored <= 200, "the library holds {stored} bytes from this folder");
+
+        // Files stored on an earlier tick count before the scan reaches them in name order.
+        let ws2 = root.join("Project2");
+        fs::create_dir_all(ws2.join("artifacts")).unwrap();
+        fs::write(ws2.join("artifacts").join("z.txt"), vec![b'z'; 90]).unwrap();
+        let lib2 = Library::new(root.join("lib2"));
+        let mut seen = HashMap::new();
+        assert_eq!(scan_capped(&lib2, &ws2, None, &|_| None, &mut seen, 100).changed, 1);
+        fs::write(ws2.join("artifacts").join("a.txt"), vec![b'a'; 20]).unwrap();
+        let again = scan_capped(&lib2, &ws2, None, &|_| None, &mut seen, 100);
+        assert_eq!(again.changed, 0, "z.txt already holds 90 of the 100 bytes, even though a.txt sorts first: {:?}", again.skipped);
+        assert_eq!(lib2.list().len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_same_file_named_two_ways_is_one_entry() {
+        // The id of a path that is already written the usual Windows way does not change.
+        let old = |origin: &str| {
+            let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+            for b in origin.bytes() {
+                h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
+            }
+            format!("{h:016x}")
+        };
+        let usual = r"C:\Users\me\Project\artifacts\a.html";
+        assert_eq!(id_of(usual), old(usual));
+        assert_eq!(id_of("c:/Users/me/Project/artifacts/a.html"), id_of(usual));
+        assert_eq!(id_of(r"c:\Users\me\Project\artifacts\a.html"), id_of(usual));
+        assert_eq!(id_of(r"\\?\C:\Users\me\Project\artifacts\a.html"), id_of(usual));
+        assert_ne!(id_of(r"C:\Users\me\Project\artifacts\b.html"), id_of(usual));
+        // A publish URL or a Unix path is left exactly as it is.
+        assert_eq!(id_of("https://example.com/a/b.html"), old("https://example.com/a/b.html"));
+        assert_eq!(id_of("/home/me/a.html"), old("/home/me/a.html"));
+    }
+
+    #[test]
+    fn a_range_that_starts_past_the_end_is_416() {
+        let root = temp_dir("range416");
+        let lib = Library::new(root.join("lib"));
+        let file = root.join("clip.mp4");
+        fs::write(&file, (0..=255).collect::<Vec<u8>>()).unwrap();
+        let e = lib.add(&file, Origin::hand(&file), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/clip.mp4", e.id);
+        for start in ["256-", "256-300", "9999-"] {
+            let req = tauri::http::Request::builder().uri(&uri).header("range", format!("bytes={start}")).body(Vec::new()).unwrap();
+            let r = serve(&lib, &req);
+            assert_eq!(r.status(), 416, "bytes={start}");
+            assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some("bytes */256"));
+            assert!(r.body().is_empty());
+        }
+        // Malformed and reversed asks still get the whole file, as before.
+        for odd in ["bytes=10-5", "items=0-5", "bytes=0-5,10-15", "bytes=x-"] {
+            let req = tauri::http::Request::builder().uri(&uri).header("range", odd).body(Vec::new()).unwrap();
+            assert_eq!(serve(&lib, &req).status(), 200, "{odd}");
+        }
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_failed_link_count_is_treated_as_a_hard_link() {
+        assert!(link_count(None) > 1, "when the query fails the file is refused, not trusted");
+        assert_eq!(link_count(Some(1)), 1);
+        assert_eq!(link_count(Some(3)), 3);
+    }
+
+    #[test]
+    fn the_scheme_answers_with_nosniff_and_without_a_wildcard_origin() {
+        let root = temp_dir("headers");
+        let lib = Library::new(root.join("lib"));
+        let file = root.join("a.html");
+        fs::write(&file, "<title>A</title>").unwrap();
+        let e = lib.add(&file, Origin::hand(&file), &|_| None).unwrap();
+        let req = tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/a.html", e.id)).body(Vec::new()).unwrap();
+        let r = serve(&lib, &req);
+        assert_eq!(r.status(), 200);
+        assert_eq!(r.headers().get("x-content-type-options").and_then(|v| v.to_str().ok()), Some("nosniff"));
+        assert!(r.headers().get("access-control-allow-origin").is_none(), "no page needs to read the scheme cross-origin");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn open_external_lets_through_only_clean_web_and_mail_links() {
+        assert_eq!(external_url("https://example.com/a?b=1").unwrap(), "https://example.com/a?b=1");
+        assert_eq!(external_url("HTTP://Example.com").unwrap(), "http://example.com/", "the parsed form is what is opened");
+        assert_eq!(external_url("mailto:me@example.com").unwrap(), "mailto:me@example.com");
+        for bad in ["file:///C:/Windows/notepad.exe", "javascript:alert(1)", "ms-msdt:/id", "https://example.com/\"quoted", "https://exa\tmple.com/", "https://example.com/\nx", "https://example.com/\0", "not a url", "", "https://"] {
+            assert!(external_url(bad).is_err(), "{bad:?} must be refused");
+        }
+    }
+
+    #[test]
+    fn the_artifact_scheme_is_answered_off_the_window_thread() {
+        // The threading is proven by reading the code, not by running a window: the handler is the
+        // asynchronous one, and the file read happens on a blocking worker before the responder is used.
+        let lib = include_str!("lib.rs");
+        let at = lib.find("register_asynchronous_uri_scheme_protocol(artifacts::SCHEME").expect("the scheme handler must be the asynchronous one");
+        let body = &lib[at..at + 1200];
+        assert!(body.contains("spawn_blocking") && body.contains("responder.respond"), "the read runs on a blocking worker and answers through the responder");
+        assert!(!lib.contains(".register_uri_scheme_protocol(artifacts::SCHEME"));
     }
 }
