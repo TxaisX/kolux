@@ -69,3 +69,10 @@ test("T-651: loading and failure states", () => {
   expect(html(null, "boom")).toContain('role="alert"');
   expect(sizeOf(12)).toBe("12 B");
 });
+
+test("T-651: each setting row names its source file in a tooltip and has an Open button for it", () => {
+  const h = html(data);
+  expect(h).toContain('title="Set in C:/w/.claude/settings.json"');
+  expect(h).toContain('aria-label="Open C:/w/.claude/settings.json"');
+  expect(h).toContain(">Open</button>");
+});

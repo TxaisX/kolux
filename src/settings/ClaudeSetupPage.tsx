@@ -34,6 +34,7 @@ export type ClaudeSetup = {
 export const PRECEDENCE = ["managed", "cli", "local", "project", "user"] as const;
 const SCOPE_NAME: Record<string, string> = { managed: "Managed", cli: "CLI", local: "Local", project: "Project", user: "User" };
 const WORKSPACE_KEY = "kolux.claudeTabWorkspace";
+const RECENT_KEY = "kolux.composer.recentProjects";
 
 const cut: CSSProperties = { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 const row: CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 12rem) minmax(0, 1fr) auto", gap: 8, alignItems: "baseline", padding: "3px 0", borderTop: "1px solid var(--line)" };
@@ -117,12 +118,14 @@ export function Section({ id, title, count, files, open, children }: { id: strin
 
 const Empty = ({ what }: { what: string }) => <div className="settings-sub" style={{ margin: 0 }}>{what}</div>;
 
-function Setting({ r }: { r: SettingRow }) {
+/** One merged setting. The row's tooltip names the file that decides it; "Open" opens that file. */
+function Setting({ r, open }: { r: SettingRow; open: (p: string) => void }) {
   return (
-    <div style={row}>
+    <div style={{ ...row, gridTemplateColumns: "minmax(0, 12rem) minmax(0, 1fr) auto auto" }} title={`Set in ${r.path}`} data-source={r.path}>
       <Cut text={r.key} mono />
       <Cut text={r.also.length ? `${r.value}   (also set in ${r.also.map((s) => SCOPE_NAME[s] ?? s).join(", ")})` : r.value} mono />
       <Badge scope={r.scope} />
+      <button className="btn" style={{ padding: "0 6px", fontSize: 11 }} title={r.path} aria-label={`Open ${r.path}`} onClick={() => open(r.path)}>Open</button>
     </div>
   );
 }
@@ -164,10 +167,10 @@ export function ClaudeSetupView({ data, error, open, notice }: { data: ClaudeSet
       {notice && <div role="status" className="settings-sub" style={{ margin: 0 }}>{notice}</div>}
       <Precedence sources={data.sources} />
       <Section id="model" title="Model" files={data.files.settings} open={open}>
-        {data.model ? <Setting r={data.model} /> : <Empty what="No model is set in any settings file, so Claude Code uses its own default." />}
+        {data.model ? <Setting r={data.model} open={open} /> : <Empty what="No model is set in any settings file, so Claude Code uses its own default." />}
       </Section>
       <Section id="settings" title="Settings" count={data.settings.length} files={data.files.settings} open={open}>
-        {data.settings.length === 0 ? <Empty what="No other settings are set." /> : data.settings.map((r) => <Setting key={r.key} r={r} />)}
+        {data.settings.length === 0 ? <Empty what="No other settings are set." /> : data.settings.map((r) => <Setting key={r.key} r={r} open={open} />)}
         <details>
           <summary className="settings-sub" style={{ margin: 0, cursor: "pointer" }}>Files checked ({data.sources.length})</summary>
           {data.sources.map((s) => (
@@ -181,7 +184,7 @@ export function ClaudeSetupView({ data, error, open, notice }: { data: ClaudeSet
       </Section>
       <Section id="permissions" title="Permissions" count={p.allow.length + p.ask.length + p.deny.length} files={data.files.settings} open={open}>
         {none && <Empty what="No permission rules are set." />}
-        {p.defaultMode && <Setting r={p.defaultMode} />}
+        {p.defaultMode && <Setting r={p.defaultMode} open={open} />}
         <Rules label="Allow" rules={p.allow} />
         <Rules label="Ask" rules={p.ask} />
         <Rules label="Deny" rules={p.deny} />
@@ -259,23 +262,43 @@ export function ClaudeSetupView({ data, error, open, notice }: { data: ClaudeSet
   );
 }
 
-function remembered(): string {
+/** The saved workspace choice; null when none was ever made (an explicit "None" is saved as ""). */
+function stored(): string | null {
   try {
-    return localStorage.getItem(WORKSPACE_KEY) ?? "";
+    return localStorage.getItem(WORKSPACE_KEY);
   } catch {
     return "";
   }
 }
 
+/** Projects the New-session picker used last, newest first (its own storage key; read-only here). */
+function recentIds(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ClaudeSetupPage() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [workspace, setWorkspace] = useState(remembered);
+  const [workspace, setWorkspace] = useState(() => stored() ?? "");
   const [data, setData] = useState<ClaudeSetup | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    invoke<Project[]>("project_list").then(setProjects).catch(() => setProjects([]));
+    invoke<Project[]>("project_list")
+      .then((list) => {
+        setProjects(list);
+        // Nothing remembered: start on the project used most recently (the New-session picker's own list).
+        if (stored() === null) {
+          const first = recentIds().map((id) => list.find((pr) => pr.id === id)).find(Boolean);
+          if (first) setWorkspace(first.path);
+        }
+      })
+      .catch(() => setProjects([]));
   }, []);
   useEffect(() => {
     let live = true;
