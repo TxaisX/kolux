@@ -1,0 +1,91 @@
+T-624 round 4 (PR #37 review: grade B, changes needed) - evidence
+=================================================================
+
+Final commands (real output, worktree wt/2f-pr37):
+  pnpm vitest run src/artifacts src/__cards__/SKILL-036.test.ts
+                                       -> Test Files 4 passed (4), Tests 26 passed (26)
+                                          (the SKILL-036 card test lives at src/artifacts/__cards__/SKILL-036.test.ts)
+  pnpm tsc --noEmit                    -> no output (clean)
+  cargo test --manifest-path src-tauri/Cargo.toml artifacts
+                                       -> lib: 39 passed; 0 failed
+  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+                                       -> Finished, exit 0, no warnings
+  cargo test --test cards_15 skill036  -> NOT RUN to a result: both tests stop at a precondition ("no
+                                          .kolux-rs-scratch marker in any folder above C:\Users\XiongT"), the same on
+                                          any branch; this machine has no scratch-root marker. Not a code failure.
+
+Before (tests written first, run against the old code)
+  vitest viewerLink.test.ts: "Tests 7 failed | 5 passed (12)" - the new strip/delay/first-ask tests (LinkAskBar,
+    LINK_OPEN_DELAY_MS, ready() did not exist; .art-ask was position:absolute), plus the malformed-mailto test
+    ("URIError: URI malformed" thrown by decodeURIComponent in linkAsk).
+  cargo test artifacts (lib), with empty stand-ins for Gate and asset_folder so the tests compile:
+    "32 passed; 7 failed": a_whole_file_request_over_a_chunk_gets_the_first_chunk_as_a_206,
+    a_stored_file_that_cannot_be_read_answers_500_not_an_empty_200 (windows),
+    a_mail_link_loses_its_query_when_it_is_opened, the_scan_checks_for_a_network_share_before_it_touches_the_folder,
+    the_scheme_reads_go_through_the_four_wide_gate, the_gate_never_lets_more_than_its_width_in_at_once,
+    a_page_s_asset_folder_is_the_opened_page_s_own_folder_and_stays_in_the_workspace.
+  Sanity of the focus test: with autoFocus put back on Open, "Open is not focused on mount" failed
+    (expected markup not to contain 'autofocus'), then passed with it removed.
+
+After - per finding
+  M1 (a) first ask wins                    FIXED, TESTED. linkPrompt.ask ignores asks while one is pending.
+       viewerLink.test.ts: "first ask wins: a second ask while one is pending changes nothing, so Open opens what
+       was shown"; "after Open or Cancel a new ask may come"; "a message never opens the browser" (20 posts, one
+       question shown, the first).
+  M1 (b) strip never covers the frame      FIXED, TESTED (CSS read + order). LinkAskBar renders first inside
+       .art-view, which is now a column; .art-ask is a flex:none bar, no position:absolute. Tests: "the strip sits in
+       normal layout above the frame" (CSS rule has no absolute/fixed; .art-view is flex-direction column) and the
+       SKILL-036 card test (the strip is a child of .art-view before the iframe).
+       Not run in a live window: the layout is proved by CSS and DOM order, not by a screenshot.
+  M1 (c) no autofocus                      FIXED, TESTED. "Open is not focused on mount" (server markup has no
+       autofocus; proven to fail when autoFocus is present).
+  M1 (d) 1000 ms input protection          FIXED, TESTED. linkPrompt.accept opens nothing until 1000 ms after the
+       question appeared (injected clock: 999 ms nothing, 1000 ms opens once); the button is disabled meanwhile
+       ("Open is disabled until the delay has passed; Cancel never is"); the card test clicks Open early (nothing
+       opens, question stays), waits, then Open works. accept opens exactly the rendered URL (ask.url).
+  m1 DT-C77 attribution                    FIXED. DECISIONS.md row now "(worker 2f, 2026-11-01; Txais may veto; PR #37
+       rounds 3 and 4)", text says strip above the frame, first ask wins, 1 s delay, mailto query dropped. PLAN.md
+       T-624 line gained a round 4 clause with the same attribution. No other file named Txais for DT-C77 (code
+       comments and r3 evidence did not).
+  m2 asset folder from the page handle     FIXED, TESTED (unit) + existing junction test still passes. copy_assets now
+       takes the folder from asset_folder(page_real_path(handle)) = parent of the opened handle's final path, and
+       requires it local and under the real workspace root (add_in passes the root). Test:
+       a_page_s_asset_folder_is_the_opened_page_s_own_folder_and_stays_in_the_workspace (outside, sibling-prefix
+       and UNC folders get None). Not a new junction-swap race test: that race cannot be triggered
+       deterministically; a_junction_in_the_path_never_takes_a_stored_file_out_of_the_workspace (junction as the
+       asset folder) still passes.
+  m3 share check before is_dir             FIXED, TESTED (source order). artifacts_scan tests on_network_share first,
+       then is_dir: the_scan_checks_for_a_network_share_before_it_touches_the_folder. Wording changed per the
+       brief: open_source's comment now says a share is never KEPT (an intermediate junction to a share can still be
+       followed by the open before the final-path check; not fixed).
+  m4 memory                                FIXED, TESTED (chunking) / PROVEN BY CODE (cap).
+       Cap: Gate (std Mutex + Condvar; tokio is not a direct dependency, no crate added), static READS = Gate::new(4),
+       taken in serve() before any read. Test the_gate_never_lets_more_than_its_width_in_at_once runs 16 threads
+       and asserts a peak of 4 or less; the_scheme_reads_go_through_the_four_wide_gate reads the source for
+       READS.enter() in serve. The cap in the real handler (lib.rs) is proved by that code reading, not by a
+       running window.
+       Chunk: a whole-file request for a non-page file larger than CHUNK (8 MB) is answered 206 with the first chunk
+       and Content-Range, like a ranged one: a_whole_file_request_over_a_chunk_gets_the_first_chunk_as_a_206
+       (small files stay a plain 200). A page (text/html) is still read whole, because the link script is appended
+       to it; its size is capped when stored, not by the chunk.
+  m5 500 on read failure                   FIXED, TESTED (Windows). Missing metadata, a failed ranged read and a
+       failed whole read all answer 500 text/plain, never an empty 200:
+       a_stored_file_that_cannot_be_read_answers_500_not_an_empty_200 (the stored copy is held open with no
+       sharing; 500 for both a plain and a ranged request, 200 again once released). The missing-metadata arm is
+       proved by code reading only (no portable way to fail metadata after is_file passed).
+  Nits
+       mailto query stripped in external_url (Rust)   FIXED, TESTED: a_mail_link_loses_its_query_when_it_is_opened.
+       Prompt shows the whole address               FIXED, TESTED: "a mailto with a query shows the whole address".
+       decodeURIComponent in try/catch              FIXED, TESTED: "a malformed percent-escape in a mailto address
+                                                    asks nothing and does not throw".
+       source-guard test uses .get(..)              FIXED (the_artifact_scheme_is_answered_off_the_window_thread).
+       serve reads only the app-owned library folder  comment added on serve.
+       WSL case-sensitive-folder nit                SKIPPED, as instructed.
+
+Known caveat for a human
+  A 206 for a whole-file request is what the brief asked for. For an image or a font over 8 MB that a page loads
+  without a Range header, a browser may show only the first chunk (media elements re-request the rest). Files over
+  8 MB that are not video, audio or PDF are rare, but if one turns up the answer is to raise CHUNK for non-media or
+  to let only media take the chunk path.
+
+Commits (this round): 4478c52d (M1), c6e21d42 (DT-C77 text), 2eca82a6 (m2-m5, nits), plus this evidence commit.
