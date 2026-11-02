@@ -15,7 +15,7 @@ The project sidebar shows on the Terminals view. Toggle it with Ctrl+B. The head
 
 Each project block shows its name, a gear for project settings, a plus for a new workspace, and the main folder row (the "main checkout", your original folder). Workspaces are listed under it.
 
-The bottom of the sidebar holds "New session" (start an agent in a new pane inside a fresh workspace), Model routing, Help and "Check for updates". A gear there lets you add a project by typing its path, or change the folder where workspaces go. An empty sidebar reads "No projects yet." Projects must be Git repositories; one without Git can start Git from the sidebar.
+The bottom of the sidebar holds "New session" (start an agent in a new pane inside a fresh workspace), Model routing, Help and "Check for updates" (when the sidebar is dragged to its narrowest, that button shows its icon alone; hovering it still says what it does). A gear there lets you add a project by typing its path, or change the folder where workspaces go. An empty sidebar reads "No projects yet." Projects must be Git repositories; one without Git can start Git from the sidebar.
 
 When someone makes a worktree outside Kolux, a notice says "N new workspace(s)" with Show, Hide and Done.
 
