@@ -3,10 +3,20 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { nextTick, type ClaudeLimit } from "./claude";
 import type { CodexUsage } from "./codex";
-import { accountKey, type CodexByAccount } from "./meter";
+import { accountKey, type ClaudeByAccount, type CodexByAccount } from "./meter";
 
-/** `codexBy` (T-548-b): the Codex figures read for the accounts other than the active one that a pane runs on. */
-export type Plan = { claude: ClaudeLimit[]; codex: CodexUsage | null; codexBy?: CodexByAccount; /** T-548-b: the account new Codex panes use (null = the system default); unset until the window has published it. */ codexActive?: string | null };
+export type Plan = {
+  claude: ClaudeLimit[];
+  codex: CodexUsage | null;
+  /** T-548-b: the Claude windows read for the accounts other than the active one that a pane runs on. */
+  claudeBy?: ClaudeByAccount;
+  /** T-548-b: the account new Claude panes use (null = Claude's own sign-in); unset until the window has published it. */
+  claudeActive?: string | null;
+  /** `codexBy` (T-548-b): the Codex figures read for the accounts other than the active one that a pane runs on. */
+  codexBy?: CodexByAccount;
+  /** T-548-b: the account new Codex panes use (null = the system default); unset until the window has published it. */
+  codexActive?: string | null;
+};
 
 let plan: Plan = { claude: [], codex: null };
 const subs = new Set<() => void>();
@@ -15,6 +25,13 @@ const publish = (next: Plan) => {
   subs.forEach((f) => f());
 };
 export const publishClaude = (claude: ClaudeLimit[]) => publish({ ...plan, claude });
+/** T-548-b: the active Claude account, for readers that do not have it at hand (the pane header). */
+export const publishClaudeActive = (claudeActive: string | null) => plan.claudeActive !== claudeActive && publish({ ...plan, claudeActive });
+/** T-548-b: stores (limits) or drops (null) the windows read for one account, `null` id = Claude's own sign-in. */
+export const publishClaudeFor = (id: string | null, limits: ClaudeLimit[] | null) => {
+  const { [accountKey(id)]: _gone, ...rest } = plan.claudeBy ?? {};
+  publish({ ...plan, claudeBy: limits ? { ...rest, [accountKey(id)]: limits } : rest });
+};
 export const publishCodex = (codex: CodexUsage | null) => publish({ ...plan, codex });
 /** T-548-b: the active Codex account, for readers that do not have it at hand (the pane header). */
 export const publishCodexActive = (codexActive: string | null) => plan.codexActive !== codexActive && publish({ ...plan, codexActive });

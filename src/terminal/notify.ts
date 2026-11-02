@@ -3,12 +3,12 @@
 import type { AgentState } from "../projects/rows";
 
 /** STAT-022: why a session stopped, the agent's own words, and when a limit lifts (ms since the epoch). */
-export type StopInfo = { cause: "limit" | "signin" | "error"; detail?: string; resetsAt?: number };
+export type StopInfo = { cause: "limit" | "signin" | "error" | "restart"; detail?: string; resetsAt?: number };
 export type Turn = { state: AgentState; interrupted: boolean; boundary: boolean; monitoring?: boolean; reply?: string; child?: string; stop?: StopInfo };
 /** `stopped` marks a note the 'Agent Stopped' switch gates (STAT-023) rather than 'Agent Task Complete'. */
 export type Note = { what: string; body: string; stopped?: true };
 
-const CAUSE: Record<StopInfo["cause"], string> = { limit: "limit reached", signin: "sign in again", error: "the AI hit an error" };
+const CAUSE: Record<StopInfo["cause"], string> = { limit: "limit reached", signin: "sign in again", error: "the AI hit an error", restart: "restart this terminal" };
 
 /** "3:05 PM" today, "Tue 3:05 PM" another day. */
 export function resetWords(at: number): string {

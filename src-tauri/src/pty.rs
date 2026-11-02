@@ -595,11 +595,40 @@ impl Drop for PtySession {
 #[path = "pty_resize_tests.rs"]
 mod resize_tests;
 
+/// Test shells start PowerShell without a profile. A profile is the user's, not the test's: a CI
+/// runner's profile can keep a fresh shell busy past a test's wait (as TERM-045 found, PR #48).
+/// cmd and Unix shells are left as they are. Test-only: users' shells still load their profile.
+#[cfg(test)]
+pub(crate) fn without_profile(cmds: &mut [CommandBuilder]) {
+    for c in cmds {
+        let first = c.get_argv().first().map(|a| a.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+        let name = first.rsplit(['/', '\\']).next().unwrap_or_default();
+        if matches!(name.strip_suffix(".exe").unwrap_or(name), "pwsh" | "powershell") {
+            c.arg("-NoProfile");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::mpsc;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_shells_start_powershell_without_a_profile_and_leave_other_shells_alone() {
+        let mut cmds: Vec<CommandBuilder> = ["C:\\Program Files\\PowerShell\\7\\pwsh.exe", "C:/Windows/System32/WindowsPowerShell/v1.0/PowerShell.EXE", "pwsh", "C:\\Windows\\system32\\cmd.exe", "/bin/bash"]
+            .into_iter()
+            .map(CommandBuilder::new)
+            .collect();
+        without_profile(&mut cmds);
+        let argv: Vec<Vec<String>> = cmds.iter().map(|c| c.get_argv().iter().map(|a| a.to_string_lossy().into_owned()).collect()).collect();
+        assert_eq!(argv[0][1..], ["-NoProfile"]);
+        assert_eq!(argv[1][1..], ["-NoProfile"]);
+        assert_eq!(argv[2][1..], ["-NoProfile"]);
+        assert_eq!(argv[3].len(), 1, "cmd is unchanged");
+        assert_eq!(argv[4].len(), 1, "a Unix shell is unchanged");
+    }
 
     #[test]
     fn a_cmd_shim_runs_through_the_command_shell_and_an_exe_runs_itself() {

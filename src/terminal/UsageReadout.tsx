@@ -4,7 +4,7 @@
 // cost in a cyan chip. What fits is decided by the header's measured width (headerUsage.ts).
 import { useEffect, useRef, useState } from "react";
 import Ring from "../usage/Ring";
-import { codexOf, tone as toneOf } from "../usage/meter";
+import { claudeOf, codexOf, tone as toneOf } from "../usage/meter";
 import { countdown } from "../usage/claude";
 import { usePlan } from "../usage/plan";
 import { costText, hoverLines, piecesFor, planFigure, startTicker, tokensText, windowsOf, type PlanWindow, type Readout } from "./headerUsage";
@@ -65,7 +65,9 @@ export function UsageReadoutView({ context, agent, readout, windows, width, now 
 /** The readout in a pane header: measures the header it sits in (not the window, so a split pane
  * behaves), reads the account's plan windows, and ticks every 30 s so the countdowns move. */
 export function HeaderUsage({ context, agent, readout, account }: { context?: number | null; agent: string; readout: Readout; account?: string | null }) {
-  const { claude, codex: active, codexBy, codexActive } = usePlan();
+  const { claude: activeClaude, claudeBy, claudeActive, codex: active, codexBy, codexActive } = usePlan();
+  // T-548-b: a Claude pane on another account shows that account's own windows (none until they are read)
+  const claude = claudeActive === undefined ? activeClaude : claudeOf(agent, account, claudeActive, activeClaude, claudeBy);
   // T-548-b: a Codex pane on another account shows that account's own figures (none until they are read)
   const codex = codexActive === undefined ? active : codexOf(agent, account, codexActive, active, codexBy);
   const ref = useRef<HTMLSpanElement>(null);

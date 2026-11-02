@@ -15,7 +15,7 @@ import { TabBadge, tabName } from "../../terminal/tabName";
 import { tabBadge } from "../../terminal/tabs";
 import { IDLE, shownAgent } from "../../terminal/shellMarks";
 import Ring from "../../usage/Ring";
-import { capOn, codexOf, contextFill, meterOf, meterText } from "../../usage/meter";
+import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText } from "../../usage/meter";
 import NameField from "../../terminal/NameField";
 import { sameDir } from "../../workspaces";
 import Pane from "./Pane";
@@ -153,7 +153,7 @@ export default function Grid() {
                     )}
                     {p.kind === "editor" || p.kind === "preview" || p.kind === "diff" || p.kind === "changes" ? <FileCode size={12} /> : p.kind === "browser" ? <Globe size={12} /> : <VendorMark agent={shownAgent(p.agent, creditedLive(launchedAgent(p), liveIds[p.key] ?? IDLE))} size={12} />}
                     {!p.kind && !p.seats && <TabBadge kind={tabBadge(p.agent, running[p.key], needsYou(statusOf(p)), unreadPanes.has(p.key), hook[p.key])} />}
-                    {context[p.key] && <Ring percent={contextFill(context[p.key], capOn(settings))} size={10} title={meterText(meterOf(context[p.key], p.agent, plan.claude, codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {})} />}
+                    {context[p.key] && <Ring percent={contextFill(context[p.key], capOn(settings))} size={10} title={meterText(meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {})} />}
                     {renamingTab === p.key ? (
                       <NameField value={tabName(p, titles, labelOf(p), liveIds)} label="Tab name" onSave={(name) => (setRenamingTab(null), renamePane(p.key, name))} onCancel={() => setRenamingTab(null)} />
                     ) : (

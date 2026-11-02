@@ -1459,6 +1459,6 @@ Contracts that fit none of the sections above. One row per card; the card holds 
 | SKILL-021 | Skills are folders in the standard agent-skill format, each with a `SKILL.md`, read from each AI's skills folder (`~/.claude/skills`, `~/.codex/skills`, `~/.omp/agent/skills`) and from the shared cross-agent folder `~/.agents/skills`. |
 | SKILL-026 | Updating runs the community skills installer's update command through Node's package runner with no prompts, the skill names in sorted order, a yes flag and global scope. |
 | SKILL-028 | Installing runs the same installer's add command against the Kolux repo, with the skill flag once per skill, the agent flag listing the detected AIs plus the shared folder, a yes flag, and the global flag for a global install. |
-| SKILL-029 | The bundled skills are kolux-cli, orchestration, koluxsecurity and koluxward, each matched to the app's version. |
+| SKILL-029 | The bundled skills are kolux-cli, orchestration, koluxsecurity, koluxward and, since 2026-10-31 at Txais's request (DT-C64), video, each matched to the app's version. |
 | APP-037 | Issue reports go to the owner's public repo TxaisX/kolux through GitHub's own new-issue page, with the title and body passed in its address; the user reviews them there before sending. |
 | ACCT-002 | Seven ways to connect: Claude by 1-year key, Claude by account, Codex by ChatGPT sign-in, Codex by device code, Grok by CLI login, Grok by device code and Grok by API key. |

@@ -38,3 +38,11 @@ test("a stop names its cause and the reset time, never reads like a finish, and 
   expect(stopLine({ cause: "error", detail: "overloaded" })).toBe("The AI hit an error · overloaded");
   expect(stopLine({ cause: "signin" })).toBe("Sign in again");
 });
+
+test("t167b: a stop that means restart this terminal never says the AI hit an error", () => {
+  expect(stopLine({ cause: "restart" })).toBe("Restart this terminal");
+  expect(stopLine({ cause: "restart", detail: "Kolux was updated" })).toBe("Restart this terminal · Kolux was updated");
+  const note = turnNote("working", turn("blocked", { stop: { cause: "restart", detail: "Kolux was updated" } }));
+  expect(note).toEqual({ what: "stopped: restart this terminal", body: "Kolux was updated", stopped: true });
+  expect(JSON.stringify(note)).not.toMatch(/error/i);
+});
