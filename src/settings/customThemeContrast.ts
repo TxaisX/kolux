@@ -1,5 +1,6 @@
 // T-648: the contrast warning. WCAG 2 ratio between two colours; 4.5 is the AA bar for body text.
-import { luminance, mix } from "./customTheme";
+import { mix } from "../theme";
+import { luminance } from "./customTheme";
 
 export const AA = 4.5;
 /** 1 (same colour) to 21 (black on white). */

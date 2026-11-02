@@ -1,7 +1,7 @@
 // T-648 (DT-C87): custom themes. Import validation, the contrast maths, and save / rename / duplicate /
 // delete / reset, plus how a custom theme reaches the window's colours.
 import { expect, test } from "vitest";
-import { buildTheme, classic, isDark, readAppearance, terminalFor, writeAppearance, THEMES } from "../theme";
+import { buildTheme, classic, isDark, readAppearance, terminalFor, writeAppearance } from "../theme";
 import { customTokens, tidyThemes, type CustomTheme } from "./customTheme";
 import { AA, contrast, nudgeToContrast, pairsOf, ratioText } from "./customThemeContrast";
 import { exportTheme, parseThemeFile } from "./customThemeFile";
@@ -55,12 +55,12 @@ test("import refuses wrong shapes, versions, sizes and names", () => {
 test("the saved list drops bad entries and colours instead of failing", () => {
   const out = tidyThemes(
     [dusk, { ...dusk, name: "DUSK" }, { name: "" }, 7, null, { name: "B", base: "zzz", overrides: { accent: "red", fg: "#ABCDEF", nope: "#ffffff" }, terminal: { red: "#12" } }],
-    THEMES,
-    Object.keys(classic),
+    look(),
   );
   expect(out.map((t) => t.name)).toEqual(["Dusk", "B"]);
-  expect(out[1]).toEqual({ name: "B", base: "classic", overrides: { fg: "#abcdef" }, terminal: {} });
-  expect(tidyThemes("nope", THEMES, [])).toEqual([]);
+  expect(out[1]).toMatchObject({ name: "B", base: "classic", overrides: { fg: "#abcdef" }, terminal: {} });
+  expect(out[1].vars?.["--fg"]).toBe("#abcdef"); // tidied themes carry their resolved colours
+  expect(tidyThemes("nope", look())).toEqual([]);
 });
 
 test("the active name must exist, and custom themes survive a write and read", () => {
@@ -175,7 +175,7 @@ test("changing the background, panel and text re-mixes the greys, and an explici
   expect(t["app-bg"]).toBe("#ffffff");
   expect(t["line-focus"]).toBe("#ff0000");
   expect(t["fg-muted"]).not.toBe(classic["fg-muted"]);
-  expect(t.done).toBe(classic.done); // status colours stay
+  expect(t.done).toBe(buildTheme(look(), false).done); // status colours are the base theme's own, as for a light window
   expect(isDark(a)).toBe(false); // a light background is a light window whatever the mode
   expect(isDark(activateTheme(saveTheme(look(), dusk), "Dusk"))).toBe(true);
   expect(customTokens({ ...classic }, {})).toEqual(classic);
@@ -196,4 +196,30 @@ test("terminal colours: the theme's own win, the rest follow the app theme", () 
 test("every colour of the classic palette has a picker, once", () => {
   const listed = [...MAIN.map((m) => m.key as string), ...ADVANCED.flatMap((g) => g.keys)];
   expect([...listed].sort()).toEqual(Object.keys(classic).sort());
+});
+
+// ---- start-up reads only the saved, resolved colours ----
+
+test("a saved theme can only lay #rrggbb colours over known tokens, whatever the file holds", () => {
+  const evil = { name: "X", base: "nonsense", overrides: {}, terminal: { red: "url(x)", Blue: "#0000ff", "a b": "#ffffff" }, dark: true, vars: { "--app-bg": "#101010", "--fg": "red", "--nope": "#ffffff", bad: "#000000", "--accent": "#FF0000" } };
+  const a = look({ terminalScheme: "match", customThemes: [evil], customThemeActive: "X" });
+  const t = buildTheme(a, false);
+  expect(t["app-bg"]).toBe("#101010");
+  expect(t.fg).toBe(classic.fg);
+  expect(t.accent).toBe("#FF0000");
+  expect(Object.keys(t).sort()).toEqual(Object.keys(classic).sort());
+  const term = terminalFor(a, true) as Record<string, string>;
+  expect(term.red).not.toBe("url(x)");
+  expect(term.Blue).toBe("#0000ff");
+  expect(term["a b"]).toBeUndefined();
+  expect(isDark(a)).toBe(true);
+});
+
+test("saving a theme stores its resolved colours, so start-up needs no maths", () => {
+  const light: CustomTheme = { name: "Paper", base: "classic", overrides: { "app-bg": "#ffffff", fg: "#111111" }, terminal: {} };
+  const saved = saveTheme(look(), light).userThemes[0];
+  expect(saved.dark).toBe(false);
+  expect(saved.vars?.["--app-bg"]).toBe("#ffffff");
+  expect(saved.vars?.["--fg-muted"]).toBeTruthy();
+  expect(Object.keys(saved.vars ?? {}).every((k) => /^--[a-z0-9-]+$/.test(k))).toBe(true);
 });

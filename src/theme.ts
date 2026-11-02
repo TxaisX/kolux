@@ -5,7 +5,7 @@
 import type { ITheme } from "@xterm/xterm";
 import { fontStack } from "./settings/fonts";
 import { CATALOGUE, tidySchemes, type CustomScheme } from "./terminal/schemes";
-import { customTokens, isDarkGround, mix, tidyThemes, type CustomTheme } from "./settings/customTheme";
+import type { CustomTheme } from "./settings/customTheme";
 import { DEFAULT_TINT, STRENGTH_SPAN, sidebarBackground, sidebarLookOf, type SidebarLook } from "./look/sidebar";
 
 export const classic = {
@@ -138,7 +138,8 @@ export function readAppearance(s: Record<string, unknown>): Appearance {
   const t = s[FIELD.theme];
   const custom = tidySchemes(s[FIELD.custom]);
   const terminal = knownScheme(s[FIELD.terminal], custom, "default");
-  const userThemes = tidyThemes(s[FIELD.userThemes], THEMES, Object.keys(classic));
+  // T-648: the saved list as stored; the editor (loaded on demand) tidies it, here only the shape is checked.
+  const userThemes = (Array.isArray(s[FIELD.userThemes]) ? (s[FIELD.userThemes] as CustomTheme[]) : []).filter((c) => c && typeof c.name === "string");
   return {
     theme: typeof t === "string" && (THEMES as readonly string[]).includes(t.toLowerCase()) ? (t.toLowerCase() as ThemeName) : "classic",
     tint: clampNum(s[FIELD.tint], SPAN.tint),
@@ -209,11 +210,14 @@ export const themeHue = (a: Appearance) => (a.theme === "classic" ? null : (((HU
 export const systemDark = () => typeof matchMedia !== "function" || matchMedia("(prefers-color-scheme: dark)").matches;
 /** T-648: the custom theme in use, if any. */
 export const customOf = (a: Appearance) => a.userThemes.find((c) => c.name === a.userTheme);
+/** Only #rrggbb values under names that match `key`: a saved theme can never put anything else on the window. */
+const hexMap = (m: unknown, key: RegExp): Record<string, string> => Object.fromEntries(Object.entries(m && typeof m === "object" ? m : {}).filter(([k, v]) => key.test(k) && /^#[0-9a-f]{6}$/i.test(String(v))));
+const baseOf = (c: CustomTheme) => ((THEMES as readonly string[]).includes(c.base) ? c.base : "classic") as ThemeName;
 const modeDark = (a: Appearance, system: boolean) => a.mode === "dark" || (a.mode === "system" && system);
 /** A custom theme's window is dark when its background is, whatever the mode says. */
 export const isDark = (a: Appearance, system = systemDark()) => {
   const c = customOf(a);
-  return c ? isDarkGround(customTokens(builtIn({ ...a, theme: c.base as ThemeName }, modeDark(a, system)), c.overrides)["app-bg"]) : modeDark(a, system);
+  return c ? c.dark !== false : modeDark(a, system);
 };
 
 /** Every token for an appearance: Classic as measured; a hued theme recolours the neutral greys
@@ -222,7 +226,11 @@ export const isDark = (a: Appearance, system = systemDark()) => {
  *  quarter so they still read on a light ground. */
 export function buildTheme(a: Appearance, dark = true): Theme {
   const c = customOf(a);
-  return c ? customTokens(builtIn({ ...a, theme: c.base as ThemeName }, dark), c.overrides) : builtIn(a, dark);
+  if (!c) return builtIn(a, dark);
+  // T-648: a custom theme is its base with the colours resolved when it was saved laid over it.
+  const t: Record<string, string> = builtIn({ ...a, theme: baseOf(c) }, c.dark !== false);
+  for (const [k, v] of Object.entries(hexMap(c.vars, /^--[a-z0-9-]+$/))) if (k.slice(2) in t) t[k.slice(2)] = v;
+  return t as Theme;
 }
 function builtIn(a: Appearance, dark: boolean): Theme {
   const hue = themeHue(a);
@@ -245,6 +253,12 @@ function builtIn(a: Appearance, dark: boolean): Theme {
 /** The preview beside the swatches: the chosen theme, or a violet sample while Classic is chosen. */
 export const previewOf = (a: Appearance): Appearance => (a.theme === "classic" && !a.userTheme ? { ...a, theme: "violet" } : a);
 
+export function mix(a: string, b: string, t: number): string {
+  const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [p(a), p(b)];
+  return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+
 const ANSI = { red: 0, green: 135, yellow: 45, blue: 215, magenta: 300, cyan: 185 } as const;
 
 /** SET-003: the terminal colours for an appearance. "match" works background, text and the 16-colour
@@ -261,7 +275,7 @@ export function terminalFor(a: Appearance, dark = isDark(a)): ITheme {
   }
   if (name !== "match") return terminalTheme(classic);
   const ct = customOf(a);
-  const base = ct ? { ...a, theme: ct.base as ThemeName } : a;
+  const base = ct ? { ...a, theme: baseOf(ct) } : a;
   const t = buildTheme(base, !light);
   const hue = themeHue(base);
   const pull = (h: number, l: number) => (hue === null || base.theme === "graphite" ? hsl(h, 0.6, l) : mix(hsl(h, 0.6, l), hsl(hue, 0.6, l), 0.2));
@@ -272,7 +286,7 @@ export function terminalFor(a: Appearance, dark = isDark(a)): ITheme {
     colours["bright" + name[0].toUpperCase() + name.slice(1)] = pull(h, hi);
   }
   const greys = light ? { black: t.fg, brightBlack: t["fg-muted"], white: t["seg-active"], brightWhite: t["line-strong"] } : { black: t.surface, brightBlack: t["fg-faint"], white: t["fg-row"], brightWhite: t.fg };
-  return { ...terminalTheme(t), ...greys, ...colours, ...ct?.terminal };
+  return { ...terminalTheme(t), ...greys, ...colours, ...hexMap(ct?.terminal, /^[a-zA-Z]+$/) };
 }
 
 // ---- SET-004: the first frame already has the saved look ----

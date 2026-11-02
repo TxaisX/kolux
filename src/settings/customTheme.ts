@@ -1,10 +1,15 @@
 // T-648 (DT-C87): the user's own themes. A custom theme is a built-in theme (`base`) plus the colours the
 // user changed (`overrides`, token name to #rrggbb) and, optionally, terminal colours (`terminal`, xterm
 // key to #rrggbb). Anything not listed falls back to the base, so a theme can never leave a colour
-// undefined. This file is in the first-load bundle (theme.ts reads it), so it stays small: the editor,
-// the file format with its strict checks, and the contrast helpers are in the files beside it.
+// undefined. Start-up never runs this file: when a theme is saved `resolve` works out every colour once and
+// stores the result in the theme (`vars`), and theme.ts only lays those stored colours over the base.
+// It loads on demand, with the editor.
 
-export type CustomTheme = { name: string; base: string; overrides: Record<string, string>; terminal: Record<string, string> };
+import { buildTheme, classic, isDark, mix, THEMES, type Appearance, type ThemeName } from "../theme";
+
+/** `vars` and `dark` are the result of resolving the theme (see `resolve`): the window reads only these, so the
+ *  maths below runs when a theme is saved, not at start-up. A theme from a file has neither until it is saved. */
+export type CustomTheme = { name: string; base: string; overrides: Record<string, string>; terminal: Record<string, string>; vars?: Record<string, string>; dark?: boolean };
 
 export const HEX = /^#[0-9a-f]{6}$/i;
 export const NAME_MAX = 40;
@@ -14,8 +19,6 @@ const ANSI = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "whi
 export const TERMINAL_KEYS = ["foreground", "background", "cursor", "selectionBackground", ...ANSI, ...ANSI.map((c) => "bright" + c[0].toUpperCase() + c.slice(1))];
 
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-/** `a` moved `t` (0 to 1) of the way to `b`. */
-export const mix = (a: string, b: string, t: number): string => "#" + rgb(a).map((v, i) => Math.round(v + (rgb(b)[i] - v) * t).toString(16).padStart(2, "0")).join("");
 /** WCAG relative luminance, 0 (black) to 1 (white). */
 export const luminance = (h: string): number => {
   const [r, g, b] = rgb(h).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
@@ -34,16 +37,26 @@ const pick = (v: unknown, keys: readonly string[]): Record<string, string> => {
   return out;
 };
 
-/** The saved list as a clean list: unknown keys and bad colours dropped, a name that repeats (any case) or
- *  is empty skipped, an unknown base is Classic, at most MAX_THEMES. Never throws. */
-export function tidyThemes(v: unknown, bases: readonly string[], tokens: readonly string[]): CustomTheme[] {
+/** Every colour of a theme worked out once: `vars` is the full CSS variable map (`--app-bg`: #rrggbb ...) and
+ *  `dark` says whether the window should paint dark (by the background, whatever the mode says). */
+export function resolve(look: Appearance, t: CustomTheme): CustomTheme {
+  const make = (dark: boolean) => customTokens(buildTheme({ ...look, theme: t.base as ThemeName, userTheme: "" }, dark) as Record<string, string>, t.overrides);
+  let dark = isDark({ ...look, userTheme: "" });
+  let tk = make(dark);
+  if (isDarkGround(tk["app-bg"]) !== dark) tk = make((dark = !dark));
+  return { ...t, dark: isDarkGround(tk["app-bg"]), vars: Object.fromEntries(Object.entries(tk).map(([k, v]) => ["--" + k, v])) };
+}
+
+/** The saved list as a clean, resolved list: unknown keys and bad colours dropped, a name that repeats (any
+ *  case) or is empty skipped, an unknown base is Classic, at most MAX_THEMES. Never throws. */
+export function tidyThemes(v: unknown, look: Appearance): CustomTheme[] {
   const out: CustomTheme[] = [];
   for (const raw of Array.isArray(v) ? v : []) {
     const r = (raw ?? {}) as Record<string, unknown>;
     const name = typeof r.name === "string" ? r.name.trim().slice(0, NAME_MAX) : "";
     if (!name || out.some((t) => t.name.toLowerCase() === name.toLowerCase()) || out.length >= MAX_THEMES) continue;
-    const base = typeof r.base === "string" && bases.includes(r.base.toLowerCase()) ? r.base.toLowerCase() : "classic";
-    out.push({ name, base, overrides: pick(r.overrides, tokens), terminal: pick(r.terminal, TERMINAL_KEYS) });
+    const base = typeof r.base === "string" && (THEMES as readonly string[]).includes(r.base.toLowerCase()) ? r.base.toLowerCase() : "classic";
+    out.push(resolve(look, { name, base, overrides: pick(r.overrides, Object.keys(classic)), terminal: pick(r.terminal, TERMINAL_KEYS) }));
   }
   return out;
 }

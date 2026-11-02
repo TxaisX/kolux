@@ -4,9 +4,9 @@
 // the whole window at once (the Appearance page applies each change) and is saved through the page's
 // usual save, as part of the look. Loaded on demand from AppearancePage.
 import { useLeaveSave } from "./leave";
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { buildTheme, customOf, isDark, terminalFor, type Appearance } from "../theme";
-import { NAME_MAX, TERMINAL_KEYS, type CustomTheme } from "./customTheme";
+import { NAME_MAX, TERMINAL_KEYS, tidyThemes, type CustomTheme } from "./customTheme";
 import { AA, contrast, nudgeToContrast, pairsOf, ratioText, type Pair } from "./customThemeContrast";
 import { exportTheme, parseThemeFile } from "./customThemeFile";
 import { deleteTheme, duplicateTheme, newTheme, nameProblem, resetToDefault, saveTheme } from "./customThemeStore";
@@ -67,7 +67,10 @@ function Swatch({ id, text, value, changed, hint, onPick, onReset }: { id: strin
   );
 }
 
-export default function CustomThemeEditor({ look, onChange }: Props) {
+export default function CustomThemeEditor({ look: saved, onChange }: Props) {
+  // The saved list as the editor sees it: tidied, so a hand-edited settings file cannot break this page.
+  const list = useMemo(() => tidyThemes(saved.userThemes, saved), [saved.userThemes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const look = useMemo(() => ({ ...saved, userThemes: list }), [saved, list]);
   const cur = customOf(look);
   const [name, setName] = useState(cur?.name ?? "");
   const [seen, setSeen] = useState(cur?.name);

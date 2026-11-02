@@ -3,7 +3,7 @@
 // save, so custom themes live in the settings file beside the rest of the look (fields `customThemes`
 // and `customThemeActive`) and there is no second store.
 import type { Appearance } from "../theme";
-import { MAX_THEMES, NAME_MAX, type CustomTheme } from "./customTheme";
+import { MAX_THEMES, NAME_MAX, resolve, type CustomTheme } from "./customTheme";
 
 /** A name not used yet (any case): `Mine`, then `Mine 2`, `Mine 3`... */
 export function freeName(taken: readonly string[], want: string): string {
@@ -33,10 +33,11 @@ export const newTheme = (look: Appearance): CustomTheme => {
 export const findTheme = (look: Appearance, name: string) => look.userThemes.find((t) => t.name === name);
 
 /** Adds `theme`, or replaces the one called `replacing` (a rename keeps its place and stays in use if it was). */
-export function saveTheme(look: Appearance, theme: CustomTheme, replacing?: string): Appearance {
+export function saveTheme(look: Appearance, draft: CustomTheme, replacing?: string): Appearance {
+  const theme = resolve(look, draft); // every colour is worked out here, once, and kept with the theme
   const at = replacing === undefined ? -1 : look.userThemes.findIndex((t) => t.name === replacing);
   if (at < 0 && look.userThemes.length >= MAX_THEMES) throw new Error(`You can keep up to ${MAX_THEMES} themes. Delete one first.`);
-  const problem = nameProblem(look, theme.name, replacing ?? "");
+  const problem = nameProblem(look, draft.name, replacing ?? "");
   if (problem) throw new Error(problem);
   const list = at < 0 ? [...look.userThemes, theme] : look.userThemes.map((t, i) => (i === at ? theme : t));
   return { ...look, userThemes: list, userTheme: replacing !== undefined && look.userTheme === replacing ? theme.name : look.userTheme };
