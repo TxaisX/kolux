@@ -1,8 +1,8 @@
 // APP-024..027 on the real UpdateCenter (real UpdateSchedule and card reducer) under fake time. Only the back end is
 // scripted (updateHarness.ts feed): whether the real updater finds, downloads and installs a release is LIVE.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { click, type FakeDocument, type FakeNode, withText } from "../../tasks/fakeDom";
-import { byTitle, card, cardTitle, errorText, feed, info, installUpdateDom, mountCenter, notes, online, popup, pump, sendWindow, sent } from "./updateHarness";
+import { click, type FakeDocument, type FakeNode, fire, withText } from "../../tasks/fakeDom";
+import { byTitle, card, cardTitle, errorText, feed, info, installUpdateDom, mountCenter, notes, online, popup, popupButton, popupText as noticeText, pump, sendWindow, sent } from "./updateHarness";
 
 vi.mock("@tauri-apps/api/core", async () => (await import("./updateHarness")).coreMock);
 vi.mock("@tauri-apps/api/event", async () => (await import("./updateHarness")).eventMock);
@@ -25,7 +25,6 @@ const start = async () => {
   root = m.container;
   return m;
 };
-const popupText = () => popup(doc.body)?.textContent ?? null;
 
 describe("APP-024", () => {
   test("box 1: a release published with the app open is downloaded by the next half-hour check, with no click", async () => {
@@ -38,9 +37,23 @@ describe("APP-024", () => {
     await pump(1 * MIN + 1000);
     expect(sent("update_check")).toHaveLength(1);
     expect(sent("update_download")).toHaveLength(1); // 25 minutes after the publish, no click anywhere
-    expect(popupText()).toContain("Kolux RS 0.2.0 is ready");
+    expect(noticeText(doc.body)).toBe("A new Kolux RS version is out on GitHub. Version 0.2.0."); // the one notice (APP-025)
     expect(card(doc.body)).toBeNull(); // quiet: no card
     expect(sent("update_restart")).toHaveLength(0);
+  });
+
+  test("a quiet check shows nothing while it checks or downloads; the notice comes only once the download is ready", async () => {
+    feed.status.lastCheckAt = 0; // a quiet check runs at start
+    feed.latest = info("0.2.0");
+    feed.holdDownload = true;
+    await start();
+    expect(sent("update_check")).toHaveLength(1);
+    expect(sent("update_download")).toHaveLength(1);
+    expect(card(doc.body)).toBeNull();
+    expect(popup(doc.body)).toBeNull();
+    feed.release?.();
+    await pump(0);
+    expect(noticeText(doc.body)).toBe("A new Kolux RS version is out on GitHub. Version 0.2.0.");
   });
 
   test("box 2: an hour with no connection shows nothing; the check runs within a minute of its return", async () => {
@@ -82,15 +95,52 @@ describe("APP-025", () => {
     await start();
     expect(sent("update_download")).toHaveLength(1);
     expect(popup(doc.body)).not.toBeNull();
-    expect(popupText()).toContain("Kolux RS 0.2.0 is ready");
-    expect(popupText()).toContain("Restart to update");
+    expect(noticeText(doc.body)).toBe("A new Kolux RS version is out on GitHub. Version 0.2.0.");
+    expect(popupButton(doc.body, "Update now")).toBeDefined();
+    expect(popupButton(doc.body, "Later")).toBeDefined();
+    expect(popup(doc.body)!.attrs["aria-label"]).toBe("Update available");
     expect(card(doc.body)).toBeNull();
     await pump(31 * MIN); // another quiet check finds the same version while the pop-up is open
-    expect(doc.body.textContent.split("Kolux RS 0.2.0 is ready").length - 1).toBe(1);
-    await click(root, byTitle(popup(doc.body)!, "Close"));
+    expect(doc.body.textContent.split("A new Kolux RS version is out on GitHub.").length - 1).toBe(1);
+    await click(root, popupButton(doc.body, "Later"));
     expect(popup(doc.body)).toBeNull();
     await pump(95 * MIN); // three more quiet checks
     expect(sent("update_check").length).toBeGreaterThanOrEqual(4);
+    expect(popup(doc.body)).toBeNull();
+    expect(sent("update_restart")).toHaveLength(0);
+    expect(sent("update_mark").some((c) => c.args.key === "dismissedVersion")).toBe(false); // per launch, nothing persisted
+  });
+
+  test("Update now is the restart-to-update action", async () => {
+    feed.status.lastCheckAt = T_OLD;
+    feed.latest = info("0.2.0");
+    await start();
+    expect(sent("update_restart")).toHaveLength(0);
+    await click(root, popupButton(doc.body, "Update now"));
+    expect(sent("update_restart")).toHaveLength(1);
+  });
+
+  test("Later closes the notice for this launch only; a new launch offers it again, and nothing is remembered", async () => {
+    feed.status.lastCheckAt = T_OLD;
+    feed.latest = info("0.2.0");
+    await start();
+    await click(root, popupButton(doc.body, "Later"));
+    expect(popup(doc.body)).toBeNull();
+    expect(sent("update_restart")).toHaveLength(0);
+    await unmount();
+    feed.status.ready = info("0.2.0"); // the next launch finds it downloaded
+    await start();
+    expect(noticeText(doc.body)).toContain("Version 0.2.0.");
+  });
+
+  test("Escape on the notice is Later; Enter on its container starts nothing", async () => {
+    feed.status.lastCheckAt = T_OLD;
+    feed.latest = info("0.2.0");
+    await start();
+    await fire(root, "keydown", popup(doc.body)!, { key: "Enter" });
+    expect(sent("update_restart")).toHaveLength(0);
+    expect(popup(doc.body)).not.toBeNull();
+    await fire(root, "keydown", popup(doc.body)!, { key: "Escape" });
     expect(popup(doc.body)).toBeNull();
     expect(sent("update_restart")).toHaveLength(0);
   });
@@ -109,7 +159,7 @@ const T_OLD = 0;
 describe("APP-026", () => {
   test("box 1: Check for Updates on the newest version says up to date, then the card closes itself", async () => {
     await start();
-    await sendWindow("kolux-check-updates"); // what the sidebar button dispatches (requestUpdateCheck)
+    await sendWindow("kolux-check-updates"); // what Help and the command palette dispatch (requestUpdateCheck)
     expect(sent("update_check")).toHaveLength(1);
     expect(cardTitle(doc.body)).toBe("Kolux RS is up to date");
     await pump(3000);

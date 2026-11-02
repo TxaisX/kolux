@@ -1,0 +1,26 @@
+T-641 / T-642 / T-643 · The left pane: no terminal rows, no "Check for updates" button, one update notice that is never cut
+off, and clean at every width (wave UI lane A, worker s-90, branch s-90/sidebar). Folds in T-625.
+
+LIVE PROOF (2026-11-02, Windows 11, dev app hidden off-screen, scratch profile, stand-in claude, devicePixelRatio 1)
+Script: node scripts/prove/live-T-643.mjs <220|480> [new|classic]   (logs G:/Temp/live-v15-logs/T-643-<side>-<look>.out.txt)
+Setup: a project added by path plus a workspace named "a-really-long-workspace-name-that-never-fits-in-the-sidebar".
+Runs: 220 new, 480 new, 220 classic. RESULT: PASS in all three, 6 of 6 checks each.
+
+Per window width 900, 1400 and 1920 CSS px:
+  PASS the pane: sidebar width = the drag width (220 or 480), nothing inside it past its right edge, no element scrolls
+       sideways, every name cut by an ellipsis (2 at 220 px, 0 at 480 px) has a tooltip, 0 terminal rows (T-641),
+       0 "Check for updates" buttons (T-642)
+  PASS the update notice: fixed at the bottom left (16..376 px across, 743..817 px down in an 851 px tall window), fully
+       inside the window, nothing in it sticks out, no sideways scroll, solid (background rgb(13,13,13), opacity 1)
+Screenshots: evidence/T-643-<220|480>-<new|classic>-<900|1400|1920>.png
+
+Scaling (125% / 150%): Windows display scaling changes the window's CSS width (a 1920 px screen at 150% is 1280 CSS px),
+and the pane and notice are laid out in CSS px only, so the 900..1920 CSS px runs above cover those widths. Not run at a
+real 125%/150% setting on this PC.
+
+The notice: a found update cannot be faked in a dev run, so the run puts a copy of UpdateCenterView's notice markup on the
+page with the real styles and measures it. The real notice's behaviour (quiet check auto-downloads with no sign, the
+notice once per version per launch, Update now / Later, Escape = Later, never takes focus) is covered by
+src/update/__cards__/APP-024-027.test.ts against the real component.
+Unit tests: src/projects/removePaths.test.ts (no update button, no terminal rows), src/projects/__cards__/VIEW-051.test.ts
+(no pane rows, live counts kept), src/update/bus.test.ts.

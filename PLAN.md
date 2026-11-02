@@ -546,6 +546,12 @@ No new features. Each task names the audit finding it closes; done means its tes
 - [x] T-616 · Renaming a file onto another file's name in different capitals is refused (R04-projects-files.1) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-616.txt
 - [x] T-617 · Saving through a link writes the real file and keeps the link (R04-projects-files.4) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-617.txt
 
+### sidebar lane (wave UI A)
+- [x] T-640 · Every row in the left pane can be removed or hidden: project, main checkout, workspace and group rows each get a right-click menu and a hover X that open the existing questions (the folder stays on disk, or delete together), the question names terminals still running when the ask-before-closing setting is on, and the right-click menu closes on Escape (wave UI A.1) · sidebar lane
+- [x] T-641 · Terminals no longer show as rows in the left pane; they stay tabs in the main area (wave UI A.2) · sidebar lane
+- [x] T-642 · The sidebar "Check for updates" button is gone; a found update shows one notice, "A new Kolux RS version is out on GitHub." with Update now / Later, never cut off; Help and the palette still check by hand (wave UI A.3) · sidebar lane
+- [x] T-643 · The left pane is clean at 900, 1400 and 1920 px and at its 220/480 px drag widths, at 125% and 150%: nothing cut off, no sideways scroll, long names end in an ellipsis with a tooltip; folds in T-625 (wave UI A.4) · sidebar lane
+
 ### wave-ui lane C (right panel)
 - [x] T-644 · Source Control leaves the layout: no right-sidebar tab, no Mod+Shift+G, no top-bar title, no quick action; src/scm/* stays for lane E's auto PR; a saved "scm" tab opens the Explorer (wave UI, DT-C85) · wave-ui lane C · DONE 2026-11-02 (s-fa/insights): src/chrome/RightSidebar.test.ts, src/keys/keymap.test.ts (136 actions), src/sessions/folderTabs.test.ts
 - [x] T-645 · Insights figures: tokens and estimated cost for today, the last 7 days and all time, per session and summed across every workspace and tracked provider, from the saved token_usage scan priced by the local table; a test sums cost across two fake sessions (DT-C86) · wave-ui lane C · DONE 2026-11-02 (s-fa/insights): src/insights/model.test.ts (two fake sessions summed)

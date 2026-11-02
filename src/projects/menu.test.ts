@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deletePlan, descendants, fileManagerName, rowMenu, type MenuFor } from "./menu";
+import { deletePlan, descendants, fileManagerName, groupMenu, projectMenu, rowMenu, type MenuFor } from "./menu";
 
 const base: MenuFor = { count: 1, isMain: false, asleep: false, deleting: false, platform: "Win32", alt: false, statuses: [{ id: "todo", label: "To do" }], editors: [{ label: "VS Code", command: "code" }] };
 const ids = (o: Partial<MenuFor>) => rowMenu({ ...base, ...o }).map((i) => i.id);
@@ -7,12 +7,12 @@ const W = (path: string, parent?: string) => ({ path, parent });
 
 describe("PROJ-065 workspace context menu", () => {
   it("lists Delete, Sleep, Move to status, Set parent, Details and Open in for one row", () => {
-    expect(ids({})).toEqual(["delete", "sleep", "status", "parent", "details", "open-in"]);
+    expect(ids({})).toEqual(["delete", "sleep", "status", "parent", "details", "open-in", "hide"]);
     expect(rowMenu(base).find((i) => i.id === "status")?.children?.map((c) => c.id)).toEqual(["status:todo", "statuses:edit"]);
   });
   it("a sleeping workspace offers Wake; the main checkout is never deleted or slept", () => {
     expect(ids({ asleep: true })).toContain("wake");
-    expect(ids({ isMain: true })).toEqual(["status", "details", "open-in"]);
+    expect(ids({ isMain: true })).toEqual(["status", "details", "open-in", "proj:remove"]);
   });
   it("the file manager is named for the platform and Open in has the editors and a terminal", () => {
     expect(fileManagerName("MacIntel")).toBe("Finder");
@@ -30,6 +30,28 @@ describe("PROJ-065 workspace context menu", () => {
   });
   it("several rows get Delete N and no per-row items", () => {
     expect(rowMenu({ ...base, count: 3 }).map((i) => i.label)).toEqual(["Delete 3 workspaces", "Sleep", "Move to status"]);
+  });
+});
+
+describe("T-640 every row has a way out", () => {
+  const last = (items: { id: string; danger?: boolean; sep?: boolean }[]) => items[items.length - 1];
+  it("a project header lists New workspace, Project settings and a red Remove project last, below a divider", () => {
+    expect(projectMenu().map((i) => i.id)).toEqual(["proj:new", "proj:settings", "proj:remove"]);
+    expect(last(projectMenu())).toMatchObject({ id: "proj:remove", danger: true, sep: true });
+  });
+  it("the main checkout cannot be deleted, slept or hidden, so its way out is Remove project", () => {
+    expect(ids({ isMain: true })).not.toContain("delete");
+    expect(ids({ isMain: true })).not.toContain("hide");
+    expect(last(rowMenu({ ...base, isMain: true }))).toMatchObject({ id: "proj:remove", danger: true, sep: true });
+  });
+  it("a workspace can be hidden from its menu, and several rows get no hide or remove-project item", () => {
+    expect(ids({})).toContain("hide");
+    expect(ids({ count: 3 })).not.toContain("hide");
+    expect(ids({ count: 3, isMain: true })).not.toContain("proj:remove");
+  });
+  it("a group row lists Group settings and a red Delete group last, below a divider", () => {
+    expect(groupMenu().map((i) => i.id)).toEqual(["grp:settings", "grp:delete"]);
+    expect(last(groupMenu())).toMatchObject({ id: "grp:delete", danger: true, sep: true });
   });
 });
 
