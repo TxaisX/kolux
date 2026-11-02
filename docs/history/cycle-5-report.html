@@ -573,7 +573,7 @@ listener dates from 2026-10-25, and #72&#39;s stale description is counted under
 <td>MEDIUM</td>
 <td>cycle</td>
 <td><code>main</code> failed CI after the last merge on a known flaky test, its third hit this cycle. Four flaky tests are not tracked anywhere in the plan.</td>
-<td>rerun started</td>
+<td>rerun passed; flakes untracked</td>
 </tr>
 <tr>
 <td>7</td>
@@ -652,7 +652,7 @@ run shows they really ran there. LOW.</p>
 <td>4</td>
 <td>Engineering: App.tsx &lt; 800, 0 dead commands, first load &lt; 1.5 MB, tests green</td>
 <td>first load met</td>
-<td>App.tsx 222 ✔. First load 1,483,871 ✔. Tests: green on all 26 merge heads; <code>main</code> red once on a flaky test at close ✘. Dead commands not re-measured</td>
+<td>App.tsx 222 ✔. First load 1,483,871 ✔. Tests: green on all 26 merge heads; <code>main</code> red once on a flaky test at close, green on rerun. Dead commands not re-measured</td>
 </tr>
 <tr>
 <td>5</td>
@@ -702,7 +702,7 @@ The pull request stays open for cycle 6, and the problem is described here only 
 is public.</p>
 <p><strong>8. The flaky-test list shrank but did not go away.</strong> #65 started two terminal tests without a PowerShell
 profile, and those tests have not failed since (11 later merge heads). Four known flaky tests remain, and one of
-them turned <code>main</code> red at close. <strong>Fix for cycle 6:</strong> put each flaky test in the plan with an owner, and give
+them turned <code>main</code> red at close (it passed on rerun). <strong>Fix for cycle 6:</strong> put each flaky test in the plan with an owner, and give
 the <code>after696</code> test the same no-profile start.</p>
 <p><strong>9. You had to approve permissions in each pane yourself.</strong> Each session needed your own message (&quot;I approve:
 for cycle 5 you may push branches, open/update/close PRs, comment, re-run CI and merge…&quot;) before it could act on

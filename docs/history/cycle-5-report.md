@@ -136,7 +136,7 @@ Each finding is listed once, even when several reviewers raised it. "Open" means
 | 3 | MEDIUM | #38 | Personal account details for a video service are still readable in the pull request's commit history on the public repo. `main` is clean. | yes, needs you |
 | 4 | MEDIUM | #69 | The JPEG 2000 decoder commits landed after the only recorded review. The safety reviewer looked at them afterwards and found nothing wrong, but no review is on record for them. | record gap |
 | 5 | MEDIUM | #38 | T-623 is ticked done without its live check. The `kolux/skills` repo that its install offer points at returns "not found". | yes |
-| 6 | MEDIUM | cycle | `main` failed CI after the last merge on a known flaky test, its third hit this cycle. Four flaky tests are not tracked anywhere in the plan. | rerun started |
+| 6 | MEDIUM | cycle | `main` failed CI after the last merge on a known flaky test, its third hit this cycle. Four flaky tests are not tracked anywhere in the plan. | rerun passed; flakes untracked |
 | 7 | MEDIUM | #72, #75, #63, #69 | Records that say the wrong thing: #72's description says external rows cannot be edited, but they can; #75's plan line says the security review is pending, but it is done; #63's plan line says DT-C66 is unconfirmed, but the decisions file says confirmed; #69's description says JPEG 2000 was "not decided here", but DT-C71 decides it. | yes |
 | 8 | MEDIUM | #69, #70, #72 | Review follow-ups live only in pull request comments, including #72's untested Hermes rename save, which is where an earlier data-loss bug was. | yes |
 | 9 | MEDIUM | #64 | WSL search and reads cannot be reached by anyone: the folder fence still refuses WSL paths. (#63's WSL skill delete does work for WSL users; your PC just has none.) | yes |
@@ -154,7 +154,7 @@ run shows they really ran there. LOW.
 | 1 | Completion: 228/228 P0 cards; 0 open buildable tasks | 215/228 | 217/228. The 11 left all need a live run, a Mac or WSL |
 | 2 | Release: signed release, updater proven, kolux on PATH, CI green | releases ship from your PC | v0.1.5 is the latest. No release this cycle, by your rule ("no releases or tags"). The release hold from the artifact scare was lifted (#73) |
 | 3 | Product: hooks on with consent, one status, Review changes, no dead screens | code merged, live check pending | more built (Help menu, safe Stop, check tab); live checks still pending |
-| 4 | Engineering: App.tsx < 800, 0 dead commands, first load < 1.5 MB, tests green | first load met | App.tsx 222 ✔. First load 1,483,871 ✔. Tests: green on all 26 merge heads; `main` red once on a flaky test at close ✘. Dead commands not re-measured |
+| 4 | Engineering: App.tsx < 800, 0 dead commands, first load < 1.5 MB, tests green | first load met | App.tsx 222 ✔. First load 1,483,871 ✔. Tests: green on all 26 merge heads; `main` red once on a flaky test at close, green on rerun. Dead commands not re-measured |
 | 5 | Trust: safe defaults, no telemetry, threat model tested | partly | stronger: Stop guards, a network allow-list, the privacy audit pins each outside call. #37's HIGH kept off `main` ✔. T-632 and the #38 history item are open |
 | 6 | Docs: guide matches the build; STATE generated | partly | slipped: one guide passage contradicts the app, and new features are missing. STATE.md stale until #77 merges |
 | 7 | Workspace: reclaim commands handed to you | **met** | **met** |
@@ -196,7 +196,7 @@ is public.
 
 **8. The flaky-test list shrank but did not go away.** #65 started two terminal tests without a PowerShell
 profile, and those tests have not failed since (11 later merge heads). Four known flaky tests remain, and one of
-them turned `main` red at close. **Fix for cycle 6:** put each flaky test in the plan with an owner, and give
+them turned `main` red at close (it passed on rerun). **Fix for cycle 6:** put each flaky test in the plan with an owner, and give
 the `after696` test the same no-profile start.
 
 **9. You had to approve permissions in each pane yourself.** Each session needed your own message ("I approve:
