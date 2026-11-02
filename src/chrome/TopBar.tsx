@@ -154,7 +154,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
           </button>
         )}
         {/* VIEW-009: while a full page shows, the right sidebar and its control are hidden. */}
-        <button className="ib panel" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show Insights"} aria-pressed={rightOpen} onClick={onToggleRight}>
+        <button className="ib panel" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onClick={onToggleRight}>
           <PanelRight />
         </button>
         <button className="searchbox" title="Jump to a worktree, tab, project or setting" onClick={onSearch}>

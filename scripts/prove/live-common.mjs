@@ -334,17 +334,20 @@ export async function startPlain(id, opts) {
       await focusField('input[aria-label="project folder"]');
       await cdp("insert", repo, "enter");
       await wf("the first pane (shell or session chooser)", async () => (await shown(TERM)) >= 1 || (await exists("section.pane.chooser .chooser-foot")), 30000);
-      // A new project opens the session chooser: pick Terminal for its seat and start it.
+      // A new project opens the session chooser: pick Terminal for every seat and start it.
       if (!(await shown(TERM))) {
         const picked = await evalJs(`(() => {
-          const sel = [...document.querySelectorAll("section.pane.chooser select")].find((s) => [...s.options].some((o) => o.text.trim() === "Terminal"));
-          if (!sel) return false;
-          const opt = [...sel.options].find((o) => o.text.trim() === "Terminal");
-          Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, opt.value);
-          sel.dispatchEvent(new Event("change", { bubbles: true }));
-          return true;
+          let n = 0;
+          for (const sel of document.querySelectorAll("section.pane.chooser select")) {
+            const opt = [...sel.options].find((o) => o.text.trim() === "Terminal");
+            if (!opt) continue;
+            Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, opt.value);
+            sel.dispatchEvent(new Event("change", { bubbles: true }));
+            n++;
+          }
+          return n;
         })()`);
-        log(`session chooser: Terminal picked: ${picked}`);
+        log(`session chooser: Terminal picked for ${picked} seat(s)`);
         await wf("the chooser's Start button", () => exists("section.pane.chooser .chooser-foot button.btn.primary:not(:disabled)"), 30000);
         await click("section.pane.chooser .chooser-foot button.btn.primary");
       }

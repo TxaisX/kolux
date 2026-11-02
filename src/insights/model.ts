@@ -159,10 +159,13 @@ export function costKind(usd: number, partial: boolean, tokens: number): "none" 
 
 /** When the oldest tracked provider was last counted (ms epoch), null when none has a saved count. */
 export function countedAt(usage: Usage): number | null {
-  const at = PROVIDERS.filter((p) => usage.tracking[p]).map((p) => usage[p]?.scannedAt ?? null).filter((x): x is number => x !== null);
+  // A scan that failed (e.g. no ~/.codex/sessions) is saved with scannedAt 0: it is not a count time.
+  const at = PROVIDERS.filter((p) => usage.tracking[p] && !usage[p]?.error).map((p) => usage[p]?.scannedAt ?? 0).filter((x) => x > 0);
   return at.length ? Math.min(...at) : null;
 }
 
-/** Tracked providers whose saved count is missing or older than maxAge: the panel asks for a (cached, incremental) rescan. */
+/** Tracked providers whose saved count is missing or older than maxAge: the panel asks for a (cached, incremental) rescan.
+ *  A provider whose last scan failed is left out, so a missing folder is not rescanned every refresh. */
+// ponytail: a failed provider is only retried by a rescan from the token usage page; add a timed retry if that proves too quiet.
 export const dueForCount = (usage: Usage, now: number, maxAge: number): Provider[] =>
-  PROVIDERS.filter((p) => usage.tracking[p] && now - (usage[p]?.scannedAt ?? 0) > maxAge);
+  PROVIDERS.filter((p) => usage.tracking[p] && !usage[p]?.error && now - (usage[p]?.scannedAt ?? 0) > maxAge);

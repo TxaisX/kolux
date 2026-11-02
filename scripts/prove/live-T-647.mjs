@@ -105,7 +105,7 @@ try {
   log(`scan: ${JSON.stringify(saved).slice(0, 200)}`);
 
   // The right panel may already be open (on another tab): open it only when its button offers to.
-  if (await app.exists('button.ib.panel[title="Show Insights"]')) await app.click('button.ib.panel[title="Show Insights"]');
+  if (await app.exists('button.ib.panel[title="Show the right panel"]')) await app.click('button.ib.panel[title="Show the right panel"]');
   await sleep(800);
   if (!(await app.exists(".insights"))) {
     const picked = await app.clickWhere(".rside-tab", "/^\\s*Insights\\s*$/");

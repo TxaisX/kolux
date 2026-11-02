@@ -157,4 +157,9 @@ describe("how old the count is", () => {
     expect(dueForCount(u(null, 9_000), 10_000, 5_000)).toEqual(["claude"]);
     expect(dueForCount(u(1_000, 1_000, { claude: false, codex: false }), 10_000, 5_000)).toEqual([]);
   });
+  it("ignores a failed scan: no '0 ms epoch' count time, no rescan on every refresh", () => {
+    const failed: Usage = { ...u(9_000, null), codex: { scannedAt: 0, rows: [], error: "no sessions folder" } };
+    expect(countedAt(failed)).toBe(9_000);
+    expect(dueForCount(failed, 10_000, 5_000)).toEqual([]);
+  });
 });
