@@ -205,8 +205,6 @@ input { font: inherit; }
 .hdr-swatch.on { border-color: var(--fg); }
 .hdr-swatch:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px; }
 .sess-line { margin-top: -6px; padding: 0 8px 6px 44px; font-size: 11px; line-height: 14px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sess.pane-row { height: 26px; gap: 8px; font-size: 12px; }
-.sess.pane-row .name { overflow: hidden; text-overflow: ellipsis; }
 .branch .dot { margin-right: 2px; }
 .branch .chev { color: #797979; display: inline-flex; }
 .branch:hover { background: #1f1f1f; }
@@ -306,8 +304,7 @@ input { font: inherit; }
 .notice { flex: none; display: flex; align-items: center; gap: 8px; margin: 8px 8px 0; padding: 4px 4px 4px 10px; border: 1px solid #7a3b1e; border-radius: 8px; font-size: 12px; color: #f0a07a; }
 .notice .ib { margin-left: auto; }
 .sb-foot { height: 37px; border-top: 1px solid var(--line-strong); display: flex; align-items: center; padding: 0 5px 0 9px; gap: 3px; color: var(--fg-muted); }
-/* At the left sidebar's narrow end the update row keeps its icon and its accessible name; the
-   text is the only thing that goes. Sessions already ellipsize their names. */
+/* At the left sidebar's narrow end the footer tightens its padding. */
 @container (max-width: 260px) {
   .sb-foot { padding: 0 4px 0 6px; gap: 2px; }
 }
@@ -997,8 +994,8 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .scm-handoff .btn-row { display: flex; gap: 6px; margin-top: 6px; }
 .scm-handoff .btn-row select { flex: 1; min-width: 0; }
 
-/* ---- update card and ready pop-up (APP-025, APP-026): bottom-left, above the sidebar footer ---- */
-.upd-wrap { position: fixed; left: 16px; bottom: 148px; z-index: 45; width: 300px; display: flex; flex-direction: column; gap: 6px; }
+/* ---- update card and ready pop-up (APP-025, APP-026); placement lives in src/update/update.css ---- */
+.upd-wrap { display: flex; flex-direction: column; gap: 6px; }
 .upd-card { background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--fg-row); outline: none; animation: upd-in 160ms ease-out; }
 .upd-card:focus-visible { border-color: var(--seg-active); }
 .upd-head { display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 10px; }
@@ -1017,7 +1014,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .upd-actions { display: flex; justify-content: flex-end; }
 .upd-tip { display: flex; align-items: center; gap: 6px; padding: 6px 4px 6px 10px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; font-size: 12px; color: var(--fg-muted); }
 .upd-tip .ib { margin-left: auto; }
-.upd-pop { position: fixed; left: 16px; bottom: 148px; z-index: 45; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--fg); animation: upd-in 160ms ease-out; }
+.upd-pop { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--fg); animation: upd-in 160ms ease-out; }
 @keyframes upd-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .upd-card, .upd-pop { animation: none; } .upd-bar > div { transition: none; } .upd-icon svg { animation: none !important; } }
 /* EDIT-001: an editor tab is one file in CodeMirror; the dot is the unsaved marker, in the header and the tab. */
