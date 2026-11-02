@@ -15,6 +15,10 @@ import { createApp, sleep, waitFor } from "../evidence/app-launch.mjs";
 
 export { sleep, waitFor };
 export const ROOT = fileURLToPath(new URL("../../", import.meta.url)).replace(/[\\/]+$/, "");
+// Ports of the prove app; PROVE_PORT / PROVE_CDP let two sessions run live proofs at once.
+const PORT = process.env.PROVE_PORT || "1470";
+const CDPP = process.env.PROVE_CDP || "9290";
+const PAGE = new RegExp(`localhost:${PORT}|tauri\\.localhost`);
 // Test account A lives outside the old-app folders (X-proc.6); set KOLUX_LIVE_ACCOUNT_A to use another folder.
 export const ACCOUNT_A = process.env.KOLUX_LIVE_ACCOUNT_A || "G:/Temp/live-signin/account-a";
 export const BASE = "G:/Temp/live-v15";
@@ -67,7 +71,7 @@ export async function startProve(id, opts) {
   const TEMP = `${BASE}/run-${id}`;
   const repo = `${BASE}/work/${id}`;
   const settingsFile = `${TEMP}/tmp/claude-config/settings.json`;
-  const app = createApp({ root: ROOT, port: "1470", cdp: "9290", identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
   const { profile } = app.paths;
   // A fresh run folder: only a folder this lane made (it carries the marker) is wiped.
   if (existsSync(TEMP)) {
@@ -274,7 +278,7 @@ export async function startPlain(id, opts) {
   const { log } = opts.report;
   const TEMP = `${LIVE_BASE}/run-${id}`;
   const repo = `${LIVE_BASE}/work/${id}`;
-  const app = createApp({ root: ROOT, port: "1470", cdp: "9290", identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
   const { profile } = app.paths;
   if (existsSync(TEMP)) {
     if (!existsSync(join(TEMP, ".prove-run"))) throw new Error(`${TEMP} exists without the prove marker`);
@@ -312,26 +316,51 @@ export async function startPlain(id, opts) {
     mkdirSync(opts.trace, { recursive: true });
     process.env.GIT_TRACE2 = opts.trace;
   }
-  await app.launch({
-    prepare: () => {
-      rmSync(profile, { recursive: true, force: true });
-      mkdirSync(profile, { recursive: true });
-      writeFileSync(join(profile, "settings.json"), JSON.stringify(seeded, null, 2));
-    },
-  });
-  delete process.env.GIT_TRACE2;
   const { evalJs, cdp, click, clickWhere, exists, shown, focusPane, focusField, waitFor: wf } = app;
-  await wf("the sidebar add button", () => exists('.sb-foot button[title^="Add a project by path"]'), 30000);
-  if (!opts.noProject) {
-    await click('.sb-foot button[title^="Add a project by path"]');
-    await wf("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
-    await focusField('input[aria-label="project folder"]');
-    await cdp("insert", repo, "enter");
-    await wf("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
-    await wf("its input field", () => exists(`${TERM} .xterm-helper-textarea`), 30000);
+  // Any failure from here on closes the app this run started, so it never keeps holding the CDP port for the next run.
+  try {
+    await app.launch({
+      prepare: () => {
+        rmSync(profile, { recursive: true, force: true });
+        mkdirSync(profile, { recursive: true });
+        writeFileSync(join(profile, "settings.json"), JSON.stringify(seeded, null, 2));
+      },
+    });
+    delete process.env.GIT_TRACE2;
+    await wf("the sidebar add button", () => exists('.sb-foot button[title^="Add a project by path"]'), 30000);
+    if (!opts.noProject) {
+      await click('.sb-foot button[title^="Add a project by path"]');
+      await wf("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
+      await focusField('input[aria-label="project folder"]');
+      await cdp("insert", repo, "enter");
+      await wf("the first pane (shell or session chooser)", async () => (await shown(TERM)) >= 1 || (await exists("section.pane.chooser .chooser-foot")), 30000);
+      // A new project opens the session chooser: pick Terminal for every seat and start it.
+      if (!(await shown(TERM))) {
+        const picked = await evalJs(`(() => {
+          let n = 0;
+          for (const sel of document.querySelectorAll("section.pane.chooser select")) {
+            const opt = [...sel.options].find((o) => o.text.trim() === "Terminal");
+            if (!opt) continue;
+            Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, opt.value);
+            sel.dispatchEvent(new Event("change", { bubbles: true }));
+            n++;
+          }
+          return n;
+        })()`);
+        log(`session chooser: Terminal picked for ${picked} seat(s)`);
+        await wf("the chooser's Start button", () => exists("section.pane.chooser .chooser-foot button.btn.primary:not(:disabled)"), 30000);
+        await click("section.pane.chooser .chooser-foot button.btn.primary");
+      }
+      await wf("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
+      await wf("its input field", () => exists(`${TERM} .xterm-helper-textarea`), 30000);
+    }
+    // The first-run guide is a modal dialog; close it so key chords reach the grid (opts.keepFirstRun: a proof that drives it).
+    if (!opts.keepFirstRun) await dismissFirstRun(app, log);
+  } catch (e) {
+    const closed = await app.closeApp().catch((err) => [false, String(err?.message ?? err)]);
+    log(`startPlain failed; closed the app it started: ${JSON.stringify(closed)}`);
+    throw e;
   }
-  // The first-run guide is a modal dialog; close it so key chords reach the grid (opts.keepFirstRun: a proof that drives it).
-  if (!opts.keepFirstRun) await dismissFirstRun(app, log);
   const shotDir = LIVE_LOGS;
   mkdirSync(shotDir, { recursive: true });
   const ctx = {
@@ -353,8 +382,8 @@ export async function startPlain(id, opts) {
       evalJs(`[...document.querySelectorAll(${JSON.stringify(sel)})].filter(e => e.offsetParent !== null).map(e => { const b = e.getBoundingClientRect(); return { key: e.getAttribute("aria-label"), x: b.x, y: b.y, w: b.width, h: b.height }; })`),
     /** A CDP page screenshot (PNG) written to LIVE_LOGS/<name>.png. */
     async shot(name) {
-      const targets = await (await fetch("http://127.0.0.1:9290/json")).json();
-      const t = targets.find((x) => x.type === "page" && /localhost:1470|tauri\.localhost/.test(x.url));
+      const targets = await (await fetch(`http://127.0.0.1:${CDPP}/json`)).json();
+      const t = targets.find((x) => x.type === "page" && PAGE.test(x.url));
       const ws = new WebSocket(t.webSocketDebuggerUrl);
       await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
       const data = await new Promise((resolve) => {
@@ -368,8 +397,8 @@ export async function startPlain(id, opts) {
     },
     /** One key press with an explicit key, code and virtual-key code (cdp.mjs knows only a few names, e.g. not F7). mods: Alt 1, Ctrl 2, Shift 8. */
     async rawKey({ key, code, vk, mods = 0, text }) {
-      const targets = await (await fetch("http://127.0.0.1:9290/json")).json();
-      const t = targets.find((x) => x.type === "page" && /localhost:1470|tauri\.localhost/.test(x.url));
+      const targets = await (await fetch(`http://127.0.0.1:${CDPP}/json`)).json();
+      const t = targets.find((x) => x.type === "page" && PAGE.test(x.url));
       const ws = new WebSocket(t.webSocketDebuggerUrl);
       await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
       let id = 0;

@@ -1,14 +1,14 @@
 // VIEW-057 (T-146-g): which tabs the right sidebar offers where. A workspace in a Git repository gets
-// Explorer, Source Control, Checks and Agents; a folder workspace (a project without Git) has no
-// git tabs and gets Attached worktrees and PR Checks instead. The tab remembered for the window is
+// Explorer, Insights (T-646, app-wide), Checks and Agents; a folder workspace (a project without Git) has no
+// git tabs and gets Attached worktrees and PR Checks instead (both get Insights, which is app-wide). The tab remembered for the window is
 // used when it is offered here, else the first one offered; a folder workspace's remembered PR Checks
 // wins over the window's tab. Search waits on the file-content search (T-236).
 import type { Worktree } from "../projects/model";
 
-export type TabId = "explorer" | "scm" | "checks" | "agents" | "attached" | "prchecks";
+export type TabId = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 
-export const GIT_TABS: TabId[] = ["explorer", "scm", "checks", "agents"];
-export const FOLDER_TABS: TabId[] = ["explorer", "attached", "prchecks", "agents"];
+export const GIT_TABS: TabId[] = ["explorer", "insights", "checks", "agents"];
+export const FOLDER_TABS: TabId[] = ["explorer", "insights", "attached", "prchecks", "agents"];
 /** The settings key holding {folder: "prchecks"} for the folder workspaces whose PR Checks was left open. */
 export const FOLDER_TAB_KEY = "folderWorkspaceTabs";
 
