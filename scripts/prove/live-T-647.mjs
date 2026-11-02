@@ -130,14 +130,17 @@ try {
     check(`${w}: the Now row is inside the panel`, m.now && m.now.l >= m.ins.l && m.now.r <= m.ins.r, JSON.stringify({ now: m.now, ins: m.ins }));
   }
 
-  // Clicking the Now row brings its pane forward with the keyboard focus in it.
-  const where = `(() => { const p = document.activeElement && document.activeElement.closest("section.pane"); return p ? "pane: " + (p.getAttribute("aria-label") || p.className) : "outside a pane: " + (document.activeElement ? document.activeElement.tagName : "none"); })()`;
-  await app.evalJs(`(() => { if (document.activeElement) document.activeElement.blur(); return "blurred"; })()`);
-  log(`focus before the click: ${await app.evalJs(where)}`);
+  // Clicking the Now row jumps to its pane, the same jump as the Board and Tower: away on the Tower first,
+  // then the click must bring the terminals back with that pane shown and marked active.
+  const where = `(() => { const p = [...document.querySelectorAll("section.pane.focused")].find((e) => e.offsetParent !== null); return p ? "shown and active: " + p.getAttribute("aria-label") : "no active pane on screen"; })()`;
+  log(`Tower clicked (to leave the terminals): ${await app.clickWhere("button", "/^\\s*Tower\\s*$/")}`);
+  await waitFor("the Tower list", () => app.exists(".tower .list"), 15000, 500);
+  const before = await app.evalJs(where);
+  log(`before the click: ${before}`);
   await app.click(".insights button.ins-row");
   await sleep(800);
-  const focused = await app.evalJs(where);
-  check("clicking the Now row focuses its pane", typeof focused === "string" && focused.startsWith("pane: "), JSON.stringify(focused));
+  const after = await app.evalJs(where);
+  check("clicking the Now row jumps back to its pane", before === "no active pane on screen" && after.startsWith("shown and active: "), JSON.stringify({ before, after }));
 
   // The Explorer tab of the same sidebar: every header button inside the window and the panel.
   log(`Explorer tab clicked: ${await app.clickWhere(".rside-tab", "/^\\s*Explorer\\s*$/")}`);

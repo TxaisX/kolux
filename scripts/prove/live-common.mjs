@@ -354,13 +354,13 @@ export async function startPlain(id, opts) {
       await wf("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
       await wf("its input field", () => exists(`${TERM} .xterm-helper-textarea`), 30000);
     }
+    // The first-run guide is a modal dialog; close it so key chords reach the grid (opts.keepFirstRun: a proof that drives it).
+    if (!opts.keepFirstRun) await dismissFirstRun(app, log);
   } catch (e) {
     const closed = await app.closeApp().catch((err) => [false, String(err?.message ?? err)]);
     log(`startPlain failed; closed the app it started: ${JSON.stringify(closed)}`);
     throw e;
   }
-  // The first-run guide is a modal dialog; close it so key chords reach the grid (opts.keepFirstRun: a proof that drives it).
-  if (!opts.keepFirstRun) await dismissFirstRun(app, log);
   const shotDir = LIVE_LOGS;
   mkdirSync(shotDir, { recursive: true });
   const ctx = {
