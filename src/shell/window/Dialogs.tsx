@@ -208,7 +208,7 @@ export default function WindowDialogs() {
           </div>
         </>
       )}
-      {settingsOpen && <SettingsPage onClose={() => setSettingsOpen(false)} target={settingsAt.target} n={settingsAt.n} />}
+      {settingsOpen && <SettingsPage onClose={() => setSettingsOpen(false)} target={settingsAt.target} n={settingsAt.n} active={activeDir ?? ""} />}
       {boardOpen && <WorkspaceBoard onClose={() => setBoardOpen(false)} />}
     </>
   );

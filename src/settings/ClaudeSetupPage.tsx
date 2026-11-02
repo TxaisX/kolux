@@ -281,9 +281,11 @@ function recentIds(): string[] {
   }
 }
 
-export default function ClaudeSetupPage() {
+/** `active` is the workspace open in the window: the tab always starts there. With none open it starts on the
+ *  last pick, or else on the project the New-session picker used most recently. */
+export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [workspace, setWorkspace] = useState(() => stored() ?? "");
+  const [workspace, setWorkspace] = useState(() => active || (stored() ?? ""));
   const [data, setData] = useState<ClaudeSetup | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -293,7 +295,7 @@ export default function ClaudeSetupPage() {
       .then((list) => {
         setProjects(list);
         // Nothing remembered: start on the project used most recently (the New-session picker's own list).
-        if (stored() === null) {
+        if (!active && stored() === null) {
           const first = recentIds().map((id) => list.find((pr) => pr.id === id)).find(Boolean);
           if (first) setWorkspace(first.path);
         }

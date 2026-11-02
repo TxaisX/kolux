@@ -8,7 +8,9 @@ import { MAX_THEMES, NAME_MAX, ownLook, resolve, type CustomTheme } from "./cust
 /** A name not used yet (any case): `Mine`, then `Mine 2`, `Mine 3`... */
 export function freeName(taken: readonly string[], want: string): string {
   const used = new Set(taken.map((n) => n.toLowerCase()));
-  const stem = want.trim().slice(0, NAME_MAX - 4) || "My theme";
+  const whole = want.trim().slice(0, NAME_MAX) || "My theme";
+  if (!used.has(whole.toLowerCase())) return whole;
+  const stem = whole.slice(0, NAME_MAX - 4).trimEnd(); // room for " 99" only when a number is added
   let name = stem, i = 2;
   while (used.has(name.toLowerCase())) name = `${stem} ${i++}`;
   return name;

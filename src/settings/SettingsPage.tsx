@@ -176,7 +176,7 @@ export function ClaudeCard({ onConnected = () => {} }: { onConnected?: (on: bool
 
 
 /** One page's settings; Settings draws one, a search draws each page that holds a match. */
-function PageBody({ page, repo, onSaved }: { page: Page; repo?: Project; onSaved: (p: Project) => void }) {
+function PageBody({ page, repo, onSaved, active }: { page: Page; repo?: Project; onSaved: (p: Project) => void; active?: string }) {
   return (
     <>
       {page === "general" && <GeneralPage />}
@@ -233,7 +233,7 @@ function PageBody({ page, repo, onSaved }: { page: Page; repo?: Project; onSaved
         </>
       )}
       {page === "safety" && <SafetyPage />}
-      {page === "claude" && <ClaudeSetupPage />}
+      {page === "claude" && <ClaudeSetupPage active={active} />}
       {repo && <RepoPage project={repo} onSaved={onSaved} />}
     </>
   );
@@ -261,7 +261,7 @@ function useScrollTo(section: string | undefined, page: Page, n: number) {
 }
 
 /** `target` comes from a link elsewhere in the app; `n` changes on every open so a repeat link scrolls again. */
-export default function SettingsPage({ onClose, target, n = 0 }: { onClose: () => void; target?: SettingsTarget | null; n?: number }) {
+export default function SettingsPage({ onClose, target, n = 0, active = "" }: { onClose: () => void; target?: SettingsTarget | null; n?: number; active?: string }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const saved = (u: Project) => setProjects((ps) => ps.map((x) => (x.id === u.id ? u : x)));
   const [page, setPage] = useState<Page>(() => pageOf(target?.page ?? lastPage(), []));
@@ -383,7 +383,7 @@ export default function SettingsPage({ onClose, target, n = 0 }: { onClose: () =
               <div key={h.page} className="settings-found" data-page={h.page}>
                 <h2 className="settings-found-title">{PAGES[h.page]}</h2>
                 <Suspense fallback={null}>
-                  <PageBody page={h.page} onSaved={saved} />
+                  <PageBody page={h.page} onSaved={saved} active={active} />
                 </Suspense>
               </div>
             ))}
@@ -391,7 +391,7 @@ export default function SettingsPage({ onClose, target, n = 0 }: { onClose: () =
           </SearchFolds.Provider>
         ) : (
           <Suspense fallback={null}>
-            <PageBody page={page} repo={repo} onSaved={saved} />
+            <PageBody page={page} repo={repo} onSaved={saved} active={active} />
           </Suspense>
         )}
       </main>

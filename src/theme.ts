@@ -282,7 +282,8 @@ export function terminalFor(a: Appearance, dark = isDark(a)): ITheme {
   }
   if (name !== "match") return terminalTheme(classic);
   const ct = customOf(a);
-  const base = ct ? { ...a, theme: baseOf(ct) } : a;
+  // A custom theme's own tint, saturation and depth, not the window's resting sliders.
+  const base = ct ? { ...a, tint: ct.tint ?? 0, saturation: ct.saturation ?? 100, depth: ct.depth ?? 0, theme: baseOf(ct) } : a;
   const t = buildTheme(base, !light);
   const hue = themeHue(base);
   const pull = (h: number, l: number) => (hue === null || base.theme === "graphite" ? hsl(h, 0.6, l) : mix(hsl(h, 0.6, l), hsl(hue, 0.6, l), 0.2));

@@ -47,7 +47,8 @@ const pick = (v: unknown, keys: readonly string[]): Record<string, string> => {
 export function resolve(window: Appearance, t: CustomTheme): CustomTheme {
   const look = { ...window, ...ownLook(t) }; // the theme's own tint, saturation and depth, never the sliders' current ones
   const make = (dark: boolean) => customTokens(buildTheme({ ...look, theme: t.base as ThemeName, userTheme: "" }, dark) as Record<string, string>, t.overrides);
-  let dark = isDark({ ...look, userTheme: "" });
+  // A saved theme keeps the light/dark it was made in; only a new one takes the window's current mode.
+  let dark = typeof t.dark === "boolean" ? t.dark : isDark({ ...look, userTheme: "" });
   let tk = make(dark);
   if (isDarkGround(tk["app-bg"]) !== dark) tk = make((dark = !dark));
   return { ...t, ...ownLook(t), dark: isDarkGround(tk["app-bg"]), vars: Object.fromEntries(Object.entries(tk).map(([k, v]) => ["--" + k, v])) };
@@ -62,7 +63,7 @@ export function tidyThemes(v: unknown, look: Appearance): CustomTheme[] {
     const name = typeof r.name === "string" ? r.name.trim().slice(0, NAME_MAX) : "";
     if (!name || out.some((t) => t.name.toLowerCase() === name.toLowerCase()) || out.length >= MAX_THEMES) continue;
     const base = typeof r.base === "string" && (THEMES as readonly string[]).includes(r.base.toLowerCase()) ? r.base.toLowerCase() : "classic";
-    out.push(resolve(look, { name, base, overrides: pick(r.overrides, TOKEN_KEYS), terminal: pick(r.terminal, TERMINAL_KEYS), ...ownLook(r as CustomTheme) }));
+    out.push(resolve(look, { name, base, overrides: pick(r.overrides, TOKEN_KEYS), terminal: pick(r.terminal, TERMINAL_KEYS), ...ownLook(r as CustomTheme), ...(typeof r.dark === "boolean" && { dark: r.dark }) }));
   }
   return out;
 }

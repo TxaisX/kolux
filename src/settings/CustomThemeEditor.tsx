@@ -87,8 +87,8 @@ export default function CustomThemeEditor({ look: saved, onChange }: Props) {
     setNote(n);
     setBad(b);
   };
-  // Only the theme being edited takes the sliders' current tint, saturation and depth; the others keep their own.
-  const edit = (next: CustomTheme) => cur && onChange(saveTheme(look, { ...next, ...ownLook(look) }, cur.name));
+  // The sliders are off while a custom theme is in use, so an edit keeps the theme's own tint, saturation and depth.
+  const edit = (next: CustomTheme) => cur && onChange(saveTheme(look, { ...next, ...ownLook(cur) }, cur.name));
   const tokens = buildTheme(look, isDark(look)) as Record<string, string>;
   const term = terminalFor({ ...look, terminal: "match", lightScheme: "match", lightTerminal: true }, isDark(look)) as Record<string, string>;
 

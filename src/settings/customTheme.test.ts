@@ -276,3 +276,46 @@ test("a token name from the prototype chain, or a terminal key xterm does not kn
   const term = terminalFor(a, true) as Record<string, string>;
   expect([term.red, term.foreground, term.fooBar]).toEqual(["#cc0000", "#101010", undefined]);
 });
+
+// ---- re-review fixes (wave UI lane D, round 2) ----
+
+test("a saved theme keeps the light/dark it was made in when the window's mode changes and another theme is edited", () => {
+  let a = look({ appTheme: "teal", appearanceMode: "dark" });
+  a = saveTheme(a, { ...newTheme(a), name: "A" });
+  a = saveTheme(a, { ...newTheme({ ...a, userTheme: "" }), name: "B" });
+  const bBefore = a.userThemes[1];
+  expect(bBefore.dark).toBe(true);
+  // the window goes light, then A is edited the way the editor does it (the list is tidied first)
+  const w = { ...a, mode: "light" as const, userTheme: "A" };
+  const list = { ...w, userThemes: tidyThemes(w.userThemes, w) };
+  const next = saveTheme(list, { ...list.userThemes[0], overrides: { accent: "#ff8800" } }, "A");
+  expect(next.userThemes[1].dark).toBe(true);
+  expect(next.userThemes[1].vars).toEqual(bBefore.vars);
+  expect(next.userThemes[0].dark).toBe(true);
+});
+
+test("editing a theme with the sliders at rest elsewhere keeps the theme's own tint (the editor spreads the theme's own look)", () => {
+  let a = look({ appTheme: "teal", themeTint: 60 });
+  a = saveTheme(a, { ...newTheme(a), name: "A" });
+  const before = a.userThemes[0];
+  const w = { ...a, theme: "classic" as const, tint: 0, userTheme: "A" };
+  const cur = w.userThemes[0];
+  const next = saveTheme(w, { ...cur, overrides: { accent: "#ff8800" } }, "A");
+  expect(next.userThemes[0].tint).toBe(60);
+  expect(next.userThemes[0].vars!["--app-bg"]).toBe(before.vars!["--app-bg"]);
+});
+
+test("a free name is cut to the limit only when a number has to be added", () => {
+  const long = "x".repeat(40);
+  expect(freeName([], long)).toBe(long);
+  expect(freeName([long], long).length).toBeLessThanOrEqual(40);
+  expect(freeName([long], long)).not.toBe(long);
+  expect(freeName(["Mine"], "Mine")).toBe("Mine 2");
+});
+
+test("the matching terminal palette of a custom theme uses the theme's own tint, not the window's sliders", () => {
+  let a = look({ appTheme: "teal", themeTint: 60, terminalScheme: "match" });
+  a = saveTheme(a, { ...newTheme(a), name: "A" });
+  const on = { ...a, userTheme: "A" };
+  expect(terminalFor({ ...on, tint: -120 }, true)).toEqual(terminalFor({ ...on, tint: 60 }, true));
+});
