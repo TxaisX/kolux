@@ -259,7 +259,7 @@ fn index_locked(dir: &Path) -> bool {
 }
 
 /// What a step answers while `index_locked` is true.
-const LOCKED: &str = "Another git command is using this repository; the next finished turn will try again.";
+const LOCKED: &str = "Another git command is using this repository (its index.lock exists); the next finished turn will try again. If no git command is running, a git that stopped left the lock behind: delete index.lock in the repository's .git folder to go on.";
 
 /// The one rule about a branch's upstream, for commit and push alike. No upstream, `origin/<branch>`
 /// and the default branch on origin (a workspace branch cut from `origin/main` tracks it until its
@@ -426,7 +426,11 @@ fn undo(dir: &Path, saved: &str, head_before: &Option<String>, mut s: AutoStep) 
             // not rewritten under it. If the git Kolux stopped left it, that git writes its new
             // index through the lock and renames it in last, so the index is as it found it. The
             // next finished turn skips until the lock is gone.
-            s.message = format!("{} The staging area was left as it is because the repository's index.lock is still there.", s.message);
+            // Nothing was committed or pushed; the next run scans what is staged before any commit.
+            s.message = format!(
+                "{} The staging area was left as it is, so these changes may still be staged, because the repository's index.lock is still there. If no git command is running, a git that stopped left it behind: delete it, and the next finished turn checks again.",
+                s.message.replace(" Nothing was kept staged.", "")
+            );
         } else if let Err(e) = run(&["read-tree", saved], Some(dir)) {
             s.message = format!("{} The staging area could not be put back: {}", s.message, scrub(&e));
         }
@@ -794,13 +798,11 @@ fn explain(log: &str, branch: &str, hook: bool) -> String {
 }
 
 /// Links `branch` to its own copy on origin (`git branch --set-upstream-to=origin/<branch>`).
-/// `oid` is what origin's branch holds. A push that reached origin without this computer hearing
-/// of it leaves no remote-tracking ref to link to, so that ref is made first, at `oid`.
+/// `oid` is what origin's branch holds, just read from origin itself. A push that reached origin
+/// without this computer hearing of it leaves the remote-tracking ref missing or behind, so that ref
+/// is set to `oid` first (the pull request step measures "ahead" against it).
 fn link_upstream(dir: &Path, branch: &str, own: &str, oid: &str) -> Result<(), String> {
-    let tracking = format!("refs/remotes/{own}");
-    if run(&["rev-parse", "--verify", "-q", &tracking], Some(dir)).is_err() {
-        run(&["update-ref", &tracking, oid], Some(dir))?;
-    }
+    run(&["update-ref", &format!("refs/remotes/{own}"), oid], Some(dir))?;
     run(&["branch", &format!("--set-upstream-to={own}"), branch], Some(dir)).map(|_| ())
 }
 
@@ -859,10 +861,12 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
     };
     if ahead == 0 {
         // Everything is on origin already. If origin's copy of this very branch is the commit pinned
-        // above but the branch is not linked to it (the link failed, a push reached origin without
-        // Kolux seeing its end, or the app quit in between), link it now: the pull request step
-        // refuses a branch whose upstream is not origin/<branch>.
-        if !linked && remote.branches.iter().any(|(name, tip)| name == branch && *tip == oid) {
+        // above but the branch is not linked to it, or this computer's copy of origin/<branch> is
+        // missing or behind (the link failed, a push reached origin without Kolux seeing its end, or
+        // the app quit in between), fix that now: the pull request step refuses a branch whose
+        // upstream is not origin/<branch> or that looks ahead of it.
+        let tracked = run(&["rev-parse", "--verify", "-q", &format!("refs/remotes/{own}")], Some(dir)).ok();
+        if (!linked || tracked.as_deref() != Some(oid.as_str())) && remote.branches.iter().any(|(name, tip)| name == branch && *tip == oid) {
             return Ok(match link_upstream(dir, branch, &own, &oid) {
                 Ok(()) => step("done", format!("{branch} is on origin already; linked it to {own}.")),
                 Err(e) => step("failed", format!("Not linked: {branch} is on origin, but could not be linked to {own} ({}); the next finished turn will try again.", scrub(&e))),
@@ -1897,6 +1901,30 @@ mod tests {
     }
 
     #[test]
+    fn t652_a_stale_copy_of_origins_branch_is_moved_to_what_origin_holds_without_pushing() {
+        let (dir, bare) = with_origin("p-relink-stale");
+        branch(&dir, "feature");
+        commit_file(&dir, "a.txt", "a
+");
+        assert_eq!(push_step(&dir).unwrap().kind, "done");
+        let old = head(&dir);
+        commit_file(&dir, "b.txt", "b
+");
+        // A push that landed while this computer kept its old copy of origin/feature: the branch is
+        // linked, nothing is ahead of origin, but the local copy says one commit is.
+        run(&["push", "-q", &url(&bare), &format!("{}:refs/heads/feature", head(&dir))], Some(&dir)).unwrap();
+        run(&["update-ref", "refs/remotes/origin/feature", &old], Some(&dir)).unwrap();
+        assert_eq!(scm::status(&dir).unwrap().ahead, 1, "the premise");
+        let s = push_step(&dir).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        assert_eq!(run(&["rev-parse", "refs/remotes/origin/feature"], Some(&dir)).unwrap(), head(&dir));
+        assert_eq!(scm::status(&dir).unwrap().ahead, 0);
+        // Once it matches, the next run has nothing to do.
+        assert_eq!(push_step(&dir).unwrap().kind, "clean");
+        cleanup(&[&dir, &bare]);
+    }
+
+    #[test]
     fn t652_push_follow_tags_in_the_config_sends_no_tags() {
         let (dir, bare) = with_origin("p-tags");
         let elsewhere = bare_repo("p-tags-premise", "main");
@@ -1926,7 +1954,7 @@ mod tests {
         let before = head(&dir);
         let s = commit_step(&dir).unwrap();
         assert_eq!(s.kind, "skipped", "{s:?}");
-        assert_eq!(s.message, "Another git command is using this repository; the next finished turn will try again.");
+        assert_eq!(s.message, LOCKED);
         assert_eq!(head(&dir), before, "nothing was committed");
         assert!(index_of(&dir).contains("?? ok.txt"), "nothing was staged");
         assert!(lock.exists(), "the lock is not Kolux's to delete");

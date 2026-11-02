@@ -5,7 +5,7 @@ import app from "../App.tsx?raw";
 
 describe("autoPrWatch wiring", () => {
   it("App.tsx loads the listener on demand", () => {
-    expect(app).toContain('import("./scm/autoPrWatch")');
+    expect(app).toMatch(/^\s*useEffect\(.*import\("\.\/scm\/autoPrWatch"\)/m);
   });
   it("App.tsx never imports it statically (it stays out of the first load)", () => {
     expect(app).not.toMatch(/^import\s+["']\.\/scm\/autoPrWatch["']/m);
