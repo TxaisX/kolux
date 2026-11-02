@@ -1,1 +1,22 @@
-
+site A http://127.0.0.1:61154, site B http://127.0.0.1:61155; browser tab 5 on A
+set headers: page 5 sends 1 extra header(s) with its requests to http://127.0.0.1:61154; set credentials: page 5 sends HTTP basic credentials with its requests to http://127.0.0.1:61154
+onA-fetch-self: A token=t656-secret auth=Basic …
+onA-xhr-self: A token=t656-secret auth=Basic …
+onA-fetch-other: B token=- auth=-
+onA-xhr-other: B token=- auth=-
+redirect A /redir -> B /landed: A token=t656-secret auth=Basic …; B token=t656-secret auth=-
+  at B after the redirect: token sent, Authorization not sent (DT-C92: the engine's redirect rule)
+onB-fetch-self: B token=- auth=-
+onB-xhr-self: B token=- auth=-
+onB-fetch-other: A token=- auth=-
+onB-xhr-other: A token=- auth=-
+back on A: A token=t656-secret auth=Basic …
+after set headers --headers {}: A token=- auth=Basic …
+screenshot: G:/Temp/live-v15-logs/T-656-end.png
+PASS both set commands record site A: http://127.0.0.1:61154 / http://127.0.0.1:61154
+PASS a page on A: fetch and XHR to A carry the header and credentials: see lines above
+PASS a page on A: fetch and XHR to B carry neither: see lines above
+PASS no preflight reached B for the header (nothing extra was added): []
+PASS a page on B sends neither, to B or to A: see lines above
+PASS back on A the stored header and credentials are sent again: A token=t656-secret auth=Basic …
+PASS after clearing, the header is gone (credentials stay): A token=- auth=Basic …

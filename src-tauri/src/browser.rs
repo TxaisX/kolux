@@ -292,7 +292,7 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   // base address), the request is sent to exactly the address that was checked, and every built-in the
   // check uses is kept here, before any page script runs, so a page cannot swap one to read the values
   // or to point a checked request somewhere else.
-  const R = Reflect.apply, assign = Object.assign, keys = Object.keys, desc = Object.getOwnPropertyDescriptor, define = Object.defineProperty;
+  const R = Reflect.apply, assign = Object.assign, ownKeys = Object.keys, desc = Object.getOwnPropertyDescriptor, define = Object.defineProperty;
   const RealURL = URL, urlHref = desc(URL.prototype, "href").get, urlOrigin = desc(URL.prototype, "origin").get;
   const baseOf = desc(Node.prototype, "baseURI").get, reqUrl = desc(Request.prototype, "url").get;
   const parse = (u, base) => { try { return new RealURL(u, base); } catch (_) { return null; } };
@@ -302,7 +302,7 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   const extra = (url, set) => {
     const o = site(url);
     if (o === "null" || o !== location.origin) return;
-    if (o === E.headersOrigin) { const hs = E.headers, ks = keys(hs); for (let i = 0; i < ks.length; i++) set(ks[i], hs[ks[i]]); }
+    if (o === E.headersOrigin) { const hs = E.headers, ks = ownKeys(hs); for (let i = 0; i < ks.length; i++) set(ks[i], hs[ks[i]]); }
     if (E.auth && o === E.authOrigin) set("Authorization", E.auth);
   };
   const RealHeaders = Headers, headerSet = Headers.prototype.set, realSetHeader = XMLHttpRequest.prototype.setRequestHeader;

@@ -50,6 +50,11 @@ function load(page: string, state: Record<string, unknown>, base = page) {
 const set = { headers: { "X-Token": "secret-token" }, headersOrigin: A, auth: "Basic bWU6c2VjcmV0", authOrigin: A };
 
 describe("T-656: extra headers and credentials stay on their own site", () => {
+  it("the whole page script compiles (a clash with an earlier name would drop all of it)", () => {
+    const start = source.indexOf('pub const CHORD_SCRIPT: &str = r#"') + 'pub const CHORD_SCRIPT: &str = r#"'.length;
+    expect(() => new Function(source.slice(start, source.indexOf('"#;', start)))).not.toThrow();
+  });
+
   it("a page on A sends them with fetch and XHR to A, and not to B", async () => {
     const p = load(`${A}/form`, set);
     await p.fetch("/api");
