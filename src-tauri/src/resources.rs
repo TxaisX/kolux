@@ -15,6 +15,8 @@ pub mod update_guard;
 pub mod update_care;
 /// T-547 (OD-01): the Kimi balance and MiniMax usage checks, with keys kept sealed.
 pub mod provider_usage;
+/// T-547: the one network client behind those checks (own address check, no redirects, 10 s, 64 KB).
+pub mod provider_net;
 
 use serde::Serialize;
 use std::collections::HashMap;

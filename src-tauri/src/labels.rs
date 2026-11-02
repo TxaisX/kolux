@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn proj088_resolves_to_the_first_loopback_listener_not_the_first_row() {
-        let row = |addr: &str, port: u16, external: bool| crate::ports::PortRow { port, addr: addr.into(), pid: 1, external };
+        let row = |addr: &str, port: u16, external: bool| crate::ports::PortRow { port, addr: addr.into(), pid: 1, external, started: String::new(), terminal: None };
         let rows = vec![row("192.168.1.5", 3000, false), row("127.0.0.1", 3000, false)];
         assert_eq!(first_target(rows), Some("127.0.0.1:3000".into()));
         assert_eq!(first_target(vec![row("192.168.1.5", 3000, false)]), None, "no loopback listener at all");

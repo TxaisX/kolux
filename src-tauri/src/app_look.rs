@@ -88,6 +88,9 @@ pub fn apply<R: Runtime>(app: &tauri::AppHandle<R>, settings: &Value) -> Result<
         Image::new_owned(px, base.width(), base.height())
     });
     let blur = blur_on(settings);
+    // T-300: the tray icon follows the pick at once, its attention dot kept. Done before the
+    // windows, so a window that refuses its icon or effect cannot leave the tray on the old colour.
+    crate::tray::repaint(app);
     for window in app.webview_windows().values() {
         if let Some(icon) = &icon {
             window.set_icon(icon.clone()).map_err(|e| e.to_string())?;

@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import { accountKey, capOn, codexOf, contextFill, meterOf, meterText, percentMode, planOf, readsLeft, shortTokens, shownPercent, tone, usageLine } from "./meter";
+import { accountKey, capOn, claudeOf, codexOf, contextFill, meterOf, meterText, percentMode, planOf, readsLeft, shortTokens, shownPercent, tone, usageLine } from "./meter";
 import Ring from "./Ring";
 import type { ClaudeLimit } from "./claude";
 import type { CodexUsage } from "./codex";
@@ -119,4 +119,21 @@ test("T-548-b: a Codex pane on another account gets that account's own figures w
   expect(accountKey(null)).toBe("");
   expect(accountKey("b")).toBe("b");
   expect(meterOf(undefined, "codex", claude, codexOf("codex", "b", "a", codex, by))?.plan).toEqual({ fiveHour: 80, weekly: null });
+});
+
+// T-548-b: the Claude half of the same rule. src/usage holds the active Claude account's windows (the pill);
+// a pane on another managed account gets the windows read for its own folder, never the active account's.
+test("T-548-b: claudeOf gives a Claude pane its own account's windows; the active account keeps the pill's", () => {
+  const own: ClaudeLimit[] = [{ kind: "five_hour", usedPercent: 80, resetsAt: null }, { kind: "seven_day", usedPercent: 9, resetsAt: null }];
+  const by = { b: own, "": [{ kind: "five_hour", usedPercent: 3, resetsAt: null }] };
+  expect(claudeOf("claude", "b", "a", claude, by)).toBe(own);
+  expect(claudeOf("claude", null, "a", claude, by)).toBe(by[""]); // Claude's own sign-in while a managed account is active
+  expect(claudeOf("claude", "c", "a", claude, by)).toEqual([]); // not read yet: no figures rather than another account's
+  expect(claudeOf("claude", "a", "a", claude, by)).toBe(claude);
+  expect(claudeOf("claude", null, null, claude, by)).toBe(claude);
+  expect(claudeOf("claude", undefined, "a", claude, by)).toBe(claude); // no account recorded yet: unknown, so nothing is hidden
+  expect(claudeOf("codex", "b", "a", claude, by)).toBe(claude); // only Claude panes are held back
+  expect(planOf("claude", claudeOf("claude", "b", "a", claude, by), null)).toEqual({ fiveHour: 80, weekly: 9 });
+  expect(planOf("claude", claudeOf("claude", "c", "a", claude, by), null)).toBeNull();
+  expect(usageLine("claude", claudeOf("claude", "b", "a", claude, by), null, false, new Date(0))).toContain("Claude 80% used");
 });

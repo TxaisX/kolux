@@ -537,6 +537,7 @@ pub fn run() {
             protected_custom::protected_attempts,
             protected_custom::protected_attempts_clear,
             hooks::claude_usage,
+            hooks::claude_usage_of,
             sysmem::process_memory,
             fonts::list_fonts,
             term_import::term_import_ghostty,
@@ -764,6 +765,9 @@ pub fn run() {
             browser::preview::browser_preview_of,
             browser::ports::browser_dev_ports,
             automations::automations_list,
+            automations::automations_external_refresh,
+            automations::automation_external_act,
+            automations::automation_external_history,
             automations::automation_set_enabled,
             automations::automation_delete,
             automations::automation_run_now,
@@ -902,6 +906,8 @@ pub fn run() {
             cli::file_cli::cli_file_window,
             cli::file_cli::cli_file_result,
             diag::diag_bundle,
+            diag::diag_summary, // APP-010: Help > Copy terminal diagnostics
+            lifecycle::app_restart, // APP-010: Help > Restart Kolux
             resources::recovery::ui_heartbeat,
             resources::recovery::startup_recovery_notes,
             resources::recovery::graphics_crash_noted,

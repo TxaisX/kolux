@@ -4,7 +4,7 @@
 // last four characters, and the key itself never comes back to this page (provider_usage.rs keeps
 // it sealed). A check runs only when Check now is pressed. Claude, Codex and Gemini figures stay
 // on what their own sessions report.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 export type ProviderId = "kimi" | "minimax";
@@ -45,7 +45,7 @@ export function readingText(r: Reading): { text: string; warn: boolean } {
 
 export type ProviderAction = { kind: "save"; provider: ProviderId; value: string } | { kind: "forget"; provider: ProviderId } | { kind: "check"; provider: ProviderId };
 
-export function ProviderUsageView({ rows, drafts, readings, onDraft, onAction }: { rows: KeyRow[]; drafts: Record<string, string>; readings: Partial<Record<ProviderId, Reading>>; onDraft: (p: ProviderId, value: string) => void; onAction: (a: ProviderAction) => void }) {
+export function ProviderUsageView({ rows, drafts, readings, pending = {}, onDraft, onAction }: { rows: KeyRow[]; drafts: Record<string, string>; readings: Partial<Record<ProviderId, Reading>>; pending?: Partial<Record<ProviderId, boolean>>; onDraft: (p: ProviderId, value: string) => void; onAction: (a: ProviderAction) => void }) {
   return (
     <section className="conn-card" aria-label="Provider usage">
       <header className="conn-head">
@@ -66,8 +66,8 @@ export function ProviderUsageView({ rows, drafts, readings, onDraft, onAction }:
               <button className="btn" disabled={!r.kept} onClick={() => onAction({ kind: "forget", provider: r.provider })}>
                 Remove
               </button>
-              <button className="btn" disabled={!r.kept} onClick={() => onAction({ kind: "check", provider: r.provider })}>
-                Check now
+              <button className="btn" disabled={!r.kept || !!pending[r.provider]} onClick={() => onAction({ kind: "check", provider: r.provider })}>
+                {pending[r.provider] ? "Checking…" : "Check now"}
               </button>
               <span className="conn-detail">{r.kept ? `Kept: ${r.masked ?? "••••"}` : "No key"}</span>
             </div>
@@ -94,14 +94,24 @@ export default function ProviderUsage() {
       .catch((e) => setError(String(e)));
   }, []);
   useEffect(read, [read]);
+  const [pending, setPending] = useState<Partial<Record<ProviderId, boolean>>>({});
+  // A ref as well as state: a second click in the same frame must not slip past a stale render.
+  const running = useRef<Partial<Record<ProviderId, boolean>>>({});
   const act = (a: ProviderAction) => {
     if (a.kind === "check") {
+      if (running.current[a.provider]) return;
+      running.current[a.provider] = true;
+      setPending((m) => ({ ...m, [a.provider]: true }));
       invoke<Reading>("provider_usage_check", { provider: a.provider })
         .then((r) => {
           setError(null);
           setReadings((m) => ({ ...m, [a.provider]: r }));
         })
-        .catch((e) => setError(String(e)));
+        .catch((e) => setError(String(e)))
+        .finally(() => {
+          running.current[a.provider] = false;
+          setPending((m) => ({ ...m, [a.provider]: false }));
+        });
       return;
     }
     const run = a.kind === "save" ? invoke<KeyRow[]>("provider_key_set", { provider: a.provider, value: a.value }) : invoke<KeyRow[]>("provider_key_forget", { provider: a.provider });
@@ -118,7 +128,7 @@ export default function ProviderUsage() {
   if (!rows) return error ? <p className="conn-detail warn" role="alert">{error}</p> : null;
   return (
     <>
-      <ProviderUsageView rows={rows} drafts={drafts} readings={readings} onDraft={(p, value) => setDrafts((d) => ({ ...d, [p]: value }))} onAction={act} />
+      <ProviderUsageView rows={rows} drafts={drafts} readings={readings} pending={pending} onDraft={(p, value) => setDrafts((d) => ({ ...d, [p]: value }))} onAction={act} />
       {error && (
         <p className="conn-detail warn" role="alert">
           {error}
