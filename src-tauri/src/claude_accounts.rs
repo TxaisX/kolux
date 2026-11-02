@@ -747,6 +747,11 @@ pub fn active_dir(store: &Store) -> Option<String> {
     load(store).into_iter().find(|a| a.id == id).map(|a| a.config_dir).filter(|d| PathBuf::from(d).is_dir())
 }
 
+/// T-548-b: a listed account's own folder, if it is still there: where a restored pane starts again.
+pub fn dir_of(store: &Store, id: &str) -> Option<String> {
+    load(store).into_iter().find(|a| a.id == id).map(|a| a.config_dir).filter(|d| PathBuf::from(d).is_dir())
+}
+
 /// Row 984: the `.claude.json` a new Claude pane will read, which is where its folder trust goes.
 /// Same precedence as the pane's launch (`pane_env`): an active managed account outside key mode
 /// reads its own folder; otherwise the pane inherits the app's `process_file`.

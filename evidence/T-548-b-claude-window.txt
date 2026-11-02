@@ -1,0 +1,45 @@
+T-548-b Claude half, window + spawn side (s-90/T-548-b, 2026-11-01).
+
+BUILT
+- hooks.rs: #[tauri::command] claude_usage_of(store, config_dir: Option<String>) -> Result<Vec<Limit>, String> beside claude_usage (inner helper usage_of, so the test needs no Tauri state); registered in lib.rs after hooks::claude_usage.
+- claude_accounts.rs: dir_of(store, id) -> Option<String> (listed account's folder, only if it is a folder).
+- terminal.rs: claude_pane_dir(asked, dir_of, active_dir). terminal_spawn: when the `account` argument arrives with a Claude-credited program (not key mode / not the 1-year key), pane_env gets dir_of(id) instead of active_dir; spawn_account answers that same id; an id no longer listed (or whose folder is gone) is an error ("The Claude account this session ran on is no longer listed...") like Codex's wait_home. A new pane (no account argument) is unchanged: active_dir / active id.
+- src/usage/plan.ts: claudeBy, claudeActive, publishClaudeFor(id, limits|null), publishClaudeActive(id).
+- src/usage/meter.ts: claudeOf(agent, paneAccount, active, claude, by) + ClaudeByAccount, mirrors codexOf (no read yet = [] so nothing shows rather than another account's windows).
+- src/usage/paneFigures.ts: accountsToRead(..., agent = "codex"|"claude"), readClaudeOf(id, call) (claude_accounts list -> configDir -> claude_usage_of), useClaudePaneFigures(panes, active): one runner per other Claude account (5 min timer, focus at most every 2 min, same as Codex) plus a re-read of the one account named by each `claude-usage-of` event (see Review C fixes); publishes claudeActive; drops an account's windows when no pane needs it.
+- Readers via claudeOf: UsageReadout.tsx HeaderUsage, Grid.tsx tab ring, Pane.tsx Board card meter, useRailAndTower.ts (rail ring, Agents footer usageLine, planLine, Tower seats' meters). useRailAndTower calls useClaudePaneFigures beside useCodexPaneFigures (that is where Codex's active account is also published; App.tsx needed no change).
+- src/tower/tower.ts usageByAccount: a Claude card now says forAccount (active Claude account), shows other accounts' own windows from plan.claudeBy and counts only unread ones as `elsewhere` (was: elsewhere 0, no forAccount, "until T-548-b"). Two old FIX-1 tower tests that pinned the old rule were rewritten.
+
+TESTS (new / changed)
+- hooks::tests::row_548_b_each_config_folder_keeps_its_own_status_line_windows (extended: default, two folders, unknown folder through usage_of)
+- terminal::tests::t548b_a_restored_claude_pane_starts_on_its_own_account (new)
+- src/usage/meter.test.ts: T-548-b claudeOf per account
+- src/usage/paneFigures.test.ts: accountsToRead for claude, claudeBy store/drop/claudeActive, readClaudeOf folder lookup (3 new tests)
+- src/tower/tower.test.ts: Claude card forAccount / elsewhere (2 rewritten), per-account Claude windows (2 new)
+
+COMMANDS AND REAL RESULTS (env: CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-90 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0; slot s-90)
+- cargo test --manifest-path src-tauri/Cargo.toml -- hooks::tests::row_548_b terminal::tests::t548b claude_accounts::  -> 56 passed, 0 failed (includes row_548_b, both t548b tests)
+- VITEST_MAX_WORKERS=2 npx vitest run src/usage src/tower src/switcher src/terminal src/shell -> 147 files, 900 tests passed
+- cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings -> exit 0, 0 warnings
+- npx vitest run src/agents src/board src/status (the hook's callers) -> 36 files, 207 tests passed
+- npx tsc --noEmit -p . -> exit 0
+- node scripts/plan-check.mjs -> plan-check: OK
+
+NOT BUILT / REST
+- Live proof (Windows): two managed Claude accounts. 1) Settings -> Accounts: add and sign in Claude account A and B. 2) Make A active, open a Claude pane (P1); switch to B, open another (P2). 3) Let each report once (send a prompt in each so its status line reports). 4) P1's header, tab ring and Board card must show A's 5-hour/Weekly, P2's must show B's (they differ); the Tower Claude card says "Figures for <active account>" and lists the other account's own line, nothing "not read yet" once both reported. 5) Quit and reopen with both panes restored: each pane must come back on its own account (check Settings or the pane's CLAUDE_CONFIG_DIR), not on the active one. 6) Remove account B in Settings, restore P2: it must refuse to start with the "no longer listed" message.
+- Not changed: pane_config_file / trust and the agent-hooks folder still use the active account's folder for a restored pane's trust record (claude_accounts::pane_config_file, active_dir callers outside terminal_spawn); context/cost of another-account pane's report (useAgentStatus.ts / ClaudePill listeners) as noted in T-548-b-claude.txt.
+
+REVIEW C FIXES (2026-11-01, s-90/T-548-b)
+1. Claude panes now record the account terminal_spawn answers (Pane.tsx onPty via spawnRecord in terminal/accountChange.ts; Codex keeps account + setup, Claude keeps the account, null = Claude's own sign-in). Test: accountChange.test.ts "spawnRecord".
+2. A pane with no recorded account stays undefined (useRailAndTower no longer maps it to null); usageByAccount treats undefined as the active account (active figures, elsewhere 0), null stays "Claude's own sign-in" and is elsewhere when a managed account is active. nameSeats leaves undefined alone. Tests: tower.test.ts (new seat with account undefined; the "every Claude pane is on another account" test still pins a known null).
+3. ClaudePill: a claude-accounts event re-reads claude_usage and publishes it even when empty (readActiveClaude / startClaudePill). Tests: ClaudePill.test.ts (2).
+4. hooks.rs keep_other_account now emits claude-usage-of with the report's config folder (null = default sign-in); the store half is the pure keep_other, tested by row_548_b_a_report_from_another_folder_is_kept_and_named_in_the_event (the AppHandle emit itself has no pure test). useClaudePaneFigures listens to claude-usage-of only, accountOfFolder finds the one wanted account owning that folder, rereadFolder reads just it (one claude_usage_of; the account list is asked only for a managed folder). The claude-usage listener and its wrong comment are gone.
+5. Lifecycle tests: paneFigures.hook.test.ts (reader added per other account, one listener, one event reads one account, reader/listener/windows dropped when the pane leaves, unchanged set restarts nothing); paneFigures.test.ts rereadFolder.
+
+RE-RUN RESULTS
+- cargo test --manifest-path src-tauri/Cargo.toml -- hooks:: terminal::tests::t548b claude_accounts:: -> 236 passed, 0 failed
+- cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings -> exit 0
+- VITEST_MAX_WORKERS=2 npx vitest run src/usage src/tower src/switcher src/terminal src/shell src/agents src/board src/status -> 184 files, 1121 tests passed
+- npx tsc --noEmit -p . -> exit 0
+- node scripts/plan-check.mjs -> plan-check: OK
+STILL REST: trust record and agent-hooks folder follow the active account for a restored pane; the two-account live proof.
