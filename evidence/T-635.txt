@@ -37,3 +37,16 @@ GREEN (after the fix)
 - cargo test --lib: 2780 passed, 1 failed, 6 ignored. The one failure is
   scm::writers::tests::t606_the_claude_writer_runs_from_an_empty_folder_of_its_own_with_only_the_users_settings,
   the known local-only environment failure (skipped on CI; see evidence/T-633.txt).
+
+REVIEW ROUND 1 (on 9a31b8e1): code review A-, security audit B-. Fixed in the next commit:
+- security MEDIUM: any program in a project node_modules/.bin now refuses (npx puts those folders
+  first on the search path for Node and git too), not only one called skills.
+- code MEDIUM: the user's folder is recognised however its name is spelled (case, 8.3 short name),
+  via same_dir; outside it, every parent up to the drive root counts (code LOW).
+- LOW: an unknown app folder counts as an old Node (the probe never runs from the project folder);
+  the old-node test no longer depends on where %TEMP% is; message says "could not confirm".
+- DT-C82: names the .bin rule and the check-then-start gap as left over.
+Not done: a timeout on the version probe (node -p returns at once; reviewer NIT).
+Re-run: skills::installer 14 passed (all t635 tests incl. new t635_same_dir_ignores_spelling);
+clippy --all-targets -D warnings clean; plan-check OK. CI on 9a31b8e1 failed only on
+notebook_run::tests::a_cell_that_sleeps_past_the_ceiling_is_killed (timing, untouched module).

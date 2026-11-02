@@ -181,13 +181,23 @@ pub fn refusal(cmd: &Cmd, dir: Option<&Path>, cwd: &Path, home: Option<&Path>, o
         return dir.is_none().then(|| "Kolux could not find its own folder, so it will not run a computer-wide skills install from the folder it was started in".into());
     }
     if old_node {
-        return Some("Installing skills into a project needs Node.js 22 or later, so the installer cannot start programs out of the project folder. Update Node.js, or install for the whole computer instead".into());
+        return Some("Installing skills into a project needs Node.js 22 or later, and Kolux could not confirm one, so the installer could start programs out of the project folder. Update Node.js, or install for the whole computer instead".into());
     }
     // npm finds the project root from a subfolder, so the parents count too, up to the user's own
-    // folder, whose settings file is the user's and not the project's.
-    let skills_bin = |d: &Path| std::fs::read_dir(d.join("node_modules").join(".bin")).into_iter().flatten().flatten().any(|e| e.file_name().to_string_lossy().to_lowercase().starts_with("skills"));
-    let own = cwd.ancestors().take_while(|d| home.is_none_or(|h| !h.starts_with(d))).find(|d| d.join(".npmrc").is_file() || skills_bin(d))?;
-    Some(format!("{} carries its own npm settings or its own skills program, which would decide what the installer runs. Kolux will not install into this project; install for the whole computer instead, or run the installer yourself if you trust this project", own.display()))
+    // folder, whose settings file is the user's and not the project's. npx puts every
+    // node_modules/.bin on the way at the front of the search path for everything the installer
+    // starts (Node, git), so any program there counts, not only one called skills.
+    let has_bin = |d: &Path| std::fs::read_dir(d.join("node_modules").join(".bin")).into_iter().flatten().flatten().next().is_some();
+    let own = cwd.ancestors().take_while(|d| home.is_none_or(|h| !same_dir(d, h))).find(|d| d.join(".npmrc").is_file() || has_bin(d))?;
+    Some(format!("{} carries its own npm settings or its own programs in node_modules, which would decide what the installer runs. Kolux will not install into this project; install for the whole computer instead, or run the installer yourself if you trust this project", own.display()))
+}
+
+/// Whether two paths name the same folder: Windows folder names ignore case, and a short (8.3)
+/// or linked spelling resolves to the same real folder.
+fn same_dir(a: &Path, b: &Path) -> bool {
+    let trim = |p: &Path| p.to_string_lossy().trim_end_matches(['/', '\\']).to_string();
+    let spelled = if cfg!(windows) { trim(a).eq_ignore_ascii_case(&trim(b)) } else { trim(a) == trim(b) };
+    spelled || matches!((std::fs::canonicalize(a), std::fs::canonicalize(b)), (Ok(x), Ok(y)) if x == y)
 }
 
 /// "1.48.0" (what `node -p process.versions.uv` prints) as (1, 48).
@@ -197,14 +207,12 @@ fn node_version(out: &str) -> Option<(u32, u32)> {
 }
 
 /// Whether the Node that would run ignores the guard variable. Asked from the app's folder; an
-/// answer that cannot be read counts as old, so a project run is refused rather than unguarded.
+/// answer that cannot be read, or an app folder that cannot be found, counts as old, so a project
+/// run is refused rather than unguarded.
 fn old_node(app: Option<&Path>) -> bool {
-    let Some(node) = crate::agents::find_program("node") else { return true };
+    let (Some(app), Some(node)) = (app, crate::agents::find_program("node")) else { return true };
     let mut c = std::process::Command::new(node);
-    c.args(["-p", "process.versions.uv"]).stdin(std::process::Stdio::null());
-    if let Some(app) = app {
-        c.current_dir(app);
-    }
+    c.args(["-p", "process.versions.uv"]).stdin(std::process::Stdio::null()).current_dir(app);
     #[cfg(windows)]
     std::os::windows::process::CommandExt::creation_flags(&mut c, 0x0800_0000); // CREATE_NO_WINDOW
     c.output().ok().and_then(|o| node_version(&String::from_utf8_lossy(&o.stdout))).is_none_or(|v| v < (1, 48))
@@ -500,8 +508,8 @@ exit /b 0
         let t = crate::test_dir::temp("t635-old-node");
         let mut l = update_cmd(&s(&["orchestration"])).unwrap();
         l.args.retain(|a| a != "-g");
-        assert!(refusal(&l, None, &t, None, true).unwrap().contains("Node.js 22"));
-        assert_eq!(refusal(&l, None, &t, None, false), None);
+        assert!(refusal(&l, None, &t, Some(&t), true).unwrap().contains("Node.js 22"));
+        assert_eq!(refusal(&l, None, &t, Some(&t), false), None);
         assert_eq!(node_version("1.48.0"), Some((1, 48)));
         assert_eq!(node_version("1.46.0\n"), Some((1, 46)));
         assert_eq!(node_version("not a version"), None);
@@ -526,9 +534,31 @@ exit /b 0
         std::fs::remove_file(project.join(".npmrc")).unwrap();
         let bin = project.join("node_modules").join(".bin");
         std::fs::create_dir_all(&bin).unwrap();
-        std::fs::write(bin.join("other.cmd"), "").unwrap();
-        assert_eq!(check(&project), None, "other programs are not the installer");
-        std::fs::write(bin.join("Skills.CMD"), "").unwrap();
-        assert!(check(&project).is_some());
+        assert_eq!(check(&project), None, "an empty .bin steers nothing");
+        std::fs::write(bin.join("node.cmd"), "").unwrap();
+        assert!(check(&project).unwrap().contains("node_modules"), "any program there is found before Node or git");
+        std::fs::remove_dir_all(project.join("node_modules")).unwrap();
+        // The user's folder is recognised however its name is spelled.
+        let shouted = PathBuf::from(home.to_string_lossy().to_uppercase());
+        if cfg!(windows) {
+            assert_eq!(refusal(&l, None, &project, Some(&shouted), false), None);
+        }
+        // Outside the user's folder, every parent counts.
+        let outside = crate::test_dir::temp("t635-outside");
+        let deep = outside.join("a").join("b");
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::write(outside.join(".npmrc"), "").unwrap();
+        assert!(refusal(&l, None, &deep, Some(&home), false).is_some());
+    }
+
+    /// T-635: the same folder however it is spelled.
+    #[test]
+    fn t635_same_dir_ignores_spelling() {
+        let t = crate::test_dir::temp("t635-same");
+        assert!(same_dir(&t, &t.join("")));
+        assert!(!same_dir(&t, &t.join("sub")));
+        if cfg!(windows) {
+            assert!(same_dir(&t, Path::new(&t.to_string_lossy().to_lowercase())));
+        }
     }
 }
