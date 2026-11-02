@@ -39,6 +39,7 @@ const ShortcutsPage = lazy(() => import("./ShortcutsPage"));
 const TerminalPage = lazy(() => import("./TerminalPage"));
 const GitPage = lazy(() => import("./GitPage"));
 const AgentsPage = lazy(() => import("./AgentsPage"));
+const ClaudeSetupPage = lazy(() => import("./ClaudeSetupPage"));
 // SAFE-015: the Protected actions section (T-059-b).
 const SafetyPage = lazy(() => import("./SafetyPage"));
 const TokenAnalytics = lazy(() => import("../usage/TokenAnalytics"));
@@ -232,6 +233,7 @@ function PageBody({ page, repo, onSaved }: { page: Page; repo?: Project; onSaved
         </>
       )}
       {page === "safety" && <SafetyPage />}
+      {page === "claude" && <ClaudeSetupPage />}
       {repo && <RepoPage project={repo} onSaved={onSaved} />}
     </>
   );

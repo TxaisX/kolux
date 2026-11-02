@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import { PAGES, pageOf } from "./pages";
 
-test("exactly the ten pages, in order", () => {
-  expect(Object.values(PAGES)).toEqual(["General", "Appearance", "Accounts & keys", "Agents", "Terminal & sessions", "Git & worktrees", "Safety", "Notifications", "Shortcuts", "Usage"]);
+test("exactly the eleven pages, in order", () => {
+  expect(Object.values(PAGES)).toEqual(["General", "Appearance", "Accounts & keys", "Agents", "Terminal & sessions", "Git & worktrees", "Safety", "Notifications", "Shortcuts", "Usage", "Claude"]);
 });
 
 test("a remembered page opens only while it still exists", () => {

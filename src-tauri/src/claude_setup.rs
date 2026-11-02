@@ -1,0 +1,994 @@
+//! T-650 / DT-C88: the Settings > Claude tab's backend. A read-only summary of how Claude Code is
+//! set up on this machine and for one workspace: model, merged settings, permissions, hooks, MCP
+//! servers, skills, subagents, plugins and the CLAUDE.md files that apply.
+//!
+//! Safety by construction (DT-C88):
+//! - Only the files listed in `summarize` are opened, all through `Reader`, which refuses a
+//!   forbidden path (credentials, backups, transcripts, history, caches, `.env*`) before it touches
+//!   the disk and keeps a log of every file it opened (the tests read that log).
+//! - `~/.claude.json` is read through a typed struct that has room for nothing but the MCP fields,
+//!   so the account, user id, tokens and every other key are dropped while parsing.
+//! - MCP `env` / `headers` values, settings `env` values, secret-looking keys, URL queries and
+//!   secret-looking arguments leave this module as `••••`.
+//! - Files are size-capped. Inside the workspace a link or a path that resolves outside it is skipped.
+//! - Nothing is ever run: hook, MCP and `apiKeyHelper` commands are shown as text only.
+//! - A workspace comes from the frontend, so the command only accepts one the fence allows.
+
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
+use std::cell::RefCell;
+use std::fs;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+
+const MAX_FILE: u64 = 1 << 20; // 1 MB for every settings-like file
+const MAX_GLOBAL: u64 = 8 << 20; // ~/.claude.json grows with use; still capped
+const HEAD: u64 = 32 << 10; // a skill / agent file: only its front matter is wanted
+const MAX_ROWS: usize = 300;
+const SHOWN: usize = 240;
+pub const MASK: &str = "••••";
+
+/// Where Claude Code's files are for this run. Tests build one over a temp folder.
+pub struct Paths {
+    pub config_dir: PathBuf,
+    pub global_json: PathBuf,
+    pub managed_dir: PathBuf,
+    pub workspace: Option<PathBuf>,
+}
+
+impl Paths {
+    /// `CLAUDE_CONFIG_DIR` (or the home folder) through the helpers the hooks and trust code use.
+    pub fn from_env(workspace: Option<PathBuf>) -> Self {
+        let config_dir = crate::hooks::claude_settings_file().parent().map(Path::to_path_buf).unwrap_or_default();
+        Self { config_dir, global_json: crate::trust::claude_config_file(), managed_dir: managed_dir(), workspace }
+    }
+}
+
+/// The system folder organisation policy lives in (public docs: code.claude.com/docs/en/managed-settings).
+fn managed_dir() -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from(std::env::var_os("ProgramFiles").unwrap_or_else(|| "C:\\Program Files".into())).join("ClaudeCode")
+    } else if cfg!(target_os = "macos") {
+        PathBuf::from("/Library/Application Support/ClaudeCode")
+    } else {
+        PathBuf::from("/etc/claude-code")
+    }
+}
+
+// ---- output ----
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Src {
+    pub scope: &'static str,
+    pub label: String,
+    pub path: String,
+    /// found, missing, invalid or skipped
+    pub state: &'static str,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FileRef {
+    pub scope: &'static str,
+    pub label: String,
+    pub path: String,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingRow {
+    pub key: String,
+    pub value: String,
+    pub scope: String,
+    pub path: String,
+    /// Lower-precedence scopes that also set the key (a scalar they lost to).
+    pub also: Vec<&'static str>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Rule {
+    pub rule: String,
+    pub scope: &'static str,
+}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Permissions {
+    pub allow: Vec<Rule>,
+    pub ask: Vec<Rule>,
+    pub deny: Vec<Rule>,
+    pub directories: Vec<Rule>,
+    pub default_mode: Option<SettingRow>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HookRow {
+    pub event: String,
+    pub matcher: Option<String>,
+    pub kind: String,
+    pub command: String,
+    pub scope: &'static str,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Masked {
+    pub key: String,
+    pub value: &'static str,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct McpRow {
+    pub name: String,
+    pub kind: String,
+    pub target: String,
+    pub env: Vec<Masked>,
+    pub headers: Vec<Masked>,
+    pub scope: &'static str,
+    pub from: String,
+    pub off: bool,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct McpFlag {
+    pub list: String,
+    pub name: String,
+    pub scope: &'static str,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Entry {
+    pub name: String,
+    pub description: String,
+    pub scope: &'static str,
+    pub path: String,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginRow {
+    pub id: String,
+    pub enabled: Option<bool>,
+    pub version: Option<String>,
+    pub scope: &'static str,
+    pub from: &'static str,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MemoryFile {
+    pub path: String,
+    pub kind: &'static str,
+    pub scope: &'static str,
+    pub bytes: u64,
+}
+
+#[derive(Serialize, Default, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Files {
+    pub settings: Vec<FileRef>,
+    pub mcp: Vec<FileRef>,
+    pub plugins: Vec<FileRef>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaudeSetup {
+    pub config_dir: String,
+    pub managed_dir: String,
+    pub workspace: Option<String>,
+    pub sources: Vec<Src>,
+    pub model: Option<SettingRow>,
+    pub settings: Vec<SettingRow>,
+    pub permissions: Permissions,
+    pub hooks: Vec<HookRow>,
+    pub mcp: Vec<McpRow>,
+    pub mcp_flags: Vec<McpFlag>,
+    pub skills: Vec<Entry>,
+    pub agents: Vec<Entry>,
+    pub plugins: Vec<PluginRow>,
+    pub memory: Vec<MemoryFile>,
+    pub files: Files,
+    /// Every file and folder this run opened, for the "what was read" line.
+    pub reads: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+// ---- guarded reading ----
+
+/// The folders under the Claude config folder that are never read (transcripts, caches, copies).
+const NEVER_DIRS: [&str; 9] = ["backups", "projects", "paste-cache", "file-history", "debug", "shell-snapshots", "session-env", "uploads", "sessions"];
+
+/// True for a path this module must never open, wherever it is asked from.
+pub fn forbidden(path: &Path, config_dir: &Path) -> bool {
+    let name = path.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    if name == ".credentials.json" || name == "history.jsonl" || name.ends_with(".jsonl") || name.starts_with(".env") || name.contains("credentials") {
+        return true;
+    }
+    path.strip_prefix(config_dir).is_ok_and(|rel| rel.components().any(|c| NEVER_DIRS.contains(&c.as_os_str().to_string_lossy().to_ascii_lowercase().as_str())))
+}
+
+struct Reader<'a> {
+    config_dir: &'a Path,
+    log: RefCell<Vec<String>>,
+    notes: RefCell<Vec<String>>,
+}
+
+fn shown(p: &Path) -> String {
+    p.to_string_lossy().replace('\\', "/")
+}
+
+impl<'a> Reader<'a> {
+    fn new(config_dir: &'a Path) -> Self {
+        Self { config_dir, log: RefCell::new(vec![]), notes: RefCell::new(vec![]) }
+    }
+    fn note(&self, s: String) {
+        let mut n = self.notes.borrow_mut();
+        if n.len() < 40 {
+            n.push(s);
+        }
+    }
+
+    /// Whether `path` may be opened. `root` is the workspace for project files: there a link, or a
+    /// path that resolves outside the workspace, is skipped. `Err` carries a note (never contents).
+    fn allow(&self, path: &Path, root: Option<&Path>) -> Result<(), String> {
+        if forbidden(path, self.config_dir) {
+            return Err(format!("{} is never read", shown(path)));
+        }
+        if let Some(root) = root {
+            let meta = fs::symlink_metadata(path).map_err(|_| String::new())?;
+            if meta.file_type().is_symlink() {
+                return Err(format!("{} is a link, so it was skipped", shown(path)));
+            }
+            match (fs::canonicalize(path), fs::canonicalize(root)) {
+                (Ok(c), Ok(r)) if c.starts_with(&r) => {}
+                _ => return Err(format!("{} resolves outside the workspace, so it was skipped", shown(path))),
+            }
+        }
+        Ok(())
+    }
+
+    /// The file's text (BOM dropped). `whole`: a file bigger than `cap` is refused; otherwise only its first `cap` bytes are read.
+    fn text(&self, path: &Path, cap: u64, root: Option<&Path>, whole: bool) -> Option<String> {
+        if let Err(why) = self.allow(path, root) {
+            if !why.is_empty() {
+                self.note(why);
+            }
+            return None;
+        }
+        let meta = fs::metadata(path).ok().filter(|m| m.is_file())?;
+        if whole && meta.len() > cap {
+            self.note(format!("{} is bigger than {} KB, so it was not read", shown(path), cap / 1024));
+            return None;
+        }
+        self.log.borrow_mut().push(shown(path));
+        let mut buf = Vec::new();
+        fs::File::open(path).ok()?.take(cap).read_to_end(&mut buf).ok()?;
+        let s = String::from_utf8_lossy(&buf).into_owned();
+        Some(s.strip_prefix('\u{feff}').map(str::to_string).unwrap_or(s))
+    }
+
+    fn json(&self, path: &Path, root: Option<&Path>) -> Result<Option<Value>, ()> {
+        match self.text(path, MAX_FILE, root, true) {
+            None => Ok(None),
+            Some(t) => match serde_json::from_str::<Value>(&t) {
+                Ok(v) if v.is_object() => Ok(Some(v)),
+                _ => {
+                    self.note(format!("{} is not a JSON object, so it was ignored", shown(path)));
+                    Err(())
+                }
+            },
+        }
+    }
+
+    /// Entries of a folder, sorted, at most `MAX_ROWS + 1`. The listing is logged too.
+    fn list(&self, dir: &Path, root: Option<&Path>) -> Vec<(String, PathBuf, fs::FileType)> {
+        if self.allow(dir, root).is_err() {
+            return vec![];
+        }
+        let Ok(rd) = fs::read_dir(dir) else { return vec![] };
+        self.log.borrow_mut().push(format!("{}/", shown(dir)));
+        let mut out: Vec<_> = rd.flatten().filter_map(|e| Some((e.file_name().to_string_lossy().into_owned(), e.path(), e.file_type().ok()?))).collect();
+        out.sort_by_key(|a| a.0.to_lowercase());
+        out.truncate(MAX_ROWS + 1);
+        out
+    }
+}
+
+// ---- masking and display ----
+
+fn secretish(k: &str) -> bool {
+    let k = k.to_ascii_lowercase();
+    !k.ends_with("helper") && ["token", "secret", "password", "passwd", "credential", "apikey", "api_key", "api-key", "authorization", "bearer"].iter().any(|w| k.contains(w))
+}
+
+/// `v` with secrets replaced: `env` / `headers` objects keep their key names, all values masked.
+fn mask(key: &str, v: &Value) -> Value {
+    match v {
+        Value::Object(m) if matches!(key, "env" | "headers" | "extraHeaders") => Value::Object(m.keys().map(|k| (k.clone(), Value::String(MASK.into()))).collect()),
+        Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), if secretish(k) && x.is_string() { Value::String(MASK.into()) } else { mask(k, x) })).collect()),
+        Value::Array(a) => Value::Array(a.iter().map(|x| mask(key, x)).collect()),
+        _ => v.clone(),
+    }
+}
+
+fn clip(s: &str) -> String {
+    if s.chars().count() <= SHOWN {
+        s.to_string()
+    } else {
+        format!("{}…", s.chars().take(SHOWN).collect::<String>())
+    }
+}
+
+fn display(key: &str, v: &Value) -> String {
+    let v = if secretish(key) && v.is_string() { Value::String(MASK.into()) } else { mask(key, v) };
+    clip(&match &v {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    })
+}
+
+/// A URL without a password, query or fragment (where tokens go).
+fn mask_url(u: &str) -> String {
+    let (scheme, rest) = u.split_once("://").map_or(("", u), |(s, r)| (s, r));
+    let cut = rest.find(['?', '#']).unwrap_or(rest.len());
+    let mut body = rest[..cut].to_string();
+    if let Some((_, host)) = body.split_once('@').filter(|(user, _)| !user.contains('/')) {
+        body = format!("{MASK}@{host}");
+    }
+    let tail = if cut < rest.len() { format!("?{MASK}") } else { String::new() };
+    if scheme.is_empty() { format!("{body}{tail}") } else { format!("{scheme}://{body}{tail}") }
+}
+
+/// Command-line arguments with the values of secret-looking flags and `KEY=value` pairs masked.
+fn mask_args(args: &[Value]) -> Vec<String> {
+    let mut hide_next = false;
+    args.iter()
+        .filter_map(Value::as_str)
+        .map(|a| {
+            if std::mem::take(&mut hide_next) {
+                return MASK.to_string();
+            }
+            let low = a.to_ascii_lowercase();
+            if low.contains("bearer ") || low.starts_with("sk-") {
+                return MASK.to_string();
+            }
+            match a.split_once('=') {
+                Some((k, _)) if secretish(k) => format!("{k}={MASK}"),
+                _ => {
+                    hide_next = a.starts_with('-') && !a.contains('=') && secretish(a);
+                    a.to_string()
+                }
+            }
+        })
+        .collect()
+}
+
+// ---- settings layers ----
+
+struct Layer {
+    scope: &'static str,
+    label: String,
+    path: PathBuf,
+    value: Value,
+}
+
+fn load_layers(p: &Paths, r: &Reader, sources: &mut Vec<Src>, files: &mut Files) -> Vec<Layer> {
+    let mut out: Vec<Layer> = vec![];
+    let add = |scope: &'static str, label: String, path: PathBuf, root: Option<&Path>, out: &mut Vec<Layer>, sources: &mut Vec<Src>, files: &mut Files| {
+        let (state, value) = match r.json(&path, root) {
+            Ok(Some(v)) => ("found", Some(v)),
+            Ok(None) => (if fs::symlink_metadata(&path).is_ok() && root.is_some() && r.allow(&path, root).is_err() { "skipped" } else { "missing" }, None),
+            Err(()) => ("invalid", None),
+        };
+        sources.push(Src { scope, label: label.clone(), path: shown(&path), state });
+        if state != "missing" && path.is_file() {
+            files.settings.push(FileRef { scope, label: label.clone(), path: shown(&path) });
+        }
+        if let Some(value) = value {
+            out.push(Layer { scope, label, path, value });
+        }
+    };
+    // Highest precedence first. Managed drop-ins override the base file, the last one winning.
+    let mut dropins: Vec<PathBuf> = r.list(&p.managed_dir.join("managed-settings.d"), None).into_iter().filter(|(n, _, t)| t.is_file() && n.to_lowercase().ends_with(".json")).map(|(_, f, _)| f).collect();
+    dropins.reverse();
+    for f in dropins {
+        let label = format!("managed-settings.d/{}", f.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default());
+        add("managed", label, f, None, &mut out, sources, files);
+    }
+    add("managed", "managed-settings.json".into(), p.managed_dir.join("managed-settings.json"), None, &mut out, sources, files);
+    if let Some(ws) = &p.workspace {
+        add("local", ".claude/settings.local.json".into(), ws.join(".claude").join("settings.local.json"), Some(ws), &mut out, sources, files);
+        add("project", ".claude/settings.json".into(), ws.join(".claude").join("settings.json"), Some(ws), &mut out, sources, files);
+    }
+    add("user", "settings.json".into(), p.config_dir.join("settings.json"), None, &mut out, sources, files);
+    out
+}
+
+/// Keys that have a section of their own.
+const OWN_SECTION: [&str; 5] = ["permissions", "hooks", "enabledPlugins", "mcpServers", "model"];
+
+fn rows_for(layers: &[Layer]) -> Vec<SettingRow> {
+    let mut keys: Vec<&String> = vec![];
+    for l in layers {
+        for k in l.value.as_object().into_iter().flat_map(Map::keys) {
+            if !OWN_SECTION.contains(&k.as_str()) && !keys.contains(&k) {
+                keys.push(k);
+            }
+        }
+    }
+    keys.sort_by_key(|k| k.to_lowercase());
+    keys.into_iter().take(MAX_ROWS).map(|k| merged_row(layers, k)).collect()
+}
+
+/// One key across the layers: lists join, objects merge key by key (higher wins), anything else the highest layer's.
+fn merged_row(layers: &[Layer], key: &str) -> SettingRow {
+    let defs: Vec<(&Layer, &Value)> = layers.iter().filter_map(|l| l.value.get(key).map(|v| (l, v))).collect();
+    let (win, top) = defs[0];
+    let all_arrays = defs.iter().all(|(_, v)| v.is_array());
+    let all_objects = defs.iter().all(|(_, v)| v.is_object());
+    let value = if all_arrays {
+        let mut out: Vec<Value> = vec![];
+        for (_, v) in &defs {
+            for x in v.as_array().into_iter().flatten() {
+                if !out.contains(x) {
+                    out.push(x.clone());
+                }
+            }
+        }
+        Value::Array(out)
+    } else if all_objects {
+        let mut m = Map::new();
+        for (_, v) in defs.iter().rev() {
+            for (k, x) in v.as_object().into_iter().flatten() {
+                m.insert(k.clone(), x.clone());
+            }
+        }
+        Value::Object(m)
+    } else {
+        top.clone()
+    };
+    let merged = all_arrays || all_objects;
+    let mut scopes: Vec<&'static str> = vec![];
+    for (l, _) in &defs {
+        if !scopes.contains(&l.scope) {
+            scopes.push(l.scope);
+        }
+    }
+    SettingRow {
+        key: key.to_string(),
+        value: display(key, &value),
+        scope: if merged { scopes.join(" + ") } else { win.scope.to_string() },
+        path: shown(&win.path),
+        also: if merged { vec![] } else { scopes.into_iter().skip(1).collect() },
+    }
+}
+
+fn permissions(layers: &[Layer]) -> Permissions {
+    let mut out = Permissions::default();
+    for (list, field) in [(&mut out.allow, "allow"), (&mut out.ask, "ask"), (&mut out.deny, "deny"), (&mut out.directories, "additionalDirectories")] {
+        for l in layers {
+            for rule in l.value.pointer(&format!("/permissions/{field}")).and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
+                if list.len() < MAX_ROWS && !list.iter().any(|r| r.rule == rule) {
+                    list.push(Rule { rule: clip(rule), scope: l.scope });
+                }
+            }
+        }
+    }
+    out.default_mode = layers.iter().find_map(|l| l.value.pointer("/permissions/defaultMode").map(|v| SettingRow { key: "defaultMode".into(), value: display("defaultMode", v), scope: l.scope.into(), path: shown(&l.path), also: vec![] }));
+    out
+}
+
+fn hooks(layers: &[Layer]) -> Vec<HookRow> {
+    let mut out = vec![];
+    for l in layers {
+        for (event, groups) in l.value.get("hooks").and_then(Value::as_object).into_iter().flatten() {
+            for g in groups.as_array().into_iter().flatten() {
+                let matcher = g.get("matcher").and_then(Value::as_str).map(clip);
+                for h in g.get("hooks").and_then(Value::as_array).into_iter().flatten() {
+                    let kind = h.get("type").and_then(Value::as_str).unwrap_or("command");
+                    let what = ["command", "url", "prompt"].iter().find_map(|k| h.get(*k).and_then(Value::as_str)).unwrap_or("");
+                    if out.len() < MAX_ROWS {
+                        out.push(HookRow { event: clip(event), matcher: matcher.clone(), kind: clip(kind), command: clip(what), scope: l.scope });
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+// ---- MCP ----
+
+/// The only fields read from `~/.claude.json`. Serde skips every other key while parsing, so the
+/// account, user id, tokens and the rest are never held, let alone returned.
+#[derive(Deserialize, Default)]
+struct Global {
+    #[serde(rename = "mcpServers", default)]
+    mcp_servers: Map<String, Value>,
+    #[serde(default)]
+    projects: std::collections::HashMap<String, LocalProject>,
+}
+
+#[derive(Deserialize, Default)]
+struct LocalProject {
+    #[serde(rename = "mcpServers", default)]
+    mcp_servers: Map<String, Value>,
+    #[serde(rename = "enabledMcpServers", default)]
+    enabled: Vec<String>,
+    #[serde(rename = "disabledMcpServers", default)]
+    disabled: Vec<String>,
+    #[serde(rename = "enabledMcpjsonServers", default)]
+    enabled_json: Vec<String>,
+    #[serde(rename = "disabledMcpjsonServers", default)]
+    disabled_json: Vec<String>,
+}
+
+fn same_folder(a: &str, b: &str) -> bool {
+    let n = |s: &str| s.replace('\\', "/").trim_end_matches('/').to_string();
+    if cfg!(windows) { n(a).eq_ignore_ascii_case(&n(b)) } else { n(a) == n(b) }
+}
+
+fn mcp_rows(servers: &Map<String, Value>, scope: &'static str, from: &str, out: &mut Vec<McpRow>) {
+    for (name, s) in servers {
+        if out.len() >= MAX_ROWS {
+            return;
+        }
+        let pairs = |k: &str| s.get(k).and_then(Value::as_object).map(|m| m.keys().map(|k| Masked { key: clip(k), value: MASK }).collect()).unwrap_or_default();
+        let url = s.get("url").and_then(Value::as_str);
+        let kind = s.get("type").and_then(Value::as_str).unwrap_or(if url.is_some() { "http" } else { "stdio" });
+        let target = match url {
+            Some(u) => mask_url(u),
+            None => {
+                let cmd = s.get("command").and_then(Value::as_str).unwrap_or("");
+                let args = mask_args(s.get("args").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[]));
+                std::iter::once(cmd.to_string()).chain(args).collect::<Vec<_>>().join(" ")
+            }
+        };
+        out.push(McpRow { name: clip(name), kind: clip(kind), target: clip(&target), env: pairs("env"), headers: pairs("headers"), scope, from: from.to_string(), off: false });
+    }
+}
+
+fn mcp(p: &Paths, r: &Reader, layers: &[Layer], files: &mut Files) -> (Vec<McpRow>, Vec<McpFlag>) {
+    let mut rows = vec![];
+    let mut flags = vec![];
+    let file = |scope: &'static str, label: &str, path: &Path, files: &mut Files| {
+        if path.is_file() {
+            files.mcp.push(FileRef { scope, label: label.into(), path: shown(path) });
+        }
+    };
+    // managed-mcp.json beside the managed settings
+    let mm = p.managed_dir.join("managed-mcp.json");
+    if let Ok(Some(v)) = r.json(&mm, None) {
+        file("managed", "managed-mcp.json", &mm, files);
+        mcp_rows(v.get("mcpServers").and_then(Value::as_object).unwrap_or(&Map::new()), "managed", "managed-mcp.json", &mut rows);
+    }
+    // settings files, highest first
+    for l in layers {
+        if let Some(m) = l.value.get("mcpServers").and_then(Value::as_object) {
+            mcp_rows(m, l.scope, &l.label, &mut rows);
+        }
+    }
+    // the project's .mcp.json
+    if let Some(ws) = &p.workspace {
+        let f = ws.join(".mcp.json");
+        if let Ok(Some(v)) = r.json(&f, Some(ws)) {
+            file("project", ".mcp.json", &f, files);
+            mcp_rows(v.get("mcpServers").and_then(Value::as_object).unwrap_or(&Map::new()), "project", ".mcp.json", &mut rows);
+        }
+    }
+    // ~/.claude.json: mcpServers, plus this workspace's mcpServers and its on/off lists. Nothing else survives parsing.
+    let mut disabled: Vec<String> = vec![];
+    if let Some(t) = r.text(&p.global_json, MAX_GLOBAL, None, true) {
+        match serde_json::from_str::<Global>(&t) {
+            Ok(g) => {
+                file("user", ".claude.json", &p.global_json, files);
+                mcp_rows(&g.mcp_servers, "user", ".claude.json", &mut rows);
+                let here = p.workspace.as_ref().map(|w| shown(w));
+                if let Some((_, lp)) = g.projects.iter().find(|(k, _)| here.as_deref().is_some_and(|h| same_folder(k, h))) {
+                    mcp_rows(&lp.mcp_servers, "local", ".claude.json (this workspace)", &mut rows);
+                    for (list, names) in [("enabledMcpServers", &lp.enabled), ("disabledMcpServers", &lp.disabled), ("enabledMcpjsonServers", &lp.enabled_json), ("disabledMcpjsonServers", &lp.disabled_json)] {
+                        for n in names.iter().take(MAX_ROWS) {
+                            flags.push(McpFlag { list: list.into(), name: clip(n), scope: "local" });
+                        }
+                    }
+                    disabled = lp.disabled.iter().chain(lp.disabled_json.iter()).map(|s| clip(s)).collect();
+                }
+            }
+            Err(_) => r.note(format!("{} could not be read as JSON, so its MCP servers are missing", shown(&p.global_json))),
+        }
+    }
+    for row in &mut rows {
+        row.off = disabled.contains(&row.name);
+    }
+    (rows, flags)
+}
+
+// ---- skills, agents, plugins, memory ----
+
+/// `name` and `description` from a Markdown file's front matter (plain, quoted, or a `>` / `|` block).
+pub fn front_matter(text: &str) -> (Option<String>, Option<String>) {
+    let mut lines = text.lines();
+    if lines.next().map(str::trim) != Some("---") {
+        return (None, None);
+    }
+    let body: Vec<&str> = lines.take_while(|l| l.trim() != "---").collect();
+    let field = |key: &str| -> Option<String> {
+        let at = body.iter().position(|l| l.strip_prefix(key).is_some_and(|r| r.starts_with(':')))?;
+        let first = body[at][key.len() + 1..].trim();
+        let value = if matches!(first, ">" | "|" | ">-" | "|-" | ">+" | "|+") {
+            body[at + 1..].iter().take_while(|l| l.starts_with(' ') || l.starts_with('\t') || l.trim().is_empty()).map(|l| l.trim()).filter(|l| !l.is_empty()).collect::<Vec<_>>().join(" ")
+        } else {
+            first.trim_matches(|c| c == '"' || c == '\'').to_string()
+        };
+        Some(value).filter(|v| !v.is_empty())
+    };
+    (field("name"), field("description"))
+}
+
+fn entries(r: &Reader, dir: &Path, scope: &'static str, root: Option<&Path>, skills: bool, out: &mut Vec<Entry>) {
+    for (name, path, ty) in r.list(dir, root) {
+        if out.len() >= MAX_ROWS {
+            r.note(format!("{} holds more than {MAX_ROWS} entries; the rest are not listed", shown(dir)));
+            return;
+        }
+        let (file, fallback) = if skills {
+            if !(ty.is_dir() || (ty.is_symlink() && root.is_none())) {
+                continue;
+            }
+            (path.join("SKILL.md"), name.clone())
+        } else {
+            if !(ty.is_file() || (ty.is_symlink() && root.is_none())) || !name.to_lowercase().ends_with(".md") {
+                continue;
+            }
+            let stem = name.rsplit_once('.').map_or(name.clone(), |(s, _)| s.to_string());
+            (path.clone(), stem)
+        };
+        if let Some(t) = r.text(&file, HEAD, root, false) {
+            let (n, d) = front_matter(&t);
+            out.push(Entry { name: clip(&n.unwrap_or(fallback)), description: clip(&d.unwrap_or_default()), scope, path: shown(&file) });
+        }
+    }
+}
+
+/// `~/.claude/plugins/installed_plugins.json`: `{ "plugins": { "<name>@<market>": [ { scope, version, .. } ] } }`.
+fn plugins(p: &Paths, r: &Reader, layers: &[Layer], files: &mut Files) -> Vec<PluginRow> {
+    let mut out: Vec<PluginRow> = vec![];
+    for l in layers {
+        for (id, v) in l.value.get("enabledPlugins").and_then(Value::as_object).into_iter().flatten() {
+            if out.len() < MAX_ROWS && !out.iter().any(|x| x.from == "settings" && x.id == *id) {
+                out.push(PluginRow { id: clip(id), enabled: v.as_bool(), version: None, scope: l.scope, from: "settings" });
+            }
+        }
+    }
+    let f = p.config_dir.join("plugins").join("installed_plugins.json");
+    if let Ok(Some(v)) = r.json(&f, None) {
+        files.plugins.push(FileRef { scope: "user", label: "installed_plugins.json".into(), path: shown(&f) });
+        for (id, installs) in v.get("plugins").and_then(Value::as_object).into_iter().flatten() {
+            for i in installs.as_array().into_iter().flatten().take(8) {
+                let scope = match i.get("scope").and_then(Value::as_str) {
+                    Some("project") => "project",
+                    Some("local") => "local",
+                    Some("managed") => "managed",
+                    _ => "user",
+                };
+                if out.len() < MAX_ROWS {
+                    out.push(PluginRow { id: clip(id), enabled: None, version: i.get("version").and_then(Value::as_str).map(clip), scope, from: "installed" });
+                }
+            }
+        }
+    }
+    files.plugins.extend(files.settings.iter().map(|f| FileRef { scope: f.scope, label: f.label.clone(), path: f.path.clone() }));
+    out
+}
+
+/// The CLAUDE.md files that apply, sizes only: nothing in them is read. Folders above the workspace
+/// count, as Claude Code walks up; `rules/*.md` of the workspace and the config folder too.
+fn memory(p: &Paths, r: &Reader) -> Vec<MemoryFile> {
+    let mut out = vec![];
+    let stat = |path: PathBuf, kind: &'static str, scope: &'static str, out: &mut Vec<MemoryFile>| {
+        if forbidden(&path, r.config_dir) {
+            return;
+        }
+        if let Ok(m) = fs::symlink_metadata(&path) {
+            if m.is_file() {
+                out.push(MemoryFile { path: shown(&path), kind, scope, bytes: m.len() });
+            }
+        }
+    };
+    stat(p.managed_dir.join("CLAUDE.md"), "CLAUDE.md", "managed", &mut out);
+    stat(p.config_dir.join("CLAUDE.md"), "CLAUDE.md", "user", &mut out);
+    let rules = |dir: PathBuf, scope: &'static str, root: Option<&Path>, out: &mut Vec<MemoryFile>| {
+        for (n, f, t) in r.list(&dir, root) {
+            if t.is_file() && n.to_lowercase().ends_with(".md") && out.len() < MAX_ROWS {
+                stat(f, "rules", scope, out);
+            }
+        }
+    };
+    rules(p.config_dir.join("rules"), "user", None, &mut out);
+    if let Some(ws) = &p.workspace {
+        let mut chain: Vec<&Path> = ws.ancestors().take(12).collect();
+        chain.reverse();
+        for dir in chain {
+            for (file, kind) in [("CLAUDE.md", "CLAUDE.md"), ("CLAUDE.local.md", "CLAUDE.local.md")] {
+                stat(dir.join(file), kind, "project", &mut out);
+            }
+            if dir == ws.as_path() {
+                stat(dir.join(".claude").join("CLAUDE.md"), "CLAUDE.md", "project", &mut out);
+            }
+        }
+        rules(ws.join(".claude").join("rules"), "project", Some(ws), &mut out);
+    }
+    out
+}
+
+// ---- the summary ----
+
+pub fn summarize(p: &Paths) -> ClaudeSetup {
+    let r = Reader::new(&p.config_dir);
+    let mut sources = vec![];
+    let mut files = Files::default();
+    let layers = load_layers(p, &r, &mut sources, &mut files);
+    let model = layers.iter().find_map(|l| l.value.get("model").map(|v| SettingRow { key: "model".into(), value: display("model", v), scope: l.scope.into(), path: shown(&l.path), also: vec![] }));
+    let (mcp_rows, mcp_flags) = mcp(p, &r, &layers, &mut files);
+    let mut skills = vec![];
+    let mut agents = vec![];
+    if let Some(ws) = &p.workspace {
+        entries(&r, &ws.join(".claude").join("skills"), "project", Some(ws), true, &mut skills);
+        entries(&r, &ws.join(".claude").join("agents"), "project", Some(ws), false, &mut agents);
+    }
+    entries(&r, &p.config_dir.join("skills"), "user", None, true, &mut skills);
+    entries(&r, &p.config_dir.join("agents"), "user", None, false, &mut agents);
+    let plugin_rows = plugins(p, &r, &layers, &mut files);
+    let memory = memory(p, &r);
+    let setup = ClaudeSetup {
+        config_dir: shown(&p.config_dir),
+        managed_dir: shown(&p.managed_dir),
+        workspace: p.workspace.as_ref().map(|w| shown(w)),
+        sources,
+        model,
+        settings: rows_for(&layers),
+        permissions: permissions(&layers),
+        hooks: hooks(&layers),
+        mcp: mcp_rows,
+        mcp_flags,
+        skills,
+        agents,
+        plugins: plugin_rows,
+        memory,
+        files,
+        reads: r.log.borrow().clone(),
+        notes: r.notes.borrow().clone(),
+    };
+    setup
+}
+
+/// The Claude tab: nothing is written and nothing is run. `workspace` must be inside the fence (a project or one of its worktrees).
+#[tauri::command(async)]
+pub fn claude_setup(workspace: Option<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<ClaudeSetup, String> {
+    let ws = match workspace.map(|w| w.trim().to_string()).filter(|w| !w.is_empty()) {
+        Some(w) => Some(fence.allow(&w, &store, &git, false)?),
+        None => None,
+    };
+    Ok(summarize(&Paths::from_env(ws)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SECRET: &str = "sk-live-CANARY-9f3a";
+
+    fn write(p: &Path, text: &str) {
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, text).unwrap();
+    }
+
+    /// A temp tree: <t>/cfg (config dir), <t>/ws (workspace), <t>/managed. Never the real ~/.claude.
+    fn tree(tag: &str) -> (PathBuf, Paths) {
+        let t = std::env::temp_dir().join(format!("kolux-claude-setup-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&t);
+        for d in ["cfg", "ws", "managed"] {
+            fs::create_dir_all(t.join(d)).unwrap();
+        }
+        let p = Paths { config_dir: t.join("cfg"), global_json: t.join("cfg").join(".claude.json"), managed_dir: t.join("managed"), workspace: Some(t.join("ws")) };
+        (t, p)
+    }
+
+    #[test]
+    fn claude_json_keeps_only_mcp_and_env_values_never_leave() {
+        let (t, p) = tree("global");
+        write(
+            &p.global_json,
+            &format!(
+                r#"{{"oauthAccount":{{"emailAddress":"owner-canary@example.com","organizationUuid":"org-canary"}},"userID":"user-canary-id","primaryApiKey":"{SECRET}","githubRepoPaths":{{"x":["/canary/path"]}},
+                "mcpServers":{{"files":{{"command":"npx","args":["srv","--api-key","{SECRET}","TOKEN={SECRET}"],"env":{{"API_KEY":"{SECRET}"}}}},
+                  "web":{{"type":"http","url":"https://h.example/mcp?key={SECRET}","headers":{{"Authorization":"Bearer {SECRET}"}}}}}},
+                "projects":{{"{ws}":{{"mcpServers":{{"mine":{{"command":"node","env":{{"T":"{SECRET}"}}}}}},"disabledMcpServers":["web"],"history":[{{"display":"history-canary"}}],"lastCost":1}},
+                  "{other}":{{"mcpServers":{{"theirs":{{"command":"other-canary"}}}}}}}}}}"#,
+                ws = shown(p.workspace.as_ref().unwrap()),
+                other = "C:/not/this/one"
+            ),
+        );
+        let s = summarize(&p);
+        let json = serde_json::to_string(&s).unwrap();
+        for leak in ["owner-canary", "org-canary", "user-canary-id", SECRET, "/canary/path", "history-canary", "other-canary", "oauthAccount", "primaryApiKey"] {
+            assert!(!json.contains(leak), "{leak} leaked: {json}");
+        }
+        let names: Vec<&str> = s.mcp.iter().map(|m| m.name.as_str()).collect();
+        assert_eq!(names, ["files", "web", "mine"]);
+        let files = &s.mcp[0];
+        assert_eq!(files.env[0].key, "API_KEY");
+        assert_eq!(files.env[0].value, MASK);
+        assert!(files.target.contains("--api-key") && files.target.contains(&format!("TOKEN={MASK}")));
+        assert_eq!(s.mcp[1].headers[0].key, "Authorization");
+        assert_eq!(s.mcp[1].target, format!("https://h.example/mcp?{MASK}"));
+        assert!(s.mcp[1].off, "disabledMcpServers marks the server off");
+        assert_eq!(s.mcp[2].scope, "local");
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn credentials_and_the_never_read_list_are_not_opened() {
+        let (t, p) = tree("never");
+        write(&p.config_dir.join(".credentials.json"), &format!(r#"{{"claudeAiOauth":{{"accessToken":"{SECRET}"}}}}"#));
+        write(&p.config_dir.join("backups").join(".claude.json.backup.1"), &format!(r#"{{"mcpServers":{{"old":{{"command":"{SECRET}"}}}}}}"#));
+        for f in ["history.jsonl", "projects/x/s.jsonl", "paste-cache/a.json", "file-history/a.json", "debug/a.json", "shell-snapshots/a.json", "session-env/a.json", "uploads/a.json"] {
+            write(&p.config_dir.join(f), SECRET);
+        }
+        write(&p.workspace.as_ref().unwrap().join(".env"), SECRET);
+        write(&p.workspace.as_ref().unwrap().join(".env.local"), SECRET);
+        write(&p.config_dir.join("settings.json"), r#"{"model":"opus","apiKeyHelper":"C:/secret/helper.cmd"}"#);
+        let s = summarize(&p);
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(!json.contains(SECRET));
+        for line in &s.reads {
+            let l = line.to_lowercase();
+            for bad in [".credentials", "/backups/", "history.jsonl", ".jsonl", "paste-cache", "file-history", "/debug/", "shell-snapshots", "session-env", "/uploads/", "/.env"] {
+                assert!(!l.contains(bad), "opened {line}");
+            }
+        }
+        assert!(s.reads.iter().any(|r| r.ends_with("/cfg/settings.json")), "{:?}", s.reads);
+        // The guard itself refuses each, wherever it is asked from.
+        let r = Reader::new(&p.config_dir);
+        assert!(r.text(&p.config_dir.join(".credentials.json"), MAX_FILE, None, true).is_none());
+        assert!(r.text(&p.config_dir.join("backups").join(".claude.json.backup.1"), MAX_FILE, None, true).is_none());
+        assert!(r.text(&p.workspace.as_ref().unwrap().join(".env"), MAX_FILE, None, true).is_none());
+        assert!(r.log.borrow().is_empty(), "the guard refused before opening: {:?}", r.log.borrow());
+        // apiKeyHelper is shown as text and never run.
+        assert_eq!(s.settings.iter().find(|x| x.key == "apiKeyHelper").unwrap().value, "C:/secret/helper.cmd");
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn a_backups_copy_of_claude_json_is_not_read() {
+        let (t, p) = tree("backups");
+        write(&p.global_json, r#"{"mcpServers":{"live":{"command":"a"}}}"#);
+        write(&p.config_dir.join("backups").join(".claude.json.backup.1700000000"), r#"{"mcpServers":{"stale-canary":{"command":"b"}}}"#);
+        let s = summarize(&p);
+        assert_eq!(s.mcp.len(), 1);
+        assert!(!serde_json::to_string(&s).unwrap().contains("stale-canary"));
+        assert!(s.reads.iter().all(|r| !r.contains("/backups/") && !r.contains(".backup.")), "{:?}", s.reads);
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn settings_merge_by_precedence_and_show_their_scope() {
+        let (t, p) = tree("merge");
+        let ws = p.workspace.clone().unwrap();
+        write(&p.config_dir.join("settings.json"), r#"{"model":"sonnet","theme":"dark","permissions":{"allow":["Bash(ls)"],"deny":["Read(./.env)"],"defaultMode":"default"},"enabledPlugins":{"a@m":true},"env":{"ANTHROPIC_API_KEY":"x-canary-env"},"hooks":{"Stop":[{"hooks":[{"type":"command","command":"echo done"}]}]}}"#);
+        write(&ws.join(".claude/settings.json"), r#"{"model":"opus","theme":"light","permissions":{"allow":["Bash(npm test)","Bash(ls)"]},"includeCoAuthoredBy":false}"#);
+        write(&ws.join(".claude/settings.local.json"), r#"{"permissions":{"ask":["Bash(git push *)"],"defaultMode":"plan"},"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"check.sh"}]}]}}"#);
+        write(&p.managed_dir.join("managed-settings.json"), r#"{"permissions":{"deny":["WebFetch"]}}"#);
+        write(&p.managed_dir.join("managed-settings.d/10-extra.json"), r#"{"cleanupPeriodDays":7}"#);
+        write(&p.managed_dir.join("managed-mcp.json"), r#"{"mcpServers":{"corp":{"type":"sse","url":"https://corp.example/sse?t=abc"}}}"#);
+        let s = summarize(&p);
+        let m = s.model.as_ref().unwrap();
+        assert_eq!((m.value.as_str(), m.scope.as_str()), ("opus", "project"));
+        let theme = s.settings.iter().find(|x| x.key == "theme").unwrap();
+        assert_eq!((theme.value.as_str(), theme.scope.as_str(), theme.also.clone()), ("light", "project", vec!["user"]));
+        assert!(theme.path.ends_with("ws/.claude/settings.json"));
+        assert_eq!(s.settings.iter().find(|x| x.key == "cleanupPeriodDays").unwrap().scope, "managed");
+        let env = s.settings.iter().find(|x| x.key == "env").unwrap();
+        assert!(env.value.contains("ANTHROPIC_API_KEY") && !env.value.contains("x-canary-env"), "{}", env.value);
+        let allow: Vec<_> = s.permissions.allow.iter().map(|r| (r.rule.as_str(), r.scope)).collect();
+        assert_eq!(allow, [("Bash(npm test)", "project"), ("Bash(ls)", "project")]);
+        assert_eq!(s.permissions.deny.iter().map(|r| r.scope).collect::<Vec<_>>(), ["managed", "user"]);
+        assert_eq!(s.permissions.ask[0].scope, "local");
+        assert_eq!(s.permissions.default_mode.as_ref().unwrap().value, "plan");
+        let hooks: Vec<_> = s.hooks.iter().map(|h| (h.event.as_str(), h.command.as_str(), h.scope)).collect();
+        assert_eq!(hooks, [("PreToolUse", "check.sh", "local"), ("Stop", "echo done", "user")]);
+        assert_eq!(s.plugins[0].id, "a@m");
+        assert_eq!(s.mcp[0].scope, "managed");
+        assert_eq!(s.mcp[0].target, format!("https://corp.example/sse?{MASK}"));
+        assert!(s.sources.iter().any(|x| x.scope == "managed" && x.state == "found" && x.label.starts_with("managed-settings.d/")));
+        assert!(s.sources.iter().any(|x| x.label == "settings.json" && x.state == "found"));
+        assert!(s.files.settings.len() >= 5);
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn the_config_folder_override_decides_where_user_files_are() {
+        let (t, mut p) = tree("override");
+        let other = t.join("account-b");
+        write(&other.join("settings.json"), r#"{"model":"haiku"}"#);
+        write(&p.config_dir.join("settings.json"), r#"{"model":"opus"}"#);
+        p.config_dir = other.clone();
+        p.global_json = other.join(".claude.json");
+        let s = summarize(&p);
+        assert_eq!(s.model.unwrap().value, "haiku");
+        assert!(s.reads.iter().all(|r| !r.contains("/cfg/")), "{:?}", s.reads);
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn skills_agents_plugins_and_memory_are_listed() {
+        let (t, p) = tree("lists");
+        let ws = p.workspace.clone().unwrap();
+        write(&p.config_dir.join("skills/alpha/SKILL.md"), "---\nname: alpha-skill\ndescription: >\n  Does the alpha thing\n  across two lines\n---\nbody");
+        write(&ws.join(".claude/skills/beta/SKILL.md"), "---\ndescription: \"Beta one\"\n---\n");
+        write(&p.config_dir.join("agents/rev.md"), "---\nname: reviewer\ndescription: Reviews code\n---\n");
+        write(&ws.join(".claude/agents/b.md"), "no front matter");
+        write(&p.config_dir.join("plugins/installed_plugins.json"), r#"{"version":2,"plugins":{"p@mk":[{"scope":"user","version":"1.2.3","installPath":"/x"}]}}"#);
+        write(&p.config_dir.join("CLAUDE.md"), "user memory");
+        write(&p.config_dir.join("rules/r.md"), "rule");
+        write(&ws.join("CLAUDE.md"), "project memory");
+        write(&ws.join("CLAUDE.local.md"), "private");
+        write(&ws.join(".claude/rules/style.md"), "style");
+        let s = summarize(&p);
+        let sk: Vec<_> = s.skills.iter().map(|e| (e.name.as_str(), e.description.as_str(), e.scope)).collect();
+        assert_eq!(sk, [("beta", "Beta one", "project"), ("alpha-skill", "Does the alpha thing across two lines", "user")]);
+        let ag: Vec<_> = s.agents.iter().map(|e| (e.name.as_str(), e.scope)).collect();
+        assert_eq!(ag, [("b", "project"), ("reviewer", "user")]);
+        assert_eq!(s.plugins[0].version.as_deref(), Some("1.2.3"));
+        assert!(!serde_json::to_string(&s).unwrap().contains("installPath"));
+        let kinds: Vec<_> = s.memory.iter().map(|m| (m.kind, m.scope)).collect();
+        assert!(kinds.contains(&("CLAUDE.md", "user")) && kinds.contains(&("CLAUDE.local.md", "project")) && kinds.contains(&("rules", "project")) && kinds.contains(&("rules", "user")), "{kinds:?}");
+        // CLAUDE.md contents are never read, only sized.
+        assert!(s.reads.iter().all(|r| !r.ends_with("CLAUDE.md") && !r.ends_with("style.md")), "{:?}", s.reads);
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn caps_and_bad_files_do_not_break_the_summary() {
+        let (t, p) = tree("caps");
+        write(&p.config_dir.join("settings.json"), &format!("{{\"model\":\"opus\",\"pad\":\"{}\"}}", "x".repeat(MAX_FILE as usize)));
+        write(&p.workspace.clone().unwrap().join(".claude/settings.json"), "{ not json");
+        let s = summarize(&p);
+        assert!(s.model.is_none());
+        assert!(s.notes.iter().any(|n| n.contains("bigger than")) && s.notes.iter().any(|n| n.contains("not a JSON object")), "{:?}", s.notes);
+        assert!(s.sources.iter().any(|x| x.state == "invalid"));
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_inside_the_workspace_is_skipped() {
+        let (t, p) = tree("link");
+        let ws = p.workspace.clone().unwrap();
+        write(&t.join("outside.json"), r#"{"model":"leak-canary"}"#);
+        fs::create_dir_all(ws.join(".claude")).unwrap();
+        std::os::unix::fs::symlink(t.join("outside.json"), ws.join(".claude/settings.json")).unwrap();
+        let s = summarize(&p);
+        assert!(s.model.is_none());
+        assert!(!serde_json::to_string(&s).unwrap().contains("leak-canary"));
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn masking_covers_urls_args_and_secret_keys() {
+        assert_eq!(mask_url("https://u:pw@h.example/p?x=1#f"), format!("https://{MASK}@h.example/p?{MASK}"));
+        assert_eq!(mask_url("https://h.example/p"), "https://h.example/p");
+        let args: Vec<Value> = ["--token", "abc", "--name", "n", "Authorization: Bearer zzz"].iter().map(|s| Value::String(s.to_string())).collect();
+        assert_eq!(mask_args(&args), ["--token", MASK, "--name", "n", MASK]);
+        assert_eq!(display("apiToken", &Value::String("abc".into())), MASK);
+        assert_eq!(display("apiKeyHelper", &Value::String("cmd".into())), "cmd");
+        assert_eq!(front_matter("---\nname: 'x'\n---\n").0.as_deref(), Some("x"));
+    }
+}

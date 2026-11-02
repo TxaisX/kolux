@@ -19,6 +19,7 @@ pub mod cli;
 mod cli_accounts;
 pub mod claude_accounts;
 pub mod claude_key;
+pub mod claude_setup;
 pub mod codex_accounts;
 pub mod codex_usage;
 mod creatures;
@@ -784,6 +785,7 @@ pub fn run() {
             codex_usage::codex_usage,
             codex_usage::codex_usage_of,
             claude_key::claude_key_status,
+            claude_setup::claude_setup,
             claude_key::claude_key_connect,
             claude_key::claude_key_cancel,
             claude_key::claude_key_disconnect,
