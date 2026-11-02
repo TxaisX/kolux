@@ -2,7 +2,8 @@
 // annotations open only inside the worktree, the card text, and when Fix with AI is on.
 import { expect, test } from "vitest";
 import { checkIdOf, findCheckPane, type CheckDetail, type CheckRef } from "./checkCard";
-import { cardText, checkKey, fixBlockerFor, insideWorktree } from "./checkText";
+import { checkKey } from "./checkText";
+import { cardText, fixBlockerFor, insideWorktree } from "./checkText";
 import { tabMenu } from "../terminal/tabs";
 import { tabName } from "../terminal/tabName";
 import { layoutOf } from "../terminal/layout";

@@ -655,6 +655,60 @@ pub fn save_point(app: &tauri::AppHandle, unsaved_drafts: usize) -> Result<final
     restart_allowed(&report, true, unsaved_drafts).map(|()| report)
 }
 
+/// APP-010 / APP-029: a restart is under way. ONE guard for both restarts (Help > Restart Kolux and
+/// Restart to update): a second click, or the other restart, is ignored while this one runs. A save
+/// that cancelled the restart clears it (`restart_ended`) so the user can try again.
+static RESTARTING: AtomicBool = AtomicBool::new(false);
+
+fn restart_may_start(quit_under_way: bool, guard: &AtomicBool) -> bool {
+    !quit_under_way && !guard.swap(true, Ordering::SeqCst)
+}
+
+/// Whether a restart may start now: false while a quit or another restart is already under way.
+/// A true answer has taken the guard; give it back with `restart_ended` if the restart is cancelled.
+pub fn restart_started() -> bool {
+    restart_may_start(QUIT_UNDER_WAY.load(Ordering::SeqCst), &RESTARTING)
+}
+
+/// A restart that did not go ahead gives the guard back.
+pub fn restart_ended() {
+    RESTARTING.store(false, Ordering::SeqCst);
+}
+
+/// Whether this exit is a restart: a downloaded update installed on the way out reopens the app.
+pub fn restart_requested() -> bool {
+    RESTARTING.load(Ordering::SeqCst)
+}
+
+/// APP-010 / APP-011: Help > Restart Kolux. The same durable save point as a quit, then the hand-off
+/// the update restart makes (the new copy must not die with this copy's job), then the relaunch.
+/// A save that fails or times out cancels the restart and says why; nothing is changed.
+///
+/// `async`: the command runs on a worker thread, not the main one. The save point can take seconds and
+/// must not freeze the window, and `request_restart` then goes through the normal exit (ExitRequested
+/// then RunEvent::Exit), which runs the whole quit routine in lib.rs before the relaunch. A restart
+/// asked for on the main thread would skip it.
+#[tauri::command(async)]
+pub fn app_restart(app: tauri::AppHandle) -> Result<(), String> {
+    if !restart_started() {
+        // Said, not swallowed: the page leaves "Restarting…" and shows why.
+        return Err("A restart or quit is already under way.".into());
+    }
+    if let Err(e) = save_point(&app, 0) {
+        restart_ended();
+        return Err(e);
+    }
+    if QUIT_UNDER_WAY.load(Ordering::SeqCst) {
+        // A quit came in during the save point: the user's quit wins and runs its own exit routine.
+        // The guard goes back, or a waiting update would install and reopen the app the user quit.
+        restart_ended();
+        return Ok(());
+    }
+    crate::procs::hand_off(true);
+    app.request_restart();
+    Ok(())
+}
+
 // ---------------------------------------------------------------- APP-020: the search path
 
 /// `current`'s entries in order, then every entry of `stored` (the user's and system's stored
@@ -896,6 +950,38 @@ mod tests {
         assert!(d > final_save::QUIT_DEADLINE + crate::tools::WEBVIEW_EXIT_WAIT, "{d:?}");
         assert!(d <= Duration::from_secs(20), "a quit that takes longer than this is a hang: {d:?}");
         assert!(ASK_LIMIT < d);
+    }
+
+    #[test]
+    fn app010_help_restart_saves_hands_off_and_ignores_a_second_click() {
+        let src = include_str!("lifecycle.rs").replace("\r\n", "\n"); // a Windows checkout is CRLF
+        let code = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = code.find("pub fn app_restart").unwrap();
+        assert!(code[..at].trim_end().ends_with("#[tauri::command(async)]"), "a sync command runs on the main thread, where restart() skips the exit routine and blocks the window");
+        let body = &code[at..];
+        let body = &body[..body.find("\n}\n").unwrap()];
+        assert!(body.find("save_point(&app, 0)").unwrap() < body.find("crate::procs::hand_off(true);").unwrap(), "the save point comes before the hand-off");
+        assert!(body.contains("restart_started()"), "a second click, another restart or a quit under way is ignored");
+        assert!(body.contains("restart_ended()"), "a failed save gives the guard back");
+        assert!(body.find("QUIT_UNDER_WAY").unwrap() < body.find("app.request_restart()").unwrap(), "a quit during the save point wins over the restart");
+        let quit_wins = &body[body.find("QUIT_UNDER_WAY").unwrap()..body.find("crate::procs::hand_off(true);").unwrap()];
+        assert!(quit_wins.contains("restart_ended();"), "a quit that wins gives the guard back, so a waiting update does not reopen the app");
+        let update = include_str!("update.rs").replace("\r\n", "\n");
+        assert!(update.contains("restart_after_install(crate::lifecycle::restart_requested())"), "Help > Restart with a downloaded update installs it and reopens the app");
+        // Every restart hands off first, or the new copy dies with the job; and goes through the full exit routine.
+        assert_eq!(code.matches("crate::procs::hand_off(true);\n    app.request_restart();").count(), 1);
+        assert!(!code.contains("app.restart()"), "AppHandle::restart() on the main thread skips RunEvent::Exit");
+    }
+
+    #[test]
+    fn app010_one_restart_at_a_time_and_none_during_a_quit() {
+        let guard = AtomicBool::new(false);
+        assert!(restart_may_start(false, &guard));
+        assert!(!restart_may_start(false, &guard), "the second one is refused while the first runs");
+        guard.store(false, Ordering::SeqCst);
+        assert!(!restart_may_start(true, &guard), "a quit under way refuses it");
+        assert!(!guard.load(Ordering::SeqCst), "a refused start takes nothing");
+        assert!(restart_may_start(false, &guard));
     }
 
     #[test]

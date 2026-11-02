@@ -15,7 +15,6 @@ use crate::resources::update_care as care;
 use crate::resources::update_guard as guard;
 use crate::state::Store;
 use crate::terminal::Terminals;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -120,8 +119,6 @@ fn info_of(u: &Update) -> Info {
 pub struct Updates {
     pending: Mutex<Option<Update>>,
     ready: Mutex<Option<(Update, Vec<u8>)>>,
-    /// T-199 (APP-029): Restart to update is already under way; a second click is ignored.
-    restarting: AtomicBool,
     watchdog: Arc<care::Watchdog>,
     /// APP-031: the newest check's number.
     rounds: care::CheckRounds,
@@ -388,14 +385,14 @@ pub async fn update_download(app: AppHandle) -> Result<Info, String> {
 /// Restart to update: the shells end, the installer runs and starts the new version.
 #[tauri::command]
 pub fn update_restart(app: AppHandle) -> Result<(), String> {
-    // T-199 (APP-029): only one install runs; a click while it is getting ready is ignored.
-    let updates = app.state::<Updates>();
-    if updates.restarting.swap(true, Ordering::SeqCst) {
+    // T-199 (APP-029): only one install runs; a click while it is getting ready is ignored. The guard is
+    // shared with Help > Restart Kolux, and no restart starts while a quit is under way.
+    if !crate::lifecycle::restart_started() {
         return Ok(());
     }
     let result = restart_now(&app);
     if result.is_err() {
-        updates.restarting.store(false, Ordering::SeqCst);
+        crate::lifecycle::restart_ended();
     }
     result
 }
@@ -471,7 +468,7 @@ fn end_for_installer(app: &AppHandle) {
     crate::resources::recovery::note_self_end(app, "installer starts (APP-029)");
 }
 
-/// Called as the app quits: a downloaded update installs now and does not reopen the app.
+/// Called as the app quits: a downloaded update installs now, and reopens the app only when this exit is a restart.
 pub fn install_on_quit(app: &AppHandle) {
     let ready = app.state::<Updates>().ready.lock().ok().and_then(|mut r| r.take());
     if let Some((update, bytes)) = ready {
@@ -483,7 +480,7 @@ pub fn install_on_quit(app: &AppHandle) {
             return;
         }
         record_attempt(app, &update);
-        let _ = update.restart_after_install(false).install(&bytes);
+        let _ = update.restart_after_install(crate::lifecycle::restart_requested()).install(&bytes);
     }
 }
 
@@ -495,6 +492,7 @@ fn install_skipped_line(version: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::Ordering;
 
     #[test]
     fn row1031_the_skipped_install_line_names_the_version_and_the_reason() {

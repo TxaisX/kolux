@@ -1,0 +1,2 @@
+OpenClaw 2026.10.8 (dc2523e)
+[exit 0]
