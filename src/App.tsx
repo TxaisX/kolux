@@ -10,9 +10,9 @@
 // focused pane, started in the workspace folder (T-010). A browser tab is a pane whose page is
 // a child web view laid over its body by the back end (T-012-a, src/browser/BrowserPane.tsx);
 // its shortcuts (bar, back, forward, reload) apply while a browser pane is focused (T-012-b).
-// Source Control is a card on the right (Mod+Shift+G, Mod+L or the top bar's panel button): the
-// workspace in front's changes, staging and a commit box; its draft message is kept here per
-// worktree (T-018-a, src/scm/SourceControlPanel.tsx).
+// Insights is a card on the right (Mod+L or the top bar's panel button): tokens, estimated cost
+// and what every open agent session is doing, across all workspaces (T-646, src/insights/; it
+// replaced Source Control in the layout, T-644).
 // An editor tab is one file in CodeMirror (T-093-a, src/editor/EditorPane.tsx): "File..." in the
 // New tab menu opens one, and Mod+S saves the focused editor while the terminals screen is up.
 // Markdown (T-093-b): Mod+Shift+V opens a read-only preview tab, Mod+Shift+O picks one of the

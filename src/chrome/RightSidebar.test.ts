@@ -8,7 +8,7 @@ const GIT_TABS = RIGHT_TABS.filter((t) => t.id !== "attached" && t.id !== "prche
 
 test("VIEW-056: open by default on Explorer; open, tab and width come back as saved", () => {
   expect(readRight({})).toEqual({ open: true, tab: "explorer", width: 300 });
-  expect(readRight({ rightSidebarOpen: false, rightSidebarTab: "scm", rightSidebarWidth: 640 })).toEqual({ open: false, tab: "scm", width: 640 });
+  expect(readRight({ rightSidebarOpen: false, rightSidebarTab: "insights", rightSidebarWidth: 640 })).toEqual({ open: false, tab: "insights", width: 640 });
 });
 
 test("VIEW-056: an unknown or old Search tab falls back to Explorer; a width under the minimum is not used", () => {
@@ -33,11 +33,11 @@ test("VIEW-073: a saved Checks tab comes back as Checks", () => {
   expect(readRight({ rightSidebarTab: "checks" }).tab).toBe("checks");
 });
 
-test("VIEW-057: the tab strip lists Explorer, Source Control and Checks and marks the open one", () => {
-  const html = renderToString(createElement(RightSidebar, { tab: "scm", width: 320, onTab: () => {}, onWidth: () => {}, children: "body" }));
+test("VIEW-057: the tab strip lists Explorer, Insights and Checks and marks the open one", () => {
+  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).toMatch(/aria-label="Right sidebar"/);
   expect(html).toMatch(/role="tab" aria-selected="false"[^>]*>Explorer/);
-  expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Source Control/);
+  expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Insights/);
   expect(html).toMatch(/role="tab" aria-selected="false"[^>]*>Checks/);
   expect(html).toContain("width:320px");
   expect(html).toContain('aria-label="Resize the right sidebar"');
@@ -54,33 +54,33 @@ test("VIEW-050: the left sidebar width is clamped into range; a width that is no
 });
 
 test("T-146-b: when narrow, the extra tabs move into More and the active tab stays on the strip", () => {
-  const all = splitTabs(GIT_TABS, "scm", 320);
-  expect([all.shown.map((t) => t.id), all.more]).toEqual([["explorer", "scm", "checks", "agents"], []]);
+  const all = splitTabs(GIT_TABS, "insights", 320);
+  expect([all.shown.map((t) => t.id), all.more]).toEqual([["explorer", "insights", "checks", "agents"], []]);
   // At the minimum width the three tabs no longer fit: the active one keeps its place.
   const narrow = splitTabs(GIT_TABS, "checks", RIGHT_MIN);
   expect(narrow.shown.map((t) => t.id)).toContain("checks");
   expect(narrow.more.length).toBeGreaterThan(0);
-  expect([...narrow.shown, ...narrow.more].map((t) => t.id).sort()).toEqual(["agents", "checks", "explorer", "scm"]);
+  expect([...narrow.shown, ...narrow.more].map((t) => t.id).sort()).toEqual(["agents", "checks", "explorer", "insights"]);
   const used = narrow.shown.reduce((n, t) => n + tabWidth(t.label), 0) + MORE_WIDTH;
   expect(used).toBeLessThanOrEqual(RIGHT_MIN);
   // The order on the strip is the tabs' own order, whichever is active.
-  expect(splitTabs(GIT_TABS, "explorer", RIGHT_MIN).shown.map((t) => t.id)).toEqual(["explorer", "scm"]);
+  expect(splitTabs(GIT_TABS, "explorer", RIGHT_MIN).shown.map((t) => t.id)).toEqual(["explorer", "insights"]);
   expect(splitTabs(GIT_TABS, "checks", RIGHT_MIN).shown.map((t) => t.id)).toEqual(["explorer", "checks"]);
   // The edge: exactly enough room shows every tab, one pixel less opens More.
   const exact = GIT_TABS.reduce((n, t) => n + tabWidth(t.label), 0) + STRIP_PAD;
-  expect(splitTabs(GIT_TABS, "scm", exact).more).toEqual([]);
-  expect(splitTabs(GIT_TABS, "scm", exact - 1).more.length).toBeGreaterThan(0);
+  expect(splitTabs(GIT_TABS, "insights", exact).more).toEqual([]);
+  expect(splitTabs(GIT_TABS, "insights", exact - 1).more.length).toBeGreaterThan(0);
   const html = renderToString(createElement(RightSidebar, { tab: "checks", width: RIGHT_MIN, onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Checks/);
   expect(html).toMatch(/aria-haspopup="menu"[^>]*>More/);
 });
 
 test("T-146-b: a remembered tab not offered here opens the first offered tab", () => {
-  expect(pickTab("scm", ["explorer", "scm", "checks"])).toBe("scm");
-  expect(pickTab("scm", ["explorer", "checks"])).toBe("explorer");
+  expect(pickTab("insights", ["explorer", "insights", "checks"])).toBe("insights");
+  expect(pickTab("insights", ["explorer", "checks"])).toBe("explorer");
   expect(pickTab("checks", [])).toBe(null);
-  const html = renderToString(createElement(RightSidebar, { tab: "scm", width: 320, offered: ["explorer", "checks"], onTab: () => {}, onWidth: () => {}, children: "body" }));
-  expect(html).not.toContain("Source Control");
+  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, offered: ["explorer", "checks"], onTab: () => {}, onWidth: () => {}, children: "body" }));
+  expect(html).not.toContain("Insights");
   expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Explorer/);
 });
 
@@ -90,12 +90,18 @@ test("VIEW 056 rest: a panel whose code throws shows a notice with Try again, an
   };
   const { getDerivedStateFromError, getDerivedStateFromProps } = PanelGuard;
   expect(getDerivedStateFromError(new Error("chunk failed to load"))).toEqual({ failed: "chunk failed to load" });
-  expect(getDerivedStateFromProps({ tab: "scm" }, { failed: "x", tab: "explorer" })).toEqual({ failed: null, tab: "scm" });
-  expect(getDerivedStateFromProps({ tab: "scm" }, { failed: "x", tab: "scm" })).toBe(null);
-  const guard = new PanelGuard({ tab: "scm", children: createElement(Broken) });
-  guard.state = { failed: "chunk failed to load", tab: "scm" };
+  expect(getDerivedStateFromProps({ tab: "insights" }, { failed: "x", tab: "explorer" })).toEqual({ failed: null, tab: "insights" });
+  expect(getDerivedStateFromProps({ tab: "insights" }, { failed: "x", tab: "insights" })).toBe(null);
+  const guard = new PanelGuard({ tab: "insights", children: createElement(Broken) });
+  guard.state = { failed: "chunk failed to load", tab: "insights" };
   const html = renderToString(guard.render() as never);
   expect(html).toContain('role="alert"');
   expect(html).toContain("This panel stopped working");
   expect(html).toContain("Try again");
+});
+
+test("T-644: a saved Source Control tab from an older version opens the Explorer; Insights comes back as Insights", () => {
+  expect(readRight({ rightSidebarTab: "scm" }).tab).toBe("explorer");
+  expect(readRight({ rightSidebarTab: "insights" }).tab).toBe("insights");
+  expect(RIGHT_TABS.map((t) => t.id)).not.toContain("scm");
 });

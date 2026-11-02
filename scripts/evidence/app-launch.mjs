@@ -10,7 +10,7 @@
 import { spawn, execFile } from "node:child_process";
 import { mkdirSync, openSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const run = (file, a, options = {}) =>
@@ -240,7 +240,7 @@ export function createApp(opts) {
     log(`launching: pnpm tauri dev (identifier ${IDENTIFIER}, vite ${PORT}, CDP ${CDP}; log ${logFile})`);
     await pageUp(buildMinutes * 60_000);
     // The app's pid comes from its executable path inside this checkout, never from a window title.
-    const exe = join(root, "src-tauri", "target").replace(/'/g, "''");
+    const exe = (process.env.CARGO_TARGET_DIR ? resolve(process.env.CARGO_TARGET_DIR) : join(root, "src-tauri", "target")).replace(/'/g, "''");
     const found = await waitFor(
       "the app process",
       async () => {

@@ -58,7 +58,7 @@ import { tabBadge } from "./tabs";
 import { forgetView } from "./viewKeep";
 import { invoke } from "@tauri-apps/api/core";
 
-export function paneActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
+export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
   const {
     accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
     owner, panes, pinned, ptys, recentDirs, recentTabs, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
@@ -66,7 +66,6 @@ export function paneActions(s: WindowState, p: ReturnType<typeof useSettingsPlum
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes
   } = s;
-  const { showRight } = p;
   const { inGitFor, launch, lineupsOf, pretrust, projectFor } = la;
   const { prRows } = x;
   const addShell = (dir: string | null, branch: string | null) => {
@@ -374,7 +373,6 @@ export function paneActions(s: WindowState, p: ReturnType<typeof useSettingsPlum
     tabSearchCommand(() => openTabSearch()), // TERM-053
     { section: "Quick actions", label: "New session", run: () => addChooser() },
     // VIEW-042: actions on the worktree in front, not runnable while none is open
-    { section: "Quick actions", label: "Source control for this workspace", needs: "worktree", run: () => showRight("scm") },
     {
       section: "Quick actions",
       label: "Delete this workspace",
