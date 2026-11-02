@@ -459,11 +459,17 @@ pub fn run() {
         })
         // The Artifacts viewer (SKILL-036) loads stored pages through this scheme, one entry at a time.
         // T-500: only the app's own web view may read artifacts; a Browser pane page gets nothing.
-        .register_uri_scheme_protocol(artifacts::SCHEME, |ctx, req| {
+        // T-624 round 3: asynchronous, so the file read (up to 8 MB of a ranged clip, or a whole page) runs
+        // on a blocking worker and never on the window's thread; the responder answers from there.
+        .register_asynchronous_uri_scheme_protocol(artifacts::SCHEME, |ctx, req, responder| {
             if ctx.webview_label() != "main" {
-                return tauri::http::Response::builder().status(403).body(b"not for this page".to_vec()).unwrap_or_default();
+                responder.respond(tauri::http::Response::builder().status(403).body(b"not for this page".to_vec()).unwrap_or_default());
+                return;
             }
-            artifacts::serve(&ctx.app_handle().state::<artifacts::Library>(), &req)
+            let app = ctx.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                responder.respond(artifacts::serve(&app.state::<artifacts::Library>(), &req));
+            });
         })
         // T-033-e (FIX-1): a reload of the main page (F5 / Ctrl+R) destroys no window, and the old
         // page never gets to release its git watches, so they are all let go as the new page starts
