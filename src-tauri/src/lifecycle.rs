@@ -655,24 +655,46 @@ pub fn save_point(app: &tauri::AppHandle, unsaved_drafts: usize) -> Result<final
     restart_allowed(&report, true, unsaved_drafts).map(|()| report)
 }
 
-/// APP-010: a restart is under way (Help > Restart Kolux); a second click while the save point runs
-/// is ignored. A save that cancelled the restart clears it so the user can try again.
+/// APP-010 / APP-029: a restart is under way. ONE guard for both restarts (Help > Restart Kolux and
+/// Restart to update): a second click, or the other restart, is ignored while this one runs. A save
+/// that cancelled the restart clears it (`restart_ended`) so the user can try again.
 static RESTARTING: AtomicBool = AtomicBool::new(false);
+
+fn restart_may_start(quit_under_way: bool, guard: &AtomicBool) -> bool {
+    !quit_under_way && !guard.swap(true, Ordering::SeqCst)
+}
+
+/// Whether a restart may start now: false while a quit or another restart is already under way.
+/// A true answer has taken the guard; give it back with `restart_ended` if the restart is cancelled.
+pub fn restart_started() -> bool {
+    restart_may_start(QUIT_UNDER_WAY.load(Ordering::SeqCst), &RESTARTING)
+}
+
+/// A restart that did not go ahead gives the guard back.
+pub fn restart_ended() {
+    RESTARTING.store(false, Ordering::SeqCst);
+}
 
 /// APP-010 / APP-011: Help > Restart Kolux. The same durable save point as a quit, then the hand-off
 /// the update restart makes (the new copy must not die with this copy's job), then the relaunch.
 /// A save that fails or times out cancels the restart and says why; nothing is changed.
-#[tauri::command]
+///
+/// `async`: the command runs on a worker thread, not the main one. The save point can take seconds and
+/// must not freeze the window, and `request_restart` then goes through the normal exit (ExitRequested
+/// then RunEvent::Exit), which runs the whole quit routine in lib.rs before the relaunch. A restart
+/// asked for on the main thread would skip it.
+#[tauri::command(async)]
 pub fn app_restart(app: tauri::AppHandle) -> Result<(), String> {
-    if RESTARTING.swap(true, Ordering::SeqCst) {
+    if !restart_started() {
         return Ok(());
     }
     if let Err(e) = save_point(&app, 0) {
-        RESTARTING.store(false, Ordering::SeqCst);
+        restart_ended();
         return Err(e);
     }
     crate::procs::hand_off(true);
-    app.restart();
+    app.request_restart();
+    Ok(())
 }
 
 // ---------------------------------------------------------------- APP-020: the search path
@@ -922,13 +944,27 @@ mod tests {
     fn app010_help_restart_saves_hands_off_and_ignores_a_second_click() {
         let src = include_str!("lifecycle.rs").replace("\r\n", "\n"); // a Windows checkout is CRLF
         let code = &src[..src.find("#[cfg(test)]").unwrap()];
-        let body = &code[code.find("pub fn app_restart").unwrap()..];
+        let at = code.find("pub fn app_restart").unwrap();
+        assert!(code[..at].trim_end().ends_with("#[tauri::command(async)]"), "a sync command runs on the main thread, where restart() skips the exit routine and blocks the window");
+        let body = &code[at..];
         let body = &body[..body.find("\n}\n").unwrap()];
         assert!(body.find("save_point(&app, 0)").unwrap() < body.find("crate::procs::hand_off(true);").unwrap(), "the save point comes before the hand-off");
-        assert!(body.contains("RESTARTING.swap(true, Ordering::SeqCst)"), "a second click is ignored");
-        // Same rule as update.rs: every restart in this file hands off first, or the new copy dies with the job.
-        assert!(code.matches("app.restart()").count() >= 1);
-        assert_eq!(code.matches("app.restart()").count(), code.matches("crate::procs::hand_off(true);\n    app.restart()").count(), "a restart that skips the hand-off dies with the job");
+        assert!(body.contains("restart_started()"), "a second click, another restart or a quit under way is ignored");
+        assert!(body.contains("restart_ended()"), "a failed save gives the guard back");
+        // Every restart hands off first, or the new copy dies with the job; and goes through the full exit routine.
+        assert_eq!(code.matches("crate::procs::hand_off(true);\n    app.request_restart();").count(), 1);
+        assert!(!code.contains("app.restart()"), "AppHandle::restart() on the main thread skips RunEvent::Exit");
+    }
+
+    #[test]
+    fn app010_one_restart_at_a_time_and_none_during_a_quit() {
+        let guard = AtomicBool::new(false);
+        assert!(restart_may_start(false, &guard));
+        assert!(!restart_may_start(false, &guard), "the second one is refused while the first runs");
+        guard.store(false, Ordering::SeqCst);
+        assert!(!restart_may_start(true, &guard), "a quit under way refuses it");
+        assert!(!guard.load(Ordering::SeqCst), "a refused start takes nothing");
+        assert!(restart_may_start(false, &guard));
     }
 
     #[test]

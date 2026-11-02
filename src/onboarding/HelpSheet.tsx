@@ -4,7 +4,7 @@
 // tour by name. The list itself is helpItems (plain data); this draws it and wires the real actions.
 // It loads the first time the help button is clicked (lazy/pages), so the guide's live steps, its ring
 // and the tour catalogue stay out of the window's first frame.
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { requestFeedback } from "../feedback/FeedbackDialog";
 import { openSettings } from "../settings/pages";
@@ -21,7 +21,7 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
   const [restart, setRestart] = useState<RestartState>("idle");
   const [note, setNote] = useState("");
   // One restart per sheet: the click handler is made once, so a second click finds it busy.
-  const restartOnce = useRef(createRestart(() => invoke("app_restart"), setRestart, (why) => setNote(why)));
+  const [restartOnce] = useState(() => createRestart(() => invoke("app_restart"), setRestart, (why) => setNote(why)));
   const restarting = restart === "restarting";
   const pick = (go: () => void) => {
     onClose();
@@ -48,7 +48,7 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
         checkForUpdates: requestUpdateCheck,
         restart: () => {
           setNote("");
-          restartOnce.current();
+          restartOnce();
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- g.done is what milestonesShown and ring read

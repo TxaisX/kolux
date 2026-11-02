@@ -82,13 +82,11 @@ describe("APP-010 the help menu list", () => {
 });
 
 describe("APP-010 Restart Kolux", () => {
-  it("shows Restarting… and does nothing when clicked again", () => {
+  it("shows Restarting… and is disabled, so a click cannot reach it again", () => {
     const { c } = ctx({ restarting: true });
     const item = label(c, "restart");
     expect(item.label).toBe(RESTARTING);
     expect(item.disabled).toBe(true);
-    item.run();
-    expect(c.restart).not.toHaveBeenCalled();
     expect(label(ctx().c, "restart").label).toBe("Restart Kolux");
   });
 

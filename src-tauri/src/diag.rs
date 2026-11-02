@@ -252,8 +252,11 @@ pub fn strip_home(text: &str, home: Option<&str>) -> String {
     if let Some(h) = home.map(|h| h.trim_end_matches(['\\', '/'])).filter(|h| h.len() > 3) {
         // Either slash style, however many backslashes a log line's escaping left.
         let parts: Vec<String> = h.split(['\\', '/']).map(regex::escape).collect();
-        if let Ok(re) = regex::Regex::new(&format!("(?i){}", parts.join(r"[\\/]+"))) {
-            out = re.replace_all(&out, "~").into_owned();
+        // The match ends at a separator, whitespace, a quote, closing punctuation or the end of the text,
+        // so the home `C:\Users\jo` does not eat the start of `C:\Users\joe`. The regex crate has no
+        // lookahead: the boundary is a capture group put back after the `~`.
+        if let Ok(re) = regex::Regex::new(&format!(r#"(?i){}([\\/\s"'`)\]}},;:>|]|$)"#, parts.join(r"[\\/]+"))) {
+            out = re.replace_all(&out, "~$1").into_owned();
         }
     }
     let generic = regex::Regex::new(r#"(?i)(?:[a-z]:[\\/]+users[\\/]+|/users/|/home/)[^\\/\s"'<>|:*?]+"#).expect("the home-folder pattern is valid");
@@ -391,6 +394,41 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         let s = summary(&dir, "0.1.0", None);
         assert!(s.contains("filler line 0199") && !s.contains("filler line 0100") && s.contains(&format!("newest {SUMMARY_LINES} log line(s)")), "{s}");
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn app010_a_home_outside_the_users_folder_is_stripped_in_every_spelling() {
+        // The generic C:\Users\<name> rule cannot see this home: only the home-specific rule can.
+        let home = r"D:\Profiles\Some One";
+        for text in [
+            r"opened D:\Profiles\Some One\proj\src",
+            "opened D:/Profiles/Some One/proj/src",
+            r"json D:\\Profiles\\Some One\\proj\\src",
+            r"opened d:\profiles\SOME ONE\proj\src",
+            r"opened d:/PROFILES/some one/proj",
+            r"quoted 'D:\Profiles\Some One' and (D:\Profiles\Some One) and D:\Profiles\Some One",
+        ] {
+            let out = strip_home(text, Some(home));
+            for gone in ["Profiles", "Some One", "profiles", "some one", "SOME ONE", "PROFILES"] {
+                assert!(!out.contains(gone), "{gone} survived in {out:?} (from {text:?})");
+            }
+            assert!(out.contains('~'), "{out:?}");
+        }
+        assert_eq!(strip_home(r"in D:\Profiles\Some One\proj", Some(home)), r"in ~\proj");
+        assert_eq!(strip_home(r"a D:\Profiles\Some One, b", Some(home)), "a ~, b");
+    }
+
+    #[test]
+    fn app010_a_home_name_that_is_a_prefix_of_another_name_leaves_the_other_alone() {
+        // Home C:\Users\jo must not turn C:\Users\joe\x into ~e\x.
+        assert_eq!(strip_home(r"C:\Users\jo\x and C:\Users\jo", Some(r"C:\Users\jo")), r"~\x and ~");
+        let out = strip_home(r"C:\Users\joe\x", Some(r"C:\Users\jo"));
+        assert!(!out.contains("~e"), "{out}");
+        assert_eq!(out, r"~\x", "the generic rule still hides joe, but whole");
+        // Where the generic rule does not apply, the other name stays untouched.
+        assert_eq!(strip_home(r"D:\Profiles\joe\x", Some(r"D:\Profiles\jo")), r"D:\Profiles\joe\x");
+        assert_eq!(strip_home(r"D:\Profiles\jo\x", Some(r"D:\Profiles\jo")), r"~\x");
+        assert_eq!(strip_home(r#"path "D:\Profiles\jo""#, Some(r"D:\Profiles\jo")), r#"path "~""#);
     }
 
     #[test]

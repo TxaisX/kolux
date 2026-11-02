@@ -46,3 +46,15 @@ Not proved here (needs-live-windows)
   The clipboard text after Copy terminal diagnostics in the running app.
   The Ctrl+Tab, floating-link and preview-reload live proofs and the three patches that T-248-c-rest
   also lists are other lanes' work and stay open.
+
+Review round 1 fixes
+  Help > Restart Kolux (app_restart) is now an async command and relaunches with app.request_restart():
+  it runs off the main thread and goes through ExitRequested and RunEvent::Exit, so the whole quit
+  routine (watchdog, browser helpers, Grok hook file, terminals, WebView2 wait, cli/endpoint files,
+  install_on_quit) runs before the relaunch. Save point before hand-off is unchanged.
+  Help restart and Restart to update share one guard (lifecycle::restart_started / restart_ended);
+  both refuse while a quit is under way (QUIT_UNDER_WAY). Updates.restarting is gone.
+  diag strip_home: home rule now ends at a separator, whitespace, quote, closing punctuation or end of
+  text (home C:\Users\jo no longer turns C:\Users\joe\x into ~e\x), and is tested on D:\Profiles\Some One
+  in forward-slash, doubled-backslash and other-case spellings.
+  cargo tests app010_help_restart_*, app010_one_restart_*, app010_a_home_* fail on the old code.

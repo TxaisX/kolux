@@ -59,7 +59,7 @@ export function helpItems(c: HelpCtx): HelpItem[] {
     help("feedback", "Send Feedback", c.requestFeedback),
     help("diagnostics", "Copy terminal diagnostics", c.copyDiagnostics, { keepOpen: true }),
     help("updates", "Check for Updates", c.checkForUpdates),
-    help("restart", c.restarting ? RESTARTING : "Restart Kolux", c.restarting ? () => {} : c.restart, { keepOpen: true, disabled: c.restarting }),
+    help("restart", c.restarting ? RESTARTING : "Restart Kolux", c.restart, { keepOpen: true, disabled: c.restarting }),
   );
   return items;
 }
