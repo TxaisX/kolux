@@ -123,3 +123,8 @@ Renumber: this PR's decision row is DT-C70 (DT-C67 clashed with PR #60); DECISIO
 
    cargo test --manifest-path src-tauri/Cargo.toml edit044
    test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2654 filtered out
+
+3. clippy (this PC's toolchain, rust 1.99): editor_search.rs stderr_text used chunks_exact(2) and failed
+   `clippy::chunks_exact_to_as_chunks` under -D warnings; now as_chunks::<2>() (same as parse_notify).
+   cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: exit 0
+   cargo test ... edit044 after that change: test result: ok. 6 passed; 0 failed

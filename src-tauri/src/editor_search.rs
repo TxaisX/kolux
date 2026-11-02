@@ -253,7 +253,7 @@ fn wsl_rg_command(distro: &str, linux_root: &str, a: &Ask) -> Command {
 fn stderr_text(bytes: &[u8]) -> String {
     let utf16 = bytes.len() >= 2 && bytes.len().is_multiple_of(2) && (bytes.starts_with(&[0xFF, 0xFE]) || (bytes[0] != 0 && bytes[1] == 0));
     if utf16 {
-        let units: Vec<u16> = bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+        let units: Vec<u16> = bytes.as_chunks::<2>().0.iter().map(|c| u16::from_le_bytes(*c)).collect();
         return String::from_utf16_lossy(&units).trim_start_matches('\u{FEFF}').to_string();
     }
     String::from_utf8_lossy(bytes).into_owned()
