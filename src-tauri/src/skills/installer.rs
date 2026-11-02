@@ -184,30 +184,38 @@ const NO_NODE: &str = "Node.js was not found, so the community skills installer 
 /// The real thing: no window, output kept, the whole process tree ended when `cancel` is set.
 pub struct Real;
 
+/// The process for a launch, started in `dir` when given (`run_dir`).
+fn command(l: &Launch, dir: Option<&Path>) -> std::process::Command {
+    let mut c = std::process::Command::new(&l.program);
+    if let Some(dir) = dir {
+        c.current_dir(dir);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // R10-skills.2 (T-633): whatever the runner starts in turn (npx.cmd starts node) is not
+        // looked up in the current folder either, which for a project install is the project.
+        c.env("NoDefaultCurrentDirectoryInExePath", "1");
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.args(&l.args);
+        if let Some(r) = &l.raw {
+            c.raw_arg(r);
+        }
+    }
+    #[cfg(not(windows))]
+    c.args(&l.args);
+    c
+}
+
 impl Installer for Real {
     fn run(&self, cmd: &Cmd, cancel: &AtomicBool) -> Result<Outcome, String> {
         use std::io::Read;
-        use std::process::{Command, Stdio};
+        use std::process::Stdio;
         let resolved = crate::agents::find_program(&cmd.program).ok_or_else(|| NO_NODE.to_string())?;
         let l = launch(cmd, &resolved, cfg!(windows))?;
-        let mut c = Command::new(&l.program);
-        if let Some(dir) = std::env::current_exe().ok().and_then(|exe| run_dir(cmd, &exe)) {
-            c.current_dir(dir);
-        }
+        let dir = std::env::current_exe().ok().and_then(|exe| run_dir(cmd, &exe));
+        let mut c = command(&l, dir.as_deref());
         c.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            // The runner's own lookups (npx.cmd finds node) skip the current folder too.
-            c.env("NoDefaultCurrentDirectoryInExePath", "1");
-            c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-            c.args(&l.args);
-            if let Some(r) = &l.raw {
-                c.raw_arg(r);
-            }
-        }
-        #[cfg(not(windows))]
-        c.args(&l.args);
         let mut child = c.spawn().map_err(|e| if e.kind() == std::io::ErrorKind::NotFound { NO_NODE.to_string() } else { format!("The community skills installer could not start: {e}") })?;
         let buf = Arc::new(Mutex::new(Vec::<u8>::new()));
         let mut readers = vec![];
@@ -351,5 +359,34 @@ mod tests {
         local.args.retain(|a| a != "-g");
         assert_eq!(run_dir(&local, &exe), None);
         assert_eq!(run_dir(&global, Path::new("kolux.exe")), None, "a relative exe names no folder");
+    }
+
+    /// R10-skills.2 (T-633): a project install runs in the project, so a project carrying its own
+    /// npx.cmd and node.cmd is the case to beat. The runner (a stand-in that starts node by bare
+    /// name, the worst case) is started as a real run is, and neither planted file runs. Without
+    /// the guard variable the planted node does run, which shows the check can see it.
+    #[cfg(windows)]
+    #[test]
+    fn t633_launchers_planted_in_the_project_never_run() {
+        let project = crate::test_dir::temp("t633-project");
+        let runner = crate::test_dir::temp("t633-runner");
+        for name in ["npx", "node"] {
+            let mark = project.join(format!("ran-{name}.txt"));
+            std::fs::write(project.join(format!("{name}.cmd")), format!("@echo off
+echo planted> \"{}\"
+", mark.display())).unwrap();
+        }
+        std::fs::write(runner.join("npx.cmd"), "@echo off
+call node --version >nul 2>&1
+exit /b 0
+").unwrap();
+        let c = Cmd { program: "npx".into(), args: s(&["--version"]) };
+        let l = launch(&c, &runner.join("npx.cmd"), true).unwrap();
+        command(&l, Some(&project)).output().unwrap();
+        assert!(!project.join("ran-npx.txt").exists(), "the planted npx.cmd ran");
+        assert!(!project.join("ran-node.txt").exists(), "the planted node.cmd ran");
+        let mut bare = command(&l, Some(&project));
+        bare.env_remove("NoDefaultCurrentDirectoryInExePath").output().unwrap();
+        assert!(project.join("ran-node.txt").exists(), "control: without the variable the planted node is found");
     }
 }

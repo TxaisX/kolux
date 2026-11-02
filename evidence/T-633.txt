@@ -31,6 +31,11 @@ TESTS (cargo test --lib, CARGO_TARGET_DIR=target-2f)
 - installer::tests::t633_the_runner_starts_by_its_full_path_only (new)
 - installer::tests::t633_a_computer_wide_run_starts_in_the_apps_folder (new)
 - agents::tests::t633_relative_path_entries_are_never_walked (new)
+- installer::tests::t633_launchers_planted_in_the_project_never_run (new, Windows): a project holding its own
+  npx.cmd and node.cmd; the runner, started as a real run is (same command builder) in that
+  folder, calls node by bare name; neither planted file runs. Control in the same test: with the
+  guard variable removed the planted node.cmd does run, so the check can see it. 24/24 installer
+  and t633 tests pass, clippy -D warnings clean.
 
 RED (before the fix)
 - installer tests: did not compile (launch took two arguments, run_dir missing).
