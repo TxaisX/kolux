@@ -87,7 +87,6 @@ export const actions: Action[] = [
   a("sidebar.right.toggle", "Toggle Right Sidebar", "global", ["Mod+L"]),
   a("sidebar.explorer.toggle", "Show Explorer", "global", ["Mod+Shift+E"]),
   a("sidebar.search.toggle", "Show Search", "global", ["Mod+Shift+F"]),
-  a("sidebar.sourceControl.toggle", "Show Source Control", "global", ["Mod+Shift+G"]),
   a("sidebar.checks.toggle", "Show Checks", "global", []),
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
   a("sidebar.focusWorktreeList", "Focus worktree list", "global", ["Mod+Shift+0"]),

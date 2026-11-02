@@ -1,3 +1,6 @@
 /* VIEW-059 (T-224-b): the Explorer's add-project row, and a toolbar button that is busy. */
 .add-project-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .explorer-head .ib:disabled { opacity: 0.6; cursor: default; }
+/* Wave UI lane C: the header wraps its buttons onto a second line instead of pushing them past the edge when the explorer is narrow. */
+.explorer > .explorer-head { flex-wrap: wrap; height: auto; min-height: 36px; gap: 2px; row-gap: 4px; padding-top: 6px; padding-bottom: 6px; }
+.explorer > .explorer-head .title { margin-right: 6px; }
