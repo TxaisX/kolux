@@ -133,7 +133,7 @@ pub enum Node {
 
 /// The screens the View menu picks between (T-054): the switcher's four in its cycle order (VIEW-002), then Floor,
 /// which has no sidebar item and is reached from the palette and this menu (VIEW-013, DT-08; T-610). None of the five
-/// carries a chord (DT-C62): the page sends no accelerator under these ids (chromeItems.ts MENU_SHORTCUT_IDS).
+/// carries a chord (DT-C68): the page sends no accelerator under these ids (chromeItems.ts MENU_SHORTCUT_IDS).
 pub const SCREENS: [(&str, &str, &str); 5] = [("screen.agents", "Agents", "agents"), ("screen.board", "Board", "board"), ("screen.terminals", "Terminals", "terminals"), ("screen.tower", "Tower", "tower"), ("screen.floor", "Floor", "floor")];
 
 /// The whole menu bar for one platform and one page state.

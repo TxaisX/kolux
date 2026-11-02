@@ -96,7 +96,7 @@ WHAT CHANGED
 - src/chrome/chromeItems.ts: menuScreen returns Screen | null over MENU_SCREENS (agents, board, terminals, tower, floor);
   MENU_SHORTCUT_IDS gains "screen.floor" and HINT_FROM maps it to view.floor, so the Floor item shows VIEW-013's compat
   chord once the user binds one (shipped unbound, COMPAT 4.3: it shows nothing until then).
-- DECISIONS.md DT-C62: the submenu lists the switcher's four in VIEW-002's cycle order, then Floor; VIEW-002's "User sees"
+- DECISIONS.md DT-C68: the submenu lists the switcher's four in VIEW-002's cycle order, then Floor; VIEW-002's "User sees"
   (three items, none ticked on Tower) described 0.15.0 before Tower joined the cycle (DT-C50); its boxes are unchanged.
 - docs/guide/getting-started.md (View row) and feature-index.md (T-049-b row) name the five; docs/live-proofs-windows.md B-2
   gains the menu leg (View > Workspace View > Floor opens the Floor and ticks it).
@@ -171,15 +171,15 @@ WHAT WAS WRONG
    so a menu-action for screen.floor firing beside it would put Floor back and the chord would never leave Floor.
    Taken the first way the review offers: the Floor item carries no accelerator (dropped from MENU_SHORTCUT_IDS and HINT_FROM);
    the palette's "Show Floor" row still prints view.floor's keys. The second way (make the menu click toggle too) was not
-   taken: with both paths toggling, the pair still nets to no change, so it would not fix the double fire. Recorded in DT-C62.
-3) spec/05-views-navigation.md VIEW-002's Rules now carry one line: since T-610 (DT-C62) the submenu lists Agents, Board,
+   taken: with both paths toggling, the pair still nets to no change, so it would not fix the double fire. Recorded in DT-C68.
+3) spec/05-views-navigation.md VIEW-002's Rules now carry one line: since T-610 (DT-C68) the submenu lists Agents, Board,
    Terminals, Tower and Floor, each ticked while shown; the boxes above are unchanged. No box ticked or struck.
 
 WHAT CHANGED
 - src/chrome/chromeItems.ts: MENU_SHORTCUT_IDS back to the seven items; HINT_FROM back to the three zoom ids; the comment says why.
 - src-tauri/src/menu.rs: MenuState.screen's doc names the five SCREENS; the SCREENS doc no longer says Floor carries a chord.
 - spec/05-views-navigation.md VIEW-002 Rules: the one line above.
-- DECISIONS.md DT-C62: the Floor item prints no chord and why; the palette row is where the keys show.
+- DECISIONS.md DT-C68: the Floor item prints no chord and why; the palette row is where the keys show.
 - PLAN.md T-610 line: "Floor shows view.floor's chord" -> "the Floor item prints no chord, the palette's Show Floor row does"
   (a first wording named the cycle card by id, which plan-check refused: "VIEW-002 appears 2 times (must be exactly once)";
   reworded without the id, plan-check: OK).
@@ -190,16 +190,16 @@ WHAT CHANGED
 
 FAILING BEFORE (test first, code unchanged)
 $ VITEST_MAX_WORKERS=2 npx vitest run --reporter=verbose src/chrome/chromeItems.test.ts src/chrome/reach.test.ts
- × src/chrome/chromeItems.test.ts > T-248-a menu bar state (APP-009, SET-020, SET-009) > T-610 / DT-C62: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord 14ms
+ × src/chrome/chromeItems.test.ts > T-248-a menu bar state (APP-009, SET-020, SET-009) > T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord 14ms
    → expected [ 'app.settings', …(7) ] to not include 'screen.floor'
- ✓ src/chrome/reach.test.ts > T-610 / DT-C62: the palette's Show Floor row prints view.floor's keys once bound; the menu's Floor item prints none 3ms
+ ✓ src/chrome/reach.test.ts > T-610 / DT-C68: the palette's Show Floor row prints view.floor's keys once bound; the menu's Floor item prints none 3ms
       Tests  1 failed | 15 passed (16)
 (The palette-row test passed before the change as well: it pins the place the chord still shows, so dropping the menu hint loses nothing.)
 
 AFTER THE FIX
 $ VITEST_MAX_WORKERS=2 npx vitest run --reporter=verbose src/chrome src/keys
- ✓ src/chrome/chromeItems.test.ts > ... > T-610 / DT-C62: the Floor item carries no accelerator even with view.floor bound ... 2ms
- ✓ src/chrome/reach.test.ts > T-610 / DT-C62: the palette's Show Floor row prints view.floor's keys once bound; the menu's Floor item prints none 2ms
+ ✓ src/chrome/chromeItems.test.ts > ... > T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound ... 2ms
+ ✓ src/chrome/reach.test.ts > T-610 / DT-C68: the palette's Show Floor row prints view.floor's keys once bound; the menu's Floor item prints none 2ms
  Test Files  34 passed (34)
       Tests  189 passed (189)
 $ npx tsc --noEmit -> exit 0

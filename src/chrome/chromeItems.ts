@@ -33,7 +33,7 @@ export function windowSummary(s: Record<string, unknown>): string {
 export const MENU_SHORTCUT_IDS = ["app.settings", "app.forceReload", "sidebar.left.toggle", "sidebar.right.toggle", "zoom.in", "zoom.out", "zoom.reset"] as const;
 /** Menu items whose hint is the chord of a keymap action with another id: the menu zoom is the saved
  *  interface zoom (SET-019), which has its own keys, while zoom.* in the keymap is the terminal zoom (TERM-078).
- *  The Workspace View items carry no chord (DT-C62): on a Mac a menu accelerator is a real key equivalent, and
+ *  The Workspace View items carry no chord (DT-C68): on a Mac a menu accelerator is a real key equivalent, and
  *  Floor's would fire beside the window's toggle of the same chord (view.floor, useWindowKeys.ts), so the
  *  palette's "Show Floor" row is where view.floor's keys are printed. */
 const HINT_FROM: Record<string, string> = { "zoom.in": "ui.zoomIn", "zoom.out": "ui.zoomOut", "zoom.reset": "ui.zoomReset" };

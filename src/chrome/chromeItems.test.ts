@@ -75,7 +75,7 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
     expect(menuScreen("app.settings")).toBeNull();
   });
 
-  it("T-610 / DT-C62: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord", () => {
+  it("T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord", () => {
     const st = menuBarState({}, "floor", (id) => (id === "view.floor" ? ["Mod+Alt+F"] : undefined));
     expect(st.screen).toBe("floor");
     expect(MENU_SHORTCUT_IDS).not.toContain("screen.floor");
