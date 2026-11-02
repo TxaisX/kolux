@@ -53,7 +53,7 @@ jiff = "0.2"
 tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls", "system-proxy", "zip"] }
 trash = "5"
 # Already in the build through the updater; fetches CDN scripts for offline artifacts (SKILL-035).
-reqwest = { version = "0.13", default-features = false, features = ["native-tls"] }
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
 unicode_names2 = "4.0.0"
 # SKILL-013: the README lists SHA-256 hashes (sha2 is already in the tree).
 sha2 = "0.10"
