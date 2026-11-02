@@ -16,15 +16,16 @@ test("VIEW-057: a project without Git is a folder workspace, a repository's main
 
 test("VIEW-057: a folder workspace hides the git tabs and shows Attached worktrees and PR Checks", () => {
   expect(offeredTabs(true)).toEqual(FOLDER_TABS);
-  expect(FOLDER_TABS).not.toContain("scm");
+  expect(FOLDER_TABS).not.toContain("scm" as never); // T-644: Source Control left the layout
   expect(FOLDER_TABS).not.toContain("checks");
-  expect(FOLDER_TABS).toEqual(expect.arrayContaining(["attached", "prchecks", "explorer", "agents"]));
+  expect(FOLDER_TABS).toEqual(expect.arrayContaining(["attached", "prchecks", "explorer", "agents", "insights"]));
   expect(offeredTabs(false)).toEqual(GIT_TABS);
-  expect(GIT_TABS).toEqual(["explorer", "scm", "checks", "agents"]);
+  expect(GIT_TABS).toEqual(["explorer", "insights", "checks", "agents"]);
+  expect(offeredTabs(true)).toContain("insights"); // T-646: Insights is app-wide, so a folder workspace offers it too
 });
 
 test("VIEW-057: a remembered tab that is not offered here gives the first one offered", () => {
-  expect(tabFor({}, "C:/notes", "scm", FOLDER_TABS)).toBe("explorer");
+  expect(tabFor({}, "C:/notes", "checks", FOLDER_TABS)).toBe("explorer");
   expect(tabFor({}, "C:/notes", "agents", FOLDER_TABS)).toBe("agents");
   expect(tabFor({}, "C:/w/app", "attached", GIT_TABS)).toBe("explorer");
   expect(tabFor({}, "C:/w/app", "checks", GIT_TABS)).toBe("checks");
@@ -46,5 +47,5 @@ test("VIEW-057: choosing PR Checks is remembered for that folder, choosing anoth
   expect(rememberTab(one, "C:/two", "prchecks")).toEqual({ "c:\\notes": "prchecks", "c:\\two": "prchecks" });
   expect(readFolderTabs(null)).toEqual({});
   expect(readFolderTabs(["x"])).toEqual({});
-  expect(readFolderTabs({ "C:/a": "scm", " ": "prchecks", "C:/b": 3 })).toEqual({});
+  expect(readFolderTabs({ "C:/a": "insights", " ": "prchecks", "C:/b": 3 })).toEqual({});
 });

@@ -60,7 +60,6 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
   const right = { ...savedRight, tab: tabFor(settings[FOLDER_TAB_KEY], activeDir, savedRight.tab, offeredRight) };
   const leftWidth = dragLeft ?? readLeft(settings);
   const explorerOpen = right.open && right.tab === "explorer";
-  const scmOpen = right.open && right.tab === "scm";
   const saveRight = (patch: Partial<Record<keyof typeof RIGHT_KEYS, unknown>>) => {
     const was = settingsRef.current;
     const next = { ...was };
@@ -108,7 +107,7 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
   const setDefault = (id: string) => saveSetting(DEFAULT_AGENT_KEY, id);
   return {
     settingsRef, repoless, notesFor, saveNotes, putNote, dropNotes, saveSetting, savePageSettings, kindProject, wsKind, offeredRight, savedRight, right,
-    leftWidth, explorerOpen, scmOpen, saveRight, showRight, toggleExplorer, setDefault,
+    leftWidth, explorerOpen, saveRight, showRight, toggleExplorer, setDefault,
   };
 }
 

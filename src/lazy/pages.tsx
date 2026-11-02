@@ -46,10 +46,9 @@ export const AddProjectRow = deferred(() => import("../editor/AddProjectRow"));
 export const ReviewNotes = deferred(() => import("../editor/ReviewNotes"));
 export const FolderRenameAsk = deferred(() => import("../projects/FolderRenameAsk"));
 
-// Source Control's pull request checks, its line notes, and the panel itself (right sidebar).
-export const SourceControlPanel = deferred(() => import("../scm/SourceControlPanel"));
+// The right sidebar's panels: the pull request checks, and Insights (tokens / cost / live sessions, app-wide).
 export const ChecksPanel = deferred(() => import("../scm/ChecksPanel"));
-export const LineNotes = deferred(() => import("../scm/LineNotes"));
+export const InsightsPanel = deferred(() => import("../insights/InsightsPanel")); // T-646
 
 // Dialogs and hosts that open on their own: updates, about, feedback, a link ask, trust, recovery.
 export const UpdateCenter = deferred(() => import("../update/UpdateCenter"));
