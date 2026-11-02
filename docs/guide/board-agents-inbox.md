@@ -170,7 +170,7 @@ The same words appear in pane headers, tabs, the sidebar, the Board and the Inbo
 
 A plain shell reads "Ready" while it runs and "Ended (code)" after it exits. A session not yet started reads "Not started" on the Agents page.
 
-Until an agent's status hooks report, Kolux guesses its state from the title the program gives its terminal. A spinner or a word such as "thinking" reads Working, "ready" or "idle" reads Done, and "permission" or "waiting" reads Needs you. A title it does not recognise, such as a folder path, changes nothing. The first real status replaces the guess.
+Until an agent's status hooks report, Kolux guesses its state from the title the program gives its terminal. A spinner or a word such as "thinking" reads Working, "ready" or "idle" reads Done, and "permission", "waiting" or "action required" reads Needs you. Gemini CLI's own title icons count too: ✦ reads Working, ✋ reads Needs you and ◇ reads Done, whatever words follow them. A title it does not recognise, such as a folder path, changes nothing. The first real status replaces the guess.
 
 ### What Gemini CLI, Antigravity and Amp show
 

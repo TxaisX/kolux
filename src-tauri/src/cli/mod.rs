@@ -227,29 +227,42 @@ pub fn call_within(port: u16, req: &Request, wait: Duration) -> Result<Value, Fa
 }
 
 /// CLI-011: asks a running app to come forward; when none answers, starts it once and asks again
-/// until it answers or `limit` has passed since the start.
-pub fn open(send: &dyn Fn() -> Result<Value, Fail>, launch: &dyn Fn() -> Result<(), Fail>, limit: Duration) -> Result<Value, Fail> {
-    match send() {
-        Err(f) if f.code == "app_unreachable" => {}
-        answered => return answered,
-    }
-    launch()?;
-    let until = Instant::now() + limit;
-    loop {
-        match send() {
-            Ok(mut env) => {
-                if let Some(r) = env["result"].as_object_mut() {
-                    r.insert("started".into(), json!(true));
+/// until it answers or `limit` has passed since the start. Box 2: `grant` runs before the first
+/// ask, letting the running copy take the foreground (Windows refuses a window that merely asks
+/// for it, leaving a taskbar flash); after the answer, `raise` brings the window of the pid the
+/// app answered with forward from this side too, the way a second launch does, and its verdict
+/// goes into the result as `raised` (null when the answer named no pid or this platform cannot
+/// tell), so the command reports whether the window is in front instead of assuming it.
+pub fn open(send: &dyn Fn() -> Result<Value, Fail>, launch: &dyn Fn() -> Result<(), Fail>, grant: &dyn Fn(), raise: &dyn Fn(u32) -> Option<bool>, limit: Duration) -> Result<Value, Fail> {
+    grant();
+    let mut env = match send() {
+        Err(f) if f.code == "app_unreachable" => {
+            launch()?;
+            let until = Instant::now() + limit;
+            loop {
+                match send() {
+                    Ok(mut env) => {
+                        if let Some(r) = env["result"].as_object_mut() {
+                            r.insert("started".into(), json!(true));
+                        }
+                        break env;
+                    }
+                    Err(f) if f.code != "app_unreachable" => return Err(f),
+                    Err(f) if Instant::now() >= until => {
+                        return Err(Fail { code: "app_unreachable", message: format!("Kolux was started but did not answer within {} s", limit.as_secs()), data: f.data });
+                    }
+                    Err(_) => std::thread::sleep(Duration::from_millis(250)),
                 }
-                return Ok(env);
             }
-            Err(f) if f.code != "app_unreachable" => return Err(f),
-            Err(f) if Instant::now() >= until => {
-                return Err(Fail { code: "app_unreachable", message: format!("Kolux was started but did not answer within {} s", limit.as_secs()), data: f.data });
-            }
-            Err(_) => std::thread::sleep(Duration::from_millis(250)),
         }
+        answered => answered?,
+    };
+    let pid = env["result"]["pid"].as_u64().and_then(|p| u32::try_from(p).ok());
+    let raised = pid.and_then(raise);
+    if let Some(r) = env["result"].as_object_mut() {
+        r.insert("raised".into(), json!(raised));
     }
+    Ok(env)
 }
 
 /// CLI-041: the wire name of `kolux diagnostics memory`.
@@ -664,7 +677,16 @@ pub fn main(words: Vec<String>) -> i32 {
         // CLI-011 / T-075-b: a background terminal service this build cannot pair with is a clear
         // refusal before anything starts; a compatible one is attached to by the window open starts.
         let launch = || crate::pty::service::before_open(&data_dir()).map_err(|why| Fail { code: "service_incompatible", message: why, data: json!({}) }).and_then(|_| launch_app());
-        let env = if parsed.command == "app.open" { open(&send, &launch, OPEN_LIMIT)? } else { send()? };
+        // CLI-011 box 2: the running copy (its pid from the startup file) may take the foreground
+        // before it is asked, and once it answered its window is raised from here as well, as a
+        // second launch does (lifecycle::forward_to); only Windows can say whether that worked.
+        let grant = || {
+            if let Some(pid) = crate::lifecycle::read_running(&data_dir()).and_then(|r| r.pid) {
+                crate::lifecycle::allow_foreground(pid);
+            }
+        };
+        let raise = |pid: u32| cfg!(windows).then(|| crate::lifecycle::raise_by_pid(pid, crate::lifecycle::RAISE_TRIES, std::thread::sleep));
+        let env = if parsed.command == "app.open" { open(&send, &launch, &grant, &raise, OPEN_LIMIT)? } else { send()? };
         if parsed.command == "terminal.send" {
             // TERM-126: a prompt that did not submit within the wait is reported with exit status 1.
             submit_step(&env)?;
@@ -3872,23 +3894,47 @@ mod tests {
         assert_eq!(parse(&words("-- skills list")).1.unwrap().unwrap().command, parse(&words("skills list")).1.unwrap().unwrap().command);
     }
 
+    /// The bundled guides that document other programs (their flags are those programs', not
+    /// Kolux's). Only these may show a `--flag` that no kolux command takes, and only on a line
+    /// that does not invoke kolux. Every other guide is judged on every line, as before.
+    const FOREIGN_TOOL_GUIDES: &[&str] = &["video"];
+
     #[test]
     fn the_skill_guides_name_only_commands_and_flags_that_exist() {
         let paths: Vec<&str> = commands().iter().map(|c| c.0).collect();
         let groups: Vec<&str> = paths.iter().map(|p| p.split(' ').next().unwrap()).collect();
+        let mut judged_without_kolux = std::collections::BTreeMap::new();
         for (name, text) in local_cli::guides() {
-            let w: Vec<&str> = text.split(|c: char| c.is_whitespace() || "`'\"()[]|".contains(c)).filter(|s| !s.is_empty()).collect();
-            for i in 0..w.len() {
-                if (w[i] == "kolux" || w[i] == "kolux-dev") && i + 1 < w.len() && groups.contains(&w[i + 1]) {
-                    let one = w[i + 1];
-                    let two = w.get(i + 2).map(|v| format!("{one} {v}")).unwrap_or_default();
-                    assert!(paths.contains(&one) || paths.contains(&two.as_str()), "{name} names kolux {two}, which is not a command");
-                }
-                if let Some(flag) = w[i].strip_prefix("--") {
-                    let flag = flag.split('=').next().unwrap().trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
-                    assert!(flag.is_empty() || ["json", "help", "version"].contains(&flag) || known_flag(flag) || SWITCHES.contains(&flag), "{name} names --{flag}, which no command takes");
+            let skill = name.split('/').next().unwrap();
+            let foreign = FOREIGN_TOOL_GUIDES.contains(&skill);
+            for line in text.lines() {
+                let w: Vec<&str> = line.split(|c: char| c.is_whitespace() || "`'\"()[]|".contains(c)).filter(|s| !s.is_empty()).collect();
+                let kolux_line = w.iter().any(|t| *t == "kolux" || *t == "kolux-dev");
+                for i in 0..w.len() {
+                    if (w[i] == "kolux" || w[i] == "kolux-dev") && i + 1 < w.len() && groups.contains(&w[i + 1]) {
+                        let one = w[i + 1];
+                        let two = w.get(i + 2).map(|v| format!("{one} {v}")).unwrap_or_default();
+                        assert!(paths.contains(&one) || paths.contains(&two.as_str()), "{name} names kolux {two}, which is not a command");
+                    }
+                    // The video guide shows npx hyperframes snapshot --at ... and higgsfield ...
+                    // --duration: those flags are theirs. Only a kolux line of that guide is judged.
+                    if !kolux_line && foreign {
+                        continue;
+                    }
+                    if let Some(flag) = w[i].strip_prefix("--") {
+                        let flag = flag.split('=').next().unwrap().trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
+                        if !flag.is_empty() && !kolux_line {
+                            *judged_without_kolux.entry(name.clone()).or_insert(0) += 1;
+                        }
+                        assert!(flag.is_empty() || ["json", "help", "version"].contains(&flag) || known_flag(flag) || SWITCHES.contains(&flag), "{name} names --{flag}, which no command takes");
+                    }
                 }
             }
+        }
+        // The exemption must not widen again: the existing guides document their flags in tables
+        // and lists that never say "kolux", and every one of those flags is still judged.
+        for (guide, least) in [("kolux-cli/automations", 7), ("kolux-cli/worktrees", 2), ("orchestration/tasks", 8), ("orchestration/mail", 3)] {
+            assert!(judged_without_kolux.get(guide).copied().unwrap_or(0) >= least, "{guide}: only {:?} flags judged on lines without kolux", judged_without_kolux.get(guide));
         }
     }
 
@@ -4603,13 +4649,14 @@ mod tests {
         use std::cell::Cell;
         let down = || Fail::new("app_unreachable", "down");
         let up = || Ok(json!({ "success": true, "result": { "ready": true, "started": false } }));
+        let (grant, raise) = (|| {}, |_: u32| None);
         let launches = Cell::new(0);
         let launch = || {
             launches.set(launches.get() + 1);
             Ok(())
         };
         // Already running: brought forward, nothing started.
-        let v = open(&up, &launch, Duration::from_secs(5)).unwrap();
+        let v = open(&up, &launch, &grant, &raise, Duration::from_secs(5)).unwrap();
         assert_eq!((v["result"]["started"].clone(), launches.get()), (json!(false), 0));
         // Closed: started once, then answers on the third try.
         let tries = Cell::new(0);
@@ -4617,13 +4664,13 @@ mod tests {
             tries.set(tries.get() + 1);
             if tries.get() < 3 { Err(down()) } else { up() }
         };
-        let v = open(&late, &launch, Duration::from_secs(5)).unwrap();
+        let v = open(&late, &launch, &grant, &raise, Duration::from_secs(5)).unwrap();
         assert_eq!((v["result"]["started"].clone(), launches.get(), tries.get()), (json!(true), 1, 3));
         // Never answers: an error naming the limit, after one start.
-        let e = open(&|| Err(down()), &launch, Duration::ZERO).unwrap_err();
+        let e = open(&|| Err(down()), &launch, &grant, &raise, Duration::ZERO).unwrap_err();
         assert!(e.message.contains("did not answer within 0 s") && launches.get() == 2, "{}", e.message);
         // Another failure is reported as it is, without starting anything.
-        let e = open(&|| Err(Fail::new("unauthorized", "stale")), &launch, Duration::ZERO).unwrap_err();
+        let e = open(&|| Err(Fail::new("unauthorized", "stale")), &launch, &grant, &raise, Duration::ZERO).unwrap_err();
         assert_eq!((e.code, launches.get()), ("unauthorized", 2));
     }
 
@@ -5587,6 +5634,108 @@ mod tests {
         assert_eq!(cmd.get_args().count(), 0);
         // A relative program (a test's KOLUX_APP_EXECUTABLE) keeps the caller's folder: moving would change the file it names.
         assert_eq!(app_command(Path::new("kolux-rs")).get_current_dir(), None);
+    }
+
+    /// CLI-011 box 2: every `app.open` asks the window forward, exactly once, and answers ready
+    /// without a start; a window that cannot come forward fails the request instead of claiming it did.
+    #[test]
+    fn cli011_box2_app_open_asks_the_window_forward() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let dir = std::env::temp_dir().join(format!("kolux-rs-cli011-front-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let fronts = AtomicUsize::new(0);
+        let front = || {
+            fronts.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        };
+        let req = || Request { id: "o".into(), token: String::new(), command: "app.open".into(), cwd: dir.display().to_string(), args: json!({}), pane: None, cli: VERSION.into(), arrived: None };
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &front };
+        let r = dispatch(&ctx, &req()).unwrap();
+        assert_eq!(fronts.load(Ordering::SeqCst), 1, "asked forward once");
+        assert_eq!((r["ready"].clone(), r["started"].clone(), r["pid"].clone()), (json!(true), json!(false), json!(std::process::id())));
+        // Asked again while already in front: it is asked forward again, not only the first time.
+        dispatch(&ctx, &req()).unwrap();
+        assert_eq!(fronts.load(Ordering::SeqCst), 2);
+        // The window cannot come forward: the request fails and never answers ready.
+        let gone = || Err("the Kolux window is gone".to_string());
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &gone };
+        let e = dispatch(&ctx, &req()).unwrap_err();
+        assert_eq!((e.code, e.message.as_str()), ("failed", "the Kolux window is gone"));
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// CLI-011 box 2: `kolux open` lets the running copy take the foreground before asking it, and
+    /// after the answer raises its window itself and reports whether it is in front (`raised`).
+    #[test]
+    fn cli011_open_grants_the_foreground_before_asking_and_says_whether_the_window_came_forward() {
+        use std::cell::{Cell, RefCell};
+        let log = RefCell::new(Vec::<String>::new());
+        let note = |s: String| log.borrow_mut().push(s);
+        let up = |pid: u32| Ok(json!({ "success": true, "result": { "ready": true, "started": false, "pid": pid } }));
+        let send = || {
+            note("ask".into());
+            up(4242)
+        };
+        let launch = || {
+            note("launch".into());
+            Ok(())
+        };
+        let grant = || note("grant".into());
+        let raise = |pid: u32| {
+            note(format!("raise {pid}"));
+            Some(true)
+        };
+        // Already running: the grant comes first, then the ask, then the raise of the pid it answered with.
+        let v = open(&send, &launch, &grant, &raise, Duration::from_secs(5)).unwrap();
+        assert_eq!(log.borrow().as_slice(), ["grant", "ask", "raise 4242"]);
+        assert_eq!((v["result"]["started"].clone(), v["result"]["raised"].clone()), (json!(false), json!(true)));
+        // Windows kept another window in front: the answer says so.
+        let refused = |_: u32| Some(false);
+        assert_eq!(open(&send, &launch, &grant, &refused, Duration::from_secs(5)).unwrap()["result"]["raised"], json!(false));
+        // A platform that cannot tell leaves the question open rather than answering it.
+        let unknown = |_: u32| None;
+        assert_eq!(open(&send, &launch, &grant, &unknown, Duration::from_secs(5)).unwrap()["result"]["raised"], Value::Null);
+        // Closed: started, and the new copy's window raised by the pid in its answer.
+        log.borrow_mut().clear();
+        let tries = Cell::new(0);
+        let late = || {
+            tries.set(tries.get() + 1);
+            note("ask".into());
+            if tries.get() < 2 { Err(Fail::new("app_unreachable", "down")) } else { up(7) }
+        };
+        let v = open(&late, &launch, &grant, &raise, Duration::from_secs(5)).unwrap();
+        assert_eq!(log.borrow().as_slice(), ["grant", "ask", "launch", "ask", "raise 7"]);
+        assert_eq!((v["result"]["started"].clone(), v["result"]["raised"].clone()), (json!(true), json!(true)));
+        // An answer naming no pid raises nothing and says nothing about the front.
+        log.borrow_mut().clear();
+        let no_pid = || {
+            note("ask".into());
+            Ok(json!({ "success": true, "result": { "ready": true, "started": false } }))
+        };
+        let v = open(&no_pid, &launch, &grant, &raise, Duration::from_secs(5)).unwrap();
+        assert_eq!(log.borrow().as_slice(), ["grant", "ask"]);
+        assert_eq!(v["result"]["raised"], Value::Null);
+        // A refusal that is not "unreachable" is reported as it is, with no raise after it.
+        log.borrow_mut().clear();
+        let e = open(&|| Err(Fail::new("unauthorized", "stale")), &launch, &grant, &raise, Duration::ZERO).unwrap_err();
+        assert_eq!(e.code, "unauthorized");
+        assert_eq!(log.borrow().as_slice(), ["grant"]);
+    }
+
+    /// CLI-011 box 2: the readable answer says "in front" only when the window really came forward.
+    #[test]
+    fn cli011_open_text_says_when_windows_kept_another_window_in_front() {
+        let t = |r: Value| text_of("app.open", &r);
+        assert_eq!(t(json!({ "ready": true, "started": false, "pid": 1, "raised": true })), "Kolux is ready; its window is in front");
+        assert_eq!(t(json!({ "ready": true, "started": false, "pid": 1, "raised": false })), "Kolux is ready; its window was restored, but Windows kept another window in front");
+        assert_eq!(t(json!({ "ready": true, "started": false, "pid": 1, "raised": null })), "Kolux is ready; its window is in front");
+        assert_eq!(t(json!({ "ready": true, "started": true, "pid": 1, "raised": false })), "Kolux started and is ready");
     }
 
     /// CLI-012: the four states of `kolux status`, met at the real edges: no startup file, a file

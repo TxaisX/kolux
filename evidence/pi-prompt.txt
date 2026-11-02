@@ -1,0 +1,63 @@
+pi-prompt · T-122 STAT-021 with STAT-025: a Pi card shows the prompt that began the run (lane5/pi-prompt, 2026-11-02).
+Replaces PR #44 (lane/vendors): that branch had no merge base with main and duplicated main's more.rs / grok.rs /
+devin.rs / pi.rs / hermes.rs in a parallel vendors_more.rs that was less complete and carried its own defects; the one
+behaviour main lacked was the Pi prompt, ported here from scratch against Pi's public declarations. Its privacy-audit
+patterns for http.request / urllib.request are carried as generic CLIENTS entries (no pins; main ships no such script).
+
+Source (public doc, cited in PROVENANCE.md 2026-11-02): Pi extension declarations
+github.com/badlogic/pi-mono packages/coding-agent/src/core/extensions/types.ts, read 2026-11-02:
+  BeforeAgentStartUserEvent { type: "before_agent_start"; messageType: "user"; prompt: string (the raw user prompt
+  text after expansion); images? } for a run started by a submitted prompt, an RPC prompt or pi.sendUserMessage();
+  BeforeAgentStartCustomEvent { messageType: "custom"; message } for a run an extension starts while idle;
+  pi.on("before_agent_start", handler) where the handler may return a result (system prompt or message override) and
+  Kolux's returns nothing. agent_start stays { type: "agent_start" } with no prompt, which is why main's card had none.
+
+Built
+- src-tauri/src/agent_hooks/pi.rs: EVENTS gains before_agent_start (7 events). The generated kolux-rs.ts sends it with
+  one field, prompt, only when Pi gave a string, cut at 16000 characters (the status rules' own prompt limit); nothing
+  else of the run leaves the agent. event(): before_agent_start = UserPromptSubmit with the prompt (a custom-message
+  run has none, so the card shows none); agent_start, which Pi fires right after, now = PostToolUse (working, like
+  Copilot's recoverable error) instead of a second UserPromptSubmit, because status.rs takes a UserPromptSubmit's
+  prompt as the turn's prompt and the prompt-less agent_start would have wiped it. The two reports are separate
+  processes, so either order gives the same card. Titles unchanged (TITLE_EVENTS as before).
+- scripts/privacy-audit.test.mjs: CLIENTS gains /\bhttp\.request\(/ and /\burllib\.request\b/ so an embedded script
+  that opens a connection with either trips the audit; no ALLOWED or PINNED entry (nothing shipped uses them;
+  scripts/prove is a harness folder the audit already skips).
+- PLAN.md T-122 line: built note; the task stays open (Pi needs-you, OMP, MiMo, live proof). PROVENANCE.md: dated line.
+
+Proof (failing first, then passing)
+1. src-tauri/src/agent_hooks/more_tests.rs stat_021_pi_events_drive_the_dot: before_agent_start normalises to
+   UserPromptSubmit carrying the prompt; the pane goes working with the prompt folded to one line; agent_start keeps
+   working; agent_settled's done history line still carries the prompt; a custom-message run has no prompt; a
+   20000-character prompt is cut to 16000 plus the ellipsis. stat_021_pi_extension_is_koluxs_own_file: the extension
+   text carries the before_agent_start field line (and, through EVENTS, subscribes to it).
+   Before the code change (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib agent_hooks::more_tests::stat_021):
+     test hooks::agent_hooks::more::tests::stat_021_pi_events_drive_the_dot ... FAILED
+       panicked at src/agent_hooks/more_tests.rs:383: called `Option::unwrap()` on a `None` value
+       (normalize_with "/pi/before_agent_start" gave None: the event was unknown to pi::event)
+     test hooks::agent_hooks::more::tests::stat_021_pi_extension_is_koluxs_own_file ... FAILED
+       panicked at src/agent_hooks/more_tests.rs:414: the prompt field
+     test result: FAILED. 1 passed; 2 failed (stat_021_pi_titles_come_from_the_kolux_extension_alone still passed)
+   After:
+     cargo test --lib hooks::agent_hooks::more: test result: ok. 46 passed; 0 failed (the three stat_021_pi tests
+     among them; the title test still runs the generated file under node against a stand-in Pi).
+2. scripts/privacy-audit.test.mjs "a Node http.request or a Python urllib.request in shipped source is flagged like a
+   fetch" (a Node call, a Python import, the same text inside a Rust string literal; a plain request(), a request field
+   and http.requestCount are not flagged).
+   Before the CLIENTS change (VITEST_MAX_WORKERS=2 npx vitest run scripts/privacy-audit.test.mjs):
+     × app070: a Node http.request or a Python urllib.request in shipped source is flagged like a fetch
+     AssertionError: const req = http.request({ host: "127.0.0.1", ... }); expected 0 to be greater than 0
+     Tests  1 failed | 3 passed (4)
+   After: Tests  4 passed (4)
+
+Gate (run in the worktree on Linux)
+- npx tsc --noEmit: exit 0.
+- VITEST_MAX_WORKERS=2 npx vitest run scripts: 8 files, 58 passed.
+- cargo test --lib hooks::agent_hooks::more: 46 passed, 0 failed.
+- node scripts/plan-check.mjs: plan-check: OK (cutline left: none; T-122 stays [ ]).
+- cargo check --target x86_64-pc-windows-gnu --all-targets: Finished `dev` profile, exit 0 (10m 06s behind the shared build lock).
+- cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings: Finished, exit 0 (13m 14s behind the shared build lock).
+- invoke-contract and license-check not run: no Tauri command and no dependency changed.
+
+Left (live, batched with T-122's other live proofs): a real Pi session in a Kolux pane showing the prompt on the card and
+in the history; Pi needs-you (no documented dialog event), OMP, MiMo as the PLAN line says. T-122 stays unticked.

@@ -11,7 +11,7 @@
 pub mod cli_install;
 pub mod installer;
 pub mod update;
-mod wsl;
+pub(crate) mod wsl;
 
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -719,10 +719,13 @@ pub fn scan(env: &Env, workspace: Option<&Path>) -> Scan {
 }
 
 /// SKILL-022: where a delete may act. `deletable` are the home and workspace skills folders that
-/// were scanned; `plugin` are the folders plugins put skills in (never deleted from here).
+/// were scanned; `plugin` are the folders plugins put skills in (never deleted from here);
+/// `wsl_roots` are (distribution, skill folder in it) for the distribution the open project lives
+/// in (T-180-b), where a delete runs inside the distribution instead of through the share.
 pub struct Places {
     pub deletable: Vec<PathBuf>,
     pub plugin: Vec<PathBuf>,
+    pub wsl_roots: Vec<(String, String)>,
 }
 
 pub fn places(env: &Env, workspace: Option<&Path>) -> Places {
@@ -737,7 +740,8 @@ pub fn places(env: &Env, workspace: Option<&Path>) -> Places {
         .filter(|p| seen.insert(key(p)))
         .collect();
     let plugin = all.iter().filter(|s| s.source == "plugin").map(|s| s.path.clone()).collect();
-    Places { deletable, plugin }
+    let wsl_roots = all.iter().filter(|s| s.kind == Kind::Wsl && s.skip.is_none() && matches!(s.source, "home" | "workspace")).filter_map(|s| s.wsl.clone()).collect();
+    Places { deletable, plugin, wsl_roots }
 }
 
 /// SKILL-022: every skill folder under `root`, links included, without the scan's merging: a link
@@ -1146,6 +1150,10 @@ mod tests {
                 None => Ok(b"KOLUX-WSL-SKILLS 1\nNOTFOUND\nEND 0\n".to_vec()),
             }
         }
+
+        fn delete(&self, _distro: &str, _root: &str, _dir: &str, _step: wsl::Step) -> Result<Vec<u8>, String> {
+            panic!("a scan never deletes")
+        }
     }
 
     const WSL_PROJECT: &str = r"\\wsl.localhost\Ubuntu\home\me\repo";
@@ -1215,6 +1223,23 @@ mod tests {
         assert!(!s.roots.iter().any(|r| r.label.starts_with("WSL")));
         let p = places(&env(&home), Some(Path::new(WSL_PROJECT)));
         assert!(p.deletable.iter().all(|d| !d.to_string_lossy().contains("Ubuntu")), "{:?}", p.deletable);
+    }
+
+    /// SKILL-022 (T-180-b): a delete inside WSL may act only in the skill folders of the
+    /// distribution the open project lives in; a Windows project offers none.
+    #[test]
+    fn skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete() {
+        let home = temp("skills-wsl-places");
+        let p = places(&env(&home), Some(Path::new(WSL_PROJECT)));
+        assert_eq!(p.wsl_roots.len(), 8, "{:?}", p.wsl_roots);
+        assert!(p.wsl_roots.iter().all(|(d, _)| d == "Ubuntu"));
+        for root in ["~/.claude/skills", "~/.codex/skills", "~/.agents/skills", "~/.grok/skills", "~/.hermes/skills", "/home/me/repo/.claude/skills", "/home/me/repo/.agents/skills", "/home/me/repo/.grok/skills"] {
+            assert!(p.wsl_roots.contains(&("Ubuntu".to_string(), root.to_string())), "{root} missing from {:?}", p.wsl_roots);
+        }
+        let ws = home.join("repo");
+        fs::create_dir_all(&ws).unwrap();
+        assert!(places(&env(&home), Some(&ws)).wsl_roots.is_empty());
+        assert!(places(&env(&home), None).wsl_roots.is_empty());
     }
 
     /// The same local folder reached as a share on this computer (`\\localhost\G$\...`): a target
