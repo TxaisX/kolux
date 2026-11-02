@@ -30,6 +30,7 @@ import { EditorPane } from "../../lazy/panes";
 import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
 import { PreviewPane } from "../../lazy/panes";
+import CheckPane from "../../scm/CheckPane";
 import { BrowserPane } from "../../lazy/panes";
 import { openInBrowser } from "../../browser/openIn";
 
@@ -112,6 +113,9 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     return (
       <AllChangesPane key={p.key} id={p.key} root={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenDiff={(path, staged) => openDiff(path, staged, true)} pinnedBase={projects.find((pr) => pr.id === projectOf(p.cwd))?.base ?? null} />
     );
+  }
+  if (p.kind === "check" && p.check && p.cwd) {
+    return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
   }
   if (p.kind === "preview" && p.path) {
     return (

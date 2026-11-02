@@ -33,7 +33,7 @@ export default function WindowRight() {
     projectOf, setProjects, openDiff, newTab, notesFor, repoless, openFile, dropNotes, saveNotes, setScreen,
     select, defaultId, openIn, panes, startIn, agents, classic, resumeOrFocus, resumeIn, wsKind, cli,
     runSetup, setRefresh, explorerOpen, explorerFocus, openTerminalIn, showRight, owner, saveSetting, shells, sendNotes,
-    setActiveDir, setToast,
+    setActiveDir, setToast, openCheck,
   } = useWindow();
   return (
     <RightSidebar tab={right.tab} width={clampWidth(dragWidth ?? right.width, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0)} hidden={!terminals || !right.open || fullPage} offered={offeredRight} onTab={(tab) => {
@@ -68,7 +68,7 @@ export default function WindowRight() {
       {right.open && right.tab === "attached" && activeDir !== null && <AttachedWorktreesTab folder={activeDir} worktrees={wsKind.worktrees} onOpen={(path) => { setScreen("terminals"); select(path, null); }} />}
       {right.open && right.tab === "prchecks" && activeDir !== null && <FolderChecksTab folder={activeDir} worktrees={wsKind.worktrees} />}
       {/* VIEW-073: the Checks tab follows the workspace of the focused terminal. */}
-      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals} />}
+      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals} onOpenCheck={openCheck} />}
       {/* T-187-b / T-189-b: the dialog and helpers behind "Continue with…", "Fix with an agent" and "Start with an agent". */}
       <AgentStartHost
         agents={agents}
