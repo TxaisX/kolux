@@ -101,7 +101,6 @@ type Props = {
   /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
    * and counts them (the left pane no longer lists terminals as rows). */
   sessions?: { key: number; agent: string; title: string; cwd: string | null; running: boolean }[];
-  onOpenSession?: (key: number) => void;
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
   states: Record<string, RowInfo>;
   /** PROJ-063 / TERM-118: workspace paths marked unread, kept by the window; `onUnread` flips one. */
