@@ -140,6 +140,23 @@ test("a title that starts with the done mark reads done first, even when permiss
   expect(titleState("Waiting for permission ✳")).toBe("permission");
 });
 
+test("Gemini CLI's title symbols read like the other agents' marks: the hand is needs you, the four-point star is working, the diamond is ready (STAT-033, T-124-d)", () => {
+  // Gemini CLI's public settings reference: "Ready: ◇, Action Required: ✋, Working: ✦" (on by default).
+  expect(titleState("✋ Gemini - needs approval")).toBe("permission");
+  expect(titleState("✋ Action Required")).toBe("permission");
+  expect(titleState("Gemini: action required")).toBe("permission");
+  expect(titleState("✦ Gemini - thinking")).toBe("working");
+  expect(titleState("✦ Gemini")).toBe("working");
+  expect(titleState("◇ Gemini")).toBe("done");
+  expect(titleState("◇ Gemini - action required")).toBe("done");
+  // The symbols count anywhere a mark would, but a path is still a path.
+  expect(titleState("Gemini ✋")).toBe("permission");
+  expect(titleState("~/projects/gemini-✦-notes")).toBeNull();
+  expect(titleState("C:\\Users\\me\\◇.txt")).toBeNull();
+  // Through the header: a hooks-off Gemini pane whose title carries the hand shows needs you.
+  expect(headerOf("gemini", "running", undefined, false, null, 0, titleState("✋ Gemini - allow shell?") ?? undefined).needsYou).toBe(true);
+});
+
 test("an in-band status moves the dot only in an agent pane, never in a plain shell (STAT-034, hooks FIX-3)", () => {
   expect(takesInband("shell", null, null)).toBe(false);
   expect(takesInband("shell", undefined, null)).toBe(false);
