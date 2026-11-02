@@ -1,0 +1,72 @@
+T-624 round 3 (PR #37 review fixes) - evidence
+================================================
+
+Commands (real output, final run after merging origin/main 3b62578f):
+  pnpm vitest run src/artifacts        -> Test Files 4 passed (4), Tests 19 passed (19)
+  pnpm tsc --noEmit                    -> no output (clean)
+  cargo test --manifest-path src-tauri/Cargo.toml artifacts
+                                       -> 32 passed; 0 failed (lib), run before the merge
+  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+                                       -> Finished, no warnings (one unnecessary_map_or fixed first)
+  node scripts/plan-check.mjs          -> plan-check: OK
+The merge only brought in docs/evidence/PLAN files; no Rust or src/ file changed by it.
+
+Before (tests written first, run against the old code)
+  vitest viewerLink.test.ts: "Test Files 1 failed (1) / Tests 5 failed (5)" (linkPrompt did not exist)
+  cargo artifacts:           "23 passed; 9 failed" (the 9 new Rust tests failed at runtime)
+
+MAJOR A - link opening (DT-C77)                              FIXED
+  A koluxOpen message only raises Kolux's own Open/Cancel prompt naming the host; the browser
+  opens only on Open. One prompt pending, a new request replaces it. Focus/activation heuristics
+  deleted. Decision row DT-C77 in DECISIONS.md, referenced in code and the PLAN.md T-624 line.
+  Tests (src/artifacts/viewerLink.test.ts): message never calls open (20 messages), Open opens
+  once, Cancel opens nothing, one pending replaced, other-frame message ignored. Card test
+  SKILL-036 box 2 rewritten to the prompt flow (not separately shown failing on old code).
+
+MAJOR B - network share / junction                           FIXED (Windows)
+  open_source (shared by scan, Library::add, copy_assets) now asks GetFinalPathNameByHandleW for
+  the opened handle's real path and requires: not UNC/network and under the canonical workspace
+  folder (asset copies: under the page's folder). scan_capped canonicalizes the workspace and
+  returns nothing if that is a network share.
+  Tests: a_real_path_must_be_local_and_under_the_root,
+         a_junction_in_the_path_never_takes_a_stored_file_out_of_the_workspace.
+  Proven by test: junction in an ancestor/asset folder is refused. Proven by code reading only:
+  on_network_share on the canonical workspace (no UNC share available here); the swap race itself
+  is not deterministically testable (the ancestor-junction case is simulated by calling add_in
+  with a path through a junction). Non-Windows builds have no final-path check.
+  Bug found while testing: add_in was passing root None; fixed, test then passed.
+
+MAJOR C - UI freeze                                          FIXED
+  lib.rs: register_asynchronous_uri_scheme_protocol; non-main webview still gets 403 at once;
+  the read runs in tauri::async_runtime::spawn_blocking and answers through the responder.
+  serve() logic unchanged (existing serve tests still pass). Threading is proven by code reading
+  plus a source-guard test (the_artifact_scheme_is_answered_off_the_window_thread), not by a
+  behavioural test.
+
+MINORS
+  1 scan_capped counts stored files already in the folder and each entry's full size
+    -> a_scan_counts_every_stored_byte_toward_the_folder_cap                      FIXED
+  2 id_of normalizes absolute-path origins (strip \\?\, slashes, drive letter UPPERCASED)
+    -> the_same_file_named_two_ways_is_one_entry                                  FIXED
+    NOTE: brief said lowercase; I uppercased the drive letter so ids already stored from
+    C:\... paths do not change. Needs a human nod if lowercase was intended.
+  3 range start past end -> 416 with Content-Range: bytes */total
+    -> a_range_that_starts_past_the_end_is_416                                    FIXED
+  4 links_of fails closed on an unreadable link count (treated as a hard link)
+    -> a_failed_link_count_is_treated_as_a_hard_link                              FIXED
+  5 nosniff added, Access-Control-Allow-Origin * removed
+    -> the_scheme_answers_with_nosniff_and_without_a_wildcard_origin              FIXED
+  6 open_external: Url::parse, http/https/mailto only, control chars and quote rejected,
+    passes url.as_str()
+    -> open_external_lets_through_only_clean_web_and_mail_links                   FIXED
+  7 remove tombstones for hand-added files outside the workspace                  SKIPPED
+    Not trivial: a hand-origin entry inside artifacts/ that a scan refreshed keeps source
+    "hand" and would come back after remove without its tombstone; needs a design call.
+
+Left alone on purpose (follow-ups)
+  - native NavigationStarting / IsUserInitiated route for links
+  - dns-prefetch leak from the sandboxed page
+  - open_path opening the live origin rather than the stored copy
+
+Commits: 278f597c (Major A + DT-C77), 40b01fb2 (async scheme), e5cb9de0 (real path + minors),
+85103f70 (merge of origin/main; DECISIONS.md kept both rows).
