@@ -9,9 +9,9 @@ On a fresh install Kolux opens a four-step dialog, "Get started with Kolux". Eac
 | Step | What you do | Main button |
 |---|---|---|
 | 1. Welcome | Read the idea: several AIs can work on your files at the same time | Get started |
-| 2. Connect an AI | Link at least one AI. The main button stays off until one is connected | Continue (or "I'll do this later") |
-| 3. Your work | Pick a folder, or use sample data | Try with sample data |
-| 4. Choose a kit | Pick a starter lineup of sessions. A switch, "Tell me whenever an AI finishes", turns on notifications | Start kit (or "Just open a session") |
+| 2. Connect an AI | Link at least one AI. The main button stays off until one is connected. Under the AI cards is one line, "Kolux will add its status hooks to each AI's settings, so it can show you which one needs you.", beside a switch that is on. Continue (or "I'll do this later") records the switch as your answer; Back does not | Continue (or "I'll do this later") |
+| 3. Your work | Pick a folder, or Continue without one. Pick a folder closes setup and opens Add Project; if you have chosen a default agent, it starts in the folder you add (nothing starts while Default agent is Auto) | Continue |
+| 4. Open a session | A switch, "Tell me whenever an AI finishes", turns on notifications. The main button starts the first AI offered in the project in front. With no project yet, it closes setup and opens Add Project instead, and that AI starts in the folder you pick | Open a session |
 
 You can reopen the dialog later: click the "?" (Help) button at the bottom of the sidebar, then Onboarding.
 
@@ -36,7 +36,7 @@ The Help menu has more entries:
 
 ### Tips
 
-At most one tip appears per launch, as a small dialog marked "Tip". It never appears in a launch that showed the first-run dialog, and each tip appears only once. The first is "Let your agents drive Kolux", with the buttons "Not now" and "Install CLI & Skills" (which opens the Enable Kolux CLI step). It is skipped if the command is already set up. If the command is installed but terminals outside Kolux cannot find it, the tip adds "Needs attention". The second is "Jump to any workspace with" the workspace-switcher key, with a "Got it" button.
+At most one tip appears per launch, as a small dialog marked "Tip". It never appears in a launch that showed the first-run dialog, and each tip appears only once. The first is "Let your agents drive Kolux", with the buttons "Not now" and "Install CLI & Skills" (which opens the Enable Kolux CLI step). It is skipped if the command is already set up. If the command is installed but terminals outside Kolux cannot find it, the tip adds "Needs attention". The second is "Jump to any workspace with" the workspace-switcher key, with a "Got it" button. A launch that shows the one-time status-hooks card (the line from step 2, for a profile that never answered it) shows no tip. Escape closes a tip from wherever the keyboard is, even a terminal pane; the press still reaches that pane's program (in Claude Code it also interrupts Claude), and while a dialog is open Escape belongs to the dialog instead.
 
 ### Tours
 
