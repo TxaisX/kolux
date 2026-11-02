@@ -1,0 +1,50 @@
+Release follow-ups (branch s-90/release-followups off origin/main 3af39cf3), ported from stale PR #46 (lane/release)
+Built 2026-11-01. Test env: CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-90, debug 0, incremental 0; VITEST_MAX_WORKERS=2.
+
+1. Close listener guard (src/shell/closeListener.test.ts) - BUILT (behaviour already on main; test is the guard)
+   What: scans every non-test src/**/*.ts(x); asserts exactly one `onCloseRequested(` app-wide (in
+   shell/useWindowSave.ts) and that `screenWriter.flush()` comes before the first `await` in that listener.
+   Not copied: the branch's src/startup.test.ts (targets App.tsx, fails on main).
+   Proves it bites (mutations run, then reverted; git status clean after):
+     - appended a second `getCurrentWindow().onCloseRequested(async () => {})` -> RED:
+       "AssertionError: expected [ 'shell/useWindowSave.ts', ...(1) ] to deeply equal [ 'shell/useWindowSave.ts' ]"
+       Tests 1 failed | 1 passed
+     - inserted `await Promise.resolve();` before `screenWriter.flush();` -> RED:
+       "AssertionError: expected 222 to be less than 191"  Tests 1 failed | 1 passed
+   After (unmutated): pnpm exec vitest run src/shell/closeListener.test.ts -> Tests 2 passed, exit 0.
+
+2. installer_missing: GitHub https hosts only, 404 or 410 (src-tauri/src/update.rs) - BUILT
+   What: `pub fn release_host(url: &str)` ported from origin/lane/release (https, host == github.com or
+   *.githubusercontent.com); installer_missing returns false for any other host before asking, and treats
+   404 and 410 as missing. Keeps main's crate::browser::head client (APP-070); no reqwest client added.
+   Comment in code: a non-GitHub test endpoint never sees the "half published" answer; accepted.
+   Tests: the_installer_check_only_asks_github_release_hosts_over_https (ported) and
+   the_installer_check_counts_404_and_410_as_missing_and_asks_the_host_check_first (new, source shape).
+   Failing-first (code mutated: release_host body -> `true`, `404 | 410` -> `404`), cargo test --lib -- update:
+     update::tests::the_installer_check_only_asks_github_release_hosts_over_https ... FAILED
+       assertion failed: !release_host("http://github.com/TxaisX/kolux-rs-releases/releases/download/v0.2.0/setup.exe")
+     update::tests::the_installer_check_counts_404_and_410_as_missing_and_asks_the_host_check_first ... FAILED
+     test result: FAILED. 66 passed; 2 failed   exit 101
+   After: cargo test --lib -- update -> test result: ok. 68 passed; 0 failed, exit 0. Main's privacy audit
+   test t323b_..._head_probe_does_not_go_around_a_saved_proxy (`!proxied && installer_missing`) passes.
+
+3. Update guard minors (src-tauri/src/resources/update_guard.rs) - ALREADY CORRECT ON MAIN; guards added
+   (a) Valid status with empty/blank/missing subject -> parse_report gives SignState::Broken, decide gives
+       Verdict::Stop (refused for good) for every running state (unsigned, signed, unreadable), signed_build
+       true/false, and with a pin. Test: a_valid_signature_with_an_empty_publisher_is_refused_for_good.
+   (b) Unsigned running copy + HashMismatch installer -> Verdict::Stop containing "HashMismatch", with/without
+       pin and signed_build. Test: an_unsigned_running_copy_still_refuses_a_hash_mismatch_installer.
+   Both passed on first run (no code change needed): cargo test --lib -- update -> 68 passed, exit 0.
+
+4. evidence/T-293.txt - BUILT (text only)
+   Rewritten to the current code: update.refusedInstallers keyed by sha256 + feed signature (cap 20, REFUSED_KEEP),
+   Verdict::Stop (remembered) vs Verdict::Retry (stop once, nothing stored), signed-build rule, issuer pin
+   (PINNED_ISSUER / decide_pinned), reset-only update_mark, test names of the refused-list tests.
+   Old refusedVersions / refused_versions_are_remembered_once_and_capped mentioned only as historical.
+
+Final verify (run in src-tauri unless noted):
+   cargo test --lib -- update t323b           -> ok. 68 passed; 0 failed        exit 0
+   cargo clippy --all-targets -- -D warnings  -> Finished, no warnings          exit 0
+   pnpm exec vitest run src/shell/closeListener.test.ts -> 2 passed             exit 0
+   pnpm exec tsc --noEmit                     -> no output                      exit 0
+Not ported: repair_settings, salvage, anything else from #46.
