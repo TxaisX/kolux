@@ -107,3 +107,12 @@ STILL OPEN / NEEDS A LIVE RUN
   relaunch with a Tip showing and press Escape with a terminal focused -> the Tip closes (the T-544 prover's dismissFirstRun).
 - T-566's other two parts (the restored chip, data-key on panes) are not this task's.
 - docs/guide/getting-started.md:13-14 (the last step and Pick a folder rows) could say Open a session asks for a folder first.
+
+LIVE WINDOWS RUN (2026-11-02, worker s-90, audit item 1): node scripts/prove/live-audit-1.mjs on the dev app hidden off-screen, scratch profile G:\Temp\live-v15\run-audit-1, stand-in claude.cmd. Full log: G:\Temp\live-v15-logs\audit-1.out.txt.
+PASS  wizard: Get started -> "I’ll do this later" -> Continue on Your work reaches Open a session.
+PASS  Open a session with no project closes the wizard and opens Add Project.
+PASS  the folder added by path gets the first AI once, in that folder (agents ["claude"], cwd=G:Templive-v15workaudit-1).
+PASS  relaunch 1: Tip up, Install CLI & Skills, then the card’s Close button closes it (open false).
+PASS  relaunch 2: Tip up, a terminal focused (xterm-helper-textarea), Escape closes the Tip.
+NOT RUN  palette + Escape with a Tip up; Escape inside a real Claude Code run (stand-in only); T-612b’s three live checks.
+The task line stays open: its REST still names T-612b’s three checks.

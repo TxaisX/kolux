@@ -1,5 +1,5 @@
 // VIEW-051 acceptance: the real ProjectsPanel on the small DOM, fed the window's panes as the `sessions` prop.
-// MIRROR src/App.tsx (the `sessions` prop built from the window's panes); the row and count decisions are ProjectsPanel's liveIn/paneRows/liveCount.
+// MIRROR src/App.tsx (the `sessions` prop built from the window's panes); the row and count decisions are ProjectsPanel's liveIn/liveCount (T-640: terminal rows are gone from the left pane; they stay tabs in the main area).
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, find, installDom, mount, settle } from "../../tasks/fakeDom";
@@ -49,22 +49,15 @@ async function panel(sessions: Session[]) {
   return m.container as FakeNode;
 }
 const paneRows = (c: FakeNode) => find(c, (n) => n.attrs["data-pane"] !== undefined);
-const labels = (n: FakeNode) => find(n, (x) => x.attrs.alt !== undefined || x.attrs["aria-label"] !== undefined).map((x) => x.attrs.alt ?? x.attrs["aria-label"]);
 const counts = (c: FakeNode) => find(c, (n) => String(n.attrs.className ?? n.attrs.class ?? "").split(" ").includes("count")).map((n) => n.textContent.trim());
 
-test("box 1: a Cursor pane and a Gemini pane are both listed, neither labelled Claude", async () => {
+test("box 1: running Cursor and Gemini panes are counted but not listed as rows in the left pane", async () => {
   const c = await panel([
     { key: 1, agent: "cursor", title: "Fix the login", cwd: "C:/w/app", running: true },
     { key: 2, agent: "gemini", title: "Write the docs", cwd: "C:/w/app", running: true },
   ]);
-  const rows = paneRows(c);
-  expect(rows.map((r) => r.attrs["data-agent"])).toEqual(["cursor", "gemini"]);
-  expect(rows.map((r) => r.textContent)).toEqual(["Fix the login", "Write the docs"]);
-  const marks = rows.map((r) => labels(r));
-  expect(marks[0].length).toBeGreaterThan(0);
-  for (const m of marks[0]) expect(m).toBe("Cursor");
-  expect(marks[1]).toEqual(["Gemini"]);
-  for (const m of marks.flat()) expect(String(m)).not.toMatch(/claude/i);
+  expect(paneRows(c)).toEqual([]);
+  expect(counts(c)).toEqual(["2"]);
 });
 
 test("box 2: closing a tab (its pane stops running) drops the worktree's count, and none shows no count", async () => {
@@ -76,7 +69,6 @@ test("box 2: closing a tab (its pane stops running) drops the worktree's count, 
   expect(counts(before)).toEqual(["2"]);
   await unmount();
   const after = await panel([two[0], { ...two[1], running: false }]);
-  expect(paneRows(after).map((r) => r.attrs["data-pane"])).toEqual(["1"]);
   expect(counts(after)).toEqual(["1"]);
   await unmount();
   const none = await panel([{ ...two[0], running: false }, { ...two[1], running: false }]);

@@ -349,6 +349,7 @@ Acceptance:
   - [x] A Cursor pane and a Gemini pane → both listed, neither labelled Claude. (cards; evidence/cards-VIEW-051.txt)
   - [x] Close a tab → its worktree's count drops. (cards; evidence/cards-VIEW-051.txt)
 Compat: —
+  Amended 2026-11-02 (DT-C83, wave UI A.2): the sidebar lists projects, workspaces and groups with their live counts; terminals are tabs in the main area and no longer rows here.
 Source: D-05-051
 
 ### VIEW-005 · The app reopens on the screen and page you left
