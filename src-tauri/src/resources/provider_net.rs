@@ -59,6 +59,9 @@ impl Net {
         let b = match &self.plan.route {
             Route::Default => b,
             Route::Direct => b.no_proxy(),
+            // Only http and https proxies are built in: reqwest's socks feature is off on purpose, and reqwest accepts
+            // other schemes without complaint, so anything else (socks5, socks5h, ftp...) is refused here with the same plain answer.
+            Route::Via(p) if !matches!(p.scheme(), "http" | "https") => return Err(NetFail::NotMade("the network proxy setting cannot be used by this build".into())),
             Route::Via(p) => b.proxy(reqwest::Proxy::all(p.as_str()).map_err(|_| NetFail::NotMade("the network proxy setting cannot be used by this build".into()))?),
         };
         let b = if self.plan.http1 { b.http1_only() } else { b };
@@ -67,7 +70,8 @@ impl Net {
 }
 
 /// `Bearer <key>` as a header value marked sensitive, so no debug print of the request shows it.
-/// The scratch copy of the key is overwritten before it is dropped.
+/// Best effort: the scratch copy of the key is overwritten before it is dropped, but `HeaderValue`
+/// copies the bytes into its own buffer, and that copy is not zeroed.
 fn bearer(key: &Secret) -> Result<HeaderValue, NetFail> {
     let mut raw = Vec::with_capacity(7 + key.expose().len());
     raw.extend_from_slice(b"Bearer ");
@@ -190,6 +194,42 @@ mod tests {
         server.join().unwrap();
         assert_eq!(got, Err(NetFail::Offline));
         assert!(took >= Duration::from_secs(9) && took <= Duration::from_secs(11), "took {took:?}");
+    }
+
+    #[test]
+    fn t547_net_headers_and_a_few_body_bytes_then_silence_reads_as_offline_within_ten_seconds() {
+        let (l, url) = listener();
+        let (done, wait) = mpsc::channel::<()>();
+        let server = std::thread::spawn(move || {
+            let (mut s, _) = l.accept().unwrap();
+            let _ = head(&mut s);
+            // promise 1000 bytes, send 5, then hold the connection open and say nothing
+            let _ = s.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\n\r\nhello");
+            let _ = s.flush();
+            let _ = wait.recv_timeout(Duration::from_secs(15));
+        });
+        let start = Instant::now();
+        let got = Net::loopback().get(&url, &key());
+        let took = start.elapsed();
+        drop(done);
+        server.join().unwrap();
+        assert_eq!(got, Err(NetFail::Offline));
+        assert!(took >= Duration::from_secs(9) && took <= Duration::from_secs(11), "took {took:?}");
+    }
+
+    #[test]
+    fn t547_net_a_proxy_the_client_cannot_use_is_not_made_including_socks() {
+        let via = |s: &str| Net::new(Plan { route: Route::Via(tauri::Url::parse(s).unwrap()), http1: false });
+        for bad in ["ftp://p:1", "socks5://p:1080", "socks5h://p:1080", "socks4://p:1080", "mailto:p@example.com"] {
+            let net = via(bad);
+            assert!(matches!(net.client(), Err(NetFail::NotMade(_))), "{bad}");
+            // and the real get stops before any connection, with a text that holds neither the address nor the key
+            let got = net.get(crate::resources::provider_usage::KIMI_URL, &key());
+            let text = format!("{got:?}");
+            assert!(matches!(got, Err(NetFail::NotMade(_))), "{bad}");
+            assert!(!text.contains("p:1") && !text.contains("SECRETKEY"), "{text}");
+        }
+        assert!(via("http://p:3128").client().is_ok(), "an http proxy is still usable");
     }
 
     #[test]

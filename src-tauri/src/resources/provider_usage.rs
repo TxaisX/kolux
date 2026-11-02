@@ -27,6 +27,7 @@ use crate::secrets;
 use crate::state::Store;
 use serde::Serialize;
 use serde_json::Value;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, State};
 
@@ -291,22 +292,75 @@ pub fn provider_key_forget(app: AppHandle, store: State<'_, Mutex<Store>>, provi
     Ok(rows)
 }
 
+/// How the saved network proxy applies to a check of `p`. Unlike the other app traffic, a proxy
+/// value that is set but cannot be read (damaged, or sealed under another system key) is NOT read as
+/// "no proxy": it ends the check as [`Reading::Unavailable`] and nothing is sent, so the key never
+/// goes by a route the user did not choose. No proxy set gives the default route. The reasons never
+/// hold the address.
+pub fn proxy_plan(store: &Store, p: Provider) -> Result<crate::resources::app_http::Plan, Reading> {
+    use crate::resources::{app_http, app_proxy};
+    let url = tauri::Url::parse(p.url()).map_err(|_| Reading::Unavailable { reason: "that address is not on the allowed list".into() })?;
+    // Read the sealed proxy value here: route_from_store treats an unreadable value as unset.
+    let setting = secrets::read_setting(store, app_proxy::PROXY_KEY).map_err(|_| Reading::Unavailable { reason: "the saved network proxy cannot be read, so nothing was sent".into() })?;
+    let bypass: Vec<String> = store
+        .settings()
+        .get(app_proxy::BYPASS_KEY)
+        .and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(|e| e.as_str().map(str::to_string)).collect())
+        .unwrap_or_default();
+    let route = app_proxy::route(setting.as_deref(), &bypass, &url).map_err(|reason| Reading::Unavailable { reason })?;
+    Ok(app_http::Plan { route, http1: app_http::http1_on(store) })
+}
+
+/// One check at a time per provider: a press while one runs sends nothing.
+static IN_FLIGHT: [AtomicBool; 2] = [AtomicBool::new(false), AtomicBool::new(false)];
+
+fn in_flight(p: Provider) -> &'static AtomicBool {
+    match p {
+        Provider::Kimi => &IN_FLIGHT[0],
+        Provider::Minimax => &IN_FLIGHT[1],
+    }
+}
+
+/// Holds a flag set while a check runs; dropping it, on any path (return, early exit, panic), clears the flag.
+struct Flight<'a>(&'a AtomicBool);
+
+impl<'a> Flight<'a> {
+    fn take(flag: &'a AtomicBool) -> Option<Flight<'a>> {
+        flag.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).ok().map(|_| Flight(flag))
+    }
+}
+
+impl Drop for Flight<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
+/// [`check`] behind the in-flight flag: while a check holds `flag`, another call asks nothing.
+fn guarded_check(flag: &AtomicBool, p: Provider, key: Option<Secret>, minimax_endpoint: &str, fetch: &dyn Fetch) -> Reading {
+    let Some(_running) = Flight::take(flag) else {
+        return Reading::Unavailable { reason: "a check is already running".into() };
+    };
+    check(p, key, minimax_endpoint, fetch)
+}
+
 /// One check, run when the user asks. The store lock is released before the network call.
 #[tauri::command]
 pub async fn provider_usage_check(store: State<'_, Mutex<Store>>, provider: String) -> Result<Reading, String> {
     let p = Provider::parse(&provider)?;
     let (key, endpoint, plan) = {
         let guard = lock(&store)?;
-        // The saved proxy applies; a setting that cannot be used asks nothing (never a direct request).
-        let plan = match tauri::Url::parse(p.url()).map_err(|e| e.to_string()).and_then(|u| crate::resources::app_http::plan_from_store(&guard, &u)) {
+        // The saved proxy applies; a setting that cannot be read or used asks nothing (never a direct request).
+        let plan = match proxy_plan(&guard, p) {
             Ok(plan) => plan,
-            Err(reason) => return Ok(Reading::Unavailable { reason }),
+            Err(unavailable) => return Ok(unavailable),
         };
         let key = secrets::read_setting(&guard, p.key_field())?.map(Secret::new);
         let endpoint = guard.settings().get(crate::agent_creds::MINIMAX_ENDPOINT).and_then(Value::as_str).unwrap_or("overseas").to_string();
         (key, endpoint, plan)
     };
-    tauri::async_runtime::spawn_blocking(move || check(p, key, &endpoint, &transport(plan))).await.map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(move || guarded_check(in_flight(p), p, key, &endpoint, &transport(plan))).await.map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -452,5 +506,97 @@ mod tests {
         assert_eq!((rows[0].kept, rows[1].kept), (false, true));
         assert!(store.settings().get(KIMI_KEY).is_none());
         assert_eq!(Provider::parse("claude"), Err("claude has no usage service Kolux asks".to_string()), "Claude, Codex and Gemini are not asked");
+    }
+
+    fn proxy_store(tag: &str) -> (crate::test_dir::TempDir, Store) {
+        let dir = crate::test_dir::temp(tag);
+        let store = Store::open(&dir).unwrap();
+        (dir, store)
+    }
+
+    fn put(store: &Store, v: serde_json::Value) {
+        store.patch_settings(v.as_object().unwrap(), &[]).unwrap();
+    }
+
+    #[test]
+    fn t547_a_proxy_that_is_set_but_unreadable_or_unusable_gives_unavailable_and_sends_nothing() {
+        for p in Provider::ALL {
+            // a damaged sealed value: set, but it cannot be opened (the old path read this as "no proxy")
+            let (_d, s) = proxy_store("t547-proxy-damaged");
+            put(&s, serde_json::json!({ "httpProxy": "kolux-sealed:v1:AAAA" }));
+            assert!(matches!(proxy_plan(&s, p), Err(Reading::Unavailable { .. })), "{p:?} damaged");
+            // readable but not a usable address
+            let (_d2, s2) = proxy_store("t547-proxy-bad");
+            secrets::write_setting(&s2, "httpProxy", "ftp://me:SECRET@p:1").unwrap();
+            match proxy_plan(&s2, p) {
+                Err(Reading::Unavailable { reason }) => assert!(!reason.contains("SECRET") && !reason.contains("ftp://"), "{reason}"),
+                other => panic!("{other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn t547_no_proxy_set_gives_the_default_route_and_a_good_one_goes_via() {
+        use crate::resources::app_proxy::Route;
+        let (_d, s) = proxy_store("t547-proxy-none");
+        let plan = proxy_plan(&s, Provider::Kimi).unwrap();
+        assert_eq!((plan.route, plan.http1), (Route::Default, false));
+        put(&s, serde_json::json!({ "httpProxyHttp1": true }));
+        assert!(proxy_plan(&s, Provider::Minimax).unwrap().http1);
+        secrets::write_setting(&s, "httpProxy", "http://me:pw@proxy.corp:3128").unwrap();
+        assert!(matches!(proxy_plan(&s, Provider::Kimi).unwrap().route, Route::Via(u) if u.host_str() == Some("proxy.corp")));
+        put(&s, serde_json::json!({ "httpProxyBypass": ["api.moonshot.ai"] }));
+        assert_eq!(proxy_plan(&s, Provider::Kimi).unwrap().route, Route::Direct, "the bypass list still applies");
+    }
+
+    /// A transport that, while it answers, presses Check now again on the same flag.
+    struct Reentrant<'a> {
+        flag: &'a AtomicBool,
+        inner: Fixture,
+        second: RefCell<Option<Reading>>,
+    }
+
+    impl Fetch for Reentrant<'_> {
+        fn get(&self, url: &str, key: &Secret) -> Result<Answer, NetFail> {
+            let other = Fixture::status(200, KIMI_OK);
+            let r = guarded_check(self.flag, Provider::Kimi, Some(Secret::new(key.expose().to_string())), "overseas", &other);
+            assert!(other.asked.borrow().is_empty(), "the second press sent nothing");
+            *self.second.borrow_mut() = Some(r);
+            self.inner.get(url, key)
+        }
+    }
+
+    #[test]
+    fn t547_a_second_check_while_one_runs_sends_nothing_and_the_flag_is_released_after() {
+        let flag = AtomicBool::new(false);
+        let t = Reentrant { flag: &flag, inner: Fixture::status(200, KIMI_OK), second: RefCell::new(None) };
+        let first = guarded_check(&flag, Provider::Kimi, key("sk-moon-FIXTURE-0001"), "overseas", &t);
+        assert!(matches!(first, Reading::Balance { .. }), "{first:?}");
+        assert!(matches!(t.second.borrow().as_ref(), Some(Reading::Unavailable { .. })), "the overlapping check was refused");
+        assert_eq!(t.inner.asked.borrow().len(), 1, "only the first check sent");
+        assert!(!flag.load(Ordering::Acquire), "released when the check ended");
+        let f = Fixture::status(200, KIMI_OK);
+        assert!(matches!(guarded_check(&flag, Provider::Kimi, key("sk-moon-FIXTURE-0001"), "overseas", &f), Reading::Balance { .. }), "a later check runs again");
+        assert_eq!(f.asked.borrow().len(), 1);
+    }
+
+    #[test]
+    fn t547_the_flag_is_released_on_an_early_exit_and_on_a_panic_and_each_provider_has_its_own() {
+        let flag = AtomicBool::new(false);
+        let f = Fixture::status(200, "{}");
+        assert_eq!(guarded_check(&flag, Provider::Kimi, None, "overseas", &f), Reading::NoKey);
+        assert!(!flag.load(Ordering::Acquire), "released after an early exit");
+        struct Boom;
+        impl Fetch for Boom {
+            fn get(&self, _: &str, _: &Secret) -> Result<Answer, NetFail> {
+                panic!("boom")
+            }
+        }
+        let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| guarded_check(&flag, Provider::Kimi, key("sk-moon-FIXTURE-0001"), "overseas", &Boom)));
+        assert!(caught.is_err());
+        assert!(!flag.load(Ordering::Acquire), "released by the drop guard on a panic");
+        let _kimi = Flight::take(in_flight(Provider::Kimi)).unwrap();
+        assert!(Flight::take(in_flight(Provider::Minimax)).is_some(), "Kimi running does not block MiniMax");
+        assert!(Flight::take(in_flight(Provider::Kimi)).is_none());
     }
 }

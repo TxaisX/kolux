@@ -42,3 +42,21 @@ test("T-547: every reading reads as one plain sentence, with the ones that need 
   expect(shown).toContain("The key was refused");
   expect(shown).toContain('class="conn-detail warn"');
 });
+
+test("T-547: Check now is off and reads Checking while that provider's check is pending, and only that provider's", () => {
+  const kept: KeyRow[] = [
+    { provider: "kimi", label: "Kimi (Moonshot) API key", kept: true, masked: "••••1111" },
+    { provider: "minimax", label: "MiniMax API key", kept: true, masked: "••••5555" },
+  ];
+  const view = (pending: Partial<Record<"kimi" | "minimax", boolean>>) => renderToString(createElement(ProviderUsageView, { rows: kept, drafts: {}, readings: {}, pending, onDraft: () => {}, onAction: () => {} }));
+  const idle = view({});
+  expect(idle).not.toMatch(/<button[^>]*disabled[^>]*>Check now/);
+  expect(idle).not.toContain("Checking");
+  const busy = view({ kimi: true });
+  const kimi = busy.slice(busy.indexOf('data-provider="kimi"'), busy.indexOf('data-provider="minimax"'));
+  const mm = busy.slice(busy.indexOf('data-provider="minimax"'));
+  expect(kimi).toMatch(/<button[^>]*disabled[^>]*>Checking/);
+  expect(kimi).not.toContain("Check now");
+  expect(mm).toMatch(/>Check now</);
+  expect(mm).not.toMatch(/<button[^>]*disabled[^>]*>Check now/);
+});

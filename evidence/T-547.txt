@@ -97,3 +97,19 @@ Commands and results (CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-2f-b):
 NOT PROVEN (needs-live-windows, Txais's key): Settings > AI connections > Provider usage > Check now with a
 real Moonshot key shows "Balance $x (vouchers $y, cash $z)"; a wrong key shows "The key was refused".
 Security-auditor review is pending before the merge (T-547 card).
+
+SECURITY REVIEW FIXES (2026-11-02, after the security audit's A- approve)
+- M1: provider_usage.rs `proxy_plan(store, provider)` reads the sealed proxy value itself; set-but-unreadable ->
+  Reading::Unavailable, nothing sent (route_from_store / app_proxy.rs untouched). Unset -> Route::Default.
+- L1: Check now is disabled and reads "Checking..." while pending (ProviderUsage.tsx, ref + state); backend
+  per-provider AtomicBool with a drop guard (`guarded_check`): an overlapping check returns Unavailable and sends nothing.
+- L2: reqwest features now ["native-tls", "system-proxy"] (socks stays off); Net::client() refuses any proxy that is
+  not http/https (socks5, socks5h, socks4, ftp, mailto) as NotMade. Cargo.lock byte-identical before/after.
+- L3: bearer() comment softened to best effort. L4: tests for headers + a few body bytes then silence (Offline in ~10 s)
+  and for unusable proxy URLs (NotMade).
+- cargo test --lib provider_ : 24 passed, 0 failed; cargo clippy --all-targets -- -D warnings : clean
+- pnpm tsc --noEmit : exit 0; npx vitest run src/settings scripts/privacy-audit.test.mjs : 83 files, 407 passed;
+  node scripts/plan-check.mjs : plan-check: OK
+- MUTATION A: unreadable-proxy mapping replaced by `.ok().flatten()` -> t547_a_proxy_that_is_set_but_unreadable...
+  FAILED ("Kimi damaged"); restored.
+- MUTATION B: in-flight guard bypassed -> t547_a_second_check_while_one_runs... FAILED ("the second press sent nothing"); restored.
