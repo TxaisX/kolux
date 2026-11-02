@@ -19,7 +19,7 @@ src-tauri/src/cli/mod.rs:1041-1049 (`app.open` on the app's side) is unchanged: 
     through ctx.front and fails the request when the window is gone; the new dispatch test pins that.
 docs/guide/command-line.md         the `kolux open` row and a paragraph on the two lines and `result.raised`.
 docs/live-proofs-windows.md B-5    now also asks for `kolux open --json` printing "raised": true.
-DECISIONS.md DT-C62                the result shape {ready, started, pid, raised} and the two readable lines.
+DECISIONS.md DT-C69                the result shape {ready, started, pid, raised} and the two readable lines.
 
 --- tests added (test first)
 src-tauri/src/cli/mod.rs tests::cli011_box2_app_open_asks_the_window_forward
@@ -95,7 +95,7 @@ invoke-contract not needed).
 
 --- bookkeeping
 PLAN.md: no task line is CLI-011's own (T-075-b, T-249-b and T-595 cover other parts of the card and are ticked), so
-none is changed. Spec card CLI-011 box 2 stays unticked (live-only). DECISIONS.md DT-C62 added. docs/guide and the
+none is changed. Spec card CLI-011 box 2 stays unticked (live-only). DECISIONS.md DT-C69 added. docs/guide and the
 live proof sheet updated as above.
 
 --- review fixes (PR #58, 2026-11-01)
