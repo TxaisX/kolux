@@ -118,28 +118,45 @@ export function linkAsk(e: Pick<MessageEvent, "data" | "source">, frameWindow: W
     return null;
   }
   if (u.protocol === "http:" || u.protocol === "https:") return u.host ? { url: data.koluxOpen, host: u.host } : null;
-  if (u.protocol === "mailto:") return { url: data.koluxOpen, host: decodeURIComponent(u.pathname.split("?")[0]) };
+  if (u.protocol === "mailto:") {
+    try {
+      // The whole address list is shown; the query (?body=, ?attach=) is not part of it and the opener drops it.
+      return { url: data.koluxOpen, host: decodeURIComponent(u.pathname.split("?")[0]) };
+    } catch {
+      return null; // a malformed percent-escape: nothing worth asking about
+    }
+  }
   return null;
 }
 
+/** How long Open stays disabled after the question appears: input protection, so a click or key the user
+ * meant for the page cannot land on Open (worker decision, 2f, 2026-11-01; Txais may veto). */
+export const LINK_OPEN_DELAY_MS = 1000;
+
 /** DT-C77: a message from the viewer never opens the browser. It raises one Kolux-owned question
- * ("Open example.com?") and the browser opens only when the user clicks Open in Kolux. One question
- * at a time: a new request replaces the pending one, nothing queues, and Open uses the question up,
- * so a second click cannot open it twice. */
-export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: LinkAsk | null) => void) {
+ * ("Open example.com?") and the browser opens only when the user clicks Open in Kolux. First ask wins:
+ * while a question is pending, new asks are ignored (a page cannot swap the address under the user's
+ * click); after Open or Cancel a new one may come. Open does nothing for LINK_OPEN_DELAY_MS after the
+ * question appears, and it opens exactly the address that was shown, once. */
+export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: LinkAsk | null) => void, now: () => number = Date.now) {
   let pending: LinkAsk | null = null;
+  let since = 0;
   const set = (ask: LinkAsk | null) => {
     pending = ask;
+    since = now();
     show(ask);
   };
+  const ready = () => pending !== null && now() - since >= LINK_OPEN_DELAY_MS;
   return {
     ask(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined) {
+      if (pending) return;
       const ask = linkAsk(e, frameWindow);
       if (ask) set(ask);
     },
+    ready,
     async accept(): Promise<unknown> {
       const ask = pending;
-      if (!ask) return null;
+      if (!ask || !ready()) return null;
       set(null);
       return open(ask.url);
     },
@@ -147,6 +164,25 @@ export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: 
       if (pending) set(null);
     },
   };
+}
+
+/** The question strip. It is a bar in normal layout above the viewer frame (the frame is pushed down,
+ * never covered), so a page cannot draw anything under the buttons. Open has no autofocus and is
+ * disabled until `ready`. */
+export function LinkAskBar({ ask, ready, onOpen, onCancel }: { ask: LinkAsk; ready: boolean; onOpen: () => void; onCancel: () => void }) {
+  return (
+    <div className="art-ask" role="alertdialog" aria-label="Open link">
+      <span className="art-ask-text" title={ask.url}>
+        Open <strong>{ask.host}</strong>?
+      </span>
+      <button className="btn" disabled={!ready} onClick={onOpen}>
+        Open
+      </button>
+      <button className="btn" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
 }
 
 type Props = {
@@ -205,6 +241,7 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
   // A link a viewer page asks for (DT-C77): the message only raises Kolux's own question below; the
   // browser opens when the user clicks Open there, never from the message itself.
   const [asked, setAsked] = useState<LinkAsk | null>(null);
+  const [askReady, setAskReady] = useState(false);
   const prompt = useRef<ReturnType<typeof linkPrompt> | null>(null);
   prompt.current ??= linkPrompt((url) => invoke("open_external", { url }), setAsked);
   useEffect(() => {
@@ -212,6 +249,13 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+  // Open is disabled for the first second of each question (the same clock as linkPrompt.accept).
+  useEffect(() => {
+    setAskReady(false);
+    if (!asked) return;
+    const t = window.setTimeout(() => setAskReady(true), LINK_OPEN_DELAY_MS + 50);
+    return () => window.clearTimeout(t);
+  }, [asked]);
   // Another page, or none, is a different conversation: the old question is dropped.
   useEffect(() => {
     prompt.current?.cancel();
@@ -302,19 +346,7 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
         </div>
       </div>
       <div className="art-view">
-        {asked && (
-          <div className="art-ask" role="alertdialog" aria-label="Open link">
-            <span className="art-ask-text" title={asked.url}>
-              Open <strong>{asked.host}</strong>?
-            </span>
-            <button className="btn" autoFocus onClick={() => void prompt.current?.accept().catch((err) => onToast(String(err)))}>
-              Open
-            </button>
-            <button className="btn" onClick={() => prompt.current?.cancel()}>
-              Cancel
-            </button>
-          </div>
-        )}
+        {asked && <LinkAskBar ask={asked} ready={askReady} onOpen={() => void prompt.current?.accept().catch((err) => onToast(String(err)))} onCancel={() => prompt.current?.cancel()} />}
         {!current && <div className="empty"><p>Pick an artifact to view it here.</p></div>}
         {current?.state === "remote" && <div className="empty"><h2>{current.title}</h2><p>This page is on a machine this computer cannot read (WSL or SSH).</p></div>}
         {current?.state === "unavailable" && <div className="empty"><h2>{current.title}</h2><p>This page is on a network share, which Kolux never opens.</p></div>}

@@ -153,14 +153,30 @@ test("box 2: a clicked link leaves the viewer as a message, and the page hands i
   // The frame's own script posts what a click on its link posts; the user answers in Kolux with Open.
   for (const m of v.posted) await deliver(own, m.msg);
   expect(opened()).toEqual([]);
-  expect(withText(ask()[0], "strong", "someone@example.invalid")).toHaveLength(1); // the newest request replaced the first
+  // First ask wins (M1): the second post was ignored, so the question names the first link.
+  expect(withText(ask()[0], "strong", "example.invalid")).toHaveLength(1);
+  // The question is a strip above the frame, not a layer over it, and Open is neither focused nor live yet.
+  const root = ask()[0];
+  const openBtn = byText(root, "button", "Open")[0];
+  expect(openBtn.attrs.disabled).toBeDefined();
+  const kids = (find(c, (n) => String(n.attrs.className ?? n.attrs.class ?? "") === "art-view")[0] as FakeNode).childNodes;
+  expect(kids.indexOf(root)).toBeGreaterThanOrEqual(0);
+  expect(kids.indexOf(root)).toBeLessThan(kids.findIndex((n) => n.localName === "iframe"));
+  await click(c, openBtn); // too early: nothing opens
+  expect(opened()).toEqual([]);
+  expect(ask()).toHaveLength(1);
+  await new Promise((r) => setTimeout(r, 1100));
+  await settle();
+  expect(byText(ask()[0], "button", "Open")[0].attrs.disabled).toBeUndefined();
   await click(c, byText(ask()[0], "button", "Open")[0]);
-  expect(opened()).toEqual([{ url: "mailto:someone@example.invalid" }]);
+  expect(opened()).toEqual([{ url: "https://example.invalid/x?q=1" }]);
   expect(ask()).toHaveLength(0);
   expect(toasts).toEqual([]);
   // A refusal from the opener surfaces as a toast.
   h.openError = "boom: could not open";
   await deliver(own, { koluxOpen: "https://example.invalid/refused" });
+  await new Promise((r) => setTimeout(r, 1100));
+  await settle();
   await click(c, byText(ask()[0], "button", "Open")[0]);
   await settle();
   expect(toasts).toEqual(["boom: could not open"]);

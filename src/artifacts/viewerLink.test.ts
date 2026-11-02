@@ -4,18 +4,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // app (link_script needs that), so a koluxOpen message proves nothing about the user: the page can
 // post on load, in a loop, or after one real click. A message therefore never opens the browser. It
 // only raises Kolux's own question ("Open example.com?"), and the browser opens when the user clicks
-// Open in Kolux. One question at a time: a newer request replaces the older, nothing queues.
+// Open in Kolux. One question at a time: the first ask wins, later asks are ignored until it is
+// answered, and Open stays disabled for 1 s after the question appears (worker decision, 2f).
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+const css = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 const invoke = vi.fn(async (..._a: unknown[]) => null);
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...a) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(async () => null) }));
 
-import { linkAsk, linkPrompt, type LinkAsk } from "./ArtifactsPage";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
+import { LINK_OPEN_DELAY_MS, LinkAskBar, linkAsk, linkPrompt, type LinkAsk } from "./ArtifactsPage";
 
 const frame = { name: "artifact-a" } as unknown as Window;
 const msg = (over: Partial<{ data: unknown; source: unknown }>) => ({ data: { koluxOpen: "https://example.com/path?q=1" }, source: frame, ...over }) as MessageEvent;
 
 afterEach(() => invoke.mockClear());
+
+/** A clock the tests move by hand, so the 1 s input-protection delay is exact. */
+function clock() {
+  let t = 5000;
+  return { now: () => t, tick: (ms: number) => void (t += ms) };
+}
+const open = (url: string) => invoke("open_external", { url });
 
 describe("a link asked for by the viewer (SKILL-036, DT-C77)", () => {
   it("names the destination host, and only for our own frame", () => {
@@ -34,31 +46,67 @@ describe("a link asked for by the viewer (SKILL-036, DT-C77)", () => {
 
   it("a message never opens the browser, however many a page posts", () => {
     const shown: (LinkAsk | null)[] = [];
-    const p = linkPrompt((url) => invoke("open_external", { url }), (a) => shown.push(a));
+    const p = linkPrompt(open, (a) => shown.push(a), clock().now);
     for (let i = 0; i < 20; i++) p.ask(msg({ data: { koluxOpen: `https://example.com/${i}` } }), frame);
     expect(invoke).not.toHaveBeenCalled();
-    expect(shown[shown.length - 1]).toEqual({ url: "https://example.com/19", host: "example.com" });
+    // First ask wins: the one on screen is the first, and it was shown once.
+    expect(shown).toEqual([{ url: "https://example.com/0", host: "example.com" }]);
   });
 
-  it("only one question is pending: a new request replaces the old one, with no queue", async () => {
-    const p = linkPrompt((url) => invoke("open_external", { url }), () => {});
+  it("first ask wins: a second ask while one is pending changes nothing, so Open opens what was shown", async () => {
+    const c = clock();
+    const p = linkPrompt(open, () => {}, c.now);
     p.ask(msg({ data: { koluxOpen: "https://first.example/" } }), frame);
+    // A page that swaps the ask right before the user's click (on mouseleave or blur) gets nowhere.
+    c.tick(500);
     p.ask(msg({ data: { koluxOpen: "https://second.example/" } }), frame);
+    c.tick(600);
+    p.ask(msg({ data: { koluxOpen: "https://third.example/" } }), frame);
     await p.accept();
     await p.accept();
-    expect(invoke.mock.calls).toEqual([["open_external", { url: "https://second.example/" }]]);
+    expect(invoke.mock.calls).toEqual([["open_external", { url: "https://first.example/" }]]);
   });
 
-  it("clicking Open opens the link once; Cancel opens nothing", async () => {
+  it("after Open or Cancel a new ask may come", async () => {
+    const c = clock();
     const shown: (LinkAsk | null)[] = [];
-    const p = linkPrompt((url) => invoke("open_external", { url }), (a) => shown.push(a));
+    const p = linkPrompt(open, (a) => shown.push(a), c.now);
+    p.ask(msg({ data: { koluxOpen: "https://a.example/" } }), frame);
+    p.cancel();
+    p.ask(msg({ data: { koluxOpen: "https://b.example/" } }), frame);
+    c.tick(LINK_OPEN_DELAY_MS);
+    await p.accept();
+    p.ask(msg({ data: { koluxOpen: "https://c.example/" } }), frame);
+    c.tick(LINK_OPEN_DELAY_MS);
+    await p.accept();
+    expect(invoke.mock.calls.map((x) => (x[1] as { url: string }).url)).toEqual(["https://b.example/", "https://c.example/"]);
+  });
+
+  it("Open clicked before the 1 s delay opens nothing and leaves the question up; after it, Open works once", async () => {
+    const c = clock();
+    const shown: (LinkAsk | null)[] = [];
+    const p = linkPrompt(open, (a) => shown.push(a), c.now);
     p.ask(msg({}), frame);
+    expect(p.ready()).toBe(false);
+    await p.accept();
+    c.tick(LINK_OPEN_DELAY_MS - 1);
+    await p.accept();
+    expect(invoke).not.toHaveBeenCalled();
+    expect(shown[shown.length - 1]).not.toBeNull();
+    c.tick(1);
+    expect(p.ready()).toBe(true);
     await p.accept();
     await p.accept();
     expect(invoke.mock.calls).toEqual([["open_external", { url: "https://example.com/path?q=1" }]]);
     expect(shown[shown.length - 1]).toBeNull();
-    invoke.mockClear();
+  });
+
+  it("Cancel opens nothing, whenever it is clicked", async () => {
+    const c = clock();
+    const shown: (LinkAsk | null)[] = [];
+    const p = linkPrompt(open, (a) => shown.push(a), c.now);
     p.ask(msg({}), frame);
+    c.tick(5000);
     p.cancel();
     await p.accept();
     expect(invoke).not.toHaveBeenCalled();
@@ -66,10 +114,42 @@ describe("a link asked for by the viewer (SKILL-036, DT-C77)", () => {
   });
 
   it("a message from another frame leaves the pending question alone", async () => {
-    const p = linkPrompt((url) => invoke("open_external", { url }), () => {});
+    const c = clock();
+    const p = linkPrompt(open, () => {}, c.now);
     p.ask(msg({}), frame);
     p.ask(msg({ source: {}, data: { koluxOpen: "https://evil.example/" } }), frame);
+    c.tick(LINK_OPEN_DELAY_MS);
     await p.accept();
     expect(invoke.mock.calls).toEqual([["open_external", { url: "https://example.com/path?q=1" }]]);
+  });
+
+  it("a malformed percent-escape in a mailto address asks nothing and does not throw", () => {
+    expect(linkAsk(msg({ data: { koluxOpen: "mailto:%E0%A4%A@example.com" } }), frame)).toBeNull();
+  });
+
+  it("a mailto with a query shows the whole address, not the query", () => {
+    expect(linkAsk(msg({ data: { koluxOpen: "mailto:a@example.com,b@example.com?body=hi&attach=C:/x" } }), frame)?.host).toBe("a@example.com,b@example.com");
+  });
+});
+
+describe("the question strip (M1)", () => {
+  const ask: LinkAsk = { url: "https://example.com/", host: "example.com" };
+  const html = (ready: boolean) => renderToStaticMarkup(createElement(LinkAskBar, { ask, ready, onOpen: () => {}, onCancel: () => {} }));
+
+  it("Open is not focused on mount: a keystroke typed into the page cannot land on it", () => {
+    expect(html(true).toLowerCase()).not.toContain("autofocus");
+  });
+
+  it("Open is disabled until the delay has passed; Cancel never is", () => {
+    const wait = html(false);
+    expect(wait).toMatch(/<button[^>]*disabled=""[^>]*>Open<\/button>/);
+    expect(wait).not.toMatch(/<button[^>]*disabled=""[^>]*>Cancel<\/button>/);
+    expect(html(true)).not.toContain("disabled");
+  });
+
+  it("the strip sits in normal layout above the frame, never positioned over it", () => {
+    const rule = css.split(/\r?\n/).find((l) => l.startsWith(".art-ask {")) ?? "";
+    expect(rule).not.toMatch(/position:\s*(absolute|fixed)/);
+    expect(css).toMatch(/\.art-view\s*\{[^}]*flex-direction:\s*column/);
   });
 });

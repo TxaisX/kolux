@@ -168,14 +168,14 @@ input { font: inherit; }
 .art-group { display: flex; flex-direction: column; gap: 2px; }
 .art-group + .art-group { margin-top: 6px; }
 .art-group-head { position: sticky; top: 0; z-index: 1; padding: 4px 8px 3px; background: var(--pane-bg); color: var(--fg-faint); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.art-view { position: relative; flex: 1; min-width: 0; display: flex; background: var(--pane-bg); border-radius: 10px; overflow: hidden; }
+.art-view { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--pane-bg); border-radius: 10px; overflow: hidden; }
 .art-frame { flex: 1; border: 0; background: #fff; }
 .art-image { flex: 1; min-width: 0; min-height: 0; object-fit: contain; background: var(--pane-bg); }
 .art-media { flex: 1; min-width: 0; min-height: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
 .art-audio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; background: var(--pane-bg); }
 .art-audio span { font-size: 12px; color: var(--fg-muted); text-align: center; overflow-wrap: anywhere; }
 .art-audio audio { width: min(560px, 100%); }
-.art-ask { position: absolute; left: 12px; right: 12px; top: 10px; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--row-selected); color: var(--fg); border: 1px solid var(--tab-track-border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .35); }
+.art-ask { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--row-selected); color: var(--fg); border-bottom: 1px solid var(--tab-track-border); }
 .art-ask-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .art-loading { position: absolute; left: 12px; top: 10px; }
 .sb-section { display: flex; align-items: center; height: 32px; margin: 13px 4px 0; padding-left: 12px; padding-right: 4px; color: var(--fg-label); font-size: 12.5px; font-weight: 500; }
