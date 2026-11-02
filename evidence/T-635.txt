@@ -1,0 +1,61 @@
+T-635 · A project skill install runs only where the project cannot steer npm (R10-skills.2, DT-C82)
+Worker 2f, 2026-11-02, branch s-2f/t635. Follow-up to T-633 (#80), scope set by coordinator 57.
+
+WHAT THE USER GETS
+- `kolux skills install|update --local` is refused, with a message saying why and what to do
+  instead, when the project folder (or a parent below the user's own folder, as npm finds the
+  project root from a subfolder) carries a `.npmrc` or a `skills` program in node_modules/.bin.
+  Either would let the project decide what the installer runs. The user's own home .npmrc does
+  not count.
+- On Windows, a --local run is refused when Node is older than 22 (libuv 1.48): such a Node ignores
+  the guard variable T-633 sets, so what it starts could come from the project folder. The message
+  names Node.js 22. An unreadable version counts as old (refused, not unguarded).
+- A computer-wide run (-g) is refused when the app cannot find its own folder, instead of running
+  from whatever folder it was started in.
+
+WHAT CHANGED
+src-tauri/src/skills/installer.rs
+- refusal(cmd, dir, cwd, home, old_node): the three rules above, pure, tested.
+- node_version / old_node: asks the found Node for process.versions.uv, from the app's folder.
+- Real::run: calls refusal before anything starts.
+DECISIONS.md: DT-C82 updated from "until T-635" to what now holds and what is left over (npm's
+own `which` lookup for git dependencies).
+PLAN.md: T-635 row.
+
+TESTS (cargo test --lib, CARGO_TARGET_DIR=target-2f)
+- installer::tests::t635_a_computer_wide_run_without_the_apps_folder_is_refused
+- installer::tests::t635_a_project_run_on_an_older_node_is_refused
+- installer::tests::t635_a_project_with_its_own_npm_setup_is_refused (project .npmrc, found from a
+  subfolder, home .npmrc ignored, other .bin programs ignored, Skills.CMD caught regardless of case)
+
+RED (before the fix)
+- error[E0425]: cannot find function `refusal` in this scope
+- error[E0425]: cannot find function `node_version` in this scope
+
+GREEN (after the fix)
+- installer, t633, t635: 28 passed; clippy --all-targets -D warnings clean; plan-check OK.
+- cargo test --lib: 2780 passed, 1 failed, 6 ignored. The one failure is
+  scm::writers::tests::t606_the_claude_writer_runs_from_an_empty_folder_of_its_own_with_only_the_users_settings,
+  the known local-only environment failure (skipped on CI; see evidence/T-633.txt).
+
+REVIEW ROUND 1 (on 9a31b8e1): code review A-, security audit B-. Fixed in the next commit:
+- security MEDIUM: any program in a project node_modules/.bin now refuses (npx puts those folders
+  first on the search path for Node and git too), not only one called skills.
+- code MEDIUM: the user's folder is recognised however its name is spelled (case, 8.3 short name),
+  via same_dir; outside it, every parent up to the drive root counts (code LOW).
+- LOW: an unknown app folder counts as an old Node (the probe never runs from the project folder);
+  the old-node test no longer depends on where %TEMP% is; message says "could not confirm".
+- DT-C82: names the .bin rule and the check-then-start gap as left over.
+Not done: a timeout on the version probe (node -p returns at once; reviewer NIT).
+Re-run: skills::installer 14 passed (all t635 tests incl. new t635_same_dir_ignores_spelling);
+clippy --all-targets -D warnings clean; plan-check OK. CI on 9a31b8e1 failed only on
+notebook_run::tests::a_cell_that_sleeps_past_the_ceiling_is_killed (timing, untouched module).
+
+REVIEW ROUND 2 (on 62394a22): code review A, security audit A-. Fixed in the next commit:
+- both LOW/NIT: a link or short name that leads to the user's folder no longer stops the walk; it
+  is skipped and the walk goes on (stop only where the path is spelled as the user's folder).
+  New assertions in t635_a_project_with_its_own_npm_setup_is_refused use a ".." alias.
+- code LOW: DT-C82 now says plainly that a project that has run npm install always needs the
+  computer-wide install, and lists folders above the user's folder as left over.
+Re-run: skills::installer 14 passed; t633 5 passed; clippy --all-targets -D warnings clean
+(first clippy attempt crashed with STATUS_STACK_BUFFER_OVERRUN under low memory; re-run with -j 2 exit 0).
