@@ -308,12 +308,14 @@ fn secretish(k: &str) -> bool {
     !k.ends_with("helper") && ["token", "secret", "password", "passwd", "credential", "apikey", "api_key", "api-key", "authorization", "bearer"].iter().any(|w| k.contains(w))
 }
 
-/// `v` with secrets replaced: `env` / `headers` objects keep their key names, all values masked.
+/// `v` with secrets replaced: `env` / `headers` objects keep their key names, all values masked; any
+/// value (object, array, number, string) under a secret-looking key is masked; other strings go through `mask_text`.
 fn mask(key: &str, v: &Value) -> Value {
     match v {
         Value::Object(m) if matches!(key, "env" | "headers" | "extraHeaders") => Value::Object(m.keys().map(|k| (k.clone(), Value::String(MASK.into()))).collect()),
-        Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), if secretish(k) && x.is_string() { Value::String(MASK.into()) } else { mask(k, x) })).collect()),
+        Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), if secretish(k) && !x.is_null() { Value::String(MASK.into()) } else { mask(k, x) })).collect()),
         Value::Array(a) => Value::Array(a.iter().map(|x| mask(key, x)).collect()),
+        Value::String(s) => Value::String(mask_text(s)),
         _ => v.clone(),
     }
 }
@@ -327,47 +329,92 @@ fn clip(s: &str) -> String {
 }
 
 fn display(key: &str, v: &Value) -> String {
-    let v = if secretish(key) && v.is_string() { Value::String(MASK.into()) } else { mask(key, v) };
+    let v = if secretish(key) && !v.is_null() { Value::String(MASK.into()) } else { mask(key, v) };
     clip(&match &v {
         Value::String(s) => s.clone(),
         other => other.to_string(),
     })
 }
 
-/// A URL without a password, query or fragment (where tokens go).
+/// True for strings shaped like a known credential: provider prefixes or a JWT.
+fn is_token(s: &str) -> bool {
+    let low = s.to_ascii_lowercase();
+    let prefixed = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "glpat-", "xox", "sk-", "npm_"].iter().any(|p| low.starts_with(p)) || s.starts_with("AKIA") || s.starts_with("ASIA");
+    prefixed || (s.starts_with("eyJ") && s.matches('.').count() == 2)
+}
+
+/// A URL with no user-info, query or fragment (where tokens go), and every path segment of 16+ characters
+/// (or shaped like a credential) masked, because keys are sometimes embedded in paths.
 fn mask_url(u: &str) -> String {
     let (scheme, rest) = u.split_once("://").map_or(("", u), |(s, r)| (s, r));
     let cut = rest.find(['?', '#']).unwrap_or(rest.len());
-    let mut body = rest[..cut].to_string();
-    if let Some((_, host)) = body.split_once('@').filter(|(user, _)| !user.contains('/')) {
-        body = format!("{MASK}@{host}");
-    }
+    let (host, path) = rest[..cut].split_at(rest[..cut].find('/').unwrap_or(cut));
+    let host = host.rsplit_once('@').map_or(host.to_string(), |(_, h)| format!("{MASK}@{h}"));
+    let path = path.split('/').map(|seg| if seg.chars().count() >= 16 || is_token(seg) { MASK } else { seg }).collect::<Vec<_>>().join("/");
     let tail = if cut < rest.len() { format!("?{MASK}") } else { String::new() };
-    if scheme.is_empty() { format!("{body}{tail}") } else { format!("{scheme}://{body}{tail}") }
+    if scheme.is_empty() { format!("{host}{path}{tail}") } else { format!("{scheme}://{host}{path}{tail}") }
 }
 
-/// Command-line arguments with the values of secret-looking flags and `KEY=value` pairs masked.
-fn mask_args(args: &[Value]) -> Vec<String> {
-    let mut hide_next = false;
-    args.iter()
-        .filter_map(Value::as_str)
+/// One whitespace-free word: URLs lose their secrets, credential-shaped words and secret `KEY=value` pairs are masked.
+fn mask_word(w: &str) -> String {
+    let t = w.trim_matches(|c| matches!(c, '"' | '\'' | '('| ')' | '<' | '>' | ',' | ';'));
+    if t.is_empty() {
+        return w.to_string();
+    }
+    let at = w.find(t).unwrap_or(0);
+    let inner = if t.split_once("://").is_some_and(|(s, _)| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c))) {
+        mask_url(t)
+    } else if is_token(t) {
+        MASK.to_string()
+    } else if let Some((k, v)) = t.split_once('=') {
+        if secretish(k) { format!("{k}={MASK}") } else { format!("{k}={}", mask_word(v)) }
+    } else {
+        t.to_string()
+    };
+    format!("{}{inner}{}", &w[..at], &w[at + t.len()..])
+}
+
+/// Command-line words with the values of secret-looking flags, `Authorization`/`Bearer` values, URL user-info,
+/// credential-shaped words and `KEY=value` pairs masked.
+fn mask_words<'a>(words: impl Iterator<Item = &'a str>) -> Vec<String> {
+    let (mut hide_next, mut hide_rest) = (false, false);
+    words
         .map(|a| {
-            if std::mem::take(&mut hide_next) {
+            if hide_rest || std::mem::take(&mut hide_next) {
                 return MASK.to_string();
             }
             let low = a.to_ascii_lowercase();
-            if low.contains("bearer ") || low.starts_with("sk-") {
+            if low.contains("bearer ") {
                 return MASK.to_string();
             }
-            match a.split_once('=') {
-                Some((k, _)) if secretish(k) => format!("{k}={MASK}"),
-                _ => {
-                    hide_next = a.starts_with('-') && !a.contains('=') && secretish(a);
-                    a.to_string()
+            if let Some(i) = low.find("authorization:") {
+                let after = a[i + "authorization:".len()..].trim();
+                if after.is_empty() {
+                    hide_rest = true;
+                    return a.to_string();
                 }
+                return format!("{} {MASK}", &a[..i + "authorization:".len()]);
             }
+            if matches!(low.trim_matches(|c| c == '"' || c == '\''), "bearer" | "basic") {
+                hide_next = true;
+                return a.to_string();
+            }
+            let out = mask_word(a);
+            if out == a && a.starts_with('-') && !a.contains('=') && secretish(a) {
+                hide_next = true;
+            }
+            out
         })
         .collect()
+}
+
+fn mask_args(args: &[Value]) -> Vec<String> {
+    mask_words(args.iter().filter_map(Value::as_str))
+}
+
+/// Free text (a hook command, a status line, a permission rule): masked word by word.
+fn mask_text(s: &str) -> String {
+    mask_words(s.split_whitespace()).join(" ")
 }
 
 // ---- settings layers ----
@@ -475,8 +522,9 @@ fn permissions(layers: &[Layer]) -> Permissions {
     for (list, field) in [(&mut out.allow, "allow"), (&mut out.ask, "ask"), (&mut out.deny, "deny"), (&mut out.directories, "additionalDirectories")] {
         for l in layers {
             for rule in l.value.pointer(&format!("/permissions/{field}")).and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
-                if list.len() < MAX_ROWS && !list.iter().any(|r| r.rule == rule) {
-                    list.push(Rule { rule: clip(rule), scope: l.scope });
+                let masked = clip(&mask_text(rule));
+                if list.len() < MAX_ROWS && !list.iter().any(|r| r.rule == masked) {
+                    list.push(Rule { rule: masked, scope: l.scope });
                 }
             }
         }
@@ -495,7 +543,7 @@ fn hooks(layers: &[Layer]) -> Vec<HookRow> {
                     let kind = h.get("type").and_then(Value::as_str).unwrap_or("command");
                     let what = ["command", "url", "prompt"].iter().find_map(|k| h.get(*k).and_then(Value::as_str)).unwrap_or("");
                     if out.len() < MAX_ROWS {
-                        out.push(HookRow { event: clip(event), matcher: matcher.clone(), kind: clip(kind), command: clip(what), scope: l.scope });
+                        out.push(HookRow { event: clip(event), matcher: matcher.clone(), kind: clip(kind), command: clip(&mask_text(what)), scope: l.scope });
                     }
                 }
             }
@@ -507,27 +555,36 @@ fn hooks(layers: &[Layer]) -> Vec<HookRow> {
 // ---- MCP ----
 
 /// The only fields read from `~/.claude.json`. Serde skips every other key while parsing, so the
-/// account, user id, tokens and the rest are never held, let alone returned.
+/// account, user id, tokens and the rest are never held, let alone returned. Both fields stay raw
+/// values so one malformed entry (a null, a wrong type) costs only itself, never the whole file.
 #[derive(Deserialize, Default)]
 struct Global {
     #[serde(rename = "mcpServers", default)]
-    mcp_servers: Map<String, Value>,
+    mcp_servers: Value,
     #[serde(default)]
-    projects: std::collections::HashMap<String, LocalProject>,
+    projects: Value,
 }
 
-#[derive(Deserialize, Default)]
+/// A project entry's four on/off lists plus its own servers, each read leniently.
 struct LocalProject {
-    #[serde(rename = "mcpServers", default)]
     mcp_servers: Map<String, Value>,
-    #[serde(rename = "enabledMcpServers", default)]
     enabled: Vec<String>,
-    #[serde(rename = "disabledMcpServers", default)]
     disabled: Vec<String>,
-    #[serde(rename = "enabledMcpjsonServers", default)]
     enabled_json: Vec<String>,
-    #[serde(rename = "disabledMcpjsonServers", default)]
     disabled_json: Vec<String>,
+}
+
+impl LocalProject {
+    fn from(v: &Value) -> Self {
+        let list = |k: &str| -> Vec<String> { v.get(k).and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).map(str::to_string).collect() };
+        LocalProject {
+            mcp_servers: v.get("mcpServers").and_then(Value::as_object).cloned().unwrap_or_default(),
+            enabled: list("enabledMcpServers"),
+            disabled: list("disabledMcpServers"),
+            enabled_json: list("enabledMcpjsonServers"),
+            disabled_json: list("disabledMcpjsonServers"),
+        }
+    }
 }
 
 fn same_folder(a: &str, b: &str) -> bool {
@@ -548,7 +605,7 @@ fn mcp_rows(servers: &Map<String, Value>, scope: &'static str, from: &str, out: 
             None => {
                 let cmd = s.get("command").and_then(Value::as_str).unwrap_or("");
                 let args = mask_args(s.get("args").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[]));
-                std::iter::once(cmd.to_string()).chain(args).collect::<Vec<_>>().join(" ")
+                std::iter::once(mask_word(cmd)).chain(args).collect::<Vec<_>>().join(" ")
             }
         };
         out.push(McpRow { name: clip(name), kind: clip(kind), target: clip(&target), env: pairs("env"), headers: pairs("headers"), scope, from: from.to_string(), off: false });
@@ -589,9 +646,9 @@ fn mcp(p: &Paths, r: &Reader, layers: &[Layer], files: &mut Files) -> (Vec<McpRo
         match serde_json::from_str::<Global>(&t) {
             Ok(g) => {
                 file("user", ".claude.json", &p.global_json, files);
-                mcp_rows(&g.mcp_servers, "user", ".claude.json", &mut rows);
+                mcp_rows(g.mcp_servers.as_object().unwrap_or(&Map::new()), "user", ".claude.json", &mut rows);
                 let here = p.workspace.as_ref().map(|w| shown(w));
-                if let Some((_, lp)) = g.projects.iter().find(|(k, _)| here.as_deref().is_some_and(|h| same_folder(k, h))) {
+                if let Some(lp) = g.projects.as_object().and_then(|m| m.iter().find(|(k, _)| here.as_deref().is_some_and(|h| same_folder(k, h)))).map(|(_, v)| LocalProject::from(v)) {
                     mcp_rows(&lp.mcp_servers, "local", ".claude.json (this workspace)", &mut rows);
                     for (list, names) in [("enabledMcpServers", &lp.enabled), ("disabledMcpServers", &lp.disabled), ("enabledMcpjsonServers", &lp.enabled_json), ("disabledMcpjsonServers", &lp.disabled_json)] {
                         for n in names.iter().take(MAX_ROWS) {
@@ -990,5 +1047,91 @@ mod tests {
         assert_eq!(display("apiToken", &Value::String("abc".into())), MASK);
         assert_eq!(display("apiKeyHelper", &Value::String("cmd".into())), "cmd");
         assert_eq!(front_matter("---\nname: 'x'\n---\n").0.as_deref(), Some("x"));
+    }
+
+    #[test]
+    fn hooks_status_line_and_helper_are_masked_in_the_summary() {
+        let (t, p) = tree("masked");
+        let canaries = ["CANARY-ghp-1", "CANARY-url-key-0123456789", "CANARY-flag-2", "CANARY-obj-3", "CANARY-num-4", "CANARY-rule-5", "CANARY-aws-6", "CANARY-jwt-7", "CANARY-pw-8", "CANARY-bearer-9"];
+        let c = |i: usize| canaries[i];
+        write(
+            &p.config_dir.join("settings.json"),
+            &format!(
+                r#"{{"hooks":{{"PreToolUse":[{{"matcher":"Bash","hooks":[
+                    {{"type":"command","command":"curl -H 'Authorization: Bearer {b}' ghp_{g} --token {f}"}},
+                    {{"type":"http","url":"https://hooks.example/{u}/fire?k=1"}},
+                    {{"type":"prompt","prompt":"call https://user:{pw}@h.example/x with AKIA{aws}"}}]}}]}},
+                  "statusLine":{{"type":"command","command":"node status.js --api-key {f} eyJhbGciOi.{j}.sig"}},
+                  "apiKeyHelper":"get-key --password={pw}",
+                  "myTokenConfig":{{"inner":"{o}"}},
+                  "otherSecret":[1,"{o}"],
+                  "tokenLimit":{n},
+                  "permissions":{{"allow":["Bash(curl https://api.example/{u}/v1 -u admin:x)","Bash(echo ghp_{r})"]}}}}"#,
+                b = c(9),
+                g = c(0),
+                u = c(1),
+                f = c(2),
+                o = c(3),
+                n = 4444,
+                r = c(5),
+                aws = c(6),
+                j = c(7),
+                pw = c(8)
+            ),
+        );
+        let s = summarize(&p);
+        let json = serde_json::to_string(&s).unwrap();
+        for leak in canaries {
+            assert!(!json.contains(leak), "{leak} leaked: {json}");
+        }
+        assert!(!json.contains("4444"), "a number under a secret-looking key leaked: {json}");
+        assert!(s.hooks.iter().any(|h| h.command.contains("hooks.example") && h.command.contains(MASK)), "{:?}", s.hooks.iter().map(|h| &h.command).collect::<Vec<_>>());
+        let by = |k: &str| s.settings.iter().find(|r| r.key == k).unwrap_or_else(|| panic!("{k} missing")).value.clone();
+        assert!(by("statusLine").contains("node status.js"), "benign words stay readable");
+        assert_eq!(by("apiKeyHelper"), format!("get-key --password={MASK}"));
+        assert_eq!(by("myTokenConfig"), MASK);
+        assert_eq!(by("otherSecret"), MASK);
+        assert_eq!(by("tokenLimit"), MASK);
+        let _ = fs::remove_dir_all(t);
+    }
+
+    #[test]
+    fn urls_hide_user_info_query_and_long_or_token_shaped_path_segments() {
+        assert_eq!(mask_url("https://h.example/mcp/v1"), "https://h.example/mcp/v1");
+        assert_eq!(mask_url("https://h.example/mcp/0123456789abcdef0123/x"), format!("https://h.example/mcp/{MASK}/x"));
+        assert_eq!(mask_url("https://h.example/hooks/ghp_short"), format!("https://h.example/hooks/{MASK}"));
+        assert_eq!(mask_url("https://u:p@h.example:8443/a"), format!("https://{MASK}@h.example:8443/a"));
+        assert_eq!(mask_url("https://h.example/@scope/pkg"), "https://h.example/@scope/pkg");
+    }
+
+    #[test]
+    fn words_with_known_token_prefixes_and_header_values_are_masked() {
+        for t in ["ghp_abc", "gho_abc", "github_pat_abc", "xoxb-1-2", "AKIAIOSFODNN7EXAMPLE", "sk-ant-abc", "eyJhbGciOi.payload.sig"] {
+            assert_eq!(mask_text(&format!("run {t} now")), format!("run {MASK} now"), "{t}");
+            assert_eq!(mask_text(&format!("FOO={t}")), format!("FOO={}", MASK), "{t}");
+        }
+        assert_eq!(mask_text("curl -H Authorization: Bearer abc123 https://h.example"), format!("curl -H Authorization: {MASK} {MASK} {MASK}"));
+        assert_eq!(mask_text("x Bearer abc y"), format!("x Bearer {MASK} y"));
+        assert_eq!(mask_text("--url=https://u:p@h.example/a"), format!("--url=https://{MASK}@h.example/a"));
+        assert_eq!(mask_text("ls -la /tmp"), "ls -la /tmp");
+    }
+
+    #[test]
+    fn a_malformed_project_entry_does_not_hide_the_good_ones() {
+        let (t, p) = tree("lenient");
+        let ws = shown(p.workspace.as_ref().unwrap());
+        write(
+            &p.global_json,
+            &format!(
+                r#"{{"mcpServers":{{"u":{{"command":"x"}}}},"projects":{{"C:/bad/null":{{"disabledMcpServers":null}},"C:/bad/type":{{"mcpServers":5,"enabledMcpServers":"nope","disabledMcpjsonServers":[1,"ok"]}},"C:/bad/entry":7,
+                  "{ws}":{{"mcpServers":{{"mine":{{"command":"node"}}}},"disabledMcpServers":null,"enabledMcpServers":["a",3],"disabledMcpjsonServers":"nope","enabledMcpjsonServers":["b"]}}}}}}"#
+            ),
+        );
+        let s = summarize(&p);
+        let names: Vec<&str> = s.mcp.iter().map(|m| m.name.as_str()).collect();
+        assert_eq!(names, ["u", "mine"], "{:?}", s.notes);
+        let flags: Vec<String> = s.mcp_flags.iter().map(|f| format!("{}:{}", f.list, f.name)).collect();
+        assert_eq!(flags, ["enabledMcpServers:a", "enabledMcpjsonServers:b"]);
+        let _ = fs::remove_dir_all(t);
     }
 }
