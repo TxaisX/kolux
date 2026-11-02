@@ -316,6 +316,29 @@ mod tests {
         assert_eq!(a["skills"], json!(["kolux-cli", "orchestration", "koluxward"]));
     }
 
+    /// The install offer is the bundled table, so every skill that joins it (video, DT-C64) is
+    /// also a folder the official repo must carry before the release ships; this pins which names
+    /// the installer is handed so a new bundled skill cannot slip into `--all` unnoticed.
+    #[test]
+    fn install_all_offers_every_bundled_skill_against_the_official_repo() {
+        let t = temp("cli-all-bundled");
+        let f = Fake::ok();
+        let bundled: Vec<String> = crate::cli::bundled_skills().iter().map(|b| b.0.to_string()).collect();
+        assert!(bundled.contains(&"video".to_string()), "{bundled:?}");
+        let mut c = ctx(&t);
+        c.bundled = bundled.clone();
+        c.repo = installer::OFFICIAL_REPO;
+        let a = run(&req(false, |r| (r.all = true, r.dry_run = true)), &c, &f).unwrap();
+        let line = a["command"].as_str().unwrap();
+        assert!(line.starts_with("npx --yes skills add kolux/skills "), "{line}");
+        let mut named: Vec<&str> = line.split(" --skill ").skip(1).map(|s| s.split(' ').next().unwrap()).collect();
+        named.sort_unstable();
+        let mut want: Vec<&str> = bundled.iter().map(String::as_str).collect();
+        want.sort_unstable();
+        assert_eq!(named, want);
+        assert!(f.seen.lock().unwrap().is_empty());
+    }
+
     #[test]
     fn unknown_names_and_names_holding_shell_syntax_are_refused() {
         let t = temp("cli-names");

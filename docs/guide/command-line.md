@@ -230,7 +230,7 @@ One Windows quirk: the `kolux.cmd` helper refuses `kolux orchestration send` and
 | Command | What it does |
 |---|---|
 | `kolux agent-context` | Lists every command with its flags and usage, for an agent to read |
-| `kolux skills list`, `skills get <topic>`, `skills coverage` | Lists Kolux's skill documents, prints one, and shows which installed agents have the orchestration skill |
+| `kolux skills list`, `skills get <topic>`, `skills coverage` | Lists Kolux's five skill documents (kolux-cli, orchestration, koluxsecurity, koluxward and video, the guide to making a film or image with HyperFrames and Higgsfield), prints one (`skills get video --reference higgsfield` prints a reference page), and shows which installed agents have the orchestration skill |
 | `kolux agent hooks status` | Shows, for each agent, whether its status hooks are installed, partial, not installed or in error. Antigravity can also show "disabled" when its Kolux bundle is switched off in its own file (`"enabled": false`) |
 | `kolux agent hooks on`, `agent hooks off` | Switches the status hooks and brings every agent in line |
 | `kolux agent hooks prepare-codex` | Installs and trusts Kolux's Codex hooks before Codex is first started |
