@@ -1,0 +1,41 @@
+T-300 · SET-041 Window, tray and app icon choices (tray follows the app icon; macOS menu bar icon switch)
+s-90/T-300 from origin/main 3af39cf3 · 2026-11-01 · built by Claude Opus 5.5 (cargo env: CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-90, debug 0, incremental 0)
+
+Built
+- src-tauri/src/tray.rs
+  - tray_pixels(choice, rgba, w, h, dot, dev) = paint(&app_look::variant(choice, rgba, w), w, h, dot, dev).
+  - real::icon() now reads the saved settings through the Store (the way app_look::apply_saved does) and paints
+    with tray_pixels, so the tray follows appIcon; set_icon() uses the same icon().
+  - repaint(app): re-reads the model's attention dot and redraws the tray. Generic over the runtime so
+    app_look::apply (generic) can call it.
+  - MENU_BAR_ICON_FIELD = "menuBarIcon"; has_tray(os, &settings): Linux never; macOS unless a saved boolean false
+    (absent or any other value = on); Windows ignores the key. Used where the tray is built (tray::install).
+- src-tauri/src/app_look.rs: apply() calls tray::repaint(app) after the window loop, so a pick repaints the tray at once.
+- Not added to src/carry/settingsRegistry.json: that registry's tests only list keys named by *_FIELD constants in src/**
+  and flag registry names that no src file spells; menuBarIcon has no UI yet (Rust-only), so listing it would fail
+  the "a registry name no source file spells" test. Add it with the UI switch. docs/guide/settings.md does not
+  mention tray or icon choices today, so nothing to update there.
+
+Failing first (tests written before the code)
+  cd src-tauri && cargo test --lib -- tray app_look
+  -> exit 101: error[E0425] cannot find function `tray_pixels`; error[E0425] cannot find value `MENU_BAR_ICON_FIELD`;
+     error[E0061] has_tray takes 1 argument but 2 were supplied; "could not compile `kolux-rs` (lib test) due to 18 previous errors"
+
+After
+  cargo test --lib -- tray app_look      -> exit 0, "test result: ok. 29 passed; 0 failed" (includes
+     set_041_the_tray_icon_takes_the_chosen_app_icon_colours,
+     set_041_the_dot_and_the_dev_corner_stay_on_a_blue_tray_icon,
+     set_041_the_macos_menu_bar_icon_is_on_unless_saved_off)
+  cargo clippy --all-targets -- -D warnings -> exit 0
+  pnpm exec tsc --noEmit                 -> exit 0
+  node scripts/plan-check.mjs            -> exit 0 ("plan-check: OK")
+
+What the tests prove
+- tray_pixels(Blue) == paint(variant(Blue)), differs from paint(base), alpha equal byte for byte; Classic == paint(base) incl. dot+DEV.
+- The amber dot (27,27) and the DEV corner (2,2) are painted on a Blue icon, absent when not asked.
+- has_tray(Mac, {menuBarIcon:false}) false; Mac absent/true/"off" true; Windows with false true; Linux false.
+
+Still live-only (left for Txais's Windows run; box T-300 stays unticked)
+- Picking Blue in Settings > Appearance turns the taskbar AND the tray icon blue without a restart, with the dot kept.
+- The owner's three real icon files (variants are still drawn at run time from the Kolux mark).
+- The menuBarIcon switch has no Settings control yet and was not run on a Mac.

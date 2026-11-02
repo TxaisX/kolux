@@ -30,9 +30,17 @@ pub fn items() -> [(&'static str, &'static str); 2] {
     [(OPEN_ID, "Open Kolux"), (QUIT_ID, "Quit")]
 }
 
-/// Windows and macOS get a tray icon; Linux does not.
-pub fn has_tray(os: Os) -> bool {
-    os != Os::Linux
+/// Settings key of the macOS menu bar icon switch (SET-041): on unless a saved `false`. Only macOS reads it.
+pub const MENU_BAR_ICON_FIELD: &str = "menuBarIcon";
+
+/// Windows and macOS get a tray icon; Linux does not. On macOS the icon is the menu bar icon, which
+/// is on by default and goes only when the saved settings say `false` (Windows ignores the switch).
+pub fn has_tray(os: Os, settings: &serde_json::Value) -> bool {
+    match os {
+        Os::Linux => false,
+        Os::Mac => settings.get(MENU_BAR_ICON_FIELD) != Some(&serde_json::Value::Bool(false)),
+        _ => true,
+    }
 }
 
 /// On Windows a left-click opens the app; elsewhere a click opens the menu.
@@ -193,6 +201,12 @@ pub fn paint(rgba: &[u8], w: u32, h: u32, dot: bool, dev: bool) -> Vec<u8> {
     out
 }
 
+/// SET-041: the tray icon's pixels for the chosen app icon: the variant's colours (same outline), then
+/// the dot and the DEV corner on top, so they stay visible on every choice.
+pub fn tray_pixels(choice: crate::app_look::IconChoice, rgba: &[u8], w: u32, h: u32, dot: bool, dev: bool) -> Vec<u8> {
+    paint(&crate::app_look::variant(choice, rgba, w), w, h, dot, dev)
+}
+
 /// STAT-048: the taskbar badge. Windows has no badge count, so the count is painted onto an overlay
 /// icon: an amber disc with the number in white, "99+" past the cap. Since the 2026-10-20 merge of
 /// main the one registered command is `badge::badge_set` (single digit, plain disc above 9); this
@@ -288,7 +302,7 @@ pub fn install(app: &tauri::AppHandle) -> tauri::Result<()> {
     use tauri::Manager;
     app.manage(TrayState::default());
     #[cfg(feature = "tray")]
-    if has_tray(Os::current()) {
+    if has_tray(Os::current(), &real::saved_settings(app)) {
         real::install(app)?;
     }
     Ok(())
@@ -551,11 +565,19 @@ pub fn tray_ping(app: tauri::AppHandle, kind: Option<String>) {
 }
 
 #[cfg(feature = "tray")]
-fn refresh(app: &tauri::AppHandle, dot: bool) {
+fn refresh<R: tauri::Runtime>(app: &tauri::AppHandle<R>, dot: bool) {
     real::set_icon(app, dot);
 }
 #[cfg(not(feature = "tray"))]
-fn refresh(_app: &tauri::AppHandle, _dot: bool) {}
+fn refresh<R: tauri::Runtime>(_app: &tauri::AppHandle<R>, _dot: bool) {}
+
+/// SET-041: the app icon choice changed. The tray icon is redrawn at once from the saved choice, with
+/// the attention dot kept as the model has it. Nothing happens without a tray icon.
+pub fn repaint<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    use tauri::Manager;
+    let dot = app.try_state::<TrayState>().and_then(|s| s.dot.lock().ok().map(|d| d.on)).unwrap_or(false);
+    refresh(app, dot);
+}
 
 #[cfg(feature = "tray")]
 mod real {
@@ -563,6 +585,12 @@ mod real {
     use tauri::image::Image;
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+
+    /// The saved settings, read through the Store the way `app_look::apply_saved` does; empty before it opens.
+    pub fn saved_settings<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> serde_json::Value {
+        use tauri::Manager;
+        app.try_state::<Mutex<crate::state::Store>>().and_then(|s| s.lock().ok().map(|s| s.settings())).unwrap_or_default()
+    }
 
     pub fn install(app: &tauri::AppHandle) -> tauri::Result<()> {
         let [(open_id, open), (quit_id, quit_label)] = items();
@@ -593,14 +621,15 @@ mod real {
         Ok(())
     }
 
-    /// The app icon with the DEV marker on a development copy and, when asked, the dot.
-    fn icon(app: &tauri::AppHandle, dot: bool) -> Option<Image<'static>> {
+    /// The chosen app icon (SET-041) with the DEV marker on a development copy and, when asked, the dot.
+    fn icon<R: tauri::Runtime>(app: &tauri::AppHandle<R>, dot: bool) -> Option<Image<'static>> {
         let base = app.default_window_icon()?;
         let (w, h) = (base.width(), base.height());
-        Some(Image::new_owned(paint(base.rgba(), w, h, dot, tauri::is_dev()), w, h))
+        let choice = crate::app_look::icon_choice(&saved_settings(app));
+        Some(Image::new_owned(tray_pixels(choice, base.rgba(), w, h, dot, tauri::is_dev()), w, h))
     }
 
-    pub fn set_icon(app: &tauri::AppHandle, dot: bool) {
+    pub fn set_icon<R: tauri::Runtime>(app: &tauri::AppHandle<R>, dot: bool) {
         if let (Some(tray), Some(img)) = (app.tray_by_id(TRAY_ID), icon(app, dot)) {
             let _ = tray.set_icon(Some(img));
         }
@@ -618,7 +647,7 @@ mod tests {
 
     #[test]
     fn app_008_windows_and_macos_only_and_left_click_opens_on_windows() {
-        assert!(has_tray(Os::Windows) && has_tray(Os::Mac) && !has_tray(Os::Linux));
+        assert!(has_tray(Os::Windows, &serde_json::json!({})) && has_tray(Os::Mac, &serde_json::json!({})) && !has_tray(Os::Linux, &serde_json::json!({})));
         assert!(left_click_opens(Os::Windows) && !left_click_opens(Os::Mac));
     }
 
@@ -829,4 +858,54 @@ mod tests {
         assert!(!d.on);
         assert!(!d.ping(Ping::AgentFinished), "visible again: a finish leaves no dot");
     }
+    // T-300 (SET-041): the tray follows the chosen app icon, and the macOS menu bar icon has a switch.
+    fn sample_icon() -> (Vec<u8>, u32, u32) {
+        let (w, h) = (32u32, 32u32);
+        let mut px = Vec::new();
+        for i in 0..(w * h) {
+            let v = (i % 251) as u8;
+            px.extend_from_slice(&[v, 255 - v, v / 2, if i % 7 == 0 { 0 } else { 255 }]);
+        }
+        (px, w, h)
+    }
+
+    #[test]
+    fn set_041_the_tray_icon_takes_the_chosen_app_icon_colours() {
+        use crate::app_look::{variant, IconChoice};
+        let (base, w, h) = sample_icon();
+        let blue = tray_pixels(IconChoice::Blue, &base, w, h, false, false);
+        assert_eq!(blue, paint(&variant(IconChoice::Blue, &base, w), w, h, false, false));
+        assert_ne!(blue, paint(&base, w, h, false, false), "Blue differs from the base icon");
+        let alpha = |v: &[u8]| v.chunks(4).map(|p| p[3]).collect::<Vec<_>>();
+        assert_eq!(alpha(&blue), alpha(&base), "the outline is byte for byte the same");
+        assert_eq!(tray_pixels(IconChoice::Classic, &base, w, h, true, true), paint(&base, w, h, true, true), "Classic is today's output");
+    }
+
+    #[test]
+    fn set_041_the_dot_and_the_dev_corner_stay_on_a_blue_tray_icon() {
+        use crate::app_look::IconChoice;
+        let (base, w, h) = sample_icon();
+        let px = |img: &[u8], x: u32, y: u32| -> [u8; 4] {
+            let i = ((y * w + x) * 4) as usize;
+            [img[i], img[i + 1], img[i + 2], img[i + 3]]
+        };
+        let img = tray_pixels(IconChoice::Blue, &base, w, h, true, true);
+        assert_eq!(px(&img, 27, 27), AMBER, "the dot is still painted");
+        assert_eq!(px(&img, 2, 2), DEV_MARK, "the DEV corner is still painted");
+        let plain = tray_pixels(IconChoice::Blue, &base, w, h, false, false);
+        assert_ne!(px(&plain, 27, 27), AMBER);
+        assert_ne!(px(&plain, 2, 2), DEV_MARK);
+    }
+
+    #[test]
+    fn set_041_the_macos_menu_bar_icon_is_on_unless_saved_off() {
+        use serde_json::json;
+        assert!(has_tray(Os::Mac, &json!({})), "absent = on");
+        assert!(has_tray(Os::Mac, &json!({ MENU_BAR_ICON_FIELD: true })));
+        assert!(!has_tray(Os::Mac, &json!({ MENU_BAR_ICON_FIELD: false })));
+        assert!(has_tray(Os::Mac, &json!({ MENU_BAR_ICON_FIELD: "off" })), "only a real false turns it off");
+        assert!(has_tray(Os::Windows, &json!({ MENU_BAR_ICON_FIELD: false })), "Windows ignores the switch");
+        assert!(!has_tray(Os::Linux, &json!({ MENU_BAR_ICON_FIELD: true })), "Linux never has a tray");
+    }
+
 }

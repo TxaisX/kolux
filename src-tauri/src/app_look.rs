@@ -95,6 +95,8 @@ pub fn apply<R: Runtime>(app: &tauri::AppHandle<R>, settings: &Value) -> Result<
         let effects = blur.then(|| EffectsBuilder::new().effect(Effect::Acrylic).build());
         window.set_effects(effects).map_err(|e| e.to_string())?;
     }
+    // T-300: the tray icon follows the pick at once, its attention dot kept.
+    crate::tray::repaint(app);
     Ok(())
 }
 
