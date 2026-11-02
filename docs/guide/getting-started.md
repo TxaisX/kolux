@@ -10,8 +10,10 @@ On a fresh install Kolux opens a four-step dialog, "Get started with Kolux". Eac
 |---|---|---|
 | 1. Welcome | Read the idea: several AIs can work on your files at the same time | Get started |
 | 2. Connect an AI | Link at least one AI. The main button stays off until one is connected | Continue (or "I'll do this later") |
-| 3. Your work | Pick a folder, or use sample data | Try with sample data |
-| 4. Choose a kit | Pick a starter lineup of sessions. A switch, "Tell me whenever an AI finishes", turns on notifications | Start kit (or "Just open a session") |
+| 3. Your work | Pick the folder your AIs will work in (a "Pick a folder" button) | Continue |
+| 4. Open a session | Start with an AI or a plain terminal in your folder. A switch, "Tell me whenever an AI finishes", turns on notifications | Open a session |
+
+Earlier builds had a "Choose a kit" fourth step and starter kits; they were removed on 2026-10-28.
 
 You can reopen the dialog later: click the "?" (Help) button at the bottom of the sidebar, then Onboarding.
 
