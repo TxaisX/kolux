@@ -451,7 +451,7 @@ fn end_for_installer(app: &AppHandle) {
     crate::resources::recovery::note_self_end(app, "installer starts (APP-029)");
 }
 
-/// Called as the app quits: a downloaded update installs now and does not reopen the app.
+/// Called as the app quits: a downloaded update installs now, and reopens the app only when this exit is a restart.
 pub fn install_on_quit(app: &AppHandle) {
     let ready = app.state::<Updates>().ready.lock().ok().and_then(|mut r| r.take());
     if let Some((update, bytes)) = ready {
@@ -463,7 +463,7 @@ pub fn install_on_quit(app: &AppHandle) {
             return;
         }
         record_attempt(app, &update);
-        let _ = update.restart_after_install(false).install(&bytes);
+        let _ = update.restart_after_install(crate::lifecycle::restart_requested()).install(&bytes);
     }
 }
 

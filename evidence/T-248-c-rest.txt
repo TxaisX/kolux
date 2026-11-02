@@ -58,3 +58,5 @@ Review round 1 fixes
   text (home C:\Users\jo no longer turns C:\Users\joe\x into ~e\x), and is tested on D:\Profiles\Some One
   in forward-slash, doubled-backslash and other-case spellings.
   cargo tests app010_help_restart_*, app010_one_restart_*, app010_a_home_* fail on the old code.
+
+Review round 2 fixes (2026-11-02): Help > Restart with a downloaded update now installs it and reopens Kolux (install_on_quit reopens when the exit is a restart); a quit that comes in during the restart's save point wins (checked again before the relaunch); a refused restart says why instead of leaving the page on "Restarting..."; a home outside C:\Users followed by a sentence's full stop is hidden too (test added). cargo test diag:: lifecycle:: update:: 56 passed; clippy clean.

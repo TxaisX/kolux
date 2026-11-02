@@ -675,6 +675,11 @@ pub fn restart_ended() {
     RESTARTING.store(false, Ordering::SeqCst);
 }
 
+/// Whether this exit is a restart: a downloaded update installed on the way out reopens the app.
+pub fn restart_requested() -> bool {
+    RESTARTING.load(Ordering::SeqCst)
+}
+
 /// APP-010 / APP-011: Help > Restart Kolux. The same durable save point as a quit, then the hand-off
 /// the update restart makes (the new copy must not die with this copy's job), then the relaunch.
 /// A save that fails or times out cancels the restart and says why; nothing is changed.
@@ -686,11 +691,16 @@ pub fn restart_ended() {
 #[tauri::command(async)]
 pub fn app_restart(app: tauri::AppHandle) -> Result<(), String> {
     if !restart_started() {
-        return Ok(());
+        // Said, not swallowed: the page leaves "Restarting…" and shows why.
+        return Err("A restart or quit is already under way.".into());
     }
     if let Err(e) = save_point(&app, 0) {
         restart_ended();
         return Err(e);
+    }
+    if QUIT_UNDER_WAY.load(Ordering::SeqCst) {
+        // A quit came in during the save point: the user's quit wins and runs its own exit routine.
+        return Ok(());
     }
     crate::procs::hand_off(true);
     app.request_restart();
@@ -951,6 +961,9 @@ mod tests {
         assert!(body.find("save_point(&app, 0)").unwrap() < body.find("crate::procs::hand_off(true);").unwrap(), "the save point comes before the hand-off");
         assert!(body.contains("restart_started()"), "a second click, another restart or a quit under way is ignored");
         assert!(body.contains("restart_ended()"), "a failed save gives the guard back");
+        assert!(body.find("QUIT_UNDER_WAY").unwrap() < body.find("app.request_restart()").unwrap(), "a quit during the save point wins over the restart");
+        let update = include_str!("update.rs").replace("\r\n", "\n");
+        assert!(update.contains("restart_after_install(crate::lifecycle::restart_requested())"), "Help > Restart with a downloaded update installs it and reopens the app");
         // Every restart hands off first, or the new copy dies with the job; and goes through the full exit routine.
         assert_eq!(code.matches("crate::procs::hand_off(true);\n    app.request_restart();").count(), 1);
         assert!(!code.contains("app.restart()"), "AppHandle::restart() on the main thread skips RunEvent::Exit");

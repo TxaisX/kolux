@@ -253,9 +253,10 @@ pub fn strip_home(text: &str, home: Option<&str>) -> String {
         // Either slash style, however many backslashes a log line's escaping left.
         let parts: Vec<String> = h.split(['\\', '/']).map(regex::escape).collect();
         // The match ends at a separator, whitespace, a quote, closing punctuation or the end of the text,
-        // so the home `C:\Users\jo` does not eat the start of `C:\Users\joe`. The regex crate has no
-        // lookahead: the boundary is a capture group put back after the `~`.
-        if let Ok(re) = regex::Regex::new(&format!(r#"(?i){}([\\/\s"'`)\]}},;:>|]|$)"#, parts.join(r"[\\/]+"))) {
+        // optionally after one full stop (a folder name cannot end in one, so this is a sentence's end),
+        // so the home `C:\Users\jo` does not eat the start of `C:\Users\joe` or `jo.smith`. The regex
+        // crate has no lookahead: the boundary is a capture group put back after the `~`.
+        if let Ok(re) = regex::Regex::new(&format!(r#"(?i){}(\.?(?:[\\/\s"'`)\]}},;:>|?*<]|$))"#, parts.join(r"[\\/]+"))) {
             out = re.replace_all(&out, "~$1").into_owned();
         }
     }
@@ -429,6 +430,10 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         assert_eq!(strip_home(r"D:\Profiles\joe\x", Some(r"D:\Profiles\jo")), r"D:\Profiles\joe\x");
         assert_eq!(strip_home(r"D:\Profiles\jo\x", Some(r"D:\Profiles\jo")), r"~\x");
         assert_eq!(strip_home(r#"path "D:\Profiles\jo""#, Some(r"D:\Profiles\jo")), r#"path "~""#);
+        // A sentence's full stop after the home still hides it; a name that only starts the same does not.
+        assert_eq!(strip_home(r"could not open D:\Profiles\Some One.", Some(r"D:\Profiles\Some One")), "could not open ~.");
+        assert_eq!(strip_home(r"D:\Profiles\Some One. Next", Some(r"D:\Profiles\Some One")), "~. Next");
+        assert_eq!(strip_home(r"D:\Profiles\jo.smith\x", Some(r"D:\Profiles\jo")), r"D:\Profiles\jo.smith\x");
     }
 
     #[test]
