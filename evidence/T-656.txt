@@ -37,3 +37,5 @@ Review
   state without running page code. Regression tests in Rust (browser_cli t656) and vitest (fails on the old copy, passes now).
   Also: fetch options built without page setters, a header named __proto__ refused, two comments narrowed to the DT-C92 scope.
   Live proof re-run after these changes: 7/7 PASS.
+- CI (shard 3): the privacy audit counts how many places reach XHR's prototype and found two after the hand-in change.
+  Fixed by reading the header setter from the same handle; vitest privacy-audit + src/browser 266 passed, cargo test --lib browser 291 passed.
