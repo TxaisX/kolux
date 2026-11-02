@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { join } from "node:path";
 import { createApp } from "../evidence/app-launch.mjs";
 import { reporter, dismissFirstRun, sleep, waitFor, TERM, ROOT, LIVE_BASE, LIVE_LOGS } from "./live-common.mjs";
+import { paneStates as readPaneStates } from "./pane-states.mjs";
 
 const DRY = process.env.PROVE_DRY === "1";
 const ID = "com.txaisxiong.kolux-rs";
@@ -276,10 +277,9 @@ async function killStrays(survivors, label) {
   log(`${label}: kept ${kept.length} service/service terminal processes (${app.byName(kept)}); killing ${kill.length} (${app.byName(kill)})`);
   await app.killAll(kill);
 }
-// What each shown terminal pane says after a relaunch, read before any click clears the restored mark. The pane key
-// comes from its sidebar row (data-pane), matched by title; the pane DOM itself carries no key.
-const paneStates = () =>
-  app.evalJs(`[...document.querySelectorAll(${JSON.stringify(TERM)})].filter(e => e.offsetParent !== null).map((p, i) => { const title = (p.getAttribute("aria-label") ?? "").replace(/ pane$/, ""); const row = [...document.querySelectorAll(".sess.pane-row[data-pane]")].find(r => r.title === "Show " + title); return { i, title, key: row?.dataset.pane ?? null, restored: p.querySelector(".status.restored")?.textContent.trim() ?? null }; })`);
+// What each shown terminal pane says after a relaunch (pane-states.mjs, sent to the page as text like domRows): its
+// key from the pane's own data-key (T-566; the sidebar row is the fallback) and its restored chip, or null.
+const paneStates = () => app.evalJs(`(${readPaneStates.toString()})(document, ${JSON.stringify(TERM)})`);
 // The Tip card ignores Escape; its own button is "Not now".
 async function dismissTip() {
   if (await app.clickWhere('[role="dialog"] button', "/^\\s*Not now\\s*$/").then(() => true, () => false)) {
@@ -287,15 +287,20 @@ async function dismissTip() {
     log(`closed the Tip card (Not now); a dialog still open: ${await app.exists('[role="dialog"], [role="alertdialog"]')}`);
   }
 }
+// The panes are read ONCE before any dialog is closed: dismissFirstRun presses Escape when a dialog has no "Close setup"
+// button, the Tip card is non-modal, so that Escape reaches the focused pane and clears its restored chip (T-544 run 4,
+// relaunch 2, pane 1; evidence/T-566.txt). The second read, after the dialogs, shows what those keys did.
 async function back(label) {
-  await dismissTip();
-  await dismissFirstRun(app, log);
   await waitFor("a terminal pane back", async () => (await app.shown(TERM)) >= 1, 60000, 500);
   await waitFor("its input field", async () => (await app.count(`${TERM} .xterm-helper-textarea`)) >= 1, 30000);
   await sleep(4000);
+  const panes = await paneStates();
+  await dismissTip();
+  await dismissFirstRun(app, log);
   await dismissTip(); // it can open after the panes
   jobs(label);
-  log(`reattach ${label}: ${takenBackLine()}; panes ${JSON.stringify(await paneStates())}`);
+  log(`reattach ${label}: ${takenBackLine()}; panes ${JSON.stringify(panes)}`);
+  log(`reattach ${label}: panes after dialogs ${JSON.stringify(await paneStates())}`);
 }
 async function closeNoCdp(pid) {
   const r = ps(`$p = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($p) { $p.CloseMainWindow() } else { 'gone' }`);
