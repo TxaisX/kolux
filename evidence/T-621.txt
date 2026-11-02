@@ -104,3 +104,14 @@ const css = process.argv[3] || "";
   }
   await b.close();
 })();
+
+LIVE WINDOWS RUN (2026-11-02, worker s-90, audit item 1): node scripts/prove/live-audit-1.mjs on the dev app hidden off-screen, scratch profile G:\Temp\live-v15\run-audit-1, stand-in claude.cmd. Full log: G:\Temp\live-v15-logs\audit-1.out.txt.
+Window resized with SetWindowPos; measured in the app’s own font.
+ 900 px: 4 segments, none covered, none outside the frame, nav right 428 < right group left 631; real click on Tower’s centre -> Tower pressed. PASS
+1400 px: same, nav right 839 < right group 972; Tower click -> Tower. PASS
+1920 px: same, nav right 1099 < right group 1492; Tower click -> Tower. PASS
+Screenshots: G:/Temp/live-v15-logs/audit-1-switcher-{900,1400,1920}.png (window controls drawn inside the window at every width).
+The prover’s extra "every header button inside the window" check flagged the collapsed explorer panel’s header buttons
+(New file, New folder, Hide the explorer; plus Hide dotfiles / Hide git-ignored files at 900), which sit past the right edge
+while that panel is closed. They are not the top bar, so they don’t bear on T-621. Separate finding, reported to the
+coordinator: at 900 px the Tower view shows a horizontal scrollbar along the bottom of the main area.
