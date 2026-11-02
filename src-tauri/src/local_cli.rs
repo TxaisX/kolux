@@ -399,6 +399,15 @@ const SKILLS: &[Skill] = &[
             ("tasks", include_str!("../skills/orchestration/references/tasks.md")),
         ],
     },
+    Skill {
+        name: "video",
+        aliases: &["hyperframes", "higgsfield", "film", "media"],
+        guide: include_str!("../skills/video/SKILL.md"),
+        refs: &[
+            ("hyperframes", include_str!("../skills/video/references/hyperframes.md")),
+            ("higgsfield", include_str!("../skills/video/references/higgsfield.md")),
+        ],
+    },
 ];
 
 /// SKILL-017: the built-in guides, by name, for the Skills page.
@@ -604,7 +613,7 @@ mod tests {
     fn bundled_skill_guides_are_listed_and_printed_offline() {
         let l = local("skills list").unwrap();
         let names: Vec<&str> = l["skills"].as_array().unwrap().iter().map(|s| s["name"].as_str().unwrap()).collect();
-        assert_eq!(names, ["kolux-cli", "koluxsecurity", "koluxward", "orchestration"]);
+        assert_eq!(names, ["kolux-cli", "koluxsecurity", "koluxward", "orchestration", "video"]);
         assert!(l["skills"].as_array().unwrap().iter().all(|s| !s["description"].as_str().unwrap().is_empty()));
         let short = local("skills get orchestration").unwrap();
         let full = local("skills get orchestration --full").unwrap();
@@ -617,6 +626,12 @@ mod tests {
         assert_eq!(local("skills get orchestration --reference references/gates.md").unwrap(), gates);
         assert!(gates["markdown"].as_str().unwrap().starts_with("# Decision gates"));
         assert_eq!(local("skills get kolux-cli --references").unwrap()["markdown"], "- automations\n- json\n- worktrees");
+        let video = local("skills get video").unwrap();
+        assert_eq!(video["name"].as_str(), Some("video"));
+        assert!(video["markdown"].as_str().unwrap().contains("HyperFrames"));
+        assert!(local("skills get hyperframes").unwrap()["name"].as_str() == Some("video"), "an alias reaches the guide");
+        assert_eq!(local("skills get video --references").unwrap()["markdown"], "- hyperframes\n- higgsfield");
+        assert!(local("skills get video --reference higgsfield").unwrap()["markdown"].as_str().unwrap().contains("mcp.higgsfield.ai/mcp"));
         // SKILL-031: a dry run prints the command and starts nothing; JSON is refused on a real run.
         let dry = local("skills install --skill orchestration --agent universal --dry-run").unwrap();
         assert_eq!(dry["command"], "npx --yes skills add kolux/skills --skill orchestration --agent universal -y -g");
@@ -625,7 +640,7 @@ mod tests {
         assert!(local("skills install --local --all --agent universal --dry-run").unwrap()["command"].as_str().unwrap().ends_with("universal -y"));
         let nope = local("skills get nope").unwrap_err();
         assert_eq!(nope.code, "not_found");
-        assert!(nope.message.contains("kolux-cli, koluxsecurity, koluxward, orchestration"), "{}", nope.message);
+        assert!(nope.message.contains("kolux-cli, koluxsecurity, koluxward, orchestration, video"), "{}", nope.message);
         assert!(local("skills get orchestration --full --references").unwrap_err().message.contains("cannot be combined"));
         assert!(local("skills get orchestration --reference nope").unwrap_err().message.contains("gates, mail, tasks"));
         assert!(local("skills get").unwrap_err().message.contains("name a topic"));

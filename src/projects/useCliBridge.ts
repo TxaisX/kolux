@@ -8,6 +8,7 @@ import { setupRequestOf } from "../orchestration/workerSetup";
 import { sameDir } from "../workspaces";
 import type { CliFile, CliWorkspace } from "./model";
 import { startTail } from "./startArgs";
+import { withHintedSession } from "../terminal/layout";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
@@ -63,8 +64,8 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
     const off = listen<{ id: number; code?: number | null; session?: string }>("terminal-exit", (e) => {
       const key = paneOfTerminal(ptys.current, e.payload.id);
       if (key === null) return;
-      const printed = e.payload.session; // T-066-d: the id an id-only agent printed in its own resume hint; a hook's id is never replaced
-      if (printed) setPanes((ps) => ps.map((p) => (p.key === key && !p.session ? { ...p, session: printed } : p)));
+      const printed = e.payload.session; // T-066-d: the id an id-only agent printed in its own resume hint; it wins over a listed guess (T-066-e), a hook's id is never replaced
+      if (printed) setPanes((ps) => withHintedSession(ps, key, printed));
       setupExits.current[key]?.(e.payload.code ?? null);
       const ended = runTabEnded(runTabs.current, key, pinnedNow.current.has(key));
       runTabs.current = ended.tabs;
