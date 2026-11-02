@@ -260,8 +260,8 @@ mod tests {
 
     #[test]
     fn brow026_fedcm_joins_the_one_disable_features_list_once() {
-        let wry = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-renderer-backgrounding";
-        assert_eq!(fedcm_off(wry), "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,FedCm --disable-renderer-backgrounding");
+        let wry = "--disable-features=msWebOOUI,msPdfOOUI --disable-renderer-backgrounding";
+        assert_eq!(fedcm_off(wry), "--disable-features=msWebOOUI,msPdfOOUI,FedCm --disable-renderer-backgrounding");
         // Already there: the string is unchanged, so every web view keeps passing the same one.
         assert_eq!(fedcm_off(&fedcm_off(wry)), fedcm_off(wry));
         // No list yet: one is added; an empty string gets just the switch.

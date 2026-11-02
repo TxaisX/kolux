@@ -12,4 +12,5 @@ export const OUTBOUND: ReadonlyArray<{ to: string; when: string }> = [
   { to: "script CDNs (cdnjs, jsdelivr, unpkg, tailwindcss, jquery)", when: "saving an artifact for offline use, to fetch the scripts its page names" },
   { to: "Kimi (api.moonshot.ai) and MiniMax (www.minimax.io)", when: "only when you press Check now in Settings > AI connections with a key you added" },
   { to: "Microsoft, from the WebView2 runtime", when: "the Edge engine that Windows lends the app's window keeps its own startup checks; they carry nothing of yours and the app neither uses nor can switch them off" },
+  { to: "Microsoft Defender SmartScreen, from Kolux's windows (chiefly the browser pane)", when: "the addresses of pages you open are checked against Microsoft's list of phishing and malware sites, and for files you download, their address and details such as name, size and fingerprint, as in Edge (T-634)" },
 ];

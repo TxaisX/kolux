@@ -1,0 +1,44 @@
+T-634 · SmartScreen back on for the browser pane (R07-browser.2, DT-C79)
+Worker 2f, 2026-11-02, branch s-2f/audit-sec-1.
+
+CHECK FIRST
+- DECISIONS.md and PLAN.md searched for "SmartScreen": no row chose it off. The only mentions
+  were WinGet's SmartScreen exit code (DT-R24) and the unsigned-installer warning. It was off
+  only because wry's default browser arguments switch it off and Kolux built on them.
+
+WHAT THE USER GETS
+- Pages opened in the browser pane and files downloaded there are checked by Microsoft Defender
+  SmartScreen against Microsoft's phishing and malware lists, as in Edge.
+- Settings > General > Privacy lists SmartScreen as an outside connection; so does the guide
+  (docs/guide/settings.md, Privacy).
+
+WHAT CHANGED
+src-tauri/src/resources/recovery.rs
+- BASE_ARGS: wry's default --disable-features list without msSmartScreenProtection. browser_args
+  and safe_args fall back to it instead of WRY_DEFAULT_ARGS, so every window, tab and pop-up
+  (one string per data folder) carries it. WRY_DEFAULT_ARGS stays as what an argless window
+  would pass (the row-955 test still compares against it).
+src-tauri/src/browser_proxy.rs, browser_popup.rs: test fixture strings follow the new base.
+src/settings/outbound.ts: the SmartScreen row (APP-070 statement).
+DECISIONS.md: DT-C79.
+
+TESTS
+- resources::recovery::tests::t634_smartscreen_stays_on_in_the_one_string (new): plain, safe
+  graphics, proxy and both; no "SmartScreen" in the string, FedCM still in the one list.
+- src/settings/privacy.test.ts "t634: the statement names SmartScreen ..." (new).
+- Existing recovery tests updated to BASE_ARGS.
+
+RED (before the fix)
+- resources::recovery::tests::t634_smartscreen_stays_on_in_the_one_string --- FAILED
+    --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,FedCm --disable-background-timer-throttling ...
+
+GREEN (after the fix)
+- cargo test --lib: 2775 passed, 1 failed (t606, environment; see evidence/T-633.txt), 6 ignored.
+- vitest src/settings + scripts/privacy-audit.test.mjs: 83 files, 409 tests passed.
+- Review round: the statement and the guide now say Kolux's windows (chiefly the browser pane),
+  since every webview shares the one string, and that downloads send file details (name, size,
+  fingerprint). 409 tests passed again.
+
+NOT DONE
+- Turning reputation checks off for the app's own local pages only (WebView2's per-webview
+  setting) was left out as speculative; nothing local has been flagged.
