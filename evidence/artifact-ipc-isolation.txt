@@ -14,8 +14,8 @@ off-screen, WebView2 remote debugging port. Nothing touched the real profile or 
 2. The probe page writes what it finds into its own DOM: whether the window is the top window, whether the Tauri
    objects exist, then it tries three harmless commands: app_info (read-only), settings_patch (writes one scratch key
    in the scratch profile), and a Tauri event emit (a listener in the main window would see it). It also sends one raw
-   message through window.ipc with a deliberately wrong invoke key; the backend logs one line for every message it
-   receives and refuses, so that line shows whether messages from the frame arrive at all.
+   message through window.ipc with a deliberately wrong invoke key; Tauri checks the key first, before any origin or
+   permission check, and logs a line for a wrong key, so that line shows whether messages from the frame arrive at all.
 3. The frame was read over the WebView2 debugging port (it appears as its own target) and the effects were read from
    outside the frame: the scratch profile's settings.json, the main window's listener, the backend's log.
 4. Positive control in the same run, from the main window (the trusted page): the same settings write works and shows in
@@ -51,12 +51,16 @@ CONTROL (main window): settings.json holds ipcProbeMain2f => true ; main listene
   the T-500 sentence "a frame ... has no IPC object and no invoke key" was wrong for the artifact frame. The fetch
   transport is blocked by the artifact page's own CSP, so Tauri falls back to window.ipc.postMessage (the console line).
 - Not reproduced: the part that matters. No command from the frame ran. Nothing arrived at the backend (not even the
-  rejected-key line), no scratch file changed, no event fired, no reply came back. The message a frame sends with
+  rejected-key line), no scratch file changed, no event fired. (The "no reply" lines above are not evidence either way:
+  on the postMessage route Tauri delivers replies to the main frame, so a frame would see no reply even if a command
+  ran. The settings file, the event and the log line are what count.) The message a frame sends with
   chrome.webview.postMessage does not reach the handler that Tauri listens on. Observed: no log line, no effect.
   Read from code, not tested separately: wry 0.57 (src/webview2/mod.rs) subscribes only to the main web view's
   WebMessageReceived and has no per-frame (CoreWebView2Frame) handler, which matches WebView2 delivering a frame's
   messages to a per-frame event. The Tauri-side origin check (is_local_url treats the artifact host as local, and the
   app has no command-permission manifest) was therefore never reached in this test.
+- A second barrier sits behind the CSP: the sandboxed frame has no real origin, so a fetch to the IPC endpoint would
+  carry "Origin: null", which Tauri's protocol path refuses as not a valid URL (the refusal T-500 case 2 saw).
 - So the isolation holds on this build, but it holds because of how WebView2 and wry route frame messages, not because
   of an app-level check. A newer WebView2 or wry that routes frame messages to the main handler would change that. The
   frame runs the same IPC script as the main window, so by code reading it also carries the same invoke key (not read
