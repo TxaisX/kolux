@@ -259,7 +259,7 @@ fn index_locked(dir: &Path) -> bool {
 }
 
 /// What a step answers while `index_locked` is true.
-const LOCKED: &str = "Another git command is using this repository (its index.lock exists); the next finished turn will try again. If no git command is running, a git that stopped left the lock behind: delete index.lock in the repository's .git folder to go on.";
+const LOCKED: &str = "Another git command is using this repository (its index.lock exists); the next finished turn will try again. If no git command is running, a git that stopped left the lock behind: delete index.lock in the repository's git folder to go on (`git rev-parse --git-dir` prints where it is; a workspace has a folder of its own).";
 
 /// The one rule about a branch's upstream, for commit and push alike. No upstream, `origin/<branch>`
 /// and the default branch on origin (a workspace branch cut from `origin/main` tracks it until its
@@ -428,7 +428,7 @@ fn undo(dir: &Path, saved: &str, head_before: &Option<String>, mut s: AutoStep) 
             // next finished turn skips until the lock is gone.
             // Nothing was committed or pushed; the next run scans what is staged before any commit.
             s.message = format!(
-                "{} The staging area was left as it is, so these changes may still be staged, because the repository's index.lock is still there. If no git command is running, a git that stopped left it behind: delete it, and the next finished turn checks again.",
+                "{} The staging area was left as it is, so these changes may still be staged, because the repository's index.lock is still there. If no git command is running, a git that stopped left it behind: delete it (`git rev-parse --git-dir` prints its folder), and the next finished turn checks again.",
                 s.message.replace(" Nothing was kept staged.", "")
             );
         } else if let Err(e) = run(&["read-tree", saved], Some(dir)) {
