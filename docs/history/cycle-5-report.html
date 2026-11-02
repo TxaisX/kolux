@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cycle 5 — graded report</title>
+<style>:root{
+  --ink:#0b0820;--ink-2:#130e2c;--violet:#251c52;--cream:#fffaea;--sand:#f1e2c2;
+  --muted:#a99fc4;--line:rgba(241,226,194,.13);--good:#6ee7a8;--warn:#f5c451;--bad:#ff7a6b;
+  --mono:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:ui-sans-serif,"Segoe UI",Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--ink)}
+body{
+  margin:0;color:var(--cream);font:400 16px/1.7 var(--sans);
+  background:radial-gradient(900px 520px at 88% -10%,rgba(58,45,120,.45),transparent 62%),
+    radial-gradient(640px 400px at -8% 2%,rgba(37,28,82,.65),transparent 60%),var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px;margin:0 auto;padding:58px 28px 88px}
+.doc-head{border-bottom:1px solid var(--line);padding-bottom:26px;margin-bottom:34px}
+.kicker{font:600 11px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--sand);opacity:.7}
+h1{font:600 clamp(32px,5vw,46px)/1.1 var(--serif);letter-spacing:-.02em;margin:16px 0 0}
+h2{font:600 24px/1.25 var(--serif);letter-spacing:-.01em;margin:44px 0 10px;padding-top:10px}
+h3{font:600 17px/1.35 var(--sans);margin:28px 0 8px;color:var(--sand)}
+h4{font:600 11px/1 var(--mono);letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin:24px 0 8px}
+p{margin:12px 0;color:rgba(255,250,234,.86)}
+ul,ol{margin:12px 0;padding-left:22px;color:rgba(255,250,234,.86)}
+li{margin:6px 0}
+a{color:var(--sand);text-decoration:none;border-bottom:1px solid rgba(241,226,194,.3)}
+a:hover{border-bottom-color:var(--sand)}
+strong{color:var(--cream);font-weight:650}
+em{color:var(--sand)}
+hr{border:0;height:1px;background:var(--line);margin:38px 0}
+code{font:400 13px/1.5 var(--mono);background:rgba(241,226,194,.09);padding:2px 5px;border-radius:2px;color:var(--sand)}
+pre{background:#0d0a24;border:1px solid var(--line);border-radius:3px;padding:15px 17px;overflow:auto;margin:16px 0}
+pre code{background:none;padding:0;color:var(--sand);font-size:12.5px;line-height:1.75}
+blockquote{margin:16px 0;padding:12px 18px;border-left:2px solid var(--warn);background:rgba(245,196,81,.06);color:rgba(255,250,234,.88);border-radius:0 3px 3px 0}
+blockquote p{margin:4px 0}
+table{border-collapse:collapse;width:100%;margin:18px 0;font-size:14.5px;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+th{text-align:left;padding:11px 14px;background:rgba(37,28,82,.55);font:600 10.5px/1.3 var(--mono);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--sand);border-bottom:1px solid var(--line)}
+td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:rgba(255,250,234,.85)}
+tr:last-child td{border-bottom:0}
+footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--line);
+  font:400 12px/1.7 var(--mono);color:var(--muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="doc-head">
+    <div class="kicker">Kolux RS · documentation</div>
+    <h1>Cycle 5 — graded report</h1>
+  </header>
+  <main>
+<h1>Cycle 5 — graded report</h1>
+<!-- html --><p>How cycle 5 went: what merged, what each pull request is worth, what broke, and what the next cycle owes.
+Twenty-six pull requests merged in one day, one was parked with a security finding, and nothing has reached
+the installed app yet because the cycle made no release.</p>
+<p><strong>Cycle dates:</strong> 2026-10-31 to 2026-11-02 · <strong>Repo:</strong> <code>TxaisX/kolux-rs</code> · <strong><code>main</code> at close:</strong> <code>690c52a6</code> ·
+<strong>Overall grade:</strong> <strong>B+</strong></p>
+<hr>
+<h2>In one table</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Start of cycle 5</th>
+<th>End of cycle 5</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>P0 cards passing (the must-have list)</td>
+<td>216 / 228</td>
+<td><strong>217 / 228</strong></td>
+</tr>
+<tr>
+<td>Plan tasks done</td>
+<td>719 / 775</td>
+<td><strong>723 / 779</strong></td>
+</tr>
+<tr>
+<td>Pull requests merged</td>
+<td>—</td>
+<td><strong>26</strong> (one parked: #37)</td>
+</tr>
+<tr>
+<td>First load (startup download)</td>
+<td>under the 1,485,000-byte ceiling</td>
+<td><strong>1,483,871 bytes</strong>, 1,129 under</td>
+</tr>
+<tr>
+<td>Decision (DT) and task (T) number clashes</td>
+<td>3 numbers renumbered at merge (cloud phase)</td>
+<td><strong>0</strong> in the local phase</td>
+</tr>
+<tr>
+<td>Release in your hands</td>
+<td>v0.1.5</td>
+<td><strong>v0.1.5</strong> (no release this cycle)</td>
+</tr>
+</tbody></table>
+<p>Scores are from <code>node scripts/plan-check.mjs</code> on <code>main</code> at <code>a4593c03</code>, after the STATE update (#77) merged.
+STATE.md now says the same.</p>
+<h2>How the cycle ran</h2>
+<p><strong>Phase 1, cloud (Oct 31 – Nov 1).</strong> A cloud session reviewed the seven original pull requests (#37, #38, #42–#46)
+with a 48-agent review, sorted 64 findings, and built #53–#64. It ran out of Fable budget and wrote a hand-off.</p>
+<p><strong>Phase 2, local (Nov 1–2).</strong> Three Claude sessions on your PC shared one copy of the repo, and each pull request
+got its own <strong>worktree</strong> (a separate working folder on its own branch, so sessions never edit the same files).</p>
+<table>
+<thead>
+<tr>
+<th>Session</th>
+<th>Job</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>fa</td>
+<td>the only one who merges</td>
+</tr>
+<tr>
+<td>2f, 90</td>
+<td>fix or build a pull request, get a fresh read-only review, wait for Windows CI (GitHub&#39;s automatic build-and-test run) to pass on that exact commit, hand it to fa</td>
+</tr>
+<tr>
+<td>57</td>
+<td>coordinator: assigns the work, answers questions, keeps the queue</td>
+</tr>
+</tbody></table>
+<p>fa merged <code>main</code> into each pull request, waited for CI to pass again, and merged one at a time. All 26 merges
+happened on 2026-11-02 between 05:29 and 16:08 UTC.</p>
+<h2>Grades</h2>
+<p>Six reviewers graded every pull request, each on one <strong>dimension</strong> (one angle of quality). A seventh reviewer
+then tried to break their grades. <strong>All seven were Opus, because Fable was out of limit</strong>, and none could edit
+anything. An A means nothing is left open that a careful reviewer would refuse to merge over.</p>
+<h3>By dimension</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>What it asks</th>
+<th>Cycle grade</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Correctness</td>
+<td>Does the code do what the pull request says?</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>Completeness</td>
+<td>Did the cycle deliver its queue and the plan?</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>Safety and privacy</td>
+<td>Is anything risky to your data, your machine or your accounts?</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>Proof and tests</td>
+<td>Are the claims proven by tests and real runs?</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>Bookkeeping honesty</td>
+<td>Do the plan, decisions, evidence and PR text tell the truth?</td>
+<td><strong>B</strong></td>
+</tr>
+<tr>
+<td>User value</td>
+<td>What will you see or be able to do differently?</td>
+<td><strong>B</strong></td>
+</tr>
+<tr>
+<td><strong>Overall</strong></td>
+<td></td>
+<td><strong>B+</strong></td>
+</tr>
+</tbody></table>
+<p>Why not an A:</p>
+<ul>
+<li>Personal account details from #38 are still readable in the public repo&#39;s pull request history (finding 3).</li>
+<li>Some records drifted: three pull request descriptions say the opposite of what merged, two plan lines
+contradict the decisions file, and one task was ticked done early.</li>
+<li>Review follow-ups were left only in comments, and no local-phase pull request updated the guide.</li>
+<li>Nothing shipped to your PC.</li>
+</ul>
+<p>The adversarial check called these tidying faults, not engineering faults. It found no pull request that put a
+defect on <code>main</code> that a careful reviewer would block: the two code gaps it traced (#70&#39;s default-sign-in
+restore and #68&#39;s missing listener) are older behaviour those pull requests left in place. One bookkeeping pass
+would lift the cycle to A-.</p>
+<p>Why not lower:</p>
+<ul>
+<li>Every queued item was built.</li>
+<li>The riskiest code (stopping programs, deleting inside WSL (Windows Subsystem for Linux: Linux running inside Windows), network calls with your keys, running notebook
+cells) held up when read line by line.</li>
+<li>CI discipline was close to perfect: 26 of 26 merged heads passed on the exact commit, and only one needed a
+rerun.</li>
+</ul>
+<h3>By pull request</h3>
+<p>C = correctness · Cm = completeness · S = safety · P = proof · B = bookkeeping · V = user value. The overall
+column is the middle of the six.</p>
+<table>
+<thead>
+<tr>
+<th>PR</th>
+<th>What it does</th>
+<th>C</th>
+<th>Cm</th>
+<th>S</th>
+<th>P</th>
+<th>B</th>
+<th>V</th>
+<th>Overall</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>#37</td>
+<td>Artifacts: auto-import workspace files, play media (parked)</td>
+<td>C+</td>
+<td>C+</td>
+<td>C+</td>
+<td>B</td>
+<td>A-</td>
+<td>C</td>
+<td><strong>C+</strong></td>
+</tr>
+<tr>
+<td>#38</td>
+<td>Bundled video-production skills</td>
+<td>B+</td>
+<td>B</td>
+<td>B-</td>
+<td>B</td>
+<td>B</td>
+<td>B+</td>
+<td><strong>B</strong></td>
+</tr>
+<tr>
+<td>#43</td>
+<td>Sidebar stays readable at a narrow width</td>
+<td>A-</td>
+<td>A-</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>B+</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#53</td>
+<td>Gemini status from its title icons when hooks are off</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>B-</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#54</td>
+<td>Records the starter-kit removal, ticks APP-052</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>A</td>
+<td>B+</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#55</td>
+<td>Guide matches the hooks consent line and first-run wizard</td>
+<td>A</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>B+</td>
+<td><strong>A</strong></td>
+</tr>
+<tr>
+<td>#56</td>
+<td>Floor opens from the View menu</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>A</td>
+<td>B</td>
+<td><strong>A</strong></td>
+</tr>
+<tr>
+<td>#57</td>
+<td>Relaunch prover reads every pane before closing dialogs</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>B</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#58</td>
+<td><code>kolux open</code> brings a running Kolux to the front</td>
+<td>A-</td>
+<td>A-</td>
+<td>A</td>
+<td>A-</td>
+<td>A</td>
+<td>B</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#59</td>
+<td>Linux agent detection through the foreground process</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>C+</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#60</td>
+<td>Ports: Stop refuses reused ids, home folders, unknown folders</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>A</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#61</td>
+<td>Cursor, Gemini, Hermes, Goose and Amp tabs resume</td>
+<td>B+</td>
+<td>A-</td>
+<td>A-</td>
+<td>B+</td>
+<td>A-</td>
+<td>B</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#62</td>
+<td>Pi panes show the prompt that began the run</td>
+<td>A-</td>
+<td>B+</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>B-</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#63</td>
+<td>Delete skills inside WSL</td>
+<td>B+</td>
+<td>A-</td>
+<td>A-</td>
+<td>B+</td>
+<td>B+</td>
+<td>C+</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#64</td>
+<td>WSL projects: search and reads inside the distribution</td>
+<td>B+</td>
+<td>B+</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>C-</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#65</td>
+<td>CI: terminal test shells start without a profile</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>B+</td>
+<td>B</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#66</td>
+<td>Update safety follow-ups</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>B+</td>
+<td>A-</td>
+<td>B</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#67</td>
+<td>Tray icon follows the app icon</td>
+<td>A-</td>
+<td>B+</td>
+<td>A</td>
+<td>B+</td>
+<td>A-</td>
+<td>C+</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#68</td>
+<td>Restored row after an upgrade says &quot;restart this terminal&quot;</td>
+<td>A-</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>B</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#69</td>
+<td>CI check details tab (steps, annotations, Fix with AI)</td>
+<td>A-</td>
+<td>B+</td>
+<td>A-</td>
+<td>B+</td>
+<td>C+</td>
+<td>B+</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#70</td>
+<td>Claude plan figures per account</td>
+<td>B+</td>
+<td>B</td>
+<td>A-</td>
+<td>A-</td>
+<td>B+</td>
+<td>B</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#71</td>
+<td>A v0.1.5 profile reads back identical under today&#39;s code</td>
+<td>A</td>
+<td>A-</td>
+<td>A</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td><strong>A</strong></td>
+</tr>
+<tr>
+<td>#72</td>
+<td>Hermes and OpenClaw automations in the list</td>
+<td>B+</td>
+<td>B+</td>
+<td>A-</td>
+<td>B+</td>
+<td>B-</td>
+<td>B</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#73</td>
+<td>Artifact viewer isolation tested live</td>
+<td>A</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>B+</td>
+<td>B+</td>
+<td><strong>A-</strong></td>
+</tr>
+<tr>
+<td>#74</td>
+<td>Help menu: docs, diagnostics copy, Restart Kolux</td>
+<td>A-</td>
+<td>A-</td>
+<td>A</td>
+<td>B+</td>
+<td>B+</td>
+<td>B+</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#75</td>
+<td>Check now asks Kimi and MiniMax for a key&#39;s balance</td>
+<td>A-</td>
+<td>B+</td>
+<td>A</td>
+<td>A-</td>
+<td>B</td>
+<td>B-</td>
+<td><strong>B+</strong></td>
+</tr>
+<tr>
+<td>#76</td>
+<td>Notebook cells run Python after you trust the notebook</td>
+<td>A-</td>
+<td>A</td>
+<td>A-</td>
+<td>A-</td>
+<td>A-</td>
+<td>B-</td>
+<td><strong>A-</strong></td>
+</tr>
+</tbody></table>
+<p>For comparison, the seven original pull requests were graded at the start of the cycle: #43 A-, #37 B-,
+#38 B-, #45 C+, #46 C, #42 C, #44 D+. Of those, #43 and #38 merged, #37 is parked, and the other four were
+closed and replaced by #60, #62, #66 and earlier work.</p>
+<p>Grades the adversarial check changed: #70 correctness B → B+ (the open account gap predates it) and safety
+A → A- (a pane on the wrong account is a small privacy issue, whoever caused it); #63 value C → C+ (it works for
+anyone with WSL, just not on your PC). It also dropped two reasons without changing the grade: #68&#39;s missing
+listener dates from 2026-10-25, and #72&#39;s stale description is counted under bookkeeping, not correctness.</p>
+<h2>Findings rated serious</h2>
+<p>Each finding is listed once, even when several reviewers raised it. &quot;Open&quot; means still true on <code>main</code> at <code>690c52a6</code>.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Severity</th>
+<th>PR</th>
+<th>Finding</th>
+<th>Open?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>HIGH</td>
+<td>#37</td>
+<td>The workspace auto-scan can follow a folder link that points at a network location, so a scan could make Windows contact another machine. Never on <code>main</code>, never in a release.</td>
+<td>parked</td>
+</tr>
+<tr>
+<td>2</td>
+<td>MEDIUM</td>
+<td>#70</td>
+<td>A restored Claude pane that ran on Claude&#39;s default sign-in restarts on the currently active managed account instead. Older behaviour: before #70 every pane did this; #70 fixed it for managed accounts only.</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>3</td>
+<td>MEDIUM</td>
+<td>#38</td>
+<td>Personal account details for a video service are still readable in the pull request&#39;s commit history on the public repo. <code>main</code> is clean.</td>
+<td>yes, needs you</td>
+</tr>
+<tr>
+<td>4</td>
+<td>MEDIUM</td>
+<td>#69</td>
+<td>The JPEG 2000 decoder commits landed after the only recorded review. The safety reviewer looked at them afterwards and found nothing wrong, but no review is on record for them.</td>
+<td>record gap</td>
+</tr>
+<tr>
+<td>5</td>
+<td>MEDIUM</td>
+<td>#38</td>
+<td>T-623 is ticked done without its live check. The <code>kolux/skills</code> repo that its install offer points at returns &quot;not found&quot;.</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>6</td>
+<td>MEDIUM</td>
+<td>cycle</td>
+<td><code>main</code> failed CI after the last merge on a known flaky test (one that fails at random, not because of a bug), its third hit this cycle. Four flaky tests are not tracked anywhere in the plan.</td>
+<td>rerun passed; flakes untracked</td>
+</tr>
+<tr>
+<td>7</td>
+<td>MEDIUM</td>
+<td>#72, #75, #63, #69</td>
+<td>Records that say the wrong thing: #72&#39;s description says external rows cannot be edited, but they can; #75&#39;s plan line says the security review is pending, but it is done; #63&#39;s plan line says DT-C66 is unconfirmed, but the decisions file says confirmed; #69&#39;s description says JPEG 2000 was &quot;not decided here&quot;, but DT-C71 decides it.</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>8</td>
+<td>MEDIUM</td>
+<td>#69, #70, #72</td>
+<td>Review follow-ups live only in pull request comments, including #72&#39;s untested Hermes rename save, which is where an earlier data-loss bug was.</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>9</td>
+<td>MEDIUM</td>
+<td>#64</td>
+<td>WSL search and reads cannot be reached by anyone: the folder fence (Kolux&#39;s list of folders it may read) still refuses WSL paths. (#63&#39;s WSL skill delete does work for WSL users; your PC just has none.)</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>10</td>
+<td>MEDIUM</td>
+<td>#66–#76</td>
+<td>No local-phase pull request touched the docs. The per-account usage paragraph now contradicts the app, the Help menu list is missing five entries, and five new features are not in the guide.</td>
+<td>yes</td>
+</tr>
+<tr>
+<td>11</td>
+<td>MEDIUM</td>
+<td>#73</td>
+<td>The artifact viewer is kept away from app commands by how WebView2 (the Windows part that draws web pages inside Kolux) routes messages, not by a check in Kolux itself. Tracked as T-632.</td>
+<td>tracked</td>
+</tr>
+<tr>
+<td>12</td>
+<td>MEDIUM</td>
+<td>older, found by the adversarial check</td>
+<td>The skills installer downloads from a placeholder GitHub address, <code>kolux/skills</code>. That repo does not exist, but the account <code>kolux</code> does (created 2018). If you do not own it, a stranger could control what <code>kolux skills install</code> downloads. #38 added <code>video</code> to that offer.</td>
+<td>yes, needs you</td>
+</tr>
+</tbody></table>
+<p>Lowered from serious: #76&#39;s Python-dependent tests skip silently when Python is missing, but timing on #76&#39;s CI
+run shows they really ran there. LOW.</p>
+<h2>A conditions: where each stands</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Condition</th>
+<th>After cycle 4</th>
+<th>Now</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Completion: 228/228 P0 cards; 0 open buildable tasks</td>
+<td>215/228 (216 by the time cycle 5 began)</td>
+<td>217/228. The 11 left all need a live run, a Mac or WSL</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Release: signed release, updater proven, kolux on PATH, CI green</td>
+<td>releases ship from your PC</td>
+<td>v0.1.5 is the latest. No release this cycle, by your rule (&quot;no releases or tags&quot;). The release hold from the artifact scare was lifted (#73)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Product: hooks on with consent, one status, Review changes, no dead screens</td>
+<td>code merged, live check pending</td>
+<td>more built (Help menu, safe Stop, check tab); live checks still pending</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Engineering: App.tsx &lt; 800, 0 dead commands, first load &lt; 1.5 MB, tests green</td>
+<td>first load met</td>
+<td>App.tsx 222 ✔. First load 1,483,871 ✔. Tests: green on all 26 merge heads; <code>main</code> red once on a flaky test at close, green on rerun. Dead commands not re-measured</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Trust: safe defaults, no telemetry, threat model tested</td>
+<td>partly</td>
+<td>stronger: Stop guards, a network allow-list, the privacy audit pins each outside call. #37&#39;s HIGH kept off <code>main</code> ✔. T-632 and the #38 history item are open</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Docs: guide matches the build; STATE generated</td>
+<td>partly</td>
+<td>slipped: one guide passage contradicts the app, and new features are missing. STATE.md regenerated by #77 (217/228, 723/779)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Workspace: reclaim commands handed to you</td>
+<td><strong>met</strong></td>
+<td><strong>met</strong></td>
+</tr>
+</tbody></table>
+<h2>Lessons</h2>
+<p><strong>1. Three local sessions on one repo, one worktree per pull request: it worked.</strong> 26 merges, no session
+overwrote another&#39;s files, and no merge had to be undone on <code>main</code>. The one accident (lesson 4) happened on a
+branch, and nothing on <code>main</code> was affected.</p>
+<p><strong>2. One merger, one merge at a time, was steady.</strong> The first 23 merges (#54 to #74) took 9 h 23 min, about
+25 minutes each. Gaps ranged from 21 to 42 minutes, with a median of 24. Every merge re-ran CI with the newest
+<code>main</code> inside it, so no merge broke the next one.</p>
+<p><strong>3. Pre-assigned number blocks prevented collisions.</strong> In the cloud phase, two lanes picked the same decision
+numbers (DT-C62 three times, DT-C67 twice), and they were renumbered at merge to DT-C68, C69 and C70. In the
+local phase, each session got its own block (2f: DT-C80–C82 and T-632–T-637; 90: DT-C71), and there were zero
+collisions. The bookkeeping reviewer confirmed no duplicate number was added this cycle.</p>
+<p><strong>4. A &quot;hands off&quot; message arrived too late.</strong> Session 90 pushed <code>e3dc147d</code> to #69&#39;s branch after that branch
+had been handed to 2f. The commit deleted 2,680 lines, undoing the work of #72–#74 on that branch. 90 reverted
+it a minute later (<code>d3bcbd57</code>) without force-pushing (rewriting the branch&#39;s history), so history stayed honest and the two commits cancel out.
+<strong>Fix for cycle 6:</strong> every branch gets one named owner, and when work moves, the old owner&#39;s branch is locked
+before the new owner starts.</p>
+<p><strong>5. The first-load budget was hit twice.</strong> #69 went 4 bytes over after <code>main</code> was merged in, and then 97 bytes
+over after #75 landed. Both times, code that only one screen needs was moved out of the startup download, and
+the ceiling was not raised. The first load is now 1,483,871 bytes, 1,129 under. The margin is thin, so expect
+this again.</p>
+<p><strong>6. The artifact-frame scare was settled in a day.</strong> A review suggested that pages shown in the artifact viewer
+might reach the app&#39;s internal commands. A live test (three runs, with a control) could not make that happen,
+and the release hold was lifted the same day (#73). The underlying weakness is real but not reachable today, and
+hardening is filed as T-632 for cycle 6.</p>
+<p><strong>7. #37 was parked rather than rushed.</strong> After five review rounds, one HIGH finding is still open (finding 1).
+The pull request stays open for cycle 6, and the problem is described here only at issue level because the repo
+is public.</p>
+<p><strong>8. The flaky-test list shrank but did not go away.</strong> #65 started two terminal tests without a PowerShell
+profile, and those tests have not failed since (11 later merge heads). Four known flaky tests remain, and one of
+them turned <code>main</code> red at close (it passed on rerun). <strong>Fix for cycle 6:</strong> put each flaky test in the plan with an owner, and give
+the <code>after696</code> test the same no-profile start.</p>
+<p><strong>9. You had to approve permissions in each pane yourself.</strong> Each session needed your own message (&quot;I approve:
+for cycle 5 you may push branches, open/update/close PRs, comment, re-run CI and merge…&quot;) before it could act on
+GitHub. One session&#39;s permission settings also blocked a branch delete the coordinator wanted to make. Approvals
+do not carry between sessions, so a three-pane cycle needs three approvals.</p>
+<p><strong>10. New from grading: a review grade covers only the commits it read.</strong> Several hand-off grades had no record
+on the pull request, and #69&#39;s last review came before its JPEG 2000 commits. <strong>Fix for cycle 6:</strong> post every
+review&#39;s grade and commit on the pull request, and re-review any commit that lands after it.</p>
+<p><strong>11. New from grading: write follow-ups into the plan, not just into comments.</strong> Three pull requests left their
+review follow-ups only in comments, where cycle 6 will not see them. They are listed below.</p>
+<h2>What cycle 6 owes</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Where it comes from</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Fix the default-sign-in restore (finding 2)</td>
+<td>#70</td>
+</tr>
+<tr>
+<td>#37: refuse folder links during the scan, then a fresh security audit</td>
+<td>#37 park comment</td>
+</tr>
+<tr>
+<td>Publish the video skill to <code>kolux/skills</code>, or point the install offer elsewhere; untick T-623 until then</td>
+<td>#38</td>
+</tr>
+<tr>
+<td>Re-review the JPEG 2000 decoder commits (<code>450939fb</code>, <code>fb6effbe</code>) and record the grade</td>
+<td>#69</td>
+</tr>
+<tr>
+<td>Test the Hermes rename save; fix the dialog&#39;s stale-preview race</td>
+<td>#72 follow-ups</td>
+</tr>
+<tr>
+<td>#69 follow-ups: annotations past the cap, Fix with AI after a passing re-run</td>
+<td>#69 follow-ups</td>
+</tr>
+<tr>
+<td>#70 follow-ups: trust record and hooks folder per account</td>
+<td>#70</td>
+</tr>
+<tr>
+<td>Correct the PR descriptions and plan lines in finding 7</td>
+<td>#63, #69, #72, #75</td>
+</tr>
+<tr>
+<td>Guide: per-account usage paragraph, the full Help menu, plus the five new features</td>
+<td>#66–#76</td>
+</tr>
+<tr>
+<td>Mark the Python tests as skipped (not passed) when Python is missing (LOW)</td>
+<td>#76</td>
+</tr>
+<tr>
+<td>Track the flaky tests; no-profile start for <code>after696</code></td>
+<td>lesson 8</td>
+</tr>
+<tr>
+<td>Artifact frame hardening</td>
+<td>T-632</td>
+</tr>
+<tr>
+<td>WSL: let the fence accept WSL roots so #64 can be reached</td>
+<td>T-062-b</td>
+</tr>
+<tr>
+<td>Settle who owns the <code>kolux</code> GitHub account, or point the skills installer at a repo you own (finding 12)</td>
+<td>DT-C43</td>
+</tr>
+<tr>
+<td>Sign-in renewal half of T-547, and T-263-c</td>
+<td>#75</td>
+</tr>
+<tr>
+<td>A Settings control for <code>menuBarIcon</code></td>
+<td>#67</td>
+</tr>
+<tr>
+<td>About 20 built items waiting for a live run, and the 11 P0 cards that need one</td>
+<td>PLAN.md</td>
+</tr>
+</tbody></table>
+<h2>Needs you</h2>
+<ol>
+<li><strong>Delete the branch <code>lane/video-skill</code></strong> on GitHub, then ask GitHub support to purge pull request #38&#39;s hidden
+copy of its commits. This is finding 3. The coordinator&#39;s delete was blocked by its permission settings, so
+this step is yours.</li>
+<li><strong>Confirm DT-C63</strong> (&quot;Open a session&quot; with no project yet now opens Add Project instead of doing nothing).
+It is still marked &quot;needs you&quot;.</li>
+<li><strong>Tell us whether you own the GitHub account <code>kolux</code>.</strong> If not, the skills installer should point at a repo you
+own (finding 12).</li>
+<li><strong>Decide when to release.</strong> Everything in this report is on <code>main</code> but not on your PC.</li>
+</ol>
+<h2>How this report was made</h2>
+<ul>
+<li>Inputs: the cloud hand-off and its review files, fa&#39;s merge ledger, the text of every pull request from #37
+to #76, and a clean copy of <code>main</code> at <code>690c52a6</code>.</li>
+<li>Six read-only Opus reviewers graded one dimension each, two at a time, and each was barred from building
+anything.</li>
+<li>A seventh read-only Opus reviewer re-checked the load-bearing claims and looked for contradictions between
+the six.</li>
+<li>Session 2f re-verified four findings directly: the #38 history exposure, the #69 review timing, the red CI
+run on <code>main</code>, and that the <code>kolux</code> GitHub account exists while <code>kolux/skills</code> does not.</li>
+<li>The adversarial check changed three grades and lowered one finding; all are noted above.</li>
+<li>Graders were Opus because Fable was out of limit.</li>
+<li>Full grade reports are kept outside the repo, in the session scratchpad.</li>
+</ul>
+
+  </main>
+  <footer>
+    <span>docs/history/cycle-5-report.md</span>
+    <span>generated 2026-11-02 by scripts/docs/build.mjs</span>
+  </footer>
+</div>
+</body>
+</html>
