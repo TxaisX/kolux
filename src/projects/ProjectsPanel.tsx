@@ -2520,9 +2520,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
             <Sliders size={14} />
           </button>
           <HelpMenu />
-          <button className="upd" title="Check for a newer version of Kolux RS" onClick={requestUpdateCheck}>
+          <button className="upd" title="Check for a newer version of Kolux RS" aria-label="Check for updates" onClick={requestUpdateCheck}>
             <Refresh size={13} />
-            Check for updates
+            <span className="label">Check for updates</span>
           </button>
           {NOT_BUILT && (
             <button className="ib" title="Focus (not built yet)">

@@ -1,0 +1,106 @@
+T-180-b · the rest of SKILL-022: skills inside WSL distributions can be deleted too
+Lane: lane5/T-180-b · base origin/main 3af39cf3 · 2026-11-02
+
+WHAT THE USER CAN NOW DO
+When the open project lives inside a WSL distribution, the Skills page already lists that
+distribution's skills (T-243-b). Delete skills now removes them as well: the confirmation asks the
+distribution what is there (a folder, or a link and where it leads), and confirming runs one small
+shell command inside the same distribution, under the shared skill-operation lock. A skill from
+another distribution, or one that is not right under one of its eight skill folders, is refused as
+"Outside Kolux's skill folders" without asking WSL anything. Removing a link removes the link only;
+what it points at stays. A command that fails inside the distribution (FAIL line, an answer Kolux
+cannot read, wsl.exe exiting non-zero or taking over 60 s) is "Failed; nothing was changed" with the
+reason; a skill that disappeared meanwhile is skipped as no longer on disk. Windows and WSL skills
+can go in one request. The Windows set-aside journal is not used for WSL items.
+
+CODE
+- src-tauri/src/skills/wsl.rs: DELETE_SCRIPT (header KOLUX-WSL-DELETE 1, then one of OUTSIDE, GONE,
+  FAIL <reason>, OK <folder|link> <SKILL.md change time> <link target base64>; check changes
+  nothing; delete is rm on a link, rm -rf on a folder, and the path must sit right under the root
+  after ~/ becomes the distribution's home); Step (Check/Delete); Runner::delete; Real runs
+  wsl.exe -d <distro> --exec sh -c DELETE_SCRIPT kolux <step> <root> <dir>, hidden, 60 s limit,
+  non-zero exit = error; parse_reply reads the answer strictly.
+- src-tauri/src/skills.rs: Places.wsl_roots = (distribution, skill folder) for the open project's
+  distribution (its 5 home and 3 project skill folders); the module is pub(crate).
+- src-tauri/src/skill_delete.rs: plan_with / run_with take the Runner (the Tauri commands pass
+  wsl::Real; plan/run stay as test wrappers with wsl::Unavailable). A pick that wsl::split()s is
+  matched against wsl_roots (other distribution, deeper path, not SKILL.md = outside), checked in
+  the distribution (changed/gone/outside), and removed by delete_wsl under the same lock.
+- src/skills/skills.ts: no change needed: canDelete already admits home/workspace rows, and the
+  scan only lists WSL rows of the open project's own distribution (vitest pins this).
+- DECISIONS.md DT-C66 (Txais to confirm: departs from OD-12 the way T-243-b already did).
+- docs/guide/getting-started.md: the Skills section describes Delete skills and the WSL rule.
+
+FAILING BEFORE (main's behaviour put back by hand: WSL picks take the Windows path, no wsl_roots)
+cd src-tauri && . ../scripts/test-env.sh && cargo test --lib skill022_wsl
+test skill_delete::tests::skill022_wsl_another_distribution_or_a_path_outside_the_skill_folders_is_refused_without_asking ... ok
+test skill_delete::tests::skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_fails_the_plan ... FAILED
+test skill_delete::tests::skill022_wsl_a_folder_is_deleted_inside_the_distribution_without_the_windows_record ... FAILED
+test skill_delete::tests::skill022_wsl_a_failing_command_or_a_garbled_answer_is_a_failure_and_a_skill_gone_meanwhile_is_skipped ... FAILED
+test skill_delete::tests::skill022_wsl_deleting_a_link_removes_the_link_and_keeps_the_folder_it_points_at ... FAILED
+test skills::tests::skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete ... FAILED
+test skill_delete::tests::skill022_wsl_windows_and_wsl_skills_go_in_one_request_under_one_lock ... FAILED
+test skills::wsl::tests::skill022_wsl_the_delete_script_run_by_a_real_shell_keeps_a_links_target_and_never_leaves_its_root ... ok
+thread 'skill_delete::tests::skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_fails_the_plan' (10685) panicked at src/skill_delete.rs:2776:9:
+  left: [Some("outside"), Some("outside")]
+ right: [Some("changed"), Some("gone")]
+thread 'skill_delete::tests::skill022_wsl_a_folder_is_deleted_inside_the_distribution_without_the_windows_record' (10687) panicked at src/skill_delete.rs:2737:9:
+  left: Some("outside")
+ right: None
+thread 'skill_delete::tests::skill022_wsl_a_failing_command_or_a_garbled_answer_is_a_failure_and_a_skill_gone_meanwhile_is_skipped' (10686) panicked at src/skill_delete.rs:2805:9:
+  left: "skipped"
+ right: "failed"
+thread 'skill_delete::tests::skill022_wsl_deleting_a_link_removes_the_link_and_keeps_the_folder_it_points_at' (10689) panicked at src/skill_delete.rs:2762:9:
+  left: []
+ right: [Item { path: "\\\\wsl.localhost\\Ubuntu\\home\\me\\.claude\\skills\\pdf", kind: "link" }]
+thread 'skills::tests::skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete' (10696) panicked at src/skills.rs:1234:9:
+  left: 0
+ right: 8
+thread 'skill_delete::tests::skill022_wsl_windows_and_wsl_skills_go_in_one_request_under_one_lock' (10695) panicked at src/skill_delete.rs:2826:9:
+  left: [None, Some("outside"), Some("bundled")]
+ right: [None, None, Some("bundled")]
+test result: FAILED. 2 passed; 6 failed; 0 ignored; 0 measured; 2579 filtered out; finished in 0.19s
+error: test failed, to rerun pass `--lib`
+(the refusal test and the real-shell script test pass both ways: main refuses every WSL pick, and
+the script test does not go through plan/run.)
+
+PASSING AFTER
+cd src-tauri && . ../scripts/test-env.sh && cargo test --lib skill022
+  test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 2569 filtered out
+  new: skill_delete::tests::skill022_wsl_another_distribution_or_a_path_outside_the_skill_folders_is_refused_without_asking
+       skill_delete::tests::skill022_wsl_a_folder_is_deleted_inside_the_distribution_without_the_windows_record
+       skill_delete::tests::skill022_wsl_deleting_a_link_removes_the_link_and_keeps_the_folder_it_points_at
+       skill_delete::tests::skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_fails_the_plan
+       skill_delete::tests::skill022_wsl_a_failing_command_or_a_garbled_answer_is_a_failure_and_a_skill_gone_meanwhile_is_skipped
+       skill_delete::tests::skill022_wsl_windows_and_wsl_skills_go_in_one_request_under_one_lock
+       skills::tests::skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete
+       skills::wsl::tests::skill022_wsl_the_delete_script_run_by_a_real_shell_keeps_a_links_target_and_never_leaves_its_root
+         (DELETE_SCRIPT run by this machine's real sh with HOME in a temp folder: check removes
+         nothing, a link goes and its target's SKILL.md stays, a folder goes whole, other folders,
+         a .. step, the root itself and another root are OUTSIDE, a plain file is FAIL, missing is GONE)
+  also new: skills::wsl::tests::a_delete_answer_is_read_strictly,
+            skills::wsl::tests::the_delete_script_removes_a_link_itself_and_a_folder_whole_and_never_leaves_its_root
+cargo test --lib skill
+test skill_delete::tests::fix8_d_a_link_swapped_between_two_renames_leaves_everything_in_place ... FAILED
+test skills::tests::a_wsl_project_lists_its_distributions_skills ... FAILED
+thread 'skill_delete::tests::fix8_d_a_link_swapped_between_two_renames_leaves_everything_in_place' (12694) panicked at src/skill_delete.rs:2503:49:
+thread 'skills::tests::a_wsl_project_lists_its_distributions_skills' (12810) panicked at src/skills.rs:1172:9:
+test result: FAILED. 125 passed; 2 failed; 2 ignored; 0 measured; 2458 filtered out; finished in 0.50s
+error: test failed, to rerun pass `--lib`
+  both failures are on the Linux baseline list (baseline-rust-failed.txt), unchanged by this unit.
+VITEST_MAX_WORKERS=2 npx vitest run src/skills
+  Test Files  6 passed (6)   Tests  41 passed (41)
+  new: "SKILL-022: a skill inside the project's WSL distribution is chosen like any home or
+       workspace skill, and the app's answer decides the rest"
+npx tsc --noEmit                                                         exit 0
+cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings  Finished, 0 warnings
+cargo check --target x86_64-pc-windows-gnu --all-targets                  Finished
+node scripts/plan-check.mjs                                               plan-check: OK
+node scripts/invoke-contract.mjs                                          invoke-contract: OK
+No new dependencies (license-check not needed).
+
+WHAT IS LEFT
+- Live check on a Windows PC with a WSL distribution installed (the Real runner calling wsl.exe);
+  none is installed on Txais's PC (DT-C41). The script itself is proven above by a real sh.
+- DT-C66 needs Txais's confirmation (it follows T-243-b's departure from OD-12).
+- SKILL-022's acceptance boxes do not name WSL; none is ticked here.

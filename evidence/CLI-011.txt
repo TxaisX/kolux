@@ -1,0 +1,118 @@
+CLI-011 evidence, 2026-11-01, lane5/CLI-011 (worktree lane-t1, from origin/main a948cc3f)
+`kolux open` on a running Kolux now grants the app the foreground before asking it forward, raises its
+window from the command's own process the way a second launch does, and reports whether the window
+really came to the front (`raised`). Card CLI-011 box 2 (App minimised → kolux open brings it to the
+front) stays a live Windows check; this unit makes that check a one-line read of `kolux open --json`.
+
+--- what changed
+src-tauri/src/cli/mod.rs:229-266   `open(send, launch, grant, raise, limit)`: `grant()` runs before the first ask;
+    the launch-and-retry road is unchanged; after the answer the pid in `result.pid` goes to `raise(pid)` and its
+    verdict is put into the result as `raised` (true / false / null when no pid was named or the platform cannot tell).
+src-tauri/src/cli/mod.rs:680-689   the client: `grant` reads the app's pid from the startup file (lifecycle::read_running,
+    cli.json) and calls lifecycle::allow_foreground(pid) (AllowSetForegroundWindow); `raise` calls
+    lifecycle::raise_by_pid(pid, RAISE_TRIES, sleep) on Windows (restore if iconic, SetForegroundWindow, checked with
+    GetForegroundWindow, 5 tries 150 ms apart) and answers None elsewhere. Both lifecycle helpers were already pub.
+src-tauri/src/cli/text.rs:368-371  "Kolux is ready; its window is in front" only when `raised` is not false; when it is
+    false: "Kolux is ready; its window was restored, but Windows kept another window in front". A started app keeps
+    "Kolux started and is ready".
+src-tauri/src/cli/mod.rs:1041-1049 (`app.open` on the app's side) is unchanged: it still unminimizes, shows and focuses
+    through ctx.front and fails the request when the window is gone; the new dispatch test pins that.
+docs/guide/command-line.md         the `kolux open` row and a paragraph on the two lines and `result.raised`.
+docs/live-proofs-windows.md B-5    now also asks for `kolux open --json` printing "raised": true.
+DECISIONS.md DT-C69                the result shape {ready, started, pid, raised} and the two readable lines.
+
+--- tests added (test first)
+src-tauri/src/cli/mod.rs tests::cli011_box2_app_open_asks_the_window_forward
+    dispatch("app.open") with a counting front: exactly one call, {ready: true, started: false, pid: own pid}; a second
+    ask calls front again; a front that fails ("the Kolux window is gone") fails the request (code failed, same message).
+src-tauri/src/cli/mod.rs tests::cli011_open_grants_the_foreground_before_asking_and_says_whether_the_window_came_forward
+    injected send/launch/grant/raise closures writing a log: running app → [grant, ask, raise 4242] and raised true;
+    raise false carries through as false; raise None as null; closed app → [grant, ask, launch, ask, raise 7] with
+    started true and raised true; an answer without a pid → [grant, ask] and raised null; an "unauthorized" refusal
+    is returned as it is after only [grant].
+src-tauri/src/cli/mod.rs tests::cli011_open_text_says_when_windows_kept_another_window_in_front
+    the four readable lines (raised true / false / null, started true).
+tests::open_starts_the_app_only_when_none_answers_and_gives_up_after_the_limit updated to the new signature (a grant
+    that does nothing, a raise that answers None); its assertions are unchanged.
+
+--- red (before the code)
+All from the worktree's src-tauri, with scripts/test-env.sh sourced and CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=2.
+Run 1 (the three new tests in place; the `open` test temporarily compiled out with #[cfg(any())] and the app-side
+`(ctx.front)()?;` temporarily commented out, so the guard test and the text test could run on their own):
+$ cargo test --lib cli011
+test cli::tests::cli011_open_starts_the_app_in_its_own_folder_not_the_callers ... ok
+test pty::service::tests::cli011_the_service_starts_in_its_own_folder_not_the_callers ... ok
+test cli::tests::cli011_open_text_says_when_windows_kept_another_window_in_front ... FAILED
+test cli::tests::cli011_box2_app_open_asks_the_window_forward ... FAILED
+---- cli011_open_text_says_when_windows_kept_another_window_in_front ---- assertion `left == right` failed
+  left: "Kolux is ready; its window is in front"
+ right: "Kolux is ready; its window was restored, but Windows kept another window in front"
+---- cli011_box2_app_open_asks_the_window_forward ---- assertion `left == right` failed: asked forward once
+  left: 0
+ right: 1
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 2575 filtered out
+(the front call and the cfg were then restored exactly; the guard test is green against main's app.open as it is,
+its red above shows what it guards)
+Run 2 (everything restored, the `open` test compiled in, before `open` changed):
+$ cargo test --lib cli011
+error[E0061]: this function takes 3 arguments but 5 arguments were supplied
+    --> src/cli/mod.rs:5648:17
+5648 |         let v = open(&send, &launch, &grant, &raise, Duration::from_secs(5)).unwrap();
+     |                                      ------  ------ unexpected argument #3 ... unexpected argument #4
+(and the same at :5653, :5656, :5665 ...; `open` had no grant and no raise, so nothing could be granted or reported)
+
+--- green (after the code)
+$ cargo test --lib cli011
+test cli::tests::cli011_open_starts_the_app_in_its_own_folder_not_the_callers ... ok
+test cli::tests::cli011_open_grants_the_foreground_before_asking_and_says_whether_the_window_came_forward ... ok
+test cli::tests::cli011_open_text_says_when_windows_kept_another_window_in_front ... ok
+test pty::service::tests::cli011_the_service_starts_in_its_own_folder_not_the_callers ... ok
+test cli::tests::cli011_box2_app_open_asks_the_window_forward ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 2575 filtered out; finished in 0.01s
+$ cargo test --lib open_starts_the_app
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 2578 filtered out; finished in 0.25s
+
+--- other checks
+$ cargo test --test cards_20 cli011            (the real kolux-dev binary against a stand-in app; scratch env)
+test cli011_box1_app_closed_open_launches_it_and_exits_zero_once_ready ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 1.01s
+$ cargo check --target x86_64-pc-windows-gnu --all-targets
+    Finished `dev` profile [unoptimized] target(s) in 1m 24s     exit 0 (the AllowSetForegroundWindow / raise_by_pid arm compiles)
+$ cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings       (the project's clean gate; review fix)
+    Finished `dev` profile [unoptimized] target(s) in 4m 34s   exit=0, 0 warnings, 0 errors
+    (so the new Windows arm, cfg!(windows).then(|| raise_by_pid(...)) and the `grant` closure, carries no lint)
+$ cargo clippy --all-targets -- -D warnings                                        (Linux host, kept for the record)
+exit 101 with 94 errors, every one a pre-existing dead-code or unused-variable lint on Linux in files this unit does
+not touch (browser_crash.rs 38, browser_holder.rs 7, browser_certs.rs 6, badge.rs 5, lifecycle.rs RAISE_WAIT /
+Claim::Second, cli_register.rs real_env ...). The same command on plain origin/main (3af39cf3, changes stashed) gives
+the same 94 errors in the same files; nothing in src/cli/mod.rs or src/cli/text.rs is listed. HONEST NOTE: clippy is
+not clean on main here, so this unit cannot make it clean; the delta is zero.
+$ npx tsc --noEmit                               exit 0 (no TypeScript changed)
+$ node scripts/plan-check.mjs                    plan-check: OK
+vitest: no src/ directory touched, not run. No dependency changed, no Tauri command added (license-check and
+invoke-contract not needed).
+
+--- bookkeeping
+PLAN.md: no task line is CLI-011's own (T-075-b, T-249-b and T-595 cover other parts of the card and are ticked), so
+none is changed. Spec card CLI-011 box 2 stays unticked (live-only). DECISIONS.md DT-C69 added. docs/guide and the
+live proof sheet updated as above.
+
+--- review fixes (PR #58, 2026-11-01)
+1. The app-side `app.open` pointer above read 1019-1027 (copied from the brief); on this branch the arm is at
+   mod.rs:1041-1049. Corrected.
+2. clippy had been run only on the Linux host, which is not clean on main. The project's clean gate was run on this
+   branch: cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings -> Finished, exit=0, nothing
+   reported in src/cli/mod.rs or src/cli/text.rs (recorded under "other checks" above).
+3. The PR #58 description ended with the comment trailer; it now ends with the PR-body trailer the brief asks for
+   (edited on GitHub, no repo file involved).
+No code changed in this fix, so no new test: the clippy gate is the proof the review asked for.
+$ npx tsc --noEmit                               exit 0
+$ node scripts/plan-check.mjs                    plan-check: OK
+
+--- what is left
+Box 2 itself is live-only: on Txais's PC, with Kolux running and minimised, `kolux open` in an ordinary terminal
+should print "Kolux is ready; its window is in front" and `kolux open --json` should print "raised": true (B-5 in
+docs/live-proofs-windows.md). The box stays unticked until that run. AllowSetForegroundWindow and the raise were
+compiled for Windows here (cargo check --target x86_64-pc-windows-gnu) but could not be run: this container has no
+desktop and cannot launch the app.

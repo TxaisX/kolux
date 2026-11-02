@@ -128,7 +128,23 @@ export async function loadText(read: () => Promise<string>, tries = 3, wait = 30
 }
 
 /** The buffer key: Windows paths compare without case and with either slash. */
-export const keyOf = (path: string) => (/^[a-z]:[\\/]/i.test(path) ? path.replace(/\\/g, "/").toLowerCase() : path);
+/** EDIT-044 (T-062-b): a path inside a WSL distribution, `\\wsl$\<distro>\...` or `\\wsl.localhost\<distro>\...`
+ * (either share name, either slash, the long-path `\\?\UNC\` form too): the distribution and the Linux path. */
+const WSL = /^[\\/]{2}(?:\?[\\/]unc[\\/])?wsl(?:\$|\.localhost)[\\/]([^\\/]+)(.*)$/i;
+
+/** One key per file, so two tabs on the same file share one text. A Windows drive path is case-blind with forward
+ * slashes. A file inside a WSL distribution keys as `//wsl/<distro>/<linux path>`, the Linux path case-sensitive as
+ * Linux keeps it; one that reaches a Windows drive through the distribution's `/mnt/<letter>` keys as that drive, so
+ * the WSL path and the drive alias of one file are one file (EDIT-044, T-062-b). Any other path is its own key. */
+export function keyOf(path: string): string {
+  if (/^[a-z]:[\\/]/i.test(path)) return path.replace(/\\/g, "/").toLowerCase();
+  const m = WSL.exec(path);
+  if (!m) return path;
+  const tail = m[2].replace(/\\/g, "/");
+  const mnt = /^\/mnt\/([a-z])(?=\/|$)/i.exec(tail);
+  if (mnt) return `${mnt[1]}:${tail.slice(mnt[0].length) || "/"}`.toLowerCase();
+  return `//wsl/${m[1].toLowerCase()}${tail}`;
+}
 export const baseName = (path: string) => path.split(/[\\/]/).pop() || path;
 
 // fileText, not sliceDoc(): a mixed file's endings are held beside the document (T-603, DT-C57).
