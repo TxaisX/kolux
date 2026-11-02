@@ -1,0 +1,60 @@
+T-624 Artifacts (PR #37, lane/artifacts-auto) - round 4 evidence: the review's three majors
+Date: 2026-11-02 · Decision rows used: DT-C65 (none new)
+Base for the "before" runs: 456f8cf0 (before the wip fixes a40e5c14 + 5054eb51); "after" = this commit.
+
+MAJOR 1 - the viewer opened the browser for a page that was merely selected
+ Fix (5054eb51, ArtifactsPage.tsx viewerLink): a koluxOpen message opens a link only while user
+ activation is live AND the viewer frame holds the focus AND took it after the user's last pointer/key
+ input in Kolux's own window. A row click gives Kolux's window activation but leaves the focus on the row.
+ Before (ArtifactsPage.tsx taken from 456f8cf0, new tests kept):
+   FAIL SKILL-036.test.ts > box 2 ... expected [ { cmd: 'open_external', args: { url: 'https://elsewhere.invalid/?d=load' } } ] to deeply equal []
+   (a page posting on load right after the row click opened the browser)
+   FAIL viewerLink.test.ts (2 more): Tests 4 failed | 2 passed (6)
+   full output: the vitest-before run, "Test Files 2 failed (2)"
+ After:  VITEST_MAX_WORKERS=2 pnpm exec vitest run src/artifacts
+   Test Files  4 passed (4) / Tests  17 passed (17)
+
+MAJOR 2 - offline save refused every redirect (Tailwind script tag, unpkg version ranges)
+ Fix: reqwest Policy::custom(follow_cdn_redirect): follow only to an address cdn_url accepts (https,
+ no user info, no port, listed path) on the SAME host the fetch began on, at most 5 hops; anything
+ else stops and the 3xx is not a success. This round tightened a40e5c14's check from "any listed CDN"
+ to "the same listed CDN host" as the review asked.
+ Before (456f8cf0 + new test a_cdn_redirect_is_followed_only_to_the_same_listed_cdn_host):
+   error[E0425]: cannot find function `follow_cdn_redirect` in this scope   (error: could not compile `kolux-rs` (lib test))
+   The old code hard-coded Policy::none(); there was no decision to call, so the test cannot even build.
+ After:  test artifacts::tests::a_cdn_redirect_is_followed_only_to_the_same_listed_cdn_host ... ok
+   (tailwind / -> /3.4.17, unpkg @^18 -> @18.3.1 followed; evil host, look-alike host, user-info host,
+   other listed host, path outside /npm/, http, other port, 6th hop all refused)
+
+MAJOR 3 - every OneDrive (reparse-point) file was refused as a link
+ Fix: open_source reads the handle's reparse tag (GetFileInformationByHandleEx FileAttributeTagInfo).
+ No tag: a normal file. Cloud-files tag (IO_REPARSE_TAG_CLOUD 0x9000001A, CLOUD_1..CLOUD_F
+ 0x9000_x01A): reopened without the reparse flag so the cloud filter can hydrate it, read only if the
+ second handle has the same volume + file index. EVERY other tag is refused (this round tightened
+ a40e5c14's "any tag that is not a name surrogate" to an allow-list): symlink 0xA000000C, junction
+ 0xA0000003, dedup 0x80000013, WOF 0x80000017, app-exec link 0x8000001B, OneDrive 0x80000021,
+ HSM 0xC0000004, near-miss and unknown tags.
+ Before (456f8cf0 + new table test only_a_cloud_placeholder_reparse_tag_is_kept_as_a_file):
+   error[E0425]: cannot find function `reparse_is_cloud_file` in this scope (lib test did not compile);
+   the old code refused ANY file whose FILE_ATTRIBUTE_REPARSE_POINT was set.
+ After:  test artifacts::tests::only_a_cloud_placeholder_reparse_tag_is_kept_as_a_file ... ok
+         test artifacts::tests::a_junction_or_symlink_on_windows_never_takes_the_scan_out_of_the_workspace ... ok
+   The second is a real Windows test: a junction (mklink /J) where artifacts/ should be is never
+   followed and nothing in the library; a file symlink inside artifacts/ is not listed and open_source
+   refuses it (skipped only if Windows denies the symlink privilege); a plain file still opens.
+ NOT provable here: a real OneDrive placeholder (needs a cloud-files provider). Live check left:
+   on a Known Folder Move machine, put a page in <workspace>/artifacts that shows the cloud icon
+   (online-only), run Scan / Add artifact, expect it kept; then a junction or symlink there, expect refused.
+
+MINORS
+ - No cap on files per scan: fixed in a40e5c14 (MAX_WORKSPACE_FILES 200, MAX_WORKSPACE_BYTES 1 GB, one
+   skipped line per reason); test one_scan_keeps_at_most_the_file_and_byte_caps ... ok
+ - Scan racing the Write capture: fixed in a40e5c14 (a store naming the Claude session replaces a newer
+   workspace-scan store; a scan refresh keeps source/session/project); test
+   a_scan_that_stores_a_file_first_does_not_lose_the_claude_session_that_wrote_it ... ok
+
+Fresh gate runs (this commit)
+ cargo test --manifest-path src-tauri/Cargo.toml artifacts  -> test result: ok. 23 passed; 0 failed (lib), exit 0
+ pnpm exec tsc --noEmit                                     -> exit 0
+ vitest src/artifacts                                       -> 4 files, 17 tests passed
+ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings -> Finished `dev` profile, exit 0

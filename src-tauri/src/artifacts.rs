@@ -334,13 +334,15 @@ fn proxied(plan: &crate::resources::app_http::Plan, b: reqwest::ClientBuilder) -
 /// The most redirects one script fetch follows (`follow_cdn_redirect`).
 const MAX_REDIRECTS: usize = 5;
 
-/// Whether a script fetch follows a redirect to `next`, `hops` requests in: only to an address
-/// `cdn_url` accepts and only for a few hops. The CDNs answer their own documented tags this way
+/// Whether a script fetch that began at `first` follows a redirect to `next`, `hops` requests in:
+/// only to an address `cdn_url` accepts (https, no user name, a listed path) on the very host the
+/// fetch began on, and only for a few hops. The CDNs answer their own documented tags this way
 /// (cdn.tailwindcss.com sends 302 to /3.4.17, unpkg a version range to the exact version), so
-/// refusing every redirect would leave those pages needing the network; a redirect off the list, or
-/// down to plain http, is never followed.
-fn follow_cdn_redirect(next: &str, hops: usize) -> bool {
-    hops <= MAX_REDIRECTS && cdn_url(next)
+/// refusing every redirect would leave those pages needing the network; a redirect to another
+/// host, even a listed one, off the list, or down to plain http, is never followed.
+fn follow_cdn_redirect(first: &str, next: &str, hops: usize) -> bool {
+    let host = |u: &str| tauri::Url::parse(u).ok().and_then(|u| u.host_str().map(str::to_owned));
+    hops <= MAX_REDIRECTS && cdn_url(next) && host(first).is_some() && host(first) == host(next)
 }
 
 /// Fetches one CDN script for an entry, within the size cap; None on any failure. Only an address
@@ -354,7 +356,8 @@ pub fn fetch_script(app: &tauri::AppHandle, url: &str) -> Option<Vec<u8>> {
     // T-323-b (APP-032): through the saved proxy; a setting that cannot be used fetches nothing.
     let plan = crate::resources::app_http::plan_for(app, &url.parse().ok()?).ok()?;
     let builder = proxied(&plan, reqwest::Client::builder().redirect(reqwest::redirect::Policy::custom(|a| {
-        if follow_cdn_redirect(a.url().as_str(), a.previous().len()) {
+        let first = a.previous().first().map_or("", |u| u.as_str());
+        if follow_cdn_redirect(first, a.url().as_str(), a.previous().len()) {
             a.follow()
         } else {
             a.stop()
@@ -377,21 +380,23 @@ pub fn fetch_script(app: &tauri::AppHandle, url: &str) -> Option<Vec<u8>> {
     })
 }
 
-/// Whether a Windows reparse point is a link to another file: a name surrogate (a symlink or a
-/// junction; IsReparseTagNameSurrogate, bit 29). Any other reparse point is the file itself kept
-/// another way: a OneDrive Files On-Demand placeholder (IO_REPARSE_TAG_CLOUD_*) carries one even
-/// when it is fully on the disk, and so does a deduplicated file. Pure, so it is tested everywhere.
+/// Whether a Windows reparse tag is a cloud-files placeholder: IO_REPARSE_TAG_CLOUD (0x9000001A) and
+/// CLOUD_1 to CLOUD_F (0x9000_x01A), the tags OneDrive Files On-Demand puts on a file, fully on the
+/// disk or not. Only these are kept as the file itself. A symlink (0xA000000C) or a junction
+/// (0xA0000003) names another file; any other tag (deduplication, WOF, app-exec links, a tag this
+/// code has never seen) is refused too, because it is unknown what opening it reaches. Pure, so it
+/// is tested everywhere.
 #[cfg_attr(not(windows), allow(dead_code))]
-fn reparse_is_link(tag: u32) -> bool {
-    tag & 0x2000_0000 != 0
+fn reparse_is_cloud_file(tag: u32) -> bool {
+    tag & 0xFFFF_0FFF == 0x9000_001A
 }
 
 /// One source file, opened once and judged by its handle, so what is checked is what is copied: a
 /// link where the file should be is refused at open (O_NOFOLLOW; on Windows the reparse point is
-/// opened itself and refused when its tag names another file), a folder or device is not a file,
+/// opened itself and refused unless its tag is a cloud placeholder), a folder or device is not a file,
 /// and a hard link to a file elsewhere (a second name for the same data, which no path check can
 /// see) is refused by its link count. The metadata is the handle's (fstat), never a second look at
-/// the path. On Windows a reparse point that is not a link (a OneDrive file) is opened again without
+/// the path. On Windows a cloud placeholder (a OneDrive file) is opened again without
 /// the reparse flag so the cloud filter can bring it down, and read only if that second handle is
 /// the same file as the first (same volume and file index), so a link swapped in between is refused.
 fn open_source(path: &Path, name: &str) -> Result<(fs::File, fs::Metadata), String> {
@@ -413,7 +418,7 @@ fn open_source(path: &Path, name: &str) -> Result<(fs::File, fs::Metadata), Stri
         let tag = windows_file::reparse_tag(&file).map_err(|e| format!("could not read {name}: {e}"))?;
         match tag {
             None => file,
-            Some(tag) if reparse_is_link(tag) => return Err(format!("{name} is a link, not a file")),
+            Some(tag) if !reparse_is_cloud_file(tag) => return Err(format!("{name} is a link, not a file")),
             Some(_) => {
                 let again = fs::File::open(path).map_err(|e| format!("could not read {name}: {e}"))?;
                 if windows_file::identity(&file).is_none() || windows_file::identity(&file) != windows_file::identity(&again) {
@@ -1446,25 +1451,73 @@ mod tests {
     }
 
     #[test]
-    fn a_cdn_redirect_is_followed_only_to_a_listed_cdn() {
+    fn a_cdn_redirect_is_followed_only_to_the_same_listed_cdn_host() {
         // cdn.tailwindcss.com answers 302 to /3.4.17 and unpkg answers 302 from a version range to the exact version.
-        assert!(follow_cdn_redirect("https://cdn.tailwindcss.com/3.4.17", 1));
-        assert!(follow_cdn_redirect("https://unpkg.com/react@18.3.1/x.js", 1));
-        assert!(follow_cdn_redirect("https://unpkg.com/react@18.3.1/x.js", 5));
-        assert!(!follow_cdn_redirect("https://evil.example/x.js", 1), "a redirect off the list is not followed");
-        assert!(!follow_cdn_redirect("http://unpkg.com/x", 1), "nor one down to plain http");
-        assert!(!follow_cdn_redirect("https://unpkg.com/react@18.3.1/x.js", 6), "nor a sixth hop");
+        assert!(follow_cdn_redirect("https://cdn.tailwindcss.com/", "https://cdn.tailwindcss.com/3.4.17", 1));
+        assert!(follow_cdn_redirect("https://cdn.tailwindcss.com/3.4.17", "https://cdn.tailwindcss.com/3.4.17?plugins=forms", 1));
+        assert!(follow_cdn_redirect("https://unpkg.com/react@^18/umd/react.production.min.js", "https://unpkg.com/react@18.3.1/umd/react.production.min.js", 1));
+        assert!(follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com/a@1.2.3/x.js", 5), "the fifth redirect is the last");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com/a@1.2.3/x.js", 6), "a sixth is not followed");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com/a@1.2.3/x.js", 100));
+        // Off the list, or to a different listed host: refused.
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://evil.example/x.js", 1), "a host off the list");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com.evil.example/x.js", 1), "a look-alike host");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com@evil.example/x.js", 1), "a user name that changes the host");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://cdn.jsdelivr.net/npm/a@1/x.js", 1), "a different listed host");
+        assert!(!follow_cdn_redirect("https://cdn.jsdelivr.net/npm/a", "https://cdn.jsdelivr.net/gh/user/repo/x.js", 1), "a path outside the listed one");
+        // Plain http, another port, no first address, or an unparsable one: refused.
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "http://unpkg.com/a@1.2.3/x.js", 1), "down to plain http");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com:8443/a@1.2.3/x.js", 1), "another port");
+        assert!(!follow_cdn_redirect("", "https://unpkg.com/a@1.2.3/x.js", 1));
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "not a url", 1));
     }
 
     #[test]
-    fn only_a_name_surrogate_reparse_point_is_a_link() {
-        // IO_REPARSE_TAG_SYMLINK and IO_REPARSE_TAG_MOUNT_POINT (a junction) name another file.
-        assert!(reparse_is_link(0xA000_000C));
-        assert!(reparse_is_link(0xA000_0003));
-        // A OneDrive placeholder (IO_REPARSE_TAG_CLOUD, CLOUD_6) or a deduplicated file is the file itself.
-        assert!(!reparse_is_link(0x9000_001A));
-        assert!(!reparse_is_link(0x9000_601A));
-        assert!(!reparse_is_link(0x8000_0013));
+    fn only_a_cloud_placeholder_reparse_tag_is_kept_as_a_file() {
+        // OneDrive Files On-Demand (Known Folder Move): IO_REPARSE_TAG_CLOUD and CLOUD_1 .. CLOUD_F.
+        for tag in [0x9000_001A_u32, 0x9000_101A, 0x9000_601A, 0x9000_F01A] {
+            assert!(reparse_is_cloud_file(tag), "{tag:#x} is a cloud placeholder");
+        }
+        // Real links name another file: IO_REPARSE_TAG_SYMLINK and IO_REPARSE_TAG_MOUNT_POINT (a junction).
+        assert!(!reparse_is_cloud_file(0xA000_000C), "a symlink is a link");
+        assert!(!reparse_is_cloud_file(0xA000_0003), "a junction is a link");
+        // Anything else is refused as well: deduplication, WOF, app-exec link, OneDrive's old tag, HSM, a tag never seen.
+        for tag in [0x8000_0013_u32, 0x8000_0017, 0x8000_001B, 0x8000_0021, 0xC000_0004, 0x9000_001B, 0x9001_001A, 0xA000_001A, 0x1234_5678, 0] {
+            assert!(!reparse_is_cloud_file(tag), "{tag:#x} is not kept");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_or_symlink_on_windows_never_takes_the_scan_out_of_the_workspace() {
+        let root = temp_dir("winlinks");
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(&ws).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("id_rsa"), "SECRET").unwrap();
+        // A junction where artifacts/ should be (mklink /J needs no privilege).
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(ws.join("artifacts")).arg(&outside).output().unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        assert!(workspace_files(&ws).0.is_empty(), "a junction artifacts/ folder is never followed");
+        let lib = Library::new(root.join("lib"));
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new()).changed, 0);
+        assert!(lib.list().is_empty());
+        // `rmdir` removes the junction itself, not the folder it points at.
+        fs::remove_dir(ws.join("artifacts")).unwrap();
+        assert!(outside.join("id_rsa").exists());
+
+        // A real folder holding a file symlink to a file outside (needs the symlink privilege; skipped without it).
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::write(ws.join("artifacts").join("a.txt"), "ok").unwrap();
+        let link = ws.join("artifacts").join("key.txt");
+        if std::os::windows::fs::symlink_file(outside.join("id_rsa"), &link).is_ok() {
+            assert_eq!(workspace_files(&ws).0, vec![ws.join("artifacts").join("a.txt")], "a linked file is not a file");
+            assert!(open_source(&link, "key.txt").is_err(), "a symlink is refused at open, not only by its path");
+        }
+        // A plain file still opens (its handle has no reparse tag).
+        assert!(open_source(&ws.join("artifacts").join("a.txt"), "a.txt").is_ok());
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
