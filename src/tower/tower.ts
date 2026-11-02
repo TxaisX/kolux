@@ -16,7 +16,8 @@ export type Seat = {
   title: string;
   branch: string | null;
   cwd: string | null;
-  account: string | null;
+  /** null = the provider's own sign-in; undefined = not known yet (a pane whose terminal has not answered), shown as the active account. */
+  account?: string | null;
   chip: Chip | null;
   meter: Meter | null;
   /** When the state last moved; 0 when unknown. */
@@ -51,7 +52,7 @@ export type AccountUsage = {
   /** T-548, only when the active accounts were passed (T-548-b: on a Claude card too): the account the figures are read for (null = the system default). */
   forAccount?: string | null;
   /** T-548: panes of this provider on an account other than the one the figures are read for, whose own
-   *  figures have not been read (Codex only; a Claude pane does not record its account yet, T-548-b). */
+   *  figures have not been read (a pane whose account is not known counts as being on the active one). */
   elsewhere?: number;
 };
 /** T-548: the account new panes use, per provider (null = the system default). */
@@ -67,7 +68,8 @@ export function usageByAccount(seats: Pick<Seat, "agent" | "account">[], plan: P
   const out: AccountUsage[] = [];
   for (const s of seats) {
     if (s.agent !== "claude" && s.agent !== "codex") continue;
-    const account = s.account ?? null;
+    // T-548-b: a pane whose account is not known (undefined) is on the active account, as before panes recorded one
+    const account = s.account === undefined ? (active ? (s.agent === "claude" ? active.claude : active.codex) : null) : s.account;
     let card = out.find((u) => u.agent === s.agent);
     if (!card) out.push((card = { agent: s.agent, figures: planOf(s.agent, plan.claude, plan.codex), panes: 0, accounts: [] }));
     card.panes += 1;
@@ -112,5 +114,5 @@ export function nameUsage(usage: AccountUsage[], label: (agent: string, id: stri
 
 /** FIX-1: the seats with their account id swapped for its name, for the rows. */
 export function nameSeats<T extends Pick<Seat, "agent" | "account">>(seats: T[], label: (agent: string, id: string) => string): T[] {
-  return seats.map((s) => (s.account === null ? s : { ...s, account: label(s.agent, s.account) }));
+  return seats.map((s) => (s.account == null ? s : { ...s, account: label(s.agent, s.account) }));
 }

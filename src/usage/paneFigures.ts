@@ -66,10 +66,34 @@ export async function readClaudeOf(id: string | null, call: Call = (c, a) => inv
   return (await call("claude_usage_of", { configDir })) as ClaudeLimit[];
 }
 
+const normFolder = (p: string) => p.trim().replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+
+/** T-548-b: which of the wanted accounts a status-line report's config folder belongs to (`claude-usage-of`
+ *  names that folder; null = the default sign-in). Case and slash direction do not matter, as in hooks.rs.
+ *  The account list is asked only when a managed account is wanted. Null when none of them is that folder. */
+export async function accountOfFolder(folder: string | null, ids: Array<string | null>, call: Call = (c, a) => invoke(c, a as InvokeArgs | undefined)): Promise<{ id: string | null } | null> {
+  if (folder === null) return ids.includes(null) ? { id: null } : null;
+  const managed = ids.filter((i): i is string => i !== null);
+  if (!managed.length) return null;
+  const view = (await call("claude_accounts")) as { accounts: Array<{ id: string; configDir: string }> };
+  const hit = view.accounts.find((a) => managed.includes(a.id) && normFolder(a.configDir) === normFolder(folder));
+  return hit ? { id: hit.id } : null;
+}
+
+/** T-548-b: one status-line report from another account's folder: only the reader of that folder asks again
+ *  (one claude_usage_of), and only a read with windows replaces what is shown (USAGE-023). */
+export async function rereadFolder(folder: string | null, ids: Array<string | null>, publish: (id: string | null, l: ClaudeLimit[]) => void, call: Call = (c, a) => invoke(c, a as InvokeArgs | undefined)): Promise<void> {
+  const hit = await accountOfFolder(folder, ids, call);
+  if (!hit) return;
+  const l = (await call("claude_usage_of", { configDir: folder })) as ClaudeLimit[];
+  if (l.length) publish(hit.id, l);
+}
+
 /** T-548-b: the Claude twin of useCodexPaneFigures. The active account's windows come from the Claude pill
  *  (claude_usage); every other account a Claude pane is on is read with claude_usage_of, one reader per account
- *  at the pill's pace (every five minutes, a focus at most every two) and again on each status-line report
- *  (the `claude-usage` event does not say which folder it came from, so each reader asks again; it is a store read). */
+ *  at the pill's pace (every five minutes, a focus at most every two). Between those, a status-line report from
+ *  another account's folder raises `claude-usage-of` with that folder (hooks.rs keep_other_account), and only
+ *  that account's windows are read again. */
 export function useClaudePaneFigures(panes: Array<{ agent: string; account?: string | null }>, active: string | null): void {
   const wanted = accountsToRead(panes, active, "claude");
   const key = wanted.map((a) => (a === null ? "\u0000" : a)).join("\u0001");
@@ -93,7 +117,7 @@ export function useClaudePaneFigures(panes: Array<{ agent: string; account?: str
     let gone = false;
     const stops: Array<() => void> = [];
     if (ids.length) {
-      listen("claude-usage", () => ids.forEach((id) => void readClaudeOf(id).then((l) => !gone && l.length && publishClaudeFor(id, l), () => {})))
+      listen<string | null>("claude-usage-of", (e) => void rereadFolder(e.payload ?? null, ids, (id, l) => !gone && publishClaudeFor(id, l)).catch(() => {}))
         .then((un) => (gone ? un() : stops.push(un)))
         .catch(() => {});
     }

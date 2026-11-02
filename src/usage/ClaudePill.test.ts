@@ -3,9 +3,11 @@ import { beforeEach, expect, test, vi } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => []) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}), emit: vi.fn(async () => {}) }));
 
-import { publishLive, publishStored } from "./ClaudePill";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { publishLive, publishStored, readActiveClaude, startClaudePill } from "./ClaudePill";
 import { clearReadings, lineFor, readingsOf } from "./forecast";
-import { publishClaude } from "./plan";
+import { publishClaude, readPlan } from "./plan";
 
 const MIN = 60_000;
 const T0 = 1_700_000_000_000;
@@ -44,4 +46,33 @@ test("FIX-1 (USAGE-031): the stored last report is never a forecast reading stam
   // a second live report five minutes or more after the first does make a forecast
   publishLive([{ kind: "seven_day", usedPercent: 53, resetsAt: resets }], T0 + 10 * MIN);
   expect(lineFor("claude:seven_day", resets, T0 + 10 * MIN)).toMatch(/^At this rate: /);
+});
+
+// T-548-b (review C): after an account switch the new account may not have reported yet; the old account's
+// windows must go, not stay under the new account's name.
+test("T-548-b: the active account's windows are published even when empty, so a switch clears the old account's", async () => {
+  const old = { kind: "five_hour", usedPercent: 80, resetsAt: null };
+  publishStored([old]);
+  expect(readPlan().claude).toEqual([old]);
+  await readActiveClaude(async () => []);
+  expect(readPlan().claude).toEqual([]);
+  await readActiveClaude(async () => [{ kind: "five_hour", usedPercent: 3, resetsAt: null }]);
+  expect(readPlan().claude[0].usedPercent).toBe(3);
+});
+
+test("T-548-b: a claude-accounts event re-reads claude_usage and clears the figures when it answers nothing", async () => {
+  const handlers: Record<string, (e: { payload: unknown }) => void> = {};
+  vi.mocked(listen).mockImplementation((async (name: string, f: (e: { payload: unknown }) => void) => ((handlers[name] = f), () => {})) as never);
+  const asked: string[] = [];
+  vi.mocked(invoke).mockImplementation((async (cmd: string) => (asked.push(cmd), [])) as never);
+  const stop = startClaudePill();
+  await new Promise((r) => setTimeout(r, 0));
+  expect(Object.keys(handlers).sort()).toEqual(["claude-accounts", "claude-usage"]);
+  publishStored([{ kind: "five_hour", usedPercent: 80, resetsAt: null }]);
+  asked.length = 0;
+  handlers["claude-accounts"]({ payload: null });
+  await new Promise((r) => setTimeout(r, 0));
+  expect(asked).toEqual(["claude_usage"]);
+  expect(readPlan().claude).toEqual([]);
+  stop();
 });

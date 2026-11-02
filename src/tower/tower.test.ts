@@ -95,9 +95,29 @@ describe("usageByAccount with the active accounts", () => {
   });
 
   it("shows no Claude figures when every Claude pane is on another account than the active one", () => {
+    // null is a known answer (Claude's own sign-in), not "unknown": that pane really is elsewhere
     const [card] = usageByAccount([{ agent: "claude", account: null }], plan, { claude: "work", codex: null });
     expect(card.figures).toBeNull();
     expect(card.elsewhere).toBe(1);
+  });
+
+  // T-548-b (review C): a pane that has not recorded its account (undefined) is on the active one, as before
+  // panes recorded anything; it must not blank the card or count as elsewhere.
+  it("treats a Claude pane with no recorded account as being on the active account", () => {
+    const [card] = usageByAccount([{ agent: "claude", account: undefined }], plan, { claude: "work", codex: null });
+    expect(card.figures).toEqual({ fiveHour: 42, weekly: null });
+    expect(card.elsewhere).toBe(0);
+    expect(card.accounts).toEqual([{ account: "work", panes: 1 }]);
+    const [mixed] = usageByAccount([{ agent: "claude" }, { agent: "claude", account: "other" }], plan, { claude: "work", codex: null });
+    expect(mixed.figures).toEqual({ fiveHour: 42, weekly: null });
+    expect(mixed.elsewhere).toBe(1);
+    // and with no active accounts passed it is listed as the default, as before
+    expect(usageByAccount([{ agent: "claude" }], plan)[0].accounts).toEqual([{ account: null, panes: 1 }]);
+  });
+
+  it("nameSeats leaves a seat with no recorded account alone", () => {
+    const seats = [seat(1, null, 0, { account: undefined }), seat(2, null, 0, { account: "work" })];
+    expect(nameSeats(seats, (_a, id) => `name:${id}`).map((s) => s.account)).toEqual([undefined, "name:work"]);
   });
 
   it("shows Codex figures when a pane runs on the active account and counts the others as elsewhere", () => {

@@ -36,6 +36,8 @@ pub const STATUS_SCRIPT: &str = "claude-status.cmd";
 pub const STATUS_PREV: &str = "claude-status-prev.sh";
 /// Raised with a `Usage` on every status-line report.
 pub const USAGE_EVENT: &str = "claude-usage";
+/// T-548-b: a status-line report from another account's folder was kept; the payload is that config folder (null = the default sign-in).
+pub const OTHER_USAGE_EVENT: &str = "claude-usage-of";
 /// Store key: the rate-limit windows the last status-line report carried (JSON `Limit` list).
 pub const LIMITS_KEY: &str = "claudeRateLimits";
 /// The running Kolux's port and token, read by the script on every run (a pane outlives a restart).
@@ -586,16 +588,26 @@ fn record_usage(app: &AppHandle, u: &Usage) {
     let _ = app.emit(USAGE_EVENT, payload);
 }
 
-/// T-548-b: a report from a folder other than the active account's keeps its windows in that folder's store.
+/// T-548-b: a report from a folder other than the active account's keeps its windows in that folder's store
+/// and tells the window which folder it was (`claude-usage-of`), so only that account's reader asks again.
 fn keep_other_account(app: &AppHandle, u: &Usage) {
+    let kept = match app.try_state::<Mutex<crate::state::Store>>() {
+        Some(store) => store.lock().ok().and_then(|store| keep_other(&store, u)),
+        None => None,
+    };
+    if let Some(payload) = kept {
+        let _ = app.emit(OTHER_USAGE_EVENT, payload);
+    }
+}
+
+/// The store half of keep_other_account: the payload of the `claude-usage-of` event (the report's config
+/// folder, null for the default sign-in) when windows were kept, nothing for a report with no windows.
+fn keep_other(store: &crate::state::Store, u: &Usage) -> Option<serde_json::Value> {
     if u.limits.is_empty() {
-        return;
+        return None;
     }
-    if let Some(store) = app.try_state::<Mutex<crate::state::Store>>() {
-        if let Ok(store) = store.lock() {
-            keep_limits(&store, u.config_dir.as_deref(), &u.limits);
-        }
-    }
+    keep_limits(store, u.config_dir.as_deref(), &u.limits);
+    Some(json!(u.config_dir))
 }
 
 /// The config folder the active Claude account runs under; none for the default sign-in.
@@ -2007,6 +2019,28 @@ Content-Length: {}
         assert_eq!(usage_of(&shared, Some(a)).unwrap(), vec![win("five_hour", 70.0)]);
         assert_eq!(usage_of(&shared, Some(b)).unwrap(), vec![win("five_hour", 5.0)]);
         assert!(usage_of(&shared, Some("C:/u/unknown")).unwrap().is_empty(), "an unknown folder has no windows");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn row_548_b_a_report_from_another_folder_is_kept_and_named_in_the_event() {
+        use crate::state::Store;
+        let base = std::env::temp_dir().join(format!("kolux-rs-hooks-r548b-of-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(&base).unwrap();
+        let store = Store::open(&base).unwrap();
+        let win = |used: f64| Limit { kind: "five_hour".into(), used_percent: used, resets_at: Some(9) };
+        let usage = |dir: Option<&str>, limits: Vec<Limit>| Usage { pane_key: 1, context_tokens: None, context_window: None, limits, session: None, at: None, cost_usd: None, config_dir: dir.map(String::from) };
+        let folder = "C:/u/.kolux-rs/claude-accounts/b";
+        // the event names the folder the report came from, and the windows are in that folder's store
+        assert_eq!(keep_other(&store, &usage(Some(folder), vec![win(33.0)])), Some(json!(folder)));
+        assert_eq!(limits_of(&store, Some(folder)), vec![win(33.0)]);
+        // the default sign-in reporting while a managed account is active is named with null
+        assert_eq!(keep_other(&store, &usage(None, vec![win(8.0)])), Some(serde_json::Value::Null));
+        assert_eq!(limits_of(&store, None), vec![win(8.0)]);
+        // a report with no windows keeps nothing and raises nothing
+        assert_eq!(keep_other(&store, &usage(Some(folder), vec![])), None);
+        assert_eq!(OTHER_USAGE_EVENT, "claude-usage-of");
         let _ = std::fs::remove_dir_all(&base);
     }
 

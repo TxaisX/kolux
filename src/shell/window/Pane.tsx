@@ -16,7 +16,7 @@ import { showsDragHandle } from "../../terminal/rearrange";
 import { gpuOn } from "../../terminal/renderer";
 import { showsReview } from "../../terminal/planReview";
 import { tabName } from "../../terminal/tabName";
-import { codexSetup } from "../../terminal/accountChange";
+import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
@@ -201,11 +201,9 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         if (p.batch !== undefined && p.agent !== "shell") rememberLineup(p.batch);
         // T-139-d: a Codex pane on a managed account is watched for printed sign-in errors.
         watchCodexSignIn(id, p.agent === "codex" ? account : null);
-        // ACCT-023: a Codex pane remembers the account it began on.
-        if (p.agent === "codex") {
-          const setup = codexSetup(settings); // T-139-d: and the setup it began on
-          if (p.account !== account || p.setup !== setup) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, account, setup } : x)));
-        }
+        // ACCT-023: a Codex pane remembers the account it began on (and its setup, T-139-d); T-548-b: so does a Claude pane.
+        const began = spawnRecord(p, account, codexSetup(settings));
+        if (began) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, ...began } : x)));
       }}
       account={p.account}
       notice={noticeFor(p)}

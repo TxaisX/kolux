@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "vitest";
-import { accountsToRead, readClaudeOf } from "./paneFigures";
+import { accountsToRead, readClaudeOf, rereadFolder } from "./paneFigures";
 import { publishClaudeActive, publishClaudeFor, publishCodexFor, readPlan } from "./plan";
 import type { CodexUsage } from "./codex";
 
@@ -88,4 +88,37 @@ test("T-548-b: an account's windows are read from its own config folder (claude_
   calls.length = 0;
   expect(await readClaudeOf("gone", call)).toEqual([]); // no longer listed: nothing to read
   expect(calls.map((c) => c[0])).toEqual(["claude_accounts"]);
+});
+
+// T-548-b (review C): a status-line report from another folder raises one `claude-usage-of` event naming that
+// folder; exactly the account that owns it is read again, nothing else.
+test("T-548-b: one claude-usage-of event re-reads exactly the account whose folder it names", async () => {
+  const calls: Array<[string, unknown]> = [];
+  const call = async (command: string, args?: unknown) => {
+    calls.push([command, args]);
+    return command === "claude_accounts" ? { accounts: [{ id: "a", configDir: "C:/u/a/" }, { id: "b", configDir: "C:/u/b" }] } : limits;
+  };
+  const got: Array<[string | null, unknown]> = [];
+  const publish = (id: string | null, l: unknown) => void got.push([id, l]);
+  // account b's folder, spelled with other case and slashes: only b is read
+  await rereadFolder("c:/U/B/", ["a", "b", null], publish, call);
+  expect(got).toEqual([["b", limits]]);
+  expect(calls.filter((c) => c[0] === "claude_usage_of")).toEqual([["claude_usage_of", { configDir: "c:/U/B/" }]]);
+  // the default sign-in (null) is read without asking the account list
+  calls.length = 0;
+  got.length = 0;
+  await rereadFolder(null, ["a", null], publish, call);
+  expect(got).toEqual([[null, limits]]);
+  expect(calls.map((c) => c[0])).toEqual(["claude_usage_of"]);
+  // a folder nobody wanted reads nothing; neither does the default when no pane is on it
+  calls.length = 0;
+  got.length = 0;
+  await rereadFolder("C:/u/other", ["a", "b"], publish, call);
+  await rereadFolder(null, ["a", "b"], publish, call);
+  await rereadFolder("C:/u/b", [null], publish, call);
+  expect(got).toEqual([]);
+  expect(calls.filter((c) => c[0] === "claude_usage_of")).toEqual([]);
+  // an answer with no windows replaces nothing
+  await rereadFolder("C:/u/b", ["b"], publish, async (c) => (c === "claude_accounts" ? { accounts: [{ id: "b", configDir: "C:/u/b" }] } : []));
+  expect(got).toEqual([]);
 });
