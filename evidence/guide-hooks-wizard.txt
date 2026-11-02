@@ -1,0 +1,105 @@
+guide-hooks-wizard · T-608 and T-612 docs follow-ups: the guide describes the consent line and the wizard as they are · lane5/guide-hooks-wizard · 2026-11-01
+Proved in the Linux cloud sandbox (node 22, vitest 4.1.11). Nothing was run on Txais's PC. No app code changed in the first
+cut; the PR #55 review fixes below change one line of text under the Settings > Agents switch (see REVIEW FIXES).
+
+WHAT CHANGED
+T-608 (STATE.md follow-up of 2026-10-30: the guide still described the pre-DT-C52 default)
+- docs/guide/settings.md: the Agents table row for `agentStatusHooks` reads "On by default, once you have seen the line..."
+  and quotes the line; the "Agent status hooks" paragraph says the switch starts on, that nothing is written before the line
+  was shown (Connect step or the one-time card) and that off takes Kolux's entries out; the "One master switch" bullet says
+  the switch starts on and the answer to the line is what turns it on or off for real. "Off until you turn it on",
+  "Until the switch is on" and "is off until you turn it on" are gone.
+- docs/guide/getting-started.md: step 2 "Connect an AI" carries the line word for word beside a switch that is on, and says
+  Continue (or "I'll do this later") records it and Back does not (Wizard.tsx go(): recordsHooks(at, to) for to > at, and
+  secondary() is go(2)); Tips say a launch that shows the one-time status-hooks card shows no tip (Guides.tsx: hooksAsk
+  "ask" renders HooksAsk, StartupTip only on "no").
+T-612 (STATE.md follow-up of 2026-10-30: the guide still described the "Try with sample data" / "Choose a kit" screens)
+- docs/guide/getting-started.md first-launch table: the four rows are the app's SCREENS names (firstRun.ts: Welcome,
+  Connect an AI, Your work, Open a session). Step 3: Pick a folder (closes setup, opens Add Project, the folder added starts
+  the default agent: useWizard.ts pickFolder / projectAdded) or Continue without one; main button Continue. Step 4: the
+  ping switch; Open a session starts the first AI offered in the project in front, or with no project yet closes setup and
+  opens Add Project and that AI starts in the folder picked (useWizard.ts wizardSession -> pickFolder(agent)).
+- Tips: Escape closes a tip from wherever the keyboard is, even a terminal pane; the press still reaches the pane's program
+  (in Claude Code it interrupts Claude) and a dialog's Escape stays the dialog's (Guides.tsx tipEscape: capture-phase
+  listener that neither prevents nor stops the key, skips while a modal is open).
+- DECISIONS.md DT-C63 records the ONB-005 amendment (no workspace -> Add Project; no agent with a workspace -> still nothing)
+  with "Needs Txais to confirm"; spec/16-onboarding.md is not rewritten (LOOP.md section 2). DT-C62 is taken by
+  origin/lane5/bookkeeping (not yet on main), so this row is DT-C63 to keep the two from clashing at merge.
+- STATE.md is not edited (integrator's file); the Needs-Txais note lives in the DT-C63 row and the PR body.
+
+TESTS (written first, seen failing, then the docs changed)
+- src/onboarding/hooksGuide.test.ts: both pages contain HOOKS_LINE from src/onboarding/hooksOn.ts; the `agentStatusHooks`
+  row matches /on by default|starts on/i and not /Off until you turn it on/; settings.md has neither "Until the switch is
+  on" nor "is off until you turn it on"; the step-2 row carries the line and "Back does not"; Tips say the status-hooks
+  card means no tip.
+- src/onboarding/guideGettingStarted.test.ts: the step rows equal SCREENS' names in order; the table has no "sample data",
+  no "kit"/"kits" and no "Start kit"; the Your work row says Pick a folder with main button Continue; the Open a session
+  row says Add Project with main button Open a session; Tips match /Escape[^\n]*closes[^\n]*tip/i.
+
+BEFORE (docs as on main 3af39cf3)
+  VITEST_MAX_WORKERS=2 npx vitest run src/onboarding/hooksGuide.test.ts src/onboarding/guideGettingStarted.test.ts
+   × both guide pages carry the consent line exactly as the app shows it
+   × the Agents table says the switch starts on, not off until turned on
+   × the first-run page says the Connect step shows the line and that its card takes the launch's one tip
+   × the step table names the wizard's four screens, in order
+   × the step table no longer describes sample data or kits
+   × the step table says Your work offers Pick a folder, and Open a session falls back to Add Project
+   × the Tips section says Escape closes a tip from wherever the keyboard is
+   AssertionError: expected '| Agent status hooks | Off until you …' to match /on by default|starts on/i
+   AssertionError: expected 'Try with sample data' to be 'Continue' // Object.is equality
+   Test Files  2 failed (2)   Tests  7 failed (7)
+
+AFTER
+  VITEST_MAX_WORKERS=2 npx vitest run src/onboarding/hooksGuide.test.ts src/onboarding/guideGettingStarted.test.ts src/inbox/guideGroups.test.ts src/onboarding/useWizard.test.ts
+   Test Files  4 passed (4)   Tests  15 passed (15)
+  npx tsc --noEmit -> exit 0
+  node scripts/plan-check.mjs -> plan-check: OK
+  node scripts/docs/build.mjs --check -> lists docs/history/*.html and docs/research/rust-cli-split.html as stale, the same
+   as on main before this unit (the guide pages carry no html marker, so this unit changes nothing it builds).
+  grep -rn 'until you turn it on|sample data|Start kit|Choose a kit|Try with' docs/guide/ -> only feature-index.md T-243
+   (the Skills sidebar button, a different switch).
+  No Rust changed: no cargo run.
+
+REVIEW FIXES (PR #55, 2026-11-01; both findings checked against the code before changing anything)
+1. getting-started.md step 3 said Pick a folder "then starts your default agent". With Default agent left on Auto (the
+   default), Hosts.tsx:43 calls pickFolder() with no agent, useWizard.ts projectAdded falls back to
+   firstFolderAgent(offered, defaultAgentId(settings)), defaultAgentId is "" and firstRun.ts:149 returns null for a non-AI
+   id (ONB-010: Auto guesses no agent), so nothing starts. The row now reads: "Pick a folder closes setup and opens Add
+   Project; if you have chosen a default agent, it starts in the folder you add (nothing starts while Default agent is Auto)".
+   Test first: src/onboarding/guideGettingStarted.test.ts "the Your work row says the folder starts an agent only once a
+   default was chosen, not on Auto" asserts firstFolderAgent([{id:"claude",installed:true}], "") is null, that the row
+   matches /Default agent is Auto/ and no longer /then starts your default agent/.
+2. src/settings/AgentsPage.tsx HooksSwitch <small> still said "Off until you turn it on" (pre-DT-C52), while the guide
+   now says the switch starts on; a user reading Settings > Agents and the guide saw two defaults. The reviewer marked
+   this a follow-up, but it is one line of text plus a test and the guide must stay in step with the app, so it is in
+   this PR: the text now reads "On once you have answered the line in setup: on adds Kolux's hooks to each agent's
+   settings; off removes them and stops them being put back; your own hooks stay." The stale comment above the re-export
+   (T-152-gate "off until the user turns it on") now names DT-C52. Test first: src/settings/AgentsPage.test.ts "the text
+   under the status hooks switch says it starts on after the consent line, not off until turned on (DT-C52)" renders
+   HooksSwitch and asserts hooksDefault({}) is true, the html does not match /Off until you turn it on/ and contains
+   "On once you have answered the line in setup". The existing STAT-002 test's name no longer claims "off until saved on"
+   (its assertions are unchanged: hooksOn({}) is still false, only a saved true installs).
+  BEFORE
+   VITEST_MAX_WORKERS=2 npx vitest run src/onboarding/guideGettingStarted.test.ts src/settings/AgentsPage.test.ts
+    × the Your work row says the folder starts an agent only once a default was chosen, not on Auto
+    × the text under the status hooks switch says it starts on after the consent line, not off until turned on (DT-C52)
+    AssertionError: expected 'Pick a folder, or Continue without on…' to match /Default agent is Auto/
+    AssertionError: expected '<section class="conn-card" aria-label…' not to match /Off until you turn it on/
+    Tests  2 failed | 7 passed (9)
+  AFTER
+   VITEST_MAX_WORKERS=2 npx vitest run src/onboarding src/settings
+    Test Files  1 failed | 111 passed (112)   Tests  1 failed | 691 passed (692)
+    The one failure is src/settings/__cards__/SET-006-link.test.ts "SET-006 box 3 ... waits until the section is drawn"
+    (a Shortcuts-page scroll test this PR does not touch). It fails the same way with this PR's changes stashed (1 failed
+    | 689 passed) and passes on its own, twice (Tests 3 passed (3)): timing under the parallel directory run, not this unit.
+   npx tsc --noEmit -> exit 0
+   node scripts/plan-check.mjs -> plan-check: OK
+   grep -rn 'Off until you turn it on|off until the user turns it on' src docs -> only the two tests that forbid it.
+   No Rust changed: no cargo run.
+
+STILL OPEN (live, Windows)
+- T-608: the one-time card on a profile that never answered; C-2 (a hand-started Claude needs you on Board, Tower, Inbox,
+  strip, bell and sidebar); T-608b's Stopped rows and Ctrl+J skipping a blocked pane.
+- T-612: docs/live-proofs-windows.md A-3; B-9's T-612 box (palette + Tip Escape; Escape in a working Claude pane closes the
+  Tip and interrupts Claude); T-612b's three checks (Ctrl+Shift+R ask, Gemini naming, late Stop hook).
+- Txais: confirm DT-C63 (ONB-005 amendment).
