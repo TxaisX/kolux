@@ -32,7 +32,7 @@ below are my own words; no strings, layout or icons were copied.
 |---|---|
 | Agent's work lands on its own branch | The automatic flow commits only on the workspace's own branch. It never commits to or pushes the default branch (DT-C90). |
 | PR status sits beside the work | The draft pull request's number, the last step and why it stopped show in the app-wide right panel, one compact row per workspace (T-655). |
-| Review notes go with the next message | The review-notes list, homeless after the Source Control panel was removed, moves under that status in the right panel. |
+| Review notes go with the next message | The review-notes list keeps its own place in the window for now. The status block has a slot below its rows, so the list can move under it later without changing the block. |
 | Credential-named files held back, with a notice that names them | Kolux goes further, because the repository is public: a likely secret, by name or by a well-known key prefix in the content, or a file over 10 MB stops the commit or push. A notice names the files (DT-C90). |
 | GitHub-only pull requests; other hosts limited | Automatic is on by default only where the remote is GitHub. Other remotes and local-only repositories are the user's choice. A repository with no remote shows a small "local only" icon (DT-C89). |
 | An opt-in follow-up switch | Not built here. Kolux opens a draft and keeps it up to date with each turn's push; reacting to checks and comments is a later task. |
