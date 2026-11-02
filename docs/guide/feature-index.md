@@ -124,7 +124,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-047 | Expand a pane to fill the grid; every pane has a header with title and usage. | [Terminals](terminals.md) |
 | T-048 | The terminal grid has a clean, uncluttered look. | [Terminals](terminals.md) |
 | T-049-a | Three workspace screens, Agents, Board and Terminals, switch from the keyboard. | [Getting started](getting-started.md) |
-| T-049-b | The Kolux menu's View menu has a Workspace View choice for Agents, Board and Terminals, with the current screen ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
+| T-049-b | The Kolux menu's View menu has a Workspace View choice for Agents, Board, Terminals, Tower and Floor, with the current screen ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
 | T-050 | The Agents screen lists sessions by saved agent with chat, terminal and composer. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-051 | The left sidebar shows, hides and resizes, listing projects and their sessions. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-053 | Pick the app colour theme: Classic or one of 16 hues, with sliders. | [Settings](settings.md) |
