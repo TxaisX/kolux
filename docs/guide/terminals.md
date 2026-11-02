@@ -111,7 +111,6 @@ The chooser pane, titled "Choose what to run", sets up one or many sessions befo
 
 | Part | Use it to |
 |---|---|
-| Kits | Start from a saved lineup |
 | Use last lineup | Repeat the last lineup for this project (appears when there is one) |
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
 | Sessions | Pick a quick count, or type any number, and press "Same for all" to copy one choice to every seat |
@@ -170,6 +169,20 @@ Web addresses, `file://` links and file paths printed in a pane are links. A pla
 - A web address opens in your default browser, even when the address wraps over two lines.
 - A file path, such as `src/app.ts:42` or `C:\work\notes.txt`, is read against the pane's folder and opened with the program Windows uses for that kind of file. It must be an existing file. A path on another computer is refused, and a program file is shown in its folder instead of being run (see [Safety](safety.md)). The `:42` is not used yet; the editor does not jump to a line from here.
 - A link a program prints on purpose (PowerShell does this) is clickable too.
+
+## Ports in the status bar
+
+The **Ports** item in the status bar counts the ports the active workspace is listening on. Click it for the list: each port with the address its dev server printed (when a Kolux terminal in this workspace printed it; an address printed in another terminal never labels this one's server), an **Open** button (the Kolux browser; Shift+Ctrl-click opens your system browser) and a **Stop** button. Ports held by programs outside the workspace are listed as "external", at most twelve of them, and have no Stop. A failed scan names its problem and keeps the last good list.
+
+Stop ends the program behind the port with the programs it started, but only when it is sure what it ends:
+
+- The program must be the one the row showed. If that process has already ended, the stop counts as done and ends nothing, even when a new program has since taken the port: "Port N was already gone; nothing was stopped". If the program still runs but no longer holds the port (a dev server that restarted on another port), nothing is ended either and the note says so: "Port N is no longer held by that program; nothing was stopped". If the process id now belongs to a different program, the stop is refused: "process N now belongs to another program; nothing was stopped". Kolux keeps the program open while it ends it, so its id cannot pass to a newcomer in between; a program Kolux is not allowed to open is refused ("process N could not be opened; nothing was stopped").
+- The program must really descend from a terminal of this workspace. Windows keeps a dead parent's id on the programs it left behind and hands ids out again, so a leftover dev server from a closed editor can look like a child of a Kolux pane; Kolux checks every step of the chain (a parent is never younger than its child) and refuses one that fails: "process N was not started from a terminal of this workspace; nothing was stopped". The same check picks which children end with the program: only the ones it really started, never a stranger that happens to carry its id as parent. Kolux looks the children up only once it holds the program open, keeps each child open while it checks it, and checks the list a second time before ending anything, so a short-lived worker whose id went to another program in the meantime is left alone.
+- Every program holding the port must belong to the workspace. A port also held by a program outside it, by Kolux itself or by a system process is refused as a whole.
+- The workspace folder must be a real Git worktree that Kolux knows (a project folder or one of its worktrees), at least two folders deep. A home folder, or a folder above one, is never a place Kolux stops programs in.
+- After the stop, Kolux waits up to two seconds for the program to be gone and tells you if it is still running.
+
+A refused stop says why under the title of the list; nothing is ended.
 
 ## New lines and other keyboards
 
