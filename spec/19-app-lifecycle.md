@@ -276,9 +276,9 @@ Rules: every run of the terminal service carries a generation number, and input 
   are not compatible are refused; events from a generation that has been replaced are dropped; this
   was checked across three quit-and-relaunch rounds and one killed service.
 Acceptance:
-  - [ ] Print a marker in a terminal, then quit and relaunch three times → the marker is visible after
-        each launch.
-  - [ ] Kill the terminal service and relaunch → terminals come back from their saved history.
+  - [x] Print a marker in a terminal, then quit and relaunch three times → the marker is visible after
+        each launch. (live; evidence/T-544.txt lines 30-67)
+  - [x] Kill the terminal service and relaunch → terminals come back from their saved history. (live; evidence/T-544.txt lines 68-79)
 Compat: —
 Source: D-19-052
 

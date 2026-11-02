@@ -197,6 +197,11 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 This needs the installed build (not a test copy). About 25 minutes. One set of three relaunches covers three
 checks; on each launch, look at the panes **before** you press any key or click anything.
 
+Already done for APP-052: both of its boxes (the marker after three relaunches, and the kill of the terminal
+service) passed on the installed build on 2026-10-28, run by `node scripts/prove/live-T-544.mjs`
+(evidence/T-544.txt lines 30-79), and are ticked in the spec. The two APP-052 items below are only for a repeat on a
+newer release; the T-566 and T-612 items still need this run.
+
 - Set up: a plain terminal pane where you type a word you will recognise (for example `echo MARKER-ONE`), one or two
   other panes with some output, and one Claude pane (Claude signed in).
 - Press: quit Kolux, start it again. Do this three times. Tip cards appear on early launches; make sure a Tip is
