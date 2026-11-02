@@ -1,0 +1,52 @@
+=== T-167-b part 1 BEFORE fix ===
+ ❯ src/terminal/notify.test.ts (5 tests | 1 failed) 62ms
+   × t167b: a stop that means restart this terminal never says the AI hit an error 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/status/restored.test.ts > a pane whose hooks are from an older Kolux gets a blocked row asking to restart the terminal
+AssertionError: expected 'error' to be 'restart' // Object.is equality
+
+Expected: "restart"
+Received: "error"
+
+ ❯ src/status/restored.test.ts:35:32
+     33|   expect(r.turn[1].stop.detail).toBe(RESTART_TEXT);
+     34|   // T-167-b: it is a restart, not an AI error
+     35|   expect(r.turn[1].stop.cause).toBe("restart");
+       |                                ^
+     36|   expect(stopLine(r.turn[1].stop)).not.toMatch(/error/i);
+     37|   expect(stopLine(r.turn[1].stop)).toMatch(/^Restart this terminal/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/terminal/notify.test.ts > t167b: a stop that means restart this terminal never says the AI hit an error
+TypeError: Cannot read properties of undefined (reading '0')
+ ❯ stopLine src/terminal/notify.ts:24:13
+     22|   const head = CAUSE[stop.cause];
+     23|   const tail = stop.resetsAt ? `resets at ${resetWords(stop.resetsAt)}…
+     24|   return `${head[0].toUpperCase()}${head.slice(1)}${tail ? ` · ${tail}…
+       |             ^
+     25| }
+     26|
+ ❯ src/terminal/notify.test.ts:43:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 6 passed (8)
+      Tests  2 failed | 51 passed (53)
+   Start at  21:24:39
+   Duration  2.38s (transform 1.18s, setup 0ms, import 1.89s, tests 202ms, environment 2ms)
+
+
+=== T-167-b part 1 AFTER fix ===
+
+ RUN  v4.1.12 G:/Dev/kolux-rs-sessions/wt/2f-T-167-b
+
+
+ Test Files  8 passed (8)
+      Tests  53 passed (53)
+   Start at  21:24:59
+   Duration  2.33s (transform 1.01s, setup 0ms, import 1.77s, tests 163ms, environment 1ms)
+

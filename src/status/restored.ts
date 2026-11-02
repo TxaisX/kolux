@@ -9,7 +9,7 @@ import type { StopInfo } from "../terminal/notify";
 /** One row of `agent_status_saved` (saved.rs Restored). */
 export type SavedRow = { paneKey: number; agent: string; state: string; at: number; sessionId?: string; children?: Crew; unconfirmed: boolean; restart: boolean };
 
-export const RESTART_TEXT = "Restart this terminal: Kolux was updated and its status hooks are from the older version.";
+export const RESTART_TEXT = "Kolux was updated and its status hooks are from the older version.";
 
 const STATES: readonly string[] = ["permission", "blocked", "waiting", "interrupted", "working", "queued", "done", "idle"];
 
@@ -36,7 +36,7 @@ export function restoration(rows: readonly SavedRow[], paneKeys: ReadonlySet<num
     if (!back.has(row.paneKey) || (row.sessionId !== undefined && back.get(row.paneKey) !== row.sessionId)) continue;
     if (row.restart) {
       out.hook[row.paneKey] = "blocked";
-      out.turn[row.paneKey] = { stop: { cause: "error", detail: RESTART_TEXT } };
+      out.turn[row.paneKey] = { stop: { cause: "restart", detail: RESTART_TEXT } };
       out.stale[row.paneKey] = true;
       continue;
     }
