@@ -46,3 +46,13 @@ export function codexSetup(settings: object): string {
 export function setupChanged(pane: { agent: string; setup?: string }, running: boolean, now: string, kept: string | undefined): boolean {
   return pane.agent === "codex" && running && pane.setup !== undefined && pane.setup !== now && kept !== now;
 }
+
+/** T-548-b: what a pane remembers once its terminal answers which account it began on. A Codex pane keeps the
+ *  account and the setup it began on (ACCT-023); a Claude pane keeps the account (null = Claude's own sign-in),
+ *  so the plan figures it shows are its own account's rather than whoever is active. A shell remembers nothing.
+ *  Null when the pane already holds exactly this. */
+export function spawnRecord(pane: { agent: string; account?: string | null; setup?: string }, account: string | null, setup: string): { account: string | null; setup?: string } | null {
+  if (pane.agent === "codex") return pane.account !== account || pane.setup !== setup ? { account, setup } : null;
+  if (pane.agent === "claude") return pane.account !== account ? { account } : null;
+  return null;
+}

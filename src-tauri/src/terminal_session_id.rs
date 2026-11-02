@@ -3,16 +3,14 @@
 //! (`agents::resume_args`) but no hook, so the id is read from what the agent itself says:
 //! 1. its own resume hint ("... copilot --resume=<id>") in the pane's output, which is any agent that prints
 //!    the command that brings the conversation back (read at exit, or whenever asked);
-//! 2. the output of the agent's own sessions command run in the pane's folder (`SOURCES`).
+//! 2. the output of the agent's own sessions command run in the pane's folder (`SOURCES`), asked by the
+//!    window when it writes the layout down (`terminal::terminal_listed_session`, T-066-e).
 //!
 //! The table below records only what each agent offers; the output shapes the parsers accept are
 //! deliberately loose (a UUID-shaped token per line, or a JSON list with an id field), because no
 //! agent is installed on the build PC. The live proof (T-066-e) runs each real agent once and
 //! tightens a parser if its output differs. The never-twice rule lives in `pick_listed`: an id another
 //! pane already holds is skipped.
-
-// ponytail: the sessions-command half (`SOURCES.list`, `pick_listed`) has no caller until T-066-e runs each real agent's command; its tests pin the parsers.
-#![allow(dead_code)]
 
 use crate::agents::{resume_args, safe_session};
 

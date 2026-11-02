@@ -95,3 +95,66 @@ stays open until it lands and the live Windows relaunch run passes.
 RE-RUN after merging origin/main 98a494a6: tsc -p . exit 0; full vitest:
   Test Files  693 passed (693)
        Tests  5075 passed (5075)
+
+PROVER FIX (2026-11-01, lane5/T-566, Linux cloud sandbox; node 22, vitest 4.1.11; nothing was run on Txais's PC)
+=================================================================================================================
+Scope: follow-up (1) above and STATE.md's "Follow-ups not built (1)": scripts/prove/live-T-544.mjs back() reads the
+restored chips before any key or click reaches the window, and matches panes by their data-key. Nothing in src/ changed.
+
+WHAT CHANGED
+------------
+- scripts/prove/pane-states.mjs (new): exports paneStates(document, sel), the reader that used to be an inline string in
+  live-T-544.mjs. key = the pane's own data-key (TerminalPane.tsx data-key={number}, the saved layout key); a pane
+  without one falls back to its sidebar row (ProjectsPanel .sess.pane-row[data-pane], matched by title "Show <title>");
+  restored = the text of .status.restored or null; hidden panes (offsetParent null) are skipped. Self-contained: the
+  prover sends it to the page as text, (${readPaneStates.toString()})(document, TERM), the way it sends domRows.
+- scripts/prove/live-T-544.mjs back(): waits for the pane and its input field, sleeps 4 s, reads paneStates() ONCE into a
+  local, THEN dismissTip() / dismissFirstRun() / dismissTip(), logs that first snapshot on the "reattach <label>" line as
+  before, and logs a second read on "reattach <label>: panes after dialogs ..." so the Escape effect is visible in the
+  evidence. Before this change dismissTip() and dismissFirstRun() ran first (old lines 291-292), so dismissFirstRun's
+  Escape (live-common.mjs:260, sent when a dialog has no "Close setup" button; the Tip card has none and is non-modal)
+  reached the focused pane and cleared its chip before the read: the exact cause of "no chip on relaunch 2, pane 1".
+
+TEST ADDED: scripts/prove/pane-states.test.mjs (vite.config.ts includes scripts/**/*.test.mjs; no DOM library is
+installed, so the document is a hand-rolled stub whose querySelectorAll answers the two selectors with objects carrying
+getAttribute, dataset, querySelector and offsetParent). Every reader case calls the function through
+new Function(`return (${paneStates.toString()})(document, sel)`), the way the prover does, so a reader that leaned on
+module scope would fail here. Three more tests read live-T-544.mjs's back() body and check the order.
+
+COMMANDS
+$ VITEST_MAX_WORKERS=2 npx vitest run scripts/prove/pane-states.test.mjs
+$ node --check scripts/prove/live-T-544.mjs && node --check scripts/prove/pane-states.mjs
+$ npx tsc --noEmit
+$ node scripts/plan-check.mjs
+
+BEFORE (test written first; pane-states.mjs absent)
+ FAIL  scripts/prove/pane-states.test.mjs [ scripts/prove/pane-states.test.mjs ]
+Error: Cannot find module './pane-states.mjs' imported from .../scripts/prove/pane-states.test.mjs
+ Test Files  1 failed (1)
+      Tests  no tests
+
+BEFORE (pane-states.mjs written, live-T-544.mjs still the old back())
+ ❯ scripts/prove/pane-states.test.mjs (8 tests | 3 failed)
+     × the first paneStates() read comes before dismissTip() and dismissFirstRun() (an Escape from them clears the chip)
+       AssertionError: expected 9 to be greater than 430      (dismissTip() at offset 9, paneStates() at 430)
+     × the read waits for the pane and its input field first, and a second read is logged after the dialogs
+       AssertionError: expected '\n  await dismissTip();\n  await dism…' to contain 'after dialogs'
+     × the prover sends the exported reader to the page as text, as it does domRows
+       AssertionError: expected '// LIVE proof, T-544 (PLAN.md) items …' to contain 'import { paneStates as readPaneStates…'
+ (the five reader cases passed: data-key first, sidebar row as fallback, neither -> null, hidden pane skipped)
+
+AFTER
+ ✓ scripts/prove/pane-states.test.mjs (8 tests)
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+$ node --check scripts/prove/live-T-544.mjs && node --check scripts/prove/pane-states.mjs   -> ok, no output
+$ npx tsc --noEmit                                                                            -> exit 0, no output
+$ node scripts/plan-check.mjs                                                                 -> plan-check: OK
+
+STILL LEFT (live, Windows, the installed build)
+-----------------------------------------------
+- B-9 (docs/live-proofs-windows.md): three relaunches through scripts/prove/live-T-544.mjs with a Tip card open on at
+  least one of them. Each "reattach relaunch <n>: ... panes [...]" line must show restored "restored" (or "restored
+  without resume") on every taken-back pane, and every key must equal a key of the saved layout; the "after dialogs"
+  line may show the chip gone on the focused pane (that is the Escape, T-612's part).
+- TERM-107 boxes 1-2 stay open (a key into a live xterm; a pane that could not resume). The PLAN.md line stays unticked.

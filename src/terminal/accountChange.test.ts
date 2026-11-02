@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
+import { accountLabel, accountPrompt, codexSetup, setupChanged, spawnRecord } from "./accountChange";
 import { layoutOf, restoreLayout } from "./layout";
 
 const accounts = [
@@ -81,5 +81,27 @@ describe("a restored pane is asked again after Kolux restarts (T-139-d)", () => 
     const back = restoreLayout(JSON.parse(JSON.stringify(layoutOf([{ ...pane, account: null }], {}, 4, "/w", {}))));
     expect(back?.panes[0].account).toBeNull();
     expect(accountPrompt(back!.panes[0], true, "a1", accounts, undefined)).toMatchObject({ kind: "changed", from: "Codex's own sign-in" });
+  });
+});
+
+// T-548-b (review C): the answer terminal_spawn gives is recorded for a Claude pane too, or every Claude pane
+// stays "account unknown" and shows the active account's figures whatever it runs on.
+describe("spawnRecord (ACCT-023, T-548-b)", () => {
+  it("a Claude pane keeps the account the terminal answered, including Claude's own sign-in (null)", () => {
+    expect(spawnRecord({ agent: "claude" }, "acct-2", "s")).toEqual({ account: "acct-2" });
+    expect(spawnRecord({ agent: "claude", account: undefined }, null, "s")).toEqual({ account: null });
+    expect(spawnRecord({ agent: "claude", account: "acct-1" }, "acct-2", "s")).toEqual({ account: "acct-2" });
+  });
+  it("records nothing when the pane already holds the answer, and never a setup for Claude", () => {
+    expect(spawnRecord({ agent: "claude", account: "acct-2" }, "acct-2", "s")).toBeNull();
+    expect(spawnRecord({ agent: "claude" }, "acct-2", "s")).not.toHaveProperty("setup");
+  });
+  it("a Codex pane still keeps its account and its setup", () => {
+    expect(spawnRecord({ agent: "codex" }, "cx", "s1")).toEqual({ account: "cx", setup: "s1" });
+    expect(spawnRecord({ agent: "codex", account: "cx", setup: "s1" }, "cx", "s1")).toBeNull();
+    expect(spawnRecord({ agent: "codex", account: "cx", setup: "s0" }, "cx", "s1")).toEqual({ account: "cx", setup: "s1" });
+  });
+  it("a shell remembers nothing", () => {
+    expect(spawnRecord({ agent: "shell" }, null, "s")).toBeNull();
   });
 });
