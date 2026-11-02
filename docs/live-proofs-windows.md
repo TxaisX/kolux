@@ -157,8 +157,10 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 - [ ] Run
 - Set up: Kolux RS running, then minimise it.
 - Press: in an ordinary terminal outside Kolux, type `kolux open`.
-- Should happen: the Kolux RS window comes back to the front.
-- Fail if: the window stays minimised, or a second copy of Kolux starts.
+- Should happen: the Kolux RS window comes back to the front, and the terminal prints "Kolux is ready; its window is in
+  front". Then minimise it again and run `kolux open --json`: the result holds `"raised": true` (CLI-011 unit, 2026-11-01).
+- Fail if: the window stays minimised, a second copy of Kolux starts, or the line says Windows kept another window in
+  front / `"raised": false` (then Kolux is restored behind the terminal and only flashes in the taskbar).
 - Result: ______________________________________________
 
 ### B-6 · T-586 · Links after Chinese text and emoji click in the right place

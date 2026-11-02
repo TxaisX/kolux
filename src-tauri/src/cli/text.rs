@@ -366,6 +366,8 @@ pub(super) fn text_core(command: &str, r: &Value) -> String {
             format!("cleared {}: {} task(s), {} dispatch(es), {} message(s), {} run(s); {what}", s("scope"), r["tasks"], r["dispatches"], r["messages"], r["runs"])
         }
         "app.open" if r["started"] == Value::Bool(true) => "Kolux started and is ready".into(),
+        // CLI-011 box 2: "in front" is claimed only when the raise did not say otherwise.
+        "app.open" if r["raised"] == Value::Bool(false) => "Kolux is ready; its window was restored, but Windows kept another window in front".into(),
         "app.open" => "Kolux is ready; its window is in front".into(),
         _ if r["branchKept"] == true => format!("removed {}; branch {} kept", s("path"), s("branch")),
         _ => format!("removed {}", s("path")),
