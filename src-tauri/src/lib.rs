@@ -902,6 +902,8 @@ pub fn run() {
             cli::file_cli::cli_file_window,
             cli::file_cli::cli_file_result,
             diag::diag_bundle,
+            diag::diag_summary, // APP-010: Help > Copy terminal diagnostics
+            lifecycle::app_restart, // APP-010: Help > Restart Kolux
             resources::recovery::ui_heartbeat,
             resources::recovery::startup_recovery_notes,
             resources::recovery::graphics_crash_noted,
