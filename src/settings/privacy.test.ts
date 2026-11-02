@@ -72,3 +72,9 @@ test("t547: the statement names the two providers a usage check asks, and when",
   expect(row?.to).toBe("Kimi (api.moonshot.ai) and MiniMax (www.minimax.io)");
   expect(row?.when).toBe("only when you press Check now in Settings > AI connections with a key you added");
 });
+
+test("t634: the statement names SmartScreen, which checks the browser pane's pages and downloads", () => {
+  const row = OUTBOUND.find((o) => o.to.includes("SmartScreen"));
+  expect(row?.to).toBe("Microsoft Defender SmartScreen, from the browser pane");
+  expect(row?.when).toMatch(/pages you open and of files you download/);
+});

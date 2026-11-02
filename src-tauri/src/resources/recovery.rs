@@ -708,7 +708,7 @@ pub const UNTHROTTLED: [&str; 3] = ["--disable-background-timer-throttling", "--
 /// exemption, and safe graphics when it is on; each switch once. T-319-b (BROW-026): the engine's
 /// identity prompt (FedCM) is switched off in the same string, so sign-in falls back to a popup.
 pub fn browser_args(current: Option<&str>, safe: bool) -> String {
-    let mut s = if safe { safe_args(current) } else { current.filter(|c| !c.trim().is_empty()).unwrap_or(WRY_DEFAULT_ARGS).to_string() };
+    let mut s = if safe { safe_args(current) } else { current.filter(|c| !c.trim().is_empty()).unwrap_or(BASE_ARGS).to_string() };
     for a in UNTHROTTLED {
         if !s.split_whitespace().any(|x| x == a) {
             s.push(' ');
@@ -771,8 +771,12 @@ pub const BURST_WINDOW: Duration = Duration::from_secs(60);
 pub const BURST_COUNT: usize = 3;
 pub const SAFE_FLAG: &str = "safe-graphics.json";
 pub const SAFE_ARG: &str = "--disable-gpu";
-/// What wry passes to WebView2 when the config names nothing; kept when safe graphics adds its flag.
+/// What wry passes to WebView2 when a window names no arguments (the row-955 test checks the launch string never equals it).
+#[cfg(test)]
 pub const WRY_DEFAULT_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection";
+/// R07-browser.2 (T-634, DT-C79): wry's defaults minus `msSmartScreenProtection`, so SmartScreen keeps
+/// checking the pages and downloads of the browser pane, as it does in Edge. Every webview builds on this.
+pub const BASE_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI";
 
 /// Graphics-context losses in a short window; fires once.
 #[derive(Default)]
@@ -832,7 +836,7 @@ pub fn launch_flag(dir: &Path, version: &str, windows: bool) -> Option<SafeFlag>
 
 /// The browser arguments with safe graphics added once; `current` is the config's own value.
 pub fn safe_args(current: Option<&str>) -> String {
-    let base = current.filter(|c| !c.trim().is_empty()).unwrap_or(WRY_DEFAULT_ARGS);
+    let base = current.filter(|c| !c.trim().is_empty()).unwrap_or(BASE_ARGS);
     if base.split_whitespace().any(|a| a == SAFE_ARG) { base.to_string() } else { format!("{base} {SAFE_ARG}") }
 }
 
@@ -1822,10 +1826,10 @@ mod tests {
         assert_eq!(launch_flag(&dir, "0.2.0", true).map(|f| f.chosen), Some(true), "the choice is remembered");
         flag_clear(&dir);
         assert_eq!(flag_read(&dir), None);
-        assert_eq!(safe_args(None), format!("{WRY_DEFAULT_ARGS} --disable-gpu"), "wry's defaults stay");
+        assert_eq!(safe_args(None), format!("{BASE_ARGS} --disable-gpu"), "the base string stays");
         assert_eq!(safe_args(Some("--foo")), "--foo --disable-gpu");
         assert_eq!(safe_args(Some("--foo --disable-gpu")), "--foo --disable-gpu", "never twice");
-        assert_eq!(safe_args(Some("  ")), format!("{WRY_DEFAULT_ARGS} --disable-gpu"));
+        assert_eq!(safe_args(Some("  ")), format!("{BASE_ARGS} --disable-gpu"));
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -2088,7 +2092,7 @@ mod tests {
     #[test]
     fn t286b_every_window_is_excused_from_background_throttling_once() {
         let a = browser_args(None, false);
-        assert!(a.starts_with(WRY_DEFAULT_ARGS), "wry's defaults stay: {a}");
+        assert!(a.starts_with(BASE_ARGS), "the base string stays: {a}");
         for s in UNTHROTTLED {
             assert_eq!(a.split_whitespace().filter(|x| *x == s).count(), 1, "{s} once");
         }
@@ -2096,8 +2100,22 @@ mod tests {
         assert!(safe.contains(SAFE_ARG) && safe.contains(UNTHROTTLED[0]));
         assert_eq!(browser_args(Some(&a), false), a, "applying twice adds nothing");
         assert_eq!(browser_args(Some("--x"), false), format!("--x {} --disable-features=FedCm", UNTHROTTLED.join(" ")));
-        assert!(a.split_whitespace().any(|x| x == "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,FedCm"), "BROW-026 FedCM off in the one list: {a}");
+        assert!(a.split_whitespace().any(|x| x == "--disable-features=msWebOOUI,msPdfOOUI,FedCm"), "BROW-026 FedCM off in the one list: {a}");
         assert_eq!(browser_args_now(), LAUNCH_ARGS.get().cloned().unwrap_or_else(|| browser_args(None, false)));
+    }
+
+    /// R07-browser.2 (T-634): wry's default list switches SmartScreen off, and every window and tab
+    /// shares one string, so browser tabs and their downloads got no phishing or malware check. The
+    /// one string keeps wry's other two switches and leaves SmartScreen on, in every mode.
+    #[test]
+    fn t634_smartscreen_stays_on_in_the_one_string() {
+        let url = tauri::Url::parse("http://127.0.0.1:8080").unwrap();
+        for (safe, proxy) in [(false, None), (true, None), (false, Some(&url)), (true, Some(&url))] {
+            let s = launch_string(None, safe, proxy);
+            assert!(!s.contains("SmartScreen"), "{s}");
+            assert!(s.split_whitespace().any(|x| x == "--disable-features=msWebOOUI,msPdfOOUI,FedCm"), "{s}");
+        }
+        assert!(!safe_args(None).contains("SmartScreen"));
     }
 
     fn profile_with(name: &str, settings: &str) -> PathBuf {

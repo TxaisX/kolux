@@ -97,6 +97,7 @@ This card lists every outside connection Kolux can make:
 - Sites you open in a browser tab.
 - Script libraries from public hosts (cdnjs, jsdelivr, unpkg, tailwindcss, jquery), only when you save a web page for offline use.
 - Microsoft, through the WebView2 browser engine Windows provides. It runs startup checks that Kolux cannot switch off.
+- Microsoft Defender SmartScreen, which checks the addresses of pages you open and files you download in a browser tab against Microsoft's list of phishing and malware sites, as Edge does.
 
 Kolux sends no usage data, and no server exists to receive it. "Send feedback" opens a new-issue page on GitHub in your browser; the app submits nothing itself.
 

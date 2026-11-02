@@ -1,0 +1,46 @@
+T-633 · Skill install and update never start Node's runner through the current folder (R10-skills.2)
+Worker 2f, 2026-11-02, branch s-2f/audit-sec-1.
+
+WHAT THE USER GETS
+- Installing or updating skills (Settings > Skills, `kolux skills install|update`) starts Node's
+  package runner by the full path it was found at. A project folder that carries its own
+  launcher under the runner's name can no longer stand in for it.
+- A computer-wide run (-g) starts in the app's own folder, so the folder a command was typed in
+  has no say. A project run (--local) stays in that project folder, because that is where it
+  installs its skills; the full path and the rule below still apply there.
+- On Windows the runner's own lookups (its launcher finding node) skip the current folder too
+  (NoDefaultCurrentDirectoryInExePath=1 for that process).
+- The shared program finder (agents::find_program, used by every agent start) no longer walks
+  relative PATH entries such as "." or "bin", which name whatever folder the app started in.
+
+WHAT CHANGED
+src-tauri/src/skills/installer.rs
+- launch(cmd, resolved, windows): takes the found path; refuses a path that is not a full path
+  (on every system) and, on Windows, one holding interpreter syntax; the command line names the
+  quoted full path instead of a bare "npx.cmd".
+- run_dir(cmd, exe): the app's own folder for a -g run, through pty::service::start_dir, the
+  helper `kolux open` already uses (T-595); none for a project run.
+- Real::run: resolves through agents::find_program (the T-605 resolver), "Node.js is not
+  installed" when nothing is found; sets the working folder and, on Windows, the variable above.
+src-tauri/src/agents.rs
+- walkable(): the last pass of search_dirs, now keeps full paths only.
+
+TESTS (cargo test --lib, CARGO_TARGET_DIR=target-2f)
+- installer::tests::windows_goes_through_the_command_interpreter_as_one_line (updated)
+- installer::tests::windows_refuses_an_argument_the_interpreter_would_read_as_syntax (updated)
+- installer::tests::t633_the_runner_starts_by_its_full_path_only (new)
+- installer::tests::t633_a_computer_wide_run_starts_in_the_apps_folder (new)
+- agents::tests::t633_relative_path_entries_are_never_walked (new)
+
+RED (before the fix)
+- installer tests: did not compile (launch took two arguments, run_dir missing).
+- agents::tests::t633_relative_path_entries_are_never_walked --- FAILED
+    left:  [".", "src", "<worktree>\\src-tauri"]
+    right: ["<worktree>\\src-tauri"]
+
+GREEN (after the fix)
+- cargo test --lib: 2775 passed, 1 failed, 6 ignored. The one failure is
+  scm::writers::tests::t606_the_claude_writer_runs_from_an_empty_folder_of_its_own_with_only_the_users_settings
+  ("did not finish within 20 seconds"), the environment failure its own comment records: its
+  stand-in script pipes to `find`, which resolves to a different program under Git Bash; it does
+  not go through the code changed here (its resolver is a test closure) and is skipped on CI.
