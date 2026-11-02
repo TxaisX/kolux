@@ -13,7 +13,7 @@ import { useWindow } from "./store";
 
 export default function WindowSidebar() {
   const {
-    terminals, screen, sidebarOpen, reveal, openDirs, sources, openPane, rowStates, unreadDirs,
+    terminals, screen, sidebarOpen, reveal, openDirs, sources, rowStates, unreadDirs,
     markDir, settings, saveSetting, activeDir, select, removed, removedAll, agents, defaultId, setDefault,
     launching, launch, addChooser, newTab, allAgents, agentPass, refreshAgents, page, setPage, refresh,
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest, startIn, projectAdded,
@@ -28,7 +28,6 @@ export default function WindowSidebar() {
           reveal={reveal}
           openDirs={openDirs}
           sessions={sources}
-          onOpenSession={openPane}
           states={rowStates}
           unread={unreadDirs}
           onUnread={markDir}
