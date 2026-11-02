@@ -1,0 +1,37 @@
+T-652..T-654 · Automatic pull requests: guards, flow, setting (DT-C89, DT-C90, DT-C91; audit row 8)
+Worker 2f, 2026-11-02, branch s-2f/autopr. Live proof of the whole flow: evidence/T-655.txt.
+
+WHAT THE USER GETS
+- When an agent finishes a turn with changes, Kolux commits on the workspace's own branch. With a
+  remote it pushes that branch and opens or updates a draft pull request into the default branch.
+  With no remote it only commits, and a "local only" icon says so.
+- Settings -> Git & worktrees: automatic pull requests On / Off / default per workspace, with one
+  default (on for GitHub repositories only).
+- One click (the manual flow) no longer drops files past the first 1,000 (audit row 8).
+
+GUARDS (DT-C90), each refused in Rust with the files named
+- Never the default branch, never force, never tags or submodule commits
+  (push --no-follow-tags --no-recurse-submodules -- origin <commit>:refs/heads/<branch>).
+- A likely secret (by name or by a well-known key prefix in the content, commit messages included)
+  or a file over 10 MB stops the commit and the push. The scan reads the blobs git would commit or
+  push, after filters, in batches; every history read has a 10-minute limit and a timeout fails.
+- Only inside a Kolux workspace; a branch pushing to a fork or another remote is skipped.
+- git's index.lock is never deleted: a held lock skips the turn, and the message says how to find
+  and clear a lock a stopped git left behind.
+- A branch already on origin whose link or local copy of origin/<branch> is missing or behind is
+  repaired on a later run without pushing again, so the draft pull request still opens.
+
+PROOF
+- cargo test --lib -j 2 auto_pr: 52 passed (src-tauri/src/auto_pr.rs, tests t652_* .. t655_*).
+- cargo clippy --all-targets -j 2 -- -D warnings: clean.
+- pnpm vitest run src/scm src/settings src/status src/insights: 142 files, 854 tests passed
+  (autoPr.test.ts, autoPrWatch.test.ts, AutoPrStatus.test.ts, oneClick.test.ts, settings/autoPr.test.ts).
+- pnpm tsc --noEmit, plan-check, invoke-contract: OK.
+- Bundle: first load 1,454,873 bytes (ceiling 1,485,000); the listener loads on demand after mount.
+- Live (evidence/T-655.txt): a stand-in agent's finished turn made the commit by itself on a scratch
+  repository with no remote, and the Insights panel showed its row as local only.
+
+REVIEW
+- Code review (opus, read-only), 4 rounds: B-, B+, A-, A.
+- Security audit (security-auditor), 4 rounds: B-, A-, A, A. No finding at LOW or above left.
+- Deferred by the coordinator: code NITs 5 and 6 (round 2); review notes move = backlog row 54.
