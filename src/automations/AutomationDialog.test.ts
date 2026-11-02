@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import AutomationDialog, { setupChoice } from "./AutomationDialog";
-import { EVENT_CHOICES, type Automation } from "./model";
+import { EVENT_CHOICES, hermesSchedule, type Automation } from "./model";
 import { templates } from "./timetable";
 
 const projects = [{ id: "p1", name: "shop", path: "C:\\src\\shop", base: "main" }];
@@ -122,4 +122,32 @@ test("T-085-f: the dialog offers pull request opens, checks fail and an agent fi
   expect(done).toContain("finishes its turn");
   expect(done).not.toContain("go from pending to failing");
   expect(render(row("pr-opened"))).toContain("A pull request opened from one of this project");
+});
+
+// T-193-b: the Kolux / Hermes switch. A Hermes job needs a cron timetable and none of Kolux's agent, session, event or precheck settings.
+const hermesJob: Automation = { id: "hermes:j1", jobId: "j1", source: "hermes", local: true, name: "Nightly digest", prompt: "summarise the inbox", provider: "hermes", projectId: "", enabled: true, trigger: { kind: "schedule", cron: "0 9 * * *", timezone: "UTC" }, form: { preset: "daily", time: "09:00", day: null, custom: "" }, actions: ["run", "edit", "delete", "create", "pause", "resume"] };
+
+test("T-193-b a new automation offers the Kolux / Hermes switch, on Kolux with the agent settings", () => {
+  const html = render(null);
+  expect(html).toContain("Runs in");
+  expect(html).toMatch(/<option value="kolux" selected="">Kolux/);
+  expect(html).toContain("Hermes");
+  expect(html).toContain("Precheck command");
+  expect(html).toContain("Continue in the session");
+});
+
+test("T-193-b a Hermes job opens on Hermes: a timetable, no agent, session reuse, event trigger or precheck", () => {
+  const html = render(hermesJob);
+  expect(html).toContain("Nightly digest");
+  expect(html).toContain("Cron timetable");
+  expect(html).toContain("Hermes keeps this job");
+  for (const gone of [">Agent<", "Continue in the session", "Precheck command", "Precheck time limit", "When a pull request opens", "If Kolux was away", "Workspace"]) expect(html).not.toContain(gone);
+});
+
+test("T-193-b hermesSchedule takes a five-field cron line and refuses an RRULE or a short line", () => {
+  expect(hermesSchedule("0 9 * * 1-5")).toBe("0 9 * * 1-5");
+  expect(hermesSchedule("  0   9 * * 1-5 ")).toBe("0 9 * * 1-5");
+  expect(hermesSchedule("RRULE:FREQ=DAILY")).toBe(null);
+  expect(hermesSchedule("0 9 * *")).toBe(null);
+  expect(hermesSchedule("")).toBe(null);
 });

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { confirmDelete, keepSelection, runActions, runStep, pageKey, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, findNext, lastRun, matches, normalizeQuery, noFilters, passes, preselect, PROMPT_SEARCH_CHARS, sortRows, statusWord, triggerLabel, upcoming, GRACE, graceWord, PRECHECK, precheckWord, type Automation, type Names, type Run } from "./model";
+import { confirmDelete, keepSelection, runActions, runStep, pageKey, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, findNext, lastRun, agentChoices, canDo, rowActions, splitWarnings, whereItRuns, matches, normalizeQuery, noFilters, passes, preselect, PROMPT_SEARCH_CHARS, sortRows, statusWord, triggerLabel, upcoming, GRACE, graceWord, PRECHECK, precheckWord, type Automation, type Names, type Run } from "./model";
 
 test("T-085-h a run reconnected after a restart says its output is the replay so far, not the end", () => {
   const r: Run = { id: "run-1", automationId: "a", number: 1, trigger: "schedule", status: "dispatched", at: 0, output: "hi", outputFrom: "replay", reconnected: true };
@@ -179,4 +179,52 @@ test("AUTO-013: Up and Down step through runs, Down with none selected picks the
   expect(k("ArrowDown", 0, { mods: true })).toBe(null);
   expect(k("ArrowDown", 0, { composing: true })).toBe(null);
   expect(runStep({ key: "ArrowDown", mods: false, composing: false }, null, 0)).toBe(null);
+});
+
+// T-193-b: Hermes and OpenClaw rows live on this computer; Kolux does not own their agent or their runs.
+const hermes = (extra: Partial<Automation> = {}): Automation => auto("hermes:j1", "Nightly digest", { provider: "hermes", projectId: "", source: "hermes", jobId: "j1", local: true, actions: ["run", "edit", "delete", "create", "pause", "resume"], ...extra });
+const claw = (extra: Partial<Automation> = {}): Automation => auto("openclaw:c1", "Sweep", { provider: "openclaw", projectId: "", source: "openclaw", jobId: "c1", local: true, actions: ["run", "delete", "pause", "resume"], ...extra });
+
+test("T-193-b an agent filter does not list or keep external rows, and no filter keeps them", () => {
+  expect(passes(hermes(), noFilters, [])).toBe(true);
+  expect(passes(hermes(), { ...noFilters, agents: ["claude"] }, [])).toBe(false);
+  expect(passes(hermes(), { ...noFilters, agents: ["hermes"] }, [])).toBe(false);
+  expect(agentChoices([auto("a", "A"), hermes(), claw()])).toEqual(["claude"]);
+});
+
+test("T-193-b state filter still works on external rows; a result filter only applies to Kolux runs", () => {
+  expect(passes(hermes({ enabled: false }), { ...noFilters, state: "paused" }, [])).toBe(true);
+  expect(passes(hermes({ enabled: false }), { ...noFilters, state: "on" }, [])).toBe(false);
+  expect(passes(hermes(), { ...noFilters, result: "failed" }, [])).toBe(false);
+});
+
+test("T-193-b which actions a row offers: Kolux rows everything, OpenClaw no edit, Hermes edit and create", () => {
+  expect(canDo(auto("a", "A"), "edit")).toBe(true);
+  expect(canDo(hermes(), "edit")).toBe(true);
+  expect(canDo(claw(), "edit")).toBe(false);
+  expect(canDo(claw(), "pause")).toBe(true);
+  expect(canDo(claw(), "delete")).toBe(true);
+  expect(canDo(hermes({ actions: ["run"] }), "pause")).toBe(false);
+});
+
+test("T-193-b warning rows are split off the list and read as one line each", () => {
+  const w: Automation = { ...auto("warning:hermes", "hermes"), kind: "warning", source: "hermes", warning: "hermes was not found on the PATH", actions: [] };
+  const { rows, warnings } = splitWarnings([auto("a", "A"), w, hermes()]);
+  expect(rows.map((r) => r.id)).toEqual(["a", "hermes:j1"]);
+  expect(warnings).toEqual(["hermes was not found on the PATH"]);
+});
+
+test("T-193-b external rows sort by their own last run time and say where they run", () => {
+  const list = [hermes({ id: "h1", name: "H old", lastRunAt: 1000 }), hermes({ id: "h2", name: "H new", lastRunAt: 5000 }), hermes({ id: "h3", name: "H never" })];
+  expect(sortRows(list, [], "lastRun", false, names).map((a) => a.id)).toEqual(["h2", "h1", "h3"]);
+  expect(whereItRuns(hermes())).toBe("Runs on this computer (Hermes)");
+  expect(whereItRuns(claw())).toBe("Runs on this computer (OpenClaw)");
+  expect(whereItRuns(auto("a", "A"))).toBe("");
+});
+
+test("T-193-b the quick-action menu: OpenClaw rows have no Edit, a paused row offers Resume, Kolux rows have all four", () => {
+  expect(rowActions(auto("a", "A"))).toEqual(["run", "toggle", "edit", "delete"]);
+  expect(rowActions(hermes())).toEqual(["run", "toggle", "edit", "delete"]);
+  expect(rowActions(claw())).toEqual(["run", "toggle", "delete"]);
+  expect(rowActions(claw({ enabled: false, actions: ["run", "delete", "pause"] }))).toEqual(["run", "delete"]);
 });
