@@ -13,9 +13,10 @@ use std::time::Duration;
 pub const RUNNER: &str = "npx";
 /// The installer's package; user-facing text only ever says "the community skills installer" (DT-23).
 pub const PACKAGE: &str = "skills";
-/// The Kolux skills repository. A placeholder until the repository is published (DT-C43): every
+/// The Kolux skills repository, under Txais's own GitHub account (DT-C72). A placeholder until the
+/// repository is published (DT-C43); until then an install fails rather than fetching anything. Every
 /// flow takes the repository as a value, and tests pass a local stand-in folder.
-pub const OFFICIAL_REPO: &str = "kolux/skills";
+pub const OFFICIAL_REPO: &str = "TxaisX/kolux-skills";
 /// The installer's name for the shared cross-agent folder.
 pub const SHARED_AGENT: &str = "universal";
 /// The installer's output is kept up to this many bytes for Show log.
@@ -249,17 +250,17 @@ mod tests {
     #[test]
     fn add_command_repeats_the_skill_flag_and_an_unattended_run_names_its_agents() {
         let n = s(&["orchestration", "kolux-cli"]);
-        let panel = add_cmd("kolux/skills", &n, &s(&["claude-code"]), true, false).unwrap();
-        assert_eq!(panel.line(), "npx --yes skills add kolux/skills --skill kolux-cli --skill orchestration -g");
-        let run = add_cmd("kolux/skills", &n[..1], &s(&["claude-code", "codex"]), false, true).unwrap();
-        assert_eq!(run.line(), "npx --yes skills add kolux/skills --skill orchestration --agent claude-code codex universal -y");
+        let panel = add_cmd("TxaisX/kolux-skills", &n, &s(&["claude-code"]), true, false).unwrap();
+        assert_eq!(panel.line(), "npx --yes skills add TxaisX/kolux-skills --skill kolux-cli --skill orchestration -g");
+        let run = add_cmd("TxaisX/kolux-skills", &n[..1], &s(&["claude-code", "codex"]), false, true).unwrap();
+        assert_eq!(run.line(), "npx --yes skills add TxaisX/kolux-skills --skill orchestration --agent claude-code codex universal -y");
         assert!(add_cmd("-x", &n, &[], true, false).is_err() && add_cmd("r", &[], &[], true, false).is_err());
         assert!(add_cmd("r", &n, &s(&["a;b"]), true, true).is_err());
     }
 
     #[test]
     fn the_install_panel_command_is_interactive_and_refuses_bad_names() {
-        assert_eq!(skills_install_command(s(&["koluxward", "kolux-cli"])).unwrap(), "npx --yes skills add kolux/skills --skill kolux-cli --skill koluxward -g");
+        assert_eq!(skills_install_command(s(&["koluxward", "kolux-cli"])).unwrap(), "npx --yes skills add TxaisX/kolux-skills --skill kolux-cli --skill koluxward -g");
         assert!(skills_install_command(s(&["x y"])).is_err() && skills_install_command(vec![]).is_err());
     }
 
