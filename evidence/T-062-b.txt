@@ -123,8 +123,44 @@ Renumber: this PR's decision row is DT-C70 (DT-C67 clashed with PR #60); DECISIO
 
    cargo test --manifest-path src-tauri/Cargo.toml edit044
    test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2654 filtered out
+   (Windows: of the 6, 5 are this PR's tests - the code-1 test is #[cfg(unix)] and did not run there - and 1,
+    fsops::tests::edit044_a_removal_blocked_for_a_moment_is_retried, is already on main.)
 
 3. clippy (this PC's toolchain, rust 1.99): editor_search.rs stderr_text used chunks_exact(2) and failed
    `clippy::chunks_exact_to_as_chunks` under -D warnings; now as_chunks::<2>() (same as parse_notify).
    cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: exit 0
-   cargo test ... edit044 after that change: test result: ok. 6 passed; 0 failed
+   cargo test ... edit044 after that change: test result: ok. 6 passed; 0 failed (same 5 + 1 split as above)
+
+4. Review round (PR #64 review, grade B): wsl.exe's own warning with code 1 no longer reads as a failure, a mixed
+   UTF-16 / UTF-8 error stream decodes both parts, and the code-1 test now runs on Windows (a cmd stand-in).
+   Test first (new tests on the unchanged code, Windows, cargo test --manifest-path src-tauri/Cargo.toml edit044):
+   Before: test editor_search::tests::edit044_wsl_messages_in_utf16_read_as_text ... ok
+   Before: test editor_search::tests::edit044_a_mixed_utf16_and_utf8_error_stream_reads_both ... FAILED
+   Before: test editor_search::tests::edit044_a_wsl_root_names_its_distribution_and_linux_folder ... ok
+   Before: test editor_search::tests::edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments ... ok
+   Before: test editor_search::tests::edit044_without_wsl_a_wsl_search_says_so ... ok
+   Before: test editor_search::tests::edit044_a_wsl_warning_with_code_1_is_no_matches ... FAILED
+   Before: test editor_search::tests::edit044_a_wsl_search_that_ends_with_a_wsl_error_and_code_1_is_a_failure ... ok
+   Before: thread 'editor_search::tests::edit044_a_mixed_utf16_and_utf8_error_stream_reads_both' (14420) panicked at src\editor_search.rs:931:9:
+   Before: "wsl: Detected localhost proxy configuration.\n杲›敲敧⁸慰獲\u{2065}牥潲㩲甠据潬敳\u{2064}牧畯\u{a70}"
+   Before: thread 'editor_search::tests::edit044_a_wsl_warning_with_code_1_is_no_matches' (11760) panicked at src\editor_search.rs:917:98:
+   Before: called `Result::unwrap()` on an `Err` value: Custom { kind: Other, error: "wsl: Detected localhost proxy configuration, but it is not mirrored into WSL." }
+   Before: test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 2654 filtered out; finished in 1.68s
+   Fix: stderr_text reads a UTF-16 run from the first NUL byte to its line feed and everything else as UTF-8;
+   wsl_error_line makes code 1 a failure only for wsl.exe's error forms (execvpe(, chdir(, <3>WSL,
+   "not installed", "no distribution"), ignoring lines that start with "wsl:".
+   After:
+   After: test editor_search::tests::edit044_a_mixed_utf16_and_utf8_error_stream_reads_both ... ok
+   After: test editor_search::tests::edit044_wsl_messages_in_utf16_read_as_text ... ok
+   After: test editor_search::tests::edit044_a_wsl_root_names_its_distribution_and_linux_folder ... ok
+   After: test editor_search::tests::edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments ... ok
+   After: test scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... ok
+   After: test editor_search::tests::edit044_without_wsl_a_wsl_search_says_so ... ok
+   After: test editor_search::tests::edit044_a_wsl_warning_with_code_1_is_no_matches ... ok
+   After: test fsops::tests::edit044_a_removal_blocked_for_a_moment_is_retried ... ok
+   After: test editor_search::tests::edit044_a_wsl_search_that_ends_with_a_wsl_error_and_code_1_is_a_failure ... ok
+   After: test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 2654 filtered out; finished in 0.37s
+   (9 = 8 of this PR + fsops::edit044_a_removal_blocked_for_a_moment_is_retried from main.)
+   clippy (this PC): cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: exit 0
+   (The wsl-error-form + code 1 test passed before and after: the old rule already failed on any message.)
+   GitHub run 41389903192 on 75f8bcdf (Rust tests, lints and dependencies): success.

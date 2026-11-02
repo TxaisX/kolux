@@ -249,14 +249,49 @@ fn wsl_rg_command(distro: &str, linux_root: &str, a: &Ask) -> Command {
 }
 
 /// EDIT-044: what a search command wrote to its error stream. wsl.exe writes its own messages
-/// (no such distribution, no such command) in UTF-16, ripgrep and git in UTF-8.
+/// (warnings, no such distribution, no such command) in UTF-16, ripgrep and git in UTF-8, and one
+/// stream can hold both. UTF-8 text never contains a NUL byte, so the first NUL marks where a UTF-16
+/// run starts; the run ends after its next line feed.
 fn stderr_text(bytes: &[u8]) -> String {
-    let utf16 = bytes.len() >= 2 && bytes.len().is_multiple_of(2) && (bytes.starts_with(&[0xFF, 0xFE]) || (bytes[0] != 0 && bytes[1] == 0));
-    if utf16 {
-        let units: Vec<u16> = bytes.as_chunks::<2>().0.iter().map(|c| u16::from_le_bytes(*c)).collect();
-        return String::from_utf16_lossy(&units).trim_start_matches('\u{FEFF}').to_string();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let rest = &bytes[i..];
+        let start = if rest.starts_with(&[0xFF, 0xFE]) { Some(0) } else { rest.iter().position(|&b| b == 0).map(|p| p.saturating_sub(1)) };
+        let Some(start) = start else {
+            out.push_str(&String::from_utf8_lossy(rest));
+            break;
+        };
+        out.push_str(&String::from_utf8_lossy(&rest[..start]));
+        let mut units = Vec::new();
+        let mut at = start;
+        while at + 2 <= rest.len() {
+            let unit = u16::from_le_bytes([rest[at], rest[at + 1]]);
+            at += 2;
+            units.push(unit);
+            if unit == 0x0A {
+                break;
+            }
+        }
+        out.push_str(String::from_utf16_lossy(&units).trim_start_matches('\u{FEFF}'));
+        if at == start {
+            out.push_str(&String::from_utf8_lossy(&rest[start..]));
+            break;
+        }
+        i += at;
     }
-    String::from_utf8_lossy(bytes).into_owned()
+    out
+}
+
+/// EDIT-044: the first line of wsl.exe's own error forms (no distribution, wsl.exe not installed,
+/// a missing command or folder inside it). Inside the distribution these end with code 1, the code
+/// ripgrep uses for "nothing matched", so only these lines turn code 1 into a failure; a `wsl:`
+/// warning (printed on good calls too) does not.
+fn wsl_error_line(stderr: &str) -> Option<&str> {
+    stderr.lines().map(str::trim).filter(|l| !l.is_empty() && !l.to_ascii_lowercase().starts_with("wsl:")).find(|l| {
+        let l = l.to_ascii_lowercase();
+        ["execvpe(", "chdir(", "<3>wsl", "not installed", "no distribution"].iter().any(|m| l.contains(m))
+    })
 }
 
 fn git_command(root: &Path, a: &Ask) -> Command {
@@ -455,8 +490,9 @@ fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>
         return Err(std::io::Error::other(format!("The search took longer than {} seconds and was stopped; narrow it with an include pattern.", TIMEOUT.as_secs())));
     }
     // ripgrep and git grep both end with 1 when nothing matched; more is a real failure.
-    let why = stderr.lines().map(str::trim).find(|l| !l.is_empty());
-    let failed = status.code().is_some_and(|c| c > 1) || (wsl && status.code() == Some(1) && why.is_some());
+    let wsl_err = if wsl { wsl_error_line(&stderr) } else { None };
+    let why = wsl_err.or_else(|| stderr.lines().map(str::trim).find(|l| !l.is_empty()));
+    let failed = status.code().is_some_and(|c| c > 1) || (status.code() == Some(1) && wsl_err.is_some());
     if !capped && failed && total == 0 {
         return Err(std::io::Error::other(why.unwrap_or("the search command failed").to_string()));
     }
@@ -879,21 +915,62 @@ mod tests {
         assert_eq!(stderr_text(b""), "");
     }
 
-    // EDIT-044: inside the distribution a missing ripgrep or folder ends with code 1 and a message,
-    // the same code as "nothing matched"; with the message the search says why instead of finding
-    // nothing. A local search keeps reading code 1 as no hits.
-    #[cfg(unix)]
-    #[test]
-    fn edit044_a_wsl_search_that_ends_with_a_message_and_code_1_is_a_failure() {
-        let complain = || {
-            let mut c = Command::new("sh");
-            c.args(["-c", "echo 'execvpe(rg) failed: No such file or directory' >&2; exit 1"]);
+    // A stand-in search command that writes `msg` to its error stream and ends with code 1, on both
+    // platforms (the WSL path only ever runs on Windows, so the Windows form is the one that counts).
+    fn ends_with_1_and(msg: &str) -> Command {
+        #[cfg(windows)]
+        {
+            let mut c = Command::new("cmd");
+            c.args(["/c", &format!("echo {msg} 1>&2 & exit /b 1")]);
             c
-        };
-        let err = run(complain(), parse_rg, "rg", &AtomicBool::new(false), true).unwrap_err();
-        assert!(err.to_string().contains("execvpe(rg) failed"), "{err}");
-        let found = run(complain(), parse_rg, "rg", &AtomicBool::new(false), false).unwrap();
-        assert_eq!(found.total, 0);
+        }
+        #[cfg(not(windows))]
+        {
+            let mut c = Command::new("sh");
+            c.args(["-c", &format!("echo '{msg}' >&2; exit 1")]);
+            c
+        }
+    }
+
+    // EDIT-044: inside the distribution a missing ripgrep or folder ends with code 1 and a wsl.exe
+    // message, the same code as "nothing matched"; with that message the search says why instead of
+    // finding nothing. A local search keeps reading code 1 as no hits.
+    #[test]
+    fn edit044_a_wsl_search_that_ends_with_a_wsl_error_and_code_1_is_a_failure() {
+        for msg in ["execvpe(rg) failed: No such file or directory", "chdir(/gone) failed: No such file", "There is no distribution with the supplied name.", "The Windows Subsystem for Linux is not installed."] {
+            let err = run(ends_with_1_and(msg), parse_rg, "rg", &AtomicBool::new(false), true).unwrap_err();
+            assert!(err.to_string().contains(msg), "{msg}: {err}");
+            let found = run(ends_with_1_and(msg), parse_rg, "rg", &AtomicBool::new(false), false).unwrap();
+            assert_eq!(found.total, 0, "a local search keeps code 1 as no hits");
+        }
+    }
+
+    // EDIT-044: wsl.exe prints warnings of its own on a good call ("wsl: Detected localhost proxy
+    // configuration ..."); with code 1 that is still "no matches", not an error on every empty search.
+    #[test]
+    fn edit044_a_wsl_warning_with_code_1_is_no_matches() {
+        for msg in ["wsl: Detected localhost proxy configuration, but it is not mirrored into WSL.", "WSL: some other notice"] {
+            let found = run(ends_with_1_and(msg), parse_rg, "rg", &AtomicBool::new(false), true).unwrap();
+            assert_eq!(found.total, 0, "{msg}");
+        }
+    }
+
+    // EDIT-044: a wsl.exe warning (UTF-16) and ripgrep's own error (UTF-8) in one stream both read.
+    #[test]
+    fn edit044_a_mixed_utf16_and_utf8_error_stream_reads_both() {
+        let mut mixed: Vec<u8> = "wsl: Detected localhost proxy configuration.
+".encode_utf16().flat_map(u16::to_le_bytes).collect();
+        mixed.extend_from_slice("rg: regex parse error: unclosed group
+".as_bytes());
+        let text = stderr_text(&mixed);
+        assert!(text.contains("wsl: Detected localhost proxy configuration."), "{text:?}");
+        assert!(text.contains("rg: regex parse error: unclosed group"), "{text:?}");
+        let mut other: Vec<u8> = b"rg: a
+".to_vec();
+        other.extend("There is no distribution.
+".encode_utf16().flat_map(u16::to_le_bytes));
+        let text = stderr_text(&other);
+        assert!(text.contains("rg: a") && text.contains("There is no distribution."), "{text:?}");
     }
 
     // EDIT-044: searching a WSL root where wsl.exe is not installed says so instead of finding nothing.
