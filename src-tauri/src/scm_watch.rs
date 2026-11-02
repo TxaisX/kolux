@@ -5,7 +5,7 @@
 //! a short quiet timer, and when the timer runs out (or a burst has gone on for a second) it reads
 //! the status once and sends it to the window as `scm-status-<id>`, the same shape `scm_status`
 //! returns. Behind it, a safety read every 30 s. A watch that cannot start (a network drive, a
-//! junctioned path, a WSL distribution (EDIT-044, DT-C67), no handle), or that later errors, goes
+//! junctioned path, a WSL distribution (EDIT-044, DT-C70), no handle), or that later errors, goes
 //! back to reading every 4 s for that worktree and says so once in the diagnostics log; that 4 s
 //! read is the fallback that never goes quiet. T-033-e: a change-buffer overflow is not an
 //! error: the reader reads again and the worker catches up with one read; a worktree whose folder
@@ -321,7 +321,7 @@ pub fn places(path: &Path) -> Result<Places, String> {
 
 /// Why a folder is not watched but read every 4 s: a network drive or a path that leads elsewhere
 /// (a junction or a substituted drive), where change reports cannot be trusted.
-/// EDIT-044 (T-062-b, DT-C67): a worktree inside a WSL distribution (`\\wsl$\` or `\\wsl.localhost\`)
+/// EDIT-044 (T-062-b, DT-C70): a worktree inside a WSL distribution (`\\wsl$\` or `\\wsl.localhost\`)
 /// is read every 4 s from the start. Nothing of ours runs inside the distribution, so there is no
 /// watcher there to retry when it runs out of watch capacity, and change reports through the share
 /// cannot be relied on; the 4 s read is the retry that never goes quiet. Decided from the spelling
@@ -1773,8 +1773,13 @@ mod tests {
         }
         let local = std::env::temp_dir().join(format!("scm-watch-t062b-local-{}", std::process::id()));
         std::fs::create_dir_all(&local).unwrap();
+        // A plain folder on every platform: resolve the temp folder's links (a runner's temp folder
+        // can sit behind a junction), then drop the `\\?\` form `canonicalize` gives on Windows,
+        // because `unwatchable` spells the resolved path without it before comparing.
         let real = std::fs::canonicalize(&local).unwrap();
-        assert_eq!(unwatchable(&real), None, "a local folder is watched");
+        let real = real.to_string_lossy();
+        let real = Path::new(real.strip_prefix(r"\\?\").unwrap_or(&real));
+        assert_eq!(unwatchable(real), None, "a local folder is watched");
         let _ = std::fs::remove_dir_all(&local);
     }
 }

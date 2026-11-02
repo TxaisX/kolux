@@ -470,6 +470,12 @@ pub fn search(root: &Path, a: &Ask) -> Result<Found, String> {
 
 /// `search` for a call that took its generation number earlier (at command entry).
 pub fn search_gen(root: &Path, a: &Ask, gen: u64) -> Result<Found, String> {
+    search_with(root, a, gen, wsl_rg_command)
+}
+
+/// `search_gen` with the command that searches inside a WSL distribution passed in, so a test can
+/// stand in for wsl.exe (present or missing) instead of depending on the machine it runs on.
+fn search_with(root: &Path, a: &Ask, gen: u64, wsl_rg: impl Fn(&str, &str, &Ask) -> Command) -> Result<Found, String> {
     if a.query.is_empty() {
         return Ok(Found { files: vec![], total: 0, capped: false, source: "none" });
     }
@@ -484,7 +490,7 @@ pub fn search_gen(root: &Path, a: &Ask, gen: u64) -> Result<Found, String> {
     // EDIT-044 (T-062-b): a root inside a WSL distribution is searched by ripgrep inside it.
     let wsl = wsl_root(root);
     let cmd = match &wsl {
-        Some((distro, linux_root)) => wsl_rg_command(distro, linux_root, a),
+        Some((distro, linux_root)) => wsl_rg(distro, linux_root, a),
         None => rg_command(root, a),
     };
     let found = match run(cmd, parse_rg, "rg", &stop, wsl.is_some()) {
@@ -891,13 +897,12 @@ mod tests {
     }
 
     // EDIT-044: searching a WSL root where wsl.exe is not installed says so instead of finding nothing.
+    // wsl.exe is stood in for by a program that does not exist, so the answer never depends on
+    // whether the machine running the test has WSL (a Windows runner does).
     #[test]
     fn edit044_without_wsl_a_wsl_search_says_so() {
-        let err = search(Path::new(r"\\wsl.localhost\Ubuntu\home\me"), &ask("needle")).unwrap_err();
-        if Command::new("wsl.exe").arg("--status").output().is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound) {
-            assert!(err.contains("WSL") && err.contains("Ubuntu"), "{err}");
-        } else {
-            eprintln!("wsl.exe is installed here; the search ended with: {err}");
-        }
+        let missing = |_: &str, _: &str, _: &Ask| Command::new("krs-no-such-wsl-exe-t062b");
+        let err = search_with(Path::new(r"\\wsl.localhost\Ubuntu\home\me"), &ask("needle"), next_gen(), missing).unwrap_err();
+        assert!(err.contains("WSL") && err.contains("Ubuntu") && err.contains("not installed"), "{err}");
     }
 }

@@ -59,7 +59,7 @@ Rules: WSL roots are treated as local paths, not as network shares; searching a 
   (Kolux RS, T-062-b, 2026-11-02: the search of a WSL root runs ripgrep inside its distribution
   through wsl.exe with no shell in between, hits mapped back by their relative paths, a missing
   wsl.exe or ripgrep reported; a WSL worktree is read every 4 s from the start instead of watched,
-  the read that never goes quiet (DT-C67); one file through its WSL path and its drive alias is one
+  the read that never goes quiet (DT-C70); one file through its WSL path and its drive alias is one
   editor buffer, Linux names case-sensitive. Unit tests only: both boxes stay open until a WSL
   distribution is on the build machine, and the fence still refuses a WSL root as a share.)
 Acceptance:

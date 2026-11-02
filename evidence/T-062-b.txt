@@ -19,7 +19,7 @@ Scope built (pure logic, proven by unit tests on this Linux container; no WSL di
   lives there.
 - Watcher (src-tauri/src/scm_watch.rs unwatchable): a WSL worktree is read every 4 s from the start, decided from the
   spelling alone (fsops::is_wsl), before the drive-type call, so no share is contacted. The 4 s read is the fallback
-  that never goes quiet; no watcher runs inside the distribution (DT-C67; notify is refused, T-033-b).
+  that never goes quiet; no watcher runs inside the distribution (DT-C70; notify is refused, T-033-b).
 
 Commands (CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target, CARGO_INCREMENTAL=0, CARGO_BUILD_JOBS=2):
   (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib edit044)
@@ -95,4 +95,31 @@ WHAT IS LEFT
   today. The rules above take effect once that refusal is lifted.
 - Not tried live: whether wsl.exe -e with a missing ripgrep ends with code 1 and a message (handled) or another code
   (also handled as a failure); whether Windows' folder-change reader could watch a wsl.localhost share (which would
-  lift DT-C67's 4 s read).
+  lift DT-C70's 4 s read).
+
+WINDOWS CI FOLLOW-UP (PR #64, run 41381698426: 2 failures in this PR's own new tests)
+-----------------------------------------------------------------------------------
+Renumber: this PR's decision row is DT-C70 (DT-C67 clashed with PR #60); DECISIONS.md, PLAN.md, spec/12-editor-files.md,
+  scm_watch.rs and this file now say DT-C70. No other row touched.
+
+1. editor_search::tests::edit044_without_wsl_a_wsl_search_says_so
+   CI before: unwrap_err() on an Ok value: Found { files: [], total: 0, capped: false, source: "rg" }
+   Cause: the test assumed no wsl.exe on the machine; the runner (and this PC: C:\Windows\System32\wsl.exe) has one,
+     so the search really ran and found nothing.
+   Fix: search_gen now delegates to search_with(.., wsl_rg), which takes the function that builds the wsl.exe command;
+     production passes wsl_rg_command, the test passes a command for a program that does not exist, so the NotFound
+     branch is reached whether or not the host has WSL. The test asserts the message names WSL, the distribution and
+     "not installed".
+   After (this PC, wsl.exe present): edit044_without_wsl_a_wsl_search_says_so ... ok
+
+2. scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched
+   Before (reproduced here, G:\Temp is not a plain path): left: Some("its path leads to G:\Temp\scm-watch-t062b-local-30780")
+     right: None   (CI: ... D:\a\_temp\krs-scratch\tmp\scm-watch-t062b-local-5632)
+   Cause: the test passed canonicalize()'s \?\D:\... form; unwatchable() resolves the path and strips \?\ before
+     comparing with the path it was given, so the unstripped input always differed. Test-only; unwatchable() unchanged.
+   Fix: the test strips the \?\ prefix from the canonicalized temp folder, so the "local folder" is a plain,
+     link-resolved path on every platform. The WSL assertions are unchanged.
+   After: edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... ok
+
+   cargo test --manifest-path src-tauri/Cargo.toml edit044
+   test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2654 filtered out
