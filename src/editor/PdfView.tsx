@@ -10,7 +10,7 @@ import FileIcon from "./FileIcon";
 import { baseName } from "./buffers";
 import { whyNotLoaded, wheelFactor } from "./imageFiles";
 import { readPicture } from "./pictureBytes";
-import { clampZoom, fitWidthScale, forget, LOCKED_OPTIONS, pageAt, readPos, recall, remember, scrollFor, START, whyNotOpened, ZOOM_STEP, type PdfPos } from "./pdfFiles";
+import { clampZoom, fitWidthScale, forget, pageAt, readPos, recall, remember, scrollFor, START, viewerOptions, whyNotOpened, ZOOM_STEP, type PdfPos } from "./pdfFiles";
 import { destinationSpot, drawPageLayers, makeLinkService, spotOffset, webLink } from "./pdfPageLayers";
 import type { LinkHandler } from "./linkClicks";
 
@@ -117,7 +117,7 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
         throw Object.assign(new Error(whyNotLoaded(e, name)), { said: true });
       });
       const lib = await pdfLib();
-      const task = lib.getDocument({ ...LOCKED_OPTIONS, data: bytes });
+      const task = lib.getDocument({ ...viewerOptions(new URL(import.meta.env.BASE_URL, document.baseURI).href), data: bytes });
       opened = await task.promise;
       if (!alive) return void opened.destroy();
       setDoc(opened);

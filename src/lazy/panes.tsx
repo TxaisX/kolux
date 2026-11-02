@@ -17,3 +17,6 @@ export const PreviewPane = deferred(() => import("../editor/PreviewPane"));
 
 /** T-012-a: a page in its own web view, laid over the pane body by the back end. */
 export const BrowserPane = deferred(() => import("../browser/BrowserPane"));
+
+/** The CI check tab: one pull request check with its log excerpt and Fix with AI. */
+export const CheckPane = deferred(() => import("../scm/CheckPane"));

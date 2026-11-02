@@ -30,7 +30,7 @@ import { EditorPane } from "../../lazy/panes";
 import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
 import { PreviewPane } from "../../lazy/panes";
-import CheckPane from "../../scm/CheckPane";
+import { CheckPane } from "../../lazy/panes";
 import { BrowserPane } from "../../lazy/panes";
 import { openInBrowser } from "../../browser/openIn";
 

@@ -1,7 +1,8 @@
 // T-235-b (EDIT-030): the CI check tab's pure rules: one tab per check per worktree (by id, never by name),
 // annotations open only inside the worktree, the card text, and when Fix with AI is on.
 import { expect, test } from "vitest";
-import { cardText, checkIdOf, checkKey, findCheckPane, fixBlockerFor, insideWorktree, type CheckDetail, type CheckRef } from "./checkCard";
+import { checkIdOf, checkKey, findCheckPane, type CheckDetail, type CheckRef } from "./checkCard";
+import { cardText, fixBlockerFor, insideWorktree } from "./checkText";
 import { tabMenu } from "../terminal/tabs";
 import { tabName } from "../terminal/tabName";
 import { layoutOf } from "../terminal/layout";
