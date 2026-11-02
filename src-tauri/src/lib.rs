@@ -536,6 +536,7 @@ pub fn run() {
             protected_custom::protected_attempts,
             protected_custom::protected_attempts_clear,
             hooks::claude_usage,
+            hooks::claude_usage_of,
             sysmem::process_memory,
             fonts::list_fonts,
             term_import::term_import_ghostty,

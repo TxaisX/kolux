@@ -612,6 +612,18 @@ pub fn claude_usage(store: tauri::State<'_, Mutex<crate::state::Store>>) -> Resu
     Ok(limits_of(&store, crate::claude_accounts::active_dir(&store).as_deref()))
 }
 
+/// T-548-b: the windows one Claude config folder's last status-line reports carried (`None` = the default
+/// sign-in), so another account's pane shows its own 5-hour and Weekly figures; a folder never heard from has none.
+#[tauri::command]
+pub fn claude_usage_of(store: tauri::State<'_, Mutex<crate::state::Store>>, config_dir: Option<String>) -> Result<Vec<Limit>, String> {
+    usage_of(&store, config_dir.as_deref())
+}
+
+fn usage_of(store: &Mutex<crate::state::Store>, dir: Option<&str>) -> Result<Vec<Limit>, String> {
+    let store = store.lock().map_err(|e| e.to_string())?;
+    Ok(limits_of(&store, dir))
+}
+
 fn limits_of(store: &crate::state::Store, dir: Option<&str>) -> Vec<Limit> {
     store.get(&limits_key(dir)).ok().flatten().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
 }
@@ -1989,6 +2001,12 @@ Content-Length: {}
         assert_eq!(keep_limits(&store, None, &[win("seven_day", 30.0)]), vec![win("five_hour", 10.0), win("seven_day", 30.0)]);
         assert!(limits_of(&store, Some("C:/u/other")).is_empty());
         assert_eq!(limits_key(None), LIMITS_KEY, "the default sign-in keeps the original key");
+        // T-548-b: what claude_usage_of answers a pane on another account: the default, each folder, one never heard from.
+        let shared = Mutex::new(store);
+        assert_eq!(usage_of(&shared, None).unwrap(), vec![win("five_hour", 10.0), win("seven_day", 30.0)]);
+        assert_eq!(usage_of(&shared, Some(a)).unwrap(), vec![win("five_hour", 70.0)]);
+        assert_eq!(usage_of(&shared, Some(b)).unwrap(), vec![win("five_hour", 5.0)]);
+        assert!(usage_of(&shared, Some("C:/u/unknown")).unwrap().is_empty(), "an unknown folder has no windows");
         let _ = std::fs::remove_dir_all(&base);
     }
 

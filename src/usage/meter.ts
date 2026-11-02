@@ -65,6 +65,18 @@ export function codexOf(agent: string, paneAccount: string | null | undefined, a
   return by?.[accountKey(paneAccount)] ?? null;
 }
 
+/** T-548-b: the Claude windows a pane may carry, the Claude half of `codexOf`. src/usage holds the windows of the
+ *  ACTIVE Claude account (the pill); a pane begun on another account (or on Claude's own sign-in while a managed
+ *  one is active) gets the windows read for its own config folder (`by`), or none (empty) until they are read.
+ *  A pane with no recorded account yet (undefined) is unknown, so nothing is hidden; other agents pass through. */
+export function claudeOf(agent: string, paneAccount: string | null | undefined, active: string | null, claude: ClaudeLimit[], by?: ClaudeByAccount): ClaudeLimit[] {
+  if (agent !== "claude" || paneAccount === undefined) return claude;
+  if (paneAccount === active) return claude;
+  return by?.[accountKey(paneAccount)] ?? [];
+}
+
+/** T-548-b: Claude windows read per account, keyed by `accountKey`. */
+export type ClaudeByAccount = Record<string, ClaudeLimit[]>;
 /** T-548-b: Codex figures read per account, keyed by `accountKey`. */
 export type CodexByAccount = Record<string, CodexUsage>;
 /** The key of an account in a `CodexByAccount` map: its id, or "" for the system default sign-in. */

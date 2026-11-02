@@ -85,14 +85,19 @@ describe("usageByAccount with the active accounts", () => {
     codex: { state: "ok" as const, fiveHour: { usedPercent: 5, resetsAt: null, windowMins: 300 }, weekly: null, resetCredits: null, plan: null, message: null },
   };
 
-  // FIX-1 (council d2 stand-in review, FIX-BEFORE 2): the one stored Claude report belongs to whichever account
-  // was active before a switch, so a Claude card must not claim "Figures for <new account>" until T-548-b.
-  it("leaves the Claude card without a 'figures for' account, keeping its figures", () => {
-    const [card] = usageByAccount([{ agent: "claude", account: null }], plan, { claude: "work", codex: null });
-    expect(card.forAccount).toBeUndefined();
-    expect("forAccount" in card).toBe(false);
+  // T-548-b (was FIX-1): the Claude windows are read per account now, so a Claude card says whose figures it shows,
+  // like a Codex card, and a pane on another account is not counted under them.
+  it("says which Claude account the card's figures are for and counts the panes on other accounts as elsewhere", () => {
+    const [card] = usageByAccount([{ agent: "claude", account: "work" }, { agent: "claude", account: null }], plan, { claude: "work", codex: null });
+    expect(card.forAccount).toBe("work");
     expect(card.figures).toEqual({ fiveHour: 42, weekly: null });
-    expect(card.elsewhere).toBe(0);
+    expect(card.elsewhere).toBe(1);
+  });
+
+  it("shows no Claude figures when every Claude pane is on another account than the active one", () => {
+    const [card] = usageByAccount([{ agent: "claude", account: null }], plan, { claude: "work", codex: null });
+    expect(card.figures).toBeNull();
+    expect(card.elsewhere).toBe(1);
   });
 
   it("shows Codex figures when a pane runs on the active account and counts the others as elsewhere", () => {
@@ -138,8 +143,10 @@ describe("FIX-1 account labels on the Tower", () => {
   it("keeps a null forAccount (system default) null and an unset one unset", () => {
     const [codex] = nameUsage(usageByAccount([{ agent: "codex", account: null }], plan, { claude: null, codex: null }), label);
     expect(codex.forAccount).toBeNull();
-    const [claude] = nameUsage(usageByAccount([{ agent: "claude", account: "c-91" }], plan, { claude: "c-91", codex: null }), label);
-    expect("forAccount" in claude).toBe(false);
+    const [claude] = nameUsage(usageByAccount([{ agent: "claude", account: null }], plan, { claude: null, codex: null }), label);
+    expect(claude.forAccount).toBeNull();
+    const [named] = nameUsage(usageByAccount([{ agent: "claude", account: "c-91" }], plan, { claude: "c-91", codex: null }), label);
+    expect(named.forAccount).toBe("work@example.com");
   });
 
   it("labels the account on each row's seat, per provider", () => {
@@ -195,8 +202,34 @@ describe("usageByAccount with per-account Codex figures", () => {
     expect(card.elsewhere).toBe(0);
   });
 
-  it("leaves a Claude card alone", () => {
-    const [card] = usageByAccount([{ agent: "claude", account: "x" }], plan, active);
+  it("leaves a Claude card without a Codex account's figures", () => {
+    const [card] = usageByAccount([{ agent: "claude", account: "b" }], plan, active);
     expect(card.accounts[0].figures).toBeUndefined();
+  });
+});
+
+// T-548-b: windows read for a Claude account other than the active one show on its own line, like Codex's.
+describe("usageByAccount with per-account Claude windows", () => {
+  const win = (five: number, week: number | null) => [{ kind: "five_hour", usedPercent: five, resetsAt: null }, ...(week === null ? [] : [{ kind: "seven_day", usedPercent: week, resetsAt: null }])];
+  const plan = { claude: win(5, 6), codex: null, claudeBy: { b: win(70, 20), "": win(33, null) } };
+  const active = { claude: "a", codex: null };
+
+  it("gives a Claude account whose windows were read its own 5-hour and Weekly, and counts only the unread ones as elsewhere", () => {
+    const seats = [{ agent: "claude", account: "a" }, { agent: "claude", account: "b" }, { agent: "claude", account: null }, { agent: "claude", account: "c" }];
+    const [card] = usageByAccount(seats, plan, active);
+    expect(card.forAccount).toBe("a");
+    expect(card.figures).toEqual({ fiveHour: 5, weekly: 6 });
+    expect(card.accounts.find((a) => a.account === "b")?.figures).toEqual({ fiveHour: 70, weekly: 20 });
+    expect(card.accounts.find((a) => a.account === null)?.figures).toEqual({ fiveHour: 33, weekly: null });
+    expect(card.accounts.find((a) => a.account === "a")?.figures).toBeUndefined();
+    expect(card.accounts.find((a) => a.account === "c")?.figures).toBeUndefined();
+    expect(card.elsewhere).toBe(1);
+  });
+
+  it("drops the card's own figures when no pane runs on the active account, but keeps each account's; it is not 'elsewhere'", () => {
+    const [card] = usageByAccount([{ agent: "claude", account: "b" }], plan, active);
+    expect(card.figures).toBeNull();
+    expect(card.accounts[0].figures).toEqual({ fiveHour: 70, weekly: 20 });
+    expect(card.elsewhere).toBe(0);
   });
 });

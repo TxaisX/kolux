@@ -1668,6 +1668,16 @@ pub(crate) fn spawn_account(codex: Option<String>, claude_managed: bool, claude_
     codex.or_else(|| if claude_managed { claude_active() } else { None })
 }
 
+/// T-548-b: the config folder a new Claude pane starts in. A pane that names the account it began on
+/// (a restored one) gets that account's own folder, or an error when the account is no longer listed
+/// (it is not started on another one, as for Codex); a new pane gets the active account's folder.
+pub(crate) fn claude_pane_dir(asked: Option<&str>, dir_of: impl Fn(&str) -> Option<String>, active_dir: impl FnOnce() -> Option<String>) -> Result<Option<String>, String> {
+    match asked {
+        Some(id) => dir_of(id).map(Some).ok_or_else(|| "The Claude account this session ran on is no longer listed, so it was not resumed on another one. Pick an account in Settings and start it again.".to_string()),
+        None => Ok(active_dir()),
+    }
+}
+
 /// What `terminal_spawn` answers: the session id and, for a Codex or Claude pane, the managed account it
 /// runs on (ACCT-023: the pane remembers it; none for the agent's own sign-in).
 #[derive(serde::Serialize)]
@@ -1735,6 +1745,7 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     let cwd = cwd.map(|w| start_dir(&w, start.as_deref()));
     // ACCT-023: a resumed Codex pane runs on the account it began on, or not at all.
     let codex = program.as_deref().and_then(crate::tools::credited_program) == Some("codex");
+    let claude = program.as_deref().and_then(crate::tools::credited_program) == Some("claude");
     let resumed = match account.as_deref().filter(|_| codex) {
         Some(id) => Some(crate::codex_accounts::wait_home(&store, id)?),
         None => None,
@@ -1755,9 +1766,12 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
         let token = crate::secrets::read_setting(&store, crate::claude_key::TOKEN_FIELD).ok().flatten();
         let key_mode = settings.get(crate::claude_key::MODE_FIELD).and_then(serde_json::Value::as_str) == Some(crate::claude_key::KEY_MODE);
         let by_key = crate::claude_key::pane_env(program.as_deref(), &settings, token);
-        let managed = if by_key.is_none() { crate::claude_accounts::pane_env(program.as_deref(), key_mode, crate::claude_accounts::active_dir(&store)) } else { None };
+        // T-548-b: a restored Claude pane starts on the account it began on (its own folder), or not at all.
+        let asked = account.as_deref().filter(|_| claude && by_key.is_none() && !key_mode);
+        let claude_dir = claude_pane_dir(asked, |id| crate::claude_accounts::dir_of(&store, id), || crate::claude_accounts::active_dir(&store))?;
+        let managed = if by_key.is_none() { crate::claude_accounts::pane_env(program.as_deref(), key_mode, claude_dir) } else { None };
         // T-548-b: a Claude pane on a managed account answers which one, the way a Codex pane does.
-        let used = spawn_account(used, managed.is_some(), || crate::claude_accounts::active(&store));
+        let used = spawn_account(used, managed.is_some(), || asked.map(String::from).or_else(|| crate::claude_accounts::active(&store)));
         let env: Vec<(String, String)> = by_key
             .or(managed)
             // ACCT-007: a Codex pane runs in the active Codex account's private home.
@@ -2546,6 +2560,20 @@ mod tests {
         let mut read = false;
         assert_eq!(spawn_account(Some("cx-2".into()), true, || { read = true; active() }).as_deref(), Some("cx-2"));
         assert!(!read, "the Claude account is not read when Codex answered");
+    }
+
+    #[test]
+    fn t548b_a_restored_claude_pane_starts_on_its_own_account() {
+        let listed = |id: &str| (id == "acct-2").then(|| "C:/u/.kolux-rs/claude-accounts/acct-2".to_string());
+        let active = || Some("C:/u/.kolux-rs/claude-accounts/acct-1".to_string());
+        assert_eq!(claude_pane_dir(Some("acct-2"), listed, active).unwrap().as_deref(), Some("C:/u/.kolux-rs/claude-accounts/acct-2"), "its own folder, not the active one's");
+        assert_eq!(claude_pane_dir(None, listed, active).unwrap().as_deref(), Some("C:/u/.kolux-rs/claude-accounts/acct-1"), "a new pane takes the active account's folder");
+        assert!(claude_pane_dir(Some("gone"), listed, active).unwrap_err().contains("no longer listed"), "an account no longer listed is an error");
+        let mut read = false;
+        claude_pane_dir(Some("acct-2"), listed, || { read = true; active() }).unwrap();
+        assert!(!read, "the active account is not read for a pane that names its own");
+        // The pane then answers that same id, not the active account's.
+        assert_eq!(spawn_account(None, true, || Some("acct-2".to_string())).as_deref(), Some("acct-2"));
     }
 
     #[test]

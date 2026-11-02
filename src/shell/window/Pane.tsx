@@ -19,7 +19,7 @@ import { tabName } from "../../terminal/tabName";
 import { codexSetup } from "../../terminal/accountChange";
 import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
-import { capOn, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
+import { capOn, claudeOf, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
 import { nameOf, sameDir } from "../../workspaces";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
@@ -131,7 +131,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       onOpenLink={openInBrowser}
       linksOpenInKolux={settings.linksOpenInKolux === true}
       gpu={gpuOn(settings)}
-      card={board ? { expanded: expanded === p.key, onToggle: () => setExpanded((x) => toggleCard(x, p.key)), chip: chipFor(p), column: columnOf(p), onAnswer: (ok) => void answer(p, ok), onReview: () => reviewChanges(p.key), meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, plan.claude, codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
+      card={board ? { expanded: expanded === p.key, onToggle: () => setExpanded((x) => toggleCard(x, p.key)), chip: chipFor(p), column: columnOf(p), onAnswer: (ok) => void answer(p, ok), onReview: () => reviewChanges(p.key), meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
       cwd={p.cwd}
       branch={p.branch}
       agent={p.agent}

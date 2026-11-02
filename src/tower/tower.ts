@@ -47,8 +47,8 @@ export type AccountUsage = {
   agent: string;
   figures: PlanFigures | null;
   panes: number;
-  accounts: Array<{ account: string | null; panes: number; /** T-548-b: this account's own figures (Codex accounts other than the one the card's figures are for), when they have been read. */ figures?: PlanFigures }>;
-  /** T-548, only when the active accounts were passed, and FIX-1 only on a Codex card: the account the figures are read for (null = the system default). */
+  accounts: Array<{ account: string | null; panes: number; /** T-548-b: this account's own figures (accounts other than the one the card's figures are for), when they have been read. */ figures?: PlanFigures }>;
+  /** T-548, only when the active accounts were passed (T-548-b: on a Claude card too): the account the figures are read for (null = the system default). */
   forAccount?: string | null;
   /** T-548: panes of this provider on an account other than the one the figures are read for, whose own
    *  figures have not been read (Codex only; a Claude pane does not record its account yet, T-548-b). */
@@ -76,21 +76,16 @@ export function usageByAccount(seats: Pick<Seat, "agent" | "account">[], plan: P
     else card.accounts.push({ account, panes: 1 });
   }
   if (!active) return out;
-  // T-548: the figures are the active account's. A Codex card with no pane on that account has none
-  // to show; a Claude pane's own account is not recorded, so all of its panes count as on the active one.
-  // FIX-1: only a Codex card says whose figures they are. The one stored Claude report belongs to whichever
-  // account was active before a switch (it carries the old windows forward), so a Claude card claims no
-  // account until T-548-b reads one report per account.
+  // T-548: the figures on the card are the active account's. A card with no pane on that account has none to
+  // show. T-548-b: Claude is read per account too (claudeBy), so both providers say whose figures they are and
+  // an account the window has read figures for shows its own.
   for (const card of out) {
-    if (card.agent !== "codex") {
-      card.elsewhere = 0;
-      continue;
-    }
-    card.forAccount = active.codex;
-    const others = card.accounts.filter((a) => a.account !== active.codex);
+    const mine = card.agent === "claude" ? active.claude : active.codex;
+    card.forAccount = mine;
+    const others = card.accounts.filter((a) => a.account !== mine);
     // T-548-b: an account the window has read figures for shows its own
     for (const a of others) {
-      const own = planOf("codex", [], plan.codexBy?.[accountKey(a.account)] ?? null);
+      const own = card.agent === "claude" ? planOf("claude", plan.claudeBy?.[accountKey(a.account)] ?? [], null) : planOf("codex", [], plan.codexBy?.[accountKey(a.account)] ?? null);
       if (own) a.figures = own;
     }
     card.elsewhere = others.filter((a) => !a.figures).reduce((n, a) => n + a.panes, 0);
