@@ -39,3 +39,12 @@ Still live-only (left for Txais's Windows run; box T-300 stays unticked)
 - Picking Blue in Settings > Appearance turns the taskbar AND the tray icon blue without a restart, with the dot kept.
 - The owner's three real icon files (variants are still drawn at run time from the Kolux mark).
 - The menuBarIcon switch has no Settings control yet and was not run on a Mac.
+
+Review (opus-high-review, grade B, approve), fixes applied 2026-11-01:
+- app_look::apply repaints the tray before the window loop, so a window that refuses its icon or
+  Acrylic effect cannot leave the tray on the old colour.
+- PLAN note says menuBarIcon is a settings key read at start-up (no control yet); the control and
+  its settingsRegistry/importer entry are listed under REST.
+Not changed (reviewer minors, left as follow-ups): repaint re-reads the Store instead of taking the
+choice from apply; the icon choice is not cached in TrayState; no wiring test for apply -> repaint.
+Re-run: cargo test --lib -- tray app_look -> 29 passed, exit 0; cargo clippy --all-targets -- -D warnings -> exit 0.

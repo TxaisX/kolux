@@ -907,5 +907,4 @@ mod tests {
         assert!(has_tray(Os::Windows, &json!({ MENU_BAR_ICON_FIELD: false })), "Windows ignores the switch");
         assert!(!has_tray(Os::Linux, &json!({ MENU_BAR_ICON_FIELD: true })), "Linux never has a tray");
     }
-
 }
