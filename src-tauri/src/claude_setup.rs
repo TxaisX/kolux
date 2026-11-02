@@ -305,7 +305,7 @@ impl<'a> Reader<'a> {
 
 fn secretish(k: &str) -> bool {
     let k = k.to_ascii_lowercase();
-    !k.ends_with("helper") && ["token", "secret", "password", "passwd", "credential", "apikey", "api_key", "api-key", "authorization", "bearer"].iter().any(|w| k.contains(w))
+    !k.ends_with("helper") && ["token", "secret", "password", "passwd", "credential", "apikey", "api_key", "api-key", "authorization", "bearer", "cookie", "uuid", "orgid", "accountid", "account_id"].iter().any(|w| k.contains(w))
 }
 
 /// `v` with secrets replaced: `env` / `headers` objects keep their key names, all values masked; any
@@ -313,7 +313,7 @@ fn secretish(k: &str) -> bool {
 fn mask(key: &str, v: &Value) -> Value {
     match v {
         Value::Object(m) if matches!(key, "env" | "headers" | "extraHeaders") => Value::Object(m.keys().map(|k| (k.clone(), Value::String(MASK.into()))).collect()),
-        Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), if secretish(k) && !x.is_null() { Value::String(MASK.into()) } else { mask(k, x) })).collect()),
+        Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (mask_text(k), if secretish(k) && !x.is_null() { Value::String(MASK.into()) } else { mask(k, x) })).collect()),
         Value::Array(a) => Value::Array(a.iter().map(|x| mask(key, x)).collect()),
         Value::String(s) => Value::String(mask_text(s)),
         _ => v.clone(),
@@ -339,17 +339,28 @@ fn display(key: &str, v: &Value) -> String {
 /// True for strings shaped like a known credential: provider prefixes or a JWT.
 fn is_token(s: &str) -> bool {
     let low = s.to_ascii_lowercase();
-    let prefixed = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "glpat-", "xox", "sk-", "npm_"].iter().any(|p| low.starts_with(p)) || s.starts_with("AKIA") || s.starts_with("ASIA");
-    prefixed || (s.starts_with("eyJ") && s.matches('.').count() == 2)
+    let prefixed = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "glpat-", "xox", "xapp-", "sk-", "sk_", "rk_", "pk_live_", "hf_", "npm_", "ya29."].iter().any(|p| low.starts_with(p))
+        || ["AKIA", "ASIA", "AIza"].iter().any(|p| s.starts_with(p));
+    // a long run of letters and digits with no other shape is almost always a key
+    let opaque = s.len() >= 32 && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') && s.chars().any(|c| c.is_ascii_digit()) && s.chars().any(|c| c.is_ascii_alphabetic());
+    prefixed || opaque || (s.starts_with("eyJ") && s.matches('.').count() == 2)
 }
 
 /// A URL with no user-info, query or fragment (where tokens go), and every path segment of 16+ characters
 /// (or shaped like a credential) masked, because keys are sometimes embedded in paths.
 fn mask_url(u: &str) -> String {
     let (scheme, rest) = u.split_once("://").map_or(("", u), |(s, r)| (s, r));
+    // User-info may hold a stray ? / or # (a pasted password), so the last @ ends it unless a plain path comes
+    // first (`h.example/@scope/pkg`): no / before it, or a "user:" before the first / (over-masking is fine here).
+    let slash = rest.find('/').unwrap_or(rest.len());
+    let user_info = |i: usize| !rest[..i].contains('/') || rest[..slash].contains(':');
+    let (user, rest) = match rest.rfind('@').filter(|&i| user_info(i)) {
+        Some(i) => (format!("{MASK}@"), &rest[i + 1..]),
+        None => (String::new(), rest),
+    };
     let cut = rest.find(['?', '#']).unwrap_or(rest.len());
     let (host, path) = rest[..cut].split_at(rest[..cut].find('/').unwrap_or(cut));
-    let host = host.rsplit_once('@').map_or(host.to_string(), |(_, h)| format!("{MASK}@{h}"));
+    let host = format!("{user}{host}");
     let path = path.split('/').map(|seg| if seg.chars().count() >= 16 || is_token(seg) { MASK } else { seg }).collect::<Vec<_>>().join("/");
     let tail = if cut < rest.len() { format!("?{MASK}") } else { String::new() };
     if scheme.is_empty() { format!("{host}{path}{tail}") } else { format!("{scheme}://{host}{path}{tail}") }
@@ -387,20 +398,38 @@ fn mask_words<'a>(words: impl Iterator<Item = &'a str>) -> Vec<String> {
             if low.contains("bearer ") {
                 return MASK.to_string();
             }
-            if let Some(i) = low.find("authorization:") {
-                let after = a[i + "authorization:".len()..].trim();
-                if after.is_empty() {
-                    hide_rest = true;
-                    return a.to_string();
+            if low.contains("authorization:") {
+                // the scheme, the token and anything after them are hidden, however the header was split
+                hide_rest = true;
+                let i = low.find("authorization:").unwrap() + "authorization:".len();
+                return if a[i..].trim().is_empty() { a.to_string() } else { format!("{} {MASK}", &a[..i]) };
+            }
+            // a header word such as "X-Api-Key:", "Cookie: sid=v" or "Token:abc": the value is hidden
+            if let Some((name, value)) = a.split_once(':') {
+                let quote = |c: char| c == '"' || c == '\'';
+                let header = !name.contains('/') && !name.contains('{') && (secretish(name) || name.trim_matches(quote).eq_ignore_ascii_case("cookie"));
+                // a permission rule's wildcard ("token:*)") is not a value
+                let wildcard = !value.is_empty() && value.chars().all(|c| matches!(c, '*' | ')'));
+                if header && !wildcard {
+                    let value = value.trim_matches(quote);
+                    if value.is_empty() || matches!(value.to_ascii_lowercase().as_str(), "bearer" | "basic" | "token") {
+                        hide_next = true;
+                        return a.to_string();
+                    }
+                    return format!("{name}:{MASK}");
                 }
-                return format!("{} {MASK}", &a[..i + "authorization:".len()]);
+            }
+            // a JSON body like '{"token":"v"}': the whole word goes
+            if a.contains("\":") && secretish(a) {
+                return MASK.to_string();
             }
             if matches!(low.trim_matches(|c| c == '"' || c == '\''), "bearer" | "basic") {
                 hide_next = true;
                 return a.to_string();
             }
             let out = mask_word(a);
-            if out == a && a.starts_with('-') && !a.contains('=') && secretish(a) {
+            let flag = a.trim_start_matches('-').to_ascii_lowercase();
+            if out == a && a.starts_with('-') && !a.contains('=') && (secretish(a) || matches!(flag.as_str(), "u" | "user" | "key" | "auth" | "pat" | "pass" | "cookie" | "b")) {
                 hide_next = true;
             }
             out
@@ -605,7 +634,7 @@ fn mcp_rows(servers: &Map<String, Value>, scope: &'static str, from: &str, out: 
             None => {
                 let cmd = s.get("command").and_then(Value::as_str).unwrap_or("");
                 let args = mask_args(s.get("args").and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[]));
-                std::iter::once(mask_word(cmd)).chain(args).collect::<Vec<_>>().join(" ")
+                std::iter::once(mask_text(cmd)).chain(args).collect::<Vec<_>>().join(" ")
             }
         };
         out.push(McpRow { name: clip(name), kind: clip(kind), target: clip(&target), env: pairs("env"), headers: pairs("headers"), scope, from: from.to_string(), off: false });
@@ -1114,6 +1143,36 @@ mod tests {
         assert_eq!(mask_text("x Bearer abc y"), format!("x Bearer {MASK} y"));
         assert_eq!(mask_text("--url=https://u:p@h.example/a"), format!("--url=https://{MASK}@h.example/a"));
         assert_eq!(mask_text("ls -la /tmp"), "ls -la /tmp");
+    }
+
+    #[test]
+    fn header_words_secret_flags_and_json_bodies_are_masked() {
+        // each case: the secret that must not show
+        for (line, leak) in [
+            (r#"curl -H "Authorization:Bearer TOPSECRET" https://h.example"#, "TOPSECRET"),
+            (r#"curl -H "X-Api-Key: TOPSECRET" h"#, "TOPSECRET"),
+            (r#"curl -H "Cookie: sid=TOPSECRET" h"#, "TOPSECRET"),
+            ("curl -u bob:TOPSECRET h", "TOPSECRET"),
+            ("tool --key TOPSECRET", "TOPSECRET"),
+            ("tool --auth TOPSECRET", "TOPSECRET"),
+            (r#"curl -d '{"token":"TOPSECRET"}' h"#, "TOPSECRET"),
+            ("run hf_TOPSECRET", "TOPSECRET"),
+            ("run AIzaTOPSECRET", "TOPSECRET"),
+            ("run ya29.TOPSECRET", "TOPSECRET"),
+            ("run sk_live_TOPSECRET", "TOPSECRET"),
+            ("run a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8", "a1b2c3d4e5f6"),
+            ("open https://user:p?TOPSECRET@h.example/x", "TOPSECRET"),
+            ("open https://user:p/TOPSECRET@h.example/x", "TOPSECRET"),
+        ] {
+            let out = mask_text(line);
+            assert!(!out.contains(leak), "{line} -> {out}");
+        }
+        // readable things stay readable
+        assert_eq!(mask_text("Bash(npm token:*)"), "Bash(npm token:*)");
+        assert_eq!(mask_text("node status.js --verbose"), "node status.js --verbose");
+        assert!(mask_text("open https://user:pw@h.example/x").ends_with("@h.example/x"));
+        // an account id under its own key is masked
+        assert_eq!(display("forceLoginOrgUUID", &Value::String("1234-abcd".into())), MASK);
     }
 
     #[test]

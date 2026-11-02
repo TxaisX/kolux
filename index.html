@@ -15,7 +15,7 @@
           var v = look.vars[k];
           if (!Object.prototype.hasOwnProperty.call(look.vars, k) || typeof v !== "string" || v.length > 300) continue;
           if (!(/^--[a-z0-9-]{1,40}$/.test(k) || (k === "color-scheme" && /^(light|dark)$/.test(v)))) continue;
-          if (/[;{}\<>]|url\(|expression|@import/i.test(v)) continue;
+          if (/[;{}<>\\]|\/\*|url\(|expression|@import/i.test(v)) continue;
           document.documentElement.style.setProperty(k, v);
         }
       } catch (e) {}
