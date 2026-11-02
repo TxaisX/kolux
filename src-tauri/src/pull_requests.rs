@@ -482,7 +482,9 @@ pub fn read_check_detail(gh: &Path, host: &str, repo: &str, check_id: u64, job_i
         Some(job) => steps_of(&gh_json(gh, host, &format!("{base}/actions/jobs/{job}"), &[])?),
         None => Vec::new(),
     };
-    let annotations = annotations_of(&gh_json(gh, host, &format!("{base}/check-runs/{check_id}/annotations?per_page={PER_PAGE}"), &[])?);
+    // Every page up to the cap, like the other lists; a run with more annotations than that shows the first ones.
+    let (listed, _) = read_all(gh, host, &format!("{base}/check-runs/{check_id}/annotations"))?;
+    let annotations = annotations_of(&listed);
     Ok(CheckDetail { steps, annotations })
 }
 
@@ -1062,7 +1064,7 @@ mod tests {
         assert_eq!((d.steps.len(), d.annotations.len()), (1, 1));
         let c = calls(&dir).replace('"', "");
         assert!(c.contains("api repos/acme/app/actions/jobs/9 --hostname github.com"), "{c}");
-        assert!(c.contains("api repos/acme/app/check-runs/9/annotations?per_page=100 --hostname github.com"), "{c}");
+        assert!(c.contains("api repos/acme/app/check-runs/9/annotations?per_page=100&page=1 --hostname github.com"), "{c}");
 
         let (gh, dir) = stand_in("pr-check-detail-nojob", &json!([{ "path": "b.rs", "start_line": 1, "end_line": 1, "annotation_level": "notice", "message": "hm" }]));
         let d = read_check_detail(&gh, "github.com", "acme/app", 12, None).unwrap();

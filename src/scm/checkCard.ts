@@ -52,6 +52,10 @@ function folded(parts: string[]): string[] | null {
   return out;
 }
 
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+/** A path part Windows would read as the name it looks like: no drive or stream colon, no trailing dot or space, no device name (`aux.txt` too). */
+const plainName = (part: string): boolean => !part.includes(":") && !/[. ]$/.test(part) && !RESERVED.test(part);
+
 /**
  * The file an annotation names, as a path inside the worktree `cwd`, or null when it must not be opened:
  * a relative path is joined to the worktree (and may not climb out of it), an absolute one must already
@@ -73,7 +77,7 @@ export function insideWorktree(cwd: string, path: string): string | null {
     if (all === null || all.length <= base.parts.length || !base.parts.every((p, i) => same(p, all[i]))) return null;
     below = all.slice(base.parts.length);
   }
-  if (below === null || below.length === 0) return null;
+  if (below === null || below.length === 0 || below.some((p) => !plainName(p))) return null;
   return `${cwd.replace(/[\\/]+$/, "")}${sep}${below.join(sep)}`;
 }
 

@@ -127,12 +127,12 @@ export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, on
   useEffect(() => {
     const mine = ++asked.current;
     setLoading(true);
-    invoke<CheckDetail>("scm_check_detail", { link: check.link, checkId: check.id })
+    invoke<CheckDetail>("scm_check_detail", { worktree: cwd, link: check.link, checkId: check.id })
       .then((d) => mine === asked.current && (setDetail(d), setError(null)))
       .catch((e) => mine === asked.current && setError(String(e)))
       .finally(() => mine === asked.current && setLoading(false));
     return () => void ++asked.current;
-  }, [check.id, check.link, check.outcome]);
+  }, [cwd, check.id, check.link, check.outcome]);
 
   const copy = () => {
     const text = cardText(check, detail);

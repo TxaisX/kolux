@@ -67,6 +67,27 @@ test("an annotation opens only inside the worktree: relative paths are joined, e
   expect(insideWorktree(posix, "/home/u/pp/a.rs")).toBeNull();
 });
 
+test("a path Windows would read as something else never opens: drive-relative, device names, trailing dot or space", () => {
+  const win = "C:\\w\\proj";
+  expect(insideWorktree(win, "C:foo")).toBeNull(); // drive-relative, not under the worktree
+  expect(insideWorktree(win, "src/C:foo")).toBeNull();
+  expect(insideWorktree(win, "src/a.rs:stream")).toBeNull(); // an alternate data stream
+  expect(insideWorktree(win, "\\\\?\\C:\\x")).toBeNull(); // a device-namespace path
+  expect(insideWorktree(win, "NUL")).toBeNull();
+  expect(insideWorktree(win, "src/aux.txt")).toBeNull();
+  expect(insideWorktree(win, "src/Com1")).toBeNull();
+  expect(insideWorktree(win, "lpt9.tar.gz")).toBeNull();
+  expect(insideWorktree(win, "foo./bar")).toBeNull();
+  expect(insideWorktree(win, "foo /bar")).toBeNull();
+  expect(insideWorktree(win, "src/a.rs.")).toBeNull();
+  expect(insideWorktree(win, "src/../../x")).toBeNull(); // .. still refused
+  // near misses are ordinary names
+  expect(insideWorktree(win, "src/auxiliary.txt")).toBe("C:\\w\\proj\\src\\auxiliary.txt");
+  expect(insideWorktree(win, "src/com10.txt")).toBe("C:\\w\\proj\\src\\com10.txt");
+  // a percent-encoded dot pair is a literal name, not a climb: it stays inside the worktree
+  expect(insideWorktree(win, "%2e%2e/x")).toBe("C:\\w\\proj\\%2e%2e\\x");
+});
+
 test("the card text carries the name, result, pull request, steps and annotations", () => {
   const detail: CheckDetail = {
     steps: [

@@ -512,19 +512,37 @@ pub async fn scm_check_log(worktree: String, link: String) -> Result<String, Str
 /// T-235-b: the host and `owner/name` a check's link points into (`https://host/owner/name/...`).
 pub fn check_target(link: &str) -> Option<(String, String)> {
     let mut parts = link.strip_prefix("https://")?.split('/');
-    let host = parts.next().filter(|h| !h.is_empty() && h.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-'))?;
+    let host = parts.next().filter(|h| crate::github::host_ok(h))?;
     let repo = format!("{}/{}", parts.next()?, parts.next()?);
     crate::github::full_name_ok(&repo).then(|| (host.to_string(), repo))
 }
 
+/// T-235-b: a check's link is free text from whoever posted the status, so it may be read only when it
+/// names this worktree's own repository (`own` is `host/owner/name`) or that repository's fork parent.
+/// Owner and name compare without regard to case; the host too.
+pub fn link_names_repo(target: &(String, String), own: &str, parent: Option<&str>) -> bool {
+    let Some((own_host, own_repo)) = own.split_once('/') else { return false };
+    let (host, repo) = target;
+    host.eq_ignore_ascii_case(own_host) && (repo.eq_ignore_ascii_case(own_repo) || parent.is_some_and(|p| repo.eq_ignore_ascii_case(p)))
+}
+
 /// T-235-b (EDIT-030): a check's steps and annotations for its tab, read from GitHub's public REST
-/// through the repository the link names (a fork's pull request lives in its parent). A link without a
-/// job gives annotations only.
+/// through the repository the link names, which must be the worktree's own or (for a fork) its parent,
+/// where the pull request lives. A link without a job gives annotations only.
 #[tauri::command(async)]
-pub fn scm_check_detail(link: String, check_id: u64) -> Result<crate::github::pull_requests::CheckDetail, String> {
-    let (host, repo) = check_target(&link).ok_or("This check has no GitHub page to read")?;
+pub fn scm_check_detail(worktree: String, link: String, check_id: u64) -> Result<crate::github::pull_requests::CheckDetail, String> {
+    let target = check_target(&link).ok_or("This check has no GitHub page to read")?;
+    let own = scm::gh_repo_arg(Path::new(&worktree), &scm::ssh_config()).ok_or("This folder has no GitHub repository to read checks from")?;
+    let gh = scm::gh_program()?;
+    if !link_names_repo(&target, &own, None) {
+        let (own_host, own_repo) = own.split_once('/').unwrap_or_default();
+        let parent = crate::github::repo_parent(&gh, own_host, own_repo)?;
+        if !link_names_repo(&target, &own, parent.as_deref()) {
+            return Err("This check's link points at a different repository than this one, so its details are not shown".into());
+        }
+    }
     let job = run_id_of(&link).and_then(|(_, job)| job);
-    crate::github::pull_requests::read_check_detail(&scm::gh_program()?, &host, &repo, check_id, job)
+    crate::github::pull_requests::read_check_detail(&gh, &target.0, &target.1, check_id, job)
 }
 
 /// GIT-024: the title and description an agent writes for the branch against `base`. Needs a real
@@ -779,6 +797,25 @@ mod tests {
         assert_eq!(check_target("https://github.com/acme/../actions/runs/1"), None);
         assert_eq!(check_target("http://github.com/acme/app/runs/1"), None);
         assert_eq!(check_target("not a link"), None);
+    }
+
+    #[test]
+    fn t235b_a_check_link_must_name_this_repository_or_its_fork_parent() {
+        let t = |h: &str, r: &str| (h.to_string(), r.to_string());
+        assert!(link_names_repo(&t("github.com", "acme/app"), "github.com/acme/app", None), "same repository");
+        assert!(link_names_repo(&t("GitHub.com", "Acme/App"), "github.com/acme/app", None), "case does not matter");
+        assert!(!link_names_repo(&t("github.com", "evil/app"), "github.com/acme/app", None), "another repository");
+        assert!(!link_names_repo(&t("ghe.corp", "acme/app"), "github.com/acme/app", None), "another host");
+        assert!(!link_names_repo(&t("github.com", "upstream/app"), "github.com/me/app", None), "a parent nobody named");
+        assert!(link_names_repo(&t("github.com", "upstream/app"), "github.com/me/app", Some("Upstream/App")), "the fork parent");
+        assert!(!link_names_repo(&t("ghe.corp", "upstream/app"), "github.com/me/app", Some("upstream/app")), "the parent on the same host only");
+        assert!(!link_names_repo(&t("github.com", "acme/app"), "no-slash", None));
+    }
+
+    #[test]
+    fn t235b_a_check_link_with_a_port_reads_like_host_ok() {
+        assert_eq!(check_target("https://ghe.corp:8443/o/r/runs/9"), Some(("ghe.corp:8443".into(), "o/r".into())));
+        assert_eq!(check_target("https://-bad/o/r/x"), None);
     }
 
     #[test]

@@ -178,3 +178,17 @@ Worker 90 after applying the wiring and merging main 3b62578f (2026-11-01):
    node scripts/plan-check.mjs                          -> OK, exit 0
    cargo test --lib -- pull_requests:: pr_review::      -> 55 passed, exit 0
    cargo clippy --all-targets -- -D warnings            -> exit 0
+
+FOLLOW-UP (REST/frozen snapshot): the Check tab reads its detail once per outcome change, so Fix with AI stays enabled after a re-run of the check passes, until the tab is reopened. Left for a later piece; the card does not poll.
+
+=== Review B fixes (2026-11-01) ===
+1. scm_check_detail now takes (worktree, link, checkId). The link comes from a status or third-party app, so it is read only when its host and owner/repo (case-insensitive) are the worktree's origin repository (scm::gh_repo_arg) or, for a fork, its parent (github::repo_parent, asked only when the link names another repository). Otherwise Err "This check's link points at a different repository than this one, so its details are not shown". The comparison is the pure link_names_repo (tests: same repo, case, other repo, other host, parent of a fork, parent only on the same host). CheckPane passes its cwd. This replaces the deviation noted above (no worktree argument).
+2. insideWorktree rejects any part that holds ":", ends in "." or a space, or is a Windows device name (CON PRN AUX NUL COM1-9 LPT1-9, with or without an extension). ".." is still refused. New test covers C:foo, \\?\C:\x, NUL, src/aux.txt, foo./bar, "foo /bar", stream names, near misses (auxiliary.txt, com10.txt) and %2e%2e/x (a literal name that stays inside).
+3. check_target uses github::host_ok (now pub(crate)) so a host with a port is accepted like every other gh call (test added).
+4. read_check_detail reads annotations through read_all (every page up to the cap, not just the first 100); its call-shape test now expects per_page=100&page=1.
+Re-run results:
+   cargo test --lib -- pull_requests:: pr_review::      -> 57 passed, exit 0 (two new: link_names_repo, port host)
+   cargo clippy --all-targets -- -D warnings            -> exit 0
+   VITEST_MAX_WORKERS=2 npx vitest run src/scm          -> 33 files, 272 passed, exit 0
+   npx tsc --noEmit -p .                                -> exit 0, no output
+   (The new insideWorktree test failed first with: expected 'C:\w\proj\C:foo' to be null, with the guard removed.)
