@@ -1103,8 +1103,9 @@ fn read_range(file: &Path, start: u64, end: u64) -> Option<Vec<u8>> {
 
 /// The `kolux-artifact` scheme: the entry's files with a policy that lets the page load only them.
 /// Media answers byte ranges, so a video or an audio track can seek without loading the whole file.
-/// No read is longer than a chunk: a file bigger than one answers its first chunk as a 206 even when
-/// no range was asked, and the browser asks for the rest. A page (HTML) is the exception: it is
+/// A ranged answer is at most a chunk. Video or audio bigger than a chunk answers its first chunk as a
+/// 206 even when no range was asked, and the media element asks for the rest; any other file asked for
+/// whole is answered whole (an <img> or a font does not re-ask, so a 206 would truncate it). A page (HTML) is the exception: it is
 /// answered whole because the link script is appended to it, and its size is capped when it is stored.
 /// Reads wait for a slot (`READS`, 4 at once). Only the app-owned library folder is read: `Library::open`
 /// resolves the URL inside `<library>/<id>/` and nowhere else. A file that cannot be measured or read
@@ -1126,7 +1127,7 @@ pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http:
     }
     let range = match ask {
         RangeAsk::Part(start, end) => Some((start, end.min(start + CHUNK - 1))),
-        _ if !is_page && total > CHUNK => Some((0, CHUNK - 1)),
+        _ if (kind.starts_with("video/") || kind.starts_with("audio/")) && total > CHUNK => Some((0, CHUNK - 1)),
         _ => None,
     };
     let (mut body, status, content_range) = match range {
@@ -2025,6 +2026,12 @@ mod tests {
         assert_eq!(r.status(), 206, "no read is ever longer than a chunk, so a whole-file ask gets the first chunk");
         assert_eq!(r.body().len() as u64, CHUNK);
         assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some(format!("bytes 0-{}/{}", CHUNK - 1, CHUNK + 1).as_str()));
+        // An image over a chunk asked for whole stays whole: an <img> never asks for the rest.
+        let pic = root.join("big.png");
+        fs::File::create(&pic).unwrap().set_len(CHUNK + 1).unwrap();
+        let e2 = lib.add(&pic, Origin::hand(&pic), &|_| None).unwrap();
+        let r = serve(&lib, &tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/big.png", e2.id)).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().len() as u64), (200, CHUNK + 1), "a non-media file asked for whole is never cut to a chunk");
         // A file that fits in a chunk is still one plain 200.
         let small = root.join("small.mp4");
         fs::write(&small, b"tiny").unwrap();
