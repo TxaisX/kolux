@@ -35,10 +35,28 @@ test("T-547: every reading reads as one plain sentence, with the ones that need 
   expect(readingText({ state: "rateLimited" }).text).toContain("Too many checks");
   expect(readingText({ state: "offline" })).toEqual({ text: "No connection to the provider.", warn: true });
   expect(readingText({ state: "answered" }).text).toContain("no format");
-  expect(readingText({ state: "unavailable", reason: "checking with the provider is not switched on in this build" }).text).toBe("Not checked: checking with the provider is not switched on in this build.");
+  expect(readingText({ state: "unavailable", reason: "that address is not on the allowed list" }).text).toBe("Not checked: that address is not on the allowed list.");
   expect(readingText({ state: "failed", status: 500 }).text).toContain("500");
   expect(readingText({ state: "noKey" }).warn).toBe(false);
   const shown = html([{ ...rows[0], kept: true, masked: "••••9876" }], {}, { kimi: { state: "badKey" } });
   expect(shown).toContain("The key was refused");
   expect(shown).toContain('class="conn-detail warn"');
+});
+
+test("T-547: Check now is off and reads Checking while that provider's check is pending, and only that provider's", () => {
+  const kept: KeyRow[] = [
+    { provider: "kimi", label: "Kimi (Moonshot) API key", kept: true, masked: "••••1111" },
+    { provider: "minimax", label: "MiniMax API key", kept: true, masked: "••••5555" },
+  ];
+  const view = (pending: Partial<Record<"kimi" | "minimax", boolean>>) => renderToString(createElement(ProviderUsageView, { rows: kept, drafts: {}, readings: {}, pending, onDraft: () => {}, onAction: () => {} }));
+  const idle = view({});
+  expect(idle).not.toMatch(/<button[^>]*disabled[^>]*>Check now/);
+  expect(idle).not.toContain("Checking");
+  const busy = view({ kimi: true });
+  const kimi = busy.slice(busy.indexOf('data-provider="kimi"'), busy.indexOf('data-provider="minimax"'));
+  const mm = busy.slice(busy.indexOf('data-provider="minimax"'));
+  expect(kimi).toMatch(/<button[^>]*disabled[^>]*>Checking/);
+  expect(kimi).not.toContain("Check now");
+  expect(mm).toMatch(/>Check now</);
+  expect(mm).not.toMatch(/<button[^>]*disabled[^>]*>Check now/);
 });
