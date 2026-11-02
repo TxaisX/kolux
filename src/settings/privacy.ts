@@ -9,6 +9,7 @@ export const OUTBOUND: ReadonlyArray<{ to: string; when: string }> = [
   { to: "the AI providers you connected", when: "each agent's own command-line tool talks to its company with your account; the app neither relays nor records that traffic" },
   { to: "the sites you open in the browser pane", when: "browsing, as in any browser, and fetching the site icon each open page names, which may be on another site such as a CDN; the app fetches it itself, sends no cookies, and never from this computer or your local network unless the page itself is open at such an address" },
   { to: "script CDNs (cdnjs, jsdelivr, unpkg, tailwindcss, jquery)", when: "saving an artifact for offline use, to fetch the scripts its page names" },
+  { to: "Kimi (api.moonshot.ai) and MiniMax (www.minimax.io)", when: "only when you press Check now in Settings > AI connections with a key you added" },
   { to: "Microsoft, from the WebView2 runtime", when: "the Edge engine that Windows lends the app's window keeps its own startup checks; they carry nothing of yours and the app neither uses nor can switch them off" },
 ];
 

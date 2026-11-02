@@ -63,3 +63,37 @@ LIVE PROOF PENDING (once the transport lands): Settings > AI connections > Provi
 Moonshot key, Add key: field empties, row reads "Kept: ••••" + last 4. Check now: "Balance $x
 (vouchers $y, cash $z)". Paste a wrong key: "The key was refused". Network off: "No connection to
 the provider." Remove: row reads "No key". settings.json never holds the key in the clear.
+
+
+ADDENDUM 2026-11-01 (worker 2f, branch s-2f/T-547 from origin/main 2c921931): the network transport
+Built: src-tauri/src/resources/provider_net.rs (new), transport(plan) in provider_usage.rs returns it,
+NotSwitchedOn deleted; provider_usage_check builds the plan from the saved proxy (a setting that cannot
+be used answers "Not checked", never a direct request). scripts/privacy-audit.test.mjs: provider_net.rs in
+ALLOWED (reqwest only), ONE_CLIENT ("reqwest::Client::builder(" x1) and PINNED (any other way of making a
+client x1) plus a new test "a second network client in provider_net.rs fails the audit in each listed form".
+src/settings/privacy.ts OUTBOUND names Kimi (api.moonshot.ai) and MiniMax (www.minimax.io), "only when you
+press Check now in Settings > AI connections with a key you added" (HOSTS holds exactly those two);
+privacy.test.ts asserts it; ProviderUsage.test.ts no longer uses the "not switched on" sentence.
+Guards in provider_net.rs: address re-checked (https, default port, no user info, host on HOSTS) before
+sending; redirect Policy::none(); 10 s limit on the whole call; body read in chunks, cut at 64 KB;
+Authorization header marked sensitive, scratch copy of the key zeroed; error values carry no key, address
+or provider text (error-status bodies are dropped).
+
+Commands and results (CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-2f-b):
+- cargo test --manifest-path src-tauri/Cargo.toml --lib provider_ : 18 passed, 0 failed
+  (7 old t547_* + 6 new t547_net_* + 5 other matches of "provider_": 302 not followed and the redirect target never contacted; 15 s stall
+  -> Offline in 10.0 s; 1 MB body cut at 65536 bytes; 401 body dropped; error texts never hold the key or
+  127.0.0.1; real get refuses http, odd port, user info, off-list and look-alike hosts, loopback, and a
+  non-address with the listener never accepting a connection)
+- MUTATION: with .redirect(Policy::none()) removed, t547_net_a_302... FAILED
+  (left: Err(Offline), right: Ok(Answer { status: 302, body: "" }); the client followed to a listener
+  that never answered and ran into the 10 s limit); restored, file byte-identical to the passing version.
+- cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings : exit 0
+- npx vitest run scripts/privacy-audit.test.mjs src/settings/privacy.test.ts src/settings/ProviderUsage.test.ts : 3 files, 12 passed
+- npx vitest run scripts/privacy-audit.test.mjs src/settings : 83 files, 406 passed
+- pnpm tsc --noEmit : exit 0
+- node scripts/plan-check.mjs : plan-check: OK
+
+NOT PROVEN (needs-live-windows, Txais's key): Settings > AI connections > Provider usage > Check now with a
+real Moonshot key shows "Balance $x (vouchers $y, cash $z)"; a wrong key shows "The key was refused".
+Security-auditor review is pending before the merge (T-547 card).

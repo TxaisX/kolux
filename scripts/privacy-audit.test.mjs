@@ -21,6 +21,7 @@ const TCP_CONNECT_ALL = new RegExp(TCP_CONNECT.source, "g");
 const CLIENTS = [/\bfetch\(\s*["'`]https?:/, /XMLHttpRequest/, /sendBeacon/, /new WebSocket\(/, /\breqwest::/, /tauri_plugin_updater/, /\bureq::/, /\bhyper::/, TCP_CONNECT];
 const ALLOWED = {
   "src-tauri/src/artifacts.rs": [/\breqwest::/], // the script CDNs, when saving an artifact for offline use
+  "src-tauri/src/resources/provider_net.rs": [/\breqwest::/], // T-547: the Kimi and MiniMax balance check, only when the user presses Check now with a key they added
   "src-tauri/src/browser.rs": [/\breqwest::/], // the open page's own site icon (APP-070: sites the user opens in the browser pane)
   "src-tauri/src/update.rs": [/tauri_plugin_updater/], // GitHub Releases
   "src-tauri/src/lib.rs": [/tauri_plugin_updater/],
@@ -31,7 +32,7 @@ const ALLOWED = {
 // The one loopback call each file may make, as exact text: it is cut out before the scan, so any
 // other fetch in the same file is still caught (an ALLOWED entry would pass the whole file).
 // A whole-file reqwest pass covers one client only: a second builder in the same file fails the audit.
-const ONE_CLIENT = { "src-tauri/src/artifacts.rs": "reqwest::Client::builder(" };
+const ONE_CLIENT = { "src-tauri/src/artifacts.rs": "reqwest::Client::builder(", "src-tauri/src/resources/provider_net.rs": "reqwest::Client::builder(" };
 // browser.rs (council FIX-4, Ruling 1): its icon clients both come from one builder line, kept as
 // exact text with the public-only lookup and no proxy, and from exactly three calls of the function
 // that holds it; any other way of making a client (a bare constructor, an imported Client, the
@@ -45,6 +46,8 @@ const PINNED = {
     [/\breqwest::/g, 11],
     [/\bicon_client_for\b/g, 4],
   ],
+  // T-547: the provider balance check holds one client, built in one place (also pinned by ONE_CLIENT); any other way of making one fails the audit.
+  "src-tauri/src/resources/provider_net.rs": [[/\b(?:Client|ClientBuilder)\s*::\s*(?:builder|new|default)\s*\(|\breqwest\s*::\s*(?:blocking\s*::\s*)?get\s*\(/g, 1]],
   // pty_service.rs holds exactly one loopback connect (its ALLOWED line); a second one fails the audit.
   "src-tauri/src/pty_service.rs": [[TCP_CONNECT_ALL, 1]],
   // labels.rs holds exactly one connect, behind the loopback guard in target_of; a second one fails the audit.
@@ -129,4 +132,29 @@ test("app070: a second network client in browser.rs fails the audit in each list
   const hidden = real + "\n#[cfg(test)]\nfn helper() {}\nfn x() { let _ = reqwest::Client::new(); }\n" + full.slice(real.length);
   expect(shipped(hidden).includes("reqwest::Client::new()")).toBe(true);
   expect(pinnedProblems(rel, shipped(hidden)).length).toBeGreaterThan(0);
+});
+
+test("app070: a second network client in provider_net.rs fails the audit in each listed form", () => {
+  const rel = "src-tauri/src/resources/provider_net.rs";
+  const real = shipped(fs.readFileSync(path.join(root, rel), "utf8"));
+  // the real file holds exactly one builder and passes the pinned count
+  expect(real.split(ONE_CLIENT[rel]).length - 1).toBe(1);
+  expect(pinnedProblems(rel, real)).toEqual([]);
+  const second = {
+    "second builder": real + "\nfn x() { let _ = reqwest::Client::builder().build(); }\n",
+    "Client::new": real + "\nfn x() { let _ = reqwest::Client::new(); }\n",
+    "ClientBuilder::new": real + "\nfn x() { let _ = reqwest::ClientBuilder::new().build(); }\n",
+    "imported Client": real + "\nuse reqwest::Client;\nfn x() { let _ = Client::builder().build(); }\n",
+    "one-shot get": real + "\nasync fn x() { let _ = reqwest::get(\"https://example.com\").await; }\n",
+    "Client::default": real + "\nfn x() { let _ = reqwest::Client::default(); }\n",
+    "spaced path": real + "\nfn x() { let _ = reqwest::Client :: new(); }\n",
+  };
+  for (const [name, text] of Object.entries(second)) expect(pinnedProblems(rel, text).length, name).toBeGreaterThan(0);
+  // the one-builder count itself moves with a second builder
+  expect(second["second builder"].split(ONE_CLIENT[rel]).length - 1).toBe(2);
+  // a client written after a test-only helper above the test module is still scanned
+  const hidden = real + "\n#[cfg(test)]\nfn helper() {}\nfn x() { let _ = reqwest::Client::new(); }\n#[cfg(test)]\nmod tests {}\n";
+  expect(pinnedProblems(rel, shipped(hidden)).length).toBeGreaterThan(0);
+  // the file is still named in ALLOWED only for reqwest, and nothing else gets through
+  expect(clientProblems(rel, real + "\nfn x() { let _ = std::net::TcpStream::connect(a); }\n").length).toBeGreaterThan(0);
 });

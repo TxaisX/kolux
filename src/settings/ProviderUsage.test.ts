@@ -35,7 +35,7 @@ test("T-547: every reading reads as one plain sentence, with the ones that need 
   expect(readingText({ state: "rateLimited" }).text).toContain("Too many checks");
   expect(readingText({ state: "offline" })).toEqual({ text: "No connection to the provider.", warn: true });
   expect(readingText({ state: "answered" }).text).toContain("no format");
-  expect(readingText({ state: "unavailable", reason: "checking with the provider is not switched on in this build" }).text).toBe("Not checked: checking with the provider is not switched on in this build.");
+  expect(readingText({ state: "unavailable", reason: "that address is not on the allowed list" }).text).toBe("Not checked: that address is not on the allowed list.");
   expect(readingText({ state: "failed", status: 500 }).text).toContain("500");
   expect(readingText({ state: "noKey" }).warn).toBe(false);
   const shown = html([{ ...rows[0], kept: true, masked: "••••9876" }], {}, { kimi: { state: "badKey" } });

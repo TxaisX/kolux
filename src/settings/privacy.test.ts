@@ -65,3 +65,9 @@ test("fix1: a stray half of an emoji in the text itself is replaced, not thrown 
     expect(body).toContain("�");
   }
 });
+
+test("t547: the statement names the two providers a usage check asks, and when", () => {
+  const row = OUTBOUND.find((o) => o.to.includes("api.moonshot.ai"));
+  expect(row?.to).toBe("Kimi (api.moonshot.ai) and MiniMax (www.minimax.io)");
+  expect(row?.when).toBe("only when you press Check now in Settings > AI connections with a key you added");
+});

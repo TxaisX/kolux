@@ -19,9 +19,9 @@
 //!   error text; [`Secret`] prints as stars;
 //! - a refused key, a rate limit and no connection each read as their own plain state.
 //!
-//! The network call itself is behind [`Fetch`]. The shipped transport ([`transport`]) makes no
-//! connection until the privacy audit names these two hosts: that change is a decision outside this
-//! lane (evidence/reliability-T-547-*.patch, BLOCKER row in kolux-rs-after.md).
+//! The network call itself is behind [`Fetch`]. The shipped transport ([`transport`]) is the one
+//! client in provider_net.rs: it re-checks the address, follows no redirect, gives up after 10
+//! seconds and reads at most 64 KB. The privacy audit and the privacy statement name both hosts.
 
 use crate::secrets;
 use crate::state::Store;
@@ -83,8 +83,6 @@ impl Provider {
 
 /// A key on its way to the transport. It prints as stars, so a debug line or a panic message can
 /// never carry it.
-// Read only by the network transport, which waits on the T-547 BLOCKER (privacy audit).
-#[allow(dead_code)]
 pub struct Secret(String);
 
 /// Row 657: the key's bytes are overwritten when it is dropped, so it does not linger in freed
@@ -103,8 +101,6 @@ impl Secret {
     }
 
     /// The key itself, for the Authorization header only.
-    // Read only by the network transport, which waits on the T-547 BLOCKER (privacy audit).
-    #[allow(dead_code)]
     pub fn expose(&self) -> &str {
         &self.0
     }
@@ -144,10 +140,8 @@ pub struct Answer {
 #[derive(Debug, Clone, PartialEq)]
 pub enum NetFail {
     /// No connection, a name that does not resolve, or no answer in time.
-    // Read only by the network transport, which waits on the T-547 BLOCKER (privacy audit).
-    #[allow(dead_code)]
     Offline,
-    /// The call was not made (an address off the list, or no transport in this build).
+    /// The call was not made (an address off the list, a key or proxy setting that cannot be used, or a reply that could not be read).
     NotMade(String),
 }
 
@@ -260,19 +254,9 @@ pub fn forget_key(store: &Store, p: Provider) -> Result<(), String> {
     secrets::clear_setting(store, p.key_field())
 }
 
-/// The transport in this build. It makes no connection: the privacy audit does not name these
-/// hosts yet, and widening it is not this lane's call (T-547 BLOCKER row). The resolver's patch
-/// swaps in the real client once that is decided.
-pub fn transport() -> impl Fetch {
-    NotSwitchedOn
-}
-
-struct NotSwitchedOn;
-
-impl Fetch for NotSwitchedOn {
-    fn get(&self, _url: &str, _key: &Secret) -> Result<Answer, NetFail> {
-        Err(NetFail::NotMade("checking with the provider is not switched on in this build".into()))
-    }
+/// The transport: the one client in provider_net.rs, reaching the network by the saved proxy plan.
+pub fn transport(plan: crate::resources::app_http::Plan) -> impl Fetch {
+    crate::resources::provider_net::Net::new(plan)
 }
 
 fn lock<'a>(store: &'a State<'_, Mutex<Store>>) -> Result<std::sync::MutexGuard<'a, Store>, String> {
@@ -311,13 +295,18 @@ pub fn provider_key_forget(app: AppHandle, store: State<'_, Mutex<Store>>, provi
 #[tauri::command]
 pub async fn provider_usage_check(store: State<'_, Mutex<Store>>, provider: String) -> Result<Reading, String> {
     let p = Provider::parse(&provider)?;
-    let (key, endpoint) = {
+    let (key, endpoint, plan) = {
         let guard = lock(&store)?;
+        // The saved proxy applies; a setting that cannot be used asks nothing (never a direct request).
+        let plan = match tauri::Url::parse(p.url()).map_err(|e| e.to_string()).and_then(|u| crate::resources::app_http::plan_from_store(&guard, &u)) {
+            Ok(plan) => plan,
+            Err(reason) => return Ok(Reading::Unavailable { reason }),
+        };
         let key = secrets::read_setting(&guard, p.key_field())?.map(Secret::new);
         let endpoint = guard.settings().get(crate::agent_creds::MINIMAX_ENDPOINT).and_then(Value::as_str).unwrap_or("overseas").to_string();
-        (key, endpoint)
+        (key, endpoint, plan)
     };
-    tauri::async_runtime::spawn_blocking(move || check(p, key, &endpoint, &transport())).await.map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(move || check(p, key, &endpoint, &transport(plan))).await.map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -427,8 +416,6 @@ mod tests {
         ] {
             assert!(!allowed(bad), "{bad}");
         }
-        // The shipped transport makes no connection.
-        assert!(matches!(check(Provider::Kimi, key("sk-moon-FIXTURE-0001"), "overseas", &transport()), Reading::Unavailable { .. }));
     }
 
     #[test]
