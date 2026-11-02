@@ -416,9 +416,12 @@ fn t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_row
     saved::keep_living_children(&mut rows, |_| Some(true), real);
     assert_eq!(rows[0].children.len(), 1, "the same start time keeps the children");
     // the id is alive but the recorded start is another process's: the children go
-    let mut rows = vec![with(Some(started.unwrap_or(0) + 1))];
-    saved::keep_living_children(&mut rows, |_| Some(true), real);
-    assert_eq!(rows[0].children.len(), 0, "an alive id with a different start time is a stranger");
+    // (macOS reads no start time, so it is judged by liveness alone there)
+    if cfg!(any(windows, target_os = "linux")) {
+        let mut rows = vec![with(Some(started.unwrap_or(0) + 1))];
+        saved::keep_living_children(&mut rows, |_| Some(true), real);
+        assert_eq!(rows[0].children.len(), 0, "an alive id with a different start time is a stranger");
+    }
     // a fake lookup says the same without any real process
     let mut rows = vec![with(Some(5))];
     saved::keep_living_children(&mut rows, |_| Some(true), |_| Some(6));

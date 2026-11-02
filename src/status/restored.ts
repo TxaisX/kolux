@@ -9,7 +9,7 @@ import type { StopInfo } from "../terminal/notify";
 /** One row of `agent_status_saved` (saved.rs Restored). */
 export type SavedRow = { paneKey: number; agent: string; state: string; at: number; sessionId?: string; children?: Crew; unconfirmed: boolean; restart: boolean };
 
-export const RESTART_TEXT = "Kolux was updated and its status hooks are from the older version.";
+export const RESTART_TEXT = "Kolux was updated and its status hooks are from the older version";
 
 const STATES: readonly string[] = ["permission", "blocked", "waiting", "interrupted", "working", "queued", "done", "idle"];
 
