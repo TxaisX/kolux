@@ -96,3 +96,7 @@ probe.cjs (run as: node probe.cjs <styles.css> <label>)
 LEFT
 - A Windows screenshot of the footer at the 220 px sidebar width in the installed build (evidence/T-625.png); the
   task line stays open until it exists.
+
+LIVE WINDOWS RUN (2026-11-02, worker s-90, audit item 1): node scripts/prove/live-audit-1.mjs on the dev app hidden off-screen, scratch profile G:\Temp\live-v15\run-audit-1, stand-in claude.cmd. Full log: G:\Temp\live-v15-logs\audit-1.out.txt.
+PASS  sidebar 220 px: footer 9..227, the update button right edge 118, width 25, its label display none, every footer button inside.
+Screenshot: evidence/T-625.png (CDP clip of the footer, scale 2). Dev build, not the installed one; same front end.
