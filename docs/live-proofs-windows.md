@@ -125,9 +125,10 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 ### B-2 · T-610 · Every screen can be reached from the palette
 - [ ] Run
 - Press: open the palette with Ctrl+Shift+J. Type and pick each of these in turn: "Show Floor", "Show Space",
-  "Show Workspace Statuses", "Show Artifacts", "Show Skills".
-- Should happen: each one opens its own page.
-- Fail if: any is missing from the palette or opens nothing.
+  "Show Workspace Statuses", "Show Artifacts", "Show Skills". Then open the Kolux menu and pick View >
+  Workspace View > Floor (DT-08; the submenu lists Agents, Board, Terminals, Tower and Floor).
+- Should happen: each one opens its own page; the menu's Floor opens the Floor and the submenu ticks Floor.
+- Fail if: any is missing from the palette or the menu, or opens nothing.
 - Result: ______________________________________________
 
 ### B-3 · T-611 · The palette's Commands section runs actions
