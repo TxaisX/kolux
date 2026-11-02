@@ -63,7 +63,7 @@ import { hearStates, setHooksOn } from "./chat/send";
 export type ShellTarget = { dir: string | null; branch: string | null };
 
 /** A pane with `seats` is a chooser (SESS-007): nothing runs in it until Start. */
-export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; forkOf?: string; resumed?: boolean; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; word?: string; batch?: number; typed?: string; group?: number; kind?: "browser" | "editor" | "preview" | "diff" | "changes"; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
+export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; word?: string; batch?: number; typed?: string; group?: number; kind?: "browser" | "editor" | "preview" | "diff" | "changes"; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
 
 /** Columns for a pane count: 1, side by side for 2, two rows for 3-4, then three across. */
 /** `initial`: the settings read before the first frame (main.tsx), so the first screen is right at once. */
@@ -155,7 +155,7 @@ function Window({ initial, layout, read }: { initial: Record<string, unknown>; l
   const setupExits = useRef<Record<number, (code: number | null) => void>>({});
   // The page, screen and layout writes, and the quit question (shell/useWindowSave.ts).
   const save = useWindowSave({
-    activeDir, activeTab, classic, dirty, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setScreen, setSettings,
+    activeDir, activeTab, classic, dirty, focused, page, panes, pinned, read, running, saveSetting, screen, setHist, setNotice, setPanes, setScreen, setSettings,
     settings, settingsRead, settingsRef, stacked, tabColors
   });
 

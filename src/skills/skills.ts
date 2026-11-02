@@ -133,9 +133,9 @@ export const canDelete = (s: Skill) => s.source === "home" || s.source === "work
 export type Pick = { path: string; updated: number | null };
 export const pickOf = (s: Skill): Pick => ({ path: s.path, updated: s.updated });
 
-export type Blocked = "bundled" | "plugin" | "outside" | "gone" | "changed";
+export type Blocked = "bundled" | "plugin" | "outside" | "gone" | "changed" | "unreadable";
 export type Planned = { path: string; blocked: Blocked | null; items: { path: string; kind: "folder" | "link" | "receipt" }[]; remains: string | null; dangling?: string[] };
-export type Outcome = "deleted" | "skipped" | "busy" | "partly" | "failed";
+export type Outcome = "deleted" | "skipped" | "busy" | "partly" | "failed" | "unsure";
 export type Done = { path: string; outcome: Outcome; note: string | null };
 
 export const BLOCKED: Record<Blocked, string> = {
@@ -144,6 +144,7 @@ export const BLOCKED: Record<Blocked, string> = {
   outside: "Outside Kolux's skill folders",
   gone: "No longer on disk",
   changed: "Changed since the list loaded; refresh first",
+  unreadable: "WSL did not give a readable answer, so it was left alone; try again",
 };
 
 /** Why a row cannot be chosen, or null when it can. */
@@ -182,12 +183,13 @@ export const OUTCOME: Record<Outcome, string> = {
   busy: "Busy: another skill operation is under way",
   partly: "Partly removed: hidden staged files are left over",
   failed: "Failed; nothing was changed",
+  unsure: "Not confirmed: some of it may already be removed",
 };
 
 /** One line of the outcome list. A skipped skill says why; the others add the app's note. */
 export function outcomeText(d: Done): string {
   if (d.outcome === "skipped" && d.note && d.note in BLOCKED) return `${OUTCOME.skipped}: ${BLOCKED[d.note as Blocked]}`;
-  return d.note && (d.outcome === "failed" || d.outcome === "partly") ? `${OUTCOME[d.outcome]} (${d.note})` : OUTCOME[d.outcome];
+  return d.note && (d.outcome === "failed" || d.outcome === "partly" || d.outcome === "unsure") ? `${OUTCOME[d.outcome]} (${d.note})` : OUTCOME[d.outcome];
 }
 
 // SKILL-020: a row's actions and the details dialog.

@@ -129,7 +129,7 @@ input { font: inherit; }
 
 /* ---- 5. sidebar card: x 8, y 44, 289 wide ---- */
 .sidebar-wrap { flex: none; display: flex; padding: 8px 0 8px 8px; }
-.sidebar { width: var(--sidebar-w, 289px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
+.sidebar { width: var(--sidebar-w, 289px); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; container-type: inline-size; }
 /* EDIT-033: the explorer, a card on the right matching the sidebar; rows are fixed 22px and virtualized. */
 .explorer { flex: none; width: 280px; margin: 8px 8px 8px 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
 .explorer-head { flex: none; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px 0 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
@@ -306,8 +306,16 @@ input { font: inherit; }
 .notice { flex: none; display: flex; align-items: center; gap: 8px; margin: 8px 8px 0; padding: 4px 4px 4px 10px; border: 1px solid #7a3b1e; border-radius: 8px; font-size: 12px; color: #f0a07a; }
 .notice .ib { margin-left: auto; }
 .sb-foot { height: 37px; border-top: 1px solid var(--line-strong); display: flex; align-items: center; padding: 0 5px 0 9px; gap: 3px; color: var(--fg-muted); }
-.sb-foot .upd { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px; margin-left: 6px; margin-right: auto; border-radius: 6px; font-size: 13px; color: var(--fg-muted); white-space: nowrap; }
+.sb-foot .upd { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px; margin-left: 6px; margin-right: auto; border-radius: 6px; font-size: 13px; color: var(--fg-muted); white-space: nowrap; min-width: 0; overflow: hidden; }
+.sb-foot .upd .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sb-foot .upd:hover { background: var(--row-selected); color: var(--fg); }
+/* At the left sidebar's narrow end the update row keeps its icon and its accessible name; the
+   text is the only thing that goes. Sessions already ellipsize their names. */
+@container (max-width: 260px) {
+  .sb-foot { padding: 0 4px 0 6px; gap: 2px; }
+  .sb-foot .upd { margin-left: 0; padding: 0 6px; }
+  .sb-foot .upd .label { display: none; }
+}
 
 /* ---- Source Control card on the right (spec 11; GIT-002 / GIT-004) ---- */
 .sidebar-wrap.right { padding: 8px 8px 8px 0; }

@@ -18,7 +18,8 @@ const walk = (dir, out = []) => {
 // \s* on both sides of :: so `TcpStream :: connect` and a line break inside it are caught too.
 const TCP_CONNECT = /TcpStream\s*::\s*connect/;
 const TCP_CONNECT_ALL = new RegExp(TCP_CONNECT.source, "g");
-const CLIENTS = [/\bfetch\(\s*["'`]https?:/, /XMLHttpRequest/, /sendBeacon/, /new WebSocket\(/, /\breqwest::/, /tauri_plugin_updater/, /\bureq::/, /\bhyper::/, TCP_CONNECT];
+// http.request (Node) and urllib.request (Python) cover a script Kolux embeds for a vendor's extension or plugin.
+const CLIENTS = [/\bfetch\(\s*["'`]https?:/, /XMLHttpRequest/, /sendBeacon/, /new WebSocket\(/, /\breqwest::/, /tauri_plugin_updater/, /\bureq::/, /\bhyper::/, /\bhttp\.request\(/, /\burllib\.request\b/, TCP_CONNECT];
 const ALLOWED = {
   "src-tauri/src/artifacts.rs": [/\breqwest::/], // the script CDNs, when saving an artifact for offline use
   "src-tauri/src/browser.rs": [/\breqwest::/], // the open page's own site icon (APP-070: sites the user opens in the browser pane)
@@ -91,6 +92,16 @@ test("app070: no network client in the shipped source beyond the connections the
     found.push(...pinnedProblems(rel, text), ...clientProblems(rel, text));
   }
   expect(found).toEqual([]);
+});
+
+test("app070: a Node http.request or a Python urllib.request in shipped source is flagged like a fetch", () => {
+  // An embedded script (a vendor extension or plugin Kolux writes) could open a connection with either; neither is in use today.
+  const node = 'const req = http.request({ host: "127.0.0.1", port, path, method: "POST" }, () => {});\n';
+  const py = "import urllib.request\nurllib.request.urlopen(url)\n";
+  const rust = 'let body = "import urllib.request\\nurllib.request.urlopen(u)";\n';
+  for (const text of [node, py, rust]) expect(clientProblems("src/other.ts", text).length, text).toBeGreaterThan(0);
+  // A plain request call, a request field or a longer name is not one of these clients.
+  expect(clientProblems("src/other.ts", "const r = await request(url); x.request = 1; http.requestCount++; myhttp.requests();\n")).toEqual([]);
 });
 
 test("app070: a spaced TcpStream :: connect is flagged like the plain spelling", () => {

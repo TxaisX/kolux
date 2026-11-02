@@ -1,0 +1,54 @@
+ci-noprofile, 2026-11-01, worker 90 (cycle 5, Restart A)
+
+WHAT
+Two terminal-service tests failed on and off on GitHub's Windows runner, on PRs that do not touch
+the terminal service:
+  pty::link::tests::t184b_a_pane_routed_through_the_service_types_resizes_outlives_its_window_and_is_adopted_back
+    "timed out waiting for the routed typing's output"
+  pty::service::tests::t075b_a_terminal_outlives_its_window_and_a_new_window_gets_its_output_back
+    "marker not seen", screen showing the runner's PowerShell 7 still starting
+Failed runs before this change: PR #58 run 41353268593, PR #37 run 41362353012, PR #60 run 41375784846.
+Same kind of flake as TERM-045, fixed by PR #48 (commit c5df3ab6) with -NoProfile in tests/cards_03.rs.
+
+CHANGE (tests only; what the product starts for users is unchanged)
+- src-tauri/src/pty.rs: #[cfg(test)] pty::without_profile(&mut [CommandBuilder]) adds -NoProfile
+  to pwsh / powershell entries (full path or bare name, any case, with or without .exe);
+  cmd and Unix shells are untouched. Not compiled into the app.
+- pty_link.rs tests: shell() (used by t184b, and by t153f, which gets the same change) starts its
+  shell through without_profile.
+- pty_service.rs t075b: the spawn request now carries "commands" (the user's shell chain built
+  as the window builds it, minus the profile) instead of letting the service pick the default
+  shell. The service's spawn op already accepts window-built commands (T-184-b), so no
+  product hook was needed.
+- Wait budgets: the first wait in each test covers the shell starting. It was a fixed 30 s;
+  the repo's real-shell tests in pty.rs give a shell start 60 s ("the shell may take over 30 s
+  to start on a loaded box"), so these two first waits now use 60 s. Later waits (shell
+  already running) stay as they were.
+
+FAILING TEST FIRST (local Windows 11, MSVC; CARGO_TARGET_DIR=target-90, debug info off)
+  cargo test --lib test_shells_start_powershell        (before the helper existed)
+    error[E0425]: cannot find function `without_profile` in this scope
+    exit 101
+
+AFTER
+  cargo test --lib -- test_shells_start_powershell t075b_a_terminal_outlives t184b_a_pane_routed
+    test pty::tests::test_shells_start_powershell_without_a_profile_and_leave_other_shells_alone ... ok
+    test pty::link::tests::t184b_a_pane_routed_through_the_service_types_resizes_outlives_its_window_and_is_adopted_back ... ok
+    test pty::service::tests::t075b_a_terminal_outlives_its_window_and_a_new_window_gets_its_output_back ... ok
+    test result: ok. 3 passed; 0 failed
+    exit 0
+  cargo clippy --all-targets -- -D warnings   (CI's clippy line)
+    exit 0
+
+THE REAL PROOF
+These tests only flaked on GitHub's cold Windows runner, so the proof is that runner: the Windows
+job on this PR's head, run and rerun. Runs:
+  run 41388811959 on acded89b: Rust job pass (21m), 2651 passed, 0 failed, including
+    t184b_a_pane_routed, t075b_a_terminal_outlives, t153f and the new helper test.
+  run 41390859592 on da29d668 (evidence-only change): pass, 2651 passed, 0 failed, both tests ok.
+  run 41390859592 attempt 2 (full rerun, same head): pass.
+  Three green Windows runs in a row; the head after merging main gets one more, named on the PR.
+
+RECORD
+#48 left no record beyond its commit and PR; this file is the record of this CI fix. No PLAN tick
+(no task line).
