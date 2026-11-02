@@ -16,10 +16,10 @@ import { showsDragHandle } from "../../terminal/rearrange";
 import { gpuOn } from "../../terminal/renderer";
 import { showsReview } from "../../terminal/planReview";
 import { tabName } from "../../terminal/tabName";
-import { codexSetup } from "../../terminal/accountChange";
+import { codexSetup, spawnRecord } from "../../terminal/accountChange";
 import { onRunning } from "../../inbox/exitedPrompt";
 import { deliverPrompt, startWatch } from "../../launch/startWatch";
-import { capOn, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
+import { capOn, claudeOf, codexOf, contextFill, meterOf, readsLeft } from "../../usage/meter";
 import { nameOf, sameDir } from "../../workspaces";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
@@ -135,7 +135,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       onOpenLink={openInBrowser}
       linksOpenInKolux={settings.linksOpenInKolux === true}
       gpu={gpuOn(settings)}
-      card={board ? { expanded: expanded === p.key, onToggle: () => setExpanded((x) => toggleCard(x, p.key)), chip: chipFor(p), column: columnOf(p), onAnswer: (ok) => void answer(p, ok), onReview: () => reviewChanges(p.key), meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, plan.claude, codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
+      card={board ? { expanded: expanded === p.key, onToggle: () => setExpanded((x) => toggleCard(x, p.key)), chip: chipFor(p), column: columnOf(p), onAnswer: (ok) => void answer(p, ok), onReview: () => reviewChanges(p.key), meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
       cwd={p.cwd}
       branch={p.branch}
       agent={p.agent}
@@ -205,11 +205,9 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         if (p.batch !== undefined && p.agent !== "shell") rememberLineup(p.batch);
         // T-139-d: a Codex pane on a managed account is watched for printed sign-in errors.
         watchCodexSignIn(id, p.agent === "codex" ? account : null);
-        // ACCT-023: a Codex pane remembers the account it began on.
-        if (p.agent === "codex") {
-          const setup = codexSetup(settings); // T-139-d: and the setup it began on
-          if (p.account !== account || p.setup !== setup) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, account, setup } : x)));
-        }
+        // ACCT-023: a Codex pane remembers the account it began on (and its setup, T-139-d); T-548-b: so does a Claude pane.
+        const began = spawnRecord(p, account, codexSetup(settings));
+        if (began) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, ...began } : x)));
       }}
       account={p.account}
       notice={noticeFor(p)}

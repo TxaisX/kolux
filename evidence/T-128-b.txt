@@ -1,0 +1,122 @@
+T-128-b · ACCT-050 on Unix: the foreground process group names the agent; Ctrl-Z hands the pane back · 2026-11-01 · lane5/T-128-b
+Built and proven in the Linux cloud container (4 CPUs, /dev/ptmx present, bash 5, no desktop). The app cannot be launched here.
+
+WHAT THIS UNIT IS
+T-128-a built the recognition (src-tauri/src/foreground.rs) on Windows by process tree and on Unix by the terminal's
+foreground process group (PtySession::foreground_group -> portable-pty process_group_leader -> tcgetpgrp). The Unix branch
+of `front` (foreground.rs, cfg(not(windows))) had never been compiled or run: every ACCT-050 test was table-driven or
+Windows-only. DT-C41 parked the Mac/Linux half. This container is Linux, so the Unix branch is compiled and checked here
+for the first time, against a real PTY and a real interactive shell. No product code changed.
+
+WHAT CHANGED
+- src-tauri/src/foreground.rs, tests module: two cfg(unix) tests and a small guard, UnixPane (start, group, front,
+  front_within, job; Drop does the cleanup). The pane is `bash --norc --noprofile -i` spawned through PtySession::spawn
+  at 80x24 in a fresh temp folder; the stand-in agent is a link named `claude` to /bin/sleep, so the foreground
+  process's command line reads `./claude 30` as a native Claude binary's would (a `#!/bin/sh` script would read
+  `/bin/sh ./claude`, which is sh, not Claude). The poll is the one `poll` does: front(pid, session.foreground_group()),
+  every 100 ms.
+  1) acct_050_unix_an_agent_typed_into_a_shell_is_in_front_until_ctrl_z_hands_the_pane_back:
+     right after start the foreground group is the shell's own (Some(pid)) and front is Shell; type `./claude 30` ->
+     Agent("claude") within 3 s, in a group that is not the shell's; Ctrl-Z (0x1A) -> Shell within 2 s and the foreground
+     group is the shell's again; `fg` -> Agent("claude") again; Ctrl-Z -> Shell.
+  2) acct_050_unix_a_background_job_is_never_the_foreground_agent: `./claude 30 &` -> pgrep (-P shell, `^\./claude 30`)
+     finds the job within 3 s; front stays Shell and the foreground group stays the shell's. Then the test shows the job
+     WOULD be credited if it were in front: imp::command_line(job) reads as the agent (credited_agent -> "claude") and
+     front(pid, Some(job)) answers Agent("claude") (the job's own group is the one in front); front(pid, group) is still
+     Shell, so the only reason is the foreground group. This is the bite the first version lacked (see REVIEW FIXES).
+  Dropping the UnixPane ends the job with `kill -9 %1`, kills the session and removes the folder, on the happy path and
+  when an assertion fails (the test profile unwinds; panic = "abort" is release-only).
+- PLAN.md: the T-128-b line carries a BUILT/REST note and stays unticked (the desktop acceptance run is DT-C41's remainder).
+
+COMMANDS (from src-tauri, with CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target CARGO_PROFILE_DEV_DEBUG=0
+CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=2 and `. ../scripts/test-env.sh`)
+
+$ cargo test --lib acct_050 -- --test-threads=1        (final run, after the PR #59 review fixes below)
+running 4 tests
+test foreground::tests::acct_050_a_change_is_reported_once_and_gone_terminals_are_forgotten ... ok
+test foreground::tests::acct_050_the_first_agent_under_the_shell_is_in_front_and_two_agents_are_unknown ... ok
+test foreground::tests::acct_050_unix_a_background_job_is_never_the_foreground_agent ... ok
+test foreground::tests::acct_050_unix_an_agent_typed_into_a_shell_is_in_front_until_ctrl_z_hands_the_pane_back ... ok
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 2575 filtered out; finished in 0.93s
+--- leftovers (listed right after the run):
+no ./claude 30 process
+no kolux-acct050 folder in /tmp/krs-scratch.10b3b1679bc8/tmp
+(The two Windows-only ACCT-050 tests are compiled out here, as before. The first version of this unit ran in 1.53 s.)
+
+FAILING BEFORE (teeth check)
+The code under test already existed (T-128-a), so the new tests passed on their first run. To show they read the
+foreground group and not just the shell, `front`'s Unix branch was changed in a throwaway edit to ignore the group and
+credit the pane's own process (what Windows does, with no job control), then the two tests were run again:
+$ cargo test --lib acct_050_unix -- --test-threads=1
+test foreground::tests::acct_050_unix_a_background_job_is_never_the_foreground_agent ... ok
+test foreground::tests::acct_050_unix_an_agent_typed_into_a_shell_is_in_front_until_ctrl_z_hands_the_pane_back ... FAILED
+thread '...' panicked at src/foreground.rs:362:9:
+assertion `left == right` failed
+  left: Shell
+ right: Agent("claude")
+test result: FAILED. 1 passed; 1 failed
+The edit was then reverted (git diff shows only added test lines in foreground.rs).
+
+REVIEW FIXES (PR #59, 2026-11-01; both findings minor, both taken)
+1) "The background-job test has no teeth against the Unix front() code": the test only ever passed through
+   front(pid, Some(pid)) -> command_line(bash) -> Shell, and the mutation above left it green. Now it also asserts that
+   the job's command line reads as the agent and that front(pid, Some(job)) is Agent("claude"). The same throwaway
+   mutation (front ignores the group and credits the pane's own process) was applied again:
+   $ cargo test --lib acct_050_unix -- --test-threads=1
+   test foreground::tests::acct_050_unix_a_background_job_is_never_the_foreground_agent ... FAILED
+   test foreground::tests::acct_050_unix_an_agent_typed_into_a_shell_is_in_front_until_ctrl_z_hands_the_pane_back ... FAILED
+   thread '...a_background_job_is_never_the_foreground_agent' panicked at src/foreground.rs:425:9:
+   assertion `left == right` failed: in front, the job would be the agent
+     left: Shell
+    right: Agent("claude")
+   test result: FAILED. 0 passed; 2 failed
+   (before this fix the same mutation gave "1 passed; 1 failed": the background test stayed green). The mutation was
+   reverted; the assertion is src/foreground.rs:424 in the committed file. The test is now a proof of the Unix branch's
+   "credit the group leader" path and of imp::command_line's /proc read, not only of the kernel's job control.
+2) "A failing assertion leaks the temp folder and a 30 s sleep": unix_pane/end_unix_pane became the UnixPane guard whose
+   Drop writes `kill -9 %1`, kills the session and removes the folder. Shown with a throwaway test (not committed) that
+   starts `./claude 30`, Ctrl-Z's it (the stopped case, the harder one) and then fails on purpose; after the run, the
+   scratch TMPDIR and the process table were listed.
+   BEFORE (old helpers, forced failure right after the agent started):
+   $ cargo test --lib throwaway_leak_check   -> test result: FAILED. 0 passed; 1 failed
+   --- leftovers:
+   kolux-acct050-16963-1793571380431133565          <- the folder stayed under $TMPDIR
+   (the sleep itself was gone: bash resends SIGHUP to its jobs when the PTY master closes; the folder is the real leak)
+   AFTER (UnixPane guard, forced failure with the job stopped by Ctrl-Z):
+   $ cargo test --lib throwaway_leak_check -- --test-threads=1
+   thread '...throwaway_leak_check_a_failed_assertion_with_a_stopped_job' panicked at src/foreground.rs:442:9:
+   assertion `left == right` failed: forced failure
+   test result: FAILED. 0 passed; 1 failed
+   --- leftovers:
+   /tmp/krs-scratch.3976e7e8f231/tmp/kolux-acct050-23183-1793572786760563975 job=23190   <- what the test had made
+   no ./claude 30 process
+   no kolux-acct050 folder in /tmp/krs-scratch.3976e7e8f231/tmp
+   The throwaway test and the mutation were removed before the commit (git diff shows only the tests module changed).
+   Also tightened: the pgrep pattern is anchored (`^\./claude 30`); `-f "claude 30"` matched any shell whose own command
+   line mentioned it.
+
+OTHER GATES
+$ npx tsc --noEmit -> exit 0
+$ node scripts/plan-check.mjs -> plan-check: OK
+$ cargo clippy --all-targets -- -D warnings (Linux host)
+  error: could not compile `kolux-rs` (lib) due to 93 previous errors (exit 101; 94 error lines)
+  The known Linux-host state (evidence/T-582.txt records the same 93 on main: dead Windows-only helpers in
+  browser_crash.rs, browser_*.rs, badge.rs, secrets.rs, scm.rs, drop_non_drop on the Unix Job stub, ...). Not one is in
+  foreground.rs or in any file this branch touched; nothing of it is fixed here.
+$ cargo check --target x86_64-pc-windows-gnu --all-targets -> Finished `dev` profile (exit 0)
+$ cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings -> Finished `dev` profile (exit 0)
+  (the new tests are cfg(unix), so the Windows build is unchanged; the gate the project ships on stays clean)
+  All four re-run after the review fixes on 2026-11-01: tsc exit 0, plan-check OK, Linux clippy the same 93 (none in
+  foreground.rs), Windows check and clippy both exit 0.
+$ cargo clippy --all-targets -- -D warnings -A dead_code -A unused_variables -A unreachable_code -A clippy::drop_non_drop
+    -A clippy::needless_borrows_for_generic_args        (extra, not a gate: the 93 lib errors stop the host clippy
+  before the lib test target, and the Windows clippy compiles the cfg(unix) tests out, so this is the one pass that
+  lints the new test code itself) -> 3 errors, all in files this branch does not touch (tests/cards_17.rs:12 unused
+  import, src/scm_watch.rs:921 unused import, src/projects.rs:3044 unused mut); foreground.rs: 0 mentions.
+vitest: no TypeScript touched. invoke-contract, license-check: no command or dependency change.
+
+STILL OPEN / NEEDS A LIVE RUN (DT-C41)
+- The ACCT-050 acceptance boxes as worded (the pane counts as a Claude session; after Ctrl-Z it no longer does) are
+  app-level: the pane header following the 2 s poll. That needs a macOS or Linux desktop with the app built; this
+  container has no display. The Rust answer the header follows is what these tests prove.
+- macOS itself: the same branch reads `ps -o command=` instead of /proc; not run here.

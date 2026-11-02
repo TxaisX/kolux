@@ -1,0 +1,143 @@
+T-066-e · SESS-030: the sessions-command source of T-066-d wired (the buildable half); the live proof stays open
+lane5/T-066-e from main 714f44cf, 2026-11-01. Built here: source 2 of terminal_session_id.rs has its caller. Open: steps 1-4 below on Txais's PC.
+
+1. What the user gets
+- An agent tab without status hooks (Cursor, Gemini CLI, Hermes, Goose, Amp: the five rows of SOURCES with a sessions
+  command) comes back resumed after a quit, the way a Claude Code or Codex tab does: when the layout is written down,
+  Kolux runs the agent's own sessions command in the tab's folder and takes the newest session listed there that no
+  other tab holds. An id the agent printed itself (its exit hint, T-066-d source 1) or a hook's id is never replaced.
+- Two tabs of one agent in one folder never get the same session (each answer is added to `taken` for the next ask).
+- A sessions command that hangs is killed after 5 s and gives nothing; a missing program gives nothing; a layout save
+  never waits on it (the ask runs beside the write and the id rides the next write). The 5 s bound the whole ask,
+  the reading of the output included: a helper the command leaves behind holding its output (an updater, a daemon)
+  never holds the ask past it, and what the command printed before it exited is still its list (review fix).
+- A listed id is a guess until the agent names its own (review fix): a tab is asked the moment it is opened, before
+  its agent has made a session, so the folder's previous session may be put on it first; the tab is asked again
+  (every 30 s, its own guess left out of its ask) and the session its agent made since replaces the guess; the id
+  the agent prints itself when it exits wins over the guess. An id the agent named itself (a hook, its hint) is never
+  replaced, by a list or by a later hint.
+- Only the five agents with a sessions command (Cursor, Gemini CLI, Hermes, Goose, Amp) are asked; a Kiro, Aider,
+  Copilot or other tab is not (nothing to run).
+
+2. What changed
+- src-tauri/src/terminal.rs: listed_session(program, src, folder, taken) runs `program` with `src.list` in `folder`
+  (stdin null, stdout piped and read on a thread, stderr null, CREATE_NO_WINDOW on Windows), try_wait loop, killed at
+  LIST_WAIT (5 s; taskkill /T on Windows), at most LIST_CAP (256 KB) read, then session_id::pick_listed. The .cmd shim
+  case goes through pty::start_line_on as every other agent start does.
+  terminal_listed_session(agent, folder, taken) (async, spawn_blocking): Ok(None) for an agent with no list source or no
+  program found; the program is the user's own command for the agent when set, else agents::installed_program (now
+  pub(crate)); Err only for an empty folder.
+- src-tauri/src/lib.rs: the command registered next to terminal_forget_history.
+- src-tauri/src/terminal_session_id.rs: `#![allow(dead_code)]` and its ponytail note dropped; the module comment names the caller.
+  Review fix: the reader thread hands its output over an mpsc channel a piece at a time; once the child has exited the
+  pieces are taken with recv_timeout(LIST_WAIT - elapsed) until the pipe closes or the wait runs out, and what arrived
+  is parsed. The reader is never joined (it ends when the pipe closes or when nobody takes its pieces).
+- src/terminal/layout.ts: panesWantingListedSession(panes) -> { asks, taken }: a started tab of an agent in
+  LISTED_AGENTS (cursor, gemini, hermes, goose, amp: the SOURCES rows with a list) with no session, or only a listed
+  guess (`sessionListed`, a LivePane-only field layoutOf never writes), is asked, with its folder and, for a guess,
+  `own` (left out of its own ask so the same or a newer id can come back; it stays in `taken` for the others); a
+  chooser never started, a non-terminal tab, a tab with no folder, a hook-fed agent and an agent with no sessions
+  command are not; `taken` is every session id some pane holds plus each fork's source.
+  withListedSession(panes, key, id): the list's answer goes on the pane as a guess while it has no id or a guess.
+  withHintedSession(panes, key, id): the agent's exit hint goes on the pane over no id or a guess, never over a settled id.
+- src/shell/useWindowSave.ts: when the layout effect writes, askListedSessions runs: one round at a time, the asks in
+  turn, each answer pushed to `taken` and put on the pane through withListedSession; a pane asked is left alone for
+  LISTED_ASK_AGAIN_MS (30 s) since a layout write comes with every focus move. src/App.tsx passes setPanes and the
+  Pane type carries sessionListed. src/projects/useCliBridge.ts puts the exit hint on through withHintedSession.
+- docs/guide/projects-and-worktrees.md (agent sessions table and paragraph), docs/guide/feature-index.md (a T-066-d/e row).
+
+3. Proof (worktree lane-t1, env CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target CARGO_PROFILE_DEV_DEBUG=0
+   CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=2; VITEST_MAX_WORKERS=2)
+
+Failing first (tests written before the code):
+  (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib t066e)
+    error[E0425]: cannot find value `LIST_WAIT` in this scope   (terminal.rs:2630)
+    error[E0425]: cannot find value `LIST_CAP` in this scope    (terminal.rs:2644; listed_session likewise unknown)
+  VITEST_MAX_WORKERS=2 npx vitest run src/terminal/layout.test.ts
+    × T-066-e: the panes whose session the agent's own sessions list is asked for ...
+    TypeError: panesWantingListedSession is not a function
+    Tests  1 failed | 9 passed (10)
+
+Passing after:
+  (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib t066)
+    test terminal::tests::t066e_a_lines_sessions_command_gives_the_newest_id_no_other_pane_holds ... ok
+      (a sh stand-in named `cursor` printing the Lines fixture: newest id; the next newest when a pane holds it; None when both are held)
+    test terminal::tests::t066e_a_json_sessions_command_picks_by_folder_and_time ... ok
+      (a `goose` stand-in printing the Json fixture with real folders: the other folder's newer row skipped; the next when taken)
+    test terminal::tests::t066e_a_sessions_command_that_hangs_or_is_missing_gives_nothing_within_the_wait ... ok
+      (a `hermes` stand-in that sleeps 10 s: None, killed between 5 and 7 s; a missing program: None in under 1 s; copilot, no list source: None)
+    test terminal::tests::t066e_the_output_read_is_capped_so_a_chatty_list_cannot_fill_memory ... ok
+      (an `amp` stand-in printing 257 KB of filler before its id: None)
+    plus the 6 t066d tests still ok
+    test result: ok. 10 passed; 0 failed; 0 ignored; 2571 filtered out; finished in 5.03s
+  VITEST_MAX_WORKERS=2 npx vitest run src/terminal src/shell
+    Test Files  121 passed (121)   Tests  714 passed (714)
+  npx tsc --noEmit: clean (exit 0)
+  node scripts/invoke-contract.mjs: 706 invoke calls by name against 445 registered commands, OK
+  node scripts/plan-check.mjs: exit 0 (a first draft of the PLAN note named a card id and was counted as planning it; reworded)
+  (cd src-tauri && cargo check --target x86_64-pc-windows-gnu --all-targets): Finished `dev` profile, exit 0
+  (cd src-tauri && cargo clippy --all-targets -- -D warnings) on this Linux box: exit 101, "could not compile `kolux-rs`
+    (lib) due to 93 previous errors", the same 93 evidence/T-582.txt records for the first Linux clippy run of main
+    (Windows-only code read as dead on Linux: browser_crash.rs, browser_holder.rs, badge.rs, procs::Job drops, ...).
+    Not one of the 93 points at a file this unit changed (grep of the `-->` lines for terminal.rs, terminal_session_id.rs,
+    agents.rs, lib.rs: none), and terminal_session_id.rs is clean without its `#![allow(dead_code)]`. The Windows
+    clippy run on Txais's PC is the gate that counts for those 93.
+  No dependency changed (no license check needed). No new outside source was read (PROVENANCE unchanged).
+
+3b. Review round (PR #61, 2026-11-02): the three findings, each with its test written first.
+  Finding 1 (major, useWindowSave.ts: the list's older guess blocked the agent's own exit hint) and finding 3 (minor,
+  every non-hook agent asked): layout.test.ts extended (a Kiro tab in the first test; a new test for the guess being
+  re-asked with its own id left out, a newer listed id replacing it, the hint winning and settling the pane, a
+  settled id never replaced).
+  Failing first (VITEST_MAX_WORKERS=2 npx vitest run src/terminal/layout.test.ts):
+    × T-066-e: the panes whose session the agent's own sessions list is asked for ...
+      + { "agent": "kiro", "folder": "C:\\w\\a", "key": 12 }   (the Kiro tab was asked)
+    × T-066-e (review): a listed id is a guess until the agent names its own ...
+      TypeError: withListedSession is not a function
+    Tests  2 failed | 9 passed (11)
+  Passing after: Tests  11 passed (11); npx tsc --noEmit clean.
+  Finding 2 (major, terminal.rs: reader.join() outlived the child when a helper held its stdout): the stand-in takes a
+  `helper` flag ("(sleep 8 &)" after the list on sh; "start /b ping -n 9" in the .cmd); new test
+  t066e_a_helper_the_list_leaves_behind_holding_its_output_never_holds_the_ask_past_the_wait.
+  Failing first ((cd src-tauri && . ../scripts/test-env.sh && cargo test --lib t066e_a_helper)):
+    thread '...t066e_a_helper_the_list_leaves_behind_holding_its_output_never_holds_the_ask_past_the_wait' panicked at src/terminal.rs:2654:9:
+    the ask ends by the wait, whoever still holds the pipe: 8.021728s
+    test result: FAILED. 0 passed; 1 failed; finished in 8.09s
+  Passing after ((cd src-tauri && . ../scripts/test-env.sh && cargo test --lib t066)):
+    test terminal::tests::t066e_a_helper_the_list_leaves_behind_holding_its_output_never_holds_the_ask_past_the_wait ... ok
+      (a `gemini` stand-in printing two ids then forking `(sleep 8 &)`: the newest id, in under 7 s)
+    test terminal::tests::t066e_a_sessions_command_that_hangs_or_is_missing_gives_nothing_within_the_wait ... ok
+    test terminal::tests::t066e_a_lines_sessions_command_gives_the_newest_id_no_other_pane_holds ... ok
+    test terminal::tests::t066e_a_json_sessions_command_picks_by_folder_and_time ... ok
+    test terminal::tests::t066e_the_output_read_is_capped_so_a_chatty_list_cannot_fill_memory ... ok
+    plus the 6 t066d tests still ok
+    test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 2571 filtered out; finished in 5.02s
+  The hang test's `took >= LIST_WAIT && took < LIST_WAIT + 2s` and the cap test are unchanged and still pass.
+  Checks after the round: npx tsc --noEmit clean; VITEST_MAX_WORKERS=2 npx vitest run src/terminal src/shell src/projects:
+    Test Files  178 passed (178)   Tests  1013 passed (1013)
+  node scripts/plan-check.mjs: OK; node scripts/invoke-contract.mjs: OK (no command added or renamed);
+  (cd src-tauri && cargo check --target x86_64-pc-windows-gnu --all-targets):
+    NOT RUN TO THE END HERE: the run was still "Blocking waiting for file lock on build directory" (the target dir is
+    shared with the other lanes' cargo runs) when the branch had to be pushed; the integrator's run is the gate.
+    The Rust change is std-only (mpsc channel, Read::read) with no cfg(windows) code touched, and the Linux
+    `cargo test --lib t066` build of the same code compiled clean.
+  (cd src-tauri && cargo clippy --all-targets -- -D warnings):
+    likewise still queued on the build-directory lock at push time; the earlier round's 93 Linux-only errors
+    (evidence/T-582.txt) are expected again, none in the files this unit touches; the Windows clippy run on Txais's PC
+    is the gate that counts.
+  Docs: docs/guide/projects-and-worktrees.md says the 5 s bound the whole ask and that a listed id is a guess the
+  agent's own session replaces; PLAN.md's BUILT note carries the same.
+
+4. Rest: LIVE PROOF PENDING on Txais's PC (no agent is installed here, and the app cannot be launched here), per
+   installed id-only agent, in a throwaway repo under a scratch HOME, never a real signed-in session, exactly steps 1-4
+   of evidence/T-066-d.txt:
+   1. start the agent, one short exchange, quit it normally: the pane header offers Copy Session ID; quit and relaunch
+      Kolux: the pane resumes that id and says "resumed";
+   2. run the agent's sessions command in the folder by hand and compare its output with the fixture shape in the tests
+      (t066d_a_sessions_list..., t066d_a_json_sessions_list..., t066e_*); tighten the parser (Listing) where it differs;
+   3. two panes of one agent in one folder: after a relaunch each resumes its own session, never the same one twice;
+   4. try the continue form once (continue_form in SOURCES): confirm it opens no picker and starts fresh when the
+      folder has no session; only then let a restore use it.
+   Also live: that `cursor ls` / `gemini --list-sessions` / `hermes sessions list` / `goose session list --format json` /
+   `amp threads list` are the real list commands and finish inside 5 s on a signed-in install (the table is the builder's
+   knowledge of the public references, not confirmed, as T-066-d says).

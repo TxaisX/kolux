@@ -1,0 +1,97 @@
+T-180-b round 2 (PR #63 review: C+, 2 majors + 2 minors) · lane5/T-180-b · 2026-11-01
+
+WHAT CHANGED FOR THE USER
+- Major 1: a skill in the project's own .claude/.agents/.grok skills folder inside the WSL distribution can now be deleted. It was matched against the home root and the distribution answered OUTSIDE. The project root named whole now wins over a ~/ root that merely ends the same way.
+- Major 2: a delete inside WSL that fails, times out or whose answer is unreadable may have removed part of the folder first. It is now outcome "unsure", worded 'Not confirmed: some of it may already be removed (reason)', never 'Failed; nothing was changed'.
+- Minor (fixed): one WSL check that fails (wsl.exe error, garbled answer, FAIL line) no longer aborts the whole request. That skill is blocked as "unreadable" (page: 'WSL did not give a readable answer, so it was left alone; try again') and Windows picks and other WSL picks go on.
+- Minor (left): links elsewhere in the distribution that point at a deleted WSL folder are not reported as dangling. Finding them needs a new scan script that reads every skill folder in the distribution; not small, belongs to a later task.
+
+FILES: src-tauri/src/skill_delete.rs (wsl_skill matching, plan_wsl, delete_wsl, tests), src/skills/skills.ts + skills.test.ts (Outcome unsure, Blocked unreadable), docs/guide/getting-started.md (the WSL sentence).
+Tests changed to the new rule (not weakened): skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_blocks_that_skill (was: fails the plan) and skill022_wsl_a_failing_command_or_a_garbled_answer_is_unsure_and_a_skill_gone_meanwhile_is_skipped (was: failed).
+
+FAILING BEFORE (the code of 1f334a0e: wsl_skill takes the first matching root, delete failures are 'failed', a failed check is Err for the whole plan; the three new tests added)
+cargo test --manifest-path src-tauri/Cargo.toml --lib skill022_wsl
+running 10 tests
+test skill_delete::tests::skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_fails_the_plan ... ok
+test skill_delete::tests::skill022_wsl_a_workspace_skill_is_checked_and_deleted_against_the_project_root_not_the_home ... FAILED
+test skill_delete::tests::skill022_wsl_a_failing_command_or_a_garbled_answer_is_a_failure_and_a_skill_gone_meanwhile_is_skipped ... ok
+test skill_delete::tests::skill022_wsl_a_failed_or_timed_out_delete_never_claims_nothing_changed ... FAILED
+test skill_delete::tests::skill022_wsl_deleting_a_link_removes_the_link_and_keeps_the_folder_it_points_at ... ok
+test skill_delete::tests::skill022_wsl_another_distribution_or_a_path_outside_the_skill_folders_is_refused_without_asking ... ok
+test skill_delete::tests::skill022_wsl_a_folder_is_deleted_inside_the_distribution_without_the_windows_record ... ok
+test skill_delete::tests::skill022_wsl_one_check_that_fails_blocks_only_that_skill_and_the_rest_of_the_request_goes_on ... FAILED
+test skill_delete::tests::skill022_wsl_windows_and_wsl_skills_go_in_one_request_under_one_lock ... ok
+test skills::tests::skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete ... ok
+
+failures:
+
+---- skill_delete::tests::skill022_wsl_a_workspace_skill_is_checked_and_deleted_against_the_project_root_not_the_home stdout ----
+
+thread 'skill_delete::tests::skill022_wsl_a_workspace_skill_is_checked_and_deleted_against_the_project_root_not_the_home' (32780) panicked at src\skill_delete.rs:2826:9:
+assertion `left == right` failed
+  left: [("Ubuntu", "~/.claude/skills", "/home/me/repo/.claude/skills/lint", Check)]
+ right: [("Ubuntu", "/home/me/repo/.claude/skills", "/home/me/repo/.claude/skills/lint", Check)]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- skill_delete::tests::skill022_wsl_a_failed_or_timed_out_delete_never_claims_nothing_changed stdout ----
+
+thread 'skill_delete::tests::skill022_wsl_a_failed_or_timed_out_delete_never_claims_nothing_changed' (8376) panicked at src\skill_delete.rs:2900:9:
+assertion `left == right` failed: [Done { path: "\\\\wsl.localhost\\Ubuntu\\home\\me\\.claude\\skills\\one\\SKILL.md", outcome: "failed", note: Some("rm: cannot remove 'one/x': Permission denied") }, Done { path: "\\\\wsl.localhost\\Ubuntu\\home\\me\\.claude\\
+  left: ["failed", "failed", "failed"]
+ right: ["unsure", "unsure", "unsure"]
+
+---- skill_delete::tests::skill022_wsl_one_check_that_fails_blocks_only_that_skill_and_the_rest_of_the_request_goes_on stdout ----
+
+thread 'skill_delete::tests::skill022_wsl_one_check_that_fails_blocks_only_that_skill_and_the_rest_of_the_request_goes_on' (20312) panicked at src\skill_delete.rs:2921:53:
+called `Result::unwrap()` on an `Err` value: "WSL Ubuntu: wsl.exe ended with exit code 1"
+
+
+failures:
+    skill_delete::tests::skill022_wsl_a_failed_or_timed_out_delete_never_claims_nothing_changed
+    skill_delete::tests::skill022_wsl_a_workspace_skill_is_checked_and_deleted_against_the_project_root_not_the_home
+    skill_delete::tests::skill022_wsl_one_check_that_fails_blocks_only_that_skill_and_the_rest_of_the_request_goes_on
+
+test result: FAILED. 7 passed; 3 failed; 0 ignored; 0 measured; 2657 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `--lib`
+
+vitest, same tests against the old skills.ts:
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/skills/skills.test.ts > SKILL-022: a skill inside the project's WSL distribution is chosen like any home or workspace skill, and the app's answer decides the rest
+AssertionError: expected undefined to be 'Not confirmed: some of it may already…' // Object.is equality
+- Expected:
++ Received:
+      Tests  1 failed | 14 passed (15)
+
+PASSING AFTER
+cargo test --manifest-path src-tauri/Cargo.toml --lib skill
+test skill_delete::tests::skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_blocks_that_skill ... ok
+test skill_delete::tests::skill022_wsl_a_failed_or_timed_out_delete_never_claims_nothing_changed ... ok
+test skill_delete::tests::skill022_wsl_a_folder_is_deleted_inside_the_distribution_without_the_windows_record ... ok
+test skill_delete::tests::skill022_wsl_a_workspace_skill_is_checked_and_deleted_against_the_project_root_not_the_home ... ok
+test skill_delete::tests::skill022_wsl_another_distribution_or_a_path_outside_the_skill_folders_is_refused_without_asking ... ok
+test skill_delete::tests::skill022_wsl_deleting_a_link_removes_the_link_and_keeps_the_folder_it_points_at ... ok
+test skill_delete::tests::skill022_wsl_a_failing_command_or_a_garbled_answer_is_unsure_and_a_skill_gone_meanwhile_is_skipped ... ok
+test skill_delete::tests::skill022_wsl_one_check_that_fails_blocks_only_that_skill_and_the_rest_of_the_request_goes_on ... ok
+test skill_delete::tests::skill022_wsl_windows_and_wsl_skills_go_in_one_request_under_one_lock ... ok
+test skills::tests::skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete ... ok
+test result: ok. 136 passed; 0 failed; 2 ignored; 0 measured; 2529 filtered out; finished in 4.11s
+
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized] target(s) in 4m 18s
+clippy exit=0
+
+pnpm exec tsc --noEmit
+tsc exit=0
+VITEST_MAX_WORKERS=2 pnpm exec vitest run src/skills
+ Test Files  6 passed (6)
+      Tests  41 passed (41)
+vitest exit=0
+
+THE REAL SCRIPT (WSL is not installed on this PC, so the DELETE_SCRIPT text from wsl.rs was run by Git Bash's sh on a temp tree, HOME set to its home):
+  check  root=~/.claude/skills  dir=<home>/repo/.claude/skills/lint  -> OUTSIDE   (the old bug: home root for a project skill)
+  check  root=<home>/repo/.claude/skills same dir                    -> OK folder
+  delete root=<home>/repo/.claude/skills same dir                    -> OK folder, folder gone
+  delete root=~/.claude/skills dir=<home>/.claude/skills/mine        -> OK folder, folder gone
+The cfg(unix) test skill022_wsl_a_workspace_skill_is_deleted_by_the_real_delete_script (round 1) does the same on Linux/macOS CI; it does not run on this Windows PC.
+(That cfg(unix) test was compiled here with the cfg switched to all() and cargo check --tests: exit 0.)

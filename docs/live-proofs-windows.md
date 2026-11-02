@@ -157,8 +157,10 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 - [ ] Run
 - Set up: Kolux RS running, then minimise it.
 - Press: in an ordinary terminal outside Kolux, type `kolux open`.
-- Should happen: the Kolux RS window comes back to the front.
-- Fail if: the window stays minimised, or a second copy of Kolux starts.
+- Should happen: the Kolux RS window comes back to the front, and the terminal prints "Kolux is ready; its window is in
+  front". Then minimise it again and run `kolux open --json`: the result holds `"raised": true` (CLI-011 unit, 2026-11-01).
+- Fail if: the window stays minimised, a second copy of Kolux starts, or the line says Windows kept another window in
+  front / `"raised": false` (then Kolux is restored behind the terminal and only flashes in the taskbar).
 - Result: ______________________________________________
 
 ### B-6 · T-586 · Links after Chinese text and emoji click in the right place
@@ -216,8 +218,9 @@ newer release; the T-566 and T-612 items still need this run.
 - [ ] T-566: every restored pane shows its chip
 - Should happen: every pane that came back shows its "restored" chip, on every launch.
 - Fail if: any restored pane, on any launch, has its output back but no chip.
-- The other half (each pane's key matching the saved layout) cannot be seen by hand; it waits for the prover fix in
-  STATE.md.
+- The other half (each pane's key matching the saved layout) cannot be seen by hand: run `node scripts/prove/live-T-544.mjs`
+  and read its `reattach relaunch <n>: ... panes [...]` lines, which list every pane's key and chip as they were before the
+  script closed any dialog (the `after dialogs` line that follows shows what the Escape did).
 - Result: ______________________________________________
 
 - [ ] T-612: Escape and the Tip card (on a launch where a Tip shows)

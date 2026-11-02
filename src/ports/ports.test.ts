@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
-import { PrintedUrls, afterScan, decodeOutput, openAddress, openWhere, ownCount, urlsIn, type PortRow } from "./ports";
+import { PrintedUrls, afterScan, decodeOutput, openAddress, openWhere, ownCount, stopArgs, stopNote, urlsIn, type PortRow } from "./ports";
 
-const row = (port: number, addr = "127.0.0.1", external = false): PortRow => ({ port, addr, pid: 1, external });
+const row = (port: number, addr = "127.0.0.1", external = false, terminal: number | null = 7): PortRow => ({ port, addr, pid: 1, external, started: "", terminal: external ? null : terminal });
 
 test("VIEW-078 an address in coloured dev server output is found without its colour codes", () => {
   const out = "  \u001b[32m\u001b[1mLocal\u001b[22m:\u001b[39m   \u001b[36mhttp://localhost:\u001b[1m5173\u001b[22m/\u001b[39m";
@@ -10,11 +10,34 @@ test("VIEW-078 an address in coloured dev server output is found without its col
 
 test("VIEW-078 a printed address counts only while a process listens on its port", () => {
   const p = new PrintedUrls();
-  p.record("ready on http://localhost:3000\n");
+  p.record("ready on http://localhost:3000\n", 7);
   expect(p.forPort(3000, [row(3000)])).toBe("http://localhost:3000");
   expect(p.forPort(3000, [row(4000)])).toBeNull();
-  p.record("now http://127.0.0.1:3000/app");
+  p.record("now http://127.0.0.1:3000/app", 7);
   expect(p.forPort(3000, [row(3000)])).toBe("http://127.0.0.1:3000/app");
+});
+
+test("VIEW-078 a printed address binds only to a program under the terminal that printed it", () => {
+  const p = new PrintedUrls();
+  p.record("ready on http://localhost:3000/a\n", 7);
+  p.record("ready on http://localhost:3000/b\n", 8);
+  expect(p.forPort(3000, [row(3000, "127.0.0.1", false, 8)])).toBe("http://localhost:3000/b");
+  expect(p.forPort(3000, [row(3000, "127.0.0.1", false, 7)])).toBe("http://localhost:3000/a");
+  expect(p.forPort(3000, [row(3000, "127.0.0.1", false, 9)])).toBeNull();
+  expect(p.forPort(3000, [row(3000, "127.0.0.1", true)])).toBeNull();
+  expect(p.forPort(3000, [row(3000, "127.0.0.1", false, 9), row(3000, "::1", false, 8)])).toBe("http://localhost:3000/b");
+});
+
+test("VIEW-078 a Stop sends back the start time it saw, as text, so a reused process id is refused", () => {
+  const r: PortRow = { port: 5173, addr: "127.0.0.1", pid: 4242, external: false, started: "133700000000000000", terminal: 7 };
+  expect(stopArgs(["C:\\work\\app"], "C:\\work\\app", r)).toEqual({ workspaces: ["C:\\work\\app"], active: "C:\\work\\app", port: 5173, pid: 4242, started: "133700000000000000" });
+  expect(typeof stopArgs([], "x", r).started).toBe("string");
+});
+
+test("VIEW-078 the note after a Stop says stopped only for a program that was ended", () => {
+  expect(stopNote(5173, "stopped")).toBe("Stopped port 5173");
+  expect(stopNote(5173, "gone")).toBe("Port 5173 was already gone; nothing was stopped");
+  expect(stopNote(5173, "moved")).toBe("Port 5173 is no longer held by that program; nothing was stopped");
 });
 
 test("VIEW-078 Open uses the printed address, else plain http on the listening address", () => {

@@ -745,8 +745,9 @@ fn launch_line(settings: &serde_json::Value, id: &str, extra: &[String], prompt:
 }
 
 /// The program the window starts for `id` when the user set none: the first of its names that is
-/// installed, else its first name (as `catalogue` lists it).
-fn installed_program(id: &str) -> Option<String> {
+/// installed, else its first name (as `catalogue` lists it). `terminal::terminal_listed_session` runs the
+/// agent's sessions command by it too (T-066-e).
+pub(crate) fn installed_program(id: &str) -> Option<String> {
     let (_, _, programs, _) = CATALOGUE.iter().find(|e| e.0 == id)?;
     let dirs = search_dirs();
     programs.iter().find(|p| find_in(&dirs, p).is_some()).or(programs.first()).map(|p| p.to_string())

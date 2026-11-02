@@ -1,0 +1,166 @@
+T-062-b (lane5/T-062-b, 2026-11-02): EDIT-044, the WSL-only rules for projects stored in a WSL distribution
+==========================================================================================================
+
+Scope built (pure logic, proven by unit tests on this Linux container; no WSL distribution here, DT-C41):
+- Search of a WSL root (src-tauri/src/editor_search.rs): wsl_root() reads \\wsl$\<d>\... and \\wsl.localhost\<d>\...
+  (either slash, case-blind share name, the \\?\UNC\ long-path form) into the distribution and the folder as Linux
+  spells it; wsl_rg_command() runs "wsl.exe -d <distro> --cd <linux folder> -e rg <the local arguments>" (rg_args is
+  shared with the local search, so both run the same ripgrep arguments). -e means no shell in between: the query
+  reaches ripgrep as typed. Hits come back ./relative and map onto the root as a local search's do. search_gen picks it
+  when wsl_root is Some. A missing wsl.exe is reported ("WSL is not installed here ..."), and inside the distribution
+  code 1 with a message (a missing ripgrep or folder) is a failure with that message, not "no results". wsl.exe's
+  UTF-16 messages are read as text (stderr_text).
+- One file through its WSL path and its drive alias (src/editor/buffers.ts keyOf): \\wsl.localhost\<d>\mnt\c\...
+  keys as c:/..., the two share names and both slashes key together, a non-/mnt path keys as //wsl/<distro>/<linux path>
+  with the Linux path case-sensitive. keyOf is the one key the editor uses for open buffers, the two-tab rule and the
+  change-detection stamps, so the two tabs share one text and one unsaved marker.
+  Deviation from the triage brief: it proposed fsops::file_key used in files.rs. files.rs holds no map of open files
+  (file_stamps answers per path in the order asked); every "same file" decision is keyOf in buffers.ts, so the rule
+  lives there.
+- Watcher (src-tauri/src/scm_watch.rs unwatchable): a WSL worktree is read every 4 s from the start, decided from the
+  spelling alone (fsops::is_wsl), before the drive-type call, so no share is contacted. The 4 s read is the fallback
+  that never goes quiet; no watcher runs inside the distribution (DT-C70; notify is refused, T-033-b).
+
+Commands (CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target, CARGO_INCREMENTAL=0, CARGO_BUILD_JOBS=2):
+  (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib edit044)
+  (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib -- editor_search scm::watch)
+  (cd src-tauri && . ../scripts/test-env.sh && cargo test --lib -- scm::watch fsops wsl)
+  VITEST_MAX_WORKERS=2 npx vitest run src/editor/
+  (cd src-tauri && cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings)
+  (cd src-tauri && cargo check --target x86_64-pc-windows-gnu --all-targets)
+  npx tsc --noEmit; node scripts/plan-check.mjs
+
+FAILING BEFORE
+--------------
+Rust, run() given its new parameter but search_gen not yet picking the WSL command (the four that pass here test
+wsl_root, wsl_rg_command, stderr_text and unwatchable, which arrived with the previous attempt's saved patch; on
+origin/main they do not exist, so those tests do not compile there):
+  test editor_search::tests::edit044_a_wsl_root_names_its_distribution_and_linux_folder ... ok
+  test editor_search::tests::edit044_wsl_messages_in_utf16_read_as_text ... ok
+  test editor_search::tests::edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments ... ok
+  test scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... ok
+  test editor_search::tests::edit044_a_wsl_search_that_ends_with_a_message_and_code_1_is_a_failure ... FAILED
+  test editor_search::tests::edit044_without_wsl_a_wsl_search_says_so ... FAILED
+  thread 'editor_search::tests::edit044_a_wsl_search_that_ends_with_a_message_and_code_1_is_a_failure' (8502) panicked at src/editor_search.rs:876:82:
+  called `Result::unwrap_err()` on an `Ok` value: Found { files: [], total: 0, capped: false, source: "rg" }
+     3: <core::result::Result<kolux_rs_lib::editor_search::Found, std::io::error::Error>>::unwrap_err
+  thread 'editor_search::tests::edit044_without_wsl_a_wsl_search_says_so' (8503) panicked at src/editor_search.rs:887:13:
+  ripgrep is not installed and this folder is not a git repository, so there is nothing to search with.
+  test result: FAILED. 4 passed; 2 failed; 0 ignored; 0 measured; 2577 filtered out; finished in 0.13s
+
+Rust, the watcher test with the WSL check disabled (if false && ...), then restored:
+  test scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... FAILED
+  thread 'scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched' (18326) panicked at src/scm_watch.rs:1771:70:
+  \\wsl.localhost\Ubuntu\home\me\p would be watched
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2582 filtered out; finished in 0.08s
+
+vitest src/editor/buffers.test.ts against origin/main's buffers.ts:
+       × keys the WSL spellings of one file together, a drive alias with its drive, and keeps Linux names case-sensitive 16ms
+       × a tab opened by the drive alias shares the text of the tab opened through WSL 2ms
+  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+   FAIL  src/editor/buffers.test.ts > one file reached through WSL and through its drive alias (EDIT-044, T-062-b) > keys the WSL spellings of one file together, a drive alias with its drive, and keeps Linux names case-sensitive
+  AssertionError: expected '\\wsl$\Ubuntu\home\me\a.ts' to be '\\wsl.localhost\Ubuntu\home\me\a.ts' // Object.is equality
+  Expected: "\\wsl.localhost\Ubuntu\home\me\a.ts"
+  Received: "\\wsl$\Ubuntu\home\me\a.ts"
+   FAIL  src/editor/buffers.test.ts > one file reached through WSL and through its drive alias (EDIT-044, T-062-b) > a tab opened by the drive alias shares the text of the tab opened through WSL
+  AssertionError: expected 'x' to be 'xy' // Object.is equality
+  Expected: "xy"
+  Received: "x"
+        Tests  2 failed | 17 passed (19)
+
+PASSING AFTER
+-------------
+  test editor_search::tests::edit044_a_wsl_root_names_its_distribution_and_linux_folder ... ok
+  test editor_search::tests::edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments ... ok
+  test editor_search::tests::edit044_a_wsl_search_that_ends_with_a_message_and_code_1_is_a_failure ... ok
+  test editor_search::tests::edit044_wsl_messages_in_utf16_read_as_text ... ok
+  test editor_search::tests::edit044_without_wsl_a_wsl_search_says_so ... ok
+  test scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... ok
+  test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 2546 filtered out; finished in 1.00s
+  cargo test --lib -- scm::watch fsops wsl: 50 passed, 1 failed: skills::tests::a_wsl_project_lists_its_distributions_skills,
+    which is on the main baseline list (baseline-rust-failed.txt line 41), not touched here.
+  vitest src/editor/: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+Tests  2 failed | 1063 passed (1065); the 2 failures are the baseline
+    richCodeColourTime timing tests (c and cpp block), not touched here; buffers.test.ts 19/19.
+  Windows clippy -D warnings: Finished `dev` profile [unoptimized] target(s) in 5m 31s (after is_multiple_of in stderr_text)
+  Windows check: Finished `dev` profile [unoptimized] target(s) in 6m 51s
+  tsc --noEmit: exit 0; plan-check: OK
+
+WHAT IS LEFT
+------------
+- Both EDIT-044 acceptance boxes stay open: they need an Ubuntu distribution through wsl.localhost on the build PC,
+  which this project does not have (DT-C41).
+- Before that click-through can work, the fence (src-tauri/src/fence.rs is_share, T-062-a's part) still refuses a
+  \\wsl.localhost or \\wsl$ root as a share, so file_read, file_write and editor_search never reach a WSL project
+  today. The rules above take effect once that refusal is lifted.
+- Not tried live: whether wsl.exe -e with a missing ripgrep ends with code 1 and a message (handled) or another code
+  (also handled as a failure); whether Windows' folder-change reader could watch a wsl.localhost share (which would
+  lift DT-C70's 4 s read).
+
+WINDOWS CI FOLLOW-UP (PR #64, run 41381698426: 2 failures in this PR's own new tests)
+-----------------------------------------------------------------------------------
+Renumber: this PR's decision row is DT-C70 (DT-C67 clashed with PR #60); DECISIONS.md, PLAN.md, spec/12-editor-files.md,
+  scm_watch.rs and this file now say DT-C70. No other row touched.
+
+1. editor_search::tests::edit044_without_wsl_a_wsl_search_says_so
+   CI before: unwrap_err() on an Ok value: Found { files: [], total: 0, capped: false, source: "rg" }
+   Cause: the test assumed no wsl.exe on the machine; the runner (and this PC: C:\Windows\System32\wsl.exe) has one,
+     so the search really ran and found nothing.
+   Fix: search_gen now delegates to search_with(.., wsl_rg), which takes the function that builds the wsl.exe command;
+     production passes wsl_rg_command, the test passes a command for a program that does not exist, so the NotFound
+     branch is reached whether or not the host has WSL. The test asserts the message names WSL, the distribution and
+     "not installed".
+   After (this PC, wsl.exe present): edit044_without_wsl_a_wsl_search_says_so ... ok
+
+2. scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched
+   Before (reproduced here, G:\Temp is not a plain path): left: Some("its path leads to G:\Temp\scm-watch-t062b-local-30780")
+     right: None   (CI: ... D:\a\_temp\krs-scratch\tmp\scm-watch-t062b-local-5632)
+   Cause: the test passed canonicalize()'s \?\D:\... form; unwatchable() resolves the path and strips \?\ before
+     comparing with the path it was given, so the unstripped input always differed. Test-only; unwatchable() unchanged.
+   Fix: the test strips the \?\ prefix from the canonicalized temp folder, so the "local folder" is a plain,
+     link-resolved path on every platform. The WSL assertions are unchanged.
+   After: edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... ok
+
+   cargo test --manifest-path src-tauri/Cargo.toml edit044
+   test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2654 filtered out
+   (Windows: of the 6, 5 are this PR's tests - the code-1 test is #[cfg(unix)] and did not run there - and 1,
+    fsops::tests::edit044_a_removal_blocked_for_a_moment_is_retried, is already on main.)
+
+3. clippy (this PC's toolchain, rust 1.99): editor_search.rs stderr_text used chunks_exact(2) and failed
+   `clippy::chunks_exact_to_as_chunks` under -D warnings; now as_chunks::<2>() (same as parse_notify).
+   cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: exit 0
+   cargo test ... edit044 after that change: test result: ok. 6 passed; 0 failed (same 5 + 1 split as above)
+
+4. Review round (PR #64 review, grade B): wsl.exe's own warning with code 1 no longer reads as a failure, a mixed
+   UTF-16 / UTF-8 error stream decodes both parts, and the code-1 test now runs on Windows (a cmd stand-in).
+   Test first (new tests on the unchanged code, Windows, cargo test --manifest-path src-tauri/Cargo.toml edit044):
+   Before: test editor_search::tests::edit044_wsl_messages_in_utf16_read_as_text ... ok
+   Before: test editor_search::tests::edit044_a_mixed_utf16_and_utf8_error_stream_reads_both ... FAILED
+   Before: test editor_search::tests::edit044_a_wsl_root_names_its_distribution_and_linux_folder ... ok
+   Before: test editor_search::tests::edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments ... ok
+   Before: test editor_search::tests::edit044_without_wsl_a_wsl_search_says_so ... ok
+   Before: test editor_search::tests::edit044_a_wsl_warning_with_code_1_is_no_matches ... FAILED
+   Before: test editor_search::tests::edit044_a_wsl_search_that_ends_with_a_wsl_error_and_code_1_is_a_failure ... ok
+   Before: thread 'editor_search::tests::edit044_a_mixed_utf16_and_utf8_error_stream_reads_both' (14420) panicked at src\editor_search.rs:931:9:
+   Before: "wsl: Detected localhost proxy configuration.\n杲›敲敧⁸慰獲\u{2065}牥潲㩲甠据潬敳\u{2064}牧畯\u{a70}"
+   Before: thread 'editor_search::tests::edit044_a_wsl_warning_with_code_1_is_no_matches' (11760) panicked at src\editor_search.rs:917:98:
+   Before: called `Result::unwrap()` on an `Err` value: Custom { kind: Other, error: "wsl: Detected localhost proxy configuration, but it is not mirrored into WSL." }
+   Before: test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 2654 filtered out; finished in 1.68s
+   Fix: stderr_text reads a UTF-16 run from the first NUL byte to its line feed and everything else as UTF-8;
+   wsl_error_line makes code 1 a failure only for wsl.exe's error forms (execvpe(, chdir(, <3>WSL,
+   "not installed", "no distribution"), ignoring lines that start with "wsl:".
+   After:
+   After: test editor_search::tests::edit044_a_mixed_utf16_and_utf8_error_stream_reads_both ... ok
+   After: test editor_search::tests::edit044_wsl_messages_in_utf16_read_as_text ... ok
+   After: test editor_search::tests::edit044_a_wsl_root_names_its_distribution_and_linux_folder ... ok
+   After: test editor_search::tests::edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments ... ok
+   After: test scm::watch::tests::edit044_a_wsl_root_is_read_every_4_s_instead_of_watched ... ok
+   After: test editor_search::tests::edit044_without_wsl_a_wsl_search_says_so ... ok
+   After: test editor_search::tests::edit044_a_wsl_warning_with_code_1_is_no_matches ... ok
+   After: test fsops::tests::edit044_a_removal_blocked_for_a_moment_is_retried ... ok
+   After: test editor_search::tests::edit044_a_wsl_search_that_ends_with_a_wsl_error_and_code_1_is_a_failure ... ok
+   After: test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 2654 filtered out; finished in 0.37s
+   (9 = 8 of this PR + fsops::edit044_a_removal_blocked_for_a_moment_is_retried from main.)
+   clippy (this PC): cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: exit 0
+   (The wsl-error-form + code 1 test passed before and after: the old rule already failed on any message.)
+   GitHub run 41389903192 on 75f8bcdf (Rust tests, lints and dependencies): success.

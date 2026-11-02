@@ -24,6 +24,11 @@ export const publishStored = (limits: ClaudeLimit[]) => {
   publishLaunch(limits);
 };
 
+/** T-548-b: the active account's stored windows, published even when there are none. After an account switch
+ *  the figures shown still belong to the old account; the new one may not have reported yet, and an empty
+ *  answer must clear them rather than leave another account's numbers under its name. */
+export const readActiveClaude = (call: (command: string) => Promise<unknown> = (c) => invoke(c)) => call("claude_usage").then((l) => publishStored(l as ClaudeLimit[]));
+
 /** A report the status line pushed just now: the same, and a forecast reading at the time it
  * arrived (USAGE-031). FIX-2 (council FS-4): the event carries the windows merged with the last
  * stored ones, so only the windows this report itself carried are readings; a window kept from an
@@ -64,24 +69,30 @@ export function ClaudePillView({ limits, installed = true, trouble = false }: { 
   );
 }
 
+/** Starts the pill's reads and listeners; the returned function stops them. */
+export function startClaudePill(): () => void {
+  const r = runner<ClaudeLimit[]>({ name: "claude", fetch: () => invoke<ClaudeLimit[]>("claude_usage").then(claudeFetched), onOk: publishStored });
+  r.start();
+  // T-286-b (APP-017): held while the window is hidden, the newest figures replayed when it is shown.
+  const off = heldListen<{ limits: ClaudeLimit[]; carried?: string[] }>(
+    "claude-usage",
+    (e) => {
+      if (e.payload.limits.length) publishLive(e.payload.limits, Date.now(), e.payload.carried);
+    },
+    { latestOnly: true },
+  );
+  // T-548-b: a switch (or any change to the account list) re-reads the active account's windows and clears the old ones.
+  const offAccounts = heldListen("claude-accounts", () => void readActiveClaude().catch(() => {}), { latestOnly: true });
+  return () => {
+    r.stop();
+    void off.then((u) => u()).catch(() => {});
+    void offAccounts.then((u) => u()).catch(() => {});
+  };
+}
+
 export default function ClaudePill({ installed }: { installed?: boolean }) {
   const { claude: limits } = usePlan();
   const sched = useRefresh("claude");
-  useEffect(() => {
-    const r = runner<ClaudeLimit[]>({ name: "claude", fetch: () => invoke<ClaudeLimit[]>("claude_usage").then(claudeFetched), onOk: publishStored });
-    r.start();
-    // T-286-b (APP-017): held while the window is hidden, the newest figures replayed when it is shown.
-    const off = heldListen<{ limits: ClaudeLimit[]; carried?: string[] }>(
-      "claude-usage",
-      (e) => {
-        if (e.payload.limits.length) publishLive(e.payload.limits, Date.now(), e.payload.carried);
-      },
-      { latestOnly: true },
-    );
-    return () => {
-      r.stop();
-      void off.then((u) => u()).catch(() => {});
-    };
-  }, []);
+  useEffect(() => startClaudePill(), []);
   return <ClaudePillView limits={limits} installed={installed} trouble={sched.failures > 0} />;
 }

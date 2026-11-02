@@ -377,6 +377,22 @@ fn stat_021_pi_events_drive_the_dot() {
     assert_eq!(state(&mut s, &mut m, "/pi/agent_settled", json!({"hook_event_name":"agent_settled","aborted":false})), Some("done"));
     let e = normalize_with(&mut m, "/pi/tool_execution_start", &json!({"tool_name":"read"})).unwrap();
     assert_eq!((e["hook_event_name"].as_str(), e[MARK].as_str(), e["tool_name"].as_str()), (Some("PreToolUse"), Some("pi"), Some("read")));
+    // STAT-025: the prompt that began the run rides on Pi's before_agent_start (its documented
+    // `prompt` field, a user-started run); the agent_start that follows keeps the turn working
+    // without losing it, so the run's done line still carries the prompt.
+    let e = normalize_with(&mut m, "/pi/before_agent_start", &json!({"hook_event_name":"before_agent_start","messageType":"user","prompt":"fix the\nparser"})).unwrap();
+    assert_eq!((e["hook_event_name"].as_str(), e[MARK].as_str(), e["prompt"].as_str()), (Some("UserPromptSubmit"), Some("pi"), Some("fix the\nparser")));
+    assert_eq!(state(&mut s, &mut m, "/pi/before_agent_start", json!({"hook_event_name":"before_agent_start","messageType":"user","prompt":"fix the\nparser"})), Some("working"));
+    assert_eq!(s.history.back().and_then(|h| h.prompt.as_deref()), Some("fix the parser"), "folded to one line");
+    assert_eq!(state(&mut s, &mut m, "/pi/agent_start", json!({"hook_event_name":"agent_start"})), Some("working"));
+    assert_eq!(state(&mut s, &mut m, "/pi/agent_settled", json!({"hook_event_name":"agent_settled","aborted":false})), Some("done"));
+    assert_eq!(s.history.back().and_then(|h| h.prompt.as_deref()), Some("fix the parser"), "the prompt survives agent_start and labels the done");
+    // A run an extension starts with a custom message has no user prompt; a long prompt is cut at 16000.
+    assert_eq!(state(&mut s, &mut m, "/pi/before_agent_start", json!({"hook_event_name":"before_agent_start","messageType":"custom","message":{"customType":"x"}})), Some("working"));
+    assert_eq!(s.history.back().and_then(|h| h.prompt.as_deref()), None);
+    assert_eq!(state(&mut s, &mut m, "/pi/before_agent_start", json!({"hook_event_name":"before_agent_start","prompt":"p".repeat(20000)})), Some("working"));
+    let cut = s.history.back().and_then(|h| h.prompt.clone()).unwrap();
+    assert!(cut.chars().count() == 16001 && cut.ends_with('…'), "{} chars", cut.chars().count());
 }
 
 #[test]
@@ -394,6 +410,8 @@ fn stat_021_pi_extension_is_koluxs_own_file() {
     for e in super::pi::EVENTS {
         assert!(text.contains(&format!("\"{e}\"")), "{e} is observed");
     }
+    // STAT-025: only the prompt's text goes, cut at 16000 as the status rules keep it; nothing else of the run.
+    assert!(text.contains("before_agent_start: (e) => ({ prompt: typeof e?.prompt === \"string\" ? e.prompt.slice(0, 16000) : undefined }),"), "the prompt field");
     assert!(home.join(SCRIPT_DIR_FOR_TESTS).join(super::pi::SCRIPT).is_file(), "the script the extension runs is written");
     assert!(!super::pi::install(&home, &file).unwrap(), "unchanged: not rewritten");
     assert_eq!(super::pi::inspect(&home, &file).0, "installed");

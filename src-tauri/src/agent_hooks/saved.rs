@@ -54,6 +54,9 @@ pub struct Row {
     /// The pane's terminal process id when the row was last written.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pid: Option<u32>,
+    /// When that process started (`procs::started_at`), so a reused process id is not mistaken for it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pid_started: Option<u64>,
     /// The sub-agents and teammates the pane had.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<SavedChild>,
@@ -134,6 +137,7 @@ pub fn row_of(agent: &str, status: &Status, event: &Value, prev: Option<&Row>, n
         stop: status.stop.as_ref().and_then(|s| serde_json::to_value(s).ok()),
         hook_version: prev.and_then(|p| p.hook_version),
         pid: prev.and_then(|p| p.pid),
+        pid_started: prev.and_then(|p| p.pid_started),
         children: status.children.iter().map(|c| SavedChild { id: c.id.clone(), kind: c.kind.clone(), model: c.model.clone(), state: c.state.to_owned() }).collect(),
     }
 }
@@ -152,10 +156,14 @@ pub fn outdated(stamp: Option<u32>, current: u32) -> bool {
 }
 
 /// Keeps a row's children only while the pane's process may still live: a process proven gone, or
-/// none recorded, clears them so a pane that slept through its finish reaches done.
-pub fn keep_living_children(rows: &mut [Row], alive: impl Fn(u32) -> Option<bool>) {
+/// none recorded, clears them so a pane that slept through its finish reaches done. T-167-b: process
+/// ids are reused, so an id that is alive but started at another time than the row recorded
+/// (`started` reads it) is a stranger and counts as gone. A row with no recorded start, or a start
+/// that cannot be read now, is judged by liveness alone.
+pub fn keep_living_children(rows: &mut [Row], alive: impl Fn(u32) -> Option<bool>, started: impl Fn(u32) -> Option<u64>) {
     for row in rows.iter_mut().filter(|r| !r.children.is_empty()) {
-        if row.pid.is_none_or(|pid| alive(pid) == Some(false)) {
+        let reused = |pid: u32| matches!((row.pid_started, started(pid)), (Some(saved), Some(now)) if saved != now);
+        if row.pid.is_none_or(|pid| alive(pid) == Some(false) || reused(pid)) {
             row.children.clear();
         }
     }
@@ -177,6 +185,10 @@ pub fn note(app: &tauri::AppHandle, route: &str, body: &[u8], status: &Status, h
         let live = live.get_or_insert_with(HashMap::new);
         let mut row = row_of(agent, status, &event, live.get(&status.pane_key), now_ms());
         row.hook_version = hook_version.or(row.hook_version);
+        // T-167-b: a pid seen for the first time (or without a start time yet) gets its start time recorded.
+        if let Some(p) = pid.filter(|p| row.pid != Some(*p) || row.pid_started.is_none()) {
+            row.pid_started = crate::procs::started_at(p);
+        }
         row.pid = pid.or(row.pid);
         if live.get(&status.pane_key) == Some(&row) {
             return;
@@ -240,7 +252,7 @@ pub fn startup(store: &crate::state::Store, dir: &Path) {
         }
         let _ = std::fs::remove_file(&taken);
     }
-    keep_living_children(&mut rows, crate::procs::alive);
+    keep_living_children(&mut rows, crate::procs::alive, crate::procs::started_at);
     if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
         eprintln!("kolux-rs: the agents' status could not be saved: {e}");
     }
