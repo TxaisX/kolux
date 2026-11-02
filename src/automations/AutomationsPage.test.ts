@@ -126,38 +126,3 @@ test("AUTO-013: the Runs tab is a list to step through; a failed run offers Reru
   expect(broken).toContain("Try again");
   expect(broken).not.toContain("No runs yet");
 });
-
-// T-193-b: Hermes and OpenClaw jobs are listed as running on this computer.
-const hermesRow = { id: "hermes:j1", jobId: "j1", source: "hermes" as const, local: true, name: "Nightly digest", prompt: "summarise the inbox", provider: "hermes", projectId: "", enabled: true, trigger: { kind: "schedule" as const, cron: "0 9 * * *", timezone: "UTC" }, timetable: "Every day at 09:00 (UTC)", actions: ["run", "edit", "delete", "create", "pause", "resume"] };
-const clawRow = { ...hermesRow, id: "openclaw:c1", jobId: "c1", source: "openclaw" as const, name: "Sweep", provider: "openclaw", enabled: false, actions: ["run", "delete", "pause", "resume"] };
-
-test("T-193-b a Hermes row says it runs on this computer and has a pause switch", () => {
-  const html = render({ data: { automations: [hermesRow], runs: [] }, open: "hermes:j1" });
-  expect(html).toContain("Runs on this computer (Hermes)");
-  expect(html).toContain('role="switch"');
-  expect(html).toContain("Every day at 09:00 (UTC)");
-  expect(html).not.toContain("If Kolux was away");
-});
-
-test("T-193-b a paused OpenClaw row reads Paused and carries the same label", () => {
-  const html = render({ data: { automations: [clawRow], runs: [] }, open: "openclaw:c1" });
-  expect(html).toContain("Runs on this computer (OpenClaw)");
-  expect(html).toContain("Paused");
-});
-
-test("T-193-b a tool that is missing is one note above the list, never an error that hides the Kolux rows", () => {
-  const warning = { id: "warning:hermes", kind: "warning" as const, source: "hermes" as const, warning: "hermes was not found on the PATH", name: "hermes", prompt: "", provider: "hermes", projectId: "", enabled: false, actions: [] };
-  const html = render({ data: { automations: [{ id: "auto-1", name: "Kolux one", prompt: "p", provider: "claude", projectId: "p1", enabled: true }, warning], runs: [] } });
-  expect(html).toContain("hermes was not found on the PATH");
-  expect(html).toContain("Kolux one");
-  expect(html).not.toContain("Automations could not be loaded");
-  expect(html.match(/<tr /g)?.length).toBe(1);
-});
-
-test("T-193-b the agent filter lists Kolux agents only", () => {
-  const html = render({ data: { automations: [hermesRow, clawRow, { id: "auto-1", name: "K1", prompt: "p", provider: "claude", projectId: "p1", enabled: true }, { id: "auto-2", name: "K2", prompt: "p", provider: "codex", projectId: "p1", enabled: true }], runs: [] } });
-  const group = html.match(/aria-label="Agents">(.*?)<[/]span>/)?.[1] ?? "";
-  expect(group).toContain(">claude<");
-  expect(group).toContain(">codex<");
-  expect(group).not.toMatch(/hermes|openclaw/i);
-});

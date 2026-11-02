@@ -3,11 +3,8 @@
 import { fixBlocker, type PrCheck } from "../tasks/prModel";
 import type { CheckDetail, CheckRef, CheckStep } from "./checkCard";
 
-// T-235-b: kept here, not in checkCard.ts, because only the check tab (loaded on demand) uses it; checkCard.ts
-// loads with the window, and the first-load budget (scripts/bundle-budget.mjs) counts every byte there.
 /** One tab per check per worktree: the key a check tab is known by. */
 export const checkKey = (cwd: string | null, id: number): string => `${cwd ?? ""}::check:${id}`;
-
 
 type Parsed = { root: string; parts: string[] };
 /** A path split into its root (`C:`, `//`, `/` or none) and parts; both slashes count, `.` parts go. */

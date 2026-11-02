@@ -34,20 +34,6 @@ export type Automation = {
   nextRunLabel?: string;
   /** From the back end: what the dialog's timetable fields open with. */
   form?: ScheduleForm;
-  /** T-193-b: a job that lives in Hermes or OpenClaw on this computer; Kolux lists it but does not run it. */
-  source?: "hermes" | "openclaw";
-  /** The job's id inside that tool (the row id is "<tool>:<jobId>"). */
-  jobId?: string;
-  local?: boolean;
-  /** What Kolux may do with this row: run, edit, delete, create, pause, resume. Missing means a Kolux automation, which allows all. */
-  actions?: string[];
-  /** A "warning" row is a note about a tool (not on the PATH, no answer in time), not an automation. */
-  kind?: "warning";
-  warning?: string;
-  lastRunAt?: number | null;
-  lastStatus?: string | null;
-  running?: boolean;
-  pausedReason?: string | null;
 };
 
 export type Preset = "hourly" | "daily" | "weekdays" | "weekly" | "custom";
@@ -99,75 +85,15 @@ export function matches(a: Automation, q: string, names: Names): boolean {
   return hay.replace(/[ \t]+/g, " ").toLowerCase().includes(q);
 }
 
-/** The agents the filter offers: Kolux automations' agents only, never Hermes or OpenClaw. */
-export const agentChoices = (all: Automation[]): string[] => [...new Set(all.filter((a) => !a.source).map((a) => a.provider))];
-
-/** Whether a row offers an action. Kolux automations offer all of them; an external row only the ones its tool allows. */
-export const canDo = (a: Automation, action: "run" | "edit" | "delete" | "create" | "pause" | "resume"): boolean => !a.source || (a.actions ?? []).includes(action);
-
-/** The quick-action menu of a row, in order: Run now, Pause or Resume, Edit, Delete; only what its tool allows. */
-export function rowActions(a: Automation): Array<"run" | "toggle" | "edit" | "delete"> {
-  const out: Array<"run" | "toggle" | "edit" | "delete"> = [];
-  if (canDo(a, "run")) out.push("run");
-  if (canDo(a, a.enabled ? "pause" : "resume")) out.push("toggle");
-  if (canDo(a, "edit")) out.push("edit");
-  if (canDo(a, "delete")) out.push("delete");
-  return out;
-}
-
-/** A Hermes job takes a five-field cron line; an RRULE or a short line is refused. Returns the line with single spaces, or none. */
-export function hermesSchedule(line: string): string | null {
-  const t = line.trim().replace(/\s+/g, " ");
-  return /^rrule:|^freq=/i.test(t) || t.split(" ").length !== 5 ? null : t;
-}
-
-/** Whether the dialog's timetable fields differ from the ones the job opened with. A job with no form (its timetable is not cron) never counts as changed: its schedule is not offered. */
-export function scheduleChanged(job: Automation, now: ScheduleForm): boolean {
-  const was = job.form;
-  return !!was && (was.preset !== now.preset || was.time !== now.time || was.day !== now.day || was.custom !== now.custom);
-}
-
-/** What Edit sends for a Hermes job: only the fields the user changed (the schedule only when the timetable fields moved, and only as a cron line). Empty means nothing changed. */
-export function hermesEdit(job: Automation, now: { name: string; prompt: string; form: ScheduleForm; cron: string | null }): { name?: string; prompt?: string; schedule?: string } {
-  const out: { name?: string; prompt?: string; schedule?: string } = {};
-  if (now.name.trim() !== job.name.trim()) out.name = now.name;
-  if (now.prompt.trim() !== job.prompt.trim()) out.prompt = now.prompt;
-  if (scheduleChanged(job, now.form) && now.cron) out.schedule = now.cron;
-  return out;
-}
-
-/** The tool notes ("hermes was not found on the PATH", "hermes did not answer in time") taken out of the rows so they show as a banner. */
-export function splitWarnings(list: Automation[]): { rows: Automation[]; warnings: string[] } {
-  const rows = list.filter((a) => a.kind !== "warning");
-  return { rows, warnings: list.filter((a) => a.kind === "warning").map((a) => a.warning ?? `${a.source ?? "A tool"} could not be read`) };
-}
-
-/** The label that says an automation is not run by Kolux; empty for Kolux's own. */
-export const whereItRuns = (a: Automation): string => (a.source ? `Runs on this computer (${a.source === "hermes" ? "Hermes" : "OpenClaw"})` : "");
-
 export function folderOf(path: string): string {
   const parts = path.split(/[\\/]+/).filter(Boolean);
   return parts[parts.length - 1] ?? path;
 }
 
-/** The result filter's word for what an external tool said about a job's last run ("never" when it has not run). */
-export function externalResult(a: Automation): RunStatus | "never" | null {
-  const said = (a.lastStatus ?? "").trim().toLowerCase();
-  if (!said) return a.lastRunAt ? null : "never";
-  if (/^(ok|success|succeeded|completed|complete|done|finished)$/.test(said)) return "completed";
-  if (/^(error|errored|fail|failed|failure|timeout|timed.?out|crashed)$/.test(said)) return "failed";
-  if (/^(running|started|in.?progress)$/.test(said)) return "dispatched";
-  if (/^(skipped|skip)$/.test(said)) return "skipped";
-  return null;
-}
-
 export function passes(a: Automation, f: Filters, runs: Run[]): boolean {
   if (f.state === "on" && !a.enabled) return false;
   if (f.state === "paused" && a.enabled) return false;
-  // An external job has no Kolux agent, so an agent filter never keeps it.
-  if (f.agents.length > 0 && (a.source || !f.agents.includes(a.provider))) return false;
-  // It has no Kolux runs either; its own last result (what its tool reported) stands in for the last run's.
-  if (f.result !== "all" && a.source) return externalResult(a) === f.result;
+  if (f.agents.length > 0 && !f.agents.includes(a.provider)) return false;
   if (f.result !== "all") {
     const last = lastRun(a.id, runs);
     if (f.result === "never" ? last !== undefined : last?.status !== f.result) return false;
@@ -180,8 +106,8 @@ export function sortRows(list: Automation[], runs: Run[], key: SortKey, desc: bo
   const text = (a: Automation): string => (key === "agent" ? names.agent(a.provider) : key === "project" ? names.project(a.projectId) : key === "trigger" ? triggerLabel(a) : a.name);
   return [...list].sort((x, y) => {
     if (key === "lastRun" || key === "nextRun") {
-      const vx = key === "lastRun" ? lastRun(x.id, runs)?.at ?? x.lastRunAt ?? undefined : (x.enabled ? x.nextRunAt : null) ?? undefined;
-      const vy = key === "lastRun" ? lastRun(y.id, runs)?.at ?? y.lastRunAt ?? undefined : (y.enabled ? y.nextRunAt : null) ?? undefined;
+      const vx = key === "lastRun" ? lastRun(x.id, runs)?.at : (x.enabled ? x.nextRunAt : null) ?? undefined;
+      const vy = key === "lastRun" ? lastRun(y.id, runs)?.at : (y.enabled ? y.nextRunAt : null) ?? undefined;
       if (vx === undefined || vy === undefined) return vx === vy ? naturalCompare(x.name, y.name) : vx === undefined ? 1 : -1;
       // Last run reads newest first by default; next run soonest first.
       const order = key === "lastRun" ? vy - vx : vx - vy;

@@ -1,2 +1,0 @@
-No scheduled jobs in profile 'default'.
-Create one with 'hermes cron create ...' or the /cron command in chat.

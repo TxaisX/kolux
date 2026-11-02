@@ -16,7 +16,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 pub mod carry;
-pub mod external;
 
 pub const KEY: &str = "automations";
 pub const RUNS_KEY: &str = "automations.runs";
@@ -107,7 +106,7 @@ fn drop_outputs(store: &Store, ids: &[String]) -> Result<(), String> {
 /// words, when it goes next in words, and the preset, time and day the dialog opens with.
 pub fn list(store: &Store) -> Result<Value, String> {
     let now = now_ms() as i64;
-    let mut autos: Vec<Value> = load(store, KEY)?
+    let autos: Vec<Value> = load(store, KEY)?
         .into_iter()
         .map(|a| {
             let why = problem(store, &a).map(|p| p.1);
@@ -116,9 +115,6 @@ pub fn list(store: &Store) -> Result<Value, String> {
             a
         })
         .collect();
-    // T-193-b: Hermes and OpenClaw jobs as last read (a Refresh reads them again), each marked
-    // with its `source`; a Kolux automation has none.
-    autos.extend(external::CACHE.rows());
     Ok(match load(store, RUNS_KEY) {
         Ok(runs) => {
             // AUTO-013: a run whose worktree folder is gone opens its saved output instead.
@@ -1408,35 +1404,6 @@ type StoreState<'a> = tauri::State<'a, Mutex<Store>>;
 #[tauri::command]
 pub fn automations_list(store: StoreState<'_>) -> Result<Value, String> {
     list(&*store.lock().map_err(|e| e.to_string())?)
-}
-
-/// T-193-b: reads Hermes and OpenClaw again (Refresh) and returns `{ rows, held }`. While one of
-/// Kolux's own runs is starting the tools are left alone and the rows read last come back.
-#[tauri::command]
-pub async fn automations_external_refresh(app: tauri::AppHandle) -> Result<Value, String> {
-    use tauri::Manager;
-    let busy = {
-        let store = app.state::<Mutex<Store>>();
-        let guard = store.lock().map_err(|e| e.to_string())?;
-        external::kolux_busy(&load(&guard, RUNS_KEY).unwrap_or_default())
-    };
-    tauri::async_runtime::spawn_blocking(move || external::refresh(&external::CliProbe::new(), &external::CACHE, busy)).await.map_err(|e| e.to_string())
-}
-
-/// T-193-b: Run, Pause, Resume, Delete (and for Hermes Create and Edit) on a Hermes or OpenClaw job.
-/// `tool` is "hermes" or "openclaw", `action` one of the row's `actions`, `id` the row's `jobId`.
-#[tauri::command]
-pub async fn automation_external_act(app: tauri::AppHandle, tool: String, action: String, id: String, input: Option<Value>) -> Result<String, String> {
-    use tauri::Emitter;
-    let said = tauri::async_runtime::spawn_blocking(move || external::act(&external::CliProbe::new(), &tool, &action, &id, &input.unwrap_or(Value::Null))).await.map_err(|e| e.to_string())??;
-    let _ = app.emit(EVENT, json!({ "external": true }));
-    Ok(said)
-}
-
-/// T-193-b: the newest runs of one Hermes job, each split into its titled sections.
-#[tauri::command]
-pub async fn automation_external_history(id: String) -> Result<Value, String> {
-    tauri::async_runtime::spawn_blocking(move || external::hermes_history(&external::default_home(), &id, 10)).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
