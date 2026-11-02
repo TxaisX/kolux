@@ -1,5 +1,6 @@
 // VIEW-056 / VIEW-057 (T-146-a): one right sidebar on the Terminals screen. It holds the Explorer
-// and Source Control as tabs, opens with Ctrl+L, and comes back after a restart open or closed, on
+// and Insights as tabs (T-646: tokens, estimated cost and what every session is doing, across all
+// workspaces; it replaced Source Control, T-644), opens with Ctrl+L, and comes back after a restart open or closed, on
 // the same tab and at the same width; its left edge drags to resize. VIEW-073 adds Checks; Agents,
 // Search, the More overflow and folder-workspace tabs come with T-146-b. VIEW-050 (T-051): the left
 // sidebar's width lives here too, and both sidebars resize by the same Grip.
@@ -10,10 +11,10 @@
 // tabs are T-146-g.
 import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 
-export type RightTab = "explorer" | "scm" | "checks" | "agents" | "attached" | "prchecks";
+export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
   { id: "explorer", label: "Explorer", hint: "Explorer (Ctrl+Shift+E)" },
-  { id: "scm", label: "Source Control", hint: "Source Control (Ctrl+Shift+G)" },
+  { id: "insights", label: "Insights", hint: "Tokens, estimated cost and what every session is doing, across all workspaces" },
   { id: "checks", label: "Checks", hint: "Checks on this workspace's pull request" },
   { id: "attached", label: "Attached", hint: "Worktrees attached to this folder (folder workspaces)" },
   { id: "prchecks", label: "PR Checks", hint: "Pull request checks of the attached worktrees (folder workspaces)" },
@@ -29,14 +30,14 @@ export function readRight(s: Record<string, unknown>): { open: boolean; tab: Rig
   const w = s[RIGHT_KEYS.width];
   return {
     open: s[RIGHT_KEYS.open] !== false,
-    // an older saved "search" tab, or any other unknown one, opens the Explorer
+    // an older saved "search" or "scm" (Source Control, removed in T-644) tab, or any other unknown one, opens the Explorer
     tab: RIGHT_TABS.some((t) => t.id === s[RIGHT_KEYS.tab]) ? (s[RIGHT_KEYS.tab] as RightTab) : "explorer",
     width: typeof w === "number" && Number.isFinite(w) && w >= RIGHT_MIN ? Math.round(w) : RIGHT_DEFAULT,
   };
 }
 
 /** T-146-b: the room one tab takes on the strip with its gap, estimated from its label (12px UI
- * font; measured live: Explorer 65, Source Control 101, Checks 59, More 50 px, 2 px gaps). */
+ * font; measured live: Explorer 65, Checks 59, More 50 px, 2 px gaps). */
 export const tabWidth = (label: string) => Math.ceil(label.length * 5.4) + 30;
 /** The More button's own room on the strip. */
 export const MORE_WIDTH = 52;

@@ -1,0 +1,67 @@
+launching: pnpm tauri dev (identifier com.txaisxiong.kolux-rs.prove, vite 1475, CDP 9295; log G:\Temp\live-v15\run-T-647\tauri-dev.log)
+app pid 35904 (G:\Dev\kolux-rs-sessions\target-fa\debug\kolux-rs.exe); window: moved off-screen
+session chooser: Terminal picked for 1 seat(s)
+closed a first-run dialog: Get started with Kolux (Close); still open: true
+closed a first-run dialog: Get started with Kolux (Skip); still open: true
+closed a first-run dialog: Floating workspace tour (Close); still open: false
+project added and a shell started: G:/Temp/live-v15/work/T-647
+seeded two sessions in the scratch config G:\Temp\live-v15\run-T-647\tmp\claude-config\projects
+scan: {"format":2,"scannedAt":1793655395141,"rows":[{"day":"2026-11-02","session":"s-alpha","model":"claude-opus-5-5","cwd":"C:/work/alpha","band":1,"input":120000,"output":8000,"cacheRead":0,"cacheWrite":0
+Insights tab clicked: undefined
+Now row: Claude | T-647 | Working |   | 6s ago
+900px: {"vw":900,"pageScroll":false,"side":{"l":660,"r":900,"w":240},"ins":{"l":660,"r":892,"w":232},"now":{"l":672,"r":880,"w":208},"insScroll":false,"over":[],"cut":0,"tiles":["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."],"text":"USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est."}
+screenshot: G:/Temp/live-v15-logs/T-647-insights-900.png
+PASS 900px: the panel is inside the window: {"side":{"l":660,"r":900,"w":240},"ins":{"l":660,"r":892,"w":232},"vw":900}
+PASS 900px: no horizontal scroll on the page or in the panel, nothing past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 900px: Today, 7 days and All time tiles, each priced as an estimate: ["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."]
+PASS 900px: both fake sessions are listed: USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est.
+PASS 900px: the Now row is inside the panel: {"now":{"l":672,"r":880,"w":208},"ins":{"l":660,"r":892,"w":232}}
+1400px: {"vw":1400,"pageScroll":false,"side":{"l":1100,"r":1400,"w":300},"ins":{"l":1100,"r":1392,"w":292},"now":{"l":1112,"r":1380,"w":268},"insScroll":false,"over":[],"cut":0,"tiles":["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."],"text":"USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est."}
+screenshot: G:/Temp/live-v15-logs/T-647-insights-1400.png
+PASS 1400px: the panel is inside the window: {"side":{"l":1100,"r":1400,"w":300},"ins":{"l":1100,"r":1392,"w":292},"vw":1400}
+PASS 1400px: no horizontal scroll on the page or in the panel, nothing past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1400px: Today, 7 days and All time tiles, each priced as an estimate: ["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."]
+PASS 1400px: both fake sessions are listed: USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est.
+PASS 1400px: the Now row is inside the panel: {"now":{"l":1112,"r":1380,"w":268},"ins":{"l":1100,"r":1392,"w":292}}
+1920px: {"vw":1920,"pageScroll":false,"side":{"l":1620,"r":1920,"w":300},"ins":{"l":1620,"r":1912,"w":292},"now":{"l":1632,"r":1900,"w":268},"insScroll":false,"over":[],"cut":0,"tiles":["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."],"text":"USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est."}
+screenshot: G:/Temp/live-v15-logs/T-647-insights-1920.png
+PASS 1920px: the panel is inside the window: {"side":{"l":1620,"r":1920,"w":300},"ins":{"l":1620,"r":1912,"w":292},"vw":1920}
+PASS 1920px: no horizontal scroll on the page or in the panel, nothing past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1920px: Today, 7 days and All time tiles, each priced as an estimate: ["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."]
+PASS 1920px: both fake sessions are listed: USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est.
+PASS 1920px: the Now row is inside the panel: {"now":{"l":1632,"r":1900,"w":268},"ins":{"l":1620,"r":1912,"w":292}}
+1536px at 125%: {"vw":1536,"pageScroll":false,"side":{"l":1236,"r":1536,"w":300},"ins":{"l":1236,"r":1528,"w":292},"now":{"l":1248,"r":1516,"w":268},"insScroll":false,"over":[],"cut":0,"tiles":["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."],"text":"USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est."}
+screenshot: G:/Temp/live-v15-logs/T-647-insights-1536-x1.25.png
+PASS 1536px at 125%: the panel is inside the window: {"side":{"l":1236,"r":1536,"w":300},"ins":{"l":1236,"r":1528,"w":292},"vw":1536}
+PASS 1536px at 125%: no horizontal scroll on the page or in the panel, nothing past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1536px at 125%: Today, 7 days and All time tiles, each priced as an estimate: ["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."]
+PASS 1536px at 125%: both fake sessions are listed: USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est.
+PASS 1536px at 125%: the Now row is inside the panel: {"now":{"l":1248,"r":1516,"w":268},"ins":{"l":1236,"r":1528,"w":292}}
+1280px at 150%: {"vw":1280,"pageScroll":false,"side":{"l":980,"r":1280,"w":300},"ins":{"l":980,"r":1272,"w":292},"now":{"l":992,"r":1260,"w":268},"insScroll":false,"over":[],"cut":0,"tiles":["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."],"text":"USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est."}
+screenshot: G:/Temp/live-v15-logs/T-647-insights-1280-x1.5.png
+PASS 1280px at 150%: the panel is inside the window: {"side":{"l":980,"r":1280,"w":300},"ins":{"l":980,"r":1272,"w":292},"vw":1280}
+PASS 1280px at 150%: no horizontal scroll on the page or in the panel, nothing past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1280px at 150%: Today, 7 days and All time tiles, each priced as an estimate: ["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."]
+PASS 1280px at 150%: both fake sessions are listed: USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est.
+PASS 1280px at 150%: the Now row is inside the panel: {"now":{"l":992,"r":1260,"w":268},"ins":{"l":980,"r":1272,"w":292}}
+900px at 150%: {"vw":900,"pageScroll":false,"side":{"l":660,"r":900,"w":240},"ins":{"l":660,"r":892,"w":232},"now":{"l":672,"r":880,"w":208},"insScroll":false,"over":[],"cut":0,"tiles":["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."],"text":"USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est."}
+screenshot: G:/Temp/live-v15-logs/T-647-insights-900-x1.5.png
+PASS 900px at 150%: the panel is inside the window: {"side":{"l":660,"r":900,"w":240},"ins":{"l":660,"r":892,"w":232},"vw":900}
+PASS 900px at 150%: no horizontal scroll on the page or in the panel, nothing past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 900px at 150%: Today, 7 days and All time tiles, each priced as an estimate: ["Today 444K tokens ≈ $1.40 est.","7 days 444K tokens ≈ $1.40 est.","All time 444K tokens ≈ $1.40 est."]
+PASS 900px at 150%: both fake sessions are listed: USAGE Today 444K tokens ≈ $1.40 est. 7 days 444K tokens ≈ $1.40 est. All time 444K tokens ≈ $1.40 est. Costs are estimated at list price on this machine. The provider's bill is the real figure. Counted just now. NOW Claude T-647 Needs you   just now SESSIONS Claude beta 2026-11-02 72K tokens ≈ $0.48 est. Claude alpha 2026-11-02 372K tokens ≈ $0.92 est.
+PASS 900px at 150%: the Now row is inside the panel: {"now":{"l":672,"r":880,"w":208},"ins":{"l":660,"r":892,"w":232}}
+Tower clicked (to leave the terminals): undefined
+before the click: no active pane on screen
+PASS clicking the Now row jumps back to its pane: {"before":"no active pane on screen","after":"shown and active: claude pane"}
+Explorer tab clicked: undefined
+explorer 900px: {"vw":900,"n":10,"out":[]} (G:/Temp/live-v15-logs/T-647-explorer-900.png)
+PASS explorer 900px: all header buttons are inside the window: {"vw":900,"n":10,"out":[]}
+explorer 1400px: {"vw":1400,"n":10,"out":[]} (G:/Temp/live-v15-logs/T-647-explorer-1400.png)
+PASS explorer 1400px: all header buttons are inside the window: {"vw":1400,"n":10,"out":[]}
+explorer 1920px: {"vw":1920,"n":10,"out":[]} (G:/Temp/live-v15-logs/T-647-explorer-1920.png)
+PASS explorer 1920px: all header buttons are inside the window: {"vw":1920,"n":10,"out":[]}
+Tower clicked: undefined
+tower 900px: {"vw":900,"list":true,"rows":2,"scroll":false,"page":false} (G:/Temp/live-v15-logs/T-647-tower-900.png)
+PASS tower 900px: no horizontal scroll: {"vw":900,"list":true,"rows":2,"scroll":false,"page":false}
+RESULT: PASS
