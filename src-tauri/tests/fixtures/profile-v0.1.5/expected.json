@@ -1,0 +1,97 @@
+{
+  "_note": "Snapshot of what today code must read from this v0.1.5 profile. settings = settings.json as written; kv = the kv table sorted by key. See scripts/profile-fixture.md.",
+  "settings": {
+    "theme": "dark",
+    "mode": "dark",
+    "appFont": "Segoe UI",
+    "uiLook": "new",
+    "projects": [
+      {
+        "id": "p1",
+        "name": "alpha",
+        "path": "C:/fixture/alpha"
+      },
+      {
+        "id": "p2",
+        "name": "beta",
+        "path": "C:/fixture/beta"
+      }
+    ],
+    "savedLayout": {
+      "panes": [
+        {
+          "key": 1,
+          "cwd": "C:/fixture/alpha",
+          "branch": null,
+          "agent": "claude",
+          "program": null,
+          "args": [],
+          "title": "alpha main",
+          "pinned": true
+        },
+        {
+          "key": 2,
+          "cwd": "C:/fixture/alpha",
+          "branch": null,
+          "agent": "shell",
+          "program": null,
+          "args": [],
+          "kind": "editor",
+          "path": "C:/fixture/alpha/README.md",
+          "title": "README.md"
+        },
+        {
+          "key": 3,
+          "cwd": "C:/fixture/alpha",
+          "branch": null,
+          "agent": "shell",
+          "program": null,
+          "args": [],
+          "kind": "editor",
+          "path": "C:/fixture/alpha/src/main.rs",
+          "title": "main.rs"
+        },
+        {
+          "key": 4,
+          "cwd": "C:/fixture/beta",
+          "branch": null,
+          "agent": "shell",
+          "program": null,
+          "args": []
+        }
+      ],
+      "activeTab": {
+        "1": 3,
+        "4": 4
+      },
+      "focused": 3,
+      "activeDir": "C:/fixture/alpha",
+      "stacked": {
+        "C:/fixture/beta": true
+      },
+      "workspaces": [
+        {
+          "name": "Alpha work",
+          "dir": "C:/fixture/alpha",
+          "panes": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "name": "Beta",
+          "dir": "C:/fixture/beta",
+          "panes": [
+            4
+          ]
+        }
+      ]
+    }
+  },
+  "kv": {
+    "projects": "[{\"id\":\"p1\",\"name\":\"alpha\",\"path\":\"C:/fixture/alpha\"},{\"id\":\"p2\",\"name\":\"beta\",\"path\":\"C:/fixture/beta\"}]",
+    "start_count": "7",
+    "worktrees": "[\"C:/fixture/alpha\",\"C:/fixture/beta\"]"
+  }
+}

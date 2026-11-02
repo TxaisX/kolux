@@ -1,0 +1,18 @@
+{
+  "theme": "dark",
+  "mode": "dark",
+  "appFont": "Segoe UI",
+  "uiLook": "new",
+  "projects": [
+    {
+      "id": "p1",
+      "name": "alpha",
+      "path": "C:/fixture/alpha"
+    },
+    {
+      "id": "p2",
+      "name": "beta",
+      "path": "C:/fixture/beta"
+    }
+  ]
+}
