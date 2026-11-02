@@ -1,0 +1,21 @@
+/* The left pane's row menus and remove buttons. Every row (project header, main checkout, workspace,
+   group) opens the same kind of menu on right-click and has one hover X; names ellipsize and the
+   X keeps its place so a name never sits under it, from 220 px to 480 px wide. */
+.sb-menu-back { position: fixed; inset: 0; z-index: 49; }
+.sb-menu { position: fixed; z-index: 50; min-width: 180px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow-y: auto; padding: 4px; display: flex; flex-direction: column; background: var(--app-bg); border: 1px solid var(--line-focus); border-radius: 8px; }
+.sb-menu button { text-align: left; padding: 4px 8px; border-radius: 4px; white-space: nowrap; }
+.sb-menu button.sub { padding-left: 20px; }
+.sb-menu button:hover:not(:disabled), .sb-menu button:focus-visible { background: var(--row-selected); }
+.sb-menu button:disabled { color: var(--fg-disabled); }
+.sb-menu-h { padding: 4px 8px; color: var(--fg-muted); font-size: 11px; }
+.sb-menu [data-danger] { color: #ee7b6f; }
+.sb-menu [data-sep] { margin-top: 5px; border-top: 1px solid var(--line-subtle); border-radius: 0 0 4px 4px; padding-top: 6px; }
+[data-mode="light"] .sb-menu [data-danger] { color: #c0392b; }
+
+.sb-main { display: flex; align-items: center; padding-right: 4px; }
+.sb-main .branch { flex: 1; min-width: 0; width: auto; }
+.sb-group .sb-gname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-group .count, .sb-group .chev { flex: none; }
+.ib.rm { opacity: 0; width: 22px; height: 22px; }
+.proj:hover .ib.rm, .sb-main:hover .ib.rm, .sb-group-row:hover .ib.rm, .ib.rm:focus-visible { opacity: 1; }
+.sb-form.note { padding: 8px; }

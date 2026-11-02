@@ -545,3 +545,9 @@ No new features. Each task names the audit finding it closes; done means its tes
 - [x] T-615 · "Discard N changes?" only discards in the workspace it was asked in (F04-projects-scm.3) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-615.txt
 - [x] T-616 · Renaming a file onto another file's name in different capitals is refused (R04-projects-files.1) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-616.txt
 - [x] T-617 · Saving through a link writes the real file and keeps the link (R04-projects-files.4) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-617.txt
+
+### sidebar lane (wave UI A)
+- [x] T-640 · Every row in the left pane can be removed or hidden: project, main checkout, workspace and group rows each get a right-click menu and a hover X that open the existing questions (the folder stays on disk, or delete together), the question names terminals still running when the ask-before-closing setting is on, and the right-click menu closes on Escape (wave UI A.1) · sidebar lane
+- [x] T-641 · Terminals no longer show as rows in the left pane; they stay tabs in the main area (wave UI A.2) · sidebar lane
+- [x] T-642 · The sidebar "Check for updates" button is gone; a found update shows one notice, "A new Kolux RS version is out on GitHub." with Update now / Later, never cut off; Help and the palette still check by hand (wave UI A.3) · sidebar lane
+- [x] T-643 · The left pane is clean at 900, 1400 and 1920 px and at its 220/480 px drag widths, at 125% and 150%: nothing cut off, no sideways scroll, long names end in an ellipsis with a tooltip; folds in T-625 (wave UI A.4) · sidebar lane

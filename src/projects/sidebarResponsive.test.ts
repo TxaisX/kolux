@@ -5,18 +5,11 @@ import { expect, test } from "vitest";
 // @ts-expect-error vitest runs on Node; the app's browser tsconfig has no Node types.
 import { readFileSync } from "node:fs";
 
-const panel = (await import("./ProjectsPanel.tsx?raw")).default;
 const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
-
-test("the footer's update control keeps its name when the label is hidden", () => {
-  expect(panel).toContain('aria-label="Check for updates"');
-  expect(panel).toContain('<span className="label">Check for updates</span>');
-});
 
 test("the sidebar answers its own width with a container query, not the window", () => {
   expect(css).toContain("container-type: inline-size");
   expect(css).toContain("@container (max-width: 260px)");
-  expect(css).toContain(".sb-foot .upd .label { display: none; }");
 });
 
 // A session row is a block child (its parents are plain divs and .sb-list is not a flex container), so
