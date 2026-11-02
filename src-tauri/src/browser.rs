@@ -306,7 +306,7 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
     if (o === E.headersOrigin) { const hs = E.headers, ks = ownKeys(hs); for (let i = 0; i < ks.length; i++) set(ks[i], hs[ks[i]]); }
     if (E.auth && o === E.authOrigin) set("Authorization", E.auth);
   };
-  const RealHeaders = Headers, headerSet = Headers.prototype.set, realSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+  const RealHeaders = Headers, headerSet = Headers.prototype.set;
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const asked = requestUrl(input), url = asked !== null ? asked : absolute(input);
@@ -322,7 +322,7 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
     return go();
   };
   // Each request's checked address is kept out of the page's reach (not on the request object).
-  const X = XMLHttpRequest.prototype, realOpen = X.open, realSend = X.send, opened = new WeakMap(), wmGet = WeakMap.prototype.get, wmSet = WeakMap.prototype.set;
+  const X = XMLHttpRequest.prototype, realSetHeader = X.setRequestHeader, realOpen = X.open, realSend = X.send, opened = new WeakMap(), wmGet = WeakMap.prototype.get, wmSet = WeakMap.prototype.set;
   X.open = function (m, u, ...rest) { const url = absolute(u); R(wmSet, opened, [this, { url, method: m }]); return R(realOpen, this, [m, url, ...rest]); };
   X.send = function (body) {
     const o = R(wmGet, opened, [this]), url = o ? o.url : "";
