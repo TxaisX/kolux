@@ -544,3 +544,9 @@ No new features. Each task names the audit finding it closes; done means its tes
 - [x] T-615 · "Discard N changes?" only discards in the workspace it was asked in (F04-projects-scm.3) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-615.txt
 - [x] T-616 · Renaming a file onto another file's name in different capitals is refused (R04-projects-files.1) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-616.txt
 - [x] T-617 · Saving through a link writes the real file and keeps the link (R04-projects-files.4) · workspaces lane · DONE 2026-10-30 (lane/workspaces): evidence/T-617.txt
+
+### wave UI lane E (auto PR)
+- [ ] T-652 · An automatic commit and push never touch the default branch, never force and never carry a likely secret or a file over 10 MB: `auto_pr_commit` / `auto_pr_push` refuse in Rust and name the files (DT-C90) · wave UI lane E (2f)
+- [ ] T-653 · When an agent finishes a turn with changes, Kolux commits on the workspace's branch, pushes it and opens or updates a draft pull request into the default branch; one click no longer drops files past the first 1,000 (audit row 8) (DT-C91) · wave UI lane E (2f)
+- [ ] T-654 · Settings → Git turns automatic pull requests on or off per workspace, with one default (on for GitHub); a repository with no remote shows a small "local only" icon (DT-C89) · wave UI lane E (2f)
+- [ ] T-655 · The automatic flow's state (draft pull request, last step, why it stopped) and the review notes show in the right panel; works at 900/1400/1920 px and 125%/150% scaling · wave UI lane E (2f)

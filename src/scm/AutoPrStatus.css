@@ -1,0 +1,16 @@
+/* T-655: the automatic pull request rows in the right panel. One line per workspace; every text cell
+   truncates (the tooltip carries the full text), so nothing scrolls sideways at 900, 1400 or 1920 px. */
+.apr { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.apr-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 4px 8px; border: 1px solid var(--line-subtle); border-radius: 6px; font-size: 12px; line-height: 1.4; }
+.apr-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.apr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.apr-link { flex: 0 1 auto; min-width: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--done); text-decoration: none; }
+.apr-link:hover, .apr-link:focus-visible { text-decoration: underline; }
+.apr-local { flex: none; display: inline-flex; color: var(--fg-muted); }
+.apr-step { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
+.apr-row[data-state="failed"] .apr-step { color: var(--fg); }
+.apr-row[data-tone="stop"] { border-color: #e2c06a; }
+.apr-files { margin: 0; padding: 0; list-style: none; min-width: 0; }
+.apr-files li { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono, monospace); font-size: 11px; color: var(--fg-muted); }
+.apr-notes { min-width: 0; margin-top: 6px; }
+.apr-empty { margin: 0; color: var(--fg-muted); font-size: 12px; }

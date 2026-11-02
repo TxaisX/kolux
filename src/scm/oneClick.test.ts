@@ -33,6 +33,15 @@ describe("GIT-022 one click", () => {
     expect(p.create).toHaveBeenCalledWith("C:/w", "Title", "Body", "main");
     expect(oneClickRun("C:/w")?.state).toBe("done");
   });
+  it("audit row 8: a cut status stages the whole worktree, and cut alone counts as work", async () => {
+    const cut = status({ changed: [ch("a.txt")], cut: 250 });
+    const p = ports({}, [cut, status({ head: "h2", ahead: 1, upstream: "origin/user/work" }), status({ head: "h2", ahead: 1, upstream: "origin/user/work" })]);
+    const run = await startOneClick("C:/w", p, true);
+    expect(run.state).toBe("done");
+    expect(p.stage).toHaveBeenCalledWith("C:/w", ["."]);
+    expect(needsOneClick(status({ upstream: "origin/user/work", cut: 3 }))).toBe(true);
+    expect(needsOneClick(status({ upstream: "origin/user/work" }))).toBe(false);
+  });
   it("publishes a branch with no upstream and plain-pushes one that is ahead", () => {
     expect(pushFor(status())).toEqual({ action: "publish" });
     expect(pushFor(status({ upstream: "origin/x", ahead: 2 }))).toEqual({ action: "push" });

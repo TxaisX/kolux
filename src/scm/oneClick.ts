@@ -20,7 +20,10 @@ export const STEP_WORDS: Record<StepId, string> = {
   open: "Opening the pull request",
 };
 
-export type Run = { dir: string; step: StepId; state: "running" | "done" | "failed"; message: string | null; pr: Pr | null; skipped: StepId[]; push: "push" | "publish" | "force" | null; neutral?: boolean };
+/** T-653: what an automatic run (autoPr.ts) adds to a run: how its last step ended, the files a stop names, and whether the repository has no remote. */
+export type AutoKind = "done" | "clean" | "local" | "skipped" | "blocked" | "failed";
+export type AutoInfo = { kind: AutoKind; files: string[]; local: boolean };
+export type Run = { dir: string; step: StepId; state: "running" | "done" | "failed"; message: string | null; pr: Pr | null; skipped: StepId[]; push: "push" | "publish" | "force" | null; neutral?: boolean; auto?: AutoInfo };
 // neutral: the flow ended on the user's own setting (AI off), not on a fault; the notice does not mark it failed.
 
 /** The step as the notice words it: the push step says what kind of push it is. */
@@ -70,6 +73,13 @@ const put = (r: Run) => {
   bump();
 };
 export const oneClickRun = (dir: string): Run | null => runs.get(dir) ?? null;
+/** T-653: the automatic flow writes its run into the same store, so it shows per folder like a one-click run. `putRun(dir, null)` forgets the folder's run. */
+export const putRun = (dir: string, r: Run | null) => {
+  if (r) put(r);
+  else if (runs.delete(dir)) bump();
+};
+/** Every run now kept, for the right panel's list. */
+export const oneClickRuns = (): Run[] => [...runs.values()];
 export const oneClickSubscribe = (l: () => void) => {
   listeners.add(l);
   return () => void listeners.delete(l);
@@ -86,6 +96,8 @@ export const clearOneClick = () => {
   runs.clear();
   bump();
 };
+/** Re-renders a component whenever any folder's run changes (the right panel's list). */
+export const useOneClickAll = (): number => useSyncExternalStore(oneClickSubscribe, oneClickVersion, oneClickVersion);
 /** The run for `dir`, kept up to date for a component. */
 export const useOneClick = (dir: string | null): Run | null => {
   useSyncExternalStore(oneClickSubscribe, oneClickVersion);
@@ -93,7 +105,8 @@ export const useOneClick = (dir: string | null): Run | null => {
 };
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
-const dirty = (s: Status) => s.staged.length + s.changed.length + s.untracked.length;
+// The status lists stop at 1,000 entries and report the rest in `cut`; the rest still counts as work.
+const dirty = (s: Status) => s.staged.length + s.changed.length + s.untracked.length + (s.cut ?? 0);
 
 /** Why the branch cannot be taken further at all, or null. */
 export function blocker(s: Status): string | null {
@@ -137,7 +150,8 @@ export async function startOneClick(dir: string, ports: Ports, ai: boolean): Pro
     if (why !== null) return stop(why), run;
     // An uncommitted change is committed with a written message; a clean branch skips both steps.
     if (dirty(s) > 0) {
-      const paths = [...s.changed, ...s.untracked].map((c) => c.path);
+      // A cut list names only the first entries, so a cut status stages the whole worktree ("." also takes deletions) and no file past the cut is left behind.
+      const paths = (s.cut ?? 0) > 0 ? ["."] : [...s.changed, ...s.untracked].map((c) => c.path);
       if (paths.length > 0) await ports.stage(dir, paths);
       let message = `Work on ${s.branch}`;
       if (ai) {
