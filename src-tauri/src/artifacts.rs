@@ -424,12 +424,74 @@ fn path_under(real: &Path, root: &Path) -> bool {
     }
 }
 
+/// A small counting gate: at most `max` holders at once, the rest wait. The scheme handler spawns one
+/// blocking read per request, so without it a page that asks for many large files at once would hold
+/// many chunks in memory together. (std only; tokio is not a direct dependency.)
+pub struct Gate {
+    held: std::sync::Mutex<usize>,
+    freed: std::sync::Condvar,
+    max: usize,
+}
+
+pub struct GateGuard<'a>(&'a Gate);
+
+impl Gate {
+    pub const fn new(max: usize) -> Self {
+        Gate { held: std::sync::Mutex::new(0), freed: std::sync::Condvar::new(), max }
+    }
+
+    /// Waits for a free slot; the slot is given back when the guard drops.
+    pub fn enter(&self) -> GateGuard<'_> {
+        let mut held = self.held.lock().unwrap_or_else(|e| e.into_inner());
+        while *held >= self.max {
+            held = self.freed.wait(held).unwrap_or_else(|e| e.into_inner());
+        }
+        *held += 1;
+        GateGuard(self)
+    }
+}
+
+impl Drop for GateGuard<'_> {
+    fn drop(&mut self) {
+        let mut held = self.0.held.lock().unwrap_or_else(|e| e.into_inner());
+        *held -= 1;
+        self.0.freed.notify_one();
+    }
+}
+
+/// The scheme's reads in flight: at most 4 chunks (8 MB each) are in memory at once.
+static READS: Gate = Gate::new(4);
+
+/// The folder a page's assets are copied from: the parent of the page's own real path (read from the
+/// handle that was opened, not re-derived from the path), and only when that folder is local and under
+/// the workspace `root` (T-624 round 4).
+fn asset_folder(real_page: &Path, root: Option<&Path>) -> Option<PathBuf> {
+    let folder = real_page.parent()?;
+    real_path_ok(folder, root).then(|| folder.to_path_buf())
+}
+
+/// The real path of an opened page: from its handle on Windows; elsewhere the path resolved now (the
+/// O_NOFOLLOW open already refused a link in the last place).
+fn page_real_path(file: &fs::File, src: &Path) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        let _ = src;
+        windows_file::final_path(file)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = file;
+        fs::canonicalize(src).ok()
+    }
+}
+
 /// One source file, opened once and judged by its handle, so what is checked is what is copied. Its
 /// real path is read from the handle too (GetFinalPathNameByHandleW), after every link on the way has
 /// been followed or swapped, and has to be local and, when `root` is given, under it: a junction in
 /// the middle of the path, or one swapped in after the path was checked, cannot reach a network share
-/// or a file outside the workspace (T-624 round 3): a
-/// link where the file should be is refused at open (O_NOFOLLOW; on Windows the reparse point is
+/// or a file outside the workspace (T-624 round 3). The open itself can still follow an intermediate
+/// junction to a share before this check runs, so the guarantee is that a share is never kept, not that
+/// it is never touched. A link where the file should be is refused at open (O_NOFOLLOW; on Windows the reparse point is
 /// opened itself and refused unless its tag is a cloud placeholder), a folder or device is not a file,
 /// and a hard link to a file elsewhere (a second name for the same data, which no path check can
 /// see) is refused by its link count. The metadata is the handle's (fstat), never a second look at
@@ -671,7 +733,8 @@ impl Library {
                 if let Some(t) = title_of(&text) {
                     entry.title = t;
                 }
-                size = self.copy_assets(src, &text, &name, &tmp, html.len() as u64);
+                let folder = page_real_path(&file, src).and_then(|real| asset_folder(&real, root));
+                size = self.copy_assets(folder.as_deref(), &text, &name, &tmp, html.len() as u64);
                 let page = vendor_scripts(&text, &tmp, fetch, &mut size);
                 fs::write(tmp.join(&name), page.as_ref().map_or(&html[..], |p| p.as_bytes())).map_err(|e| e.to_string())?;
             } else {
@@ -693,20 +756,22 @@ impl Library {
         Ok(entry)
     }
 
-    /// Copies what the page points to; returns the stored size. Nothing outside the page's folder,
+    /// Copies what the page points to; returns the stored size. `folder` is the opened page's own real
+    /// folder, already checked to be local and under the workspace (`asset_folder`); none means no assets.
+    /// Nothing outside the page's folder,
     /// and each asset is opened once and copied from that handle (`open_source`), so a link put in
     /// its place after the path was checked is not followed.
-    fn copy_assets(&self, src: &Path, html: &str, page: &str, tmp: &Path, mut total: u64) -> u64 {
-        let Some(folder) = src.parent().and_then(|p| fs::canonicalize(p).ok()) else { return total };
+    fn copy_assets(&self, folder: Option<&Path>, html: &str, page: &str, tmp: &Path, mut total: u64) -> u64 {
+        let Some(folder) = folder else { return total };
         let mut seen = std::collections::HashSet::from([page.to_string()]);
         for r in relative_refs(html) {
             if seen.len() > MAX_ASSETS {
                 break;
             }
             let Ok(real) = fs::canonicalize(folder.join(&r)) else { continue };
-            let Ok(rel) = real.strip_prefix(&folder) else { continue }; // outside the page's own folder
+            let Ok(rel) = real.strip_prefix(folder) else { continue }; // outside the page's own folder
             let rel = rel.to_string_lossy().replace('\\', "/");
-            let Ok((mut file, md)) = open_source(&real, &rel, Some(&folder)) else { continue };
+            let Ok((mut file, md)) = open_source(&real, &rel, Some(folder)) else { continue };
             if md.len() > MAX_ASSET || total + md.len() > MAX_TOTAL || !seen.insert(rel.clone()) {
                 continue;
             }
@@ -912,7 +977,8 @@ pub async fn artifacts_scan(app: tauri::AppHandle, path: String, project: Option
     use tauri::{Emitter, Manager};
     tauri::async_runtime::spawn_blocking(move || {
         let workspace = PathBuf::from(path);
-        if !workspace.is_absolute() || !workspace.is_dir() || on_network_share(&workspace) {
+        // The share check is a string test, so it comes first: a UNC path is never stat'ed here.
+        if !workspace.is_absolute() || on_network_share(&workspace) || !workspace.is_dir() {
             return Ok(Scanned::default());
         }
         let lib = app.state::<Library>();
@@ -1037,30 +1103,45 @@ fn read_range(file: &Path, start: u64, end: u64) -> Option<Vec<u8>> {
 
 /// The `kolux-artifact` scheme: the entry's files with a policy that lets the page load only them.
 /// Media answers byte ranges, so a video or an audio track can seek without loading the whole file.
+/// No read is longer than a chunk: a file bigger than one answers its first chunk as a 206 even when
+/// no range was asked, and the browser asks for the rest. A page (HTML) is the exception: it is
+/// answered whole because the link script is appended to it, and its size is capped when it is stored.
+/// Reads wait for a slot (`READS`, 4 at once). Only the app-owned library folder is read: `Library::open`
+/// resolves the URL inside `<library>/<id>/` and nowhere else. A file that cannot be measured or read
+/// is a 500, never an empty 200.
 pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
     use tauri::http::Response;
+    let plain = |status: u16, text: &str| Response::builder().status(status).header("Content-Type", "text/plain").header("X-Content-Type-Options", "nosniff").body(text.as_bytes().to_vec()).unwrap();
     let uri = req.uri();
     let path = uri.path();
     let Some((file, kind)) = lib.open(path) else {
         return Response::builder().status(404).header("Content-Type", "text/plain").body(b"not in this artifact".to_vec()).unwrap();
     };
-    let total = fs::metadata(&file).map(|m| m.len()).unwrap_or(0);
-    let wants_range = !kind.starts_with("text/html");
-    let ask = if wants_range { req.headers().get("range").and_then(|v| v.to_str().ok()).map_or(RangeAsk::Whole, |v| parse_range(v, total)) } else { RangeAsk::Whole };
+    let _slot = READS.enter();
+    let Ok(total) = fs::metadata(&file).map(|m| m.len()) else { return plain(500, "could not read this file") };
+    let is_page = kind.starts_with("text/html");
+    let ask = if is_page { RangeAsk::Whole } else { req.headers().get("range").and_then(|v| v.to_str().ok()).map_or(RangeAsk::Whole, |v| parse_range(v, total)) };
     if ask == RangeAsk::Past {
         return Response::builder().status(416).header("Content-Type", "text/plain").header("Content-Range", format!("bytes */{total}")).header("X-Content-Type-Options", "nosniff").body(Vec::new()).unwrap();
     }
     let range = match ask {
         RangeAsk::Part(start, end) => Some((start, end.min(start + CHUNK - 1))),
+        _ if !is_page && total > CHUNK => Some((0, CHUNK - 1)),
         _ => None,
     };
-    let (mut body, status, content_range) = match range.and_then(|(start, end)| read_range(&file, start, end).map(|b| (start, end, b))) {
-        Some((start, end, b)) => (b, 206, Some(format!("bytes {start}-{end}/{total}"))),
-        None => (fs::read(&file).unwrap_or_default(), 200, None),
+    let (mut body, status, content_range) = match range {
+        Some((start, end)) => match read_range(&file, start, end) {
+            Some(b) => (b, 206, Some(format!("bytes {start}-{end}/{total}"))),
+            None => return plain(500, "could not read this file"),
+        },
+        None => match fs::read(&file) {
+            Ok(b) => (b, 200, None),
+            Err(_) => return plain(500, "could not read this file"),
+        },
     };
     let id = path.trim_start_matches('/').split('/').next().unwrap_or("");
     let base = format!("/{id}/");
-    if kind.starts_with("text/html") {
+    if is_page {
         // After the page, so a doctype stays first and the page keeps standards mode.
         body.extend_from_slice(link_script(&base).as_bytes());
     }
@@ -1111,6 +1192,12 @@ fn external_url(url: &str) -> Result<String, String> {
         "http" | "https" if parsed.host_str().is_some() => {}
         "mailto" => {}
         _ => return Err(not_a_link()),
+    }
+    let mut parsed = parsed;
+    if parsed.scheme() == "mailto" {
+        // The address list only: a ?body=, ?cc= or ?attach= is the page's text, not what the user was shown.
+        parsed.set_query(None);
+        parsed.set_fragment(None);
     }
     Ok(parsed.as_str().to_string())
 }
@@ -1918,8 +2005,124 @@ mod tests {
         // asynchronous one, and the file read happens on a blocking worker before the responder is used.
         let lib = include_str!("lib.rs");
         let at = lib.find("register_asynchronous_uri_scheme_protocol(artifacts::SCHEME").expect("the scheme handler must be the asynchronous one");
-        let body = &lib[at..at + 1200];
+        let body = lib.get(at..at + 1200).expect("the handler block is at least 1200 bytes long");
         assert!(body.contains("spawn_blocking") && body.contains("responder.respond"), "the read runs on a blocking worker and answers through the responder");
         assert!(!lib.contains(".register_uri_scheme_protocol(artifacts::SCHEME"));
+    }
+
+    // ---- T-624 round 4 (PR #37 review) ----
+
+    #[test]
+    fn a_whole_file_request_over_a_chunk_gets_the_first_chunk_as_a_206() {
+        let root = temp_dir("whole-chunk");
+        let lib = Library::new(root.join("lib"));
+        let big = root.join("big.mp4");
+        fs::File::create(&big).unwrap().set_len(CHUNK + 1).unwrap();
+        let e = lib.add(&big, Origin::hand(&big), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/big.mp4", e.id);
+        let whole = tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap();
+        let r = serve(&lib, &whole);
+        assert_eq!(r.status(), 206, "no read is ever longer than a chunk, so a whole-file ask gets the first chunk");
+        assert_eq!(r.body().len() as u64, CHUNK);
+        assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some(format!("bytes 0-{}/{}", CHUNK - 1, CHUNK + 1).as_str()));
+        // A file that fits in a chunk is still one plain 200.
+        let small = root.join("small.mp4");
+        fs::write(&small, b"tiny").unwrap();
+        let e = lib.add(&small, Origin::hand(&small), &|_| None).unwrap();
+        let r = serve(&lib, &tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/small.mp4", e.id)).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().len()), (200, 4));
+        assert!(r.headers().get("content-range").is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_stored_file_that_cannot_be_read_answers_500_not_an_empty_200() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = temp_dir("read-fail");
+        let lib = Library::new(root.join("lib"));
+        let f = root.join("note.txt");
+        fs::write(&f, b"hello").unwrap();
+        let e = lib.add(&f, Origin::hand(&f), &|_| None).unwrap();
+        let stored = lib.dir.join(&e.id).join("note.txt");
+        // Held with no sharing: the file is still there (is_file and its length can be read) but cannot be opened.
+        let _held = fs::OpenOptions::new().read(true).share_mode(0).open(&stored).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/note.txt", e.id);
+        let r = serve(&lib, &tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap());
+        assert_eq!(r.status(), 500, "a failed read is an error, never an empty 200");
+        let r = serve(&lib, &tauri::http::Request::builder().uri(&uri).header("range", "bytes=0-1").body(Vec::new()).unwrap());
+        assert_eq!(r.status(), 500, "a failed ranged read is an error too");
+        drop(_held);
+        let r = serve(&lib, &tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().as_slice()), (200, &b"hello"[..]));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_mail_link_loses_its_query_when_it_is_opened() {
+        assert_eq!(external_url("mailto:a@example.com?body=hi&attach=C:/secrets.txt").unwrap(), "mailto:a@example.com");
+        assert_eq!(external_url("mailto:a@example.com,b@example.com?cc=c@example.com#frag").unwrap(), "mailto:a@example.com,b@example.com");
+        assert_eq!(external_url("https://example.com/a?b=1#c").unwrap(), "https://example.com/a?b=1#c", "web links keep their query");
+    }
+
+    #[test]
+    fn the_scan_checks_for_a_network_share_before_it_touches_the_folder() {
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = src.find("pub async fn artifacts_scan(").expect("artifacts_scan exists");
+        let body = src.get(at..at + 1500).unwrap();
+        let share = body.find("on_network_share(&workspace)").expect("the scan checks the share");
+        let stat = body.find("workspace.is_dir()").expect("the scan checks the folder");
+        assert!(share < stat, "a UNC path is never stat'ed: the share check comes first");
+    }
+
+    #[test]
+    fn the_scheme_reads_go_through_the_four_wide_gate() {
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = src.find("pub fn serve(").expect("serve exists");
+        let end = src[at..].find("\n}\n").map_or(src.len(), |e| at + e);
+        let body = &src[at..end];
+        assert!(body.contains("READS.enter()"), "serve takes a read slot before it reads");
+        assert!(src.contains("static READS: Gate = Gate::new(4)"), "at most 4 reads in flight");
+    }
+
+    #[test]
+    fn the_gate_never_lets_more_than_its_width_in_at_once() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static GATE: Gate = Gate::new(4);
+        static NOW: AtomicUsize = AtomicUsize::new(0);
+        static PEAK: AtomicUsize = AtomicUsize::new(0);
+        let mut threads = Vec::new();
+        for _ in 0..16 {
+            threads.push(std::thread::spawn(|| {
+                let _slot = GATE.enter();
+                let n = NOW.fetch_add(1, Ordering::SeqCst) + 1;
+                PEAK.fetch_max(n, Ordering::SeqCst);
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                NOW.fetch_sub(1, Ordering::SeqCst);
+            }));
+        }
+        for t in threads {
+            t.join().unwrap();
+        }
+        let peak = PEAK.load(Ordering::SeqCst);
+        assert!((1..=4).contains(&peak), "peak in flight was {peak}");
+        assert_eq!(NOW.load(Ordering::SeqCst), 0, "every slot is given back");
+    }
+
+    #[test]
+    fn a_page_s_asset_folder_is_the_opened_page_s_own_folder_and_stays_in_the_workspace() {
+        let p = |s: &str| PathBuf::from(s);
+        let root = p(if cfg!(windows) { r"C:\ws" } else { "/ws" });
+        let page_in = |rel: &str| root.join(rel);
+        assert_eq!(asset_folder(&page_in("artifacts/p.html"), Some(&root)), Some(root.join("artifacts")));
+        assert_eq!(asset_folder(&page_in("artifacts/p.html"), None), Some(root.join("artifacts")), "a hand add has no workspace to stay in");
+        let elsewhere = p(if cfg!(windows) { r"C:\other\artifacts\p.html" } else { "/other/artifacts/p.html" });
+        assert_eq!(asset_folder(&elsewhere, Some(&root)), None, "a page folder outside the workspace gets no assets");
+        let sibling = p(if cfg!(windows) { r"C:\ws2\p.html" } else { "/ws2/p.html" });
+        assert_eq!(asset_folder(&sibling, Some(&root)), None, "a folder sharing only a name prefix is outside");
+        #[cfg(windows)]
+        assert_eq!(asset_folder(Path::new(r"\\?\UNC\server\share\ws\p.html"), None), None, "a share is never kept");
     }
 }

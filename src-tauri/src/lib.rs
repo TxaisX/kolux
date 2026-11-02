@@ -461,6 +461,8 @@ pub fn run() {
         // T-500: only the app's own web view may read artifacts; a Browser pane page gets nothing.
         // T-624 round 3: asynchronous, so the file read (up to 8 MB of a ranged clip, or a whole page) runs
         // on a blocking worker and never on the window's thread; the responder answers from there.
+        // Round 4: `serve` itself waits for one of 4 read slots (artifacts::READS) and never reads more than a
+        // chunk, so many requests at once cannot hold many chunks in memory together.
         .register_asynchronous_uri_scheme_protocol(artifacts::SCHEME, |ctx, req, responder| {
             if ctx.webview_label() != "main" {
                 responder.respond(tauri::http::Response::builder().status(403).body(b"not for this page".to_vec()).unwrap_or_default());
