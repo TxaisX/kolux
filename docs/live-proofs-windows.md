@@ -216,8 +216,9 @@ newer release; the T-566 and T-612 items still need this run.
 - [ ] T-566: every restored pane shows its chip
 - Should happen: every pane that came back shows its "restored" chip, on every launch.
 - Fail if: any restored pane, on any launch, has its output back but no chip.
-- The other half (each pane's key matching the saved layout) cannot be seen by hand; it waits for the prover fix in
-  STATE.md.
+- The other half (each pane's key matching the saved layout) cannot be seen by hand: run `node scripts/prove/live-T-544.mjs`
+  and read its `reattach relaunch <n>: ... panes [...]` lines, which list every pane's key and chip as they were before the
+  script closed any dialog (the `after dialogs` line that follows shows what the Escape did).
 - Result: ______________________________________________
 
 - [ ] T-612: Escape and the Tip card (on a launch where a Tip shows)
