@@ -43,8 +43,8 @@ AFTER
 THE REAL PROOF
 These tests only flaked on GitHub's cold Windows runner, so the proof is that runner: the Windows
 job on this PR's head, run and rerun. Runs:
-  run 41388811959 on acded89b: Rust job pass (21m), 2651 passed, 0 failed; t184b_a_pane_routed 3.1 s,
-    t075b_a_terminal_outlives 1.3 s, the new helper test ok.
+  run 41388811959 on acded89b: Rust job pass (21m), 2651 passed, 0 failed, including
+    t184b_a_pane_routed, t075b_a_terminal_outlives, t153f and the new helper test.
   Later runs are listed on the PR.
 
 RECORD
