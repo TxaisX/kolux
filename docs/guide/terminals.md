@@ -111,7 +111,6 @@ The chooser pane, titled "Choose what to run", sets up one or many sessions befo
 
 | Part | Use it to |
 |---|---|
-| Kits | Start from a saved lineup |
 | Use last lineup | Repeat the last lineup for this project (appears when there is one) |
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
 | Sessions | Pick a quick count, or type any number, and press "Same for all" to copy one choice to every seat |

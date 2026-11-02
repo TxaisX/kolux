@@ -209,6 +209,8 @@ Rules: the order follows the left-to-right order of the labels in the top-bar sw
   is rebuilt whenever the screen or the top-bar setting changes, so its check mark is always
   current; the chord printed in the menu is only a label; the key press is handled inside the
   window, not by the menu.
+  Since T-610 (DT-C68) the submenu lists Agents, Board, Terminals, Tower and Floor, each ticked while
+  shown; the boxes above are unchanged.
 Acceptance:
   - [x] New look, on Agents, press the chord four times → Board, Terminals, Tower, Agents.
         (Reworded per Txais 2026-10-28 decisions file, A: Tower stays in the cycle.)
