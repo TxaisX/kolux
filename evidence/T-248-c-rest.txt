@@ -1,0 +1,62 @@
+T-248-c-rest (APP-010 Settings and Help menu in the sidebar footer) - worker 2f, 2026-11-01
+branch s-2f/T-248-c-rest, built on main b6e8f5e1
+
+What was built
+  src/onboarding/helpItems.ts        the ordered list (plain data), the three fixed https addresses, the
+                                     once-only restart click and the copy-diagnostics helper
+  src/onboarding/HelpSheet.tsx       draws the list (still lazy-loaded), shows a status line, "Restarting…"
+  src-tauri/src/diag.rs              diag_summary command: header + newest 60 log lines, home folder -> ~,
+                                     then the same scrub() the full bundle uses
+  src-tauri/src/lifecycle.rs         app_restart command: save_point(app, 0), hand_off(true), restart;
+                                     a second call while one runs is ignored
+  src-tauri/src/lib.rs               both commands registered in invoke_handler (no capability file lists
+                                     app commands, so nothing else to permit; diag_bundle is the same)
+  DECISIONS.md                       DT-C80 (the three addresses; Docs = repo docs folder for now)
+
+Commands run (real output)
+  npx vitest run src/onboarding
+    Test Files 31 passed (31)   Tests 302 passed (302)   (includes helpItems.test.ts)
+  cargo test --manifest-path src-tauri/Cargo.toml --lib -- diag:: lifecycle::
+    test result: ok. 29 passed; 0 failed
+    incl. diag::tests::app010_the_diagnostics_summary_has_no_home_folder_path_and_no_secret_looking_value
+          lifecycle::tests::app010_help_restart_saves_hands_off_and_ignores_a_second_click
+  Restart hand-off guard, negative run: with the line "crate::procs::hand_off(true);" deleted from
+    app_restart the test fails:
+      test lifecycle::tests::app010_help_restart_saves_hands_off_and_ignores_a_second_click ... FAILED
+      test result: FAILED. 0 passed; 1 failed
+    the line was restored (count back to 3 in the file) and the run above is green.
+  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings   -> no warnings, finished
+  pnpm tsc --noEmit                    -> exit 0, no output
+  node scripts/plan-check.mjs          -> plan-check: OK
+  node scripts/invoke-contract.mjs     -> invoke-contract: OK (709 calls, 446 registered commands)
+  node scripts/license-check.mjs       -> license-check: OK
+
+Proved by tests
+  list and order (Settings, Docs, Changelog, GitHub, Milestones, Keyboard Shortcuts, Onboarding,
+  Send Feedback, Copy terminal diagnostics, Check for Updates, Restart Kolux); Docs/Changelog/GitHub
+  call open_external with the fixed https addresses; Keyboard Shortcuts opens Settings at "shortcuts"
+  (a real page id); Restart shows "Restarting…", is disabled, calls the back end once for three clicks,
+  and goes back to idle with the reason when the save point cancels; Copy terminal diagnostics puts the
+  summary on the clipboard and reports a failure instead of claiming a copy; the summary holds no
+  home-folder path (C:\Users\x, /home/x, /Users/x, the real home folder in either slash style) and no
+  secret-looking value.
+
+Not proved here (needs-live-windows)
+  Choosing Restart Kolux in the running app relaunches with the same layout and sessions.
+  The clipboard text after Copy terminal diagnostics in the running app.
+  The Ctrl+Tab, floating-link and preview-reload live proofs and the three patches that T-248-c-rest
+  also lists are other lanes' work and stay open.
+
+Review round 1 fixes
+  Help > Restart Kolux (app_restart) is now an async command and relaunches with app.request_restart():
+  it runs off the main thread and goes through ExitRequested and RunEvent::Exit, so the whole quit
+  routine (watchdog, browser helpers, Grok hook file, terminals, WebView2 wait, cli/endpoint files,
+  install_on_quit) runs before the relaunch. Save point before hand-off is unchanged.
+  Help restart and Restart to update share one guard (lifecycle::restart_started / restart_ended);
+  both refuse while a quit is under way (QUIT_UNDER_WAY). Updates.restarting is gone.
+  diag strip_home: home rule now ends at a separator, whitespace, quote, closing punctuation or end of
+  text (home C:\Users\jo no longer turns C:\Users\joe\x into ~e\x), and is tested on D:\Profiles\Some One
+  in forward-slash, doubled-backslash and other-case spellings.
+  cargo tests app010_help_restart_*, app010_one_restart_*, app010_a_home_* fail on the old code.
+
+Review round 2 fixes (2026-11-02): Help > Restart with a downloaded update now installs it and reopens Kolux (install_on_quit reopens when the exit is a restart); a quit that comes in during the restart's save point wins (checked again before the relaunch); a refused restart says why instead of leaving the page on "Restarting..."; a home outside C:\Users followed by a sentence's full stop is hidden too (test added). cargo test diag:: lifecycle:: update:: 56 passed; clippy clean.

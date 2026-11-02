@@ -1668,6 +1668,16 @@ pub(crate) fn spawn_account(codex: Option<String>, claude_managed: bool, claude_
     codex.or_else(|| if claude_managed { claude_active() } else { None })
 }
 
+/// T-548-b: the config folder a new Claude pane starts in. A pane that names the account it began on
+/// (a restored one) gets that account's own folder, or an error when the account is no longer listed
+/// (it is not started on another one, as for Codex); a new pane gets the active account's folder.
+pub(crate) fn claude_pane_dir(asked: Option<&str>, dir_of: impl Fn(&str) -> Option<String>, active_dir: impl FnOnce() -> Option<String>) -> Result<Option<String>, String> {
+    match asked {
+        Some(id) => dir_of(id).map(Some).ok_or_else(|| "The Claude account this session ran on is no longer listed, so it was not resumed on another one. Pick an account in Settings and start it again.".to_string()),
+        None => Ok(active_dir()),
+    }
+}
+
 /// What `terminal_spawn` answers: the session id and, for a Codex or Claude pane, the managed account it
 /// runs on (ACCT-023: the pane remembers it; none for the agent's own sign-in).
 #[derive(serde::Serialize)]
@@ -1735,6 +1745,7 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     let cwd = cwd.map(|w| start_dir(&w, start.as_deref()));
     // ACCT-023: a resumed Codex pane runs on the account it began on, or not at all.
     let codex = program.as_deref().and_then(crate::tools::credited_program) == Some("codex");
+    let claude = program.as_deref().and_then(crate::tools::credited_program) == Some("claude");
     let resumed = match account.as_deref().filter(|_| codex) {
         Some(id) => Some(crate::codex_accounts::wait_home(&store, id)?),
         None => None,
@@ -1755,9 +1766,12 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
         let token = crate::secrets::read_setting(&store, crate::claude_key::TOKEN_FIELD).ok().flatten();
         let key_mode = settings.get(crate::claude_key::MODE_FIELD).and_then(serde_json::Value::as_str) == Some(crate::claude_key::KEY_MODE);
         let by_key = crate::claude_key::pane_env(program.as_deref(), &settings, token);
-        let managed = if by_key.is_none() { crate::claude_accounts::pane_env(program.as_deref(), key_mode, crate::claude_accounts::active_dir(&store)) } else { None };
+        // T-548-b: a restored Claude pane starts on the account it began on (its own folder), or not at all.
+        let asked = account.as_deref().filter(|_| claude && by_key.is_none() && !key_mode);
+        let claude_dir = claude_pane_dir(asked, |id| crate::claude_accounts::dir_of(&store, id), || crate::claude_accounts::active_dir(&store))?;
+        let managed = if by_key.is_none() { crate::claude_accounts::pane_env(program.as_deref(), key_mode, claude_dir) } else { None };
         // T-548-b: a Claude pane on a managed account answers which one, the way a Codex pane does.
-        let used = spawn_account(used, managed.is_some(), || crate::claude_accounts::active(&store));
+        let used = spawn_account(used, managed.is_some(), || asked.map(String::from).or_else(|| crate::claude_accounts::active(&store)));
         let env: Vec<(String, String)> = by_key
             .or(managed)
             // ACCT-007: a Codex pane runs in the active Codex account's private home.
@@ -2549,11 +2563,134 @@ mod tests {
     }
 
     #[test]
+    fn t548b_a_restored_claude_pane_starts_on_its_own_account() {
+        let listed = |id: &str| (id == "acct-2").then(|| "C:/u/.kolux-rs/claude-accounts/acct-2".to_string());
+        let active = || Some("C:/u/.kolux-rs/claude-accounts/acct-1".to_string());
+        assert_eq!(claude_pane_dir(Some("acct-2"), listed, active).unwrap().as_deref(), Some("C:/u/.kolux-rs/claude-accounts/acct-2"), "its own folder, not the active one's");
+        assert_eq!(claude_pane_dir(None, listed, active).unwrap().as_deref(), Some("C:/u/.kolux-rs/claude-accounts/acct-1"), "a new pane takes the active account's folder");
+        assert!(claude_pane_dir(Some("gone"), listed, active).unwrap_err().contains("no longer listed"), "an account no longer listed is an error");
+        let mut read = false;
+        claude_pane_dir(Some("acct-2"), listed, || { read = true; active() }).unwrap();
+        assert!(!read, "the active account is not read for a pane that names its own");
+        // The pane then answers that same id, not the active account's.
+        assert_eq!(spawn_account(None, true, || Some("acct-2".to_string())).as_deref(), Some("acct-2"));
+    }
+
+    #[test]
     fn t066d_the_exit_event_carries_a_printed_session_id_only_when_there_is_one() {
         let with = ExitPayload { id: 3, code: Some(0), outcome: "exited", session: Some("run-2026.10.13-a1b2c3".into()) };
         assert_eq!(serde_json::to_value(&with).unwrap()["session"], "run-2026.10.13-a1b2c3");
         let without = ExitPayload { id: 3, code: None, outcome: "unverifiable", session: None };
         assert!(serde_json::to_value(&without).unwrap().get("session").is_none(), "an old window sees the payload it always saw");
+    }
+
+    /// T-066-e: a program that stands in for an agent's sessions command, by the agent's own program
+    /// name, in a folder of its own: it prints `out`; sleeps ten seconds when `out` is None; and when
+    /// `helper` is set it also forks a helper that inherits its output and outlives it by eight seconds
+    /// (an updater or daemon a real list command leaves behind).
+    fn stand_in(tag: &str, name: &str, out: Option<&str>, helper: bool) -> (std::path::PathBuf, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t066e-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("w")).unwrap();
+        let fixture = dir.join(format!("{name}.out"));
+        std::fs::write(&fixture, out.unwrap_or_default()).unwrap();
+        let (file, text) = if cfg!(windows) {
+            let body = match out {
+                Some(_) => format!("@type \"{}\"\r\n", fixture.display()),
+                None => "@ping -n 11 127.0.0.1 >nul\r\n".to_string(),
+            };
+            let fork = if helper { "@start /b ping -n 9 127.0.0.1\r\n" } else { "" };
+            (dir.join(format!("{name}.cmd")), format!("@echo off\r\n{body}{fork}"))
+        } else {
+            let body = match out {
+                Some(_) => format!("cat '{}'\n", fixture.display()),
+                None => "sleep 10\n".to_string(),
+            };
+            let fork = if helper { "(sleep 8 &)\n" } else { "" };
+            (dir.join(name), format!("#!/bin/sh\n{body}{fork}"))
+        };
+        std::fs::write(&file, text).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        (dir, file)
+    }
+
+    const T066E_A: &str = "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b";
+    const T066E_B: &str = "7d1e4a90-2b3c-4d5e-9f01-a2b3c4d5e6f7";
+
+    #[test]
+    fn t066e_a_lines_sessions_command_gives_the_newest_id_no_other_pane_holds() {
+        // Cursor lists newest first.
+        let out = format!("ID                                    Title          Updated\n{T066E_A}  Fix the build  1m ago\n{T066E_B}  Older          2d ago\n");
+        let (dir, cursor) = stand_in("lines", "cursor", Some(&out), false);
+        let src = session_id::source("cursor").unwrap();
+        assert_eq!(listed_session(&cursor, src, &dir.join("w"), &[]).as_deref(), Some(T066E_A));
+        assert_eq!(listed_session(&cursor, src, &dir.join("w"), &[T066E_A.to_string()]).as_deref(), Some(T066E_B), "the next newest when a pane holds the newest");
+        assert_eq!(listed_session(&cursor, src, &dir.join("w"), &[T066E_A.to_string(), T066E_B.to_string()]), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t066e_a_json_sessions_command_picks_by_folder_and_time() {
+        // The stand-in prints its `.out` file, which is written once the folders it names exist.
+        let (dir, goose) = stand_in("json", "goose", Some(""), false);
+        let here = dir.join("w");
+        let other = dir.join("elsewhere");
+        let json_path = |p: &std::path::Path| p.display().to_string().replace('\\', "\\\\");
+        let rows = format!(
+            r#"{{"sessions":[{{"id":"20261013_090000_a1","working_dir":"{o}","updated_at":"2026-10-13T12:00:00Z"}},{{"id":"20261013_080000_b2","working_dir":"{h}","updated_at":"2026-10-13T08:30:00Z"}},{{"id":"20261012_070000_c3","working_dir":"{h}","updated_at":"2026-10-12T07:30:00Z"}}]}}"#,
+            o = json_path(&other),
+            h = json_path(&here)
+        );
+        std::fs::write(dir.join("goose.out"), rows).unwrap();
+        let src = session_id::source("goose").unwrap();
+        assert_eq!(listed_session(&goose, src, &here, &[]).as_deref(), Some("20261013_080000_b2"), "the other folder's newer row is skipped");
+        assert_eq!(listed_session(&goose, src, &here, &["20261013_080000_b2".into()]).as_deref(), Some("20261012_070000_c3"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t066e_a_sessions_command_that_hangs_or_is_missing_gives_nothing_within_the_wait() {
+        let (dir, hermes) = stand_in("hang", "hermes", None, false);
+        let src = session_id::source("hermes").unwrap();
+        let began = Instant::now();
+        assert_eq!(listed_session(&hermes, src, &dir.join("w"), &[]), None, "a hanging list gives nothing");
+        let took = began.elapsed();
+        assert!(took >= LIST_WAIT && took < LIST_WAIT + Duration::from_secs(2), "killed at the wait, not left to finish: {took:?}");
+        let missing = dir.join("not-installed");
+        let began = Instant::now();
+        assert_eq!(listed_session(&missing, src, &dir.join("w"), &[]), None, "a missing program is no session, never an error");
+        assert!(began.elapsed() < Duration::from_secs(1));
+        // An agent with no sessions command is asked nothing.
+        let (_, copilot) = stand_in("hang", "copilot", Some(&format!("{T066E_A}\n")), false);
+        assert_eq!(listed_session(&copilot, session_id::source("copilot").unwrap(), &dir.join("w"), &[]), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t066e_a_helper_the_list_leaves_behind_holding_its_output_never_holds_the_ask_past_the_wait() {
+        // The command prints its list and exits at once; the helper it forked keeps the pipe open for eight
+        // seconds more. The list it printed is read, and the ask ends at the wait, not when the helper does.
+        let (dir, gemini) = stand_in("helper", "gemini", Some(&format!("{T066E_B}\n{T066E_A}\n")), true);
+        let src = session_id::source("gemini").unwrap();
+        let began = Instant::now();
+        let got = listed_session(&gemini, src, &dir.join("w"), &[]);
+        let took = began.elapsed();
+        assert!(took < LIST_WAIT + Duration::from_secs(2), "the ask ends by the wait, whoever still holds the pipe: {took:?}");
+        assert_eq!(got.as_deref(), Some(T066E_A), "what the command printed before it exited is still its list (gemini lists oldest first)");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t066e_the_output_read_is_capped_so_a_chatty_list_cannot_fill_memory() {
+        // The first id sits after more than the cap of filler: nothing of it is read.
+        let out = format!("{}\n{T066E_A}\n", "x".repeat(LIST_CAP as usize + 1024));
+        let (dir, amp) = stand_in("cap", "amp", Some(&out), false);
+        assert_eq!(listed_session(&amp, session_id::source("amp").unwrap(), &dir.join("w"), &[]), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -2633,6 +2770,96 @@ pub fn terminal_history(app: AppHandle, pane_key: u32) -> Result<String, String>
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let bytes = std::fs::read(history_file(&dir, pane_key)).unwrap_or_default();
     Ok(base64::engine::general_purpose::STANDARD.encode(trim_history(&bytes, HISTORY_KEEP)))
+}
+
+/// T-066-e: how long an agent's sessions command may take, the reading of its output included, before
+/// it is given up on (the command killed if it still runs), so a list that hangs, or a helper it left
+/// behind holding its output, never holds up a layout save; and how much of its output is read at most.
+pub const LIST_WAIT: Duration = Duration::from_secs(5);
+pub const LIST_CAP: u64 = 256 * 1024;
+
+/// T-066-e (SESS-030, source 2 of terminal_session_id.rs): the newest session `program`'s own sessions
+/// command (`src.list`, run in `folder` with nothing on its input) lists for that folder which no
+/// other pane holds (`taken`). Any trouble is no session, never an error: a program that is missing
+/// or will not start, a list that takes longer than `LIST_WAIT` (it is killed), a list that
+/// prints more than `LIST_CAP` before its first id (the rest is not read), or no sessions command for
+/// this agent at all. The whole ask ends within `LIST_WAIT`: what the command printed before it exited
+/// is its list even when a helper it forked (an updater, a daemon) keeps its output open after it.
+pub fn listed_session(program: &std::path::Path, src: &session_id::Source, folder: &std::path::Path, taken: &[String]) -> Option<String> {
+    let (args, _) = src.list?;
+    let (exe, head) = crate::pty::start_line_on(program, cfg!(windows));
+    let mut cmd = std::process::Command::new(exe);
+    cmd.args(head).args(args).current_dir(folder).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: a layout save never flashes a console
+    }
+    let mut child = cmd.spawn().ok()?;
+    let mut out = child.stdout.take()?;
+    // Read on the side, a piece at a time, so a chatty list never blocks on a full pipe while the wait
+    // below runs out, and so the wait bounds the read too: the pipe closes only when every process that
+    // inherited the command's output has gone, and a helper the command forked may never go. The reader
+    // is not waited for; it ends by itself when the pipe closes or when nobody takes its pieces any more.
+    let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
+    std::thread::spawn(move || {
+        use std::io::Read as _;
+        let mut left = LIST_CAP;
+        let mut piece = [0u8; 8192];
+        while left > 0 {
+            let room = piece.len().min(left as usize);
+            let n = match out.read(&mut piece[..room]) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => n,
+            };
+            left -= n as u64;
+            if tx.send(piece[..n].to_vec()).is_err() {
+                break;
+            }
+        }
+    });
+    let began = Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if began.elapsed() < LIST_WAIT => std::thread::sleep(Duration::from_millis(50)),
+            _ => {
+                #[cfg(windows)]
+                {
+                    use std::os::windows::process::CommandExt;
+                    let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
+                }
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    }
+    // The command is done: its output is taken as it arrives, until the pipe closes or the wait runs out.
+    let mut buf = Vec::new();
+    while let Ok(piece) = rx.recv_timeout(LIST_WAIT.saturating_sub(began.elapsed())) {
+        buf.extend_from_slice(&piece);
+    }
+    let text = String::from_utf8_lossy(&buf).into_owned();
+    session_id::pick_listed(src.agent, &text, &folder.to_string_lossy(), taken)
+}
+
+/// T-066-e: the window asks, when it writes the layout down, for the session an id-only agent's own
+/// sessions command lists for the pane's folder (the newest one no other pane holds, `taken`), so
+/// the pane comes back resumed after a restart the way a hook-fed one does. The program is the one
+/// the user set for the agent (SET-027), else the agent's installed program name. None when the
+/// agent has no sessions command, no program is found, or the command gives nothing.
+#[tauri::command]
+pub async fn terminal_listed_session(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, folder: String, taken: Vec<String>) -> Result<Option<String>, String> {
+    let Some(src) = session_id::source(&agent).filter(|s| s.list.is_some()) else { return Ok(None) };
+    if folder.trim().is_empty() {
+        return Err("a folder is needed to list the agent's sessions in".into());
+    }
+    let settings = store.lock().map_err(|e| e.to_string())?.settings();
+    let name = crate::agents::command_override(&settings, &agent).map(str::to_string).or_else(|| crate::agents::installed_program(&agent));
+    let Some(program) = name.and_then(|n| crate::agents::find_program(&n)) else { return Ok(None) };
+    let got = tauri::async_runtime::spawn_blocking(move || listed_session(&program, src, std::path::Path::new(&folder), &taken)).await.map_err(|e| e.to_string())?;
+    Ok(got)
 }
 
 /// TERM-106: a tab closed on purpose is not brought back, so its saved output goes with it.

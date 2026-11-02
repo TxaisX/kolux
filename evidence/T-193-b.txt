@@ -1,0 +1,142 @@
+T-193-b  Hermes and OpenClaw automations in the list
+built 2026-11-01 by Sonnet 5.5 on s-90/T-193-b (worktree G:/Dev/kolux-rs-sessions/wt/90-T-193-b)
+
+BUILT
+Rust, src-tauri/src/automations/external.rs (new):
+  - Probe trait (list, act) with a Fake for tests and the real CliProbe. Actions: run, pause, resume, remove, create, and edit (Hermes only; AUTO-025).
+  - CliProbe spawns hermes / openclaw found on PATH (PATHEXT order, so openclaw.cmd beats the extensionless npm shim),
+    15 s list limit, 30 s action limit, kill of the whole process tree on a timeout, a 2-slot gate (concurrency
+    semaphore), and the probes are held back while a Kolux run is pending or dispatching (kolux_busy).
+  - Results are cached (static CACHE) and re-read only by automations_external_refresh (the Refresh button, plus once when
+    the page first opens in a run).
+  - A timeout, a failure or a program that is not on the PATH is a "warning" row ("hermes was not found on the PATH", per
+    AUTO-025); the Kolux list still returns either way. (An earlier review fix silenced the missing case; reverted.)
+  - Defensive parsers hermes_jobs(&str) and openclaw_jobs(&str): unknown fields ignored, a bad record skipped, a bad file is
+    an empty list plus a warning.
+  - Hermes history: hermes_history(home, job_id, limit) reads only <hermes home>/cron/output/<job_id>/ (canonicalized and
+    checked to stay inside), .md only, newest first, each run document split into titled sections on "## " headings
+    (not inside code fences).
+  - Rows carry source "hermes"|"openclaw", local true and an actions set (hermes: run, edit, delete, create, pause, resume;
+    openclaw: run, delete, pause, resume). A row whose timetable is a cron line also carries `form` (the preset, time, day and
+    custom line the Edit dialog opens on, from schedule::classify); a timetable that is not cron (an interval) has no form.
+  - Hermes Edit: `hermes cron edit [--schedule] [--prompt] [--name] job_id` (flags checked with `hermes cron edit --help`).
+    command() adds a flag only for a field named in the input; with nothing named it refuses ("there is nothing to change");
+    a schedule that is not a five-field cron line Kolux can read is refused. Ids and values stay `--flag=value`, never bare.
+  - Job ids are validated (plain words only) and Hermes create uses "--" before the positionals, so no id or prompt can
+    become a flag or a path.
+  - New commands in automations.rs, registered in lib.rs: automations_external_refresh, automation_external_act,
+    automation_external_history. automations_list now appends the cached external rows.
+TypeScript, src/automations:
+  - model.ts: Automation gains source/jobId/local/actions/kind/warning/lastRunAt/lastStatus/running/pausedReason.
+    New agentChoices, canDo, rowActions, splitWarnings, whereItRuns, hermesSchedule. An agent filter never keeps
+    an external row; a result filter maps its own last status (ok -> Completed, error/failed -> Failed, none -> Never ran); external rows are not offered as an agent; last-run sort uses lastRunAt for them.
+  - AutomationsPage.tsx: warning rows become notes above the table; rows and the detail say "Runs on this computer (Hermes)";
+    pause/resume switch and Run now route to automation_external_act; the quick-action menu comes from rowActions, so a
+    Hermes row has Edit and an OpenClaw row has none; Delete routes to the tool; Refresh asks the tools again.
+  - AutomationDialog.tsx: "Runs in" Kolux/Hermes choice on a new automation. Hermes hides the time zone (the Hermes CLI has no
+    zone flag), Agent, Project, Workspace and session reuse, "Starts" (event), grace and precheck; needs a five-field cron timetable
+    (an RRULE is refused, Save stays off); Save calls automation_external_act create.
+    Editing a Hermes job opens on Hermes with the job's real name, prompt and timetable (row.form); a cron line the presets
+    cannot say opens in Custom. A timetable that is not cron shows as read-only text ("Hermes keeps this timetable") and has no
+    fields. Save calls automation_external_act edit with hermesEdit(): only the fields that differ from the listed job; the
+    schedule only when the timetable fields moved (scheduleChanged) and the result is a cron line. Nothing changed = the dialog
+    just closes. The Work folder field is create-only.
+  - model.ts: new scheduleChanged and hermesEdit (pure, tested).
+
+CLI VERSIONS SEEN (read-only)
+  hermes   : Hermes Agent v0.22.5 (2026.9.24)   (the brief said 0.19.0)
+  openclaw : OpenClaw 2026.10.8 (dc2523e)        (the brief said 2026.10.9)
+
+DIFFERENCES FROM THE BRIEF (real output wins)
+  - Neither tool has any job on this PC, so no real job record was captured. Job shapes in the parser tests are derived
+    from the public docs and marked as such in the tests; they are NOT proof against a real install.
+  - "hermes cron list" prints prose, not JSON. The parser reads <hermes home>/cron/jobs.json instead (home is
+    %LOCALAPPDATA%\hermes here; HERMES_HOME overrides). The file does not exist on this PC (cron/output/ exists, empty).
+  - "openclaw cron list --json" needs Gateway credentials: exit 1 with {"ok":false,"error":{...}}. It becomes a warning row.
+  - OpenClaw does have "cron edit"; Kolux still offers no Edit on OpenClaw rows, as the brief says.
+
+READ-ONLY COMMANDS RUN (exit codes)
+  hermes --version 0 | openclaw --version 0
+  hermes cron --help 0 | openclaw cron --help 0
+  hermes cron list 0 | hermes cron list --all 0 | hermes cron list --help 0
+  hermes cron runs --help 0 | hermes cron runs 0 | hermes cron status (read; says no scheduler is serving)
+  openclaw cron list --help 0 | openclaw cron list --json 1 | openclaw cron status --help 0
+  hermes cron create --help 0 | hermes cron edit --help 0 | openclaw cron rm --help 0
+  Nothing was created, edited, deleted, run, enabled or disabled; nothing installed; no login or config change.
+Fixtures captured from that output (user names scrubbed): evidence/T-193-b/hermes-version.txt, openclaw-version.txt,
+  hermes-cron-list-empty.txt, openclaw-cron-list-no-gateway.json (the Rust tests include_str! the last two).
+Live check (marked #[ignore], read-only): cargo test --lib -- --ignored live_the_installed_tools -> 1 passed. Hermes gave
+  no rows (no jobs file); OpenClaw gave the warning row "OpenClaw could not list its automations: gateway cron.list
+  requires credentials before opening a websocket".
+
+VERIFY (run in G:/Dev/kolux-rs-sessions/wt/90-T-193-b, cargo with CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-90
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0, inside the s-90 slot)
+  cargo test --manifest-path src-tauri/Cargo.toml -- automations::      -> 72 passed; 0 failed; 1 ignored (was 71)
+  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings -> exit 0, no warnings
+  VITEST_MAX_WORKERS=2 npx vitest run src/automations                   -> 12 files, 96 tests passed (was 90)
+  npx tsc --noEmit -p .                                                 -> no output (0 errors)
+  node scripts/plan-check.mjs                                           -> plan-check: OK
+  npx vite build && node scripts/bundle-budget.mjs                      -> built; first load 1479680 bytes in 38 chunks (ceiling 1485000), OK
+Red first, TypeScript: with AutomationDialog.tsx put back to the previous commit's version, 3 of the new dialog tests failed
+  (Hermes job opens on Hermes with its own values; non-cron timetable as text; time zone hidden for Hermes) and passed after.
+  The model.test.ts cases call hermesEdit/scheduleChanged, which did not exist before, so they could not run red in a useful way.
+  The Custom-prefill dialog test also passes on the old dialog (the old Kolux form reads the same row.form); it guards the
+  Hermes path against regressions rather than proving a change.
+Red first, Rust: NOT recorded at assertion level (as before); the new Rust tests were written together with the code.
+
+TEST NAMES
+  Rust (automations::external::tests), new or changed in this rework:
+    a_hermes_row_carries_the_form_its_edit_dialog_opens_on (new)
+    hermes_rows_carry_source_local_and_the_hermes_action_set (edit back in the action list, form checked)
+    each_action_becomes_the_tools_own_command (Hermes edit: schedule+prompt; a rename alone has only --name; "every 120m",
+      FREQ=DAILY, a four-field line and 61 * * * * are refused)
+    a_command_that_is_not_allowed_is_refused_before_anything_runs (OpenClaw edit refused; an edit with nothing to change refused)
+    act_checks_the_row_may_do_that_then_forwards (Hermes edit forwarded; OpenClaw edit "does not offer edit")
+    a_missing_program_is_a_warning_row_and_the_other_tool_still_lists (back; both tools missing = two PATH warnings)
+    a_slow_or_failing_tool_is_a_warning_too (hermes missing = PATH warning again)
+    empty_and_relative_path_entries_are_skipped (now uses scratch("rel") and a path relative to the current folder; nothing is
+      written into src-tauri)
+  Rust, unchanged: a_bad_hermes_file_is_an_empty_list_with_a_warning, a_run_document_splits_on_its_headings_but_not_inside_a_code_fence,
+    a_paused_hermes_job_reads_as_paused_with_its_reason_and_an_interval_in_words, hermes_cli_text_for_no_jobs_is_a_warning_not_a_job,
+    a_program_that_is_not_installed_is_missing_not_an_error, hermes_accepts_a_bare_list_and_an_id_keyed_map,
+    live_the_installed_tools_answer_a_read_only_list (ignored), job_ids_are_plain_words, a_busy_kolux_holds_the_probes_back_and_keeps_the_cache,
+    openclaw_accepts_a_bare_list_and_survives_garbage, openclaw_paused_and_running_jobs_are_told_apart,
+    openclaw_rows_carry_source_local_and_no_edit, the_real_openclaw_answer_without_gateway_credentials_is_a_warning,
+    the_program_is_found_by_pathext_order_and_an_extensionless_shim_is_skipped, refresh_lists_both_tools_and_caches_the_rows,
+    hermes_lists_from_its_jobs_file_once_the_program_is_there, history_reads_only_inside_the_jobs_output_folder,
+    the_gate_lets_in_at_most_n_at_a_time, the_real_probe_spawns_the_program_and_reads_its_answer,
+    a_program_that_hangs_is_stopped_and_the_kolux_list_still_returns, the_probe_runs_at_most_its_gate_at_a_time,
+    a_hermes_jobs_file_over_the_cap_is_too_big_and_one_at_the_cap_is_read
+  TypeScript, new or changed in this rework:
+    model.test.ts: "T-193-b changing only the name sends no schedule and no prompt" (new), "T-193-b nothing changed sends nothing,
+      and the schedule is sent only once its fields moved" (new), "T-193-b a job whose timetable is not cron never has a schedule
+      sent" (new), "which actions a row offers: ... Hermes can be edited, OpenClaw cannot", "the quick-action menu: Hermes rows have
+      Edit, OpenClaw rows do not ..."
+    AutomationDialog.test.ts: "T-193-b a Hermes job opens on Hermes with its own name, prompt and timetable ..." (replaces the
+      "never opened for editing" case), "editing a Hermes job with a cron line the presets cannot say opens it in Custom"
+      (*/30 * * * *; new), "a Hermes job whose timetable is not cron shows it as text and offers no timetable fields" (new),
+      "the time zone field is hidden when Hermes is the target and shown for a Kolux automation" (new)
+    AutomationsPage.test.ts: "a tool that is missing is one note above the list ..." (back to the hermes-not-on-PATH wording);
+      hermesRow carries "edit" again.
+  TypeScript, unchanged: the other T-193-b cases in model.test.ts, AutomationsPage.test.ts and AutomationDialog.test.ts.
+
+REST (not done or not proven)
+  - Acceptance "a Hermes job created from Kolux shows in the list" and "an OpenClaw job paused from Kolux is reported
+    paused" need a real create/pause, which read-only CLI use cannot do. Unproven live; PLAN box left unticked.
+  - The jobs.json and "openclaw cron list --json" job schemas are unverified against a real job (none exist here); the
+    parsers are defensive but only proven on doc-derived fixtures. Worth a PROVENANCE section 5 note once a real job exists
+    (PROVENANCE.md was outside this task's files).
+  - Hermes history (automation_external_history) is built and tested in Rust but no page view shows it yet.
+  - Hermes jobs created in the dialog are not selected after save until the next read (stub row, empty id).
+  - "hermes cron run" (and any action) is killed after 30 s; whether Hermes runs a job synchronously is unchecked.
+  - Hermes Edit changes name, prompt and timetable only; the work folder (--workdir), delivery, skills, model and the other
+    `hermes cron edit` flags are not offered. AUTO-025 does not list them.
+  - No real Hermes job exists on this PC, so Edit was proven against the Fake probe and the stand-in program, never against
+    `hermes cron edit` itself (it was not run: read-only rule). Flag names come from `hermes cron edit --help`.
+  - The Edit dialog only sends a schedule when its timetable fields moved, so a job whose cron line Kolux would write back
+    differently (for example day 7 for Sunday) is never rewritten by an untouched save.
+  - The relative-PATH test needs the temp folder and the current folder on one drive; it fails loudly (expect) if not.
+  - Choice made where the brief was open: an active agent filter hides external rows; a result filter reads the
+    row's own last status.
+  - Shared files touched beyond automations/*: src-tauri/src/automations.rs (mod line, list() extension, three commands)
+    and src-tauri/src/lib.rs (three registration lines).

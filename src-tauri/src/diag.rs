@@ -242,6 +242,57 @@ pub fn diag_bundle(app: tauri::AppHandle) -> Result<String, String> {
     Ok(bundle(&profile(&app)?, &app.package_info().version.to_string()))
 }
 
+/// How many of the newest log lines the short summary carries.
+pub const SUMMARY_LINES: usize = 60;
+
+/// APP-010: the home folder (the given one, or any `C:\Users\<name>`, `/Users/<name>`, `/home/<name>`)
+/// becomes `~`, so a pasted summary does not say who is logged in.
+pub fn strip_home(text: &str, home: Option<&str>) -> String {
+    let mut out = text.to_string();
+    if let Some(h) = home.map(|h| h.trim_end_matches(['\\', '/'])).filter(|h| h.len() > 3) {
+        // Either slash style, however many backslashes a log line's escaping left.
+        let parts: Vec<String> = h.split(['\\', '/']).map(regex::escape).collect();
+        // The match ends at a separator, whitespace, a quote, closing punctuation or the end of the text,
+        // optionally after one full stop (a folder name cannot end in one, so this is a sentence's end),
+        // so the home `C:\Users\jo` does not eat the start of `C:\Users\joe` or `jo.smith`. The regex
+        // crate has no lookahead: the boundary is a capture group put back after the `~`.
+        if let Ok(re) = regex::Regex::new(&format!(r#"(?i){}(\.?(?:[\\/\s"'`)\]}},;:>|?*<]|$))"#, parts.join(r"[\\/]+"))) {
+            out = re.replace_all(&out, "~$1").into_owned();
+        }
+    }
+    let generic = regex::Regex::new(r#"(?i)(?:[a-z]:[\\/]+users[\\/]+|/users/|/home/)[^\\/\s"'<>|:*?]+"#).expect("the home-folder pattern is valid");
+    generic.replace_all(&out, "~").into_owned()
+}
+
+/// A short diagnostic summary for the help menu: a header and the newest log lines, with the home
+/// folder shortened and secrets masked by the same `scrub` the full bundle uses. No pane is needed.
+pub fn summary(dir: &Path, version: &str, home: Option<&str>) -> String {
+    let logs = dir.join("logs");
+    let mut lines: Vec<String> = Vec::new();
+    let mut files: Vec<PathBuf> = rotated(&logs).into_iter().map(|(p, _)| p).collect();
+    files.push(logs.join(LIVE));
+    for p in files {
+        if let Ok(text) = fs::read_to_string(&p) {
+            lines.extend(text.lines().map(str::to_string));
+        }
+    }
+    let from = lines.len().saturating_sub(SUMMARY_LINES);
+    let mut out = format!("Kolux RS {version} diagnostics summary, {} on {} {}\n", jiff::Timestamp::now(), std::env::consts::OS, std::env::consts::ARCH);
+    out.push_str(&format!("== newest {} log line(s) ==\n", lines.len() - from));
+    for l in &lines[from..] {
+        out.push_str(l);
+        out.push('\n');
+    }
+    scrub(&strip_home(&out, home))
+}
+
+/// APP-010 (Help > Copy terminal diagnostics): the scrubbed summary; the page puts it on the clipboard.
+#[tauri::command]
+pub fn diag_summary(app: tauri::AppHandle) -> Result<String, String> {
+    let home = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).ok();
+    Ok(summary(&profile(&app)?, &app.package_info().version.to_string(), home.as_deref()))
+}
+
 /// Writes the scrubbed bundle as a review copy in the profile folder and opens it; the path comes back.
 #[tauri::command]
 pub fn diag_review(app: tauri::AppHandle) -> Result<String, String> {
@@ -319,6 +370,70 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         }
         assert_eq!(scrub(&out), out, "masking masked text changed it");
         assert_eq!(scrub("plain words, a time 12:30 and a path C:\\x\\y.txt\n"), "plain words, a time 12:30 and a path C:\\x\\y.txt\n");
+    }
+
+    #[test]
+    fn app010_the_diagnostics_summary_has_no_home_folder_path_and_no_secret_looking_value() {
+        let dir = temp_dir("app010");
+        let home = r"C:\Users\someone";
+        write(&dir, &format!("terminal 3 started (pwsh) in {home}\\proj\\src"));
+        write(&dir, "terminal 3 json C:\\\\Users\\\\someone\\\\proj and /home/linuxer/work and /Users/macer/x");
+        write(&dir, "pane env ANTHROPIC_API_KEY=sk-ant-SUMMARYSECRET123456 leaked");
+        write(&dir, "curl -H \"Authorization: Bearer SUMMARYTWO_abcdefghijk\" https://api.example/v1");
+        write(&dir, &format!("profile at {}\\AppData\\Roaming\\kolux", home.to_lowercase()));
+        let s = summary(&dir, "0.1.0", Some(home));
+        assert!(s.starts_with("Kolux RS 0.1.0 diagnostics summary, "), "{s}");
+        for gone in ["someone", "linuxer", "macer", "SUMMARYSECRET", "SUMMARYTWO", "C:\\Users", "/home/", "/Users/"] {
+            assert!(!s.contains(gone), "{gone} survived:\n{s}");
+        }
+        assert!(s.contains("terminal 3 started (pwsh) in ~\\proj\\src") && s.contains("ANTHROPIC_API_KEY=[masked] leaked"), "{s}");
+        assert_eq!(scrub(&s), s, "the summary is already scrubbed");
+        // Only the newest lines: 200 written, the oldest is not in it.
+        for i in 0..200 {
+            write(&dir, &format!("filler line {i:04}"));
+        }
+        let s = summary(&dir, "0.1.0", None);
+        assert!(s.contains("filler line 0199") && !s.contains("filler line 0100") && s.contains(&format!("newest {SUMMARY_LINES} log line(s)")), "{s}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn app010_a_home_outside_the_users_folder_is_stripped_in_every_spelling() {
+        // The generic C:\Users\<name> rule cannot see this home: only the home-specific rule can.
+        let home = r"D:\Profiles\Some One";
+        for text in [
+            r"opened D:\Profiles\Some One\proj\src",
+            "opened D:/Profiles/Some One/proj/src",
+            r"json D:\\Profiles\\Some One\\proj\\src",
+            r"opened d:\profiles\SOME ONE\proj\src",
+            r"opened d:/PROFILES/some one/proj",
+            r"quoted 'D:\Profiles\Some One' and (D:\Profiles\Some One) and D:\Profiles\Some One",
+        ] {
+            let out = strip_home(text, Some(home));
+            for gone in ["Profiles", "Some One", "profiles", "some one", "SOME ONE", "PROFILES"] {
+                assert!(!out.contains(gone), "{gone} survived in {out:?} (from {text:?})");
+            }
+            assert!(out.contains('~'), "{out:?}");
+        }
+        assert_eq!(strip_home(r"in D:\Profiles\Some One\proj", Some(home)), r"in ~\proj");
+        assert_eq!(strip_home(r"a D:\Profiles\Some One, b", Some(home)), "a ~, b");
+    }
+
+    #[test]
+    fn app010_a_home_name_that_is_a_prefix_of_another_name_leaves_the_other_alone() {
+        // Home C:\Users\jo must not turn C:\Users\joe\x into ~e\x.
+        assert_eq!(strip_home(r"C:\Users\jo\x and C:\Users\jo", Some(r"C:\Users\jo")), r"~\x and ~");
+        let out = strip_home(r"C:\Users\joe\x", Some(r"C:\Users\jo"));
+        assert!(!out.contains("~e"), "{out}");
+        assert_eq!(out, r"~\x", "the generic rule still hides joe, but whole");
+        // Where the generic rule does not apply, the other name stays untouched.
+        assert_eq!(strip_home(r"D:\Profiles\joe\x", Some(r"D:\Profiles\jo")), r"D:\Profiles\joe\x");
+        assert_eq!(strip_home(r"D:\Profiles\jo\x", Some(r"D:\Profiles\jo")), r"~\x");
+        assert_eq!(strip_home(r#"path "D:\Profiles\jo""#, Some(r"D:\Profiles\jo")), r#"path "~""#);
+        // A sentence's full stop after the home still hides it; a name that only starts the same does not.
+        assert_eq!(strip_home(r"could not open D:\Profiles\Some One.", Some(r"D:\Profiles\Some One")), "could not open ~.");
+        assert_eq!(strip_home(r"D:\Profiles\Some One. Next", Some(r"D:\Profiles\Some One")), "~. Next");
+        assert_eq!(strip_home(r"D:\Profiles\jo.smith\x", Some(r"D:\Profiles\jo")), r"D:\Profiles\jo.smith\x");
     }
 
     #[test]

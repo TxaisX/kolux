@@ -15,7 +15,6 @@ use crate::resources::update_care as care;
 use crate::resources::update_guard as guard;
 use crate::state::Store;
 use crate::terminal::Terminals;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -120,8 +119,6 @@ fn info_of(u: &Update) -> Info {
 pub struct Updates {
     pending: Mutex<Option<Update>>,
     ready: Mutex<Option<(Update, Vec<u8>)>>,
-    /// T-199 (APP-029): Restart to update is already under way; a second click is ignored.
-    restarting: AtomicBool,
     watchdog: Arc<care::Watchdog>,
     /// APP-031: the newest check's number.
     rounds: care::CheckRounds,
@@ -135,10 +132,27 @@ fn compat_on(app: &AppHandle) -> bool {
     care::compat_mode(saved, std::env::var(care::ENV_COMPAT).ok().as_deref())
 }
 
-/// True only when the release host answers that the named installer is not there (404). The HEAD
-/// goes through the app's one approved public-only client (APP-070), which speaks HTTP/1.1 only.
+/// The hosts a release download is fetched from (GitHub Releases and the storage it redirects to).
+pub fn release_host(url: &str) -> bool {
+    let Ok(u) = tauri::Url::parse(url) else { return false };
+    if u.scheme() != "https" {
+        return false;
+    }
+    let Some(h) = u.host_str() else { return false };
+    h == "github.com" || h.ends_with(".githubusercontent.com")
+}
+
+/// True only when the release host answers that the named installer is not there (404 or 410). The
+/// HEAD goes through the app's one approved public-only client (APP-070), which speaks HTTP/1.1 only.
+/// The first request goes only to GitHub's release hosts, over https (the privacy statement names GitHub
+/// Releases only); a redirect from there is followed by the same public-only client, so later hops are
+/// GitHub's choice, not pinned here. A feed that points anywhere else, such as a local test endpoint, is never asked, so
+/// such a feed never sees the "half published" answer; that is accepted.
 async fn installer_missing(app: &AppHandle, url: &tauri::Url) -> bool {
-    matches!(crate::browser::head(app, url, false, CHECK_TIMEOUT).await, Ok(a) if a.status == 404)
+    if !release_host(url.as_str()) {
+        return false;
+    }
+    matches!(crate::browser::head(app, url, false, CHECK_TIMEOUT).await, Ok(a) if matches!(a.status, 404 | 410))
 }
 
 /// APP-028: what the next launch says about the last install attempt (read once, then removed).
@@ -371,14 +385,14 @@ pub async fn update_download(app: AppHandle) -> Result<Info, String> {
 /// Restart to update: the shells end, the installer runs and starts the new version.
 #[tauri::command]
 pub fn update_restart(app: AppHandle) -> Result<(), String> {
-    // T-199 (APP-029): only one install runs; a click while it is getting ready is ignored.
-    let updates = app.state::<Updates>();
-    if updates.restarting.swap(true, Ordering::SeqCst) {
+    // T-199 (APP-029): only one install runs; a click while it is getting ready is ignored. The guard is
+    // shared with Help > Restart Kolux, and no restart starts while a quit is under way.
+    if !crate::lifecycle::restart_started() {
         return Ok(());
     }
     let result = restart_now(&app);
     if result.is_err() {
-        updates.restarting.store(false, Ordering::SeqCst);
+        crate::lifecycle::restart_ended();
     }
     result
 }
@@ -454,7 +468,7 @@ fn end_for_installer(app: &AppHandle) {
     crate::resources::recovery::note_self_end(app, "installer starts (APP-029)");
 }
 
-/// Called as the app quits: a downloaded update installs now and does not reopen the app.
+/// Called as the app quits: a downloaded update installs now, and reopens the app only when this exit is a restart.
 pub fn install_on_quit(app: &AppHandle) {
     let ready = app.state::<Updates>().ready.lock().ok().and_then(|mut r| r.take());
     if let Some((update, bytes)) = ready {
@@ -466,7 +480,7 @@ pub fn install_on_quit(app: &AppHandle) {
             return;
         }
         record_attempt(app, &update);
-        let _ = update.restart_after_install(false).install(&bytes);
+        let _ = update.restart_after_install(crate::lifecycle::restart_requested()).install(&bytes);
     }
 }
 
@@ -478,6 +492,7 @@ fn install_skipped_line(version: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::Ordering;
 
     #[test]
     fn row1031_the_skipped_install_line_names_the_version_and_the_reason() {
@@ -488,6 +503,27 @@ mod tests {
     fn env_with(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
         let pairs: Vec<(String, String)> = pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
         move |k| pairs.iter().find(|(pk, _)| pk == k).map(|(_, v)| v.clone())
+    }
+
+    #[test]
+    fn the_installer_check_only_asks_github_release_hosts_over_https() {
+        assert!(release_host("https://github.com/TxaisX/kolux-rs-releases/releases/download/v0.2.0/setup.exe"));
+        assert!(release_host("https://release-assets.githubusercontent.com/x"));
+        assert!(release_host("https://objects.githubusercontent.com/x"));
+        assert!(!release_host("http://github.com/TxaisX/kolux-rs-releases/releases/download/v0.2.0/setup.exe"));
+        assert!(!release_host("https://github.com.evil.example/x"));
+        assert!(!release_host("https://evilgithubusercontent.com/x"));
+        assert!(!release_host("https://github.com@evil.example/x"), "userinfo does not make a host");
+        assert!(!release_host("http://127.0.0.1:9/setup.exe"));
+        assert!(!release_host("not a url"));
+    }
+
+    #[test]
+    fn the_installer_check_counts_404_and_410_as_missing_and_asks_the_host_check_first() {
+        let src = include_str!("update.rs");
+        let body = &src[src.find("async fn installer_missing").unwrap()..src.find("pub fn update_last_attempt").unwrap()];
+        assert!(body.contains("404 | 410"), "410 Gone is a missing installer like 404");
+        assert!(body.find("release_host(url.as_str())").unwrap() < body.find("browser::head").unwrap(), "non-GitHub hosts are never asked");
     }
 
     #[test]

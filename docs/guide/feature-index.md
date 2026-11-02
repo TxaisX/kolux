@@ -155,6 +155,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-066 | Agent sessions resume after a quit or a crash. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-066-b | Resume forms are built in for 17 more agents, each used only when an agent tab is restored. | [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart) |
 | T-066-c | A restored agent tab asks for its resume form and is marked "restored without resume" when it has none. Kiro and Aider resume their folder's last conversation; the other agents resume when Kolux knows their session ID. | [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart) |
+| T-066-d, T-066-e | Agents without status hooks (Cursor, Gemini CLI, Goose, Amp and the rest of that row) get their session ID from the agent itself: the resume command it prints at exit, or its own sessions list run in the tab's folder when the layout is saved. | [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart) |
 | T-067 | Panes keep their identity across layout changes; copying never happens silently. | [Terminals](terminals.md) |
 | T-068 | Terminal output is restored after the background host or computer died. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-069-a | The app reopens on the screen and page you left, saving on quit. | [Projects and worktrees](projects-and-worktrees.md) |
@@ -441,6 +442,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-216-a | Pin workspaces to a section; sort by recent activity. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-217-a | Put a workspace to sleep and rename it inline. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-224-a | A Tasks page button and shortcut; find pull requests and checks from the palette. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-226 | Git history in the sidebar, a pull request from Checks, and the Ports item in the status bar with a Stop that ends only the program it showed. | [Terminals](terminals.md#ports-in-the-status-bar) |
 | T-227-a | Commit with push, sync or force push; hand a failed push to an agent. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-227-b | The branch row compares the workspace with its base branch. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-227-c | An AI writes the commit message from what is staged. | [Projects and worktrees](projects-and-worktrees.md) |
