@@ -685,7 +685,8 @@ mod tests {
         }
         let nb = notebook(&d, "a.ipynb", json!([code("import time\nprint('before', flush=True)\ntime.sleep(120)")]));
         let began = Instant::now();
-        let r = run_cell_in(&nb, 0, &|_| true, &setup(Duration::from_secs(2), OUT_CAP)).unwrap();
+        // A loaded CI runner can take over 2 s to start Python; 10 s leaves room for the first print.
+        let r = run_cell_in(&nb, 0, &|_| true, &setup(Duration::from_secs(10), OUT_CAP)).unwrap();
         assert!(began.elapsed() < Duration::from_secs(30), "took {:?}", began.elapsed());
         assert_eq!(r.outputs[0]["text"], json!(["before\n"]), "what it printed first is kept");
         assert_eq!(r.outputs[1]["output_type"], "error");
