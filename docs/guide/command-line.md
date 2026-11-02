@@ -31,11 +31,13 @@ The running app listens on a random port of your own computer (address `127.0.0.
 
 | Command | What it does |
 |---|---|
-| `kolux open` | Starts Kolux, or brings its window to the front, and waits up to 60 seconds until it answers |
+| `kolux open` | Starts Kolux, or brings its window to the front, and waits up to 60 seconds until it answers. It then says whether the window really came to the front (see below) |
 | `kolux status` | Says whether Kolux is up, without starting it. Works with the app closed (see below) |
 | `kolux diagnostics memory` | Shows how much memory Kolux and each terminal session use (see below) |
 | `kolux --version` | Prints the version |
 | `kolux --help` | Lists every command. `--help` also works on a group, such as `kolux terminal --help` |
+
+When Kolux was already running, `kolux open` restores its window and brings it forward itself, the way a second start of the app does, and reports what happened: "Kolux is ready; its window is in front" when Windows let it, or "Kolux is ready; its window was restored, but Windows kept another window in front" when it did not (Windows then flashes Kolux in the taskbar instead). With `--json`, `result.raised` is `true` or `false`; it is `null` when the question could not be asked (an answer naming no process, or a system other than Windows). When Kolux had to be started, the line reads "Kolux started and is ready".
 
 `kolux status` prints one line with one of four words. Scripts can rely on these words; they will not change.
 

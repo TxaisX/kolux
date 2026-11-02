@@ -567,6 +567,7 @@ pub fn run() {
             terminal::terminal_diagnostics,
             terminal::terminal_history,
             terminal::terminal_forget_history,
+            terminal::terminal_listed_session,
             terminal::terminal_prune_history,
             terminal::terminal_history_append,
             status::agent_history,
