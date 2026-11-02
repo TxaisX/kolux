@@ -79,3 +79,139 @@ STILL OPEN / NEEDS A LIVE RUN
 - COMPAT.md 4.3's title column for workspace.openBoard ("Toggle Workspace Board" -> "Show Workspace Statuses"); the guide pages
   that say "workspace board" (docs/guide, not this lane's).
 - DT-08 also asks for a View menu entry for Floor (menu.rs, not this lane's); the palette reach is in.
+
+======================================================================================================================
+Second pass: DT-08's View menu way into Floor
+lane5/T-610 · 2026-11-01 · closes the "DT-08 also asks for a View menu entry for Floor (menu.rs)" line above
+
+WHAT WAS WRONG
+- DECISIONS.md DT-08: Floor is "reachable from the command palette and the View menu; no sidebar item". The palette half
+  landed on 2026-10-30 (above); the View > Workspace View submenu still listed only Agents, Board and Terminals
+  (src-tauri/src/menu.rs SCREENS), so it had neither Floor nor the switcher's fourth screen Tower, and
+  src/chrome/chromeItems.ts menuScreen mapped only those three ids, so a screen.floor click would have done nothing.
+
+WHAT CHANGED
+- src-tauri/src/menu.rs SCREENS: five entries, ("screen.tower", "Tower", "tower") and ("screen.floor", "Floor", "floor")
+  after the first three, Floor last; each ticks while it is the screen the page shows (menu_sync state.screen).
+- src/chrome/chromeItems.ts: menuScreen returns Screen | null over MENU_SCREENS (agents, board, terminals, tower, floor);
+  MENU_SHORTCUT_IDS gains "screen.floor" and HINT_FROM maps it to view.floor, so the Floor item shows VIEW-013's compat
+  chord once the user binds one (shipped unbound, COMPAT 4.3: it shows nothing until then).
+- DECISIONS.md DT-C68: the submenu lists the switcher's four in VIEW-002's cycle order, then Floor; VIEW-002's "User sees"
+  (three items, none ticked on Tower) described 0.15.0 before Tower joined the cycle (DT-C50); its boxes are unchanged.
+- docs/guide/getting-started.md (View row) and feature-index.md (T-049-b row) name the five; docs/live-proofs-windows.md B-2
+  gains the menu leg (View > Workspace View > Floor opens the Floor and ticks it).
+
+TESTS (written first, seen failing, then the code)
+- src-tauri/src/menu.rs t054_view_menu_ticks_exactly_the_current_screen_and_none_for_other_screens: the ids are the five;
+  tower and floor tick their own item; inbox and skills tick none.
+- src/chrome/chromeItems.test.ts "screens map back": screen.tower -> tower, screen.floor -> floor, screen.inbox and
+  app.settings -> null (the old assertion said screen.tower -> null; the menu now lists Tower). New: "the Floor item carries
+  view.floor's chord": accelerators["screen.floor"] is CmdOrCtrl+Alt+F when view.floor is Mod+Alt+F, "" when unbound.
+- src/chrome/reach.test.ts "Floor is in the View menu too (DT-08)": menuScreen("screen.floor") equals SCREEN_OF["view.floor"],
+  and every switcher screen maps back through menuScreen.
+
+FAILING BEFORE (tests in, code not yet)
+$ cargo test --lib menu::tests::t054
+test menu::tests::t054_view_menu_ticks_exactly_the_current_screen_and_none_for_other_screens ... FAILED
+panicked at src/menu.rs:556:13:
+  left: ["screen.agents", "screen.board", "screen.terminals"]
+ right: ["screen.agents", "screen.board", "screen.terminals", "screen.tower", "screen.floor"]
+$ VITEST_MAX_WORKERS=2 npx vitest run src/chrome/chromeItems.test.ts src/chrome/reach.test.ts
+ FAIL  src/chrome/chromeItems.test.ts > ... > a tick box flips its own field from what is shown now, and screens map back
+AssertionError: expected null to be 'tower' // Object.is equality
+ FAIL  src/chrome/chromeItems.test.ts > ... > T-610 / DT-08: the Floor item carries view.floor's chord (VIEW-013's compat id), ...
+AssertionError: expected undefined to be 'CmdOrCtrl+Alt+F' // Object.is equality
+ FAIL  src/chrome/reach.test.ts > T-610: Floor is in the View menu too (DT-08), so a Workspace View click on it shows the screen ...
+AssertionError: expected null to be 'floor' // Object.is equality
+      Tests  3 failed | 12 passed (15)
+
+AFTER THE FIX
+$ cargo test --lib menu::      (CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target, . scripts/test-env.sh)
+test menu::tests::t049b_classic_drops_workspace_view_and_switching_the_look_rebuilds_the_menu ... ok
+test menu::tests::t054_view_menu_ticks_exactly_the_current_screen_and_none_for_other_screens ... ok
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 2547 filtered out
+$ VITEST_MAX_WORKERS=2 npx vitest run --reporter=verbose src/chrome
+ ✓ src/chrome/chromeItems.test.ts > ... > a tick box flips its own field from what is shown now, and screens map back 1ms
+ ✓ src/chrome/chromeItems.test.ts > ... > T-610 / DT-08: the Floor item carries view.floor's chord (VIEW-013's compat id), ... 0ms
+ ✓ src/chrome/reach.test.ts > T-610: every Screen id is reachable from the switcher or the palette 4ms
+ ✓ src/chrome/reach.test.ts > T-610: Floor and Space are reached by their own commands, ...; the switcher keeps VIEW-002's four 1ms
+ ✓ src/chrome/reach.test.ts > T-610: the workspace board is reached by its command and is no longer a second Board 0ms
+ ✓ src/chrome/reach.test.ts > T-610: Floor is in the View menu too (DT-08), so a Workspace View click on it shows the screen ... 0ms
+ Test Files  19 passed (19)
+      Tests  88 passed (88)
+$ VITEST_MAX_WORKERS=2 npx vitest run src/chrome src/settings src/keys
+ Test Files  1 failed | 115 passed (116)      Tests  1 failed | 587 passed (588)
+   The one failure is src/settings/__cards__/SET-006-link.test.ts ("gave up waiting for the terminal-first section", a
+   Settings-page scroll wait); it fails the same way on untouched origin/main in this container (checked with the change
+   stashed), so it is not this unit's.
+$ npx tsc --noEmit -> exit 0
+$ node scripts/plan-check.mjs -> plan-check: OK
+$ cargo check --target x86_64-pc-windows-gnu --all-targets -> Finished `dev` profile, exit 0
+$ cargo clippy --all-targets -- -D warnings -> exit 101: 93 errors, none in menu.rs (the only Rust file this pass touches).
+   They are dead-code and drop_non_drop lints (clippy 0.1.97 in this container) in src/browser_crash.rs (38), browser_holder.rs,
+   browser_certs.rs, browser_permissions.rs, badge.rs, browser_drag.rs, resources/update_guard.rs, browser_preview.rs,
+   secrets.rs, scm.rs, newproject.rs, lifecycle.rs, browser_profiles.rs, browser.rs, setup.rs, session_scan.rs, scm_watch.rs,
+   ports.rs, notifications.rs and cli_register.rs: "never used / never constructed", "unused variable", one unreachable
+   statement, one needless borrow. The same command on untouched origin/main (3af39cf3) in the same container gives the
+   same 93 (see the line after this one), so they are main's, not this unit's.
+
+STILL OPEN / NEEDS A LIVE RUN
+- B-2 on Windows (docs/live-proofs-windows.md): the five palette rows each open their page, and View > Workspace View > Floor
+  opens the Floor with Floor ticked.
+- Clippy on main: the 93 pre-existing lints above (another unit's; not touched here).
+
+Third pass: review of PR #56 (three minor findings)
+lane5/T-610 · 2026-11-01 · fixer pass; all three findings taken
+
+WHAT WAS WRONG
+1) src-tauri/src/menu.rs MenuState.screen's doc still named the three old screens while SCREENS ticks five.
+2) src/chrome/chromeItems.ts gave the Floor menu item view.floor's chord as its accelerator. On Windows (the proved platform,
+   DT-C61) the bar is never attached (attaches_bar) and an accelerator is only a label, but on a Mac it is a real key
+   equivalent: the chord is already handled inside the window as a toggle (SCREEN_OF in useWindowKeys.ts: Floor <-> Terminals),
+   so a menu-action for screen.floor firing beside it would put Floor back and the chord would never leave Floor.
+   Taken the first way the review offers: the Floor item carries no accelerator (dropped from MENU_SHORTCUT_IDS and HINT_FROM);
+   the palette's "Show Floor" row still prints view.floor's keys. The second way (make the menu click toggle too) was not
+   taken: with both paths toggling, the pair still nets to no change, so it would not fix the double fire. Recorded in DT-C68.
+3) spec/05-views-navigation.md VIEW-002's Rules now carry one line: since T-610 (DT-C68) the submenu lists Agents, Board,
+   Terminals, Tower and Floor, each ticked while shown; the boxes above are unchanged. No box ticked or struck.
+
+WHAT CHANGED
+- src/chrome/chromeItems.ts: MENU_SHORTCUT_IDS back to the seven items; HINT_FROM back to the three zoom ids; the comment says why.
+- src-tauri/src/menu.rs: MenuState.screen's doc names the five SCREENS; the SCREENS doc no longer says Floor carries a chord.
+- spec/05-views-navigation.md VIEW-002 Rules: the one line above.
+- DECISIONS.md DT-C68: the Floor item prints no chord and why; the palette row is where the keys show.
+- PLAN.md T-610 line: "Floor shows view.floor's chord" -> "the Floor item prints no chord, the palette's Show Floor row does"
+  (a first wording named the cycle card by id, which plan-check refused: "VIEW-002 appears 2 times (must be exactly once)";
+  reworded without the id, plan-check: OK).
+- src/chrome/chromeItems.test.ts: the T-610 Floor-chord test now asserts the opposite (no screen.floor in MENU_SHORTCUT_IDS,
+  no screen.floor key in accelerators even with view.floor bound).
+- src/chrome/reach.test.ts: new test, the palette's Show Floor row prints "Ctrl+Alt+F" once view.floor is bound and no hint
+  while unbound (COMPAT 4.3).
+
+FAILING BEFORE (test first, code unchanged)
+$ VITEST_MAX_WORKERS=2 npx vitest run --reporter=verbose src/chrome/chromeItems.test.ts src/chrome/reach.test.ts
+ × src/chrome/chromeItems.test.ts > T-248-a menu bar state (APP-009, SET-020, SET-009) > T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord 14ms
+   → expected [ 'app.settings', …(7) ] to not include 'screen.floor'
+ ✓ src/chrome/reach.test.ts > T-610 / DT-C68: the palette's Show Floor row prints view.floor's keys once bound; the menu's Floor item prints none 3ms
+      Tests  1 failed | 15 passed (16)
+(The palette-row test passed before the change as well: it pins the place the chord still shows, so dropping the menu hint loses nothing.)
+
+AFTER THE FIX
+$ VITEST_MAX_WORKERS=2 npx vitest run --reporter=verbose src/chrome src/keys
+ ✓ src/chrome/chromeItems.test.ts > ... > T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound ... 2ms
+ ✓ src/chrome/reach.test.ts > T-610 / DT-C68: the palette's Show Floor row prints view.floor's keys once bound; the menu's Floor item prints none 2ms
+ Test Files  34 passed (34)
+      Tests  189 passed (189)
+$ npx tsc --noEmit -> exit 0
+$ node scripts/plan-check.mjs -> plan-check: OK
+$ cargo test --lib menu::      (CARGO_TARGET_DIR=/home/user/kolux-rs/src-tauri/target, . scripts/test-env.sh)
+test menu::tests::t054_view_menu_ticks_exactly_the_current_screen_and_none_for_other_screens ... ok
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 2547 filtered out
+$ cargo clippy --all-targets -- -D warnings -> exit 101: "could not compile `kolux-rs` (lib) due to 93 previous errors", the same
+   93 as the second pass and as origin/main, none in menu.rs (grep -c 'src/menu.rs' over the output: 0).
+$ cargo check --target x86_64-pc-windows-gnu --all-targets -> Finished `dev` profile [unoptimized] target(s) in 7m 49s, exit 0
+
+STILL OPEN / NEEDS A LIVE RUN
+- B-2 on Windows (docs/live-proofs-windows.md), unchanged: the five palette rows each open their page, and View > Workspace View >
+  Floor opens the Floor with Floor ticked (its item shows no chord; "Show Floor" in the palette shows view.floor's keys once bound).
+- Clippy on main: the 93 pre-existing lints above (another unit's; not touched here).

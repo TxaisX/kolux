@@ -9,11 +9,9 @@ On a fresh install Kolux opens a four-step dialog, "Get started with Kolux". Eac
 | Step | What you do | Main button |
 |---|---|---|
 | 1. Welcome | Read the idea: several AIs can work on your files at the same time | Get started |
-| 2. Connect an AI | Link at least one AI. The main button stays off until one is connected | Continue (or "I'll do this later") |
-| 3. Your work | Pick the folder your AIs will work in (a "Pick a folder" button) | Continue |
-| 4. Open a session | Start with an AI or a plain terminal in your folder. A switch, "Tell me whenever an AI finishes", turns on notifications | Open a session |
-
-Earlier builds had a "Choose a kit" fourth step and starter kits; they were removed on 2026-10-28.
+| 2. Connect an AI | Link at least one AI. The main button stays off until one is connected. Under the AI cards is one line, "Kolux will add its status hooks to each AI's settings, so it can show you which one needs you.", beside a switch that is on. Continue (or "I'll do this later") records the switch as your answer; Back does not | Continue (or "I'll do this later") |
+| 3. Your work | Pick a folder, or Continue without one. Pick a folder closes setup and opens Add Project; if you have chosen a default agent, it starts in the folder you add (nothing starts while Default agent is Auto) | Continue |
+| 4. Open a session | A switch, "Tell me whenever an AI finishes", turns on notifications. The main button starts the first AI offered in the project in front. With no project yet, it closes setup and opens Add Project instead, and that AI starts in the folder you pick | Open a session |
 
 You can reopen the dialog later: click the "?" (Help) button at the bottom of the sidebar, then Onboarding.
 
@@ -38,7 +36,7 @@ The Help menu has more entries:
 
 ### Tips
 
-At most one tip appears per launch, as a small dialog marked "Tip". It never appears in a launch that showed the first-run dialog, and each tip appears only once. The first is "Let your agents drive Kolux", with the buttons "Not now" and "Install CLI & Skills" (which opens the Enable Kolux CLI step). It is skipped if the command is already set up. If the command is installed but terminals outside Kolux cannot find it, the tip adds "Needs attention". The second is "Jump to any workspace with" the workspace-switcher key, with a "Got it" button.
+At most one tip appears per launch, as a small dialog marked "Tip". It never appears in a launch that showed the first-run dialog, and each tip appears only once. The first is "Let your agents drive Kolux", with the buttons "Not now" and "Install CLI & Skills" (which opens the Enable Kolux CLI step). It is skipped if the command is already set up. If the command is installed but terminals outside Kolux cannot find it, the tip adds "Needs attention". The second is "Jump to any workspace with" the workspace-switcher key, with a "Got it" button. A launch that shows the one-time status-hooks card (the line from step 2, for a profile that never answered it) shows no tip. Escape closes a tip from wherever the keyboard is, even a terminal pane; the press still reaches that pane's program (in Claude Code it also interrupts Claude), and while a dialog is open Escape belongs to the dialog instead.
 
 ### Tours
 
@@ -66,7 +64,7 @@ A skill is a folder with a `SKILL.md` file that teaches an AI how to do a job. T
 | Skill folders | Lists each folder Kolux scanned and what it found, such as "3 skills" or "Not found" |
 | Refresh | Scans every folder again |
 
-Each row shows the skill's name, where it came from (a plugin shows "Plugin: name"), its last-changed date, its description and its path. Skills built into Kolux say "Built into Kolux". The "Delete skills" item in the "..." menu is greyed out for now. If a folder cannot be read the page says "Scan failed" with a Retry button, rather than showing a shorter list. Skills inside WSL (Linux on Windows) folders are not scanned yet; the Skill folders list says "Not scanned: WSL folders are not scanned yet". Kolux also never scans through a network share: a workspace on `\\server\share` gets no workspace skills scan, a mapped drive letter does, and a link inside a skills folder that leads to another computer is not followed. See [Other computers and network shares](safety.md#other-computers-and-network-shares).
+Each row shows the skill's name, where it came from (a plugin shows "Plugin: name"), its last-changed date, its description and its path. Skills built into Kolux say "Built into Kolux". The "Delete skills" item in the "..." menu opens a selection mode: tick the skills to remove, press Delete..., read the confirmation (it counts the folders and links that will go, names where a linked skill's content stays, and lists anything it cannot delete and why) and confirm; each skill then gets its own outcome. Bundled and plugin skills cannot be chosen. If a folder cannot be read the page says "Scan failed" with a Retry button, rather than showing a shorter list. When the open project lives inside a WSL (Linux on Windows) distribution, that distribution's own skill folders are scanned by asking the distribution, and deleting such a skill runs inside that distribution too: a skill from another distribution or outside those skill folders is refused as "Outside Kolux's skill folders", removing a link leaves what it points at, a skill that WSL cannot check is left alone and says so while the rest of the request goes on, and a delete that fails or runs out of time inside the distribution shows "Not confirmed: some of it may already be removed" with the reason, because it may have taken part of the folder before it stopped. Kolux also never scans through a network share: a workspace on `\\server\share` gets no workspace skills scan, a mapped drive letter does, and a link inside a skills folder that leads to another computer is not followed. See [Other computers and network shares](safety.md#other-computers-and-network-shares).
 
 When you have never picked a view, Kolux opens on Terminals. After that it opens on the view you were on when you quit.
 
@@ -103,7 +101,7 @@ Click the Kolux mark at the left end of the top bar (its tooltip says "Kolux men
 |---|---|
 | File | **Settings...** opens Settings (Ctrl+, by default). **Exit** closes the window the way its close button does, which stops every terminal |
 | Edit | Undo, Redo, Cut, Copy, Paste, Select All. In a text box they act on the text. In a terminal pane only **Copy** (the selected text; nothing is copied when nothing is selected) and **Select All** work; Undo, Redo and Cut do nothing there. **Paste** does nothing yet from this menu: use Ctrl+V |
-| View | **Workspace View** has Agents, Board and Terminals with the current screen ticked (absent in the Classic look). **Appearance** has Toggle Left Sidebar, Toggle Right Sidebar and four ticks: Show Status Bar, Show Tasks Button, Show Automations Button and Show Titlebar App Name. Each tick matches its switch in [Settings](settings.md) and changes it. Then come Reload, Force Reload (Ctrl+Shift+R), Toggle Developer Tools (does nothing in the released app), Actual Size, Zoom In, Zoom Out and Toggle Full Screen |
+| View | **Workspace View** has Agents, Board, Terminals, Tower and Floor with the current screen ticked (absent in the Classic look); Floor has no sidebar button, so this menu and the palette's **Show Floor** are its two ways in. **Appearance** has Toggle Left Sidebar, Toggle Right Sidebar and four ticks: Show Status Bar, Show Tasks Button, Show Automations Button and Show Titlebar App Name. Each tick matches its switch in [Settings](settings.md) and changes it. Then come Reload, Force Reload (Ctrl+Shift+R), Toggle Developer Tools (does nothing in the released app), Actual Size, Zoom In, Zoom Out and Toggle Full Screen |
 | Window | Minimize, and Zoom (which maximizes the window) |
 | Help | **About Kolux** shows the version. The other Help items (Report Crash, Explore Kolux, Getting Started, Check for Updates) are not in the menu yet |
 
