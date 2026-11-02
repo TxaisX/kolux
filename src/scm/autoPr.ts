@@ -3,8 +3,8 @@
 // request into the default branch. The guards (default branch, secrets, 10 MB, no force) live in the
 // back end commands auto_pr_commit / auto_pr_push; this file orders the steps and keeps the run in the
 // one-click store (oneClick.ts), so the run shows per folder. Nothing is retried on its own: a failure
-// waits for the next finished turn. It loads on demand from autoPrWatch.ts (the main bundle only
-// holds that tiny listener).
+// waits for the next finished turn. It loads on demand from autoPrWatch.ts, which the window itself
+// loads on demand after mount.
 import { invoke } from "@tauri-apps/api/core";
 import { currentEnv } from "../agentstart/host";
 import { readDraftGate, draftOffered } from "./prDraft";
