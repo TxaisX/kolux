@@ -1,0 +1,69 @@
+/* The update notice (the ready pop-up) and the update card: bottom-left, inside the window at any width or
+   display scale, just above the 24px status bar, anchored to no sidebar element. Loaded with the lazy
+   UpdateCenterView chunk, so it stays out of the first-load bundle. These rules are more specific than the
+   old ones in styles.css (which anchored both above the sidebar's footer button) and override them. */
+
+.upd-wrap.upd-fixed,
+.upd-pop.upd-fixed {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: auto;
+  bottom: 40px;
+  z-index: 45;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+.upd-wrap.upd-fixed {
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
+}
+
+/* Text wraps instead of being cut off or pushing the window sideways. */
+.upd-wrap.upd-fixed .upd-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.upd-wrap.upd-fixed .upd-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.upd-wrap.upd-fixed .upd-tip {
+  overflow-wrap: anywhere;
+}
+
+/* The notice: one short sentence with the version, then two buttons. */
+.upd-pop.upd-fixed {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+.upd-pop.upd-fixed:focus-visible {
+  border-color: var(--seg-active);
+}
+.upd-pop-text {
+  flex: 1 1 12em;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+.upd-pop-ver {
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+.upd-pop-actions {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.upd-pop-actions .btn:focus-visible {
+  outline: 2px solid var(--seg-active);
+  outline-offset: 1px;
+}

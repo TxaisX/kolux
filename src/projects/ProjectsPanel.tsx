@@ -30,7 +30,7 @@ import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/p
 import { recordPoll } from "../scm/prSearch";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, splitGitSaid, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
-import { ArrowRight, Bell, ChevronDown, Close, EyeOff, FileCode, FolderPlus, Gear, List, Plus, Rail, Refresh, Rocket, Sliders, Target, Box, Pin, Moon } from "../chrome/icons";
+import { ArrowRight, Bell, ChevronDown, Close, EyeOff, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Sliders, Target, Box, Pin, Moon } from "../chrome/icons";
 import AddProject from "./AddProject";
 import CleanupDialog from "./CleanupDialog";
 import KeptBranches from "./KeptBranches";
@@ -69,10 +69,10 @@ import { workingWord } from "../status/working";
 import { onFinish, REFRESH_AFTER_MS, wantsRefresh } from "../status/finished";
 import type { AgentPass } from "../launch/agents";
 import { KeyText } from "../keys/KeymapContext";
-import { requestUpdateCheck } from "../update/UpdateCenter";
 import { GLOSSARY } from "../glossary";
 import HelpMenu from "../onboarding/HelpMenu";
-import VendorMark, { type Agent } from "../chrome/VendorMark";
+import { asksBeforeClose } from "../terminal/closing";
+import "./sidebar.css";
 import ImportSetup, { refusedLine, type SetupImport } from "./ImportSetup";
 import { issueCommand } from "../setup/IssueCommand";
 import { trustedSetup } from "../setup/TrustPrompt";
@@ -81,7 +81,7 @@ import { dropBand, parentDropTarget } from "./parentDrop";
 import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds } from "./order";
 import { pendingWrites } from "./settingWrite";
 import { CLEAR_FILTERS, FILTER_DEFAULT_SETTING, FILTER_PROJECTS_SETTING, filtersFrom, filtersOn, rowShown, toggleProject } from "./filter";
-import { deletePlan, rowMenu, type MenuItem } from "./menu";
+import { deletePlan, groupMenu, projectMenu, rowMenu, type MenuItem } from "./menu";
 import { commentBlocks, itemFromPaste, type Span } from "./details";
 import { onWorkspaceStatus } from "./statusRefresh";
 import StatusEditor from "./StatusEditorForm";
@@ -99,7 +99,7 @@ type Props = {
   /** Folders a pane is open in: those workspace rows show a live dot. */
   openDirs: string[];
   /** VIEW-051: the window's agent and shell panes; a workspace lists its running ones as rows
-   * (own agent mark, own title) and counts them. `onOpenSession` shows that pane. */
+   * and counts them (the left pane no longer lists terminals as rows). */
   sessions?: { key: number; agent: string; title: string; cwd: string | null; running: boolean }[];
   onOpenSession?: (key: number) => void;
   /** PROJ-063: each open folder's strongest agent state and when it last changed. */
@@ -209,10 +209,24 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onOpenSession = () => {}, states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
-  const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[] } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
+  // Escape closes the menu wherever focus is, and puts focus back on what had it.
+  useEffect(() => {
+    if (!menu) return;
+    const back = document.activeElement as HTMLElement | null;
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setMenu(null);
+      back?.focus();
+    };
+    document.addEventListener("keydown", esc, true);
+    return () => document.removeEventListener("keydown", esc, true);
+  }, [menu]);
   const [detailsOf, setDetailsOf] = useState<{ path: string; name: string; item: string; comment: string; error?: string } | null>(null);
   const [batch, setBatch] = useState<{ root: string; order: string[]; error?: string } | null>(null);
   const [statusesOf, setStatusesOf] = useState<{ path: string; rows: StatusRow[]; error?: string } | null>(null); // PROJ-084
@@ -1117,7 +1131,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
       const check = await invoke<RemoveCheck>("workspace_remove_check", { projectId, path });
       const settings = await invoke<Record<string, unknown>>("get_settings");
       asked = { projectId, path, branch, check, force: false, keep: keepsAtFirst(check) };
-      if (!skipsQuestion(check, settings)) {
+      if (!skipsQuestion(check, settings) || runNote([path])) {
         setConfirm(asked);
         asked = null;
       }
@@ -1178,6 +1192,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
     const deleting = busy === "removing" && confirm?.path === w.path;
     setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files) }) });
   };
+  // A project header or a group row opens its own short list; `projectId` holds the group id for a group.
+  const pop = (e: { preventDefault(): void; clientX: number; clientY: number }, id: string, items: MenuItem[], label: string) => {
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, projectId: id, path: "", items, label });
+  };
+  const askGroup = (g: Group) => (openGroup(g), setDropGroup({ remove: false }));
   // T-055: a workspace with children offers only to delete them all; a lone one follows the question setting.
   const startDelete = async (p: Project, w: Worktree) => {
     const now = await invoke<Record<string, unknown>>("get_settings");
@@ -1222,11 +1242,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
   const runMenu = async (id: string) => {
     const m = menu;
     setMenu(null);
+    const g = m && id.startsWith("grp:") && groups.groups.find((x) => x.id === m.projectId);
+    if (g) return id === "grp:delete" ? askGroup(g) : openGroup(g);
     const p = m && projects.find((x) => x.id === m.projectId);
     const w = m && (worktrees[m.projectId] ?? []).find((x) => x.path === m.path);
+    if (p && id.startsWith("proj:")) return id === "proj:new" ? setCreating(p.id) : id === "proj:settings" ? openSettings(p) : setDropProject(p.id);
     if (!m || !p || !w) return;
     try {
       if (id === "delete") await startDelete(p, w);
+      else if (id === "hide") await hide(w, true);
       else if (id === "sleep") sleep(w);
       else if (id === "wake") wake(w);
       else if (id === "parent") setMoving(w.path);
@@ -1499,13 +1523,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
     if (word) return <span className="count working" title={`${word}; split panes are counted apart`}>{word}</span>;
     return n > 0 ? <span className="count">{n}</span> : null;
   };
-  const paneRows = (w: Worktree, depth = 0) =>
-    liveIn(w).map((s) => (
-      <div key={s.key} className="sess pane-row" role="button" tabIndex={0} data-pane={s.key} data-agent={s.agent} style={{ paddingLeft: 44 + depth * 14 }} title={"Show " + s.title} onClick={() => onOpenSession(s.key)} onKeyDown={(e) => e.key === "Enter" && onOpenSession(s.key)}>
-        <VendorMark agent={s.agent as Agent} size={12} />
-        <span className="name">{s.title}</span>
-      </div>
-    ));
+  // TERM-045: the line a removal question adds when terminals under these workspaces still run (and the ask is on).
+  const runNote = (paths: string[]) => {
+    const key = (d: string) => d.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+    const under = (c: string) => paths.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/"));
+    const n = asksBeforeClose(settings) ? sessions.filter((s) => s.running && s.cwd !== null && under(s.cwd)).length : 0;
+    return n ? ` ${n} terminal${n === 1 ? " is" : "s are"} still running and will be closed.` : "";
+  };
   const isSelected = (w: Worktree) => activeDir !== null && same(activeDir, w.path);
   const infoOf = (w: Worktree): RowInfo => {
     const info = Object.entries(states).find(([d]) => same(d, w.path))?.[1] ?? { state: "idle", changed: 0, pr: null };
@@ -1657,8 +1681,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
     const shut = shutKids.has(w.path);
     const up = w.parent ? (worktrees[p.id] ?? []).find((x) => !x.isMain && same(x.path, w.parent as string)) : undefined;
     return (
-      <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path}>
-        <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} role="button" tabIndex={0} onContextMenu={(e) => void openMenu(e, p, w)} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => (e.key === "Enter" ? show(w) : e.key === "F2" && startRename(w))} title={hoverTitle} data-state={info.state} style={depth || kids ? { paddingLeft: 26 + depth * 14 - (kids ? 24 : 0) } : undefined}>
+      <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, input, textarea") && void openMenu(e, p, w)}>
+        <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => (e.key === "Enter" ? show(w) : e.key === "F2" && startRename(w))} title={hoverTitle} data-state={info.state} style={depth || kids ? { paddingLeft: 26 + depth * 14 - (kids ? 24 : 0) } : undefined}>
           {kids && (
             <button
               className={`fold${shut ? " shut" : ""}`}
@@ -1796,7 +1820,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
           )}
         </div>
         <CardLine shown={cardDetails.shown} facts={facts} depth={depth} />
-        {paneRows(w, depth)}
         {statusesOf?.path === w.path && !asking && (
           <StatusEditor
             initial={statusesOf.rows}
@@ -1853,7 +1876,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
         {batch?.root === w.path && (
           <div className="sb-form warn" data-delete-all={worktreeLabel(w)}>
             <div>
-              Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.
+              Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
             </div>
             <ul style={{ margin: 0, paddingLeft: 16 }}>
               {batch.order.map((d) => (
@@ -1918,6 +1941,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
             <span>
               Remove <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
               {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
+              {runNote([confirm.path])}
             </span>
             {confirm.check.changes.length > 0 && (
               <ul className="del-changes" aria-label="changes that would be lost">
@@ -2003,7 +2027,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
       const opening = creating === p.id;
       return (
         <div key={p.id}>
-          <div className="proj" title={p.path} {...headerDrag(p.id)}>
+          <div className="proj" title={p.path} {...headerDrag(p.id)} onContextMenu={(e) => pop(e, p.id, projectMenu(), "Project")}>
             <HeaderBadge colour={headerColourOf(settings, "p", p.id)} />
             <ProjectIcon value={icons[p.id]} name={projectLabel(p)} auto={autoIcons[p.id]} />
             <span className="name" title={p.displayName ? p.name : undefined}>{projectLabel(p)}{labels[p.id]?.hint && <span className="sb-name-hint" title={labels[p.id].hint ?? undefined}>{labels[p.id].hintCut}</span>}</span>
@@ -2013,8 +2037,25 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
             <button className={`ib${opening ? " on" : ""}`} title="New workspace: a branch in its own folder" aria-pressed={opening} onClick={() => setCreating(opening ? null : p.id)}>
               <Plus size={13} />
             </button>
+            <button className="ib rm" title="Remove project: out of Kolux; its folder stays on disk" aria-label={`Remove ${projectLabel(p)}`} data-proj-x onClick={() => setDropProject(dropProject === p.id ? null : p.id)}>
+              <Close size={11} />
+            </button>
           </div>
+          {dropProject === p.id && (
+            <div className="note sb-form warn" role="alertdialog" aria-label="Remove project">
+              <div>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</div>
+              <div className="btn-row">
+                <button className="btn danger" data-remove-project-yes onClick={() => removeProject(p)}>
+                  Remove {p.name}
+                </button>
+                <button className="btn" onClick={() => setDropProject(null)}>
+                  Keep it
+                </button>
+              </div>
+            </div>
+          )}
           {main && (
+            <div className="sb-main" onContextMenu={(e) => void openMenu(e, p, main)}>
             <button className={`branch${isSelected(main) ? " sel" : ""}`} onClick={() => show(main)} title={`Show ${main.path}`}>
               <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
               <span className="name">{worktreeLabel(main)}</span>
@@ -2024,8 +2065,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
                 <ChevronDown size={12} />
               </span>
             </button>
+            <button className="ib rm" title="Remove project: out of Kolux; its folder stays on disk" aria-label={`Remove ${projectLabel(p)}`} data-main-x onClick={() => setDropProject(p.id)}>
+              <Close size={11} />
+            </button>
+            </div>
           )}
-          {main && paneRows(main)}
           {settingsFor === p.id && (
             <div className="sb-form" data-project-settings={p.id}>
               <label>Workspaces folder for {p.name}</label>
@@ -2060,19 +2104,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
                   Remove project
                 </button>
               </div>
-              {dropProject === p.id && (
-                <div className="note" role="alertdialog" aria-label="Remove project">
-                  <div>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.</div>
-                  <div className="btn-row">
-                    <button className="btn danger" data-remove-project-yes onClick={() => removeProject(p)}>
-                      Remove {p.name}
-                    </button>
-                    <button className="btn" onClick={() => setDropProject(null)}>
-                      Keep it
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
           {cleanupFor === p.id && (
@@ -2138,6 +2169,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
         <>
           <div className="sb-hint">
             Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
+            {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
           </div>
           <label className="check">
             <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
@@ -2173,10 +2205,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
       projectBlock(n.project)
     ) : (
       <div key={n.group.id} className="proj-group" data-project-group={n.group.id}>
-        <div className="sb-group-row" {...headerDrag(n.group.id)}>
-          <button className="sb-group" aria-expanded={!folded.has(n.group.id)} onClick={() => toggleFold(n.group.id)}>
+        <div className="sb-group-row" {...headerDrag(n.group.id)} onContextMenu={(e) => pop(e, n.group.id, groupMenu(), "Group")}>
+          <button className="sb-group" title={n.group.name} aria-expanded={!folded.has(n.group.id)} onClick={() => toggleFold(n.group.id)}>
             <HeaderBadge colour={headerColourOf(settings, "g", n.group.id)} />
-            {n.group.name}
+            <span className="sb-gname">{n.group.name}</span>
             <span className="count">{n.count}</span>
             <span className="chev">
               <ChevronDown size={12} />
@@ -2184,6 +2216,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
           </button>
           <button className={`ib${groupFor === n.group.id ? " on" : ""}`} title="Group settings: its name, where it sits, delete it" aria-pressed={groupFor === n.group.id} onClick={() => (groupFor === n.group.id ? setGroupFor(null) : openGroup(n.group))}>
             <Gear />
+          </button>
+          <button className="ib rm" title="Delete group…" aria-label={"Delete group " + n.group.name} data-group-x onClick={() => askGroup(n.group)}>
+            <Close size={11} />
           </button>
         </div>
         {groupFor === n.group.id && groupForm(n.group, n.count)}
@@ -2437,20 +2472,22 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
           {message && <MessageNote kind={message.kind} text={message.text} />}
           {menu && (
             <>
-              <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
-              <div role="menu" aria-label="Workspace" data-menu-for={menu.path} style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 50, minWidth: 180, padding: 4, display: "flex", flexDirection: "column", background: "var(--app-bg)", border: "1px solid var(--line-focus)", borderRadius: 8 }} onKeyDown={(e) => e.key === "Escape" && setMenu(null)}>
+              <div className="sb-menu-back" onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
+              <div role="menu" className="sb-menu" aria-label={menu.label ?? "Workspace"} data-menu-for={menu.path || menu.projectId} style={{ left: menu.x, top: menu.y }} ref={(el) => {
+                if (el) el.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - el.offsetHeight - 8))}px`;
+              }}>
                 {menu.items.map((it) =>
                   it.children ? (
-                    <div key={it.id} role="group" aria-label={it.label} style={{ display: "flex", flexDirection: "column" }}>
-                      <div style={{ padding: "4px 8px", color: "var(--fg-muted)", fontSize: 11 }}>{it.label}</div>
+                    <div key={it.id} role="group" aria-label={it.label}>
+                      <div className="sb-menu-h">{it.label}</div>
                       {it.children.map((c) => (
-                        <button key={c.id} role="menuitem" disabled={it.disabled || c.disabled} style={{ textAlign: "left", padding: "4px 8px 4px 20px" }} onClick={() => void runMenu(c.id)}>
+                        <button key={c.id} role="menuitem" className="sub" disabled={it.disabled || c.disabled} onClick={() => void runMenu(c.id)}>
                           {c.label}
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <button key={it.id} role="menuitem" disabled={it.disabled} style={{ textAlign: "left", padding: "4px 8px", color: it.danger ? "#f0a07a" : undefined }} onClick={() => void runMenu(it.id)}>
+                    <button key={it.id} role="menuitem" data-danger={it.danger || undefined} data-sep={it.sep || undefined} disabled={it.disabled} onClick={() => void runMenu(it.id)}>
                       {it.label}
                     </button>
                   ),
@@ -2520,10 +2557,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], onO
             <Sliders size={14} />
           </button>
           <HelpMenu />
-          <button className="upd" title="Check for a newer version of Kolux RS" aria-label="Check for updates" onClick={requestUpdateCheck}>
-            <Refresh size={13} />
-            <span className="label">Check for updates</span>
-          </button>
           {NOT_BUILT && (
             <button className="ib" title="Focus (not built yet)">
               <Target />

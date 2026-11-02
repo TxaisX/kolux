@@ -1,7 +1,7 @@
 // PROJ-065: the workspace context menu, and T-055's delete rules for a workspace with children.
 // Pure: the sidebar draws and runs what this lists.
 
-export type MenuItem = { id: string; label: string; disabled?: boolean; danger?: boolean; children?: MenuItem[] };
+export type MenuItem = { id: string; label: string; disabled?: boolean; danger?: boolean; /** A divider is drawn above this item. */ sep?: boolean; children?: MenuItem[] };
 
 /** The file manager's name follows the platform. */
 export const fileManagerName = (platform: string): string => (/^mac|darwin/i.test(platform) ? "Finder" : /^win/i.test(platform) ? "Explorer" : "Files");
@@ -19,6 +19,12 @@ export type MenuFor = {
   statuses: { id: string; label: string }[];
   editors: { label: string; command: string }[];
 };
+
+const REMOVE_PROJECT: MenuItem = { id: "proj:remove", label: "Remove project…", danger: true, sep: true };
+/** Right-click on a project header. */
+export const projectMenu = (): MenuItem[] => [{ id: "proj:new", label: "New workspace" }, { id: "proj:settings", label: "Project settings" }, REMOVE_PROJECT];
+/** Right-click on a group row. */
+export const groupMenu = (): MenuItem[] => [{ id: "grp:settings", label: "Group settings" }, { id: "grp:delete", label: "Delete group…", danger: true, sep: true }];
 
 /**
  * What a right-click lists: Delete, Sleep or Wake, Move to status, Set parent, Open in (file
@@ -45,7 +51,10 @@ export function rowMenu(o: MenuFor): MenuItem[] {
       ],
     });
   }
+  if (one && !o.isMain) items.push({ id: "hide", label: "Hide from the sidebar" });
   if (one && o.alt) items.push({ id: "developer", label: "Developer", children: [{ id: "dev:copy-path", label: "Copy path" }, { id: "dev:copy-branch", label: "Copy branch name" }] });
+  // The main checkout cannot be hidden or deleted, so its way out is removing the project.
+  if (one && o.isMain) items.push(REMOVE_PROJECT);
   return items;
 }
 
