@@ -19,7 +19,7 @@ the installed app yet because the cycle made no release.
 | Plan tasks done | 719 / 775 | **723 / 779** |
 | Pull requests merged | — | **26** (one parked: #37) |
 | First load (startup download) | under the 1,485,000-byte ceiling | **1,483,871 bytes**, 1,129 under |
-| DT/T number collisions | 3 numbers renumbered at merge (cloud phase) | **0** in the local phase |
+| Decision (DT) and task (T) number clashes | 3 numbers renumbered at merge (cloud phase) | **0** in the local phase |
 | Release in your hands | v0.1.5 | **v0.1.5** (no release this cycle) |
 
 Scores are from `node scripts/plan-check.mjs` on `main` at `a4593c03`, after the STATE update (#77) merged.
@@ -36,7 +36,7 @@ got its own **worktree** (a separate working folder on its own branch, so sessio
 | Session | Job |
 |---|---|
 | fa | the only one who merges |
-| 2f, 90 | fix or build a pull request, get a fresh read-only review, wait for Windows CI to pass on that exact commit, hand it to fa |
+| 2f, 90 | fix or build a pull request, get a fresh read-only review, wait for Windows CI (GitHub's automatic build-and-test run) to pass on that exact commit, hand it to fa |
 | 57 | coordinator: assigns the work, answers questions, keeps the queue |
 
 fa merged `main` into each pull request, waited for CI to pass again, and merged one at a time. All 26 merges
@@ -76,7 +76,7 @@ would lift the cycle to A-.
 Why not lower:
 
 - Every queued item was built.
-- The riskiest code (stopping programs, deleting inside WSL, network calls with your keys, running notebook
+- The riskiest code (stopping programs, deleting inside WSL (Windows Subsystem for Linux: Linux running inside Windows), network calls with your keys, running notebook
   cells) held up when read line by line.
 - CI discipline was close to perfect: 26 of 26 merged heads passed on the exact commit, and only one needed a
   rerun.
@@ -136,12 +136,12 @@ Each finding is listed once, even when several reviewers raised it. "Open" means
 | 3 | MEDIUM | #38 | Personal account details for a video service are still readable in the pull request's commit history on the public repo. `main` is clean. | yes, needs you |
 | 4 | MEDIUM | #69 | The JPEG 2000 decoder commits landed after the only recorded review. The safety reviewer looked at them afterwards and found nothing wrong, but no review is on record for them. | record gap |
 | 5 | MEDIUM | #38 | T-623 is ticked done without its live check. The `kolux/skills` repo that its install offer points at returns "not found". | yes |
-| 6 | MEDIUM | cycle | `main` failed CI after the last merge on a known flaky test, its third hit this cycle. Four flaky tests are not tracked anywhere in the plan. | rerun passed; flakes untracked |
+| 6 | MEDIUM | cycle | `main` failed CI after the last merge on a known flaky test (one that fails at random, not because of a bug), its third hit this cycle. Four flaky tests are not tracked anywhere in the plan. | rerun passed; flakes untracked |
 | 7 | MEDIUM | #72, #75, #63, #69 | Records that say the wrong thing: #72's description says external rows cannot be edited, but they can; #75's plan line says the security review is pending, but it is done; #63's plan line says DT-C66 is unconfirmed, but the decisions file says confirmed; #69's description says JPEG 2000 was "not decided here", but DT-C71 decides it. | yes |
 | 8 | MEDIUM | #69, #70, #72 | Review follow-ups live only in pull request comments, including #72's untested Hermes rename save, which is where an earlier data-loss bug was. | yes |
-| 9 | MEDIUM | #64 | WSL search and reads cannot be reached by anyone: the folder fence still refuses WSL paths. (#63's WSL skill delete does work for WSL users; your PC just has none.) | yes |
+| 9 | MEDIUM | #64 | WSL search and reads cannot be reached by anyone: the folder fence (Kolux's list of folders it may read) still refuses WSL paths. (#63's WSL skill delete does work for WSL users; your PC just has none.) | yes |
 | 10 | MEDIUM | #66–#76 | No local-phase pull request touched the docs. The per-account usage paragraph now contradicts the app, the Help menu list is missing five entries, and five new features are not in the guide. | yes |
-| 11 | MEDIUM | #73 | The artifact viewer is kept away from app commands by how WebView2 routes messages, not by a check in Kolux itself. Tracked as T-632. | tracked |
+| 11 | MEDIUM | #73 | The artifact viewer is kept away from app commands by how WebView2 (the Windows part that draws web pages inside Kolux) routes messages, not by a check in Kolux itself. Tracked as T-632. | tracked |
 | 12 | MEDIUM | older, found by the adversarial check | The skills installer downloads from a placeholder GitHub address, `kolux/skills`. That repo does not exist, but the account `kolux` does (created 2018). If you do not own it, a stranger could control what `kolux skills install` downloads. #38 added `video` to that offer. | yes, needs you |
 
 Lowered from serious: #76's Python-dependent tests skip silently when Python is missing, but timing on #76's CI
@@ -151,12 +151,12 @@ run shows they really ran there. LOW.
 
 | # | Condition | After cycle 4 | Now |
 |---|---|---|---|
-| 1 | Completion: 228/228 P0 cards; 0 open buildable tasks | 215/228 | 217/228. The 11 left all need a live run, a Mac or WSL |
+| 1 | Completion: 228/228 P0 cards; 0 open buildable tasks | 215/228 (216 by the time cycle 5 began) | 217/228. The 11 left all need a live run, a Mac or WSL |
 | 2 | Release: signed release, updater proven, kolux on PATH, CI green | releases ship from your PC | v0.1.5 is the latest. No release this cycle, by your rule ("no releases or tags"). The release hold from the artifact scare was lifted (#73) |
 | 3 | Product: hooks on with consent, one status, Review changes, no dead screens | code merged, live check pending | more built (Help menu, safe Stop, check tab); live checks still pending |
 | 4 | Engineering: App.tsx < 800, 0 dead commands, first load < 1.5 MB, tests green | first load met | App.tsx 222 ✔. First load 1,483,871 ✔. Tests: green on all 26 merge heads; `main` red once on a flaky test at close, green on rerun. Dead commands not re-measured |
 | 5 | Trust: safe defaults, no telemetry, threat model tested | partly | stronger: Stop guards, a network allow-list, the privacy audit pins each outside call. #37's HIGH kept off `main` ✔. T-632 and the #38 history item are open |
-| 6 | Docs: guide matches the build; STATE generated | partly | slipped: one guide passage contradicts the app, and new features are missing. STATE.md stale until #77 merges |
+| 6 | Docs: guide matches the build; STATE generated | partly | slipped: one guide passage contradicts the app, and new features are missing. STATE.md regenerated by #77 (217/228, 723/779) |
 | 7 | Workspace: reclaim commands handed to you | **met** | **met** |
 
 ## Lessons
@@ -176,7 +176,7 @@ collisions. The bookkeeping reviewer confirmed no duplicate number was added thi
 
 **4. A "hands off" message arrived too late.** Session 90 pushed `e3dc147d` to #69's branch after that branch
 had been handed to 2f. The commit deleted 2,680 lines, undoing the work of #72–#74 on that branch. 90 reverted
-it a minute later (`d3bcbd57`) without force-pushing, so history stayed honest and the two commits cancel out.
+it a minute later (`d3bcbd57`) without force-pushing (rewriting the branch's history), so history stayed honest and the two commits cancel out.
 **Fix for cycle 6:** every branch gets one named owner, and when work moves, the old owner's branch is locked
 before the new owner starts.
 
@@ -238,7 +238,8 @@ review follow-ups only in comments, where cycle 6 will not see them. They are li
 1. **Delete the branch `lane/video-skill`** on GitHub, then ask GitHub support to purge pull request #38's hidden
    copy of its commits. This is finding 3. The coordinator's delete was blocked by its permission settings, so
    this step is yours.
-2. **Confirm DT-C63** (the guide's hooks wording). It is still marked "needs you".
+2. **Confirm DT-C63** ("Open a session" with no project yet now opens Add Project instead of doing nothing).
+   It is still marked "needs you".
 3. **Tell us whether you own the GitHub account `kolux`.** If not, the skills installer should point at a repo you
    own (finding 12).
 4. **Decide when to release.** Everything in this report is on `main` but not on your PC.
