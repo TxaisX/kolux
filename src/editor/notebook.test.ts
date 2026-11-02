@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { insertCell, isNotebook, kindOf, limited, moveCell, outputText, parseNotebook, removeCell, serialize, setKind, sourceOf, withSource, type Notebook } from "./notebook";
+import { insertCell, isNotebook, kindOf, limited, moveCell, outputText, parseNotebook, removeCell, serialize, setKind, sourceOf, withOutputs, withSource, type Notebook } from "./notebook";
 
 // EDIT-024 (T-316-b): the notebook model. No DOM and no Python: it reads, changes and writes the JSON.
 const RAW = {
@@ -121,5 +121,32 @@ describe("long cells and outputs", () => {
     };
     expect(outputText(c)).toBe("a\nb\n42\n[picture output, kept in the file]\nValueError: bad");
     expect(outputText({ cell_type: "markdown" })).toBe("");
+  });
+});
+
+describe("withOutputs", () => {
+  const stream = [{ output_type: "stream", name: "stdout", text: ["new\n"] }];
+  it("replaces the outputs and run number of that code cell and keeps every other field", () => {
+    const nb = load();
+    const next = withOutputs(nb, 1, stream, 4);
+    expect(next.cells[1]).toEqual({ ...RAW.cells[1], outputs: stream, execution_count: 4 });
+    expect(next.cells[1].id).toBe("c1");
+    expect(next.cells[1].metadata).toEqual({});
+    expect(sourceOf(next.cells[1])).toBe("print('hi')\nx = 1");
+  });
+  it("keeps the other cells, the notebook's unknown fields, and does not touch the old notebook", () => {
+    const nb = load();
+    const next = withOutputs(nb, 1, stream, 4);
+    expect(next.cells[0]).toBe(nb.cells[0]);
+    expect(next.future_field).toEqual({ a: 1 });
+    expect(next.metadata).toEqual(RAW.metadata);
+    expect(nb.cells[1].execution_count).toBe(3);
+    expect(parseNotebook(serialize(next))).toMatchObject({ ok: true });
+  });
+  it("leaves a markdown cell and a missing cell alone", () => {
+    const nb = load();
+    expect(withOutputs(nb, 0, stream, 4)).toBe(nb);
+    expect(withOutputs(nb, 9, stream, 4)).toBe(nb);
+    expect(withOutputs(nb, -1, stream, 4)).toBe(nb);
   });
 });
