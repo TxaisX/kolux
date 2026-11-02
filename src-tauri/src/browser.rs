@@ -290,9 +290,10 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   // T-656: the extra headers and credentials go only to the site (origin) they were set for, and only
   // from a page on that site. Addresses resolve as the engine resolves them (against the document's
   // base address), the request is sent to exactly the address that was checked, and every built-in the
-  // check uses is kept here, before any page script runs, so a page cannot swap one to read the values
-  // or to point a checked request somewhere else.
-  const R = Reflect.apply, assign = Object.assign, ownKeys = Object.keys, desc = Object.getOwnPropertyDescriptor, define = Object.defineProperty;
+  // check uses is kept here, before any page script runs, so a page on another site cannot swap one to
+  // read the values or to point a checked request at itself. Script the site itself serves is trusted
+  // with them (DT-C92).
+  const R = Reflect.apply, assign = Object.assign, ownKeys = Object.keys, desc = Object.getOwnPropertyDescriptor, define = Object.defineProperty, bare = Object.create;
   const RealURL = URL, urlHref = desc(URL.prototype, "href").get, urlOrigin = desc(URL.prototype, "origin").get;
   const baseOf = desc(Node.prototype, "baseURI").get, reqUrl = desc(Request.prototype, "url").get;
   const parse = (u, base) => { try { return new RealURL(u, base); } catch (_) { return null; } };
@@ -313,7 +314,7 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
     const go = () => {
       const h = new RealHeaders((init && init.headers) || (asked !== null ? input.headers : undefined));
       extra(url, (k, v) => R(headerSet, h, [k, v]));
-      const r = realFetch(asked !== null ? input : url, assign({}, init, { headers: h }));
+      const r = realFetch(asked !== null ? input : url, assign(bare(null), init, { headers: h }));
       r.then((res) => keep(L.net, { url, kind: "fetch", status: res.status }), () => keep(L.net, { url, kind: "fetch", failed: "error" }));
       return r;
     };
@@ -358,10 +359,12 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   window.prompt = (m, d) => dialog("prompt", m, d);
   window.__kxDialog = (a) => { if (a && typeof a === "object") L.armed.push(a); return L.armed.length; };
   // T-656: fixed in place, so a page cannot take the state over, and values named for another site
-  // than this page's are dropped before they are kept (the app blanks them too).
-  define(window, "__kxEmu", { writable: false, configurable: false, value: (s) => {
-    if (!s || typeof s !== "object") return;
-    s = assign({}, s);
+  // than this page's are dropped before they are kept (the app blanks them too). Only the state's own
+  // fields are copied, into an object with no prototype, so nothing the page put on the prototypes runs.
+  define(window, "__kxEmu", { writable: false, configurable: false, value: (given) => {
+    if (!given || typeof given !== "object") return;
+    const s = bare(null), ks = ownKeys(given);
+    for (let i = 0; i < ks.length; i++) s[ks[i]] = given[ks[i]];
     const here = location.origin;
     if ("headers" in s && s.headersOrigin !== here) s.headers = {};
     if ("auth" in s && s.authOrigin !== here) s.auth = null;
@@ -387,8 +390,17 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
 /// T-656: handed in as an object literal (re-serialised here, so it is always one), not through the
 /// page's `JSON.parse`, which a page could replace to read the state.
 pub fn emu_script(state: &str) -> String {
-    let state = serde_json::from_str::<serde_json::Value>(state).unwrap_or(serde_json::Value::Null);
-    format!("window.__kxEmu && window.__kxEmu({state})")
+    format!("window.__kxEmu && window.__kxEmu({})", emu_literal(state))
+}
+
+/// T-656: like [`emu_script`], but `full` is only written into a document that is on `site` when the
+/// script runs (a load hook can run while the previous page is still showing); any other gets `blank`.
+pub fn emu_script_for(site: &str, full: &str, blank: &str) -> String {
+    format!("window.__kxEmu && window.__kxEmu(location.origin === {} ? {} : {})", serde_json::Value::from(site), emu_literal(full), emu_literal(blank))
+}
+
+fn emu_literal(state: &str) -> serde_json::Value {
+    serde_json::from_str(state).unwrap_or(serde_json::Value::Null)
 }
 
 /// The chord a navigation carries, if it is one of ours and names a browser action.
@@ -1350,8 +1362,8 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
             // is tried again after a reload; the pane keeps the old one while the site is the same.
             // T-242 (BROW-050): what the command line emulates for this tab stays in force across
             // loads; a new document starts from the script's defaults, so the state goes in again.
-            if let Some(state) = cli::emu_state(id, payload.url().as_str()) {
-                let _ = page.eval(emu_script(&state));
+            if let Some(script) = cli::emu_hand_in(id, payload.url().as_str()) {
+                let _ = page.eval(script);
             }
             if event == "finished" {
                 let (icon_app, icon_dev, at) = (load_app.clone(), icon_dev.clone(), payload.url().to_string());
@@ -3533,6 +3545,10 @@ mod t074_tests {
         }
         assert_eq!(emu_script(r#"{"offline":true}"#), r#"window.__kxEmu && window.__kxEmu({"offline":true})"#);
         assert_eq!(emu_script("not json); alert(1"), "window.__kxEmu && window.__kxEmu(null)");
+        assert_eq!(
+            emu_script_for("https://a.test", r#"{"auth":"Basic x","authOrigin":"https://a.test"}"#, r#"{"auth":null}"#),
+            r#"window.__kxEmu && window.__kxEmu(location.origin === "https://a.test" ? {"auth":"Basic x","authOrigin":"https://a.test"} : {"auth":null})"#
+        );
     }
 
     #[test]

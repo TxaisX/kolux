@@ -463,6 +463,10 @@ pub fn headers_of(text: &str) -> Result<Map<String, Value>, Fail> {
     if let Some((k, _)) = m.iter().find(|(_, v)| !v.is_string()) {
         return Err(args(format!("--headers: the value of {k} must be a string")));
     }
+    // The state reaches the page as an object literal, where this name would not be a header.
+    if m.contains_key("__proto__") {
+        return Err(args("--headers: __proto__ is not a header name the page can be sent"));
+    }
     Ok(m)
 }
 
@@ -712,6 +716,18 @@ pub fn emu_state(id: u32, page: &str) -> Option<String> {
     Some(Value::Object(s).to_string())
 }
 
+/// T-656: the script that hands the tab's state to the document showing `page`. When the state
+/// holds values for that site, they are written in only if the document running the script is on
+/// it; any other document (the previous page while a load starts, a stale address) gets them blank.
+pub fn emu_hand_in(id: u32, page: &str) -> Option<String> {
+    let full = emu_state(id, page)?;
+    let blank = emu_state(id, "about:blank").unwrap_or_else(|| "{}".into());
+    Some(match origin_of(page).filter(|_| full != blank) {
+        Some(site) => super::emu_script_for(&site, &full, &blank),
+        None => super::emu_script(&full),
+    })
+}
+
 /// T-656: an address's site as its page sees it (`location.origin`); `None` when it has none
 /// (about:blank, data:, an unparsable address).
 pub fn origin_of(url: &str) -> Option<String> {
@@ -802,8 +818,8 @@ pub fn preset(id: u32, name: Option<&str>) -> Result<Value, Fail> {
 /// Sends the tab's emulation state to its page (the same script the load hook runs).
 fn apply_emu(id: u32) -> Result<(), Fail> {
     let page = tabs().into_iter().find(|t| t.id == id).map(|t| t.url).unwrap_or_default();
-    let state = emu_state(id, &page).unwrap_or_else(|| "{}".into());
-    eval_json(id, &format!("({}, {{ok:true}})", super::emu_script(&state)), EVAL_WAIT).map(|_| ()).map_err(|m| Fail::new("failed", m))
+    let script = emu_hand_in(id, &page).unwrap_or_else(|| super::emu_script("{}"));
+    eval_json(id, &format!("({script}, {{ok:true}})"), EVAL_WAIT).map(|_| ()).map_err(|m| Fail::new("failed", m))
 }
 
 /// The page's log entries (`__kxLog`): the recorder is in every page's first script.
@@ -1701,6 +1717,14 @@ mod tests {
         assert_eq!(at("https://b.test/login")["auth"], json!("Basic bWU6c2VjcmV0"));
         // Stored, not lost: back on the site the headers apply again.
         assert_eq!(at("http://127.0.0.1:5000/")["headers"], json!({ "X-Token": "t" }));
+        // The hand-in writes the values only into a document that is on their site when it runs (a
+        // load starting from another site runs it in the page still showing); any other gets blanks.
+        let script = emu_hand_in(id, "http://127.0.0.1:5000/form").unwrap();
+        let (guard, rest) = script.split_once(" ? ").unwrap();
+        assert!(guard.ends_with(r#"location.origin === "http://127.0.0.1:5000""#), "{script}");
+        let blank = rest.rsplit_once(" : ").unwrap().1;
+        assert!(!blank.contains("X-Token") && !blank.contains("Basic") && !blank.contains("127.0.0.1"), "{script}");
+        assert!(headers_of(r#"{"__proto__":"x"}"#).is_err());
         forget(id);
         assert_eq!(origin_of("https://b.test:443/x"), Some("https://b.test".into()));
         assert_eq!(origin_of("about:blank"), None);

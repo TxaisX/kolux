@@ -1,5 +1,5 @@
-site A http://127.0.0.1:61154, site B http://127.0.0.1:61155; browser tab 5 on A
-set headers: page 5 sends 1 extra header(s) with its requests to http://127.0.0.1:61154; set credentials: page 5 sends HTTP basic credentials with its requests to http://127.0.0.1:61154
+site A http://127.0.0.1:64493, site B http://127.0.0.1:64494; browser tab 5 on A
+set headers: page 5 sends 1 extra header(s) with its requests to http://127.0.0.1:64493; set credentials: page 5 sends HTTP basic credentials with its requests to http://127.0.0.1:64493
 onA-fetch-self: A token=t656-secret auth=Basic …
 onA-xhr-self: A token=t656-secret auth=Basic …
 onA-fetch-other: B token=- auth=-
@@ -13,7 +13,7 @@ onB-xhr-other: A token=- auth=-
 back on A: A token=t656-secret auth=Basic …
 after set headers --headers {}: A token=- auth=Basic …
 screenshot: G:/Temp/live-v15-logs/T-656-end.png
-PASS both set commands record site A: http://127.0.0.1:61154 / http://127.0.0.1:61154
+PASS both set commands record site A: http://127.0.0.1:64493 / http://127.0.0.1:64493
 PASS a page on A: fetch and XHR to A carry the header and credentials: see lines above
 PASS a page on A: fetch and XHR to B carry neither: see lines above
 PASS no preflight reached B for the header (nothing extra was added): []

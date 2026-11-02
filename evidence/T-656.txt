@@ -8,9 +8,10 @@ What changed
 - The page script keeps the built-ins it relies on from before any page script runs; the hand-in function cannot be replaced.
 
 Checks run (fresh, after the last change)
-- npx vitest run src/browser: 260 passed (extraHeaders.test.ts: 9 tests — A gets the values with fetch and XHR, B does not;
+- npx vitest run src/browser: 261 passed (extraHeaders.test.ts: 10 tests — A gets the values with fetch and XHR, B does not;
   a page on B sends nothing; swapped setters see nothing; <base> pointing at B; an address that changes between reads;
-  a Request with a lying url getter; a state naming another site; an emptied set; the whole page script compiles)
+  a Request with a lying url getter; a state naming another site; setters a page plants on Object.prototype see nothing; an emptied set;
+  the whole page script compiles)
 - cargo test --lib browser: 291 passed, 0 failed
 - cargo clippy --all-targets -- -D warnings: clean
 - npx tsc --noEmit: OK
@@ -30,4 +31,9 @@ Redirect (recorded in DT-C92)
 Review
 - opus-high-review (first pass): B-; security-auditor: 2 medium, 2 low. All fixed (base address, state checked in the page,
   site name not handed to other sites, page tampering with built-ins) except the redirect, which is documented above.
-- Final review grade: see the PR.
+- Final pass: opus-high-review A-, no blocking findings; security-auditor one HIGH: when a load starts, the hand-in ran in the
+  page still showing (possibly another site) and its copy step could be watched by setters that page planted. Fixed: the app
+  writes the values only behind a check that the live document is on their site (others get blanks), and the page copies the
+  state without running page code. Regression tests in Rust (browser_cli t656) and vitest (fails on the old copy, passes now).
+  Also: fetch options built without page setters, a header named __proto__ refused, two comments narrowed to the DT-C92 scope.
+  Live proof re-run after these changes: 7/7 PASS.

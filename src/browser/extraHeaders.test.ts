@@ -136,6 +136,23 @@ describe("T-656: extra headers and credentials stay on their own site", () => {
     expect(Object.getOwnPropertyDescriptor(p.win, "__kxEmu")?.configurable).toBe(false);
   });
 
+  it("setters a page plants on Object.prototype never see the values, on another site or on their own", async () => {
+    const seen: unknown[] = [];
+    const names = ["headers", "auth", "headersOrigin", "authOrigin"];
+    const b = load(`${B}/`, {});
+    const a = load(`${A}/`, {});
+    for (const k of names) Object.defineProperty(Object.prototype, k, { set(v) { seen.push(v); }, get() { return undefined; }, configurable: true });
+    try {
+      b.emu(set);
+      a.emu(set);
+      await a.fetch("/api", { method: "GET" });
+    } finally {
+      for (const k of names) delete (Object.prototype as Record<string, unknown>)[k];
+    }
+    expect(seen).toEqual([]);
+    expect(a.sent[0].headers["x-token"]).toBe("secret-token");
+  });
+
   it("an emptied set sends nothing; headers with no site recorded go nowhere", async () => {
     const p = load(`${A}/`, { headers: {}, headersOrigin: A });
     await p.fetch("/api");
