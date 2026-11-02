@@ -7,6 +7,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Node's package runner, which fetches and runs the installer.
@@ -134,17 +135,42 @@ pub struct Launch {
 }
 
 const SHELL_SYNTAX: &[char] = &['&', '|', '<', '>', '^', '%', '!', '"', '\'', '`', ';', '$', '\n', '\r', '\0'];
+/// The runner's path sits inside quotes, where only these still mean something to the interpreter.
+const QUOTED_SYNTAX: &[char] = &['%', '!', '"', '\n', '\r', '\0'];
 
-pub fn launch(cmd: &Cmd, windows: bool) -> Result<Launch, String> {
+/// `resolved` is where the runner was found (`agents::find_program`). R10-skills.2 (T-633): it must be
+/// a full path, because the interpreter looks a bare name up in the current folder first, where a
+/// cloned project could have planted its own `npx.cmd`.
+pub fn launch(cmd: &Cmd, resolved: &Path, windows: bool) -> Result<Launch, String> {
+    let mut program = resolved.to_string_lossy().into_owned();
     if !windows {
-        return Ok(Launch { program: cmd.program.clone(), args: cmd.args.clone(), raw: None });
+        if !resolved.has_root() {
+            return Err(format!("{program:?} is not a full path, so Kolux will not run it"));
+        }
+        return Ok(Launch { program, args: cmd.args.clone(), raw: None });
     }
-    if let Some(bad) = std::iter::once(&cmd.program).chain(&cmd.args).find(|a| a.contains(SHELL_SYNTAX)) {
+    // Judged by Windows' rules on any system, so a test checks the Windows line anywhere. A drive
+    // path or a share; the \\?\ and \\.\ forms are refused, the interpreter does not run scripts there.
+    program = program.replace('/', "\\");
+    let drive = program.starts_with(|c: char| c.is_ascii_alphabetic()) && program.get(1..3) == Some(":\\");
+    let share = program.starts_with(r"\\") && !program.starts_with(r"\\?\") && !program.starts_with(r"\\.\");
+    if !(drive || share) {
+        return Err(format!("{program:?} is not a full path, so Kolux will not run it"));
+    }
+    let bad = Some(&program).filter(|p| p.contains(QUOTED_SYNTAX)).or_else(|| cmd.args.iter().find(|a| a.contains(SHELL_SYNTAX)));
+    if let Some(bad) = bad {
         return Err(format!("{bad:?} holds characters the Windows command interpreter would read as syntax, so Kolux will not run it"));
     }
     // /d skips the interpreter's start-up scripts; /s keeps the outer quotes below from being read.
-    let line = std::iter::once(format!("{}.cmd", cmd.program)).chain(cmd.args.iter().map(|a| quote(a))).collect::<Vec<_>>().join(" ");
+    let line = std::iter::once(format!("\"{program}\"")).chain(cmd.args.iter().map(|a| quote(a))).collect::<Vec<_>>().join(" ");
     Ok(Launch { program: "cmd.exe".into(), args: vec!["/d".into(), "/s".into(), "/c".into()], raw: Some(format!("\"{line}\"")) })
+}
+
+/// R10-skills.2 (T-633): where a run starts. A computer-wide one (`-g`) starts in the app's own
+/// folder (`pty::service::start_dir`, as `kolux open` does), so the folder the command was typed in
+/// has no say; a project one stays in that project, which is where it installs.
+pub fn run_dir(cmd: &Cmd, exe: &Path) -> Option<PathBuf> {
+    cmd.args.iter().any(|a| a == "-g").then(|| crate::pty::service::start_dir(exe).map(Path::to_path_buf)).flatten()
 }
 
 /// What a run left behind.
@@ -167,24 +193,40 @@ const NO_NODE: &str = "Node.js was not found, so the community skills installer 
 /// The real thing: no window, output kept, the whole process tree ended when `cancel` is set.
 pub struct Real;
 
+/// The process for a launch, started in `dir` when given (`run_dir`).
+fn command(l: &Launch, dir: Option<&Path>) -> std::process::Command {
+    let mut c = std::process::Command::new(&l.program);
+    if let Some(dir) = dir {
+        c.current_dir(dir);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // R10-skills.2 (T-633): the interpreter's own lookups (npx.cmd starting node) skip the
+        // current folder, which for a project install is the project. Node's launcher (libuv 1.48+,
+        // Node 22 and later) honours the same variable, so its children skip it too while they
+        // keep this environment.
+        c.env("NoDefaultCurrentDirectoryInExePath", "1");
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.args(&l.args);
+        if let Some(r) = &l.raw {
+            c.raw_arg(r);
+        }
+    }
+    #[cfg(not(windows))]
+    c.args(&l.args);
+    c
+}
+
 impl Installer for Real {
     fn run(&self, cmd: &Cmd, cancel: &AtomicBool) -> Result<Outcome, String> {
         use std::io::Read;
-        use std::process::{Command, Stdio};
-        let l = launch(cmd, cfg!(windows))?;
-        let mut c = Command::new(&l.program);
+        use std::process::Stdio;
+        let resolved = crate::agents::find_program(&cmd.program).ok_or_else(|| NO_NODE.to_string())?;
+        let l = launch(cmd, &resolved, cfg!(windows))?;
+        let dir = std::env::current_exe().ok().and_then(|exe| run_dir(cmd, &exe));
+        let mut c = command(&l, dir.as_deref());
         c.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-            c.args(&l.args);
-            if let Some(r) = &l.raw {
-                c.raw_arg(r);
-            }
-        }
-        #[cfg(not(windows))]
-        c.args(&l.args);
         let mut child = c.spawn().map_err(|e| if e.kind() == std::io::ErrorKind::NotFound { NO_NODE.to_string() } else { format!("The community skills installer could not start: {e}") })?;
         let buf = Arc::new(Mutex::new(Vec::<u8>::new()));
         let mut readers = vec![];
@@ -274,24 +316,125 @@ mod tests {
         assert!(safe_name("koluxward") && safe_name("a.b_c-d"));
     }
 
+    /// Where Node's runner was found on a test PC (any absolute path will do).
+    const NPX: &str = r"C:\Program Files\nodejs\npx.cmd";
+
     #[test]
     fn windows_goes_through_the_command_interpreter_as_one_line() {
         let c = update_cmd(&s(&["orchestration"])).unwrap();
-        let l = launch(&c, true).unwrap();
+        let l = launch(&c, Path::new(NPX), true).unwrap();
         assert_eq!((l.program.as_str(), l.args), ("cmd.exe", s(&["/d", "/s", "/c"])));
-        assert_eq!(l.raw.as_deref(), Some("\"npx.cmd --yes skills update orchestration -y -g\""));
-        assert_eq!(launch(&c, false).unwrap(), Launch { program: "npx".into(), args: c.args.clone(), raw: None });
+        assert_eq!(l.raw.as_deref(), Some(r#"""C:\Program Files\nodejs\npx.cmd" --yes skills update orchestration -y -g""#));
+        assert_eq!(launch(&c, Path::new("/usr/bin/npx"), false).unwrap(), Launch { program: "/usr/bin/npx".into(), args: c.args.clone(), raw: None });
     }
 
     #[test]
     fn windows_refuses_an_argument_the_interpreter_would_read_as_syntax() {
         for bad in ["a&calc", "a|b", "100%", "x^y", "a\"b", "a>b", "a!b"] {
             let c = Cmd { program: "npx".into(), args: s(&["add", bad]) };
-            assert!(launch(&c, true).is_err(), "{bad:?}");
-            assert!(launch(&c, false).is_ok());
+            assert!(launch(&c, Path::new(NPX), true).is_err(), "{bad:?}");
+            assert!(launch(&c, Path::new("/usr/bin/npx"), false).is_ok());
         }
         // Spaces and brackets in a folder path are fine: the argument is quoted.
         let c = Cmd { program: "npx".into(), args: s(&["add", r"C:\Program Files\Kolux [dev]\skills"]) };
-        assert_eq!(launch(&c, true).unwrap().raw.as_deref(), Some(r#""npx.cmd add "C:\Program Files\Kolux [dev]\skills"""#));
+        assert_eq!(launch(&c, Path::new(NPX), true).unwrap().raw.as_deref(), Some(r#"""C:\Program Files\nodejs\npx.cmd" add "C:\Program Files\Kolux [dev]\skills"""#));
+    }
+
+    /// R10-skills.2 (T-633): the runner is started by the full path it was found at, never a bare
+    /// name the interpreter would look up in the current folder first; a found path the interpreter
+    /// would read as syntax, or a relative one, is refused.
+    #[test]
+    fn t633_the_runner_starts_by_its_full_path_only() {
+        let c = update_cmd(&s(&["orchestration"])).unwrap();
+        let raw = launch(&c, Path::new(NPX), true).unwrap().raw.unwrap();
+        assert!(raw.starts_with(r#"""C:\"#), "{raw}");
+        assert!(!raw.contains(" npx.cmd") && !raw.starts_with("\"npx"), "{raw}");
+        for bad in [r"C:\100%\npx.cmd", r"C:\a!b\npx.cmd", r#"C:\a"b\npx.cmd"#, r"\\?\C:\nodejs\npx.cmd", r"\\.\C:\nodejs\npx.cmd", r"1:\npx.cmd"] {
+            assert!(launch(&c, Path::new(bad), true).is_err(), "{bad}");
+        }
+        // Inside the quotes these mean nothing to the interpreter, so a profile like O'Brien works.
+        for ok in [r"C:\Users\O'Brien\scoop\npx.cmd", r"C:\Users\a&b\npx.cmd", r"C:\x^y (dev)\npx.cmd", r"\\server\share\npx.cmd"] {
+            assert!(launch(&c, Path::new(ok), true).is_ok(), "{ok}");
+        }
+        let slash = launch(&c, Path::new("C:/nodejs/npx.cmd"), true).unwrap().raw.unwrap();
+        assert!(slash.starts_with(r#"""C:\nodejs\npx.cmd""#), "{slash}");
+        for rel in ["npx.cmd", r".\npx.cmd", r"tools\npx.cmd"] {
+            assert!(launch(&c, Path::new(rel), true).is_err(), "{rel}");
+            assert!(launch(&c, Path::new(rel), false).is_err(), "{rel}");
+        }
+    }
+
+    /// R10-skills.2 (T-633): a computer-wide install runs in the app's own folder, so the folder the
+    /// command was typed in (a cloned project, say) has no say in it; a project install (--local)
+    /// runs in that project, which is where it installs.
+    #[test]
+    fn t633_a_computer_wide_run_starts_in_the_apps_folder() {
+        let exe = std::env::current_exe().unwrap();
+        let global = update_cmd(&s(&["orchestration"])).unwrap();
+        assert_eq!(run_dir(&global, &exe), exe.parent().map(Path::to_path_buf));
+        let mut local = global.clone();
+        local.args.retain(|a| a != "-g");
+        assert_eq!(run_dir(&local, &exe), None);
+        assert_eq!(run_dir(&global, Path::new("kolux.exe")), None, "a relative exe names no folder");
+    }
+
+    /// R10-skills.2 (T-633): a project install runs in the project, so a project carrying its own
+    /// npx.cmd and node.cmd is the case to beat. The runner (a stand-in that starts node by bare
+    /// name, the worst case) is started as a real run is, and neither planted file runs. Without
+    /// the guard variable the planted node does run, which shows the check can see it.
+    #[cfg(windows)]
+    #[test]
+    fn t633_launchers_planted_in_the_project_never_run() {
+        let project = crate::test_dir::temp("t633-project");
+        let runner = crate::test_dir::temp("t633-runner");
+        for name in ["npx", "node"] {
+            let mark = project.join(format!("ran-{name}.txt"));
+            std::fs::write(project.join(format!("{name}.cmd")), format!("@echo off
+echo planted> \"{}\"
+", mark.display())).unwrap();
+        }
+        std::fs::write(runner.join("npx.cmd"), "@echo off
+call node --version >nul 2>&1
+exit /b 0
+").unwrap();
+        let c = Cmd { program: "npx".into(), args: s(&["--version"]) };
+        let l = launch(&c, &runner.join("npx.cmd"), true).unwrap();
+        command(&l, Some(&project)).output().unwrap();
+        assert!(!project.join("ran-npx.txt").exists(), "the planted npx.cmd ran");
+        assert!(!project.join("ran-node.txt").exists(), "the planted node.cmd ran");
+        let mut bare = command(&l, Some(&project));
+        bare.env_remove("NoDefaultCurrentDirectoryInExePath").output().unwrap();
+        assert!(project.join("ran-node.txt").exists(), "control: without the variable the planted node is found");
+    }
+
+    /// R10-skills.2 (T-633): one level further down. Real Node, started by the runner in the
+    /// project, launches a program by bare name that exists only as a planted .exe in the project;
+    /// it is not found. Without the guard variable it is, so the check can see it. Skipped when
+    /// this computer has no Node, or one older than libuv 1.48 (Node 22), which ignores the variable.
+    #[cfg(windows)]
+    #[test]
+    fn t633_what_node_starts_is_not_found_in_the_project_either() {
+        let Some(node) = crate::agents::find_program("node") else { return eprintln!("no Node here, skipped") };
+        let uv = std::process::Command::new(&node).args(["-p", "process.versions.uv"]).output().unwrap();
+        let uv: Vec<u32> = String::from_utf8_lossy(&uv.stdout).trim().split('.').map(|n| n.parse().unwrap_or(0)).collect();
+        if uv.len() < 2 || (uv[0], uv[1]) < (1, 48) {
+            return eprintln!("Node's libuv {uv:?} predates the variable, skipped");
+        }
+        let project = crate::test_dir::temp("t633-node-project");
+        let runner = crate::test_dir::temp("t633-node-runner");
+        let system = std::env::var("SystemRoot").unwrap();
+        std::fs::copy(Path::new(&system).join(r"System32\hostname.exe"), project.join("t633probe.exe")).unwrap();
+        let js = "process.stdout.write(require('child_process').spawnSync('t633probe').error?'none':'ran')";
+        std::fs::write(runner.join("npx.cmd"), format!("@echo off\r\n\"{}\" -e \"{js}\"\r\n", node.display())).unwrap();
+        let l = launch(&Cmd { program: "npx".into(), args: vec![] }, &runner.join("npx.cmd"), true).unwrap();
+        let out = |guard: bool| {
+            let mut c = command(&l, Some(&project));
+            if !guard {
+                c.env_remove("NoDefaultCurrentDirectoryInExePath");
+            }
+            String::from_utf8_lossy(&c.output().unwrap().stdout).trim().to_string()
+        };
+        assert_eq!(out(true), "none", "Node found the program planted in the project");
+        assert_eq!(out(false), "ran", "control: without the variable Node finds the planted program");
     }
 }

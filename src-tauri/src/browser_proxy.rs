@@ -124,7 +124,7 @@ mod tests {
     fn url(s: &str) -> Url {
         Url::parse(s).unwrap()
     }
-    const BASE: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-renderer-backgrounding";
+    const BASE: &str = "--disable-features=msWebOOUI,msPdfOOUI --disable-renderer-backgrounding";
 
     fn count(args: &str, prefix: &str) -> usize {
         args.split_whitespace().filter(|a| a.starts_with(prefix)).count()

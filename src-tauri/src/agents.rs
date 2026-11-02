@@ -173,9 +173,15 @@ pub fn search_dirs() -> Vec<PathBuf> {
     dirs.extend(std::env::var_os("PATH").map(|p| std::env::split_paths(&p).collect::<Vec<_>>()).unwrap_or_default());
     let mut dirs = kept_path_dirs(run_fenced(), dirs, has_scratch_marker);
     dirs.extend(usual_dirs());
+    walkable(dirs)
+}
+
+/// `search_dirs`' last pass: existing folders, each once. R10-skills.2 (T-633): only full paths; a relative
+/// PATH entry (`.`, `bin`) names whatever folder the app was started in, so it is never walked.
+fn walkable(dirs: Vec<PathBuf>) -> Vec<PathBuf> {
     let mut seen = std::collections::HashSet::new();
     dirs.into_iter()
-        .filter(|d| !d.as_os_str().is_empty() && d.is_dir())
+        .filter(|d| d.is_absolute() && d.is_dir())
         .filter(|d| seen.insert(d.to_string_lossy().trim_end_matches(['\\', '/']).to_lowercase()))
         .collect()
 }
@@ -1298,6 +1304,18 @@ X=1" } } });
         assert!(git.file_stem().unwrap().to_string_lossy().eq_ignore_ascii_case("git"));
         assert_eq!(find_program("kolux-rs-no-such-program-7f3a"), None);
         assert!(search_dirs().iter().all(|d| d.is_dir()));
+    }
+
+    /// R10-skills.2 (T-633): a PATH entry such as `.` or `tools` names a folder relative to wherever
+    /// the command runs, so a program found there could be one a cloned project planted; only full
+    /// paths are walked.
+    #[test]
+    fn t633_relative_path_entries_are_never_walked() {
+        let abs = std::env::current_dir().unwrap();
+        let rel = PathBuf::from("src");
+        assert!(rel.is_dir(), "the test runs in the crate folder, which has src");
+        assert_eq!(walkable(vec![PathBuf::from("."), rel, abs.clone()]), vec![abs]);
+        assert!(search_dirs().iter().all(|d| d.is_absolute()));
     }
 
     #[cfg(windows)]
