@@ -1,9 +1,19 @@
 // VIEW-078: the pure parts of the status bar's Ports item. The back end (ports.rs) lists the
 // listening ports and says which belong to the active workspace; this file picks up the address a
-// dev server printed in its terminal, checks it against the listening ports, and decides where Open
-// goes and what a failed scan leaves on screen.
+// dev server printed in its terminal, checks it against the listening ports (and binds it to the
+// terminal that printed it), decides where Open goes, what a Stop sends back and what a failed scan
+// leaves on screen.
 
-export type PortRow = { port: number; addr: string; pid: number; external: boolean };
+export type PortRow = {
+  port: number;
+  addr: string;
+  pid: number;
+  external: boolean;
+  /** When the holder started, as the system counts it, as text (it does not fit a number); a Stop sends it back so a reused pid is refused. */
+  started: string;
+  /** The Kolux terminal whose shell started the holder; null for an external port. */
+  terminal: number | null;
+};
 
 // Colours and cursor moves in terminal output are not part of an address.
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g;
@@ -20,22 +30,41 @@ export function urlsIn(text: string): [number, string][] {
   return out;
 }
 
-/** The addresses terminals printed, newest per port, capped so a noisy log cannot grow it. */
+/** The addresses terminals printed, newest per terminal and port, capped so a noisy log cannot grow it. */
 export class PrintedUrls {
-  private seen = new Map<number, string>();
-  /** Notes the addresses in `text`; a port printed again keeps its newest address. */
-  record(text: string): void {
+  private seen = new Map<string, string>();
+  /** Notes the addresses in `text` printed by `terminal`; a port printed again there keeps its newest address. */
+  record(text: string, terminal: number): void {
     for (const [port, url] of urlsIn(text)) {
-      this.seen.delete(port);
-      this.seen.set(port, url);
+      const k = `${terminal}:${port}`;
+      this.seen.delete(k);
+      this.seen.set(k, url);
     }
-    while (this.seen.size > 200) this.seen.delete(this.seen.keys().next().value as number);
+    while (this.seen.size > 200) this.seen.delete(this.seen.keys().next().value as string);
   }
-  /** The printed address for `port`, only while a process really listens there: an address for a port nothing holds is stale. */
+  /** The address printed for `port` by the terminal whose shell started a program listening there. An address
+   * printed for a port nothing holds is stale, and one printed in terminal A never labels terminal B's server. */
   forPort(port: number, listening: readonly PortRow[]): string | null {
-    return listening.some((r) => r.port === port) ? (this.seen.get(port) ?? null) : null;
+    for (const r of listening) {
+      if (r.port !== port || r.terminal === null) continue;
+      const url = this.seen.get(`${r.terminal}:${port}`);
+      if (url) return url;
+    }
+    return null;
   }
 }
+
+/** What a Stop sends the back end: the row as the user saw it, start time included, so a pid that
+ * now names another program is refused there. */
+export const stopArgs = (workspaces: string[], active: string, r: PortRow) => ({ workspaces, active, port: r.port, pid: r.pid, started: r.started });
+
+/** What a Stop did, as the back end reports it: the program was ended; it had already ended (success, nothing
+ * ended); it still runs but no longer holds the port (nothing ended). A refusal comes back as an error instead. */
+export type StopOutcome = "stopped" | "gone" | "moved";
+
+/** The note under the title after a Stop: only a program that was ended reads as stopped. */
+export const stopNote = (port: number, outcome: StopOutcome): string =>
+  outcome === "stopped" ? `Stopped port ${port}` : outcome === "gone" ? `Port ${port} was already gone; nothing was stopped` : `Port ${port} is no longer held by that program; nothing was stopped`;
 
 /** The address Open uses: what the dev server printed when known, otherwise plain http on the listening address. */
 export function openAddress(row: PortRow, printed: string | null): string {

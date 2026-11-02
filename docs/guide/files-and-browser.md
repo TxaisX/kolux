@@ -81,6 +81,10 @@ A tree of the workspace's files in a panel on the right. Ctrl+Shift+E shows or h
 
 If a folder cannot be read, the panel says "The folder did not load: <error>" with a Retry button.
 
+### Projects stored in WSL
+
+A project that lives inside a WSL distribution (its path starts with `\\wsl.localhost\<distribution>\` or `\\wsl$\<distribution>\`) follows three rules of its own. Searching its text runs ripgrep inside that distribution, so ripgrep has to be installed there (`sudo apt install ripgrep` in Ubuntu); if WSL or ripgrep is missing, the search says so instead of finding nothing. A file opened through its WSL path and through its Windows drive alias (`\\wsl.localhost\Ubuntu\mnt\c\work\a.ts` and `C:\work\a.ts`, or the `wsl$` and `wsl.localhost` spellings of one path) is one file: the two tabs share one text and one unsaved marker, while names inside the Linux file system stay case-sensitive, so `notes.md` and `Notes.md` are two files there. Source Control reads such a project's changes every 4 seconds instead of watching its folder, so a change never goes unnoticed when the distribution cannot hold a watch. For now Kolux still refuses to open files under a `\\wsl.localhost` or `\\wsl$` path, the way it refuses any path on another computer, so these rules take effect only once that refusal is lifted; they have not yet been tried against a real distribution.
+
 ## See what changed
 
 Two tabs show a workspace's uncommitted changes:

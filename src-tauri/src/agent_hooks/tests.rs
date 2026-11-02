@@ -191,7 +191,7 @@ fn who(pane: u32) -> String {
 }
 
 fn row(pane: u32, state: &str, at: u64, session: Option<&str>) -> Row {
-    Row { pane_key: pane, agent: "claude".into(), state: state.into(), at, session_id: session.map(str::to_owned), cwd: None, stop: None, hook_version: None, pid: None, children: Vec::new() }
+    Row { pane_key: pane, agent: "claude".into(), state: state.into(), at, session_id: session.map(str::to_owned), cwd: None, stop: None, hook_version: None, pid: None, pid_started: None, children: Vec::new() }
 }
 
 #[test]
@@ -355,7 +355,7 @@ fn t167b_child_rows_are_kept_only_while_the_panes_process_may_live() {
         10 => Some(true),
         11 => Some(false),
         _ => None,
-    });
+    }, |_| None);
     let kept = |i: usize| rows[i].children.len();
     assert_eq!((kept(0), kept(1), kept(2), kept(3), kept(4)), (2, 0, 0, 2, 0), "alive and unprovable keep; gone and no recorded process clear");
     assert_eq!(rows[1].state, "working", "the row itself stays");
@@ -377,8 +377,76 @@ fn t167b_a_save_from_before_the_new_fields_still_reads_and_the_new_fields_round_
     let old = format!(r#"{{"version":1,"rows":[{{"paneKey":1,"agent":"claude","state":"waiting","at":{}}}]}}"#, now - 5);
     let got = saved::parse(Some(&old), now);
     assert_eq!((got.len(), got[0].pid, got[0].hook_version, got[0].children.len()), (1, None, None, 0));
-    let full = Row { pid: Some(7), hook_version: Some(1), children: vec![kid("x")], at: now - 5, ..row(2, "working", 0, None) };
+    assert_eq!(got[0].pid_started, None, "an older save has no recorded start time");
+    let full = Row { pid: Some(7), pid_started: Some(123), hook_version: Some(1), children: vec![kid("x")], at: now - 5, ..row(2, "working", 0, None) };
     assert_eq!(saved::parse(Some(&saved::serialize(std::slice::from_ref(&full))), now), vec![full]);
+}
+
+/// A real short-lived child, so the start-time lookups run against a process the OS knows.
+fn sleeper() -> std::process::Child {
+    #[cfg(windows)]
+    let mut c = {
+        let mut c = std::process::Command::new("ping");
+        c.args(["-n", "20", "127.0.0.1"]);
+        c
+    };
+    #[cfg(not(windows))]
+    let mut c = {
+        let mut c = std::process::Command::new("sleep");
+        c.arg("20");
+        c
+    };
+    c.stdout(std::process::Stdio::null()).spawn().expect("a child process starts")
+}
+
+#[test]
+fn t167b_a_reused_process_id_with_another_start_time_does_not_keep_old_child_rows() {
+    let mut child = sleeper();
+    let pid = child.id();
+    let started = crate::procs::started_at(pid);
+    // The platforms that can read a start time read the same one twice.
+    if cfg!(any(windows, target_os = "linux")) {
+        assert!(started.is_some(), "a running child's start time can be read");
+        assert_eq!(started, crate::procs::started_at(pid), "the start time does not change between reads");
+    }
+    let with = |pid_started| Row { pid: Some(pid), pid_started, children: vec![kid("a")], ..row(1, "working", 1, None) };
+    let real = |p| crate::procs::started_at(p);
+    // same process: the row's children stay
+    let mut rows = vec![with(started)];
+    saved::keep_living_children(&mut rows, |_| Some(true), real);
+    assert_eq!(rows[0].children.len(), 1, "the same start time keeps the children");
+    // the id is alive but the recorded start is another process's: the children go
+    // (macOS reads no start time, so it is judged by liveness alone there)
+    if cfg!(any(windows, target_os = "linux")) {
+        let mut rows = vec![with(Some(started.unwrap_or(0) + 1))];
+        saved::keep_living_children(&mut rows, |_| Some(true), real);
+        assert_eq!(rows[0].children.len(), 0, "an alive id with a different start time is a stranger");
+    }
+    // a fake lookup says the same without any real process
+    let mut rows = vec![with(Some(5))];
+    saved::keep_living_children(&mut rows, |_| Some(true), |_| Some(6));
+    assert_eq!(rows[0].children.len(), 0);
+    let mut rows = vec![with(Some(5))];
+    saved::keep_living_children(&mut rows, |_| Some(true), |_| Some(5));
+    assert_eq!(rows[0].children.len(), 1);
+    // no recorded start (an older save) or no readable current start: today's behaviour, alive keeps
+    let mut rows = vec![with(None)];
+    saved::keep_living_children(&mut rows, |_| Some(true), |_| Some(6));
+    assert_eq!(rows[0].children.len(), 1, "a save without a start time is judged by liveness alone");
+    let mut rows = vec![with(Some(5))];
+    saved::keep_living_children(&mut rows, |_| Some(true), |_| None);
+    assert_eq!(rows[0].children.len(), 1, "an unreadable start time proves nothing");
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+#[test]
+fn t167b_a_gone_process_has_no_start_time() {
+    let mut child = sleeper();
+    let pid = child.id();
+    let _ = child.kill();
+    let _ = child.wait();
+    assert_eq!(crate::procs::started_at(pid), None, "a process that ended cannot be read");
 }
 
 #[cfg(windows)]

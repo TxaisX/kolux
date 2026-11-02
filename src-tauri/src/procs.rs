@@ -21,6 +21,14 @@ pub fn alive(pid: u32) -> Option<bool> {
     imp::alive(pid)
 }
 
+/// T-167-b: when process `pid` started, as a number that is the same on every read of the same
+/// process (Windows: creation time in 100 ns ticks; Linux: clock ticks after boot). Process ids
+/// are reused, so a saved id only names the same process while this still matches. `None` when
+/// the process is gone, cannot be opened, or the platform gives no reading (macOS).
+pub fn started_at(pid: u32) -> Option<u64> {
+    imp::started_at(pid)
+}
+
 /// Ends `pid` and every process it started (a dev server a shell runs holds the folder too).
 pub fn kill_tree(pid: u32) {
     imp::kill_tree(pid)
@@ -205,6 +213,26 @@ mod imp {
         any(|e| e.th32ProcessID == pid)
     }
 
+    pub fn started_at(pid: u32) -> Option<u64> {
+        use windows_sys::Win32::Foundation::FILETIME;
+        use windows_sys::Win32::System::Threading::GetProcessTimes;
+        // SAFETY: the handle is checked before use and closed once; the four FILETIMEs are plain
+        // out-parameters GetProcessTimes fills on success and that are only read after one.
+        unsafe {
+            let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+            if h.is_null() {
+                return None;
+            }
+            let zero = FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 };
+            let (mut created, mut exited, mut kernel, mut user) = (zero, zero, zero, zero);
+            let ok = GetProcessTimes(h, &mut created, &mut exited, &mut kernel, &mut user);
+            CloseHandle(h);
+            // An exited process whose handle someone still holds can be opened but is gone.
+            let exited = exited.dwHighDateTime != 0 || exited.dwLowDateTime != 0;
+            (ok != 0 && !exited).then(|| (u64::from(created.dwHighDateTime) << 32) | u64::from(created.dwLowDateTime))
+        }
+    }
+
     /// `taskkill /T` ends the processes `pid` started before `pid` itself, with no console window.
     pub fn kill_tree(pid: u32) {
         use std::os::windows::process::CommandExt;
@@ -384,6 +412,24 @@ mod imp {
             Some(0) => Some(true),
             Some(1) => Some(false),
             _ => None,
+        }
+    }
+
+    /// Linux: field 22 of `/proc/<pid>/stat` (start time in clock ticks after boot). The name in
+    /// field 2 may hold spaces and parentheses, so the fields are counted after its last `)`.
+    /// macOS has no cheap equivalent here: `None`, and the caller falls back to the pid alone.
+    pub fn started_at(pid: u32) -> Option<u64> {
+        #[cfg(target_os = "linux")]
+        {
+            let text = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+            let after = &text[text.rfind(')')? + 1..];
+            // `after` starts at field 3 (state), so field 22 is its 20th entry.
+            return after.split_whitespace().nth(19)?.parse().ok();
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = pid;
+            None
         }
     }
 
