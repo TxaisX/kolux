@@ -14,7 +14,8 @@ CHANGE (tests only; what the product starts for users is unchanged)
 - src-tauri/src/pty.rs: #[cfg(test)] pty::without_profile(&mut [CommandBuilder]) adds -NoProfile
   to pwsh / powershell entries (full path or bare name, any case, with or without .exe);
   cmd and Unix shells are untouched. Not compiled into the app.
-- pty_link.rs tests: shell() (used by t184b) starts its shell through without_profile.
+- pty_link.rs tests: shell() (used by t184b, and by t153f, which gets the same change) starts its
+  shell through without_profile.
 - pty_service.rs t075b: the spawn request now carries "commands" (the user's shell chain built
   as the window builds it, minus the profile) instead of letting the service pick the default
   shell. The service's spawn op already accepts window-built commands (T-184-b), so no
@@ -41,7 +42,10 @@ AFTER
 
 THE REAL PROOF
 These tests only flaked on GitHub's cold Windows runner, so the proof is that runner: the Windows
-job on this PR's head, run and rerun. The run IDs are recorded on the PR.
+job on this PR's head, run and rerun. Runs:
+  run 41388811959 on acded89b: Rust job pass (21m), 2651 passed, 0 failed; t184b_a_pane_routed 3.1 s,
+    t075b_a_terminal_outlives 1.3 s, the new helper test ok.
+  Later runs are listed on the PR.
 
 RECORD
 #48 left no record beyond its commit and PR; this file is the record of this CI fix. No PLAN tick
