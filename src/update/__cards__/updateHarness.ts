@@ -63,7 +63,7 @@ export function installUpdateDom(): FakeDocument {
 }
 
 export async function mountCenter(doc: FakeDocument) {
-  const { default: UpdateCenter } = await import("../UpdateCenter");
+  const { default: UpdateCenter } = await import("../UpdateCenterView"); // the screen itself; UpdateCenter.tsx is its lazy door
   const m = await mount(createElement(UpdateCenter), doc);
   await pump(0);
   return m;
@@ -83,6 +83,9 @@ const cls = (n: FakeNode) => `${n.attrs.class ?? ""} ${n.attrs.className ?? ""}`
 export const byClass = (root: FakeNode, c: string) => find(root, (n) => cls(n).split(" ").includes(c));
 export const card = (root: FakeNode) => byClass(root, "upd-card")[0] ?? null;
 export const popup = (root: FakeNode) => byClass(root, "upd-pop")[0] ?? null;
+/** The notice (the ready pop-up): its sentence and its Update now / Later buttons. */
+export const popupText = (root: FakeNode) => byClass(root, "upd-pop-text")[0]?.textContent ?? null;
+export const popupButton = (root: FakeNode, label: string) => find(popup(root) ?? root, (n) => n.localName === "button" && n.textContent === label)[0];
 export const cardTitle = (root: FakeNode) => byClass(root, "upd-title")[0]?.textContent ?? null;
 export const notes = (root: FakeNode) => byClass(root, "upd-notes").flatMap((u) => find(u, (n) => n.localName === "li").map((l) => l.textContent));
 export const byTitle = (root: FakeNode, t: string) => find(root, (n) => n.localName === "button" && n.attrs.title === t)[0];

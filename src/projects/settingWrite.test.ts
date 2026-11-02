@@ -140,10 +140,10 @@ describe("the other settings writers build on the latest settings (after-list ro
   it("a nest toggle right after a sidebar tab change keeps both, in page state and on disk", () => {
     const a = app({ rightSidebarTab: "explorer", workspaceNesting: true });
     a.render();
-    a.patch({ rightSidebarTab: "scm" });
+    a.patch({ rightSidebarTab: "insights" });
     a.patch({ workspaceNesting: false });
     a.render();
-    expect(a.rendered).toEqual({ rightSidebarTab: "scm", workspaceNesting: false });
+    expect(a.rendered).toEqual({ rightSidebarTab: "insights", workspaceNesting: false });
     expect(a.disk).toEqual(a.rendered);
   });
 

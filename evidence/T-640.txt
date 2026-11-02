@@ -1,0 +1,39 @@
+T-640 · Every row in the left pane can be removed (wave UI lane A, worker s-90, branch s-90/sidebar)
+
+LIVE REPRO BEFORE THE FIX (2026-11-02, origin/main 0a3d9329, Windows 11, dev app hidden off-screen, scratch profile)
+Script: node scripts/prove/live-T-640.mjs new|classic   (logs G:/Temp/T-640-<look>.log)
+Setup: one project added by path, a second workspace "B" made the way a user makes one (project header > New workspace > name > Create workspace).
+
+Rows the pane drew (both looks):
+  .proj "T-640-<look>"   buttons: Project settings, New workspace          right-click: no menu
+  .branch "main"         buttons: none                                     right-click: no menu
+  workspace "B"          buttons: Pin, Mark unread, Change parent, Sleep, Hide this worktree, Remove this workspace
+                         right-click on the row's outer wrapper: no menu; on its inner part: Delete, Sleep, statuses, Set parent, Details, Open in
+
+Why a user "cannot remove" a workspace:
+  1. The project row and the main checkout row have no remove or hide control and no right-click menu. Removing a project is
+     only possible from inside Project settings.
+  2. The right-click menu does not close on Escape ("menu still open after Escape: true" in both looks). It stays over the
+     sidebar and covers the inline remove question, so pressing Remove looks like it does nothing.
+     Screenshot: evidence/T-640-before-stuck-menu.png (classic look: the menu covers the orange "Remove B and its folder?" box).
+  3. The question is drawn inline inside the list, easy to miss.
+  With the menu dismissed by hand, B's X asks "Remove B and its folder? ... Keep the branch / Remove / Keep" and Remove works
+  (new look run: B row gone, folder deleted, RESULT: PASS for that path only).
+Screenshots before: evidence/T-640-before-new.png, evidence/T-640-before-classic.png, evidence/T-640-before-stuck-menu.png
+
+LIVE PROOF AFTER THE FIX (2026-11-02, branch s-90/sidebar on origin/main 945516df, same harness, both looks)
+Script: node scripts/prove/live-T-640.mjs new|classic   RESULT: PASS (new) and PASS (classic), 6 of 6 checks each
+  PASS right-click project header: menu "New workspace, Project settings, Remove project…"; Escape closes it
+  PASS right-click main checkout row: menu ends "Remove project…"; Escape closes it
+  PASS right-click the workspace row's outer wrapper: menu "Delete … Hide from the sidebar"; Escape closes it
+  PASS the project header and the main checkout row each have a hover X
+  PASS B removed through its X: question "Remove B and its folder? …", row gone, folder deleted
+  PASS project removed through the main row's X: question "Remove T-640-<look> from Kolux? … The folder and its files
+       stay on disk.", pane empty, folder still on disk
+Screenshots after: evidence/T-640-<look>-after-start.png, -after-menu.png, -after-ask.png, -after-project-ask.png, -after.png
+Unit tests for the remove paths: src/projects/removePaths.test.ts (7), src/projects/menu.test.ts
+Known limit: with "ask before closing" on, the project question counts running sessions, not live programs (an idle
+shell counts too); exact counting needs pty ids from src/shell/window/Sidebar.tsx, outside this lane.
+Re-run after the review fixes (Escape is caught first and marked handled; the menu moves up to stay inside the window;
+the running-terminal line counts terminals at or below each folder and also shows on Delete together and on Delete
+group with its projects; a clean workspace with quick delete on still asks while a terminal runs in it): PASS, both looks.

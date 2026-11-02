@@ -47,7 +47,7 @@ export function useWindowKeys(w: WindowBag) {
     const {
       accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, browserAction, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
       focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
-      right, saveRight, saveSetting, scmOpen, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
+      right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
       setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
       setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
       switcherRef, terminals, toggleExplorer, unsaved
@@ -95,10 +95,6 @@ export function useWindowKeys(w: WindowBag) {
           break;
         case "sidebar.left.toggle":
           setSidebarOpen((o) => !o);
-          break;
-        case "sidebar.sourceControl.toggle":
-          if (terminals && scmOpen) saveRight({ open: false });
-          else showRight("scm");
           break;
         case "sidebar.right.toggle":
           if (terminals && right.open) saveRight({ open: false });

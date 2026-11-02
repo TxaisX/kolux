@@ -1,0 +1,42 @@
+/* T-646: the Insights panel. Works from 240px to ~600px wide; nothing scrolls sideways. */
+.insights { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 10px 12px 14px; overflow-x: hidden; overflow-y: auto; font-size: var(--kx-text-footnote, 12px); color: var(--fg); }
+.ins-sec { min-width: 0; }
+.ins-sec h3 { margin: 0 0 6px; font-size: var(--kx-text-caption, 11px); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-label); }
+.ins-note { margin: 0; color: var(--fg-muted); line-height: 1.4; overflow-wrap: anywhere; }
+.ins-caveat, .ins-counted { margin-top: 6px; font-size: var(--kx-text-caption, 11px); color: var(--fg-faint); }
+.ins-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; color: var(--warn); }
+.ins-refresh { font: inherit; font-size: var(--kx-text-caption, 11px); padding: 1px 8px; color: var(--fg); background: var(--chip-bg); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+.ins-refresh:hover { border-color: var(--fg-muted); }
+.ins-refresh:focus-visible, .ins-row:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 1px; }
+
+/* Totals: three tiles in a row, one column when the panel is narrow. */
+.ins-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.ins-tile { flex: 1 1 5.5rem; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; background: var(--line-subtle); border: 1px solid var(--line-subtle); border-radius: 6px; }
+.ins-tile-label { color: var(--fg-label); font-size: var(--kx-text-caption, 11px); }
+.ins-tile-num { font-size: 1.35em; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.ins-tile-unit { color: var(--fg-faint); font-size: var(--kx-text-caption, 11px); }
+.ins-tile-cost { color: var(--fg-muted); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@container (max-width: 300px) { .ins-tile { flex-basis: 100%; } }
+
+/* Lists: Now rows are buttons, Sessions rows are plain. */
+.ins-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.ins-row, .ins-sess { display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; box-sizing: border-box; padding: 6px 8px; text-align: left; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line-subtle); border-radius: 6px; }
+.ins-row { cursor: pointer; }
+.ins-row:hover { background: var(--row-selected); }
+.ins-row.needs { border-color: var(--working-icon); }
+.ins-row-top, .ins-row-sub { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ins-row-sub { color: var(--fg-muted); justify-content: space-between; }
+.ins-agent { flex: 0 1 auto; max-width: 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ins-ws, .ins-action { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-ws { color: var(--fg-muted); }
+.ins-when, .ins-cost { flex: none; color: var(--fg-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ins-cost { color: var(--fg-muted); }
+.ins-row-use { color: var(--fg-faint); font-size: var(--kx-text-caption, 11px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@container (max-width: 300px) { .ins-sess .ins-row-sub { flex-wrap: wrap; } }
+
+/* State pill: the word carries the state, colour only reinforces it. */
+.ins-pill { flex: none; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 7px; font-size: var(--kx-text-caption, 11px); line-height: 1.6; font-weight: 600; color: var(--fg-muted); background: var(--chip-bg); border: 1px solid var(--line); border-radius: 999px; }
+.ins-pill.needs { color: var(--working-icon); border-color: var(--working-icon); }
+.ins-pill.working { color: var(--working); border-color: var(--working); }
+.ins-pill.done { color: var(--done); border-color: var(--done); }
+.ins-pill.stopped { color: var(--danger); border-color: var(--danger); }
