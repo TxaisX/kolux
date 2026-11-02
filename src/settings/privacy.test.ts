@@ -1,7 +1,8 @@
 // APP-070: the app sends no usage data; Send feedback is a link the browser opens, not a request.
 // scripts/privacy-audit.test.mjs checks the source for any network client the statement does not name.
 import { expect, test } from "vitest";
-import { FEEDBACK_REPO, feedbackUrl, OUTBOUND, URL_CAP } from "./privacy";
+import { OUTBOUND } from "./outbound";
+import { FEEDBACK_REPO, feedbackUrl, URL_CAP } from "./privacy";
 
 test("app070: Send feedback is a pre-filled new-issue address carrying the version, trimmed to fit", () => {
   const u = new URL(feedbackUrl("0.1.0", "Win32", "The pane froze\nafter a resize"));

@@ -167,7 +167,7 @@ pub async fn github_people(host: String, repo: String) -> Result<Vec<Person>, St
 // standard input (`gh api graphql --input -`), so no query text ever goes through a command line.
 
 /// A plain host name: what `repo_path` and every GraphQL call check before gh sees it.
-fn host_ok(host: &str) -> bool {
+pub(crate) fn host_ok(host: &str) -> bool {
     !host.is_empty() && !host.starts_with('-') && host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == ':')
 }
 

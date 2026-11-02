@@ -12,8 +12,8 @@ import { isTabColor, type TabColors } from "./tabColor";
 
 export const LAYOUT_FIELD = "savedLayout";
 
-export type PaneKind = "browser" | "editor" | "preview" | "diff" | "changes";
-const KINDS: PaneKind[] = ["browser", "editor", "preview", "diff", "changes"];
+export type PaneKind = "browser" | "editor" | "preview" | "diff" | "changes" | "check";
+const KINDS: PaneKind[] = ["browser", "editor", "preview", "diff", "changes", "check"];
 const AGENTS: Agent[] = ["claude", "codex", "shell"];
 
 export type SavedPane = {
@@ -74,6 +74,7 @@ type LivePane = Omit<SavedPane, "env"> & {
 export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, focused: number, activeDir: string | null, stacked: Record<string, boolean>, marks?: Marks): SavedLayout {
   const kept: SavedPane[] = [];
   for (const p of panes) {
+    if (p.kind === "check") continue; // T-235-b: a check tab holds the check it was opened from, which a restart cannot rebuild
     const chooser = !!p.seats && p.program === null && !p.kind;
     const s: SavedPane = { key: p.key, cwd: p.cwd, branch: p.branch, agent: p.agent, program: p.program, args: p.agent === "shell" ? p.args : [] };
     if (chooser) s.chooser = true;

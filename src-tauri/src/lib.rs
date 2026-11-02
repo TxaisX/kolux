@@ -726,7 +726,7 @@ pub fn run() {
             scm::scm_discard,
             scm::scm_commit, scm::scm_remote,
             scm::scm_pr, scm::scm_pr_checks, scm::scm_pr_create, scm::scm_open_pr,
-            pr_review::scm_pr_find, pr_review::scm_check_rerun, pr_review::scm_check_log, pr_review::scm_pr_text,
+            pr_review::scm_pr_find, pr_review::scm_check_rerun, pr_review::scm_check_log, pr_review::scm_check_detail, pr_review::scm_pr_text,
             pr_review::scm_review_read, pr_review::scm_review_act, pr_review::scm_review_send, pr_review::scm_pr_conflicts,
             scm::scm_history, scm::scm_commit_files, scm::scm_github_repo, scm::repo_id::scm_repo_id, scm::repo_id::scm_repo_id_of,
             bulk::workspace_remove_many, bulk::workspace_forget, bulk::workspace_forget_check,

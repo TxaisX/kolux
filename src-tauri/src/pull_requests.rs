@@ -141,6 +141,38 @@ pub struct PrCheck {
     pub run_id: Option<u64>,
 }
 
+/// T-235-b (EDIT-030): one step of a check's job; `conclusion` is None while the step has not finished.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckStep {
+    pub number: u64,
+    pub name: String,
+    pub status: String,
+    pub conclusion: Option<String>,
+}
+
+/// T-235-b: one annotation a check left on a file. `path` is as GitHub sent it; the window decides
+/// whether it may be opened.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckAnnotation {
+    pub path: String,
+    pub start_line: u64,
+    pub end_line: u64,
+    /// notice, warning or failure.
+    pub level: String,
+    pub title: String,
+    pub message: String,
+}
+
+/// T-235-b: what the check tab shows besides the check itself.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckDetail {
+    pub steps: Vec<CheckStep>,
+    pub annotations: Vec<CheckAnnotation>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct PrComment {
     pub id: u64,
@@ -325,6 +357,36 @@ pub fn checks_of(v: &Value) -> Vec<PrCheck> {
         .collect()
 }
 
+/// T-235-b: the steps of a job record (`GET /repos/{o}/{r}/actions/jobs/{id}`); a record without a
+/// number or a name is skipped.
+pub fn steps_of(v: &Value) -> Vec<CheckStep> {
+    v["steps"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            let (number, name) = (n(&c["number"]), s(&c["name"]));
+            let conclusion = Some(s(&c["conclusion"])).filter(|x| !x.is_empty());
+            (number > 0 && !name.is_empty()).then(|| CheckStep { number, name, status: s(&c["status"]), conclusion })
+        })
+        .collect()
+}
+
+/// T-235-b: the annotations of a check run (`GET /repos/{o}/{r}/check-runs/{id}/annotations`, an
+/// array); a record without a path or a message is skipped. A path that leaves the worktree is kept.
+pub fn annotations_of(v: &Value) -> Vec<CheckAnnotation> {
+    v.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            let (path, message) = (s(&c["path"]), s(&c["message"]));
+            let start = n(&c["start_line"]);
+            let end = Some(n(&c["end_line"])).filter(|e| *e >= start).unwrap_or(start);
+            (!path.is_empty() && !message.is_empty()).then(|| CheckAnnotation { path, start_line: start, end_line: end, level: s(&c["annotation_level"]), title: s(&c["title"]), message })
+        })
+        .collect()
+}
+
 /// Review comments grouped into threads: a comment that replies to another joins that comment's thread.
 pub fn threads_of(v: &Value) -> Vec<PrThread> {
     let mut threads: Vec<PrThread> = Vec::new();
@@ -407,6 +469,23 @@ pub fn read_checks(gh: &Path, host: &str, repo: &str, sha: &str) -> Result<Vec<P
         return Err("This pull request's latest commit cannot be read.".into());
     }
     Ok(checks_of(&gh_json(gh, host, &format!("{}/commits/{sha}/check-runs?per_page={PER_PAGE}", repo_path(host, repo)?), &[])?))
+}
+
+/// T-235-b: a check's steps (from its job, when the link names one) and annotations. A check
+/// run's id is its job's number for a workflow job.
+pub fn read_check_detail(gh: &Path, host: &str, repo: &str, check_id: u64, job_id: Option<u64>) -> Result<CheckDetail, String> {
+    if check_id == 0 || job_id == Some(0) {
+        return Err("This check cannot be read.".into());
+    }
+    let base = repo_path(host, repo)?;
+    let steps = match job_id {
+        Some(job) => steps_of(&gh_json(gh, host, &format!("{base}/actions/jobs/{job}"), &[])?),
+        None => Vec::new(),
+    };
+    // Every page up to the cap, like the other lists; a run with more annotations than that shows the first ones.
+    let (listed, _) = read_all(gh, host, &format!("{base}/check-runs/{check_id}/annotations"))?;
+    let annotations = annotations_of(&listed);
+    Ok(CheckDetail { steps, annotations })
 }
 
 pub fn read_threads(gh: &Path, host: &str, repo: &str, number: u64) -> Result<PrThreads, String> {
@@ -942,6 +1021,58 @@ mod tests {
         assert_eq!(threads.len(), 2);
         assert_eq!(threads[0].comments.iter().map(|c| c.id).collect::<Vec<_>>(), vec![10, 12, 13]);
         assert_eq!((threads[1].path.as_str(), threads[1].line), ("b.rs", Some(9)));
+    }
+
+    #[test]
+    fn a_checks_steps_and_annotations_are_read_and_bad_records_skipped() {
+        // T-235-b (EDIT-030): a job record's steps; a running step has no conclusion yet.
+        let steps = steps_of(&json!({ "steps": [
+            { "number": 1, "name": "Set up job", "status": "completed", "conclusion": "success" },
+            { "number": 2, "name": "Run tests", "status": "in_progress", "conclusion": null },
+            { "number": 3, "status": "queued" },
+            "junk",
+            { "name": "no number", "status": "completed" }
+        ] }));
+        assert_eq!(steps.len(), 2);
+        assert_eq!((steps[0].number, steps[0].name.as_str(), steps[0].conclusion.as_deref()), (1, "Set up job", Some("success")));
+        assert_eq!((steps[1].status.as_str(), steps[1].conclusion.as_deref()), ("in_progress", None));
+        assert!(steps_of(&json!({ "steps": [] })).is_empty());
+        assert!(steps_of(&json!({ "name": "job without steps" })).is_empty());
+        assert!(steps_of(&json!(null)).is_empty());
+
+        let notes = annotations_of(&json!([
+            { "path": "src/a.rs", "start_line": 4, "end_line": 6, "annotation_level": "failure", "title": "E0308", "message": "mismatched types" },
+            { "path": "../../etc/passwd", "start_line": 1, "end_line": 1, "annotation_level": "warning", "message": "climbs out" },
+            { "path": "/abs/y.txt", "start_line": 2, "annotation_level": "notice", "message": "absolute" },
+            { "start_line": 9, "message": "no path" },
+            42
+        ]));
+        assert_eq!(notes.len(), 3);
+        assert_eq!((notes[0].path.as_str(), notes[0].start_line, notes[0].end_line, notes[0].level.as_str()), ("src/a.rs", 4, 6, "failure"));
+        assert_eq!((notes[0].title.as_str(), notes[0].message.as_str()), ("E0308", "mismatched types"));
+        // the parser keeps a path that leaves the worktree; the window refuses to open it
+        assert_eq!(notes[1].path, "../../etc/passwd");
+        assert_eq!((notes[2].end_line, notes[2].title.as_str()), (2, ""));
+        assert!(annotations_of(&json!({ "message": "not an array" })).is_empty());
+    }
+
+    #[test]
+    fn a_check_detail_asks_for_the_job_and_the_annotations_and_a_link_without_a_job_gets_annotations_only() {
+        let (gh, dir) = stand_in("pr-check-detail", &json!({ "steps": [{ "number": 1, "name": "Build", "status": "completed", "conclusion": "failure" }] }));
+        fs::write(dir.join("answer2.json"), json!([{ "path": "a.rs", "start_line": 3, "end_line": 3, "annotation_level": "failure", "message": "boom" }]).to_string()).unwrap();
+        let d = read_check_detail(&gh, "github.com", "acme/app", 9, Some(9)).unwrap();
+        assert_eq!((d.steps.len(), d.annotations.len()), (1, 1));
+        let c = calls(&dir).replace('"', "");
+        assert!(c.contains("api repos/acme/app/actions/jobs/9 --hostname github.com"), "{c}");
+        assert!(c.contains("api repos/acme/app/check-runs/9/annotations?per_page=100&page=1 --hostname github.com"), "{c}");
+
+        let (gh, dir) = stand_in("pr-check-detail-nojob", &json!([{ "path": "b.rs", "start_line": 1, "end_line": 1, "annotation_level": "notice", "message": "hm" }]));
+        let d = read_check_detail(&gh, "github.com", "acme/app", 12, None).unwrap();
+        assert!(d.steps.is_empty());
+        assert_eq!(d.annotations.len(), 1);
+        assert!(!calls(&dir).contains("actions/jobs"), "{}", calls(&dir));
+        assert!(read_check_detail(&gh, "github.com", "acme/../app", 12, None).is_err());
+        assert!(read_check_detail(&gh, "github.com", "acme/app", 0, None).is_err());
     }
 
     #[test]

@@ -22,6 +22,15 @@ export const LOCKED_OPTIONS = {
   disableRange: true,
 } as const;
 
+/**
+ * LOCKED_OPTIONS plus the one address the reader may load code from: the app's own `pdfjs/` folder (public/pdfjs), which
+ * holds pdf.js's plain-JavaScript JPEG 2000 decoder. With `useWasm` off, pdf.js imports `${wasmUrl}openjpeg_nowasm_fallback.js`
+ * as a module of the app (same origin, so `script-src 'self'` covers it; no eval, no wasm). `base` is the app's base
+ * address, ending in a slash.
+ */
+export const JPX_DIR = "pdfjs/";
+export const viewerOptions = (base: string) => ({ ...LOCKED_OPTIONS, wasmUrl: `${base}${JPX_DIR}` }) as const;
+
 export const ZOOM_MIN = 0.25;
 export const ZOOM_MAX = 5;
 export const ZOOM_STEP = 1.25;

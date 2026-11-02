@@ -17,6 +17,7 @@ export function tabName(p: Pane, titles: Record<number, string>, label?: string,
   if (p.kind === "editor") return baseName(p.path ?? "");
   if (p.kind === "preview") return `Preview ${baseName(p.path ?? "")}`;
   if (p.kind === "changes") return "All Changes";
+  if (p.kind === "check") return p.check?.name || "Check"; // T-235-b: the check's name, never a path
   if (p.kind === "diff") return `${baseName(p.path ?? "")} (${p.staged ? "staged" : "unstaged"})`;
   // ORCH-066 / T-129-d: a worker's task label names the tab first; then the user's own name; then the program's title (TERM-058).
   if (label) return label;

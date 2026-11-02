@@ -14,7 +14,7 @@ test("EDIT-029: the reader is locked down: nothing fetched, nothing evaluated, n
   expect(LOCKED_OPTIONS.useWasm).toBe(false);
   expect(LOCKED_OPTIONS.enableXfa).toBe(false);
   expect(LOCKED_OPTIONS.disableStream && LOCKED_OPTIONS.disableRange && LOCKED_OPTIONS.disableAutoFetch).toBe(true);
-  // no address of any kind is part of the options
+  // no address of any kind is part of the locked set (the one folder for the JPEG 2000 decoder comes from viewerOptions)
   expect(Object.keys(LOCKED_OPTIONS).some((k) => /url|cmap|path/i.test(k))).toBe(false);
 });
 
