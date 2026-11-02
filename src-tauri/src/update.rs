@@ -147,8 +147,9 @@ pub fn release_host(url: &str) -> bool {
 
 /// True only when the release host answers that the named installer is not there (404 or 410). The
 /// HEAD goes through the app's one approved public-only client (APP-070), which speaks HTTP/1.1 only.
-/// The question is only asked of GitHub's release hosts, over https (the privacy statement names GitHub
-/// Releases only). A feed that points anywhere else, such as a local test endpoint, is never asked, so
+/// The first request goes only to GitHub's release hosts, over https (the privacy statement names GitHub
+/// Releases only); a redirect from there is followed by the same public-only client, so later hops are
+/// GitHub's choice, not pinned here. A feed that points anywhere else, such as a local test endpoint, is never asked, so
 /// such a feed never sees the "half published" answer; that is accepted.
 async fn installer_missing(app: &AppHandle, url: &tauri::Url) -> bool {
     if !release_host(url.as_str()) {
@@ -514,6 +515,7 @@ mod tests {
         assert!(!release_host("http://github.com/TxaisX/kolux-rs-releases/releases/download/v0.2.0/setup.exe"));
         assert!(!release_host("https://github.com.evil.example/x"));
         assert!(!release_host("https://evilgithubusercontent.com/x"));
+        assert!(!release_host("https://github.com@evil.example/x"), "userinfo does not make a host");
         assert!(!release_host("http://127.0.0.1:9/setup.exe"));
         assert!(!release_host("not a url"));
     }

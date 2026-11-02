@@ -9,7 +9,7 @@ type Fs = {
 };
 // The project carries no Node types, so the node:fs module is fetched the way topBarLayout.test.ts does.
 const fs = (globalThis as unknown as { process: { getBuiltinModule(name: string): Fs } }).process.getBuiltinModule("node:fs");
-const srcDir = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+const srcDir = decodeURIComponent(new URL("..", import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, "$1");
 
 /** Every non-test .ts/.tsx file under src, as [relative path, text]. */
 function sources(dir = srcDir, rel = ""): [string, string][] {
@@ -30,9 +30,9 @@ test("the close listener flushes the screen writer before its first await", () =
   const text = sources().find(([f]) => f === "shell/useWindowSave.ts")![1];
   const start = text.indexOf("onCloseRequested(");
   expect(start).toBeGreaterThan(-1);
-  const body = text.slice(start);
+  // Comments are dropped first, so a comment that mentions await or the flush can't fool either check.
+  const body = text.slice(start).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
   const flush = body.indexOf("screenWriter.flush()");
-  // The body is code only up to the listener's end; comments before the first await are skipped by looking at `await ` calls.
   const firstAwait = body.search(/\bawait\b/);
   expect(flush).toBeGreaterThan(-1);
   expect(firstAwait).toBeGreaterThan(-1);

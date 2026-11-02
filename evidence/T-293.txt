@@ -20,7 +20,8 @@ What is built
   failed, timed out, or reported a status that is not a definite verdict) is Verdict::Retry: that
   one download is stopped once, nothing is remembered, and the next check tries again. A copy built
   signed (KOLUX_RS_SIGNED_BUILD=1) whose own signature cannot be read updates nothing (Retry); a
-  copy not built signed treats an unreadable own signature as unsigned. An optional issuer pin
+  copy not built signed treats an unreadable own signature as unsigned. A running copy whose own
+  signature reads as Broken refuses nothing for good: every installer gets Retry. An optional issuer pin
   (KOLUX_RS_PUBLISHER_ISSUER, `decide_pinned`) additionally requires an installer that passed the
   subject check to come from that certificate authority; unset today. There is no setting,
   variable or argument that skips it; update_mark("refusedInstallers", "") can only empty the list.

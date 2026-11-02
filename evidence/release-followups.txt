@@ -48,3 +48,15 @@ Final verify (run in src-tauri unless noted):
    pnpm exec vitest run src/shell/closeListener.test.ts -> 2 passed             exit 0
    pnpm exec tsc --noEmit                     -> no output                      exit 0
 Not ported: repair_settings, salvage, anything else from #46.
+
+Review fixes (opus-high-review, grade B, approve; minors applied 2026-11-01)
+   - closeListener.test.ts: the src folder is read from a decoded file URL (a path with a space works),
+     and comments are stripped before the flush/await checks, so a comment can't satisfy or break them.
+   - update.rs: release_host test adds a userinfo case (github.com@evil.example is not a GitHub host);
+     the installer_missing comment now says only the first request is pinned to GitHub's hosts.
+   - evidence/T-293.txt: adds the case where the running copy's own signature is Broken (Retry for all).
+   Re-run after the fixes:
+   cargo test --lib -- update                 -> ok. 68 passed; 0 failed        exit 0
+   cargo clippy --all-targets -- -D warnings  -> Finished                       exit 0
+   pnpm exec vitest run src/shell/closeListener.test.ts -> 2 passed             exit 0
+   pnpm exec tsc --noEmit -p .                -> no output                      exit 0
