@@ -55,7 +55,7 @@ export function ThemePreview({ look }: { look: Appearance }) {
 /** The picker dot for one of the user's themes: its background and its accent, split on the diagonal. */
 function customSwatch(look: Appearance, name: string): CSSProperties {
   const t = buildTheme({ ...look, userTheme: name }, true);
-  return { background: `linear-gradient(135deg, ${t["app-bg"]} 50%, ${t.accent} 50%)` };
+  return { background: `linear-gradient(135deg, ${t["app-bg"]} 50%, ${t.accent ?? t.link} 50%)` };
 }
 
 /** SET-016: a foldable section of the Appearance page; folded, its header sums up what it holds. */
@@ -206,8 +206,9 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
         <h2 className="conn-name">Mode</h2>
         <div className="look-select">
           <span>Mode</span>
-          <Segmented<Mode> label="Mode" options={MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))} value={look.mode} onPick={(mode) => onChange({ ...look, mode })} />
+          <Segmented<Mode> label="Mode" options={MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))} value={look.mode} off={custom ? [...MODES] : []} onPick={(mode) => onChange({ ...look, mode })} />
         </div>
+        {custom && <p className="conn-detail" data-note="custom-mode">A custom theme sets its own light or dark look, so these are off while it is on.</p>}
         {look.mode === "system" && <p className="conn-detail">Follows Windows, also while Kolux is running.</p>}
         {/* VIEW-006: one of the three workspace screens can paint in its own mode. */}
         {THEMED_SCREENS.map((s) => (
@@ -217,6 +218,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
               label={`${s} screen mode`}
               options={[{ id: "app", label: "Same as app" }, ...MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))]}
               value={look.screens[s] ?? "app"}
+              off={custom ? ["app", ...MODES] : []}
               onPick={(m) => {
                 const rest = Object.fromEntries(Object.entries(look.screens).filter(([k]) => k !== s));
                 onChange({ ...look, screens: m === "app" ? rest : { ...rest, [s]: m } });

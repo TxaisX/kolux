@@ -20,6 +20,7 @@ mod cli_accounts;
 pub mod claude_accounts;
 pub mod claude_key;
 pub mod claude_setup;
+pub mod theme_file;
 pub mod codex_accounts;
 pub mod codex_usage;
 mod creatures;
@@ -786,6 +787,7 @@ pub fn run() {
             codex_usage::codex_usage_of,
             claude_key::claude_key_status,
             claude_setup::claude_setup,
+            theme_file::theme_export_save,
             claude_key::claude_key_connect,
             claude_key::claude_key_cancel,
             claude_key::claude_key_disconnect,

@@ -5,18 +5,23 @@
 // stores the result in the theme (`vars`), and theme.ts only lays those stored colours over the base.
 // It loads on demand, with the editor.
 
-import { buildTheme, classic, isDark, mix, THEMES, type Appearance, type ThemeName } from "../theme";
+import { buildTheme, isDark, mix, SPAN, THEMES, TERMINAL_KEYS, TOKEN_KEYS, type Appearance, type ThemeName } from "../theme";
 
 /** `vars` and `dark` are the result of resolving the theme (see `resolve`): the window reads only these, so the
  *  maths below runs when a theme is saved, not at start-up. A theme from a file has neither until it is saved. */
-export type CustomTheme = { name: string; base: string; overrides: Record<string, string>; terminal: Record<string, string>; vars?: Record<string, string>; dark?: boolean };
+export type CustomTheme = { name: string; base: string; overrides: Record<string, string>; terminal: Record<string, string>; vars?: Record<string, string>; dark?: boolean; tint?: number; saturation?: number; depth?: number };
+
+/** A theme carries its own tint, saturation and depth (what the sliders said when it was last edited), so it
+ *  looks the same whatever the sliders say now. A theme without them (an older file) uses the neutral values. */
+export const NEUTRAL = { tint: 0, saturation: 100, depth: 0 } as const;
+const num = (v: unknown, [lo, hi, dflt]: readonly number[]) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : dflt);
+/** The theme's own look settings, clamped to the slider ranges. */
+export const ownLook = (t: Pick<CustomTheme, "tint" | "saturation" | "depth">) => ({ tint: num(t.tint, SPAN.tint), saturation: num(t.saturation, SPAN.saturation), depth: num(t.depth, SPAN.depth) });
 
 export const HEX = /^#[0-9a-f]{6}$/i;
 export const NAME_MAX = 40;
 export const MAX_THEMES = 24;
-const ANSI = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
-/** The terminal colours a theme may set: text, ground, cursor, selection and the 16 palette slots. */
-export const TERMINAL_KEYS = ["foreground", "background", "cursor", "selectionBackground", ...ANSI, ...ANSI.map((c) => "bright" + c[0].toUpperCase() + c.slice(1))];
+export { TERMINAL_KEYS };
 
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 /** WCAG relative luminance, 0 (black) to 1 (white). */
@@ -39,12 +44,13 @@ const pick = (v: unknown, keys: readonly string[]): Record<string, string> => {
 
 /** Every colour of a theme worked out once: `vars` is the full CSS variable map (`--app-bg`: #rrggbb ...) and
  *  `dark` says whether the window should paint dark (by the background, whatever the mode says). */
-export function resolve(look: Appearance, t: CustomTheme): CustomTheme {
+export function resolve(window: Appearance, t: CustomTheme): CustomTheme {
+  const look = { ...window, ...ownLook(t) }; // the theme's own tint, saturation and depth, never the sliders' current ones
   const make = (dark: boolean) => customTokens(buildTheme({ ...look, theme: t.base as ThemeName, userTheme: "" }, dark) as Record<string, string>, t.overrides);
   let dark = isDark({ ...look, userTheme: "" });
   let tk = make(dark);
   if (isDarkGround(tk["app-bg"]) !== dark) tk = make((dark = !dark));
-  return { ...t, dark: isDarkGround(tk["app-bg"]), vars: Object.fromEntries(Object.entries(tk).map(([k, v]) => ["--" + k, v])) };
+  return { ...t, ...ownLook(t), dark: isDarkGround(tk["app-bg"]), vars: Object.fromEntries(Object.entries(tk).map(([k, v]) => ["--" + k, v])) };
 }
 
 /** The saved list as a clean, resolved list: unknown keys and bad colours dropped, a name that repeats (any
@@ -56,7 +62,7 @@ export function tidyThemes(v: unknown, look: Appearance): CustomTheme[] {
     const name = typeof r.name === "string" ? r.name.trim().slice(0, NAME_MAX) : "";
     if (!name || out.some((t) => t.name.toLowerCase() === name.toLowerCase()) || out.length >= MAX_THEMES) continue;
     const base = typeof r.base === "string" && (THEMES as readonly string[]).includes(r.base.toLowerCase()) ? r.base.toLowerCase() : "classic";
-    out.push(resolve(look, { name, base, overrides: pick(r.overrides, Object.keys(classic)), terminal: pick(r.terminal, TERMINAL_KEYS) }));
+    out.push(resolve(look, { name, base, overrides: pick(r.overrides, TOKEN_KEYS), terminal: pick(r.terminal, TERMINAL_KEYS), ...ownLook(r as CustomTheme) }));
   }
   return out;
 }

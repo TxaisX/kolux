@@ -3,7 +3,7 @@
 // save, so custom themes live in the settings file beside the rest of the look (fields `customThemes`
 // and `customThemeActive`) and there is no second store.
 import type { Appearance } from "../theme";
-import { MAX_THEMES, NAME_MAX, resolve, type CustomTheme } from "./customTheme";
+import { MAX_THEMES, NAME_MAX, ownLook, resolve, type CustomTheme } from "./customTheme";
 
 /** A name not used yet (any case): `Mine`, then `Mine 2`, `Mine 3`... */
 export function freeName(taken: readonly string[], want: string): string {
@@ -26,7 +26,7 @@ export function nameProblem(look: Appearance, want: string, own = ""): string {
 /** A new theme that looks like the window does now: the built-in theme in use, or a copy of the custom one in use. */
 export const newTheme = (look: Appearance): CustomTheme => {
   const from = look.userThemes.find((t) => t.name === look.userTheme);
-  return { name: freeName(look.userThemes.map((t) => t.name), "My theme"), base: from?.base ?? look.theme, overrides: { ...from?.overrides }, terminal: { ...from?.terminal } };
+  return { name: freeName(look.userThemes.map((t) => t.name), "My theme"), base: from?.base ?? look.theme, overrides: { ...from?.overrides }, terminal: { ...from?.terminal }, ...(from ? ownLook(from) : { tint: look.tint, saturation: look.saturation, depth: look.depth }) };
 };
 
 /** The theme with this name, or none. */
@@ -53,9 +53,6 @@ export function duplicateTheme(look: Appearance, name: string): Appearance {
 
 /** Removes a theme; if it was in use the window goes back to the built-in theme under it. */
 export const deleteTheme = (look: Appearance, name: string): Appearance => ({ ...look, userThemes: look.userThemes.filter((t) => t.name !== name), userTheme: look.userTheme === name ? "" : look.userTheme });
-
-/** Puts a saved theme in use ("" for the built-in one). */
-export const activateTheme = (look: Appearance, name: string): Appearance => ({ ...look, userTheme: findTheme(look, name) ? name : "" });
 
 /** Back to Kolux's own default: Classic, no tint, saturation or depth, and no custom theme in use. The saved themes stay in the list. */
 export const resetToDefault = (look: Appearance): Appearance => ({ ...look, theme: "classic", tint: 0, saturation: 100, depth: 0, userTheme: "" });

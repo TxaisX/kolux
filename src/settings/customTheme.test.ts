@@ -1,26 +1,28 @@
 // T-648 (DT-C87): custom themes. Import validation, the contrast maths, and save / rename / duplicate /
 // delete / reset, plus how a custom theme reaches the window's colours.
 import { expect, test } from "vitest";
-import { buildTheme, classic, isDark, readAppearance, terminalFor, writeAppearance } from "../theme";
+import { buildTheme, classic, isDark, readAppearance, terminalFor, themeVars, TOKEN_KEYS, writeAppearance } from "../theme";
 import { customTokens, tidyThemes, type CustomTheme } from "./customTheme";
 import { AA, contrast, nudgeToContrast, pairsOf, ratioText } from "./customThemeContrast";
-import { exportTheme, parseThemeFile } from "./customThemeFile";
-import { activateTheme, deleteTheme, duplicateTheme, freeName, nameProblem, newTheme, resetToDefault, saveTheme } from "./customThemeStore";
+import { byteLength, exportTheme, MAX_BYTES, parseThemeFile } from "./customThemeFile";
+import { deleteTheme, duplicateTheme, freeName, nameProblem, newTheme, resetToDefault, saveTheme } from "./customThemeStore";
 import { ADVANCED, MAIN } from "./CustomThemeEditor";
 
 const file = (over: Record<string, unknown> = {}) => JSON.stringify({ format: "kolux-theme", version: 1, name: "Dusk", base: "classic", overrides: { accent: "#ff8800", fg: "#EEEEEE" }, terminal: { red: "#cc0000" }, ...over });
 const look = (extra: Record<string, unknown> = {}) => readAppearance(extra);
+/** Puts a saved theme in use (the Appearance page does this by writing `userTheme`). */
+const activateTheme = (a: ReturnType<typeof look>, name: string) => ({ ...a, userTheme: name });
 const dusk: CustomTheme = { name: "Dusk", base: "classic", overrides: { accent: "#ff8800" }, terminal: {} };
 
 // ---- import validation ----
 
 test("a good file is read, colours lower-cased", () => {
   const t = parseThemeFile(file());
-  expect(t).toEqual({ name: "Dusk", base: "classic", overrides: { accent: "#ff8800", fg: "#eeeeee" }, terminal: { red: "#cc0000" } });
+  expect(t).toEqual({ name: "Dusk", base: "classic", tint: 0, saturation: 100, depth: 0, overrides: { accent: "#ff8800", fg: "#eeeeee" }, terminal: { red: "#cc0000" } });
 });
 
 test("export then import gives the same theme back", () => {
-  const t: CustomTheme = { name: "Mine", base: "teal", overrides: { "app-bg": "#101820" }, terminal: { cursor: "#ffffff" } };
+  const t: CustomTheme = { name: "Mine", base: "teal", tint: 40, saturation: 50, depth: 2, overrides: { "app-bg": "#101820" }, terminal: { cursor: "#ffffff" } };
   expect(parseThemeFile(exportTheme(t))).toEqual(t);
 });
 
@@ -151,7 +153,7 @@ test("reset goes back to Classic, plain sliders, no custom theme, and keeps the 
 });
 
 test("a new theme copies the custom theme in use, else starts from the built-in one", () => {
-  expect(newTheme(look({ appTheme: "teal" }))).toEqual({ name: "My theme", base: "teal", overrides: {}, terminal: {} });
+  expect(newTheme(look({ appTheme: "teal" }))).toEqual({ name: "My theme", base: "teal", overrides: {}, terminal: {}, tint: 0, saturation: 100, depth: 0 });
   const a = activateTheme(saveTheme(look(), dusk), "Dusk");
   const n = newTheme(a);
   expect(n.overrides).toEqual({ accent: "#ff8800" });
@@ -165,7 +167,8 @@ test("only the changed colours differ from the base; one accent pick touches onl
   const t = buildTheme(a, true);
   expect(t.accent).toBe("#ff8800");
   expect(t.link).toBe("#ff8800");
-  expect({ ...t, accent: classic.accent, link: classic.link }).toEqual(classic);
+  const { accent: _a, ...rest } = t;
+  expect({ ...rest, link: classic.link }).toEqual(classic);
 });
 
 test("changing the background, panel and text re-mixes the greys, and an explicit token still wins", () => {
@@ -195,7 +198,7 @@ test("terminal colours: the theme's own win, the rest follow the app theme", () 
 
 test("every colour of the classic palette has a picker, once", () => {
   const listed = [...MAIN.map((m) => m.key as string), ...ADVANCED.flatMap((g) => g.keys)];
-  expect([...listed].sort()).toEqual(Object.keys(classic).sort());
+  expect([...listed].sort()).toEqual([...TOKEN_KEYS].sort());
 });
 
 // ---- start-up reads only the saved, resolved colours ----
@@ -207,10 +210,10 @@ test("a saved theme can only lay #rrggbb colours over known tokens, whatever the
   expect(t["app-bg"]).toBe("#101010");
   expect(t.fg).toBe(classic.fg);
   expect(t.accent).toBe("#FF0000");
-  expect(Object.keys(t).sort()).toEqual(Object.keys(classic).sort());
+  expect(Object.keys(t).sort()).toEqual([...TOKEN_KEYS].sort());
   const term = terminalFor(a, true) as Record<string, string>;
   expect(term.red).not.toBe("url(x)");
-  expect(term.Blue).toBe("#0000ff");
+  expect(term.Blue).toBeUndefined();
   expect(term["a b"]).toBeUndefined();
   expect(isDark(a)).toBe(true);
 });
@@ -222,4 +225,54 @@ test("saving a theme stores its resolved colours, so start-up needs no maths", (
   expect(saved.vars?.["--app-bg"]).toBe("#ffffff");
   expect(saved.vars?.["--fg-muted"]).toBeTruthy();
   expect(Object.keys(saved.vars ?? {}).every((k) => /^--[a-z0-9-]+$/.test(k))).toBe(true);
+});
+
+// ---- review fixes (wave UI lane D) ----
+
+test("a built-in theme leaves --accent unset; only a custom theme that sets one defines it", () => {
+  for (const theme of ["classic", "teal", "violet", "graphite"]) for (const dark of [true, false]) expect(Object.keys(themeVars(buildTheme(look({ appTheme: theme }), dark)))).not.toContain("--accent");
+  const plain: CustomTheme = { name: "Plain", base: "classic", overrides: { fg: "#eeeeee" }, terminal: {} };
+  expect(Object.keys(themeVars(buildTheme(activateTheme(saveTheme(look(), plain), "Plain"), true)))).not.toContain("--accent");
+  expect(themeVars(buildTheme(activateTheme(saveTheme(look(), dusk), "Dusk"), true))["--accent"]).toBe("#ff8800");
+});
+
+test("a theme keeps its own tint, saturation and depth: moving the sliders while editing A leaves B alone", () => {
+  let a = look({ appTheme: "teal", themeTint: 30, themeSaturation: 80, themeDepth: 1 });
+  a = saveTheme(a, { ...newTheme(a), name: "A" });
+  a = saveTheme(a, { ...newTheme(a), name: "B" });
+  const bBefore = a.userThemes[1];
+  expect([bBefore.tint, bBefore.saturation, bBefore.depth]).toEqual([30, 80, 1]);
+  // sliders move, then A is edited the way the editor does it (the draft takes the sliders' values)
+  const moved = { ...a, tint: -90, saturation: 140, depth: 5 };
+  const next = saveTheme(moved, { ...moved.userThemes[0], overrides: { fg: "#eeeeee" }, tint: moved.tint, saturation: moved.saturation, depth: moved.depth }, "A");
+  expect(next.userThemes[1]).toEqual(bBefore);
+  expect(next.userThemes[0].tint).toBe(-90);
+  // and a list read back (tidy) after the sliders moved resolves B to the same colours
+  expect(tidyThemes(next.userThemes, { ...next, tint: 120 })[1].vars).toEqual(bBefore.vars);
+});
+
+test("export then import gives identical colours; a version 1 file without the three numbers imports as neutral", () => {
+  const a = saveTheme(look({ appTheme: "teal", themeTint: 25, themeSaturation: 70, themeDepth: 3 }), { ...newTheme(look({ appTheme: "teal", themeTint: 25, themeSaturation: 70, themeDepth: 3 })), name: "Mine", overrides: { accent: "#ff8800" } });
+  const back = saveTheme(look(), parseThemeFile(exportTheme(a.userThemes[0])));
+  expect(back.userThemes[0].vars).toEqual(a.userThemes[0].vars);
+  const old = parseThemeFile(file());
+  expect([old.tint, old.saturation, old.depth]).toEqual([0, 100, 0]);
+  expect(() => parseThemeFile(file({ tint: 999 }))).toThrow(/"tint" must be a number from -180 to 180/);
+});
+
+test("the size cap counts bytes, not characters", () => {
+  const wide = file({ name: "é" }) + "é".repeat(MAX_BYTES / 2 - 20);
+  expect(wide.length).toBeLessThan(MAX_BYTES);
+  expect(byteLength(wide)).toBeGreaterThan(MAX_BYTES);
+  expect(() => parseThemeFile(wide)).toThrow(/too big/);
+});
+
+test("a token name from the prototype chain, or a terminal key xterm does not know, is ignored", () => {
+  const evil = { name: "X", base: "classic", overrides: {}, terminal: { red: "#cc0000", fooBar: "#ffffff", foreground: "#101010" }, dark: true, vars: { "--constructor": "#ffffff", "--toString": "#ffffff", "--app-bg": "#101010" } };
+  const a = look({ terminalScheme: "match", customThemes: [evil], customThemeActive: "X" });
+  const t = buildTheme(a, true) as Record<string, string>;
+  expect(Object.keys(t)).not.toContain("constructor");
+  expect(typeof t.constructor).toBe("function");
+  const term = terminalFor(a, true) as Record<string, string>;
+  expect([term.red, term.foreground, term.fooBar]).toEqual(["#cc0000", "#101010", undefined]);
 });

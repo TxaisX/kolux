@@ -47,7 +47,6 @@ export const classic = {
   "dot-live": "#00bb80",
   "dot-idle": "#3c3c3c",
   link: "#b2baf6", // links in markdown documents (DESIGN.md terminal colours)
-  accent: "#b2baf6", // T-648: the highlight colour; a custom theme changes it
   gauge: "#8beeb0",
   "gauge-text": "#83e4a6",
   // warnings and danger (used as literals before SET-005; light mode needs them as tokens)
@@ -61,7 +60,15 @@ export const classic = {
   "cost-fg": "#1f9db0",
 } as const;
 
-export type Theme = Record<keyof typeof classic, string>;
+/** `accent` (T-648) is not part of any built-in theme: only a custom theme that sets it defines `--accent`, so
+ *  the fallbacks written beside `var(--accent, ...)` keep deciding the look for everyone else. */
+export type Theme = Record<keyof typeof classic, string> & { accent?: string };
+
+const ANSI_NAMES = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];
+/** The terminal colours a theme may set: text, ground, cursor, selection and the 16 palette slots. */
+export const TERMINAL_KEYS = ["foreground", "background", "cursor", "selectionBackground", ...ANSI_NAMES, ...ANSI_NAMES.map((c) => "bright" + c[0].toUpperCase() + c.slice(1))];
+/** Every colour name a custom theme may set (the palette, plus the optional accent). */
+export const TOKEN_KEYS: readonly string[] = [...Object.keys(classic), "accent"];
 
 /** The ten colours the whole chrome is built from; the test checks them against DESIGN.md. */
 export const coreTokens = ["app-bg", "strip-bg", "pane-bg", "input-bg", "surface", "line-subtle", "line-strong", "line-focus", "fg", "fg-muted"] as const;
@@ -71,7 +78,7 @@ export const coreTokens = ["app-bg", "strip-bg", "pane-bg", "input-bg", "surface
 export const uiFont = 'Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif';
 export const monoFont = '"Cascadia Mono", Consolas, monospace';
 
-type StyleHost = { style: { setProperty(name: string, value: string): void } };
+type StyleHost = { style: { setProperty(name: string, value: string): void; removeProperty?(name: string): string } };
 
 /** Writes every token as `--name` on the element (normally the document root). */
 export function applyTheme(el: StyleHost, theme: Theme = classic): void {
@@ -211,7 +218,7 @@ export const systemDark = () => typeof matchMedia !== "function" || matchMedia("
 /** T-648: the custom theme in use, if any. */
 export const customOf = (a: Appearance) => a.userThemes.find((c) => c.name === a.userTheme);
 /** Only #rrggbb values under names that match `key`: a saved theme can never put anything else on the window. */
-const hexMap = (m: unknown, key: RegExp): Record<string, string> => Object.fromEntries(Object.entries(m && typeof m === "object" ? m : {}).filter(([k, v]) => key.test(k) && /^#[0-9a-f]{6}$/i.test(String(v))));
+const hexMap = (m: unknown, key: (k: string) => boolean): Record<string, string> => Object.fromEntries(Object.entries(m && typeof m === "object" ? m : {}).filter(([k, v]) => key(k) && /^#[0-9a-f]{6}$/i.test(String(v))));
 const baseOf = (c: CustomTheme) => ((THEMES as readonly string[]).includes(c.base) ? c.base : "classic") as ThemeName;
 const modeDark = (a: Appearance, system: boolean) => a.mode === "dark" || (a.mode === "system" && system);
 /** A custom theme's window is dark when its background is, whatever the mode says. */
@@ -229,7 +236,7 @@ export function buildTheme(a: Appearance, dark = true): Theme {
   if (!c) return builtIn(a, dark);
   // T-648: a custom theme is its base with the colours resolved when it was saved laid over it.
   const t: Record<string, string> = builtIn({ ...a, theme: baseOf(c) }, c.dark !== false);
-  for (const [k, v] of Object.entries(hexMap(c.vars, /^--[a-z0-9-]+$/))) if (k.slice(2) in t) t[k.slice(2)] = v;
+  for (const [k, v] of Object.entries(hexMap(c.vars, (k) => /^--[a-z0-9-]+$/.test(k) && TOKEN_KEYS.includes(k.slice(2))))) t[k.slice(2)] = v;
   return t as Theme;
 }
 function builtIn(a: Appearance, dark: boolean): Theme {
@@ -286,7 +293,7 @@ export function terminalFor(a: Appearance, dark = isDark(a)): ITheme {
     colours["bright" + name[0].toUpperCase() + name.slice(1)] = pull(h, hi);
   }
   const greys = light ? { black: t.fg, brightBlack: t["fg-muted"], white: t["seg-active"], brightWhite: t["line-strong"] } : { black: t.surface, brightBlack: t["fg-faint"], white: t["fg-row"], brightWhite: t.fg };
-  return { ...terminalTheme(t), ...greys, ...colours, ...hexMap(ct?.terminal, /^[a-zA-Z]+$/) };
+  return { ...terminalTheme(t), ...greys, ...colours, ...hexMap(ct?.terminal, (k) => TERMINAL_KEYS.includes(k)) };
 }
 
 // ---- SET-004: the first frame already has the saved look ----
@@ -390,6 +397,7 @@ export function applyAppearance(a: Appearance, root: StyleHost = document.docume
   const vars = { ...themeVars(buildTheme(a, dark)), ...appearanceVars(a, dark), "color-scheme": dark ? "dark" : "light" };
   if (typeof document !== "undefined") document.documentElement.dataset.mode = dark ? "dark" : "light";
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  if (!("--accent" in vars)) root.style.removeProperty?.("--accent"); // a custom theme's accent must not outlive it
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ vars, appearance: a }));
   } catch {

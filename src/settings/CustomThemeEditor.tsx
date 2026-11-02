@@ -4,12 +4,13 @@
 // the whole window at once (the Appearance page applies each change) and is saved through the page's
 // usual save, as part of the look. Loaded on demand from AppearancePage.
 import { useLeaveSave } from "./leave";
-import { useMemo, useState, type CSSProperties } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { useMemo, useState, type CSSProperties } from "react";;
 import { buildTheme, customOf, isDark, terminalFor, type Appearance } from "../theme";
-import { NAME_MAX, TERMINAL_KEYS, tidyThemes, type CustomTheme } from "./customTheme";
+import { NAME_MAX, TERMINAL_KEYS, ownLook, tidyThemes, type CustomTheme } from "./customTheme";
 import { AA, contrast, nudgeToContrast, pairsOf, ratioText, type Pair } from "./customThemeContrast";
-import { exportTheme, parseThemeFile } from "./customThemeFile";
-import { deleteTheme, duplicateTheme, newTheme, nameProblem, resetToDefault, saveTheme } from "./customThemeStore";
+import { MAX_BYTES, exportTheme, parseThemeFile } from "./customThemeFile";
+import { deleteTheme, duplicateTheme, freeName, newTheme, nameProblem, resetToDefault, saveTheme } from "./customThemeStore";
 
 type Props = { look: Appearance; onChange: (a: Appearance) => void };
 
@@ -32,7 +33,6 @@ export const ADVANCED: { title: string; keys: string[] }[] = [
 const TERMINAL_TOP = [["foreground", "Text"], ["background", "Background"], ["cursor", "Cursor"], ["selectionBackground", "Selection"]] as const;
 const ANSI_NAMES = TERMINAL_KEYS.slice(4);
 const label = (k: string) => k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
-const slug = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "theme";
 const without = (m: Record<string, string>, key: string) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== key));
 
 function Chip({ pair, onFix }: { pair: Pair; onFix: () => void }) {
@@ -87,7 +87,8 @@ export default function CustomThemeEditor({ look: saved, onChange }: Props) {
     setNote(n);
     setBad(b);
   };
-  const edit = (next: CustomTheme) => cur && onChange(saveTheme(look, next, cur.name));
+  // Only the theme being edited takes the sliders' current tint, saturation and depth; the others keep their own.
+  const edit = (next: CustomTheme) => cur && onChange(saveTheme(look, { ...next, ...ownLook(look) }, cur.name));
   const tokens = buildTheme(look, isDark(look)) as Record<string, string>;
   const term = terminalFor({ ...look, terminal: "match", lightScheme: "match", lightTerminal: true }, isDark(look)) as Record<string, string>;
 
@@ -110,36 +111,27 @@ export default function CustomThemeEditor({ look: saved, onChange }: Props) {
   const importText = (text: string, from: string) => {
     try {
       const t = parseThemeFile(text);
-      const taken = look.userThemes.some((x) => x.name.toLowerCase() === t.name.toLowerCase());
-      add(taken ? { ...t, name: `${t.name.slice(0, NAME_MAX - 11)} (imported)` } : t);
+      add({ ...t, name: freeName(look.userThemes.map((x) => x.name), t.name) });
     } catch (e) {
       say("", `${from}: ${e instanceof Error ? e.message : String(e)} Nothing was changed.`);
     }
   };
   const exportIt = () => {
     if (!cur) return;
-    const text = exportTheme(cur);
-    void navigator.clipboard?.writeText(text).catch(() => {});
-    try {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-      a.download = `kolux-theme-${slug(cur.name)}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    } catch {
-      /* the copy above is the fallback */
-    }
-    say(`Copied the theme as text, and started a download named kolux-theme-${slug(cur.name)}.json.`);
+    // The system Save dialog (theme_file.rs), the way a note is saved as a PDF; nothing is written until a place is chosen.
+    invoke<string | null>("theme_export_save", { name: cur.name, text: exportTheme(cur) })
+      .then((path) => say(path ? `Saved the theme to ${path}.` : "Export cancelled. Nothing was saved."))
+      .catch((e) => say("", `Could not save the theme file: ${e instanceof Error ? e.message : String(e)}`));
   };
 
   const setColour = (key: string, v: string) => cur && edit({ ...cur, overrides: { ...cur.overrides, [key]: v } });
   const setTerm = (key: string, v: string) => cur && edit({ ...cur, terminal: { ...cur.terminal, [key]: v } });
   const fix = (p: Pair) => {
     const key = p.id === "fg-muted" ? "fg-muted" : "fg";
-    setColour(key, nudgeToContrast(tokens[key], key === "fg" ? [tokens["app-bg"], tokens.surface] : [tokens.surface]));
+    setColour(key, nudgeToContrast((tokens[key] ?? tokens.link), key === "fg" ? [tokens["app-bg"], tokens.surface] : [tokens.surface]));
   };
   const colour = (key: string, text: string, hint?: string) => (
-    <Swatch key={key} id={key} text={text} hint={hint} value={tokens[key]} changed={!!cur && key in cur.overrides} onPick={(v) => setColour(key, v)} onReset={() => cur && edit({ ...cur, overrides: without(cur.overrides, key) })} />
+    <Swatch key={key} id={key} text={text} hint={hint} value={tokens[key] ?? tokens.link} changed={!!cur && key in cur.overrides} onPick={(v) => setColour(key, v)} onReset={() => cur && edit({ ...cur, overrides: without(cur.overrides, key) })} />
   );
   const swatch = (key: string, text: string) => (
     <Swatch key={key} id={key} text={text} value={term[key] ?? tokens["row-selected"]} changed={!!cur && key in cur.terminal} onPick={(v) => setTerm(key, v)} onReset={() => cur && edit({ ...cur, terminal: without(cur.terminal, key) })} />
@@ -160,7 +152,8 @@ export default function CustomThemeEditor({ look: saved, onChange }: Props) {
             aria-label="Theme file to import"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void f.text().then((t) => importText(t, f.name));
+              if (f && f.size > MAX_BYTES) say("", `${f.name}: That file is too big to be a Kolux theme. Nothing was changed.`);
+              else if (f) void f.text().then((t) => importText(t, f.name));
               e.target.value = "";
             }}
           />

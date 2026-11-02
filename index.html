@@ -10,7 +10,14 @@
       // first frame already has the saved look. The key is CACHE_KEY in src/theme.ts.
       try {
         var look = JSON.parse(localStorage.getItem("kolux.look") || "null");
-        if (look && look.vars) for (var k in look.vars) document.documentElement.style.setProperty(k, look.vars[k]);
+        if (look && look.vars && typeof look.vars === "object") for (var k in look.vars) {
+          // only names and values the app itself writes: own keys, --token names, plain values (no url(), no braces)
+          var v = look.vars[k];
+          if (!Object.prototype.hasOwnProperty.call(look.vars, k) || typeof v !== "string" || v.length > 300) continue;
+          if (!(/^--[a-z0-9-]{1,40}$/.test(k) || (k === "color-scheme" && /^(light|dark)$/.test(v)))) continue;
+          if (/[;{}\<>]|url\(|expression|@import/i.test(v)) continue;
+          document.documentElement.style.setProperty(k, v);
+        }
       } catch (e) {}
     </script>
   </head>
