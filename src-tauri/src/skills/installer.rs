@@ -188,16 +188,24 @@ pub fn refusal(cmd: &Cmd, dir: Option<&Path>, cwd: &Path, home: Option<&Path>, o
     // node_modules/.bin on the way at the front of the search path for everything the installer
     // starts (Node, git), so any program there counts, not only one called skills.
     let has_bin = |d: &Path| std::fs::read_dir(d.join("node_modules").join(".bin")).into_iter().flatten().flatten().next().is_some();
-    let own = cwd.ancestors().take_while(|d| home.is_none_or(|h| !same_dir(d, h))).find(|d| d.join(".npmrc").is_file() || has_bin(d))?;
+    // The walk stops only where the path is spelled as the user's folder. A link or short name that
+    // leads there is skipped, not a stop, so a link inside a project cannot hide the folders above it.
+    let own = cwd.ancestors()
+        .take_while(|d| home.is_none_or(|h| !same_spelling(d, h)))
+        .filter(|d| home.is_none_or(|h| !same_dir(d, h)))
+        .find(|d| d.join(".npmrc").is_file() || has_bin(d))?;
     Some(format!("{} carries its own npm settings or its own programs in node_modules, which would decide what the installer runs. Kolux will not install into this project; install for the whole computer instead, or run the installer yourself if you trust this project", own.display()))
 }
 
-/// Whether two paths name the same folder: Windows folder names ignore case, and a short (8.3)
-/// or linked spelling resolves to the same real folder.
-fn same_dir(a: &Path, b: &Path) -> bool {
+/// Whether two paths are spelled as the same folder; Windows folder names ignore case.
+fn same_spelling(a: &Path, b: &Path) -> bool {
     let trim = |p: &Path| p.to_string_lossy().trim_end_matches(['/', '\\']).to_string();
-    let spelled = if cfg!(windows) { trim(a).eq_ignore_ascii_case(&trim(b)) } else { trim(a) == trim(b) };
-    spelled || matches!((std::fs::canonicalize(a), std::fs::canonicalize(b)), (Ok(x), Ok(y)) if x == y)
+    if cfg!(windows) { trim(a).eq_ignore_ascii_case(&trim(b)) } else { trim(a) == trim(b) }
+}
+
+/// Whether two paths name the same folder, also through a short (8.3) or linked spelling.
+fn same_dir(a: &Path, b: &Path) -> bool {
+    same_spelling(a, b) || matches!((std::fs::canonicalize(a), std::fs::canonicalize(b)), (Ok(x), Ok(y)) if x == y)
 }
 
 /// "1.48.0" (what `node -p process.versions.uv` prints) as (1, 48).
@@ -543,6 +551,14 @@ exit /b 0
         if cfg!(windows) {
             assert_eq!(refusal(&l, None, &project, Some(&shouted), false), None);
         }
+        // A path that only leads to the user's folder (here through "..") is skipped, not a stop:
+        // the user's own .npmrc is still ignored, but a project folder above the alias still counts.
+        std::fs::create_dir_all(home.join("x")).unwrap();
+        let alias = home.join("x").join("..").join("code").join("app");
+        assert_eq!(check(&alias), None, "the alias of the user's folder is skipped");
+        std::fs::write(home.join("x").join(".npmrc"), "").unwrap();
+        assert!(check(&alias).is_some(), "the walk goes on past the alias to the folder above it");
+        std::fs::remove_file(home.join("x").join(".npmrc")).unwrap();
         // Outside the user's folder, every parent counts.
         let outside = crate::test_dir::temp("t635-outside");
         let deep = outside.join("a").join("b");
