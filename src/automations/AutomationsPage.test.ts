@@ -128,7 +128,7 @@ test("AUTO-013: the Runs tab is a list to step through; a failed run offers Reru
 });
 
 // T-193-b: Hermes and OpenClaw jobs are listed as running on this computer.
-const hermesRow = { id: "hermes:j1", jobId: "j1", source: "hermes" as const, local: true, name: "Nightly digest", prompt: "summarise the inbox", provider: "hermes", projectId: "", enabled: true, trigger: { kind: "schedule" as const, cron: "0 9 * * *", timezone: "UTC" }, timetable: "Every day at 09:00 (UTC)", actions: ["run", "edit", "delete", "create", "pause", "resume"] };
+const hermesRow = { id: "hermes:j1", jobId: "j1", source: "hermes" as const, local: true, name: "Nightly digest", prompt: "summarise the inbox", provider: "hermes", projectId: "", enabled: true, trigger: { kind: "schedule" as const, cron: "0 9 * * *", timezone: "UTC" }, timetable: "Every day at 09:00 (UTC)", actions: ["run", "delete", "create", "pause", "resume"] };
 const clawRow = { ...hermesRow, id: "openclaw:c1", jobId: "c1", source: "openclaw" as const, name: "Sweep", provider: "openclaw", enabled: false, actions: ["run", "delete", "pause", "resume"] };
 
 test("T-193-b a Hermes row says it runs on this computer and has a pause switch", () => {
@@ -145,10 +145,10 @@ test("T-193-b a paused OpenClaw row reads Paused and carries the same label", ()
   expect(html).toContain("Paused");
 });
 
-test("T-193-b a tool that is missing is one note above the list, never an error that hides the Kolux rows", () => {
-  const warning = { id: "warning:hermes", kind: "warning" as const, source: "hermes" as const, warning: "hermes was not found on the PATH", name: "hermes", prompt: "", provider: "hermes", projectId: "", enabled: false, actions: [] };
+test("T-193-b a tool that failed is one note above the list, never an error that hides the Kolux rows (a tool that is not installed sends no note at all)", () => {
+  const warning = { id: "warning:openclaw", kind: "warning" as const, source: "openclaw" as const, warning: "openclaw failed: Gateway needs credentials", name: "openclaw", prompt: "", provider: "openclaw", projectId: "", enabled: false, actions: [] };
   const html = render({ data: { automations: [{ id: "auto-1", name: "Kolux one", prompt: "p", provider: "claude", projectId: "p1", enabled: true }, warning], runs: [] } });
-  expect(html).toContain("hermes was not found on the PATH");
+  expect(html).toContain("openclaw failed: Gateway needs credentials");
   expect(html).toContain("Kolux one");
   expect(html).not.toContain("Automations could not be loaded");
   expect(html.match(/<tr /g)?.length).toBe(1);

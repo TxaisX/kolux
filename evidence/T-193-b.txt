@@ -3,19 +3,20 @@ built 2026-11-01 by Sonnet 5.5 on s-90/T-193-b (worktree G:/Dev/kolux-rs-session
 
 BUILT
 Rust, src-tauri/src/automations/external.rs (new):
-  - Probe trait (list, act) with a Fake for tests and the real CliProbe. Actions: run, pause, resume, remove, create, edit.
+  - Probe trait (list, act) with a Fake for tests and the real CliProbe. Actions: run, pause, resume, remove, create (no edit: review fix).
   - CliProbe spawns hermes / openclaw found on PATH (PATHEXT order, so openclaw.cmd beats the extensionless npm shim),
     15 s list limit, 30 s action limit, kill of the whole process tree on a timeout, a 2-slot gate (concurrency
     semaphore), and the probes are held back while a Kolux run is pending or dispatching (kolux_busy).
   - Results are cached (static CACHE) and re-read only by automations_external_refresh (the Refresh button, plus once when
     the page first opens in a run).
-  - A missing program, a timeout or a failure is a "warning" row ("hermes was not found on the PATH"); the Kolux list still returns.
+  - A timeout or a failure is a "warning" row; a program that is simply not installed says nothing (review fix, no banner);
+    the Kolux list still returns either way.
   - Defensive parsers hermes_jobs(&str) and openclaw_jobs(&str): unknown fields ignored, a bad record skipped, a bad file is
     an empty list plus a warning.
   - Hermes history: hermes_history(home, job_id, limit) reads only <hermes home>/cron/output/<job_id>/ (canonicalized and
     checked to stay inside), .md only, newest first, each run document split into titled sections on "## " headings
     (not inside code fences).
-  - Rows carry source "hermes"|"openclaw", local true and an actions set (hermes: run, edit, delete, create, pause, resume;
+  - Rows carry source "hermes"|"openclaw", local true and an actions set (hermes: run, delete, create, pause, resume;
     openclaw: run, delete, pause, resume).
   - Job ids are validated (plain words only) and Hermes create uses "--" before the positionals, so no id or prompt can
     become a flag or a path.
@@ -23,14 +24,14 @@ Rust, src-tauri/src/automations/external.rs (new):
     automation_external_history. automations_list now appends the cached external rows.
 TypeScript, src/automations:
   - model.ts: Automation gains source/jobId/local/actions/kind/warning/lastRunAt/lastStatus/running/pausedReason.
-    New agentChoices, canDo, rowActions, splitWarnings, whereItRuns, hermesSchedule. An agent or result filter never keeps
-    an external row; external rows are not offered as an agent; last-run sort uses lastRunAt for them.
+    New agentChoices, canDo, rowActions, splitWarnings, whereItRuns, hermesSchedule. An agent filter never keeps
+    an external row; a result filter maps its own last status (ok -> Completed, error/failed -> Failed, none -> Never ran); external rows are not offered as an agent; last-run sort uses lastRunAt for them.
   - AutomationsPage.tsx: warning rows become notes above the table; rows and the detail say "Runs on this computer (Hermes)";
-    pause/resume switch and Run now route to automation_external_act; the quick-action menu comes from rowActions, so an
-    OpenClaw row has no Edit; Delete routes to the tool; Refresh asks the tools again.
-  - AutomationDialog.tsx: "Runs in" Kolux/Hermes choice on a new automation (an existing job keeps its tool). Hermes hides
-    Agent, Project, Workspace and session reuse, "Starts" (event), grace and precheck; needs a five-field cron timetable
-    (an RRULE is refused, Save stays off); Save calls automation_external_act create/edit.
+    pause/resume switch and Run now route to automation_external_act; the quick-action menu comes from rowActions, so a
+    Hermes or OpenClaw row has no Edit; Delete routes to the tool; Refresh asks the tools again.
+  - AutomationDialog.tsx: "Runs in" Kolux/Hermes choice on a new automation (Hermes jobs are created, never edited). Hermes hides
+    the time zone (the Hermes CLI has no zone flag), Agent, Project, Workspace and session reuse, "Starts" (event), grace and precheck; needs a five-field cron timetable
+    (an RRULE is refused, Save stays off); Save calls automation_external_act create.
 
 CLI VERSIONS SEEN (read-only)
   hermes   : Hermes Agent v0.22.5 (2026.9.24)   (the brief said 0.19.0)
@@ -60,7 +61,7 @@ Live check (marked #[ignore], read-only): cargo test --lib -- --ignored live_the
 
 VERIFY (run in G:/Dev/kolux-rs-sessions/wt/90-T-193-b, cargo with CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-90
 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0, inside the s-90 slot)
-  cargo test --manifest-path src-tauri/Cargo.toml -- automations::      -> 69 passed; 0 failed; 1 ignored (exit 0)
+  cargo test --manifest-path src-tauri/Cargo.toml -- automations::      -> 71 passed; 0 failed; 1 ignored (exit 0; after the review fixes)
   cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings -> exit 0, no warnings
   VITEST_MAX_WORKERS=2 npx vitest run src/automations                   -> 12 files, 90 tests passed
   npx tsc --noEmit -p .                                                 -> no output (0 errors)
@@ -96,7 +97,8 @@ REST (not done or not proven)
     (PROVENANCE.md was outside this task's files).
   - Hermes history (automation_external_history) is built and tested in Rust but no page view shows it yet.
   - Hermes jobs created in the dialog are not selected after save until the next read (stub row, empty id).
-  - Choice made where the brief was open: an active agent filter hides external rows, and a result filter other than
-    "Any result" hides them too (they have no Kolux runs).
+  - "hermes cron run" (and any action) is killed after 30 s; whether Hermes runs a job synchronously is unchecked.
+  - Choice made where the brief was open: an active agent filter hides external rows; a result filter reads the
+    row's own last status.
   - Shared files touched beyond automations/*: src-tauri/src/automations.rs (mod line, list() extension, three commands)
     and src-tauri/src/lib.rs (three registration lines).

@@ -196,7 +196,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
 
   // T-193-b: a job can live in Hermes instead; an existing job keeps the tool it came from. These two
   // states sit after every older hook so the saved-card tests that address hooks by number still line up.
-  const [where, setWhere] = useState<"kolux" | "hermes">(editing?.source === "hermes" ? "hermes" : "kolux");
+  const [where, setWhere] = useState<"kolux" | "hermes">("kolux");
   const [folder, setFolder] = useState(editing?.workspace ?? "");
   const hermes = where === "hermes";
   const timed = hermes || starts === "schedule";
@@ -232,13 +232,14 @@ export default function AutomationDialog({ projects, agents, editing, template, 
     setSaving(true);
     setSaveError(null);
     if (hermes) {
-      // Hermes creates and edits its own job; Kolux only passes the name, prompt, timetable and folder on.
+      // Hermes creates its own job (and keeps it: Kolux offers no Edit on it); Kolux only passes the name, prompt, timetable and folder on.
+      // Hermes takes no time zone, so none is sent.
       const input = { name, prompt, schedule: cron, workspace: folder.trim() || null };
-      invoke("automation_external_act", { tool: "hermes", action: editing ? "edit" : "create", id: editing?.jobId ?? "", input })
+      invoke("automation_external_act", { tool: "hermes", action: "create", id: "", input })
         .then(() => invoke("automations_external_refresh").catch(() => {}))
         .then(() => {
           noteUse("automations");
-          onSaved({ ...(editing ?? hermesStub), name, prompt });
+          onSaved({ ...hermesStub, name, prompt });
           onClose();
         })
         .catch((e) => {
@@ -464,10 +465,12 @@ export default function AutomationDialog({ projects, agents, editing, template, 
                   </span>
                 </label>
               )}
+              {!hermes && (
               <label className="auto-label">
                 Time zone
                 <input className="field" value={zone} onChange={(e) => setZone(e.target.value)} />
               </label>
+              )}
               {!hermes && (
               <label className="auto-label">
                 If Kolux was away at the time
@@ -514,7 +517,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             ) : (
               preview && (
                 <div className="auto-preview" role="status">
-                  {form.preset === "custom" ? `Valid: ${cronWords(form.custom, lang) ?? preview.timetable} (${zone})` : preview.timetable}
+                  {form.preset === "custom" ? `Valid: ${cronWords(form.custom, lang) ?? preview.timetable}${hermes ? "" : ` (${zone})`}` : preview.timetable}
                   <br />
                   Next run: {preview.nextRunLabel}
                 </div>

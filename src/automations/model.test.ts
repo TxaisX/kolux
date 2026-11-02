@@ -182,7 +182,7 @@ test("AUTO-013: Up and Down step through runs, Down with none selected picks the
 });
 
 // T-193-b: Hermes and OpenClaw rows live on this computer; Kolux does not own their agent or their runs.
-const hermes = (extra: Partial<Automation> = {}): Automation => auto("hermes:j1", "Nightly digest", { provider: "hermes", projectId: "", source: "hermes", jobId: "j1", local: true, actions: ["run", "edit", "delete", "create", "pause", "resume"], ...extra });
+const hermes = (extra: Partial<Automation> = {}): Automation => auto("hermes:j1", "Nightly digest", { provider: "hermes", projectId: "", source: "hermes", jobId: "j1", local: true, actions: ["run", "delete", "create", "pause", "resume"], ...extra });
 const claw = (extra: Partial<Automation> = {}): Automation => auto("openclaw:c1", "Sweep", { provider: "openclaw", projectId: "", source: "openclaw", jobId: "c1", local: true, actions: ["run", "delete", "pause", "resume"], ...extra });
 
 test("T-193-b an agent filter does not list or keep external rows, and no filter keeps them", () => {
@@ -192,15 +192,32 @@ test("T-193-b an agent filter does not list or keep external rows, and no filter
   expect(agentChoices([auto("a", "A"), hermes(), claw()])).toEqual(["claude"]);
 });
 
-test("T-193-b state filter still works on external rows; a result filter only applies to Kolux runs", () => {
+test("T-193-b state filter still works on external rows; a result filter reads the tool's own last status", () => {
   expect(passes(hermes({ enabled: false }), { ...noFilters, state: "paused" }, [])).toBe(true);
   expect(passes(hermes({ enabled: false }), { ...noFilters, state: "on" }, [])).toBe(false);
-  expect(passes(hermes(), { ...noFilters, result: "failed" }, [])).toBe(false);
+  const f = (result: typeof noFilters.result) => ({ ...noFilters, result });
+  // never ran
+  expect(passes(hermes(), f("never"), [])).toBe(true);
+  expect(passes(hermes(), f("failed"), [])).toBe(false);
+  // a failed Hermes job shows under Failed and nowhere else; an ok one under Completed
+  const failed = hermes({ lastRunAt: 5, lastStatus: "error" });
+  expect(passes(failed, f("failed"), [])).toBe(true);
+  expect(passes(failed, f("completed"), [])).toBe(false);
+  expect(passes(failed, f("never"), [])).toBe(false);
+  const ok = claw({ lastRunAt: 5, lastStatus: "ok" });
+  expect(passes(ok, f("completed"), [])).toBe(true);
+  expect(passes(ok, f("failed"), [])).toBe(false);
+  expect(passes(hermes({ lastRunAt: 5, lastStatus: "Failed" }), f("failed"), [])).toBe(true);
+  // a status Kolux does not know matches no specific result, but "any result" still keeps it
+  const odd = hermes({ lastRunAt: 5, lastStatus: "weird" });
+  expect(passes(odd, f("failed"), [])).toBe(false);
+  expect(passes(odd, noFilters, [])).toBe(true);
 });
 
-test("T-193-b which actions a row offers: Kolux rows everything, OpenClaw no edit, Hermes edit and create", () => {
+test("T-193-b which actions a row offers: Kolux rows everything, Hermes and OpenClaw no edit", () => {
   expect(canDo(auto("a", "A"), "edit")).toBe(true);
-  expect(canDo(hermes(), "edit")).toBe(true);
+  expect(canDo(hermes(), "edit")).toBe(false);
+  expect(canDo(hermes(), "create")).toBe(true);
   expect(canDo(claw(), "edit")).toBe(false);
   expect(canDo(claw(), "pause")).toBe(true);
   expect(canDo(claw(), "delete")).toBe(true);
@@ -208,10 +225,10 @@ test("T-193-b which actions a row offers: Kolux rows everything, OpenClaw no edi
 });
 
 test("T-193-b warning rows are split off the list and read as one line each", () => {
-  const w: Automation = { ...auto("warning:hermes", "hermes"), kind: "warning", source: "hermes", warning: "hermes was not found on the PATH", actions: [] };
+  const w: Automation = { ...auto("warning:hermes", "hermes"), kind: "warning", source: "hermes", warning: "hermes failed: boom", actions: [] };
   const { rows, warnings } = splitWarnings([auto("a", "A"), w, hermes()]);
   expect(rows.map((r) => r.id)).toEqual(["a", "hermes:j1"]);
-  expect(warnings).toEqual(["hermes was not found on the PATH"]);
+  expect(warnings).toEqual(["hermes failed: boom"]);
 });
 
 test("T-193-b external rows sort by their own last run time and say where they run", () => {
@@ -222,9 +239,9 @@ test("T-193-b external rows sort by their own last run time and say where they r
   expect(whereItRuns(auto("a", "A"))).toBe("");
 });
 
-test("T-193-b the quick-action menu: OpenClaw rows have no Edit, a paused row offers Resume, Kolux rows have all four", () => {
+test("T-193-b the quick-action menu: Hermes and OpenClaw rows have no Edit, a paused row offers Resume, Kolux rows have all four", () => {
   expect(rowActions(auto("a", "A"))).toEqual(["run", "toggle", "edit", "delete"]);
-  expect(rowActions(hermes())).toEqual(["run", "toggle", "edit", "delete"]);
+  expect(rowActions(hermes())).toEqual(["run", "toggle", "delete"]);
   expect(rowActions(claw())).toEqual(["run", "toggle", "delete"]);
   expect(rowActions(claw({ enabled: false, actions: ["run", "delete", "pause"] }))).toEqual(["run", "delete"]);
 });

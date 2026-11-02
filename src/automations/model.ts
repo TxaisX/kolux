@@ -121,7 +121,7 @@ export function hermesSchedule(line: string): string | null {
   return /^rrule:|^freq=/i.test(t) || t.split(" ").length !== 5 ? null : t;
 }
 
-/** The tool notes ("hermes was not found on the PATH") taken out of the rows so they show as a banner. */
+/** The tool notes ("hermes failed: ...") taken out of the rows so they show as a banner. */
 export function splitWarnings(list: Automation[]): { rows: Automation[]; warnings: string[] } {
   const rows = list.filter((a) => a.kind !== "warning");
   return { rows, warnings: list.filter((a) => a.kind === "warning").map((a) => a.warning ?? `${a.source ?? "A tool"} could not be read`) };
@@ -135,12 +135,24 @@ export function folderOf(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
+/** The result filter's word for what an external tool said about a job's last run ("never" when it has not run). */
+export function externalResult(a: Automation): RunStatus | "never" | null {
+  const said = (a.lastStatus ?? "").trim().toLowerCase();
+  if (!said) return a.lastRunAt ? null : "never";
+  if (/^(ok|success|succeeded|completed|complete|done|finished)$/.test(said)) return "completed";
+  if (/^(error|errored|fail|failed|failure|timeout|timed.?out|crashed)$/.test(said)) return "failed";
+  if (/^(running|started|in.?progress)$/.test(said)) return "dispatched";
+  if (/^(skipped|skip)$/.test(said)) return "skipped";
+  return null;
+}
+
 export function passes(a: Automation, f: Filters, runs: Run[]): boolean {
   if (f.state === "on" && !a.enabled) return false;
   if (f.state === "paused" && a.enabled) return false;
-  // An external job has no Kolux agent and no Kolux runs, so an agent or result filter never keeps it.
+  // An external job has no Kolux agent, so an agent filter never keeps it.
   if (f.agents.length > 0 && (a.source || !f.agents.includes(a.provider))) return false;
-  if (f.result !== "all" && a.source) return false;
+  // It has no Kolux runs either; its own last result (what its tool reported) stands in for the last run's.
+  if (f.result !== "all" && a.source) return externalResult(a) === f.result;
   if (f.result !== "all") {
     const last = lastRun(a.id, runs);
     if (f.result === "never" ? last !== undefined : last?.status !== f.result) return false;

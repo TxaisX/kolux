@@ -1,7 +1,7 @@
 //! Hermes and OpenClaw automations in the Automations list (T-193-b, AUTO-016's second half).
 //! Both tools keep their own scheduled jobs; Kolux lists them beside its own, marks them `source`
 //! "hermes" or "openclaw" and `local` (they run on this computer, not through Kolux's clock), and
-//! forwards Run, Pause, Resume and Delete (and for Hermes, Create and Edit) to the tool's own
+//! forwards Run, Pause, Resume and Delete (and for Hermes, Create) to the tool's own
 //! command line. Nothing here starts an agent or touches Kolux's own automations.
 //!
 //! Everything that reaches the tools goes through the [`Probe`] trait: the real one
@@ -34,7 +34,6 @@ pub enum Action {
     Resume,
     Remove,
     Create,
-    Edit,
 }
 
 /// Why a tool could not answer.
@@ -52,7 +51,7 @@ pub enum Fail {
 pub trait Probe: Send + Sync {
     /// The tool's job list as text, for [`hermes_jobs`] or [`openclaw_jobs`].
     fn list(&self, tool: Tool) -> Result<String, Fail>;
-    /// Run, Pause, Resume, Remove, Create or Edit one job (`id` is empty for Create); the tool's
+    /// Run, Pause, Resume, Remove or Create one job (`id` is empty for Create); the tool's
     /// own words come back.
     fn act(&self, tool: Tool, action: Action, id: &str, input: &Value) -> Result<String, Fail>;
 }
@@ -87,7 +86,6 @@ impl Action {
             "resume" => Some(Action::Resume),
             "delete" => Some(Action::Remove),
             "create" => Some(Action::Create),
-            "edit" => Some(Action::Edit),
             _ => None,
         }
     }
@@ -98,16 +96,15 @@ impl Action {
             Action::Resume => "resume",
             Action::Remove => "delete",
             Action::Create => "create",
-            Action::Edit => "edit",
         }
     }
 }
 
-/// What a row of this tool offers (the page hides the rest): Hermes can do all of it, OpenClaw
-/// has no Edit and no Create here.
+/// What a row of this tool offers (the page hides the rest): Hermes can do all of it but Edit, OpenClaw
+/// has no Edit and no Create here. Neither tool has Edit: a job's schedule stays in its own tool.
 pub fn actions_for(tool: Tool) -> Vec<&'static str> {
     match tool {
-        Tool::Hermes => vec!["run", "edit", "delete", "create", "pause", "resume"],
+        Tool::Hermes => vec!["run", "delete", "create", "pause", "resume"],
         Tool::OpenClaw => vec!["run", "delete", "pause", "resume"],
     }
 }
@@ -477,7 +474,7 @@ pub fn valid_id(id: &str) -> bool {
 }
 
 /// The arguments for one action, after the program name. Refuses what the tool's rows do not
-/// offer, a job id that is not plain, and a create or edit with nothing to say.
+/// offer, a job id that is not plain, and a create with nothing to say.
 pub fn command(tool: Tool, action: Action, id: &str, input: &Value) -> Result<Vec<String>, String> {
     if !actions_for(tool).contains(&action.word()) {
         return Err(format!("{} does not offer {} here", tool.shown(), action.word()));
@@ -513,19 +510,6 @@ pub fn command(tool: Tool, action: Action, id: &str, input: &Value) -> Result<Ve
             // `--` so a prompt that starts with a dash is still the prompt.
             args.extend(["--".into(), schedule, prompt]);
         }
-        (Tool::Hermes, Action::Edit) => {
-            args.push("edit".into());
-            let before = args.len();
-            for (flag, key) in [("--schedule=", "schedule"), ("--prompt=", "prompt"), ("--name=", "name")] {
-                if let Some(v) = word(key) {
-                    args.push(format!("{flag}{v}"));
-                }
-            }
-            if args.len() == before {
-                return Err("there is nothing to change".into());
-            }
-            args.push(id.into());
-        }
         _ => return Err(format!("{} does not offer {} here", tool.shown(), action.word())),
     }
     Ok(args)
@@ -535,8 +519,13 @@ pub fn command(tool: Tool, action: Action, id: &str, input: &Value) -> Result<Ve
 
 /// The program on a PATH string. On Windows each PATHEXT suffix is tried in order (so npm's
 /// extensionless shell shim is never taken over its `.cmd`); elsewhere the file must be executable.
+/// Entries that are empty or not absolute are skipped.
 pub fn find_on_path(program: &str, path: &std::ffi::OsStr, pathext: Option<&str>) -> Option<PathBuf> {
     for dir in std::env::split_paths(path) {
+        // An empty or relative entry means the current folder, where anything could be planted.
+        if dir.as_os_str().is_empty() || !dir.is_absolute() {
+            continue;
+        }
         if cfg!(windows) {
             for ext in pathext.unwrap_or(".COM;.EXE;.BAT;.CMD").split(';').filter(|e| !e.is_empty()) {
                 let p = dir.join(format!("{program}{ext}"));
@@ -726,12 +715,19 @@ impl Probe for CliProbe {
         match tool {
             Tool::Hermes => {
                 let file = self.hermes_home.clone().unwrap_or_else(default_home).join("cron").join("jobs.json");
-                match std::fs::metadata(&file) {
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
-                    Err(e) => Err(Fail::Failed(format!("{} could not be read: {e}", file.display()))),
-                    Ok(m) if m.len() > MAX_JOBS_FILE => Err(Fail::Failed("its jobs file is too big to read".into())),
-                    Ok(_) => std::fs::read_to_string(&file).map_err(|e| Fail::Failed(format!("{} could not be read: {e}", file.display()))),
+                use std::io::Read;
+                let sad = |e: std::io::Error| Fail::Failed(format!("{} could not be read: {e}", file.display()));
+                let f = match std::fs::File::open(&file) {
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(String::new()),
+                    other => other.map_err(sad)?,
+                };
+                // One more byte than the cap tells "exactly the cap" from "over it" without a second look at the file.
+                let mut bytes = Vec::new();
+                f.take(MAX_JOBS_FILE + 1).read_to_end(&mut bytes).map_err(sad)?;
+                if bytes.len() as u64 > MAX_JOBS_FILE {
+                    return Err(Fail::Failed("its jobs file is too big to read".into()));
                 }
+                String::from_utf8(bytes).map_err(|e| sad(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))
             }
             Tool::OpenClaw => {
                 let said = capture(&program, &["cron".into(), "list".into(), "--all".into(), "--json".into()], self.list_limit)?;
@@ -798,7 +794,8 @@ fn read_tool(probe: &dyn Probe, tool: Tool) -> Vec<Value> {
             }
             rows
         }
-        Err(Fail::Missing) => vec![warning_row(tool, &format!("{name} was not found on the PATH"))],
+        // A tool that is simply not installed is not a problem to warn about.
+        Err(Fail::Missing) => Vec::new(),
         Err(Fail::TimedOut) => vec![warning_row(tool, &format!("{name} did not answer in time"))],
         Err(Fail::Failed(e)) => vec![warning_row(tool, &format!("{name} failed: {e}"))],
     }
@@ -896,7 +893,8 @@ mod tests {
         assert_eq!(a["nextRunAt"], 1793610000000i64);
         assert_eq!(a["lastStatus"], "ok");
         assert_eq!(a["workspace"], "C:\\work\\notes");
-        assert_eq!(a["actions"], json!(["run", "edit", "delete", "create", "pause", "resume"]));
+        assert_eq!(a["actions"], json!(["run", "delete", "create", "pause", "resume"]));
+        assert!(!a["actions"].as_array().unwrap().iter().any(|x| x == "edit"), "a Hermes row offers no Edit: its schedule stays in Hermes");
     }
 
     #[test]
@@ -1053,20 +1051,17 @@ mod tests {
         assert_eq!(c(Tool::OpenClaw, Action::Remove, "j1", &none), vec!["cron", "rm", "j1"]);
         let make = json!({ "name": "-Digest", "schedule": "0 9 * * *", "prompt": "-hello\nworld", "workspace": "C:\\w" });
         assert_eq!(c(Tool::Hermes, Action::Create, "", &make), vec!["cron", "create", "--name=-Digest", "--workdir=C:\\w", "--", "0 9 * * *", "-hello\nworld"]);
-        let edit = json!({ "schedule": "every 2h", "prompt": "new" });
-        assert_eq!(c(Tool::Hermes, Action::Edit, "j1", &edit), vec!["cron", "edit", "--schedule=every 2h", "--prompt=new", "j1"]);
     }
 
     #[test]
     fn a_command_that_is_not_allowed_is_refused_before_anything_runs() {
         let none = json!({});
-        assert!(command(Tool::OpenClaw, Action::Edit, "j1", &none).is_err());
+        assert!(Action::parse("edit").is_none(), "no tool offers Edit, so there is no such action");
         assert!(command(Tool::OpenClaw, Action::Create, "", &json!({ "schedule": "x", "prompt": "y" })).is_err());
         assert!(command(Tool::Hermes, Action::Pause, "--help", &none).is_err());
         assert!(command(Tool::Hermes, Action::Pause, "", &none).is_err());
         assert!(command(Tool::Hermes, Action::Create, "", &json!({ "schedule": "", "prompt": "y" })).is_err());
         assert!(command(Tool::Hermes, Action::Create, "", &json!({ "schedule": "0 9 * * *", "prompt": "  " })).is_err());
-        assert!(command(Tool::Hermes, Action::Edit, "j1", &none).is_err(), "an edit that changes nothing");
     }
 
     #[test]
@@ -1121,15 +1116,17 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_program_is_a_warning_row_and_the_other_tool_still_lists() {
+    fn a_missing_program_is_silent_and_the_other_tool_still_lists() {
         let cache = Cache::new();
         let out = refresh(&fake(Err(Fail::Missing), Ok(OPENCLAW_JOBS.into())), &cache, false);
         let rows = out["rows"].as_array().unwrap();
-        let w: Vec<&Value> = rows.iter().filter(|r| r["kind"] == "warning").collect();
-        assert_eq!(w.len(), 1);
-        assert_eq!(w[0]["warning"], "hermes was not found on the PATH");
-        assert_eq!(w[0]["source"], "hermes");
-        assert_eq!(rows.len(), 4, "the warning and OpenClaw's three jobs");
+        assert!(rows.iter().all(|r| r["kind"] != "warning"), "a tool that is not installed gets no banner");
+        assert!(rows.iter().all(|r| r["source"] == "openclaw"));
+        assert_eq!(rows.len(), 3, "OpenClaw's three jobs");
+        let both = refresh(&fake(Err(Fail::Missing), Err(Fail::Missing)), &cache, false);
+        assert!(both["rows"].as_array().unwrap().is_empty());
+        let real = refresh(&fake(Err(Fail::Missing), Err(Fail::Failed("boom".into()))), &cache, false);
+        assert_eq!(real["rows"][0]["warning"], "openclaw failed: boom", "a real failure still warns");
     }
 
     #[test]
@@ -1156,12 +1153,13 @@ mod tests {
     fn act_checks_the_row_may_do_that_then_forwards() {
         let f = fake(Ok(String::new()), Ok(String::new()));
         assert_eq!(act(&f, "openclaw", "pause", "job-1", &json!({})).unwrap(), "done");
-        assert_eq!(act(&f, "hermes", "edit", "j1", &json!({ "prompt": "p" })).unwrap(), "done");
-        assert!(act(&f, "openclaw", "edit", "job-1", &json!({ "prompt": "p" })).unwrap_err().contains("does not offer edit"));
+        assert!(act(&f, "hermes", "edit", "j1", &json!({ "schedule": "0 9 * * *" })).unwrap_err().contains("not an action"));
+        assert!(act(&f, "openclaw", "edit", "job-1", &json!({ "prompt": "p" })).unwrap_err().contains("not an action"));
+        assert!(act(&f, "openclaw", "create", "", &json!({ "schedule": "x", "prompt": "p" })).unwrap_err().contains("does not offer create"));
         assert!(act(&f, "nope", "run", "j", &json!({})).is_err());
         assert!(act(&f, "hermes", "explode", "j", &json!({})).is_err());
         assert!(act(&f, "hermes", "run", "--help", &json!({})).is_err());
-        assert_eq!(*f.said.lock().unwrap(), vec!["openclaw pause job-1", "hermes edit j1"]);
+        assert_eq!(*f.said.lock().unwrap(), vec!["openclaw pause job-1"]);
     }
 
     // ---- the real probe, against stand-in programs on a temp PATH
@@ -1179,6 +1177,22 @@ mod tests {
         }
         assert!(find_on_path("absent", &path, Some(".EXE;.CMD")).is_none());
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn empty_and_relative_path_entries_are_skipped() {
+        let name = "kolux-t193b-shim";
+        stand_in(Path::new("."), name, "exit 0");
+        let ext = if cfg!(windows) { Some(".CMD") } else { None };
+        let cwd = std::env::current_dir().unwrap();
+        let bad = std::env::join_paths([PathBuf::from(""), PathBuf::from("."), PathBuf::from("src")]).unwrap();
+        let found = find_on_path(name, &bad, ext);
+        let good = std::env::join_paths([PathBuf::from(""), cwd]).unwrap();
+        let found_abs = find_on_path(name, &good, ext);
+        let _ = std::fs::remove_file(format!("./{name}.cmd"));
+        let _ = std::fs::remove_file(format!("./{name}"));
+        assert!(found.is_none(), "the current folder is not searched");
+        assert!(found_abs.is_some_and(|p| p.is_absolute()));
     }
 
     /// Writes a stand-in `name` into `dir` that runs `body` (a cmd script on Windows, sh elsewhere).
@@ -1219,6 +1233,23 @@ mod tests {
     }
 
     #[test]
+    fn a_hermes_jobs_file_over_the_cap_is_too_big_and_one_at_the_cap_is_read() {
+        let d = scratch("big");
+        stand_in(&d, "hermes", "exit 0");
+        let p = probe_on(&d, 10_000);
+        let cron = d.join("home").join("cron");
+        std::fs::create_dir_all(&cron).unwrap();
+        let file = cron.join("jobs.json");
+        let mut body = vec![b' '; MAX_JOBS_FILE as usize];
+        std::fs::write(&file, &body).unwrap();
+        assert_eq!(p.list(Tool::Hermes).unwrap().len() as u64, MAX_JOBS_FILE);
+        body.push(b' ');
+        std::fs::write(&file, &body).unwrap();
+        assert_eq!(p.list(Tool::Hermes), Err(Fail::Failed("its jobs file is too big to read".into())));
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
     fn a_program_that_is_not_installed_is_missing_not_an_error() {
         let d = scratch("missing");
         let p = probe_on(&d, 2_000);
@@ -1243,7 +1274,7 @@ mod tests {
         assert!(began.elapsed() < Duration::from_secs(10));
         let rows = out["rows"].as_array().unwrap();
         assert!(rows.iter().any(|r| r["source"] == "openclaw" && r["warning"] == "openclaw did not answer in time"), "{rows:?}");
-        assert!(rows.iter().any(|r| r["source"] == "hermes" && r["warning"] == "hermes was not found on the PATH"));
+        assert!(!rows.iter().any(|r| r["source"] == "hermes"), "hermes is not installed here, so it says nothing");
         let _ = std::fs::remove_dir_all(&d);
     }
 
