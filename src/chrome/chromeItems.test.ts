@@ -68,7 +68,18 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
     expect(menuSettingFlip({ automationsButton: false }, "set.automationsButton")).toEqual(["automationsButton", true]);
     expect(menuSettingFlip({}, "app.settings")).toBeNull();
     expect(menuScreen("screen.board")).toBe("board");
-    expect(menuScreen("screen.tower")).toBeNull();
+    // T-610 / DT-08: the View menu lists the switcher's four and Floor, so each click shows its screen.
+    expect(menuScreen("screen.tower")).toBe("tower");
+    expect(menuScreen("screen.floor")).toBe("floor");
+    expect(menuScreen("screen.inbox")).toBeNull();
+    expect(menuScreen("app.settings")).toBeNull();
+  });
+
+  it("T-610 / DT-C68: the Floor item carries no accelerator even with view.floor bound, so on a Mac the menu's key equivalent cannot fire beside the window's toggle of the same chord", () => {
+    const st = menuBarState({}, "floor", (id) => (id === "view.floor" ? ["Mod+Alt+F"] : undefined));
+    expect(st.screen).toBe("floor");
+    expect(MENU_SHORTCUT_IDS).not.toContain("screen.floor");
+    expect(st.accelerators).not.toHaveProperty("screen.floor"); // the palette row "Show Floor" is where the chord is printed (reach.test.ts)
   });
 
   it("Edit goes to a focused field, else only Copy and Select All reach the terminal, and Paste waits", () => {

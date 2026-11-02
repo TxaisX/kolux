@@ -178,19 +178,19 @@ Saved keys and sign-ins are sealed by the system keyring (Windows' secret store)
 | Default agent | "Auto: the first agent available", or one installed agent | |
 | Agent Permissions | **Yolo** or Manual. Default is **Yolo** | `agentPermissions` |
 | Installed agents | A list with a Refresh button. Each has an on/off switch, a "default" mark, and a "How it starts" fold with Command, Default arguments and Environment | `agentOptions` |
-| Agent status hooks | Off until you turn it on | `agentStatusHooks` |
+| Agent status hooks | On by default, once you have seen the line. The first-run dialog's Connect step (or, on a profile that never answered, a one-time card) shows "Kolux will add its status hooks to each AI's settings, so it can show you which one needs you." beside a switch that starts on; moving on records your answer. Turn it off here or there | `agentStatusHooks` |
 | Hold Claude and Codex to a 200k context window | On | |
 | Prompt-cache timer | Off. When on, "Cache length" is 5 minutes (default) or 1 hour | |
 
 **Agent Permissions matters.** Under Yolo, Claude Code starts in its automatic mode, where its own safety check approves routine actions and still stops risky ones. Codex starts with no approval prompts but inside its sandbox (the walled-off area it works in): it can change files only in the workspace's own folder. By default the sandbox also keeps its commands off the internet and away from Git's own records, so Codex can edit files but cannot commit, install packages or push. Such a command fails and Codex is told why; it does not ask you. Choose Manual if you want each agent to ask before it acts.
 
-**Agent status hooks** are small scripts Kolux puts in an agent's settings so the agent can tell Kolux what it is doing. Until the switch is on, the Board and Agents pages cannot show live status. The hooks badge in the status bar shows whether this switch is On or Off. The switch also shows the path of Claude Code's settings file and any problem found.
+**Agent status hooks** are small scripts Kolux puts in an agent's settings so the agent can tell Kolux what it is doing. The switch starts on, but nothing is written before you have seen the line above (on the Connect step or the one-time card); switching it off takes Kolux's entries out again. While the switch is off, the Board and Agents pages cannot show live status. The hooks badge in the status bar shows whether this switch is On or Off. The switch also shows the path of Claude Code's settings file and any problem found.
 
 ### Hooks for Gemini CLI, Antigravity and Amp
 
 Besides Claude Code and Codex, Kolux can install status hooks for Gemini CLI, Antigravity and Amp. A status hook is a small script the agent program runs at each event (a turn starting, a tool running, a turn ending); it tells Kolux whether the agent is working, waiting or done, and that drives the status dot. All five agents follow the same rules:
 
-- **One master switch.** "Agent status hooks" is off until you turn it on. While it is off, Kolux removes its entries from every agent and installs none.
+- **One master switch.** "Agent status hooks" starts on, and your answer to the consent line is what turns it on or off for real. While it is off, Kolux removes its entries from every agent and installs none.
 - **One switch per agent.** Each agent in the "Installed agents" list has its own on/off switch. An agent switched off there has Kolux's entries taken out, even while the master switch is on.
 - **Only agents Kolux finds.** Hooks go to an agent that is installed on this computer (or that you pointed the Agents page at). An agent Kolux cannot find is left exactly as it is.
 - **The command line does the same.** `kolux agent hooks on`, `off` and `status` cover all five agents and work with Kolux closed. See [Command line](command-line.md).

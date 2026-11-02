@@ -57,10 +57,11 @@ export function AgentsPageView({ cap, onCap }: { cap: boolean; onCap: (on: boole
   );
 }
 
-// STAT-002: one switch for every agent's status hooks, on unless saved off. Rust takes Kolux's
-// entries out (or puts them back) when `agent_hooks_sync` runs after the save.
-// FIX-2: the key and the rule live in src/onboarding/hooksOn.ts (T-152-gate: off until the user turns it on;
-// that choice is the recorded approval to write hooks); re-exported so existing importers keep working.
+// STAT-002: one switch for every agent's status hooks. Rust takes Kolux's entries out (or puts them
+// back) when `agent_hooks_sync` runs after the save.
+// FIX-2: the key and the rule live in src/onboarding/hooksOn.ts (T-152-gate: only a saved true installs; DT-C52:
+// the switch starts on, and the answer to the consent line is the recorded approval to write hooks); re-exported
+// so existing importers keep working.
 export { HOOKS_FIELD, hooksOn };
 
 // T-152-c (3): `agent_hooks_sync` answers with one {agent, done, error} per agent; the errors are
@@ -76,7 +77,7 @@ export function HooksSwitch({ on, onSwitch, file, problems = [] }: { on: boolean
         <span>
           Agent status hooks
           {problems.map((p) => <small className="warn" role="alert" data-problem key={p}>{p}</small>)}
-          <small>Agents tell Kolux when they work, wait for you or finish. Off until you turn it on: turning it on adds Kolux's hooks to each agent's settings; turning it off removes them and stops them being put back; your own hooks stay.</small>
+          <small>Agents tell Kolux when they work, wait for you or finish. On once you have answered the line in setup: on adds Kolux's hooks to each agent's settings; off removes them and stops them being put back; your own hooks stay.</small>
           {file && <small data-file>Claude Code settings: {file}</small>}
         </span>
       </label>
