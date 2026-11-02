@@ -19,7 +19,7 @@ import RunsDashboard, { Breadcrumb, RunPage } from "./RunsDashboard";
 import { totalUsage } from "./usage";
 import { PROVIDERS, type Usage } from "../usage/tokens";
 import { folderName } from "../projects/model";
-import { ago, CONFIRM_DELETE_KEY, confirmDelete, keepSelection, lastRun, runActions, runStep, startedBy, type RunAction, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, graceWord, precheckWord, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
+import { agentChoices, ago, CONFIRM_DELETE_KEY, confirmDelete, rowActions, splitWarnings, whereItRuns, keepSelection, lastRun, runActions, runStep, startedBy, type RunAction, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, graceWord, precheckWord, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
 
 /** `runsError` says the history could not be read (AUTO-018: the run count then reads unknown). */
 export type Data = { automations: Automation[]; runs: Run[]; runsError?: string };
@@ -38,6 +38,9 @@ type Props = {
   onViewRun?: (r: Run) => void;
   onResume?: (r: Run) => void;
 };
+
+/** The tools are asked once when the page first opens in this run; after that only Refresh asks again. */
+let askedTools = false;
 
 const columns: Array<{ key: SortKey; label: string }> = [
   { key: "name", label: "Name" },
@@ -89,6 +92,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   // AUTO-014: the token usage Kolux reads from the agents' logs, matched to finished runs.
   const [usage, setUsage] = useState<Usage | null>(initial?.usage ?? null);
 
+  // T-193-b: Refresh asks Hermes and OpenClaw again (their answers are kept until the next Refresh), then reads the list.
+  const refresh = () => invoke("automations_external_refresh").catch(() => {}).then(() => load());
   const load = () =>
     invoke<Data>("automations_list")
       .then((d) => {
@@ -99,6 +104,10 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   useEffect(() => {
     if (initial) return;
     void load();
+    if (!askedTools) {
+      askedTools = true; // the first time the page opens in this run; later opens use the kept answers
+      void refresh();
+    }
     search.current?.focus(); // the search box has focus when the page opens
     // T-140-d: a run that moved may have new usage to match, so the saved usage is read again too.
     const off = listen("automations-changed", () => {
@@ -125,7 +134,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
     [projects, agents],
   );
   const q = normalizeQuery(query);
-  const all = data?.automations ?? [];
+  const { rows: all, warnings } = splitWarnings(data?.automations ?? []);
   const runs = data?.runs ?? [];
   const rows = q === null ? [] : sortRows(all.filter((a) => passes(a, filters, runs) && matches(a, q, names)), runs, sort.key, sort.desc, names);
   // Opening the page selects the first automation; a selection that left the list moves to the row
@@ -177,28 +186,32 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
   }, []);
-  const agentIds = [...new Set(all.map((a) => a.provider))];
+  const agentIds = agentChoices(all);
 
   const act = (p: Promise<unknown>) => p.then(() => load()).catch((e) => setNote(String(e)));
+  // T-193-b: a Hermes or OpenClaw job is run, paused and deleted in its own tool, then the tools are asked again.
+  const external = (a: Automation, action: "run" | "pause" | "resume" | "delete") =>
+    act(invoke("automation_external_act", { tool: a.source, action, id: a.jobId, input: null }).then(() => refresh()));
   const runNow = (a: Automation) => {
     setMenu(null);
     setNote(`Run now: ${a.name} is queued`);
-    void act(invoke("automation_run_now", { id: a.id }));
+    void (a.source ? external(a, "run") : act(invoke("automation_run_now", { id: a.id })));
   };
   const toggle = (a: Automation) => {
     setMenu(null);
-    void act(invoke("automation_set_enabled", { id: a.id, enabled: !a.enabled }));
+    void (a.source ? external(a, a.enabled ? "pause" : "resume") : act(invoke("automation_set_enabled", { id: a.id, enabled: !a.enabled })));
   };
   const remove = (a: Automation) => {
     setMenu(null);
     if (confirmDelete(settings)) setAsking(a.id);
-    else void act(invoke("automation_delete", { id: a.id }));
+    else void (a.source ? external(a, "delete") : act(invoke("automation_delete", { id: a.id })));
   };
   // VIEW-116: the don't-ask-again tick counts only when the delete is confirmed.
   const confirmRemove = (id: string, dontAsk: boolean) => {
     setAsking(null);
     if (dontAsk) onSettings({ ...settings, [CONFIRM_DELETE_KEY]: false });
-    void act(invoke("automation_delete", { id }));
+    const a = all.find((x) => x.id === id);
+    void (a?.source ? external(a, "delete") : act(invoke("automation_delete", { id })));
   };
   // AUTO-005: Edit fetches the latest saved copy before the dialog appears.
   const edit = (a: Automation) => {
@@ -289,7 +302,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
           </span>
         )}
         <span className="autos-gap" />
-        <button className="ib" title="Refresh" onClick={() => void load()}>
+        <button className="ib" title="Refresh" onClick={() => void refresh()}>
           <Refresh />
         </button>
         <button className="btn" title="Every automation's runs in one place" onClick={() => setRunsView(true)}>
@@ -301,6 +314,11 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
         </button>
       </div>
       {q === null && <div className="note warn">That search is too long; shorten it.</div>}
+      {warnings.map((w) => (
+        <div key={w} className="note warn" role="status">
+          {w}
+        </div>
+      ))}
       {note && (
         <div className="note ok" role="status">
           {note}
@@ -376,11 +394,12 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                       <td>
                         <span className={`dot${a.enabled ? " live" : ""}`} title={a.enabled ? "On" : "Paused"} />
                         {a.name}
+                        {a.source && <span className="chip">{whereItRuns(a)}</span>}
                       </td>
                       <td>{triggerLabel(a)}</td>
-                      <td>{names.agent(a.provider)}</td>
-                      <td>{names.project(a.projectId)}</td>
-                      <td>{last ? `${statusWord(last)} · ${ago(last.lastAt ?? last.at, now)}` : "Never"}</td>
+                      <td>{a.source ? (a.source === "hermes" ? "Hermes" : "OpenClaw") : names.agent(a.provider)}</td>
+                      <td>{a.source ? "-" : names.project(a.projectId)}</td>
+                      <td>{a.source ? (a.lastRunAt ? `${a.lastStatus ?? "Ran"} · ${ago(a.lastRunAt, now)}` : "Never") : last ? `${statusWord(last)} · ${ago(last.lastAt ?? last.at, now)}` : "Never"}</td>
                       <td>{upcoming(a, now)}</td>
                       <td className="autos-act">
                         <button
@@ -396,18 +415,25 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                         </button>
                         {menu === a.id && (
                           <div className="menu autos-menu" role="menu" onClick={(e) => e.stopPropagation()}>
-                            <button className="menu-item" role="menuitem" disabled={!!a.problem} title={a.problem ? `Run now is blocked: ${a.problem}` : undefined} onClick={() => runNow(a)}>
-                              <span className="name">Run now</span>
-                            </button>
-                            <button className="menu-item" role="menuitem" onClick={() => toggle(a)}>
-                              <span className="name">{a.enabled ? "Pause" : "Resume"}</span>
-                            </button>
-                            <button className="menu-item" role="menuitem" onClick={() => edit(a)}>
-                              <span className="name">Edit</span>
-                            </button>
-                            <button className="menu-item" role="menuitem" onClick={() => remove(a)}>
-                              <span className="name">Delete</span>
-                            </button>
+                            {rowActions(a).map((what) =>
+                              what === "run" ? (
+                                <button key={what} className="menu-item" role="menuitem" disabled={!!a.problem} title={a.problem ? `Run now is blocked: ${a.problem}` : undefined} onClick={() => runNow(a)}>
+                                  <span className="name">Run now</span>
+                                </button>
+                              ) : what === "toggle" ? (
+                                <button key={what} className="menu-item" role="menuitem" onClick={() => toggle(a)}>
+                                  <span className="name">{a.enabled ? "Pause" : "Resume"}</span>
+                                </button>
+                              ) : what === "edit" ? (
+                                <button key={what} className="menu-item" role="menuitem" onClick={() => edit(a)}>
+                                  <span className="name">Edit</span>
+                                </button>
+                              ) : (
+                                <button key={what} className="menu-item" role="menuitem" onClick={() => remove(a)}>
+                                  <span className="name">Delete</span>
+                                </button>
+                              ),
+                            )}
                           </div>
                         )}
                       </td>
@@ -480,13 +506,22 @@ function Detail({ a, runs, runsError, now, usage, agent, tab, onTab, onRun, onTo
       <div className="autos-detail-head">
         <h3>{a.name}</h3>
         {!a.enabled && <span className="chip">Paused</span>}
-        <label className="autos-switch">
-          <input type="checkbox" role="switch" checked={a.enabled} onChange={onToggle} /> {a.enabled ? "On" : "Paused"}
-        </label>
-        <button className="btn" disabled={!!a.problem} title={a.problem ? `Run now is blocked: ${a.problem}` : undefined} onClick={onRun}>
-          Run now
-        </button>
+        {rowActions(a).includes("toggle") && (
+          <label className="autos-switch">
+            <input type="checkbox" role="switch" checked={a.enabled} onChange={onToggle} /> {a.enabled ? "On" : "Paused"}
+          </label>
+        )}
+        {rowActions(a).includes("run") && (
+          <button className="btn" disabled={!!a.problem} title={a.problem ? `Run now is blocked: ${a.problem}` : undefined} onClick={onRun}>
+            Run now
+          </button>
+        )}
       </div>
+      {a.source && (
+        <div className="note" role="status">
+          {whereItRuns(a)}. Kolux lists it and can start, pause or remove it; its schedule and its history stay in {a.source === "hermes" ? "Hermes" : "OpenClaw"}.
+        </div>
+      )}
       {a.problem && (
         <div className="note warn" role="status">
           This automation cannot run: {a.problem}. Run now is blocked and timed runs are logged as skipped until it is fixed.
@@ -505,10 +540,25 @@ function Detail({ a, runs, runsError, now, usage, agent, tab, onTab, onRun, onTo
           <dd>{triggerLabel(a)}</dd>
           <dt>Upcoming</dt>
           <dd>{upcoming(a, now)}</dd>
-          <dt>Worktree</dt>
-          <dd>{a.workspaceMode === "new-per-run" ? "A new one for every run" : a.workspace ? folderName(a.workspace) : "Not chosen"}</dd>
-          <dt>If Kolux was away</dt>
-          <dd>{graceWord(a.missedRunGraceMinutes)}</dd>
+          {a.source ? (
+            <>
+              <dt>Last result</dt>
+              <dd>{a.lastRunAt ? `${a.lastStatus ?? "Ran"}, ${ago(a.lastRunAt, now)}` : "Never ran"}</dd>
+              {a.pausedReason && (
+                <>
+                  <dt>Paused because</dt>
+                  <dd>{a.pausedReason}</dd>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <dt>Worktree</dt>
+              <dd>{a.workspaceMode === "new-per-run" ? "A new one for every run" : a.workspace ? folderName(a.workspace) : "Not chosen"}</dd>
+              <dt>If Kolux was away</dt>
+              <dd>{graceWord(a.missedRunGraceMinutes)}</dd>
+            </>
+          )}
           {a.precheck && (
             <>
               <dt>Precheck</dt>
