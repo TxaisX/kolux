@@ -11,6 +11,7 @@ const ports = (over: Partial<Ports> = {}, seq: Status[] = [status({ changed: [ch
   let i = 0;
   return {
     status: vi.fn(async () => seq[Math.min(i++, seq.length - 1)]),
+    scan: vi.fn(async () => ({ kind: "clean" as const, message: "", files: [] })),
     stage: vi.fn(async () => undefined),
     message: vi.fn(async () => "Fix the thing"),
     commit: vi.fn(async () => ({ id: "abc", blocked: false, output: "" })),
@@ -41,6 +42,43 @@ describe("GIT-022 one click", () => {
     expect(p.stage).toHaveBeenCalledWith("C:/w", ["."]);
     expect(needsOneClick(status({ upstream: "origin/user/work", cut: 3 }))).toBe(true);
     expect(needsOneClick(status({ upstream: "origin/user/work" }))).toBe(false);
+  });
+  it("audit row 8: a cut status is scanned first, and nothing is staged when the scan blocks", async () => {
+    const cut = status({ changed: [ch("a.txt")], cut: 250 });
+    const p = ports({ scan: vi.fn(async () => ({ kind: "blocked" as const, message: "A likely secret is in the files to commit.", files: [".env", "deploy.pem"] })) }, [cut]);
+    const run = await startOneClick("C:/w", p, true);
+    expect(run.state).toBe("failed");
+    expect(run.message).toContain("A likely secret");
+    expect(run.message).toContain(".env, deploy.pem");
+    expect(p.scan).toHaveBeenCalledWith("C:/w");
+    expect(p.stage).not.toHaveBeenCalled();
+    expect(p.commit).not.toHaveBeenCalled();
+    const failed = ports({ scan: vi.fn(async () => ({ kind: "failed" as const, message: "Could not list the files.", files: [] })) }, [cut]);
+    expect((await startOneClick("C:/x", failed, true)).state).toBe("failed");
+    expect(failed.stage).not.toHaveBeenCalled();
+  });
+  it("audit row 8: a clean scan comes before the whole-worktree stage, and a short status is not scanned", async () => {
+    const cut = status({ changed: [ch("a.txt")], cut: 250 });
+    const p = ports({}, [cut, status({ head: "h2", ahead: 1, upstream: "origin/user/work" }), status({ head: "h2", ahead: 1, upstream: "origin/user/work" })]);
+    expect((await startOneClick("C:/w", p, true)).state).toBe("done");
+    expect(p.scan).toHaveBeenCalledTimes(1);
+    expect(p.stage).toHaveBeenCalledWith("C:/w", ["."]);
+    expect((p.scan as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]).toBeLessThan((p.stage as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]);
+    const short = ports();
+    await startOneClick("C:/y", short, true);
+    expect(short.scan).not.toHaveBeenCalled();
+  });
+  it("folders that differ only in case or slash style are one folder", async () => {
+    let release: (o: { id: string; blocked: boolean; output: string }) => void = () => {};
+    const p = ports({ commit: vi.fn(() => new Promise<{ id: string; blocked: boolean; output: string }>((r) => (release = r))) });
+    const first = startOneClick("C:/Dev/W", p, true);
+    const second = await startOneClick("c:" + String.fromCharCode(92) + "dev" + String.fromCharCode(92) + "w" + String.fromCharCode(92), p, true);
+    expect(second.state).toBe("running");
+    expect(p.status).toHaveBeenCalledTimes(1);
+    expect(oneClickRun("c:/dev/w/")?.dir).toBe("C:/Dev/W");
+    await vi.waitFor(() => expect(p.commit).toHaveBeenCalled());
+    release({ id: "abc", blocked: false, output: "" });
+    await first;
   });
   it("publishes a branch with no upstream and plain-pushes one that is ahead", () => {
     expect(pushFor(status())).toEqual({ action: "publish" });

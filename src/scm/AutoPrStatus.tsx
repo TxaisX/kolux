@@ -8,7 +8,7 @@ import "./AutoPrStatus.css";
 import { LOCAL_ONLY_TEXT, LocalOnlyGlyph } from "./LocalOnlyIcon";
 import { oneClickRuns, stepWord, useOneClickAll, type Run } from "./oneClick";
 
-const folderName = (dir: string) => dir.replace(/[\/]+$/, "").split(/[\/]/).pop() || dir;
+const folderName = (dir: string) => dir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || dir;
 
 /** The one line under the name: what it is doing, or how it ended. */
 export function runLine(r: Run): string {

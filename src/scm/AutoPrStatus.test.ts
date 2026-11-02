@@ -32,6 +32,13 @@ describe("T-655 AutoPrStatus", () => {
     expect(html.indexOf("review notes")).toBeGreaterThan(html.indexOf("k.pem"));
   });
 
+  it("shows only the last folder name of a Windows path", () => {
+    const BS = String.fromCharCode(92);
+    putRun("x", run({ dir: "C:" + BS + "Dev" + BS + "Work" + BS + "gamma" + BS }));
+    const html = renderToString(createElement(AutoPrStatus, {}));
+    expect(html).toContain(">gamma<");
+    expect(html).not.toContain(">C:");
+  });
   it("marks a local-only run and words every state", () => {
     putRun("C:/dev/alpha", run({ pr: null, auto: { kind: "local", files: [], local: true }, message: "Committed here." }));
     expect(renderToString(createElement(AutoPrStatus, {}))).toContain(LOCAL_ONLY_TEXT);

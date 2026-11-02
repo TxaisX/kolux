@@ -9,14 +9,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { currentEnv } from "../agentstart/host";
 import { readDraftGate, draftOffered } from "./prDraft";
 import { writerOf } from "./generate";
-import { realPorts, oneClickRun, putRun, type AutoKind, type Run } from "./oneClick";
+import { realPorts, oneClickRun, putRun, type AutoKind, type AutoStep, type Run } from "./oneClick";
 import type { Pr, Status } from "./model";
 import { readReview } from "./prFind";
+import { norm } from "../status/finished";
 
 export type AutoRemote = "none" | "github" | "other";
-export type { AutoKind };
-/** What a back end step answers: how it ended, a sentence, and the files it names (a stop lists them; never their contents). */
-export type AutoStep = { kind: AutoKind; message: string; files: string[] };
+export type { AutoKind, AutoStep };
 
 export type AutoPorts = {
   remote: (dir: string) => Promise<AutoRemote>;
@@ -47,10 +46,8 @@ export const realAutoPorts: AutoPorts = {
     const { settings, gate } = await readDraftGate(dir); // read fresh: a switch turned off a moment ago must hold
     return draftOffered(settings, gate.repo, gate.agents) ? realPorts(writerOf(settings)).text(dir, base) : null;
   },
-  create: (worktree, title, body, base, draft) => invoke<Pr>("scm_pr_create", { worktree, title, body, base, draft }),
+  create: (worktree, title, body, base, draft) => invoke<Pr>("scm_pr_create", { worktree, title, body, base, draft, push: false }), // push: false, so this step never pushes on its own
 };
-
-const norm = (d: string) => d.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 
 /** DT-C89: whether the automatic flow runs in `dir`. The workspace's own true / false wins; otherwise the default: "github" (the missing value) is on only for a GitHub remote, "on" for every repository, "off" never. */
 export function enabledFor(settings: Record<string, unknown> | null | undefined, dir: string, remote: AutoRemote): boolean {
@@ -74,7 +71,12 @@ export async function runAutoPr(dir: string, ports: AutoPorts, remote?: AutoRemo
   const auto = (kind: AutoKind, files: string[] = [], local = run.auto?.local ?? false) => ({ kind, files, local });
   const stop = (s: AutoStep) => (set({ state: "failed", neutral: s.kind === "skipped", message: s.message, auto: auto(s.kind, s.files) }), run);
   // A turn with nothing to do leaves no trace: the folder keeps the run it had before.
-  const quiet = (): Run => (putRun(dir, prev), prev ?? { ...run, state: "done" });
+  // Clean on both steps also means whatever stopped the folder before is fixed: that stopped run is dropped, not kept on show.
+  const quiet = (): Run => {
+    const drop = prev?.state === "failed" && prev.auto !== undefined;
+    putRun(dir, drop ? null : prev);
+    return (!drop && prev) || { ...run, state: "done" };
+  };
   try {
     const rem = remote ?? (await ports.remote(dir));
     set({ auto: auto("clean", [], rem === "none") });

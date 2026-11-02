@@ -676,7 +676,7 @@ pub fn run() {
             scm::scm_pushed, scm::scm_head, scm::scm_summary, scm::scm_abort,
             scm::scm_merge_info,
             scm::scm_merge,
-            auto_pr::auto_pr_remote, auto_pr::auto_pr_commit, auto_pr::auto_pr_push,
+            auto_pr::auto_pr_remote, auto_pr::auto_pr_commit, auto_pr::auto_pr_push, auto_pr::auto_pr_scan,
             scm::scm_gh_budget,
             scm::scm_tasks_search,
             scm::scm_gh_account,

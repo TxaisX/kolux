@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_BODY, enabledFor, onAgentIdle, runAutoPr, stopNotice, type AutoPorts, type AutoStep } from "./autoPr";
+
+const invoke = vi.hoisted(() => vi.fn(async (..._a: unknown[]) => ({ number: 9 })));
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
+import { DEFAULT_BODY, enabledFor, onAgentIdle, realAutoPorts, runAutoPr, stopNotice, type AutoPorts, type AutoStep } from "./autoPr";
 import { clearOneClick, oneClickRun } from "./oneClick";
 import type { Pr, Status } from "./model";
 
@@ -164,6 +167,39 @@ describe("T-653 runAutoPr", () => {
   });
 });
 
+describe("T-653 review fixes", () => {
+  beforeEach(() => clearOneClick());
+
+  it("the real create port never lets the back end push (push: false) and asks for a draft", async () => {
+    invoke.mockClear();
+    await realAutoPorts.create("C:/w", "T", "B", "main", true);
+    expect(invoke).toHaveBeenCalledWith("scm_pr_create", { worktree: "C:/w", title: "T", body: "B", base: "main", draft: true, push: false });
+  });
+
+  it("folders that differ only in case or slash style exclude each other", async () => {
+    let release: (s: AutoStep) => void = () => {};
+    const p = ports({ commit: vi.fn(() => new Promise<AutoStep>((r) => (release = r))) });
+    const first = runAutoPr("C:/Dev/W", p);
+    const second = await runAutoPr("c:" + String.fromCharCode(92) + "dev" + String.fromCharCode(92) + "w/", p);
+    expect(second.state).toBe("running");
+    expect(p.commit).toHaveBeenCalledTimes(1);
+    expect(oneClickRun("c:/dev/w")?.state).toBe("running");
+    release(step("clean"));
+    await first;
+  });
+
+  it("a turn clean on both steps drops the earlier stopped run, and keeps an earlier success", async () => {
+    await runAutoPr("C:/w", ports({ commit: vi.fn(async () => step("blocked", "A likely secret.", [".env"])) }));
+    expect(oneClickRun("C:/w")?.auto?.kind).toBe("blocked");
+    const clean = ports({ commit: vi.fn(async () => step("clean")), push: vi.fn(async () => step("clean")) });
+    await runAutoPr("C:/w", clean);
+    expect(oneClickRun("C:/w")).toBeNull();
+    const ok = await runAutoPr("C:/v", ports({ find: vi.fn(async () => PR) }));
+    await runAutoPr("C:/v", clean);
+    expect(oneClickRun("C:/v")).toEqual(ok);
+  });
+});
+
 describe("T-653 onAgentIdle", () => {
   beforeEach(() => clearOneClick());
   const deps = (p: AutoPorts, settings: Record<string, unknown> | null = {}) => ({ settings: vi.fn(async () => settings), ports: p, notice: vi.fn() });
@@ -203,6 +239,7 @@ describe("T-653 onAgentIdle", () => {
     const d = deps(p);
     const first = onAgentIdle("C:/w", d);
     expect(await onAgentIdle("c:\\W\\", d)).toBeNull();
+    await vi.waitFor(() => expect(p.commit).toHaveBeenCalled());
     await vi.waitFor(() => expect(p.commit).toHaveBeenCalled());
     release(step("clean"));
     await first;
