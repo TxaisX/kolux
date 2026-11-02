@@ -57,7 +57,16 @@ export function marksOf(panes: SavedPane[]): { pinned: Set<number>; colors: TabC
 }
 
 /** A live pane as App keeps it; the fields beyond SavedPane are what a restart cannot rebuild. */
-type LivePane = Omit<SavedPane, "env"> & { seats?: unknown[]; env?: unknown; typed?: string; task?: string };
+type LivePane = Omit<SavedPane, "env"> & {
+  seats?: unknown[];
+  env?: unknown;
+  typed?: string;
+  task?: string;
+  /** T-066-e: `session` came from the agent's sessions list, not from the agent itself: a guess (the folder's
+   *  newest session when the tab was opened, which may be an older one), replaced by the agent's own exit hint or
+   *  a newer listed one. Never written down: a restored tab really runs the id it was restored with. */
+  sessionListed?: boolean;
+};
 
 /** What to write down: every tab, stripped to what a restart can rebuild. A chooser that was never
  *  started is kept as an empty chooser so the grid keeps its size; an agent comes back at its prompt
@@ -83,6 +92,51 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     kept.push(s);
   }
   return tidy(kept, activeTab, focused, activeDir, stacked);
+}
+
+/** The agents whose own status hooks hand Kolux their session id, so their sessions list is never asked. */
+export const HOOK_FED_AGENTS: readonly string[] = ["claude", "codex"];
+/** The agents with a sessions command of their own (the rows of terminal_session_id.rs SOURCES with a list):
+ *  the only ones whose list is asked; the other id-only agents have nothing to run. */
+export const LISTED_AGENTS: readonly string[] = ["cursor", "gemini", "hermes", "goose", "amp"];
+
+/** One pane to ask; `own` is the listed guess it already holds, left out of its own ask so the same or a newer id can come back. */
+export type ListedAsk = { key: number; agent: string; folder: string; own?: string };
+
+/** T-066-e (SESS-030, source 2 of terminal_session_id.rs): the panes whose session id the window asks the
+ * agent's own sessions command for when it writes the layout down: each started tab of an agent with a
+ * sessions command (`LISTED_AGENTS`) that holds no session id yet, or only a listed guess (`sessionListed`,
+ * so the session the agent made since can replace it), with its folder to run the command in. A chooser never
+ * started, a non-terminal tab and a tab with no folder are not asked, nor a hook-fed agent (`HOOK_FED_AGENTS`).
+ * `taken` is every session id some pane holds (a listed guess too, for the other panes), and the session each
+ * fork came from (a fork is never resumed as its source), so the answer is never a session another pane
+ * resumes: the never-twice rule. */
+export function panesWantingListedSession(panes: LivePane[]): { asks: ListedAsk[]; taken: string[] } {
+  const asks: ListedAsk[] = [];
+  const taken: string[] = [];
+  for (const p of panes) {
+    if (p.session) taken.push(p.session);
+    if (p.forkOf && !taken.includes(p.forkOf)) taken.push(p.forkOf);
+    const chooser = !!p.seats && p.program === null && !p.kind;
+    const settled = !!p.session && !p.sessionListed;
+    if (settled || p.kind || chooser || !p.agentId || !p.cwd || HOOK_FED_AGENTS.includes(p.agentId) || !LISTED_AGENTS.includes(p.agentId)) continue;
+    const ask: ListedAsk = { key: p.key, agent: p.agentId, folder: p.cwd };
+    if (p.session) ask.own = p.session;
+    asks.push(ask);
+  }
+  return { asks, taken };
+}
+
+/** T-066-e: the id the agent's sessions list gave for pane `key` goes on it as a guess (`sessionListed`), only while
+ *  the pane has no id or a guess; an id the agent named itself (a hook's, its exit hint) is never replaced. */
+export function withListedSession<T extends LivePane>(panes: T[], key: number, id: string): T[] {
+  return panes.map((p) => (p.key === key && (!p.session || p.sessionListed) && p.session !== id ? { ...p, session: id, sessionListed: true } : p));
+}
+
+/** T-066-d/e: the id the agent printed in its own resume hint goes on pane `key`: over no id or a listed guess (the
+ *  agent knows its session better than its list, source 1 over source 2), never over a settled id. */
+export function withHintedSession<T extends LivePane>(panes: T[], key: number, id: string): T[] {
+  return panes.map((p) => (p.key === key && (!p.session || p.sessionListed) ? { ...p, session: id, sessionListed: false } : p));
 }
 
 /** A saved pane as App's live pane: a saved chooser gets its seat back (the agent it was pre-set to, else blank). */

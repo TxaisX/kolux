@@ -3894,23 +3894,47 @@ mod tests {
         assert_eq!(parse(&words("-- skills list")).1.unwrap().unwrap().command, parse(&words("skills list")).1.unwrap().unwrap().command);
     }
 
+    /// The bundled guides that document other programs (their flags are those programs', not
+    /// Kolux's). Only these may show a `--flag` that no kolux command takes, and only on a line
+    /// that does not invoke kolux. Every other guide is judged on every line, as before.
+    const FOREIGN_TOOL_GUIDES: &[&str] = &["video"];
+
     #[test]
     fn the_skill_guides_name_only_commands_and_flags_that_exist() {
         let paths: Vec<&str> = commands().iter().map(|c| c.0).collect();
         let groups: Vec<&str> = paths.iter().map(|p| p.split(' ').next().unwrap()).collect();
+        let mut judged_without_kolux = std::collections::BTreeMap::new();
         for (name, text) in local_cli::guides() {
-            let w: Vec<&str> = text.split(|c: char| c.is_whitespace() || "`'\"()[]|".contains(c)).filter(|s| !s.is_empty()).collect();
-            for i in 0..w.len() {
-                if (w[i] == "kolux" || w[i] == "kolux-dev") && i + 1 < w.len() && groups.contains(&w[i + 1]) {
-                    let one = w[i + 1];
-                    let two = w.get(i + 2).map(|v| format!("{one} {v}")).unwrap_or_default();
-                    assert!(paths.contains(&one) || paths.contains(&two.as_str()), "{name} names kolux {two}, which is not a command");
-                }
-                if let Some(flag) = w[i].strip_prefix("--") {
-                    let flag = flag.split('=').next().unwrap().trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
-                    assert!(flag.is_empty() || ["json", "help", "version"].contains(&flag) || known_flag(flag) || SWITCHES.contains(&flag), "{name} names --{flag}, which no command takes");
+            let skill = name.split('/').next().unwrap();
+            let foreign = FOREIGN_TOOL_GUIDES.contains(&skill);
+            for line in text.lines() {
+                let w: Vec<&str> = line.split(|c: char| c.is_whitespace() || "`'\"()[]|".contains(c)).filter(|s| !s.is_empty()).collect();
+                let kolux_line = w.iter().any(|t| *t == "kolux" || *t == "kolux-dev");
+                for i in 0..w.len() {
+                    if (w[i] == "kolux" || w[i] == "kolux-dev") && i + 1 < w.len() && groups.contains(&w[i + 1]) {
+                        let one = w[i + 1];
+                        let two = w.get(i + 2).map(|v| format!("{one} {v}")).unwrap_or_default();
+                        assert!(paths.contains(&one) || paths.contains(&two.as_str()), "{name} names kolux {two}, which is not a command");
+                    }
+                    // The video guide shows npx hyperframes snapshot --at ... and higgsfield ...
+                    // --duration: those flags are theirs. Only a kolux line of that guide is judged.
+                    if !kolux_line && foreign {
+                        continue;
+                    }
+                    if let Some(flag) = w[i].strip_prefix("--") {
+                        let flag = flag.split('=').next().unwrap().trim_end_matches(|c: char| !c.is_ascii_alphanumeric());
+                        if !flag.is_empty() && !kolux_line {
+                            *judged_without_kolux.entry(name.clone()).or_insert(0) += 1;
+                        }
+                        assert!(flag.is_empty() || ["json", "help", "version"].contains(&flag) || known_flag(flag) || SWITCHES.contains(&flag), "{name} names --{flag}, which no command takes");
+                    }
                 }
             }
+        }
+        // The exemption must not widen again: the existing guides document their flags in tables
+        // and lists that never say "kolux", and every one of those flags is still judged.
+        for (guide, least) in [("kolux-cli/automations", 7), ("kolux-cli/worktrees", 2), ("orchestration/tasks", 8), ("orchestration/mail", 3)] {
+            assert!(judged_without_kolux.get(guide).copied().unwrap_or(0) >= least, "{guide}: only {:?} flags judged on lines without kolux", judged_without_kolux.get(guide));
         }
     }
 

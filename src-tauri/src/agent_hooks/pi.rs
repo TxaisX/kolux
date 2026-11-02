@@ -2,12 +2,15 @@
 //! guide and its exported extension declarations (PROVENANCE.md, T-122): Pi loads TypeScript or
 //! JavaScript files placed directly in its user extensions folder, `~/.pi/agent/extensions/`; an
 //! extension's default export receives the extension API, whose `on(event, handler)` observes
-//! `agent_start`, `tool_execution_start` / `tool_execution_end` (with `toolName`, `isError`),
-//! `agent_settled` (with `aborted`), `session_start` and `session_shutdown` (with `reason`).
+//! `before_agent_start` (with `prompt` for a run a user message started), `agent_start`,
+//! `tool_execution_start` / `tool_execution_end` (with `toolName`, `isError`), `agent_settled`
+//! (with `aborted`), `session_start` and `session_shutdown` (with `reason`).
 //!
 //! Kolux writes its own file there, `kolux-rs.ts`, apart from the user's own extensions: it runs
 //! Kolux's hook script with the event name and a small JSON body, only inside a Kolux pane. A file
 //! of that name Kolux did not write is never touched; taking the hooks away deletes only Kolux's.
+//! STAT-025: the prompt that began the run is the one text that goes along (cut at 16000, the
+//! status rules' own limit); the card and its history name the turn by it.
 //! Titles: the extension names the tab `π - <session name> - <folder>` through Pi's `ctx.ui.setTitle`
 //! once the session has a name (`pi.getSessionName`, `session_info_changed`); nothing else sets it.
 //! Not built here: Pi has no documented event for its own dialogs (approval forwarding is OMP's,
@@ -23,7 +26,7 @@ pub const SCRIPT: &str = "pi.cmd";
 /// The line that marks the extension as Kolux's own.
 pub const MARK_LINE: &str = "// Kolux RS status extension for Pi. Written by Kolux RS; edits are overwritten.";
 /// STAT-021: the Pi events the extension reports, by Pi's own names.
-pub const EVENTS: [&str; 6] = ["session_start", "agent_start", "tool_execution_start", "tool_execution_end", "agent_settled", "session_shutdown"];
+pub const EVENTS: [&str; 7] = ["session_start", "before_agent_start", "agent_start", "tool_execution_start", "tool_execution_end", "agent_settled", "session_shutdown"];
 
 /// T-122 (STAT-021, titles): the events after which the extension refreshes Pi's tab title; a
 /// rename (`session_info_changed`) refreshes it too.
@@ -67,6 +70,8 @@ pub fn extension(script_path: &str) -> String {
         "  };",
         "  const fields = {",
         "    session_start: (e) => ({ reason: e?.reason }),",
+        "    // The run's prompt (a user-started run has one), cut as the status rules keep it; nothing else of the run.",
+        "    before_agent_start: (e) => ({ prompt: typeof e?.prompt === \"string\" ? e.prompt.slice(0, 16000) : undefined }),",
         "    agent_start: () => ({}),",
         "    tool_execution_start: (e) => ({ tool_name: e?.toolName }),",
         "    tool_execution_end: (e) => ({ tool_name: e?.toolName, is_error: e?.isError === true }),",
@@ -138,14 +143,19 @@ pub fn inspect(home: &Path, file: &Path) -> (&'static str, Option<String>) {
     }
 }
 
-/// STAT-021: a Pi event as the status rules read it: a run starting is working, tool steps keep it
-/// working, a settled run is done (an aborted one too: Pi says the run is over); session start and
-/// shutdown change nothing (idle at launch, and the pane itself reports an exit).
+/// STAT-021: a Pi event as the status rules read it: a run starting is working, with its prompt
+/// (STAT-025) when a user message started it; tool steps keep it working; a settled run is done
+/// (an aborted one too: Pi says the run is over); session start and shutdown change nothing (idle
+/// at launch, and the pane itself reports an exit).
 pub fn event(name: &str, event: &Value) -> Option<(&'static str, Option<&'static str>, Value)> {
     let tool_name = event.get("tool_name").and_then(Value::as_str).filter(|s| !s.is_empty()).map(|s| s.chars().take(100).collect::<String>());
     let tool = |n: Option<String>| json!({ "tool_name": n, "tool_input": Value::Null });
     let (name, out) = match name {
-        "agent_start" => ("UserPromptSubmit", json!({})),
+        "before_agent_start" => ("UserPromptSubmit", json!({ "prompt": event.get("prompt").and_then(Value::as_str).filter(|s| !s.is_empty()) })),
+        // Pi fires this right after before_agent_start, whose prompt names the turn: a second
+        // UserPromptSubmit would take the prompt away, so this only keeps the turn working. The
+        // two reports are separate processes, so either order leaves the same card.
+        "agent_start" => ("PostToolUse", json!({})),
         "tool_execution_start" => ("PreToolUse", tool(tool_name)),
         "tool_execution_end" => ("PostToolUse", tool(tool_name)),
         "agent_settled" => ("Stop", json!({})),

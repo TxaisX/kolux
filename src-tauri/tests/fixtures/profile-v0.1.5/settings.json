@@ -1,0 +1,69 @@
+{
+  "appTheme": "cobalt",
+  "appearanceMode": "dark",
+  "appFont": "Segoe UI",
+  "uiLook": "new",
+  "savedLayout": {
+    "panes": [
+      {
+        "key": 1,
+        "cwd": "C:/fixture/alpha",
+        "branch": null,
+        "agent": "claude",
+        "program": "claude",
+        "args": [],
+        "agentId": "claude",
+        "session": "5b0f6c1e-7a52-4c1d-9e0b-3f2a8d4c6b71",
+        "account": null,
+        "title": "alpha main",
+        "group": 1,
+        "pinned": true,
+        "color": "blue"
+      },
+      {
+        "key": 2,
+        "cwd": "C:/fixture/alpha",
+        "branch": null,
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "README.md",
+        "group": 1,
+        "kind": "editor",
+        "path": "C:/fixture/alpha/README.md"
+      },
+      {
+        "key": 3,
+        "cwd": "C:/fixture/alpha",
+        "branch": null,
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "main.rs",
+        "group": 1,
+        "kind": "editor",
+        "path": "C:/fixture/alpha/src/main.rs"
+      },
+      {
+        "key": 4,
+        "cwd": "C:/fixture/beta",
+        "branch": null,
+        "agent": "shell",
+        "program": null,
+        "args": [],
+        "title": "beta shell",
+        "group": 4,
+        "color": "green"
+      }
+    ],
+    "activeTab": {
+      "1": 3,
+      "4": 4
+    },
+    "focused": 3,
+    "activeDir": "C:/fixture/alpha",
+    "stacked": {
+      "C:/fixture/beta": true
+    }
+  }
+}
