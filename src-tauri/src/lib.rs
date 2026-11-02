@@ -53,6 +53,7 @@ mod bulk;
 mod models;
 mod names;
 mod newproject;
+mod notebook_run;
 mod notifications;
 mod onboarding;
 pub mod orchestration;
@@ -844,6 +845,9 @@ pub fn run() {
             floating_trust::floating_pick,
             floating_trust::floating_start,
             files::md_list,
+            notebook_run::notebook_trusted,
+            notebook_run::notebook_trust,
+            notebook_run::notebook_run_cell,
             editor_drafts::editor_draft_set,
             editor_drafts::editor_draft_clear,
             editor_drafts::editor_drafts_get,

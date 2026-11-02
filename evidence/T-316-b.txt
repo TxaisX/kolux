@@ -93,3 +93,35 @@ LIVE PROOF PENDING (batched; apply the 719, 151, 746 and T-316-b lib patches and
 5. If the PDF is empty or the export times out, the hidden window may need to be shown (WebView2 can skip painting a
    hidden window): in browser_pdf.rs AppHost::open change .visible(false) to .visible(true) (it stays offscreen at -32000).
 STILL OPEN IN T-316-b: the EDIT-024 Python run with its trust prompt (needs an interpreter launch).
+
+T-316-b piece 4 (2026-11-02, worker 2f, branch s-2f/T-316-b from origin/main 04cf4f35): EDIT-024 Python run with a trust prompt.
+T-316-b stays open: the box is not ticked until the live Windows proof below is done.
+
+BUILT
+- src-tauri/src/notebook_run.rs: notebook_trusted, notebook_trust, notebook_run_cell (registered in lib.rs).
+- src/editor/notebookRun.ts (the order trust, save, run, outputs), notebook.ts withOutputs, NotebookView.tsx Run button + the app's Ask dialog.
+- DECISIONS.md DT-C81 (a fresh Python per cell, no kernel).
+
+SECURITY RULES AND WHERE THEY LIVE (notebook_run.rs)
+1. Trust is checked in Rust: run_cell_in refuses before reading the file (the "not trusted" error); the path is canonicalised and the \?\ prefix stripped in both notebook_trust and the check (real_notebook, plain, key); only an existing file ending in .ipynb counts. Trust belongs to the path: a trusted path whose file is replaced still counts as trusted (card model; test a_replaced_file_stays_trusted_by_its_path).
+2. Interpreter: pick_python takes files::find_program over the PATH's absolute folders only (a relative entry such as "." is dropped), drops any folder equal to or below the notebook folder, requires an absolute result, and the program is started by its absolute path. Test the_interpreter_is_never_taken_from_the_notebooks_folder plants python.exe/python3.exe/py.exe/python.bat files in the notebook folder, in a folder below it and as "." on the PATH.
+3. run_cell_in -> read_cell: bounds check and cell_type == "code", else an error before any process starts (test only_a_code_cell_at_a_real_index_runs).
+4. A timeout calls procs::kill_tree (taskkill /T on Windows, a process group elsewhere) then Child::kill. ponytail: a child that detached itself first is not reached.
+5. run_python removes every KOLUX_* variable and CLAUDE_CODE_OAUTH_TOKEN (claude_key::ENV) from the child, keeps PATH; no shell; the cell text goes to standard input only (tests a_cell_does_not_see_kolux_secrets, the_cell_text_goes_on_standard_input_never_on_the_command_line).
+6. drain reads 8 KB chunks and keeps at most 1 MB per stream, then keeps reading and drops the rest so the program never blocks on a full pipe; stdout and stderr are read on separate threads (tests a_two_megabyte_print_is_capped, the_capture_stops_reading_at_its_cap).
+7. No network code was added; scripts/privacy-audit.test.mjs passes unchanged.
+8. Error strings are fixed plain sentences with the cell number only; the cell text is never in one (tests check "open(" is absent).
+
+CHOICES TO KNOW
+- python is started as: python -I -X utf8 - (the brief said -I -; -X utf8 makes the output UTF-8 whatever the Windows code page). -I also means a module next to the notebook is not importable.
+- Exit 0 with text on stderr (a warning) is a stderr stream, not an error output, as Jupyter does; a non-zero exit or a timeout is an error output (ename Error, evalue the last stderr line).
+- CRLF from Python's Windows text layer is turned into LF in the stored output.
+- execution_count is one more than the highest the notebook already shows.
+- Rust reads the file on disk, so the page saves first (notebookRun.ts calls EditorPane saveQuiet, then runs); the outputs are put into what the tab holds at the end, so typing during a run is kept.
+
+LIVE WINDOWS PROOF STILL TO DO
+1. Open a .ipynb in the real app, press Run on a code cell: the dialog "Trust this notebook?" appears; Cancel changes nothing (no dirty dot); Trust and run runs and shows the output under the cell, run number [n] set.
+2. Run again: no dialog. Restart the app: still trusted. A copy of the notebook elsewhere asks again.
+3. A cell with time.sleep(120) stops after 60 s with the stopped message and no python.exe is left in Task Manager.
+4. A cell printing 2 MB shows the cut note; a raising cell shows the error; a notebook with a python.exe next to it still uses the installed Python.
+5. A read-only tab shows no Run button.

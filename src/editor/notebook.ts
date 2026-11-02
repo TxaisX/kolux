@@ -1,8 +1,8 @@
 // EDIT-024 (T-316-b): the model behind a Jupyter notebook (.ipynb) tab. A notebook is JSON; this file reads it,
 // changes a cell at a time and writes it back. Everything the view does not show (metadata, kernel details,
 // cell ids, outputs, any field a newer format adds) stays in the object untouched, so saving never loses it.
-// Running a cell is not built here (it rides on a Python interpreter launch); nothing in this file runs code,
-// so a notebook can never run by being opened.
+// Running a cell is Rust's job (notebook_run.rs, behind a trust prompt, see notebookRun.ts); nothing in this file runs
+// code, so a notebook can never run by being opened.
 
 export const isNotebook = (path: string) => /\.ipynb$/i.test(path);
 
@@ -73,6 +73,14 @@ export function setKind(nb: Notebook, at: number, kind: CellKind): Notebook {
   const { outputs, execution_count, ...rest } = c;
   const next: Cell = kind === "code" ? { ...rest, cell_type: kind, execution_count: execution_count ?? null, outputs: Array.isArray(outputs) ? outputs : [] } : { ...rest, cell_type: kind };
   return { ...nb, cells: nb.cells.map((x, i) => (i === at ? next : x)) };
+}
+
+/** A code cell after a run: its outputs and run number replaced, every other field of it and every other cell kept.
+ * Anything that is not a code cell stays as it is. */
+export function withOutputs(nb: Notebook, at: number, outputs: unknown[], count: number): Notebook {
+  const c = nb.cells[at];
+  if (!c || c.cell_type !== "code") return nb;
+  return { ...nb, cells: nb.cells.map((x, i) => (i === at ? { ...x, outputs, execution_count: count } : x)) };
 }
 
 /** A long cell shows only its start, so a huge cell never locks the view. */
