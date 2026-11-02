@@ -9,7 +9,10 @@ WHAT THE USER GETS
   has no say. A project run (--local) stays in that project folder, because that is where it
   installs its skills; the full path and the rule below still apply there.
 - On Windows the runner's own lookups (its launcher finding node) skip the current folder too
-  (NoDefaultCurrentDirectoryInExePath=1 for that process).
+  (NoDefaultCurrentDirectoryInExePath=1 for that process). Node's launcher honours the same
+  variable, so what Node starts by bare name skips it as well, as long as the environment is kept.
+- Not covered here (follow-up): a --local run still lets npx/npm prefer the project's own
+  node_modules/.bin and read its .npmrc; that is npm's own resolution, not a folder lookup.
 - The shared program finder (agents::find_program, used by every agent start) no longer walks
   relative PATH entries such as "." or "bin", which name whatever folder the app started in.
 
@@ -34,8 +37,14 @@ TESTS (cargo test --lib, CARGO_TARGET_DIR=target-2f)
 - installer::tests::t633_launchers_planted_in_the_project_never_run (new, Windows): a project holding its own
   npx.cmd and node.cmd; the runner, started as a real run is (same command builder) in that
   folder, calls node by bare name; neither planted file runs. Control in the same test: with the
-  guard variable removed the planted node.cmd does run, so the check can see it. 24/24 installer
-  and t633 tests pass, clippy -D warnings clean.
+  guard variable removed the planted node.cmd does run, so the check can see it.
+- installer::tests::t633_what_node_starts_is_not_found_in_the_project_either (new, Windows): real
+  Node, started by the runner in the project, launches a program by bare name that exists only as
+  a planted .exe there; not found. Control: without the variable it is found. Skips without Node.
+- Review round (dec5290b+1): the runner's path is checked only for the characters that still mean
+  something inside quotes (% ! " and control characters), so a profile like O'Brien works; C:/
+  paths are accepted (separators made ); \? and \. paths are refused.
+- 67/67 installer, t633, t634 and recovery tests pass, clippy -D warnings clean.
 
 RED (before the fix)
 - installer tests: did not compile (launch took two arguments, run_dir missing).

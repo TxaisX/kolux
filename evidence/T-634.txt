@@ -35,6 +35,9 @@ RED (before the fix)
 GREEN (after the fix)
 - cargo test --lib: 2775 passed, 1 failed (t606, environment; see evidence/T-633.txt), 6 ignored.
 - vitest src/settings + scripts/privacy-audit.test.mjs: 83 files, 409 tests passed.
+- Review round: the statement and the guide now say Kolux's windows (chiefly the browser pane),
+  since every webview shares the one string, and that downloads send file details (name, size,
+  fingerprint). 409 tests passed again.
 
 NOT DONE
 - Turning reputation checks off for the app's own local pages only (WebView2's per-webview
