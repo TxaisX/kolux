@@ -113,7 +113,9 @@ fn app048_box1_a_setting_and_the_layout_are_there_after_the_process_is_killed_tw
 /// APP-048 box 2 (upgrade regression): src-tauri/tests/fixtures/profile-v0.1.5 is a profile folder written by the
 /// v0.1.5 release's own code (how it was made: scripts/profile-fixture.md). Today's code opens a copy of it and reads
 /// back exactly what is in expected.json: settings (after the retired-key filter), the saved layout and every kv row,
-/// with no fallback to the backup, no set-aside file and no leftover temporary file. The live tick is D-3.
+/// with no fallback to the backup, no set-aside file and no leftover temporary file. Startup's `stamp_look()` runs
+/// right after the open, as lib.rs does; this profile already has its look and mode, so it must write nothing.
+/// What the window makes of the same settings.json is src/terminal/layout.app048.test.ts. The live tick is D-3.
 #[test]
 fn app048_box2_a_profile_written_by_the_previous_release_reads_back_identical() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("profile-v0.1.5");
@@ -125,17 +127,18 @@ fn app048_box2_a_profile_written_by_the_previous_release_reads_back_identical() 
     let before: std::collections::BTreeSet<String> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
 
     let s = kolux_rs_lib::state::Store::open(&dir).expect("today's code opens the old database");
+    s.stamp_look(); // lib.rs does this right after Store::open (row 785)
     let settings = s.try_settings().expect("today's code reads the old settings.json");
-    assert_eq!(settings["savedLayout"], expected["settings"]["savedLayout"], "the saved layout (workspaces, panes, open editor tabs) reads back identical");
-    assert_eq!(settings, expected["settings"], "every setting reads back identical (retired keys aside)");
-    assert!(settings["savedLayout"]["panes"].as_array().is_some_and(|p| p.len() == 4), "the fixture has its four panes");
+    assert_eq!(settings["savedLayout"], expected["settings"]["savedLayout"], "the saved layout (panes, open editor tabs, group, colour, pinned, session) reads back identical");
+    assert_eq!(settings, expected["settings"], "every setting reads back identical to expected.json (a retired fixture key must be a conscious decision: update expected.json)");
+    assert!(settings["savedLayout"]["panes"].as_array().is_some_and(|p| p.len() == 4), "the saved layout has the fixture's four panes");
     assert!(s.take_fallback_notice().is_none(), "the main file was read, not a fallback to settings.json.bak");
     drop(s);
 
     let conn = rusqlite::Connection::open_with_flags(dir.join("state.db"), rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
     let mut q = conn.prepare("SELECT key, value FROM kv ORDER BY key").unwrap();
     let rows: serde_json::Map<String, serde_json::Value> = q.query_map([], |r| Ok((r.get::<_, String>(0)?, serde_json::Value::String(r.get::<_, String>(1)?)))).unwrap().map(Result::unwrap).collect();
-    assert_eq!(serde_json::Value::Object(rows), expected["kv"], "every kv row (projects, worktrees, counters) reads back identical");
+    assert_eq!(serde_json::Value::Object(rows), expected["kv"], "every kv row (projects, start count) reads back identical");
     drop(q);
     drop(conn);
 
@@ -145,6 +148,6 @@ fn app048_box2_a_profile_written_by_the_previous_release_reads_back_identical() 
     assert!(!dir.join("settings.json.tmp").exists() && !dir.join("settings.json.bak.tmp").exists(), "no temporary file");
     assert_eq!(std::fs::read(dir.join("settings.json.bak")).unwrap(), std::fs::read(root.join("settings.json.bak")).unwrap(), "the last good copy was not touched by a read");
     assert!(std::fs::read_dir(&dir).unwrap().all(|e| !e.unwrap().file_name().to_string_lossy().contains("corrupt")), "nothing was set aside as corrupt");
-    assert_eq!(std::fs::read(dir.join("settings.json")).unwrap(), std::fs::read(root.join("settings.json")).unwrap(), "reading did not rewrite the file");
+    assert_eq!(std::fs::read(dir.join("settings.json")).unwrap(), std::fs::read(root.join("settings.json")).unwrap(), "opening, stamp_look and reading did not rewrite settings.json");
     let _ = std::fs::remove_dir_all(&dir);
 }
