@@ -83,7 +83,7 @@ type Props = {
   notesSection?: ReactNode;
 };
 
-type Asking = { agent: string; prompt: string; remember: boolean; title?: string };
+type Asking = { agent: string; prompt: string; remember: boolean; title?: string; edited?: boolean };
 
 const LANE = 12;
 const ROW = 22;
@@ -1015,8 +1015,17 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </form>
             )}
             {composer && (
-              <div className="scm-ask scm-pr" role="dialog" aria-label="Create pull request">
-                <input className="field" aria-label="pull request title" placeholder="Title" value={composer.title} onChange={(e) => setComposer({ ...composer, title: e.target.value })} />
+              <div
+                className="scm-ask scm-pr"
+                role="dialog"
+                aria-label="Create pull request"
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape" || composer.busy || composer.title.trim() || composer.body.trim()) return;
+                  e.stopPropagation();
+                  setComposer(null);
+                }}
+              >
+                <input className="field" aria-label="pull request title" autoFocus placeholder="Title" value={composer.title} onChange={(e) => setComposer({ ...composer, title: e.target.value })} />
                 <textarea className="field multi" aria-label="pull request description" placeholder="Description" value={composer.body} onChange={(e) => setComposer({ ...composer, body: e.target.value })} />
                 <label className="scm-pr-base">
                   <span>Base</span>
@@ -1066,16 +1075,25 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </div>
             )}
             {asking && (
-              <div className="scm-ask" role="dialog" aria-label={asking.title ?? "Resolve conflicts with an agent"}>
+              <div
+                className="scm-ask"
+                role="dialog"
+                aria-label={asking.title ?? "Resolve conflicts with an agent"}
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape") return;
+                  e.stopPropagation();
+                  if (!asking.edited) setAsking(null); // T-708: an edited prompt is closed by Cancel only
+                }}
+              >
                 {asking.title && <div className="scm-ask-title">{asking.title}</div>}
-                <select aria-label="agent to start" className="field" value={asking.agent} onChange={(e) => setAsking({ ...asking, agent: e.target.value })}>
+                <select aria-label="agent to start" className="field" autoFocus value={asking.agent} onChange={(e) => setAsking({ ...asking, agent: e.target.value })}>
                   {agents.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name}
                     </option>
                   ))}
                 </select>
-                <textarea aria-label="prompt for the agent" className="field multi" value={asking.prompt} onChange={(e) => setAsking({ ...asking, prompt: e.target.value })} />
+                <textarea aria-label="prompt for the agent" className="field multi" value={asking.prompt} onChange={(e) => setAsking({ ...asking, prompt: e.target.value, edited: true })} />
                 <label className="conn-switch">
                   <input type="checkbox" checked={asking.remember} onChange={(e) => setAsking({ ...asking, remember: e.target.checked })} />
                   <span>Start this agent without asking next time</span>

@@ -147,12 +147,22 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
         </div>
       )}
       {confirm && (
-        <div role="alertdialog" aria-label="Confirm the stack merge" className="note" data-stack-confirm>
+        <div
+          role="alertdialog"
+          aria-label="Confirm the stack merge"
+          className="note"
+          data-stack-confirm
+          onKeyDown={(e) => {
+            if (e.key !== "Escape" || busy) return;
+            e.stopPropagation();
+            setConfirm(null);
+          }}
+        >
           {confirm.text}{" "}
           <button className="btn" disabled={busy} onClick={() => void run()}>
             Merge
           </button>
-          <button className="btn" disabled={busy} onClick={() => setConfirm(null)}>
+          <button className="btn" autoFocus disabled={busy} onClick={() => setConfirm(null)}>
             Cancel
           </button>
         </div>

@@ -69,13 +69,22 @@ export function AccountRow({ title, detail, active, busy, onPick, trouble, manag
         )}
       </div>
       {manage?.confirming && (
-        <div className="acct-confirm" role="alertdialog" aria-label={`Remove ${title}?`}>
+        <div
+          className="acct-confirm"
+          role="alertdialog"
+          aria-label={`Remove ${title}?`}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            e.stopPropagation();
+            manage.onKeep();
+          }}
+        >
           <span>{`Remove ${title}? Its sign-in is deleted from Kolux${manage.activeGoes ? "; the System default takes over for new panes" : ""}. Panes already running keep going.`}</span>
           <div className="btn-row">
             <button className="btn danger" onClick={manage.onRemove}>
               Remove
             </button>
-            <button className="btn" onClick={manage.onKeep}>
+            <button className="btn" autoFocus onClick={manage.onKeep}>
               Keep
             </button>
           </div>
