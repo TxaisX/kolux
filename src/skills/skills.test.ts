@@ -62,7 +62,7 @@ test("SKILL-017: scanning, failed, empty, no matches and list states", () => {
 test("SKILL-017: the folders popover names each root's state", () => {
   expect(rootState(root("scanned", { count: 1 }))).toBe("1 skill");
   expect(rootState(root("not-found"))).toBe("Not found");
-  expect(rootState(root("not-scanned", { note: "WSL folders are not scanned yet" }))).toBe("Not scanned: WSL folders are not scanned yet");
+  expect(rootState(root("not-scanned", { note: "the plugin cache limit was reached" }))).toBe("Not scanned: the plugin cache limit was reached");
   expect(rootState(root("error", { note: "denied" }))).toBe("Scan failed: denied");
   expect(rootState(root("partial", { count: 500, note: "Stopped after 500 skills" }))).toBe("500 skills, partly scanned: Stopped after 500 skills");
 });
@@ -94,7 +94,7 @@ test("SKILL-018: no Skills button on a fresh install; the button opens the page 
 });
 
 // SKILL-022: Delete skills.
-import { BLOCKED, MAX_DELETE, canDelete, eligible, keepChosen, outcomeText, pickOf, sumUp, whyNot, type Planned } from "./skills";
+import { BLOCKED, MAX_DELETE, OUTCOME, inWsl, canDelete, eligible, keepChosen, outcomeText, pickOf, sumUp, whyNot, type Planned } from "./skills";
 
 test("SKILL-022: bundled and plugin skills cannot be chosen, and select all counts only rows that can be", () => {
   expect(skills.filter(canDelete).map((s) => s.name)).toEqual(["release-notes", "tidy", "repo-rules"]);
@@ -134,30 +134,20 @@ test("SKILL-022: the confirmation counts folders and links, names where linked c
   expect(sumUp([plan[2]], (p) => p).headline).toBe("None of the chosen skills can be deleted.");
 });
 
-test("SKILL-022: a skill inside the project's WSL distribution is chosen like any home or workspace skill, and the app's answer decides the rest", () => {
-  // T-180-b: the scan lists a WSL skill by its share path with source home or workspace; the page
-  // offers it for delete and the app refuses another distribution or a path outside the skill
-  // folders as "outside", runs the delete inside the distribution, and reports a failing command.
-  const inWsl = sk("pdf-tools", "home", ["claude"], { path: String.raw`\\wsl.localhost\Ubuntu\home\me\.claude\skills\pdf\SKILL.md` });
+test("T-658 (OD-12, DT-C94): a skill in a project stored in WSL is listed by its share path but cannot be chosen", () => {
+  // The scan lists it by its \\wsl.localhost\ path with source workspace; nothing runs inside the distribution.
   const inRepo = sk("lint", "workspace", ["claude"], { path: String.raw`\\wsl.localhost\Ubuntu\home\me\repo\.claude\skills\lint\SKILL.md` });
-  expect(inWsl.path.startsWith("\\\\wsl.localhost\\")).toBe(true); // real backslashes, no control characters
-  expect([canDelete(inWsl), canDelete(inRepo)]).toEqual([true, true]);
-  expect(whyNot(inWsl)).toBeNull();
-  expect(eligible([inWsl, inRepo, skills[4]])).toEqual([inWsl.path, inRepo.path]);
-  expect(keepChosen([inWsl.path], [inWsl])).toEqual([inWsl.path]);
-  expect(pickOf(inWsl)).toEqual({ path: inWsl.path, updated: inWsl.updated });
-  const other: Planned = { path: String.raw`\\wsl.localhost\Debian\home\me\.claude\skills\pdf\SKILL.md`, blocked: "outside", items: [], remains: null };
-  const link: Planned = { path: inWsl.path, blocked: null, items: [{ path: String.raw`\\wsl.localhost\Ubuntu\home\me\.claude\skills\pdf`, kind: "link" }], remains: String.raw`\\wsl.localhost\Ubuntu\home\me\dev\pdf` };
-  const s = sumUp([other, link], (p) => (p === inWsl.path ? "pdf-tools" : "other"));
-  expect(s.headline).toBe("1 skill will be deleted: 1 link removed across all skill folders.");
-  expect(s.remains).toEqual([String.raw`pdf-tools: only a link is removed; the content stays in \\wsl.localhost\Ubuntu\home\me\dev\pdf`]);
-  expect(s.blocked).toEqual([`other: ${BLOCKED.outside}`]);
-  // A delete inside WSL that failed may have removed part of the folder first: it never says "nothing was changed".
-  const unsure = outcomeText({ path: inWsl.path, outcome: "unsure", note: "rm: cannot remove 'pdf/x': Permission denied" });
-  expect(unsure).toBe("Not confirmed: some of it may already be removed (rm: cannot remove 'pdf/x': Permission denied)");
-  expect(unsure).not.toContain("nothing was changed");
-  expect(outcomeText({ path: inWsl.path, outcome: "skipped", note: "unreadable" })).toBe(`Skipped: ${BLOCKED.unreadable}`);
-  expect(outcomeText({ path: inWsl.path, outcome: "skipped", note: "gone" })).toBe(`Skipped: ${BLOCKED.gone}`);
+  expect(inRepo.path.startsWith("\\\\wsl.localhost\\")).toBe(true); // real backslashes, no control characters
+  expect([canDelete(inRepo), whyNot(inRepo)]).toEqual([false, BLOCKED.wsl]);
+  for (const p of [String.raw`\\wsl$\d\r\.claude\skills\x\SKILL.md`, String.raw`\\?\UNC\WSL.localhost\d\x\SKILL.md`, String.raw`\\.\UNC\wsl$\d\x\SKILL.md`, String.raw`\??\UNC\wsl.localhost\d\x\SKILL.md`, "//wsl.localhost/d/x/SKILL.md"]) expect(inWsl(p)).toBe(true);
+  for (const p of [String.raw`\\wsl.localhost.evil\d\x\SKILL.md`, String.raw`C:\wsl.localhost\x\SKILL.md`, String.raw`\\server\wsl$\x`]) expect(inWsl(p)).toBe(false);
+  expect(eligible([inRepo, skills[0]])).toEqual(eligible([skills[0]]));
+  expect(keepChosen([inRepo.path], [inRepo])).toEqual([]);
+  expect(outcomeText({ path: inRepo.path, outcome: "skipped", note: "wsl" })).toBe(`Skipped: ${BLOCKED.wsl}`);
+  // The app's answers are the Windows ones: no "not confirmed" outcome, no "unreadable" reason.
+  expect(Object.keys(OUTCOME)).not.toContain("unsure");
+  expect(Object.keys(BLOCKED)).not.toContain("unreadable");
+  expect(outcomeText({ path: inRepo.path, outcome: "failed", note: "Access is denied" })).toBe("Failed; nothing was changed (Access is denied)");
 });
 
 test("SKILL-022: each skill's outcome reads plainly", () => {

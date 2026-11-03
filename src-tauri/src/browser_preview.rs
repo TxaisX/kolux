@@ -8,7 +8,7 @@
 //! lie under the real folder), a file past FILE_MAX is explained, and the tab showing a preview
 //! (`loading`/`rendered`, one `Page` per tab) gets outbound navigations offered once instead of
 //! followed, downloads refused with one notice per burst, and agent commands only once rendered.
-//! T-659 (DT-C94, X-sec.3, R07-browser.4): each folder's token is 128 random bits from the
+//! T-659 (DT-C95, X-sec.3, R07-browser.4): each folder's token is 128 random bits from the
 //! system, kept in memory for the run; the server answers only requests addressed to its own
 //! loopback host and port; a preview is made, and its folder allowed, only for a folder inside a
 //! project or workspace open in Kolux (one already made stays served for the run).
@@ -73,14 +73,14 @@ fn fresh_token() -> Result<String, String> {
     Ok(b.iter().map(|x| format!("{x:02x}")).collect())
 }
 
-/// T-659 (DT-C94): is `root` one of `folders` or inside one? Both sides are compared as real paths;
+/// T-659 (DT-C95): is `root` one of `folders` or inside one? Both sides are compared as real paths;
 /// a folder that is not a full path, or not there, holds nothing.
 pub fn inside(root: &Path, folders: &[String]) -> bool {
     let real: Vec<String> = folders.iter().map(|f| Path::new(f.trim())).filter(|f| f.is_absolute()).filter_map(|f| f.canonicalize().ok()).map(|c| plain(&c)).collect();
     crate::ports::deepest_workspace(&plain(root), &real).is_some()
 }
 
-/// T-659 (DT-C94): is `wt` a worktree of `project`'s own repository? Its `.git` file must name a
+/// T-659 (DT-C95): is `wt` a worktree of `project`'s own repository? Its `.git` file must name a
 /// folder under `<project>/.git/worktrees`. A path Git lists is not enough on its own: a repository
 /// can list any folder, and a plain-folder project inside a bigger repository would list that one.
 /// ponytail: a project that is itself a linked worktree accepts none of its siblings; Kolux's own
@@ -95,7 +95,7 @@ fn linked_to(project: &Path, wt: &Path) -> bool {
     }
 }
 
-/// T-659 (DT-C94): does `root` lie inside a folder the user opened in Kolux? First every project
+/// T-659 (DT-C95): does `root` lie inside a folder the user opened in Kolux? First every project
 /// (Git or plain folder) and the workspaces folders, with no Git; then the worktrees Git lists for
 /// a project that are its own (`linked_to`).
 pub fn opened(app: &tauri::AppHandle) -> impl Fn(&Path) -> bool + '_ {
@@ -128,7 +128,7 @@ pub fn is_document(path: &str) -> bool {
     p.is_file() && p.extension().and_then(|e| e.to_str()).is_some_and(|e| EXTENSIONS.contains(&e.to_lowercase().as_str()))
 }
 
-/// The preview of a document: its address, folder and file name. T-659 (DT-C94): the document's
+/// The preview of a document: its address, folder and file name. T-659 (DT-C95): the document's
 /// folder must be one `open` holds (`opened`); one token per folder for the run.
 pub fn add(path: &str, open: &dyn Fn(&Path) -> bool) -> Result<Value, String> {
     if !is_document(path) {
@@ -177,7 +177,7 @@ pub fn of(url: &str) -> Option<Value> {
 }
 
 /// The user allows the folder of the preview a tab shows (`url`): from here on every file under
-/// it is served, not only the documents opened. The grant lasts for the run. T-659 (DT-C94): only
+/// it is served, not only the documents opened. The grant lasts for the run. T-659 (DT-C95): only
 /// while `open` still holds the folder (it is checked without the lock: it may ask Git).
 pub fn grant(url: &str, open: &dyn Fn(&Path) -> bool) -> Result<(), String> {
     let (token, _) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;

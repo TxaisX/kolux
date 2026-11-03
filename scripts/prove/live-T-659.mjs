@@ -1,4 +1,4 @@
-// LIVE proof, T-659 (X-sec.3, R07-browser.4, DT-C94): the built-in preview server shows only documents from a folder
+// LIVE proof, T-659 (X-sec.3, R07-browser.4, DT-C95): the built-in preview server shows only documents from a folder
 // open in Kolux, its addresses carry a random token, and it answers only its own loopback name. Hidden dev app
 // (off-screen), scratch profile; the opened project is the scratch repo, and one folder outside it sits under
 // G:/Temp/live-90. Requests to the server are plain HTTP from this script, with the Host line it chooses.
