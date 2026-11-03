@@ -697,7 +697,8 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .auto-label { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; border: 0; font-size: 12px; color: var(--fg-label); }
 .auto-label legend { padding: 0; margin-bottom: 4px; }
 .auto-label.grow { flex: 1; min-height: 0; }
-.auto-radio { display: flex; align-items: center; gap: 6px; color: var(--fg-row); }
+/* T-695 (G9): a checkbox's label is its hit area; one line of text is under 24 px, so the row is held at 24 px (WCAG 2.5.8). */
+.auto-radio { display: flex; align-items: center; gap: 6px; min-height: 24px; color: var(--fg-row); }
 .auto-prompt { flex: 1; height: auto; min-height: 0; padding: 8px 10px; resize: none; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.55 var(--mono-font); }
 .auto-find { display: flex; align-items: center; gap: 6px; }
 .auto-find .field { width: 220px; }
@@ -1167,7 +1168,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .num-field input, .num-field select { height: 28px; min-width: 0; padding: 0 8px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font: inherit; }
 .num-field input { width: 6em; font-variant-numeric: tabular-nums; }
 .status-ticks { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0 30px; }
-.status-tick { display: flex; align-items: center; gap: 6px; color: var(--fg); font-size: 12px; cursor: pointer; }
+.status-tick { display: flex; align-items: center; gap: 6px; min-height: 24px; color: var(--fg); font-size: 12px; cursor: pointer; } /* T-695 (G9): 24 px hit area */
 .status-tick input { accent-color: var(--done); }
 .status-tick.off { opacity: 0.5; cursor: default; }
 .titlebar .app-name, .topbar .app-name { margin: 0 6px 0 2px; color: var(--fg-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }

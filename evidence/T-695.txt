@@ -1,0 +1,133 @@
+T-695 - UX audit Wave 3 part B, lane C rows: Settings, Feedback, Help sheet (DT-C131; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-6, 2026-11-03.
+Rows: proof/ux-audit/requests/W3.md under "49" (G2, G3, G4, G9, G10, S33); findings in
+proof/ux-audit/findings/live-wave3-b.md (S32 / S33 / S34 rows and gaps 2, 3, 4, 9, 10).
+
+WHAT CHANGED
+- G9: src/styles.css. .auto-radio and .status-tick (checkbox labels that are one line of text) get min-height 24px.
+- G3 test: src/feedback/FeedbackDialog.test.ts. One new test.
+- S33 test: src/onboarding/HelpSheet.test.ts. A new file with four tests.
+- Test page: src/tasks/fakeDom.ts (the stand-in DOM the component tests run on).
+  - A textarea's defaultValue is now its text, and an untouched textarea's value shows that text, as in a browser.
+  - React sets defaultValue to draw a textarea's first value. Before this, an untouched textarea read "" in tests.
+- No app behaviour change for G2, G3, G4 or G10.
+
+WHY, ROW BY ROW
+G3 [wrong?] Feedback "Your feedback" stays empty. NOT REPRODUCED.
+- Harness result: "" -> "" -> "" (findings S34 row). It read "" before typing anything.
+- The box is never empty while open: model.ts reduce("open") sets draft = withBlock(text, facts). That is the
+  typed text, then MARK, then the details block. The S34 screenshot (G:/Temp/live-wave3/shots/S34-feedback.png)
+  shows the block in the box.
+- So the harness was reading some other element. In 57's scripts/prove/live-wave3-b.mjs:
+  - listControls clears old data-w3b tags only inside the surface root (line 195): R.querySelectorAll("[data-w3b]").
+  - The control is then looked up document-wide (line 225): document.querySelector('[data-w3b="i"]').
+  - A tag left from an earlier surface that is still in the page matches first.
+- New test "T-695 feedback (G3)": opened with no text, the box
+  - is labelled Your feedback;
+  - is not disabled or read-only;
+  - has the keyboard;
+  - starts with MARK (the details block is there);
+  - after typing, the value starts with the typed text and then the block.
+- The existing T-675 test already shows the box takes focus on open and hands it back on close.
+
+G2 [wrong?] "Open file in" select does not change value. BY DESIGN.
+- src/settings/ShortcutsPage.tsx: <select aria-label="Open file in" value="">. It is an action menu.
+  - Choosing an app opens the shortcuts file in that app (openShortcutsFileIn).
+  - The select goes back to its prompt "Open file in..." so the same app can be chosen again.
+  - A value that "does not change" is the intended state.
+- The action is covered by src/settings/shortcutsFileOpen.test.ts: "choosing an app sends its command with the open request".
+
+G4 [wrong?] Settings terminal page "Terminal input" takes no typing. BY DESIGN.
+- src/settings/TerminalPage.tsx builds the terminal preview with new Terminal({ ..., disableStdin: true }).
+- "Terminal input" is xterm's own label for its hidden input (@xterm/xterm 6.0.0 lib/xterm.js: promptLabel "Terminal input").
+- xterm sets this.textarea.readOnly = rawOptions.disableStdin on create, so the field is read-only on purpose.
+- Follow-up, not done: xterm also sets that textarea's tabIndex to 0, so Tab can still land in the read-only
+  preview. Setting tabindex -1 on it is one line; this is noted in DT-C131 as overrulable.
+
+G10 [verify only] Appearance theme/accent/zoom buttons change <html>. VERIFIED, harness false negative.
+- Themes and accents: src/theme.ts applyAppearance(a, root = document.documentElement).
+  - It sets document.documentElement.dataset.mode.
+  - It sets every colour variable with root.style.setProperty on <html>.
+  - The harness watched only the body, so it saw "no visible change".
+- Covered by src/settings/__cards__/SET-001-005.test.ts, e.g. "SET-001 box 1: fresh profile is Classic;
+  clicking Teal turns sidebar, top bar and accent teal inside the click, before any save", and SET-004-006.test.ts.
+- Zoom: src/settings/zoom.ts sets the webview zoom (setZoom(factorOf(level))), not a DOM attribute, so a DOM watcher cannot see it.
+  Covered by src/settings/zoom.test.ts ("steps half a level, about 9.5 %, and two steps make one whole level of 1.2").
+
+G9 [polish] checkbox/switch hit areas under 24 px. FIXED where the hit area was really small.
+- A checkbox's label is its click area. The probe measured the bare <input> (about 13 px).
+- A one-off scan (each type="checkbox", type="radio" and role="switch" in src/**/*.tsx, tests excluded, checked for
+  an open <label> before it) lists the ones not inside a <label>:
+  total 151, outside a label 5. Those 5 are AllChangesPane.tsx:569, ChangeTree.tsx:44, SkillsPage.tsx:371,
+  SpaceView.tsx:169 and PullRequestPage.tsx:505. None is on Settings or Feedback.
+- Settings General, Appearance, Git and worktrees and Safety use <label className="conn-switch">.
+  - That is a full-width row: 12 px top padding, a name line and a description line.
+  - It is well over 24 px, so it is left as is.
+- Two label styles are one line of text, under 24 px. Both now have min-height 24px:
+  - .status-tick (Appearance, the status bar items): 12 px text in rows that wrap only 6 px apart, so 24 px circles
+    around neighbours overlapped (WCAG 2.5.8's spacing exception did not hold).
+  - .auto-radio (Feedback's "Submit anonymously"; the same rows in the automation dialog).
+- Repo's <label className="check"> is an inline sentence label with a select beside it. Left as is: it is shared by
+  about 20 other places outside Settings, and changing its display there is outside these rows.
+- Not checked live: the 24 px rows were not re-measured in the running app. 57's live-wave3-b tiny-control probe
+  can re-measure them.
+
+S33 [not tested] Help sheet. TESTED.
+- The harness could not open it ("nothing to click: aside button /Help/").
+- New src/onboarding/HelpSheet.test.ts draws the real HelpSheet. Only the back end, the guide state and the
+  outside actions are stubbed.
+
+SPEC
+- No acceptance box is ticked. The Help sheet's card, spec/19-app-lifecycle.md APP-010, has two lines:
+  Restart relaunches with the same layout, and the clipboard text has no secrets. Both need the running app.
+  The new S33 tests stub the back end, so they prove neither.
+
+TESTS (named, verbose)
+VITEST_MAX_WORKERS=2 pnpm exec vitest run src/onboarding/HelpSheet.test.ts src/feedback/FeedbackDialog.test.ts   src/settings/shortcutsFileOpen.test.ts src/settings/zoom.test.ts src/settings/__cards__/SET-001-005.test.ts --reporter=verbose
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: a double press of Open on GitHub opens one page; the button says Opening… and keeps the keyboard
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: closing the box hands the keyboard back to what opened it
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: Add screenshot is a real button that opens the file picker; a picked image is attached and its remove button names it
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: a send still running when the box is closed and opened again cannot close the new box or wipe its draft
+ ✓ src/feedback/FeedbackDialog.test.ts > T-695 feedback (G3): opened with no text, the box holds the details block, has the keyboard and takes typing
+ ✓ src/onboarding/HelpSheet.test.ts > T-695 help sheet (S33): a menu labelled Help lists Settings, the Help group and every tour by name
+ ✓ src/onboarding/HelpSheet.test.ts > T-695 help sheet (S33): each item does its job and closes the sheet
+ ✓ src/onboarding/HelpSheet.test.ts > T-695 help sheet (S33): Copy terminal diagnostics keeps the sheet open and says what happened
+ ✓ src/onboarding/HelpSheet.test.ts > T-695 help sheet (S33): Escape and a click on the backdrop close it
+ ✓ src/settings/shortcutsFileOpen.test.ts > the shortcuts file offers the saved Open in apps, VS Code before anything is saved, never the file manager
+ ✓ src/settings/shortcutsFileOpen.test.ts > choosing an app sends its command with the open request
+ ✓ src/settings/zoom.test.ts > interface zoom (SET-019) > steps half a level, about 9.5 %, and two steps make one whole level of 1.2
+ ✓ src/settings/zoom.test.ts > interface zoom (SET-019) > holds between -3 and +5 levels and resets to 100 % from anywhere
+ ✓ src/settings/zoom.test.ts > interface zoom (SET-019) > reads a saved level back on a half step inside the range, anything else as 100 %
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-001 box 1: fresh profile is Classic; clicking Teal turns sidebar, top bar and accent teal inside the click, before any save
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-001 box 2: an unknown saved theme name starts as Classic, shown and selected
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-002 box 1: Classic chosen -> tint, saturation and depth are all disabled (and enabled on a hue)
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-002 box 2: Moss, saturation to 0 -> every background and text token is grey; back to 100 -> Moss returns
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-002 box 3: saved saturation 500 is used as 160, a word as 100
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-003 box 1: Match, then Sky -> Ember recolours the open terminal without reopening it
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-003 box 2: a catalogue scheme again -> terminals stop following the app hue
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-005 box 1: Mode System follows the operating system while running
+ ✓ src/settings/__cards__/SET-001-005.test.ts > SET-005 box 2: Mode Light with the separate light scheme on -> an open terminal uses the light scheme (and the dark one when it is off)
+ Test Files  5 passed (5)
+      Tests  23 passed (23)
+Fail first: before the fakeDom.ts change the G3 test failed at "box.value.startsWith(MARK)" with value "".
+React writes a textarea's first value through defaultValue, which the stand-in DOM did not have.
+
+FULL SUITE
+VITEST_MAX_WORKERS=2 pnpm exec vitest run (at 00fd7ddc + this change)
+ Test Files  1 failed | 788 passed (789)
+      Tests  3 failed | 5866 passed (5869)
+The 3 failures are the known local-only CRLF checks in src/editor/pdfjsCopy.test.ts (openjpeg_nowasm_fallback.js,
+LICENSE_OPENJPEG, LICENSE_PDFJS_OPENJPEG match the installed pdfjs-dist); they pass on CI's checkout.
+
+TYPES AND FIREWALL
+pnpm exec tsc --noEmit -p .  -> exit 0
+scripts/firewall-check.ps1 -Baseline -> 53 hit(s) in 22 file(s), 0 new, 0 baseline entr(ies) no longer present
+
+FIRST-LOAD BUNDLE
+pnpm exec vite build && node scripts/bundle-budget.mjs
+  main 00fd7ddc (src/styles.css as on main): first load 1487806 bytes in 47 chunks (ceiling 1490000)
+  this branch:                                first load 1487806 bytes in 47 chunks (ceiling 1490000)
+  Difference: +0 bytes. Only tests and two CSS declarations changed.
+
+REVIEW
+__REVIEW__
