@@ -1,5 +1,5 @@
 T-715 - A workspace's archive script runs when the workspace is removed (DT-C151; STAT-055)
-Worker 90, coordinator 57, branch s-90/t715 from main 8c9536aa, merged with main ec26a0da, 2026-11-03.
+Worker 90, coordinator 57, branch s-90/t715 from main 8c9536aa, merged with main ec26a0da and 74dc239b, 2026-11-03.
 Row: proof/ux-audit/requests/W3.md, "T-715 / DT-C151" (backend-wiring finding: setup.rs workspace_archive was dead code).
 
 WHAT WAS WRONG
@@ -46,10 +46,13 @@ TESTS
   heavier load failed timing-bound tests in editor/, projects/uxRows5 and scripts/release.test.mjs; each passed when
   rerun alone, 47/47 and 43/43, and none touches this change.)
 - tsc --noEmit: clean.
+- After merging main 74dc239b (no Rust or removal-site files in it): tsc clean; vitest src/setup src/projects src/shell
+  src/space with VITEST_MAX_WORKERS=1: 109 files, 585 tests passed.
 
 BUNDLE (same slot, vite build + scripts/bundle-budget.mjs, the five changed files swapped to main's for the base)
 - main 8c9536aa: 1,489,577 B; branch: 1,489,684 B = +107 B.
 - main ec26a0da: 1,489,509 B; branch after the merge: 1,489,615 B = +106 B.
+- main 74dc239b: 1,489,475 B; branch after the merge: 1,489,582 B = +107 B.
 - Cap +0 raised to +107 B by 57 (15:01, option (a)). Made of the askArchive helper and one await at each of the four
   first-load removal sites; SpaceView is a lazy chunk. An import() per site was not taken: TrustPrompt is already in
   first load (trustedSetup), so it could only add bytes.
