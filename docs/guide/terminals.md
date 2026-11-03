@@ -203,7 +203,7 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+, | Open Settings |
 | Ctrl+B | Hide or show the left sidebar |
 | Ctrl+L | Hide or show the right sidebar |
-| Ctrl+Shift+E | Show Explorer in the right sidebar |
+| Ctrl+Shift+E | Show Explorer in the right sidebar; press it again while the Explorer has focus to hide it |
 | Ctrl+Shift+J | Open the worktree switcher |
 | Ctrl+Shift+Up / Ctrl+Shift+Down | Previous / next worktree |
 | Ctrl+Shift+0 | Focus the worktree list |
