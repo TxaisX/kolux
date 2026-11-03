@@ -9,7 +9,7 @@ import { listen } from "@tauri-apps/api/event";
 import Ask from "../chrome/Ask";
 import { Close, Refresh, Spinner, CheckCircle } from "../chrome/icons";
 import { TICK_MS, UpdateSchedule, type Outcome } from "./schedule";
-import { actionLabel, barItem, cardReducer, initialCard, isQuiet, mainAction, popupEscapes, RESTART_ASK, RESTART_TIP, restartingLabel, SHORT_RECHECK_MS, STALE_MARK, tipVisible, type UpdateInfo } from "./card";
+import { actionLabel, barItem, cardReducer, initialCard, isQuiet, mainAction, popupEscapes, earlyCheck, RESTART_ASK, RESTART_TIP, restartingLabel, SHORT_RECHECK_MS, STALE_MARK, tipVisible, type UpdateInfo } from "./card";
 import { BAR_EVENT, CHECK_EVENT, SHOW_EVENT, setBar } from "./bus";
 
 interface Status {
@@ -33,6 +33,8 @@ export default function UpdateCenterView() {
   const recheck = useRef(0);
   // A check asked for before update_status answered waits here and runs the moment it does.
   const askedEarly = useRef(false);
+  // Set when update_status failed: a Check click then reports it instead of waiting for an answer that never comes.
+  const statusError = useRef<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [restarting, setRestarting] = useState(false);
   // T-600: counts the user's own clicks that open the card (Check for updates, the status-bar item, the
@@ -74,6 +76,10 @@ export default function UpdateCenterView() {
     clicked(); // the user's click: the card that comes up takes the keyboard
     dispatch({ type: "checkStart", requested: true });
     if (!st) {
+      if (earlyCheck(statusError.current) === "fail") {
+        dispatch({ type: "checkFailed", requested: true, message: statusError.current ?? "", offline: !navigator.onLine });
+        return;
+      }
       askedEarly.current = true; // "Checking for updates…" shows now; the check itself runs once the status is known
       return;
     }
@@ -128,6 +134,7 @@ export default function UpdateCenterView() {
       });
       if (early) check();
     }).catch((e) => {
+      if (alive) statusError.current = String(e);
       if (alive && askedEarly.current) {
         askedEarly.current = false;
         dispatch({ type: "checkFailed", requested: true, message: String(e), offline: !navigator.onLine });
@@ -159,14 +166,15 @@ export default function UpdateCenterView() {
   }, []);
 
   // Escape closes the ready notice (Later) even though it never takes the keyboard.
+  const popupHidden = s.shown && "info" in s.phase && s.phase.info?.version === s.popup;
   useEffect(() => {
-    if (!s.popup || confirming) return;
+    if (!s.popup || popupHidden || confirming) return;
     const onKey = (e: KeyboardEvent) => {
       if (popupEscapes(e)) dispatch({ type: "popupClose" });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [s.popup, confirming]);
+  }, [s.popup, popupHidden, confirming]);
 
   // Up to date: the card closes itself.
   useEffect(() => {

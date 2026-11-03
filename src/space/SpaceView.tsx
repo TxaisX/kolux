@@ -66,7 +66,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
   const shown = useMemo(() => visibleRows(rows, { query, sort, deletableOnly, active }), [rows, query, sort, deletableOnly, active]);
   const map = useMemo(() => treemap(treemapItems(rows)), [rows]);
   // Ticked rows the filter hides are not acted on.
-  const chosen = useMemo(() => chosenVisible(selected, shown, rows), [selected, shown, rows]);
+  const chosen = useMemo(() => chosenVisible(selected, shown, rows, active), [selected, shown, rows, active]);
   const toggle = (path: string) => setSelected((s) => (s.includes(path) ? s.filter((p) => p !== path) : [...s, path]));
 
   // The question comes after the checks, so it can say which ticked rows are skipped and why.

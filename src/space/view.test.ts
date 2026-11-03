@@ -74,7 +74,12 @@ describe("view-014 space page", () => {
 
   it("ticked rows the filter hides are not deleted", () => {
     const rows = [row("C:/w/a"), row("C:/w/b"), row("C:/w/c")];
-    expect(chosenVisible(["C:/w/a", "C:/w/b", "C:/w/gone"], [rows[1], rows[2]], rows)).toEqual(["C:/w/b"]);
+    expect(chosenVisible(["C:/w/a", "C:/w/b", "C:/w/gone"], [rows[1], rows[2]], rows, new Set())).toEqual(["C:/w/b"]);
+  });
+
+  it("a ticked row that can no longer be deleted (now open, or the main checkout) is not chosen", () => {
+    const rows = [row("C:/w/a"), row("C:/w/b"), row("C:/w/m", { isMain: true })];
+    expect(chosenVisible(["C:/w/a", "C:/w/b", "C:/w/m"], rows, rows, new Set(["C:/w/a"]))).toEqual(["C:/w/b"]);
   });
 
   it("whyNotDeletable names the reason, null for a deletable row", () => {

@@ -58,9 +58,9 @@ export function listLines(rows: SpaceRow[], cap = LIST_CAP): string[] {
 }
 
 /** The ticked rows Delete may act on: only those the table still shows (a filter that hides a ticked row drops it). */
-export const chosenVisible = (selected: string[], shown: SpaceRow[], rows: SpaceRow[]): string[] => {
+export const chosenVisible = (selected: string[], shown: SpaceRow[], rows: SpaceRow[], active: ReadonlySet<string>): string[] => {
   const seen = new Set(shown.map((r) => r.path));
-  return selected.filter((p) => seen.has(p) && rows.some((r) => r.path === p));
+  return selected.filter((p) => seen.has(p) && rows.some((r) => r.path === p && deletable(r, active)));
 };
 
 /** Why a row's checkbox is off, or null when it can be ticked. */

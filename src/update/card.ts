@@ -299,7 +299,11 @@ export const restartingLabel = (label: string | null, restarting: boolean): stri
 /** Escape on the ready pop-up (nothing inside it holds the keyboard) is Later, unless a field or another handler took the key. */
 export function popupEscapes(e: { key: string; defaultPrevented: boolean; target: object | null }): boolean {
   if (e.key !== "Escape" || e.defaultPrevented) return false;
-  const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
-  const tag = t?.tagName?.toLowerCase();
-  return !(tag === "input" || tag === "textarea" || tag === "select" || t?.isContentEditable);
+  // Only an Escape nobody else is focused on (the page itself) or one inside the notice: an Escape meant for a
+  // terminal, a menu or another panel leaves the notice alone.
+  const t = e.target as { tagName?: string; closest?: (s: string) => unknown } | null;
+  return t?.tagName?.toLowerCase() === "body" || !!t?.closest?.(".upd-pop");
 }
+
+/** What a Check click does before update_status has answered: wait for it, or, when it already failed, fail now. */
+export const earlyCheck = (statusError: string | null): "wait" | "fail" => (statusError ? "fail" : "wait");
