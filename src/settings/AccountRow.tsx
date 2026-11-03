@@ -1,9 +1,8 @@
 // One row of an accounts list (ACCT-016, ACCT-019): clicking the row makes it the account new
 // panes use; managed rows offer re-authenticate and a Remove that asks first, inline, because the
 // webview has no confirm dialog. The System default row stands for the CLI's own login.
-import { useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { locale } from "../language";
-import { watchEscape } from "../switcher/accounts";
 
 export const signedInAt = (ms: number) => new Date(ms).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" });
 
@@ -24,11 +23,6 @@ export function AccountRow({ title, detail, active, busy, onPick, trouble, manag
   const pick = () => {
     if (!active && !busy) onPick();
   };
-  // T-712 (DT-C148): while the Remove confirm is up and nothing is running, Escape means Keep.
-  const keep = useRef(manage?.onKeep);
-  keep.current = manage?.onKeep;
-  const asking = !!manage?.confirming && !busy;
-  useEffect(() => (asking ? watchEscape(document, () => keep.current?.()) : undefined), [asking]);
   return (
     <div className="acct-entry">
       {/* T-712: the pick control and the row's own buttons sit side by side; none is nested in another. */}
@@ -66,13 +60,23 @@ export function AccountRow({ title, detail, active, busy, onPick, trouble, manag
         )}
       </div>
       {manage?.confirming && (
-        <div className="acct-confirm" role="alertdialog" aria-label={`Remove ${title}?`}>
+        // T-712 (DT-C148): focus opens on Keep, and Escape inside the confirm means Keep (not closing Settings).
+        <div
+          className="acct-confirm"
+          role="alertdialog"
+          aria-label={`Remove ${title}?`}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape" || busy) return;
+            e.stopPropagation();
+            manage.onKeep();
+          }}
+        >
           <span>{`Remove ${title}? Its sign-in is deleted from Kolux${manage.activeGoes ? "; the System default takes over for new panes" : ""}. Panes already running keep going.`}</span>
           <div className="btn-row">
             <button className="btn danger" disabled={busy} onClick={manage.onRemove}>
               Remove
             </button>
-            <button className="btn" disabled={busy} onClick={manage.onKeep}>
+            <button className="btn" disabled={busy} autoFocus onClick={manage.onKeep}>
               Keep
             </button>
           </div>

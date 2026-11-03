@@ -29,8 +29,9 @@ export function OtherWays({ ways, label = "Other ways to connect" }: { ways: Way
   const box = useRef<HTMLDetailsElement>(null);
   const head = useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const shown = isOpen && ways.length > 0; // an emptied menu unmounts without a toggle
   useEffect(() => {
-    if (!isOpen) return;
+    if (!shown) return;
     const shut = () => box.current?.removeAttribute("open");
     const onDown = (e: Event) => box.current?.contains(e.target as Node) || shut();
     // Capture phase and stopped, so the Escape that closes the menu does not also close Settings.
@@ -43,7 +44,7 @@ export function OtherWays({ ways, label = "Other ways to connect" }: { ways: Way
       document.removeEventListener("pointerdown", onDown, true);
       offEsc();
     };
-  }, [isOpen]);
+  }, [shown]);
   if (ways.length === 0) return null;
   return (
     <details className="conn-more" ref={box} onToggle={(e) => setIsOpen(e.currentTarget.hasAttribute("open"))}>
@@ -59,6 +60,7 @@ export function OtherWays({ ways, label = "Other ways to connect" }: { ways: Way
             disabled={w.disabled}
             onClick={() => {
               box.current?.removeAttribute("open");
+              head.current?.focus(); // before the pick, so a flow that takes focus still gets it
               w.onPick();
             }}
           >

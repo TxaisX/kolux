@@ -26,28 +26,40 @@ const open = async (details: FakeNode) => {
   details.setAttribute("open", "");
   await fire(details, "toggle", details);
 };
-const esc = (at: FakeNode) => fire(doc, "keydown", at, { key: "Escape" });
+/** Escape sent through `container`'s listeners; says whether something stopped it (so Settings never sees it). */
+const esc = async (container: FakeNode, at: FakeNode) => {
+  let stopped = false;
+  await fire(container, "keydown", at, { key: "Escape", stopPropagation: () => (stopped = true) });
+  return stopped;
+};
 
 test("the menu closes on a pick, on Escape and on a click outside it, and stays open for a click inside", async () => {
   const picked: string[] = [];
   const c = await show(createElement(OtherWays, { ways: [{ label: "Sign in with a code", onPick: () => picked.push("code") }] }));
   const details = find(c, (n) => n.localName === "details")[0];
   const item = byText(c, "button", "Sign in with a code")[0];
+  // The browser fires toggle when the open attribute goes; the fake DOM does not, so the test does.
+  const shutAndListenersGone = async () => {
+    expect(details.hasAttribute("open")).toBe(false);
+    await fire(details, "toggle", details);
+    expect(doc.listeners.keydown ?? []).toHaveLength(0);
+    expect(doc.listeners.pointerdown ?? []).toHaveLength(0);
+  };
 
   await open(details);
   await click(c, item);
   expect(picked).toEqual(["code"]);
-  expect(details.hasAttribute("open")).toBe(false);
+  await shutAndListenersGone();
 
   await open(details);
-  await esc(item);
-  expect(details.hasAttribute("open")).toBe(false);
+  expect(await esc(doc, item)).toBe(true);
+  await shutAndListenersGone();
 
   await open(details);
   await fire(doc, "pointerdown", find(c, (n) => n.localName === "summary")[0]);
   expect(details.hasAttribute("open")).toBe(true);
   await fire(doc, "pointerdown", doc.body);
-  expect(details.hasAttribute("open")).toBe(false);
+  await shutAndListenersGone();
 });
 
 test("a shut menu does not listen for Escape, so the key still reaches Settings", async () => {
@@ -84,18 +96,20 @@ test("an account row nests no button in another, and its own buttons do not also
   expect(log).toEqual(["pick", "ask", "again"]);
 });
 
-test("the Remove confirm reads Escape as Keep", async () => {
+test("Escape inside the Remove confirm is Keep and goes no further; outside it, the confirm leaves Escape alone", async () => {
   const log: string[] = [];
   const c = await show(row(false, log, true));
-  await esc(c);
+  expect(await esc(c, byText(c, "button", "Re-authenticate")[0])).toBe(false);
+  expect(log).toEqual([]);
+  expect(await esc(c, byText(c, "button", "Keep")[0])).toBe(true);
   expect(log).toEqual(["keep"]);
 });
 
-test("while the row is busy, Remove and Keep are disabled and Escape keeps nothing", async () => {
+test("while a sign-in runs (busy), the confirm's Remove and Keep are disabled and Escape is left to Settings", async () => {
   const log: string[] = [];
   const c = await show(row(true, log, true));
   const confirm = find(c, (n) => n.attrs.role === "alertdialog")[0];
   for (const b of find(confirm, (n) => n.localName === "button")) expect(b.attrs.disabled).toBeDefined();
-  await esc(c);
+  expect(await esc(c, confirm)).toBe(false);
   expect(log).toEqual([]);
 });

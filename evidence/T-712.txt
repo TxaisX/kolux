@@ -7,25 +7,29 @@ WHAT WAS WRONG
   <details>: it stayed open after a pick, Escape did nothing to it, and a click elsewhere left it open.
 - An account row (settings/AccountRow.tsx) was a role=button div holding Re-authenticate, Name and Remove buttons:
   buttons nested in a button, each inner one needing stopPropagation. The inline Remove confirm ignored Escape and
-  its Remove/Keep stayed pressable while the row was busy removing.
+  its Remove/Keep stayed pressable while the row was busy (a sign-in for that account running).
 
 THE FIX (DT-C148)
 - OtherWays: a pick removes the open attribute before it runs; while open, Escape (capture phase, stopped) shuts it
   and puts focus back on the summary, and a pointerdown outside it shuts it. Same behaviour as the chat's HandOff menu.
   No listener exists while the menu is shut, so Escape still closes Settings then.
 - AccountRow: the pick is a real <button class="acct-pick"> (same title, aria-pressed, chips) beside the row's own
-  buttons; the role=button div, its key handler and the stopPropagation wrappers are gone. While the confirm is up and
-  the row is not busy, Escape calls Keep; while busy, Remove and Keep are disabled and Escape does nothing.
-- styles.css: the four .acct-row[role="button"] / [data-active] rules now target .acct-pick (plus a button reset).
+  buttons; the role=button div, its key handler and the stopPropagation wrappers are gone. The confirm opens with focus
+  on Keep; an Escape from inside it calls Keep and is stopped there (a key handler on the confirm, not a document
+  listener). While busy, Remove and Keep are disabled and Escape is left to Settings.
+- styles.css: the four .acct-row[role="button"] / [data-active] rules now target .acct-pick; the global button reset
+  covers font, colour, background and border.
 
 TESTS (VITEST_MAX_WORKERS=1)
 - src/settings/menus.t712.test.ts (new, 5 tests, real components on the fake DOM):
-  1. menu: a pick runs and shuts it; Escape shuts it; pointerdown on its summary keeps it open; on the body shuts it.
+  1. menu: a pick runs and shuts it; Escape shuts it and is stopped; pointerdown on its summary keeps it open; on the
+     body shuts it. After each close the document holds no keydown or pointerdown listener.
   2. a shut menu holds no keydown listener; an open one holds exactly one.
   3. account row: no button inside a button, no role=button left; pick, Remove and Re-authenticate each fire only
      their own handler.
-  4. confirm up: Escape = Keep.
-  5. busy: the confirm's Remove and Keep are disabled and Escape calls nothing.
+  4. confirm up: Escape from Keep = Keep and is stopped; Escape from Re-authenticate (outside the confirm) is not
+     stopped and calls nothing.
+  5. busy: the confirm's Remove and Keep are disabled; Escape on it is not stopped and calls nothing.
   - Trap: with main's ConnectGrid.tsx and AccountRow.tsx put back, 5/5 fail. On this branch, 5/5 pass.
 - pnpm vitest run src/settings src/onboarding: 119 files, 808 tests pass (includes ClaudeAccounts, CodexAccounts,
   ConnectGrid, CodexCard, GrokCard, SettingsPage escape/restore and the SET cards).
@@ -37,4 +41,4 @@ FIRST LOAD
 
 AFTER-LIST
 - Fold HandOff (chat/ChatView.tsx, lane A) and OtherWays into one shared close-on-pick/Escape/outside hook.
-- Optionally move focus to Keep when the Remove confirm opens.
+- A hover look on the active row; disable the pick while busy; arrow keys and aria-expanded on the menu.

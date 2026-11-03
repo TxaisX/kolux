@@ -789,12 +789,12 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .conn-add { margin-left: auto; }
 .btn.link { background: none; border-color: transparent; color: var(--fg-muted); text-decoration: underline; }
 .acct-pending { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--working); }
-.acct-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.acct-row { display: flex; align-items: center; gap: 10px; padding: 8px 6px 8px 0; border-top: 1px solid var(--line); }
 .acct-who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .acct-email { font-size: 13px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; }
 .acct-org { font-size: 11px; color: var(--fg-muted); }
 .acct-row .conn-chip { margin-left: 0; }
-.acct-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 2px 6px; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.acct-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 6px; border-radius: 4px; text-align: start; }
 .acct-pick:hover { background: var(--row-selected); }
 .acct-pick:focus-visible { outline: 2px solid var(--line-focus); outline-offset: -2px; }
 .acct-pick[aria-pressed="true"] { cursor: default; }
