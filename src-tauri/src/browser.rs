@@ -275,7 +275,7 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   // headers and credentials; geolocation, matchMedia and the dialogs answer as emulated. The app
   // hands the state in with `__kxEmu` on every load (so it stays in force), arms one dialog answer
   // with `__kxDialog` and reads the logs with `__kxLog`.
-  const E = { intercept: null, offline: false, headers: {}, auth: null, geo: null, media: {}, mobile: false };
+  const E = { intercept: null, offline: false, headers: {}, headersOrigin: null, auth: null, authOrigin: null, geo: null, media: {}, mobile: false };
   const L = { console: [], net: [], held: [], dialogs: [], armed: [], seq: 0 };
   const keep = (list, item) => { item.seq = ++L.seq; item.t = Date.now(); list.push(item); if (list.length > 500) list.shift(); };
   const shown = (a) => { try { return typeof a === "string" ? a : JSON.stringify(a); } catch (_) { return String(a); } };
@@ -287,28 +287,47 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   addEventListener("unhandledrejection", (e) => keep(L.console, { level: "error", text: "Unhandled rejection: " + String((e.reason && e.reason.message) || e.reason) }));
   const glob = (p, s) => new RegExp("^" + p.split("*").map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$").test(s);
   const hit = (u) => Array.isArray(E.intercept) && E.intercept.some((p) => (p.includes("*") ? glob(p, u) : u.includes(p)));
-  const absolute = (u) => { try { return new URL(u, location.href).href; } catch (_) { return String(u); } };
-  const extra = (set) => { for (const k in E.headers) set(k, E.headers[k]); if (E.auth) set("Authorization", E.auth); };
+  // T-656: the extra headers and credentials go only to the site (origin) they were set for, and only
+  // from a page on that site. Addresses resolve as the engine resolves them (against the document's
+  // base address), the request is sent to exactly the address that was checked, and every built-in the
+  // check uses is kept here, before any page script runs, so a page on another site cannot swap one to
+  // read the values or to point a checked request at itself. Script the site itself serves is trusted
+  // with them (DT-C92).
+  const R = Reflect.apply, assign = Object.assign, ownKeys = Object.keys, desc = Object.getOwnPropertyDescriptor, define = Object.defineProperty, bare = Object.create;
+  const RealURL = URL, urlHref = desc(URL.prototype, "href").get, urlOrigin = desc(URL.prototype, "origin").get;
+  const baseOf = desc(Node.prototype, "baseURI").get, reqUrl = desc(Request.prototype, "url").get;
+  const parse = (u, base) => { try { return new RealURL(u, base); } catch (_) { return null; } };
+  const absolute = (u) => { const p = parse(u, R(baseOf, document, [])); return p ? R(urlHref, p, []) : String(u); };
+  const site = (u) => { const p = parse(u); return p ? R(urlOrigin, p, []) : "null"; };
+  const requestUrl = (x) => { try { return R(reqUrl, x, []); } catch (_) { return null; } };
+  const extra = (url, set) => {
+    const o = site(url);
+    if (o === "null" || o !== location.origin) return;
+    if (o === E.headersOrigin) { const hs = E.headers, ks = ownKeys(hs); for (let i = 0; i < ks.length; i++) set(ks[i], hs[ks[i]]); }
+    if (E.auth && o === E.authOrigin) set("Authorization", E.auth);
+  };
+  const RealHeaders = Headers, headerSet = Headers.prototype.set;
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
-    const url = absolute(input instanceof Request ? input.url : input);
+    const asked = requestUrl(input), url = asked !== null ? asked : absolute(input);
     if (E.offline) { keep(L.net, { url, kind: "fetch", failed: "offline" }); return Promise.reject(new TypeError("Failed to fetch (Kolux emulates offline)")); }
     const go = () => {
-      const h = new Headers((init && init.headers) || (input instanceof Request ? input.headers : undefined));
-      extra((k, v) => h.set(k, v));
-      const r = realFetch(input, Object.assign({}, init, { headers: h }));
+      const h = new RealHeaders((init && init.headers) || (asked !== null ? input.headers : undefined));
+      extra(url, (k, v) => R(headerSet, h, [k, v]));
+      const r = realFetch(asked !== null ? input : url, assign(bare(null), init, { headers: h }));
       r.then((res) => keep(L.net, { url, kind: "fetch", status: res.status }), () => keep(L.net, { url, kind: "fetch", failed: "error" }));
       return r;
     };
     if (hit(url)) return new Promise((res, rej) => { L.held.push({ url, kind: "fetch", go: () => go().then(res, rej) }); });
     return go();
   };
-  const X = XMLHttpRequest.prototype, realOpen = X.open, realSend = X.send;
-  X.open = function (m, u, ...rest) { this.__kxUrl = absolute(u); this.__kxMethod = m; return realOpen.call(this, m, u, ...rest); };
+  // Each request's checked address is kept out of the page's reach (not on the request object).
+  const X = XMLHttpRequest.prototype, realSetHeader = X.setRequestHeader, realOpen = X.open, realSend = X.send, opened = new WeakMap(), wmGet = WeakMap.prototype.get, wmSet = WeakMap.prototype.set;
+  X.open = function (m, u, ...rest) { const url = absolute(u); R(wmSet, opened, [this, { url, method: m }]); return R(realOpen, this, [m, url, ...rest]); };
   X.send = function (body) {
-    const url = this.__kxUrl || "";
+    const o = R(wmGet, opened, [this]), url = o ? o.url : "";
     if (E.offline) { keep(L.net, { url, kind: "xhr", failed: "offline" }); this.dispatchEvent(new Event("error")); return; }
-    const go = () => { try { extra((k, v) => this.setRequestHeader(k, v)); } catch (_) {} this.addEventListener("loadend", () => keep(L.net, { url, kind: "xhr", method: this.__kxMethod, status: this.status }), { once: true }); return realSend.call(this, body); };
+    const go = () => { try { extra(url, (k, v) => R(realSetHeader, this, [k, v])); } catch (_) {} this.addEventListener("loadend", () => keep(L.net, { url, kind: "xhr", method: o && o.method, status: this.status }), { once: true }); return R(realSend, this, [body]); };
     if (hit(url)) { L.held.push({ url, kind: "xhr", go }); return; }
     go();
   };
@@ -339,15 +358,23 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
   window.confirm = (m) => dialog("confirm", m);
   window.prompt = (m, d) => dialog("prompt", m, d);
   window.__kxDialog = (a) => { if (a && typeof a === "object") L.armed.push(a); return L.armed.length; };
-  window.__kxEmu = (s) => {
-    if (!s || typeof s !== "object") return;
+  // T-656: fixed in place, so a page cannot take the state over, and values named for another site
+  // than this page's are dropped before they are kept (the app blanks them too). Only the state's own
+  // fields are copied, into an object with no prototype, so nothing the page put on the prototypes runs.
+  define(window, "__kxEmu", { writable: false, configurable: false, value: (given) => {
+    if (!given || typeof given !== "object") return;
+    const s = bare(null), ks = ownKeys(given);
+    for (let i = 0; i < ks.length; i++) s[ks[i]] = given[ks[i]];
+    const here = location.origin;
+    if ("headers" in s && s.headersOrigin !== here) s.headers = {};
+    if ("auth" in s && s.authOrigin !== here) s.auth = null;
     const was = E.offline;
-    Object.assign(E, s);
+    assign(E, s);
     if (E.media.colorScheme) document.documentElement.style.colorScheme = E.media.colorScheme;
     if (E.mobile) Object.defineProperty(navigator, "maxTouchPoints", { get: () => 5, configurable: true });
     if (!Array.isArray(E.intercept)) for (const h of L.held.splice(0)) { try { h.go(); } catch (_) {} }
     if (was !== E.offline) dispatchEvent(new Event(E.offline ? "offline" : "online"));
-  };
+  } });
   window.__kxLog = (what, n) => {
     const last = (list) => list.slice(-(n || 100));
     if (what === "held") return L.held.map((h) => ({ url: h.url, kind: h.kind }));
@@ -360,8 +387,20 @@ pub const CHORD_SCRIPT: &str = r#"(() => {
 })();"#;
 
 /// T-242: the script that hands a tab's emulation state to its page (`state` is its JSON object).
+/// T-656: handed in as an object literal (re-serialised here, so it is always one), not through the
+/// page's `JSON.parse`, which a page could replace to read the state.
 pub fn emu_script(state: &str) -> String {
-    format!("window.__kxEmu && window.__kxEmu(JSON.parse({}))", serde_json::Value::from(state))
+    format!("window.__kxEmu && window.__kxEmu({})", emu_literal(state))
+}
+
+/// T-656: like [`emu_script`], but `full` is only written into a document that is on `site` when the
+/// script runs (a load hook can run while the previous page is still showing); any other gets `blank`.
+pub fn emu_script_for(site: &str, full: &str, blank: &str) -> String {
+    format!("window.__kxEmu && window.__kxEmu(location.origin === {} ? {} : {})", serde_json::Value::from(site), emu_literal(full), emu_literal(blank))
+}
+
+fn emu_literal(state: &str) -> serde_json::Value {
+    serde_json::from_str(state).unwrap_or(serde_json::Value::Null)
 }
 
 /// The chord a navigation carries, if it is one of ours and names a browser action.
@@ -1323,8 +1362,8 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
             // is tried again after a reload; the pane keeps the old one while the site is the same.
             // T-242 (BROW-050): what the command line emulates for this tab stays in force across
             // loads; a new document starts from the script's defaults, so the state goes in again.
-            if let Some(state) = cli::emu_state(id) {
-                let _ = page.eval(emu_script(&state));
+            if let Some(script) = cli::emu_hand_in(id, payload.url().as_str()) {
+                let _ = page.eval(script);
             }
             if event == "finished" {
                 let (icon_app, icon_dev, at) = (load_app.clone(), icon_dev.clone(), payload.url().to_string());
@@ -3501,10 +3540,15 @@ mod t074_tests {
     fn brow049_050_the_page_script_records_logs_holds_requests_and_answers_dialogs() {
         // BROW-049: console and network recorders live in the always-injected script so page-load
         // traffic is seen; BROW-050: offline, headers, credentials, geolocation, media, dialogs.
-        for needle in ["window.__kxEmu", "window.__kxLog", "window.__kxDialog", "Kolux emulates offline", "navigator.geolocation", "matchMedia", "prefers-color-scheme", "Authorization", "L.held", "getEntriesByType", "unhandledrejection", "window.alert", "window.confirm", "window.prompt", "maxTouchPoints"] {
+        for needle in ["\"__kxEmu\"", "window.__kxLog", "window.__kxDialog", "Kolux emulates offline", "navigator.geolocation", "matchMedia", "prefers-color-scheme", "Authorization", "L.held", "getEntriesByType", "unhandledrejection", "window.alert", "window.confirm", "window.prompt", "maxTouchPoints"] {
             assert!(CHORD_SCRIPT.contains(needle), "{needle}");
         }
-        assert_eq!(emu_script(r#"{"offline":true}"#), r#"window.__kxEmu && window.__kxEmu(JSON.parse("{\"offline\":true}"))"#);
+        assert_eq!(emu_script(r#"{"offline":true}"#), r#"window.__kxEmu && window.__kxEmu({"offline":true})"#);
+        assert_eq!(emu_script("not json); alert(1"), "window.__kxEmu && window.__kxEmu(null)");
+        assert_eq!(
+            emu_script_for("https://a.test", r#"{"auth":"Basic x","authOrigin":"https://a.test"}"#, r#"{"auth":null}"#),
+            r#"window.__kxEmu && window.__kxEmu(location.origin === "https://a.test" ? {"auth":"Basic x","authOrigin":"https://a.test"} : {"auth":null})"#
+        );
     }
 
     #[test]
