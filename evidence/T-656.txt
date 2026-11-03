@@ -1,0 +1,41 @@
+T-656 (R07-browser.6, DT-C92) — extra headers and credentials go only to the site they were set for
+Branch s-90/t656, worktree wt/90-t656, 2026-11-02.
+
+What changed
+- `kolux set headers` / `kolux set credentials` record one site (the tab's page, or --origin). Clearing headers works on any tab.
+- The app hands a page on another site blank values (and no site name); the page script adds them only when the page and the
+  request's resolved address are both on that site, for fetch and XHR, and sends the request to exactly the address it checked.
+- The page script keeps the built-ins it relies on from before any page script runs; the hand-in function cannot be replaced.
+
+Checks run (fresh, after the last change)
+- npx vitest run src/browser: 261 passed (extraHeaders.test.ts: 10 tests — A gets the values with fetch and XHR, B does not;
+  a page on B sends nothing; swapped setters see nothing; <base> pointing at B; an address that changes between reads;
+  a Request with a lying url getter; a state naming another site; setters a page plants on Object.prototype see nothing; an emptied set;
+  the whole page script compiles)
+- cargo test --lib browser: 291 passed, 0 failed
+- cargo clippy --all-targets -- -D warnings: clean
+- npx tsc --noEmit: OK
+- node scripts/plan-check.mjs: OK; node scripts/invoke-contract.mjs: OK
+- Live proof (hidden dev app, scratch profile, two loopback sites): node scripts/prove/live-T-656.mjs — 7/7 PASS,
+  details in evidence/T-656-live.txt.
+
+Found by the live proof
+- The first live run sent nothing even to site A: a new name in the page script clashed with an earlier one, so the engine
+  refused the whole script. Unit tests loaded only the T-242 section and missed it. Fixed, and the new compile test above
+  fails on that version and passes now.
+
+Redirect (recorded in DT-C92)
+- A same-site request that the server redirects to the other site: the engine carries the custom header on, and drops
+  Authorization. Accepted as browser behaviour.
+
+Review
+- opus-high-review (first pass): B-; security-auditor: 2 medium, 2 low. All fixed (base address, state checked in the page,
+  site name not handed to other sites, page tampering with built-ins) except the redirect, which is documented above.
+- Final pass: opus-high-review A-, no blocking findings; security-auditor one HIGH: when a load starts, the hand-in ran in the
+  page still showing (possibly another site) and its copy step could be watched by setters that page planted. Fixed: the app
+  writes the values only behind a check that the live document is on their site (others get blanks), and the page copies the
+  state without running page code. Regression tests in Rust (browser_cli t656) and vitest (fails on the old copy, passes now).
+  Also: fetch options built without page setters, a header named __proto__ refused, two comments narrowed to the DT-C92 scope.
+  Live proof re-run after these changes: 7/7 PASS.
+- CI (shard 3): the privacy audit counts how many places reach XHR's prototype and found two after the hand-in change.
+  Fixed by reading the header setter from the same handle; vitest privacy-audit + src/browser 266 passed, cargo test --lib browser 291 passed.

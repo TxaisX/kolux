@@ -1054,7 +1054,7 @@ Rules: empty values are kept for a cookie value, a storage value and a credentia
   `kolux cookie set --name a --value b --domain d --path p --secure --httpOnly --sameSite Lax --expires 0`;
   cookie delete takes `--name` with `--domain` or `--url`; viewport takes `--width`, `--height`,
   `--scale` and `--mobile`; set offline takes `--state`; set headers takes `--headers`; set
-  credentials takes `--user` and `--pass`; set media takes `--color-scheme` and `--reduced-motion`;
+  credentials takes `--user` and `--pass`; both take an optional `--origin` (T-656); set media takes `--color-scheme` and `--reduced-motion`;
   intercept enable takes `--patterns`.
 Acceptance:
   - [ ] `kolux storage local set --key a --value=` stores an empty string.
