@@ -62,3 +62,11 @@ test("T-110-b: asking to rename the folder is on by default, switches off, and g
   expect(off).toContain("the folder keeps its name");
   expect(view({ renameBranches: false })).not.toContain("Ask to rename the folder too");
 });
+
+test("the Source Control group-order section is gone, and the AI card says what it writes", () => {
+  const html = view({});
+  expect(html).not.toContain('data-section="scm-groups"');
+  expect(html).not.toContain("Group order");
+  expect(html).toContain("Let AI write Git text (branch names, pull request titles and descriptions)");
+  expect(html).toContain("Show the AI actions in Source Control"); // still the scmAiHidden switch
+});
