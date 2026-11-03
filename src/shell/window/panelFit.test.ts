@@ -19,8 +19,8 @@ const RULES = [
   ".body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }",
   ".body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
   ".body > .rside { max-width: max(240px, 100vw - 340px); }",
-  // T-719 (DT-C155): only from NARROW_PX up; below it the step-aside has hidden the left sidebar.
-  "@media (min-width: 900px) { .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }",
+  // T-719 (DT-C155): only where the step-aside does not apply (its exact opposite, so no fractional gap under zoom).
+  "@media not all and (max-width: 899px) { .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }",
   ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }",
   ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }",
 ];
@@ -40,6 +40,9 @@ test("T-703: the stylesheet carries the clamp rules, after the T-699 step-aside"
   const stepAside = css.indexOf(`@media (max-width: ${NARROW_PX - 1}px) { .body:has(> .rside:not([hidden]))`);
   expect(stepAside).toBeGreaterThan(-1);
   for (const rule of RULES) expect(css.indexOf(rule), rule).toBeGreaterThan(stepAside);
+  // T-719: the guard is the step-aside's own query negated, not min-width: 900px (which leaves 899-900 px unmatched).
+  expect(css).toContain(`@media not all and (max-width: ${NARROW_PX - 1}px) { .body:has(> .sidebar-wrap`);
+  expect(css).not.toContain("@media (min-width: 900px)");
   // The Agents screen's rail is also a .sidebar-wrap beside .body; it keeps its own width (.rail), so no clamp names a bare one.
   expect(css.match(/^\.body[^{]*\.sidebar-wrap(?!:not\(\.rail-wrap\))[^{]*\{[^}]*--sidebar-w/gm)).toBeNull();
   // The constants: 348 = the floor + the left gutter; 588 = that + the right sidebar's minimum.
@@ -80,11 +83,12 @@ test("T-703: the dragged panel gives back its width first; the step-aside starts
 });
 
 test("T-719: under 900 px the right sidebar takes the room the stepped-aside left sidebar leaves, and the workspace keeps its floor", () => {
-  for (const W of [640, 800, NARROW_PX - 1]) {
+  for (const W of [700, 800, NARROW_PX - 1]) {
     for (const left of [null, 289, LEFT_MAX]) {
       const drawn = clampWidth(2000, W, left === null ? 0 : left + 8); // MIRROR Right.tsx: dragged as wide as it goes
       expect(drawn, `${W} px, left ${left}`).toBe(Math.max(RIGHT_MIN, W - 400));
       expect(layout(W, left, drawn), `${W} px, left ${left}`).toEqual({ l: 0, r: drawn, work: W - drawn });
+      expect(W - drawn, `${W} px, left ${left}`).toBeGreaterThanOrEqual(FLOOR);
     }
   }
   expect(clampWidth(2000, 800, 297)).toBe(400); // before T-719 both clamps counted the hidden left sidebar: 240
