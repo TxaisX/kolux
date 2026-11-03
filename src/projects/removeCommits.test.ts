@@ -93,7 +93,7 @@ test("the delete question names the commits, starts with Keep the branch ticked,
   expect(text).toContain("3 commits are on no other branch and were never pushed");
   for (const line of THREE) expect(text).toContain(line);
   expect(keepBox(c)?.checked, "Keep the branch starts ticked").toBe(true);
-  await click(c, byText(c, "button", "Remove")[0]);
+  await click(c, byText(c, "button", "Delete")[0]);
   await settle(60);
   expect(removes()).toEqual([{ projectId: "p1", path: fix.path, force: false, stamp: "s-fix", keepBranch: true }]);
 });
@@ -106,7 +106,7 @@ test("unticking Keep the branch is the user's own choice to delete it", async ()
   await click(c, box);
   await settle(20);
   expect(keepBox(c)?.checked).toBe(false);
-  await click(c, byText(c, "button", "Remove")[0]);
+  await click(c, byText(c, "button", "Delete")[0]);
   await settle(60);
   expect(removes()).toEqual([{ projectId: "p1", path: fix.path, force: false, stamp: "s-fix", keepBranch: false }]);
 });

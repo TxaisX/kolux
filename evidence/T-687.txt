@@ -11,7 +11,7 @@ WHAT CHANGED (src/projects only; lane C commits 9d677875 and cf05a307)
 - Sleep (rows.ts sleepPlan): asks first, naming the count, when running terminals in the workspace or its
   children would close; the plan lists only the folders that change.
 - One Remove project button with its own icon (no longer the workspace-delete ×). This supersedes T-640's
-  hover X on the main checkout row (DT-C123); scripts/prove/live-T-640.mjs still looks for data-main-x
+  hover X on the main checkout row (DT-C123); scripts/prove/live-T-640.mjs
   was updated with it (coordinator 57, 01:44): the T-640 live proof selectors moved with T-687
   (data-main-x -> data-proj-x, "Remove this workspace" -> "Delete this workspace"); node --check passes; the
   live run waits for 0.1.6.

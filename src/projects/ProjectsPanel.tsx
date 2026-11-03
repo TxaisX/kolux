@@ -841,13 +841,22 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     setDropGroup(null);
   };
   // A new group exists on the backend before its form is saved; Cancel (or closing the form) takes it away again.
-  const [freshGroup, setFreshGroup] = useState<string | null>(null);
+  // T-689: at most one fresh unsaved group at a time. The ref follows the state at once, so a second press that lands
+  // before the render still sees the first one.
+  const [freshGroup, setFreshGroupState] = useState<string | null>(null);
+  const freshRef = useRef<string | null>(null);
+  const setFreshGroup = (id: string | null) => {
+    freshRef.current = id;
+    setFreshGroupState(id);
+  };
   const newGroup = () =>
     invoke<Groups>("group_create", { name: "", parent: null })
       .then((g) => {
         const made = takeGroups(g).groups[g.groups.length - 1];
+        const earlier = freshGroupToDrop(freshRef.current, made.id, g.groups.map((x) => x.id)); // the empty one still open: drop it, same guard as a closing form
         setFreshGroup(made.id);
         openGroup(made);
+        if (earlier !== null) invoke<Groups>("group_delete", { id: earlier, removeProjects: false }).then((d) => takeGroups(d), fail);
       })
       .catch(fail);
   useEffect(() => {
@@ -859,12 +868,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupFor, freshGroup]);
   const saveGroup = async (g: Group) => {
+    // Saved: it stays. It stops being the unsaved new group before the backend answers, so a New group, Cancel or another
+    // form opened meanwhile cannot drop it; and the answer closes only this group's form, not one opened since.
+    const wasFresh = freshRef.current === g.id;
+    if (wasFresh) setFreshGroup(null);
     try {
       if (groupName.trim() !== g.name) takeGroups(await invoke<Groups>("group_rename", { id: g.id, name: groupName }));
       if (groupParent !== (g.parent ?? "")) takeGroups(await invoke<Groups>("group_nest", { id: g.id, parent: groupParent || null }));
-      setFreshGroup(null); // saved: it stays
-      setGroupFor(null);
+      setGroupFor((open) => (open === g.id ? null : open));
     } catch (err) {
+      if (wasFresh && freshRef.current === null) setFreshGroup(g.id); // not saved: still the unsaved new group
       fail(err);
     }
   };
@@ -877,6 +890,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
       setGroupFor(null);
       setDropGroup(null);
+      focusNewGroup(); // the group's own buttons are gone with it
       say("ok", remove ? `Deleted the group ${g.name} and took its projects out of Kolux; their folders are still on disk` : `Deleted the group ${g.name}; its projects are at the top level now`);
       if (remove) await reload();
     } catch (err) {
@@ -1403,7 +1417,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     ];
   };
   const move = async (p: Project, w: Worktree, parent: string) => {
-    setMoving(null);
+    closeMove(w.path);
     try {
       await invoke("workspace_set_parent", { projectId: p.id, path: w.path, parent: parent || null });
       await refreshWorktrees(projects);
@@ -1695,6 +1709,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const closeForget = (path: string) => (setForgetAsk(null), focusRow(path));
   const closeConfirm = (path: string) => (setConfirm(null), focusRow(path));
   const closeDrop = (p: Project) => (setDropProject(null), focusProjectX(p));
+  const closeMove = (path: string) => (setMoving(null), focusRow(path));
+  // T-689: the group question gives focus back to the group's X (Keep it), or to New group once the group is gone.
+  const focusGroupX = (id: string) =>
+    window.setTimeout(() => document.querySelector<HTMLElement>(`[data-project-group="${id}"] [data-group-x]`)?.focus(), 0);
+  const focusNewGroup = () => window.setTimeout(() => document.querySelector<HTMLElement>('button[aria-label="New group"]')?.focus(), 0);
   function cancelRename(w: Worktree) {
     renameOpen.current = null;
     setRenaming(null);
@@ -2030,7 +2049,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <div className="btn-row">
               <button className="btn danger" onClick={() => void removeBatch()} disabled={busy !== ""}>
-                {busy === "removing" ? "Removing…" : "Delete all"}
+                {busy === "removing" ? "Deleting…" : "Delete all"}
               </button>
               <button className="btn" autoFocus onClick={() => closeBatch(w.path)}>
                 Keep
@@ -2039,10 +2058,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {moving === w.path && !asking && (
-          <div className="sb-form" data-moving={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setMoving(null))}>
+          <div className="sb-form" data-moving={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeMove(w.path))}>
             <Picker key={`move-${w.path}`} name="Move under" value={up ? worktreeLabel(up) : "No parent"} startOpen items={moveItems(p, w)} onPick={(k) => void move(p, w, k)} />
             <div className="btn-row">
-              <button className="btn" onClick={() => setMoving(null)}>
+              <button className="btn" onClick={() => closeMove(w.path)}>
                 Cancel
               </button>
             </div>
@@ -2079,7 +2098,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         {asking && (
           <div className="sb-form warn" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeConfirm(w.path))}>
             <span>
-              Remove <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
+              Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
               {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
               {runNote([confirm.path])}
             </span>
@@ -2121,7 +2140,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <div className="btn-row">
               <button className="btn danger" onClick={() => remove()} disabled={busy !== "" || blocker(confirm.check) !== null}>
-                {busy === "removing" ? "Removing…" : "Remove"}
+                {busy === "removing" ? "Deleting…" : "Delete"}
               </button>
               <button className="btn" autoFocus onClick={() => closeConfirm(w.path)}>
                 Keep
@@ -2303,7 +2322,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       <label>Header colour</label>
       <HeaderColourPicker settings={settings} kind="g" id={g.id} onSetting={onSetting} />
       {dropGroup ? (
-        <>
+        <div style={{ display: "contents" }} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setDropGroup(null), focusGroupX(g.id))}>
           <div className="sb-hint">
             Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
             {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
@@ -2312,15 +2331,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
             Also remove its projects from Kolux (their folders stay on disk)
           </label>
-          <div className="btn-row" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setDropGroup(null))}>
+          <div className="btn-row">
             <button className="btn danger" onClick={() => deleteGroup(g, dropGroup.remove)}>
               Delete group
             </button>
-            <button className="btn" autoFocus onClick={() => setDropGroup(null)}>
+            <button className="btn" autoFocus onClick={() => (setDropGroup(null), focusGroupX(g.id))}>
               Keep it
             </button>
           </div>
-        </>
+        </div>
       ) : (
         <div className="btn-row">
           <button className="btn" onClick={() => saveGroup(g)}>

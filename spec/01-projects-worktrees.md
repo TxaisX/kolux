@@ -246,6 +246,8 @@ Acceptance:
   - [x] Delete the active row while the list is scrolled → no row still on screen moves; the list's
         scroll offset may shift by about one row (~70 px) because the active row is pinned. (Reworded
         per Txais 2026-10-28 decisions file, A.) (live 2026-10-27; evidence/cards-PROJ-070.txt)
+  - [x] Open the delete question for a workspace → the question and its button say Delete, the word
+        the row and its menu use; removing a project still says Remove project. (T-689; evidence/T-689.txt)
 Compat: Keybinding id workspace.delete.
 Source: D-01-070
 
@@ -702,6 +704,8 @@ Rules: the picker never offers the workspace itself, its current parent or any o
 Acceptance:
   - [ ] Drag A onto the middle of B → A becomes B's child.
   - [ ] Open the parent picker for A → A, its parent and its descendants are not offered.
+  - [x] Close the parent question with Cancel, with Escape or by picking a parent → focus is back on
+        the workspace's row. (T-689; evidence/T-689.txt)
 Compat: —
 Source: D-01-048
 
@@ -871,6 +875,8 @@ Acceptance:
   - [ ] Create a group while the sidebar is refreshing → the group survives the refresh.
   - [x] Make a new group, then close its form before Save → the group is removed again, once, and only
         while it still exists. (T-687; evidence/T-687.txt)
+  - [x] Press New group twice while the first new group is still unsaved → only one new group is
+        left; a group saved in between stays. (T-689; evidence/T-689.txt)
 Compat: —
 Source: D-01-014
 
@@ -884,6 +890,8 @@ Acceptance:
   - [ ] Delete a group with the choice off → its projects are back at the top level.
   - [ ] Delete a group with the choice on → its projects, those in sub-groups too, leave the sidebar
         while their folders stay on disk.
+  - [x] Press Escape anywhere in the delete-group question → the group stays; Keep it puts focus
+        back on the group's delete button, and after deleting, focus goes to New group. (T-689; evidence/T-689.txt)
 Compat: —
 Source: D-01-015
 
