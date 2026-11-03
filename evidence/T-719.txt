@@ -1,0 +1,41 @@
+T-719 - Under 900 px the right sidebar widens into the room the stepped-aside left sidebar leaves (DT-C155; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-11 from main 8c9536aa, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "T-719 / DT-C155". Finding: proof/ux-audit/findings/live-verify-t9-10.md, T-703b/c note.
+
+WHAT WAS WRONG
+- Under 900 px the T-699 step-aside hides the left sidebar while the right one shows. Both clamps on the right sidebar still
+  subtracted the left sidebar's width:
+  - styles.css: `.body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside` max-width (the T-703 rule);
+  - chrome/RightSidebar.tsx clampWidth, which Right.tsx uses for drags, arrow keys, the saved width and aria-valuemax
+    (sidebarOpen stays true while the stylesheet hides the sidebar).
+- Live verify at 800 and 640 px: the right sidebar stayed at 240 px when dragged to the far edge, with the workspace at
+  560 and 400 px.
+
+THE FIX (DT-C155)
+- styles.css: that rule now sits in `@media not all and (max-width: 899px) { ... }`, the step-aside's exact
+  opposite (review finding: `min-width: 900px` left a fractional 899-900 px band under zoom where neither applied). Below 900 px `.body > .rside { max-width:
+  max(240px, 100vw - 340px) }` applies alone.
+- chrome/RightSidebar.tsx clampWidth: `windowWidth - (windowWidth < NARROW_PX ? 0 : leftWidth) - RESERVED`. Below 900 px the
+  right sidebar reaches the window less the 400 px reserve (800 px: 400; 640 px: 240), so from 640 px up the workspace keeps >= 400 px; below 640 px
+  (zoom only) the right sidebar stays at 240 and the workspace gets the rest, as before.
+- From 900 px up nothing changes.
+
+TESTS (VITEST_MAX_WORKERS=2)
+- src/shell/window/panelFit.test.ts: the RULES pin now names the media-query form; the layout() model leaves the left
+  sidebar out of the right one's room under the step-aside; new test "T-719" at 700, 800 and 899 px with the left sidebar
+  closed, 289 and 480 (the drawn width = max(240, W - 400), the workspace >= 340, asserted), plus 900 px still counting the left. The T-703 pin test also asserts the guard is
+  `not all and (max-width: 899px)` and that no `min-width: 900px` guard is left.
+- src/chrome/RightSidebar.test.ts VIEW-056: clampWidth(500, 700, 297) is now 300 (was 240); clampWidth(500, 900, 297)
+  stays 240.
+- On main 8c9536aa's code these fail 3/3: "expected 240 to be 300", "@media (min-width: 900px) { ... }: expected -1 to be
+  greater than 109282", "800 px, left 289: expected 240 to be 400". On this branch they pass.
+- src/chrome and src/shell: 65 files, 305 tests passed. pnpm exec tsc --noEmit -p . : clean.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 8c9536aa: 1,489,577 B first load. This branch: 1,489,587 B (+10 B; cap +30 by coordinator 57). CSS +0.
+
+REVIEW
+- Fresh opus-high-review, grade B: one medium finding (min-width: 900px left a fractional 899-900 px band under zoom
+  where neither query applied) fixed in this PR with the negated query; the stale comment and the 400 px wording fixed
+  too. Built CSS: `@media (width<=899px)` and `@media not all and (width<=899px)`. Full review: the PR conversation.
+- After the fix: src/chrome + src/shell 65 files, 305 tests passed; tsc clean; first load still 1,489,587 B.
