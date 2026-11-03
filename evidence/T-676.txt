@@ -1,0 +1,24 @@
+T-676 (DT-C112) · UX audit lane D: git back end and the Changes tab · s-72/ux-1 · 2026-11-02
+
+Source: G:/Dev/kolux-rs-sessions/proof/ux-audit/findings/{scm,editor-a,stress}.md (cloud audit at main e93a23b).
+
+Rows:
+  # D-ux1 (branch s-72/ux-1, head 4ada2e9a)
+  
+  src-tauri/src/scm.rs:585, 2818-2820 (row 1) | fixed | git_network(): GIT_TERMINAL_PROMPT=0 + GCM_INTERACTIVE=never, stdin null, 300 s limit that kills the git tree; a stopped step comes back as a network-kind failure saying "timed out"; PR-create push uses it too
+  src-tauri/src/scm.rs:2790-2815 (row 2) | fixed | scm_stage, scm_discard, scm_commit, scm_remote, scm_abort, scm_commit_files, scm_base_sides now run in spawn_blocking
+  src-tauri/src/scm.rs:2420 (row 3) | fixed | history fetches limit+1; the last commit carries optional `capped: true` (absent from the JSON otherwise). UI does not show it yet: the only history reader is the unmounted SourceControlPanel
+  src/editor/AllChangesPane.tsx (row 4) | fixed | per-file Stage/Unstage in each section header (working-tree view), Stage all / Unstage all, Push / Pull / Sync (labels and "why not" from remoteItems), pending text, error line, status + changes re-read after
+  editor/AllChangesPane.tsx:303-309 (row 5) | fixed | commit hint now names Stage all / per-file Stage; commit box shows in both views so a staged file can be committed where it was staged (coordinator may overrule)
+  editor/AllChangesPane.tsx:298-302 (row 6) | fixed | Retry button on the load error
+  editor/AllChangesPane.tsx:204-215 (row 7) | fixed | oneAtATime guard in src/scm/changesActions.ts; Commit disabled while any git action runs
+  editor/AllChangesPane.tsx:276 (row 8) | fixed | Make default says "Saved" or "was not saved; try again"; no confirmation dialog
+  editor/AllChangesPane.tsx:267 (row 9) | fixed | Inline / Side by side switch, same markup as DiffPane
+  editor/AllChangesPane.tsx:320 (row 10) | fixed | pointercancel + unmount cleanup; handle is focusable, arrows +-16, Home/End, aria-valuenow
+
+Verify (2026-11-02, Windows, worktree wt/72-ux1):
+  cargo test -p kolux-rs --lib scm::  -> 142 passed, 1 failed (t606 claude-writer 20 s timeout, the known local-only one in PROTOCOL section 5)
+  cargo clippy -p kolux-rs --all-targets -- -D warnings -> exit 0
+  pnpm vitest run src/editor src/scm -> 1405/1408 passed (3 = known local CRLF pdfjsCopy.test.ts)
+  pnpm tsc --noEmit -> no output
+New tests: scm.rs a_network_git_step_runs_with_prompts_off_and_a_stuck_one_is_stopped, a_push_that_hangs_comes_back_as_a_network_failure_that_says_it_timed_out, history_flags_the_last_commit_only_when_the_cap_cut_older_ones_off; src/scm/changesActions.test.ts.
