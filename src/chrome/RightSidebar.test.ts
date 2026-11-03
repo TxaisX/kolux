@@ -34,7 +34,7 @@ test("VIEW-073: a saved Checks tab comes back as Checks", () => {
 });
 
 test("VIEW-057: the tab strip lists Explorer, Insights and Checks and marks the open one", () => {
-  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, onTab: () => {}, onWidth: () => {}, children: "body" }));
+  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).toMatch(/aria-label="Right sidebar"/);
   expect(html).toMatch(/role="tab" aria-selected="false"[^>]*>Explorer/);
   expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Insights/);
@@ -70,7 +70,7 @@ test("T-146-b: when narrow, the extra tabs move into More and the active tab sta
   const exact = GIT_TABS.reduce((n, t) => n + tabWidth(t.label), 0) + STRIP_PAD;
   expect(splitTabs(GIT_TABS, "insights", exact).more).toEqual([]);
   expect(splitTabs(GIT_TABS, "insights", exact - 1).more.length).toBeGreaterThan(0);
-  const html = renderToString(createElement(RightSidebar, { tab: "checks", width: RIGHT_MIN, onTab: () => {}, onWidth: () => {}, children: "body" }));
+  const html = renderToString(createElement(RightSidebar, { tab: "checks", width: RIGHT_MIN, max: 600, onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Checks/);
   expect(html).toMatch(/aria-haspopup="menu"[^>]*>More/);
 });
@@ -79,7 +79,7 @@ test("T-146-b: a remembered tab not offered here opens the first offered tab", (
   expect(pickTab("insights", ["explorer", "insights", "checks"])).toBe("insights");
   expect(pickTab("insights", ["explorer", "checks"])).toBe("explorer");
   expect(pickTab("checks", [])).toBe(null);
-  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, offered: ["explorer", "checks"], onTab: () => {}, onWidth: () => {}, children: "body" }));
+  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, offered: ["explorer", "checks"], onTab: () => {}, onWidth: () => {}, children: "body" }));
   expect(html).not.toContain("Insights");
   expect(html).toMatch(/role="tab" aria-selected="true"[^>]*>Explorer/);
 });
