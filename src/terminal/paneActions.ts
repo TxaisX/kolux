@@ -45,7 +45,7 @@ import { paletteRows } from "../switcher/accounts";
 import { focusIn, panesIn, sameDir } from "../workspaces";
 import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
-import { asksBeforeClose, busyCount, closeQuestion } from "./closing";
+import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
 import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
 import { closeOne, pinQuestion } from "./pin";
 import { dropCell, dropTab, type Zone } from "./rearrange";
@@ -535,8 +535,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setFocused(key);
   };
   // TERM-045: every close (keyboard, a tab's x, the pane header) asks first when a program would
-  // stop; a tab's panes are checked together so a split tab asks once. Idle, switched off, or a
-  // failed check: the tab closes at once.
+  // stop; a tab's panes are checked together so a split tab asks once. Idle or switched off:
+  // the tab closes at once. A failed check asks too (UX audit terminal F3).
   // EDIT-031: a tab with unsaved text asks Save / Don't save / Cancel first; the dialog closes through closeTab(keys, true).
   const closeTab = async (keys: number[], checked = false) => {
     if (!checked && late.guard.request(keys)) return;
@@ -544,9 +544,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     // TERM-046: a pinned tab asks before it closes (setting, on by default).
     if (first && keys.length === 1 && closeOne(first.key, pinned, settings) === "ask") return setAsking({ keys, ...pinQuestion(tabName(first, titles)) });
     const ids = keys.map((k) => ptys.current[k]).filter((id): id is number => id !== undefined);
-    const busy = asksBeforeClose(settings) ? await busyCount(ids, (ids) => invoke<boolean[]>("terminal_busy", { ids })) : 0;
+    const { busy, failed } = asksBeforeClose(settings) ? await busyCheck(ids, (ids) => invoke<boolean[]>("terminal_busy", { ids })) : { busy: 0, failed: false };
     if (busy === 0 || !first) return dropPanes(keys);
-    setAsking({ keys, ...closeQuestion(tabName(first, titles), busy, keys.length) });
+    setAsking({ keys, ...closeQuestion(tabName(first, titles), busy, keys.length, failed) });
   };
   const closePane = (key: number) => void closeTab([key]);
   const leavePage = () => {
