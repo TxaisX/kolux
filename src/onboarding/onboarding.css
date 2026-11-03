@@ -35,11 +35,11 @@
 .guide-code { margin: 4px 0; padding: 8px 10px; border: 1px solid var(--line-subtle); border-radius: 8px; background: var(--pane-bg); font-size: 12px; overflow-x: auto; user-select: text; }
 
 /* ONB-037 / ONB-038: the star card and toast (T-322-b) */
-.star-card, .star-toast { position: fixed; right: 16px; bottom: 16px; z-index: 55; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--line-subtle); border-radius: 8px; background: var(--pane-bg); color: var(--fg); font-size: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+.star-card, .star-toast { position: fixed; right: 16px; bottom: 16px; z-index: var(--z-notice); display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--line-subtle); border-radius: 8px; background: var(--pane-bg); color: var(--fg); font-size: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
 .star-card > span, .star-toast > span { min-width: 0; flex: 1 1 auto; }
 
 /* 49-ux2: why a tour replay did not start */
-.tour-notice { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 55; max-width: min(420px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--line-subtle); border-radius: 8px; background: var(--pane-bg); color: var(--fg); font-size: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+.tour-notice { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: var(--z-notice); max-width: min(420px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid var(--line-subtle); border-radius: 8px; background: var(--pane-bg); color: var(--fg); font-size: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
 
 /* ONB-006: the wizard takes focus when it shows; the dialog box itself draws no focus ring */
 .onb:focus { outline: none; }

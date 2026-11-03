@@ -103,7 +103,7 @@
 .md-rich summary.md-summary { font-weight: 600; cursor: pointer; }
 .pane.editor .rich-bar .rich-more { height: 24px; font-size: 12px; background: transparent; color: var(--fg); border: 1px solid var(--line-subtle); border-radius: 4px; }
 /* EDIT-010: the slash menu and the table menu over the rich view. */
-.slash-menu { position: fixed; z-index: 30; width: 250px; max-height: 250px; overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); font: 12px var(--ui-font); }
+.slash-menu { position: fixed; z-index: var(--z-pane); width: 250px; max-height: 250px; overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); font: 12px var(--ui-font); }
 .slash-item { display: flex; flex-direction: column; gap: 1px; padding: 4px 8px; border-radius: 5px; cursor: pointer; color: var(--fg); }
 .slash-item[aria-selected="true"] { background: var(--row-selected); }
 .slash-hint { font-size: 11px; color: var(--fg-faint); }
@@ -123,22 +123,22 @@
 .md-preview .md-task { user-select: none; }
 /* EDIT-048: the suggestion list under a repository or base-branch box. */
 .search-pick { position: relative; }
-.search-pick-list { position: absolute; z-index: 40; left: 0; right: 0; top: 100%; max-height: 240px; overflow-y: auto; padding: 4px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+.search-pick-list { position: absolute; z-index: calc(var(--z-pane) + 3); left: 0; right: 0; top: 100%; max-height: 240px; overflow-y: auto; padding: 4px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
 .search-pick-more { padding: 4px 8px; font-size: 11px; color: var(--fg-muted); }
 /* EDIT-011 (T-234-b): table hover controls and the right-click menu, drawn in the strip outside the table */
-.table-ctl { position: fixed; z-index: 31; width: 18px; height: 18px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--fg); font: 600 13px/1 var(--ui-font); cursor: pointer; }
+.table-ctl { position: fixed; z-index: calc(var(--z-pane) + 1); width: 18px; height: 18px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--fg); font: 600 13px/1 var(--ui-font); cursor: pointer; }
 .table-ctl.del { color: var(--danger, #e5534b); }
 .table-ctl:hover { background: var(--row-selected); border-color: var(--fg-muted); }
-.table-ctx { position: fixed; z-index: 32; min-width: 150px; padding: 4px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); font: 12px var(--ui-font); }
+.table-ctx { position: fixed; z-index: calc(var(--z-pane) + 2); min-width: 150px; padding: 4px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); font: 12px var(--ui-font); }
 .table-ctx-item { text-align: left; padding: 4px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
 .table-ctx-item:hover:not(:disabled) { background: var(--row-selected); }
 .table-ctx-item:disabled { opacity: 0.45; cursor: default; }
-.code-label { position: fixed; z-index: 31; width: 140px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); font: 11px var(--ui-font); opacity: 0.85; }
+.code-label { position: fixed; z-index: calc(var(--z-pane) + 1); width: 140px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); font: 11px var(--ui-font); opacity: 0.85; }
 .code-label:hover, .code-label:focus { opacity: 1; }
-.rich-draw { position: fixed; z-index: 30; max-height: 40vh; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+.rich-draw { position: fixed; z-index: var(--z-pane); max-height: 40vh; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
 .rich-draw iframe.md-diagram { display: block; width: 100%; border: 0; margin: 0 auto; background: transparent; }
 .rich-draw .md-math-block { text-align: center; overflow-x: auto; }
-.link-bubble { position: fixed; z-index: 60; display: flex; align-items: center; gap: 4px; max-width: min(420px, 90vw); padding: 3px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: 12px var(--ui-font); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+.link-bubble { position: fixed; z-index: var(--z-top); display: flex; align-items: center; gap: 4px; max-width: min(420px, 90vw); padding: 3px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: 12px var(--ui-font); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
 .link-bubble-href { min-width: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
 .link-bubble-input { min-width: 240px; font: 12px var(--ui-font); }
 .md-picture-skipped { display: inline-block; padding: 2px 8px; border-left: 3px solid var(--warn); font-size: 12px; color: var(--fg-muted); }

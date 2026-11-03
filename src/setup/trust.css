@@ -1,5 +1,5 @@
 /* SAFE-025: the trust prompt sits above any dialog it was raised from. */
-.trust-prompt .ask-backdrop { z-index: 200; }
+.trust-prompt .ask-backdrop { z-index: var(--z-trust); }
 .trust-prompt .ask { width: min(560px, calc(100vw - 32px)); }
 .trust-lead { margin: 0 0 8px; }
 .trust-script { margin: 0 0 12px; padding: 8px 10px; max-height: 40vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--fg); background: var(--input-bg); border: 1px solid var(--line); border-radius: 6px; }
