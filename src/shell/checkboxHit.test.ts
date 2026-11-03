@@ -46,6 +46,16 @@ test.each(rows)("%s sits in a flex row at least 24px tall", (_, src, markup, sel
   for (const d of ["display: flex", "align-items: center", "min-height: 24px"]) expect(rule, `${sel} ${d}`).toMatch(new RegExp(`(^|;)\\s*${d}\\s*(;|$)`));
 });
 
+// T-707 / DT-C143: a look-select row with its box first keeps the text beside the box, not at the far edge
+const BOX_FIRST = '.look-select:has(> input[type="checkbox"]:first-child)';
+
+test("a box-first look-select row keeps its text beside the box", () => {
+  expect(recipes, "Show the AI actions starts with its box").toMatch(/<label className="look-select">\s*<input type="checkbox"/);
+  expect(ruleFor(BOX_FIRST)).toMatch(/(^|;)\s*justify-content: flex-start\s*(;|$)/);
+  // the gap between box and text comes from the row's own rule
+  expect(ruleFor(".look-select")).toMatch(/(^|;)\s*gap: 10px\s*(;|$)/);
+});
+
 test("the hit-box label is at least 24px square", () => {
   const rule = styles.match(/\.hit-box \{([^}]*)\}/)?.[1] ?? "";
   for (const d of ["min-width: 24px", "min-height: 24px", "flex: none"]) expect(rule, d).toContain(d);

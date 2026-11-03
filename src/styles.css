@@ -4,10 +4,10 @@
 
 :root { color-scheme: dark; }
 /* T-698 (DT-C134): one z-index scale for every layer drawn over the page. A pane is NOT a stacking context (container-type
-   only contains size), so the pops inside panes take the pane tier, under the floating panel. The panel sits over sheets,
-   pane pops, the review tray and the plan sheet, and under every page overlay, menu, pop, dialog, notice and tip.
+   only contains size), so the pops inside panes take the pane tier, under the floating panel. The panel sits over pane pops,
+   the review tray and the plan sheet, and under sheets (T-704, DT-C140) and every page overlay, menu, pop, dialog, notice and tip.
    A bare z-index of 20 or more in any stylesheet under src fails floatStack.test.ts. */
-:root { --z-sheet: 20; --z-pane: 22; --z-float: 30; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
+:root { --z-pane: 22; --z-float: 30; --z-sheet: 35; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
 
 /* ---- --kx-* foundation (Claude-design port, phase 0) ----
    The vocabulary later surfaces build on. The dark and light sets are the same ramp: the ink flips
@@ -839,6 +839,8 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .look-slider input { accent-color: var(--fg-muted); }
 .look-slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-muted); }
 .look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; font-size: 13px; color: var(--fg-row); }
+/* T-707 (DT-C143): a row whose box comes first keeps its text right beside the box */
+.look-select:has(> input[type="checkbox"]:first-child) { justify-content: flex-start; }
 .notif-volume { display: flex; align-items: center; gap: 8px; }
 .notif-volume input { width: 180px; accent-color: var(--done); }
 .notif-volume output { width: 44px; text-align: right; color: var(--fg-muted); font-size: 12px; }
