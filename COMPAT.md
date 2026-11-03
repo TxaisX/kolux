@@ -919,7 +919,7 @@ Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile e
 | `terminal.expandPane` | Expand / collapse pane | Mod+Shift+Enter | no |
 | `terminal.setTitle` | Set Title… | none | yes |
 | `terminal.clearPaneTitle` | Clear Pane Title | none | yes |
-| `terminal.closePane` | Close active pane | Mod+W | no |
+| `terminal.closePane` | Close active pane | none (Mod+W is `tab.close`'s, DT-C153) | yes |
 | `terminal.splitRight` | Split terminal right | Mod+Shift+D | no |
 | `terminal.splitDown` | Split terminal down | Alt+Shift+D | no |
 | `terminal.switchInputSource` | Switch input source / language (native) | none | yes |

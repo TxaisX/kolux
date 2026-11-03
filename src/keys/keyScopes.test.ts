@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Platform } from "./actions";
+import type { Platform, Scope } from "./actions";
 import { matchEvent, resolve, type KeyLike } from "./keymap";
 import { scopesFor, type KeySurface } from "./keyScopes";
 import { heldByTerminal } from "./terminalPolicy";
@@ -60,4 +60,41 @@ describe("APP-013 tab keys from every focus", () => {
     expect(scopesFor({ screen: "terminals", kind: "preview", inTree: false })).toEqual(["global", "tabs"]);
     expect(scopesFor({ screen: "settings", inTree: false })).toEqual(["global"]);
   });
+});
+
+// T-717 (DT-C153): no default chord is bound twice among the scopes one key handler tries together. Each set below
+// is one that a handler passes to matchEvent: the window's (scopesFor), a focused terminal's (shellKeys), the
+// floating panel's, and each pane's own. Two actions on one chord in a live set means the table order picks the
+// winner and the other's chord is dead.
+describe("T-717 every default chord is unique per live scope set", () => {
+  const live: Scope[][] = [
+    ...surfaces.map(([, s]) => scopesFor(s)),
+    scopesFor({ screen: "settings", inTree: false }),
+    ["global", "terminal", "tabs"],
+    ["global", "tabs"],
+    ["global", "tabs", "editor"],
+    ["browser"], ["editor"], ["explorer"], ["settings"],
+  ];
+  // "Mod" is Ctrl or Cmd, and modifier order does not matter: Mod+Shift+W and Shift+Ctrl+W are one chord on Windows.
+  const norm = (chord: string, platform: Platform) => {
+    const parts = chord.split("+");
+    const key = parts.pop()!;
+    const mods = parts.map((m) => (m === "Mod" ? (platform === "darwin" ? "Cmd" : "Ctrl") : m)).sort();
+    return [...mods, key].join("+");
+  };
+  for (const platform of platforms) {
+    test(`${platform}: no chord has two owners in one live scope set`, () => {
+      const map = resolve(null, platform);
+      const dupes: string[] = [];
+      for (const scopes of live) {
+        const owners = new Map<string, string[]>();
+        for (const b of map.bindings.values()) {
+          if (!scopes.includes(b.action.scope)) continue;
+          for (const c of b.chords) owners.set(norm(c, platform), [...(owners.get(norm(c, platform)) ?? []), b.action.id]);
+        }
+        for (const [c, ids] of owners) if (ids.length > 1) dupes.push(`${scopes.join("+")}: ${c} -> ${ids.join(", ")}`);
+      }
+      expect([...new Set(dupes)]).toEqual([]);
+    });
+  }
 });

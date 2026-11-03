@@ -1,0 +1,34 @@
+T-717 / DT-C153: lane D (72): Ctrl/Cmd+W has one owner
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md "## Queue" (T-717), finding shell.md:19 (the sessions
+proof dir, not in this repo). Built on origin/main ec26a0da, branch s-72/ctrlw, 2026-11-03.
+
+FOUND: tab.close (tabs, Mod+W) and terminal.closePane (terminal, Mod+W). The keymap's conflict check sees one scope
+or group at a time, so it allowed both. But on the terminals screen the window (scopesFor) and a focused terminal
+(shellKeys) try global + terminal + tabs together; matchEvent takes the first in table order, so Mod+W was always
+tab.close and terminal.closePane's chord never fired. Both run closePane(focused) in useWindowKeys.
+
+FIXED
+  src/keys/actions.ts: terminal.closePane ships unbound. tab.close keeps Mod+W on every platform. The pane close stays
+    in the Shortcuts list and the palette, and a user's own chord for it is live in the terminal context.
+  src/terminal/PaneMenu.tsx: Close Pane shows tab.close's chord (Ctrl+W), the key that closes the pane.
+  COMPAT.md: the terminal.closePane row reads none / ships unbound (DT-C153).
+  Behaviour is unchanged: Mod+W already ran tab.close.
+
+TEST
+  src/keys/keyScopes.test.ts: T-717, every default chord is unique per live scope set (win32, linux, darwin). The sets
+    are the ones a handler passes to matchEvent: scopesFor for each surface and for Settings, the focused terminal's
+    (global, terminal, tabs), the floating panel's two, and the browser, editor, explorer and settings panes' own.
+    Chords are compared with Mod read as Ctrl (Cmd on macOS) and the modifiers sorted.
+  BEFORE THE FIX it failed on all three platforms with exactly one duplicate:
+    "global+terminal+tabs: Ctrl+W -> tab.close, terminal.closePane" (Cmd+W on macOS).
+  src/terminal/__cards__/TERM-014.test.ts: Mod+W closes the focused pane on every platform, now through tab.close.
+  src/terminal/PaneMenu.test.ts TERM-035 (unchanged) failed while the menu still read terminal.closePane's chord, and
+    passes now that Close Pane shows Ctrl+W.
+  src/keys/keymap.test.ts: the unbound count is 57 (was 56).
+  Known limit: an index chord (Mod+1 standing for 1 to 9) is compared as written, not expanded.
+
+TOTALS: VITEST_MAX_WORKERS=2 pnpm vitest run src/keys src/floating src/shell src/terminal src/browser
+src/editor/closeGuard.test.ts: 202 files, 1259 tests, all passed. pnpm tsc --noEmit: exit 0.
+firewall-check -Baseline: 0 new.
+BUNDLE: first load 1,489,493 bytes vs main ec26a0da 1,489,509 (-16 B); ceiling 1,490,000, cap +0.
+PENDING: unit-proven; a live check in the app has not been run.

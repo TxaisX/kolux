@@ -72,7 +72,8 @@ export function paneMenuItems(c: MenuContext): MenuItem[] {
   add(4, "clear", "Clear Screen", c.onClear, { key: "terminal.clear", title: "Clears the screen and the scrollback of this pane" });
   add(4, "find", "Find…", c.onFind, { key: "terminal.search", title: "Find text in this pane's screen and scrollback" });
   // UX audit terminal F5: the destructive item sits last, apart from the rest, so a slip of the hand lands elsewhere.
-  add(5, "close", "Close Pane", c.onClose, { key: "terminal.closePane", danger: true, title: "Ends the program in this pane" });
+  // T-717 (DT-C153): the chord shown is tab.close's, which owns Mod+W and closes the focused pane.
+  add(5, "close", "Close Pane", c.onClose, { key: "tab.close", danger: true, title: "Ends the program in this pane" });
   return out;
 }
 
