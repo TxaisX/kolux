@@ -22,7 +22,7 @@ fn read_fonts() -> Result<Vec<String>, String> {
     #[cfg(windows)]
     let mut cmd = {
         use std::os::windows::process::CommandExt;
-        let mut c = Command::new("powershell");
+        let mut c = Command::new(crate::pty::system_program(crate::pty::WINDOWS_POWERSHELL)); // T-663
         c.args([
             "-NoProfile",
             "-NonInteractive",
@@ -34,7 +34,7 @@ fn read_fonts() -> Result<Vec<String>, String> {
     };
     #[cfg(not(windows))]
     let mut cmd = {
-        let mut c = Command::new("fc-list");
+        let mut c = Command::new(crate::pty::full_path_program("fc-list").ok_or("fc-list was not found on this computer")?); // T-663
         c.args([":", "family"]);
         c
     };

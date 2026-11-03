@@ -243,7 +243,7 @@ pub fn wsl_root(root: &Path) -> Option<(String, String)> {
 /// and the patterns reach ripgrep exactly as typed. ripgrep has to be installed in the
 /// distribution; the Windows side needs no working folder on the share.
 fn wsl_rg_command(distro: &str, linux_root: &str, a: &Ask) -> Command {
-    let mut cmd = Command::new("wsl.exe");
+    let mut cmd = Command::new(crate::pty::system_program("wsl.exe")); // T-663
     cmd.args(["-d", distro, "--cd", linux_root, "-e", "rg"]).args(rg_args(a));
     cmd
 }
@@ -568,6 +568,14 @@ mod tests {
 
     fn ask(q: &str) -> Ask {
         Ask { query: q.into(), match_case: false, whole_word: false, regex: false, include: String::new(), exclude: String::new() }
+    }
+
+    /// T-663: the WSL search starts wsl.exe by its full path in the system folder.
+    #[test]
+    fn t663_the_wsl_search_starts_wsl_by_full_path() {
+        let c = wsl_rg_command("Ubuntu", "/home/me", &ask("x"));
+        assert_eq!(Path::new(c.get_program()), crate::pty::system_program("wsl.exe"));
+        assert!(Path::new(c.get_program()).is_absolute() || !cfg!(windows), "{:?}", c.get_program());
     }
 
     #[test]
@@ -895,7 +903,7 @@ mod tests {
         let (prog, local) = argv(&rg_command(Path::new(r"C:\work\p"), &a));
         assert_eq!(prog, "rg");
         let (prog, wsl) = argv(&wsl_rg_command("Ubuntu", "/home/me/p", &a));
-        assert_eq!(prog, "wsl.exe");
+        assert_eq!(Path::new(&prog), crate::pty::system_program("wsl.exe"), "T-663: by full path");
         assert_eq!(&wsl[..6], ["-d", "Ubuntu", "--cd", "/home/me/p", "-e", "rg"]);
         assert_eq!(&wsl[6..], &local[..], "the same ripgrep arguments inside the distribution");
         assert!(local.ends_with(&["-e".to_string(), "needle here".into(), "--".into(), ".".into()]), "{local:?}");

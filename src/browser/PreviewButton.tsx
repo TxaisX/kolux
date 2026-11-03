@@ -5,9 +5,11 @@
 // no server is found. Two or more servers: the arrow opens a menu of them.
 // ponytail: the candidates are re-asked every 3 s while the strip shows; an event from the
 // terminal lane (server started) would replace the poll.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, Globe } from "../chrome/icons";
+import { watchEscape } from "../switcher/accounts";
+import { menuStep } from "../terminal/LinkActionMenu";
 import { openInBrowser } from "./openIn";
 import { livePages } from "./pages";
 import { previewHint, previewTitle, printedFor, sameOriginPage, type Candidate } from "./preview";
@@ -17,6 +19,18 @@ type Props = { dir: string | null; onFocus?: (id: number) => void };
 export default function PreviewButton({ dir, onFocus }: Props) {
   const [list, setList] = useState<Candidate[]>([]);
   const [at, setAt] = useState<{ top: number; right: number } | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  // UX audit: the server menu is for the keyboard too: it takes focus when it opens, arrows move between its rows,
+  // Escape closes it (and stops there) and the focus goes back to the Preview button.
+  useEffect(() => {
+    if (!at) return;
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    return watchEscape(window, () => {
+      setAt(null);
+      trigger.current?.focus();
+    });
+  }, [at]);
   useEffect(() => {
     let gone = false;
     const ask = async () => {
@@ -44,6 +58,7 @@ export default function PreviewButton({ dir, onFocus }: Props) {
   return (
     <>
       <button
+        ref={trigger}
         className="btn preview"
         disabled={!list.length}
         aria-haspopup={list.length > 1 ? "menu" : undefined}
@@ -62,7 +77,20 @@ export default function PreviewButton({ dir, onFocus }: Props) {
       {at && (
         <>
           <div className="menu-backdrop" onClick={() => setAt(null)} aria-hidden="true" />
-          <div className="menu" role="menu" aria-label="Preview" style={at}>
+          <div
+            ref={menu}
+            className="menu"
+            role="menu"
+            aria-label="Preview"
+            style={at}
+            onKeyDown={(e) => {
+              const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+              const to = menuStep(rows.length, rows.indexOf(document.activeElement as HTMLElement), e.key);
+              if (to === null) return;
+              e.preventDefault();
+              rows[to]?.focus();
+            }}
+          >
             <div className="menu-title">Preview</div>
             {list.map((c) => (
               <button key={c.port} role="menuitem" className="menu-item" onClick={() => open(c)} title={c.url || `http://${c.host}:${c.port}/`}>

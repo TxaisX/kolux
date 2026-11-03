@@ -71,7 +71,8 @@ Rules: searches go to the chosen engine, one of Google, Duck Duck Go, Bing or Ka
   stays; Enter on an empty bar shows the blank page instead of an error; a local file may be shown
   in the pane but is never handed to the operating system to open; pasted paths containing spaces
   or reserved characters are turned into valid file addresses; Mod+L reaches the bar even while
-  focus is inside the page, and only in the focused split.
+  focus is inside the page, and only in the focused split; on a previewed document, whose bar is hidden, Mod+L presses the
+  chip instead, so it opens for typing (T-677, DT-C113).
   (Kolux RS, T-012-b-fix: inside the page a script of ours takes the chord and hands it to the
   app as a cancelled `kolux-chord:` navigation; the split the page sits in becomes the focused
   one as the chord arrives.)
@@ -80,6 +81,7 @@ Acceptance:
   - [x] Type rust ownership and press Enter → results from the configured search engine. (cards; evidence/cards-BROW-003.txt)
   - [x] Type example.com → the HTTPS site loads; type localhost:3000 → it loads over HTTP. (cards; evidence/cards-BROW-003.txt)
   - [x] Type an address with the javascript: scheme → invalid-address notice, page unchanged. (cards; evidence/cards-BROW-003.txt)
+  - [x] On a previewed document press Mod+L → the chip opens for typing; on any other page the address bar is focused and selected. (cards; evidence/T-677.txt)
 Compat: keyboard command for focusing the address bar, default Mod+L (command id is an allowlist
   candidate); engine choices Google, Duck Duck Go, Bing and Kagi. With the browser settings page
   cut, which engine is the fixed default and whether the Kagi link keeps a home is an owner
@@ -96,7 +98,8 @@ Rules: only the toolbar button halts a load in progress, while the shortcut and 
   instead; on a page that failed, every reload trigger tries the load again, whereas a crashed page
   goes through crash recovery (BROW-009); during an automatic retry of a failed page the button
   offers Stop rather than Retry; the button's label always names what a press will do; hard reload skips the
-  cache.
+  cache; when the page will not reload, the pane's notice says so (the button and the shortcut both do); the Back, Forward, Reload and
+  Close tab tooltips show the chord the keymap holds for them, and none when it is unbound (T-677, DT-C113).
   (Kolux RS, T-012-b-fix: Alt+Left / Alt+Right, Mod+R and the mouse's back and forward buttons
   pressed inside the page are taken from the web view and run by the toolbar, so its history
   never drifts from the page's; a page's own back or forward to a neighbouring entry moves the
@@ -105,6 +108,7 @@ Acceptance:
   - [x] Open a slow page → Stop with a spinner; press it → loading halts; after a normal load the
         button reads Reload. (cards live; evidence/cards-BROW-005.txt)
   - [x] In a fresh tab → back and forward are both disabled. (cards; evidence/cards-BROW-005.txt)
+  - [x] Reload a page that will not reload → the notice says so and its Dismiss button closes it; the toolbar tooltips show the user's own keys. (cards; evidence/T-677.txt)
 Compat: keyboard commands browser.back (Mac Mod+[, other platforms Alt+Left), browser.forward (Mac
   Mod+], other platforms Alt+Right), browser.reload (Mod+R), and hard reload (Mod+Shift+R; its
   command id is an allowlist candidate).
@@ -317,7 +321,9 @@ Rules: saving trims the comment, and Cancel or Escape goes back to the read view
   changed; the number of notes per page is capped, and notes are cleared when the page address
   changes; page text cannot break the Markdown: code fences are lengthened, line breaks are folded
   and long text is cut without splitting a character; with no notes, nothing is sent; Escape inside
-  a note being edited ends only that edit, and element picking stays on.
+  a note being edited ends only that edit, and element picking stays on; Clear on the tray asks "Clear all?" first and a second press within 4 s
+  drops the notes; the send menu ("Send to agent…") closes on Escape or a press outside it, arrows move between its rows, and its
+  "no agent sessions" note clears itself (T-677, DT-C113).
 Acceptance:
   - [ ] Annotate two elements and send them to a running session → it receives one Markdown block
         listing both with their comments.
@@ -466,18 +472,21 @@ Source: D-13-012
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: clicks a download link on a page.
 User sees: the file saves into the system Downloads folder with progress, followed by a notice that
-  it has finished.
+  it has finished; the finished row stays in the strip with an Open button until it is dismissed.
 Rules: file names are made safe, and empty or unsafe names fall back to a generic name; an existing
   file is never overwritten, a numbered suffix is added the way ordinary browsers do it; two
   downloads that start together under one name each end up with a distinct name; Windows reserved
   device names are rewritten on Windows only, and name clashes ignore letter case on Windows and Mac; after
   a bounded number of clashes the download fails rather than looping; closing the tab cancels its
-  running downloads; progress shows bytes received and the total when both are known; a page still
+  running downloads, and Close tab on a tab with a download still running says so first and closes on a second press (the app-level
+  Mod+W does not warn yet); a finished, failed or cancelled row stays until dismissed, it does not leave by itself (T-677, DT-C113,
+  reversing T-238-b's 8 s rule); progress shows bytes received and the total when both are known; a page still
   writing a download is never unloaded by the memory budget.
 Acceptance:
   - [ ] Download the same file twice → the second copy gets a numbered suffix and the first is
         intact.
   - [ ] Close the tab mid-download → the download is cancelled.
+  - [x] Press Close tab while a download runs → a line says what would be lost; a second press closes. (cards; evidence/T-677.txt)
 Compat: —
 Source: D-13-013
 
@@ -538,11 +547,13 @@ Rules: when one browser tab holds several pages, only the requested page closes;
   tab shows the landing view and the worktree stays selected; only real closes are remembered for
   reopening, internal clean-ups are not; an unknown page id is refused instead of being reported as
   closed; close pressed while focus is inside a page closes that page's own tab, and if the page no
-  longer belongs to any tab nothing closes, never whichever tab is merely active.
+  longer belongs to any tab nothing closes, never whichever tab is merely active; the toolbar's Close tab button on a tab with a running
+  download or notes not sent asks first (a second press within 4 s closes), while Mod+W closes at once for now (T-677, DT-C113).
 Acceptance:
   - [ ] Close a browser tab with Mod+W, press Mod+Shift+T → it returns at the same address.
   - [ ] Close the last remaining tab of a worktree → the landing view shows and the worktree stays
         selected.
+  - [x] Press the toolbar's Close tab on a tab with unsent notes → a line names them; a second press closes. (cards; evidence/T-677.txt)
 Compat: keyboard commands tab.close (Mod+W) and reopen closed tab (Mod+Shift+T; command id is an
   allowlist candidate).
 Source: D-13-019
@@ -612,11 +623,13 @@ Rules: installed browsers are looked for only when the menu opens; sources are C
   are reported as unreadable, not as an empty success; when the store is busy, the cookies are
   staged and applied at the next start; the menu entry is disabled while cookies are being brought
   into this profile; a chosen source profile must sit inside that browser's own data folder, and a
-  choice pointing anywhere else is refused.
+  choice pointing anywhere else is refused; the menu is for the keyboard too: its rows are menu buttons, the first takes focus, arrows move,
+  Escape closes it and gives focus back to its button (T-677, DT-C113).
 Acceptance:
   - [ ] Bring cookies from Chrome → a toast with a count; a site signed in there opens signed in.
   - [ ] Load a file with one malformed entry → the rest arrive and the toast mentions skipped
         cookies.
+  - [x] Open Import cookies, press Escape → the menu closes and its button has focus. (cards; evidence/T-677.txt)
 Compat: the file is a JSON list of cookie records, each with a name, value and domain, and
   optionally a path, the secure flag, the HTTP-only flag, a same-site mode and an expiry; the exact
   field spelling to accept should match the common browser-extension export format (to confirm).
@@ -661,7 +674,7 @@ Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: clicks Grab page element (or presses Mod+C with nothing selected), moves over the page
   and clicks an element.
 User sees: elements light up under the pointer; clicking captures one and opens a sheet with a
-  cropped screenshot, the element's details and its surroundings, with Copy Screenshot and Attach
+  cropped screenshot, the element's details and its surroundings, with Copy screenshot and Attach
   to AI.
 Rules: Mod+C starts a grab only when the page is not copying selected text; Escape, navigating away
   or closing the tab cancels the grab; a screenshot over the size budget is left out instead of
@@ -683,11 +696,14 @@ User sees: shapes drawn over a frozen copy of the page, with undo and redo; the 
 Rules: rectangles and ellipses can be dragged in any direction; the final image stays inside a pixel
   budget, with scale held between 1 and 4; a one-time hint shows the first time drawing is
   available, closes if the pane is hidden and never returns once dismissed; when the combined image
-  is over budget it is tried again at smaller sizes, largest first, and stays a PNG.
+  is over budget it is tried again at smaller sizes, largest first, and stays a PNG; Clear is one Undo step (one Undo brings every cleared
+  mark back, Redo clears them again); Close and Escape with marks on the picture ask "Discard marks?" and a second press within 4 s leaves;
+  a text box open on the picture is committed where it was opened, also when focus leaves it, and Escape in it cancels (T-677, DT-C113).
 Acceptance:
   - [ ] Draw an arrow and a text label, undo → the label goes; redo → it is back; finish → one
         image with the page, the arrow and the label.
   - [ ] Dismiss the drawing hint, restart Kolux → the hint does not return.
+  - [x] Draw two marks, Clear, Undo → both marks are back; Redo → cleared again. (cards; evidence/T-677.txt)
 Compat: —
 Source: D-13-038
 
@@ -698,7 +714,8 @@ User sees: the rendered document in a browser tab named after the document's tit
   name), with a chip showing its folder and file name where the address would be.
 Rules: the internal preview address is never shown; the chip can copy the full path in the form
   the host system uses, open the source as an editor tab with the right language, or hand the file to
-  the system's default app; back and forward start disabled and then follow navigation inside the
+  the system's default app; the chip's address part is a button the keyboard reaches (Tab, Enter or Space) and Mod+L presses, and
+  leaving its text box with Escape puts focus back on it (T-677, DT-C113); back and forward start disabled and then follow navigation inside the
   document; previews count toward the hidden-worktree budget and load only when shown; mouse clicks
   pass through to Kolux while a drag is under way.
 Acceptance:
@@ -831,7 +848,8 @@ Rules: the button appears only in the toolbar of the split that holds focus, bes
   one; the arrow menu
   shows only when two or more candidates exist and lists the others by host and port; when friendly
   local addresses (area 01) are on, the tab opens at the friendly address and falls back to the
-  plain one if that fails; Kolux adds no file watching of its own, refreshing is left to the dev
+  plain one if that fails; the arrow menu takes focus when it opens, arrows move between its rows and Escape closes it with focus back on
+  the Preview button (T-677, DT-C113); Kolux adds no file watching of its own, refreshing is left to the dev
   server's live reload; a failure to open shows an error toast with the reason. On Windows the
   system port scan carries no working folder, so a port also counts as the workspace's when a
   terminal bound to that workspace printed an address for it; that link survives later rescans while
@@ -883,7 +901,8 @@ Tier: P2 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: narrows a browser pane until the toolbar no longer fits.
 User sees: the address bar shrinks to a compact control; clicking it spreads it across the toolbar
   while it has focus, and it shrinks again when focus leaves.
-Rules: the expanded bar floats over the toolbar, and the navigation buttons underneath do not move.
+Rules: the expanded bar floats over the toolbar, and the navigation buttons underneath do not move; in a narrow pane only the Viewport menu is
+  dropped, the Import cookies button stays (T-677, DT-C113).
 Acceptance:
   - [ ] Narrow the pane below the toolbar's minimum → the address bar is compact.
   - [ ] Click it → a full-width overlay; click away → compact again.
