@@ -2,9 +2,7 @@
 // the current one, and keeps its shape with long names: each name is one line cut with an ellipsis
 // (the full text stays in the tooltip) and the notice never grows past its container.
 import { STEPS, dismissOneClick, stepWord, useOneClick, type Run, type StepId } from "./oneClick";
-
-const row = { display: "flex", alignItems: "center", gap: 6, minWidth: 0 } as const;
-const cut = { flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } as const;
+import "./scmUx.css";
 
 const mark = (run: Run, id: StepId): "done" | "now" | "skipped" | "todo" | "failed" => {
   const i = STEPS.indexOf(id);
@@ -19,31 +17,31 @@ const GLYPH = { done: "✓", now: "…", skipped: "–", todo: "·", failed: "×
 
 export function OneClickView({ run, onDismiss }: { run: Run; onDismiss?: () => void }) {
   return (
-    <div className="scm-ask" data-oneclick data-state={run.state} role="status" aria-live="polite" aria-label="Pull request progress" style={{ overflow: "hidden", maxWidth: "100%" }}>
-      <div className="scm-ask-title" style={cut}>
+    <div className="scm-ask oc-notice" data-oneclick data-state={run.state} role="status" aria-live="polite" aria-label="Pull request progress">
+      <div className="scm-ask-title oc-cut">
         {run.state === "done" ? `Pull request #${run.pr?.number ?? ""} opened` : run.neutral ? "Branch ready for your review text" : run.state === "failed" ? "Stopped" : "Creating the pull request"}
       </div>
       {STEPS.map((id) => {
         const m = mark(run, id);
         const word = stepWord({ step: id, push: run.push });
         return (
-          <div key={id} data-step={id} data-mark={m} style={{ ...row, opacity: m === "todo" || m === "skipped" ? 0.55 : 1, fontWeight: m === "now" ? 600 : 400 }}>
-            <span aria-hidden style={{ width: 14, textAlign: "center", flex: "none" }}>
+          <div key={id} className="oc-row" data-step={id} data-mark={m}>
+            <span aria-hidden className="oc-glyph">
               {GLYPH[m]}
             </span>
-            <span style={cut} title={word}>
+            <span className="oc-cut" title={word}>
               {word}
             </span>
           </div>
         );
       })}
       {run.message && (
-        <div className={run.neutral ? "note warn" : "note error"} role={run.neutral ? "status" : "alert"} style={{ overflowWrap: "anywhere" }}>
+        <div className={`oc-msg ${run.neutral ? "note warn" : "note error"}`} role={run.neutral ? "status" : "alert"}>
           {run.message}
         </div>
       )}
       {run.state === "done" && run.pr?.url && (
-        <a href={run.pr.url} target="_blank" rel="noreferrer" style={cut} title={run.pr.url}>
+        <a href={run.pr.url} target="_blank" rel="noreferrer" className="oc-cut" title={run.pr.url}>
           {run.pr.url}
         </a>
       )}

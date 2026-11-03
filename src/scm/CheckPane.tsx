@@ -8,6 +8,8 @@ import { Close, CheckCircle } from "../chrome/icons";
 import { fixText } from "../tasks/prModel";
 import type { CheckDetail, CheckRef } from "./checkCard";
 import { asPrCheck, cardText, checkKey, fixBlockerFor, insideWorktree } from "./checkText";
+import { REFRESH, RETRY } from "./panelUx";
+import "./scmUx.css";
 
 type CardProps = {
   check: CheckRef;
@@ -22,33 +24,47 @@ type CardProps = {
   onCopy: () => void;
   onFix: () => void;
   onOpenFile: (path: string, line?: number) => void;
+  /** Reads the check again. Without it the card has no Refresh or Retry (a card drawn from fixed data). */
+  onRefresh?: () => void;
 };
 
 const OUTSIDE = "Outside this worktree, so it is not opened.";
 
 /** The card itself: no state of its own, so it can be drawn from any data. */
-export function CheckCard({ check, cwd, detail, error, loading, fixBlocker, busy, note, onCopy, onFix, onOpenFile }: CardProps) {
+export function CheckCard({ check, cwd, detail, error, loading, fixBlocker, busy, note, onCopy, onFix, onOpenFile, onRefresh }: CardProps) {
   return (
-    <div className="pane-body check-card" data-check-card style={{ overflow: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+    <div className="pane-body check-card" data-check-card>
+      <div className="check-card-head">
         <span className={`check-dot ${check.outcome}`} aria-hidden="true" />
-        <strong style={{ minWidth: 0, overflowWrap: "anywhere" }}>{check.name}</strong>
+        <strong className="check-card-name">{check.name}</strong>
         {check.workflow && <span className="wf">{check.workflow}</span>}
         <span className={`word ${check.outcome}`}>{check.outcome}</span>
         {check.pr && <span className="sb-hint">Pull request #{check.pr.number}</span>}
       </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="check-card-actions">
         <button className="btn" data-copy-card onClick={onCopy} title="Copy this whole card as text">
           Copy card
         </button>
         <button className="btn" data-fix-ai disabled={busy || fixBlocker !== null} title={fixBlocker ?? "Send this check's failing output to the workspace's agent"} onClick={onFix}>
           Fix with AI
         </button>
+        {onRefresh && (
+          <button className="btn" data-refresh disabled={loading} title="Read this check again" onClick={onRefresh}>
+            {loading ? "Reading…" : REFRESH}
+          </button>
+        )}
         {fixBlocker && <span className="sb-hint" data-fix-reason>{fixBlocker}</span>}
       </div>
       {note && <div className="note">{note}</div>}
       {error ? (
-        <div className="note error">The check could not be read: {error}</div>
+        <div className="note error" role="alert">
+          The check could not be read: {error}{" "}
+          {onRefresh && (
+            <button className="btn" data-retry disabled={loading} onClick={onRefresh}>
+              {RETRY}
+            </button>
+          )}
+        </div>
       ) : loading || !detail ? (
         <div className="sb-hint">Reading the check…</div>
       ) : (
@@ -60,11 +76,11 @@ export function CheckCard({ check, cwd, detail, error, loading, fixBlocker, busy
             {detail.steps.length === 0 ? (
               <div className="sb-hint">No steps reported.</div>
             ) : (
-              <ol style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              <ol className="check-steps">
                 {detail.steps.map((s) => (
-                  <li key={s.number} data-step={s.number} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 0", minWidth: 0 }}>
+                  <li key={s.number} className="check-step" data-step={s.number}>
                     <span className={`check-dot ${stepDot(s.conclusion, s.status)}`} aria-hidden="true" />
-                    <span className="name" style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
+                    <span className="name">
                       {s.number}. {s.name}
                     </span>
                     <span className="word">{s.conclusion ?? s.status}</span>
@@ -83,8 +99,8 @@ export function CheckCard({ check, cwd, detail, error, loading, fixBlocker, busy
               detail.annotations.map((a, i) => {
                 const file = insideWorktree(cwd, a.path);
                 return (
-                  <div key={i} data-annotation-row style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0", minWidth: 0 }}>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <div key={i} className="check-annot" data-annotation-row>
+                    <div className="check-annot-head">
                       <span className="word">{a.level}</span>
                       <button className="btn" data-annotation={String(i)} disabled={file === null} title={file === null ? OUTSIDE : `Open ${a.path} at line ${a.startLine}`} onClick={() => file !== null && onOpenFile(file, a.startLine > 0 ? a.startLine : undefined)}>
                         {`${a.path}:${a.startLine}`}
@@ -92,7 +108,7 @@ export function CheckCard({ check, cwd, detail, error, loading, fixBlocker, busy
                       {file === null && <span className="sb-hint">{OUTSIDE}</span>}
                     </div>
                     {a.title && <strong>{a.title}</strong>}
-                    <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{a.message}</div>
+                    <div className="check-annot-msg">{a.message}</div>
                   </div>
                 );
               })
@@ -124,6 +140,7 @@ export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, on
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [again, setAgain] = useState(0); // bumped by Refresh and Retry
   const asked = useRef(0);
   useEffect(() => {
     const mine = ++asked.current;
@@ -133,7 +150,7 @@ export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, on
       .catch((e) => mine === asked.current && setError(String(e)))
       .finally(() => mine === asked.current && setLoading(false));
     return () => void ++asked.current;
-  }, [cwd, check.id, check.link, check.outcome]);
+  }, [cwd, check.id, check.link, check.outcome, again]);
 
   const copy = () => {
     const text = cardText(check, detail);
@@ -162,12 +179,12 @@ export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, on
         <span className="title">{check.name}</span>
         <span className="preview-tag">Check</span>
         <span className="right">
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)" aria-label={`Close the ${check.name} check tab`}>
             <Close size={12} />
           </button>
         </span>
       </header>
-      <CheckCard check={check} cwd={cwd} detail={detail} error={error} loading={loading} fixBlocker={fixBlockerFor(check, cwd)} busy={busy} note={note} onCopy={copy} onFix={() => void fix()} onOpenFile={onOpenFile} />
+      <CheckCard check={check} cwd={cwd} detail={detail} error={error} loading={loading} fixBlocker={fixBlockerFor(check, cwd)} busy={busy} note={note} onCopy={copy} onFix={() => void fix()} onOpenFile={onOpenFile} onRefresh={() => setAgain((n) => n + 1)} />
     </section>
   );
 }

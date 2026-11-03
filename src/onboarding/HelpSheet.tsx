@@ -6,6 +6,7 @@
 // and the tour catalogue stay out of the window's first frame.
 import { Fragment, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
 import { requestFeedback } from "../feedback/FeedbackDialog";
 import { openSettings } from "../settings/pages";
 import { requestUpdateCheck } from "../update/UpdateCenter";
@@ -13,7 +14,7 @@ import { milestonesShown, openExplore, openGuide, ring } from "./guide";
 import { Ring, useGuideState } from "./Guides";
 import { replayTour, TOURS } from "./tour";
 import { REOPEN_WIZARD } from "./firstRun";
-import { copyDiagnostics, createRestart, helpItems, type RestartState } from "./helpItems";
+import { copyDiagnostics, createRestart, helpItems, TOURS_HINT, type RestartState } from "./helpItems";
 
 export default function HelpSheet({ at, onClose }: { at: { bottom: number; left: number }; onClose: () => void }) {
   const g = useGuideState(true);
@@ -38,6 +39,7 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
         openExplore,
         reopenWizard: () => window.dispatchEvent(new CustomEvent(REOPEN_WIZARD)),
         requestFeedback: () => requestFeedback(),
+        reportCrash: () => window.dispatchEvent(new Event(REPORT_CRASH_EVENT)),
         copyDiagnostics: () => {
           setNote("");
           void copyDiagnostics(
@@ -64,6 +66,7 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
             <button role="menuitem" className="menu-item" disabled={it.disabled} aria-busy={it.id === "restart" && restarting ? true : undefined} onClick={() => (it.keepOpen ? it.run() : pick(it.run))} autoFocus={i === 0}>
               {it.ring && <Ring done={it.ring.done} total={it.ring.total} size={18} />}
               {it.label}
+              {it.hint && <span className="menu-hint-inline">{it.hint}</span>}
               {it.ring && (
                 <span className="menu-hint-inline">
                   {it.ring.done}/{it.ring.total}
@@ -79,8 +82,9 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
         )}
         {/* ONB-032: replay any tour, seen or not, whatever this launch already showed. */}
         <div className="menu-title">Tours</div>
+        <div className="menu-hint">{TOURS_HINT}</div>
         {TOURS.filter((t) => t.id !== "grid").map((t) => (
-          <button key={t.id} role="menuitem" className="menu-item" title="Runs once its screen is showing" onClick={() => pick(() => replayTour(t.id))}>
+          <button key={t.id} role="menuitem" className="menu-item" onClick={() => pick(() => replayTour(t.id))}>
             {t.name}
           </button>
         ))}

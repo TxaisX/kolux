@@ -84,3 +84,15 @@ test("the page's own key wins over the old one", async () => {
   asksPermission();
   expect(await raised()).toBe(false);
 });
+
+test("T-692 (E1): a stop right after another note in the same worktree is still raised; it keeps its own cooldown", async () => {
+  const at = (key: number) => ({ ...pane(key), cwd: "C:/w/a" });
+  ri = 0;
+  ei = 0;
+  useAgentEvents({ panes: [at(1), at(2)] as never, setPanes: none, titles: {}, settings: { notifySuppressFocused: false }, inView: () => false, setToast: none, tabName: () => "Claude", setCrew: none, setTurn: none, setStale: none, hookRef: { current: {} }, setHook: none, setStamp: none, setContext: none as never, unreadPanes: new Set(), setUnreadPanes: none, winFocused: false, markDir: none });
+  due.splice(0).forEach((f) => f());
+  bus["agent-status"]({ payload: { paneKey: 1, state: "permission", interrupted: false, children: [] } });
+  bus["agent-status"]({ payload: { paneKey: 2, state: "blocked", interrupted: false, children: [], stop: { cause: "limit" } } });
+  await new Promise((r) => setTimeout(r, 0));
+  expect(sent.filter((c) => c === "notify_event")).toHaveLength(2);
+});

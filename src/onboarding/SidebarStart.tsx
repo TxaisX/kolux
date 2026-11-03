@@ -10,7 +10,7 @@ import { useSettings } from "../settings/useSettings";
 import Checklist, { useChecklistRecord } from "./Checklist";
 import { EyeOff } from "../chrome/icons";
 import { Ring, useGuideState } from "./Guides";
-import { openGuide } from "./guide";
+import { checklistHidden, HIDE_PATCH, openGuide } from "./guide";
 import { checklistOf } from "./newcomer";
 import { entryLine, guideWanted, onReread, rereadFloor, sidebarSlot } from "./sidebar";
 import "./onboarding.css";
@@ -19,7 +19,7 @@ export default function SidebarStart() {
   const rec = useChecklistRecord();
   const [again, setAgain] = useState(0);
   const [asked, setAsked] = useState(false);
-  const { save, error } = useSettings();
+  const { save, error, settings } = useSettings();
   const floor = useRef(rereadFloor()).current;
   useEffect(() => onReread(window, () => setAgain((n) => n + 1), undefined, floor), [floor]);
   const first = rec === undefined ? undefined : (rec?.firstRun ?? null);
@@ -27,15 +27,16 @@ export default function SidebarStart() {
   const g = useGuideState(guideWanted(c, first), again, floor.stamp);
   const slot = sidebarSlot(c, first, g.settled);
   if (slot === "checklist") return <Checklist compact record={rec} />;
-  // ONB-020: Hide from sidebar is remembered (setupChecklist false is read as the legacy rule on the next load).
+  // ONB-020: Hide from sidebar is remembered under its own flag (49-ux2: hiding is not completing; the old
+  // setupChecklist false still reads as the legacy rule for profiles that saved it).
   // FIX-1: it is saved through the settings save in turn (merged with what is on disk), and when the save fails the
   // entry comes back with a short message instead of returning silently on the next launch.
   const failed = asked && error !== null;
-  if ((asked && !failed) || slot !== "guide" || !g.settled) return null;
+  if ((asked && !failed) || checklistHidden(settings) || slot !== "guide" || !g.settled) return null;
   const line = entryLine(g.settled);
   const hide = () => {
     setAsked(true);
-    void save({ setupChecklist: false }).then(() => setAgain((n) => n + 1));
+    void save(HIDE_PATCH).then(() => setAgain((n) => n + 1));
   };
   return (
     <div className="onb-entry">

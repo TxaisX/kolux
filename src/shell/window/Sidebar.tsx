@@ -9,11 +9,12 @@ import { NESTING_KEY } from "../../projects/model";
 import ProjectsPanel from "../../projects/ProjectsPanel";
 import { openSettings } from "../../settings/pages";
 import { toggleSkills } from "../../skills/nav";
+import { screenAfterPick, showsProjects } from "./sidebarScreens";
 import { useWindow } from "./store";
 
 export default function WindowSidebar() {
   const {
-    terminals, screen, sidebarOpen, reveal, openDirs, sources, rowStates, unreadDirs,
+    screen, sidebarOpen, reveal, openDirs, sources, rowStates, unreadDirs,
     markDir, settings, saveSetting, activeDir, select, removed, removedAll, agents, defaultId, setDefault,
     launching, launch, addChooser, newTab, allAgents, agentPass, refreshAgents, page, setPage, refresh,
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest, startIn, projectAdded,
@@ -23,7 +24,7 @@ export default function WindowSidebar() {
   } = useWindow();
   return (
     <>
-      {(terminals || screen === "artifacts" || screen === "skills") && sidebarOpen && (
+      {showsProjects(screen) && sidebarOpen && (
         <ProjectsPanel
           reveal={reveal}
           openDirs={openDirs}
@@ -34,7 +35,10 @@ export default function WindowSidebar() {
           settings={settings}
           onSetting={saveSetting}
           activeDir={activeDir}
-          onSelect={select}
+          onSelect={(dir, branch, fresh) => {
+            setScreen(screenAfterPick(screen));
+            select(dir, branch, fresh);
+          }}
           onRemoved={removed}
           onRemovedAll={removedAll}
           onSleep={removedAll}
@@ -73,7 +77,7 @@ export default function WindowSidebar() {
           }}
         />
       )}
-      {(terminals || screen === "artifacts" || screen === "skills") && sidebarOpen && (
+      {showsProjects(screen) && sidebarOpen && (
         <Grip side="left" width={leftWidth} label="Resize the sidebar" className="lside-grip" onWidth={(w, done) => {
           setDragLeft(done ? null : clampLeft(w));
           if (done) saveSetting(LEFT_KEY, clampLeft(w));

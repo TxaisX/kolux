@@ -23,8 +23,9 @@ export const hooksDefault = (s: Record<string, unknown> | null): boolean => (s &
  *  (the wizard's own Connect screen asks then). */
 export const askHooks = (s: Record<string, unknown>, wizardOpen: boolean): boolean => !wizardOpen && !hooksChosen(s);
 
-/** T-608: moving on from the wizard's Connect screen, where the line shows, records the choice; Back does not. */
-export const recordsHooks = (from: number, to: number): boolean => SCREENS[from]?.id === "connect" && to > from;
+/** T-608: moving on from the wizard's Connect screen, where the line shows, records the choice; Back does not.
+ *  49-ux2: neither does "I'll do this later" (`later`), which leaves without answering the line. */
+export const recordsHooks = (from: number, to: number, later = false): boolean => !later && SCREENS[from]?.id === "connect" && to > from;
 
 /** T-608: records the answer and brings every agent in line, as the Settings switch does (save, then
  *  agent_hooks_sync; off takes Kolux's entries out). A save that fails syncs nothing. */

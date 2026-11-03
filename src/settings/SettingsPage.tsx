@@ -320,7 +320,8 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
   // An Escape that belongs to another dialog is that dialog's even when it lets the Escape go on (the
   // Usage Share card, the Send feedback box): a shown modal inside Settings, or a dialog around the key.
   // Not every modal on the page: the panes under Settings stay mounted with their own alertdialogs.
-  // Registered once, so it runs before the Share card's window listener, while that card is still drawn.
+  // Registered once. The Share card no longer has a window listener of its own: its dialog focus catches
+  // Escape on the window in the capture phase, so it sees the key before this handler does.
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {

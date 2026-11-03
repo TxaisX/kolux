@@ -86,6 +86,16 @@ export function focusAfterRemove(order: string[], removed: string): string | nul
   return order[at + 1] ?? order[at - 1] ?? null;
 }
 
+/** The address a viewer message asks to open, or null when it must be ignored: it has to come from the viewer's own
+ *  frame, while a click is still active and focus is inside the frame. A click or key in the frame does both; a script
+ *  that posts on its own (on load, say) has neither, and the click that selected the row leaves focus on the row, so
+ *  its activation does not count for the page it opens. An engine that cannot say whether a click happened opens nothing. */
+export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown, activation: { isActive: boolean } | undefined, frameFocused: boolean): string | null {
+  const url = (e.data as { koluxOpen?: unknown } | null)?.koluxOpen;
+  if (!frame || e.source !== frame || typeof url !== "string") return null;
+  return activation?.isActive && frameFocused ? url : null;
+}
+
 /** How long a page may take to load before the viewer says so. */
 export const SLOW_MS = 10_000;
 
@@ -114,11 +124,12 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
     return () => void off.then((f) => f());
   }, []);
 
-  // A link clicked inside the viewer: only messages from our own frame count.
+  // A link clicked inside the viewer: only a message from our own frame, sent during a click, opens anything.
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.source !== frame.current?.contentWindow || typeof e.data?.koluxOpen !== "string") return;
-      invoke("open_external", { url: e.data.koluxOpen }).catch((err) => onToast(String(err)));
+      const url = viewerLink(e, frame.current?.contentWindow, (navigator as { userActivation?: { isActive: boolean } }).userActivation, !!frame.current && document.activeElement === frame.current);
+      if (url === null) return;
+      invoke("open_external", { url }).catch((err) => onToast(String(err)));
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
