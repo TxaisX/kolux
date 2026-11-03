@@ -318,8 +318,8 @@ pub fn start_dir(workspace: &str, requested: Option<&str>) -> String {
 /// resolved the way a shell would (`claude` becomes `...\claude.exe`) so the process starts
 /// without a shell in between; a name that does not resolve to a full path is passed through
 /// unchanged, never wrapped in cmd.exe (which would look it up in `cwd`), and the spawn looks it
-/// up in full-path folders only or refuses it by name (T-660). A Windows command-script shim is started the way `start_line` says. Starts in
-/// `cwd` when that folder exists.
+/// up in full-path folders only or refuses it by name (T-660). A Windows command-script shim is
+/// started the way `start_line` says. Starts in `cwd` when that folder exists.
 pub fn program_command(program: &str, args: &[String], cwd: Option<&str>) -> CommandBuilder {
     match crate::agents::find_program(program).filter(|p| p.is_absolute()) {
         Some(resolved) => command_for(&resolved, args, cwd, cfg!(windows)),
@@ -1300,13 +1300,13 @@ mod tests {
                 let mut s = PtySession::spawn(c, 200, 24, move |b| { let _ = tx.send(b.to_vec()); }, |_| {}).expect("the prompt starts");
                 // The prompt (the folder, then >) shows once chcp has run; the console host asks
                 // where the cursor is first and waits for the answer, as in the shell test.
-                let shown = format!("{}>", dir.file_name().unwrap().to_string_lossy());
+                let shown = format!("planted-{}>", std::process::id());
                 let (deadline, mut seen, mut answered) = (Instant::now() + Duration::from_secs(30), String::new(), 0);
                 while Instant::now() < deadline && !seen.contains(&shown) {
                     if let Ok(b) = rx.recv_timeout(Duration::from_millis(200)) { seen.push_str(&String::from_utf8_lossy(&b)); }
-                    let asks = seen.matches("[6n").count();
+                    let asks = seen.matches("\x1b[6n").count();
                     while answered < asks {
-                        s.write(b"[1;1R").expect("answer cursor query");
+                        s.write(b"\x1b[1;1R").expect("answer cursor query");
                         answered += 1;
                     }
                 }
