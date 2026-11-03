@@ -103,8 +103,21 @@ GATES (2026-11-03, merged tree: 6c7cd08f + main fd9dd092)
 - node scripts/plan-check.mjs: OK
 - scripts/firewall-check.ps1 -Baseline: 0 new
 
-REVIEW
-(pending)
+REVIEW (opus-high-review, read-only, each covering exactly its diff)
+- Review 1, 6c7cd08f (the code): B. MUST: the arrows brought each tab forward, so its pane took the
+  keyboard (TERM-012) and the walk ended after one step. SHOULD: the close buttons stayed in the Tab
+  order; a project pick threw Skills, Artifacts and Space out to Terminals; the settings test was
+  text-only. NITs: disabled close reason mouse-only, a stale comment, a dead call, an overstated comment.
+- Review 2, bd1e4302 (the fixes): A-. All 8 fixed. SHOULD: aria-disabled close rows still lit up on
+  hover. NITs: the reason read twice through aria-label plus title; stale ROWS comments.
+- Review 3, 345a2568 (those fixes): A. All 3 fixed, nothing new. Optional NIT left, older than this
+  task: an unassigned shortcut makes Kbd add "Unassigned" to a row name (Rename has the same).
+- Fixes after review 1 (bd1e4302, 345a2568): vitest src/shell src/chrome src/browser src/terminal
+  src/keys src/lazy src/skills: 207 files, 1251 tests passed; src/shell src/chrome after 345a2568:
+  55 files, 246 passed; tsc exit 0. Only this evidence file changed after review 3.
+- Follow-ups not fixed: the tab menu height in MENU_SIZE (tabMenu.ts menuAnchor, 330 px) is an
+  estimate, fitIn on the real size corrects it; tab search matches a browser page by title only, not
+  its address; the windowSource scan only reaches files directly under src/shell.
 
 SPEC
 spec/03-terminals-panes.md: TERM-135 Rules + acceptance (dismiss is not an answer), TERM-049
