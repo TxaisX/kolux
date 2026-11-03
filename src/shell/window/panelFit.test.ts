@@ -80,7 +80,7 @@ test("T-703: the dragged panel gives back its width first; the step-aside starts
 
 test("T-703: a drag starts from the width as drawn, so a narrowed panel answers the pointer at once", () => {
   const got: number[] = [];
-  const grip = (side: "left" | "right") => Grip({ side, width: 480, label: "", className: "", onWidth: (w) => got.push(w) }) as ReactElement<Record<string, (e: unknown) => void>>;
+  const grip = (side: "left" | "right") => Grip({ side, width: 480, min: 220, max: 480, label: "", className: "", onWidth: (w) => got.push(w) }) as ReactElement<Record<string, (e: unknown) => void>>;
   const target = { setPointerCapture: () => {}, previousElementSibling: { offsetWidth: 420 + 8 }, parentElement: { offsetWidth: 300 } };
   grip("left").props.onPointerDown({ clientX: 500, pointerId: 1, currentTarget: target });
   grip("left").props.onPointerMove({ clientX: 490 });
