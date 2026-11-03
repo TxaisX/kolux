@@ -1,6 +1,7 @@
 // TERM-135: the dialog behind askLink. Mounted once near the app's root. role="dialog" so the guided
 // tours (which wait while any dialog is open) hold off. The Kolux browser choice has the focus;
 // Escape or a click outside opens the link in the system browser this once and leaves the question open.
+import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { answerLinks, dialogWords, dismissLinks, linkState, subscribeLinks, waitingLink } from "./linkAsk";
 
@@ -25,6 +26,7 @@ function Dialog({ url }: { url: string }) {
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
+          trapTab(e);
           if (e.key === "Escape") (e.preventDefault(), dismissLinks());
         }}
       >

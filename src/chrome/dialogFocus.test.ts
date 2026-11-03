@@ -3,7 +3,7 @@
 // There is no jsdom, so the page is a small stand-in: a window that keeps its listeners, a document with an active
 // element, and boxes that answer the two selector queries the helper makes.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FOCUSABLE, MENU_ROWS, menuRoom, tabTarget, trapDialog, trapMenu } from "./dialogFocus";
+import { FOCUSABLE, MENU_ROWS, menuRoom, tabTarget, trapDialog, trapMenu, trapTab } from "./dialogFocus";
 
 type Fake = { name: string; isConnected: boolean; focus: () => void };
 type Handler = (e: Record<string, unknown>) => void;
@@ -86,6 +86,31 @@ test("a dialog: focus moves in, Tab and Shift+Tab stay inside, Escape closes fro
   expect(handlers, "both listeners removed").toHaveLength(0);
   press("Escape");
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test("T-714: trapTab, the trap alone as an onKeyDown: wraps at both ends, leaves the middle, other keys and a Tab an inner dialog wrapped", () => {
+  const first = el("first");
+  const mid = el("mid");
+  const last = el("last");
+  const key = (k: string, extra: Record<string, unknown> = {}) => {
+    const e = { key: k, shiftKey: false, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, currentTarget: box([first, mid, last]), ...extra };
+    trapTab(e as never);
+    return e;
+  };
+  active = last;
+  expect(key("Tab").defaultPrevented).toBe(true);
+  expect(active, "Tab from the last control wraps to the first").toBe(first);
+  expect(key("Tab", { shiftKey: true }).defaultPrevented).toBe(true);
+  expect(active, "Shift+Tab from the first wraps to the last").toBe(last);
+  active = mid;
+  expect(key("Tab").defaultPrevented, "middle: the browser steps on").toBe(false);
+  active = body;
+  key("Tab");
+  expect(active, "Tab from outside lands in the dialog").toBe(first);
+  active = last;
+  key("Tab", { defaultPrevented: true });
+  expect(active, "a Tab a dialog inside it already wrapped is left alone").toBe(last);
+  expect(key("Escape").defaultPrevented, "Escape stays the dialog's own").toBe(false);
 });
 
 test("a dialog gives focus back only when nobody else took it", () => {

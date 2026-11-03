@@ -1,6 +1,7 @@
 // EDIT-054 (T-236-b / T-237-b): the box that asks for a name on the first save of an untitled note. It starts
 // on the current name (accepting it simply saves), shows why a name is refused and changes nothing on disk until
 // the name is accepted. The disk steps are in firstSave.ts; this is the real set of file commands behind them.
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { firstSave, type FirstSave, type FirstSaveIo } from "./firstSave";
@@ -78,6 +79,7 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel }: Prop
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
+          trapTab(e);
           const todo = nameKey(e.key, e.nativeEvent.isComposing || e.keyCode === 229, (e.target as HTMLElement).tagName === "BUTTON");
           if (todo === "cancel") onCancel();
           else if (todo === "accept") (e.preventDefault(), accept());

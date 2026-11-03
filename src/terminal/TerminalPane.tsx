@@ -2,6 +2,7 @@
 // output comes back as events, the pane follows the window size, and Close ends the program.
 // The card and its header follow design/DESIGN.md section 7: status icon, agent mark, title,
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
+import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
@@ -1802,6 +1803,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             aria-label={notice.title}
             onKeyDown={(e) => {
               e.stopPropagation();
+              trapTab(e);
               if (e.key === "Escape") notice.onSecondary?.();
             }}
           >
@@ -1829,6 +1831,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             aria-label={`Paste ${pasteAsk.lines} lines?`}
             onKeyDown={(e) => {
               e.stopPropagation();
+              trapTab(e);
               if (e.key === "Escape") {
                 setPasteAsk(null);
                 termRef.current?.focus();
@@ -1874,6 +1877,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             aria-label="The shell ended"
             onKeyDown={(e) => {
               e.stopPropagation();
+              trapTab(e);
               if (e.key === "Escape") closeRef.current?.();
             }}
           >

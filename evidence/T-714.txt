@@ -1,0 +1,48 @@
+T-714 / DT-C150: lane D (72): every aria-modal dialog keeps Tab inside it
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md line 141 (the sessions proof dir, not in this repo).
+Built on s-72/reach b03fd29a (#150, main 8c9536aa merged in), branch s-72/trap, 2026-11-03. Stacked on #150: it
+changes the same dialog files and adds to the same reach.test.ts table.
+
+SWEEP: every element with aria-modal="true" in src/**/*.tsx (26), read for how Tab is kept inside: a focus hook on
+its ref (useDialogFocus, trapDialog, onboarding's own useDialogFocus), its own Tab code, or nothing.
+
+FOUND AND FIXED
+  [wrong] Tab walks out to the page behind (18): Task dialog, New issue, Workspace statuses, New Automation, Fork
+          Agent Session, the Wizard, Use an xAI API key (inside the Wizard), Getting Started with Kolux, Add project,
+          Scan a folder for repositories, Start Git in this folder, Import setup commands, Name this note, the
+          floating question, the link ask, the terminal's notice, paste ask and shell-ended ask.
+          Each calls the shared trapTab from its own onKeyDown: Tab from the last control goes to the first,
+          Shift+Tab from the first to the last, Tab from outside lands inside; Escape stays the dialog's own.
+  [polish] the close-with-changes ask had its own copy of the rule (buttons only, tabStop); it now uses trapTab and
+          tabStop with its test (src/editor/CloseDialog.test.ts) is removed.
+  WHY NOT THE WHOLE useDialogFocus: it takes Escape on the window first and stops it, so the find bar, the
+  statuses menu, the Task draft rule and DT-C144's typed-text rules could not keep their own Escape.
+  Nested: a Tab an inner dialog already wrapped (default prevented) is left alone by the outer one.
+
+OUT OF SCOPE: Pull Request page Confirm merge (inline alertdialog, no aria-modal); the tours, the Guides tip and the
+status-hooks tip (aria-modal="false"); Settings' dialog (no aria-modal); the trust prompt (no dialog element).
+Already trapped (5 hook, 2 own): Continue in an agent, the shared Ask, Explore Kolux, Report a crash, Share usage;
+Send feedback and Update Kolux skills have their own Tab code.
+PENDING: unit-proven; a live check in the app (CDP, isolated worktree) has not been run.
+
+TEST
+  src/chrome/dialogFocus.test.ts
+    T-714: trapTab, the trap alone as an onKeyDown: wraps at both ends, leaves the middle, other keys and a Tab an
+    inner dialog wrapped
+  src/chrome/reach.test.ts (table-driven, 26 rows: 19 trapTab, 5 hook, 2 own)
+    T-714: every aria-modal dialog is in the table and keeps Tab inside it the way it says
+  A trapTab row is checked against the dialog's own tag (onKeyDown={trapTab}) or its key handler (trapTab(e)); a
+  hook row against a hook called on the dialog's own ref; not against the whole file.
+  pnpm vitest run src/chrome/reach.test.ts src/chrome/dialogFocus.test.ts: 2 files, 18 tests passed
+MUTATION CHECK (each alone, both files): removing TaskDialog's trapTab(e) fails; removing the Wizard's
+onKeyDown={trapTab} fails; removing the defaultPrevented guard fails; an identical replacement (control) passes.
+
+TOTALS: VITEST_MAX_WORKERS=2 pnpm vitest run src/chrome src/terminal src/projects src/scm src/settings src/browser
+src/shell src/keys src/lazy src/editor src/onboarding src/tasks src/board src/automations src/floating src/feedback
+src/skills: 603 files, 4536 tests, 4532 passed, 4 failed. The 4 are timing tests under load (5 GB free RAM):
+editPlacement 60 paragraphs and PreviewPane T-601 time out at 5000 ms, richSaveGuards M3 and outputFlood miss
+their ms budgets. None touches a changed file; on the base branch s-72/reach the same 4 run alone fail 2
+(the same two timeouts) and pass 2. Windows CI is the check for them.
+pnpm tsc --noEmit: exit 0. firewall-check -Baseline: 0 new.
+BUNDLE: first load 1,489,419 bytes vs s-72/reach b03fd29a 1,489,477 (-58 B) and main 8c9536aa 1,489,577 (-158 B);
+ceiling 1,490,000, cap +100. The 18 new trap calls are paid for by the close-with-changes ask's removed copy.
