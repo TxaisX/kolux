@@ -1,17 +1,14 @@
 // Cycle 3 (the WindowView split): everything the window draws over its body, moved out of
 // shell/WindowView.tsx as it was: the About panel, the worktree palette, the close question and the
-// tab set's, the trust and rename asks, the tab switcher and the tab menu (TERM-044..TERM-049),
+// tab set's, the trust and rename asks, the tab switcher and the tab menu (TERM-044..TERM-049, in TabMenuView.tsx),
 // Settings and the Board (T-142). The order they are drawn in is the order the window had.
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import Ask from "../../chrome/Ask";
-import { Kbd } from "../../keys/KeymapContext";
 import { reloadAsk } from "../../keys/commands";
 import { noteUse } from "../../onboarding/features";
 import WorktreePalette, { dirMark, dirMonitoring } from "../../projects/WorktreePalette";
 import { workItem } from "../../projects/model";
 import { SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
-import { TAB_COLORS, setTabColor, tabMenuHead } from "../../terminal/tabColor";
-import { splitMenuState } from "../../terminal/tabSplit";
 import { tabName } from "../../terminal/tabName";
 import { pasteHosts } from "../../tasks/pasteHosts";
 import { openInBrowser } from "../../browser/openIn";
@@ -19,22 +16,26 @@ import { sameDir } from "../../workspaces";
 import { AboutPanel } from "../../lazy/pages";
 import { LinkAskHost } from "../../lazy/pages";
 import TabSearch from "../TabSearch";
+import { isTabRow } from "../findTab";
 import { quitQuestion } from "../closeAsk";
-import { closeRows } from "./tabMenu";
+import { deferred } from "../../lazy/deferred";
+import { closeConfirmLabel } from "./tabMenuStart";
 import { useWindow } from "./store";
 import { SettingsPage } from "../../lazy/pages";
 import { WorkspaceBoard } from "../../lazy/pages";
 import { FolderRenameAsk } from "../../lazy/pages";
 import { TrustPrompt } from "../../lazy/pages";
 
+/** The tab menu (TERM-044..TERM-049) loads on its first right-click, not at start (bundle-budget.mjs). */
+const TabMenu = deferred(() => import("./TabMenuView"));
+
 export default function WindowDialogs() {
   const {
     palette, projects, paletteItems, rowStates, panes, hook, turn, unreadDirs,
     activeDir, projectOf, setScreen, select, fromItem, projectFor, fromName, setSidebarOpen,
     setCreateName, setCreateRequest, setPalette, settings, setAsking, asking, dropPanes,
-    guard, quitAsk, quitting, setQuitAsk, reloadAsking, setReloadAsk, switcher, orderOf,
-    titles, tabMenu, pinned, tabColors, setTabMenu, setTabColors, setPinned,
-    setRenamingTab, splitTab, closeTab, settingsOpen, setSettingsOpen, settingsAt,
+    guard, quitAsk, quitting, setQuitAsk, reloadAsking, setReloadAsk, switcher,
+    titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt,
     boardOpen, setBoardOpen, setPanes, setActiveDir, setRefresh, recentDirs,
   } = useWindow();
   return (
@@ -81,7 +82,7 @@ export default function WindowDialogs() {
         <Ask
           title={asking.title}
           body={asking.body}
-          confirm={asking.confirm ?? "Close tab"}
+          confirm={asking.confirm ?? closeConfirmLabel(asking.keys.length)}
           enter
           onCancel={() => setAsking(null)}
           onConfirm={() => {
@@ -100,7 +101,7 @@ export default function WindowDialogs() {
         }}
       />
       <LinkAskHost />
-      <TabSearch tabs={() => paletteItems().filter((i) => i.section === "Open tabs")} />
+      <TabSearch tabs={() => paletteItems().filter(isTabRow)} />
       {guard.dialog}
       {quitAsk && (
         <Ask
@@ -129,85 +130,7 @@ export default function WindowDialogs() {
           })}
         </div>
       )}
-      {tabMenu && (
-        // TERM-049 / TERM-044: close items only; the close question (TERM-045) covers the whole set at once.
-        <>
-          <div
-            className="menu-backdrop"
-            aria-hidden="true"
-            onClick={() => setTabMenu(null)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setTabMenu(null);
-            }}
-          />
-          <div className="menu" role="menu" aria-label="Tab" style={{ top: tabMenu.top, left: tabMenu.left }}>
-            {/* TERM-048 / TERM-046 / TERM-049: Change Title, Pin, Tab Color and the splits head the menu (terminal/tabColor.ts tabMenuHead). */}
-            {tabMenuHead(panes.find((p) => p.key === tabMenu.key)?.kind, pinned.has(tabMenu.key), splitMenuState(panes, tabMenu.key)).map((i) =>
-              i.id === "color" ? (
-                <div key={i.id} className="menu-colors" role="group" aria-label={i.label}>
-                  <span className="name">{i.label}</span>
-                  {TAB_COLORS.map((c) => (
-                    <button
-                      key={c.id}
-                      role="menuitemradio"
-                      aria-checked={tabColors[tabMenu.key] === c.id}
-                      className="swatch"
-                      style={{ background: c.css }}
-                      title={c.label}
-                      aria-label={c.label}
-                      onClick={() => (setTabMenu(null), setTabColors((m) => setTabColor(m, tabMenu.key, c.id)))}
-                    />
-                  ))}
-                  <button role="menuitem" className="swatch none" title="No color" aria-label="No color" onClick={() => (setTabMenu(null), setTabColors((m) => setTabColor(m, tabMenu.key, null)))}>
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <button
-                  key={i.id}
-                  role="menuitem"
-                  className="menu-item"
-                  disabled={"disabled" in i ? i.disabled : false}
-                  title={"why" in i && i.why ? i.why : undefined}
-                  onClick={() => {
-                    const key = tabMenu.key;
-                    setTabMenu(null);
-                    if (i.id === "rename") setRenamingTab(key);
-                    else if (i.id === "splitRight" || i.id === "splitDown") splitTab(key, i.id === "splitRight" ? "right" : "down");
-                    else
-                      setPinned((s) => {
-                        const n = new Set(s);
-                        if (n.has(key)) n.delete(key);
-                        else n.add(key);
-                        return n;
-                      });
-                  }}
-                >
-                  <span className="name">{i.label}</span>
-                  {i.id === "rename" && <Kbd id="tab.rename" />}
-                </button>
-              ),
-            )}
-            {closeRows(orderOf(tabMenu.key), tabMenu.key, pinned).map(({ label, which, keys, disabled }) => (
-              <button
-                key={which}
-                role="menuitem"
-                className="menu-item"
-                disabled={disabled}
-                onClick={() => {
-                  setTabMenu(null);
-                  void closeTab(keys);
-                }}
-              >
-                <span className="name">{label}</span>
-                {which === "one" && <Kbd id="tab.close" />}
-                {which === "all" && <Kbd id="tab.closeAll" />}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      {tabMenu && <TabMenu />}
       {settingsOpen && <SettingsPage onClose={() => setSettingsOpen(false)} target={settingsAt.target} n={settingsAt.n} active={activeDir ?? ""} />}
       {boardOpen && <WorkspaceBoard onClose={() => setBoardOpen(false)} />}
     </>

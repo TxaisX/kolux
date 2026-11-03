@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { onTabSearch, openTabSearch, tabMatches, tabSearchCommand, tabSearcher, type TabEntry } from "./findTab";
+import { isTabRow, onTabSearch, openTabSearch, tabMatches, tabSearchCommand, tabSearcher, type TabEntry } from "./findTab";
+import dialogsSource from "./window/Dialogs.tsx?raw";
 
 const tab = (label: string, hint?: string): TabEntry => ({ label, hint, run: () => {} });
 
@@ -47,4 +48,11 @@ describe("TERM-053 results", () => {
     await first;
     expect(shown).toEqual([["notes.md"]]);
   });
+});
+
+it("palette.md:13: the tab search lists browser pages as well as terminal tabs, and nothing else", () => {
+  expect(isTabRow({ section: "Open tabs" })).toBe(true);
+  expect(isTabRow({ section: "Browser pages" })).toBe(true);
+  expect(isTabRow({ section: "Projects" })).toBe(false);
+  expect(dialogsSource).toContain("<TabSearch tabs={() => paletteItems().filter(isTabRow)} />");
 });

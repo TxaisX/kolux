@@ -1,0 +1,139 @@
+T-668 - The shell window says what happened and reaches every tab by keyboard (DT-C104)
+Worker 90, branch s-90/ux-1, built from main fd9dd092, 2026-11-03. UX lane A PR 1.
+Not stacked on #103 or #116; opens as a new PR for the next train.
+
+THE ISSUE
+The UX audit (proof/ux-audit/findings) found the shell window going quiet or stuck in places:
+toasts and notices drawn only on the Terminals screen, Open in browser landing on a screen that
+cannot show the page, the sidebar toggle doing nothing off Terminals, a tab strip and tab menu the
+keyboard cannot walk, a tab menu that can open outside the window, disabled close items with no
+reason, a close question that does not say how many tabs go, a tab search that skips browser pages
+and drops focus on close, a link question whose dismissal is saved as an answer forever, a restored
+pane with lost data turning into a terminal, a failed settings read replaced by defaults that then
+get saved, and one failing full-page screen blanking the whole window.
+
+WHAT CHANGED (src/shell; row = proof/ux-audit/findings/<file>.md:<line>)
+- Notices.tsx: toasts and notices draw once at window level (Content.tsx mounts it outside the
+  Terminals block), so they show on every screen. shell.md:2.
+- browserOpen.ts: Open in browser and Preview switch the window to Terminals, where the page opens.
+  shell.md:3.
+- sidebarScreens.ts + Sidebar.tsx: the project card follows the sidebar toggle on every screen
+  except Agents (its own rail). Picking a project on Skills, Artifacts or Space stays there (those
+  screens show the picked project); from Board, Inbox, Tower or Floor it lands on Terminals.
+  shell.md:4.
+- tabKeys.ts + Grid.tsx: the tab strip is one Tab stop (roving tabindex; the close buttons are out
+  of the Tab order). Left/Right wrap and Home/End jump, moving focus only (manual activation);
+  Enter or Space brings the focused tab forward, and then its pane takes the keyboard.
+  shell.md:5, keyboard.md:2.
+- Content.tsx: the 7 full-page screens sit inside an error boundary keyed on the screen, so one
+  screen failing to draw does not blank the window and changing screen resets it. shell.md:6 part
+  (error half; a screen whose code failed to load stays failed until Reload, lazy() keeps the
+  failed load).
+- tabMenuKeys.ts + Dialogs.tsx + tabMenu.ts: the tab menu is kept inside the window (shell.md:7);
+  it takes focus and moves with the arrows (shell.md:8); Escape closes it before the pane sees the
+  key, the old bubble-phase listener in windowStore.ts is gone, and focus goes back to the tab when
+  it was lost (keyboard.md:3).
+- linkAsk.ts dismissLinks + LinkAskDialog.tsx: closing the first-link question without picking
+  opens the waiting links in the system browser this once and saves no answer, so it asks again
+  next time. Reverses TERM-135 "still counts as answered" (DT-C104). shell.md:9.
+- LostPane.tsx + lostWords.ts + Pane.tsx: a restored pane of a special kind whose data is gone
+  says what is missing instead of becoming a terminal. shell.md:12.
+- tabMenu.ts + Dialogs.tsx: a disabled close row carries its reason ("A pinned tab stays open.
+  Unpin it first to close it." or the nothing-to-close line) as its tooltip, which a
+  screen reader reads as the row's description; the row is aria-disabled, not disabled, so the keyboard reaches it and a screen reader
+  reads the reason. shell.md:14.
+- settingsRead.ts + useWindowStart.ts: a failed get_settings keeps the settings the window holds,
+  so defaults are never saved over the user's. shell.md:17.
+- findTab.ts isTabRow + Dialogs.tsx: tab search lists open browser pages with the terminal tabs.
+  palette.md:13.
+- tabSearchFocus.ts + TabSearch.tsx: closing tab search gives focus back where it came from (a
+  terminal if that element is gone). palette.md:14.
+- tabMenu.ts closeConfirmLabel: the close question's button names how many tabs it closes.
+  destructive.md:21.
+- windowSource.ts/.test.ts: the new modules joined the source scan (OUTSIDE list, count 28).
+
+NOT DONE (later row)
+- shell.md:6 loading half: a full-page screen still loading shows nothing, because
+  src/lazy/deferred.tsx gives Suspense a null fallback on purpose (it also wraps pane bodies,
+  sheets and dialogs, which must not flash). Not a one-line fix: a "Loading…" placeholder for
+  full-page screens only needs its own path. Filed in proof/ux-audit/requests/A.md.
+
+TESTS
+New test files: browserOpen, settingsRead, tabSearchFocus (src/shell); window/lostWords, notices,
+screenBoundary, sidebarScreens, tabKeys, tabMenuKeys. Extended: findTab, linkAsk, window/tabMenu,
+windowSource.
+
+NAMED TESTS
+- browserOpen.test.ts: "the request to open a page runs the switch, and the stop removes the same
+  listener"; "the window installs the watch with its screen and page setters"
+- findTab.test.ts: "palette.md:13: the tab search lists browser pages as well as terminal tabs, and
+  nothing else"
+- linkAsk.test.ts: "dismissing opens the waiting links in the system browser once, saves nothing
+  and asks again next time"
+- settingsRead.test.ts: "a failed settings read keeps what the window holds instead of replacing it
+  with an empty set" (calls readSettingsInto with a failing and a working read); "the window reads
+  its settings through readSettingsInto"
+- tabSearchFocus.test.ts: 5 tests (focus back on Escape and click outside; fallback to a terminal;
+  a pick leaves focus to the jump; focus handed back after the box is gone)
+- window/lostWords.test.ts: 2 tests (each kind names what is missing; a kind never reaches the
+  terminal)
+- window/notices.test.ts: 3 tests (toast and notice draw with a labelled Dismiss; Shortcuts button;
+  Content mounts the bar once outside the Terminals block)
+- window/screenBoundary.test.ts: "the full-page screens sit inside a boundary that restarts when
+  the screen changes"
+- window/sidebarScreens.test.ts: 3 tests (every screen except Agents; a pick lands on Terminals;
+  Sidebar gates on showsProjects)
+- window/tabKeys.test.ts: 5 tests (one tab stop; wrap and Home/End; other keys left alone;
+  the grid draws the roving tabindex; the arrows only move focus, only Enter and Space bring a tab
+  forward, and the close buttons are no tab stop)
+- window/tabMenu.test.ts: 3 tests (disabled row reason; count on the confirm; corner clamped)
+- window/tabMenuKeys.test.ts: 6 tests (first row focused and fitted; arrows wrap and stop the key;
+  Escape first; focus back to the tab; focusIsLost; Dialogs wiring, old listener gone)
+
+Fails before the fix: with the old code put back (tests unchanged), 13 tests failed in 11 files,
+covering every row except keyboard.md:3 and shell.md:8, which were not isolated; all pass once the
+code is restored.
+
+GATES (2026-11-03, merged tree: 6c7cd08f + main fd9dd092)
+- pnpm vitest run src/shell src/chrome src/browser src/plainWords src/board src/chat src/editor
+  src/keys src/launch src/skills src/lazy src/main.slowStart: 263 files, 262 passed, 1 failed;
+  2246 tests, 2243 passed, 3 failed. All 3 failures are src/editor/pdfjsCopy.test.ts (public/pdfjs
+  copies vs the local pdfjs-dist install); it fails the same way on the ux3 tree, untouched here.
+- pnpm tsc --noEmit: exit 0
+- node scripts/plan-check.mjs: OK
+- scripts/firewall-check.ps1 -Baseline: 0 new
+
+REVIEW (opus-high-review, read-only, each covering exactly its diff)
+- Review 1, 6c7cd08f (the code): B. MUST: the arrows brought each tab forward, so its pane took the
+  keyboard (TERM-012) and the walk ended after one step. SHOULD: the close buttons stayed in the Tab
+  order; a project pick threw Skills, Artifacts and Space out to Terminals; the settings test was
+  text-only. NITs: disabled close reason mouse-only, a stale comment, a dead call, an overstated comment.
+- Review 2, bd1e4302 (the fixes): A-. All 8 fixed. SHOULD: aria-disabled close rows still lit up on
+  hover. NITs: the reason read twice through aria-label plus title; stale ROWS comments.
+- Review 3, 345a2568 (those fixes): A. All 3 fixed, nothing new. Optional NIT left, older than this
+  task: an unassigned shortcut makes Kbd add "Unassigned" to a row name (Rename has the same).
+- Fixes after review 1 (bd1e4302, 345a2568): vitest src/shell src/chrome src/browser src/terminal
+  src/keys src/lazy src/skills: 207 files, 1251 tests passed; src/shell src/chrome after 345a2568:
+  55 files, 246 passed; tsc exit 0. Only this evidence file changed after review 3.
+- Follow-ups not fixed: the tab menu height in MENU_SIZE (tabMenuStart.ts menuAnchor, 330 px) is an
+  estimate, fitIn on the real size corrects it; tab search matches a browser page by title only, not
+  its address; the windowSource scan only reaches files directly under src/shell.
+
+FIRST LOAD (train 2 hand-back)
+57 took #120 off train 2: on main 5177a5f2 it added 4,079 bytes to first load (vite build +
+scripts/bundle-budget.mjs: main 1,485,561, branch 1,489,640). The tab menu moved to TabMenuView.tsx (with
+tabMenuKeys.ts and the close rows of tabMenu.ts), loaded through lazy/deferred on its first right-click;
+menuAnchor and closeConfirmLabel moved to tabMenuStart.ts, the two parts Grid and Dialogs need at start;
+LostPane loads when a lost tab is drawn. deferred() fetches both after the first frame, so the code is already
+there; the menu still appears one React tick after the first right-click. After: branch 1,485,799 bytes, main +238 (target main +500). The rest of the +238 is
+tabKeys, Notices, browserOpen and the ScreenBoundary import in Content, which moved the crash report code
+from index into a shared chunk (index -14,391, FeedbackDialog + privacy +14,765).
+
+SPEC
+spec/03-terminals-panes.md: TERM-135 Rules + acceptance (dismiss is not an answer), TERM-049
+(keyboard, clamp, reason, count), TERM-053 (browser pages, focus back); [x] unit lines point here.
+
+NO LIVE PROOF
+Unit and source tests only (no jsdom; renderToStaticMarkup and ?raw source reads). The keyboard
+walk, the menu clamp and the notices on other screens are unproven in the running app until the
+live pass.

@@ -1,8 +1,8 @@
 // TERM-135: the dialog behind askLink. Mounted once near the app's root. role="dialog" so the guided
 // tours (which wait while any dialog is open) hold off. The Kolux browser choice has the focus;
-// Escape or a click outside counts as the system browser and as answered.
+// Escape or a click outside opens the link in the system browser this once and leaves the question open.
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { answerLinks, dialogWords, dismissed, linkState, subscribeLinks, waitingLink } from "./linkAsk";
+import { answerLinks, dialogWords, dismissLinks, linkState, subscribeLinks, waitingLink } from "./linkAsk";
 
 const isMac = () => typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
 
@@ -16,7 +16,7 @@ function Dialog({ url }: { url: string }) {
   useEffect(() => first.current?.focus(), []);
   const w = dialogWords(linkState(), url, isMac());
   return (
-    <div className="ask-backdrop" onMouseDown={() => answerLinks(dismissed)}>
+    <div className="ask-backdrop" onMouseDown={() => dismissLinks()}>
       <div
         className="ask"
         role="dialog"
@@ -25,7 +25,7 @@ function Dialog({ url }: { url: string }) {
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (e.key === "Escape") (e.preventDefault(), answerLinks(dismissed));
+          if (e.key === "Escape") (e.preventDefault(), dismissLinks());
         }}
       >
         <h2 className="ask-title">{w.title}</h2>

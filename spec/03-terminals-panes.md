@@ -518,9 +518,15 @@ Rules: directional close items are disabled when there is nothing to close; spli
   tab into a split view; middle-click closes an unpinned tab.
   (Kolux RS, T-102-a: the close items and middle-click are in; pin, title, colour and split items
   follow with the rest of the menu.)
+  (Kolux RS, T-668: the tab strip and this menu work from the keyboard: arrows, Home and End move
+  focus between tabs (Enter or Space brings one forward) and between menu items, Escape closes the
+  menu before the terminal gets the key; the menu is kept inside the window; a disabled close item
+  says why; the close question names how many tabs it closes.)
 Acceptance:
   - [ ] The first tab has close-to-the-left (if present) disabled.
   - [ ] Middle-clicking an unpinned tab closes it.
+  - [x] Arrow keys move along the tabs and the menu, Escape closes the menu first, the menu stays
+      inside the window, a disabled close item carries its reason. (unit; evidence/T-668.txt)
 Compat: —
 Source: D-03-049
 
@@ -1496,10 +1502,13 @@ Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: searches open tabs by name from the tab entry box.
 User sees: matching open tabs appear and can be jumped to.
 Rules: stale results are dropped as the query changes; matches tab names only; a query matching just
-  the worktree name finds nothing.
+  the worktree name finds nothing; open browser pages are listed with the terminal tabs; closing the
+  box gives the keyboard back to where it was (T-668).
 Acceptance:
   - [ ] Typing part of a tab name lists that tab.
   - [ ] A query matching only the worktree name returns no tabs.
+  - [x] The search lists browser pages as well as terminal tabs, and closing it puts focus back.
+      (unit; evidence/T-668.txt)
 Compat: —
 Source: D-03-053
 
@@ -1754,8 +1763,9 @@ User sees: before the link opens, a dialog shows the site it points to and asks 
 Rules: asked once: the answer becomes the saved link destination and the dialog never comes back,
   including after a restart; if links are already set to open in the Kolux browser, the dialog
   offers keeping that or switching to the system browser instead; the Kolux browser choice has the
-  keyboard focus; closing the dialog without picking (Escape or a click outside) counts as the
-  system browser and still counts as answered; changing the link destination switch by hand also
+  keyboard focus; closing the dialog without picking (Escape or a click outside) opens the waiting
+  links in the system browser this once, saves no answer and asks again on the next link (DT-C104,
+  reverses "still counts as answered"); changing the link destination switch by hand also
   counts as answered, so the dialog never appears after that; clicks that already name a
   destination (Shift plus the link modifier, or a pick from the link action menu) open at once
   without the dialog; several link clicks made while the dialog is up share one question, and each
@@ -1768,8 +1778,10 @@ Acceptance:
   - [ ] Fresh profile: modifier-click a web address, pick the system browser → it opens there;
       modifier-click another address, also after restarting Kolux → it opens in the system browser
       with no dialog.
-  - [ ] Fresh profile: press Escape on the dialog → the link opens in the system browser and the
-      dialog does not return.
+  - [ ] Fresh profile: press Escape on the dialog → the link opens in the system browser, and the
+      next modifier-click asks again.
+  - [x] Dismissing the question opens the waiting links in the system browser once, saves nothing and
+      asks again next time. (unit; evidence/T-668.txt)
   - [ ] Fresh profile: turn on the link destination switch on the Terminal & sessions page, then
       modifier-click an address → it opens in the Kolux browser with no dialog.
 Compat: —
