@@ -16,7 +16,8 @@ import { useTurnPreview } from "../terminal/turnRead";
 import { Composer, type ComposerHandle } from "./MessageBox";
 import { readModel } from "./controls";
 import { FIRST_LINES, hiddenCount, keepPosition, loadLabel, visibleRows } from "./page";
-import { chatZoom, setChatZoom, stepZoom, zoomChord } from "./zoom";
+import { chatZoom, setChatZoom, stepZoom, zoomChord, zoomLabel } from "./zoom";
+import { EARLIER_FAILED_NOTE, NOTE_MS, ZOOM_SHOWN_MS, outside, pollMs, selfClearing, useCopy, useDismiss } from "./ux";
 import { draftOf, forwardsToBox, keepDraft, nearBottom } from "./composer";
 import { sessionLabel } from "../agents/rail";
 import { NO_TERMINAL_NOTE, boxSend, hearStates, holdReading, stopPane, writeTerminal } from "./send";
@@ -148,6 +149,12 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   useEffect(() => {
     if (!open) setNote((n) => (n === STOPPING_NOTE ? null : n));
   }, [open]);
+  // A note under the box clears itself after a while (Stopping... is cleared by the turn ending instead).
+  useEffect(() => {
+    if (!selfClearing(note, STOPPING_NOTE)) return;
+    const t = setTimeout(() => setNote((n) => (n === note ? null : n)), NOTE_MS);
+    return () => clearTimeout(t);
+  }, [note]);
   // CHAT-023: the permission card, while the agent's hook says it is asking and the user has not answered.
   const card = cardOf(agent, askOf(key), terminalOf(key), stateOf ? () => stateOf(key) : undefined);
   const answer = (a: Answer) => {
@@ -225,12 +232,19 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   // CHAT-017: typing anywhere in the chat pane goes to the box; Backspace or Delete moves focus there.
   // CHAT-026: Ctrl or Cmd with plus, minus or zero zooms the chat text, whichever part of the chat has focus.
   const [zoom, setZoom] = useState(chatZoom);
+  const [zoomShown, setZoomShown] = useState(false);
+  useEffect(() => {
+    if (!zoomShown) return;
+    const t = setTimeout(() => setZoomShown(false), ZOOM_SHOWN_MS);
+    return () => clearTimeout(t);
+  }, [zoomShown, zoom]);
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const how = zoomChord({ key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, isComposing: e.nativeEvent.isComposing });
     if (how) {
       e.preventDefault();
       e.stopPropagation();
       setChatZoom(stepZoom(chatZoom(), how));
+      setZoomShown(true);
       return setZoom(chatZoom());
     }
     const t = e.target as HTMLElement;
@@ -242,6 +256,8 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   const [pages, setPages] = useState(0);
   const shownRows = useMemo(() => visibleRows(rows, pages), [rows, pages]);
   const views = useMemo(() => fold(shownRows, open, pane.cwd), [shownRows, open, pane.cwd]);
+  const [earlierFailed, setEarlierFailed] = useState(false);
+  useEffect(() => setEarlierFailed(false), [key]);
   const loadEarlier = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
   const earlierLabel = loadLabel(rows.length, pages, seen.older ?? 0);
   const more = () => {
@@ -253,7 +269,8 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
     };
     // Rows already read come first; once all are shown, the next older page is fetched from the backend.
     if (hiddenCount(rows.length, pages) > 0) return showMore();
-    void readerRef.current?.loadEarlier(showMore);
+    setEarlierFailed(false);
+    void readerRef.current?.loadEarlier(showMore, () => setEarlierFailed(true));
   };
   useLayoutEffect(() => {
     const el = list.current;
@@ -266,6 +283,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   }, [views]);
   const shownModel = useMemo(() => (agent ? readModel(agent, items) : null), [agent, items]);
   const [full, setFull] = useState<string | null>(null);
+  useDismiss(full !== null, () => setFull(null));
   // STAT-053: Thought rows start folded; the toolbar opens or folds them all.
   const [thoughts, setThoughts] = useState<Set<string>>(() => new Set());
   const thoughtIds = idsOf(items);
@@ -284,8 +302,8 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
       {state === "empty" && rows.length === 0 && <div className="chat-state">No messages yet. What you and the agent say shows up here.</div>}
       {thoughtIds.length > 0 && (
         <div className="chat-toolbar">
-          <button type="button" onClick={() => setThoughts(new Set(thoughtIds))}>Expand all</button>
-          <button type="button" onClick={() => setThoughts(new Set())}>Collapse all</button>
+          <button type="button" onClick={() => setThoughts(new Set(thoughtIds))}>Expand thoughts</button>
+          <button type="button" onClick={() => setThoughts(new Set())}>Collapse thoughts</button>
         </div>
       )}
       <div className="chat-list" ref={list} onScroll={onScroll}>
@@ -294,6 +312,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
             {earlierLabel}
           </button>
         )}
+        {earlierLabel && earlierFailed && <div className="chat-fail" role="alert">{EARLIER_FAILED_NOTE}</div>}
         {views.map((v) => (
           <ViewRow key={`${v.row}-${v.id}`} view={v} onImage={setFull} thoughts={thoughts} onToggle={toggle} hand={hand} />
         ))}
@@ -317,8 +336,9 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
       )}
       {menu && <BrowserChoice url={menu.url} at={menu.at} onPick={pickBrowser} onClose={() => setMenu(null)} />}
       <Composer ref={box} paneKey={pane.key} live={terminalOf(key) !== undefined} blocked={held} note={note ?? undefined} onSend={send} working={open} onStop={stop} agent={agent} cwd={pane.cwd} shownModel={shownModel} onTerminal={onTerminal} />
+      {zoomShown && <div className="chat-zoom" role="status">{zoomLabel(zoom)}</div>}
       {full && (
-        <button type="button" className="chat-full" aria-label="Close image" onClick={() => setFull(null)}>
+        <button type="button" className="chat-full" aria-label="Close image" autoFocus onClick={() => setFull(null)}>
           <img src={full} alt="Attached" />
         </button>
       )}
@@ -339,9 +359,7 @@ function ViewRow({ view, onImage, thoughts, onToggle, hand }: { view: View; onIm
 }
 
 function ChatRow({ row, onImage }: { row: Row; onImage: (src: string) => void }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const [copyText, copy] = useCopy("Copy");
   if (row.row === "preview") return <div className="chat-msg assistant preview"><div className="chat-text">{row.text}</div></div>;
   if (row.row === "pending")
     return (
@@ -352,13 +370,6 @@ function ChatRow({ row, onImage }: { row: Row; onImage: (src: string) => void })
     );
   if (row.role === "status") return <div className="chat-status" role="status">{row.text}</div>;
   const when = row.at !== undefined ? stamp(row.at, locale()) : null;
-  const copy = () => {
-    navigator.clipboard.writeText(row.text).then(() => {
-      setCopied(true);
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 1500);
-    }, () => {});
-  };
   return (
     <div className={`chat-msg ${row.role}${row.kind === "command" ? " command" : ""}`}>
       {row.images && row.images.length > 0 && (
@@ -373,9 +384,9 @@ function ChatRow({ row, onImage }: { row: Row; onImage: (src: string) => void })
       {row.text && <div className="chat-text">{row.role === "assistant" && row.kind === "text" ? <ChatText text={row.text} /> : row.text}</div>}
       <div className="chat-meta">
         {when && <time title={when.full}>{when.short}</time>}
-        <button type="button" className="chat-copy" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
-        <button type="button" className="chat-copy" title="Bring this message to the top" onClick={(e) => e.currentTarget.closest(".chat-msg")?.scrollIntoView({ block: "start" })}>
-          Top
+        <button type="button" className="chat-copy" onClick={() => copy(row.text)}>{copyText}</button>
+        <button type="button" className="chat-copy" title="Scroll the chat so this message starts at the top" onClick={(e) => e.currentTarget.closest(".chat-msg")?.scrollIntoView({ block: "start" })}>
+          Scroll to start
         </button>
       </div>
     </div>
@@ -442,7 +453,12 @@ export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskO
       return next;
     });
   const keys = panes.map((p) => p.key).join(",");
+  // The pane list is asked about only while the page is showing; shown again it is asked at once.
+  const [pageHidden, setPageHidden] = useState(() => typeof document !== "undefined" && document.visibilityState === "hidden");
+  useEffect(() => watchHidden(document, setPageHidden), []);
   useEffect(() => {
+    const every = pollMs(pageHidden);
+    if (every === null) return;
     let alive = true;
     // T-050-c: every pane is asked, a plain shell too, with its terminal: the agent detected in
     // front of it decides (Rust chat_support), and a change in front (`pane-agent`) is asked at once.
@@ -451,7 +467,7 @@ export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskO
         if (alive) setOffers(Object.fromEntries(list));
       });
     void check();
-    const t = setInterval(check, 3000);
+    const t = setInterval(check, every);
     const front = listen("pane-agent", () => void check()).catch(() => () => {});
     return () => {
       alive = false;
@@ -459,7 +475,7 @@ export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskO
       void front.then((un) => un());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keys]);
+  }, [keys, pageHidden]);
   const shown = pickChat(panes, focused, offers);
   // VIEW-020: the sessions in the order last viewed, for the hand-off list.
   const [viewed, setViewed] = useState<number[]>([]);
@@ -524,10 +540,30 @@ export function FilesRow({ id, files, targets, onSend, note }: { id: string; fil
   );
 }
 
-/** VIEW-020: Send result to, a short list of other chat sessions (the last viewed first). CHAT-028 reuses it for one file. */
+/** VIEW-020: Send result to, a short list of other chat sessions (the last viewed first). CHAT-028 reuses it for one file.
+ * It closes on a pick, on Escape (focus back on the summary) and on a click anywhere outside it. */
 export function HandOff({ targets, onPick, label = "Send result to…", what = "the result" }: { targets: { key: number; label: string }[]; onPick: (key: number) => void; label?: string; what?: string }) {
+  const box = useRef<HTMLDetailsElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDown = (e: Event) => {
+      if (outside(box.current, e.target)) box.current?.removeAttribute("open");
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      box.current?.removeAttribute("open");
+      box.current?.querySelector("summary")?.focus();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
   return (
-    <details className="chat-hand">
+    <details className="chat-hand" ref={box} onToggle={(e) => setIsOpen(e.currentTarget.open)}>
       <summary>{label}</summary>
       <ul aria-label={`Sessions to send ${what} to`}>
         {targets.map((t) => (

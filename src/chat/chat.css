@@ -102,7 +102,8 @@
    input. Every colour is a theme token, so it follows whichever appearance the user picked. */
 .chat-composer { position: relative; border-top: 1px solid var(--line-subtle); padding: 10px 12px; display: flex; gap: 8px; align-items: flex-end; }
 .chat-box { flex: 1; min-width: 0; resize: none; font: inherit; line-height: 1.4; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--input-bg); color: var(--fg); overflow-y: auto; }
-.chat-box:focus { outline: none; border-color: var(--line-focus); }
+/* --line-focus alone is about 1.2:1 against the field; the ring uses the muted text colour so it reads in every theme */
+.chat-box:focus { outline: 2px solid var(--fg-muted); outline-offset: -1px; border-color: var(--fg-muted); }
 .chat-box:disabled { color: var(--fg-faint); }
 /* CHAT-018: Send turns into Stop while a turn runs; it sits above the pane's own controls so it can always be clicked */
 .chat-send { position: relative; z-index: 6; flex: none; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip-bg); color: var(--fg); font: inherit; cursor: pointer; }
@@ -115,6 +116,9 @@
 .chat-target { padding: 4px 16px 0; font-size: 11px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .chat-link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; overflow-wrap: anywhere; }
 .chat-link:hover, .chat-link:focus-visible { text-decoration-thickness: 2px; }
+.chat-link:focus-visible { outline: 2px solid var(--fg-muted); outline-offset: 2px; border-radius: 3px; }
+/* CHAT-026: the zoom level, shown for a moment after Ctrl +, - or 0 */
+.chat-zoom { position: absolute; top: 8px; right: 16px; z-index: 7; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); font-size: 12px; pointer-events: none; }
 .chat-permission { margin: 0 12px 6px; padding: 8px 12px; background: var(--pane-bg); border: 1px solid var(--warn); border-radius: 8px; font-size: 12px; }
 .chat-permission-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .chat-permission-x { background: none; border: 0; color: var(--fg-muted); font: inherit; font-size: 16px; line-height: 1; cursor: pointer; }

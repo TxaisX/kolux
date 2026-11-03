@@ -140,9 +140,9 @@ export class ChatReader {
   }
 
   /** CHAT-008: fetches the next older page and puts it before what is shown. `before` runs just ahead of the change
-   * (the view saves its reading position there). False when nothing was added: at the top, a page already out, the call
+   * (the view saves its reading position there); `failed` runs when the call itself failed. False when nothing was added: at the top, a page already out, the call
    * failed, or the view was replaced meanwhile (a page for a cursor that is no longer the view's own is dropped). */
-  async loadEarlier(before?: () => void): Promise<boolean> {
+  async loadEarlier(before?: () => void, failed?: () => void): Promise<boolean> {
     const cursor = this.seen.older ?? 0;
     const { readEarlier } = this.o;
     if (!this.on || this.paging || cursor <= 0 || !readEarlier) return false;
@@ -157,6 +157,7 @@ export class ChatReader {
       this.o.onChange(this.seen);
       return true;
     } catch {
+      failed?.();
       return false;
     } finally {
       this.paging = false;

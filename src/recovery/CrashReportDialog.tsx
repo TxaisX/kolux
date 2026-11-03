@@ -46,6 +46,16 @@ export default function CrashReportDialog() {
     invoke<string>("crash_details", { id: d.crash.id }).then(setDetails, (e) => setDetails(`(details could not be read: ${String(e)})`));
   }, [d]);
 
+  // Escape closes the report from anywhere, not only after clicking inside it
+  useEffect(() => {
+    if (!d) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setD(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [d]);
+
   useEffect(() => {
     if (!note) return;
     const t = setTimeout(() => setNote(""), 6000);
@@ -72,39 +82,43 @@ export default function CrashReportDialog() {
   if (!d) return toast;
   return (
     <>
-      <div className="scrim" onMouseDown={() => setD(null)}>
+      <CrashPanel lead={dialogLead(d)} details={details} onClose={() => setD(null)} onAttach={attachLogs} onCopy={copyDetails} onOpen={openIssue} />
+      {toast}
+    </>
+  );
+}
+
+/** The report itself. Not now has the focus when it opens; Copy Details waits for the details to load. */
+export function CrashPanel({ lead, details, onClose, onAttach, onCopy, onOpen }: { lead: string; details: string; onClose: () => void; onAttach: () => void; onCopy: () => void; onOpen: () => void }) {
+  return (
+      <div className="scrim" onMouseDown={() => onClose()}>
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Report a crash"
           onMouseDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setD(null);
-          }}
           style={{ width: "min(640px, calc(100vw - 48px))", display: "flex", flexDirection: "column", gap: 10, padding: "16px 18px", background: "var(--pane-bg)", border: "1px solid var(--line-focus)", borderRadius: 12, color: "var(--fg-row)" }}
         >
           <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Report a crash</h2>
           <p className="conn-detail" style={{ margin: 0 }}>
-            {dialogLead(d)}
+            {lead}
           </p>
           <textarea readOnly value={details} rows={8} aria-label="Crash details" style={{ width: "100%", boxSizing: "border-box", fontFamily: "var(--mono, monospace)", fontSize: 12 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <button className="btn" onClick={attachLogs}>
+            <button className="btn" onClick={onAttach}>
               Attach recent diagnostic logs
             </button>
-            <button className="btn" onClick={copyDetails}>
+            <button className="btn" onClick={onCopy} disabled={!details}>
               Copy Details
             </button>
-            <button className="btn" onClick={() => setD(null)}>
+            <button className="btn" autoFocus onClick={() => onClose()}>
               Not now
             </button>
-            <button className="btn" onClick={openIssue} disabled={!details}>
+            <button className="btn" onClick={onOpen} disabled={!details}>
               Open on GitHub
             </button>
           </div>
         </div>
       </div>
-      {toast}
-    </>
   );
 }
