@@ -711,6 +711,9 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .hit-box { display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; vertical-align: middle; cursor: pointer; }
 .hit-box input { margin: 0; }
 .hit-box:has(:disabled) { cursor: default; }
+/* T-701 (DT-C137): the shared checkbox / switch label rows are at least 24px tall too; :where keeps it at
+   one class's weight, so the dialogs' own gaps (.ask-check, .trust-always) still win */
+:where(label).check { display: flex; align-items: center; gap: 8px; min-height: 24px; }
 .auto-prompt { flex: 1; height: auto; min-height: 0; padding: 8px 10px; resize: none; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.55 var(--mono-font); }
 .auto-find { display: flex; align-items: center; gap: 6px; }
 .auto-find .field { width: 220px; }
@@ -835,7 +838,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .look-slider.off { color: var(--fg-disabled); }
 .look-slider input { accent-color: var(--fg-muted); }
 .look-slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-muted); }
-.look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--fg-row); }
+.look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; font-size: 13px; color: var(--fg-row); }
 .notif-volume { display: flex; align-items: center; gap: 8px; }
 .notif-volume input { width: 180px; accent-color: var(--done); }
 .notif-volume output { width: 44px; text-align: right; color: var(--fg-muted); font-size: 12px; }
@@ -930,7 +933,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 /* ACCT-064: a question over one pane's terminal, not the window. */
 .pane-ask { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); }
 .agent-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--chip-bg); min-width: 0; }
-.agent-on { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.agent-on { display: flex; align-items: center; gap: 10px; min-height: 24px; cursor: pointer; }
 .agent-name { font-size: 13px; color: var(--fg-row); }
 .agent-row details { margin-left: 24px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }
 .agent-row summary { cursor: pointer; }
@@ -1221,6 +1224,19 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 /* T-699 (DT-C135): under 900 px the side panels take turns, so the workspace and its sheets keep their room.
    The left toggle (shell/window/narrow.ts) brings the left sidebar back by closing the right one. */
 @media (max-width: 899px) { .body:has(> .rside:not([hidden])) > :is(.sidebar-wrap, .lside-grip) { display: none; } }
+/* T-703 (DT-C139): a widened side panel gives its width back before the workspace drops under 340 px (the T-699
+   floor), during a drag and when the window shrinks; the saved widths are kept, so the room comes back with the window.
+   The left sidebar (8 px gutter) leaves room for the right one's 240 px minimum while that shows; the right one leaves
+   room for the left sidebar as drawn. The Agents screen's rail (.rail-wrap) keeps its own width (.rail); the right
+   sidebar only shows on Terminals, never beside it. The right sidebar's own clamp (Right.tsx) is unchanged; these only
+   catch a width drawn before the window shrank. The step-aside above still starts at 899 px. */
+.body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
+.body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
+.body > .rside { max-width: max(240px, 100vw - 340px); }
+.body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
+/* Classic's title header cell (chrome/titleHeader.ts, saved width + 8) follows the card as drawn: 228 = 220 + the gutter. */
+.app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }
+.app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }
 /* USAGE-012: usage analytics. Green squares = days with use, deeper green = more tokens. */
 .ta { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
 /* The notices' live region is always drawn (so a notice is announced); empty, it takes no room in the column. */

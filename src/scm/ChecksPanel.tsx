@@ -117,8 +117,8 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
           {pr && <span className="count">{data!.checks.length}</span>}
           <div className="icons">
             {dir !== null && (
-              <button className="ib" title={shown?.loading ? "Looking…" : `${REFRESH} the checks`} aria-label={`${REFRESH} the checks`} disabled={!!shown?.loading} onClick={() => load(true)}>
-                <Refresh />
+              <button className="ib" title={shown?.loading ? "Looking…" : `${REFRESH} the checks`} aria-label={`${REFRESH} the checks`} disabled={!!shown?.loading} aria-busy={!!shown?.loading} onClick={() => load(true)}>
+                <Refresh className={shown?.loading ? "spin" : undefined} />
               </button>
             )}
           </div>
