@@ -1,36 +1,83 @@
-T-678 (DT-C114) · UX audit lane D: chat, sessions and recovery · s-72/ux-4 (#98) · 2026-11-02
+T-678 - Chat, past-session and crash screens: keyboard, copy and error-state fixes (DT-C114; UX audit lane D, part: chat, sessions, recovery)
+Lane D (session 72), branch s-72/ux-4 (#98), base e93a23ba (origin/main), code commits 15a4ba4a, ddea94b4, cdc63ab0, 2026-11-02.
+Later lane D PRs (the editor screens) extend this file and the T-678 / DT-C114 rows once this one has merged.
 
-Source: G:/Dev/kolux-rs-sessions/proof/ux-audit/findings/chat-sessions.md (cloud audit at main e93a23b).
+WHAT CHANGED
+- Chat (src/chat): notes under the box clear themselves after 10 s; the zoom level shows for 1.2 s after Ctrl +, - or 0
+  (a status region that stays in the page, so screen readers announce it); Copy on a message and Copy diff share one hook that says
+  "Copy failed" when the clipboard refuses and goes back to its label after 1.5 s; a failed Load earlier messages says so under the
+  button; the image overlay and the attachment preview take focus, close on Escape and give focus back; the two-browser link choice
+  works with arrows, Home/End, Escape and a click outside, and focus returns to the link after the system browser opens; Space opens a
+  link like Enter and links show a focus ring; the HandOff "Send result to" list closes on Escape (focus on its summary) and on a click
+  outside, and that Escape never reaches the agent; web links in tool output, plans and notices go through the same link choice and
+  "Open links in Kolux" setting as a link in a reply; the chat box has a visible focus ring; "Top" is "Scroll to start", "Expand all /
+  Collapse all" are "Expand thoughts / Collapse thoughts"; the support check (chat_support) runs only while the window is visible.
+- Sessions (src/sessions): Resume and Resume as chat ignore a second press while the first is starting (InFlight, 0.7 s); a disabled
+  Resume says why in text under the row; Refresh shows "Scanning" only for a rescan the person asked for; the delete question names the
+  session; Keep and Delete... pass keyboard focus to each other.
+- Recovery (src/recovery): the crash report focuses Not now, closes on Escape from anywhere and keeps Copy Details off until the
+  details load; a failed Restart in safe graphics / Try hardware again shows one line saying so.
+- Spec: Rules and Acceptance of CHAT-008, 010, 012, 013, 014, 017, 021, 025, 026, 028, VIEW-020, 085, 086, 089, APP-039 and APP-043
+  say the new behaviour, each new Acceptance line points here. No spec rule is reversed; the one changed meaning (tool-output links
+  follow the link choice) is in DT-C114 and CHAT-013's Rules.
 
-Rows:
-  findings/recovery/CrashReportDialog.tsx.md:75 | fixed | Not now autoFocus + window-level Escape while the dialog is open (crashPanel.test.ts covers the panel)
-  findings/recovery/RecoveryMount.tsx.md:77 | fixed | Restart in safe graphics / Try hardware again show a one-line error when the command fails
-  findings/sessions/AgentsPanel.tsx.md:165 | fixed | Resume / Resume as chat guarded by InFlight (inflight.test.ts)
-  findings/chat/StepRows.tsx.md:185 | fixed | Copy diff uses the shared useCopy hook (reverts after 1.5 s, "Copy failed" on refusal; ux.test.ts)
-  findings/chat/ChatView.tsx.md:356 | fixed | message Copy uses useCopy, shows "Copy failed"
-  findings/chat/ChatView.tsx.md:256 | fixed | loadEarlier takes a failed callback; "Could not load earlier messages. Press the button again to retry." under the button (earlier.test.ts)
-  findings/chat/ChatView.tsx.md:321 | fixed | image overlay and attachment preview autoFocus, Escape closes, focus returns (useDismiss in ux.ts)
-  findings/sessions/SessionFiles.tsx.md:50 | fixed | Keep takes focus when asked; Delete... regains it after Keep
-  findings/sessions/AgentsPanel.tsx.md:322 | fixed | visible hint line under the row states why Resume / Resume as chat is disabled
-  findings/sessions/SessionFiles.tsx.md:12 | fixed | question names the session (deleteQuestion, files.test.ts); live-session backend check skipped(time)
-  findings/chat/StepRows.tsx.md:53 | fixed | tool-output / plan / notice links route through ChatText openLink via LinkContext (stepLinks.test.ts); failure said under the box
-  findings/chat/ChatView.tsx.md:454 | fixed | chat_support polled only while the page is visible (pollMs); the Agents screen unmounts AgentsChat when hidden, so page visibility was the remaining signal
-  findings/recovery/CrashReportDialog.tsx.md:95 | fixed | Copy Details disabled while details are empty (crashPanel.test.ts)
-  findings/chat/ChatView.tsx.md:377 | fixed | "Top" renamed "Scroll to start" with a clearer tooltip
-  findings/chat/ChatView.tsx.md:287 | fixed | "Expand thoughts" / "Collapse thoughts"
-  findings/chat/ChatView.tsx.md:530 | fixed | HandOff details close on outside pointerdown and on Escape (focus to summary)
-  findings/chat/ChatText.tsx.md:80 | fixed | BrowserChoice: arrows/Home/End via menuStep, Escape via watchEscape, outside click, restoreFocus
-  findings/chat/zoom.ts.md:34 | fixed | zoomLabel shown for 1.2 s after Ctrl +/-/0 (.chat-zoom in chat.css)
-  findings/chat/ChatText.tsx.md:50 | fixed | Space activates links; :focus-visible ring in chat.css
-  findings/sessions/AgentsPanel.tsx.md:201 | fixed | busy only set for forced rescans (Refresh button)
-  findings/chat/ChatView.tsx.md:194 | fixed | notes under the box clear themselves after 10 s (Stopping... still cleared by the turn ending)
-  findings/chat/chat.css.md:105 | fixed | .chat-box:focus ring 2px var(--fg-muted) (defined theme token)
-  CrashReportDialog/ScreenBoundary inline styles | skipped(time) | M
-  chat.css scrim/.btn refactor | skipped(time) | M
-  AgentsPanel virtualisation | skipped(time) | M
+WHY
+The 2026-11-02 cloud UX audit (proof/ux-audit/findings/chat-sessions.md, run on main e93a23b) found notes that never cleared, a silent
+zoom, copies that reported success after failing, polling for hidden windows, double-started sessions, and small menus and dialogs a
+keyboard could not leave or that did not give focus back. Rows closed (all "fixed" unless noted):
+  findings/recovery/CrashReportDialog.tsx.md:75 and :95; findings/recovery/RecoveryMount.tsx.md:77;
+  findings/sessions/AgentsPanel.tsx.md:165, :322 and :201; findings/sessions/SessionFiles.tsx.md:50 and :12 (the backend check for a
+  live session is skipped(time));
+  findings/chat/StepRows.tsx.md:185 and :53; findings/chat/ChatView.tsx.md:356, :256, :321, :454, :377, :287, :530 and :194;
+  findings/chat/ChatText.tsx.md:80 and :50; findings/chat/zoom.ts.md:34; findings/chat/chat.css.md:105.
+  Skipped(time), size M: CrashReportDialog/ScreenBoundary inline styles; chat.css scrim/.btn refactor; AgentsPanel virtualisation.
 
-Verify (2026-11-02, Windows, worktree wt/72-ux4):
-  pnpm vitest run src/chat src/sessions src/recovery  -> 49 files, 433 passed, 0 failed
-  pnpm tsc --noEmit -> no output
-New tests: src/chat/ux.test.ts, src/chat/stepLinks.test.ts, src/recovery/crashPanel.test.ts, src/sessions/inflight.test.ts; extended src/chat/earlier.test.ts, src/sessions/files.test.ts.
-Limit: vitest runs in node, so focus/Escape wiring is covered through the pure helpers it calls, not by DOM events.
+REVIEW
+Opus review B+ -> fix pass (ddea94b4) -> re-review B+ -> fix pass (cdc63ab0) -> re-review A
+
+TESTS (named; the seven files this PR added or changed, pnpm vitest run <files> --reporter=verbose)
+New files: src/chat/ux.test.ts, src/chat/stepLinks.test.ts, src/chat/ChatText.focus.test.ts, src/recovery/crashPanel.test.ts,
+src/sessions/inflight.test.ts. Extended: src/chat/earlier.test.ts, src/sessions/files.test.ts.
+ ✓ src/sessions/files.test.ts > VIEW 089: Show file calls session_reveal with the agent and id only 3ms
+ ✓ src/sessions/files.test.ts > VIEW 089: Open file calls session_open 0ms
+ ✓ src/sessions/files.test.ts > VIEW 089: Delete calls session_delete and says how many items went 0ms
+ ✓ src/sessions/files.test.ts > VIEW 089: a refusal from the back end reaches the row as the error 0ms
+ ✓ src/sessions/files.test.ts > VIEW 089: the row offers the three buttons and sends nothing until asked 6ms
+ ✓ src/sessions/files.test.ts > VIEW 089: once Delete is chosen the row asks first, with Delete and Keep 1ms
+ ✓ src/sessions/files.test.ts > UX: the delete question names the session, and falls back to the plain warning without a title 1ms
+ ✓ src/chat/earlier.test.ts > the cursor a read hands out > a first or reset read sets it; later reads keep it; a read of the top clears it 3ms
+ ✓ src/chat/earlier.test.ts > loading an older page > asks for the cursor, puts the page before the rows held and takes the next cursor 4ms
+ ✓ src/chat/earlier.test.ts > loading an older page > asks nothing while a page is out, or when the transcript is read from the top 19ms
+ ✓ src/chat/earlier.test.ts > loading an older page > a page that arrives after the chat was hidden, or after the view was replaced, is dropped 30ms
+ ✓ src/chat/earlier.test.ts > loading an older page > a failed call changes nothing and the control can be pressed again 16ms
+ ✓ src/chat/earlier.test.ts > loading an older page > a reader built without a way to page back never asks 15ms
+ ✓ src/recovery/crashPanel.test.ts > disables Copy Details while the details are loading 10ms
+ ✓ src/recovery/crashPanel.test.ts > enables Copy Details once the details are there 1ms
+ ✓ src/chat/ux.test.ts > copy > reports copied when the clipboard takes the text 2ms
+ ✓ src/chat/ux.test.ts > copy > reports failed, not a throw, when the clipboard refuses 0ms
+ ✓ src/chat/ux.test.ts > copy > labels each state 0ms
+ ✓ src/chat/ux.test.ts > polling and notes > does not poll while the page is hidden 0ms
+ ✓ src/chat/ux.test.ts > polling and notes > clears every note except the one the turn ending clears 0ms
+ ✓ src/chat/ux.test.ts > polling and notes > tells a pointer inside a menu from one outside 0ms
+ ✓ src/chat/ux.test.ts > giving focus back to the opener > focuses the opener (not a fallback) one microtask after a dismissal 0ms
+ ✓ src/chat/ux.test.ts > giving focus back to the opener > leaves focus alone after a pick that opened something else 0ms
+ ✓ src/chat/ux.test.ts > giving focus back to the opener > falls back when the opener has left the page 0ms
+ ✓ src/sessions/inflight.test.ts > lets one click through and holds the second until it settles 2ms
+ ✓ src/chat/ChatText.focus.test.ts > a link opened in the system browser puts focus back on the link; only an in-app pane keeps it 2ms
+ ✓ src/chat/ChatText.focus.test.ts > the zoom announcement stays in the accessibility tree while empty 1ms
+ ✓ src/chat/stepLinks.test.ts > a plain click asks which browser, like a link in a reply 2ms
+ ✓ src/chat/stepLinks.test.ts > opens in Kolux's viewer on the link modifier when the setting says so 0ms
+ ✓ src/chat/stepLinks.test.ts > says why in the box when the system browser could not be opened 11ms
+ ✓ src/chat/stepLinks.test.ts > ignores a link that is not a web address 0ms
+ Test Files  7 passed (7)
+      Tests  31 passed (31)
+Limit: vitest runs in node, so focus and Escape wiring is covered through the pure helpers it calls, not by DOM events; the Acceptance
+lines this PR adds are therefore left unticked until someone has seen them in the running app.
+
+TOTALS (VITEST_MAX_WORKERS=2, head cdc63ab0)
+ pnpm vitest run src/chat      Test Files  31 passed (31)   Tests  346 passed (346)
+ pnpm vitest run src/sessions  Test Files  14 passed (14)   Tests   73 passed (73)
+ pnpm vitest run src/recovery  Test Files   5 passed (5)    Tests   19 passed (19)
+ pnpm vitest run src/chat src/sessions src/recovery   Test Files  50 passed (50)   Tests  438 passed (438)   vitest exit 0
+ pnpm tsc --noEmit   tsc exit 0
+ No Rust touched; no cargo run.
