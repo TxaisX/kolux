@@ -1,0 +1,57 @@
+T-666 - A skills delete never reaches into another computer (DT-C102; audit backlog row 60, #90-f4)
+Worker 2f, coordinator 57, branch s-2f/skills-remote off main e93a23ba, 2026-11-02
+
+WHAT CHANGED
+- skills.rs: remote_path (the scan's and Reveal's existing check: the path's text through
+  links::host_path, then each link hop's target text; a share is never opened) is now pub(crate).
+- skills.rs: in_wsl is split; its text half is wsl_text, so a WSL path can be answered with no
+  disk call. in_wsl itself is unchanged (wsl_text, else where the path really leads).
+- skills.rs places: home and workspace skills folders on a WSL share by text or on another
+  computer are dropped before in_wsl and key resolve them; plugin folders on another computer
+  are dropped from the plugin list (inside() resolved each one for every pick).
+- skill_delete.rs plan: a chosen skill is answered "wsl" by its text, then "outside" when
+  remote_path says it is on another computer (by any spelling, or through a local link whose
+  target is a share), before in_wsl, inside, symlink_metadata, changed_at or real open it.
+  run goes through plan, so a delete is covered too.
+
+WHY
+plan and places resolved a chosen path and each folder (canonicalize, to compare them and to
+spot WSL) before any remote check. Resolving a path on a share makes Windows sign in to that
+computer with the user's credentials. The scan and Reveal already refused shares; the delete
+now matches them.
+
+REGRESSION TEST
+skill_delete::tests::t666_a_workspace_or_a_skill_on_another_computer_counts_as_outside_before_anything_resolves_it
+- a workspace on \\kolux-unc-test.invalid\share\proj: no deletable or plugin folder is remote,
+  the home folders stay;
+- picks spelled \\host\share\..., //host/share/... and \\?\UNC\host\share\... are "outside"
+  (before the fix: "gone", after a lookup on the share);
+- a \\wsl.localhost\ pick is still "wsl";
+- a plugin whose install path is on a share is not in the plugin list;
+- a home folder on a share (a redirected profile) gives no deletable folder;
+- Windows: a skill reached through a local symbolic link to a share is "outside" (this PC has
+  link rights, so the case ran; without them it says so and skips).
+Mutation checks (each restored): dropping the plan check, the places filter, or the plugin
+filter makes this test fail.
+
+GATES (local, Windows 11, CARGO_TARGET_DIR=target-2f)
+- cargo clippy -j 2 --all-targets -- -D warnings: clean (before and after the review nits)
+- cargo test --lib (full, before the review nits): 2842 passed, 1 failed (the known
+  t606_the_claude_writer environment failure), 6 ignored
+- cargo test --lib -- skill t658 (after the review nits): 126 passed, 0 failed, 2 ignored
+- node scripts/plan-check.mjs: OK
+- Windows CI: run on the PR head (see the PR checks)
+
+REVIEW
+- opus-high-review (fresh): A-, nothing blocking; no remaining path in plan, run or places
+  resolves a share before the new checks. Its nits were fixed: the evidence file is written; a
+  WSL path is answered by its text before remote_path walks it (wsl_text); the test now covers
+  the plugin filter, a home folder on a share and a link to a share.
+
+KNOWN AND LEFT (follow-ups)
+- A drive letter mapped to a share counts as local everywhere (scan, Reveal, delete). It rides
+  a sign-in the user already made, so no new credential is sent, but it is a network trip.
+- The check-then-act gap noted at skills.rs remote_link (a link swapped between the check and
+  the delete) still stands.
+- remote_path's link walk on a WSL workspace path in the scan (scan_spot) touches that share;
+  unchanged here (not a delete path).

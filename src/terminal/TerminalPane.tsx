@@ -7,7 +7,7 @@ import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, typ
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
-import PaneMenu, { paneMenuItems } from "./PaneMenu";
+import PaneMenu, { paneMenuItems, withChord } from "./PaneMenu";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
@@ -289,6 +289,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const [dropping, setDropping] = useState(false);
   // TERM-077: the find bar; the matches, their marks and the current one live in refs (the terminal draws them).
   const [finding, setFinding] = useState(false);
+  // Find while the bar is already open: the field takes focus again instead of nothing happening.
+  const [findTick, setFindTick] = useState(0);
   const [hits, setHits] = useState<{ count: number; current: number; slow?: boolean }>({ count: 0, current: -1 });
   const cancelFind = useRef<() => void>(() => {});
   useEffect(() => () => cancelFind.current(), []);
@@ -1382,7 +1384,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     termRef.current?.clearSelection();
     termRef.current?.focus();
   };
-  findRef.current = () => setFinding(true);
+  findRef.current = () => (setFinding(true), setFindTick((n) => n + 1));
   // TERM-076: Clear Screen drops what is on screen and the scrollback; the marks and link ranges go with
   // the rows (links are read per row on demand). The saved transcript (TERM-106) is left as it is.
   clearRef.current = () => {
@@ -1475,6 +1477,11 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const expanded = card ? card.expanded : !!expand?.on;
   const canExpand = card ? true : !!expand?.can;
   const expandKey = labelOf(keymap, "terminal.expandPane").join("+") || "no shortcut";
+  // UX audit terminal F4/F5: the header tooltips show the chords the keymap really has.
+  const closeTip = withChord("Close pane", labelOf(keymap, "terminal.closePane"));
+  const splitRightKey = labelOf(keymap, "terminal.splitRight").join("+");
+  const splitDownKey = labelOf(keymap, "terminal.splitDown").join("+");
+  const splitTip = `Split right: a shell in the same folder${splitRightKey ? ` (${splitRightKey}${splitDownKey ? `; ${splitDownKey} splits down` : ""})` : ""}`;
   // PaneMenu moves itself back inside the window once it knows its own size.
   const openMenu = (x: number, y: number) => setMenuAt({ top: y, left: x, selected: !!termRef.current?.hasSelection() });
   menuRef.current = openMenu;
@@ -1635,7 +1642,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             <Expand size={12} />
           </button>
           {onSplit && (
-            <button className="ib" onClick={() => onSplit("right")} title="Split right: a shell in the same folder (Ctrl+Shift+D; Alt+Shift+D splits down)">
+            <button className="ib" onClick={() => onSplit("right")} title={splitTip}>
               <SplitRight size={12} />
             </button>
           )}
@@ -1651,7 +1658,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           >
             <Plus size={12} />
           </button>
-          <button className="ib" onClick={close} title="Close pane (Ctrl+W): ends the program">
+          <button className="ib" onClick={close} title={`${closeTip}: ends the program, after asking if one is running`}>
             <Close size={12} />
           </button>
         </span>
@@ -1785,7 +1792,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         </div>
       )}
       <div ref={host} className="pane-body" />
-      {finding && <FindBar count={hits.count} current={hits.current} slow={hits.slow} onSearch={runFind} onStep={stepFind} onClose={closeFind} />}
+      {finding && <FindBar focusTick={findTick} count={hits.count} current={hits.current} slow={hits.slow} onSearch={runFind} onStep={stepFind} onClose={closeFind} />}
       {notice && (
         <div className="pane-ask" onMouseDown={(e) => e.stopPropagation()}>
           <div

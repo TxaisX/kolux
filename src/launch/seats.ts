@@ -26,11 +26,34 @@ export const NOT_GIT = "Not a Git project: there is nothing to copy, so every AI
 /** The quick-pick counts (SESS-013: the rebuild settles on the New session page's set). */
 export const QUICK_COUNTS = [1, 2, 3, 4, 6, 8];
 
+/** UX audit F7: the most seats one launch can ask for (each AI seat may make a worktree), and the count above which the page asks first. */
+export const MAX_SESSIONS = 24;
+export const ASK_ABOVE = 8;
+
+/** The refusal for a launch asking for more than MAX_SESSIONS seats, or null when the count is fine. */
+export const tooManySeats = (n: number): string | null => (n > MAX_SESSIONS ? `A launch starts at most ${MAX_SESSIONS} sessions; this one has ${n}.` : null);
+
+/** What a typed count means: capped at MAX_SESSIONS, and `ask` is set when it grows the lineup past ASK_ABOVE (the page confirms first). */
+export function countPlan(typed: number, current: number): { n: number; ask: boolean } {
+  const n = Math.min(MAX_SESSIONS, Math.max(1, Math.floor(typed)));
+  return { n, ask: n > ASK_ABOVE && n > current };
+}
+
+/** A seat's shown pick: the not-yet-startable agent chosen in its dropdown, but only while the seat itself is still empty. */
+export const shownPick = (seats: Seat[], shown: Record<number, string>, i: number): string | null => (seats[i]?.agent === null ? shown[i] : undefined) ?? seats[i]?.agent ?? null;
+
+/** Undo of a delete puts back only that team, at its old place, leaving every newer edit of the list alone; when its name has been taken since, it comes back under a free name. */
+export function restoreTeam(list: SavedShape[], team: SavedShape, index: number): SavedShape[] {
+  const back = { ...team, name: freeName(list, team.name) };
+  const at = Math.min(Math.max(0, index), list.length);
+  return [...list.slice(0, at), back, ...list.slice(at)];
+}
+
 export const emptySeat = (): Seat => ({ agent: null, model: null });
 
-/** Grows with empty seats or shrinks from the bottom; never below one seat. */
+/** Grows with empty seats or shrinks from the bottom; never below one seat, never above MAX_SESSIONS. */
 export function resizeSeats(seats: Seat[], count: number): Seat[] {
-  const n = Math.max(1, Math.floor(Number.isFinite(count) ? count : 1));
+  const n = Math.min(MAX_SESSIONS, Math.max(1, Math.floor(Number.isFinite(count) ? count : 1)));
   if (n <= seats.length) return seats.slice(0, n);
   return [...seats, ...Array.from({ length: n - seats.length }, emptySeat)];
 }
@@ -302,7 +325,7 @@ export function removeTarget<T extends { key: number; seats?: Seat[] }>(shown: T
 /** SESS-018: the New session page starts from this project's previous launch for the count and
  *  the files choice, but every seat starts blank (SESS-015). Separate copies need Git. */
 export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies: Copies } {
-  const n = Math.max(1, last?.seats.length ?? 1);
+  const n = Math.min(MAX_SESSIONS, Math.max(1, last?.seats.length ?? 1));
   const copies = last ? (last.copies === "separate" && !inGit ? "shared" : last.copies) : defaultCopies(n, inGit);
   return { seats: Array.from({ length: n }, emptySeat), copies };
 }

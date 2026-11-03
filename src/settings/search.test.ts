@@ -3,18 +3,18 @@ import { hideRule, INDEX, MAX_SEARCH, searchRepos, searchSettings } from "./sear
 
 // Where each page draws its sections (SettingsPage wraps the pages that have no sections of their own).
 const SOURCES: Record<string, string[]> = {
-  general: ["GeneralPage.tsx"],
-  appearance: ["AppearancePage.tsx"],
+  general: ["GeneralPage.tsx", "CliCard.tsx"],
+  appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
   accounts: ["SettingsPage.tsx", "ConnectGrid.tsx", "AgentCredentials.tsx"],
   agents: ["AgentsPage.tsx"],
-  terminal: ["TerminalPage.tsx", "InputCards.tsx"],
+  terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx"],
   git: ["GitPage.tsx", "AiRecipesSection.tsx"],
-  safety: ["SafetyPage.tsx"],
+  safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
   notifications: ["NotificationsPage.tsx", "SettingsPage.tsx"],
   shortcuts: ["ShortcutsPage.tsx"],
   usage: ["SettingsPage.tsx"],
 };
-const FILES = import.meta.glob(["./*Page.tsx", "./AiRecipesSection.tsx", "./InputCards.tsx", "./ConnectGrid.tsx", "./AgentCredentials.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const FILES = import.meta.glob(["./*Page.tsx", "./AiRecipesSection.tsx", "./InputCards.tsx", "./ConnectGrid.tsx", "./AgentCredentials.tsx", "./CliCard.tsx", "./CustomThemeEditor.tsx", "./TerminalImport.tsx", "./SafetyRules.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 const read = (f: string) => FILES[`./${f}`] ?? "";
 
 describe("search all settings (SET-007)", () => {
@@ -26,13 +26,37 @@ describe("search all settings (SET-007)", () => {
       expect(src, `${e.page}/${e.section}`).toContain(drawn);
     }
   });
+  it("every Appearance entry names the Fold its section is drawn in, or a search hit shows nothing (UX-audit)", () => {
+    const page = read("AppearancePage.tsx");
+    const folds = [...page.matchAll(/<Fold id="([\w-]+)"[\s\S]*?<\/Fold>/g)].map((m) => ({ id: m[1], from: m.index!, to: m.index! + m[0].length }));
+    const foldAt = (pos: number) => folds.find((f) => pos >= f.from && pos < f.to)?.id;
+    // AppearanceView takes these two as props and puts them inside the Interface and Window folds
+    const slot: Record<string, string> = { LanguageView: "interface", WindowSwitches: "window" };
+    const foldOf = (section: string): string | undefined => {
+      for (const file of ["AppearancePage.tsx", "CustomThemeEditor.tsx"]) {
+        const src = read(file);
+        const at = src.indexOf(`data-section="${section}"`);
+        if (at < 0) continue;
+        const direct = file === "AppearancePage.tsx" ? foldAt(at) : undefined;
+        if (direct) return direct;
+        // drawn by a component of its own: the fold is where that component is used
+        const fn = [...src.slice(0, at).matchAll(/^(?:export )?(?:default )?function (\w+)/gm)].pop()?.[1];
+        if (!fn) return undefined;
+        return slot[fn] ?? foldAt(page.indexOf(`<${fn} `));
+      }
+      return undefined;
+    };
+    const appearance = INDEX.filter((e) => e.page === "appearance");
+    expect(appearance.length).toBeGreaterThan(10);
+    for (const e of appearance) expect(e.fold, `appearance/${e.section}`).toBe(foldOf(e.section));
+  });
   it("finds font in Appearance, inside the fold that holds it, and the terminal font (SET 022)", () => {
     const h = searchSettings("font")!;
     expect(h.pages).toEqual([
-      { page: "appearance", sections: ["fonts"] },
+      { page: "appearance", sections: ["fonts", "terminal-font"] },
       { page: "terminal", sections: ["text"] },
     ]);
-    expect([...h.folds]).toEqual(["interface"]);
+    expect([...h.folds]).toEqual(["interface", "terminal"]);
   });
   it("finds Ask Before Closing Running Terminals by confirm, close or agent (SET 043)", () => {
     for (const q of ["confirm", "close", "agent"]) expect(searchSettings(q)!.pages.find((p) => p.page === "terminal")?.sections, q).toContain("closing");
@@ -54,7 +78,7 @@ describe("search all settings (SET-007)", () => {
   it("finds repositories by name or folder and hides the sections without a match", () => {
     const ps = [{ name: "kolux", path: "G:/Dev/kolux" }, { name: "site", path: "G:/Web/site" }];
     expect(searchRepos("web", ps).map((p) => p.name)).toEqual(["site"]);
-    expect(hideRule(searchSettings("sound")!)).toBe('.settings-found[data-page="notifications"] [data-section]:not([data-section="sound"]) { display: none !important; }');
+    expect(hideRule(searchSettings("sound")!)).toBe('.settings-found[data-page="notifications"] [data-section]:not([data-section="beneath-master"]):not([data-section="sound"]) { display: none !important; }');
   });
   it("ACCT-030: a provider word leaves only that provider's card and accounts on the accounts page", () => {
     const sections = (q: string) => searchSettings(q)!.pages.find((p) => p.page === "accounts")?.sections;
@@ -67,13 +91,43 @@ describe("search all settings (SET-007)", () => {
   });
   it("ACCT-030: a word of the wrapper keeps everything inside it; clearing the search or naming the page shows it all", () => {
     expect(searchSettings("connections")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["connections", "connect-claude", "connect-codex", "connect-grok"]);
-    expect(searchSettings("advanced")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["accounts-advanced", "accounts-claude", "accounts-codex", "agent-folders", "minimax", "gemini"]);
+    expect(searchSettings("advanced")!.pages.find((p) => p.page === "accounts")?.sections).toEqual(["accounts-advanced", "accounts-claude", "accounts-codex", "agent-folders", "provider-usage", "minimax", "gemini"]);
     expect(searchSettings("")).toBeNull();
     expect(searchSettings("accounts keys")!.pages[0]).toEqual({ page: "accounts", sections: "all" });
     expect(hideRule(searchSettings("accounts keys")!)).toBe("");
   });
   it("finds the Protected actions section on the Safety page by its everyday words (SAFE-015)", () => {
-    for (const q of ["protected", "force push", "stripe", "terraform", "rule"]) expect(searchSettings(q)!.pages.find((p) => p.page === "safety")?.sections, q).toEqual(["protected"]);
+    for (const q of ["protected", "force push", "stripe", "terraform", "rule"]) expect(searchSettings(q)!.pages.find((p) => p.page === "safety")?.sections, q).toContain("protected");
     expect(searchSettings("safety")!.pages[0]).toEqual({ page: "safety", sections: "all" });
+  });
+  it("every section a page draws is indexed, so a search can find it and never hides it (UX-audit)", () => {
+    // The Claude page draws its cards from a list (data-section={id}) and the repo pages are not searched pages.
+    const drawn: Record<string, string[]> = {
+      general: ["GeneralPage.tsx", "CliCard.tsx"],
+      appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
+      accounts: ["SettingsPage.tsx", "AgentCredentials.tsx"],
+      agents: ["AgentsPage.tsx"],
+      terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx"],
+      git: ["GitPage.tsx", "AiRecipesSection.tsx"],
+      safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
+      notifications: ["NotificationsPage.tsx"],
+      shortcuts: ["ShortcutsPage.tsx"],
+    };
+    const src = (f: string) => FILES[`./${f}`] ?? "";
+    for (const [page, files] of Object.entries(drawn)) {
+      const text = files.map(src).join("\n");
+      expect(text.length, page).toBeGreaterThan(0);
+      const sections = [...text.matchAll(/data-section="([a-z-]+)"/g)].map((m) => m[1]);
+      expect(sections.length, page).toBeGreaterThan(0);
+      const indexed = new Set(INDEX.filter((e) => e.page === page).map((e) => e.section));
+      // SettingsPage also draws the usage and notifications sections, checked below.
+      for (const s of sections.filter((x) => page !== "accounts" || !["activity", "tokens", "alerts"].includes(x))) expect(indexed.has(s), `${page}/${s} is drawn but not in the search index`).toBe(true);
+    }
+    // SettingsPage also draws the Activity/Tokens (usage) and Finished-and-stopped (notifications) sections.
+    const settingsPage = src("SettingsPage.tsx");
+    for (const [page, s] of [["usage", "activity"], ["usage", "tokens"], ["notifications", "alerts"]] as const) {
+      expect(settingsPage).toContain(`data-section="${s}"`);
+      expect(INDEX.some((e) => e.page === page && e.section === s), `${page}/${s}`).toBe(true);
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
+import { AccountsReadError } from "./AccountRow";
 import { ClaudeAccountsView, type AccountsView } from "./ClaudeAccounts";
 import { ClaudeCardView } from "./SettingsPage";
 import type { KeyStatus } from "./claudeKey";
@@ -93,4 +94,12 @@ test("a lapsed account is flagged only while Kolux, not Claude Code, looks after
   const stale = { ...sam, stale: true };
   expect(html({ ...empty, accounts: [stale], active: "a1" })).not.toContain("Needs re-auth");
   expect(html({ ...empty, accounts: [stale], active: "a1", upkeepLeftToClaude: false })).toContain("Needs re-auth");
+});
+
+test("UX-audit: a first read that fails shows the reason and a Retry, not an empty gap", () => {
+  const h = renderToString(createElement(AccountsReadError, { name: "Claude", error: "spawn failed", onRetry: () => {} }));
+  expect(h).toContain("The list could not be read");
+  expect(h).toContain("spawn failed");
+  expect(h).toContain(">Retry<");
+  expect(h).toContain('aria-label="Claude accounts"');
 });

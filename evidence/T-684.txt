@@ -1,0 +1,90 @@
+T-684 - Editor review notes, previews, PDF and notebook: no silent failures, asks before discarding, keyboard paths (DT-C120; EDIT-020/022/024/018/054/055/048/013, SAFE-003/004/007; UX audit lane D)
+Lane D (72), branch s-72/ux-6 (PR #109, stacked on #98: merge after #98), base e93a23ba (origin/main), code commits 531fc6c3 and 6aa6e96b, 2026-11-02.
+
+WHAT CHANGED
+- ReviewNotes.tsx / reviewActions.ts: a failed Approve or Deny toasts "Kolux could not answer the agent: <reason>. Answer it in its
+  terminal."; Approve and Request changes on a plan the agent has left toast that nothing was sent; the clear-all X asks first
+  ("Clear all N notes? This cannot be undone.", Keep them focused, Escape keeps); one copy-ok / copy-failed pair is used by both copy
+  paths and a failed copy also opens the Markdown for selecting; a send or start that throws becomes a tray note and keeps the notes.
+- menuKeys.ts (new): the Send menu and the note-actions menu get Escape, arrows, Home/End, first row focused on open and focus given
+  back to the opener after any close (unless focus already sits somewhere real, such as a dialog the action opened).
+- NotebookView.tsx: Remove on a cell with text or saved output asks "Remove cell N?" and removes nothing if the notebook changed under
+  the question; an empty cell goes at once.
+- PdfView.tsx / pdfNav.ts (new): the page number in the facts bar is a box (Enter jumps, Escape cancels); page tops are one running sum.
+- PreviewPane.tsx: Export cannot start twice (guard reset in finally); labels on Close and the menu.
+- NoteRail.tsx: rail cards are focusable groups with a label; Enter/Space bring the note's text into view.
+- NamePrompt.tsx: Enter on the Cancel button and any key during IME composition no longer save.
+- SearchPick.tsx: Down from the box enters the suggestions, arrows/Home/End walk them, Escape and a click return focus to the box.
+- TemplatePicker.tsx: after 400 ms with no list a "Looking for note templates..." status line shows.
+- TableControls.tsx: greyed menu rows carry a tooltip saying why.
+- trashUnused.ts: takes an onFail callback, else logs; its caller (src/terminal/paneActions.ts) is not part of this PR and is not yet
+  passing onFail.
+- editor-extras.css: undefined colour tokens replaced with defined ones; input borders and focus outlines use visible tokens.
+- spec/12-editor-files.md and spec/10-plan-review-protected.md: Rules and Acceptance of EDIT-020, EDIT-022, EDIT-024, EDIT-018,
+  EDIT-054, EDIT-055, EDIT-048, EDIT-013, SAFE-003, SAFE-004 and SAFE-007 say the new behaviour; the new acceptance lines point here.
+- Rules changed: EDIT-024 (Remove asks first when the cell has content) and EDIT-020 (clear-all asks first); both in DT-C120,
+  Txais may overrule. The rest adds notes and keyboard paths to spec rules without contradicting them.
+
+SKIPPED
+- Notebook Stop button (findings/editor-b.md row 11): no notebook stop/cancel/kill command exists in src-tauri/src or notebookRun.ts,
+  so a button would do nothing. Needs a back-end command first.
+- findings/visual.md row 4 outlines in styles.css and chat.css are lane A's (request written); browser.css tokens are not this PR's.
+- TableControls focus management (row 19): not added, to keep the Lexical selection.
+
+WHY
+The night-of-2026-11-02 static UX audit (findings/editor-b.md rows 2-19, visual.md rows 4 and 7) found answers that failed without a
+word, a stale plan press that did nothing, a one-click clear of every note and of a notebook cell, menus with no keyboard path and
+undefined colour tokens. Rows are listed in proof/ux-audit/D-ux6.md.
+
+REVIEW
+Opus review A- -> fix pass (6aa6e96b); A- holds, no re-review required by the coordinator
+
+TESTS (named, the seven test files this PR added or changed; pnpm vitest run <files> --reporter=verbose)
+ ✓ src/editor/pdfNav.test.ts > pageTops > puts the gap above every page and gives the old reduce's numbers 2ms
+ ✓ src/editor/pdfNav.test.ts > pageTops > is empty for no pages and linear for many 2ms
+ ✓ src/editor/pdfNav.test.ts > pageFromText > reads a whole number and keeps it inside the document 0ms
+ ✓ src/editor/pdfNav.test.ts > pageFromText > refuses text that is not a page number 0ms
+ ✓ src/editor/editorBits.test.ts > nameKey (the name box) > Enter saves and Escape cancels 1ms
+ ✓ src/editor/editorBits.test.ts > nameKey (the name box) > Enter on the Cancel button does not save: the button's own press runs instead 0ms
+ ✓ src/editor/editorBits.test.ts > nameKey (the name box) > Enter and Escape while an input method is composing belong to it 0ms
+ ✓ src/editor/editorBits.test.ts > nameKey (the name box) > other keys do nothing 0ms
+ ✓ src/editor/editorBits.test.ts > ReviewNotes wording > the copy messages are the one pair the tray uses 0ms
+ ✓ src/editor/editorBits.test.ts > ReviewNotes wording > a send that throws says the notes are kept, with the reason 0ms
+ ✓ src/editor/editorBits.test.ts > TableControls whyDisabled > explains a greyed row and says nothing for a live one 0ms
+ ✓ src/editor/editorBits.test.ts > TemplatePicker lookingLine > shows only after a moment and only while the list is not up 0ms
+ ✓ src/editor/editorBits.test.ts > trashUnusedNotes > tells onFail when the trash fails, and logs when nobody listens 13ms
+ ✓ src/editor/reviewActions.test.ts > approve and deny errors are shown > a failed answer toasts the reason and points at the terminal 3ms
+ ✓ src/editor/reviewActions.test.ts > approve and deny errors are shown > a string error is shown as it is, and a good answer says nothing 1ms
+ ✓ src/editor/reviewActions.test.ts > a stale plan is said, not ignored > Approve toasts and sends nothing when the pane no longer waits on the plan 1ms
+ ✓ src/editor/reviewActions.test.ts > a stale plan is said, not ignored > Request changes toasts the same 0ms
+ ✓ src/editor/reviewActions.test.ts > a stale plan is said, not ignored > a live plan still goes through without a toast 1ms
+ ✓ src/editor/menuKeys.test.ts > wireMenuKeys > Escape closes the menu, then hands focus back after the close (deferred) 2ms
+ ✓ src/editor/menuKeys.test.ts > wireMenuKeys > the arrow keys step through the rows, wrapping, and Home and End jump 0ms
+ ✓ src/editor/menuKeys.test.ts > wireMenuKeys > leaves the arrows alone when focus is outside the menu, and other keys always 0ms
+ ✓ src/editor/menuKeys.test.ts > wireMenuKeys > takes its listeners off when stopped 0ms
+ ✓ src/editor/menuKeys.test.ts > wireMenuKeys > listens in the capture phase, so a focused pane behind the menu never sees the Escape 0ms
+ ✓ src/editor/menuKeys.test.ts > restoreIfLost > gives focus back to the opener once focus has dropped to the body or nowhere (deferred) 0ms
+ ✓ src/editor/menuKeys.test.ts > restoreIfLost > leaves focus alone when an action already put it somewhere, such as a dialog it opened 0ms
+ ✓ src/editor/SearchPick.test.ts > pickStep: arrows between the box and its suggestions > goes from the box to the first suggestion and down the list, stopping at the last 2ms
+ ✓ src/editor/SearchPick.test.ts > pickStep: arrows between the box and its suggestions > goes back up to the box from the first suggestion 0ms
+ ✓ src/editor/SearchPick.test.ts > pickStep: arrows between the box and its suggestions > does nothing with no suggestions, and leaves other keys (and Home and End in the box) alone 0ms
+ ✓ src/editor/NotebookView.test.ts > sameCell > matches the cell that was asked about 1ms
+ ✓ src/editor/NotebookView.test.ts > sameCell > does not match when the text, the kind or the cell itself changed 0ms
+ ✓ src/editor/NotebookView.test.ts > needsAsk > asks for a cell with text or saved outputs, not for an empty one 0ms
+ ✓ src/editor/NoteRail.test.ts > cardKey: the keyboard path to a rail card's text > Enter and Space on the card bring its text into view 1ms
+ ✓ src/editor/NoteRail.test.ts > cardKey: the keyboard path to a rail card's text > leaves every other key, and keys pressed inside the card's own buttons, alone 0ms
+ Test Files  7 passed (7)
+      Tests  33 passed (33)
+UI-only parts (menu focus restore in the browser, the confirm layouts, the PDF page box, Export double-press) have no unit test;
+their logic helpers are the tested ones above.
+
+TOTALS
+pnpm vitest run src/editor (VITEST_MAX_WORKERS=2)
+ Test Files  1 failed | 100 passed (101)
+      Tests  3 failed | 1112 passed (1115)
+ The 3 failures are all in src/editor/pdfjsCopy.test.ts (public/pdfjs/LICENSE_OPENJPEG, LICENSE_PDFJS_OPENJPEG and
+ openjpeg_nowasm_fallback.js "matches the installed pdfjs-dist"). Known local-only failure: the worktree checks files out with
+ CRLF line endings, so the byte comparison differs; the file is not touched by this PR.
+pnpm tsc --noEmit
+tsc exit 0
+No Rust touched; no cargo run.

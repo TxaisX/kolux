@@ -2,7 +2,7 @@
 // decided in linkMenu.ts (pure); this only draws them, keeps the menu on screen, and dismisses on Escape or a click
 // outside. Copy keeps the menu open and says whether the copy landed; every other row closes it.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { fitIn, outsideDismisses } from "./PaneMenu";
+import { fitIn, menuStep, outsideDismisses } from "./PaneMenu";
 import type { LinkItem, LinkItemId } from "./linkMenu";
 
 type Props = {
@@ -14,15 +14,7 @@ type Props = {
   onDismiss: () => void;
 };
 
-/** The row to focus after `key` when `at` of `count` rows has focus (-1: none), or null when the key is not a menu key. */
-export function menuStep(count: number, at: number, key: string): number | null {
-  if (count === 0) return null;
-  if (key === "Home") return 0;
-  if (key === "End") return count - 1;
-  if (key === "ArrowDown") return at < 0 ? 0 : (at + 1) % count;
-  if (key === "ArrowUp") return at < 0 ? count - 1 : (at - 1 + count) % count;
-  return null;
-}
+export { menuStep };
 
 export default function LinkActionMenu({ at, destination, items, onPick, onDismiss }: Props) {
   const box = useRef<HTMLDivElement>(null);

@@ -429,7 +429,8 @@ User sees: a selection mode with Select all eligible, Clear and Exit selection; 
 Rules:
   - Bundled and plugin skills cannot be chosen, and select-all counts only rows that can be.
   - Two skills sharing a name can still be selected one by one; choices that disappear or become
-    ineligible after a rescan are dropped.
+    ineligible after a rescan are dropped; Delete skills is off, with the reason, while the scan
+    failed, and a selection in progress ends when a rescan fails.
   - The confirmation counts the folders and links to be removed across all roots, names the
     place the content remains if only a link is removed, lists blocked items with their reasons, warns that this
     cannot be undone, and styles its confirm button as destructive.
@@ -451,6 +452,7 @@ Acceptance:
         alone.
   - [ ] Delete a skill that is a link to another folder → the link is gone and the target folder
         remains.
+  - [ ] The scan failed → Delete skills is off and says why. (unit tests: evidence/T-672.txt)
 Compat: —
 Source: D-15-022
 
@@ -508,12 +510,21 @@ Rules:
   - Links, hard links and special files inside a skill never count as matching an official copy.
   - If the updater cannot start, the user sees why it could not start.
   - When every copy is current, the dialog shows an up-to-date state.
+  - The dialog takes the keyboard when it opens (focus on Close), Escape closes only it, Tab stays
+    inside it, and focus goes back to the button that opened it (else the page's More actions
+    button or heading); a refused Stop shows its reason in the dialog.
+  - A progress read that fails is tried again; the third failure in a row ends the run as failed
+    ("Skill update failed" in the status bar, the reason in the dialog) and stops asking.
 Acceptance:
   - [ ] Press Update and close the dialog → the update completes and the status bar reports it.
   - [ ] Press Stop during a run → the dialog shows stopping, then stopped, and no stray processes
         remain.
   - [ ] A locally changed copy → listed as skipped with a reason and a reinstall command; its files
         are untouched.
+  - [ ] The update's progress cannot be read → after three tries the status bar says "Skill update
+        failed" and the dialog gives the reason. (unit tests: evidence/T-672.txt)
+  - [ ] Open the dialog, press Escape → only the dialog closes; Tab never leaves it; closing puts
+        focus back on the button that opened it. (unit tests: evidence/T-672.txt)
 Compat: runs the community skills installer's update command through Node's package runner with no
   prompts, passing the skill names in sorted order, a yes flag and global scope.
 Source: D-15-026
@@ -524,6 +535,8 @@ User does: where a feature needs a skill (the CLI settings, the orchestration pa
   dialog, browser use), clicks Install or Update.
 User sees: a setup panel saying whether the skill is installed; Install opens a small terminal with
   the install command already typed, waiting for Enter. Copy command and Re-check are offered too.
+  The Skills page's Install panel is the exception: it shows the install command with Copy command
+  only, and the user runs it in a terminal of their own (no Type in terminal button, DT-C108).
 Rules:
   - States: installed, not installed, checking, setup failed, plus a preparing state while the
     terminal is being set up.
@@ -546,6 +559,8 @@ Acceptance:
   - [ ] Click Install for the orchestration skill → a terminal opens with the install command typed
         and not yet run.
   - [ ] Press Enter, then Re-check → the status reads installed.
+  - [ ] Open Install / reinstall Kolux skills from the Skills page's More actions → the panel shows the
+        install command and Copy command copies it; no terminal is opened or typed into. (unit tests: evidence/T-672.txt)
   - [ ] The `kolux` CLI not on PATH → the CLI installer runs before the skill command.
 Compat: install calls the community skills installer's add command against the Kolux repository,
   with the skill flag once per skill, the agent flag listing the detected AIs plus the shared
@@ -612,7 +627,12 @@ User sees: a full page of skills with name, description and date, a search box, 
   menu, source chips with counts, Refresh, Clear filters, and a Skill folders popover showing which
   folders were scanned.
 Rules:
-  - The header holds Close (Escape), the title, and a more-actions menu containing Delete skills.
+  - The header holds Close (Escape), the title, and a more-actions menu named More actions containing
+    Install / reinstall Kolux skills first (off, with the reason, when the scan found no Kolux
+    skills; it opens the update dialog on its Install panel) and Delete skills.
+  - The More actions, Filter by agent and row action menus put focus on their first enabled item
+    when they open, step with the arrow keys (wrapping; Home and End jump) and give focus back to
+    their button when they close.
   - The agent filter offers all agents, each AI, and the shared skills folder.
   - Source chips are home, workspace, bundled and plugin, each with a count.
   - Search refuses a pasted query that is far too long.
@@ -621,7 +641,8 @@ Rules:
     skill found via a link is counted once for each root it was found from.
   - States: scanning; no matches (with Clear filters); no skills found (with Refresh); scan failed
     (with Retry).
-  - Escape closes the page but never takes Escape away from a focused input.
+  - Escape closes the page but never takes Escape away from a focused input, and does nothing while
+    any dialog of the page (update, details, Delete confirmation, its result or error) is showing.
   - Long paths are shortened inside the row and never widen the page.
   - Closing the page goes back to whichever view was open before.
 Acceptance:
@@ -629,6 +650,8 @@ Acceptance:
         counts.
   - [ ] Filter by Codex → only skills Codex can see remain; Clear filters brings them all back.
   - [ ] A scan fails → a failure state with Retry; Retry scans again.
+  - [ ] Open More actions with the keyboard → focus is on the first item, the arrow keys step through
+        them, and Escape closes the menu and gives focus back to the button. (unit tests: evidence/T-672.txt)
 Compat: —
 Source: D-15-017
 

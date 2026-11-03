@@ -116,6 +116,9 @@ export function InstallCardView({ id, stage, install, canInstall, onInstall, onC
 
 type Win = { addEventListener: (k: string, f: () => void) => void; removeEventListener: (k: string, f: () => void) => void; setInterval: (f: () => void, ms: number) => number; clearInterval: (id: number) => void };
 
+/** True the first time `id` is claimed and false until it is released: the guard against a double press. */
+export const claimInstall = (held: Set<string>, id: string): boolean => (held.has(id) ? false : (held.add(id), true));
+
 /** ACCT-014: runs `check` when the window gets focus back, when a card's Check again is pressed,
  *  and every `every` ms while the window is visible (0: no timer, as for the account cards, whose
  *  own check would start a program per account); the returned function stops all of them. */
@@ -162,9 +165,15 @@ export function ConnectGrid({ cards }: { cards: Record<ConnectId, ReactNode> }) 
     const stop = liveCheck(() => (readAgents(), readInstalls()));
     return () => (stop(), offs.forEach((o) => void o.then((u) => u()).catch(() => {})));
   }, [readAgents, readInstalls]);
-  const run = (p: Promise<unknown>) => {
+  // A second press of Install while the first is still starting would start two installs.
+  const starting = useRef(new Set<string>());
+  const run = (p: Promise<unknown>, once?: string) => {
     setError(null);
-    p.catch((e) => setError(String(e))).finally(readInstalls);
+    p.catch((e) => setError(String(e))).finally(() => (once && starting.current.delete(once), readInstalls()));
+  };
+  const install = (id: string) => {
+    if (!claimInstall(starting.current, id)) return;
+    run(invoke("agent_install", { agent: id }), id);
   };
   return (
     <>
@@ -182,7 +191,7 @@ export function ConnectGrid({ cards }: { cards: Record<ConnectId, ReactNode> }) 
                 stage={stage}
                 install={installs[c.id]}
                 canInstall={can[c.id] ?? false}
-                onInstall={() => run(invoke("agent_install", { agent: c.id }))}
+                onInstall={() => install(c.id)}
                 onCancel={() => run(invoke("agent_install_cancel", { agent: c.id }))}
                 onPage={() => run(openInstallPage(c.id))}
               />

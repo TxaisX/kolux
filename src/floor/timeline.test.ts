@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { indent, INDENT_LIMIT, kindOf, lanes, rangeStart, segments, ticks, type Track } from "./timeline";
+import { indent, INDENT_LIMIT, kindOf, lanes, rangeStart, segments, staleNote, ticks, type Track } from "./timeline";
 
 const at = (h: number, m = 0) => new Date(2026, 9, 13, h, m).getTime();
 const track = (o: Partial<Track>): Track => ({ pane: 1, marks: [], ended: null, terminal: 7, live: true, parent: null, ...o });
@@ -123,5 +123,21 @@ describe("VIEW-013 Floor timeline", () => {
     expect(html).not.toContain('data-pane="5"');
     expect(html).toContain("Open in Code");
     expect(renderToString(createElement(FloorView, { now: at(9), initial }))).not.toContain("floor-jump");
+  });
+});
+
+describe("floor stale lanes", () => {
+  it("a failed re-read over lanes already shown says they are old; nothing to say without lanes or without an error", () => {
+    expect(staleNote("boom", true)).toMatch(/last successful reading/);
+    expect(staleNote("boom", false)).toBeNull();
+    expect(staleNote(null, true)).toBeNull();
+  });
+  it("the range picker is the shared segmented control", async () => {
+    const { createElement } = await import("react");
+    const { renderToString } = await import("react-dom/server");
+    const { default: FloorView } = await import("./FloorView");
+    const html = renderToString(createElement(FloorView, { now: 0, initial: [] }));
+    expect(html).toContain('class="seg-row"');
+    expect(html).toContain('role="radio"');
   });
 });

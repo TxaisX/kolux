@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SpaceRow } from "../projects/space";
-import { activeOf, afterBatch, plan, question, stateOf } from "./view";
+import { activeOf, afterBatch, chosenVisible, latest, listLines, plan, question, removeArgs, stateOf, whyNotDeletable } from "./view";
 
 const row = (path: string, o: Partial<SpaceRow> = {}): SpaceRow => ({ path, branch: null, isMain: false, size: { bytes: 1024, files: 3, incomplete: false }, modified: 0, reclaimable: true, ...o });
 const clean = { changes: [], locked: null, nested: [], stamp: "abc|" };
@@ -52,5 +52,51 @@ describe("view-014 space page", () => {
     const out = afterBatch(rows, { summary: "1 removed, 1 failed", items: [{ path: "C:/w/a", outcome: "removed", message: null }, { path: "C:/w/b", outcome: "failed", message: "folder is open in another program" }] });
     expect(out.rows.map((r) => r.path)).toEqual(["C:/w/b", "C:/w/c"]);
     expect(out.note).toBe("1 removed, 1 failed · b: folder is open in another program");
+  });
+
+  it("batch delete keeps branches, matching the dialog's promise", () => {
+    expect(removeArgs("p1", [{ path: "C:/w/a", stamp: "s" }])).toEqual({ projectId: "p1", picks: [{ path: "C:/w/a", stamp: "s" }], force: false, keepBranch: true });
+    expect(question([row("C:/w/a")], [{ path: "C:/w/a", stamp: "s" }], [])?.lines[0]).toContain("the branches stay");
+  });
+
+  it("the batch question lists worktrees by branch/folder and size, capped with 'and N more'", () => {
+    const rows = Array.from({ length: 11 }, (_, i) => row(`C:/w/d${i}`, { branch: i === 0 ? "feat" : null }));
+    const lines = listLines(rows);
+    expect(lines).toHaveLength(9);
+    expect(lines[0]).toBe("feat (1 KB)");
+    expect(lines[1]).toBe("d1 (1 KB)");
+    expect(lines[8]).toBe("and 3 more");
+    expect(listLines(rows.slice(0, 8))).toHaveLength(8);
+    const picks = rows.map((r) => ({ path: r.path, stamp: "s" }));
+    expect(question(rows, picks, [])?.list).toEqual(lines);
+    expect(question([rows[0]], [picks[0]], [])?.list).toEqual([]);
+  });
+
+  it("ticked rows the filter hides are not deleted", () => {
+    const rows = [row("C:/w/a"), row("C:/w/b"), row("C:/w/c")];
+    expect(chosenVisible(["C:/w/a", "C:/w/b", "C:/w/gone"], [rows[1], rows[2]], rows, new Set())).toEqual(["C:/w/b"]);
+  });
+
+  it("a ticked row that can no longer be deleted (now open, or the main checkout) is not chosen", () => {
+    const rows = [row("C:/w/a"), row("C:/w/b"), row("C:/w/m", { isMain: true })];
+    expect(chosenVisible(["C:/w/a", "C:/w/b", "C:/w/m"], rows, rows, new Set(["C:/w/a"]))).toEqual(["C:/w/b"]);
+  });
+
+  it("whyNotDeletable names the reason, null for a deletable row", () => {
+    const active = new Set(["C:/w/b"]);
+    expect(whyNotDeletable(row("C:/w/a", { isMain: true }), active)).toMatch(/main checkout/);
+    expect(whyNotDeletable(row("C:/w/b"), active)).toMatch(/In use/);
+    expect(whyNotDeletable(row("C:/w/c", { reclaimable: false }), active)).toMatch(/Kept/);
+    expect(whyNotDeletable(row("C:/w/d"), active)).toBeNull();
+  });
+
+  it("latest-wins: only the newest scan token is current", () => {
+    const l = latest();
+    const a = l.begin();
+    const b = l.begin();
+    expect(l.current(a)).toBe(false);
+    expect(l.current(b)).toBe(true);
+    l.cancel();
+    expect(l.current(b)).toBe(false);
   });
 });

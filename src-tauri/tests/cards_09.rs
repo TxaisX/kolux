@@ -236,7 +236,7 @@ fn auto004_box3_an_agent_an_automation_launched_completing_starts_no_agent_finis
     // The timed automation launches an agent; the window opens terminal 11 (hook pane 110) for it.
     let run = auto::run(&l, "auto-1", "manual").unwrap();
     assert_eq!(run["status"], json!("dispatched"));
-    let claimed = auto::claim(&store.lock().unwrap(), 11, Some(110), &repo.to_string_lossy(), Some("claude")).unwrap();
+    let claimed = auto::claim(&store.lock().unwrap(), 11, Some(110), &repo.to_string_lossy(), Some("claude"), run["id"].as_str(), auto::now_ms()).unwrap();
     assert_eq!(claimed.as_deref(), run["id"].as_str());
 
     // That agent works, then finishes: an ordinary finish, which on_finish would turn into an event ...
@@ -341,7 +341,7 @@ fn auto012_box1_an_agent_killed_before_it_works_ends_failed_and_a_ready_prompt_n
     let id = run["id"].as_str().unwrap();
     assert_eq!(run_row(&store, id)["status"], json!("dispatched"));
     let s = store.lock().unwrap();
-    assert_eq!(auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude")).unwrap().as_deref(), Some(id));
+    assert_eq!(auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude"), Some(id), auto::now_ms()).unwrap().as_deref(), Some(id));
     // The agent's ready prompt already on screen at launch (an idle/done state, never seen working) is not a finish.
     assert_eq!(auto::on_status(&s, Some(7), 3, "done", false, false, None, FRI_NOON as u64).unwrap(), None);
     drop(s);
@@ -362,7 +362,7 @@ fn auto012_box2_a_run_in_progress_survives_a_restart_and_completes_when_the_agen
     let t0 = FRI_NOON as u64;
     {
         let s = store.lock().unwrap();
-        auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude")).unwrap();
+        auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude"), Some(id), auto::now_ms()).unwrap();
         assert_eq!(auto::on_status(&s, Some(7), 3, "working", false, false, None, t0).unwrap(), None);
         // Kolux restarts: the run stays dispatched, waiting for its pane.
         auto::tidy(&s, t0 + 5_000).unwrap();
@@ -422,7 +422,7 @@ fn auto013_box1_a_run_whose_worktree_was_deleted_still_lists_with_its_saved_outp
     let t0 = FRI_NOON as u64;
     {
         let s = store.lock().unwrap();
-        auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude")).unwrap();
+        auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude"), Some(id), auto::now_ms()).unwrap();
         auto::on_status(&s, Some(7), 3, "working", false, false, None, t0).unwrap();
         auto::on_status(&s, Some(7), 3, "done", false, false, None, t0 + 1_000).unwrap();
         assert_eq!(auto::keep_output(&s, id, "all 12 checks passed", false).unwrap().as_deref(), Some(id));
@@ -444,7 +444,7 @@ fn auto013_box2_deleting_an_automation_takes_its_failed_run_with_it_and_leaves_o
     let id = run["id"].as_str().unwrap();
     {
         let s = store.lock().unwrap();
-        auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude")).unwrap();
+        auto::claim(&s, 7, Some(3), &ws.to_string_lossy(), Some("claude"), Some(id), auto::now_ms()).unwrap();
         auto::pane_ended(&s, 7, Some(1), FRI_NOON as u64).unwrap();
     }
     let failed = run_row(&store, id);

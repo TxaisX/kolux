@@ -118,12 +118,14 @@ User sees: the sheet closes and Claude carries on the same way it would had the 
 Rules: Approve stays clickable for as long as the plan is still pending, with or without comments;
   it answers Claude's terminal prompt with the first choice, which is the allow choice; it wipes the
   saved draft for that pane and plan; in most Claude releases that first choice also accepts later
-  file edits automatically, but the button keeps the plain label Approve.
+  file edits automatically, but the button keeps the plain label Approve; if Kolux cannot pass the
+  answer on, a note says so and points at the terminal, where the agent still waits.
 Acceptance:
   - [x] Open the sheet and click Approve → Claude leaves plan mode and starts the work, and the
         review button is gone. (cards live; evidence/cards-SAFE-003.txt)
   - [x] Write a comment, then click Approve → Approve was clickable, Claude proceeds, and the
         comment is not kept. (cards live; evidence/cards-SAFE-003.txt)
+  - [x] An Approve or Deny that Kolux cannot deliver → a note gives the reason and says to answer in the terminal. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-10-003
 
@@ -141,13 +143,14 @@ Rules: the button stays disabled until there is at least one comment or a note t
   cancelling a pending send is safe whether or not it has gone out yet; the message runs in this
   order: a fixed opening line asking for a revision, then every comment (its line range, a short
   quote, the comment itself), then the overall note with outer whitespace removed; sending wipes the
-  saved draft.
+  saved draft; if the plan prompt has already gone, Request changes says so and sends nothing.
 Acceptance:
   - [x] No comments and an empty note → Request changes is disabled. (cards; evidence/cards-SAFE-004.txt)
   - [x] Two comments, then Request changes → Claude gets a single message naming both line ranges
         and comes back with a revised plan. (cards live; evidence/cards-SAFE-004.txt)
   - [ ] A pane whose status never updates → the feedback still arrives after about 3 seconds.
         (cards; evidence/cycle3-SAFE-004.txt)
+  - [x] Press Request changes after the agent has moved on from the plan → a note says it is no longer waiting and nothing is typed into the pane. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-10-004
 
@@ -465,12 +468,14 @@ User does: leaves the sheet open while the plan prompt is answered in the termin
   moves on.
 User sees: a notice that the plan prompt has closed, and both action buttons disabled.
 Rules: the sheet keeps comparing its plan with the plan the pane is currently waiting on; if they
-  differ, or the pane has no plan pending at all, Approve and Request changes are both disabled.
+  differ, or the pane has no plan pending at all, Approve and Request changes are both disabled;
+  a press that still gets through says the agent is no longer waiting on the plan and sends nothing.
 Acceptance:
   - [ ] Open the sheet, then approve in the terminal → the notice shows and both buttons are
         disabled.
   - [ ] Open the sheet, then Claude presents a different plan → the open sheet's buttons are
         disabled.
+  - [x] Approve or Request changes on a plan the agent has left → a note says nothing was sent. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-10-007
 

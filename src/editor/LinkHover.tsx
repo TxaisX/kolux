@@ -14,9 +14,7 @@ export default function LinkHover({ editor, host, onOpen, onToast }: { editor: L
   const timer = useRef(0);
   useEffect(() => {
     if (!editor || !host) return;
-    const over = (e: MouseEvent) => {
-      const a = (e.target as Element | null)?.closest?.("a[href]");
-      if (!a || !host.contains(a)) return;
+    const show = (a: Element) => {
       window.clearTimeout(timer.current);
       const key = linkKeyAt(editor, a);
       if (!key) return;
@@ -24,6 +22,18 @@ export default function LinkHover({ editor, host, onOpen, onToast }: { editor: L
       const p = bubblePlace(r, { w: 230, h: 34 }, { w: window.innerWidth, h: window.innerHeight });
       setSpot((s) => (s?.key === key ? s : { key, href: a.getAttribute("href") ?? "", left: p.left, top: p.top }));
       setEdit(null);
+    };
+    const over = (e: MouseEvent) => {
+      const a = (e.target as Element | null)?.closest?.("a[href]");
+      if (a && host.contains(a)) show(a);
+    };
+    // The keyboard path: a caret that moves into a link shows the same bubble (Tab then reaches its buttons).
+    const caret = () => {
+      const n = document.getSelection()?.anchorNode;
+      const a = (n && n.nodeType === 1 ? (n as Element) : n?.parentElement)?.closest?.("a[href]");
+      if (a && host.contains(a)) show(a);
+      // The caret moved to text that is not a link: the bubble goes, unless it is being used.
+      else if (n && host.contains(n) && edit === null && !box.current?.contains(document.activeElement)) setSpot(null);
     };
     const out = (e: MouseEvent) => {
       const to = e.relatedTarget as Node | null;
@@ -33,7 +43,9 @@ export default function LinkHover({ editor, host, onOpen, onToast }: { editor: L
     };
     host.addEventListener("mouseover", over);
     host.addEventListener("mouseout", out);
+    document.addEventListener("selectionchange", caret);
     return () => {
+      document.removeEventListener("selectionchange", caret);
       window.clearTimeout(timer.current);
       host.removeEventListener("mouseover", over);
       host.removeEventListener("mouseout", out);
@@ -51,7 +63,7 @@ export default function LinkHover({ editor, host, onOpen, onToast }: { editor: L
     setEdit(null);
   };
   return (
-    <div ref={box} className="link-bubble" style={{ left: spot.left, top: spot.top }} onMouseEnter={stay} onMouseLeave={() => (timer.current = window.setTimeout(() => setSpot(null), 350))}>
+    <div ref={box} className="link-bubble" style={{ left: spot.left, top: spot.top }} onMouseEnter={stay} onMouseLeave={() => (timer.current = window.setTimeout(() => setSpot(null), 350))} onKeyDown={(e) => e.key === "Escape" && edit === null && (e.stopPropagation(), setSpot(null), editor.focus())}>
       {edit === null ? (
         <>
           <span className="link-bubble-href" title={spot.href}>{spot.href}</span>

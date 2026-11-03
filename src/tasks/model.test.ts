@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { beyondWindow, duplicateQuery, eventLine, issueNumber, issueSource, listState, pageButtons, pageCount, PRESETS, taskKind, taskQueries, tasksRepo } from "./model";
+import { beyondWindow, duplicateQuery, eventLine, issueNumber, issueSource, listState, pageButtons, pageCount, PRESETS, showPager, taskKind, taskQueries, tasksRepo } from "./model";
 
 const projects = [
   { id: "a", name: "Alpha", path: "G:/r/alpha" },
@@ -76,4 +76,10 @@ test("GIT-045 (T-281-b): a remembered upstream issue source that is gone is name
   expect(s.warning).toContain("me/app");
   expect(s.warning).toContain("no longer set up");
   expect(issueSource({}, "github.com/me/app", "me/app", null).warning).toBeNull();
+});
+
+test("the pager stays on an empty page past the first, so the user can go back", () => {
+  expect(showPager(0, 1)).toBe(false);
+  expect(showPager(0, 3)).toBe(true);
+  expect(showPager(25, 1)).toBe(true);
 });

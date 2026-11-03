@@ -118,12 +118,12 @@ for (const classic of [false, true]) {
 
 test("the View menu and the account menu drawn inside the bar never move the window", async () => {
   const { c, header } = await mountBar(false);
-  await pressMenuButton(c, "Menu");
+  await pressMenuButton(c, "Terminal zoom");
   await pressMenuButton(c, "Choose the account new panes use");
   const backdrops = find(header, (n) => n.attrs.class === "menu-backdrop");
   const menus = find(header, (n) => n.attrs.role === "menu");
   expect(backdrops.length, "both menus are open, each with its backdrop").toBe(2);
-  expect(menus.map((m) => m.attrs["aria-label"]).sort()).toEqual(["Accounts for new panes", "View"]);
+  expect(menus.map((m) => m.attrs["aria-label"]).sort()).toEqual(["Accounts for new panes", "Terminal zoom"]);
   for (const part of [...backdrops, ...menus]) expect(part.attrs[DRAG], name(part)).toBe("false");
   const { usedThatDrag, bareThatDoNot } = audit(header);
   expect(usedThatDrag, "presses on these move the window, but a person uses them").toEqual([]);

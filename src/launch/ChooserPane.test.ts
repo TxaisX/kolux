@@ -154,11 +154,11 @@ const renderWith = (agents: AgentInfo[], detecting = false, seats: Seat[] = [{ a
 
 const optionsOf = (html: string) => [...html.matchAll(/<option[^>]*value="([^"]*)"[^>]*>([^<]*)</g)].map((m) => [m[1], m[2]]);
 
-test("T-570: one dropdown per seat lists every agent, Claude, Codex and Grok first; a missing one reads (not installed) and can still be picked", () => {
+test("T-570: one dropdown per seat lists every agent A to Z (T-664); a missing one reads (not installed) and can still be picked", () => {
   const list = [agent("aider", "Aider", true), agent("grok", "Grok", false), agent("codex", "Codex", true), claude, agent("goose", "Goose", false)];
   const html = renderWith(list);
   expect(html.match(/<select[^>]*which AI/g)).toHaveLength(1);
-  expect(optionsOf(html).map((o) => o[1])).toEqual(["Choose an AI…", "Claude Code", "Codex", "Grok (not installed)", "Aider", "Goose (not installed)", "Terminal"]);
+  expect(optionsOf(html).map((o) => o[1])).toEqual(["Choose an AI…", "Aider", "Claude Code", "Codex", "Goose (not installed)", "Grok (not installed)", "Terminal"]);
   expect(html).not.toContain('type="radio" name="seat-2-0-ai"');
   expect(html).not.toContain("More agents");
   expect(html).not.toContain(">Install<");

@@ -11,6 +11,7 @@ import { baseName } from "./buffers";
 import { whyNotLoaded, wheelFactor } from "./imageFiles";
 import { readPicture } from "./pictureBytes";
 import { clampZoom, fitWidthScale, forget, pageAt, readPos, recall, remember, scrollFor, START, viewerOptions, whyNotOpened, ZOOM_STEP, type PdfPos } from "./pdfFiles";
+import { pageFromText, pageTops } from "./pdfNav";
 import { destinationSpot, drawPageLayers, makeLinkService, spotOffset, webLink } from "./pdfPageLayers";
 import type { LinkHandler } from "./linkClicks";
 
@@ -99,6 +100,7 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
   const [box, setBox] = useState(0);
   const [pos, setPos] = useState<PdfPos>(START);
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  const [typing, setTyping] = useState<string | null>(null); // the page box while it is being typed in
   const [restored, setRestored] = useState(0);
   const ready = useRef(false); // the remembered place has been put back
   const anchor = useRef<Pick<PdfPos, "page" | "offset"> | null>(null);
@@ -143,7 +145,7 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
   const scale = pos.fit ? fitWidthScale(first.w, box, MARGIN) : clampZoom(pos.zoom);
   const sizeOf = (n: number): Size => sizes[n] ?? first;
   const heights = Array.from({ length: pages }, (_, i) => sizeOf(i + 1).h * scale);
-  const tops = heights.map((_, i) => heights.slice(0, i).reduce((a, h) => a + h + GAP, GAP));
+  const tops = pageTops(heights, GAP);
 
   // Put the remembered place back once the document and the width are known; again whenever the tab is shown or the scale changes.
   useLayoutEffect(() => {
@@ -256,12 +258,12 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
           Copy
         </button>
         {error && (
-          <button className="ib" title="Try opening the file again" onClick={() => setTries((n) => n + 1)}>
+          <button className="ib" title="Try opening the file again" aria-label="Try opening the file again" onClick={() => setTries((n) => n + 1)}>
             Retry
           </button>
         )}
         <span className="right">
-          <button className="ib" onClick={() => onClose?.()} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={() => onClose?.()} title="Close tab (Ctrl+W)" aria-label="Close tab">
             <Close size={12} />
           </button>
         </span>
@@ -286,7 +288,35 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
               <button className={`ib${pos.fit ? " on" : ""}`} title="Fill the width" aria-pressed={pos.fit} disabled={!doc} onClick={fitWidth}>
                 Fit width
               </button>
-              {doc && <span className="image-facts">{`Page ${Math.min(pos.page, pages)} of ${pages}`}</span>}
+              {doc && (
+                <span className="image-facts">
+                  <label>
+                    Page{" "}
+                    <input
+                      className="field pdf-page-box"
+                      type="text"
+                      inputMode="numeric"
+                      aria-label={`Page number, of ${pages}`}
+                      value={typing ?? String(Math.min(pos.page, pages))}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => setTyping(e.target.value)}
+                      onBlur={() => setTyping(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const n = pageFromText(typing ?? "", pages);
+                          if (n !== null) jumpTo(n, 0);
+                          setTyping(null);
+                        } else if (e.key === "Escape" && typing !== null) {
+                          e.stopPropagation();
+                          setTyping(null);
+                        }
+                      }}
+                    />
+                  </label>{" "}
+                  of {pages}
+                </span>
+              )}
             </div>
             <div ref={setScroller} className="pdf-scroll" onScroll={onScroll} tabIndex={0}>
               {!doc ? (

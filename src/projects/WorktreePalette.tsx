@@ -187,7 +187,9 @@ export function paletteRows(items: PaletteItem[], query: string, recent: string[
     const intent = words.length === 1 && it.number !== undefined && words[0] === String(it.number) ? 5 : words.length > 0 && fold(it.label).trim() === words.join(" ") ? 4 : hit.tier;
     const used = it.dir ? recent.findIndex((d) => sameDir(d, it.dir!)) : -1;
     const row: Row = { ...it, spans: hit.spans, off: it.needs === "worktree" && !hasWorktree };
-    const section = SECTIONS.indexOf(it.section as (typeof SECTIONS)[number]);
+    // Sections not in SECTIONS (Commands, Accounts, Browser...) list after the named ones, so an empty query's Enter never runs a command.
+    const named = SECTIONS.indexOf(it.section as (typeof SECTIONS)[number]);
+    const section = named < 0 ? SECTIONS.length : named;
     scored.push({ row, key: words.length === 0 ? [-section, used < 0 ? -1e9 : -used, -i] : [hit.own ? 1 : 0, intent, it.section === "Open tabs" ? 1 : 0, used < 0 ? -1e9 : -used, -i] });
   }
   scored.sort((a, b) => {
@@ -237,8 +239,9 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
   useEffect(() => {
     let live = true;
     (async () => {
-      const next: Record<string, Worktree[]> = {};
-      for (const p of projects) next[p.id] = await invoke<Worktree[]>("workspace_list", { projectId: p.id }).catch(() => []);
+      const next: Record<string, Worktree[]> = Object.fromEntries(
+        await Promise.all(projects.map(async (p) => [p.id, await invoke<Worktree[]>("workspace_list", { projectId: p.id }).catch(() => [])] as const)),
+      );
       if (live) setLists(next);
     })();
     return () => {
