@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolve } from "../keys/keymap";
+import { heldByTerminal } from "../keys/terminalPolicy";
 import { answersPrompt, newlineAgent, routeKey, type RoutedKey } from "./shellKeys";
 
 const key = (code: string, k: string, mods: Partial<RoutedKey> = {}): RoutedKey => ({ code, key: k, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...mods });
@@ -107,5 +108,14 @@ describe("council D2 MERGE 47 FB1 and FS1", () => {
     expect(newlineAgent(null, "codex")).toBe("codex");
     const shiftEnter = key("Enter", "Enter", { shiftKey: true });
     expect(routeKey(win, shiftEnter, false, newlineAgent("bash", "codex"))).toEqual(routeKey(win, shiftEnter, false, "shell"));
+  });
+});
+
+describe("T-692 (E3) focus.chrome from inside a terminal", () => {
+  it("Mod+Shift+P leaves the terminal for the top bar even with Terminal first on; a held chord does not", () => {
+    const inXterm = { closest: (sel: string) => (sel === ".xterm" ? {} : null) } as unknown as Element;
+    const held = (id: string) => heldByTerminal(id, { terminalShortcuts: "terminal" }, inXterm);
+    expect(routeKey(win, key("KeyP", "P", { ctrlKey: true, shiftKey: true }), false, "shell", held)).toEqual({ kind: "kolux", id: "focus.chrome" });
+    expect(routeKey(win, key("KeyK", "k", { ctrlKey: true }), false, "shell", held)).toEqual({ kind: "shell" });
   });
 });

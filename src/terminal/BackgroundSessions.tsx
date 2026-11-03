@@ -3,7 +3,7 @@
 // question, Keep focused (VIEW-116). Agent sessions and busy ones are never offered; nothing is
 // offered until the window has loaded its workspaces. A fresh read comes first, so when every offered
 // session has already ended the count just updates with no question.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { endOffered, hostLabel, hostPlural, hostSummary, offerable, type HostSession } from "./hostSessions";
 
@@ -45,9 +45,14 @@ export function HostSessionsView({ rows, loaded, asking, failed, onAsk, onEnd, o
 }
 
 /** The live part: reads the service's unowned sessions every two seconds while the Resource Manager is open. */
-export default function BackgroundSessions({ loaded }: { loaded: boolean }) {
+/** `question`: while the End question is open it holds the way to close it, so the Resource Manager's Escape closes the
+ *  question first. Only the Resource Manager draws this, and the ref goes with the panel, so it needs no cleanup. */
+export default function BackgroundSessions({ loaded, question }: { loaded: boolean; question: MutableRefObject<(() => void) | null> }) {
   const [rows, setRows] = useState<HostSession[] | null>(null);
   const [asking, setAsking] = useState<HostSession[] | null>(null);
+  useEffect(() => {
+    question.current = asking ? () => setAsking(null) : null;
+  }, [asking, question]);
   const [failed, setFailed] = useState("");
   const read = () =>
     invoke<HostSession[]>("terminal_host_sessions")
