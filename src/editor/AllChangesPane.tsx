@@ -566,7 +566,7 @@ export const Section = memo(function Section({ anchor, e, name, root, base, draw
         <button className="ib" onClick={() => onToggleFold(key)} aria-expanded={!folded} aria-label={folded ? `Expand ${name}` : `Collapse ${name}`} title={folded ? "Expand" : "Collapse"} style={folded ? { transform: "rotate(-90deg)" } : undefined}>
           <ChevronDown size={12} />
         </button>
-        <input type="checkbox" checked={viewed} disabled={!canView} onChange={() => onToggleViewed(e)} title={canView ? "Mark as viewed" : "Not loaded yet"} aria-label={`Viewed ${name}`} />
+        <label className="hit-box"><input type="checkbox" checked={viewed} disabled={!canView} onChange={() => onToggleViewed(e)} title={canView ? "Mark as viewed" : "Not loaded yet"} aria-label={`Viewed ${name}`} /></label>
         <span className="ac-name" title={e.path}>
           {name}
         </span>

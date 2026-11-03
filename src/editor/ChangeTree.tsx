@@ -41,7 +41,7 @@ const FileRow = memo(function FileRow({ row, e, i, rel, tag, ready, viewedStamp,
   const drawn = useReadyStamp(ready, keyOf);
   return (
     <div className="ac-row" data-row={row}>
-      <input type="checkbox" checked={drawn === e.stamp && viewedStamp === e.stamp} disabled={drawn !== e.stamp} title={drawn !== e.stamp ? WAIT_VIEWED : "Mark this file as viewed"} aria-description={drawn !== e.stamp ? WAIT_VIEWED : undefined} onChange={() => onToggleViewed(e)} aria-label={`Viewed ${rel}`} />
+      <label className="hit-box"><input type="checkbox" checked={drawn === e.stamp && viewedStamp === e.stamp} disabled={drawn !== e.stamp} title={drawn !== e.stamp ? WAIT_VIEWED : "Mark this file as viewed"} aria-description={drawn !== e.stamp ? WAIT_VIEWED : undefined} onChange={() => onToggleViewed(e)} aria-label={`Viewed ${rel}`} /></label>
       <button className="ac-jump" onClick={() => onJump(i)} title={rel}>
         {baseName(e.path)}
       </button>
