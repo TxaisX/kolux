@@ -27,6 +27,7 @@ import { trashUnusedNotes } from "../editor/trashUnused";
 import { discardDraftsOf } from "../editor/useFileMoves";
 import { onClose } from "../inbox/exitedPrompt";
 import { commandRows } from "../keys/commands";
+import { labelOf } from "../keys/keymap";
 import { paneMark } from "../launch/PlusMenu";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { removeShortcutAsk } from "../launch/removeAsk";
@@ -368,10 +369,10 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ),
     ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", run: () => openSettings(id) })),
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
-    { section: "Quick actions", label: "New terminal tab", run: () => void newTab(null) },
+    // T-708: New terminal tab is its Commands row (with Ctrl+T), no longer a second hand-built row without keys
     ...commandRows(keymap, installedIds, setToast), // T-611: every command, the unbound ones included, run as its shortcut runs
-    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))), // T-610: Artifacts and Skills
-    tabSearchCommand(() => openTabSearch()), // TERM-053
+    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))), // T-610 / T-708: every screen
+    tabSearchCommand(() => openTabSearch(), labelOf(keymap, "tab.search").join("+")), // TERM-053; T-708: shows its keys
     { section: "Quick actions", label: "New session", run: () => addChooser() },
     // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
     ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),

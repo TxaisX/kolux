@@ -19,9 +19,10 @@ export function onTabSearch(open: () => void, target: EventTarget = window): () 
   return () => target.removeEventListener(TAB_SEARCH_EVENT, open);
 }
 
-/** The row the palette shows for the command (section "Quick actions", beside New terminal tab). */
-export function tabSearchCommand(open: () => void): { section: string; label: string; hint: string; run: () => void } {
-  return { section: "Quick actions", label: TAB_SEARCH_TITLE, hint: "Find a tab by its name", run: open };
+/** The row the palette shows for the command (section "Quick actions", beside New terminal tab). Its hint is the
+ *  command's keys when it has some (T-708), else what it does. */
+export function tabSearchCommand(open: () => void, keys?: string): { section: string; label: string; hint: string; run: () => void } {
+  return { section: "Quick actions", label: TAB_SEARCH_TITLE, hint: keys || "Find a tab by its name", run: open };
 }
 
 /** A tab the box can list: its own name, and the worktree folder it sits in (shown, never searched). */

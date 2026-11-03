@@ -1015,8 +1015,17 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </form>
             )}
             {composer && (
-              <div className="scm-ask scm-pr" role="dialog" aria-label="Create pull request">
-                <input className="field" aria-label="pull request title" placeholder="Title" value={composer.title} onChange={(e) => setComposer({ ...composer, title: e.target.value })} />
+              <div
+                className="scm-ask scm-pr"
+                role="dialog"
+                aria-label="Create pull request"
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape" || composer.busy || composer.title.trim() || composer.body.trim()) return;
+                  e.stopPropagation();
+                  setComposer(null);
+                }}
+              >
+                <input className="field" aria-label="pull request title" autoFocus placeholder="Title" value={composer.title} onChange={(e) => setComposer({ ...composer, title: e.target.value })} />
                 <textarea className="field multi" aria-label="pull request description" placeholder="Description" value={composer.body} onChange={(e) => setComposer({ ...composer, body: e.target.value })} />
                 <label className="scm-pr-base">
                   <span>Base</span>
@@ -1066,9 +1075,18 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </div>
             )}
             {asking && (
-              <div className="scm-ask" role="dialog" aria-label={asking.title ?? "Resolve conflicts with an agent"}>
+              <div
+                className="scm-ask"
+                role="dialog"
+                aria-label={asking.title ?? "Resolve conflicts with an agent"}
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape") return;
+                  e.stopPropagation();
+                  setAsking(null);
+                }}
+              >
                 {asking.title && <div className="scm-ask-title">{asking.title}</div>}
-                <select aria-label="agent to start" className="field" value={asking.agent} onChange={(e) => setAsking({ ...asking, agent: e.target.value })}>
+                <select aria-label="agent to start" className="field" autoFocus value={asking.agent} onChange={(e) => setAsking({ ...asking, agent: e.target.value })}>
                   {agents.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name}

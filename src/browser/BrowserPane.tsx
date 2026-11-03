@@ -1253,7 +1253,16 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
         </ul>
       )}
       {cookieMenu === "chrome" && (
-        <div className="notice cookie-steps" role="dialog" aria-label="Import from Google Chrome">
+        <div
+          className="notice cookie-steps"
+          role="dialog"
+          aria-label="Import from Google Chrome"
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            e.stopPropagation();
+            setCookieMenu(null);
+          }}
+        >
           <ol>
             {CHROME_STEPS.map((s) => (
               <li key={s}>{s}</li>
@@ -1276,7 +1285,16 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
         </div>
       )}
       {outbound && (
-        <div className="notice preview-ask" role="alertdialog" aria-label="Open an outside address?">
+        <div
+          className="notice preview-ask"
+          role="alertdialog"
+          aria-label="Open an outside address?"
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            e.stopPropagation();
+            setOutbound(null);
+          }}
+        >
           <span>
             This preview wants to open <code>{outbound}</code>
           </span>
@@ -1291,13 +1309,23 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           >
             Open
           </button>
-          <button type="button" className="ib" onClick={() => setOutbound(null)}>
+          <button type="button" className="ib" autoFocus onClick={() => setOutbound(null)}>
             Cancel
           </button>
         </div>
       )}
       {leave && (
-        <div className="notice preview-ask" role="alertdialog" aria-label={leaveText(leave).question} data-leave={leave.what}>
+        <div
+          className="notice preview-ask"
+          role="alertdialog"
+          aria-label={leaveText(leave).question}
+          data-leave={leave.what}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            e.stopPropagation();
+            setLeave(null);
+          }}
+        >
           <span>
             {leaveText(leave).lead}
             <strong>{leave.host}</strong>
@@ -1306,7 +1334,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           <button type="button" className="ib" data-leave-go disabled={!armedLook} onClick={() => leaveReady(leave) && leaveConfirmed(leave)}>
             {leaveText(leave).confirm}
           </button>
-          <button type="button" className="ib" data-leave-cancel onClick={() => setLeave(null)}>
+          <button type="button" className="ib" data-leave-cancel autoFocus onClick={() => setLeave(null)}>
             Cancel
           </button>
         </div>
