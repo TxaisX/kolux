@@ -1,20 +1,10 @@
 // T-699 (DT-C135): in a window under 900 CSS px (the app's minimum width at 100 % zoom, so reached by zooming in
 // or a small window) the two side panels take turns. styles.css hides the left sidebar while the right sidebar is
 // showing; this keeps the left toggle honest about that, and every path that opens the left sidebar brings it back.
-import { useSyncExternalStore } from "react";
-
 export const NARROW_PX = 900;
-const QUERY = `(max-width: ${NARROW_PX - 1}px)`;
-const query = () => (typeof matchMedia === "function" ? matchMedia(QUERY) : null);
-const subscribe = (cb: () => void) => {
-  const m = query();
-  m?.addEventListener("change", cb);
-  return () => m?.removeEventListener("change", cb);
-};
-/** True while the window is under NARROW_PX CSS px wide. */
-export const isNarrow = () => !!query()?.matches;
-/** isNarrow as React state: re-renders when the window crosses NARROW_PX. */
-export const useNarrow = () => useSyncExternalStore(subscribe, isNarrow, () => false);
+/** True while the window is under NARROW_PX CSS px wide. Read at render, not subscribed (first-load budget): the left
+ *  toggle's pressed state catches up with a resize on the top bar's next render; the setters read it live. */
+export const isNarrow = () => !!globalThis.matchMedia?.(`(max-width: ${NARROW_PX - 1}px)`)?.matches;
 
 /** Whether the left sidebar is in view: open, and not stepped aside for the right sidebar in a narrow window. */
 export const leftShown = (open: boolean, narrow: boolean, rightShown: boolean) => open && !(narrow && rightShown);

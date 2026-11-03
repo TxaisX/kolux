@@ -83,12 +83,16 @@ pnpm exec tsc --noEmit -p .  -> exit 0
 node scripts/plan-check.mjs -> plan-check: OK
 scripts/firewall-check.ps1 -Baseline -> 53 hit(s) in 22 file(s), 0 new, 0 baseline entr(ies) no longer present
 
-FIRST-LOAD BUNDLE (at main 1fa0e52f, merged in)
+FIRST-LOAD BUNDLE (at main 33ee0efa, merged in; limit main + 500 B)
 pnpm exec vite build && node scripts/bundle-budget.mjs
-  main (styles.css, TopBar.tsx, Dialogs.tsx as on main): first load 1488511 bytes in 47 chunks (ceiling 1490000)
-  this branch:                                          first load 1489218 bytes in 47 chunks (ceiling 1490000)
-  Difference: +707 bytes. These are the media query, narrow.ts (the media-query hook and the shared setter rule), the
-  store's setter wrapper and App's right-sidebar ref.
+  main 33ee0efa (App.tsx, TopBar.tsx, windowStore.ts, styles.css as on main, narrow.ts removed):
+                 first load 1488511 bytes in 47 chunks (ceiling 1490000)
+  this branch:   first load 1488992 bytes in 47 chunks (ceiling 1490000)
+  Difference: +481 bytes (was +707 before the trim). These are the media query, narrow.ts (isNarrow and the shared
+  setter rule), the store's setter wrapper and App's right-sidebar ref. The trim dropped the useSyncExternalStore
+  subscription: isNarrow is read at render, so after a resize alone the left toggle's pressed state catches up on the
+  top bar's next render (the setters always read it live, so a press does the right thing either way).
+  After the trim: tsc 0; vitest src/shell src/keys src/chrome 77 files, 402 tests passed.
 
 REVIEW
 Three fresh opus-high-review passes (read-only):
@@ -99,4 +103,4 @@ Three fresh opus-high-review passes (read-only):
 - 3rd, at 3ef071e7: A-. One should-fix: the docs claimed every opener switches to Terminals; the toggles do not.
   Reworded (narrow.ts comment, DT-C135, this file); "delete" and the Classic header note were added to DT-C135.
   Nits left as is: (max-width: 899px) vs (width < 900px) at fractional widths (both sides agree); render-time ref
-  writes (no transitions call the setter); the unused server snapshot argument.
+  writes (no transitions call the setter); the unused server snapshot argument (gone with the trim above).

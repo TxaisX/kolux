@@ -54,7 +54,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [sidebarOpen, setLeftState] = useState(true);
   // T-699 (DT-C135): every path that opens or toggles the left sidebar (top bar, Ctrl+B, the menu, the palette, the
   // create and rename rows) goes through nextLeft, which in a narrow window closes the right sidebar to make room.
-  const rightAside = useRef<RightAside>({ shown: false, open: false, close: () => undefined }); // kept current by App.tsx
+  const rightAside = useRef({} as RightAside); // filled by App.tsx on every render, before any child draws or a key is pressed
   const leftNow = useRef(sidebarOpen);
   leftNow.current = sidebarOpen;
   const setSidebarOpen = useCallback((v: boolean | ((shown: boolean) => boolean)) => setLeftState((leftNow.current = nextLeft(leftNow.current, v, isNarrow(), rightAside.current))), []);
