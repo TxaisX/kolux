@@ -78,7 +78,7 @@ export default function FeedbackDialog() {
   // The cursor starts above the block, where the user types.
   useEffect(() => {
     if (!s.open) return;
-    const prev = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const prev = document.activeElement as HTMLElement | null;
     const el = box.current;
     if (el) {
       el.focus();
