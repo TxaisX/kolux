@@ -333,7 +333,7 @@ Acceptance:
         bar; no two default chords clash in a shared scope on any platform. (T-673; evidence/T-673.txt)
   - [x] With a menu, the palette or a modal dialog or question up, an app chord (Ctrl+T, Ctrl+W, Ctrl+Tab,
         Ctrl+1) waits; a docked tip, the floating panel, an inline sidebar form or a pane-local sheet holds
-        nothing. (T-673; evidence/T-673.txt, src/keys/overlayKeys.test.ts)
+        nothing. (T-673; evidence/T-673.txt)
 Compat: default chords, macOS first and then Windows and Linux where they differ: quick open Mod+P;
   app.settings Mod+Comma; force reload Mod+Shift+R; worktree.palette Mod+J | Mod+Shift+J;
   workspace.create Mod+N | Mod+Shift+N; workspace.delete Mod+Shift+Backspace; select workspace by
