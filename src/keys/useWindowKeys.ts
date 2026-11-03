@@ -59,11 +59,19 @@ export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sh
 // Only the app's own chords wait. A browser, editor or explorer chord (Ctrl+C in a page is browser.grabElement) is the
 // focused pane's or the overlay's own, so it falls through to the webview as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
+// Of the terminal chords, only the ones this window runs itself wait. The rest (copy, paste, select all, find, clear)
+// go to whatever has focus, so Ctrl+V still pastes a link into the worktree palette on the Terminals screen.
+export const WINDOW_TERMINAL = new Set([
+  "terminal.closePane", "terminal.setTitle", "terminal.clearPaneTitle", "terminal.focusNextPane",
+  "terminal.focusPreviousPane", "terminal.expandPane", "terminal.splitRight", "terminal.splitDown",
+  "terminal.equalizePaneSizes",
+]);
 
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
   const scope = actionById.get(id)?.scope;
   if (scope && !HELD_SCOPES.has(scope)) return false;
+  if (scope === "terminal" && !WINDOW_TERMINAL.has(id)) return false;
   const root = doc.querySelector(".settings[role='dialog']") ?? doc;
   return [...root.querySelectorAll(OVERLAYS)].some((el) => {
     const h = el as HTMLElement;
@@ -116,7 +124,7 @@ export function useWindowKeys(w: WindowBag) {
         case "focus.chrome":
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.
           e.preventDefault();
-          document.querySelector<HTMLElement>("header button:not(:disabled), header [tabindex='0']")?.focus();
+          document.querySelector<HTMLElement>("header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']")?.focus();
           return;
         case "browser.focusAddressBar":
         case "browser.back":

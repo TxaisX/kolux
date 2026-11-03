@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { actionById } from "./actions";
-import { heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN } from "./useWindowKeys";
+import { heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -66,6 +66,16 @@ test("a browser, editor or explorer chord is never held: Ctrl+C in a browser pan
   const modal = real("crash-report", { role: "dialog" });
   expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
   for (const id of ["tab.newTerminal", "terminal.splitRight", "worktree.palette"]) expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
+});
+
+test("Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the palette's field; a split still waits", () => {
+  const palette = real("palette", { role: "dialog" });
+  for (const id of ["terminal.paste", "terminal.copySelection", "terminal.selectAll"]) {
+    expect(actionById.get(id)?.scope, id).toBe("terminal");
+    expect(heldByOverlay(id, false, dom([palette]) as never), id).toBe(false);
+  }
+  expect(heldByOverlay("terminal.splitRight", false, dom([palette]) as never)).toBe(true);
+  for (const id of WINDOW_TERMINAL) expect(actionById.get(id)?.scope, id).toBe("terminal");
 });
 
 test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {

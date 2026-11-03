@@ -316,7 +316,7 @@ Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
 User does: uses the app on a fresh install.
 User sees: core commands have chords from the start, different per platform where the system keeps
   keys for itself; many newer commands have no chord until the user gives them one.
-Rules: there are 139 commands, 83 with a chord and 56 without (since T-673, DT-C109), among them one
+Rules: there are 138 commands, 82 with a chord and 56 without (since T-673, DT-C109), among them one
   new-tab-with-this-agent command per supported agent, generated from the agent list; Mod stands for
   Cmd on a Mac and for Ctrl on the other two platforms; some commands have a default only on macOS
   (rename workspace, new agent tab); since T-673 rename tab, maximise floating workspace and minimise
