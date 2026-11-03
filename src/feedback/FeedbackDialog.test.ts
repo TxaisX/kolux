@@ -4,6 +4,7 @@
 // when the box was closed and opened again cannot close the new box or wipe its draft.
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { MARK } from "./model";
 import { byLabel, byText, click, type FakeDocument, FakeNode, find, fire, installDom, mount, typeInto, until } from "../tasks/fakeDom";
 
 const back = vi.hoisted(() => ({ opened: [] as string[], hold: false, pending: [] as (() => void)[] }));
@@ -138,4 +139,16 @@ test("T-675 feedback: a send still running when the box is closed and opened aga
   expect(dialog()).not.toBeNull();
   expect(textarea().value).toContain("Second report, still being written");
   expect(sendButton().textContent).toBe("Open on GitHub");
+});
+
+test("T-695 feedback (G3): opened with no text, the box holds the details block, has the keyboard and takes typing", async () => {
+  await open("");
+  const box = textarea();
+  expect(box.attrs["aria-label"]).toBe("Your feedback");
+  expect(box.hasAttribute("disabled")).toBe(false);
+  expect(box.hasAttribute("readonly")).toBe(false);
+  expect(doc.activeElement).toBe(box); // the cursor starts in the box
+  expect(box.value.startsWith(MARK)).toBe(true); // never empty: the details block sits under the (empty) typed text
+  await typeInto(root, box, "Typed by hand" + box.value);
+  expect(textarea().value.startsWith("Typed by hand" + MARK)).toBe(true);
 });

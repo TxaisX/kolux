@@ -848,7 +848,7 @@ Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile e
 | `view.tasks` | Open Tasks | none | yes |
 | `sidebar.left.toggle` | Toggle Sidebar | Mod+B | no |
 | `sidebar.right.toggle` | Toggle Right Sidebar | Mod+L | no |
-| `sidebar.explorer.toggle` | Show Explorer | Mod+Shift+E | no |
+| `sidebar.explorer.toggle` | Show or hide Explorer | Mod+Shift+E | no |
 | `sidebar.search.toggle` | Show Search | Mod+Shift+F | no |
 | `sidebar.sourceControl.toggle` | Show Source Control | Mod+Shift+G | no |
 | `sidebar.checks.toggle` | Show Checks | none | yes |

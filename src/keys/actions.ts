@@ -86,7 +86,7 @@ export const actions: Action[] = [
   a("view.automations", "Open Automations", "global", [], { keywords: ["schedule", "cron", "recurring"] }), // UX lane C: reachable with the sidebar row hidden
   a("sidebar.left.toggle", "Toggle Sidebar", "global", ["Mod+B"]),
   a("sidebar.right.toggle", "Toggle Right Sidebar", "global", ["Mod+L"]),
-  a("sidebar.explorer.toggle", "Show Explorer", "global", ["Mod+Shift+E"]),
+  a("sidebar.explorer.toggle", "Show or hide Explorer", "global", ["Mod+Shift+E"]),
   a("sidebar.search.toggle", "Show Search", "global", ["Mod+Shift+F"]),
   a("sidebar.checks.toggle", "Show Checks", "global", []),
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
