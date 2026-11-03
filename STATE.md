@@ -85,6 +85,14 @@ recorded default until told otherwise; nothing here blocks a pass.
   later: kill the terminals of unsaved wait tabs at quit.
 - [reliability] 2026-10-30 · Known flake: src/settings/__cards__/SET-006-link.test.ts "terminal-first" fails on the
   untouched base 025eda2 on the shared Linux machine (its until() waits about 400 ms for the Shortcuts page to load).
+- [reliability] 2026-11-03 · Flake fixed (T-700 K1): notebook_run a_cell_that_sleeps_past_the_ceiling_is_killed lost
+  "before" when a loaded runner took over 10 s to start Python (6 sightings); it now retries with a longer ceiling.
+- [reliability] 2026-11-03 · Flake fixed (T-700 K2): git an_unattended_git_fails_fast_on_a_remote_that_wants_a_password
+  ran past its 30 s bar on a loaded runner while failing correctly; it now fails only on a real wait (90 s).
+- [reliability] 2026-11-03 · Flake fixed (T-700 K3): agent_hooks script_runs fix_2 tests: the script always runs with
+  CLAUDE_CONFIG_DIR cleared (another test could set it mid-start), and the unset-config test retries a slow post.
+- [reliability] 2026-11-03 · Trap fixed (T-700 K4): public/pdfjs/** -text, so pdfjsCopy.test.ts passes on an autocrlf
+  checkout (an existing worktree must delete and re-check-out the three files once).
 - [reliability] 2026-10-30 · Follow-ups not built (need new Rust): (1) T-599: a crash_note(summary) command in
   src-tauri/src/resources/recovery.rs that calls note_crash, registered in lib.rs and called from a componentDidCatch
   in src/recovery/ScreenBoundary.tsx with crashText(error), so Help > Report Crash can show a crash nobody reported

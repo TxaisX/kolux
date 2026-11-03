@@ -1,0 +1,56 @@
+T-700 - The CI flakes that stall trains, and the pdfjs line-end trap (DT-C136; handed to 2f by 57, K1-K4)
+Worker 2f, branch s-2f/ci-flakes off origin/main 33ee0efa, 2026-11-03. Rust tests and config only; no app code changes.
+
+K1 notebook_run::tests::a_cell_that_sleeps_past_the_ceiling_is_killed (6 sightings, all on PRs with no Rust changes)
+- Cause, from CI run 41680746283 (job 126074003506): "what it printed first is kept" failed with left: Null. The only
+  output was the "was stopped" error: Python on the loaded runner had not printed within the 10 s ceiling.
+- Fix: the test runs with ceilings of 5, 10, 20 and 40 s and stops at the first run in which Python printed. Every run
+  must still take at least its ceiling and under ceiling + 20 s, and must end in the "was stopped" error. A run with no
+  print must have that error as its only output. The ceiling that passed is printed (eprintln), so a log shows when a
+  runner needed 40 s. Not a bigger single timeout: a quiet PC passes at 5 s, faster than before.
+
+K2 git::tests::an_unattended_git_fails_fast_on_a_remote_that_wants_a_password
+- Cause, from CI run 41664093769 (job 126014646375): "began.elapsed() < 30 s" failed at git.rs:1160. Git had failed
+  correctly ("terminal prompts disabled" passed first) but took over 30 s on a loaded runner. The clock already
+  started after the 401 server was up, so only command building and git itself were inside the span.
+- Fix: the clock starts when git starts, and a watchdog fails the test (and kills git) only if git is still running
+  after 90 s, as a password prompt would be: a prompt never returns. The "terminal prompts disabled" message is the
+  proof that git asked nobody. 57 accepted the 90 s bar.
+
+K3 agent_hooks script_runs fix_2 tests (CHAIN.md "script_runs fix_2"; no failing log left in the last 150 runs)
+- Cause 1 (race): the script helper removed CLAUDE_CONFIG_DIR from the script's environment only if it was set at the
+  moment it looked. with_claude_config in another test can set it between that look and the start, and then the
+  script reports that test's folder. fix_2_s7 (config unset) checks that folder, so it fails.
+- Cause 2 (load): fix_2_an_unset_or_empty_claude_config_dir_still_posts needs the post to land within curl's 1.5 s
+  limit. On a loaded PC the script holds the event instead and stdout is empty. The live test next to it already had
+  the retry for this; this test did not.
+- Fix: the helper always clears CLAUDE_CONFIG_DIR for the script (the test's own value is added back after), and the
+  unset-config test takes the live test's retry: the listener keeps accepting until a request arrives, and up to 4
+  retries each start from a fresh spool.
+
+K4 public/pdfjs/** -text in .gitattributes (repo root; flagged in the PR body)
+- Cause: the index holds the three files (LICENSE_OPENJPEG, LICENSE_PDFJS_OPENJPEG, openjpeg_nowasm_fallback.js) with
+  LF; an autocrlf checkout wrote them with CRLF, so src/editor/pdfjsCopy.test.ts compared CRLF against pdfjs-dist's LF
+  and failed 3 of 3 in every local worktree (CI checks out LF and passed).
+- Fix: public/pdfjs/** -text. git ls-files --eol now shows i/lf w/lf attr/-text for all three.
+- Renormalize (fa asked): not needed. The index already holds the LF bytes, so no file in the commit changes; a fresh
+  clone gets them exact. An existing autocrlf worktree keeps its CRLF copies until they are deleted and checked out
+  again once (rm the three files; git checkout -- public/pdfjs).
+- Proof: in this worktree after that re-checkout, pnpm vitest run src/editor/pdfjsCopy.test.ts: 3 of 3 pass (it
+  failed 3 of 3 in every earlier worktree, e.g. T-698's).
+
+PROOF: 20 looped runs per fixed test, one test at a time (cargo test -j 2 --lib <test> -- --test-threads=1)
+- notebook_run::tests::a_cell_that_sleeps_past_the_ceiling_is_killed: 20/20 passed
+- git::tests::an_unattended_git_fails_fast_on_a_remote_that_wants_a_password: 20/20 passed
+- script_runs::fix_2_an_unset_or_empty_claude_config_dir_still_posts: 20/20 passed
+- script_runs::fix_2_s7_a_held_event_never_carries_tool_input_prompt_or_reply: 20/20 passed
+- K1 again after adding the ceiling log: 20/20 passed, all 20 printed within the 5 s ceiling
+- Full cargo test and clippy: not run locally. 57 asked for low-RAM local work while the trains 7+8 live verify ran,
+  so the full suite and clippy are proved by Windows CI on the PR head (sha in the PR).
+
+GATES
+- node scripts/plan-check.mjs: OK. firewall-check -Baseline: 0 new.
+- First load: +0 expected (no file under src/ or package files changed); CI figure in the PR.
+
+PAPER
+- PLAN [x] T-700, DECISIONS DT-C136, STATE: four [reliability] rows (one per flake) after the 2026-10-30 known-flake row.

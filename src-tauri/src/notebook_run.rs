@@ -684,12 +684,25 @@ mod tests {
             return;
         }
         let nb = notebook(&d, "a.ipynb", json!([code("import time\nprint('before', flush=True)\ntime.sleep(120)")]));
-        let began = Instant::now();
-        // A loaded CI runner can take over 2 s to start Python; 10 s leaves room for the first print.
-        let r = run_cell_in(&nb, 0, &|_| true, &setup(Duration::from_secs(10), OUT_CAP)).unwrap();
-        assert!(began.elapsed() < Duration::from_secs(30), "took {:?}", began.elapsed());
-        assert_eq!(r.outputs[0]["text"], json!(["before\n"]), "what it printed first is kept");
-        assert_eq!(r.outputs[1]["output_type"], "error");
-        assert!(r.outputs[1]["evalue"].as_str().unwrap().contains("was stopped"));
+        // T-700 (K1): a loaded CI runner can take longer than the ceiling just to start Python, and then the cell
+        // is stopped before its first print. Every try must still be stopped at its own ceiling; a try that ended
+        // before Python printed says nothing about keeping that text, so the next try waits twice as long.
+        for ceiling in [5, 10, 20, 40].map(Duration::from_secs) {
+            let began = Instant::now();
+            let r = run_cell_in(&nb, 0, &|_| true, &setup(ceiling, OUT_CAP)).unwrap();
+            let took = began.elapsed();
+            assert!(took >= ceiling && took < ceiling + Duration::from_secs(20), "a {ceiling:?} ceiling took {took:?}");
+            let stopped = r.outputs.last().unwrap();
+            assert_eq!(stopped["output_type"], "error", "{:?}", r.outputs);
+            assert!(stopped["evalue"].as_str().unwrap().contains("was stopped"), "{stopped}");
+            if r.outputs.len() == 2 {
+                assert_eq!(r.outputs[0]["text"], json!(["before\n"]), "what it printed first is kept");
+                eprintln!("notebook_run: Python printed within the {ceiling:?} ceiling");
+                return;
+            }
+            assert_eq!(r.outputs.len(), 1, "{:?}", r.outputs);
+            eprintln!("notebook_run: Python had not printed within {ceiling:?}, so the next try waits longer");
+        }
+        panic!("Python never printed within a 40 s ceiling");
     }
 }
