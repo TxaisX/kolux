@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampMenu } from "./menuNav";
+import { clampMenu, menuKeyTarget } from "./menuNav";
 
 describe("popup menu placement", () => {
   it("keeps a menu that fits where it was asked for", () => {
@@ -10,5 +10,21 @@ describe("popup menu placement", () => {
   });
   it("never leaves the top-left corner either", () => {
     expect(clampMenu(-30, -5, 200, 80, 1000, 800)).toEqual({ left: 8, top: 8 });
+  });
+});
+
+describe("popup menu keys", () => {
+  const rows = ["a", "b", "c"];
+  it("moves between the rows while focus is inside the menu", () => {
+    expect(menuKeyTarget(rows, "a", true, "ArrowDown")).toBe(1);
+    expect(menuKeyTarget(rows, "a", true, "ArrowUp")).toBe(2);
+    expect(menuKeyTarget(rows, "b", true, "End")).toBe(2);
+  });
+  it("leaves the key alone once focus is outside the menu", () => {
+    expect(menuKeyTarget(rows, "editor", false, "ArrowDown")).toBeNull();
+    expect(menuKeyTarget(rows, "editor", false, "Home")).toBeNull();
+  });
+  it("ignores keys that are not menu keys", () => {
+    expect(menuKeyTarget(rows, "a", true, "x")).toBeNull();
   });
 });

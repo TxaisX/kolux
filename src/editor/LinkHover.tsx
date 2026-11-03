@@ -32,6 +32,8 @@ export default function LinkHover({ editor, host, onOpen, onToast }: { editor: L
       const n = document.getSelection()?.anchorNode;
       const a = (n && n.nodeType === 1 ? (n as Element) : n?.parentElement)?.closest?.("a[href]");
       if (a && host.contains(a)) show(a);
+      // The caret moved to text that is not a link: the bubble goes, unless it is being used.
+      else if (n && host.contains(n) && edit === null && !box.current?.contains(document.activeElement)) setSpot(null);
     };
     const out = (e: MouseEvent) => {
       const to = e.relatedTarget as Node | null;

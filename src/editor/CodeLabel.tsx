@@ -13,6 +13,8 @@ export default function CodeLabel({ editor }: { editor: LexicalEditor | null }) 
   useEffect(() => {
     if (!editor || busy) return;
     let frame = 0;
+    // selectionchange fires on every caret move: a spot that is the same as the one showing is not set again.
+    const keep = (n: Spot) => setSpot((s) => (s && s.key === n.key && s.language === n.language && s.right === n.right && s.top === n.top ? s : n));
     const move = (e: MouseEvent) => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
@@ -20,7 +22,7 @@ export default function CodeLabel({ editor }: { editor: LexicalEditor | null }) 
           const r = b.el?.getBoundingClientRect();
           if (!r) continue;
           // a few pixels of slack above the block, so the label under the pointer keeps it
-          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 4 && e.clientY <= r.bottom) return setSpot({ key: b.key, language: b.language, right: r.right, top: r.top });
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 4 && e.clientY <= r.bottom) return keep({ key: b.key, language: b.language, right: r.right, top: r.top });
         }
         setSpot(null);
       });
@@ -31,7 +33,7 @@ export default function CodeLabel({ editor }: { editor: LexicalEditor | null }) 
       if (!n) return;
       for (const b of codeBlocks(editor)) {
         const r = b.el?.contains(n) ? b.el.getBoundingClientRect() : null;
-        if (r) return setSpot({ key: b.key, language: b.language, right: r.right, top: r.top });
+        if (r) return keep({ key: b.key, language: b.language, right: r.right, top: r.top });
       }
     };
     document.addEventListener("mousemove", move);

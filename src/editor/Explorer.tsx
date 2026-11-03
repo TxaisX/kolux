@@ -210,8 +210,11 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   // The live poll (quiet) skips a folder whose last read has not come back yet, so a slow disk is not
   // asked again every few seconds; a read the user or an edit asks for always goes out.
   const inflight = useRef<Set<string>>(new Set());
+  // How many reads of a folder are out: a user read and a poll can overlap, and the mark stays until the last one is back.
+  const reading = useRef<Map<string, number>>(new Map());
   const load = (dir: string, quiet = false) => {
     if (!claimRead(inflight.current, dir, quiet)) return Promise.resolve();
+    reading.current.set(dir, (reading.current.get(dir) ?? 0) + 1);
     return invoke<Node[]>("dir_list", { path: dir })
       .then(
         (list) => {
@@ -220,7 +223,14 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         },
         (err) => setFailed((f) => (f[dir] === String(err) ? f : { ...f, [dir]: String(err) })),
       )
-      .finally(() => inflight.current.delete(dir));
+      .finally(() => {
+        const left = (reading.current.get(dir) ?? 1) - 1;
+        if (left > 0) reading.current.set(dir, left);
+        else {
+          reading.current.delete(dir);
+          inflight.current.delete(dir);
+        }
+      });
   };
   // VIEW-059 (T-224-b): refresh shows a spinner and is off while it runs; expand all opens the folders level by level.
   const [refreshing, setRefreshing] = useState(false);
