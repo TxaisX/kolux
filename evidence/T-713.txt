@@ -9,24 +9,28 @@ WHAT WAS WRONG
 THE FIX (DT-C149)
 - src-tauri/src/notebook_run.rs: a STOP flag and a `notebook_stop` command that sets it only while a cell runs; the flag is
   cleared when a run starts. Setup carries the flag into run_python, whose wait loop (every 10 ms, as for the ceiling) ends
-  the program and its tree the same way the ceiling does. A stopped run keeps what it printed and gets the error output
+  the program and its tree the same way the ceiling does. Python runs with -u (unbuffered), so a stopped run keeps what it printed and gets the error output
   "The cell was stopped." (told apart from the ceiling's message).
 - src-tauri/src/lib.rs: the command is registered.
 - src/editor/NotebookView.tsx: RunButton, one element that is Run, or Stop on the running cell (focus stays on it); the
-  other cells' Run stays disabled while one runs. Stop invokes notebook_stop; the run then returns as usual and the outputs
+  other cells' Run stays disabled while one runs. A repeat click (detail >= 2, the second click of a double-click
+  on Run) does not stop. Stop invokes notebook_stop; the run then returns as usual and the outputs
   go into the notebook.
 
 TESTS
 - Rust: notebook_run::tests::t713_stop_ends_a_running_cell_at_once - a cell running time.sleep(120) under a 60 s ceiling,
-  the flag set after 0.5 s: the run ends (0.53 s for the whole test here) with the error output "The cell was stopped."
+  a plain print('step 0') first, the flag set after 1.5 s: the run ends with the error output "The cell was stopped." and
+  the output keeps "step 0". Without -u that assertion fails (review M1: piped stdout is block-buffered).
   Ran with a real Python (no skip). On main the test does not compile: Setup has no stop field, STOPPED is not defined.
-  cargo test --lib notebook_run: 19 passed. cargo clippy --lib --tests -- -D warnings: clean.
-- Frontend: src/editor/NotebookView.test.ts "RunButton (T-713)", 2 tests: Run / Stop / disabled Run by state, and a press
-  stops the running cell and runs otherwise. With main's NotebookView.tsx: 2 failed ("RunButton is not a function"). On
-  this branch: src/editor 105 files, 1159 tests passed (VITEST_MAX_WORKERS=2). pnpm exec tsc --noEmit -p . : clean.
+  cargo test --lib notebook_run: 19 passed (fix round 1). cargo clippy --lib --tests -- -D warnings: clean.
+- Frontend: src/editor/NotebookView.test.ts "RunButton (T-713)", 3 tests: Run / Stop / disabled Run by state, a press
+  stops the running cell and runs otherwise, and a double-click's second click does not stop (red on 0dea4d0e). With main's NotebookView.tsx: 2 failed ("RunButton is not a function"). On
+  this branch: src/editor 105 files, 1160 tests passed (VITEST_MAX_WORKERS=2). pnpm exec tsc --noEmit -p . : clean.
 
 BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
 - main 8c9536aa: 1,489,577 B first load. This branch: 1,489,577 B (+0; NotebookView is a lazy chunk).
 
 REVIEW
-- Fresh opus-high-review: see the PR conversation.
+- Fresh opus-high-review on 0dea4d0e: B. Fixed: M1 (output lost on a stop: -u), M2 (double-click on Run could stop the
+  fresh run). Lows (pre-Rust press not kept, app-wide flag, stderr dropped on a stop, test gaps, no status announcement)
+  logged to kolux-rs-after.md. Full review in the PR conversation.

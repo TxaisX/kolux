@@ -295,11 +295,11 @@ fn drain(mut r: impl Read + Send + 'static, cap: usize, sink: Arc<Mutex<Capture>
     });
 }
 
-/// Starts `python -I -X utf8 -` on the absolute `python`, hands it `source` on standard input only, and
+/// Starts `python -I -u -X utf8 -` (unbuffered, so a stop keeps what was printed) on the absolute `python`, hands it `source` on standard input only, and
 /// waits for it up to `limit` or until `halt` is set. Then the program and everything it started are ended.
 fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usize, halt: &AtomicBool) -> Result<Ran, String> {
     let mut cmd = Command::new(python);
-    cmd.args(["-I", "-X", "utf8", "-"]).current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.args(["-I", "-u", "-X", "utf8", "-"]).current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     // The cell must not see Kolux's own tokens (the hook endpoint's, a pane's identity, a sign-in token).
     for (k, _) in std::env::vars_os() {
         if k.to_string_lossy().to_ascii_uppercase().starts_with("KOLUX_") {
@@ -671,9 +671,10 @@ mod tests {
         if !python_here(&d) {
             return;
         }
-        let nb = notebook(&d, "a.ipynb", json!([code("import time\ntime.sleep(120)")]));
+        // a plain print, no flush: -u keeps what was printed before the stop (piped stdout is block-buffered otherwise)
+        let nb = notebook(&d, "a.ipynb", json!([code("import time\nprint('step 0')\ntime.sleep(120)")]));
         std::thread::spawn(|| {
-            std::thread::sleep(Duration::from_millis(500));
+            std::thread::sleep(Duration::from_millis(1500));
             HALT.store(true, Ordering::Release);
         });
         let began = Instant::now();
@@ -682,6 +683,7 @@ mod tests {
         let last = r.outputs.last().unwrap();
         assert_eq!(last["output_type"], "error", "{:?}", r.outputs);
         assert_eq!(last["evalue"], STOPPED, "a stop is told apart from the time ceiling");
+        assert_eq!(r.outputs[0]["text"], json!(["step 0\n"]), "what was printed before the stop is kept: {:?}", r.outputs);
     }
 
     #[test]

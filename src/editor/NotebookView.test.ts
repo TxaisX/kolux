@@ -13,10 +13,16 @@ describe("RunButton (T-713)", () => {
   });
   it("a press on the running cell stops it; otherwise it runs", () => {
     const got: string[] = [];
-    const press = (running: number | null) => (RunButton(props(running, got)) as { props: { onClick: () => void } }).props.onClick();
+    const press = (running: number | null, detail = 1) => (RunButton(props(running, got)) as { props: { onClick: (e: { detail: number }) => void } }).props.onClick({ detail });
     press(1);
     press(null);
-    expect(got).toEqual(["stop", "run"]);
+    press(1, 0); // a key press
+    expect(got).toEqual(["stop", "run", "stop"]);
+  });
+  it("the second click of a double-click on Run does not stop the run it started", () => {
+    const got: string[] = [];
+    (RunButton(props(1, got)) as { props: { onClick: (e: { detail: number }) => void } }).props.onClick({ detail: 2 });
+    expect(got).toEqual([]);
   });
 });
 

@@ -75,11 +75,12 @@ export const sameCell = (c: Cell | undefined, ask: Removal): boolean => !!c && k
 export const needsAsk = (c: Cell): boolean => sourceOf(c).trim() !== "" || (Array.isArray(c.outputs) && c.outputs.length > 0);
 
 /** T-713 (DT-C149): a code cell's Run button, which is its Stop button while that cell runs. One element for
- *  both, so the focus stays on it when the run starts; the other cells' Run waits for the run to end. */
+ *  both, so the focus stays on it when the run starts; the other cells' Run waits for the run to end. The second
+ *  click of a double-click on Run lands on Stop, so a repeat click (detail 2 or more) does not stop. */
 export function RunButton({ i, running, onRun, onStop }: { i: number; running: number | null; onRun: () => void; onStop: () => void }) {
   const mine = running === i;
   return (
-    <button type="button" disabled={running !== null && !mine} aria-label={`${mine ? "Stop" : "Run"} cell ${i + 1}`} onClick={mine ? onStop : onRun}>
+    <button type="button" disabled={running !== null && !mine} aria-label={`${mine ? "Stop" : "Run"} cell ${i + 1}`} onClick={mine ? (e) => e.detail < 2 && onStop() : onRun}>
       {mine ? "Stop" : "Run"}
     </button>
   );
