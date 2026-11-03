@@ -16,6 +16,8 @@ import { LoadFailed, TokenAnalyticsView, figureLabel } from "./TokenAnalytics";
 import analyticsSource from "./TokenAnalytics.tsx?raw";
 import shareCardSource from "./ShareCard.tsx?raw";
 import type { Row, Usage } from "./tokens";
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+const stylesSource = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 
 const row = (day: string, p: Partial<Row> = {}): Row => ({ day, session: "s1", model: "claude-opus-4-5", cwd: "C:\\work\\app", band: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cacheWrite1h: 0, reasoning: 0, last: 0, ...p });
 const today = new Date(2026, 2, 31);
@@ -30,7 +32,11 @@ test("usage-status.md:3: a token_usage failure draws the error and a Retry butto
   expect(html).toContain(loadFailedText("db locked"));
   expect(html).toContain('role="alert"');
   expect(html).toMatch(/<button[^>]*>Retry<\/button>/);
-  expect(analyticsSource).toContain("<LoadFailed error={loadError} onRetry={load} />");
+  // while a retry runs the button says so and is greyed, so a second failure with the same text still shows it ran
+  const busy = renderToStaticMarkup(createElement(LoadFailed, { error: "db locked", onRetry: () => {}, busy: true }));
+  expect(busy).toMatch(/<button[^>]*disabled=""[^>]*>Retrying…<\/button>/);
+  expect(busy).toContain(loadFailedText("db locked"));
+  expect(analyticsSource).toContain("<LoadFailed error={loadError} onRetry={load} busy={loading} />");
   // Retry keeps the error on screen until the read works, instead of blanking the panel while it runs
   expect(analyticsSource).toContain("then((u) => { setUsage(u); setLoadError(\"\"); }");
   expect(analyticsSource).not.toMatch(/setLoadError\(""\);\s*invoke/);
@@ -43,8 +49,10 @@ test("usage-status.md:4: a Track switch that fails says so, and the view draws t
   expect(html).toContain("Could not turn Claude token tracking on");
   expect(view()).not.toContain("data-ta-notice");
   // the live region is there before any notice, so one that appears in it is announced
-  expect(view()).toContain('<div role="status"></div>');
-  expect(html).toMatch(/<div role="status"><p[^>]*data-ta-notice/);
+  expect(view()).toContain('<div class="ta-notices" role="status"></div>');
+  expect(html).toMatch(/<div class="ta-notices" role="status"><p[^>]*data-ta-notice/);
+  // empty, it takes no room in the panel's column (no doubled gap under the header)
+  expect(stylesSource).toMatch(/\.ta-notices:empty \{ position: absolute; \}/);
   // no failure of token_usage, token_tracking_set or a rescan is swallowed any more
   expect(analyticsSource).not.toMatch(/\.catch\(\(\) => \{\}\)/);
   expect(analyticsSource).not.toContain("setUsage, () => {}");

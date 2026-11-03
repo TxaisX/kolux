@@ -258,7 +258,7 @@ export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTra
         </button>
       </div>
       {/* One live region that is always there, so a notice that appears in it is announced. */}
-      <div role="status">
+      <div className="ta-notices" role="status">
         {(notices ?? []).map((n) => (
           <p key={n} className="conn-detail warn" data-ta-notice>
             {n}
@@ -271,15 +271,15 @@ export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTra
 }
 
 /** usage-status.md:3: the saved figures could not be read: the error and a way to try again, not a blank panel. */
-export function LoadFailed({ error, onRetry }: { error: string; onRetry: () => void }) {
+export function LoadFailed({ error, onRetry, busy = false }: { error: string; onRetry: () => void; busy?: boolean }) {
   return (
     <section className="conn-card" data-panel="load-failed">
       <p className="conn-detail warn" role="alert">
         {loadFailedText(error)}
       </p>
       <div className="btn-row">
-        <button type="button" className="btn" onClick={onRetry}>
-          Retry
+        <button type="button" className="btn" disabled={busy} onClick={onRetry}>
+          {busy ? "Retrying…" : "Retry"}
         </button>
       </div>
     </section>
@@ -288,6 +288,7 @@ export function LoadFailed({ error, onRetry }: { error: string; onRetry: () => v
 
 export default function TokenAnalytics() {
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   // One line per thing that failed behind the panel, keyed so the next try replaces or clears it.
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -317,8 +318,12 @@ export default function TokenAnalytics() {
   }, [note]);
 
   const load = useCallback(() => {
-    // The error stays until the read works, so Retry does not blank the panel while it runs.
-    invoke<Usage>("token_usage").then((u) => { setUsage(u); setLoadError(""); }, (e) => setLoadError(String(e)));
+    // The error stays until the read works, so Retry does not blank the panel while it runs; Retry shows
+    // "Retrying…" and is greyed meanwhile, so a read that fails again the same way still shows it ran.
+    setLoading(true);
+    invoke<Usage>("token_usage")
+      .then((u) => { setUsage(u); setLoadError(""); }, (e) => setLoadError(String(e)))
+      .finally(() => setLoading(false));
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
@@ -349,6 +354,6 @@ export default function TokenAnalytics() {
 
   // usage-status.md:18: one `today` per load of the figures, not a new Date on every render (it broke the card's memo).
   const today = useMemo(() => new Date(), [usage, pick]);
-  if (!usage) return loadError ? <LoadFailed error={loadError} onRetry={load} /> : null;
+  if (!usage) return loadError ? <LoadFailed error={loadError} onRetry={load} busy={loading} /> : null;
   return <TokenAnalyticsView usage={usage} pick={pick} scanning={scanning} today={today} notices={Object.values(notes)} onPick={setPick} onTrack={track} onRefresh={() => scan(shownProviders(usage, pick).filter((p) => !scanning.includes(p)))} filters={filters} onFilters={(f) => setFilters((x) => ({ ...x, ...f }))} />;
 }

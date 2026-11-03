@@ -67,6 +67,15 @@ proof/ux-audit/requests); focus is not put back when a question closes, the Tab 
 Kept as judged: role group on totals, role img cells, the memoised today, the scope fallback, the Escape order, the
 ShareCard listener removal, the APP-054 mock, insights.css.
 
+RE-REVIEW (fresh, opus-high-review): A- on bdd31c80 (be0ecd66 + bdd31c80). Fixed in the next commit: the Insights link
+promised more sessions on a view that filters to 30 days and Kolux only, now "All usage in Settings → Usage"; Retry gave
+no sign it ran when the read failed again with the same text, now "Retrying…" and greyed while it runs (also stops
+overlapping reads); the empty live region added a 10 px gap, now .ta-notices:empty is taken out of the column; the
+APP-054 rule and its ticked line now name the background sessions limit; the USAGE-019 line says what is proven by
+wiring and what by the helper tests (T-667); DT-C105 Why holds the reason; PLAN wording. Known limit, accepted: a
+notice already present when the panel first draws (project list failed before token_usage returned) may not be
+announced. Shown to fail on bdd31c80 code (TokenAnalytics.tsx, InsightsPanel.tsx, styles.css put back): 3 tests
+(rows 3, 4, 20); restored, all pass. Re-run: 151 files, 813 passed; tsc exit 0; plan-check OK; firewall 0 new.
 SPEC
 spec/06-usage-limits.md: USAGE-013 Rules (failed scan / read / Track switch are named, Retry for the read) + a new
 acceptance line; USAGE-014 Rules (an unreadable project list falls back to every local use: reverses "Kolux scope shows

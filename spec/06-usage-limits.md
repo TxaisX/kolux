@@ -544,8 +544,9 @@ Acceptance:
   - [ ] Share, then Copy image → the clipboard holds a picture of the card and the button reads
         Copied for about two seconds.
   - [ ] Share on X → the browser opens a draft post with the range and totals.
-  - [x] Open Share from the keyboard → focus is in the dialog, Tab stays inside, Escape closes it and
-        focus is back on Share. (unit; evidence/T-669.txt)
+  - [x] Open Share from the keyboard → the dialog runs on the shared dialog focus helper, so focus is in
+        the dialog, Tab stays inside, Escape closes it and focus goes back (wiring: unit, evidence/T-669.txt;
+        the helper's focus moves: unit, evidence/T-667.txt). A live keyboard pass is still to do.
 Compat: —
 Source: D-06-019
 
