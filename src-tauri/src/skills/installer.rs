@@ -163,7 +163,9 @@ pub fn launch(cmd: &Cmd, resolved: &Path, windows: bool) -> Result<Launch, Strin
     }
     // /d skips the interpreter's start-up scripts; /s keeps the outer quotes below from being read.
     let line = std::iter::once(format!("\"{program}\"")).chain(cmd.args.iter().map(|a| quote(a))).collect::<Vec<_>>().join(" ");
-    Ok(Launch { program: "cmd.exe".into(), args: vec!["/d".into(), "/s".into(), "/c".into()], raw: Some(format!("\"{line}\"")) })
+    // T-660: the interpreter itself by its full path in Windows' system folder, never by bare name.
+    let interpreter = crate::pty::system_program("cmd.exe").to_string_lossy().into_owned();
+    Ok(Launch { program: interpreter, args: vec!["/d".into(), "/s".into(), "/c".into()], raw: Some(format!("\"{line}\"")) })
 }
 
 /// R10-skills.2 (T-633): where a run starts. A computer-wide one (`-g`) starts in the app's own
@@ -385,7 +387,11 @@ mod tests {
     fn windows_goes_through_the_command_interpreter_as_one_line() {
         let c = update_cmd(&s(&["orchestration"])).unwrap();
         let l = launch(&c, Path::new(NPX), true).unwrap();
-        assert_eq!((l.program.as_str(), l.args), ("cmd.exe", s(&["/d", "/s", "/c"])));
+        let interpreter = crate::pty::system_program("cmd.exe");
+        assert_eq!((l.program.as_str(), l.args), (interpreter.to_string_lossy().as_ref(), s(&["/d", "/s", "/c"])));
+        // T-660: a full path in Windows' system folder, so a cmd.exe in the install folder is never run.
+        #[cfg(windows)]
+        assert!(Path::new(&l.program).is_absolute() && interpreter.parent() == crate::resources::update_guard::system_dir().as_deref());
         assert_eq!(l.raw.as_deref(), Some(r#"""C:\Program Files\nodejs\npx.cmd" --yes skills update orchestration -y -g""#));
         assert_eq!(launch(&c, Path::new("/usr/bin/npx"), false).unwrap(), Launch { program: "/usr/bin/npx".into(), args: c.args.clone(), raw: None });
     }
