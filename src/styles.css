@@ -1231,11 +1231,12 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
    The left sidebar (8 px gutter) leaves room for the right one's 240 px minimum while that shows; the right one leaves
    room for the left sidebar as drawn. The Agents screen's rail (.rail-wrap) keeps its own width (.rail); the right
    sidebar only shows on Terminals, never beside it. The right sidebar's own clamp (Right.tsx) is unchanged; these only
-   catch a width drawn before the window shrank. The step-aside above still starts at 899 px. */
+   catch a width drawn before the window shrank. The step-aside above still starts at 899 px; T-719 (DT-C155): under it
+   the right sidebar does not count the left one it has stepped aside. */
 .body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
 .body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
 .body > .rside { max-width: max(240px, 100vw - 340px); }
-.body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
+@media (min-width: 900px) { .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }
 /* Classic's title header cell (chrome/titleHeader.ts, saved width + 8) follows the card as drawn: 228 = 220 + the gutter. */
 .app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }
 .app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }

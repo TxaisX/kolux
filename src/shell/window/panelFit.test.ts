@@ -19,7 +19,8 @@ const RULES = [
   ".body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }",
   ".body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
   ".body > .rside { max-width: max(240px, 100vw - 340px); }",
-  ".body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }",
+  // T-719 (DT-C155): only from NARROW_PX up; below it the step-aside has hidden the left sidebar.
+  "@media (min-width: 900px) { .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); } }",
   ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }",
   ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }",
 ];
@@ -30,7 +31,7 @@ const RULES = [
 const layout = (W: number, left: number | null, right: number | null) => {
   const stepAside = right !== null && W < NARROW_PX;
   const l = left === null || stepAside ? 0 : 8 + Math.max(LEFT_MIN, Math.min(left, W - (right === null ? 348 : 588)));
-  const rMax = left === null ? Math.max(RIGHT_MIN, W - FLOOR) : Math.max(RIGHT_MIN, W - 348 - Math.min(left, W - 588));
+  const rMax = left === null || stepAside ? Math.max(RIGHT_MIN, W - FLOOR) : Math.max(RIGHT_MIN, W - 348 - Math.min(left, W - 588));
   const r = right === null ? 0 : Math.min(right, rMax);
   return { l, r, work: W - l - r };
 };
@@ -76,6 +77,19 @@ test("T-703: the dragged panel gives back its width first; the step-aside starts
       expect(layout(W, left, drawn).r, `${W} px, left ${left}`).toBe(drawn);
     }
   }
+});
+
+test("T-719: under 900 px the right sidebar takes the room the stepped-aside left sidebar leaves, and the workspace keeps its floor", () => {
+  for (const W of [640, 800, NARROW_PX - 1]) {
+    for (const left of [null, 289, LEFT_MAX]) {
+      const drawn = clampWidth(2000, W, left === null ? 0 : left + 8); // MIRROR Right.tsx: dragged as wide as it goes
+      expect(drawn, `${W} px, left ${left}`).toBe(Math.max(RIGHT_MIN, W - 400));
+      expect(layout(W, left, drawn), `${W} px, left ${left}`).toEqual({ l: 0, r: drawn, work: W - drawn });
+    }
+  }
+  expect(clampWidth(2000, 800, 297)).toBe(400); // before T-719 both clamps counted the hidden left sidebar: 240
+  expect(clampWidth(2000, NARROW_PX, 297)).toBe(RIGHT_MIN); // from 900 px up the left sidebar shows and counts
+  expect(layout(800, 289, 900)).toEqual({ l: 0, r: 800 - FLOOR, work: FLOOR }); // a width drawn before the shrink still gives back
 });
 
 test("T-703: a drag starts from the width as drawn, so a narrowed panel answers the pointer at once", () => {
