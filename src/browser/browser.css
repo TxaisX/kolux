@@ -5,8 +5,9 @@
 /* T-240 (BROW-034): the Viewport Size menu sits with the toolbar's icon buttons. */
 .pane.browser .pane-head select.viewport { height: 20px; font: inherit; font-size: 11px; color: var(--fg-muted); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 0 2px; max-width: 84px; }
 .pane.browser .pane-head select.viewport:hover, .pane.browser .pane-head select.viewport:focus-visible { color: var(--fg); }
+/* UX audit: Import cookies is an icon button and stays; only the wider Viewport menu goes. */
 @container (max-width: 359px) {
-  .pane.browser .pane-head select.viewport, .pane.browser .pane-head .ib.cookies { display: none; }
+  .pane.browser .pane-head select.viewport { display: none; }
 }
 .pane.browser .pane-head { position: relative; }
 .pane.browser .pane-head .address-slot { flex: 1; min-width: 0; display: flex; }
@@ -52,20 +53,28 @@
 .preview-copy { font-size: 11px; }
 /* T-319-b: the chip opens for typing (BROW-041); the import-logins hint (BROW-030). */
 .preview-chip { cursor: text; }
+/* UX audit: the chip's address part is a real button (keyboard reachable) that looks like the text it replaces. */
+.preview-open { display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; cursor: text; white-space: nowrap; }
+.preview-open:focus-visible { outline: 1px solid var(--accent, #ff5a00); outline-offset: 1px; border-radius: 3px; }
 .import-hint { display: inline-flex; align-items: center; font-size: 11px; white-space: nowrap; }
 /* T-159 (BROW-040): the outside address a preview asked for, shown whole. */
+.pane.browser .notice > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .pane.browser .notice.preview-ask { color: var(--fg); border-color: var(--line); flex-wrap: wrap; }
 .pane.browser .notice.preview-ask span { flex: 1; min-width: 0; }
 .pane.browser .notice.preview-ask code { overflow-wrap: anywhere; user-select: text; }
 .pane.browser .notice.preview-ask .ib { margin-left: 0; white-space: nowrap; }
 
 /* T-238-b (BROW-004): the address bar's drop-down, in the pane's flow above the page. */
-.pane.browser .suggest { list-style: none; margin: 0; padding: 2px 0; border-bottom: 1px solid var(--border); background: var(--bg-raised, var(--bg)); max-height: 240px; overflow-y: auto; }
+.pane.browser .suggest { list-style: none; margin: 0; padding: 2px 0; border-bottom: 1px solid var(--line-subtle); background: var(--surface); max-height: 240px; overflow-y: auto; }
 .pane.browser .suggest li { display: flex; flex-direction: column; gap: 1px; padding: 3px 10px; cursor: pointer; min-width: 0; }
 .pane.browser .suggest li.on, .pane.browser .suggest li:hover { background: var(--chip-bg); }
 .pane.browser .suggest .head { font-size: 12px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pane.browser .suggest .sub { font-size: 11px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* T-240 (BROW-028): the Import Cookies menu and the guided Chrome steps. */
+/* UX audit: the Import cookies rows are real buttons that fill their row. */
+.pane.browser .suggest li.item { padding: 0; }
+.pane.browser .suggest li.item button.pick { width: 100%; text-align: left; background: none; border: 0; color: var(--fg); font: inherit; padding: 3px 10px; cursor: pointer; }
+.pane.browser .suggest li.item button.pick:hover, .pane.browser .suggest li.item button.pick:focus-visible { background: var(--chip-bg); }
 .pane.browser .suggest li.sub-note { cursor: default; }
 .pane.browser .suggest li.sub-note:hover { background: none; }
 .pane.browser .cookie-steps { color: var(--fg); border-color: var(--line); flex-wrap: wrap; }
@@ -73,9 +82,10 @@
 .pane.browser .suggest li.search .head::before { content: "Search · "; color: var(--fg-muted); }
 .pane.browser .suggest li.document .head::before { content: "Document · "; color: var(--fg-muted); }
 /* T-238-b (BROW-013): the tab's downloads, bytes received and the total when known. */
-.pane.browser .downloads { list-style: none; margin: 0; padding: 2px 8px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.pane.browser .downloads { list-style: none; margin: 0; padding: 2px 8px; border-bottom: 1px solid var(--line-subtle); display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .pane.browser .downloads li { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pane.browser .downloads .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pane.browser .downloads .ib.txt { height: 18px; }
 .pane.browser .downloads .state { color: var(--fg-muted); white-space: nowrap; }
 .pane.browser .downloads li.failed .state { color: var(--danger, #e5484d); }
 .pane.browser .downloads progress { width: 120px; height: 6px; }

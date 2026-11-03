@@ -57,7 +57,7 @@ export function GrabSheet({ grab, title, url, targets, onSend, onClose }: Props)
           Copy details
         </button>
         <button type="button" className="btn" data-go="copy-shot" disabled={!grab.picture} onClick={copyShot} title={grab.picture ? "Put the picture on the clipboard" : "There is no picture"}>
-          Copy Screenshot
+          Copy screenshot
         </button>
         <SendButton targets={targets} busy={busy} onPick={send} />
         <button type="button" className="btn" data-go="close" onClick={() => onClose()} title="Back to the page (Esc)">
