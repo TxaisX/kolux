@@ -1,0 +1,45 @@
+T-693 / DT-C129: UX live audit Wave 3, lane A (90): shell, sidebar and palette rows
+Rows: findings/live-wave3-a.md section (b) F1, F2, F3, F4, F11 (requests/W3.md section "90"). Built on main 4bd4d2de.
+
+Review (Opus, read-only) of 0a6e6693: A-, three should-fix (a failed background create closed a form opened since;
+  the workspaces-folder form was outside the rule; F11 proof lacked the chord side), all fixed in the follow-up commit,
+  with the nits: close before paint (layout effect), the Top button hides with Jump, comment and spec wording.
+
+F1 fixed. Reproduced by reading the layout: the Jump to current workspace button floats at the sidebar's bottom-left
+  (absolute, bottom 8px) over the list, so an open form's last row (Save, Create workspace) sits under it. It now hides
+  while any sidebar form is open.
+F2 fixed. Reproduced by reading the code: the filter panel, a group's settings, the new-workspace form and a project's
+  settings each had their own open state and nothing closed the others. A small hook now closes the others when one
+  opens; the one opened last stays.
+F3 fixed. Reproduced by reading the code: the top bar's switcher set the screen only, and the full page (Automations,
+  Tasks, Routing) is drawn under the Terminals screen, so it stayed up. Picking Terminals now closes the page first,
+  as Show Code does (VIEW-009, spec line updated).
+F4 fixed. The lone Workspaces tab is now a plain heading while the sidebar has one view; the tab row returns with Status.
+F11 not reproduced (harness artefact). The palette opened by Ctrl+Shift+J (worktree.palette) lists every command and
+  screen row, "Show Skills" included; typed in full it is the first row (exact label match ranks first), and its Enter
+  runs toggleSkills, which opens Skills from the Terminals screen. The live harness's "palette is open" check also
+  accepts any input whose label contains "earch", which the Terminals screen's Explorer search boxes match, so a run
+  where the palette did not come up still typed "Show Skills" into whatever had focus and reported "nothing changed".
+  The walker then reported Terminals controls under S17 (findings section c already marks S17 not tested).
+  Live cause not identified. Two harness-side paths fit: Ctrl+Shift+J is a window chord, so a menu or popover the
+  walker left open (its closeAll Escapes only dialogs and menus by role) holds it by design; and viaPal's closeAll after
+  Enter presses Escape, which closes Skills again. An open sidebar form does not hold the chord (tested).
+  Proof: src/shell/wave3.test.ts "F11 (not reproduced) ..." builds the real palette rows (commandRows + screenRows),
+  ranks them with the real paletteRows for "Show Skills", runs row 0 and checks the screen became "skills".
+
+Second review (Opus, read-only) of ad6377af: A-; its should-fix (the chord test's fake ignored the selector lists) is
+  fixed: the test now matches against the real OVERLAYS and STAYS_OPEN lists and asserts .sb-form stays in STAYS_OPEN.
+Third review (Opus, read-only) of f488a29d: A-; its should-fix (the markup regex guarded nothing that changes
+  behaviour and missed attributes after an arrow handler) is fixed by asserting the STAYS_OPEN entry instead, and the
+  TopBar comment names Routing again.
+  Known, left out (first load is at main +479 of 500): a window chord pressed while typing in the workspaces-folder
+  field (Ctrl+N opens the create form) closes that form without its on-blur save. The per-row sidebar asks (sleep,
+  delete, move, forget, review, drop) stay outside the one-form rule. Both go to the follow-up list.
+
+Tests: src/shell/wave3.test.ts (6 tests: F2 rule as a pure function, F1/F2/F3/F4 wiring by source, F11 palette path,
+  F11 chord under an open form).
+  At 5da2f771 + this fix (main 00fd7ddc merged in): npx vitest run src/shell/wave3.test.ts src/chrome src/projects src/keys
+  -> 100 files, 583 tests passed; full run (npx vitest run) 5867/5870 (the 3 are the known local CRLF pdfjsCopy
+  failures). npx tsc --noEmit: 0.
+  First load (npx vite build && node scripts/bundle-budget.mjs, on this branch and on a detached origin/main):
+  1,488,285 vs main 00fd7ddc 1,487,806: main +479.
