@@ -1,0 +1,47 @@
+T-659 · preview server security (audit backlog rows 33 + 34: X-sec.3, R07-browser.4; DT-C95)
+branch s-90/preview-sec · 2026-11-02 · worker 90, coordinator 57
+
+WHAT CHANGED (src-tauri/src/browser_preview.rs; one call site in browser_cli.rs)
+1. Tokens: 16 bytes from the system random source (BCryptGenRandom on Windows via the windows-sys feature already
+   enabled, /dev/urandom elsewhere), 32 hex characters, made the first time a folder is previewed and kept in memory
+   for the run. Before: a fixed-key hash of the lower-cased folder path, the same on every run and machine.
+2. Host check: serve() answers only a request whose header block has exactly one Host line equal to
+   127.0.0.1:<port> or localhost:<port>; anything else gets 403 before any file is looked at.
+3. Open-folder rule: add() and grant() take a predicate; the commands and the CLI pass opened(app), which accepts a
+   folder inside a project, a project's workspaces folder or the shared workspaces folder (no Git), and only then a
+   Git worktree whose .git file points back into that project's .git/worktrees. Both sides are compared as real
+   paths; relative or missing folders are skipped. A refusal is an error string the callers already show.
+4. Also: grant() no longer holds the preview lock while it checks folders; decode() no longer panics on a % before
+   a multi-byte character.
+
+UNIT TESTS (cargo test --lib preview): 20 passed, 0 failed. New:
+  t659_a_token_worked_out_from_the_folder_path_reaches_nothing
+  t659_a_request_addressed_to_another_host_name_is_refused   (host_ok cases + a real socket: 403 vs 200)
+  t659_a_document_outside_every_open_folder_is_not_previewed_and_its_folder_not_allowed
+  t659_only_a_worktree_whose_git_file_points_back_into_the_project_counts
+  t659_a_percent_before_a_multi_byte_character_does_not_panic
+Each fails on the code before this change (old token is the guessed hash; no Host check; no folder rule; forged
+worktree accepted; decode slices mid-character).
+cargo clippy --all-targets -- -D warnings: clean
+node scripts/plan-check.mjs: OK · node scripts/invoke-contract.mjs: OK · pnpm exec tsc --noEmit -p .: OK
+
+LIVE PROOF (scripts/prove/live-T-659.mjs, hidden dev app, scratch profile): 11/11 PASS, RESULT: PASS,
+closed with 0 survivors. Details in evidence/T-659-live.txt.
+
+REVIEW: code review (opus-high-review) B+, security audit (agent-skills:security-auditor) B. Fixed from them:
+roots checked before Git (no parent-repo widening, no Git per click), forged worktree entries rejected (linked_to),
+relative/missing folders skipped, grant lock, token keyed by the exact root, CLI message before any tab exists,
+decode panic, a real look-alike-sibling test, header wording.
+
+DEFERRED (not in this task):
+- Previews already made and folders already allowed are not revoked when a project is removed; they last the run.
+- All previews share one origin (localStorage etc.); per-folder host names would separate them.
+- No CSP connect-src, no .git/.env refusal after Allow, grant prompt wording does not warn (exfiltration half of
+  R07-browser.4).
+- No Sec-Fetch-Site/Origin check; no nosniff/CORP/Referrer-Policy headers.
+- Browser history stores and prints preview URLs with the token (dead after a restart).
+- A thread per connection with no overall deadline; 8 KB header cap.
+- port() first-call race can leave one orphan listener, which now answers only 403.
+- browser_cli reads APP and Tauri state directly rather than through the driver.
+- Paths are lower-cased on case-sensitive file systems.
+- No dialog-picked folder support (no such caller exists).
