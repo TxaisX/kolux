@@ -27,6 +27,7 @@ import { isLog } from "./logFollow";
 import { currentSeed } from "./searchSeed";
 import { useKeymap } from "../keys/KeymapContext";
 import { matchEvent } from "../keys/keymap";
+import { explorerSearchKey } from "../keys/useWindowKeys";
 import { announceMoves } from "./fileMoved";
 
 export type Node = { name: string; path: string; kind: "dir" | "file" | "link" };
@@ -146,8 +147,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const wakeSearch = useRef(false);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return; // UX lane C: held under a dialog by the window's key handler
-      if (matchEvent(keymap, e, ["global"])?.id !== "sidebar.search.toggle") return;
+      if (!explorerSearchKey(keymap, e)) return; // UX lane C: waits only under a menu or modal dialog
       if (hidden && !onWake) return;
       e.preventDefault();
       setSearching(true);

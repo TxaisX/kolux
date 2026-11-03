@@ -10,7 +10,9 @@ WHAT CHANGED
 - Window keys (src/keys/useWindowKeys.ts): an app chord (global, tab or terminal scope) waits while a
   menu, popover or modal dialog is up. Docked tips, tours (aria-modal="false"), the floating
   workspace, agent question cards, the plan sheet, the update card and inline sidebar forms hold
-  nothing. Browser, editor and explorer chords are never held, so Ctrl+C still copies in a page.
+  nothing, and neither do the source-control and pull request inline forms or the browser's grab sheet.
+  Only the browser chords the window runs itself (address bar, back, forward, reload, find) are held;
+  a page's own chords, editor and explorer chords never are, so Ctrl+C still copies in a page.
   Ctrl+W asks the focused pane first (kolux:pane-close), so a pane with its own warning can claim it (no pane listens yet: a hook for lane D).
   Back/Forward say why nothing happened (Settings open, wrong screen, no earlier/later workspace).
 - Native menu (src-tauri/src/menu.rs): View > Workspace View lists Space; View has no plain Reload
@@ -26,7 +28,7 @@ fired behind open dialogs, a Reload menu item one click from throwing away unsav
 Space view missing from the menu.
 
 REVIEW
-Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass -> re-review PENDING.
+Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass (d70b712e) -> re-review B -> fix pass -> re-review PENDING.
 Re-review B findings fixed: docked tips/tours/inline forms no longer hold keys (the key a tip names
 works); only global/tab/terminal chords are held (Ctrl+C in a browser pane copies under a dialog);
 real-selector tests for both; Move Focus to the Top Bar skips the disabled Kolux mark (macOS); the
@@ -44,6 +46,13 @@ browser chords the window runs itself (address bar, back, forward, reload, find)
 so Ctrl+L no longer pulls focus out of it (tests: "under a dialog the browser chords the window runs
 itself wait", "the floating panel's own chords ... wait under a modal"). Left as low: the editor chords
 the window runs itself (save, copy context, review note, next/previous change, preview) are not held.
+Fourth re-review B findings fixed: Show Search (Mod+Shift+F) opens again from a focused terminal (the
+explorer's listener no longer skips a press the terminal cancelled; it waits only under a menu or modal
+dialog: explorerSearchKey in src/keys/useWindowKeys.ts, test "Show Search (Mod+Shift+F) opens from a
+terminal that already cancelled the press"); the source-control and pull request inline forms (.scm-ask)
+and the browser's grab sheet hold no app chords ("real markup" test); focus.chrome ends like every other
+case. Bundle: 1,460,892 bytes first load (ceiling 1,485,000). Left as low: the floating panel's hold is
+tested through heldByOverlay, not by rendering FloatingLayer.
 
 TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > T-240 BROW-035: Mod+C is forwarded only for a grab (marked n), follows a rebinding, and Mac uses the command key
@@ -68,6 +77,7 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/keys/keymap.test.ts > the table registers the 138 carried commands (UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 56 ship unbound (UX lane C: view.automations added unbound, floatingWorkspace.minimize now bound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound) and only New agent tab (TERM-041) and workspace rename have a macOS chord only (UX lane C gave three Ctrl+Shift chords)
  ✓ src/keys/keymap.test.ts > two custom chords that clash inside their scope are dropped and the defaults stay; defaults may overlap
  ✓ src/keys/overlayKeys.test.ts > Automations has a command, so the palette lists it
+ ✓ src/keys/overlayKeys.test.ts > Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog
  ✓ src/keys/overlayKeys.test.ts > Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the palette's field; a split still waits
  ✓ src/keys/overlayKeys.test.ts > UX lane C (request from D): Ctrl+W closes directly unless the pane claims the close for its own warning
  ✓ src/keys/overlayKeys.test.ts > a page's own browser chord, an editor or an explorer chord is not held: Ctrl+C in a browser pane still copies under a dialog
@@ -106,7 +116,7 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/settings/shortcutRows.test.ts > groups the commands by area under the four filters and a capped search box
  ✓ src/settings/shortcutRows.test.ts > search: titles, areas, ids and chords for every platform, as written or as drawn
  Test Files  5 passed (5)
-      Tests  59 passed (59)
+      Tests  60 passed (60)
 
 cargo test --lib menu (src-tauri):
 test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; finished in 0.00s
@@ -114,7 +124,7 @@ test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; 
 FULL SUITE (pnpm vitest run)
 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
  Test Files  1 failed | 732 passed (733)
-      Tests  3 failed | 5425 passed (5428)
+      Tests  3 failed | 5426 passed (5429)
 The 3 failures are src/editor/pdfjsCopy.test.ts on this machine only (CRLF checkout of public/pdfjs
 files vs the LF package copy); they pass on CI and are not touched by this PR.
 

@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { actionById } from "./actions";
-import { heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
+import { defaultsOnly } from "./keymap";
+import { explorerSearchKey, heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -53,9 +54,13 @@ test("real markup: a docked tip, the hooks card, a tour and the floating panel h
   const tour = real("tour", { role: "dialog", "aria-modal": "false" }); // Tours.tsx
   const float = real("float-panel", { role: "dialog" });
   const cleanup = real("sb-form", { role: "dialog" }); // projects CleanupDialog, inline in the sidebar
+  const prDraft = real("scm-ask scm-pr", { role: "dialog", "aria-label": "Create pull request" }); // scm/PrStart.tsx
+  const resolve = real("scm-ask", { role: "dialog" }); // source control: resolve conflicts with an agent
+  const grab = real("grab-sheet", { role: "dialog" }); // browser/GrabSheet.tsx, inside one browser pane
   const modal = real("crash-report", { role: "dialog" });
   // The palette tip names the Switch worktree key: that key works while the tip shows.
   expect(heldByOverlay("worktree.palette", false, dom([tip, tour, float, cleanup]) as never)).toBe(false);
+  for (const form of [prDraft, resolve, grab]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
   expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);
   expect(heldByOverlay("worktree.palette", false, dom([tip, modal]) as never)).toBe(true);
   expect(heldByOverlay("tab.newTerminal", false, dom([real("menu", {})]) as never)).toBe(true);
@@ -95,6 +100,15 @@ test("the floating panel's own chords (Ctrl+Alt+A, maximize, minimize) wait unde
     expect(heldByOverlay(id, false, dom([float, modal]) as never), id).toBe(true);
     expect(heldByOverlay(id, false, dom([float]) as never), id).toBe(false);
   }
+});
+
+test("Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog", () => {
+  const map = defaultsOnly("win32");
+  const press = { key: "F", code: "KeyF", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false, defaultPrevented: true };
+  expect(explorerSearchKey(map, press, dom([]) as never), "cancelled by the terminal").toBe(true);
+  expect(explorerSearchKey(map, press, dom([real("float-panel", { role: "dialog" })]) as never)).toBe(true);
+  expect(explorerSearchKey(map, press, dom([real("crash-report", { role: "dialog" })]) as never), "under a dialog").toBe(false);
+  expect(explorerSearchKey(map, { ...press, shiftKey: false }, dom([]) as never), "Ctrl+F is not Show Search").toBe(false);
 });
 
 test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {

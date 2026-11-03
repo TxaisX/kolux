@@ -29,7 +29,7 @@ import { panesIn, sameDir } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
 import { scopesFor } from "./keyScopes";
-import { matchEvent } from "./keymap";
+import { matchEvent, type KeyLike, type Keymap } from "./keymap";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
@@ -52,10 +52,10 @@ export function paneCloseClaimed(paneId: number): boolean {
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
 // Panels that stay on screen while the user works (the floating workspace, an agent's question card, the browser's
-// cookie steps, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an inline sidebar
-// form) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
+// cookie steps and grab sheet, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
+// inline sidebar form: projects, source control, the pull request draft) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
 export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], .pick-list, .font-list, .popover, .palette';
-export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form';
+export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet';
 // Only the app's own chords wait. An editor or explorer chord, and a browser chord the window does not run itself
 // (Ctrl+C in a page is browser.grabElement), is the focused pane's or the overlay's own and falls through as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
@@ -69,6 +69,11 @@ export const WINDOW_TERMINAL = new Set([
   "terminal.focusPreviousPane", "terminal.expandPane", "terminal.splitRight", "terminal.splitDown",
   "terminal.equalizePaneSizes",
 ]);
+
+/** The explorer's own Mod+Shift+F listener fires unless a menu or modal dialog holds the chord. It does not test
+ *  defaultPrevented: a focused terminal cancels every Kolux chord (the shell never sees it) and the search still opens. */
+export const explorerSearchKey = (map: Keymap, e: KeyLike, doc: Root = document): boolean =>
+  matchEvent(map, e, ["global"])?.id === "sidebar.search.toggle" && !heldByOverlay("sidebar.search.toggle", false, doc);
 
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
@@ -128,7 +133,7 @@ export function useWindowKeys(w: WindowBag) {
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.
           e.preventDefault();
           document.querySelector<HTMLElement>("header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']")?.focus();
-          return;
+          break;
         case "browser.focusAddressBar":
         case "browser.back":
         case "browser.forward":
