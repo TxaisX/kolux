@@ -401,14 +401,20 @@ Tier: P0 · Pushed: — · State at 0.15.0: live
 User does: opens the Artifacts page, adds a file with Add artifact, types in the search box, selects
   an item, or removes one.
 User sees: a list of saved artifacts, newest first, each with its title, size and source; selecting
-  one shows a preview beside the list; a remove button takes it out of the library.
+  one shows a preview beside the list; a remove button asks "Remove <title>?" and, once confirmed,
+  takes it out of the library.
 Rules: Search matches titles only and requires every typed word to appear; an empty library and a
   search with no matches show different messages; sizes read in B, KB or MB with one decimal; each
-  preview gets a stable page identity so reopening the same artifact reuses it.
+  preview gets a stable page identity so reopening the same artifact reuses it; the remove button
+  never deletes on its own: it asks first, names the artifact and says the original file is not
+  touched, and Cancel or Escape leaves everything as it was with focus back on the button; the list
+  is one list per project with a select button and a Remove button per row, moved by Up/Down/Home/End,
+  and after a removal focus goes to the next row, else the previous, else the search box.
 Acceptance:
   - [x] Add two files → newest is on top. (cards; evidence/cards-VIEW-012.txt)
   - [x] Search two words where only one matches a title → that item is hidden. (cards; evidence/cards-VIEW-012.txt)
-  - [x] Remove the selected item → it leaves the list and the preview closes. (cards; evidence/cards-VIEW-012.txt)
+  - [x] Remove the selected item → a confirm names it; nothing is removed until Remove is pressed, then it leaves the list and the preview closes. (cards; evidence/T-685.txt)
+  - [x] Cancel or Escape on the confirm → the item stays and focus is back on its Remove button; after Remove focus is on the next row. (cards; evidence/T-685.txt)
 Compat: —
 Source: D-05-012
 
@@ -1254,10 +1260,16 @@ Rules: Ports are tied to a workspace by their process; URLs are picked up from t
   and keeps the last good list; Open uses the address the dev server printed when known, otherwise
   plain http on the listening address; Ports held by processes outside the workspace are listed as
   external and can never be stopped from here; a port belongs to the deepest worktree containing its
-  process's working folder, so nested worktrees keep their own ports.
+  process's working folder, so nested worktrees keep their own ports; the popover closes on Escape
+  (focus goes into it on open and back to the item on close), scrolls instead of running off the
+  screen, names its buttons by port ("Open port N", "Stop port N"), shows Stop as "Stopping…" and
+  not pressable twice while it runs, shows a failed stop as a red "Could not stop port N" note, and
+  says "Showing the first 12 external ports; more may be listening." when the scan's cut of 12 external
+  ports is reached.
 Acceptance:
   - [ ] Start a dev server on 5173 → port listed with its URL; stop it → it disappears.
   - [ ] A port held by a process outside the workspace → listed as external with no stop button.
+  - [x] Escape closes the popover and focus returns to the Ports item; Stop reads "Stopping…" while it runs and a failed Stop shows a red note; at 12 external ports the popover says the list is cut. (cards; evidence/T-685.txt)
 Compat: —
 Source: D-05-078
 
