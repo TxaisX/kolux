@@ -4,10 +4,10 @@
 
 :root { color-scheme: dark; }
 /* T-698 (DT-C134): one z-index scale for every layer drawn over the page. A pane is NOT a stacking context (container-type
-   only contains size), so the pops inside panes take the pane tier, under the floating panel. The panel sits over sheets,
-   pane pops, the review tray and the plan sheet, and under every page overlay, menu, pop, dialog, notice and tip.
+   only contains size), so the pops inside panes take the pane tier, under the floating panel. The panel sits over pane pops,
+   the review tray and the plan sheet, and under sheets (T-704, DT-C140) and every page overlay, menu, pop, dialog, notice and tip.
    A bare z-index of 20 or more in any stylesheet under src fails floatStack.test.ts. */
-:root { --z-sheet: 20; --z-pane: 22; --z-float: 30; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
+:root { --z-pane: 22; --z-float: 30; --z-sheet: 35; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
 
 /* ---- --kx-* foundation (Claude-design port, phase 0) ----
    The vocabulary later surfaces build on. The dark and light sets are the same ramp: the ink flips
