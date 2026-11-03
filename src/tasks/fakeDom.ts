@@ -23,6 +23,8 @@ export class FakeNode {
   localName: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [extra: string]: any;
+  /** T-695: a non-textarea's defaultValue (a textarea keeps it as its text). */
+  declare plainDefault?: string;
   constructor(
     public nodeType: number,
     public nodeName: string,
@@ -115,10 +117,21 @@ export class FakeNode {
   /** What a form control or option holds: what was typed or set, else an option's own value. */
   get value(): string {
     if (this.typed !== undefined) return this.typed;
+    // T-695: as in a browser, an untouched textarea holds its text (React renders a textarea's first value as its text)
+    if (this.localName === "textarea") return this.textContent;
     return this.localName === "option" ? (this.attrs.value ?? this.textContent) : "";
   }
   set value(v: string) {
     this.typed = String(v);
+  }
+  /** T-695: as in a browser, a textarea's default value is its text, which its value shows until typed in
+   *  (React sets defaultValue to render a textarea's first value). Other elements keep a plain field. */
+  get defaultValue(): string {
+    return this.localName === "textarea" ? this.textContent : (this.plainDefault ?? "");
+  }
+  set defaultValue(v: string) {
+    if (this.localName === "textarea") this.textContent = String(v);
+    else this.plainDefault = String(v);
   }
   /** What a <select> offers: its option elements, at any depth. */
   get options(): FakeNode[] {

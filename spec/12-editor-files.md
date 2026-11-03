@@ -261,10 +261,12 @@ User sees: a tree of the worktree; arrows, Home and End move the highlight; Righ
 Rules: a symlink expands only after it is confirmed to point at a folder; otherwise it opens as a
   file; expanded folders and scroll position survive hiding and showing the explorer, and reset when
   the worktree changes; very large folders scroll smoothly because only the rows on screen are
-  drawn.
+  drawn. Mod+Shift+E shows the explorer and puts focus in it (in its content search box when the
+  search is open); pressed again while focus is in the explorer, it hides it.
 Acceptance:
   - [x] Press Mod+Shift+E → the explorer opens; Down, Right, Down, Enter → the first file of the
         second folder opens. (cards live; evidence/cards-EDIT-033.txt)
+  - [ ] Press Mod+Shift+E twice → the explorer opens, then hides. (source check; evidence/T-696.txt)
   - [x] Shift-click two rows apart → three rows are selected. (cards; evidence/cards-EDIT-033.txt)
 Compat: keybinding id sidebar.explorer.toggle; view id explorer.
 Source: D-12-033
