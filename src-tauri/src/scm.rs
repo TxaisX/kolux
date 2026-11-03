@@ -4412,9 +4412,13 @@ and more
         let src = include_str!("scm.rs");
         for name in ["scm_abort", "scm_stage", "scm_discard"] {
             let at = src.find(&format!("pub async fn {name}(")).unwrap();
-            let body = &src[at..at + src[at..].find("\n}").unwrap()];
-            let fenced = body.find("fence.allow(&worktree, &store, &git, false)?").unwrap_or_else(|| panic!("{name} has no fence check"));
-            assert!(fenced < body.find("spawn_blocking").unwrap(), "{name} starts git before the fence check");
+            // Comment lines are left out, so a commented-out check does not count.
+            let body: String = src[at..at + src[at..].find("\n}").unwrap()].lines().filter(|l| !l.trim_start().starts_with("//")).collect::<Vec<_>>().join("\n");
+            let fenced = body.find("let root = fence.allow(&worktree, &store, &git, false)?;").unwrap_or_else(|| panic!("{name} has no fence check"));
+            let work = body.find("spawn_blocking").unwrap();
+            assert!(fenced < work, "{name} starts git before the fence check");
+            // And git runs on the path the fence returned, not on the raw argument.
+            assert!(body[work..].contains("(&root"), "{name} does not use the fenced path");
         }
         // The fence: a repository mid-merge outside every project is refused and left as it was.
         let repo = temp_repo("t718");
