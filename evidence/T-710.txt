@@ -1,7 +1,7 @@
 T-710 / DT-C146: UX audit keyboard.md rows 5, 6, 7 and chrome.md row 12, lane A (90): Shift+F10 and the Menu key open the
   terminal pane, Explorer row and status-bar menus; the text field's edit menu takes focus and answers the arrow keys
 Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md, section "90: T-710" (the sessions proof dir, not in this repo).
-  Built on main 45146f78 (after train 11, #147).
+  Built on main 45146f78 (after train 11, #147); main 8c9536aa (train 12, #151) merged in.
 
 What was asked: the terminal pane menu (TerminalPane.tsx), the Explorer row menu (Explorer.tsx) and the status-bar menu
   (StatusBar.tsx) opened only on a right-click. Shift+F10 and the Menu key should open each one at the focused item, or at
@@ -64,8 +64,10 @@ KNOWN DEVIATION
     in DT-C146.
 
 VERIFY
-  - vitest run src/terminal src/editor src/chrome src/editmenu: 227 files, 1900/1900 passed.
+  - vitest run src/terminal src/editor src/chrome src/editmenu: 227 files, 1900/1900 passed. Full vitest after merging main
+    8c9536aa: 5975/5976; the one failure (src/editor/editPlacement.test.ts, 60-paragraph typing) passed 43/43 twice on
+    its own, so it was the full run's load, not this change (no file it covers is touched).
   - tsc --noEmit: 0 errors. plan-check: OK. firewall-check -Baseline: 0 new.
   - First load (vite build + scripts/bundle-budget.mjs, both in one slot): main 45146f78 1,489,321 bytes, this branch
-    1,489,277 bytes, so main -44 B (budget +270 B; ceiling 1,490,000).
+    1,489,277 bytes; after merging main 8c9536aa: main 1,489,577, this branch 1,489,533. Both times main -44 B (budget +270 B; ceiling 1,490,000).
   - Not checked live in the app: the probe shows what the engine raises, and the tests show what each menu does with it.
