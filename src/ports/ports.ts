@@ -94,3 +94,14 @@ export function decodeOutput(data: string): string {
     return "";
   }
 }
+
+/** MIRROR: src-tauri/src/ports.rs MAX_EXTERNAL_ROWS. The scan keeps this many external rows and drops the rest without a count. */
+export const EXTERNAL_ROW_CAP = 12;
+
+/** The line under the list when the external rows hit the scan's cap, so a silent cut reads as one; null while the list is whole. */
+export function capNote(rows: Pick<PortRow, "external">[]): string | null {
+  return rows.filter((r) => r.external).length >= EXTERNAL_ROW_CAP ? `Showing the first ${EXTERNAL_ROW_CAP} external ports; more may be listening.` : null;
+}
+
+/** The row's key while a Stop on it runs. */
+export const rowKey = (r: Pick<PortRow, "port" | "pid">) => `${r.port}-${r.pid}`;

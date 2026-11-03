@@ -51,3 +51,17 @@ describe("Artifacts library (SKILL-036)", () => {
     expect(extText("no-extension")).toBe("");
   });
 });
+
+describe("arrow keys in the library list", () => {
+  it("step one row, stop at the ends, jump with Home and End, and ignore other keys", async () => {
+    const { stepRow } = await import("./ArtifactsPage");
+    expect(stepRow(3, 0, "ArrowDown")).toBe(1);
+    expect(stepRow(3, 2, "ArrowDown")).toBe(2);
+    expect(stepRow(3, 0, "ArrowUp")).toBe(0);
+    expect(stepRow(3, 1, "ArrowUp")).toBe(0);
+    expect(stepRow(3, 1, "End")).toBe(2);
+    expect(stepRow(3, 2, "Home")).toBe(0);
+    expect(stepRow(3, 1, "a")).toBeNull();
+    expect(stepRow(0, -1, "ArrowDown")).toBeNull();
+  });
+});

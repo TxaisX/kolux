@@ -4,11 +4,13 @@
 // stored files; the viewer frame is sandboxed, and a clicked link that leaves the entry comes back
 // here as a message and opens in the system browser. An image or a text file is shown straight from
 // the same scheme; a PDF or a document the viewer cannot render is handed to its own app.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
+import Ask from "../chrome/Ask";
 import { locale } from "../language";
+import "./artifacts.css";
 
 export type Artifact = {
   id: string;
@@ -74,6 +76,19 @@ export function viewerUrl(a: Pick<Artifact, "id" | "page">, windows = navigator.
   return `${base}/${a.id}/${a.page.split("/").map(encodeURIComponent).join("/")}`;
 }
 
+/** Which row an arrow key lands on in a list of `count` rows: Up and Down step (and stop at the ends), Home and End jump. */
+export function stepRow(count: number, from: number, key: string): number | null {
+  if (count === 0) return null;
+  if (key === "ArrowDown") return Math.min(count - 1, from + 1);
+  if (key === "ArrowUp") return Math.max(0, from - 1);
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  return null;
+}
+
+/** How long a page may take to load before the viewer says so. */
+export const SLOW_MS = 10_000;
+
 type Props = { onToast: (text: string) => void };
 
 export default function ArtifactsPage({ onToast }: Props) {
@@ -81,6 +96,8 @@ export default function ArtifactsPage({ onToast }: Props) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<string | null>(null);
+  const [slow, setSlow] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<Artifact | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
   const refresh = () => invoke<Artifact[]>("artifacts_list").then(setList, (e) => onToast(`Could not read the library: ${e}`));
@@ -101,6 +118,14 @@ export default function ArtifactsPage({ onToast }: Props) {
     return () => window.removeEventListener("message", onMessage);
   }, []);
 
+  // A page that never reports it loaded is called out instead of leaving "Loading…" up for good.
+  useEffect(() => {
+    if (!selected || loaded === selected) return;
+    setSlow(null);
+    const t = setTimeout(() => setSlow(selected), SLOW_MS);
+    return () => clearTimeout(t);
+  }, [selected, loaded]);
+
   const shown = useMemo(() => group((list ?? []).filter((a) => matches(a.title, query))), [list, query]);
   const current = list?.find((a) => a.id === selected) ?? null;
 
@@ -114,7 +139,10 @@ export default function ArtifactsPage({ onToast }: Props) {
         { name: "Documents", extensions: ["md", "txt", "csv", "docx", "xlsx", "pptx"] },
         { name: "All files", extensions: ["*"] },
       ],
-    }).catch(() => null);
+    }).catch((e) => {
+      onToast(`Could not open the file picker: ${e}`);
+      return null;
+    });
     if (typeof path !== "string") return;
     try {
       const a = await invoke<Artifact>("artifact_add", { path });
@@ -135,10 +163,31 @@ export default function ArtifactsPage({ onToast }: Props) {
       onToast(`Could not remove ${a.title}: ${e}`);
     }
   };
+  const pick = (id: string) => (setSelected(id), setLoaded(null));
+  const arrows = (e: KeyboardEvent<HTMLDivElement>) => {
+    const rows = [...e.currentTarget.querySelectorAll<HTMLElement>("button.art-row")];
+    const to = stepRow(rows.length, rows.indexOf(e.target as HTMLElement), e.key);
+    if (to === null || !rows.includes(e.target as HTMLElement)) return;
+    e.preventDefault();
+    rows[to].focus();
+  };
   const openFile = (a: Artifact) => invoke("open_path", { path: a.origin }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
 
   return (
     <div className="artifacts">
+      {removing && (
+        <Ask
+          title={`Remove ${removing.title}?`}
+          body={`“${removing.title}” and its stored copy are deleted from the library. The original file it came from is not touched.`}
+          confirm="Remove"
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => {
+            const a = removing;
+            setRemoving(null);
+            void remove(a);
+          }}
+        />
+      )}
       <div className="art-side">
         <div className="art-head">
           <h2>Artifacts</h2>
@@ -147,39 +196,32 @@ export default function ArtifactsPage({ onToast }: Props) {
           </button>
         </div>
         <input className="picker-input" placeholder="Search titles" aria-label="Search artifacts" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="art-list" role="listbox" aria-label="Saved artifacts">
+        <div className="art-list" role="group" aria-label="Saved artifacts" onKeyDown={arrows}>
           {list && list.length === 0 && <div className="menu-hint">No artifacts yet. Pages and files your agents make land here, or add one yourself.</div>}
           {list && list.length > 0 && shown.length === 0 && <div className="menu-hint">No titles hold every word of “{query.trim()}”.</div>}
           {shown.map((s) => (
             <div key={s.project} className="art-group">
               <div className="art-group-head" title={s.project}>{s.project}</div>
-              {s.items.map((a) => (
-                <div key={a.id} role="option" aria-selected={a.id === selected} className={`art-row${a.id === selected ? " sel" : ""}`}
-                  tabIndex={0}
-                  onClick={() => (setSelected(a.id), setLoaded(null))}
-                  onKeyDown={(e) => e.key === "Enter" && (setSelected(a.id), setLoaded(null))}
-                >
-                  <div className="art-title">
-                    <span className="name">{a.title}</span>
-                    {a.kind !== "page" && <span className="preview-tag">{extText(a.page)}</span>}
-                    {a.state === "remote" && <span className="preview-tag">Remote</span>}
-                    {a.state === "unavailable" && <span className="preview-tag">Unavailable</span>}
+              <div role="list" aria-label={s.project} className="art-items">
+                {s.items.map((a) => (
+                  <div key={a.id} role="listitem" className="art-item">
+                    <button type="button" aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => pick(a.id)}>
+                      <span className="art-title">
+                        <span className="name">{a.title}</span>
+                        {a.kind !== "page" && <span className="preview-tag">{extText(a.page)}</span>}
+                        {a.state === "remote" && <span className="preview-tag">Remote</span>}
+                        {a.state === "unavailable" && <span className="preview-tag">Unavailable</span>}
+                      </span>
+                      <span className="art-meta">
+                        {[a.project ?? (a.source === "hand" ? "Added by hand" : "An agent"), a.session && "session " + a.session.slice(0, 8), new Date(a.added).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" }), sizeText(a.size)].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                    <button type="button" className="ib art-remove" title="Remove from library" aria-label={`Remove ${a.title}`} onClick={() => setRemoving(a)}>
+                      ×
+                    </button>
                   </div>
-                  <div className="art-meta">
-                    {[a.project ?? (a.source === "hand" ? "Added by hand" : "An agent"), a.session && "session " + a.session.slice(0, 8), new Date(a.added).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" }), sizeText(a.size)].filter(Boolean).join(" · ")}
-                  </div>
-                  <button
-                    className="ib art-remove"
-                    title="Remove from library"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void remove(a);
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -199,7 +241,8 @@ export default function ArtifactsPage({ onToast }: Props) {
         )}
         {current?.state === "ok" && current.stored && view(current.kind) === "frame" && (
           <>
-            {loaded !== current.id && <div className="art-loading menu-hint">Loading…</div>}
+            {loaded !== current.id && slow !== current.id && <div className="art-loading menu-hint" role="status">Loading…</div>}
+            {loaded !== current.id && slow === current.id && <div className="art-loading art-slow menu-hint" role="status">This page is taking a long time to load. It may be empty or broken.</div>}
             <iframe
               // A republished page has a newer time: show the new version.
               key={`${current.id}-${current.added}`}
@@ -207,6 +250,8 @@ export default function ArtifactsPage({ onToast }: Props) {
               name={`artifact-${current.id}`}
               title={current.title}
               className="art-frame"
+              // Hidden until it loads (or is called slow), so the viewer never flashes the frame's white ground in a dark theme.
+              style={loaded === current.id || slow === current.id ? undefined : { visibility: "hidden" }}
               sandbox="allow-scripts allow-forms"
               src={viewerUrl(current)}
               onLoad={() => setLoaded(current.id)}
