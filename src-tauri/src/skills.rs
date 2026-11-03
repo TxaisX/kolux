@@ -5,13 +5,12 @@
 //! cross-agent folder (`~/.agents/skills`), the same folders inside the current workspace, the
 //! skills of Claude plugins enabled for the project, Codex's plugin cache, and its own built-in
 //! guides. Each folder is scanned on a thread of its own with a time limit, so one that hangs
-//! becomes an error the user can retry, never a shorter list. When the open project lives in a WSL
-//! distribution, that distribution's skill folders are read too, through `wsl::Runner` (T-243-b).
+//! becomes an error the user can retry, never a shorter list. A project stored in WSL is read
+//! through its `\\wsl.localhost\` path like any folder; nothing runs inside a distribution (OD-12).
 
 pub mod cli_install;
 pub mod installer;
 pub mod update;
-pub(crate) mod wsl;
 
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -71,8 +70,6 @@ pub struct Scan {
 enum Kind {
     Skills,
     CodexCache,
-    /// A folder inside a WSL distribution, read by asking the distribution (`Spot::wsl`).
-    Wsl,
     /// Tests only: a folder that never answers in time.
     #[cfg(test)]
     Hang,
@@ -88,13 +85,11 @@ struct Spot {
     plugin: Option<String>,
     kind: Kind,
     skip: Option<String>,
-    /// (distribution, folder in it) for `Kind::Wsl`.
-    wsl: Option<(String, String)>,
 }
 
 impl Spot {
     fn new(path: PathBuf, label: &str, source: &'static str, agents: &[&'static str]) -> Spot {
-        Spot { path, label: label.into(), source, agents: agents.to_vec(), plugin: None, kind: Kind::Skills, skip: None, wsl: None }
+        Spot { path, label: label.into(), source, agents: agents.to_vec(), plugin: None, kind: Kind::Skills, skip: None }
     }
 }
 
@@ -162,30 +157,6 @@ fn hermes_home(env: &Env) -> PathBuf {
     }
 }
 
-fn is_wsl(p: &Path) -> bool {
-    let s = p.to_string_lossy().to_lowercase().replace('/', "\\");
-    s.starts_with("\\\\wsl$\\") || s.starts_with("\\\\wsl.localhost\\") || s.starts_with("\\\\?\\unc\\wsl")
-}
-
-/// The skill folders of one WSL distribution: its home and the project folder inside it.
-fn wsl_spots(distro: &str, project: &str) -> Vec<Spot> {
-    let mut out = vec![];
-    let mut add = |dir: String, label: String, source: &'static str, agents: &[&'static str]| {
-        let mut s = Spot::new(PathBuf::from(format!("{distro}:{dir}")), &label, source, agents);
-        s.kind = Kind::Wsl;
-        s.wsl = Some((distro.to_string(), dir));
-        out.push(s);
-    };
-    for (rel, name, agents) in [(".claude", "Claude Code", &["claude"][..]), (".codex", "Codex", &["codex"]), (".agents", "Shared skills folder", &["shared", "codex"]), (".grok", "Grok", &["grok"]), (".hermes", "Hermes", &["hermes"])] {
-        add(format!("~/{rel}/skills"), format!("WSL {distro}: {name}"), "home", agents);
-    }
-    let base = project.trim_end_matches('/');
-    for (rel, name, agents) in [(".claude", "Claude Code", &["claude"][..]), (".agents", "shared skills folder", &["shared", "codex"]), (".grok", "Grok", &["grok"])] {
-        add(format!("{base}/{rel}/skills"), format!("WSL {distro} workspace: {name}"), "workspace", agents);
-    }
-    out
-}
-
 /// The skill folders in the user's home, without the plugin folders: nothing here reads a file.
 fn home_spots(env: &Env) -> Vec<Spot> {
     let claude = claude_home(env);
@@ -224,25 +195,14 @@ fn spots(env: &Env, workspace: Option<&Path>) -> Vec<Spot> {
     let mut out = home_spots(env);
     match workspace {
         Some(ws) => {
-            if let Some((distro, linux)) = wsl::split(ws) {
-                // The project lives in a distribution: that distribution's own home and project
-                // folders are asked of it (T-243-b); the Windows-side share path is never walked.
-                out.extend(wsl_spots(&distro, &linux));
-            } else {
-                // When the workspace is the home folder it is scanned as a repo too.
-                let [c, a, g] = WORKSPACE_SKILL_DIRS;
-                let mut repo = vec![
-                    Spot::new(ws.join(c).join("skills"), "Workspace: Claude Code", "workspace", &["claude"]),
-                    Spot::new(ws.join(a).join("skills"), "Workspace: shared skills folder", "workspace", &["shared", "codex"]),
-                    Spot::new(ws.join(g).join("skills"), "Workspace: Grok", "workspace", &["grok"]),
-                ];
-                if is_wsl(ws) {
-                    for s in &mut repo {
-                        s.skip = Some("The WSL distribution name could not be read".into());
-                    }
-                }
-                out.extend(repo);
-            }
+            // When the workspace is the home folder it is scanned as a repo too. A project stored
+            // in WSL is its `\\wsl.localhost\` path like any folder (OD-12, DT-C94).
+            let [c, a, g] = WORKSPACE_SKILL_DIRS;
+            out.extend([
+                Spot::new(ws.join(c).join("skills"), "Workspace: Claude Code", "workspace", &["claude"]),
+                Spot::new(ws.join(a).join("skills"), "Workspace: shared skills folder", "workspace", &["shared", "codex"]),
+                Spot::new(ws.join(g).join("skills"), "Workspace: Grok", "workspace", &["grok"]),
+            ]);
         }
         None => {
             let mut s = Spot::new(PathBuf::new(), "Current workspace", "workspace", &[]);
@@ -373,6 +333,18 @@ fn canon(p: &Path) -> Option<PathBuf> {
     std::fs::canonicalize(p).ok()
 }
 
+/// DT-C94: a path on a WSL share, by its text in any UNC spelling or by where it really leads (a
+/// drive letter mapped to a share, or a link into one). The text is judged first, so a path that
+/// names a share is never opened here.
+/// ponytail: resolving a drive or link that leads to a stopped distribution can stall with no time
+/// limit; run it under the scan's 8-second limit if that ever shows up.
+pub(crate) fn in_wsl(p: &Path) -> bool {
+    let s = p.to_string_lossy().replace('/', "\\");
+    let low = s.to_lowercase();
+    let text = [r"\\.\unc\", r"\??\unc\"].iter().find(|pre| low.starts_with(**pre)).map_or(s.clone(), |pre| format!(r"\\{}", &s[pre.len()..]));
+    crate::fsops::is_wsl(Path::new(&text)) || canon(p).is_some_and(|c| crate::fsops::is_wsl(&c))
+}
+
 /// Skill folders under `dir`, following links without looping and only `depth` folders down.
 fn walk(dir: &Path, depth: usize, seen: &mut HashSet<PathBuf>, limit: usize, w: &mut Walk) {
     let entries = match std::fs::read_dir(dir) {
@@ -411,7 +383,8 @@ fn walk(dir: &Path, depth: usize, seen: &mut HashSet<PathBuf>, limit: usize, w: 
         if !meta.is_dir() {
             continue;
         }
-        let Some(c) = canon(&p) else { continue };
+        // A folder on a WSL share that Windows cannot resolve is kept by its own path (DT-C94).
+        let Some(c) = canon(&p).or_else(|| crate::fsops::is_wsl(&p).then(|| p.clone())) else { continue };
         if !seen.insert(c) {
             continue;
         }
@@ -447,8 +420,10 @@ fn scan_spot(spot: &Spot, cancel: &Arc<AtomicBool>) -> (Vec<PathBuf>, &'static s
     if remote_path(&spot.path) {
         return (vec![], "not-scanned", Some("This folder links to another computer, which Kolux never opens".into()));
     }
-    if !spot.path.is_dir() {
-        return (vec![], "not-found", None);
+    match std::fs::metadata(&spot.path) {
+        Ok(m) if m.is_dir() => {}
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return (vec![], "error", Some(format!("Could not open this folder: {e}"))),
+        _ => return (vec![], "not-found", None),
     }
     let mut seen = HashSet::new();
     if let Some(c) = canon(&spot.path) {
@@ -476,8 +451,6 @@ fn scan_spot(spot: &Spot, cancel: &Arc<AtomicBool>) -> (Vec<PathBuf>, &'static s
                 }
             }
         }
-        // Asked of the distribution by `scan_wsl`, never walked on this disk.
-        Kind::Wsl => {}
         #[cfg(test)]
         Kind::Hang => {
             let end = Instant::now() + Duration::from_secs(3);
@@ -591,11 +564,12 @@ fn read_skill(dir: &Path) -> (String, Option<String>, Option<u64>) {
     (name, desc, updated)
 }
 
-/// The same folder however it was reached: through links, and on Windows without case.
+/// The same folder however it was reached: through links, and on Windows without case (except on a
+/// WSL share, whose names are case-sensitive).
 pub(crate) fn key(p: &Path) -> String {
     let c = canon(p).unwrap_or_else(|| p.to_path_buf());
     let s = c.to_string_lossy().to_string();
-    if cfg!(windows) {
+    if cfg!(windows) && !crate::fsops::is_wsl(&c) {
         s.to_lowercase()
     } else {
         s
@@ -608,61 +582,25 @@ pub(crate) fn plain(p: &Path) -> String {
     s.strip_prefix("\\\\?\\").map(str::to_string).unwrap_or(s)
 }
 
-/// A skill folder read: its folder, name, description, last change and, when the folder is not on
-/// this disk, the key that lists it once however it was reached.
-type Read = Vec<(PathBuf, String, Option<String>, Option<u64>, Option<String>)>;
+/// A skill folder read: its folder, name, description and last change.
+type Read = Vec<(PathBuf, String, Option<String>, Option<u64>)>;
 
-/// T-243-b: one folder of a WSL distribution, asked through the runner. An answer that cannot be
-/// read, or a distribution that cannot be reached, is an error root; a missing folder is not-found.
-fn scan_wsl(spot: &Spot, runner: &dyn wsl::Runner, cancel: &Arc<AtomicBool>) -> (Read, &'static str, Option<String>) {
-    let Some((distro, dir)) = &spot.wsl else { return (vec![], "error", Some("No WSL folder named".into())) };
-    match runner.run(distro, dir, cancel).and_then(|b| wsl::parse(&b)) {
-        Err(e) => (vec![], "error", Some(e)),
-        Ok(wsl::Answer::NotFound) => (vec![], "not-found", None),
-        Ok(wsl::Answer::Skills(list)) => {
-            let mut seen = HashSet::new();
-            let mut out: Read = vec![];
-            for f in list {
-                let folder = f.dir.rsplit('/').next().unwrap_or("").to_string();
-                if crate::skill_delete::is_set_aside(&folder) || f.dir.split('/').any(crate::skill_delete::is_set_aside) || !seen.insert(f.real.clone()) {
-                    continue;
-                }
-                let (name, desc) = if f.text.len() as u64 <= FILE_LIMIT { describe(&f.text, &folder) } else { (folder, None) };
-                out.push((wsl::unc(distro, &f.dir), name, desc, f.updated, Some(format!("wsl:{}:{}", distro.to_lowercase(), f.real))));
-            }
-            (out, "scanned", None)
-        }
-    }
-}
-
-/// Scan every spot at once, each on its own thread with a time limit. WSL is unavailable here; the
-/// real scan (`scan`) and the tests of the WSL roots pass a runner to `run_with`.
-#[cfg(test)]
+/// Scan every spot at once, each on its own thread with a time limit.
 fn run(spots: Vec<Spot>, bundled: &[(&str, &str)], limit: Duration) -> Scan {
-    run_with(spots, bundled, limit, Arc::new(wsl::Unavailable))
-}
-
-fn run_with(spots: Vec<Spot>, bundled: &[(&str, &str)], limit: Duration, runner: Arc<dyn wsl::Runner>) -> Scan {
     let (tx, rx) = mpsc::channel();
     let cancel = Arc::new(AtomicBool::new(false));
     for (i, s) in spots.iter().enumerate() {
         let tx = tx.clone();
         let s = s.clone();
         let cancel = cancel.clone();
-        let runner = runner.clone();
         std::thread::spawn(move || {
-            if s.kind == Kind::Wsl {
-                let (read, state, note) = scan_wsl(&s, &*runner, &cancel);
-                let _ = tx.send((i, read, state, note));
-                return;
-            }
             let answer = scan_spot(&s, &cancel);
             let read: Read = answer
                 .0
                 .iter()
                 .map(|d| {
                     let (n, de, u) = read_skill(d);
-                    (d.clone(), n, de, u, None)
+                    (d.clone(), n, de, u)
                 })
                 .collect();
             let _ = tx.send((i, read, answer.1, answer.2));
@@ -690,9 +628,9 @@ fn run_with(spots: Vec<Spot>, bundled: &[(&str, &str)], limit: Duration, runner:
             continue;
         };
         roots.push(Root { path: plain(&s.path), label: s.label.clone(), source: s.source.into(), agents: agents.clone(), state: state.into(), count: read.len(), note });
-        for (dir, name, description, updated, own_key) in read {
+        for (dir, name, description, updated) in read {
             // A skill reached from several roots (through a link, say) is listed once.
-            let k = own_key.unwrap_or_else(|| key(&dir));
+            let k = key(&dir);
             if let Some(&at) = by_key.get(&k) {
                 for a in &agents {
                     if !skills[at].agents.contains(a) {
@@ -715,17 +653,15 @@ fn run_with(spots: Vec<Spot>, bundled: &[(&str, &str)], limit: Duration, runner:
 }
 
 pub fn scan(env: &Env, workspace: Option<&Path>) -> Scan {
-    run_with(spots(env, workspace), &crate::cli::bundled_skills(), ROOT_LIMIT, Arc::new(wsl::Real))
+    run(spots(env, workspace), &crate::cli::bundled_skills(), ROOT_LIMIT)
 }
 
 /// SKILL-022: where a delete may act. `deletable` are the home and workspace skills folders that
-/// were scanned; `plugin` are the folders plugins put skills in (never deleted from here);
-/// `wsl_roots` are (distribution, skill folder in it) for the distribution the open project lives
-/// in (T-180-b), where a delete runs inside the distribution instead of through the share.
+/// were scanned, except those on a WSL share however reached (DT-C94); `plugin` are the
+/// folders plugins put skills in (never deleted from here).
 pub struct Places {
     pub deletable: Vec<PathBuf>,
     pub plugin: Vec<PathBuf>,
-    pub wsl_roots: Vec<(String, String)>,
 }
 
 pub fn places(env: &Env, workspace: Option<&Path>) -> Places {
@@ -736,12 +672,14 @@ pub fn places(env: &Env, workspace: Option<&Path>) -> Places {
     let deletable = all
         .iter()
         .filter(|s| s.kind == Kind::Skills && s.skip.is_none() && matches!(s.source, "home" | "workspace"))
+        // DT-C94: a project stored in WSL is listed but never deleted from: its share may be slow or
+        // stopped (a delete holds the shared lock) and its names are case-sensitive.
+        .filter(|s| !in_wsl(&s.path))
         .map(|s| s.path.clone())
         .filter(|p| seen.insert(key(p)))
         .collect();
     let plugin = all.iter().filter(|s| s.source == "plugin").map(|s| s.path.clone()).collect();
-    let wsl_roots = all.iter().filter(|s| s.kind == Kind::Wsl && s.skip.is_none() && matches!(s.source, "home" | "workspace")).filter_map(|s| s.wsl.clone()).collect();
-    Places { deletable, plugin, wsl_roots }
+    Places { deletable, plugin }
 }
 
 /// SKILL-022: every skill folder under `root`, links included, without the scan's merging: a link
@@ -757,7 +695,8 @@ pub fn occurrences(root: &Path) -> Result<Vec<PathBuf>, String> {
                 continue;
             }
             let Some(c) = canon(&p) else { continue };
-            if chain.contains(&c) {
+            // A link into a WSL share holds nothing a delete may take (DT-C94).
+            if chain.contains(&c) || crate::fsops::is_wsl(&c) {
                 continue;
             }
             let file = p.join(SKILL_FILE);
@@ -1113,133 +1052,55 @@ mod tests {
     }
 
     #[test]
-    fn codex_plugin_cache_reads_the_newest_version_and_a_wsl_project_without_wsl_is_an_error() {
+    fn codex_plugin_cache_reads_the_newest_version() {
         let home = temp("skills-codex");
         let cache = home.join(".codex").join("plugins").join("cache");
         skill(&cache.join("m").join("tools").join("1.0").join("skills").join("one"), "# one\n");
         skill(&cache.join("m").join("bare").join("local").join("two"), "# two\n");
-        let s = run(spots(&env(&home), Some(Path::new("\\\\wsl.localhost\\Ubuntu\\home\\me\\repo"))), &[("kolux-cli", "---\ndescription: Drives Kolux\n---\n")], ROOT_LIMIT);
+        let s = run(spots(&env(&home), None), &[("kolux-cli", "---\ndescription: Drives Kolux\n---\n")], ROOT_LIMIT);
         let names: Vec<&str> = s.skills.iter().map(|k| k.name.as_str()).collect();
         assert_eq!(names, vec!["kolux-cli", "one", "two"]);
-        // WSL is unavailable to `run`: the distribution's roots are errors with the reason, never empty lists.
-        let wsl_roots: Vec<&Root> = s.roots.iter().filter(|r| r.label.starts_with("WSL Ubuntu")).collect();
-        assert_eq!(wsl_roots.len(), 8);
-        assert!(wsl_roots.iter().all(|r| r.state == "error" && r.note.as_deref().is_some_and(|n| n.contains("WSL is not available"))));
         let b = s.skills.iter().find(|k| k.source == "bundled").unwrap();
         assert_eq!(b.description.as_deref(), Some("Drives Kolux"));
     }
 
-    /// A fake WSL: answers by (distribution, folder), counts the calls.
-    struct FakeWsl {
-        answers: HashMap<(String, String), Result<String, String>>,
-        calls: Mutex<Vec<(String, String)>>,
-    }
-
-    impl FakeWsl {
-        fn new(answers: Vec<(&str, &str, Result<String, &str>)>) -> Arc<FakeWsl> {
-            let answers = answers.into_iter().map(|(d, f, a)| ((d.to_string(), f.to_string()), a.map_err(str::to_string))).collect();
-            Arc::new(FakeWsl { answers, calls: Mutex::new(vec![]) })
-        }
-    }
-
-    impl wsl::Runner for FakeWsl {
-        fn run(&self, distro: &str, dir: &str, _cancel: &AtomicBool) -> Result<Vec<u8>, String> {
-            self.calls.lock().unwrap().push((distro.to_string(), dir.to_string()));
-            match self.answers.get(&(distro.to_string(), dir.to_string())) {
-                Some(a) => a.clone().map(String::into_bytes),
-                None => Ok(b"KOLUX-WSL-SKILLS 1\nNOTFOUND\nEND 0\n".to_vec()),
-            }
-        }
-
-        fn delete(&self, _distro: &str, _root: &str, _dir: &str, _step: wsl::Step) -> Result<Vec<u8>, String> {
-            panic!("a scan never deletes")
-        }
-    }
-
-    const WSL_PROJECT: &str = r"\\wsl.localhost\Ubuntu\home\me\repo";
-
+    /// OD-12 / DT-C94 (T-658): a project stored in WSL is its `\\wsl.localhost\` path like any
+    /// folder. Its three workspace skill folders are plain paths on the share, scanned like a
+    /// Windows project's but never offered for delete; no distribution home folder is listed and
+    /// nothing is asked of a distribution (this module has no way to run one).
     #[test]
-    fn a_wsl_project_lists_its_distributions_skills() {
-        let home = temp("skills-wsl");
-        let pdf = wsl::answer_for(&[("/home/me/.claude/skills/pdf", "/home/me/.claude/skills/pdf", "---\nname: pdf-tools\ndescription: Reads PDFs\n---\n")]);
-        let repo = wsl::answer_for(&[("/home/me/repo/.claude/skills/lint", "/home/me/repo/.claude/skills/lint", "# Lint\n\nChecks style.\n")]);
-        let fake = FakeWsl::new(vec![("Ubuntu", "~/.claude/skills", Ok(pdf)), ("Ubuntu", "/home/me/repo/.claude/skills", Ok(repo))]);
-        let s = run_with(spots(&env(&home), Some(Path::new(WSL_PROJECT))), &[], ROOT_LIMIT, fake.clone());
-        let names: Vec<&str> = s.skills.iter().map(|k| k.name.as_str()).collect();
-        assert_eq!(names, vec!["Lint", "pdf-tools"]);
-        let pdf = s.skills.iter().find(|k| k.name == "pdf-tools").unwrap();
-        assert_eq!((pdf.source.as_str(), pdf.agents.clone(), pdf.description.as_deref()), ("home", vec!["claude".to_string()], Some("Reads PDFs")));
-        assert_eq!(pdf.path, r"\\wsl.localhost\Ubuntu\home\me\.claude\skills\pdf\SKILL.md");
-        assert_eq!(s.skills.iter().find(|k| k.name == "Lint").unwrap().source, "workspace");
-        let root = |label: &str| s.roots.iter().find(|r| r.label == label).unwrap();
-        assert_eq!((root("WSL Ubuntu: Claude Code").state.as_str(), root("WSL Ubuntu: Claude Code").count), ("scanned", 1));
-        assert_eq!(root("WSL Ubuntu: Codex").state, "not-found");
-        // One call per WSL folder (5 home + 3 project), none for a Windows path.
-        let calls = fake.calls.lock().unwrap();
-        assert_eq!(calls.len(), 8);
-        assert!(calls.iter().all(|(d, _)| d == "Ubuntu"));
-        assert!(calls.contains(&("Ubuntu".to_string(), "/home/me/repo/.agents/skills".to_string())));
-    }
-
-    #[test]
-    fn a_garbled_wsl_answer_is_an_error_not_an_empty_list() {
-        let home = temp("skills-wsl-garbled");
-        let cut = wsl::answer_for(&[("/home/me/.claude/skills/pdf", "/home/me/.claude/skills/pdf", "# pdf\n")]).replace("END 1\n", "");
-        let fake = FakeWsl::new(vec![("Ubuntu", "~/.claude/skills", Ok(cut)), ("Ubuntu", "~/.codex/skills", Ok("nonsense".into())), ("Ubuntu", "~/.agents/skills", Err("wsl.exe ended with exit code 1"))]);
-        let s = run_with(spots(&env(&home), Some(Path::new(WSL_PROJECT))), &[], ROOT_LIMIT, fake);
-        assert!(s.skills.is_empty());
-        for label in ["WSL Ubuntu: Claude Code", "WSL Ubuntu: Codex", "WSL Ubuntu: Shared skills folder"] {
-            let r = s.roots.iter().find(|r| r.label == label).unwrap();
-            assert_eq!(r.state, "error", "{label}");
-            assert_eq!(r.count, 0);
+    fn t658_a_project_stored_in_wsl_is_listed_by_its_share_path_and_never_deletable() {
+        let home = temp("skills-wsl-plain");
+        for project in [r"\\wsl.localhost\krs-t658-none\home\me\repo", r"\\wsl$\krs-t658-none\home\me\repo"] {
+            let ws = Path::new(project);
+            let all = spots(&env(&home), Some(ws));
+            let mine: Vec<&Spot> = all.iter().filter(|s| s.source == "workspace").collect();
+            let paths: Vec<PathBuf> = mine.iter().map(|s| s.path.clone()).collect();
+            assert_eq!(paths, [ws.join(".claude").join("skills"), ws.join(".agents").join("skills"), ws.join(".grok").join("skills")]);
+            assert!(mine.iter().all(|s| s.kind == Kind::Skills && s.skip.is_none()), "{mine:?}");
+            assert!(all.iter().all(|s| !s.label.contains("WSL")), "no distribution folders: {all:?}");
+            assert_eq!(all.iter().filter(|s| s.source == "home").count(), 5, "only this computer's home folders");
+            // Listed, never offered for delete: only this computer's home folders are.
+            let p = places(&env(&home), Some(ws));
+            assert!(p.deletable.iter().all(|d| !crate::fsops::is_wsl(d)), "{:?}", p.deletable);
+            assert_eq!(p.deletable.len(), places(&env(&home), None).deletable.len());
+            // Names on the share are case-sensitive: Lint and lint are two folders.
+            assert_ne!(key(&ws.join("Lint")), key(&ws.join("lint")));
         }
-        let note = |label: &str| s.roots.iter().find(|r| r.label == label).unwrap().note.clone().unwrap();
-        assert!(note("WSL Ubuntu: Claude Code").contains("could not read"));
-        assert!(note("WSL Ubuntu: Shared skills folder").contains("exit code 1"));
-        // A folder that simply is not there stays not-found.
-        assert_eq!(s.roots.iter().find(|r| r.label == "WSL Ubuntu: Grok").unwrap().state, "not-found");
+        #[cfg(windows)]
+        assert_eq!(key(Path::new(r"C:\krs\Lint")), key(Path::new(r"C:\krs\lint")), "Windows folders still ignore case");
     }
 
+    /// DT-C94: every spelling of a WSL share is known by its text alone (the made-up distribution
+    /// is never opened); a local folder and a lookalike drive path are not WSL.
     #[test]
-    fn a_skill_reached_twice_in_wsl_is_listed_once_and_set_aside_folders_are_hidden() {
-        let home = temp("skills-wsl-twice");
-        let a = wsl::answer_for(&[("/home/me/.claude/skills/one", "/real/one", "# one\n"), ("/home/me/.claude/skills/.kolux-deleting-12-34-gone", "/real/gone", "# gone\n")]);
-        let b = wsl::answer_for(&[("/home/me/.agents/skills/one", "/real/one", "# one\n")]);
-        let fake = FakeWsl::new(vec![("Ubuntu", "~/.claude/skills", Ok(a)), ("Ubuntu", "~/.agents/skills", Ok(b))]);
-        let s = run_with(spots(&env(&home), Some(Path::new(WSL_PROJECT))), &[], ROOT_LIMIT, fake);
-        let names: Vec<&str> = s.skills.iter().map(|k| k.name.as_str()).collect();
-        assert_eq!(names, vec!["one"]);
-        assert!(s.skills[0].agents.contains(&"claude".to_string()) && s.skills[0].agents.contains(&"shared".to_string()));
-    }
-
-    #[test]
-    fn a_windows_project_never_calls_wsl_and_wsl_roots_are_never_deletable() {
-        let home = temp("skills-wsl-none");
-        let ws = home.join("repo");
-        fs::create_dir_all(&ws).unwrap();
-        let fake = FakeWsl::new(vec![]);
-        let s = run_with(spots(&env(&home), Some(&ws)), &[], ROOT_LIMIT, fake.clone());
-        assert!(fake.calls.lock().unwrap().is_empty());
-        assert!(!s.roots.iter().any(|r| r.label.starts_with("WSL")));
-        let p = places(&env(&home), Some(Path::new(WSL_PROJECT)));
-        assert!(p.deletable.iter().all(|d| !d.to_string_lossy().contains("Ubuntu")), "{:?}", p.deletable);
-    }
-
-    /// SKILL-022 (T-180-b): a delete inside WSL may act only in the skill folders of the
-    /// distribution the open project lives in; a Windows project offers none.
-    #[test]
-    fn skill022_wsl_a_project_in_a_distribution_offers_its_eight_skill_folders_for_delete() {
-        let home = temp("skills-wsl-places");
-        let p = places(&env(&home), Some(Path::new(WSL_PROJECT)));
-        assert_eq!(p.wsl_roots.len(), 8, "{:?}", p.wsl_roots);
-        assert!(p.wsl_roots.iter().all(|(d, _)| d == "Ubuntu"));
-        for root in ["~/.claude/skills", "~/.codex/skills", "~/.agents/skills", "~/.grok/skills", "~/.hermes/skills", "/home/me/repo/.claude/skills", "/home/me/repo/.agents/skills", "/home/me/repo/.grok/skills"] {
-            assert!(p.wsl_roots.contains(&("Ubuntu".to_string(), root.to_string())), "{root} missing from {:?}", p.wsl_roots);
+    fn t658_every_spelling_of_a_wsl_share_is_known_and_a_local_folder_is_not() {
+        for p in [r"\\.\UNC\wsl.localhost\krs-t658-none\x", r"\??\UNC\wsl$\krs-t658-none\x", r"\\?\UNC\WSL.localhost\krs-t658-none\x", "//wsl$/krs-t658-none/x"] {
+            assert!(in_wsl(Path::new(p)), "{p}");
         }
-        let ws = home.join("repo");
-        fs::create_dir_all(&ws).unwrap();
-        assert!(places(&env(&home), Some(&ws)).wsl_roots.is_empty());
-        assert!(places(&env(&home), None).wsl_roots.is_empty());
+        let local = temp("skills-wsl-local");
+        assert!(!in_wsl(&local));
+        assert!(!in_wsl(Path::new(r"C:\wsl.localhost\krs-t658-none")));
     }
 
     /// The same local folder reached as a share on this computer (`\\localhost\G$\...`): a target

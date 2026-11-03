@@ -437,9 +437,8 @@ Rules:
   - Delete shares one lock with skill installs and updates; a lock left behind because releasing it
     failed is taken back, so skill operations never stay stuck.
   - One delete request covers between 1 and 512 skills.
-  - Skills inside WSL distributions can be deleted too; there, deletes run in the distribution of
-    the selected project, refuse paths from another distribution or outside the skill folders, and
-    treat a failing command inside the distribution as a failure.
+  - A skill in a project stored in WSL is listed but cannot be deleted from Kolux ("delete it from
+    WSL"); nothing runs inside a distribution (OD-12, DT-C94).
 Acceptance:
   - [ ] Select a home skill and a bundled one → the confirmation lists the bundled one as blocked;
         confirming removes only the home skill.
@@ -659,8 +658,9 @@ Rules:
   - Codex plugin caches are scanned within a limit, and partial coverage is reported rather than
     hidden.
   - Links are followed without looping and only to a limited depth.
-  - WSL distributions are scanned too, using the distribution the selected project lives in; a
-    garbled answer from that scan is an error, not an empty list.
+  - A project stored in WSL is scanned through its `\\wsl.localhost\` path like any folder;
+    its names keep their letter case; distributions' own home folders are not listed and nothing runs
+    inside one (OD-12, DT-C94).
   - Repeated scans are merged and cached; a scan target that hangs becomes an error the user can
     retry.
   - Refresh forces a new scan, ignoring cached and in-flight results.
@@ -802,7 +802,7 @@ User does: opens the Skills page while connected to a remote host.
 User sees: the remote machine's skills, which can be deleted there, in place of the local ones.
 Rules: delete was sent to the remote only where its runtime supported it.
 Acceptance:
-  - [ ] The Skills page lists only skills reachable from this computer (including WSL, SKILL-021).
+  - [ ] The Skills page lists only skills reachable from this computer (a project stored in WSL through its share path, SKILL-021).
   - [ ] No remote-host choice appears on the Skills page.
 Compat: —
 Decision: default cut: remote hosts are dropped with area 18. Revive via DECISIONS.md.

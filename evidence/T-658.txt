@@ -1,0 +1,65 @@
+T-658 - The Skills page runs nothing inside WSL (OD-12, DT-C94; audit backlog row 6, R10-skills.4)
+Worker 2f, branch s-2f/skills-wsl, base 277e0d8c, 2026-11-02.
+
+WHAT CHANGED
+- src-tauri/src/skills/wsl.rs is deleted. The Skills page no longer starts wsl.exe to list a
+  distribution's skill folders or to check and remove a skill there (T-243-b, T-180-b retired).
+- A project stored in WSL is scanned through its \\wsl.localhost\ (or \\wsl$\) path like any
+  folder. Its three workspace skill folders are listed, and their names keep their letter case.
+  The distribution's own home folders are no longer listed.
+- Those skills cannot be deleted from Kolux. The row reads "In a project stored in WSL; delete it
+  from WSL", and the app refuses such a pick as "wsl". The refusal covers every UNC spelling
+  (\\wsl$\, \\wsl.localhost\, \\?\UNC\, \\.\UNC\, \??\UNC\) and also a path whose real location is
+  a share (a mapped drive letter or a link): skills::in_wsl checks the text first, then the
+  resolved path. A link inside a local skills folder that leads into a share is still listed but
+  never planned for delete. Because the page can only judge a path by its text, such a row (a
+  mapped drive, or a home link into WSL) still shows Delete, and the confirmation then shows it
+  blocked with the WSL reason. Removing just a home link that points into WSL used to be allowed;
+  under DT-C94 it is refused too.
+- A folder that exists but cannot be opened is an error, not "not found".
+
+PROOF GREP (DONE condition)
+$ git grep -n "wsl.exe\|wsl::" -- src-tauri/src/skills* src-tauri/src/skill_delete.rs
+(no output, exit 1)
+
+GATES (run in the worktree, CARGO_TARGET_DIR=target-2f, -j 2)
+- cargo test --lib skill: 124 passed, 0 failed, 2 ignored
+- cargo clippy --all-targets -- -D warnings: clean
+- pnpm tsc --noEmit: exit 0
+- pnpm vitest run src/skills: 6 files, 41/41 passed
+- node scripts/plan-check.mjs: OK
+- node scripts/invoke-contract.mjs: OK
+- pnpm vite build + node scripts/bundle-budget.mjs: OK (ceiling unchanged)
+
+NEW TESTS
+- skills::tests::t658_a_project_stored_in_wsl_is_listed_by_its_share_path_and_never_deletable
+  (a \\wsl.localhost\ and a \\wsl$\ workspace give 3 plain workspace spots, no WSL-labelled
+  spot, 5 home spots, no WSL root in deletable, Lint and lint stay two keys)
+- skills::tests::t658_every_spelling_of_a_wsl_share_is_known_and_a_local_folder_is_not
+- skill_delete::tests::t658_a_skill_in_a_project_stored_in_wsl_is_refused_without_touching_the_share
+  (three share spellings plan as "wsl", a delete skips with note "wsl", the home skill is untouched)
+- src/skills/skills.test.ts: "T-658 (OD-12, DT-C94): a skill in a project stored in WSL is listed by
+  its share path but cannot be chosen"
+All tests use a made-up distribution name (krs-t658-none), so no real share is opened.
+
+REVIEWS
+- Code review (opus-high-review): round 1 B, round 2 A-, round 3 A
+- Security audit (agent-skills:security-auditor): round 1 B+, round 2 B (no blocker), round 3
+  A- (no blocker; two LOW stalls noted below, fsops follow-up)
+- Round 1 led to refusing deletes instead of deleting through the share. Round 2 (both reviewers)
+  led to the resolved-path and extra-spelling check (skills::in_wsl).
+
+NOT DONE HERE
+- No live proof. The visible change only affects projects stored in WSL, and Txais's PC has no
+  WSL distribution (DT-C41). The behaviour is covered by the Rust and vitest tests above.
+- No mapped-drive test: a "net use" mapping is machine-wide state. The resolved-path half of
+  in_wsl covers it by construction.
+- fsops::is_wsl (shared with trash_each and scm_watch) does not know the \\.\UNC\ and \??\UNC\
+  spellings. fsops.rs is outside this task; reported to the coordinator as a follow-up.
+- Known limit (security round 3, LOW): resolving a mapped drive or link that leads to a stopped
+  distribution can stall the delete plan, which runs under the skill lock. It is a stall, not data
+  loss, limited to the user's own folders, and marked with a ponytail comment on skills::in_wsl.
+- editor_search.rs (EDIT-044, DT-C70) still runs wsl.exe for search; outside the Skills scope.
+- Older, not caused by this change: a pick or workspace on another computer's share is resolved
+  (opened) by plan/places before any remote check, as it was on base. Follow-up for the
+  coordinator: block such picks as "outside" and skip such roots with an early remote check.
