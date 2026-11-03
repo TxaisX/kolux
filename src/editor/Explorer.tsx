@@ -160,8 +160,6 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   // EDIT-043: the Open in menu (null while closed) and the last launch that failed.
   const [openTargets, setOpenTargets] = useState<{ list: Target[]; x: number; y: number } | null>(null);
   const [openErr, setOpenErr] = useState<string | null>(null);
-  const openMenu = useRef<HTMLDivElement>(null);
-  const openButton = useRef<HTMLButtonElement>(null);
   // T-323-b: a file row's menu also lists the Open in apps (read from the settings when the menu opens).
   const [fileApps, setFileApps] = useState<App[]>([]);
   // EDIT-037: with the explorer hidden the key shows it first (onWake) and the search starts once it is on screen.
@@ -763,7 +761,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const last = Math.min(rows.length, Math.ceil((scroll + height) / ROW) + SPARE);
   const name = baseName(root.replace(/[\\/]+$/, "")) || root;
   const wsl = asking?.some(isWsl);
-  useMenuKeys(openMenu, !!openTargets, () => setOpenTargets(null), openButton);
+  const { box: openMenu, remember: rememberOpener } = useMenuKeys(!!openTargets, () => setOpenTargets(null));
   return (
     <aside className="explorer" hidden={hidden} aria-label="Explorer">
       <header className="explorer-head">
@@ -774,7 +772,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         <button className={`ib${searching ? " on" : ""}`} onClick={() => (searching ? closeSearch() : (setSearching(true), startSearch()))} aria-pressed={searching} title="Search file contents (Ctrl+Shift+F)" aria-label="Search file contents">
           <Search size={12} />
         </button>
-        <button ref={openButton} className="ib" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); if (openTargets) setOpenTargets(null); else void loadTargets().then((list) => setOpenTargets({ list, x: r.left, y: r.bottom + 4 })); }} aria-expanded={!!openTargets} aria-haspopup="menu" title="Open this folder in another app" aria-label="Open in">
+        <button className="ib" onClick={(e) => { rememberOpener(e.currentTarget); const r = e.currentTarget.getBoundingClientRect(); if (openTargets) setOpenTargets(null); else void loadTargets().then((list) => setOpenTargets({ list, x: r.left, y: r.bottom + 4 })); }} aria-expanded={!!openTargets} aria-haspopup="menu" title="Open this folder in another app" aria-label="Open in">
           <Rocket size={12} />
         </button>
         <button className="ib" onClick={refresh} disabled={refreshing} aria-busy={refreshing} title="Refresh the tree" aria-label="Refresh the tree">

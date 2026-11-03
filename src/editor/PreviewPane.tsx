@@ -15,7 +15,7 @@ import { hideFrontFor, splitFront } from "./frontMatter";
 import { FrontMatterBlock } from "../shell/MdViewControls";
 import { frontControl } from "../shell/mdView";
 import { mdPrefs, setMdPrefs } from "../shell/mdPrefs";
-import { useMenuKeys } from "./menuKeys";
+import { useMenuKeys } from "./menuNav";
 import { followClick, inertClick, type LinkHandler } from "./linkClicks";
 import { drawDiagrams, esc, loadRenderers, renderNote, watchRenderers } from "./diagrams";
 import { filterDataPictures } from "./notePictures";

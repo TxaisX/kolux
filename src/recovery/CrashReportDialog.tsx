@@ -2,10 +2,10 @@
 // soon as it shows); Help > Report Crash (REPORT_CRASH_EVENT) reopens the newest even after that.
 // Copy Details and Attach recent diagnostic logs put scrubbed text on the clipboard; Open on GitHub
 // opens the pre-filled issue in the browser. Kolux sends nothing itself.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { watchEscape } from "../switcher/accounts";
 import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
+import { useDialogFocus } from "../chrome/dialogFocus";
 import { dialogLead, issueUrl, openFromHelp, openPending, type Crash, type Dialog } from "./model";
 
 async function copy(text: string): Promise<void> {
@@ -47,12 +47,6 @@ export default function CrashReportDialog() {
     invoke<string>("crash_details", { id: d.crash.id }).then(setDetails, (e) => setDetails(`(details could not be read: ${String(e)})`));
   }, [d]);
 
-  // Escape closes the report from anywhere, not only after clicking inside it
-  useEffect(() => {
-    if (!d) return;
-    return watchEscape(window, () => setD(null));
-  }, [d]);
-
   useEffect(() => {
     if (!note) return;
     const t = setTimeout(() => setNote(""), 6000);
@@ -85,11 +79,16 @@ export default function CrashReportDialog() {
   );
 }
 
-/** The report itself. Not now has the focus when it opens; Copy Details waits for the details to load. */
+/** The report itself. Not now has the focus when it opens, Tab stays inside, Escape closes it from anywhere and focus
+ *  goes back where it was (the shared dialog focus); Copy Details waits for the details to load. */
 export function CrashPanel({ lead, details, onClose, onAttach, onCopy, onOpen }: { lead: string; details: string; onClose: () => void; onAttach: () => void; onCopy: () => void; onOpen: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  const notNow = useRef<HTMLButtonElement>(null);
+  useDialogFocus(box, onClose, () => notNow.current);
   return (
       <div className="scrim" onMouseDown={() => onClose()}>
         <div
+          ref={box}
           role="dialog"
           aria-modal="true"
           aria-label="Report a crash"
@@ -108,7 +107,7 @@ export function CrashPanel({ lead, details, onClose, onAttach, onCopy, onOpen }:
             <button className="btn" onClick={onCopy} disabled={!details}>
               Copy Details
             </button>
-            <button className="btn" autoFocus onClick={() => onClose()}>
+            <button ref={notNow} className="btn" onClick={() => onClose()}>
               Not now
             </button>
             <button className="btn" onClick={onOpen} disabled={!details}>
