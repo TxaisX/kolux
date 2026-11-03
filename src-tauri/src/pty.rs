@@ -317,8 +317,8 @@ pub fn start_dir(workspace: &str, requested: Option<&str>) -> String {
 /// A pane that runs one program (an agent such as `claude`) instead of a shell. `program` is
 /// resolved the way a shell would (`claude` becomes `...\claude.exe`) so the process starts
 /// without a shell in between; a name that does not resolve to a full path is passed through
-/// unchanged, never wrapped in cmd.exe (which would look it up in `cwd`), and the spawn refuses it
-/// by name (T-660). A Windows command-script shim is started the way `start_line` says. Starts in
+/// unchanged, never wrapped in cmd.exe (which would look it up in `cwd`), and the spawn looks it
+/// up in full-path folders only or refuses it by name (T-660). A Windows command-script shim is started the way `start_line` says. Starts in
 /// `cwd` when that folder exists.
 pub fn program_command(program: &str, args: &[String], cwd: Option<&str>) -> CommandBuilder {
     match crate::agents::find_program(program).filter(|p| p.is_absolute()) {
@@ -473,10 +473,10 @@ fn fallback_note(failed: &[(String, String)], opened: &str) -> Option<String> {
 }
 
 /// T-660: where a program named without a full path is found for `cmd`: in the full-path folders
-/// of the PATH the pane is given, then the app's own search folders. A name with a folder in it
-/// (`./x`, `bin\x`, `C:x`) is never looked up.
+/// of the PATH the pane is given, then the app's own search folders. A name with a separator or a
+/// drive in it (`./x`, `bin\x`, `C:x`, `x/`) is never looked up.
 fn resolve_bare(cmd: &CommandBuilder, name: &str) -> Option<PathBuf> {
-    if Path::new(name).components().count() != 1 || Path::new(name).has_root() {
+    if name.contains(['/', '\\', ':']) {
         return None;
     }
     let mut dirs: Vec<PathBuf> = cmd.get_env("PATH").map(|p| std::env::split_paths(p).filter(|d| d.is_absolute() && d.is_dir()).collect()).unwrap_or_default();
@@ -518,7 +518,11 @@ impl PtySession {
             // app's own (Windows and this library both would); one not found there is refused.
             if !name.is_empty() && !Path::new(&name).is_absolute() {
                 match resolve_bare(&cmd, &name) {
-                    Some(p) => cmd.get_argv_mut()[0] = p.into_os_string(),
+                    // A command script found this way starts the way every other one does (T-605).
+                    Some(p) => {
+                        let (exe, head) = start_line_on(&p, cfg!(windows));
+                        cmd.get_argv_mut().splice(0..1, std::iter::once(exe).chain(head));
+                    }
                     None => {
                         failed.push((name.clone(), format!("{name} was not found on this PC, so Kolux did not start it")));
                         continue;
@@ -1279,6 +1283,41 @@ mod tests {
             std::thread::sleep(Duration::from_millis(300));
             assert!(!marker.exists(), "the planted tool never ran");
         }
+        // A Command Prompt started in a folder holding a planted chcp never runs it. The control
+        // (the bare name, as before T-660) does, which shows the plant is one Windows would reach.
+        #[cfg(windows)]
+        {
+            let marker = dir.join("ran");
+            std::fs::write(dir.join("chcp.bat"), format!("@echo x>\"{}\"\r\n", marker.display())).unwrap();
+            let prompt = |chcp: &str| {
+                let mut c = CommandBuilder::new(system_program("cmd.exe"));
+                c.args(["/k", chcp, "65001", ">nul"]);
+                c.cwd(&*dir);
+                // A PC (or this test's parent) may have switched off the current-folder search; the
+                // plant is tested where it is on, as on most PCs.
+                c.env_remove("NoDefaultCurrentDirectoryInExePath");
+                let (tx, rx) = mpsc::channel::<Vec<u8>>();
+                let mut s = PtySession::spawn(c, 200, 24, move |b| { let _ = tx.send(b.to_vec()); }, |_| {}).expect("the prompt starts");
+                // The prompt (the folder, then >) shows once chcp has run; the console host asks
+                // where the cursor is first and waits for the answer, as in the shell test.
+                let shown = format!("{}>", dir.file_name().unwrap().to_string_lossy());
+                let (deadline, mut seen, mut answered) = (Instant::now() + Duration::from_secs(30), String::new(), 0);
+                while Instant::now() < deadline && !seen.contains(&shown) {
+                    if let Ok(b) = rx.recv_timeout(Duration::from_millis(200)) { seen.push_str(&String::from_utf8_lossy(&b)); }
+                    let asks = seen.matches("[6n").count();
+                    while answered < asks {
+                        s.write(b"[1;1R").expect("answer cursor query");
+                        answered += 1;
+                    }
+                }
+                assert!(seen.contains(&shown), "the prompt showed: {seen:?}");
+                s.kill();
+            };
+            prompt(CMD_ARGS[1]);
+            assert!(!marker.exists(), "the Command Prompt ran Windows' chcp, not the planted one");
+            prompt("chcp");
+            assert!(marker.exists(), "control: a bare chcp would have run the planted one");
+        }
         // The pane's own PATH is searched (its full-path folders): a tool only there is found.
         let own = crate::test_dir::temp("t660 pane path");
         #[cfg(windows)]
@@ -1288,7 +1327,9 @@ mod tests {
         let mut c = program_command("kolux-rs-t660-own", &[], None);
         c.env("PATH", own.as_os_str());
         assert!(resolve_bare(&c, "kolux-rs-t660-own").is_some_and(|p| p.starts_with(&*own)), "found through the pane's PATH");
-        assert!(resolve_bare(&c, "./kolux-rs-t660-own").is_none() && resolve_bare(&c, "C:kolux-rs-t660-own").is_none());
+        for named in ["./kolux-rs-t660-own", "C:kolux-rs-t660-own", "C:", "kolux-rs-t660-own/", "bin\\kolux-rs-t660-own"] {
+            assert!(resolve_bare(&c, named).is_none(), "{named} is never looked up");
+        }
         // The automatic shells and the menu never name the planted cmd.exe.
         if cfg!(windows) {
             let found = |_: &str| None;
