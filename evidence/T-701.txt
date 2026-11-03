@@ -9,10 +9,19 @@ THE THREE ROWS (from the live verify)
 
 CHANGE (src/styles.css, CSS only)
 The look row (Git & worktrees) and the agent switch row get min-height 24px on their existing flex
-rules. The shared check row had no rule of its own outside the sidebar form, so it gets one: a centred
-flex row, gap 8px, at least 24px tall. That shared row is also used by the cleanup dialog, kept
-branches, the card details chooser and the projects panel, all one row per item, so they look the same
-and grow to 24px too.
+rules. The shared check row had a rule only inside the sidebar form and the source control summary, so
+it gets a base rule: a centred flex row, gap 8px, at least 24px tall, written :where(label).check so it
+weighs one class and every more specific rule still wins. Every other user of the check row:
+- cleanup dialog, kept branches, card details chooser, projects panel (and its extras), source control
+  summary: already flex rows from their own rules; they only gain the 24px minimum.
+- "Don't ask again" (ask dialog) and "Always trust this repository's kolux.yaml" (trust dialog): keep
+  their own 6px gap (their one-class rules come later, so they win over the base rule); 24px minimum.
+- the skill install list: its labels had no layout rule and sat side by side; now one skill per row,
+  each 24px tall, a plain checklist.
+A check span in the diff menu is not a label, so it is untouched.
+Review (Opus, read-only): A-, no must-fix; applied the gap weight (:where), the full user list here,
+the Agents test can no longer match past the label's end, and declarations are matched whole
+(24px, not 240px).
 
 TESTS (src/shell/checkboxHit.test.ts, extended from T-697): each row is found by its page and its
 text (the label class around the box), and its rule must hold display flex, align-items center and
