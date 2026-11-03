@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { markGuide, type GuideRecord } from "./guide";
 import { features, hasUsed, noteUse } from "./features";
-import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, handsOver, lookAt, START_GRID, nextShown, ownerOff, tourNotice, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
+import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, handsOver, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
 
 
 /** The first copy of `sel` that is really on screen (hidden copies are passed over). */
@@ -161,6 +161,17 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
       </div>
     </>
   );
+}
+
+/** 49-ux2: what to tell the user when a tour they asked for (Help > a tour) is dropped or gives up, so a
+ *  replay is never silent. `off` is the owning feature being switched off. A page change or another tour
+ *  starting is the user's own doing and says nothing; an automatic tour never speaks. Kept here, not in
+ *  tour.ts, so the code loaded at start does not carry it. */
+export function tourNotice(name: string, w: Want, act: ReturnType<typeof lookAt>, gave: boolean, off: boolean): string | null {
+  if (!w.forced) return null;
+  if (act === "drop" && off) return `The ${name} tour is off because its feature is switched off in Settings.`;
+  if (act === "miss" && gave) return `The ${name} tour needs its screen showing. Open that screen, then replay the tour from Help.`;
+  return null;
 }
 
 export default function Tours() {

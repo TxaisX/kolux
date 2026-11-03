@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import TrustPrompt, { TRUST_MEMORY, answerFirst, askTrust, hostMounted, otherDialog, trusted, trustedSetup, trustWords, waiting, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
+import TrustPrompt, { TRUST_MEMORY } from "./TrustDialog";
+import { answerFirst, askTrust, hostMounted, otherDialog, trusted, trustedSetup, trustWords, waiting, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
 import { issueCommand } from "./IssueCommand";
 
 const ASK: TrustAsk = { kind: "setup", script: "pnpm install\necho <done>", changed: false, project: "web" };

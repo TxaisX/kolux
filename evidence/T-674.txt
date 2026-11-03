@@ -149,3 +149,32 @@ Setup Guide step aside), and the PLAN and DECISIONS rows (both sides kept). No c
     (the 3 are the known local-only CRLF checks in the pdfjs copy test, green on Windows CI)
   pnpm exec tsc --noEmit -p .: exit 0
   firewall-check -Baseline: 0 new
+
+FIRST-LOAD BUNDLE (2026-11-03, asked by coordinator 57: train 2 came in over the 1,490,000 ceiling)
+Measured with: pnpm exec vite build && node scripts/bundle-budget.mjs
+  main 5177a5f2:                1,485,561 bytes (46 chunks)
+  this branch before the split: 1,488,929 bytes (+3,368)
+  this branch after the split:  1,484,665 bytes (896 under main; target was main +500)
+What moved out of the code loaded at start (nothing the user sees changed):
+  - the Settings-shown signal: its own file src/onboarding/settingsShown.ts, so the window keys no longer
+    pull in the setup dialogs helper (dialogFocus.ts re-exports it)
+  - the wizard-only helpers (NO_AGENT_WHY, lastMain, followAgents): sessionAgent.ts -> Wizard.tsx
+  - tourNotice (used only by the tour card): tour.ts -> Tours.tsx
+  - the trust prompt dialog and its host: TrustPrompt.tsx -> new TrustDialog.tsx, which lazy/pages loads on
+    demand; the waiting line and the rules stay in TrustPrompt.tsx (the launch and project code use them)
+  - the three help-menu web addresses: their own file src/onboarding/links.ts (helpItems.ts re-exports them),
+    so privacy.ts no longer pulls the whole help menu list into the first load
+Tests after the split (VITEST_MAX_WORKERS=2):
+  onboarding + setup + keys + settings: Test Files 136 passed (136), Tests 936 passed (936)
+  named lines (verbose):
+   ✓ src/onboarding/helpItems.test.ts > 49-ux2 the help menu says what each entry is > has a Report Crash row after Send Feedback that runs reportCrash
+   ✓ src/onboarding/helpItems.test.ts > 49-ux2 the help menu says what each entry is > tells the checklist from the wizard in visible text, and the tours' wait is no hover title
+   ✓ src/setup/TrustPrompt.test.ts > 49-ux2 the trust prompt says what is remembered > shows the memory line beside Run hooks and Don't run
+   ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > closing the last prompt host counts as Don't run for every waiting prompt
+   ✓ src/onboarding/ux2.test.ts > onboarding.md:4, :15: Open a session needs an agent > follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes
+   ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > Open Settings (a button, a palette page or Ctrl+,) closes Explore and the Setup Guide, so Settings is not left behind; the stop unsubscribes
+   ✓ src/onboarding/ux2.test.ts > onboarding.md:10: a tour replay that cannot start says why > speaks for a forced replay that gave up or whose feature is off, and not for the rest
+  full suite: Test Files 1 failed | 770 passed (771), Tests 3 failed | 5752 passed (5755)
+    (the 3 are the known local-only CRLF checks in the pdfjs copy test, green on Windows CI)
+  pnpm exec tsc --noEmit -p .: exit 0
+  firewall-check -Baseline: 0 new

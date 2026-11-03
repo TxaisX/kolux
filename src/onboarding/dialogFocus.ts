@@ -5,12 +5,9 @@ import { useEffect, type RefObject } from "react";
 import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
 import { OPEN_SETTINGS } from "../settings/pages";
+import { SETTINGS_SHOWN } from "./settingsShown";
 
-/** Settings opened without OPEN_SETTINGS (the Ctrl+, key; the native menu once lane E1 sends it too). */
-export const SETTINGS_SHOWN = "kolux-settings-shown";
-
-/** Says Settings is showing: Ctrl+, sends it (src/keys/useWindowKeys.ts). */
-export const settingsShown = (w: EventTarget = window): void => void w.dispatchEvent(new Event(SETTINGS_SHOWN));
+export { SETTINGS_SHOWN, settingsShown } from "./settingsShown";
 
 /** What Explore and the Setup Guide do when Settings opens: Explore closes; the guide closes only when it is open, and then
  *  tells the sidebar as its own close does. */

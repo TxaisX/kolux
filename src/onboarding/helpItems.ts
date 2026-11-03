@@ -3,11 +3,9 @@
 // web addresses and the restart's "once only" rule can be tested without a window.
 import type { Page } from "../settings/pages";
 
-/** The three fixed addresses that open in the system browser (DT-C80). Docs points at the repo's docs
- *  folder until a docs site exists. */
-export const GITHUB_URL = "https://github.com/TxaisX/kolux-rs";
-export const CHANGELOG_URL = "https://github.com/TxaisX/kolux-rs/releases";
-export const DOCS_URL = "https://github.com/TxaisX/kolux-rs/tree/main/docs";
+import { CHANGELOG_URL, DOCS_URL, GITHUB_URL } from "./links";
+
+export { CHANGELOG_URL, DOCS_URL, GITHUB_URL } from "./links";
 
 /** What Restart Kolux shows while the save point and relaunch run. */
 export const RESTARTING = "Restarting…";

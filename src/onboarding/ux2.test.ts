@@ -2,12 +2,13 @@
 // Open a session needs, the focus helper every dialog shares, the shortcut label, and the tour notice.
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
-import { followAgents, lastMain, NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
+import { sessionAgent } from "./sessionAgent";
 import { closeOnSettings, settingsShown, stepAside, SETTINGS_SHOWN, enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
 import { OPEN_SETTINGS } from "../settings/pages";
 import { submitKeys } from "./submitKeys";
-import { tourNotice, type Want } from "./tour";
-import { mainOff } from "./Wizard";
+import type { Want } from "./tour";
+import { tourNotice } from "./Tours";
+import { followAgents, lastMain, mainOff, NO_AGENT_WHY } from "./Wizard";
 import { recordsHooks } from "./hooksOn";
 import { failedNote } from "./StepPanels";
 import { GH_LOGIN } from "./integrations";
