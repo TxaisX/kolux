@@ -73,13 +73,22 @@ export function askLink(url: string, named: boolean, open: (to: Dest) => void): 
   return true;
 }
 
-/** The answer (or a dismissal): saved once, then every waiting link opens with it. */
+/** The answer: saved once, then every waiting link opens with it. */
 export function answerLinks(to: Dest): void {
   const w = waiting;
   waiting = [];
   state = { inKolux: to === "kolux", asked: true };
   void save(answerPatch(to)).catch(() => {});
   for (const x of w) x.open(to);
+  tell();
+}
+
+/** Escape or a click outside: the waiting links open in the system browser this once, but nothing is saved and the
+ *  question stays unanswered, so the next plain click asks again (UX lane A, shell.md row 9). */
+export function dismissLinks(): void {
+  const w = waiting;
+  waiting = [];
+  for (const x of w) x.open(dismissed);
   tell();
 }
 

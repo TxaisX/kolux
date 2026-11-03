@@ -22,6 +22,8 @@ const OUTSIDE = import.meta.glob(
     "./TabSearch.tsx",
     "./closeAsk.ts",
     "./tidy.ts",
+    "./paletteCaps.ts",
+    "./findTab.ts",
     "../settings/useSettingsPlumbing.ts",
     "../chrome/useWindowChrome.ts",
     "../browser/useBrowserChords.ts",

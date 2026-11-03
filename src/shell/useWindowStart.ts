@@ -38,7 +38,9 @@ export function useWindowStart({ activeDir, agentPass, focused, installedIds, ne
           applyWindowBlur(s);
           // after-list #39 / row 789: the fallback sentence is told by RecoveryMount now (its own notice, not the single slot the shortcuts file overwrote)
         })
-        .catch(() => setSettings({}));
+        // UX lane A (shell.md row 17): a failed read keeps what the window already holds. Replacing it with {} made the
+        // next save write the defaults over the saved settings.
+        .catch(() => {});
     readSettings();
     const off = listen("settings-saved", () => (readSettings(), invoke<ShellInfo[]>("shell_list").then(setShells, () => {}))); // SET-026: the chosen default shell leads the list
     return () => {

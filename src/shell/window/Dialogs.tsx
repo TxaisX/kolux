@@ -19,8 +19,11 @@ import { sameDir } from "../../workspaces";
 import { AboutPanel } from "../../lazy/pages";
 import { LinkAskHost } from "../../lazy/pages";
 import TabSearch from "../TabSearch";
+import { isTabRow } from "../findTab";
 import { quitQuestion } from "../closeAsk";
-import { closeRows } from "./tabMenu";
+import { useRef } from "react";
+import { closeConfirmLabel, closeRows } from "./tabMenu";
+import { useTabMenuKeys } from "./tabMenuKeys";
 import { useWindow } from "./store";
 import { SettingsPage } from "../../lazy/pages";
 import { WorkspaceBoard } from "../../lazy/pages";
@@ -37,6 +40,8 @@ export default function WindowDialogs() {
     setRenamingTab, splitTab, closeTab, settingsOpen, setSettingsOpen, settingsAt,
     boardOpen, setBoardOpen, setPanes, setActiveDir, setRefresh, recentDirs,
   } = useWindow();
+  const tabBox = useRef<HTMLDivElement>(null);
+  useTabMenuKeys(tabMenu !== null, tabBox, () => setTabMenu(null)); // focus, arrows and Escape for the tab menu
   return (
     <>
       <AboutPanel />
@@ -81,7 +86,7 @@ export default function WindowDialogs() {
         <Ask
           title={asking.title}
           body={asking.body}
-          confirm={asking.confirm ?? "Close tab"}
+          confirm={asking.confirm ?? closeConfirmLabel(asking.keys.length)}
           enter
           onCancel={() => setAsking(null)}
           onConfirm={() => {
@@ -100,7 +105,7 @@ export default function WindowDialogs() {
         }}
       />
       <LinkAskHost />
-      <TabSearch tabs={() => paletteItems().filter((i) => i.section === "Open tabs")} />
+      <TabSearch tabs={() => paletteItems().filter(isTabRow)} />
       {guard.dialog}
       {quitAsk && (
         <Ask
@@ -141,7 +146,7 @@ export default function WindowDialogs() {
               setTabMenu(null);
             }}
           />
-          <div className="menu" role="menu" aria-label="Tab" style={{ top: tabMenu.top, left: tabMenu.left }}>
+          <div ref={tabBox} className="menu" role="menu" aria-label="Tab" style={{ top: tabMenu.top, left: tabMenu.left }}>
             {/* TERM-048 / TERM-046 / TERM-049: Change Title, Pin, Tab Color and the splits head the menu (terminal/tabColor.ts tabMenuHead). */}
             {tabMenuHead(panes.find((p) => p.key === tabMenu.key)?.kind, pinned.has(tabMenu.key), splitMenuState(panes, tabMenu.key)).map((i) =>
               i.id === "color" ? (
@@ -189,12 +194,13 @@ export default function WindowDialogs() {
                 </button>
               ),
             )}
-            {closeRows(orderOf(tabMenu.key), tabMenu.key, pinned).map(({ label, which, keys, disabled }) => (
+            {closeRows(orderOf(tabMenu.key), tabMenu.key, pinned).map(({ label, which, keys, disabled, why }) => (
               <button
                 key={which}
                 role="menuitem"
                 className="menu-item"
                 disabled={disabled}
+                title={why}
                 onClick={() => {
                   setTabMenu(null);
                   void closeTab(keys);
