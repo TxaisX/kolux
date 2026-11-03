@@ -50,6 +50,9 @@ export default function FeedbackDialog() {
   const box = useRef<HTMLTextAreaElement | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
   const sending = useRef(false);
+  // Each send and each open takes a new number; a result from an older send (the box was closed and opened
+  // again while it ran) is ignored, so it cannot close the new box or wipe its draft.
+  const seq = useRef(0);
   const [shots, setShots] = useState<Shot[]>([]);
   const [refused, setRefused] = useState<string[]>([]);
   const [crash, setCrash] = useState(false);
@@ -79,6 +82,7 @@ export default function FeedbackDialog() {
   useEffect(() => {
     if (!s.open) return;
     sending.current = false;
+    seq.current++;
     const prev = document.activeElement as HTMLElement | null;
     const el = box.current;
     if (el) {
@@ -104,19 +108,26 @@ export default function FeedbackDialog() {
       const r = issue(s.draft, s.facts, s.anonymous);
       if (!r.ok) return dispatch({ t: "fail", error: r.error });
       sending.current = true;
+      const mine = ++seq.current;
       dispatch({ t: "send" });
       // the copy starts inside the click, while the page may still write to the clipboard
       const bundle = crash ? copyCrashBundle(() => invoke<string>("diag_bundle"), (t) => navigator.clipboard.writeText(t)) : null;
       const copied = !crash && shots.length ? copyFirst(shots[0]) : Promise.resolve(false);
       invoke("open_external", { url: r.url }).then(
         async () => {
+          if (mine !== seq.current) return;
           sending.current = false;
           const extra = bundle ? await bundle : clipboardNote(shots.length, await copied);
+          if (mine !== seq.current) return;
           setShots([]);
           setRefused([]);
           dispatch({ t: "sent", trimmed: r.trimmed, extra });
         },
-        (e: unknown) => ((sending.current = false), dispatch({ t: "fail", error: `Could not open the browser: ${String(e)}` })),
+        (e: unknown) => {
+          if (mine !== seq.current) return;
+          sending.current = false;
+          dispatch({ t: "fail", error: `Could not open the browser: ${String(e)}` });
+        },
       );
     } catch (e) {
       sending.current = false;
@@ -202,7 +213,8 @@ export default function FeedbackDialog() {
           <button className="btn" onClick={() => dispatch({ t: "close" })}>
             Cancel
           </button>
-          <button className="btn primary" disabled={s.sending} onClick={send}>
+          {/* aria-disabled, not disabled: the button keeps the keyboard while the page opens; send() ignores a second press */}
+          <button className="btn primary" aria-disabled={s.sending || undefined} onClick={send}>
             {s.sending ? "Opening…" : "Open on GitHub"}
           </button>
         </div>

@@ -49,8 +49,15 @@ export default function TowerView({ rows, usage, now, onOpen, detached = false, 
   // Refresh shows it is working (and cannot be pressed again) for a moment, then settles.
   const [refreshing, setRefreshing] = useState(false);
   const alive = useRef(true);
-  useEffect(() => () => void (alive.current = false), []);
+  // StrictMode runs this cleanup and then the effect again on a dev mount, so the effect sets alive back.
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   const refresh = () => {
+    if (refreshing) return; // aria-disabled, not disabled: the button keeps focus while it works
     setRefreshing(true);
     const done = () => window.setTimeout(() => alive.current && setRefreshing(false), 800);
     Promise.resolve(onRefresh()).then(done, done);
@@ -80,7 +87,7 @@ export default function TowerView({ rows, usage, now, onOpen, detached = false, 
             ))}
           </span>
           {/* USAGE-023 (T-070): a manual refresh reads every provider at once, past the debounce and any retry-after. */}
-          <button type="button" className="refresh" title="Read the usage figures again now" disabled={refreshing} aria-busy={refreshing} onClick={refresh}>
+          <button type="button" className="refresh" title="Read the usage figures again now" aria-disabled={refreshing || undefined} aria-busy={refreshing} onClick={refresh}>
             {refreshLabel(refreshing)}
           </button>
           {/* T-546-c: the Tower in its own window, for a second screen; it stays here when that window cannot open. */}

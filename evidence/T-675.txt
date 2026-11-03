@@ -2,18 +2,18 @@ T-675 - Small views: update restart, Space batch delete, feedback, Tower, Update
 Worker 49, coordinator 57, branch s-49/ux-3 (PR #111), 2026-11-02.
 
 WHAT CHANGED
-- Update restart (src/update/UpdateCenterView.tsx, card.ts): Restart to update and Update now open
-  "Restart to update?" (RESTART_ASK: Restart now / Cancel) first. The tip (RESTART_TIP) says restarting
+- Update restart (src/update/UpdateCenterView.tsx, card.ts): Update now on the pop-up, or Restart to update
+  on the card, opens "Restart to update?" (RESTART_ASK: Restart now / Cancel) first. The tip (RESTART_TIP) says restarting
   closes open terminals and agents; it used to say they keep running. While restarting the button reads
   Restarting… and is off; a failed restart turns it back on.
-- Update Center: a check asked for before the status loads waits and then runs (earlyCheck); a failed
-  status load is shown and a check after it fails with the reason; update_mark failures are caught;
+- Update Center: a check asked for before the status loads waits and then runs (earlyCheck); a Check after
+  a failed status load fails with the reason; update_mark failures are caught;
   Escape on the ready pop-up is Later, only for Escapes from the page or inside the pop-up (popupEscapes).
 - Space (src/space/view.ts, SpaceView.tsx): batch delete sends keepBranch: true, acts only on ticked rows
   the table still shows and that can still be deleted, and its dialog lists them (8, then "and N more").
   An undeletable worktree's box is off with the reason as a tooltip. A project change drops a stale scan.
-- Feedback (src/feedback/FeedbackDialog.tsx, model.ts): Add screenshot is a real button; Send cannot
-  fire twice (Opening…); a reopened box can send; focus goes back on close; the sent note no longer covers
+- Feedback (src/feedback/FeedbackDialog.tsx, model.ts): Add screenshot is a real button; Open on GitHub
+  cannot fire twice (Opening…); a reopened box can send; focus goes back on close; the sent note no longer covers
   the update card or the status bar; remove-screenshot names the file.
 - Tower (src/tower/TowerView.tsx, TowerWindow.tsx, tower.ts): scrolls to the selected row, shows Loading…
   in its own window until the first reading and Refreshing… on Refresh.
@@ -25,6 +25,15 @@ WHAT CHANGED
   no longer hides it; live once callers pass kind (proof/ux-audit/requests/A.md and E1.md).
 - spec/19-app-lifecycle.md APP-025 and APP-026 Rules changed (DT-C111); acceptance lines on APP-025,
   APP-026, APP-037, APP-038 and spec/05-views-navigation.md VIEW-013 and VIEW-014 point here.
+- Re-review B findings fixed: harness tests now drive the real components (Space batch delete and its disabled
+  boxes; feedback double press, focus return, Add screenshot, reopen during a send; Update Center check after a
+  failed status and the window Escape; Tower reveal, Refreshing… and the own window's Loading…; Floor stale
+  lanes), each checked to fail with its line reverted. TowerView's alive flag is set again when the effect
+  re-runs, so under StrictMode Refresh no longer sticks at Refreshing…. Tower Refresh and Open on GitHub use
+  aria-disabled and ignore presses while busy, so focus stays on them. A feedback send carries a sequence
+  number; a result from a send started before the box was closed and reopened is ignored. Spec, PLAN and
+  DT-C111 wording: Update now on the pop-up, Restart to update on the card; the APP-026 tip rule itself now
+  says the tip warns; the APP-037 and APP-038 acceptance lines name the real buttons.
 
 WHY
 UX audit small-views rows (proof/ux-audit/findings/small-views.md:2-25): one click restarted the app and
@@ -34,11 +43,18 @@ no sign of work; parts were unreachable by keyboard. Row 4 (Space and Floor only
 in #104 (View menu). L rows: none.
 
 REVIEW
-Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape
-scope, Space tick filter, feedback reopen) -> re-review PENDING.
+Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape scope, Space tick filter, feedback reopen) -> re-review B (9733b7b9) -> fix pass (FIXSHA) -> re-review PENDING.
 
-TESTS (verbose, the 9 test files this PR changes or adds)
-pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline.test.ts src/look/headerColour.test.ts src/notify/notify.test.ts src/space/view.test.ts src/tower/TowerView.test.ts src/update/UpdateCenter.keys.test.ts src/update/__cards__/APP-024-027.test.ts src/update/restart.test.ts
+FOLLOW-UPS
+- The feedback sent note shares the bottom-right corner with the tip dock and the skill notice and can sit over
+  them; a shared notice stack is the fix (src/styles.css belongs to lane A).
+
+TESTS (verbose, the 14 test files this PR changes or adds)
+VITEST_MAX_WORKERS=2 pnpm vitest run --reporter=verbose src/feedback/FeedbackDialog.test.ts src/feedback/model.test.ts src/floor/FloorView.test.ts src/floor/timeline.test.ts src/look/headerColour.test.ts src/notify/notify.test.ts src/space/SpaceView.test.ts src/space/view.test.ts src/tower/TowerView.harness.test.ts src/tower/TowerView.test.ts src/update/UpdateCenter.keys.test.ts src/update/UpdateCenterView.test.ts src/update/__cards__/APP-024-027.test.ts src/update/restart.test.ts
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: Add screenshot is a real button that opens the file picker; a picked image is attached and its remove button names it
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: a double press of Open on GitHub opens one page; the button says Opening… and keeps the keyboard
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: a send still running when the box is closed and opened again cannot close the new box or wipe its draft
+ ✓ src/feedback/FeedbackDialog.test.ts > T-675 feedback: closing the box hands the keyboard back to what opened it
  ✓ src/feedback/model.test.ts > a send in flight blocks a second one until it fails or finishes
  ✓ src/feedback/model.test.ts > app037: Submit anonymously leaves the login out of the whole address
  ✓ src/feedback/model.test.ts > app037: a refused send keeps the dialog open with the text and the error; a sent one closes it with a note
@@ -57,6 +73,7 @@ pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline
  ✓ src/feedback/model.test.ts > proj089: text typed above the block is kept when the block is rewritten
  ✓ src/feedback/model.test.ts > tab order wraps inside the box and starts at an end when nothing inside has focus
  ✓ src/feedback/model.test.ts > the sent note sits right of the update card and above the 24px status bar
+ ✓ src/floor/FloorView.test.ts > T-675 Floor: a re-read that fails after a good one keeps the last lanes, marks them stale and says so
  ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > FIX-1: the name column widens with the deepest nesting, every lane and the axis share it, and a long name is cut with its full text as a tooltip
  ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > FIX-2: the name column stops growing at five levels, a deeper lane keeps the same indent and its true depth
  ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > T-035-b: a live lane is a button that jumps to its pane, a closed lane is not, and the page without a handler draws no button
@@ -83,6 +100,8 @@ pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline
  ✓ src/notify/notify.test.ts > the memory stays bounded during a burst (STAT-044)
  ✓ src/notify/notify.test.ts > the same event never shows twice, a test ignores the pace, focus can silence it (STAT-044)
  ✓ src/notify/notify.test.ts > two completions from one worktree inside the cooldown are one notification (STAT-044)
+ ✓ src/space/SpaceView.test.ts > T-675 Space: a row that cannot be deleted has its box off, with the reason as a tooltip
+ ✓ src/space/SpaceView.test.ts > T-675 Space: batch delete keeps branches and acts only on ticked rows the table still shows
  ✓ src/space/view.test.ts > view-014 space page > a pane open anywhere in a worktree marks it active, slash and case blind
  ✓ src/space/view.test.ts > view-014 space page > a ticked row that can no longer be deleted (now open, or the main checkout) is not chosen
  ✓ src/space/view.test.ts > view-014 space page > afterBatch drops the removed rows and keeps the others with their messages
@@ -94,6 +113,10 @@ pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline
  ✓ src/space/view.test.ts > view-014 space page > the batch question lists worktrees by branch/folder and size, capped with 'and N more'
  ✓ src/space/view.test.ts > view-014 space page > ticked rows the filter hides are not deleted
  ✓ src/space/view.test.ts > view-014 space page > whyNotDeletable names the reason, null for a deletable row
+ ✓ src/tower/TowerView.harness.test.ts > T-675 Tower window: Loading… until the first reading arrives, then the real list
+ ✓ src/tower/TowerView.harness.test.ts > T-675 Tower: Down on the list scrolls the newly selected row into view
+ ✓ src/tower/TowerView.harness.test.ts > T-675 Tower: Refresh reads Refreshing… and ignores presses while it works, then settles
+ ✓ src/tower/TowerView.harness.test.ts > T-675 Tower: under StrictMode's dev double mount, Refresh still settles back to Refresh
  ✓ src/tower/TowerView.test.ts > Refresh shows it is working
  ✓ src/tower/TowerView.test.ts > T-546-c (council AFTER 2): the listbox is the list of rows, not the whole tower; each lane is a group
  ✓ src/tower/TowerView.test.ts > T-546-c (look FIX-3 patch): the Tower's own window is wired, so the main window's Tower offers it by default; passing ownWindow false hides it
@@ -106,6 +129,9 @@ pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline
  ✓ src/update/UpdateCenter.keys.test.ts > rule 4: Check for updates gives the card the keyboard; a later change of phase never takes it back from the terminal
  ✓ src/update/UpdateCenter.keys.test.ts > rule 4: a status-bar click with nothing to show leaves no claim on the keyboard for a card that comes up later
  ✓ src/update/UpdateCenter.keys.test.ts > rule 5 positive: on a card the user opened with Check for updates, Enter runs Restart (APP-026)
+ ✓ src/update/UpdateCenterView.test.ts > T-675 update: Escape from the page is Later on the ready pop-up, and does nothing while Restart to update? is open
+ ✓ src/update/UpdateCenterView.test.ts > T-675 update: a Check after update_status failed fails at once with the reason
+ ✓ src/update/UpdateCenterView.test.ts > T-675 update: a Check asked before update_status answers waits, and ends with the reason when the status fails
  ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > a quiet check shows nothing while it checks or downloads; the notice comes only once the download is ready
  ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > box 1: a release published with the app open is downloaded by the next half-hour check, with no click
  ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > box 2 (connection flag up, requests failing): the failure is silent and the retry comes an hour later
@@ -127,13 +153,13 @@ pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline
  ✓ src/update/restart.test.ts > update restart honesty > the confirmation says terminals and agents end and offers a clear confirm word
  ✓ src/update/restart.test.ts > update restart honesty > the tip no longer claims terminals keep running
 
-  Test Files  9 passed (9)
-  Tests  87 passed (87)
+  Test Files  14 passed (14)
+  Tests  101 passed (101)
 
 FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
   ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
-  Test Files  1 failed | 732 passed (733)
-  Tests  3 failed | 5433 passed (5436)
+  Test Files  1 failed | 737 passed (738)
+  Tests  3 failed | 5447 passed (5450)
   The 3 failures are src/editor/pdfjsCopy.test.ts: CRLF line endings in this local checkout, not part of
   this change; they pass on CI.
 
