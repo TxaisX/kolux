@@ -373,7 +373,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))), // T-610: Artifacts and Skills
     tabSearchCommand(() => openTabSearch()), // TERM-053
     { section: "Quick actions", label: "New session", run: () => addChooser() },
-    ...projectRows(), // palette.md:7: the sidebar's Add project, New group and Scan for repos
+    // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
+    ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
     // VIEW-042: actions on the worktree in front, not runnable while none is open
     {
       section: "Quick actions",

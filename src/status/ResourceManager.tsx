@@ -7,13 +7,14 @@
 // offers nothing while the window is still loading its workspaces. FIX-2: never told that the window
 // has loaded means still loading; a shell with a program running in it is not offered; End N ends
 // only the sessions its question named.
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory } from "./memory";
 import { cleanupCandidates, EndQuestion, endConfirmed, ManageSessions, paneless, sessionsLoaded, type InventoryTab } from "./manage";
 import { committedNote, endNeedsAsk, escapeStep, formatCommitted, formatCpu, groupSessions, RES_COLUMNS, singleFlight, type Resources, type Row, type SessionUsage, type Usage } from "./resources";
 import { bulkQuestion, bulkReport, leftOver, type Bulk, type BulkKind } from "../shell/endAll";
-import BackgroundSessions from "../terminal/BackgroundSessions";
+// T-692: loaded when the panel opens, not with the window; the row is only drawn in this panel.
+const BackgroundSessions = lazy(() => import("../terminal/BackgroundSessions"));
 import { useDialogFocus } from "../chrome/dialogFocus";
 
 const cols = { gridTemplateColumns: RES_COLUMNS };
@@ -134,7 +135,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   // that is open first, and the whole panel only when none is.
   // The box itself takes focus on open (tabindex -1, not a Tab stop): at mount the figures, and so the buttons, are not drawn yet.
   useDialogFocus(box, () => {
-    const step = escapeStep({ bulk: bulk !== null, ending: ending !== null, asking: asking !== null, background: background.current !== null });
+    const step = escapeStep({ bulk: bulk !== null, ending: ending !== null, asking: asking !== null, background: !!background.current });
     if (step === "bulk") setBulk(null);
     else if (step === "ending") setEnding(null);
     else if (step === "asking") setAsking(null);
@@ -220,7 +221,9 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
           </div>
         )}
         {data && data.sessions.length > 0 && <ManageSessions loaded={isLoaded} candidates={asking ?? candidates} asking={asking !== null} onAsk={() => void askAll()} onEnd={() => void endAll()} onKeep={() => setAsking(null)} />}
-        <BackgroundSessions loaded={isLoaded} question={background} />
+        <Suspense fallback={null}>
+          <BackgroundSessions loaded={isLoaded} question={background} />
+        </Suspense>
         {groups.map((g) => (
           <section key={g.dir ?? ""} className="res-group" aria-label={g.label}>
             <div className="res-label" title={g.dir ?? "Terminals started outside any workspace"}>

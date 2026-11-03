@@ -17,7 +17,9 @@ WHAT CHANGED
   keep the first load within budget; the test reads the text instead.
 - E3 (palette.md:7): the palette gains one Quick actions row per project command (Add project, New
   group, Scan for repos), each with its hint, run through runProjectCommand
-  (src/terminal/projectRows.ts, used by paneActions.ts).
+  (src/terminal/projectRows.ts, used by paneActions.ts). Only a mounted Projects sidebar hears the
+  command, so the row first shows the sidebar on the terminals screen (as "Delete this workspace"
+  does) and sends the command on the next tick, once the sidebar listens.
 - E3 (EDIT-031): closing panes passes the toast to trashUnusedNotes, so a failed trash of an empty
   note is said instead of only logged.
 - E3 (usage-status.md:8): with the background sessions' End question open, Escape in the Resource
@@ -25,6 +27,7 @@ WHAT CHANGED
   bulk, single and End N; BackgroundSessions hands its close to the Resource Manager through a ref.
   The question is now drawn before the list's own "nothing to show" check, so an open question
   never goes unseen when the 2-second re-read finds the offered sessions already gone.
+  BackgroundSessions now loads when the Resource Manager opens (import()), not with the window.
 
 NO CHANGE NEEDED (checked)
 - E3 view.automations: commandRows (src/keys/commands.ts) lists every command, the unbound ones
@@ -44,13 +47,16 @@ WAITING
 
 FIRST LOAD
 - node scripts/bundle-budget.mjs: main 5177a5f2 1,485,561 bytes (CI run 41660758611 and a local
-  build agree); this branch 1,486,051 bytes, +490 (limit +500, ceiling 1,490,000).
+  build agree); this branch 1,483,565 bytes, 1,996 under main (limit +500, ceiling 1,490,000).
+  The Resource Manager's background sessions row and its helpers moved out of the first load; before
+  that the branch stood at +542.
 
 TESTS (only the touched ones, per the 0.1.6 build window)
 - pnpm vitest run src/settings/notifications.test.ts src/launch/PlusMenu.test.ts
   src/status/resourceManagerUx.test.ts src/terminal/shellKeys.test.ts
   src/terminal/paletteProjectRows.test.ts src/terminal/hostSessions.test.ts
-  src/status/notifyFocused.test.ts src/projects/uxRows4.test.ts: 8 files, 77 tests pass.
+  src/status/notifyFocused.test.ts src/projects/uxRows4.test.ts src/status/__cards__/APP-054.test.ts
+  src/status/resources.test.ts: 10 files, 85 tests pass (APP-054 mounts the real Resource Manager).
 - The new notifyFocused test (a stop right after a permission note in the same worktree) fails with
   the useAgentStatus.ts change taken out ("expected [ 'notify_event' ] to have a length of 2 but
   got 1") and passes with it.
@@ -66,6 +72,13 @@ REVIEW
 - Fixed after it: the kind goes to that pacer too, with a test through the agent-status listener;
   the question is drawn first; the rows come from projectRows() and the test runs them; this
   section and the bell note filled in.
+- Opus re-review of cc4db738: B+. All first-round findings fixed. SHOULD-FIX: a palette project row did
+  nothing with the sidebar hidden or on another screen (only the mounted panel listens); the reorder
+  had no regression test. NITs: E2 shows nothing until lane C passes the name (said in the PR); the
+  ref is set in an effect, so an Escape in the very frame the question opens closes the panel
+  (left: one frame, harmless); an older comment in useAgentStatus.ts (left: still true).
+- Fixed after it: the rows show the sidebar first (test with fake timers checks the order); a
+  hostSessions test draws the question with no rows left.
 
 LANES
 - src/status (useAgentStatus.ts, ResourceManager.tsx, resources.ts and their tests) is lane A's; the

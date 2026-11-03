@@ -54,6 +54,8 @@ test("the part offers End N, asks with Keep focused, and shows nothing while loa
   expect(ask).toContain('role="alertdialog"');
   expect(ask).toContain("Background session 1 (pwsh.exe), Background session 4 (pwsh.exe)");
   expect(ask).not.toContain("claude");
+  // T-692: an open question is still drawn when a re-read leaves nothing to offer, so the Resource Manager's Escape has something to close
+  expect(view({ rows: [], asking: offerable(rows, true) })).toContain('role="alertdialog"');
   expect(ask).toMatch(/<button class="btn"[^>]*autofocus=""[^>]*>Keep<\/button>|<button class="btn" autoFocus/i);
   expect(view({ loaded: false })).toBe("");
   expect(view({ rows: [] })).toBe("");
