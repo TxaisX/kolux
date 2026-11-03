@@ -27,5 +27,14 @@ F11 not reproduced (harness artefact). The palette opened by Ctrl+Shift+J (workt
   Proof: src/shell/wave3.test.ts "F11 (not reproduced) ..." builds the real palette rows (commandRows + screenRows),
   ranks them with the real paletteRows for "Show Skills", runs row 0 and checks the screen became "skills".
 
-Tests: src/shell/wave3.test.ts (6 tests: F2 rule as a pure function, F1/F2/F3/F4 wiring by source, F11 path).
-  npx vitest run src/shell/wave3.test.ts src/chrome src/projects/nav.test.ts -> 24 files, 131 tests passed. tsc 0.
+Second review (Opus, read-only) of ad6377af: A-; its should-fix (the chord test's fake ignored the selector lists) is
+  fixed: the test now matches against the real OVERLAYS and STAYS_OPEN lists and checks the forms' markup.
+  Known, left out (first load is at main +479 of 500): a window chord pressed while typing in the workspaces-folder
+  field (Ctrl+N opens the create form) closes that form without its on-blur save. The per-row sidebar asks (sleep,
+  delete, move, forget, review, drop) stay outside the one-form rule. Both go to the follow-up list.
+
+Tests: src/shell/wave3.test.ts (6 tests: F2 rule as a pure function, F1/F2/F3/F4 wiring by source, F11 palette path,
+  F11 chord under an open form).
+  At 5da2f771 + this fix (main 00fd7ddc merged in): npx vitest run src/shell/wave3.test.ts src/chrome src/projects src/keys
+  -> 100 files, 583 tests passed; full run 5867/5870 (the 3 are the known local CRLF pdfjsCopy failures). tsc 0.
+  First load 1,488,285 vs main 00fd7ddc 1,487,806: main +479.

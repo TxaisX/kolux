@@ -7,7 +7,7 @@ import { commandRows } from "../keys/commands";
 import { resolve } from "../keys/keymap";
 import { paletteRows } from "../projects/WorktreePalette";
 import { toggleSkills } from "../skills/nav";
-import { heldByOverlay } from "../keys/useWindowKeys";
+import { heldByOverlay, OVERLAYS } from "../keys/useWindowKeys";
 import type { Screen } from "../chrome/TopBar";
 import panel from "../projects/ProjectsPanel.tsx?raw";
 import topBar from "./window/TopBar.tsx?raw";
@@ -58,10 +58,15 @@ test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Skills' is its
   expect(screen).toBe("skills");
 });
 
-test("F11: an open sidebar form does not hold the palette chord; a menu or popover left open does", () => {
-  const el = (staysOpen: boolean) => ({ getClientRects: () => ({ length: 1 }), closest: () => null, matches: () => staysOpen });
-  const doc = (els: unknown[]) => ({ querySelector: () => null, querySelectorAll: () => els });
+test("F11: an open sidebar form does not hold the palette chord; a menu left open does", () => {
+  // a class-only element matched against the real OVERLAYS and STAYS_OPEN lists, so the test follows them
+  const sel = (list: string) => list.split(",").map((x) => x.trim());
+  const el = (cls: string) => ({ cls, getClientRects: () => ({ length: 1 }), closest: () => null, matches: (s: string) => sel(s).includes(`.${cls}`) });
+  const doc = (els: ReturnType<typeof el>[]) => ({ querySelector: () => null, querySelectorAll: (s: string) => els.filter((e) => sel(s).includes(`.${e.cls}`)) });
+  expect(sel(OVERLAYS)).toContain(".menu");
   expect(heldByOverlay("worktree.palette", false, doc([]) as never)).toBe(false);
-  expect(heldByOverlay("worktree.palette", false, doc([el(true)]) as never), ".sb-form stays open").toBe(false);
-  expect(heldByOverlay("worktree.palette", false, doc([el(false)]) as never), "a menu holds it").toBe(true);
+  expect(heldByOverlay("worktree.palette", false, doc([el("sb-form")]) as never), "an open sidebar form").toBe(false);
+  expect(heldByOverlay("worktree.palette", false, doc([el("sb-form"), el("menu")]) as never), "a menu left open").toBe(true);
+  // the five sidebar forms are .sb-form elements with no dialog or menu role
+  for (const m of panel.matchAll(/className={?[`"]sb-form[^>]*>/g)) expect(m[0]).not.toMatch(/role="(dialog|menu|alertdialog)"|aria-modal="true"/);
 });
