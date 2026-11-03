@@ -36,7 +36,7 @@ export function resetFinished() {
   lastFinish.clear();
 }
 
-const norm = (d: string) => d.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+export const norm = (d: string) => d.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
 
 /**
  * Whether the poll should run early for a finish in `cwd`: the window is shown, the folder is one

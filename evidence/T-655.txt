@@ -1,0 +1,48 @@
+launching: pnpm tauri dev (identifier com.txaisxiong.kolux-rs.prove, vite 1470, CDP 9290; log G:\Temp\live-v15\run-T-655\tauri-dev.log)
+app pid 10008 (G:\Dev\kolux-rs-sessions\target-2f-b\debug\kolux-rs.exe); window: moved off-screen
+session chooser: Terminal picked for 1 seat(s)
+closed a first-run dialog: Get started with Kolux (Close); still open: true
+closed a first-run dialog: Get started with Kolux (Skip); still open: true
+closed a first-run dialog: Floating workspace tour (Close); still open: false
+scratch repo G:/Temp/live-v15/work/T-655: branch feature/auto-pr-proof, 1 commit(s), head d2d370a2fd, remotes: (none)
+PASS the scratch repo has no remote and one commit: remotes="" commits=1
+autoPr setting before: null (missing = the default "On for GitHub repositories", so off here: no remote)
+settings pages: ["General","Appearance","Accounts & keys","Agents","Terminal & sessions","Git & worktrees","Safety","Notifications","Shortcuts","Usage","T-655"]
+Git page clicked: undefined
+workspace select found: automatic pull requests for T-655 = default
+workspace select set to On (true); autoPr setting after: {"default":"github","workspaces":{"G:\\Temp\\live-v15\\work\\T-655":true}}
+PASS automatic pull requests are on for the scratch workspace (set through the Settings page): {"default":"github","workspaces":{"G:\\Temp\\live-v15\\work\\T-655":true}}
+Insights tab clicked: undefined
+before the run: {"vw":1400,"vh":880,"pageScroll":false,"head":{"l":1112,"r":1380,"t":256,"b":270,"w":268},"sec":{"l":1112,"r":1380,"t":256,"b":308,"w":268},"ins":{"l":1100,"r":1392,"t":76,"b":322,"w":292},"insScroll":false,"over":[],"cut":0,"rows":0,"text":"PULL REQUESTS No automatic pull request yet. Kolux opens one when an agent finishes a turn with changes."}
+PASS the Pull requests section is there, with its empty text, before any run: PULL REQUESTS No automatic pull request yet. Kolux opens one when an agent finishes a turn with changes.
+stand-in claude is up in the shell pane; real agent programs under the app: []; telling it to run its turn
+new commit 9e1c4693ed on feature/auto-pr-proof: "Auto-commit on feature/auto-pr-proof after an agent turn" files: notes.txt; working tree after: clean
+PASS (a) a new commit appeared on the scratch repo's own branch, holding the stand-in's change: d2d370a2fd -> 9e1c4693ed on feature/auto-pr-proof: notes.txt
+row: {"text":"T-655 | Nothing pushed: this repository has no remote, so the commits stay on this computer.","state":"done","local":true,"localLabel":"Local only: this repository has no remote, so Kolux commits here but never pushes","name":"T-655","link":false}
+PASS (b) the section shows this workspace's row, done and local only, with no pull request link: {"text":"T-655 | Nothing pushed: this repository has no remote, so the commits stay on this computer.","state":"done","local":true,"localLabel":"Local only: this repository has no remote, so Kolux commits here but never pushes","name":"T-655","link":false}
+900px: {"vw":900,"vh":1000,"pageScroll":false,"head":{"l":672,"r":880,"t":256,"b":270,"w":208},"sec":{"l":672,"r":880,"t":256,"b":322,"w":208},"ins":{"l":660,"r":892,"t":76,"b":336,"w":232},"insScroll":false,"over":[],"cut":0,"rows":1,"text":"PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer."}
+screenshot: T-655-pull-requests-900.png (G:/Temp/live-v15-logs/T-655-pull-requests-900.png)
+PASS 900px: the Pull requests section is inside the window: {"sec":{"l":672,"r":880,"t":256,"b":322,"w":208},"ins":{"l":660,"r":892,"t":76,"b":336,"w":232},"vw":900,"vh":1000}
+PASS 900px: nothing scrolls sideways on the page or in .insights, nothing sticks out past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 900px: the workspace's row is shown, local only: PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer.
+1400px: {"vw":1400,"vh":1000,"pageScroll":false,"head":{"l":1172,"r":1380,"t":256,"b":270,"w":208},"sec":{"l":1172,"r":1380,"t":256,"b":322,"w":208},"ins":{"l":1160,"r":1392,"t":76,"b":336,"w":232},"insScroll":false,"over":[],"cut":0,"rows":1,"text":"PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer."}
+screenshot: T-655-pull-requests-1400.png (G:/Temp/live-v15-logs/T-655-pull-requests-1400.png)
+PASS 1400px: the Pull requests section is inside the window: {"sec":{"l":1172,"r":1380,"t":256,"b":322,"w":208},"ins":{"l":1160,"r":1392,"t":76,"b":336,"w":232},"vw":1400,"vh":1000}
+PASS 1400px: nothing scrolls sideways on the page or in .insights, nothing sticks out past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1400px: the workspace's row is shown, local only: PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer.
+1920px: {"vw":1920,"vh":1000,"pageScroll":false,"head":{"l":1632,"r":1900,"t":256,"b":270,"w":268},"sec":{"l":1632,"r":1900,"t":256,"b":322,"w":268},"ins":{"l":1620,"r":1912,"t":76,"b":336,"w":292},"insScroll":false,"over":[],"cut":0,"rows":1,"text":"PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer."}
+screenshot: T-655-pull-requests-1920.png (G:/Temp/live-v15-logs/T-655-pull-requests-1920.png)
+PASS 1920px: the Pull requests section is inside the window: {"sec":{"l":1632,"r":1900,"t":256,"b":322,"w":268},"ins":{"l":1620,"r":1912,"t":76,"b":336,"w":292},"vw":1920,"vh":1000}
+PASS 1920px: nothing scrolls sideways on the page or in .insights, nothing sticks out past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1920px: the workspace's row is shown, local only: PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer.
+1536px at 125%: {"vw":1536,"vh":1000,"pageScroll":false,"head":{"l":1248,"r":1516,"t":256,"b":270,"w":268},"sec":{"l":1248,"r":1516,"t":256,"b":322,"w":268},"ins":{"l":1236,"r":1528,"t":76,"b":336,"w":292},"insScroll":false,"over":[],"cut":0,"rows":1,"text":"PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer."}
+screenshot: T-655-pull-requests-1536-x1.25.png (G:/Temp/live-v15-logs/T-655-pull-requests-1536-x1.25.png)
+PASS 1536px at 125%: the Pull requests section is inside the window: {"sec":{"l":1248,"r":1516,"t":256,"b":322,"w":268},"ins":{"l":1236,"r":1528,"t":76,"b":336,"w":292},"vw":1536,"vh":1000}
+PASS 1536px at 125%: nothing scrolls sideways on the page or in .insights, nothing sticks out past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1536px at 125%: the workspace's row is shown, local only: PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer.
+1280px at 150%: {"vw":1280,"vh":1000,"pageScroll":false,"head":{"l":992,"r":1260,"t":256,"b":270,"w":268},"sec":{"l":992,"r":1260,"t":256,"b":322,"w":268},"ins":{"l":980,"r":1272,"t":76,"b":336,"w":292},"insScroll":false,"over":[],"cut":0,"rows":1,"text":"PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer."}
+screenshot: T-655-pull-requests-1280-x1.5.png (G:/Temp/live-v15-logs/T-655-pull-requests-1280-x1.5.png)
+PASS 1280px at 150%: the Pull requests section is inside the window: {"sec":{"l":992,"r":1260,"t":256,"b":322,"w":268},"ins":{"l":980,"r":1272,"t":76,"b":336,"w":292},"vw":1280,"vh":1000}
+PASS 1280px at 150%: nothing scrolls sideways on the page or in .insights, nothing sticks out past the edge: {"page":false,"ins":false,"cut":0,"over":[]}
+PASS 1280px at 150%: the workspace's row is shown, local only: PULL REQUESTS T-655 Nothing pushed: this repository has no remote, so the commits stay on this computer.
+RESULT: PASS

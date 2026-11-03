@@ -13,6 +13,7 @@ import { autoBranchOn, autoBranchPatch } from "../scm/autoBranch";
 import SetupPolicyRow from "./SetupPolicyRow";
 import { RENAME_FOLDERS_KEY, renamesFolders } from "../projects/folderRename";
 import AiRecipesSection from "./AiRecipesSection";
+import AutoPrSettings from "./autoPr";
 import { useDraft } from "./useDraft";
 import { useLeaveSave } from "./leave";
 import { REVIEW_BOTS_KEY } from "../scm/review";
@@ -181,6 +182,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
       </section>
       <SetupPolicyRow settings={settings} save={save} />
       <AiRecipesSection settings={settings} save={save} />
+      <AutoPrSettings />
     </>
   );
 }

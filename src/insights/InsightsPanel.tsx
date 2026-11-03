@@ -8,6 +8,7 @@ import { agents as AGENTS } from "../keys/actions";
 import { NAMES, type Usage } from "../usage/tokens";
 import { anyTracked, chipOfLive, costKind, countedAt, dueForCount, sessionsOf, totals, usageFor, type Figure, type LiveSession } from "./model";
 import "./insights.css";
+import AutoPrStatus from "../scm/AutoPrStatus"; // T-655, plain import: this panel is already a lazy chunk
 
 export type InsightsProps = {
   sessions: LiveSession[];
@@ -184,6 +185,11 @@ export default function InsightsPanel({ sessions, onJump }: InsightsProps) {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="ins-sec" aria-labelledby="ins-auto-pr">
+        <h3 id="ins-auto-pr">Pull requests</h3>
+        <AutoPrStatus />
       </section>
     </div>
   );
