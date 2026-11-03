@@ -1,24 +1,99 @@
-T-676 (DT-C112) · UX audit lane D: git back end and the Changes tab · s-72/ux-1 · 2026-11-02
+T-676 - Git steps never wait or hang, and the Changes tab stages, unstages, pushes, pulls and syncs (DT-C112; GIT-002/004/007/038/063/070, EDIT-029; UX audit lane D)
+Lane D (72), branch s-72/ux-1, PR #101, base e93a23ba (origin/main), code commits 4ada2e9a, 84673d1a, f5f87cbe (head), 2026-11-02.
 
-Source: G:/Dev/kolux-rs-sessions/proof/ux-audit/findings/{scm,editor-a,stress}.md (cloud audit at main e93a23b).
+WHAT CHANGED
+- scm.rs: every push, pull, sync and fetch Kolux runs (and the push before a pull request) goes through
+  git_network(): terminal and credential prompts off (GIT_TERMINAL_PROMPT=0, GCM_INTERACTIVE=never),
+  no input, and a 600 s limit that kills the git process tree. A stopped step comes back as a
+  network-kind failure saying it timed out and naming likely causes (slow remote, large push, slow
+  pre-push hook, sign-in that cannot be shown). A rebase is a local step and has no limit. Output a
+  program keeps open after git exits costs at most a short wait and is not lost.
+- scm.rs: scm_stage, scm_discard, scm_commit, scm_remote, scm_abort, scm_commit_files and
+  scm_base_sides run on a blocking thread, not the async runtime.
+- scm.rs: unstaging before the repository's first commit uses git rm --cached -f (there is no HEAD
+  to restore from) and leaves the file on disk; History fetches one extra commit and marks the last
+  one `capped: true` when older ones were cut off (no UI shows it yet; SourceControlPanel is unmounted).
+- changesActions.ts + AllChangesPane.tsx (the live Changes tab): Stage / Unstage on each file's
+  section header (working-tree view), Stage all, Unstage all, Push, Pull, Sync with counts and the
+  reason a disabled one waits, a pending line and an error line, one git action at a time (Commit
+  waits too), a re-read of the status after each action that yields to a newer watcher status.
+  Stage all / Unstage all on a list the back end cut short send "." (the whole worktree), except
+  Stage all when conflicts exist sends only the rows listed; a staged rename unstages both its old
+  and new path.
+- The commit box shows in both the working-tree and the branch-vs-base views; the commit hint names
+  Stage all / per-file Stage; Retry on the load error; Make default says "Saved" or "was not saved;
+  try again"; Inline / Side by side switch; the tree resize handle ends on a cancelled pointer and on
+  unmount, is focusable and moves with arrow keys (+-16), Home and End.
+- spec: GIT-002, GIT-004, GIT-007, GIT-038, GIT-063, GIT-070 (11-git-review.md) and EDIT-029
+  (12-editor-files.md): Rules/User sees say what changed; their Acceptance lines point here.
 
-Rows:
-  # D-ux1 (branch s-72/ux-1, head 4ada2e9a)
-  
-  src-tauri/src/scm.rs:585, 2818-2820 (row 1) | fixed | git_network(): GIT_TERMINAL_PROMPT=0 + GCM_INTERACTIVE=never, stdin null, 300 s limit that kills the git tree; a stopped step comes back as a network-kind failure saying "timed out"; PR-create push uses it too
-  src-tauri/src/scm.rs:2790-2815 (row 2) | fixed | scm_stage, scm_discard, scm_commit, scm_remote, scm_abort, scm_commit_files, scm_base_sides now run in spawn_blocking
-  src-tauri/src/scm.rs:2420 (row 3) | fixed | history fetches limit+1; the last commit carries optional `capped: true` (absent from the JSON otherwise). UI does not show it yet: the only history reader is the unmounted SourceControlPanel
-  src/editor/AllChangesPane.tsx (row 4) | fixed | per-file Stage/Unstage in each section header (working-tree view), Stage all / Unstage all, Push / Pull / Sync (labels and "why not" from remoteItems), pending text, error line, status + changes re-read after
-  editor/AllChangesPane.tsx:303-309 (row 5) | fixed | commit hint now names Stage all / per-file Stage; commit box shows in both views so a staged file can be committed where it was staged (coordinator may overrule)
-  editor/AllChangesPane.tsx:298-302 (row 6) | fixed | Retry button on the load error
-  editor/AllChangesPane.tsx:204-215 (row 7) | fixed | oneAtATime guard in src/scm/changesActions.ts; Commit disabled while any git action runs
-  editor/AllChangesPane.tsx:276 (row 8) | fixed | Make default says "Saved" or "was not saved; try again"; no confirmation dialog
-  editor/AllChangesPane.tsx:267 (row 9) | fixed | Inline / Side by side switch, same markup as DiffPane
-  editor/AllChangesPane.tsx:320 (row 10) | fixed | pointercancel + unmount cleanup; handle is focusable, arrows +-16, Home/End, aria-valuenow
+WHY
+The cloud audit (proof/ux-audit/findings/{scm,editor-a,stress}.md, at main e93a23b) found that a push
+or pull could hang the app for good on a password prompt no one could see, that git calls blocked the
+app's async runtime, and that since T-644 removed the Source Control panel the live Changes tab could
+read changes but not stage, unstage, push, pull or sync. Rows (from D-ux1.md, all fixed):
+    # D-ux1 (branch s-72/ux-1, head 4ada2e9a)
+    
+    src-tauri/src/scm.rs:585, 2818-2820 (row 1) | fixed | git_network(): GIT_TERMINAL_PROMPT=0 + GCM_INTERACTIVE=never, stdin null, 300 s limit that kills the git tree; a stopped step comes back as a network-kind failure saying "timed out"; PR-create push uses it too
+    src-tauri/src/scm.rs:2790-2815 (row 2) | fixed | scm_stage, scm_discard, scm_commit, scm_remote, scm_abort, scm_commit_files, scm_base_sides now run in spawn_blocking
+    src-tauri/src/scm.rs:2420 (row 3) | fixed | history fetches limit+1; the last commit carries optional `capped: true` (absent from the JSON otherwise). UI does not show it yet: the only history reader is the unmounted SourceControlPanel
+    src/editor/AllChangesPane.tsx (row 4) | fixed | per-file Stage/Unstage in each section header (working-tree view), Stage all / Unstage all, Push / Pull / Sync (labels and "why not" from remoteItems), pending text, error line, status + changes re-read after
+    editor/AllChangesPane.tsx:303-309 (row 5) | fixed | commit hint now names Stage all / per-file Stage; commit box shows in both views so a staged file can be committed where it was staged (coordinator may overrule)
+    editor/AllChangesPane.tsx:298-302 (row 6) | fixed | Retry button on the load error
+    editor/AllChangesPane.tsx:204-215 (row 7) | fixed | oneAtATime guard in src/scm/changesActions.ts; Commit disabled while any git action runs
+    editor/AllChangesPane.tsx:276 (row 8) | fixed | Make default says "Saved" or "was not saved; try again"; no confirmation dialog
+    editor/AllChangesPane.tsx:267 (row 9) | fixed | Inline / Side by side switch, same markup as DiffPane
+    editor/AllChangesPane.tsx:320 (row 10) | fixed | pointercancel + unmount cleanup; handle is focusable, arrows +-16, Home/End, aria-valuenow
 
-Verify (2026-11-02, Windows, worktree wt/72-ux1):
-  cargo test -p kolux-rs --lib scm::  -> 142 passed, 1 failed (t606 claude-writer 20 s timeout, the known local-only one in PROTOCOL section 5)
-  cargo clippy -p kolux-rs --all-targets -- -D warnings -> exit 0
-  pnpm vitest run src/editor src/scm -> 1405/1408 passed (3 = known local CRLF pdfjsCopy.test.ts)
-  pnpm tsc --noEmit -> no output
-New tests: scm.rs a_network_git_step_runs_with_prompts_off_and_a_stuck_one_is_stopped, a_push_that_hangs_comes_back_as_a_network_failure_that_says_it_timed_out, history_flags_the_last_commit_only_when_the_cap_cut_older_ones_off; src/scm/changesActions.test.ts.
+REVIEW
+Opus review B+ -> fix pass (84673d1a) -> re-review B+ -> fix pass (f5f87cbe) -> re-review A-
+
+TESTS (named)
+Rust (kolux-rs, src-tauri/src/scm.rs), new:
+ - a_network_git_step_runs_with_prompts_off_and_a_stuck_one_is_stopped
+ - a_program_holding_the_pipe_after_git_exits_costs_a_short_wait_and_keeps_the_output
+ - unstaging_works_on_the_whole_worktree_on_a_renamed_file_and_before_the_first_commit
+ - a_push_that_hangs_comes_back_as_a_network_failure_that_says_it_timed_out
+ - history_flags_the_last_commit_only_when_the_cap_cut_older_ones_off
+Vitest (the two changed test files, pnpm vitest run src/editor/AllChangesPane.test.ts src/scm/changesActions.test.ts --reporter=verbose):
+ ✓ src/scm/changesActions.test.ts > the Changes tab's stage buttons > stage all takes the changed and new files, never the conflicted ones; unstage all takes the staged 2ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's stage buttons > on a list the back end cut short, stage all and unstage all take the whole worktree 0ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's stage buttons > unstaging a staged rename names the old path too, so no half of it stays staged 0ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's stage buttons > sends scm_stage with the worktree, the paths and the direction, and answers null when it worked 1ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's stage buttons > turns a failed stage into an error line 0ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's push, pull and sync > offers three buttons with counts, and says why one waits 1ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's push, pull and sync > calls scm_remote with the action and words success and failure 1ms
+ ✓ src/scm/changesActions.test.ts > the Changes tab's push, pull and sync > turns a thrown error into a line instead of leaving the button pending 0ms
+ ✓ src/scm/changesActions.test.ts > one git action at a time > ignores a second commit while the first is running and allows the next once it ends 1ms
+ ✓ src/scm/changesActions.test.ts > one git action at a time > frees the turn when the work throws 1ms
+ ✓ src/scm/changesActions.test.ts > the file tree's resize handle > moves with the arrow keys, stops at its limits, jumps with Home and End and ignores other keys 0ms
+ ✓ src/editor/AllChangesPane.test.ts > All Changes sections > keeps a file's staged and unstaged change apart 2ms
+ ✓ src/editor/AllChangesPane.test.ts > All Changes sections > reserves a height that grows with the change up to a ceiling 0ms
+ ✓ src/editor/AllChangesPane.test.ts > All Changes sections > gives a waiting, binary or image section a small fixed height 0ms
+ ✓ src/editor/AllChangesPane.test.ts > GIT-038: All Changes against the branch's base > reads a section's sides from the base snapshot, or from the index as before 0ms
+ ✓ src/editor/AllChangesPane.test.ts > GIT-038: All Changes against the branch's base > words a section by what became of the file against the base, by index side otherwise 0ms
+ ✓ src/editor/AllChangesPane.test.ts > GIT-038: All Changes against the branch's base > starts inline, unwrapped, whitespace hidden and the tree hidden unless a setting says otherwise 0ms
+ ✓ src/editor/AllChangesPane.test.ts > T-033-g: All Changes reads its base without a second status > passes the base the last status named, and none before any status arrived 0ms
+ ✓ src/editor/AllChangesPane.test.ts > FIX-2: the status read as the tab opens > never replaces a newer status the watcher already gave 0ms
+ ✓ src/editor/AllChangesPane.test.ts > FIX-2: the status read as the tab opens > is used when it arrives before the watcher's first tick 0ms
+ ✓ src/editor/AllChangesPane.test.ts > the read after an action > is used when no watcher status landed while it ran 0ms
+ ✓ src/editor/AllChangesPane.test.ts > the read after an action > never replaces a watcher status that landed while it ran 0ms
+ ✓ src/editor/AllChangesPane.test.ts > FIX-3: the tab's status wiring > a watcher status that lands before the slow opening read is kept, and the read is dropped 0ms
+ ✓ src/editor/AllChangesPane.test.ts > FIX-3: the tab's status wiring > the opening read is used when it lands first, and a failed read leaves the watcher in charge 1ms
+ ✓ src/editor/AllChangesPane.test.ts > UX-D: the live Changes tab stages from its section headers > offers Stage on an unstaged file and Unstage on a staged one 7ms
+ ✓ src/editor/AllChangesPane.test.ts > UX-D: the live Changes tab stages from its section headers > offers nothing against a base, on a conflicted file, or when the tab gave no stage handler 1ms
+ ✓ src/editor/AllChangesPane.test.ts > UX-D: the live Changes tab stages from its section headers > disables the button while another git action runs 1ms
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+
+TOTALS
+FULL RUN: pnpm vitest run src/editor src/scm (VITEST_MAX_WORKERS=2)
+ Test Files  1 failed | 130 passed (131)
+      Tests  3 failed | 1409 passed (1412)
+ The 3 failures are all src/editor/pdfjsCopy.test.ts (LICENSE_PDFJS_OPENJPEG vs the installed pdfjs-dist), the
+ known local CRLF-checkout failure on Windows; it does not touch any file in this PR.
+TYPE CHECK: pnpm tsc --noEmit
+ tsc exit 0
+RUST (run by 72 at f5f87cbe):
+ cargo test -p kolux-rs --lib scm::  -> 144 passed, 1 failed (scm::writers t606, a local-only 20 s timeout unrelated to this PR; passes in CI)
+ cargo clippy -p kolux-rs --all-targets -- -D warnings -> clean

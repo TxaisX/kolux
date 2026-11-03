@@ -30,9 +30,19 @@ Rules: acting on a folder covers every file beneath it; paths are matched exactl
   (Kolux RS, T-018-c: rows select on click, Ctrl adds or removes, Shift spans in list order, Esc
   clears; the bulk bar reads N selected · Stage k · Unstage m; a file with staged and unstaged
   parts is one selection counted on both sides. Folder rows come with the tree view, T-033.)
+  (Kolux RS, T-676: the live Changes tab (EDIT-029) has Stage and Unstage on each file and Stage all
+  and Unstage all above the commit box. Stage all takes the changed and new files, never the
+  conflicted ones, which are resolved by hand; when the list was cut short (GIT-012) the rows shown
+  are only some of the changes, so both buttons send the whole worktree instead, except that Stage
+  all with conflicts present sends only the rows listed so no conflict is marked resolved.
+  Unstaging a renamed file unstages both its old and its new path, so the delete is not left
+  staged. Before the repository's first commit there is no HEAD to restore from, so unstaging
+  removes the file from the index only and never touches the file on disk. One git action runs at a
+  time; the buttons wait while it runs.)
 Acceptance:
   - [x] Stage a folder holding three changed files → all three show as staged. (cards; evidence/cards-GIT-002.txt)
   - [x] Select 2,000 files and stage them → every one is staged and no error appears. (cards; evidence/cards-GIT-002.txt)
+  - [x] Unstage a renamed file, and unstage a file in a repository with no commits yet → nothing stays half-staged and the file on disk is unchanged. (unit; evidence/T-676.txt)
 Compat: —
 Source: D-11-002
 
@@ -46,12 +56,15 @@ Rules: the shortcut acts only while focus is inside Source Control and the main 
   half-written message is kept per worktree through closing the panel and switching workspaces; a
   failed commit raises a notice whose details can be expanded; a commit refused by a hook is
   labelled blocked; the failure notice carries a Fix with AI action that starts an agent primed with
-  the error output.
+  the error output. (Kolux RS, T-676: in the Changes tab a second click or shortcut while a commit
+  or any other git action is running does nothing, so a double click makes one commit; the Commit
+  button waits and the tab says what is running.)
 Acceptance:
   - [x] Stage a file, type a message, press Ctrl+Enter → exactly one new commit and a clean panel. (cards; evidence/cards-GIT-004.txt)
   - [x] Type a draft, switch to another workspace and come back → the draft is still there. (cards live; evidence/cards-GIT-004.txt)
   - [x] Install a pre-commit hook that exits with 1 → the notice says blocked and shows what the
         hook printed. (cards live; evidence/cards-GIT-004.txt)
+  - [x] Click Commit twice quickly in the Changes tab → one commit. (unit; evidence/T-676.txt)
 Compat: —
 Source: D-11-004
 
@@ -85,8 +98,15 @@ Rules: fetch refreshes remote refs and merges nothing; publish pushes to origin 
   differs from the branch's configured remote is rejected; a branch with no upstream is not checked
   against the remote over and over; git and GitHub calls only reach the remotes and hosts the user
   already set up.
+  (Kolux RS, T-676: Kolux's own push, pull, sync and fetch, and the push made before a pull request,
+  run with terminal and credential prompts off and no input, and are stopped, with the git processes
+  they started, after 600 seconds; a stopped step comes back as a network failure that says it timed
+  out and names likely causes. A rebase from base is a local step and has no limit. The live Changes
+  tab (EDIT-029) offers Push, Pull and Sync with the counts and the reason a disabled one waits;
+  the rest of this menu is not in the live layout.)
 Acceptance:
   - [x] Make two local commits → the menu offers to push 2 commits; push → the counts fall to zero. (cards; evidence/cards-GIT-007.txt)
+  - [x] Make a push hang in a pre-push hook → it is stopped at the limit and the result says it timed out. (unit; evidence/T-676.txt)
   - [x] Leave an unpublished branch open for ten minutes → git traces show no repeating remote
         checks. (cards live; evidence/cards-GIT-007.txt)
 Compat: —
@@ -179,13 +199,14 @@ User does: opens all changes, or the branch diff against its base, from Source C
 User sees: every changed file's diff stacked in one tab, with an optional file tree, inline or
   side-by-side layout, whitespace and wrap toggles, and expand or collapse all.
 Rules: inline layout, no wrap, whitespace hidden and tree hidden are the defaults, each a setting;
-  the tree resizes within limits, can be filtered, and marks files already viewed; the scroll
+  the tree resizes within limits (by dragging, or from the keyboard with the arrow keys, Home and
+  End, T-676), can be filtered, and marks files already viewed; the scroll
   position survives switching to another tab and back; files changing underneath do not freeze the
   view; the branch diff uses a snapshot of the base, so it holds still during a review.
 Acceptance:
   - [x] Change 10 files and open all changes → 10 sections; scroll to the seventh, switch tabs and
         back → still at the seventh. (cards live; evidence/cards-GIT-038.txt)
-  - [x] Turn on side-by-side and whitespace → the layout and markers change at once. (cards live; evidence/cards-GIT-038.txt)
+  - [x] Turn on side-by-side and whitespace → the layout and markers change at once. (cards live; evidence/cards-GIT-038.txt; the Inline / Side by side switch and the keyboard resize, evidence/T-676.txt)
 Compat: —
 Source: D-11-038
 
@@ -319,7 +340,9 @@ User does: runs an agent, or an unattended automation, that reaches a remote nee
 User sees: Git fails quickly with an error rather than the agent waiting on a credential prompt no
   one can see.
 Rules: this applies to recognised agent launches and marked automation runs only; ordinary shells
-  still prompt.
+  still prompt. (Kolux RS, T-676: widened to the git steps Kolux runs itself, which are not shells:
+  push, pull, sync, fetch and the push before a pull request never wait on a prompt either; see
+  GIT-007.)
 Acceptance:
   - [ ] Have an agent pull from a private remote with no saved credentials → the command errors
         within seconds; the same pull in a plain shell prompts.
@@ -896,10 +919,13 @@ User sees: Source Control and the status badges stay quick; git work for the vis
   not wait behind background work.
 Rules: the number of git processes at once is capped, with foreground work let in first; git
   commands have time limits; identical status reads already running are shared; old Git versions get
-  fallbacks rather than errors; long Windows paths work.
+  fallbacks rather than errors; long Windows paths work. (Kolux RS, T-676: the git commands the
+  Changes tab starts for staging, committing, discarding and sync run off the app's async runtime, on
+  a blocking thread, so a slow one never freezes the app; network steps have the 600-second limit in
+  GIT-007.)
 Acceptance:
   - [ ] Open 16 workspaces with changes → the focused panel refreshes within a second of an edit.
-  - [ ] A git command hangs → it is stopped at its time limit and the panel recovers.
+  - [ ] A git command hangs → it is stopped at its time limit and the panel recovers. (unit, push only; evidence/T-676.txt)
 Compat: —
 Source: D-11-070
 

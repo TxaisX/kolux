@@ -223,8 +223,11 @@ Source: D-12-027
 Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens All Changes for a worktree to read every changed file in a single scroll.
 User sees: one tab with a section for each changed file, an optional side tree for jumping,
-  filtering and ticking files off as viewed, and a commit-message area when a branch is being
-  reviewed.
+  filtering and ticking files off as viewed, and a commit-message area (in both the working-tree
+  and the branch-against-base views, T-676, so a file staged here can be committed here). The
+  working-tree view has Stage and Unstage on each file, Stage all, Unstage all, Push, Pull and Sync,
+  and a Retry when the changes fail to load; the layout is an Inline / Side by side switch, and
+  Make default says whether it saved.
 Rules: the side tree starts hidden, can be resized, and stays quick with thousands of files;
   sections load as they scroll into view; a section over a changed-line threshold waits for a click;
   images and binaries load separately; scroll position and view return when the tab is brought back;
@@ -234,11 +237,14 @@ Rules: the side tree starts hidden, can be resized, and stays quick with thousan
   a section reuses content fetched earlier only if that file's change is the same as before;
   otherwise it fetches again; a section still loading or still waiting for a click never counts as
   viewed; a file with both staged and unstaged changes gets two tree entries, each leading to its
-  own section.
+  own section. The tree's resize handle can be focused and moved with the arrow keys, Home and End,
+  and a drag that the system cancels ends cleanly. One git action runs at a time (GIT-002, GIT-004,
+  GIT-007).
 Acceptance:
   - [x] Change 30 files and open All Changes → sections appear while scrolling; show the tree,
         filter by name and jump to a file. (cards live; evidence/cards-EDIT-029.txt)
   - [x] Mark a file viewed, switch tabs and come back → the mark and the scroll position are kept. (cards live; evidence/cards-EDIT-029.txt)
+  - [x] In the working-tree view, Stage a file, then Unstage it → it moves between its staged and unstaged sections and the Commit button follows. (unit; evidence/T-676.txt)
 Compat: —
 Source: D-12-029
 
