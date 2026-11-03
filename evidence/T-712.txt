@@ -7,7 +7,7 @@ WHAT WAS WRONG
   <details>: it stayed open after a pick, Escape did nothing to it, and a click elsewhere left it open.
 - An account row (settings/AccountRow.tsx) was a role=button div holding Re-authenticate, Name and Remove buttons:
   buttons nested in a button, each inner one needing stopPropagation. The inline Remove confirm ignored Escape and
-  its Remove/Keep stayed pressable while the row was busy (a sign-in for that account running).
+  its Remove/Keep stayed pressable while the row was busy (any sign-in on that list running).
 
 THE FIX (DT-C148)
 - OtherWays: a pick removes the open attribute before it runs; while open, Escape (capture phase, stopped) shuts it
