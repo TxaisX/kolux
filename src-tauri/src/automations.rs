@@ -2390,12 +2390,13 @@ mod tests {
         patch_run(&store.lock().unwrap(), first["id"].as_str().unwrap(), json!({ "dispatchedAt": now_ms() - SETTLE_MS - 1 })).unwrap();
         let second = run_manual(&l, "auto-1").unwrap();
         assert_eq!(second["number"], json!(2));
-        // The old run is closed, so the new pane is claimed by the new run, not the orphan.
+        // The old run is closed. A pane naming no run takes nothing; the new run's own pane is its.
         let s = store.lock().unwrap();
         let runs = load(&s, RUNS_KEY).unwrap();
         let old = runs.iter().find(|r| r["id"] == first["id"]).unwrap();
         assert_eq!(old["status"], json!("failed"));
         assert_eq!(old["detail"], json!("This run's terminal never started"));
+        assert_eq!(claim(&s, 8, Some(80), second["worktree"].as_str().unwrap(), Some("claude"), None, 1_001).unwrap(), None);
         let picked = claim(&s, 9, Some(90), second["worktree"].as_str().unwrap(), Some("claude"), second["id"].as_str(), 1_001).unwrap();
         assert_eq!(picked.as_deref(), second["id"].as_str());
         drop(s);
@@ -2822,12 +2823,15 @@ mod tests {
         dispatched(&store, &ws, 1, "claude");
         // A shell or another agent opened in the same folder is not the run's pane.
         assert_eq!(claim(&store, 4, Some(40), &ws.to_string_lossy(), None, None, 1_001).unwrap(), None);
-        assert_eq!(claim(&store, 5, Some(50), &ws.to_string_lossy(), Some("codex"), None, 1_001).unwrap(), None);
+        assert_eq!(claim(&store, 5, Some(50), &ws.to_string_lossy(), Some("codex"), Some("run-1"), 1_001).unwrap(), None);
+        // A pane naming the run but opened in another folder is not its pane either.
+        let elsewhere = dir.join("elsewhere");
+        assert_eq!(claim(&store, 8, Some(80), &elsewhere.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap(), None);
         // The run's agent opens in its worktree (spelled with a trailing slash) and is picked up.
         let spelled = format!("{}/", ws.to_string_lossy());
         assert_eq!(claim(&store, 6, Some(60), &spelled, Some("claude"), Some("run-1"), 1_001).unwrap().as_deref(), Some("run-1"));
         // A second claude pane in the same folder takes nothing: the run already has its pane.
-        assert_eq!(claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap(), None);
+        assert_eq!(claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap(), None);
         // The session boundary (start, resume, clear) and an idle prompt at launch never finish it.
         on_status(&store, Some(6), 60, "working", true, false, None, 10).unwrap();
         on_status(&store, Some(6), 60, "done", false, false, None, 11).unwrap();

@@ -42,6 +42,9 @@ TESTS
   first assertion: left Some("orphan"), right Some("mine"). Passes with the fix.
 - New: src/projects/startArgs.test.ts "T-690: an automation run's start notice hands its run id to
   the pane's environment, once, last".
+- Timing: a pane reopened after a restart that starts after its run's settling deadline but before
+  the next 30-second settle step is now refused (claim checks the deadline itself), where before it
+  could still be credited. Such a run is closed by that settle step.
 - Updated: the 23 claim calls in automations.rs tests and 5 in tests/cards_09.rs (run id passed).
 
 GATES (2026-11-03, after the review fixes)
@@ -65,7 +68,15 @@ REVIEW
 - Fixed: the fallback now takes only a settling run that had a pane, on its own hook pane (SF1, and
   the user-tab NIT); an id no run has falls back to that rule (settings NIT); the id path checks
   agent and worktree (NIT); spec, decision and comment rewritten (SF2); this file (SF3).
-- Re-review: see below.
+- Opus re-review (opus-high-review) of the fixed version: A-. Its SHOULD-FIX: the PLAN.md row still
+  stated the old fallback rule. NITs: the spec sentence should say the hook pane is matched when
+  Kolux knows it; two test claims passed no id where the window would pass one; no test for an id
+  claim from another folder or another agent; a Run now test comment overstated what it checked;
+  this line was unfilled; run ids are reused and pane keys can collide after a restart (follow-ups).
+- Fixed after it: the PLAN.md row reworded; the spec sentence gains "when Kolux knows it"; the
+  claims of the wrong agent and of a second pane now name run-1 and still take nothing; a claim
+  naming run-1 from another folder takes nothing; the Run now test checks a pane naming no run
+  takes nothing before the new run's own pane is credited. Only tests and wording changed.
 
 SPEC
 - DECISIONS.md DT-C126: no spec rule is reversed. AUTO-012 (spec/09-automations.md) gains a
@@ -78,3 +89,9 @@ FOLLOW-UPS (not in this PR)
   step is a separate change.
 - The window wiring of the run id (useCliBridge to startIn to openIn) is tested through
   startTail/startFields only; a swap of the dispatch and run arguments would still type-check.
+- Run ids are numbered one past the highest kept run, so an id can be given again after old runs
+  are pruned; a pane still naming the old id then names the new run. Ids that are never reused
+  would close this.
+- Pane keys handed out after a restart can repeat a key a run remembers from before it, so a
+  different pane could be taken as that run's hook pane while it settles. Keys that never repeat
+  across restarts would close this.

@@ -52,7 +52,7 @@ Rules: a finish reported at a session boundary, an old idle state, or a ready pr
   reconnect, and any that cannot be found are closed after a short settling period; the same refusal
   repeated for the same due time collapses into one entry with a counter; a run is followed through
   the pane Kolux opened for it, and after a restart a pane reopened in its place picks up only a
-  settling run that had a pane before the restart, on that same pane; a tab the user opens and a
+  settling run that had a pane before the restart, on that same pane when Kolux knows it; a tab the user opens and a
   run whose pane never started are never matched to each other (DT-C126).
 Acceptance:
   - [x] Kill the agent before it starts working → the run reads failed, not completed. (cards; evidence/cards-AUTO-012.txt)
