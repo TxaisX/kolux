@@ -105,9 +105,11 @@ describe("loading an older page", () => {
     const t = rig();
     t.reads[0](ready([item("c")], { reset: true, older: 900 }));
     await flush();
-    const failed = t.reader.loadEarlier();
+    let told = 0;
+    const failed = t.reader.loadEarlier(undefined, () => void told++);
     t.asked[0].fail(new Error("cursor is not a line start"));
     expect(await failed).toBe(false);
+    expect(told).toBe(1); // the view shows its retry note
     expect(ids(t.reader.seen)).toEqual(["c"]);
     expect(t.reader.seen.older).toBe(900);
     const again = t.reader.loadEarlier();

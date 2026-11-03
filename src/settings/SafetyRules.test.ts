@@ -3,7 +3,7 @@
 import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { addRule, globalRules, onIn, PROJECTS_FIELD, removeRule, resetAll, resetProject, RULES_FIELD, SafetyAttemptsView, SafetyRulesView, scopeOf, scopes, switchIn, type Custom } from "./SafetyRules";
+import { addRule, globalRules, onIn, PROJECTS_FIELD, removeRule, resetAll, resetProject, RULES_FIELD, saveRule, SafetyAttemptsView, SafetyRulesView, scopeOf, scopes, switchIn, type Custom } from "./SafetyRules";
 
 const g1: Custom = { id: "g1", name: "Pod deletes", kind: "starts-with", pattern: "kubectl delete" };
 const p1: Custom = { id: "p1", name: "", kind: "regex", pattern: "^prisma migrate" };
@@ -76,4 +76,20 @@ test("the attempts view shows the masked command as given, newest first, and a d
   expect(one).toContain('data-outcome="denied"');
   expect(one).toContain("sk_live_[hidden]");
   expect(one).toContain("Stripe changes");
+});
+
+test("UX-audit: a rule whose save was refused gives a sentence (the form keeps its text); a stored one gives none", async () => {
+  expect(await saveRule(async () => true, {})).toBeNull();
+  expect(await saveRule(() => undefined, {})).toBeNull();
+  expect(await saveRule(async () => false, {})).toContain("What you typed is kept");
+});
+
+test("UX-audit: Remove on a rule and Clear on the attempts ask first (the answer row replaces the button on the page itself)", () => {
+  const html = view(ROOT);
+  expect(html).toMatch(/data-reset[^>]*aria-label="Remove \^prisma migrate"[^>]*>Remove/);
+  const attempts = [{ time: 0, worktree: "G:/w", command: "rm -rf x", rule: "Deletes", outcome: "denied" as const }];
+  const out = renderToString(createElement(SafetyAttemptsView, { attempts, clear: () => {}, error: "The list was not cleared: busy" }));
+  expect(out).toMatch(/data-reset[^>]*aria-label="Clear recent attempts"/);
+  expect(out).not.toContain("data-clear>");
+  expect(out).toContain("The list was not cleared: busy");
 });

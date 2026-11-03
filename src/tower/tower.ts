@@ -116,3 +116,18 @@ export function nameUsage(usage: AccountUsage[], label: (agent: string, id: stri
 export function nameSeats<T extends Pick<Seat, "agent" | "account">>(seats: T[], label: (agent: string, id: string) => string): T[] {
   return seats.map((s) => (s.account == null ? s : { ...s, account: label(s.agent, s.account) }));
 }
+
+/** The Refresh button's words: busy while the figures are being read again. */
+export const refreshLabel = (refreshing: boolean): string => (refreshing ? "Refreshing…" : "Refresh");
+
+/** What the empty list says: "Loading…" until the own window has received its first snapshot. */
+export const emptyWords = (loading: boolean): string => (loading ? "Loading…" : "Nothing is running. Start an agent and it shows up here.");
+
+/** Scrolls the selected row into view (nearest edge), so Up/Down never selects a row off screen. */
+export function revealRow(list: { querySelector: (sel: string) => { scrollIntoView?: (o: { block: "nearest" }) => void } | null } | null, key: number | null): boolean {
+  if (!list || key === null) return false;
+  const el = list.querySelector(`#tower-${key}`);
+  if (!el?.scrollIntoView) return false;
+  el.scrollIntoView({ block: "nearest" });
+  return true;
+}

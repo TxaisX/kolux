@@ -45,3 +45,10 @@ test("ACCT-029: the Gemini switch appears only where Gemini is detected, and is 
   expect(out).not.toContain("checked");
   expect(html({ ...base, geminiDetected: true, geminiEnabled: true })).toContain("checked");
 });
+
+test("UX-audit: Forget on a kept MiniMax credential asks first", () => {
+  const seen = { ...base, minimax: { ...base.minimax, detected: true, keyKept: true } };
+  const out = html(seen);
+  expect(out).toMatch(/data-reset[^>]*aria-label="Forget MiniMax API key"[^>]*>Forget/);
+  expect(out).toMatch(/<button[^>]*disabled[^>]*>Forget/); // the cookie is not kept: nothing to forget
+});

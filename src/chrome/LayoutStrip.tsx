@@ -4,9 +4,10 @@
 // (TERM-040 / TERM-041, SESS-006): one terminal per installed shell, or any installed agent, as a
 // tab beside the focused pane; "Choose agent…" (an empty chooser pane, nothing started); the
 // browser; a new or an existing markdown file; or a file from disk in an editor tab (EDIT-001).
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { FileCode, Globe, Plus } from "./icons";
 import VendorMark from "./VendorMark";
+import { useMenuFocus } from "./dialogFocus";
 import { Kbd } from "../keys/KeymapContext";
 import { markFor, type AgentInfo } from "../launch/PlusMenu";
 import StripTotals from "../usage/StripTotals";
@@ -24,6 +25,9 @@ type Props = { count: number; onLayout: (n: number) => void; agents?: AgentInfo[
 
 export default function LayoutStrip({ count, onLayout, agents = [], shells = [], onNewTab, open = false, preview }: Props) {
   const [at, setAt] = useState<{ top: number; right: number } | null>(open ? { top: 0, right: 0 } : null);
+  const menu = useRef<HTMLDivElement>(null);
+  // Focus moves to the first row, arrows move between rows, and Escape closes the menu instead of reaching the terminal.
+  useMenuFocus(menu, at !== null, () => setAt(null));
   const pick = (a: NewTab) => {
     setAt(null);
     onNewTab?.(a);
@@ -61,7 +65,7 @@ export default function LayoutStrip({ count, onLayout, agents = [], shells = [],
       {at && (
         <>
           <div className="menu-backdrop" onClick={() => setAt(null)} aria-hidden="true" />
-          <div className="menu" role="menu" aria-label="New tab" style={at}>
+          <div ref={menu} className="menu" role="menu" aria-label="New tab" style={at}>
             <div className="menu-title">New tab</div>
             {(shells.length ? shells : [null]).map((sh, i) => (
               <button key={sh?.id ?? "shell"} role="menuitem" className="menu-item" onClick={() => pick(i === 0 || !sh ? null : { shell: sh })} title={sh ? `New terminal: ${sh.program}` : "New terminal"}>

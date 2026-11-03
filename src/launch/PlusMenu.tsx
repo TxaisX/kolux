@@ -9,7 +9,10 @@
 // SESS-039: opened from a pane with a worktree folder, it also offers "Open in <editor>" for each
 // outside editor installed (editors.ts). TERM-042: with `entry` the menu opens with an entry box for a
 // URL, a file or an open tab; TERM-043: on a local Windows client a "Terminal" row opens the shell choice.
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { watchEscape } from "../switcher/accounts";
+import { restoreFocus } from "../shell/paletteCaps";
+import { menuStep } from "../terminal/LinkActionMenu";
 import VendorMark, { type Agent } from "../chrome/VendorMark";
 import AgentMark from "../marks/AgentMark";
 import { Kbd, useLabel } from "../keys/KeymapContext";
@@ -98,15 +101,44 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
   const installed = top.length + folded.length;
   const terminalRow = onTerminal && (found === null ? !query.trim() || query.length > MAX_SEARCH : wantsTerminal(query));
   const bound = useLabel("tab.newAgent").length > 0;
-  const first = () => (shown[0] ? !busy && onPick(shown[0]) : terminalRow && onTerminal?.());
+  // UX audit F3: Enter in the search box starts nothing while the agent search has failed (the rows are disabled too).
+  const first = () => (shown[0] ? !busy && !pass?.error && onPick(shown[0]) : terminalRow && onTerminal?.());
+  // UX audit F1: Esc closes the menu wherever focus is (a short list has no search box), and focus goes in on open and back on close.
+  const menuBox = useRef<HTMLDivElement>(null);
+  // The opener is whatever had focus when the menu first rendered, before the search box's autoFocus takes it.
+  const opener = useRef((typeof document === "undefined" ? null : document.activeElement) as HTMLElement | null);
+  // A search or entry box that holds text lets Esc through to its own handler, which clears it; the next Esc closes the menu.
+  const typing = () => {
+    const el = document.activeElement;
+    return el instanceof HTMLInputElement && !!menuBox.current?.contains(el) && el.value !== "";
+  };
+  useEffect(() => watchEscape(window, onClose, () => !typing()), [onClose]);
+  // Arrow keys, Home and End walk the enabled rows (the search box keeps its own arrows for text).
+  const arrows = (e: KeyboardEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).tagName === "INPUT") return;
+    const rows = [...(menuBox.current?.querySelectorAll<HTMLElement>("button:not(:disabled)") ?? [])];
+    const to = menuStep(rows.length, rows.indexOf(document.activeElement as HTMLElement), e.key);
+    if (to === null) return;
+    e.preventDefault();
+    rows[to]?.focus();
+  };
+  useEffect(() => {
+    if (!menuBox.current?.contains(opener.current) && !menuBox.current?.querySelector("input")) menuBox.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    // Only when focus was lost with the menu: a chooser the menu just opened keeps the focus it took.
+    return () =>
+      queueMicrotask(() => {
+        const a = document.activeElement;
+        if (!a || a === document.body) void restoreFocus(opener.current, (sel) => document.querySelector<HTMLElement>(sel));
+      });
+  }, []);
   // With no default the new-agent shortcut opens the first agent listed (SET-027).
   const opens = shown.find((a) => a.id === defaultId) ?? (defaultId === "" ? shown[0] : undefined);
   return (
     <>
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="menu" role="menu" aria-label="New session" style={style}>
+      <div className="menu" role="menu" aria-label="New session" style={style} ref={menuBox} onKeyDown={arrows}>
         <div className="menu-title">New session</div>
-        {entry && <NewTabEntryBox tabs={entry.tabs} onRun={entry.onRun} onClose={onClose} />}
+        {entry && <NewTabEntryBox tabs={entry.tabs} onRun={entry.onRun} />}
         {installed > 3 && (
           <input
             className="field menu-search"
@@ -116,7 +148,11 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onClose();
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                e.preventDefault();
+                setQuery("");
+              }
               if (e.key === "Enter") first();
             }}
           />
@@ -145,14 +181,14 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
               {a === opens && bound && <Kbd id="tab.newAgent" />}
             </button>
             {a.id !== defaultId && onSetDefault && (
-              <button className="menu-default" title={`Make ${a.name} the default agent`} onClick={() => onSetDefault(a.id)}>
+              <button role="menuitem" className="menu-default" title={`Make ${a.name} the default agent`} onClick={() => onSetDefault(a.id)}>
                 Set as default
               </button>
             )}
           </div>
         ))}
         {found === null && folded.length > 0 && (
-          <button className="menu-item muted menu-more" aria-expanded={more} onClick={() => setMore((m) => !m)}>
+          <button role="menuitem" className="menu-item muted menu-more" aria-expanded={more} onClick={() => setMore((m) => !m)}>
             <span className="name">{more ? "Show fewer agents" : `Show more agents (${folded.length})`}</span>
           </button>
         )}

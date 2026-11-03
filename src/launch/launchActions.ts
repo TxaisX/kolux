@@ -24,8 +24,8 @@ import { cellsOf, freeCell } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn } from "../workspaces";
 import { paneMark, type AgentInfo } from "./PlusMenu";
-import { bulkRefusal, settleSetups, setupMode, type NewPlace } from "./launchOrder";
-import { LAST_LINEUP_KEY, TERMINAL, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
+import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
+import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -64,8 +64,14 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   const startSeats = async (key: number, seats: Seat[]) => {
     const chooser = panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
     if (!chooser) return;
+    const tooMany = tooManySeats(seats.length);
+    if (tooMany) {
+      setNotice(tooMany);
+      return;
+    }
     const inGrid = panes.some((p) => p.key === key);
     setLaunching(true);
+    const kept: NewPlace[] = [];
     try {
       const picked = seats.map((s) => (s.agent === TERMINAL ? null : agents.find((a) => a.id === s.agent && a.installed) ?? null));
       const missing = seats.find((s, i) => s.agent !== TERMINAL && !picked[i]);
@@ -85,6 +91,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if (!pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
         madeNew.push({ cwd: wt.path, branch: wt.branch });
+        kept.push({ cwd: wt.path, branch: wt.branch });
         return { cwd: wt.path, branch: wt.branch };
       };
       const places: { cwd: string | null; branch: string | null }[] = [];
@@ -141,7 +148,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       setRefresh((n) => n + 1);
       setNotice(setupTrouble.length ? setupTrouble.join(" ") : null);
     } catch (err) {
-      setNotice(String(err));
+      // A seat that failed leaves the earlier seats' new workspaces behind: refresh the sidebar so they show, and say so.
+      if (kept.length) setRefresh((n) => n + 1);
+      setNotice(failureNote(err, kept.length));
     } finally {
       setLaunching(false);
     }
@@ -149,9 +158,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
 
   // PROJ-038: the agent is the new workspace's first tab, started with its prompt; nothing else
   // opens there. Shown only when the sidebar says the user has not moved on.
-  const startIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string, dispatch?: string): Promise<number | null> => {
+  const startIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string, dispatch?: string, run?: string): Promise<number | null> => {
     try {
-      return await openIn(agent, dir, branch, prompt, show, extra, title, dispatch);
+      return await openIn(agent, dir, branch, prompt, show, extra, title, dispatch, run);
     } catch (err) {
       setNotice(String(err));
       return null;
@@ -161,14 +170,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // caller that reports its own failure (VIEW-069) can say what did not start.
   // T-172-e: `dispatch` (a worker start) goes into the session's environment, so Kolux can tell the
   // worker's own session from a tab the user opens in the same folder.
-  const openIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string, dispatch?: string) => {
+  // T-690: `run` (an automation run) goes in the same way, so its pane is credited to that run.
+  const openIn = async (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra: string[] = [], title?: string, dispatch?: string, run?: string) => {
     await pretrust(agent.id, [dir]);
     // GIT-020 / PROJ-039 (T-107-d): the first task names a Kolux-suggested branch; the back end
     // leaves a hand-named workspace, a pushed branch or one with a pull request alone.
     void renameOnFirstPrompt(dir, prompt, settings);
     const line = await invoke<StartLine>("agent_start_line", { id: agent.id, extra, prompt });
     const key = nextKey.current++;
-    const pane: Pane = { key, cwd: dir, branch, agent: paneMark(agent, line), agentId: agent.id, ...startFields(line, agent.program, dispatch), title };
+    const pane: Pane = { key, cwd: dir, branch, agent: paneMark(agent, line), agentId: agent.id, ...startFields(line, agent.program, dispatch, run), title };
     // TERM-007: an empty pane in that workspace takes the session; else it gets a cell of its own.
     setPanes((ps) => {
       const free = freeCell(cellsOf(panesIn(ps, dir)));

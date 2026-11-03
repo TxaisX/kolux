@@ -1829,10 +1829,12 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     // cli FIX-7: the last such entry in the environment names the dispatch (the window appends its own).
     // cli FIX-8: spawn_stamped reads it before the environment is handed over and stamps the new
     // session once the spawn succeeded (cli.rs fix8_d).
+    // T-690: the run this pane belongs to, read before the environment is handed over.
+    let run = crate::automations::run_in(&env_own);
     let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, shell, per_worktree_history))?;
     // AUTO-012: an automation run dispatched to this worktree for this agent is followed here.
     if let Some(dir) = dir {
-        crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent));
+        crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent, run.as_deref(), crate::automations::now_ms()));
     }
     Ok(Spawned { id, program: terminals.started(id), account })
 }

@@ -4,13 +4,13 @@
 // source-control status through the commands the window already has.
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { exitNote, GROUPS, moveSelection, openLabel, settle, type Item } from "./inbox";
+import { changesLine, exitNote, fromDetail, GROUPS, moveSelection, openLabel, settle, type Item } from "./inbox";
 import { VOCAB } from "../terminal/status";
 import { StatusGlyph } from "../chrome/icons";
 import type { Agent } from "../chrome/VendorMark";
 import { programWord } from "../launch/PlusMenu";
 import { folderName } from "../projects/model";
-import { emptyStatus, type Status } from "../scm/model";
+import type { Status } from "../scm/model";
 import { canReview } from "../board/review";
 
 type Entry = { state: string; prompt?: string; started: number; interrupted: boolean };
@@ -32,8 +32,13 @@ export default function InboxView({ items, now, onOpen, onReview }: Props) {
   const item = items.find((i) => i.key === current) ?? null;
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => root.current?.focus(), []);
+  // Arrow keys move the selection past the visible rows, so the selected row is scrolled into view.
+  useEffect(() => {
+    if (current !== null) document.getElementById(`inbox-${current}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [current]);
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (fromDetail(e.target as HTMLElement | null)) return; // Enter and Space on a detail button belong to that button
     if (e.key === "ArrowDown" || e.key === "ArrowUp") setSelected(moveSelection(keys, current, e.key === "ArrowDown" ? 1 : -1));
     else if (e.key === "Enter" && current !== null) onOpen(current);
     else return;
@@ -100,6 +105,7 @@ function Detail({ item, onOpen, onReview }: { item: Item; onOpen: () => void; on
   const [last, setLast] = useState<Entry | null>(null);
   const [readable, setReadable] = useState<Readable | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [scmError, setScmError] = useState<string | null>(null);
   // T-035-c: a question or permission whose terminal is alive is read off its screen; when the
   // menu's keys are sure, the detail offers its options here, else only Answer in Code.
   const canRead = item.group === "needs" && !item.exited;
@@ -121,8 +127,9 @@ function Detail({ item, onOpen, onReview }: { item: Item; onOpen: () => void; on
   };
   useEffect(() => {
     setScm(null);
+    setScmError(null);
     setLast(null);
-    if (item.cwd) invoke<Status>("scm_status", { worktree: item.cwd }).then(setScm).catch(() => setScm(emptyStatus));
+    if (item.cwd) invoke<Status>("scm_status", { worktree: item.cwd }).then(setScm).catch((e) => setScmError(typeof e === "string" ? e : e instanceof Error ? e.message : "the status command failed"));
     invoke<Entry[]>("agent_history", { paneKey: item.key })
       .then((h) => setLast([...h].reverse().find((e) => e.prompt) ?? null))
       .catch(() => setLast(null));
@@ -143,7 +150,7 @@ function Detail({ item, onOpen, onReview }: { item: Item; onOpen: () => void; on
         <dt>Workspace</dt>
         <dd>{item.cwd ? folderName(item.cwd) : "—"}</dd>
         <dt>Changes</dt>
-        <dd>{changed === null ? (item.cwd ? "…" : "—") : changed === 0 ? "No files changed" : `${changed} file${changed === 1 ? "" : "s"} changed${scm && scm.staged.length ? `, ${scm.staged.length} staged` : ""}`}</dd>
+        <dd>{changesLine({ hasCwd: !!item.cwd, changed, staged: scm?.staged.length ?? 0, failed: scmError })}</dd>
         {last?.prompt && (
           <>
             <dt>Prompt</dt>

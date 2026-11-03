@@ -409,13 +409,16 @@ User sees: while it is off, a panel explaining that Kolux would read that agent'
   with the switch, an options menu and refresh in the panel header.
 Rules: only logs the agents already keep on this computer are read, and nothing is sent anywhere;
   refresh is greyed out during a scan, and a second request while a scan runs joins that scan
-  instead of starting another; a failed scan leaves the last good figures in place; saved results
+  instead of starting another; a failed scan leaves the last good figures in place and says the scan
+  failed; a failed read shows the error with Retry, and a switch that cannot be changed says so (DT-C105); saved results
   appear at once on opening, before a slow rescan completes; an older profile that never recorded a
   choice keeps working and has its saved results rebuilt.
 Acceptance:
   - [ ] Open the Claude panel on a new profile → the off state with a switch; turn it on → a scan
         runs and figures follow.
   - [ ] Break the log folder during a scan → the earlier figures stay on screen.
+  - [x] A failed token read, rescan or Track switch → the panel names the failure (Retry for the read)
+        instead of showing nothing. (unit; evidence/T-669.txt)
 Compat: —
 Source: D-06-013
 
@@ -427,7 +430,8 @@ User sees: totals for input, output, cache reads and cache writes, an estimated 
   scope.
 Rules: range is the last 7, 30 or 90 days or all time, with 30 days as the default; scope is Kolux
   worktrees only (the default) or every local use of that agent; in Kolux scope, a history holding
-  only outside use shows no data rather than everything; days follow the user's local calendar, not
+  only outside use shows no data rather than everything; when the project list cannot be read, the
+  scope falls back to every local use and says so, instead of reading as no use inside Kolux (DT-C105); days follow the user's local calendar, not
   UTC; long model names wrap instead of being clipped; models whose price was guessed are labelled
   inferred, and unknown prices read n/a; a session that used several models appears once under each
   model it really used; the daily chart stays quick even for very long histories.
@@ -534,11 +538,15 @@ User sees: a dialog previewing a card in Kolux's own branding with total tokens,
   browser.
 Rules: the card matches the panel's current provider and range; the post text gives the provider,
   range, total tokens and cost; a cost below one cent shows four decimal places, and a missing cost
-  shows n/a; closing the dialog while the picture is still being made causes no error.
+  shows n/a; closing the dialog while the picture is still being made causes no error; the dialog takes
+  focus when it opens, keeps Tab inside, closes on Escape and gives focus back (DT-C105).
 Acceptance:
   - [ ] Share, then Copy image → the clipboard holds a picture of the card and the button reads
         Copied for about two seconds.
   - [ ] Share on X → the browser opens a draft post with the range and totals.
+  - [x] Open Share from the keyboard → the dialog runs on the shared dialog focus helper, so focus is in
+        the dialog, Tab stays inside, Escape closes it and focus goes back (wiring: unit, evidence/T-669.txt;
+        the helper's focus moves: unit, evidence/T-667.txt). A live keyboard pass is still to do.
 Compat: —
 Source: D-06-019
 

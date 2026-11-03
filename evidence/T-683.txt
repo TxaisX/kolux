@@ -1,0 +1,91 @@
+T-683 - Editor explorer, diff, file picker and menus: keyboard, focus and honest messages (DT-C119; UX audit lane D, editor group)
+Lane D (72), branch s-72/ux-3, PR #100, base e93a23ba (origin/main), code commits be6f4dfc and 5d026570, 2026-11-02.
+Stacked beside #98 (T-678, DT-C114, s-72/ux-4): that PR covers chat, sessions and recovery, this one the editor. Merge after #98.
+
+WHAT CHANGED
+- Explorer: the Open-in menu closes on a click outside it, takes focus on its first item, closes on Escape from anywhere,
+  walks with the arrow keys, gives focus back to its button and stays inside the window (new src/editor/menuNav.ts, also used
+  by the diff actions menu). Open-in uses the Rocket icon; Expand all and Collapse all are double chevrons down and up.
+- Explorer: Expand all marks a folder it could not read as "not readable" and says when it stopped at the 300-folder cap.
+  The live refresh skips a folder whose last read has not come back yet (an asked-for read always goes). A drag ends cleanly
+  when the system cancels the pointer. Escape cancels the delete question and returns focus to the tree. Escape in the content
+  search closes it and focuses the tree; closing no longer fills the search box again.
+- Empty Explorer, Add a project: choosing a folder when the project list is not on screen now adds it directly (a Git project,
+  else a plain folder project) and asks the window to show the project list; the old dead-end text is gone.
+- File picker (Quick Open): the arrow keys scroll the active option into view; a hover never scrolls.
+- Diff: the actions menu (whitespace, wrap) works from the keyboard like the Open-in menu and is also on the embedded Changes
+  bar. The "+" beside a line is drawn only where a review note can be saved (the embedded Changes view keeps its note cards
+  but has no "+"). Deleting a review note shows "Review note deleted. Undo" for 8 seconds; Undo saves it again.
+- All Changes tree: a greyed-out Viewed box has a title and description saying it waits for the diff to load.
+- Close dialog (unsaved changes): Tab stays among its buttons; while a save runs the card holds focus so Tab and Escape stay inside.
+- Editor headers: Copy reads "Copy path"; Preview, Front and Retry in the image and diff views are small buttons like the rest.
+- Rich editor: a caret placed inside a link shows the link bubble, inside a code block the language list (Escape closes the bubble).
+- spec: VIEW-059, VIEW-060, VIEW-061, EDIT-013, EDIT-014, EDIT-020, EDIT-021, EDIT-027, EDIT-029, EDIT-031, EDIT-035, EDIT-036,
+  EDIT-037 and EDIT-043 Rules say the new behaviour; their Acceptance lines point here. No rule is reversed.
+
+WHY
+The night-of-2026-11-02 static UX audit of the editor (rows in proof/ux-audit/D-ux3.md, 18 rows: 17 fixed, one of them with a stale part, and 1 skipped for time) found menus a keyboard user could open but not use or leave, a note "+" that did nothing in the Changes view, an
+Add a project row that ended in text telling the user to go elsewhere, and silent failures in Expand all.
+
+REVIEW
+Opus review A- -> fix pass (5d026570); A- holds, no re-review required by the coordinator.
+
+TESTS (named, the seven test files this PR added or changed; pnpm vitest run <files> --reporter=verbose)
+ ✓ src/editor/ChangeTree.test.ts > changed-file tree Viewed box > says why the box is off while the diff has not drawn 8ms
+ ✓ src/editor/ChangeTree.test.ts > changed-file tree Viewed box > is on, with no waiting reason, once the diff drew 1ms
+ ✓ src/editor/FilePicker.test.ts > Quick Open ranking (EDIT-036) > puts name hits before files that only sit in a matching folder 2ms
+ ✓ src/editor/FilePicker.test.ts > Quick Open ranking (EDIT-036) > keeps list order for an empty query and stops at the limit 1ms
+ ✓ src/editor/FilePicker.test.ts > Quick Open ranking (EDIT-036) > ignores spaces and backslashes in the query 0ms
+ ✓ src/editor/FilePicker.test.ts > Quick Open ranking (EDIT-036) > turns relative names into native full paths and explains a missing ripgrep 0ms
+ ✓ src/editor/FilePicker.test.ts > picker keyboard scrolling > scrolls the active option just into view 0ms
+ ✓ src/editor/FilePicker.test.ts > picker keyboard scrolling > does nothing when there is no list or no active option 1ms
+ ✓ src/editor/Explorer.test.ts > explorer rows > shows only the children of open folders, depth first, each knowing its parent 2ms
+ ✓ src/editor/Explorer.test.ts > explorer rows > keeps an open folder whose children have not loaded yet as a plain row 0ms
+ ✓ src/editor/Explorer.test.ts > explorer rows > selects a range from either end 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > puts the new-name row first in its folder 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > deletes a folder chosen with its own children once, as the folder 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > undoes and redoes each action with its opposite 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > knows a WSL share, where a delete is for good 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > undoes a copy by binning the copies and a move by moving each item back 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > drops into the folder under the pointer, the folder holding a file, or the root 0ms
+ ✓ src/editor/Explorer.test.ts > explorer file operations > moves a folder chosen with its own children once, and skips what is already there 0ms
+ ✓ src/editor/Explorer.test.ts > explorer live reads and Expand all > lets the live poll skip a folder whose read is still out, but never an asked-for read 0ms
+ ✓ src/editor/Explorer.test.ts > explorer live reads and Expand all > says nothing when Expand all finished cleanly, and names the cap and the folders it could not read 0ms
+ ✓ src/editor/menuNav.test.ts > popup menu placement > keeps a menu that fits where it was asked for 1ms
+ ✓ src/editor/menuNav.test.ts > popup menu placement > pulls a menu back from the right and bottom edges 0ms
+ ✓ src/editor/menuNav.test.ts > popup menu placement > never leaves the top-left corner either 0ms
+ ✓ src/editor/menuNav.test.ts > popup menu keys > moves between the rows while focus is inside the menu 0ms
+ ✓ src/editor/menuNav.test.ts > popup menu keys > leaves the key alone once focus is outside the menu 0ms
+ ✓ src/editor/menuNav.test.ts > popup menu keys > ignores keys that are not menu keys 0ms
+ ✓ src/editor/AddProjectRow.test.ts > adding a project from the empty Explorer > adds each folder as a Git project 2ms
+ ✓ src/editor/AddProjectRow.test.ts > adding a project from the empty Explorer > falls back to a plain folder project outside a Git repository 0ms
+ ✓ src/editor/AddProjectRow.test.ts > adding a project from the empty Explorer > lets any other failure through to be shown 1ms
+ ✓ src/editor/DiffPane.test.ts > diff tab whitespace (EDIT-027) > shows whitespace-only changes when asked 2ms
+ ✓ src/editor/DiffPane.test.ts > diff tab whitespace (EDIT-027) > leaves them out by default, keeping real changes where they are 0ms
+ ✓ src/editor/DiffPane.test.ts > diff of a whole-file rewrite stays bounded (row 804) > a 1500-line rewrite is diffed in well under 2 s with the default override 3ms
+ ✓ src/editor/DiffPane.test.ts > diff of a whole-file rewrite stays bounded (row 804) > a 19000-line rewrite is diffed in well under 2 s with the default override 45ms
+ ✓ src/editor/DiffPane.test.ts > review notes on both sides of a side-by-side diff (GIT-040, T-034-b) > the new side draws the new notes and the old side the old ones, even on the same line 2ms
+ ✓ src/editor/DiffPane.test.ts > review notes on both sides of a side-by-side diff (GIT-040, T-034-b) > an added file has an empty old side, so it draws no old card 0ms
+ ✓ src/editor/DiffPane.test.ts > review notes on both sides of a side-by-side diff (GIT-040, T-034-b) > the cards are laid out again when a new read of the text arrives 1ms
+ ✓ src/editor/DiffPane.test.ts > how a diff tab starts (SET-038, T-323-b) > follows the Settings > General diff choices, and starts inline, unwrapped, whitespace hidden by default 1ms
+ ✓ src/editor/DiffPane.test.ts > the embedded Changes view has its own slim bar (row 277) > carries the Inline / Side by side switch, previous and next change and Copy Context 9ms
+ ✓ src/editor/DiffPane.test.ts > the embedded Changes view has its own slim bar (row 277) > the pane's own header keeps them too, once each 1ms
+ ✓ src/editor/DiffPane.test.ts > note gutter (the + beside a line) > is drawn where a note can be saved 0ms
+ ✓ src/editor/DiffPane.test.ts > note gutter (the + beside a line) > is left out where notes cannot be saved (the embedded Changes view), but the cards stay 0ms
+ ✓ src/editor/CloseDialog.test.ts > close dialog Tab trap > wraps forward from the last button to the first 1ms
+ ✓ src/editor/CloseDialog.test.ts > close dialog Tab trap > wraps backward from the first button to the last 0ms
+ ✓ src/editor/CloseDialog.test.ts > close dialog Tab trap > enters the trap from outside at either end 0ms
+ ✓ src/editor/CloseDialog.test.ts > close dialog Tab trap > has no stop while every button is off (a save is running) 0ms
+ Test Files  7 passed (7)
+ Tests  45 passed (45)
+
+TOTALS
+ pnpm vitest run src/editor (VITEST_MAX_WORKERS=2)
+ Test Files  1 failed | 97 passed (98)
+      Tests  3 failed | 1100 passed (1103)
+ The 3 failures are all in src/editor/pdfjsCopy.test.ts (public/pdfjs/openjpeg_nowasm_fallback.js, LICENSE_OPENJPEG and
+ LICENSE_PDFJS_OPENJPEG "match the installed pdfjs-dist"). Known local-only failure: in a worktree git turns those vendored
+ files to CRLF, so the byte comparison fails; this PR does not touch them.
+ No other test file in src/editor fails; all 7 files above pass.
+ pnpm tsc --noEmit: exit=0
+ Rust was not touched (no cargo run).

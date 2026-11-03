@@ -5,8 +5,8 @@
 /* EDIT-005: the find bar over a code editor, in the app's own colours. */
 .pane.editor .cm-panels { background: var(--surface); color: var(--fg); border-color: var(--line-subtle); }
 .pane.editor .cm-search { font: 12px var(--ui-font); padding: 6px 8px; }
-.pane.editor .cm-search .cm-textfield { font-size: 12px; width: 220px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; }
-.pane.editor .cm-search .cm-textfield:focus { border-color: var(--line-focus); outline: none; }
+.pane.editor .cm-search .cm-textfield { font-size: 12px; width: 220px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--fg-faint); border-radius: 5px; padding: 3px 7px; }
+.pane.editor .cm-search .cm-textfield:focus { border-color: var(--fg-muted); outline: 1px solid var(--fg-muted); }
 .pane.editor .cm-search .cm-button { font-size: 11.5px; padding: 2px 8px; background: none; border: 1px solid var(--line-subtle); border-radius: 5px; color: var(--fg-muted); }
 .pane.editor .cm-search .cm-button:hover { color: var(--fg); }
 .pane.editor .cm-search label { font-size: 11.5px; color: var(--fg-muted); }
@@ -15,8 +15,8 @@
 /* EDIT-017: the find bar over a rendered note (preview and rich view). */
 .pane.editor .note-find { flex: none; display: flex; flex-direction: column; gap: 5px; padding: 6px 8px; background: var(--surface); border-bottom: 1px solid var(--line-subtle); font: 12px var(--ui-font); }
 .note-find .row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.note-find .textfield { font-size: 12px; width: 220px; max-width: 100%; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; }
-.note-find .textfield:focus { border-color: var(--line-focus); outline: none; }
+.note-find .textfield { font-size: 12px; width: 220px; max-width: 100%; background: var(--input-bg); color: var(--fg); border: 1px solid var(--fg-faint); border-radius: 5px; padding: 3px 7px; }
+.note-find .textfield:focus { border-color: var(--fg-muted); outline: 1px solid var(--fg-muted); }
 .note-find .opt { font: 600 11px var(--mono-font); padding: 2px 6px; background: none; border: 1px solid transparent; border-radius: 5px; color: var(--fg-muted); cursor: pointer; }
 .note-find .opt[aria-pressed="true"] { color: var(--fg); border-color: var(--line-focus); background: color-mix(in srgb, var(--line-focus) 25%, transparent); }
 .note-find .count { min-width: 72px; padding: 0 6px; font-size: 11.5px; color: var(--fg-muted); }
@@ -49,8 +49,8 @@
 
 /* EDIT-037: the explorer's content search. */
 .content-search { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 5px; padding: 8px; font: 12px var(--ui-font); }
-.content-search input { font: 12px var(--ui-font); min-width: 0; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; padding: 4px 7px; }
-.content-search input:focus { border-color: var(--line-focus); outline: none; }
+.content-search input { font: 12px var(--ui-font); min-width: 0; background: var(--input-bg); color: var(--fg); border: 1px solid var(--fg-faint); border-radius: 5px; padding: 4px 7px; }
+.content-search input:focus { border-color: var(--fg-muted); outline: 1px solid var(--fg-muted); }
 .content-search .cs-row { display: flex; align-items: center; gap: 3px; }
 .content-search .cs-row input { flex: 1; }
 .content-search .cs-row .ib { font: 600 11px var(--mono-font); width: auto; padding: 2px 5px; color: var(--fg-muted); border: 1px solid transparent; border-radius: 5px; }
@@ -73,7 +73,7 @@
 .csv-note { margin: 0; padding: 6px 12px; color: var(--fg-muted); font-size: 11.5px; }
 .csv-scroll { flex: 1; min-height: 0; overflow: auto; }
 .csv-table table { border-collapse: collapse; font: 12px var(--editor-font, var(--mono-font)); }
-.csv-table th, .csv-table td { border: 1px solid var(--border, color-mix(in srgb, var(--fg) 14%, transparent)); padding: 2px 8px; text-align: left; white-space: pre; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; }
+.csv-table th, .csv-table td { border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); padding: 2px 8px; text-align: left; white-space: pre; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; }
 .csv-table thead th { position: sticky; top: 0; background: var(--pane-bg); color: var(--fg); font-weight: 600; z-index: 1; }
 .csv-table th.csv-n { position: sticky; left: 0; color: var(--fg-faint); font-weight: 400; text-align: right; background: var(--pane-bg); }
 /* EDIT-020 (T-132-b): the review notes rail beside the rich view, and the Send menu's start section */
@@ -93,12 +93,12 @@
 .explorer .ex-filter { flex: none; display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line-subtle); }
 .explorer .ex-filter .field { flex: 1; min-width: 0; font-size: 12px; padding: 3px 7px; }
 /* EDIT-057 (T-237-b): the rich view's formatting toolbar */
-.pane.editor .rich-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 3px 8px; border-bottom: 1px solid var(--line-subtle); background: var(--bg-raised, var(--bg)); }
+.pane.editor .rich-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 3px 8px; border-bottom: 1px solid var(--line-subtle); background: var(--surface); }
 .pane.editor .rich-bar .ib { min-width: 26px; height: 24px; font-size: 12px; }
 .pane.editor .rich-bar .rich-bold { font-weight: 700; }
 .pane.editor .rich-bar .rich-italic { font-style: italic; }
 .pane.editor .rich-bar .rich-strike { text-decoration: line-through; }
-.pane.editor .rich-bar .rich-link-box { height: 24px; min-width: 12em; flex: 1 1 12em; max-width: 24em; font-size: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line-subtle); border-radius: 4px; padding: 0 6px; }
+.pane.editor .rich-bar .rich-link-box { height: 24px; min-width: 12em; flex: 1 1 12em; max-width: 24em; font-size: 12px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--fg-faint); border-radius: 4px; padding: 0 6px; }
 .md-rich details.md-details { border-left: 2px solid var(--line-subtle); margin: 0.5em 0; padding-left: 10px; }
 .md-rich summary.md-summary { font-weight: 600; cursor: pointer; }
 .pane.editor .rich-bar .rich-more { height: 24px; font-size: 12px; background: transparent; color: var(--fg); border: 1px solid var(--line-subtle); border-radius: 4px; }
@@ -124,48 +124,49 @@
 /* EDIT-048: the suggestion list under a repository or base-branch box. */
 .search-pick { position: relative; }
 .search-pick-list { position: absolute; z-index: 40; left: 0; right: 0; top: 100%; max-height: 240px; overflow-y: auto; padding: 4px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
-.search-pick-more { padding: 4px 8px; font-size: 11px; color: var(--fg-dim, var(--fg)); }
+.search-pick-more { padding: 4px 8px; font-size: 11px; color: var(--fg-muted); }
 /* EDIT-011 (T-234-b): table hover controls and the right-click menu, drawn in the strip outside the table */
-.table-ctl { position: fixed; z-index: 31; width: 18px; height: 18px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text); font: 600 13px/1 var(--ui-font); cursor: pointer; }
+.table-ctl { position: fixed; z-index: 31; width: 18px; height: 18px; padding: 0; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--fg); font: 600 13px/1 var(--ui-font); cursor: pointer; }
 .table-ctl.del { color: var(--danger, #e5534b); }
-.table-ctl:hover { background: var(--hover, var(--surface)); border-color: var(--accent, var(--line)); }
+.table-ctl:hover { background: var(--row-selected); border-color: var(--fg-muted); }
 .table-ctx { position: fixed; z-index: 32; min-width: 150px; padding: 4px; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); font: 12px var(--ui-font); }
-.table-ctx-item { text-align: left; padding: 4px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
-.table-ctx-item:hover:not(:disabled) { background: var(--hover, var(--surface)); }
+.table-ctx-item { text-align: left; padding: 4px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+.table-ctx-item:hover:not(:disabled) { background: var(--row-selected); }
 .table-ctx-item:disabled { opacity: 0.45; cursor: default; }
-.code-label { position: fixed; z-index: 31; width: 140px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text); font: 11px var(--ui-font); opacity: 0.85; }
+.code-label { position: fixed; z-index: 31; width: 140px; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); font: 11px var(--ui-font); opacity: 0.85; }
 .code-label:hover, .code-label:focus { opacity: 1; }
-.rich-draw { position: fixed; z-index: 30; max-height: 40vh; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+.rich-draw { position: fixed; z-index: 30; max-height: 40vh; overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
 .rich-draw iframe.md-diagram { display: block; width: 100%; border: 0; margin: 0 auto; background: transparent; }
 .rich-draw .md-math-block { text-align: center; overflow-x: auto; }
-.link-bubble { position: fixed; z-index: 60; display: flex; align-items: center; gap: 4px; max-width: min(420px, 90vw); padding: 3px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font: 12px var(--ui-font); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+.link-bubble { position: fixed; z-index: 60; display: flex; align-items: center; gap: 4px; max-width: min(420px, 90vw); padding: 3px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: 12px var(--ui-font); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
 .link-bubble-href { min-width: 0; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
 .link-bubble-input { min-width: 240px; font: 12px var(--ui-font); }
 .md-picture-skipped { display: inline-block; padding: 2px 8px; border-left: 3px solid var(--warn); font-size: 12px; color: var(--fg-muted); }
 /* EDIT-024: notebook cells */
 .nb-view { display: flex; flex-direction: column; overflow: hidden; }
 .nb-cells { padding: 4px 12px 24px; }
-.nb-cell { margin: 4px 0; border: 1px solid var(--border, color-mix(in srgb, var(--fg) 14%, transparent)); border-radius: 4px; }
+.nb-cell { margin: 4px 0; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); border-radius: 4px; }
 .nb-cell > header { display: flex; align-items: center; gap: 8px; padding: 2px 6px; font-size: 11.5px; color: var(--fg-muted); }
 .nb-tools { margin-left: auto; display: flex; gap: 4px; }
 .nb-n { color: var(--fg-faint); }
 .nb-src { display: block; box-sizing: border-box; width: 100%; margin: 0; padding: 6px 8px; border: 0; background: transparent; color: var(--fg); font: 12px/1.45 var(--editor-font, var(--mono-font)); resize: vertical; white-space: pre-wrap; overflow-wrap: anywhere; }
 .nb-k-markdown .nb-src { font-family: inherit; font-size: 13px; }
-.nb-out { margin: 0; padding: 6px 8px; border-top: 1px solid var(--border, color-mix(in srgb, var(--fg) 14%, transparent)); background: color-mix(in srgb, var(--fg) 5%, transparent); font: 12px/1.45 var(--editor-font, var(--mono-font)); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24em; overflow: auto; }
+.nb-out { margin: 0; padding: 6px 8px; border-top: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); background: color-mix(in srgb, var(--fg) 5%, transparent); font: 12px/1.45 var(--editor-font, var(--mono-font)); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24em; overflow: auto; }
 .nb-add { display: flex; gap: 4px; justify-content: center; padding: 2px 0; opacity: 0.45; }
 .nb-add:hover, .nb-add:focus-within { opacity: 1; }
 .nb-long > button { margin: 0 8px 6px; }
 /* EDIT-029: the image viewer and an SVG's picture side */
 .image-view { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
-.image-bar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid var(--border, color-mix(in srgb, var(--fg) 14%, transparent)); font-size: 12px; flex-wrap: wrap; }
+.image-bar { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-bottom: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); font-size: 12px; flex-wrap: wrap; }
 .image-zoom { min-width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; }
 .image-facts { margin-left: auto; color: var(--fg-muted); }
+.pdf-page-box { width: 3.5em; padding: 1px 4px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; border: 1px solid var(--fg-faint); }
 .image-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; cursor: grab; touch-action: none; background-image: conic-gradient(color-mix(in srgb, var(--fg) 7%, transparent) 25%, transparent 0 50%, color-mix(in srgb, var(--fg) 7%, transparent) 0 75%, transparent 0); background-size: 16px 16px; }
 .image-stage:active { cursor: grabbing; }
 .image-stage > img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
 .image-wait { margin: 16px; color: var(--fg-muted); }
 .image-why { margin: 16px; padding: 6px 10px; border-left: 3px solid var(--warn); color: var(--fg); }
-.pdf-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 0 8px; background: color-mix(in srgb, var(--fg) 8%, var(--bg)); outline: none; }
+.pdf-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 0 8px; background: color-mix(in srgb, var(--fg) 8%, var(--pane-bg)); outline: none; }
 .pdf-page { position: relative; margin: 8px auto 0; background: #fff; box-shadow: 0 1px 4px color-mix(in srgb, #000 35%, transparent); --scale-round-x: 1px; --scale-round-y: 1px; }
 .pdf-page > canvas { display: block; }
 /* EDIT-029 (T-235-b): over each page, the words as invisible text (select and copy; the window turns selection off everywhere else) and the links and notes. The page is always white, so these colours do not follow the theme. */

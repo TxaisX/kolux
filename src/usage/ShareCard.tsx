@@ -4,6 +4,7 @@
 // user's own numbers and nothing is sent by Kolux. Closing while the picture is still being made
 // leaves nothing running that touches the dialog afterwards.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDialogFocus } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { vendorMark, vendorUrl } from "../marks/registry";
 import ShareButton from "./ShareButton";
@@ -25,6 +26,7 @@ const box = { display: "flex", flexDirection: "column", gap: 12, padding: "16px 
 export default function ShareCard({ provider, rows, range, today, onClose }: Props) {
   const card = useMemo(() => cardOf(provider, rows, range, today), [provider, rows, range, today]);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [copy, setCopy] = useState<"idle" | "busy" | "done" | "failed">("idle");
@@ -56,11 +58,8 @@ export default function ShareCard({ provider, rows, range, today, onClose }: Pro
     };
   }, [card, provider]);
 
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [onClose]);
+  // usage-status.md:9: focus moves into the dialog, Tab stays inside, Escape closes it from anywhere, and focus goes back to Share.
+  useDialogFocus(dialog, onClose);
 
   const onCopy = async () => {
     if (!canvas.current || copy === "busy") return;
@@ -79,7 +78,7 @@ export default function ShareCard({ provider, rows, range, today, onClose }: Pro
 
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={`Share ${card.providerName} usage`} style={box}>
+      <div ref={dialog} role="dialog" aria-modal="true" aria-label={`Share ${card.providerName} usage`} style={box}>
         <canvas ref={canvas} width={CARD_W} height={CARD_H} aria-label={`${card.providerName} usage card, ${card.rangeLabel}`} style={{ width: "100%", height: "auto", aspectRatio: `${CARD_W} / ${CARD_H}`, borderRadius: 8 }} />
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
           <button type="button" className="btn" onClick={() => void onCopy()} disabled={copy === "busy"}>

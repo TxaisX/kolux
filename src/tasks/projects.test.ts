@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyAssignees, applyCellEdit, assigneeChange, cellEditable, cellText, cloneAddress, cellKey, endSave, newBook, sendEdit, settleEdit, readBackStart, readBackFresh, readBackLost, isSaving, startSave, groupItems, labelChange, openingView, parseProjectRef, type Project, type ProjectField, projectHostRefused, type ProjectItem, pushRecent, refsFrom, scopeItems, sortItems, togglePin, viewLabel, viewSupport, viewUrl } from "./projects";
+import { chosenDefault, applyAssignees, applyCellEdit, assigneeChange, cellEditable, cellText, cloneAddress, cellKey, endSave, newBook, sendEdit, settleEdit, readBackStart, readBackFresh, readBackLost, isSaving, startSave, groupItems, labelChange, openingView, parseProjectRef, type Project, type ProjectField, projectHostRefused, type ProjectItem, pushRecent, refsFrom, scopeItems, sortItems, togglePin, viewLabel, viewSupport, viewUrl } from "./projects";
 
 const status: ProjectField = { id: "F_s", name: "Status", kind: "single_select", options: [{ id: "o1", name: "Todo", start: "", days: 0 }, { id: "o2", name: "Done", start: "", days: 0 }] };
 const points: ProjectField = { id: "F_p", name: "Points", kind: "number", options: [] };
@@ -271,5 +271,16 @@ describe("T-314-d the issue's own fields", () => {
     expect(cloneAddress("github.com", "acme/app")).toBe("https://github.com/acme/app.git");
     expect(cloneAddress("git.corp.example:8443", "corp/lib.js")).toBe("https://git.corp.example:8443/corp/lib.js.git");
     for (const [h, r] of [["github.com", "acme"], ["github.com", "a/b/c"], ["github.com", "../x"], ["github.com", "a/.."], ["github.com", "a b/c"], ["evil.com/x@", "a/b"], ["", "a/b"]]) expect(cloneAddress(h, r)).toBeNull();
+  });
+});
+
+describe("UX audit: Chosen repositories does not start empty", () => {
+  it("ticks the project's repositories that are open in Kolux", () => {
+    expect(chosenDefault(["acme/api", "acme/web", "acme/docs"], ["acme/web", "other/x"])).toEqual(["acme/web"]);
+    expect(chosenDefault(["Acme/Web"], ["acme/web"])).toEqual(["Acme/Web"]);
+  });
+  it("ticks them all when none is open in Kolux, so the table is not empty", () => {
+    expect(chosenDefault(["acme/api", "acme/web"], [])).toEqual(["acme/api", "acme/web"]);
+    expect(chosenDefault([], ["acme/web"])).toEqual([]);
   });
 });

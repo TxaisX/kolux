@@ -117,7 +117,12 @@ describe("APP-025", () => {
     await start();
     expect(sent("update_restart")).toHaveLength(0);
     await click(root, popupButton(doc.body, "Update now"));
+    // Restarting ends every terminal and agent, so it asks first; nothing restarts until the user agrees.
+    expect(sent("update_restart")).toHaveLength(0);
+    expect(withText(doc.body, "h2", "Restart to update?")).toHaveLength(1);
+    await click(root, withText(doc.body, "button", "Restart now")[0]);
     expect(sent("update_restart")).toHaveLength(1);
+    expect(popupButton(doc.body, "Restarting…")).toBeDefined();
   });
 
   test("Later closes the notice for this launch only; a new launch offers it again, and nothing is remembered", async () => {
@@ -236,6 +241,7 @@ describe("APP-027", () => {
     expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
     expect(notes(doc.body)).toEqual([]);
     await click(root, withText(doc.body, "button", "Restart to update")[0]);
+    await click(root, withText(doc.body, "button", "Restart now")[0]);
     expect(sent("update_restart")).toHaveLength(1);
   });
 });

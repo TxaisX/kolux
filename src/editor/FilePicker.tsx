@@ -2,7 +2,7 @@
 // files (EDIT-012) and the New tab menu's changed files (EDIT-027). All three rank the same way.
 // The list is asked for afresh each time the picker opens, so a failed listing is tried again
 // rather than remembered.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export type Pick = { path: string; tag?: string; staged?: boolean };
 export type Listing = { items: Pick[]; capped: boolean; note?: string };
@@ -52,6 +52,11 @@ export function quickOpenList(root: string, l: { files: string[]; capped: boolea
   return { items: l.files.map((r) => ({ path: base + (sep === "/" ? r : r.split("/").join(sep)) })), capped: l.capped, note };
 }
 
+/** Scrolls the active option of a listbox just into view (nothing moves when it already shows). */
+export function scrollActive(box: { querySelector: (selector: string) => unknown } | null) {
+  (box?.querySelector('[aria-selected="true"]') as Partial<HTMLElement> | null | undefined)?.scrollIntoView?.({ block: "nearest" });
+}
+
 export default function FilePicker({ root, what, load, onPick, onClose }: Props) {
   const [list, setList] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +64,14 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
   const [filter, setFilter] = useState("");
   const [at, setAt] = useState(0);
   const [tip, setTip] = useState<{ x: number; y: number; path: string } | null>(null);
+  // An arrow key moves the active option; it is scrolled into view (a hover moves it too, but never scrolls).
+  const listBox = useRef<HTMLDivElement>(null);
+  const arrowed = useRef(false);
+  useEffect(() => {
+    if (!arrowed.current) return;
+    arrowed.current = false;
+    scrollActive(listBox.current);
+  }, [at]);
 
   useEffect(() => {
     load().then(setList, (err) => setError(String(err)));
@@ -100,14 +113,14 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
           onKeyDown={(e) => {
             if (e.key === "Escape") onClose();
             else if (e.key === "Enter") pick(hits[at]);
-            else if (e.key === "ArrowDown") setAt((i) => Math.min(i + 1, hits.length - 1));
-            else if (e.key === "ArrowUp") setAt((i) => Math.max(i - 1, 0));
+            else if (e.key === "ArrowDown") (arrowed.current = true, setAt((i) => Math.min(i + 1, hits.length - 1)));
+            else if (e.key === "ArrowUp") (arrowed.current = true, setAt((i) => Math.max(i - 1, 0)));
             else return;
             e.preventDefault();
             e.stopPropagation();
           }}
         />
-        <div className="picker-list" role="listbox" onMouseLeave={() => setTip(null)}>
+        <div ref={listBox} className="picker-list" role="listbox" onMouseLeave={() => setTip(null)}>
           {error && (
             <div className="menu-hint">
               Could not list them: {error}.{" "}

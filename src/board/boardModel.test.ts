@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import { buildLanes, dragSet, droppedPaths, escapeAction, FRESH_QUERY, LANE_GAP, LANE_MAX, LANE_MIN, laneLeft, laneRange, laneWidth, matches, nearestLane, pick, selectLane, windowRange, type BoardCard, type Status } from "./boardModel";
+import { buildLanes, dragSet, droppedPaths, escapeAction, FRESH_QUERY, LANE_GAP, LANE_MAX, LANE_MIN, laneLeft, laneRange, laneWidth, listFailure, matches, moveFailure, nearestLane, pick, selectLane, windowRange, type BoardCard, type Status } from "./boardModel";
 import WorkspaceBoardView from "./WorkspaceBoard";
 
 const card = (n: number, status = "todo", project = "alpha"): BoardCard => ({ path: `C:/w/${project}/${n}`, project, projectId: project, label: `work ${n}`, branch: `feat/${n}`, status, isMain: false });
@@ -85,4 +85,15 @@ test("PROJ-085: a row dragged from the sidebar can be dropped on a lane; junk is
   expect(droppedPaths("not json")).toEqual([]);
   expect(droppedPaths(JSON.stringify({ a: 1 }))).toEqual([]);
   expect(droppedPaths(null)).toEqual([]);
+});
+
+test("a refused move says the cards went back", () => {
+  expect(moveFailure(1, "disk full")).toBe("The move did not go through, so that workspace was put back where it came from. disk full");
+  expect(moveFailure(3, "x")).toContain("those 3 workspaces were put back where they came from");
+});
+
+test("names the projects whose workspaces could not be listed", () => {
+  expect(listFailure([])).toBeNull();
+  expect(listFailure(["api"])).toBe("Could not list the workspaces of api, so their cards are missing here.");
+  expect(listFailure(["a", "b", "c", "d", "e"])).toContain("a, b, c, and 2 more");
 });

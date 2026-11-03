@@ -9,6 +9,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Close } from "../chrome/icons";
+import { restoreFocus } from "../shell/paletteCaps";
+import { bodyView, focusLost, peekDraft, stashDraft } from "./dialogState";
 import { type IssueAction, runAction } from "./issueActions";
 import Markdown from "./MarkdownView";
 import MentionField from "./MentionField";
@@ -22,7 +24,8 @@ const FRESH_MS = 15_000;
 // and `onShowState`/`onUndoState` hand a change to the page before and after GitHub answers; `onState` carries GitHub's answer.
 export default function TaskDialog({ task, host, onClose, onLabels, onState, onAssign, onUndoAssign, onShowState, onUndoState, onEditLabels, onUndoLabels, edit, work, onPage }: { task: Task; host: string; onClose: () => void; onLabels: (labels: TaskLabel[]) => void; onState: (d: TaskDetail) => void; onAssign?: (add: string[], remove: string[]) => void; onUndoAssign?: (add: string[], remove: string[]) => void; onShowState?: (state: string) => void; onUndoState?: () => void; onEditLabels?: (add: TaskLabel[], remove: string[]) => void; onUndoLabels?: (add: string[], remove: string[]) => void; edit?: Edit; work?: { label: string; run: () => void }; onPage?: () => void }) {
   const [detail, setDetail] = useState<TaskDetail | null>(null);
-  const [draft, setDraft] = useState<string | null>(null);
+  // An unsaved description left when the dialog was last closed comes back in the editor.
+  const [draft, setDraft] = useState<string | null>(() => peekDraft(task.url));
   const [offer, setOffer] = useState<TaskLabel[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -32,24 +35,34 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
   const tell = useRef(onLabels);
   tell.current = onLabels;
   const args = { host, repo: task.repo, number: task.number };
+  const unsaved = useRef({ url: task.url, draft, saved: detail?.body ?? null });
+  unsaved.current = { url: task.url, draft, saved: detail?.body ?? null };
 
   // FIX-3 (review A4): closing the dialog returns focus to what had it before (declared before the
-  // effect that moves focus into the dialog, so it reads the opener first).
+  // effect that moves focus into the dialog, so it reads the opener first). If the opener is gone
+  // (its list row was redrawn), focus goes to the terminal or editor like the palette does.
+  // An unsaved description is kept for the next time this item's dialog opens.
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     return () => {
-      if (before?.isConnected) before.focus?.();
+      const u = unsaved.current;
+      stashDraft(u.url, u.draft, u.saved);
+      queueMicrotask(() => void restoreFocus(before, (s) => document.querySelector<HTMLElement>(s)));
     };
   }, []);
+  // A button the dialog removed or disabled (a label ×, Close issue) leaves focus on nothing: put it back in the dialog.
   useEffect(() => {
-    const read = () =>
-      invoke<TaskDetail>("scm_task_detail", args)
-        .then((d) => {
-          setDetail(d);
-          setError(null);
-          tell.current(d.labels);
-        })
-        .catch((e) => setError(String(e)));
+    if (box.current && focusLost(document.activeElement, document.body)) box.current.focus();
+  });
+  const read = () =>
+    invoke<TaskDetail>("scm_task_detail", args)
+      .then((d) => {
+        setDetail(d);
+        setError(null);
+        tell.current(d.labels);
+      })
+      .catch((e) => setError(String(e)));
+  useEffect(() => {
     void read();
     invoke<TaskLabel[]>("scm_repo_labels", { host, repo: task.repo })
       .then(setOffer)
@@ -107,14 +120,19 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
         onUndoAssign?.(add, remove);
       });
   };
-  const refresh = () =>
-    invoke<TaskDetail>("scm_task_detail", args)
-      .then((d) => {
-        setDetail(d);
-        onState(d);
-      })
-      .catch((e) => setError(String(e)));
+  // readBack rejects, so an issue action can say "it went through, but reading it back failed"; refresh shows the error itself.
+  const readBack = () =>
+    invoke<TaskDetail>("scm_task_detail", args).then((d) => {
+      setDetail(d);
+      onState(d);
+    });
+  const refresh = () => readBack().catch((e) => setError(String(e)));
 
+  const view = bodyView(detail, error);
+  const retry = () => {
+    setError(null);
+    void read();
+  };
   const have = withLabels(detail?.labels ?? task.labels, edit);
   const more = offer.filter((o) => !have.some((h) => h.name === o.name));
   const state = edit?.state ?? detail?.state ?? task.state;
@@ -142,7 +160,7 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
           <a className="btn" href={task.url} target="_blank" rel="noreferrer">
             Open on GitHub
           </a>
-          <button className="ib" title="Close" onClick={onClose}>
+          <button className="ib" title="Close" aria-label="Close" onClick={onClose}>
             <Close />
           </button>
         </div>
@@ -174,7 +192,14 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
               <MentionField className="task-body-edit" label="Description" value={draft} onChange={setDraft} people={people} />
             ) : (
               <div className="task-body" data-task-body>
-                {detail === null ? "Loading…" : detail.body ? <Markdown text={detail.body} /> : <span className="muted">No description.</span>}
+                {view === "loading" ? "Loading…" : view === "failed" ? (
+                  <span role="alert">
+                    This could not be read from GitHub.{" "}
+                    <button className="btn" onClick={retry}>
+                      Retry
+                    </button>
+                  </span>
+                ) : detail?.body ? <Markdown text={detail.body} /> : <span className="muted">No description.</span>}
               </div>
             )}
             <span className="task-cap">Timeline</span>
@@ -187,7 +212,7 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
               ))}
               {detail && detail.events.length === 0 && <li className="muted">Nothing has happened yet.</li>}
             </ul>
-            {task.kind === "issue" && <IssueActions host={host} task={task} state={state} title={detail?.title || task.title} onDone={refresh} onShow={onShowState} onUndo={onUndoState} />}
+            {task.kind === "issue" && <IssueActions host={host} task={task} state={state} title={detail?.title || task.title} onDone={readBack} onShow={onShowState} onUndo={onUndoState} />}
           </div>
           <div className="auto-dialog-side">
             <span className="task-cap">Labels</span>
@@ -196,7 +221,7 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
                 <span key={l.name} className="tasks-label" style={l.color ? { borderColor: `#${l.color}` } : undefined}>
                   {l.color && <i style={{ background: `#${l.color}` }} />}
                   {l.name}
-                  <button className="task-x" title={`Remove ${l.name}`} onClick={() => labels([], [l.name])}>
+                  <button className="task-x" title={`Remove ${l.name}`} aria-label={`Remove label ${l.name}`} onClick={() => labels([], [l.name])}>
                     ×
                   </button>
                 </span>
@@ -216,7 +241,7 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
               {assignees.map((a) => (
                 <span key={a} className="tasks-who">
                   @{a}
-                  <button className="task-x" title={`Unassign ${a}`} onClick={() => assign([], [a])}>
+                  <button className="task-x" title={`Unassign ${a}`} aria-label={`Unassign ${a}`} onClick={() => assign([], [a])}>
                     ×
                   </button>
                 </span>

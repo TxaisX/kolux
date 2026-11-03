@@ -5,7 +5,8 @@
 //! alone, trimmed from the left so the real domain stays readable, marked "Not secure" for plain
 //! http to another computer, then the page title. Closing the tab closes its popups; a closed
 //! popup is unlinked from its tab. Unsafe addresses are refused, and before the opener's page has
-//! finished its first load a popup goes to the system browser instead.
+//! finished its first load a popup goes to the system browser instead, once the user says Open in
+//! the ask Kolux shows above the page, naming the host (T-661).
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::sync::{LazyLock, Mutex};
@@ -75,7 +76,8 @@ pub enum Route {
     Tab,
     /// A sized `window.open`: the small linked window.
     Window,
-    /// The opener's page has not finished its first load: the system browser instead.
+    /// The opener's page has not finished its first load: the system browser instead, after the
+    /// pane's ask (T-661; the page's word and a click are not enough).
     System,
 }
 

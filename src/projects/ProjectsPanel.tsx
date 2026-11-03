@@ -6,7 +6,7 @@
 // Every action goes to the Rust side; this file only draws the state it gets back.
 // T-013: adding a project opens its main checkout (PROJ-007); Mod+N or the header's plus opens
 // the name field for the project in front, a stand-in row shows while Git works, and the new
-// workspace opens with a shell of its own unless the user moved on meanwhile (PROJ-020).
+// workspace opens on its launch chooser unless the user moved on meanwhile (PROJ-020, T-569).
 // T-014-a: the name field also takes a start ref, an agent and a first prompt (PROJ-028,
 // PROJ-038); the footer gear sets the global workspaces folder and layout, a project's own gear
 // its folder and base ref (PROJ-025).
@@ -24,13 +24,14 @@ import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keep
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, runningUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
 import { recordPoll } from "../scm/prSearch";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
-import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, splitGitSaid, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
-import { ArrowRight, Bell, ChevronDown, Close, EyeOff, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Sliders, Target, Box, Pin, Moon } from "../chrome/icons";
+import { createStart } from "./workspaceStart";
+import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
+import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
 import AddProject from "./AddProject";
 import CleanupDialog from "./CleanupDialog";
 import KeptBranches from "./KeptBranches";
@@ -52,6 +53,10 @@ import Picker, { type PickItem } from "./Picker";
 import StartGit, { type FirstFile } from "./StartGit";
 import ScanRepos from "./ScanRepos";
 import { ADD_PROJECT } from "../onboarding/firstRun";
+import { MessageNote } from "./MessageNote";
+import { addReport, type AddOutcome } from "./rows";
+import { PROJECT_COMMAND_EVENT, isProjectCommand, type ProjectCommandId } from "./commands";
+import { restoreField } from "./draft";
 import PlusMenu, { type AgentInfo } from "../launch/PlusMenu";
 import { openSettings as openSettingsPage } from "../settings/pages";
 import { BehindNote, ListButtons, OutsideCard, PickedBar } from "../shell/ProjectsExtras";
@@ -71,6 +76,9 @@ import type { AgentPass } from "../launch/agents";
 import { KeyText } from "../keys/KeymapContext";
 import { GLOSSARY } from "../glossary";
 import HelpMenu from "../onboarding/HelpMenu";
+import { deferred } from "../lazy/deferred";
+// UX lane C: the Getting Started entry (and the Setup Guide behind it) loads after the first frame, not in it.
+const SidebarStart = deferred(() => import("../onboarding/SidebarStart"));
 import { asksBeforeClose } from "../terminal/closing";
 import "./sidebar.css";
 import ImportSetup, { refusedLine, type SetupImport } from "./ImportSetup";
@@ -78,10 +86,10 @@ import { issueCommand } from "../setup/IssueCommand";
 import { trustedSetup } from "../setup/TrustPrompt";
 import { NO_GROUPS, groupChoices, groupTree, keepNewer, type Group, type Groups, type Node } from "./groups";
 import { dropBand, parentDropTarget } from "./parentDrop";
-import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds } from "./order";
+import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow, stepSiblings } from "./order";
 import { pendingWrites } from "./settingWrite";
 import { CLEAR_FILTERS, FILTER_DEFAULT_SETTING, FILTER_PROJECTS_SETTING, filtersFrom, filtersOn, rowShown, toggleProject } from "./filter";
-import { deletePlan, groupMenu, projectMenu, rowMenu, type MenuItem } from "./menu";
+import { deletePlan, groupMenu, menuGaps, menuMove, projectMenu, rowMenu, type MenuItem } from "./menu";
 import { commentBlocks, itemFromPaste, type Span } from "./details";
 import { onWorkspaceStatus } from "./statusRefresh";
 import StatusEditor from "./StatusEditorForm";
@@ -113,7 +121,7 @@ type Props = {
   activeDir: string | null;
   /** A click on a row shows that workspace. */
   /** `fresh`: the workspace was just made (TERM-005 seeds its grid). */
-  onSelect: (dir: string, branch: string | null, fresh?: boolean) => void;
+  onSelect: (dir: string, branch: string | null, fresh?: boolean, prefill?: { agent: string | null; task: string }) => void;
   /** A new project was added and its main checkout opened (ONB-010 starts the default agent there once). */
   onAdded?: (dir: string, branch: string | null) => void;
   /** After a workspace and its folder are gone, so the window drops its panes. */
@@ -176,22 +184,6 @@ type Props = {
 const NOT_BUILT = false;
 const RECENT_KEY = "kolux.composer.recentProjects";
 const ADD_ITEM = "+add";
-// PROJ-031: Kolux's sentence first; Git's own output stays one click away.
-function MessageNote({ kind, text }: { kind: string; text: string }) {
-  const { summary, git } = splitGitSaid(text);
-  return (
-    <div className={`note ${kind}`}>
-      {summary}
-      {git && (
-        <details>
-          <summary>Git's full output</summary>
-          <pre>{git}</pre>
-        </details>
-      )}
-    </div>
-  );
-}
-
 const readRecent = (): string[] => {
   try {
     const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
@@ -216,8 +208,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   useEffect(() => {
     if (!menu) return;
     const back = document.activeElement as HTMLElement | null;
+    // Once, as it opens (not on every render): the first item takes the focus so the arrow keys work at once.
+    document.querySelector<HTMLElement>('.sb-menu [role="menuitem"]:not(:disabled)')?.focus();
     const esc = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" && e.key !== "Tab") return; // Tab leaves the menu: it closes and focus goes back
       e.preventDefault();
       e.stopPropagation();
       setMenu(null);
@@ -294,8 +288,20 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     window.addEventListener(ADD_PROJECT, open);
     return () => window.removeEventListener(ADD_PROJECT, open);
   }, []);
+  // PALETTE-007: "Add project", "New group" and "Scan for repos" from the command palette (see ./commands).
+  const palette = useRef<(id: ProjectCommandId) => void>(() => {});
+  useEffect(() => {
+    const on = (e: Event) => {
+      const id = (e as CustomEvent).detail;
+      if (isProjectCommand(id)) palette.current(id);
+    };
+    window.addEventListener(PROJECT_COMMAND_EVENT, on);
+    return () => window.removeEventListener(PROJECT_COMMAND_EVENT, on);
+  }, []);
   const [creating, setCreating] = useState<string | null>(null); // project id whose name field is open; "" with no project yet
   const [pending, setPendingList] = useState<PendingCreate[]>([]); // the stand-in rows while Git works
+  const creatingNow = useRef<string | null>(null); // the project whose composer is open right now, for a create that fails after an await
+  creatingNow.current = creating;
   const pendingNow = useRef<PendingCreate[]>([]);
   const setPending = (next: PendingCreate[]) => {
     pendingNow.current = next;
@@ -333,12 +339,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const nameRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [previewAnswered, setPreviewAnswered] = useState(false); // Git has answered for the name now shown
+  const [sleepAsk, setSleepAsk] = useState<{ path: string; note: string } | null>(null);
   const [confirm, setConfirm] = useState<{ projectId: string; path: string; branch: string; check: RemoveCheck; force: boolean; keep?: boolean; refusal?: string } | null>(null);
   const [forgetAsk, setForgetAsk] = useState<{ projectId: string; path: string; label: string; refused?: string } | null>(null); // row 364: the question before a folder workspace is taken out of Kolux; `refused` is why it cannot be (364b)
   const [busy, setBusy] = useState("");
   const [startGit, setStartGit] = useState<{ folder: string; files: FirstFile[] } | null>(null);
   const [importing, setImporting] = useState<{ project: string; path: string; list: SetupImport[] } | null>(null);
-  const [message, setMessage] = useState<{ kind: "ok" | "warn" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ kind: "ok" | "warn" | "error"; text: string; undo?: () => void } | null>(null);
   const [gitVersion, setGitVersion] = useState("");
   const indexed = useRef(""); // the last project list and owner map handed to the window
   const [filterOpen, setFilterOpen] = useState(false);
@@ -385,6 +392,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     invoke("activity_touch", { path }).catch(() => {});
   }
   const say = (kind: "ok" | "warn" | "error", text: string) => setMessage({ kind, text });
+  // A good-news note fades by itself; a warning or error stays until it is closed or replaced.
+  useEffect(() => {
+    if (message?.kind !== "ok") return;
+    const t = window.setTimeout(() => setMessage((m) => (m === message ? null : m)), 8000);
+    return () => window.clearTimeout(t);
+  }, [message]);
   const [icons, setIcons] = useState<Record<string, string>>({}); // PROJ-019: icons chosen by hand, by project id
   const autoIcons = useAutoIcons(projects.map((p) => p.id)); // PROJ-018: the icon found in each repository
   const top = useTopButton(); // PROJ-054
@@ -671,21 +684,39 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setBusy("");
     }
   };
-  const addPath = async (path: string) => {
+  // quiet: several folders at once, so nothing is asked or shown here; the caller reads the outcome (see addReport).
+  const addPath = async (path: string, quiet = false): Promise<AddOutcome | undefined> => {
     if (!path.trim()) return;
     setBusy("adding");
     try {
       await added(await invoke<Project>("project_add", { path }));
+      return { path, kind: "added" };
     } catch (err) {
       // GIT-061: a plain folder is offered Git and a first commit; a relative or missing path is refused.
-      if (!String(err).includes("not inside a Git repository")) fail(err);
-      else
-        await invoke<FirstFile[]>("git_first_commit_preview", { path })
-          .then((files) => setStartGit({ folder: path.trim(), files }))
-          .catch(fail);
+      if (!String(err).includes("not inside a Git repository")) {
+        if (!quiet) fail(err);
+        return { path, kind: "failed", error: String(err) };
+      }
+      if (quiet) return { path, kind: "plain" };
+      await invoke<FirstFile[]>("git_first_commit_preview", { path })
+        .then((files) => setStartGit({ folder: path.trim(), files }))
+        .catch(fail);
+      return { path, kind: "plain" };
     } finally {
       setBusy("");
     }
+  };
+  // PROJ-002: several folders (picked or dropped). Git repositories are added; the plain ones are counted instead of each replacing the last question.
+  const addMany = async (list: string[]) => {
+    if (list.length === 1) return void (await addPath(list[0]));
+    const outcomes: AddOutcome[] = [];
+    for (const dir of list) {
+      const o = await addPath(dir, true);
+      if (o) outcomes.push(o);
+    }
+    const report = addReport(outcomes);
+    if (report.ask) await addPath(report.ask);
+    if (report.note) say(report.kind, report.note);
   };
   // PROJ-005: the plain folder can also be opened as a folder project, with no Git.
   const openAsFolder = async () => {
@@ -728,7 +759,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
 
   // EDIT-039: folders dropped from the desktop onto the project list are added one after another.
   useEffect(() => {
-    projectDrop.add = (paths) => void paths.reduce((chain, dir) => chain.then(() => addPath(dir)), Promise.resolve());
+    projectDrop.add = (paths) => void addMany(paths);
     return () => {
       projectDrop.add = null;
     };
@@ -738,10 +769,26 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     try {
       const picked = await open({ directory: true, multiple: true, title: "Choose project folders" });
       const list = Array.isArray(picked) ? picked : picked ? [picked] : [];
-      for (const dir of list) await addPath(dir);
+      await addMany(list);
     } catch (err) {
       fail(err);
     }
+  };
+
+  const scanPick = async () => {
+    try {
+      const picked = await open({ directory: true, title: "Choose a folder to scan for repositories" });
+      if (typeof picked === "string") setScanRoot(picked);
+    } catch (err) {
+      fail(err);
+    }
+  };
+  palette.current = (id) => {
+    if (id === "project.add") setAdding(true);
+    else if (id === "project.newGroup") {
+      if (groupBy === "project") void newGroup();
+      else say("warn", "New group works while the list is grouped by project. Change that under Group and sort.");
+    } else void scanPick();
   };
 
   // SET-032: a failed save leaves the draft as typed, so Enter or leaving the field sends it again.
@@ -793,16 +840,44 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     setGroupParent(g.parent ?? "");
     setDropGroup(null);
   };
+  // A new group exists on the backend before its form is saved; Cancel (or closing the form) takes it away again.
+  // T-689: at most one fresh unsaved group at a time. The ref follows the state at once, so a second press that lands
+  // before the render still sees the first one.
+  const [freshGroup, setFreshGroupState] = useState<string | null>(null);
+  const freshRef = useRef<string | null>(null);
+  const setFreshGroup = (id: string | null) => {
+    freshRef.current = id;
+    setFreshGroupState(id);
+  };
   const newGroup = () =>
     invoke<Groups>("group_create", { name: "", parent: null })
-      .then((g) => openGroup(takeGroups(g).groups[g.groups.length - 1]))
+      .then((g) => {
+        const made = takeGroups(g).groups[g.groups.length - 1];
+        const earlier = freshGroupToDrop(freshRef.current, made.id, g.groups.map((x) => x.id)); // the empty one still open: drop it, same guard as a closing form
+        setFreshGroup(made.id);
+        openGroup(made);
+        if (earlier !== null) invoke<Groups>("group_delete", { id: earlier, removeProjects: false }).then((d) => takeGroups(d), fail);
+      })
       .catch(fail);
+  useEffect(() => {
+    if (freshGroup === null || groupFor === freshGroup) return;
+    const id = freshGroup;
+    setFreshGroup(null);
+    if (freshGroupToDrop(id, groupFor, groups.groups.map((x) => x.id)) === null) return; // already deleted from its own form
+    invoke<Groups>("group_delete", { id, removeProjects: false }).then((g) => takeGroups(g), fail);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupFor, freshGroup]);
   const saveGroup = async (g: Group) => {
+    // Saved: it stays. It stops being the unsaved new group before the backend answers, so a New group, Cancel or another
+    // form opened meanwhile cannot drop it; and the answer closes only this group's form, not one opened since.
+    const wasFresh = freshRef.current === g.id;
+    if (wasFresh) setFreshGroup(null);
     try {
       if (groupName.trim() !== g.name) takeGroups(await invoke<Groups>("group_rename", { id: g.id, name: groupName }));
       if (groupParent !== (g.parent ?? "")) takeGroups(await invoke<Groups>("group_nest", { id: g.id, parent: groupParent || null }));
-      setGroupFor(null);
+      setGroupFor((open) => (open === g.id ? null : open));
     } catch (err) {
+      if (wasFresh && freshRef.current === null) setFreshGroup(g.id); // not saved: still the unsaved new group
       fail(err);
     }
   };
@@ -812,8 +887,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
+      setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
       setGroupFor(null);
       setDropGroup(null);
+      focusNewGroup(); // the group's own buttons are gone with it
       say("ok", remove ? `Deleted the group ${g.name} and took its projects out of Kolux; their folders are still on disk` : `Deleted the group ${g.name}; its projects are at the top level now`);
       if (remove) await reload();
     } catch (err) {
@@ -834,7 +911,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
 
-  // PROJ-020: a stand-in row at once, then the workspace opens with a shell of its own; if the
+  // PROJ-020: a stand-in row at once, then the workspace opens on its launch chooser (T-569); if the
   // user moved to another workspace meanwhile the create finishes without pulling focus back.
   // A newer create overtakes a running one (unless that one was made with Create more): Kolux
   // cancels it, and Git's half-made checkout is removed; one that finished first stays, in the
@@ -857,6 +934,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const from = shown.current;
     const prompt = promptDraft.trim();
     const agent = agentDraft ? (installed.find((a) => a.id === agentDraft) ?? null) : prompt ? fallbackAgent : null;
+    const saved = { name, branch: branchDraft, prompt: promptDraft, base: baseDraft };
+    const savedPr = prDraft;
     const mine: PendingCreate = { ticket: ++tickets.current, projectId: project.id, name: typed || (pr ? `#${pr.number}` : reuse), more: keepOpen };
     for (const t of overtakenBy(pendingNow.current, mine)) {
       overtaken.current.add(t);
@@ -873,12 +952,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setBaseDraft("");
       setParentDraft(null);
     }
+    let made = false; // set once Git has made it: later trouble must not put the words back
     try {
       const wt = pr
         ? await invoke<Created>("workspace_open_pr", { projectId: project.id, number: pr.number, folder: typed || null, name: typed || null, parent, ticket: mine.ticket, activeFolder: from })
         : reuse
         ? await invoke<Created>("workspace_open_branch", { projectId: project.id, branch: reuse, folder: existing ? typed || null : null, parent, ticket: mine.ticket, activeFolder: from })
         : await invoke<Created>("workspace_create", { projectId: project.id, name: typed, base: base || null, branch: branch || null, parent, ticket: mine.ticket, issue, activeFolder: from, suggested: typed === shownSuggestion.current }); // PROJ-039 (T-107-d): a suggested name left as it was may be renamed by the first work
+      made = true;
       const lost = overtaken.current.has(mine.ticket);
       noteRecent(project.id);
       if (stopped.current.has(mine.ticket)) {
@@ -890,17 +971,21 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const extra = [wt.note, ...wt.warnings.filter((x) => !isBehindHint(x))].filter(Boolean).join(" · ");
       say(extra ? "warn" : "ok", `created ${worktreeLabel(wt)} in ${wt.path} from ${wt.base}${extra ? ` · ${extra}` : ""}`);
       await reload();
-      // The agent's tab is the workspace's first; a shell is only opened when no agent runs. With
-      // Create more the new workspace does not take the front, so the next name can be typed.
+      // T-664 (b): a workspace that takes the front opens its launch chooser with the form's AI in Seat 1 and the
+      // note as the task; nothing runs until the person presses Start. With Create more the new workspace does not
+      // take the front (no chooser on screen), so there the agent starts as before and the next name can be typed.
       // A create overtaken after Git had already finished it stays, but never takes the front.
       const front = !keepOpen && !lost && shown.current === from;
       // PROJ-033: the project's setup script runs in a Setup terminal; a script that cannot run says why.
       const setup = setupSkip || !onSetup ? null : await trustedSetup(wt.path).catch((err) => (say("warn", String(err)), null));
-      if (agent && setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)) {
+      // The chooser's Start is the person's, so it never waits for the setup script; the script still runs, behind it.
+      const how = createStart(!!agent, !!prompt, front, !!(setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)));
+      if (how === "setup-then-start" && agent && setup && onSetup) {
         onSetup(wt.path, wt.branch, setup, setupWhere, front, () => onStartIn(agent, wt.path, wt.branch, prompt, front));
       } else {
-        if (agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
-        else if (front) onSelect(wt.path, wt.branch, true);
+        if (how === "start" && agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
+        else if (how === "select-prefill") onSelect(wt.path, wt.branch, true, { agent: agent?.id ?? null, task: prompt });
+        else if (how === "select") onSelect(wt.path, wt.branch, true);
         if (setup && onSetup) onSetup(wt.path, wt.branch, setup, setupWhere, false);
       }
       // PROJ-036: a workspace made from a linked issue runs the project's issue command in a tab.
@@ -911,7 +996,20 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         const n = stoppedNote(mine.name, String(err));
         say(n.kind, n.text);
       } else if (overtaken.current.has(mine.ticket)) say("warn", `${mine.name}: ${String(err)}`);
-      else fail(err);
+      else {
+        fail(err);
+        // The form was cleared for the next one; a failure puts the typed words back (only into empty fields).
+        if (!made && mayRestoreDraft(creatingNow.current, project.id)) {
+          setName((n) => restoreField(n, saved.name));
+          setBranchDraft((x) => restoreField(x, saved.branch));
+          setPromptDraft((x) => restoreField(x, saved.prompt));
+          setBaseDraft((x) => restoreField(x, saved.base));
+          setPrDraft((x) => x ?? savedPr);
+          setLinked((l) => l ?? linked);
+          setParentDraft((x) => x ?? parent);
+          setCreating((c) => c ?? project.id);
+        }
+      }
     } finally {
       overtaken.current.delete(mine.ticket);
       stopped.current.delete(mine.ticket);
@@ -1032,7 +1130,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       )}
       {findNote && <div className="preview warn">{findNote}</div>}
       {found.length > 0 && (
-        <div className="pick-list" aria-label="issues and pull requests">
+        <div className="pick-list found-list" aria-label="issues and pull requests">
           {found.map((f) => (
             <button key={f.url} type="button" className="pick-item" title={f.url} onClick={() => (setLinked(f), setName(f.title), nameRef.current?.focus())}>
               <span className="name">#{f.number} {f.title}</span>
@@ -1180,16 +1278,24 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
 
+  // Move up and Move down step among the siblings of a row (same project and parent, main excluded) as drawn now.
+  const screenKeys = () => [...new Set([...document.querySelectorAll(".sb-list [data-path]")].map((n) => pathKey((n as HTMLElement).dataset.path ?? "")))];
+  const stepSiblingsOf = (p: Project, w: Worktree) => stepSiblings(worktrees[p.id] ?? [], w, screenKeys(), pathKey);
   // PROJ-065: right-click on a workspace row lists what can be done to it.
   const openMenu = async (e: { preventDefault(): void; altKey: boolean; clientX: number; clientY: number }, p: Project, w: Worktree) => {
     e.preventDefault();
     const { altKey: alt, clientX: x, clientY: y } = e;
+    const failed = { statuses: false, editors: false };
     const [st, targets] = await Promise.all([
-      invoke<{ list: { id: string; label: string }[] }>("workspace_statuses", { paths: [w.path] }).catch(() => ({ list: [] })),
-      loadTargets().catch(() => []),
+      invoke<{ list: { id: string; label: string }[] }>("workspace_statuses", { paths: [w.path] }).catch(() => ((failed.statuses = true), { list: [] })),
+      loadTargets().catch(() => ((failed.editors = true), [])),
     ]);
+    const gaps = menuGaps(failed);
+    if (gaps) say("warn", gaps);
     const deleting = busy === "removing" && confirm?.path === w.path;
-    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files) }) });
+    const sibs = stepSiblingsOf(p, w);
+    const at = sibs.indexOf(pathKey(w.path));
+    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 }) });
   };
   // A project header or a group row opens its own short list; `projectId` holds the group id for a group.
   const pop = (e: { preventDefault(): void; clientX: number; clientY: number }, id: string, items: MenuItem[], label: string) => {
@@ -1250,9 +1356,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     try {
       if (id === "delete") await startDelete(p, w);
       else if (id === "hide") await hide(w, true);
-      else if (id === "sleep") sleep(w);
+      else if (id === "sleep") trySleep(w);
       else if (id === "wake") wake(w);
       else if (id === "parent") setMoving(w.path);
+      else if (id === "move:up" || id === "move:down") {
+        const keys = screenKeys();
+        const sibs = stepSiblings(worktrees[p.id] ?? [], w, keys, pathKey);
+        const next = stepRow(dragStart(sortBy, idsFrom(settings[MANUAL_ORDER_SETTING]), keys), pathKey(w.path), id === "move:up" ? -1 : 1, sibs);
+        onSetting(MANUAL_ORDER_SETTING, next);
+        if (sortBy !== "manual") onSetting(SORT_SETTING, "manual");
+      }
       else if (id === "details") {
         const d = await invoke<{ name: string | null; item: string | null; comment: string }>("workspace_details_get", { path: w.path });
         setDetailsOf({ path: w.path, name: d.name ?? "", item: d.item ?? "", comment: d.comment });
@@ -1304,7 +1417,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     ];
   };
   const move = async (p: Project, w: Worktree, parent: string) => {
-    setMoving(null);
+    closeMove(w.path);
     try {
       await invoke("workspace_set_parent", { projectId: p.id, path: w.path, parent: parent || null });
       await refreshWorktrees(projects);
@@ -1316,6 +1429,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     try {
       await invoke("workspace_hide", { path: w.path, hidden });
       await refreshWorktrees(projects);
+      if (hidden) setMessage({ kind: "ok", text: `${worktreeLabel(w)} is hidden from the sidebar.`, undo: () => void hide(w, false) });
     } catch (err) {
       fail(err);
     }
@@ -1523,12 +1637,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     return n > 0 ? <span className="count">{n}</span> : null;
   };
   // TERM-045: the line a removal question adds when terminals under these workspaces still run (and the ask is on).
-  const runNote = (paths: string[]) => {
-    const key = (d: string) => d.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
-    const under = (c: string) => paths.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/"));
-    const n = asksBeforeClose(settings) ? sessions.filter((s) => s.running && s.cwd !== null && under(s.cwd)).length : 0;
-    return n ? ` ${n} terminal${n === 1 ? " is" : "s are"} still running and will be closed.` : "";
-  };
+  const runNote = (paths: string[]) => closingNote(asksBeforeClose(settings) ? runningUnder(paths, sessions.filter((s) => s.running && s.cwd !== null).map((s) => s.cwd as string)) : 0);
   const isSelected = (w: Worktree) => activeDir !== null && same(activeDir, w.path);
   const infoOf = (w: Worktree): RowInfo => {
     const info = Object.entries(states).find(([d]) => same(d, w.path))?.[1] ?? { state: "idle", changed: 0, pr: null };
@@ -1566,23 +1675,56 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const hidden = (w: Worktree) => !rowShown(filters, { projectId: projectOf(w), isMain: w.isMain, branch: w.branch, asleep: asleep.includes(pathKey(w.path)) });
   const inList = (w: Worktree) => elsewhere(w) && !hidden(w); // the lane's listed(), renamed: main's listed is the worktree state
   function sleep(w: Worktree) {
-    const next = asleepAfter(asleep, everyEntry.map((x) => x.w).filter((x) => !x.isMain), w.path, true);
-    const paths = everyEntry.map((x) => x.w.path).filter((d) => next.includes(pathKey(d)) && !asleep.includes(pathKey(d)));
+    setSleepAsk(null);
+    const { next, paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
     onSetting(SLEEP_SETTING, next);
     onSleep(paths);
     invoke("workspace_sleep", { paths }).catch((err) => say("warn", `Some terminals did not close: ${String(err)}`));
   }
+  // Sleeping closes the workspace's tabs and terminals, so running terminals are asked about first, like Remove does.
+  function trySleep(w: Worktree) {
+    const { paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
+    const note = runNote(paths);
+    if (note) setSleepAsk({ path: w.path, note });
+    else sleep(w);
+  }
   function wake(w: Worktree) {
     if (isAsleep(w)) onSetting(SLEEP_SETTING, asleepAfter(asleep, [], w.path, false));
   }
-  // PROJ-059: Enter saves; blank or unchanged cancels, and so does Escape or clicking away.
+  // PROJ-059: Enter or clicking away saves; blank or unchanged cancels, and so does Escape.
   function startRename(w: Worktree) {
+    renameOpen.current = w.path;
     setRenaming(w.path);
     setRenameText(worktreeLabel(w));
   }
-  async function saveRename(w: Worktree) {
+  // Clicking away commits the name (it used to be thrown away); Escape cancels, and the row gets focus back.
+  const renameOpen = useRef<string | null>(null);
+  const focusRow = (path: string) =>
+    window.setTimeout(() => (Array.from(document.querySelectorAll<HTMLElement>(".sb-list [data-path]")).find((el) => same(el.dataset?.path ?? "", path))?.querySelector?.<HTMLElement>(".sess") ?? null)?.focus?.(), 0);
+  // A question that closes puts the keyboard back on what asked it: the row, or the project's Remove button.
+  const focusProjectX = (p: Project) =>
+    window.setTimeout(() => Array.from(document.querySelectorAll<HTMLElement>("[data-proj-x]")).find((el) => el.getAttribute("aria-label") === `Remove ${projectLabel(p)}`)?.focus(), 0);
+  const closeSleepAsk = (path: string) => (setSleepAsk(null), focusRow(path));
+  const closeBatch = (path: string) => (setBatch(null), focusRow(path));
+  const closeForget = (path: string) => (setForgetAsk(null), focusRow(path));
+  const closeConfirm = (path: string) => (setConfirm(null), focusRow(path));
+  const closeDrop = (p: Project) => (setDropProject(null), focusProjectX(p));
+  const closeMove = (path: string) => (setMoving(null), focusRow(path));
+  // T-689: the group question gives focus back to the group's X (Keep it), or to New group once the group is gone.
+  const focusGroupX = (id: string) =>
+    window.setTimeout(() => document.querySelector<HTMLElement>(`[data-project-group="${id}"] [data-group-x]`)?.focus(), 0);
+  const focusNewGroup = () => window.setTimeout(() => document.querySelector<HTMLElement>('button[aria-label="New group"]')?.focus(), 0);
+  function cancelRename(w: Worktree) {
+    renameOpen.current = null;
+    setRenaming(null);
+    focusRow(w.path);
+  }
+  async function saveRename(w: Worktree, refocus = true) {
+    if (renameOpen.current !== w.path) return;
+    renameOpen.current = null;
     const n = renameTo(renameText, worktreeLabel(w));
     setRenaming(null);
+    if (refocus) focusRow(w.path);
     if (n === null) return;
     try {
       await invoke("workspace_rename", { path: w.path, name: n });
@@ -1681,7 +1823,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const up = w.parent ? (worktrees[p.id] ?? []).find((x) => !x.isMain && same(x.path, w.parent as string)) : undefined;
     return (
       <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, input, textarea") && void openMenu(e, p, w)}>
-        <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => (e.key === "Enter" ? show(w) : e.key === "F2" && startRename(w))} title={hoverTitle} data-state={info.state} style={depth || kids ? { paddingLeft: 26 + depth * 14 - (kids ? 24 : 0) } : undefined}>
+        <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => {
+          const what = rowKey(e.key, e.target === e.currentTarget);
+          if (what) e.preventDefault();
+          if (what === "show") show(w);
+          else if (what === "rename") startRename(w);
+        }} title={hoverTitle} data-state={info.state} style={depth || kids ? { paddingLeft: 26 + depth * 14 - (kids ? 24 : 0) } : undefined}>
           {kids && (
             <button
               className={`fold${shut ? " shut" : ""}`}
@@ -1704,11 +1851,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               value={renameText}
               onClick={(e) => e.stopPropagation()}
               onValue={setRenameText}
-              onBlur={() => setRenaming(null)}
+              onBlur={() => document.hasFocus() && void saveRename(w, false)}
               onKeyDown={(e) => {
                 e.stopPropagation();
                 if (e.key === "Enter") void saveRename(w);
-                if (e.key === "Escape") setRenaming(null);
+                if (e.key === "Escape") cancelRename(w);
               }}
             />
           ) : (
@@ -1770,7 +1917,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {!asking && !w.isMain && (
             <button
               className="ib"
-              title="Change parent: move this workspace under another one, or back to the top level"
+              title="Set parent: move this workspace under another one, or back to the top level"
               aria-expanded={moving === w.path}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1786,7 +1933,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               title="Sleep: close its tabs and terminals, and those of the workspaces made from it; show it again to wake it"
               onClick={(e) => {
                 e.stopPropagation();
-                sleep(w);
+                trySleep(w);
               }}
             >
               <Moon size={11} />
@@ -1795,7 +1942,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {!asking && !w.isMain && (
             <button
               className="ib"
-              title="Hide this worktree from the sidebar (project settings list it to show again)"
+              title="Hide this workspace from the sidebar (project settings list it to show again)"
               onClick={(e) => {
                 e.stopPropagation();
                 hide(w, true);
@@ -1807,7 +1954,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {!asking && !w.isMain && (
             <button
               className="ib"
-              title="Remove this workspace: deletes its folder, and its branch unless it was opened on an existing one"
+              title="Delete this workspace: deletes its folder, and its branch unless it was opened on an existing one"
               disabled={busy !== ""}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1819,6 +1966,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           )}
         </div>
         <CardLine shown={cardDetails.shown} facts={facts} depth={depth} />
+        {sleepAsk?.path === w.path && (
+          <div className="note sb-form warn" role="alertdialog" aria-label="Put to sleep" data-sleep-ask={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeSleepAsk(w.path))}>
+            <div>Put <b>{worktreeLabel(w)}</b> to sleep? Its tabs and terminals close, and so do those of the workspaces made from it.{sleepAsk.note}</div>
+            <div className="btn-row">
+              <button className="btn" autoFocus onClick={() => closeSleepAsk(w.path)}>
+                Keep awake
+              </button>
+              <button className="btn danger" onClick={() => (sleep(w), focusRow(w.path))}>
+                Sleep
+              </button>
+            </div>
+          </div>
+        )}
         {statusesOf?.path === w.path && !asking && (
           <StatusEditor
             initial={statusesOf.rows}
@@ -1873,7 +2033,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {batch?.root === w.path && (
-          <div className="sb-form warn" data-delete-all={worktreeLabel(w)}>
+          <div className="sb-form warn" data-delete-all={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeBatch(w.path))}>
             <div>
               Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
             </div>
@@ -1889,31 +2049,31 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <div className="btn-row">
               <button className="btn danger" onClick={() => void removeBatch()} disabled={busy !== ""}>
-                {busy === "removing" ? "Removing…" : "Delete all"}
+                {busy === "removing" ? "Deleting…" : "Delete all"}
               </button>
-              <button className="btn" onClick={() => setBatch(null)}>
+              <button className="btn" autoFocus onClick={() => closeBatch(w.path)}>
                 Keep
               </button>
             </div>
           </div>
         )}
         {moving === w.path && !asking && (
-          <div className="sb-form" data-moving={worktreeLabel(w)}>
+          <div className="sb-form" data-moving={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeMove(w.path))}>
             <Picker key={`move-${w.path}`} name="Move under" value={up ? worktreeLabel(up) : "No parent"} startOpen items={moveItems(p, w)} onPick={(k) => void move(p, w, k)} />
             <div className="btn-row">
-              <button className="btn" onClick={() => setMoving(null)}>
+              <button className="btn" onClick={() => closeMove(w.path)}>
                 Cancel
               </button>
             </div>
           </div>
         )}
         {forgetAsk && same(forgetAsk.path, w.path) && (
-          <div className="sb-form warn" data-forget={forgetAsk.label}>
+          <div className="sb-form warn" data-forget={forgetAsk.label} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeForget(w.path))}>
             {forgetAsk.refused ? (
               <>
                 <span>{forgetAsk.refused}</span>
                 <div className="btn-row">
-                  <button className="btn" onClick={() => setForgetAsk(null)}>
+                  <button className="btn" autoFocus onClick={() => closeForget(w.path)}>
                     OK
                   </button>
                 </div>
@@ -1927,7 +2087,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                   <button className="btn danger" onClick={() => void forget(forgetAsk)}>
                     Take out
                   </button>
-                  <button className="btn" onClick={() => setForgetAsk(null)}>
+                  <button className="btn" autoFocus onClick={() => closeForget(w.path)}>
                     Keep
                   </button>
                 </div>
@@ -1936,9 +2096,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {asking && (
-          <div className="sb-form warn">
+          <div className="sb-form warn" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeConfirm(w.path))}>
             <span>
-              Remove <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
+              Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
               {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
               {runNote([confirm.path])}
             </span>
@@ -1980,9 +2140,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <div className="btn-row">
               <button className="btn danger" onClick={() => remove()} disabled={busy !== "" || blocker(confirm.check) !== null}>
-                {busy === "removing" ? "Removing…" : "Remove"}
+                {busy === "removing" ? "Deleting…" : "Delete"}
               </button>
-              <button className="btn" onClick={() => setConfirm(null)}>
+              <button className="btn" autoFocus onClick={() => closeConfirm(w.path)}>
                 Keep
               </button>
             </div>
@@ -2001,7 +2161,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           <span className="hint">{stopping.includes(c.ticket) ? "stopping…" : "creating…"}</span>
           {!stopping.includes(c.ticket) && (
             <button className="ib" title={`Cancel creating ${c.name}; what Git made so far is removed`} aria-label={`cancel creating ${c.name}`} onClick={() => stopCreate(c.ticket)}>
-              ×
+              <Close size={11} />
             </button>
           )}
         </div>
@@ -2037,17 +2197,17 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <Plus size={13} />
             </button>
             <button className="ib rm" title="Remove project: out of Kolux; its folder stays on disk" aria-label={`Remove ${projectLabel(p)}`} data-proj-x onClick={() => setDropProject(dropProject === p.id ? null : p.id)}>
-              <Close size={11} />
+              <Minus size={11} />
             </button>
           </div>
           {dropProject === p.id && (
-            <div className="note sb-form warn" role="alertdialog" aria-label="Remove project">
+            <div className="note sb-form warn" role="alertdialog" aria-label="Remove project" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeDrop(p))}>
               <div>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</div>
               <div className="btn-row">
                 <button className="btn danger" data-remove-project-yes onClick={() => removeProject(p)}>
                   Remove {p.name}
                 </button>
-                <button className="btn" onClick={() => setDropProject(null)}>
+                <button className="btn" autoFocus onClick={() => closeDrop(p)}>
                   Keep it
                 </button>
               </div>
@@ -2063,9 +2223,6 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <span className="chev">
                 <ChevronDown size={12} />
               </span>
-            </button>
-            <button className="ib rm" title="Remove project: out of Kolux; its folder stays on disk" aria-label={`Remove ${projectLabel(p)}`} data-main-x onClick={() => setDropProject(p.id)}>
-              <Close size={11} />
             </button>
             </div>
           )}
@@ -2165,7 +2322,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       <label>Header colour</label>
       <HeaderColourPicker settings={settings} kind="g" id={g.id} onSetting={onSetting} />
       {dropGroup ? (
-        <>
+        <div style={{ display: "contents" }} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setDropGroup(null), focusGroupX(g.id))}>
           <div className="sb-hint">
             Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
             {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
@@ -2178,11 +2335,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className="btn danger" onClick={() => deleteGroup(g, dropGroup.remove)}>
               Delete group
             </button>
-            <button className="btn" onClick={() => setDropGroup(null)}>
+            <button className="btn" autoFocus onClick={() => (setDropGroup(null), focusGroupX(g.id))}>
               Keep it
             </button>
           </div>
-        </>
+        </div>
       ) : (
         <div className="btn-row">
           <button className="btn" onClick={() => saveGroup(g)}>
@@ -2255,13 +2412,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 <Bell size={13} />
               </button>
             )}
-            <button className={`ib${filterOpen ? " on" : ""}`} title="Group and sort the list" aria-pressed={filterOpen} onClick={() => setFilterOpen((o) => !o)}>
-              <Sliders size={13} />
+            <button className={`ib${filterOpen ? " on" : ""}`} title="Group and sort the list" aria-label="Group and sort the list" aria-pressed={filterOpen} onClick={() => setFilterOpen((o) => !o)}>
+              <Funnel size={13} />
             </button>
             <button className="ib" title="Add project: clone, open a folder or start a new one" aria-pressed={adding} onClick={() => setAdding(true)} disabled={busy !== ""}>
               <FolderPlus size={13} />
             </button>
-            <button className="ib" title="New group: sort projects into folders of their own" onClick={newGroup} disabled={groupBy !== "project"}>
+            <button className="ib" title={groupBy === "project" ? "New group: sort projects into folders of their own" : "New group: only while the list is grouped by project (change it under Group and sort)"} aria-label="New group" onClick={newGroup} disabled={groupBy !== "project"}>
               <Box size={13} />
             </button>
             <button className="ib" title="New workspace: a branch in its own folder" aria-pressed={creating !== null} onClick={() => (creating === null ? openCreate() : setCreating(null))}>
@@ -2276,11 +2433,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         </div>
 
         <div className="sb-tabs" role="tablist">
-          <button role="tab" aria-pressed="true">
+          <button role="tab" aria-selected="true">
             Workspaces
           </button>
           {NOT_BUILT && (
-            <button role="tab" aria-pressed="false" title="Status (not built yet)">
+            <button role="tab" aria-selected="false" title="Status (not built yet)">
               Status
             </button>
           )}
@@ -2300,6 +2457,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           onReload={reload}
           say={say}
         />
+        {message && <MessageNote kind={message.kind} text={message.text} onUndo={message.undo && (() => (setMessage(null), message.undo?.()))} onDismiss={() => setMessage(null)} />}
         <div
           className="sb-list"
           {...top.listProps}
@@ -2310,8 +2468,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           }}
         >
           {showAdd && (
-            <div className="sb-form">
-              <label>Add project</label>
+            <div className="sb-form" onKeyDown={(e) => closeAddOnEscape(e.key, e.nativeEvent.isComposing, (e.target as HTMLElement).getAttribute("aria-label") === "workspaces folder" && rootDraft !== place.dir) && setShowAdd(false)}>
+              <label>Add a project by path</label>
               <input aria-label="project folder" className="field" placeholder="path to a folder" value={pathDraft} onChange={(e) => setPathDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPath(pathDraft)} />
               <div className="btn-row">
                 <button className="btn" onClick={() => addPath(pathDraft)} disabled={busy !== "" || !pathDraft.trim()}>
@@ -2319,6 +2477,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 </button>
                 <button className="btn" onClick={browse} disabled={busy !== ""}>
                   Browse…
+                </button>
+                <button className="btn" onClick={() => setShowAdd(false)}>
+                  Close
                 </button>
               </div>
               <label>Workspaces folder{place.fromEnv && rootDraft === place.dir ? " (from KOLUX_WORKSPACES_DIR)" : ""}</label>
@@ -2468,13 +2629,29 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             />
           )}
           <KeptBranches items={kept} onChange={setKept} onSay={say} onDeleted={() => void reload()} />
-          {message && <MessageNote kind={message.kind} text={message.text} />}
           {menu && (
             <>
               <div className="sb-menu-back" onClick={() => setMenu(null)} onContextMenu={(e) => { e.preventDefault(); setMenu(null); }} />
-              <div role="menu" className="sb-menu" aria-label={menu.label ?? "Workspace"} data-menu-for={menu.path || menu.projectId} style={{ left: menu.x, top: menu.y }} ref={(el) => {
-                if (el) el.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - el.offsetHeight - 8))}px`;
-              }}>
+              <div
+                role="menu"
+                className="sb-menu"
+                aria-label={menu.label ?? "Workspace"}
+                data-menu-for={menu.path || menu.projectId}
+                style={{ left: menu.x, top: menu.y }}
+                onKeyDown={(e) => {
+                  const all = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)')];
+                  const next = menuMove(e.key, all.indexOf(document.activeElement as HTMLElement), all.length);
+                  if (next === null) return;
+                  e.preventDefault();
+                  all[next]?.focus();
+                }}
+                ref={(el) => {
+                  if (!el) return;
+                  // Kept on screen on both axes (the first item takes the focus once, in the effect above).
+                  el.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - el.offsetHeight - 8))}px`;
+                  el.style.left = `${Math.max(8, Math.min(menu.x, window.innerWidth - el.offsetWidth - 8))}px`;
+                }}
+              >
                 {menu.items.map((it) =>
                   it.children ? (
                     <div key={it.id} role="group" aria-label={it.label}>
@@ -2538,22 +2715,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             }}
           />
         )}
-        {adding && <AddProject onBrowse={browse} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p, false); }} />}
+        {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p, false); }} />}
+        <SidebarStart />
         <div className="sb-foot">
-          <button
-            className="ib"
-            title={`Add a project by path, or change the workspaces folder${gitVersion ? ` · ${gitVersion}` : ""}`}
-            aria-pressed={showAdd}
-            onClick={() => {
-              if (!showAdd) loadVis(null);
-              setShowAdd((s) => !s);
-            }}
-          >
+          <button className="ib" title={`Settings${gitVersion ? ` · ${gitVersion}` : ""}`} aria-label="Settings" data-sidebar-settings onClick={() => openSettingsPage("general")}>
             <Gear />
           </button>
           {/* SET-028: until Settings > Agents exists (T-036, T-054), model routing opens from here. */}
-          <button className="ib" title="Model routing: the model and effort for each worker tier" aria-pressed={page === "routing"} onClick={() => onPage("routing")}>
-            <Sliders size={14} />
+          <button className="ib" title="Model routing: the model and effort for each worker tier" aria-label="Model routing" aria-pressed={page === "routing"} onClick={() => onPage("routing")}>
+            <Chip size={14} />
           </button>
           <HelpMenu />
           {NOT_BUILT && (

@@ -1,0 +1,101 @@
+T-669 · UX lane A PR 3: usage, status and insights say what failed and take the keyboard (DT-C105)
+branch s-90/ux-3 (stacked on s-90/ux-2, PR #103, at 40f71d32) · 2026-11-03 · worker 90, coordinator 57
+
+THE ISSUE
+The UX audit (proof/ux-audit/findings/usage-status.md) found the Resource Manager popup lost a failed End's error on the
+next read, let End all and Restart terminals be pressed again during a run, closed the whole panel on Escape with an End
+question open, took no focus and had unnamed End buttons; its poll could start a read while one was still running. The
+token panel showed nothing when token_usage failed, swallowed failed Track switches, rescans and project-list reads, had
+an unlabelled switch, figures only in tooltips, a Share button with no CSS and a Share dialog with no focus handling, and
+made a new Date on every render. The Insights panel's "Turn it on in Settings → Usage" was plain text and gave no way to
+the sessions past the eight it shows.
+
+WHAT CHANGED
+- src/status/ResourceManager.tsx + resources.ts: an End error stays until dismissed; End all / Restart greyed while a run
+  is going; Escape closes the open question first (escapeStep: bulk, single, End N), then the panel; the popup takes focus
+  on open through chrome/dialogFocus useDialogFocus (box is tabIndex -1, so not a Tab stop) and gives it back; End buttons
+  named for their session; the poll runs through singleFlight, so a tick while a read runs does nothing.
+- src/usage/TokenAnalytics.tsx + analyticsNotes.ts (new): a failed token read shows the error with Retry (the error stays
+  until the read works); failed Track switch, rescan and project-list read are named in one always-present role=status
+  region; an unreadable project list falls back to every local use; the switch is "Track <provider> tokens"; chart bars
+  and heatmap cells carry their figures as labels; one memoised today and row list.
+- ShareButton.tsx uses .btn; ShareCard.tsx uses useDialogFocus (its own window Escape listener is gone); StripTotals.tsx
+  puts its label on a role=group element.
+- src/insights/InsightsPanel.tsx + insights.css: the Settings → Usage hint is a button that opens that page; more than
+  eight sessions adds "More sessions in Settings → Usage".
+Rows: usage-status.md 2, 3, 4, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 20 fixed (16). Skipped: row 12 (see REVIEW).
+Not here: rows 5 and 13 (StatusBar), they ride in T-688. None stale.
+
+TESTS
+pnpm exec vitest run src/usage src/status src/insights src/chrome src/settings: 151 files, 813 passed.
+pnpm exec tsc --noEmit -p .: exit 0. node scripts/plan-check.mjs: OK.
+Shown to fail on the old code: with ResourceManager.tsx, TokenAnalytics.tsx and InsightsPanel.tsx put back to their
+pre-review state, 4 tests failed (rows 8, 20, 3, 4); restored, all pass. The builder showed 3 more tests failing on
+the unfixed code before the fix.
+
+NAMED TESTS (new)
+src/usage/usageStatusUx.test.ts:28 usage-status.md:3: a token_usage failure draws the error and a Retry button, not nothing
+src/usage/usageStatusUx.test.ts:39 usage-status.md:4: a Track switch that fails says so, and the view draws the notice
+src/usage/usageStatusUx.test.ts:54 usage-status.md:10: a failed rescan and an unreadable project list are named, and the scope falls back to every local use
+src/usage/usageStatusUx.test.ts:61 usage-status.md:7: the Share on X button uses the shared .btn class, which has CSS
+src/usage/usageStatusUx.test.ts:67 usage-status.md:9: the Share dialog takes focus, traps Tab and restores it through the shared helper, with Escape closing it
+src/usage/usageStatusUx.test.ts:75 usage-status.md:15: the strip totals' label sits on an element that can carry one (role group)
+src/usage/usageStatusUx.test.ts:80 usage-status.md:16: the switch is labelled with what it tracks
+src/usage/usageStatusUx.test.ts:84 usage-status.md:17: the heatmap cells and the chart bars carry their figures as labels, not only as tooltips
+src/usage/usageStatusUx.test.ts:95 usage-status.md:18: the panels get one stable today and a memoised row list, not a new Date on every render
+src/status/resourceManagerUx.test.ts:75 usage-status.md:2: a failed End keeps its error through the next read until the user dismisses it
+src/status/resourceManagerUx.test.ts:91 usage-status.md:14: each row's End button is named for its session
+src/status/resourceManagerUx.test.ts:97 usage-status.md:19: End all and Restart terminals are disabled while an End all run is going
+src/status/resourceManagerUx.test.ts:113 usage-status.md:8: the popup asks for the dialog keys, and Escape closes an open End question before the panel
+src/status/resourceManagerUx.test.ts:125 usage-status.md:8: escapeStep picks the open question first, in the order bulk, single, End N
+src/status/resourceManagerUx.test.ts:132 usage-status.md:11: a read that is still running makes the next tick do nothing
+src/status/resourceManagerUx.test.ts:150 usage-status.md:11: the poll runs through singleFlight and the old window Escape listener is gone
+src/status/resourceManagerUx.test.ts:157 usage-status.md:8: the popup itself takes focus on open, before its buttons are drawn, without becoming a Tab stop
+src/insights/insightsUx.test.ts:15 usage-status.md:6: "Turn it on in Settings → Usage" is a button, wired to open the Usage page of Settings
+src/insights/insightsUx.test.ts:23 usage-status.md:20: more sessions than the eight shown add a link to Usage, and nothing when all are shown
+Updated: src/status/__cards__/APP-054.test.ts (mock for the new focus hook; comment points at dialogFocus.test.ts).
+
+REVIEW (fresh, opus-high-review): B+ on be0ecd66. Fixed in the next commit: the popup took no focus at mount (F1); the
+Insights link promised a list Settings → Usage does not have (F4); the notices had no live region present before they
+appeared (F5); Retry blanked the panel while it ran (F7); stale comments and an undefined --accent colour (F8).
+Resolved by dropping row 12 (F2): the retry for a usage alert that failed to show conflicted with
+src-tauri/src/usage_alerts.rs usage_alert_send, which saves the fired record before showing on purpose, so a failed alert
+is never repeated after a restart. Changing that is outside lane A; row 12 is skipped, alerts.ts is unchanged.
+Known limits, documented in DT-C105: the End question for background sessions (src/terminal/BackgroundSessions.tsx, not
+lane A) keeps its own state, so Escape there still closes the whole popover (F3, asked of src/terminal's owner in
+proof/ux-audit/requests); focus is not put back when a question closes, the Tab trap pulls it back in (F6).
+Kept as judged: role group on totals, role img cells, the memoised today, the scope fallback, the Escape order, the
+ShareCard listener removal, the APP-054 mock, insights.css.
+
+RE-REVIEW (fresh, opus-high-review): A- on bdd31c80 (be0ecd66 + bdd31c80). Fixed in the next commit: the Insights link
+promised more sessions on a view that filters to 30 days and Kolux only, now "All usage in Settings → Usage"; Retry gave
+no sign it ran when the read failed again with the same text, now "Retrying…" and greyed while it runs (also stops
+overlapping reads); the empty live region added a 10 px gap, now .ta-notices:empty is taken out of the column; the
+APP-054 rule and its ticked line now name the background sessions limit; the USAGE-019 line says what is proven by
+wiring and what by the helper tests (T-667); DT-C105 Why holds the reason; PLAN wording. Known limit, accepted: a
+notice already present when the panel first draws (project list failed before token_usage returned) may not be
+announced. Shown to fail on bdd31c80 code (TokenAnalytics.tsx, InsightsPanel.tsx, styles.css put back): 3 tests
+(rows 3, 4, 20); restored, all pass. Re-run: 151 files, 813 passed; tsc exit 0; plan-check OK; firewall 0 new.
+REVIEW 3 (fresh, opus-high-review, limited to bdd31c80..72b0901a): A-. Fixed in 7e877398: Retry used disabled,
+which drops keyboard focus from a focused button, now aria-disabled with presses ignored (greyed via .btn[aria-disabled]);
+the loading flag is pinned (set right before the read, cleared in finally); the link reads "Usage details in Settings →
+Usage", since the view opens filtered; an APP-054 line re-wrapped. Checked, no issue: first load, :empty with no notices,
+the absolute empty region (0x0, stays in the accessibility tree). Shown to fail on 72b0901a code (TokenAnalytics.tsx put
+back): the row 3 test; restored, all pass. Re-run: 151 files, 813 passed; tsc exit 0; firewall 0 new.
+REVIEW 4 (fresh, opus-high-review, limited to 72b0901a..7e877398): A-, no code findings to block. Fixed in the next
+commit (this file only): this REVIEW block had rewritten the earlier round's history; proof
+lines added. Follow-ups, not here: a busy Retry still takes the .btn hover background (styles.css, rides in T-688); the
+Retry -> Retrying… name change and a repeat of the same error may not be announced by every screen reader (Narrator
+under WebView2 untested), so the screen-reader side of row 3 is unproven until the live pass. Re-run
+on 7e877398 + this file: 151 files, 813 passed; tsc exit 0; firewall 0 new.
+SPEC
+spec/06-usage-limits.md: USAGE-013 Rules (failed scan / read / Track switch are named, Retry for the read) + a new
+acceptance line; USAGE-014 Rules (an unreadable project list falls back to every local use: reverses "Kolux scope shows
+no data" for that case); USAGE-019 Rules (the Share dialog's focus) + a new acceptance line.
+spec/19-app-lifecycle.md: APP-054 Rules (End error kept, End all / Restart greyed during a run, Escape closes the End
+question first, the popover takes and gives back focus, the poll skips a busy tick) + a new acceptance line.
+The new acceptance lines point here. All named in DT-C105.
+
+NO LIVE PROOF
+Unit tests pin the error paths, the key handling and the labels; a live keyboard and screen-reader pass belongs to the
+wave's proof run.

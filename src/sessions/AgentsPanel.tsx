@@ -14,6 +14,7 @@ import { chooseScope, DEFAULT_VIEW, DEPTHS, differing, effectiveScope, readScope
 import { AFTER_START_MS, publishDelay, recall, remember, RescanLimiter } from "./refresh";
 import { dragPayload, planFor, resumeBlock, SESSION_DRAG, type ResumePlan } from "./resume";
 import { chatResumeBlock } from "./chatResume";
+import { InFlight } from "./inflight";
 import SessionDetail from "./SessionDetail";
 import SessionFiles from "./SessionFiles";
 
@@ -110,7 +111,8 @@ function AgentsPanelBody(props: PanelProps) {
   const load = useCallback(
     (force: boolean) => {
       const asked = live.current;
-      setBusy(true);
+      // Refresh shows "Scanning…" for a rescan the person asked for, not for the quiet reads on every window focus.
+      if (force) setBusy(true);
       invoke<unknown>("sessions_list", { dirs: asked.dirs, all: asked.all, depth: asked.depth, force })
         .then((raw) => {
           const got = asListing(raw);
@@ -162,20 +164,18 @@ function AgentsPanelBody(props: PanelProps) {
     return () => window.clearTimeout(t);
   }, [rescanKey]);
 
-  const resume = (s: Session) => {
+  // A double click on Resume opens one terminal, not two.
+  const inflight = useRef(new InFlight());
+  const resumeWith = (s: Session, kind: string, go: (plan: ResumePlan) => void) => {
+    const id = `${kind}:${s.agent}:${s.id}`;
+    if (!inflight.current.start(id)) return;
     setNote(null);
-    planFor(s, activeDir, shell).then(
-      (plan) => onResume(s, plan),
-      (err) => setNote(String(err)),
-    );
+    planFor(s, activeDir, shell)
+      .then(go, (err) => setNote(String(err)))
+      .finally(() => inflight.current.done(id));
   };
-  const resumeChat = (s: Session) => {
-    setNote(null);
-    planFor(s, activeDir, shell).then(
-      (plan) => onResumeChat?.(s, plan),
-      (err) => setNote(String(err)),
-    );
-  };
+  const resume = (s: Session) => resumeWith(s, "term", (plan) => onResume(s, plan));
+  const resumeChat = (s: Session) => resumeWith(s, "chat", (plan) => onResumeChat?.(s, plan));
   const copy = (s: Session) => {
     setNote(null);
     planFor(s, activeDir, shell).then(
@@ -303,6 +303,9 @@ function AgentsPanelBody(props: PanelProps) {
           ),
           ...g.sessions.map((s) => {
           const block = resumeBlock(s);
+          const chatBlock = onResumeChat ? (block ?? chatResumeBlock(s, activeDir)) : null;
+          // Why a disabled button is disabled, in view and not only in its tooltip.
+          const why = block ?? chatBlock;
           return (
             <li key={`${s.agent}:${s.id}`} className="agents-row" draggable onDragStart={(e) => e.dataTransfer.setData(SESSION_DRAG, dragPayload(s))}>
               <div className="agents-title" title={s.title}>
@@ -316,14 +319,11 @@ function AgentsPanelBody(props: PanelProps) {
                 <button type="button" className="btn" disabled={block !== null} title={block ?? "Open a terminal and continue this session"} onClick={() => resume(s)}>
                   Resume
                 </button>
-                {onResumeChat && (() => {
-                  const chatBlock = block ?? chatResumeBlock(s, activeDir);
-                  return (
-                    <button type="button" className="btn" disabled={chatBlock !== null} title={chatBlock ?? "Continue this session in the Agents chat"} onClick={() => resumeChat(s)}>
-                      Resume as chat
-                    </button>
-                  );
-                })()}
+                {onResumeChat && (
+                  <button type="button" className="btn" disabled={chatBlock !== null} title={chatBlock ?? "Continue this session in the Agents chat"} onClick={() => resumeChat(s)}>
+                    Resume as chat
+                  </button>
+                )}
                 <button type="button" className="btn" title="Copy the command that resumes this session" onClick={() => copy(s)}>
                   Copy command
                 </button>
@@ -332,6 +332,7 @@ function AgentsPanelBody(props: PanelProps) {
                 </button>
                 <SessionFiles session={s} onNote={setNote} onDeleted={() => { setList((l) => l && l.filter((x) => x.agent !== s.agent || x.id !== s.id)); load(false); }} />
               </div>
+              {why !== null && <div className="sb-hint agents-why">{block === null ? `Resume as chat is off: ${why}` : why}</div>}
             </li>
           );
           }),

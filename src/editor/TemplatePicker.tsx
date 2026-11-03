@@ -5,6 +5,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { beginNote, rows, step, type Io, type Template } from "./templates";
 
+/** The line shown while the template list is still being read: only once it has taken a moment (the usual answer is
+ *  instant and opens the blank note, which should not flash a message), and never once the list is up. */
+export function lookingLine(slow: boolean, listed: boolean): string | null {
+  return slow && !listed ? "Looking for note templates..." : null;
+}
+
 type Props = { root: string; onOpen: (path: string) => void; onError: (message: string) => void; onClose: () => void };
 
 const io: Io = {
@@ -16,6 +22,11 @@ export default function TemplatePicker({ root, onOpen, onError, onClose }: Props
   const [ask, setAsk] = useState<Template[] | null>(null);
   const [at, setAt] = useState(0);
   const started = useRef(false);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSlow(true), 400);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     // Once only: a note is a file, and a second run would make a second one.
@@ -35,7 +46,14 @@ export default function TemplatePicker({ root, onOpen, onError, onClose }: Props
     );
   }, []);
 
-  if (!ask) return null;
+  const looking = lookingLine(slow, ask !== null);
+  if (!ask) {
+    return looking ? (
+      <div className="menu note-picker" role="status">
+        {looking}
+      </div>
+    ) : null;
+  }
   const list = rows(ask);
   const choose = (path: string | null) => {
     onClose();

@@ -19,6 +19,7 @@ import { afterBurst, launchPrompt, updateNotice, type GraphicsPrompt, type LastA
 export default function RecoveryMount() {
   const [g, setG] = useState<GraphicsPrompt>(null);
   const [upd, setUpd] = useState<ReturnType<typeof updateNotice>>(null);
+  const [gerr, setGerr] = useState(""); // a graphics choice that did not go through, told in one line
   const [recovered, setRecovered] = useState<string[]>([]); // row 789: startup repairs, told once
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function RecoveryMount() {
   }, []);
 
   useHeartbeat();
+  useEffect(() => setGerr(""), [g]); // an old failure line does not outlive the prompt it was about
 
   // T-286-b (APP-017): after the computer wakes the page replays held updates and repaints.
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function RecoveryMount() {
         {g.kind === "burst" ? (
           <>
             <span>Kolux's graphics crashed several times in a minute. Safe graphics (no hardware acceleration) usually stops that; your terminals keep running.</span>
-            <button className="btn" autoFocus onClick={() => void invoke("graphics_restart_safe").catch(() => {})}>
+            <button className="btn" autoFocus onClick={() => void invoke("graphics_restart_safe").catch((e) => setGerr(`Could not restart in safe graphics: ${String(e)}`))}>
               Restart in safe graphics
             </button>
             <button className="btn" onClick={() => void invoke("graphics_keep_running").catch(() => {}).then(() => setG(null))}>
@@ -87,11 +89,12 @@ export default function RecoveryMount() {
             <button className="btn" autoFocus={stay} onClick={() => void invoke("graphics_choose", { stay: true }).catch(() => {}).then(() => setG(null))}>
               Stay in safe graphics
             </button>
-            <button className="btn" autoFocus={!stay} onClick={() => void invoke("graphics_choose", { stay: false }).catch(() => {})}>
+            <button className="btn" autoFocus={!stay} onClick={() => (setGerr(""), void invoke("graphics_choose", { stay: false }).catch((e) => setGerr(`Could not switch back to hardware graphics: ${String(e)}`)))}>
               Try hardware again
             </button>
           </>
         )}
+        {gerr && <span role="status">{gerr}</span>}
       </div>
     </>
   );
