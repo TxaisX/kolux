@@ -18,7 +18,7 @@ mail client without the user clicking anything.
 
 REVIEW
 Opus review B on fcb862e9: the row click's activation still counted for a page posting on load; fixed by also requiring focus in
-the frame, and the card test's source and shape checks now run with a click active. Left as a live check: older WebKitGTK
+the frame, and the card test's source and shape checks now run with a click active. Re-review A- on a2b4dbdc, no must-fix. Left as a live check: older WebKitGTK
 without click reporting opens no viewer links; whether a page can focus its own frame without a click on each engine.
 
 TESTS (named; pnpm vitest run src/artifacts/ArtifactsPage.test.ts src/artifacts/__cards__/SKILL-036.test.ts --reporter=verbose)
