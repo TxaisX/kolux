@@ -6,6 +6,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { detectPlatform } from "../keys/keymap";
+import { useMenuFocus } from "../chrome/dialogFocus";
 import { fitIn, outsideDismisses } from "../terminal/PaneMenu";
 import { SuggestionGate } from "./suggestionGate";
 import { editMenuItems, fieldKind, type EditAction, type EditItem, type FieldLike } from "./editMenuModel";
@@ -121,16 +122,8 @@ export default function EditMenuHost() {
 function Menu({ menu, onDismiss }: { menu: Open; onDismiss: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const openedAt = useRef(performance.now());
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.preventDefault();
-      e.stopPropagation();
-      onDismiss();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [onDismiss]);
+  // T-710: focus goes to the first row, Up/Down move, Enter picks, Escape closes and focus goes back to the field.
+  useMenuFocus(box, true, onDismiss);
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -154,7 +147,7 @@ function Menu({ menu, onDismiss }: { menu: Open; onDismiss: () => void }) {
               role="menuitem"
               className="menu-item"
               disabled={it.disabled}
-              // Keep the field's focus and selection while the row is pressed.
+              // Pressing a row moves no focus: runEdit puts it back on the field, whose selection is kept.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => (onDismiss(), runEdit(menu.target, it.action))}
             >
