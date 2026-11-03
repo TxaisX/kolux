@@ -11,9 +11,11 @@ FIXED
   - Skills page, Refresh: same, and its text reads Scanning… while the scan runs.
   - Skills page, agent filter: once an agent was picked, its name was only the agent ("Codex"). It is now
     "Filter by agent: Codex" (aria-label), and the visible text is unchanged.
-  - Content search: the Files to include / exclude boxes and the result rows were about 20px tall. They are now at least 24px.
-    The Aa / ab / .* toggles are at least 24px wide (editor-extras.css).
-  - Tokens tab: the "Turn it on in Settings → Usage" link (.ins-link, padding 0) was about 17px. It is now at least 24px (insights.css).
+  - Content search (editor-extras.css): the result rows (3px padding around a 12px line) work out at about 20px tall from
+    their CSS, and the Files to include / exclude boxes (11.5px text) at just under 24px. Both are now at least 24px tall.
+    The figures are worked out from the CSS, not measured live. The Aa / ab / .* toggles were already about 25px wide
+    (.ib is 24px tall), so their min-width is a guard, not a fix.
+  - Tokens tab: the "Turn it on in Settings → Usage" link (.ins-link, padding 0, one line of text) was about 17px. It is now at least 24px (insights.css).
 NOT REPRODUCED (every other control already had a name and a visible effect; now proved by test)
   Explorer header: Search file contents, Open in, Refresh the tree, Expand all folders, Collapse all folders, Hide dotfiles,
   Hide git-ignored files, New file, New folder, Hide the explorer. Name filter and Clear the filter. Content search: Search text,
@@ -29,7 +31,7 @@ Tests
   src/editor/Explorer.ux.test.ts: 16 tests (header, name filter, content search with Match case / Whole word / regex sent to
     editor_search, include / exclude, row fold, hit opens).
   src/scm/rightTabs.ux.test.ts: 3 tests (Checks Refresh busy + spin + asks again; Tokens link runs its handler; the 24px CSS
-    minimums). Without the ChecksPanel change, its Checks test fails ("expected undefined to be 'true'"); with it, it passes.
+    minimums: these pin the rules in the stylesheets; the rendered size is left to the audit's next live run). Without the ChecksPanel change, its Checks test fails ("expected undefined to be 'true'"); with it, it passes.
   src/skills/SkillsPage.ux.test.ts: 32 tests, one per Skills control or it.each over alike ones.
   VITEST_MAX_WORKERS=1, one folder at a time (low-RAM order from 57 during the trains 7+8 live verify):
     the three new files 16 + 3 + 32 passed; src/skills 92/92; src/scm 350/350; src/insights 17/17; src/editor/Explorer* 43/43;
@@ -37,3 +39,9 @@ Tests
   npx tsc --noEmit: 0. plan-check OK. firewall-check -Baseline: 0 new.
   First load (npx vite build && node scripts/bundle-budget.mjs, on this branch and on a detached origin/main 80687a7d):
     1,488,992 vs 1,488,992, main +0.
+
+Review (Opus, read-only) of c3d200c6: A-, no must-fix. It checked specificity (nothing overrides the new minimums),
+  border-box sizing, that .ins-link stays inline-block, that stubs are reset per test and files are isolated, and it ran the
+  three new files: 3/3, 16/16, 32/32. Its two should-fix points are taken in the follow-up: the toggles are listed as a guard,
+  not a fix, and the before-sizes are marked as worked out from the CSS. The CSS test pins the rules; the live size is left to
+  the audit's next live run.
