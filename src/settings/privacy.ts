@@ -2,7 +2,7 @@
 // crash reports open GitHub's new-issue page in the user's own browser: the app submits nothing
 // (APP-037: the message box in src/feedback builds the address with feedbackUrl).
 
-import { GITHUB_URL } from "../onboarding/helpItems";
+import { GITHUB_URL } from "../onboarding/links";
 
 /** GitHub's new-issue page of the project (APP-037 Compat). */
 export const FEEDBACK_REPO = `${GITHUB_URL}/issues/new`;

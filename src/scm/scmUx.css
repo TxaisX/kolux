@@ -1,0 +1,28 @@
+/* UX audit D (ux7): the classes that replace inline px styles in the check card and the one-click notice,
+   and the small notes the Checks tab pieces share. Colours come from the existing tokens. */
+.check-card { overflow: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.check-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.check-card-name { min-width: 0; overflow-wrap: anywhere; }
+.check-card-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.check-steps { list-style: none; margin: 0; padding: 0; }
+.check-step { display: flex; align-items: center; gap: 6px; padding: 2px 0; min-width: 0; }
+.check-step .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.check-annot { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; min-width: 0; }
+.check-annot-head { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.check-annot-msg { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The one-click notice: each name is one line cut with an ellipsis; the notice never grows past its container. */
+.oc-notice { overflow: hidden; max-width: 100%; }
+.oc-cut { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oc-row { display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: 400; }
+.oc-row[data-mark="todo"], .oc-row[data-mark="skipped"] { opacity: 0.55; }
+.oc-row[data-mark="now"] { font-weight: 600; }
+.oc-glyph { width: 14px; text-align: center; flex: none; }
+.oc-msg { overflow-wrap: anywhere; }
+
+/* Text under a composer, and the stack map the Checks tab now mounts under the pull request row. */
+.cm-hint { margin-top: 2px; }
+.stack-map { margin: 4px 8px; min-width: 0; }
+.stack-map summary { cursor: pointer; }
+.stack-list { margin: 4px 0; padding-left: 18px; }
+.stack-list li { margin-bottom: 4px; min-width: 0; overflow-wrap: anywhere; }

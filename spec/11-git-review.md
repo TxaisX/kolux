@@ -30,9 +30,19 @@ Rules: acting on a folder covers every file beneath it; paths are matched exactl
   (Kolux RS, T-018-c: rows select on click, Ctrl adds or removes, Shift spans in list order, Esc
   clears; the bulk bar reads N selected · Stage k · Unstage m; a file with staged and unstaged
   parts is one selection counted on both sides. Folder rows come with the tree view, T-033.)
+  (Kolux RS, T-676: the live Changes tab (EDIT-029) has Stage and Unstage on each file and Stage all
+  and Unstage all above the commit box. Stage all takes the changed and new files, never the
+  conflicted ones, which are resolved by hand; when the list was cut short (GIT-012) the rows shown
+  are only some of the changes, so both buttons send the whole worktree instead, except that Stage
+  all with conflicts present sends only the rows listed so no conflict is marked resolved.
+  Unstaging a renamed file unstages both its old and its new path, so the delete is not left
+  staged. Before the repository's first commit there is no HEAD to restore from, so unstaging
+  removes the file from the index only and never touches the file on disk. One git action runs at a
+  time; the buttons wait while it runs.)
 Acceptance:
   - [x] Stage a folder holding three changed files → all three show as staged. (cards; evidence/cards-GIT-002.txt)
   - [x] Select 2,000 files and stage them → every one is staged and no error appears. (cards; evidence/cards-GIT-002.txt)
+  - [x] Unstage a renamed file, and unstage a file in a repository with no commits yet → nothing stays half-staged and the file on disk is unchanged. (unit; evidence/T-676.txt)
 Compat: —
 Source: D-11-002
 
@@ -46,12 +56,15 @@ Rules: the shortcut acts only while focus is inside Source Control and the main 
   half-written message is kept per worktree through closing the panel and switching workspaces; a
   failed commit raises a notice whose details can be expanded; a commit refused by a hook is
   labelled blocked; the failure notice carries a Fix with AI action that starts an agent primed with
-  the error output.
+  the error output. (Kolux RS, T-676: in the Changes tab a second click or shortcut while a commit
+  or any other git action is running does nothing, so a double click makes one commit; the Commit
+  button waits and the tab says what is running.)
 Acceptance:
   - [x] Stage a file, type a message, press Ctrl+Enter → exactly one new commit and a clean panel. (cards; evidence/cards-GIT-004.txt)
   - [x] Type a draft, switch to another workspace and come back → the draft is still there. (cards live; evidence/cards-GIT-004.txt)
   - [x] Install a pre-commit hook that exits with 1 → the notice says blocked and shows what the
         hook printed. (cards live; evidence/cards-GIT-004.txt)
+  - [x] Click Commit twice quickly in the Changes tab → one commit. (unit; evidence/T-676.txt)
 Compat: —
 Source: D-11-004
 
@@ -85,8 +98,15 @@ Rules: fetch refreshes remote refs and merges nothing; publish pushes to origin 
   differs from the branch's configured remote is rejected; a branch with no upstream is not checked
   against the remote over and over; git and GitHub calls only reach the remotes and hosts the user
   already set up.
+  (Kolux RS, T-676: Kolux's own push, pull, sync and fetch, and the push made before a pull request,
+  run with terminal and credential prompts off and no input, and are stopped, with the git processes
+  they started, after 600 seconds; a stopped step comes back as a network failure that says it timed
+  out and names likely causes. A rebase from base is a local step and has no limit. The live Changes
+  tab (EDIT-029) offers Push, Pull and Sync with the counts and the reason a disabled one waits;
+  the rest of this menu is not in the live layout.)
 Acceptance:
   - [x] Make two local commits → the menu offers to push 2 commits; push → the counts fall to zero. (cards; evidence/cards-GIT-007.txt)
+  - [x] Make a push hang in a pre-push hook → it is stopped at the limit and the result says it timed out. (unit; evidence/T-676.txt)
   - [x] Leave an unpublished branch open for ten minutes → git traces show no repeating remote
         checks. (cards live; evidence/cards-GIT-007.txt)
 Compat: —
@@ -179,13 +199,14 @@ User does: opens all changes, or the branch diff against its base, from Source C
 User sees: every changed file's diff stacked in one tab, with an optional file tree, inline or
   side-by-side layout, whitespace and wrap toggles, and expand or collapse all.
 Rules: inline layout, no wrap, whitespace hidden and tree hidden are the defaults, each a setting;
-  the tree resizes within limits, can be filtered, and marks files already viewed; the scroll
+  the tree resizes within limits (by dragging, or from the keyboard with the arrow keys, Home and
+  End, T-676), can be filtered, and marks files already viewed; the scroll
   position survives switching to another tab and back; files changing underneath do not freeze the
   view; the branch diff uses a snapshot of the base, so it holds still during a review.
 Acceptance:
   - [x] Change 10 files and open all changes → 10 sections; scroll to the seventh, switch tabs and
         back → still at the seventh. (cards live; evidence/cards-GIT-038.txt)
-  - [x] Turn on side-by-side and whitespace → the layout and markers change at once. (cards live; evidence/cards-GIT-038.txt)
+  - [x] Turn on side-by-side and whitespace → the layout and markers change at once. (cards live; evidence/cards-GIT-038.txt; the Inline / Side by side switch and the keyboard resize, evidence/T-676.txt)
 Compat: —
 Source: D-11-038
 
@@ -319,7 +340,9 @@ User does: runs an agent, or an unattended automation, that reaches a remote nee
 User sees: Git fails quickly with an error rather than the agent waiting on a credential prompt no
   one can see.
 Rules: this applies to recognised agent launches and marked automation runs only; ordinary shells
-  still prompt.
+  still prompt. (Kolux RS, T-676: widened to the git steps Kolux runs itself, which are not shells:
+  push, pull, sync, fetch and the push before a pull request never wait on a prompt either; see
+  GIT-007.)
 Acceptance:
   - [ ] Have an agent pull from a private remote with no saved credentials → the command errors
         within seconds; the same pull in a plain shell prompts.
@@ -484,11 +507,17 @@ User sees: the PR opens on GitHub and is linked to the workspace; an unpushed br
 Rules: base and head must differ; if the branch already has a PR, that one is linked instead of a
   second being made; a failed create keeps everything typed and shows the error; uncommitted tracked
   changes block creation with a clear reason; a base that exists only locally gets a message saying
-  what to do; GitHub Enterprise Server works as well.
+  what to do; GitHub Enterprise Server works as well. (Kolux RS, T-686: the title box takes focus
+  when the form opens; Escape pressed inside the form closes it and keeps what was typed, while
+  Cancel clears it, and an open Base list takes the first Escape; each folder keeps its own text, so
+  switching folders neither drops it nor shows it in another folder; focus returns to the button
+  that opened the form; a finished AI draft does not overwrite text typed or kept since it began.)
 Acceptance:
   - [ ] On a pushed branch, fill in a title and create → the PR exists on GitHub and the panel shows
         its number.
   - [ ] Make the create fail → title and description stay in the composer next to the error.
+  - [ ] Type a title, press Escape, open the form again, or switch to another folder and back → the
+        text is still there; Cancel clears it. (unit; evidence/T-686.txt)
 Compat: —
 Source: D-11-021
 
@@ -500,12 +529,18 @@ User sees: a progress notice stepping through preparing the branch, writing a co
   opening the review.
 Rules: the flow keeps going while the user is busy in a different workspace and shows its progress
   on return; it stops with a specific message if the branch has to be synced first or changed while
-  the text was being written; the notice keeps its shape with long step names.
+  the text was being written; the notice keeps its shape with long step names. (Kolux RS, T-686: in
+  the right panel's automatic-flow line, Dismiss hides any line that is not still running, and
+  Retry on a line that stopped on a failure runs the automatic flow again, only if automatic pull
+  requests are still switched on for that folder, otherwise it says why nothing ran; a running line
+  has neither. A link that will not open shows the reason under the line.)
 Acceptance:
   - [ ] Edit a file and click create PR → commit, push and PR all happen and the notice ends in
         success.
   - [ ] Start it, switch workspace, then come back → it is either finished or showing its current
         step.
+  - [ ] A line that stopped on a failure offers Retry and Dismiss; a running line offers neither.
+        (unit; evidence/T-686.txt)
 Compat: —
 Source: D-11-022
 
@@ -577,10 +612,15 @@ User sees: checks grouped into failing, pending and passing; each opens into job
 Rules: long lists show the first 100 checks or jobs and the first 20 annotations, with a note about
   the rest; fix with AI lets the user pick the agent and sends the failing output, trimmed to its
   final part; a blocked check that needs action counts as failing, never passing, and neutral checks
-  are not counted as passed; folder workspaces get a separate PR checks panel.
+  are not counted as passed; folder workspaces get a separate PR checks panel. (Kolux RS, T-686: the
+  button words are Rerun failed jobs, Retry (a read failed), Refresh (read again) and Fix with AI;
+  Rerun waits while it is asking, reads the checks again afterwards, and shows a failure in a red
+  note; a link that will not open says so in that note; the check card has a Refresh button, and a
+  Retry beside a read error; its close button names the check for a screen reader; the PR row has
+  the collapsed stack map, GIT-034.)
 Acceptance:
   - [ ] Break a test and push → the failing job is listed; expand it → its log shows; fix with AI →
-        an agent opens with the failure.
+        an agent opens with the failure. (button words, Rerun and Refresh; evidence/T-686.txt)
   - [ ] A run with 150 jobs → 100 are listed with a note about the rest.
 Compat: keybinding id sidebar.checks.toggle, unbound by default.
 Source: D-11-029
@@ -594,10 +634,16 @@ User sees: comments grouped by file and thread, or laid out as a timeline; every
 Rules: deleting asks for confirmation; authors can be marked as bots so their comments sit apart,
   and that list is a setting; long threads show the first 100 comments with a note; blank comments
   cannot be sent, and text is trimmed first; times are compact, relative when recent, and an invalid
-  time shows nothing.
+  time shows nothing. (Kolux RS, T-686: every comment box says "Enter sends. Shift+Enter adds a new
+  line."; each comment or thread shows its own waiting state and error, so one card's action does
+  not block or blame another, and the errors clear when the folder or pull request changes; Reply
+  is disabled, with the reason as its tooltip and a hint, for a thread whose first comment GitHub
+  gave no id.)
 Acceptance:
   - [ ] Reply to a review thread and resolve it → GitHub shows the reply and the thread resolved.
   - [ ] Try to send a comment made only of spaces → nothing is sent.
+  - [ ] Make one comment's save fail → the error sits under that comment and the others still work.
+        (unit; evidence/T-686.txt)
 Compat: —
 Source: D-11-030
 
@@ -615,16 +661,17 @@ Acceptance:
 Compat: —
 Source: D-11-031
 
-### GIT-032 · PR merge conflicts are explained, with AI resolve
+### GIT-032 · PR merge conflicts are explained, with Resolve with AI
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens Checks for a PR that GitHub reports as conflicting.
 User sees: a conflict section stating that the conflicts must be fixed before checks run and the PR
-  can merge, listing the conflicting files, with an AI resolve action.
+  can merge, listing the conflicting files, with a Resolve with AI action (T-686: renamed from
+  "AI resolve"; a failed copy of the commands shows "Copy failed" on the button and a red note).
 Rules: when GitHub reports conflicts that do not happen locally, the panel says so and offers
   commands to copy that make GitHub recompute whether the PR can merge.
 Acceptance:
   - [ ] Open a PR that conflicts with its base → the files are listed; resolve with AI starts an
-        agent.
+        agent. (button name; evidence/T-686.txt)
   - [ ] A PR that GitHub flags as conflicting but that merges cleanly here → the panel says so and
         offers the commands.
 Compat: —
@@ -907,10 +954,13 @@ User sees: Source Control and the status badges stay quick; git work for the vis
   not wait behind background work.
 Rules: the number of git processes at once is capped, with foreground work let in first; git
   commands have time limits; identical status reads already running are shared; old Git versions get
-  fallbacks rather than errors; long Windows paths work.
+  fallbacks rather than errors; long Windows paths work. (Kolux RS, T-676: the git commands the
+  Changes tab starts for staging, committing, discarding and sync run off the app's async runtime, on
+  a blocking thread, so a slow one never freezes the app; network steps have the 600-second limit in
+  GIT-007.)
 Acceptance:
   - [ ] Open 16 workspaces with changes → the focused panel refreshes within a second of an edit.
-  - [ ] A git command hangs → it is stopped at its time limit and the panel recovers.
+  - [ ] A git command hangs → it is stopped at its time limit and the panel recovers. (unit, push only; evidence/T-676.txt)
 Compat: —
 Source: D-11-070
 
@@ -994,10 +1044,12 @@ User sees: a collapsible stack map of the PRs with each one's state; actions to 
   the stack, and to merge or queue everything up to a chosen PR after confirming.
 Rules: creating a stacked PR makes the current PR first and then records the stack, and a retry
   never duplicates anything; parent links that do not form one chain create nothing; merging up to a
-  PR is refused when a lower one cannot merge.
+  PR is refused when a lower one cannot merge. (Kolux RS, T-686: the map sits under the PR row in
+  the Checks tab, collapsed, and reads GitHub only once opened; it is per folder and pull request,
+  so an answer for another one is dropped; a link that will not open shows the reason in its note.)
 Acceptance:
   - [ ] Build two stacked branches and create their PRs → the map shows both; merge through the top
-        one → both merge in order.
+        one → both merge in order. (the map's place in the Checks tab; evidence/T-686.txt)
   - [ ] Make the lower PR unmergeable → merging through the top one is refused.
 Compat: —
 Source: D-11-034

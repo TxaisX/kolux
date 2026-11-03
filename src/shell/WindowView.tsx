@@ -12,6 +12,7 @@ import Sidebar from "./window/Sidebar";
 import WindowTopBar from "./window/TopBar";
 import { WindowStoreProvider, useWindow } from "./window/store";
 import type { WindowBag } from "./windowBag";
+import { useShowTerminalsOnBrowserOpen } from "./browserOpen";
 import type { CSSProperties } from "react";
 
 /** The window's drawing, as a plain function App.tsx calls last in its render. */
@@ -24,7 +25,8 @@ export function windowView(w: WindowBag) {
 }
 
 function WindowSurfaces() {
-  const { leftWidth } = useWindow();
+  const { leftWidth, setScreen, setPage } = useWindow();
+  useShowTerminalsOnBrowserOpen(setScreen, setPage); // GIT-036: a page asked for in the browser is shown, whatever screen asked
   return (
     <div className="app">
       <Tip />

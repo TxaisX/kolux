@@ -4,6 +4,7 @@
 // (artifacts, skills, inbox, agents, tower, floor, space), the empty states, the needs strip and the
 // stand-ins (PROJ-020), then the grid itself (Grid.tsx).
 import { invoke } from "@tauri-apps/api/core";
+import ScreenBoundary from "../../recovery/ScreenBoundary";
 import type { Pane } from "../../App";
 import { cardPanes } from "../../agents/rail";
 import { AgentsChat } from "../../lazy/pages";
@@ -15,7 +16,6 @@ import FilePicker, { quickOpenList, type Pick } from "../../editor/FilePicker";
 import { inboxItems } from "../../inbox/inbox";
 import type { Seat } from "../../launch/seats";
 import { folderName, projectLabel } from "../../projects/model";
-import { openSettings } from "../../settings/pages";
 import { closeSkills } from "../../skills/nav";
 import { tasksRepo } from "../../tasks/model";
 import { draftKey, keepDraft, stillPending } from "../../terminal/planReview";
@@ -24,6 +24,7 @@ import { tabName } from "../../terminal/tabName";
 import { towerRows } from "../../tower/tower";
 import { nameOf } from "../../workspaces";
 import Grid from "./Grid";
+import Notices from "./Notices";
 import SeatChooser from "./SeatChooser";
 import { useWindow } from "./store";
 import { PlanSheet } from "../../lazy/pages";
@@ -63,6 +64,7 @@ export default function WindowContent() {
           })()}
         </div>
       )}
+      <Notices toast={toast} notice={notice} keymapNotice={keymapNotice} onDismiss={() => setNotice(null)} />
       <SignInNotice />
       <KeyLostNotice />
       <RecoveryMount />
@@ -138,36 +140,11 @@ export default function WindowContent() {
               onClose={() => setPicking(null)}
             />
           )}
-          {toast && (
-            <div className="toast" role="status">
-              {toast}
-            </div>
-          )}
-          {notice && (
-            <div className="notice" role="alert">
-              {notice}
-              {notice === keymapNotice && (
-                <button className="btn link" onClick={() => openSettings("shortcuts", "shortcuts-file")}>
-                  Shortcuts settings
-                </button>
-              )}
-              <button className="ib" onClick={() => setNotice(null)} title="Dismiss">
-                ×
-              </button>
-            </div>
-          )}
         </>
       )}
-      {screen === "artifacts" && (
-        <>
-          <ArtifactsPage onToast={setToast} />
-          {toast && (
-            <div className="toast" role="status">
-              {toast}
-            </div>
-          )}
-        </>
-      )}
+      {/* UX lane A (shell.md row 6): a screen that fails to draw shows Try again here instead of taking the whole window down; a new screen starts clean. A screen whose code failed to load stays failed until Reload (lazy() keeps the failed load). */}
+      <ScreenBoundary key={screen}>
+      {screen === "artifacts" && <ArtifactsPage onToast={setToast} />}
       {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}
       {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} onReview={reviewChanges} />}
       {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: openInBrowser, inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
@@ -177,6 +154,7 @@ export default function WindowContent() {
       {tower && <TowerView rows={towerRows(towerSeats)} usage={towerUsage} now={now} onOpen={openPane} />}
       {floor && <FloorView onOpen={openPane} />}
       {space && <SpaceView projectId={projectFor(projectOf(activeDir))} projectName={(() => { const p = projects.find((x) => x.id === projectFor(projectOf(activeDir))); return p ? projectLabel(p) : ""; })()} openDirs={openDirs} />}
+      </ScreenBoundary>
       {agentsScreen && selected === null && (
         <div className="empty">
           <h2>Agents</h2>

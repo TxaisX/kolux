@@ -33,6 +33,7 @@ import { removeShortcutAsk } from "../launch/removeAsk";
 import { emptySeat, removeTarget, sheetStart, type Seat, withoutFailed } from "../launch/seats";
 import { startWatch } from "../launch/startWatch";
 import type { Page } from "../projects/ProjectsPanel";
+import { projectRows } from "./projectRows";
 import type { PaletteItem } from "../projects/WorktreePalette";
 import { folderName } from "../projects/model";
 import { stepAllowed, travel, type Place } from "../projects/nav";
@@ -372,6 +373,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))), // T-610: Artifacts and Skills
     tabSearchCommand(() => openTabSearch()), // TERM-053
     { section: "Quick actions", label: "New session", run: () => addChooser() },
+    // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
+    ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
     // VIEW-042: actions on the worktree in front, not runnable while none is open
     {
       section: "Quick actions",
@@ -489,7 +492,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const dropPanes = (keys: number[]) => {
     const gone = new Set(keys);
     discardDraftsOf(panes.filter((p) => gone.has(p.key))); // EDIT-004: a tab closed on purpose keeps no draft
-    trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key))); // EDIT-031: a new note never typed in goes with its tab
+    trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)), setToast); // EDIT-031: a new note never typed in goes with its tab
     late.exitedPrompt.current = onClose(late.exitedPrompt.current, keys);
     keys.forEach((k) => delete ptys.current[k]);
     keys.forEach((k) => (runTabs.current = forgetRunTab(runTabs.current, k)));

@@ -25,10 +25,13 @@ vi.mock("react", async (orig) => {
 });
 
 const calls: Array<[string, unknown]> = [];
+let agentList: unknown = null;
+let projectList: unknown = [];
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: unknown) => {
     calls.push([cmd, args]);
-    return Promise.resolve(cmd === "get_settings" ? {} : null);
+    if (cmd === "project_list") return projectList instanceof Error ? Promise.reject(projectList) : Promise.resolve(projectList);
+    return Promise.resolve(cmd === "get_settings" ? {} : cmd === "agent_list" ? agentList : null);
   },
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
@@ -36,6 +39,8 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}
 beforeEach(() => {
   h.slots = [];
   calls.length = 0;
+  agentList = null;
+  projectList = [];
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -44,7 +49,8 @@ const { createElement } = await import("react");
 const { HOOKS_FIELD, HOOKS_LINE, askHooks, hooksChosen, hooksDefault, recordHooks, recordsHooks } = await import("./hooksOn");
 const { SCREENS } = await import("./firstRun");
 const { default: Wizard, WizardView } = await import("./Wizard");
-const { HooksAskView } = await import("./Guides");
+const { HooksAsk, HooksAskView } = await import("./Guides");
+const { MultitaskPanel } = await import("./StepPanels");
 
 const writes = () => calls.filter(([c]) => c === "settings_patch" || c === "agent_hooks_sync");
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -110,6 +116,12 @@ test("T-608: the card carries the same line, its switch on by default, and Done"
   expect(renderToString(createElement(HooksAskView, { on: false, onSwitch() {}, onDone() {} }))).not.toMatch(/role="switch" checked=""/);
 });
 
+test("49-ux2: the card also offers Not now and Turn off", () => {
+  const html = renderToString(createElement(HooksAskView, { on: true, onSwitch() {}, onDone() {}, onLater() {}, onOff() {} }));
+  expect(html).toContain(">Not now<");
+  expect(html).toContain(">Turn off<");
+});
+
 test("T-608: the wizard writes no hooks until the user moves on from the line; then it records what the switch shows", async () => {
   vi.stubGlobal("navigator", { platform: "Win32" });
   const draw = (start = 0) => {
@@ -130,15 +142,90 @@ test("T-608: the wizard writes no hooks until the user moves on from the line; t
   el = draw();
   expect(el.props.hooks).toBe(false);
   expect(writes()).toEqual([]);
-  el.props.onSecondary(); // I'll do this later: moving on records the choice
+  el.props.onSecondary(); // 49-ux2: I'll do this later leaves the screen but is not consent: nothing is recorded
+  await flush();
+  expect(writes()).toEqual([]);
+  el = draw();
+  expect(el.props.at).toBe(2);
+  el.props.onBack(); // Back to the line, then Continue: the explicit move on records the choice
+  await flush();
+  el = draw();
+  expect(el.props.at).toBe(1);
+  el.props.onMain();
   await flush();
   expect(writes()).toEqual([
     ["settings_patch", { set: { [HOOKS_FIELD]: false }, remove: [] }],
     ["agent_hooks_sync", { clear: true }],
   ]);
-  el = draw();
-  expect(el.props.at).toBe(2);
-  el.props.onBack(); // Back to the line records nothing more
+});
+
+test("49-ux2 (onboarding.md:4, :15): with no agent the last button picks a folder; Check again reads the list, and an agent then opens a session", async () => {
+  vi.stubGlobal("navigator", { platform: "Win32" });
+  const picked = vi.fn();
+  const session = vi.fn();
+  const draw = () => {
+    h.i = 0;
+    return Wizard({ start: 3, ping: true, onPing() {}, onSession: session, onPickFolder: picked, onClose() {} }) as unknown as { props: Record<string, (...a: unknown[]) => void> & { noAgent: boolean } };
+  };
+  agentList = [];
+  draw().props.onRecheck(); // Check again
   await flush();
-  expect(writes()).toHaveLength(2);
+  let el = draw();
+  expect(el.props.noAgent).toBe(true);
+  el.props.onMain();
+  expect(picked).toHaveBeenCalledTimes(1);
+  expect(session).not.toHaveBeenCalled();
+  agentList = [{ id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:/bin/claude" }];
+  draw().props.onRecheck();
+  await flush();
+  el = draw();
+  expect(el.props.noAgent).toBe(false);
+  el.props.onMain();
+  expect(session).toHaveBeenCalledTimes(1);
+  expect(picked).toHaveBeenCalledTimes(1);
+});
+
+test("49-ux2 (onboarding.md:7): the one-time card's Turn off records off and closes; Not now records nothing", async () => {
+  const done = vi.fn();
+  const card = () => {
+    h.i = 0;
+    return HooksAsk({ settings: {}, onDone: done }) as unknown as { props: Record<string, () => void> } | null;
+  };
+  expect(card()).toBeNull(); // waits until no dialog is up (an effect, not run here)
+  h.slots[1] = true; // shown
+  card()!.props.onLater();
+  await flush();
+  expect(writes()).toEqual([]);
+  card()!.props.onOff();
+  await flush();
+  expect(writes()).toEqual([
+    ["settings_patch", { set: { [HOOKS_FIELD]: false }, remove: [] }],
+    ["agent_hooks_sync", { clear: true }],
+  ]);
+  expect(done).toHaveBeenCalledTimes(2);
+});
+
+test("49-ux2 (onboarding.md:13): Create a workspace again clears the earlier \"needs a git project\" line", async () => {
+  vi.stubGlobal("document", { querySelector: () => null });
+  type Node = { props?: { className?: string; onClick?: () => void; children?: unknown } };
+  const find = (n: unknown, cls: string): Node | null => {
+    if (!n || typeof n !== "object") return null;
+    if (Array.isArray(n)) return n.map((c) => find(c, cls)).find(Boolean) ?? null;
+    const p = (n as Node).props;
+    if (p?.className === cls) return n as Node;
+    return find(p?.children, cls);
+  };
+  const draw = () => {
+    h.i = 0;
+    return MultitaskPanel({ close() {} }) as unknown;
+  };
+  find(draw(), "btn primary")!.props!.onClick!(); // no git project
+  await flush();
+  expect(renderToString(draw() as never)).toContain("Multi-task needs a git project");
+  projectList = new Error("offline");
+  find(draw(), "btn primary")!.props!.onClick!();
+  await flush();
+  const html = renderToString(draw() as never);
+  expect(html).not.toContain("Multi-task needs a git project");
+  expect(html).toContain("Could not start a workspace: offline");
 });

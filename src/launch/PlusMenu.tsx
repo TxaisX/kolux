@@ -80,6 +80,8 @@ type Props = {
   /** False for a remote client (the shell choice is local only); `windows` is for tests. */
   local?: boolean;
   windows?: boolean;
+  /** Name of the project a new session starts in; shown as a small heading at the top of the menu. */
+  target?: string;
 };
 
 function ShellGlyph({ program }: { program: string }) {
@@ -87,7 +89,7 @@ function ShellGlyph({ program }: { program: string }) {
   return icon === "shell" ? <VendorMark agent="shell" size={13} /> : <ShellMark icon={icon} />;
 }
 
-export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault, onChoose, onClose, onTerminal, onManage, busy = false, style, allOff = false, pass, onRefresh, dir, editors, entry, shells = [], onShell, local = true, windows }: Props) {
+export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault, onChoose, onClose, onTerminal, onManage, busy = false, style, allOff = false, pass, onRefresh, dir, editors, entry, shells = [], onShell, local = true, windows, target }: Props) {
   const [shellsOpen, setShellsOpen] = useState(false);
   const shellChoices = onShell ? windowsShellMenu(shells, { windows: windows ?? (typeof navigator !== "undefined" && navigator.userAgent.includes("Windows")), local }) : [];
   const [query, setQuery] = useState("");
@@ -138,6 +140,11 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
       <div className="menu" role="menu" aria-label="New session" style={style} ref={menuBox} onKeyDown={arrows}>
         <div className="menu-title">New session</div>
+        {target && (
+          <div className="menu-hint">
+            Starting in <b>{target}</b>
+          </div>
+        )}
         {entry && <NewTabEntryBox tabs={entry.tabs} onRun={entry.onRun} />}
         {installed > 3 && (
           <input

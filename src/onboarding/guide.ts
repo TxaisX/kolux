@@ -239,6 +239,13 @@ export function legacyProfile(settings: Record<string, unknown> | null, tried: r
   return settings === null && tried === null ? null : false;
 }
 
+/** 49-ux2: hiding the checklist from the sidebar has its own flag, so it is no longer read as "every step
+ *  is done" (the legacy setupChecklist false still is, for profiles that saved it before this flag). */
+export const HIDDEN_FIELD = "setupChecklistHidden";
+export const checklistHidden = (settings: Record<string, unknown> | null | undefined): boolean => settings?.[HIDDEN_FIELD] === true;
+/** The one settings patch a Hide click saves. */
+export const HIDE_PATCH: Record<string, unknown> = { [HIDDEN_FIELD]: true };
+
 /** The tried-list ids that keep facts on the profile: the browser page and the lasting repo count. */
 export const PAGE_SHOWN = "browser-page";
 export const TWO_REPOS = "repos-two";

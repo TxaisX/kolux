@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(() => Promise.resolve()) }));
-import { answerLinks, answerPatch, applyLinkState, askLink, ASKED_FIELD, dialogWords, dismissed, KOLUX_FIELD, linkState, needsAsk, readLinkState, siteOf, switchPatch, setSaver, waitingCount, waitingLink } from "./linkAsk";
+import { answerLinks, dismissLinks, answerPatch, applyLinkState, askLink, ASKED_FIELD, dialogWords, dismissed, KOLUX_FIELD, linkState, needsAsk, readLinkState, siteOf, switchPatch, setSaver, waitingCount, waitingLink } from "./linkAsk";
 
 const saved: Record<string, boolean>[] = [];
 beforeEach(() => {
@@ -61,5 +61,15 @@ describe("TERM-135 the one shared question", () => {
     applyLinkState(switchPatch(true));
     expect(linkState()).toEqual({ inKolux: true, asked: true });
     expect(askLink("https://e.test", false, () => {})).toBe(false);
+  });
+  it("dismissing opens the waiting links in the system browser once, saves nothing and asks again next time", () => {
+    const opened: string[] = [];
+    expect(askLink("https://f.test/1", false, (to) => opened.push(to))).toBe(true);
+    dismissLinks();
+    expect(opened).toEqual(["system"]);
+    expect(saved).toEqual([]); // no permanent answer written
+    expect(linkState().asked).toBe(false);
+    expect(waitingLink()).toBeNull();
+    expect(askLink("https://f.test/2", false, () => {})).toBe(true); // the question comes back
   });
 });

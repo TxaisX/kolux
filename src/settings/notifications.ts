@@ -173,7 +173,7 @@ export async function raiseNotification(settings: Record<string, unknown>, title
   const prefs = readNotifications(settings);
   if (event && event.kind !== "quiet") {
     const focused = typeof document !== "undefined" && document.hasFocus();
-    if (!paced(pacer, event.worktree, event.id, Date.now(), { focused, quietWhenFocused: prefs.suppressFocused, test: event.kind === "test" })) return;
+    if (!paced(pacer, event.worktree, event.id, Date.now(), { focused, quietWhenFocused: prefs.suppressFocused, test: event.kind === "test", kind: event.kind })) return;
   }
   const { plan, play, close } = await preparePlan(prefs);
   try {
