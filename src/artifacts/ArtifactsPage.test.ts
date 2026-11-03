@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extText, group, matches, section, sizeText, view, viewerUrl } from "./ArtifactsPage";
+import { extText, focusAfterRemove, group, matches, section, sizeText, view, viewerUrl } from "./ArtifactsPage";
 import type { Artifact } from "./ArtifactsPage";
 
 const art = (over: Partial<Artifact>): Artifact => ({
@@ -49,5 +49,14 @@ describe("Artifacts library (SKILL-036)", () => {
     expect(view("other")).toBe("app");
     expect(extText("shot.png")).toBe("PNG");
     expect(extText("no-extension")).toBe("");
+  });
+});
+
+describe("focus after a removal", () => {
+  it("goes to the next row, else the previous, else nowhere", () => {
+    expect(focusAfterRemove(["a", "b", "c"], "b")).toBe("c");
+    expect(focusAfterRemove(["a", "b", "c"], "c")).toBe("b");
+    expect(focusAfterRemove(["a"], "a")).toBeNull();
+    expect(focusAfterRemove(["a", "b"], "zz")).toBeNull();
   });
 });

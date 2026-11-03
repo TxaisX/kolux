@@ -3,6 +3,8 @@
 // counting the refusals meanwhile; the user's own navigation clears it.
 
 export const BLOCKED_SHOW_MS = 10_000;
+/** UX audit: how long the pane's one-line notice stays before it clears itself (it also has a close button). */
+export const NOTICE_MS = 12_000;
 
 export type Blocked = { count: number; at: number } | null;
 

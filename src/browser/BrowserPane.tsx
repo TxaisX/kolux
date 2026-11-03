@@ -3,13 +3,16 @@
 // screen, so the page lives on untouched while its tab, workspace or screen is away. The header
 // holds the address bar, which takes the cursor with its text selected as the tab opens, and
 // the back / forward / reload toolbar; what the bar makes of typed text is in address.ts.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { ArrowLeft, ArrowRight, Close, Globe, Refresh, Stop, Target } from "../chrome/icons";
+import { ArrowLeft, ArrowRight, Close, FolderPlus, Globe, Refresh, Stop, Target } from "../chrome/icons";
+import { menuStep } from "../terminal/LinkActionMenu";
+import { useArm } from "./arm";
+import { closeWarning, withChord } from "./tips";
 import { BLANK, resolveAddress } from "./address";
 import { chordPlan, openerRefocus, windowHasFocus } from "./chord";
 import { type KeyEvent, keyEventInit, pageKeys, startsGrab } from "./keys";
@@ -21,7 +24,7 @@ import "./browser.css";
 import "./dragThroughInstall"; // BROW-052 / T-319-c: app drags cross the pages
 import { can as canGo, fresh, started, type Pending } from "./history";
 import { arrived, closed as menuClosed, fresh as freshMenu, type Hit, lines as suggestionLines, type Menu, move as menuMove, pick as menuPick, shown as menuShown, typed as menuTyped } from "./suggest";
-import { busy as downloading, dismiss, type Download, fraction, prune, reduce as reduceDownloads, type Row as DownloadRow, status as downloadStatus } from "./downloads";
+import { busy as downloading, dismiss, type Download, fraction, reduce as reduceDownloads, type Row as DownloadRow, status as downloadStatus } from "./downloads";
 import { type CertState, type Diagnosis, type Event as LoadEvent, fresh as freshHealth, type Health, type Overlay, overlayModel, overlayOf, PROBE_MS, type Probe, step, trustLabel } from "./loadState";
 import { namesPane, openFirstPage, type ProfileEvent, reopenPage, takesBarFocus, type Why } from "./reopen";
 import { SELF_CLOSE_EVENT, type SelfClosed, selfCloseNotice } from "./selfClose";
@@ -39,7 +42,7 @@ import { DrawCanvas } from "./DrawCanvas";
 import { type Grab, grabElement } from "./grabFlow";
 import { GrabSheet } from "./GrabSheet";
 import { capturePage, type Picture } from "./picture";
-import { BLOCKED_SHOW_MS, type Blocked, blockedAgain, blockedLabel } from "./popups";
+import { BLOCKED_SHOW_MS, type Blocked, blockedAgain, blockedLabel, NOTICE_MS } from "./popups";
 
 /** `url`: the page or file the tab opens on instead of a blank page (SKILL-012 previews a kit result). */
 /** `cwd`: the worktree this tab belongs to (BROW-042: agents there drive it); `targets` / `onSend`: the agent panes
@@ -133,7 +136,23 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   const typing = useRef(false);
   const suggestTimer = useRef<number | undefined>(undefined);
   const [downloads, setDownloads] = useState<DownloadRow[]>([]);
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNoteText] = useState<string | null>(null);
+  // UX audit: a notice goes by itself after a while (it also has a close button); every setNote starts the clock,
+  // even when the words are the same as the notice already showing.
+  const [noteSeq, setNoteSeq] = useState(0);
+  const setNote = useCallback((m: string | null) => {
+    setNoteText(m);
+    setNoteSeq((n) => n + 1);
+  }, []);
+  useEffect(() => {
+    if (!note) return;
+    const t = window.setTimeout(() => setNote(null), NOTICE_MS);
+    return () => window.clearTimeout(t);
+  }, [note, noteSeq, setNote]);
+  // UX audit: Clear on the notes tray and Close on a tab that still has work in it ask for a second press.
+  const [clearArmed, pressClear] = useArm();
+  const [closeArmed, pressClose] = useArm();
+  const cookieBtn = useRef<HTMLButtonElement>(null);
   const [loading, setLoading] = useState(false);
   const [can, setCan] = useState({ back: false, forward: false });
   const canRef = useRef(can);
@@ -175,6 +194,14 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   const [preview, setPreview] = useState<Preview | null>(null);
   // T-319-b (BROW-041): what is typed in the preview chip while it is open for typing.
   const [chipEdit, setChipEdit] = useState<string | null>(null);
+  // UX audit: leaving the chip editor by Escape (or with focus nowhere) puts focus back on the chip's button, not on the page body.
+  const chipSlot = useRef<HTMLSpanElement>(null);
+  const chipBack = useRef(false);
+  useEffect(() => {
+    if (chipEdit !== null || !chipBack.current) return;
+    chipBack.current = false;
+    chipSlot.current?.querySelector<HTMLElement>(".preview-open")?.focus();
+  }, [chipEdit]);
   // T-159 (BROW-040): the outside address a previewed document asked to open; offered, never followed.
   const [outbound, setOutbound] = useState<string | null>(null);
   // T-661 (DT-C97): a page's request to leave Kolux (system browser) or drop a certificate's trust,
@@ -636,12 +663,15 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
       .catch((err) => setNote(String(err)));
   };
 
-  // T-238-b (BROW-013): finished rows leave the strip on their own after a while.
-  useEffect(() => {
-    if (downloads.length === 0 || downloading(downloads)) return;
-    const t = window.setInterval(() => setDownloads((rows) => prune(rows, Date.now())), 1000);
-    return () => window.clearInterval(t);
-  }, [downloads]);
+  // UX audit: a finished, failed or cancelled download stays in the strip until its Dismiss button is pressed
+  // (it used to leave after 8 s, before anyone could see where the file went).
+  // UX audit: Close on a tab with a running download or unsent notes warns first (a second press closes it).
+  const closeTab = () => {
+    const warning = closeWarning(downloading(downloads), notes.length);
+    if (!warning) return closeMe.current?.();
+    if (!closeArmed) setNote(warning);
+    pressClose(() => closeMe.current?.());
+  };
 
   // T-238-b (BROW-004): each keystroke asks the back end for ranked history hits; a late answer
   // for text the user has moved past is dropped by the model.
@@ -866,10 +896,10 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           {icon ? <img className="site-icon" src={icon.src} width={13} height={13} alt="" /> : <Globe size={13} />}
         </span>
         <span className="title">{title ?? "New Tab"}</span>
-        <button className="ib" data-go="back" disabled={!can.back} onClick={() => act("back")} title="Back (Alt+Left)" aria-label="Back">
+        <button className="ib" data-go="back" disabled={!can.back} onClick={() => act("back")} title={withChord("Back", keymap, "browser.back")} aria-label="Back">
           <ArrowLeft size={12} />
         </button>
-        <button className="ib" data-go="forward" disabled={!can.forward} onClick={() => act("forward")} title="Forward (Alt+Right)" aria-label="Forward">
+        <button className="ib" data-go="forward" disabled={!can.forward} onClick={() => act("forward")} title={withChord("Forward", keymap, "browser.forward")} aria-label="Forward">
           <ArrowRight size={12} />
         </button>
         {loading ? (
@@ -877,13 +907,13 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
             <Stop size={12} />
           </button>
         ) : (
-          <button className="ib" data-go="reload" onClick={() => act("reload")} title="Reload (Ctrl+R)" aria-label="Reload">
+          <button className="ib" data-go="reload" onClick={() => act("reload")} title={withChord("Reload", keymap, "browser.reload")} aria-label="Reload">
             <Refresh size={12} />
           </button>
         )}
         {/* BROW-006: the slot keeps the bar's place in the toolbar; in a narrow pane the bar inside it
             is compact and, while focused, floats across the toolbar (browser.css). */}
-        <span className="address-slot">
+        <span className="address-slot" ref={chipSlot}>
           {preview && chipEdit !== null ? (
             <input
               className="address chip-edit"
@@ -896,18 +926,25 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
                 if (e.key === "Enter") commitChip(preview.path);
                 else if (e.key === "Escape") {
                   e.stopPropagation();
+                  chipBack.current = true;
                   setChipEdit(null);
                 }
               }}
-              onBlur={() => setChipEdit(null)}
+              onBlur={(e) => {
+                if (!e.relatedTarget) chipBack.current = true;
+                setChipEdit(null);
+              }}
             />
           ) : preview ? (
             // BROW-039: a previewed document shows where it is instead of its loopback address.
             // T-319-b (BROW-041): clicking it (not its buttons) opens it for typing an address.
             <span className="preview-chip" title={`${preview.path} (click to open a web address or another document here)`} onClick={(e) => !(e.target as HTMLElement).closest("button") && setChipEdit(preview.path)}>
-              <span className="preview-folder">{preview.folder}</span>
-              <span className="preview-sep">/</span>
-              <b>{preview.file}</b>
+              {/* UX audit: a real button, so the keyboard reaches it (Tab, Enter or Space) and Ctrl+L presses it. */}
+              <button type="button" className="preview-open" data-go="chip-edit" aria-label={`${preview.file}: type another web address or document`} onClick={() => setChipEdit(preview.path)}>
+                <span className="preview-folder">{preview.folder}</span>
+                <span className="preview-sep">/</span>
+                <b>{preview.file}</b>
+              </button>
               <button type="button" className="ib preview-copy" title="Copy the file's path" aria-label="Copy path" onClick={() => void navigator.clipboard?.writeText(preview.path).catch(() => {})}>
                 copy
               </button>
@@ -988,6 +1025,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
         {/* The app runs these for a chord pressed in the app or inside the page (App's browserAction
             clicks [data-go]): find (BROW-007) and zoom (BROW-012). */}
         <button hidden data-go="find" onClick={openFind} />
+        <button hidden data-go="reloadAny" onClick={() => act("reload")} />
         <button hidden data-go="zoomIn" onClick={() => zoomBy("in")} />
         <button hidden data-go="zoomOut" onClick={() => zoomBy("out")} />
         <button hidden data-go="zoomReset" onClick={() => zoomBy("reset")} />
@@ -1011,8 +1049,8 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
             </span>
           )}
           {/* T-240 (BROW-028): cookies from Google Chrome (guided export) or a file go into this tab's profile. */}
-          <button className={`ib cookies${cookieMenu ? " on" : ""}`} onClick={() => setCookieMenu(cookieMenu ? null : "menu")} disabled={importing} title={importing ? "Importing cookies…" : `Import cookies from Google Chrome or a file. ${GOOGLE_NOTE}`} aria-label="Import cookies" aria-haspopup="menu" aria-expanded={cookieMenu !== null}>
-            <Globe size={12} />
+          <button ref={cookieBtn} className={`ib cookies${cookieMenu ? " on" : ""}`} onClick={() => setCookieMenu(cookieMenu ? null : "menu")} disabled={importing} title={importing ? "Importing cookies…" : `Import cookies from Google Chrome or a file. ${GOOGLE_NOTE}`} aria-label="Import cookies" aria-haspopup="menu" aria-expanded={cookieMenu !== null}>
+            <FolderPlus size={12} />
           </button>
           {/* BROW-037: pick elements in the page and write notes on them for an agent. */}
           <button className={`ib${picking ? " on" : ""}`} data-go="annotate" onClick={togglePicking} title={picking ? "Stop picking elements" : "Annotate: pick elements and write notes for an agent"} aria-label="Annotate" aria-pressed={picking}>
@@ -1026,7 +1064,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           <button className={`ib txt${grabMode ? " on" : ""}`} data-go="grab" onClick={startGrab} disabled={!open || !!overlay || !!drawing || !!grab} title={grabMode ? "Stop picking an element" : "Grab an element: pick it to see its details and picture"} aria-label="Grab an element" aria-pressed={grabMode}>
             Grab
           </button>
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)">
+          <button className={`ib${closeArmed ? " on" : ""}`} onClick={closeTab} title={closeArmed ? "Press again to close this tab anyway" : withChord("Close tab", keymap, "tab.close")} aria-label="Close tab">
             <Close size={12} />
           </button>
         </span>
@@ -1065,6 +1103,11 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
                 <span className="name">{d.name}</span>
                 <span className="state">{downloadStatus(d)}</span>
                 {d.state === "running" && <progress max={1} value={f ?? undefined} aria-label="Download progress" />}
+                {d.state === "done" && d.path && (
+                  <button type="button" className="ib txt" data-go="open-download" onClick={() => sayIf(openWithSystemApp(d.path, invoke))} title="Open the file (a program is shown in its folder instead)" aria-label={`Open ${d.name}`}>
+                    Open
+                  </button>
+                )}
                 {d.state !== "running" && (
                   <button className="ib" onClick={() => setDownloads((rows) => dismiss(rows, d.key))} title="Dismiss" aria-label="Dismiss">
                     <Close size={10} />
@@ -1111,8 +1154,8 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
               </button>
             )}
             {notes.length > 0 && (
-              <button className="btn" onClick={() => setNotes([])}>
-                Clear
+              <button className="btn" data-go="clear-notes" onClick={() => pressClear(() => setNotes([]))} title={clearArmed ? "Press again to drop all the notes" : "Drop all the notes"}>
+                {clearArmed ? "Clear all?" : "Clear"}
               </button>
             )}
           </div>
@@ -1168,18 +1211,40 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
       )}
       {/* T-240 (BROW-028): in the pane's flow, like the suggestions (a child web view cannot be covered). */}
       {cookieMenu === "menu" && (
-        <ul className="suggest cookie-menu" role="menu" aria-label="Import cookies">
-          {IMPORT_SOURCES.map((s) => (
-            <li
-              key={s.source}
-              role="menuitem"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                if (s.source === "chrome") setCookieMenu("chrome");
-                else void importCookies("file");
-              }}
-            >
-              <span className="head">{s.label}</span>
+        <ul
+          className="suggest cookie-menu"
+          role="menu"
+          aria-label="Import cookies"
+          onKeyDown={(e) => {
+            // UX audit: the menu is for the keyboard too: arrows move, Escape closes and gives focus back to its button.
+            if (e.key === "Escape") {
+              e.preventDefault();
+              e.stopPropagation();
+              setCookieMenu(null);
+              cookieBtn.current?.focus();
+              return;
+            }
+            const rows = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+            const to = menuStep(rows.length, rows.indexOf(document.activeElement as HTMLElement), e.key);
+            if (to === null) return;
+            e.preventDefault();
+            rows[to]?.focus();
+          }}
+        >
+          {IMPORT_SOURCES.map((s, i) => (
+            <li key={s.source} role="none" className="item">
+              <button
+                type="button"
+                role="menuitem"
+                className="pick"
+                autoFocus={i === 0}
+                onClick={() => {
+                  if (s.source === "chrome") setCookieMenu("chrome");
+                  else void importCookies("file");
+                }}
+              >
+                <span className="head">{s.label}</span>
+              </button>
             </li>
           ))}
           <li className="sub-note" aria-disabled="true">
@@ -1194,7 +1259,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
               <li key={s}>{s}</li>
             ))}
           </ol>
-          <button type="button" className="ib" disabled={importing} onClick={() => void importCookies("chrome")}>
+          <button type="button" className="ib" autoFocus disabled={importing} onClick={() => void importCookies("chrome")}>
             Choose cookies.txt…
           </button>
           <button type="button" className="ib" onClick={() => setCookieMenu(null)}>
@@ -1204,7 +1269,10 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
       )}
       {note && (
         <div className="notice" role="alert">
-          {note}
+          <span>{note}</span>
+          <button type="button" className="ib" data-go="dismiss-notice" onClick={() => setNote(null)} title="Dismiss" aria-label="Dismiss notice">
+            <Close size={10} />
+          </button>
         </div>
       )}
       {outbound && (

@@ -1,0 +1,60 @@
+T-677 - The browser pane works from the keyboard and stops asking silently (DT-C113; BROW-003/005/006/013/019/028/035/037/038/039/067; UX audit lane D)
+Lane D (72), branch s-72/ux-2 (#99), base e93a23ba (origin/main), code commits 97993c9e and 9d54f920, 2026-11-02.
+This is the browser-pane part of T-677. The artifacts pane and the ports panel follow in PR #102, which extends this task.
+Source: proof/ux-audit/findings/browser-artifacts.md (cloud audit at main e93a23b), rows 2-6, 10-13, 15, 16, 21-26.
+
+WHAT CHANGED
+- Address bar: Ctrl/Cmd+L on a previewed document presses the chip (now a real button, reachable by Tab, Enter and
+  Space), so the chord works there too; leaving the chip's text box by Escape puts focus back on the chip.
+- Menus: the Import cookies menu, the Preview server menu and the Send to agent menu are real menus. They take focus
+  when they open, arrows and Home/End move between rows, Escape closes only the menu and gives focus back to its
+  button, and the Send menu also closes on a press outside it.
+- Notices: the pane's one-line notice has a Dismiss button and clears itself after 12 s; "No agent sessions in this
+  worktree" clears after 5 s. A reload (the button and the chord) says so in the notice when the page will not reload.
+- Downloads: a finished, failed or cancelled row stays in the strip until it is dismissed (it used to leave after 8 s),
+  and a finished row gains Open. Cancel is not added: it needs a new Rust command.
+- Closing: Close tab with a download still running or notes not sent says so, and a second press closes. Clear on the
+  notes tray asks "Clear all?" first. Close (and Escape) on the drawing view with marks asks "Discard marks?".
+- Drawing: Clear is one Undo step (Undo brings every mark back, Redo clears them again); a text box open on the picture
+  is committed where it was opened, also when focus leaves it (Escape still cancels).
+- Wording and look: "Copy screenshot", "Send to agent..."; Back, Forward, Reload and Close tab tooltips show the chord
+  the keymap really holds (a customised or unbound key is shown as it is); Import cookies uses the folder-plus icon and
+  stays visible in a narrow pane (only the Viewport select goes); browser.css uses the defined --line-subtle and
+  --surface tokens.
+- Not done (listed, not hidden): Allow-folder revoke and the narrow-pane overflow menu (rows 14 and 24, needs Rust or a
+  bigger change); the app-level Ctrl+W still closes without the warning (row 25, request filed in requests/C.md).
+- spec/13-browser-computer.md: Rules and Acceptance of BROW-003, 005, 006, 013, 019, 028, 035, 037, 038, 039 and 067
+  match the above; new Acceptance lines point here.
+
+WHY
+Static UX audit of the browser pane found a chip and three menus the keyboard could not reach, notices that never went
+away, finished downloads that vanished before anyone saw where the file went, and Clear, Close and tab close that threw
+work away on one press. Each fix is the smallest change that gives the keyboard and the second chance back.
+
+REVIEW
+Opus review B -> fix pass (9d54f920) -> re-review A-.
+
+TESTS (named, the three changed or added files, pnpm vitest run <files> --reporter=verbose)
+ ✓ src/browser/tips.test.ts > toolbar tooltips read the keymap > names the default chord 3ms
+ ✓ src/browser/tips.test.ts > toolbar tooltips read the keymap > shows a customised chord and drops an unbound one 1ms
+ ✓ src/browser/tips.test.ts > closing a tab with work in it > says nothing when nothing is at stake 0ms
+ ✓ src/browser/tips.test.ts > closing a tab with work in it > names the running download and the unsent notes 0ms
+ ✓ src/browser/ux2.units.test.ts > Clear on the drawing is one step: a single Undo brings every mark back, Redo clears them again 3ms
+ ✓ src/browser/ux2.units.test.ts > a new mark after Clear drops the way back, and clearing nothing changes nothing 1ms
+ ✓ src/browser/ux2.units.test.ts > Ctrl+L presses the preview chip when there is one, else focuses and selects the address bar 0ms
+ ✓ src/browser/__cards__/UX2.test.ts > a failed reload says so, and the notice has a Dismiss button that closes it 565ms
+ ✓ src/browser/__cards__/UX2.test.ts > Import cookies opens a menu of real buttons that Escape closes 63ms
+ ✓ src/browser/__cards__/UX2.test.ts > the toolbar tooltips read their chord from the keymap 56ms
+ Test Files  3 passed (3)
+      Tests  10 passed (10)
+Limit: vitest runs in node with a fake DOM, so focus and Escape wiring in the Preview and Send menus, the chip's focus
+return and the drawing view's "Discard marks?" are covered through the helpers they call (menuStep, useArm, draw.ts,
+focusAddress, closeWarning), not by real key events.
+
+TOTALS
+ pnpm vitest run src/browser (VITEST_MAX_WORKERS=2)
+ Test Files  38 passed (38)
+      Tests  271 passed (271)
+ pnpm tsc --noEmit
+ tsc exit 0
+ No Rust was touched; no cargo run.
