@@ -220,12 +220,12 @@ User does: closes a tab or pane while a program is running in it.
 User sees: a confirmation explains that the running process will stop; the close happens only after
   confirming.
 Rules: Kolux checks for running child processes first; an idle shell closes without asking; if the
-  check fails, Kolux closes anyway rather than blocking (fails open); a split tab asks once, not
-  once per pane; keyboard and mouse close follow the same policy; a setting turns the confirmation
+  check fails, Kolux asks anyway, worded as unsure (it could not tell whether a program runs; closing
+  may stop one), so a program is never stopped unseen; a split tab asks once, not once per pane; keyboard and mouse close follow the same policy; a setting turns the confirmation
   off; the confirmation names the tab being closed, so closing a background tab is never ambiguous.
 Acceptance:
-  - [x] Closing a tab running a dev server asks; closing an idle shell does not. (cards; evidence/cards-TERM-045.txt)
-  - [x] Closing a split tab with two busy panes shows one confirmation, not two. (cards; evidence/cards-TERM-045.txt)
+  - [x] Closing a tab running a dev server asks; closing an idle shell does not; a failed check asks, worded as unsure. (cards; evidence/T-681.txt)
+  - [x] Closing a split tab with two busy panes shows one confirmation, not two. (cards; evidence/T-681.txt)
 Compat: —
 Source: D-03-045
 

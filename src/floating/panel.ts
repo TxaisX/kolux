@@ -106,6 +106,21 @@ export const setDirty = (p: Panel, key: number, dirty: boolean): Panel => ({ ...
 /** TERM-061: a program ended on its own. The tab stays, marked, so the output can be read; this is not the user closing the pane. */
 export const programExited = (p: Panel, key: number): Panel => ({ ...p, tabs: p.tabs.map((t) => (t.key === key && !t.exited ? { ...t, exited: true } : t)) });
 
+/**
+ * UX audit destructive F4: the terminals among `keys` that may hold a live program. A tab that has not started
+ * (no terminal id yet) has nothing to stop. A tab marked `exited` is still listed: the same pane can start again
+ * (Enter in an ended agent pane, a dead shell's Restart) and the mark does not reset, while the backend's busy
+ * check reads false for an ended terminal, so asking about it costs nothing. Returns the tabs' keys and their
+ * ids, in step, for the busy check.
+ */
+export function liveTerminalTabs(p: Panel, keys: number[], ptys: Record<number, number>): { keys: number[]; ids: number[] } {
+  const live = keys.filter((k) => {
+    const t = p.tabs.find((x) => x.key === k);
+    return !!t && (t.kind === "terminal" || t.kind === "agent") && ptys[k] !== undefined;
+  });
+  return { keys: live, ids: live.map((k) => ptys[k]) };
+}
+
 /** The tab to select after `key` goes: the one that took its place, else the one before, else none. */
 function neighbour(tabs: Tab[], key: number, active: number | null): number | null {
   if (active !== key) return active;
@@ -177,6 +192,17 @@ export const startFolder = (home: string, asked?: string | null): string => (ask
 
 /** The view has put focus where `focus` named. */
 export const focused = (p: Panel): Panel => (p.focus === null ? p : { ...p, focus: null });
+
+/**
+ * UX audit destructive: while one of the layer's own dialogs or menus is up (the close question, the Save question,
+ * the "+" menu) it sits outside `.float-panel`, so the tab commands would fall through to the window and close its
+ * tab. This says whether a key press belongs to that dialog alone: every chord (Ctrl, Meta, Alt, or a function key)
+ * except Escape. Plain keys (Tab, Enter, arrows) are not chords and keep working inside the dialog.
+ */
+export function modalHolds(up: boolean, e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean }): boolean {
+  if (!up || e.key === "Escape") return false;
+  return e.ctrlKey || e.metaKey || e.altKey || /^F\d{1,2}$/.test(e.key);
+}
 
 /**
  * Mod+S while a floating editor is the active tab saves only that tab's file; it does not touch the

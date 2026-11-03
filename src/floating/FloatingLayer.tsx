@@ -6,6 +6,8 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import TerminalPane from "../terminal/TerminalPane";
+import PaneMenu, { type MenuItem } from "../terminal/PaneMenu";
+import { asksBeforeClose, busyCheck, closeQuestion } from "../terminal/closing";
 import { editors } from "../keys/handles";
 import { BrowserPane, EditorPane } from "../lazy/panes";
 import type { AgentInfo } from "../launch/PlusMenu";
@@ -20,7 +22,7 @@ import {
   clampButton, insetFor, moveBy, parseButton, parseSaved, resizeBy, SETTING_BUTTON, SETTING_PANEL, shown, startsPanelMove, toggleMaximize, toStored,
   type Edge, type Pos, type Rect, type Saved, type Win, BUTTON,
 } from "./geometry";
-import { add, answer, asked, close, closeKey, empty, hide, openLink, programExited, reorder, saved, saveTarget, select, selectNumber, setDirty, setTitle, step, toggle, type Kind, type Panel } from "./panel";
+import { add, answer, asked, close, closeKey, empty, hide, liveTerminalTabs, modalHolds, openLink, programExited, reorder, saved, saveTarget, select, selectNumber, setDirty, setTitle, step, toggle, type Kind, type Panel } from "./panel";
 import { isDirty } from "../editor/buffers";
 import { startFolderFor } from "./trusted";
 import { liveTerminals, SCAN_EVERY_MS, waitingTabs } from "./waitingScan";
@@ -50,6 +52,52 @@ type Props = {
 const EDGES: Edge[] = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
 const ICON: Record<Kind, string> = { terminal: ">_", agent: "*", browser: "o", markdown: "#" };
 const winSize = (): Win => ({ w: window.innerWidth, h: window.innerHeight });
+/** The "+" menu: every kind of tab the panel can hold. */
+const NEW_TABS: [Kind, string][] = [["terminal", "New terminal"], ["agent", "New agent"], ["browser", "New browser"], ["markdown", "New note"]];
+
+/** The question over the panel, drawn like the editor's close dialog (CloseDialog): title, plain sentence, Cancel first and focused. */
+function Question({ label, title, body, choices, onCancel, busy = false }: { label: string; title: string; body: string; choices: { name: string; kind: "danger" | "primary"; run: () => void }[]; onCancel: () => void; busy?: boolean }) {
+  const cancel = useRef<HTMLButtonElement>(null);
+  const chosen = useRef(false); // an answer other than Cancel: the tab it names goes, and the panel's own focus key picks the neighbour
+  // Focus goes to Cancel; when the question closes without an answer it goes back to where it was (same pattern as PaneMenu).
+  useEffect(() => {
+    const from = document.activeElement as HTMLElement | null;
+    const box = cancel.current?.closest(".ask-backdrop"); // the refs are cleared before this cleanup runs, so keep the box now
+    cancel.current?.focus();
+    return () => {
+      const now = document.activeElement;
+      if (!chosen.current && from && from.isConnected && (!now || now === document.body || !now.isConnected || !!box?.contains(now))) from.focus();
+    };
+  }, []);
+  return (
+    <div className="ask-backdrop" style={{ zIndex: 70 }} onMouseDown={onCancel}>
+      <div
+        className="ask"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={label}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Escape") (e.preventDefault(), onCancel());
+        }}
+      >
+        <h2 className="ask-title">{title}</h2>
+        <div className="ask-body">{body}</div>
+        <div className="btn-row">
+          <button ref={cancel} className="btn" disabled={busy} onClick={onCancel}>
+            Cancel
+          </button>
+          {choices.map((c) => (
+            <button key={c.name} className={`btn ${c.kind}`} disabled={busy} onClick={() => (c.name !== "Save" && (chosen.current = true), c.run())}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function FloatingLayer({ agents = [], defaultId, home, pending = 0, onToast }: Props) {
   const [panel, run] = useReducer((p: Panel, f: (p: Panel) => Panel) => f(p), undefined, () => empty());
@@ -60,6 +108,9 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
   const [place, setPlace] = useState<Saved>(() => parseSaved(null, winSize(), inset));
   const [btn, setBtn] = useState<Pos>(() => parseButton(null, winSize()));
   const [note, setNote] = useState<string | null>(null);
+  const [closing, setClosing] = useState<{ keys: number[]; title: string; body: string } | null>(null); // a tab with a running program, being asked about
+  const [plusAt, setPlusAt] = useState<{ top: number; left: number } | null>(null);
+  const [saving, setSaving] = useState(false); // the Save choice is writing; its buttons wait until the write settles
   const [renaming, setRenaming] = useState<number | null>(null); // TERM-062: the panel tab whose name is being edited
   const loaded = useRef(false);
   const ptys = useRef<Record<number, number>>({}); // tab key -> its terminal id, for the waiting scan
@@ -111,13 +162,25 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
     );
   };
 
+  // UX audit destructive F4: closing a floating tab whose program still runs asks first, as the window's tabs do (TERM-045).
+  // A failed check asks too. Tabs with unsaved text keep their own question (panel.ts close).
+  const closeTabs = async (keys: number[]) => {
+    const { keys: liveKeys, ids } = liveTerminalTabs(panel, keys, ptys.current);
+    const { busy, failed } = ids.length > 0 && asksBeforeClose(settings ?? {}) ? await busyCheck(ids, (list) => invoke<boolean[]>("terminal_busy", { ids: list })) : { busy: 0, failed: false };
+    if (busy === 0) return run((p) => close(p, keys));
+    const first = panel.tabs.find((t) => t.key === liveKeys[0]);
+    setClosing({ keys, ...closeQuestion(first?.title ?? "this tab", busy, liveKeys.length, failed) });
+  };
+
   const saveStore = (next: Saved) => void save({ [SETTING_PANEL]: toStored(next) });
-  const live = useRef({ panel, place, doAdd, settings });
-  live.current = { panel, place, doAdd, settings };
+  const live = useRef({ panel, place, doAdd, settings, closeTabs, modalUp: false });
+  live.current = { panel, place, doAdd, settings, closeTabs, modalUp: closing !== null || asked(panel) !== null || plusAt !== null };
 
   useEffect(() => {
     floatingKeys.handle = (e) => {
-      const { panel: p, place: pl, doAdd: addTab, settings: s } = live.current;
+      const { panel: p, place: pl, doAdd: addTab, settings: s, closeTabs: closeThese, modalUp } = live.current;
+      // A question or the "+" menu is up (drawn outside the panel): its chords are its own, so Ctrl/Cmd+W cannot reach the window's tab.
+      if (modalHolds(modalUp, e)) return (e.preventDefault(), e.stopPropagation(), true);
       const inPanel = p.open && !!document.activeElement?.closest(".float-panel");
       const activeKind = p.tabs.find((t) => t.key === p.active)?.kind;
       const scopes: Scope[] = inPanel && activeKind === "markdown" ? ["global", "tabs", "editor"] : ["global", "tabs"];
@@ -148,7 +211,8 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
           break;
         }
         case "close":
-          run(closeKey);
+          if (p.tabs.length === 0 || p.active === null) run(closeKey);
+          else void closeThese([p.active]);
           break;
         case "rename":
           if (p.active !== null) setRenaming(p.active);
@@ -267,34 +331,26 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
                   )}
                   {waiting.includes(t.key) && <span className="unsaved" title="Waiting for you" aria-label="Waiting for you">!</span>}
                   {t.dirty && <span className="unsaved" title="Unsaved changes">●</span>}
-                  <button className="x" aria-label={`Close ${t.title}`} onClick={(e) => (e.stopPropagation(), run((p) => close(p, [t.key])))}>×</button>
+                  <button className="x" aria-label={`Close ${t.title}`} onClick={(e) => (e.stopPropagation(), void closeTabs([t.key]))}>×</button>
                 </div>
               ))}
             </div>
-            <button className="ib" aria-label="New terminal" title="New terminal" onClick={() => doAdd("terminal")}>+</button>
+            <button
+              className="ib"
+              aria-label="New tab"
+              title="New tab: terminal, agent, browser or note"
+              aria-haspopup="menu"
+              aria-expanded={plusAt !== null}
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setPlusAt({ top: r.bottom + 4, left: r.left });
+              }}
+            >
+              +
+            </button>
             <button className="ib" aria-label={place.maximized ? "Restore" : "Maximize"} title={place.maximized ? "Restore" : "Maximize"} onClick={() => (setPlace(toggleMaximize(place)), saveStore(toggleMaximize(place)))}>{place.maximized ? "❐" : "□"}</button>
             <button className="ib" aria-label="Minimize" title="Minimize" onClick={() => run(hide)}>–</button>
           </div>
-          {ask && (
-            <div className="ask" role="alertdialog">
-              <span className="msg">Save changes to {ask.title} before closing?</span>
-              <button
-                className="btn"
-                onClick={async () => {
-                  // TERM-061: close only this tab, and only when its buffer is clean after the save (panel.ts saved).
-                  const { key, path } = ask;
-                  const write = editors.get(key);
-                  if (!write) return;
-                  await write();
-                  run((p) => saved(p, key, path ? isDirty(path) : true));
-                }}
-              >
-                Save
-              </button>
-              <button className="btn" onClick={() => run((p) => answer(p, "discard"))}>Don't save</button>
-              <button className="btn" onClick={() => run((p) => answer(p, "keep"))}>Cancel</button>
-            </div>
-          )}
           {note && <div className="note" role="status">{note}</div>}
           <div className="body">
             {panel.tabs.map((t) => {
@@ -321,7 +377,8 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
                       onFocus={() => run((p) => select(p, t.key))}
                       onPty={(id) => (ptys.current[t.key] = id)}
                       onRunning={(on) => on === false && run((p) => programExited(p, t.key))}
-                      onClose={() => run((p) => close(p, [t.key]))}
+                      onFailed={(why) => (setNote(`${t.title} could not start: ${why}`), onToast?.(`${t.title} could not start: ${why}`), run((p) => programExited(p, t.key)))}
+                      onClose={() => void closeTabs([t.key])}
                     />
                   )}
                 </div>
@@ -345,6 +402,54 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
             <div key={edge} className={`edge ${edge}`} onPointerDown={resizePanel(edge)} />
           ))}
         </div>
+      )}
+      {ask && (
+        <Question
+          label="Save changes before closing?"
+          title={`Save changes to ${ask.title}?`}
+          body="Closing without saving loses them."
+          busy={saving}
+          onCancel={() => run((p) => answer(p, "keep"))}
+          choices={[
+            { name: "Don't save", kind: "danger", run: () => run((p) => answer(p, "discard")) },
+            {
+              name: "Save",
+              kind: "primary",
+              run: async () => {
+                // TERM-061: close only this tab, and only when its buffer is clean after the save (panel.ts saved).
+                if (saving) return;
+                const { key, path } = ask;
+                const write = editors.get(key);
+                if (!write) return;
+                setSaving(true);
+                try {
+                  await write();
+                  run((p) => saved(p, key, path ? isDirty(path) : true));
+                } finally {
+                  setSaving(false);
+                }
+              },
+            },
+          ]}
+        />
+      )}
+      {closing && (
+        <Question
+          label="Close this tab?"
+          title={closing.title}
+          body={closing.body}
+          onCancel={() => setClosing(null)}
+          choices={[{ name: "Close tab", kind: "danger", run: () => (setClosing(null), run((p) => close(p, closing.keys))) }]}
+        />
+      )}
+      {plusAt && (
+        <PaneMenu
+          label="New tab menu"
+          layer={70}
+          style={{ top: plusAt.top, left: plusAt.left }}
+          onDismiss={() => setPlusAt(null)}
+          items={NEW_TABS.map(([kind, name]): MenuItem => ({ id: kind, name, group: 0, run: () => doAdd(kind) }))}
+        />
       )}
       <button className="float-btn" style={{ left: at.x, top: at.y, width: BUTTON, height: BUTTON }} aria-label="Floating workspace panel" aria-pressed={panel.open} title="Floating workspace panel" onPointerDown={dragButton} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), run(toggle))}>
         <span aria-hidden="true">▣</span>
