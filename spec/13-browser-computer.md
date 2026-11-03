@@ -179,8 +179,9 @@ Rules: the strip shows the origin alone, never a path or query; long origins are
   left so the real domain stays readable; plain http to a remote host is marked not secure, while
   http to this computer counts as secure; the strip follows the popup as it navigates; the popup
   stays linked to the tab that opened it so a sign-in can finish there; unsafe popup addresses are
-  blocked, and before a page has finished registering, safe popups go to the system browser
-  instead; popups inherit the opening page's security policies, and closing one side closes the
+  blocked, a popup opens only when the user started it with a click or key in the page (a
+  page's timer opens nothing, not even the system browser), and before a page has finished
+  registering, safe popups the user started go to the system browser instead; popups inherit the opening page's security policies, and closing one side closes the
   other.
 Acceptance:
   - [ ] Start a sign-in with GitHub from a site → the small window shows the GitHub origin,
@@ -854,6 +855,9 @@ User does: clicks something on a page that tries to open windows in a loop.
 User sees: only a handful of tabs open, and ordinary link opening still works afterwards.
 Rules: the allowance is a sliding window shared by the whole family of popups, so a slow, steady
   stream cannot get past it either; the allowance fills up again once the window has passed.
+  A window, open-link request or menu pick the page's script sends with no click or key behind it
+  opens nothing, and menu picks that open a Kolux tab or the default browser count against the
+  same allowance (DT-C93).
 Acceptance:
   - [ ] A page opens 100 windows from one click → a few tabs open and the rest are absorbed.
   - [ ] A minute later → links open normally again.

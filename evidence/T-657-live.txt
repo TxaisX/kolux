@@ -1,0 +1,13 @@
+site http://127.0.0.1:55124; browser tab 5 on /page, its timers running from the first load
+after 12 s idle: the page's timer ran 8 times (40 requests); server saw: none of them
+after a real Ctrl+click on a link: app tabs 3 -> 4, /user-linked requested 1 time(s)
+after a real click on the page's button: /clicked-open requested 1 time(s)
+not proven live: a real right-click menu pick (the menu needs the app window to hold the keyboard; a hidden window cannot)
+app tabs: 3 before the two clicks, 5 after
+all server requests: /page /user-linked /clicked-open
+screenshot: G:/Temp/live-v15-logs/T-657-end.png
+PASS the page's timers ran (the requests were made): n=8
+PASS no window, tab or system-browser window opened without the user: 
+PASS a real link click still opens exactly one tab: tabs 3 -> 4
+PASS a real click still opens exactly one tab: count=1
+PASS still nothing from the timers: 

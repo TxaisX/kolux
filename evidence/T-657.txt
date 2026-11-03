@@ -1,0 +1,54 @@
+T-657 (R07-browser.3, DT-C93) — no tab or system-browser window opens from a page unless the user did something
+Branch s-90/t657, worktree wt/90-t657, 2026-11-02. Approach: (a)+(b), no wry fork.
+
+What changed
+- (a) A window a page asks for opens only when the engine says the user started it. The engine's new-window word and the
+  page's request are paired in either order; a request with no word, or a word with no request, opens nothing.
+- (b) The app's own page script sends open-link and menu-pick requests; these now act only after the engine's navigation word
+  says the user started that navigation. Redirects never count as user-started. A request a page sends on its own uses up
+  nothing (no allowance, no tab).
+- Links and menu picks take the per-family tab allowance only after the engine's word, so a burst of forged requests cannot
+  spend it. A query field on a pick cannot turn it into a kind the allowance skips.
+- The app's own scripts (the page picker, history steps, probes, `kolux eval` and the command line's scripts) run through
+  the engine's quiet path, which lends the page no user gesture. A script that throws answers "null", as before.
+- A tab that is not on screen opens nothing.
+
+Checks run (fresh, after the last change)
+- cargo test --lib browser: 297 passed, 0 failed (new: a window the user did not start is refused and one they did passes;
+  a page request acts only on the engine's word, in either order; a query field cannot change a pick's kind; requests a page
+  sends on its own use up nothing; a burst of menu picks is capped by the family allowance; the engine handlers wait for the
+  word and app scripts run quietly)
+- cargo clippy --all-targets -- -D warnings: clean
+- npx tsc --noEmit: OK
+- node scripts/plan-check.mjs: OK
+- vite build: OK; bundle-budget: OK (1453307 of 1485000)
+- Live proof (hidden dev app, scratch profile, one loopback site): node scripts/prove/live-T-657.mjs — 5/5 PASS,
+  details in evidence/T-657-live.txt. Timers that try to open tabs and windows ran 8 times and reached nothing; a real
+  Ctrl+click on a link opened exactly one tab; a real click on a button that opens a window opened exactly one tab.
+
+Found by the live proof
+- The first run caught the app's own probe script lending the page a gesture, so a timer could open a tab right after it.
+  Fixed: every app script now goes through the quiet path (see above).
+- Each click that opens a tab moves that tab on screen, and a tab not on screen opens nothing; the proof switches back to
+  the page between the two clicks.
+- Not proven live: a real right-click menu pick. The menu needs the app window to hold the keyboard, which a hidden window
+  cannot. Covered by unit tests only.
+
+Recorded in DT-C93 (overrulable)
+- An agent's `kolux eval` or click now also lends no gesture, so a button an agent clicks that opens a window shows popups
+  blocked; agents open tabs with `kolux tab create`.
+
+Review
+- security-auditor: 1 high, 4 medium, 2 low. Fixed: the high (a forged request spending the allowance before the word),
+  three mediums and both lows. One medium left as a follow-up (below).
+- opus-high-review (first pass): B. Items 3, 4, 5 and 9 fixed; items 1 and 2 (no live proof that a real link click still
+  works) answered by the Ctrl+click in the live proof.
+- opus-high-review (verify pass): A-, all 7 items fixed, no blocking findings. Its medium point (a click handler that sets
+  the page address counts as user-started) is the case the live Ctrl+click shows working.
+
+Follow-ups (not in this PR)
+- A page can lure a real click onto an element that sends a pick reaching the system browser; and the certificate-revoke pick.
+  Both handed to the coordinator.
+- Lows: history steps and go report success even if the script never ran; the quiet path drops its answer if the engine
+  handle is gone; a forged link is dropped without a toolbar signal; the window-word cap is shared across tabs; touch
+  long-press is untested; the non-Windows fallback is not compile-checked (CI builds Rust on Windows only).
