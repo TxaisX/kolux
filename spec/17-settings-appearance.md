@@ -512,6 +512,8 @@ Rules: fields save after a short pause, and straight away on leaving the field, 
   fails the typed text stays in the field for another try; input-method composition (Chinese, Japanese,
   Korean) is never saved half-way, and Cmd/Ctrl+Enter, which submits the current form or dialog, does
   nothing during composition; number fields that can be cleared go back to their default when emptied;
+  a number field saves after the pause only once it holds a finished number in range, so a half-typed
+  or out-of-range number waits and is saved, clamped, on leaving the field or closing the window;
   segmented choices that are unavailable show greyed with the reason; long option lists (fonts,
   schemes) narrow as the user types, and oversized search text in those pickers is refused before any
   filtering.
