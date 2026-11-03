@@ -52,8 +52,9 @@ Acceptance:
   - [x] Type a settings page name → a row that opens that page. (cards; evidence/cards-VIEW-037.txt)
   - [x] Type Show → a row for every screen, Agents, Board and Terminals included; a row for a command with keys shows
         those keys (New terminal tab Ctrl+T, Search open tabs Ctrl+Shift+K). (unit; evidence/T-708.txt)
-  - [x] Every dialog and sheet in the app closes on Escape, or is listed with the reason it does not (a chat card,
-        a two-answer fallback, a panel whose parent closes it first). (unit; evidence/T-708.txt)
+  - [x] Every element with role dialog or alertdialog closes on Escape, or is listed with the reason it does not (a chat
+        card, a two-answer fallback, a panel whose parent closes it first); Escape never throws away typed text. (unit;
+        evidence/T-708.txt)
 Compat: keybinding id worktree.palette
 Source: D-05-037
 

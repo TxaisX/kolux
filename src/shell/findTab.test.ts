@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isTabRow, onTabSearch, openTabSearch, tabMatches, tabSearchCommand, tabSearcher, type TabEntry } from "./findTab";
+import { isTabRow, onTabSearch, openTabSearch, tabMatches, tabSearcher, type TabEntry } from "./findTab";
 import dialogsSource from "./window/Dialogs.tsx?raw";
 
 const tab = (label: string, hint?: string): TabEntry => ({ label, hint, run: () => {} });
@@ -14,13 +14,6 @@ describe("TERM-053 mount and trigger", () => {
     off();
     openTabSearch(target);
     expect(open).toHaveBeenCalledTimes(1);
-  });
-  it("the palette row runs the trigger", () => {
-    const run = vi.fn();
-    const row = tabSearchCommand(run);
-    expect(row).toMatchObject({ section: "Quick actions", label: "Search open tabs" });
-    row.run();
-    expect(run).toHaveBeenCalledTimes(1);
   });
 });
 

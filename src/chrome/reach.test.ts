@@ -60,13 +60,12 @@ test("T-708: every Screen id has a palette row of its own, the switcher's four t
   expect(SCREEN_IDS.filter((id) => !fromPalette.has(id))).toEqual([]);
 });
 
-test("T-708: a hand-built palette row for a command shows the command's keys, as its Commands row does", () => {
+test("T-708: no hand-built palette row repeats a command; its Commands row, with its keys, is the one", () => {
   const map = resolve(null, "win32");
   const bound = actions.filter((a) => labelOf(map, a.id).length > 0);
-  // No hand-built row repeats a bound command by name without its keys: its Commands row is the one (New terminal tab).
+  // No hand-built row repeats a bound command by name: its Commands row is the one (New terminal tab, Search open tabs).
   expect(bound.filter((a) => paneActions.includes(`label: "${a.title}"`)).map((a) => a.id)).toEqual([]);
-  // Search open tabs is drawn by tabSearchCommand: its row takes tab.search's keys too.
-  expect(paneActions).toMatch(/tabSearchCommand\([^\n]*, labelOf\(keymap, "tab\.search"\)\.join\("\+"\)\)/);
+  expect(paneActions).not.toMatch(/tabSearchCommand|section: "Quick actions", label: "(New terminal tab|Search open tabs)"/);
 });
 
 // Every dialog in the app (an element with role="dialog" or role="alertdialog" in src/**/*.tsx) and how its Escape
@@ -101,7 +100,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["floating/FloatingLayer.tsx", "label", "tag"],
   ["floating/FloatingLayer.tsx", "Floating workspace panel", "inner"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
-  ["onboarding/Guides.tsx", "Explore Kolux", "tag"],
+  ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
   ["onboarding/Guides.tsx", "Tip", "window"],
   ["onboarding/Guides.tsx", "Agent status hooks", "exempt: a docked tip, not modal; Not now closes it"],
   ["onboarding/Tours.tsx", "${tour.name} tour", "window"],
@@ -215,12 +214,24 @@ function dialogs(): Found[] {
 }
 
 const FOCUS = /autoFocus|\.focus\(\)/;
-const ESCAPE = /"Escape"|leavesGrab|escapeClosesForm|dialogStep|leaveKey|escapeLeaves|watchEscape/; // the shared key helpers name it for them
+const ESCAPE = /"Escape"|leavesGrab|escapeClosesForm|dialogStep|leaveKey|escapeLeaves|watchEscape|askKey|nameKey/; // the shared key helpers name it for them
+/** The dialog's own key handler: its onKeyDown, or the function it names (onKeyDown={keys} → const keys = ...). */
+function handler(d: Found): string {
+  const named = /onKeyDown=\{(\w+)\}/.exec(d.tag)?.[1];
+  if (!named) return d.tag;
+  const def = new RegExp(`(const|function) ${named}\\b`).exec(d.src);
+  return def ? d.src.slice(def.index, def.index + 800) : "";
+}
+/** It takes focus when it opens: autoFocus or .focus() inside it, a ref inside it that is focused, or the shared hooks. */
+function focuses(d: Found): boolean {
+  if (FOCUS.test(d.body) || /useDialogFocus\(|trapDialog\(/.test(d.src)) return true;
+  return [...d.body.matchAll(/\bref=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(`).test(d.src));
+}
 function closes(d: Found, how: string, all: Found[]): boolean {
   const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];
   switch (how) {
     case "tag":
-      return /onKeyDown=/.test(d.tag) && ESCAPE.test(d.src) && (FOCUS.test(d.body) || /\.focus\(|useDialogFocus\(|trapDialog\(/.test(d.src));
+      return /onKeyDown=/.test(d.tag) && ESCAPE.test(handler(d)) && focuses(d);
     case "hook":
       return !!ref && new RegExp(`(useDialogFocus|trapDialog|useDismiss)\\(${ref}\\b`).test(d.src);
     case "inner":
@@ -236,7 +247,7 @@ function closes(d: Found, how: string, all: Found[]): boolean {
   }
 }
 
-test("T-708: every dialog and sheet is in the table and closes on Escape the way it says", () => {
+test("T-708: every role=dialog / alertdialog element is in the table and closes on Escape the way it says", () => {
   const all = dialogs();
   const key = (file: string, label: string) => `${file} | ${label}`;
   expect(all.map((d) => key(d.file, d.label)).sort()).toEqual(DIALOGS.map(([f, l]) => key(f, l)).sort());

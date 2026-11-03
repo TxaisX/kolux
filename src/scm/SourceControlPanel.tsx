@@ -83,7 +83,7 @@ type Props = {
   notesSection?: ReactNode;
 };
 
-type Asking = { agent: string; prompt: string; remember: boolean; title?: string };
+type Asking = { agent: string; prompt: string; remember: boolean; title?: string; edited?: boolean };
 
 const LANE = 12;
 const ROW = 22;
@@ -1082,7 +1082,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                 onKeyDown={(e) => {
                   if (e.key !== "Escape") return;
                   e.stopPropagation();
-                  setAsking(null);
+                  if (!asking.edited) setAsking(null); // T-708: an edited prompt is closed by Cancel only
                 }}
               >
                 {asking.title && <div className="scm-ask-title">{asking.title}</div>}
@@ -1093,7 +1093,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                     </option>
                   ))}
                 </select>
-                <textarea aria-label="prompt for the agent" className="field multi" value={asking.prompt} onChange={(e) => setAsking({ ...asking, prompt: e.target.value })} />
+                <textarea aria-label="prompt for the agent" className="field multi" value={asking.prompt} onChange={(e) => setAsking({ ...asking, prompt: e.target.value, edited: true })} />
                 <label className="conn-switch">
                   <input type="checkbox" checked={asking.remember} onChange={(e) => setAsking({ ...asking, remember: e.target.checked })} />
                   <span>Start this agent without asking next time</span>

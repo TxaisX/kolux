@@ -1261,6 +1261,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
             if (e.key !== "Escape") return;
             e.stopPropagation();
             setCookieMenu(null);
+            cookieBtn.current?.focus();
           }}
         >
           <ol>
@@ -1293,6 +1294,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
             if (e.key !== "Escape") return;
             e.stopPropagation();
             setOutbound(null);
+            if (focused) bar.current?.focus(); // BROW-001: only the focused pane's bar
           }}
         >
           <span>
@@ -1309,7 +1311,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           >
             Open
           </button>
-          <button type="button" className="ib" autoFocus onClick={() => setOutbound(null)}>
+          <button type="button" className="ib" autoFocus={focused} onClick={() => setOutbound(null)}>
             Cancel
           </button>
         </div>
@@ -1324,6 +1326,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
             if (e.key !== "Escape") return;
             e.stopPropagation();
             setLeave(null);
+            if (focused) bar.current?.focus(); // BROW-001: only the focused pane's bar
           }}
         >
           <span>
@@ -1334,7 +1337,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           <button type="button" className="ib" data-leave-go disabled={!armedLook} onClick={() => leaveReady(leave) && leaveConfirmed(leave)}>
             {leaveText(leave).confirm}
           </button>
-          <button type="button" className="ib" data-leave-cancel autoFocus onClick={() => setLeave(null)}>
+          <button type="button" className="ib" data-leave-cancel autoFocus={focused} onClick={() => setLeave(null)}>
             Cancel
           </button>
         </div>
