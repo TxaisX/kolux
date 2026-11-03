@@ -15,7 +15,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { ChevronDown, Close, EyeOff, Expand, FolderPlus, Funnel, Plus, Refresh, Search } from "../chrome/icons";
+import { ChevronDown, Close, EyeOff, FolderPlus, Funnel, Plus, Refresh, Rocket, Search } from "../chrome/icons";
+import { clampMenu, useMenuKeys } from "./menuNav";
 import { DOTFILES_KEY, IGNORED_KEY, filterRows, folderGlob, hidesDotfiles, rowMenu, sameNodes, withDotfiles, withoutDotfiles, withoutIgnored } from "./explorerView";
 import { MAX_DROP_BYTES, projectDrop, refuseDrop } from "./desktopDrops";
 import FileIcon from "./FileIcon";
@@ -125,6 +126,19 @@ type Props = {
   onWake?: () => void;
 };
 
+/** Whether a read of `dir` may go out now: the live poll (quiet) waits while the folder's last read is still out; any other read always goes. Marks it out. */
+export function claimRead(out: Set<string>, dir: string, quiet: boolean): boolean {
+  if (quiet && out.has(dir)) return false;
+  out.add(dir);
+  return true;
+}
+
+/** What Expand all says when it stopped at the folder cap or met folders it could not read (null: nothing to say). */
+export function expandNote(capped: boolean, unreadable: number): string | null {
+  const parts = [capped ? `Expand all stopped at ${EXPAND_CAP} folders; open the rest one by one.` : "", unreadable ? `${unreadable} folder${unreadable === 1 ? "" : "s"} could not be read (marked "not readable").` : ""].filter(Boolean);
+  return parts.length ? parts.join(" ") : null;
+}
+
 export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOpenTerminal, onWake }: Props) {
   const keymap = useKeymap();
   // EDIT-037: the explorer shows either the file tree or the content search; Mod+Shift+F
@@ -137,9 +151,16 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     if (text) setSeed({ text, at: Date.now() });
     setSearchAsk((n) => n + 1);
   };
+  // Closing the search never starts one (so the query is not re-seeded); focus goes back to the tree.
+  const closeSearch = () => {
+    setSearching(false);
+    window.setTimeout(() => box.current?.focus());
+  };
   // EDIT-043: the Open in menu (null while closed) and the last launch that failed.
   const [openTargets, setOpenTargets] = useState<{ list: Target[]; x: number; y: number } | null>(null);
   const [openErr, setOpenErr] = useState<string | null>(null);
+  const openMenu = useRef<HTMLDivElement>(null);
+  const openButton = useRef<HTMLButtonElement>(null);
   // T-323-b: a file row's menu also lists the Open in apps (read from the settings when the menu opens).
   const [fileApps, setFileApps] = useState<App[]>([]);
   // EDIT-037: with the explorer hidden the key shows it first (onWake) and the search starts once it is on screen.
@@ -186,14 +207,31 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const undone = useRef<Op[]>([]);
 
   // A read that finds the same entries keeps the old list, so the live refresh below does not redraw an unchanged tree.
-  const load = (dir: string) =>
-    invoke<Node[]>("dir_list", { path: dir }).then(
-      (list) => {
-        setKids((k) => (sameNodes(k[dir], list) ? k : { ...k, [dir]: list }));
-        setFailed((f) => (dir in f ? Object.fromEntries(Object.entries(f).filter(([p]) => p !== dir)) : f));
-      },
-      (err) => setFailed((f) => (f[dir] === String(err) ? f : { ...f, [dir]: String(err) })),
-    );
+  // The live poll (quiet) skips a folder whose last read has not come back yet, so a slow disk is not
+  // asked again every few seconds; a read the user or an edit asks for always goes out.
+  const inflight = useRef<Set<string>>(new Set());
+  // How many reads of a folder are out: a user read and a poll can overlap, and the mark stays until the last one is back.
+  const reading = useRef<Map<string, number>>(new Map());
+  const load = (dir: string, quiet = false) => {
+    if (!claimRead(inflight.current, dir, quiet)) return Promise.resolve();
+    reading.current.set(dir, (reading.current.get(dir) ?? 0) + 1);
+    return invoke<Node[]>("dir_list", { path: dir })
+      .then(
+        (list) => {
+          setKids((k) => (sameNodes(k[dir], list) ? k : { ...k, [dir]: list }));
+          setFailed((f) => (dir in f ? Object.fromEntries(Object.entries(f).filter(([p]) => p !== dir)) : f));
+        },
+        (err) => setFailed((f) => (f[dir] === String(err) ? f : { ...f, [dir]: String(err) })),
+      )
+      .finally(() => {
+        const left = (reading.current.get(dir) ?? 1) - 1;
+        if (left > 0) reading.current.set(dir, left);
+        else {
+          reading.current.delete(dir);
+          inflight.current.delete(dir);
+        }
+      });
+  };
   // VIEW-059 (T-224-b): refresh shows a spinner and is off while it runs; expand all opens the folders level by level.
   const [refreshing, setRefreshing] = useState(false);
   const [expanding, setExpanding] = useState(false);
@@ -209,17 +247,27 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
       const seen = new Set(open);
       const lists: Record<string, Node[] | undefined> = { ...kids };
       let room = EXPAND_CAP;
+      let unreadable = 0;
       for (let level = 0; level < 12 && room > 0; level++) {
         const wave = nextWave(lists, seen, room);
         if (!wave.length) break;
         room -= wave.length;
         wave.forEach((d) => seen.add(d));
         setOpen((o) => new Set([...o, ...wave]));
-        const got = await Promise.all(wave.map((d) => invoke<Node[]>("dir_list", { path: d }).then((l) => [d, l] as const, () => null)));
-        const fresh = Object.fromEntries(got.filter((x): x is readonly [string, Node[]] => x !== null));
+        const got = await Promise.all(wave.map((d) => invoke<Node[]>("dir_list", { path: d }).then((l) => [d, l] as const, (err) => [d, String(err)] as const)));
+        const fresh = Object.fromEntries(got.filter((x): x is readonly [string, Node[]] => Array.isArray(x[1])));
+        // A folder that would not read is marked "not readable" on its row, not skipped without a word.
+        const bad = got.filter((x): x is readonly [string, string] => typeof x[1] === "string");
+        if (bad.length) {
+          setFailed((f) => ({ ...f, ...Object.fromEntries(bad) }));
+          unreadable += bad.length;
+        }
         Object.assign(lists, fresh);
         setKids((k) => ({ ...k, ...fresh }));
       }
+      const capped = room <= 0 && nextWave(lists, seen, 1).length > 0;
+      const said = expandNote(capped, unreadable);
+      if (said) setNote({ bad: true, text: said });
     } finally {
       setExpanding(false);
     }
@@ -234,7 +282,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     // EDIT-035: the tree keeps up with the disk by itself: every shown folder is read again every few seconds while the
     // window is on screen (up to 40 folders a round), and a folder that did not change costs no redraw.
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") shownDirs.current.slice(0, LIVE_FOLDERS).forEach((d) => void load(d));
+      if (document.visibilityState === "visible") shownDirs.current.slice(0, LIVE_FOLDERS).forEach((d) => void load(d, true));
     }, LIVE_MS);
     return () => {
       window.removeEventListener("focus", again);
@@ -571,9 +619,18 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
       edge = ev.clientY < b.top + EDGE ? -1 : ev.clientY > b.bottom - EDGE ? 1 : 0;
       setDropAt(dirAt(rows, rowAt(ev.clientY), root, isDir));
     };
+    // The system can cancel a drag (a touch turns into a scroll, a window loses the pointer): nothing moves then.
+    const cancel = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
+      window.clearInterval(timer);
+      setDropAt(null);
+    };
     const up = (ev: PointerEvent) => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
       window.clearInterval(timer);
       setDropAt(null);
       if (!on) return;
@@ -585,6 +642,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
   };
   // Files dragged in from the desktop are copied into the folder under the pointer.
   const live = useRef({ rows, isDir, doCopy });
@@ -704,6 +762,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const last = Math.min(rows.length, Math.ceil((scroll + height) / ROW) + SPARE);
   const name = baseName(root.replace(/[\\/]+$/, "")) || root;
   const wsl = asking?.some(isWsl);
+  useMenuKeys(openMenu, !!openTargets, () => setOpenTargets(null), openButton);
   return (
     <aside className="explorer" hidden={hidden} aria-label="Explorer">
       <header className="explorer-head">
@@ -711,20 +770,26 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         <span className="path" title={root}>
           {name}
         </span>
-        <button className={`ib${searching ? " on" : ""}`} onClick={() => (setSearching(!searching), startSearch())} aria-pressed={searching} title="Search file contents (Ctrl+Shift+F)" aria-label="Search file contents">
+        <button className={`ib${searching ? " on" : ""}`} onClick={() => (searching ? closeSearch() : (setSearching(true), startSearch()))} aria-pressed={searching} title="Search file contents (Ctrl+Shift+F)" aria-label="Search file contents">
           <Search size={12} />
         </button>
-        <button className="ib" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); if (openTargets) setOpenTargets(null); else void loadTargets().then((list) => setOpenTargets({ list, x: r.left, y: r.bottom + 4 })); }} aria-expanded={!!openTargets} aria-haspopup="menu" title="Open this folder in another app" aria-label="Open in">
-          <Expand size={12} />
+        <button ref={openButton} className="ib" onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); if (openTargets) setOpenTargets(null); else void loadTargets().then((list) => setOpenTargets({ list, x: r.left, y: r.bottom + 4 })); }} aria-expanded={!!openTargets} aria-haspopup="menu" title="Open this folder in another app" aria-label="Open in">
+          <Rocket size={12} />
         </button>
         <button className="ib" onClick={refresh} disabled={refreshing} aria-busy={refreshing} title="Refresh the tree" aria-label="Refresh the tree">
           <Refresh size={12} className={refreshing ? "spin" : undefined} />
         </button>
         <button className="ib" onClick={() => void expandAll()} disabled={expanding} aria-busy={expanding} title="Expand all folders" aria-label="Expand all folders">
-          <ChevronDown size={12} />
+          <span className="ex-stack" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", lineHeight: 0 }}>
+            <ChevronDown size={9} style={{ marginBottom: -4 }} />
+            <ChevronDown size={9} />
+          </span>
         </button>
         <button className="ib" onClick={() => setOpen(new Set())} title="Collapse all folders" aria-label="Collapse all folders">
-          <ChevronDown size={12} style={{ transform: "rotate(180deg)" }} />
+          <span className="ex-stack" style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", lineHeight: 0 }}>
+            <ChevronDown size={9} style={{ transform: "rotate(180deg)", marginBottom: -4 }} />
+            <ChevronDown size={9} style={{ transform: "rotate(180deg)" }} />
+          </span>
         </button>
         <button className={`ib${noDots ? " on" : ""}`} onClick={flipDots} aria-pressed={noDots} title={noDots ? "Dotfiles are hidden; click to show them" : "Hide dotfiles"} aria-label="Hide dotfiles">
           <EyeOff size={12} />
@@ -743,13 +808,16 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         </button>
       </header>
       {openTargets && (
-        <div className="menu open-in-menu" role="menu" aria-label="Open in" style={{ left: openTargets.x, top: openTargets.y }} onKeyDown={(e) => e.key === "Escape" && setOpenTargets(null)}>
+        <>
+        <div className="menu-backdrop" onClick={() => setOpenTargets(null)} onContextMenu={(e) => (e.preventDefault(), setOpenTargets(null))} />
+        <div ref={openMenu} className="menu open-in-menu" role="menu" aria-label="Open in" style={clampMenu(openTargets.x, openTargets.y, 240, 40 + openTargets.list.length * 28, window.innerWidth, window.innerHeight)}>
           {openTargets.list.map((t) => (
             <button key={t.label} role="menuitem" className="menu-item" onClick={() => (setOpenTargets(null), setOpenErr(null), void openIn(root, t).catch((err) => setOpenErr(`${t.label} did not open: ${err}`)))}>
               {t.label}
             </button>
           ))}
         </div>
+        </>
       )}
       {menu && (
         <>
@@ -786,7 +854,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         </div>
       )}
       {asking && (
-        <div className="notice ex-ask" role="alertdialog" aria-label="Delete">
+        <div className="notice ex-ask" role="alertdialog" aria-label="Delete" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setAsking(null), back())}>
           <span>
             {wsl ? "Delete" : "Move"} {asking.length === 1 ? baseName(asking[0]) : `${asking.length} items`} {wsl ? "for good? A WSL share has no trash." : "to the trash?"}
           </span>
@@ -816,7 +884,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
           )}
         </div>
       )}
-      <ContentSearch root={root} hidden={!searching} focusAsk={searchAsk} seed={seed} scope={scope} onOpen={onOpen} />
+      <ContentSearch root={root} hidden={!searching} focusAsk={searchAsk} seed={seed} scope={scope} onOpen={onOpen} onClose={closeSearch} />
       <div
         hidden={searching}
         className={`explorer-rows${dropAt === root ? " drop" : ""}`}

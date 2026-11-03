@@ -771,7 +771,7 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
           {path}
         </span>
         <button
-          className="ib"
+          className="btn small"
           title="Copy the full path"
           aria-label="Copy the full path"
           onClick={() =>
@@ -781,11 +781,11 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
             )
           }
         >
-          Copy
+          Copy path
         </button>
         {offersPreview(path) && (
           <button
-            className="ib"
+            className="btn small"
             title="Show this page rendered in a browser tab"
             aria-label="Preview in a browser tab"
             onClick={() => void previewHtml(path).then((err) => err && report.current.onToast?.(err))}
@@ -803,7 +803,7 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
           </span>
         )}
         {md && shown === "rich" && frontCtl && (
-          <button className="ib" aria-pressed={frontCtl.pressed} title={frontCtl.label} aria-label={frontCtl.label} onClick={() => setHideFront((v) => !v)}>
+          <button className={`btn small${frontCtl.pressed ? " on" : ""}`} aria-pressed={frontCtl.pressed} style={frontCtl.pressed ? { background: "var(--row-selected)" } : undefined} title={frontCtl.label} aria-label={frontCtl.label} onClick={() => setHideFront((v) => !v)}>
             Front
           </button>
         )}

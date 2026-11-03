@@ -1090,12 +1090,13 @@ Rules: the tree updates on its own when files change on disk, including at a dri
   only on whole folder boundaries, so a neighbouring share with a similar name is not treated as
   inside the tree; filtering the tree to a folder does not change which folders stay expanded
   afterwards; hiding and reopening the Explorer on the same worktree keeps its expanded folders;
-  showing another worktree starts fresh; pressing Down with nothing focused selects the first row.
+  showing another worktree starts fresh; pressing Down with nothing focused selects the first row; in an empty Explorer, Add a project adds the chosen folder itself when the project list is not on screen (a Git project, else a plain folder project) and asks the window to show the list, so it never ends in a message sending the user elsewhere.
 Acceptance:
   - [ ] Create a file in a terminal → it appears in the tree without manual refresh.
   - [ ] Arrow down through the list → selection moves row by row.
   - [ ] Type a file name → only it and its parents show.
-  - [ ] No project → the Explorer offers an add-project row.
+  - [ ] No project → the Explorer offers an add-project row. (unit tests; evidence/T-683.txt)
+  - [ ] Add a project from the empty Explorer with the project list hidden → the folder is added. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-05-059
 
@@ -1113,10 +1114,11 @@ Rules: deleting a folder and a file inside it deletes the folder once; Delete is
   opens or closes the folder; on case-sensitive file systems, two selected files whose names differ
   only by case are both deleted; row menus offer only what fits the row: collapse for an expanded
   folder, find in folder and open in terminal for folders, view for files, and copy as a file to the
-  system clipboard for a single file; a failed system copy shows an error toast.
+  system clipboard for a single file; a failed system copy shows an error toast; Escape on the delete question cancels it and returns focus to the tree; a drag the system cancels ends cleanly and moves nothing.
 Acceptance:
   - [ ] Rename then press Escape → name unchanged on disk.
   - [ ] Select a folder and a file inside it, delete → one delete, no error.
+  - [ ] Press Delete, then Escape at the question → nothing is deleted and the tree has focus. (unit tests; evidence/T-683.txt)
 Compat: five Explorer keybinding commands (undo, redo, copy path, copy relative path, delete); their
   exact ids are held back pending the allowlist.
 Source: D-05-060
@@ -1129,10 +1131,11 @@ User sees: matches grouped by file; clicking opens the file at the match.
 Rules: searching from a folder pre-fills the query and limits it to that folder; when a search
   fails, the panel explains the failure rather than showing nothing; a search that simply finds no
   matches shows no error; a result opens in the worktree the search ran in, even if the active
-  worktree changed since.
+  worktree changed since; Escape in the search box closes the search and puts focus back on the tree.
 Acceptance:
   - [ ] Search from a folder's menu → include pattern is that folder.
   - [ ] Break the search tool → an error message, not an empty list.
+  - [ ] Press Escape in the search box → the search closes and the tree has focus. (unit tests; evidence/T-683.txt)
 Compat: keybinding id sidebar.search.toggle
 Source: D-05-061
 
