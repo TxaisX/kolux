@@ -132,7 +132,15 @@ test("box 2: a clicked link leaves the viewer as a message, and the page hands i
   };
   await deliver({}, { koluxOpen: "https://elsewhere.invalid/" }); // not our frame
   await deliver(own, { somethingElse: 1 });
+  // A page script that posts with no click (on load, say) opens nothing (T-682).
+  const nav = globalThis.navigator as unknown as { userActivation?: { isActive: boolean } };
+  const had = Object.getOwnPropertyDescriptor(nav, "userActivation");
+  const activation = { isActive: false };
+  Object.defineProperty(nav, "userActivation", { value: activation, configurable: true });
+  await deliver(own, { koluxOpen: "https://example.invalid/no-click" });
   expect(h.calls.filter((x) => x.cmd === "open_external")).toEqual([]);
+  // The clicks above activate the window, so their messages open.
+  activation.isActive = true;
   for (const m of v.posted) await deliver(own, m.msg);
   expect(h.calls.filter((x) => x.cmd === "open_external").map((x) => x.args)).toEqual([{ url: "https://example.invalid/x?q=1" }, { url: "mailto:someone@example.invalid" }]);
   expect(toasts).toEqual([]);
@@ -142,6 +150,8 @@ test("box 2: a clicked link leaves the viewer as a message, and the page hands i
   expect(toasts).toEqual(["file:///x is not a web or mail link"]);
   // The frame is sandboxed without top navigation or popups.
   expect(String(frame.attrs.sandbox)).toBe("allow-scripts allow-forms");
+  if (had) Object.defineProperty(nav, "userActivation", had);
+  else delete (nav as { userActivation?: unknown }).userActivation;
 });
 
 test("box 3: Add artifact with a file that cannot be read shows an error toast and the list stays as it was", async () => {
