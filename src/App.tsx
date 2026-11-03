@@ -218,6 +218,9 @@ function Window({ initial, layout, read }: { initial: Record<string, unknown>; l
     ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, prRows, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef,
   };
   Object.assign(w, bag);
+  // T-699 (DT-C135): the right sidebar as the left one's setter sees it (shell/window/narrow.ts nextLeft).
+  // TopBar reads `shown` for the left toggle's state; it is the same test as the right sidebar's hidden (Right.tsx).
+  store.rightAside.current = { shown: terminals && plumb.right.open && !screenState.fullPage, open: plumb.right.open, close: () => plumb.saveRight({ open: false }) };
   // The drawing (shell/WindowView.tsx).
   return windowView(w);
 }
