@@ -5,6 +5,7 @@
 // only where MiniMax is detected, and ACCT-029 the experimental Gemini CLI credentials switch,
 // shown only where Gemini is detected and off until turned on. The backend is agent_creds.rs;
 // secrets never come back to this page, only whether one is kept.
+import { ResetButton } from "./SafetyRules";
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -73,9 +74,13 @@ export function AgentCredentialsView({ view, drafts, onDraft, onAction }: { view
                 <button className="btn" disabled={!(drafts[name] ?? "").trim()} onClick={() => onAction({ kind: "save", field, value: drafts[name] ?? "" })}>
                   {kept ? "Replace" : "Save"}
                 </button>
-                <button className="btn" disabled={!kept} onClick={() => onAction({ kind: "forget", field })}>
-                  Forget
-                </button>
+                {kept ? (
+                  <ResetButton label="Forget" ariaLabel={`Forget ${label}`} yes="Yes, forget" onReset={() => onAction({ kind: "forget", field })} />
+                ) : (
+                  <button className="btn" disabled>
+                    Forget
+                  </button>
+                )}
                 <span className="conn-detail">{keptNote(kept)}</span>
               </div>
             );

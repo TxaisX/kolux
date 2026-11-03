@@ -4,6 +4,7 @@
 // last four characters, and the key itself never comes back to this page (provider_usage.rs keeps
 // it sealed). A check runs only when Check now is pressed. Claude, Codex and Gemini figures stay
 // on what their own sessions report.
+import { ResetButton } from "./SafetyRules";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -63,9 +64,13 @@ export function ProviderUsageView({ rows, drafts, readings, pending = {}, onDraf
               <button className="btn" disabled={!draft.trim()} onClick={() => onAction({ kind: "save", provider: r.provider, value: draft })}>
                 {r.kept ? "Replace" : "Add key"}
               </button>
-              <button className="btn" disabled={!r.kept} onClick={() => onAction({ kind: "forget", provider: r.provider })}>
-                Remove
-              </button>
+              {r.kept ? (
+                <ResetButton label="Remove" ariaLabel={`Remove ${r.label}`} yes="Yes, remove" onReset={() => onAction({ kind: "forget", provider: r.provider })} />
+              ) : (
+                <button className="btn" disabled>
+                  Remove
+                </button>
+              )}
               <button className="btn" disabled={!r.kept || !!pending[r.provider]} onClick={() => onAction({ kind: "check", provider: r.provider })}>
                 {pending[r.provider] ? "Checking…" : "Check now"}
               </button>

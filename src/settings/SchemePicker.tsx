@@ -3,6 +3,7 @@
 import type { ITheme } from "@xterm/xterm";
 import { classic, terminalFor, terminalTheme, type Appearance } from "../theme";
 import { CATALOGUE, findSchemes } from "../terminal/schemes";
+import { ResetButton } from "./SafetyRules";
 
 export type SchemeOption = { id: string; name: string; colours: ITheme; custom?: boolean };
 
@@ -37,9 +38,7 @@ export function SchemeList({ label, options, query, value, disabled, onPick, onR
               <span className="name">{o.name}</span>
             </button>
             {o.custom && onRemove && (
-              <button type="button" className="scheme-remove" title={`Remove ${o.name}`} aria-label={`Remove ${o.name}`} onClick={() => onRemove(o.id)}>
-                ×
-              </button>
+              <ResetButton label="×" className="scheme-remove" title={`Remove ${o.name}`} ariaLabel={`Remove ${o.name}`} yes="Yes, remove" onReset={() => onRemove(o.id)} />
             )}
           </div>
         ))}
