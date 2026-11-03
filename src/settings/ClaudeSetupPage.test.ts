@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { ClaudeSetupView, PRECEDENCE, sizeOf, type ClaudeSetup } from "./ClaudeSetupPage";
+import ClaudeSetupPage, { ClaudeSetupView, PRECEDENCE, sizeOf, type ClaudeSetup } from "./ClaudeSetupPage";
 
 const data: ClaudeSetup = {
   configDir: "C:/Users/a/.claude",
@@ -75,4 +75,17 @@ test("T-651: each setting row names its source file in a tooltip and has an Open
   expect(h).toContain('title="Set in C:/w/.claude/settings.json"');
   expect(h).toContain('aria-label="Open C:/w/.claude/settings.json"');
   expect(h).toContain(">Open</button>");
+});
+
+test("T-651: the tab opens on the workspace in the window, not the last pick", () => {
+  const was = (globalThis as { localStorage?: unknown }).localStorage;
+  (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => (k === "kolux.claudeTabWorkspace" ? "C:/old" : null), setItem: () => {} };
+  try {
+    const h = renderToString(createElement(ClaudeSetupPage, { active: "C:/open" }));
+    expect(h).toContain('value="C:/open"');
+    expect(h).not.toContain("C:/old");
+    expect(renderToString(createElement(ClaudeSetupPage))).toContain('value="C:/old"');
+  } finally {
+    (globalThis as { localStorage?: unknown }).localStorage = was;
+  }
 });

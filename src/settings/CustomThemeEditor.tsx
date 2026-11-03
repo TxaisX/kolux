@@ -5,7 +5,7 @@
 // usual save, as part of the look. Loaded on demand from AppearancePage.
 import { useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
-import { useMemo, useState, type CSSProperties } from "react";;
+import { useMemo, useState, type CSSProperties } from "react";
 import { buildTheme, customOf, isDark, terminalFor, type Appearance } from "../theme";
 import { NAME_MAX, TERMINAL_KEYS, ownLook, tidyThemes, type CustomTheme } from "./customTheme";
 import { AA, contrast, nudgeToContrast, pairsOf, ratioText, type Pair } from "./customThemeContrast";
@@ -67,6 +67,9 @@ function Swatch({ id, text, value, changed, hint, onPick, onReset }: { id: strin
   );
 }
 
+/** Saves an edit to the theme in use; the edit never changes the theme's own tint, saturation and depth. */
+export const keepLook = (look: Appearance, next: CustomTheme, cur: CustomTheme) => saveTheme(look, { ...next, ...ownLook(cur) }, cur.name);
+
 export default function CustomThemeEditor({ look: saved, onChange }: Props) {
   // The saved list as the editor sees it: tidied, so a hand-edited settings file cannot break this page.
   const list = useMemo(() => tidyThemes(saved.userThemes, saved), [saved.userThemes]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -88,7 +91,7 @@ export default function CustomThemeEditor({ look: saved, onChange }: Props) {
     setBad(b);
   };
   // The sliders are off while a custom theme is in use, so an edit keeps the theme's own tint, saturation and depth.
-  const edit = (next: CustomTheme) => cur && onChange(saveTheme(look, { ...next, ...ownLook(cur) }, cur.name));
+  const edit = (next: CustomTheme) => cur && onChange(keepLook(look, next, cur));
   const tokens = buildTheme(look, isDark(look)) as Record<string, string>;
   const term = terminalFor({ ...look, terminal: "match", lightScheme: "match", lightTerminal: true }, isDark(look)) as Record<string, string>;
 

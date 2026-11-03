@@ -6,7 +6,7 @@ import { customTokens, tidyThemes, type CustomTheme } from "./customTheme";
 import { AA, contrast, nudgeToContrast, pairsOf, ratioText } from "./customThemeContrast";
 import { byteLength, exportTheme, MAX_BYTES, parseThemeFile } from "./customThemeFile";
 import { deleteTheme, duplicateTheme, freeName, nameProblem, newTheme, resetToDefault, saveTheme } from "./customThemeStore";
-import { ADVANCED, MAIN } from "./CustomThemeEditor";
+import { ADVANCED, keepLook, MAIN } from "./CustomThemeEditor";
 
 const file = (over: Record<string, unknown> = {}) => JSON.stringify({ format: "kolux-theme", version: 1, name: "Dusk", base: "classic", overrides: { accent: "#ff8800", fg: "#EEEEEE" }, terminal: { red: "#cc0000" }, ...over });
 const look = (extra: Record<string, unknown> = {}) => readAppearance(extra);
@@ -318,4 +318,18 @@ test("the matching terminal palette of a custom theme uses the theme's own tint,
   a = saveTheme(a, { ...newTheme(a), name: "A" });
   const on = { ...a, userTheme: "A" };
   expect(terminalFor({ ...on, tint: -120 }, true)).toEqual(terminalFor({ ...on, tint: 60 }, true));
+});
+
+test("an edit in the editor keeps the theme's own tint, saturation and depth, whatever the edit carries", () => {
+  const own: CustomTheme = { ...dusk, tint: 40, saturation: 70, depth: 2 };
+  const a = activateTheme(look({ userThemes: [own] }), "Dusk");
+  const saved = keepLook(a, { ...own, overrides: { accent: "#00ff00" }, tint: -90, saturation: 150, depth: -3 }, own);
+  const t = saved.userThemes.find((x) => x.name === "Dusk")!;
+  expect([t.tint, t.saturation, t.depth, t.overrides.accent]).toEqual([40, 70, 2, "#00ff00"]);
+});
+
+test("the terminal colours clamp a hand-edited theme's out-of-range tint, saturation and depth", () => {
+  const as = (tint: number, saturation: number, depth: number) => terminalFor({ ...look(), terminal: "match", userTheme: "Dusk", userThemes: [{ ...dusk, base: "cobalt", tint, saturation, depth }] }, true); // raw, as a hand-edited file arrives
+  expect(as(9999, 9999, 9999)).toEqual(as(180, 160, 6));
+  expect(as(9999, 9999, 9999)).not.toEqual(as(0, 100, 0));
 });

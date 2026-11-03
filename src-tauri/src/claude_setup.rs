@@ -354,7 +354,8 @@ fn mask_url(u: &str) -> String {
     // first (`h.example/@scope/pkg`): no / before it, or a "user:" before the first / (over-masking is fine here).
     let slash = rest.find('/').unwrap_or(rest.len());
     let user_info = |i: usize| !rest[..i].contains('/') || rest[..slash].contains(':');
-    let (user, rest) = match rest.rfind('@').filter(|&i| user_info(i)) {
+    // an @ before the first / always ends the user-info, even when a later @ (path, query) is not one
+    let (user, rest) = match rest.rfind('@').filter(|&i| user_info(i)).or_else(|| rest[..slash].rfind('@')) {
         Some(i) => (format!("{MASK}@"), &rest[i + 1..]),
         None => (String::new(), rest),
     };
@@ -385,17 +386,52 @@ fn mask_word(w: &str) -> String {
     format!("{}{inner}{}", &w[..at], &w[at + t.len()..])
 }
 
-/// Command-line words with the values of secret-looking flags, `Authorization`/`Bearer` values, URL user-info,
-/// credential-shaped words and `KEY=value` pairs masked.
+/// A flag name (dashes trimmed, case kept) whose value is a credential. curl's `-u`/`-b`/`--user` only count
+/// after `curl`, so `pip install -U x` and `git checkout -b x` stay readable.
+fn secret_flag(f: &str, curl: bool) -> bool {
+    let low = f.to_ascii_lowercase();
+    secretish(f) || matches!(f, "key" | "auth" | "pat" | "pass") || low.ends_with("-key") || low.ends_with("_key") || curl && matches!(f, "u" | "b" | "user")
+}
+
+/// Command-line words with the values of secret-looking flags, `Authorization`/`Bearer` values, header values,
+/// JSON bodies, URL user-info, credential-shaped words and `KEY=value` pairs masked. A quoted header value or
+/// JSON body is hidden up to its closing quote, however many words it spans.
 fn mask_words<'a>(words: impl Iterator<Item = &'a str>) -> Vec<String> {
-    let (mut hide_next, mut hide_rest) = (false, false);
+    let quote = |c: char| c == '"' || c == '\'';
+    let (mut hide_next, mut hide_rest, mut curl) = (false, false, false);
+    let mut span: Option<char> = None; // hide words until one ends with this character
+    let closes = |a: &str, c: char| a.trim_end_matches([')', ';', ',']).ends_with(c);
+    // the closer of a span opened by word `a`, unless `a` already closes it
+    let opens = |a: &str, plain: Option<char>| match a.chars().next().filter(|&c| quote(c)) {
+        Some(q) => (a.len() < 2 || !closes(a, q)).then_some(q),
+        None => plain.filter(|&c| !closes(a, c)),
+    };
     words
         .map(|a| {
-            if hide_rest || std::mem::take(&mut hide_next) {
+            if let Some(c) = span {
+                if closes(a, c) {
+                    span = None;
+                }
+                return MASK.to_string();
+            }
+            let bare = a.trim_matches(quote);
+            let base = bare.rsplit(['/', '\\', '(']).next().unwrap_or("").to_ascii_lowercase();
+            curl |= base == "curl" || base == "curl.exe";
+            if hide_rest {
+                return MASK.to_string();
+            }
+            if std::mem::take(&mut hide_next) {
+                // `Bearer x`: the scheme and the token after it both go
+                hide_next = matches!(bare.to_ascii_lowercase().as_str(), "bearer" | "basic" | "token" | "digest");
                 return MASK.to_string();
             }
             let low = a.to_ascii_lowercase();
             if low.contains("bearer ") {
+                return MASK.to_string();
+            }
+            // a JSON body ('{"password": "v"}', however split): hidden whole
+            if bare.starts_with('{') {
+                span = opens(a, Some('}'));
                 return MASK.to_string();
             }
             if low.contains("authorization:") {
@@ -404,32 +440,38 @@ fn mask_words<'a>(words: impl Iterator<Item = &'a str>) -> Vec<String> {
                 let i = low.find("authorization:").unwrap() + "authorization:".len();
                 return if a[i..].trim().is_empty() { a.to_string() } else { format!("{} {MASK}", &a[..i]) };
             }
-            // a header word such as "X-Api-Key:", "Cookie: sid=v" or "Token:abc": the value is hidden
+            // a header word such as "X-Api-Key:", "Cookie: a=1; sid=v" or "Token:abc": the value is hidden
             if let Some((name, value)) = a.split_once(':') {
-                let quote = |c: char| c == '"' || c == '\'';
-                let header = !name.contains('/') && !name.contains('{') && (secretish(name) || name.trim_matches(quote).eq_ignore_ascii_case("cookie"));
+                let n = name.trim_matches(quote).to_ascii_lowercase();
+                let header = !name.contains(['/', '{', '=']) && (secretish(&n) || n == "cookie" || n.ends_with("-key"));
                 // a permission rule's wildcard ("token:*)") is not a value
                 let wildcard = !value.is_empty() && value.chars().all(|c| matches!(c, '*' | ')'));
                 if header && !wildcard {
-                    let value = value.trim_matches(quote);
-                    if value.is_empty() || matches!(value.to_ascii_lowercase().as_str(), "bearer" | "basic" | "token") {
+                    span = opens(a, None);
+                    let v = value.trim_matches(quote);
+                    if span.is_none() && (v.is_empty() || matches!(v.to_ascii_lowercase().as_str(), "bearer" | "basic" | "token")) {
                         hide_next = true;
-                        return a.to_string();
                     }
-                    return format!("{name}:{MASK}");
+                    return if value.is_empty() { a.to_string() } else { format!("{name}:{MASK}") };
                 }
             }
-            // a JSON body like '{"token":"v"}': the whole word goes
-            if a.contains("\":") && secretish(a) {
-                return MASK.to_string();
-            }
-            if matches!(low.trim_matches(|c| c == '"' || c == '\''), "bearer" | "basic") {
+            if matches!(bare.to_ascii_lowercase().as_str(), "bearer" | "basic") {
                 hide_next = true;
                 return a.to_string();
             }
+            if let Some(f) = a.strip_prefix('-') {
+                let f = f.trim_start_matches('-');
+                // `--key=v`, `--user=bob:v`
+                if let Some((name, _)) = f.split_once('=').filter(|(n, _)| secret_flag(n, curl)) {
+                    return format!("{}{name}={MASK}", &a[..a.len() - f.len()]);
+                }
+                // curl's joined `-ubob:v` / `-bsid=v`
+                if curl && !a.starts_with("--") && a.len() > 2 && matches!(a.get(..2), Some("-u" | "-b")) {
+                    return format!("{}{MASK}", &a[..2]);
+                }
+            }
             let out = mask_word(a);
-            let flag = a.trim_start_matches('-').to_ascii_lowercase();
-            if out == a && a.starts_with('-') && !a.contains('=') && (secretish(a) || matches!(flag.as_str(), "u" | "user" | "key" | "auth" | "pat" | "pass" | "cookie" | "b")) {
+            if out == a && a.starts_with('-') && !a.contains('=') && secret_flag(a.trim_start_matches('-'), curl) {
                 hide_next = true;
             }
             out
@@ -1147,29 +1189,56 @@ mod tests {
 
     #[test]
     fn header_words_secret_flags_and_json_bodies_are_masked() {
-        // each case: the secret that must not show
-        for (line, leak) in [
-            (r#"curl -H "Authorization:Bearer TOPSECRET" https://h.example"#, "TOPSECRET"),
-            (r#"curl -H "X-Api-Key: TOPSECRET" h"#, "TOPSECRET"),
-            (r#"curl -H "Cookie: sid=TOPSECRET" h"#, "TOPSECRET"),
-            ("curl -u bob:TOPSECRET h", "TOPSECRET"),
-            ("tool --key TOPSECRET", "TOPSECRET"),
-            ("tool --auth TOPSECRET", "TOPSECRET"),
-            (r#"curl -d '{"token":"TOPSECRET"}' h"#, "TOPSECRET"),
-            ("run hf_TOPSECRET", "TOPSECRET"),
-            ("run AIzaTOPSECRET", "TOPSECRET"),
-            ("run ya29.TOPSECRET", "TOPSECRET"),
-            ("run sk_live_TOPSECRET", "TOPSECRET"),
-            ("run a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8", "a1b2c3d4e5f6"),
-            ("open https://user:p?TOPSECRET@h.example/x", "TOPSECRET"),
-            ("open https://user:p/TOPSECRET@h.example/x", "TOPSECRET"),
+        // each case: the secret that must not show. The canary is a neutral word, so nothing is caught by its name.
+        const S: &str = "Hunter2xq";
+        for line in [
+            r#"curl -H "Authorization:Bearer Hunter2xq" https://h.example"#,
+            r#"curl -H "X-Api-Key: Hunter2xq" h"#,
+            r#"curl -H "X-Api-Key: Bearer Hunter2xq" h"#,
+            "curl -H X-Api-Key: Bearer Hunter2xq h",
+            r#"curl -H "Ocp-Apim-Subscription-Key: Hunter2xq" h"#,
+            r#"curl -H "Cookie: sid=Hunter2xq" h"#,
+            r#"curl -H "Cookie: a=1; sid=Hunter2xq" h"#,
+            "curl -u bob:Hunter2xq h",
+            "curl -ubob:Hunter2xq h",
+            "curl --user=bob:Hunter2xq h",
+            "Bash(curl https://h.example -u admin:Hunter2xq)",
+            "tool --key Hunter2xq",
+            "tool --key=Hunter2xq",
+            "tool --auth=Hunter2xq",
+            "tool --private-key Hunter2xq",
+            "deploy --password=Hunter2xq:x",
+            "API_TOKEN=Hunter2xq:abc",
+            r#"curl -d '{"token":"Hunter2xq"}' h"#,
+            r#"curl -d '{"key":"Hunter2xq"}' h"#,
+            r#"curl -d '{"password": "Hunter2xq"}' h"#,
+            r#"curl -d '{"Authorization":"Bearer Hunter2xq"}' h"#,
+            "run hf_Hunter2xq",
+            "run AIzaHunter2xq",
+            "run ya29.Hunter2xq",
+            "run sk_live_Hunter2xq",
+            "pip install git+https://Hunter2xq@github.com/org/repo.git@main",
+            "npm i https://Hunter2xq@registry.npmjs.org/@scope/pkg",
+            "curl https://Hunter2xq@h.example/a?mail=x@y.com",
+            "curl https://Hunter2xq@h.example/a#x@y",
         ] {
             let out = mask_text(line);
-            assert!(!out.contains(leak), "{line} -> {out}");
+            assert!(!out.contains(S), "{line} -> {out}");
         }
+        assert!(!mask_text("run a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8").contains("a1b2c3d4e5f6"));
+        // the password part of user-info holding a stray ? or / is gone too
+        for line in ["open https://user:Hunter2xq?more@h.example/x", "open https://user:Hunter2xq/more@h.example/x"] {
+            let out = mask_text(line);
+            assert!(!out.contains(S) && !out.contains("more"), "{line} -> {out}");
+        }
+        // a JSON body or quoted header ends where its quote closes; later words stay readable
+        assert!(mask_text(r#"curl -H "Cookie: a=1; sid=v" https://h.example/x"#).ends_with(" https://h.example/x"));
         // readable things stay readable
         assert_eq!(mask_text("Bash(npm token:*)"), "Bash(npm token:*)");
         assert_eq!(mask_text("node status.js --verbose"), "node status.js --verbose");
+        for plain in ["pip install -U requests", "git push -u origin main", "python -u hook.py", "git checkout -b feature"] {
+            assert_eq!(mask_text(plain), plain);
+        }
         assert!(mask_text("open https://user:pw@h.example/x").ends_with("@h.example/x"));
         // an account id under its own key is masked
         assert_eq!(display("forceLoginOrgUUID", &Value::String("1234-abcd".into())), MASK);
