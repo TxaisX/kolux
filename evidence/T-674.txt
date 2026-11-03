@@ -48,7 +48,11 @@ agents-changed event reads the list again; wizard and PLAN wording) -> re-review
 sidebar; wiring tests for the no-agent button, Check again and the card's Turn off; a Multitask retry clears
 the git-project answer; notes and labels name the findings lines) -> re-review B+ -> fix pass (focus
 stays with Settings when it opens over Explore; tests for Ctrl+,'s event, the guide closing and the Multitask
-retry; macOS note) -> re-review PENDING.
+retry; macOS note) -> re-review A- (28244e9b).
+Left as follow-up from the A- review (medium, reasoned from React's commit order, not seen live): when Settings
+opens from Explore, Settings records the page body as where to return, so after Settings closes the keyboard
+is on nothing until the user clicks a terminal; the review's fix is to restore focus synchronously in
+enterDialog's cleanup (src/onboarding/dialogFocus.ts) and confirm live (Explore, Ctrl+, Escape, type).
 Left as low follow-ups from the first review: a failed close toast after Pick a folder, the GitHub
 card not refreshed after sign-in, a load error worded as a save error, an unused once() message, a
 failure reported after the panel closed.
