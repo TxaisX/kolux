@@ -39,12 +39,12 @@ test("the New tab menu takes the menu keys while it is open, and not while it is
 test("the status bar's right-click menu and the More tabs menu use the menu keys too", () => {
   renderToString(createElement(StatusBar, { terminals: 0 }));
   expect(useMenuFocus).toHaveBeenCalledTimes(1);
-  renderToString(createElement(RightSidebar, { tab: "explorer", width: 300, onTab: () => {}, onWidth: () => {}, children: "x" }));
+  renderToString(createElement(RightSidebar, { tab: "explorer", width: 300, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
   expect(useMenuFocus).toHaveBeenCalledTimes(2);
 });
 
 test("chrome.md:15: only the open right-sidebar tab is a tab stop, and the body is its tab panel", () => {
-  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, onTab: () => {}, onWidth: () => {}, children: "x" }));
+  const html = renderToString(createElement(RightSidebar, { tab: "insights", width: 320, max: 600, onTab: () => {}, onWidth: () => {}, children: "x" }));
   expect(html).toMatch(/role="tab"[^>]*aria-selected="true"[^>]*tabindex="0"[^>]*>Insights</);
   expect(html).toMatch(/role="tab"[^>]*aria-selected="false"[^>]*tabindex="-1"[^>]*>Explorer</);
   expect(html).toContain('role="tabpanel"');

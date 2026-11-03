@@ -30,15 +30,16 @@ export default function WindowRight() {
     runSetup, setRefresh, explorerOpen, explorerFocus, openTerminalIn, showRight, owner, saveSetting, shells,
     setActiveDir, setToast, openCheck, openPane, agentOf, statusOf, turn, stamp, running, stale,
   } = useWindow();
+  const fit = (w: number) => clampWidth(w, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0);
   return (
-    <RightSidebar tab={right.tab} width={clampWidth(dragWidth ?? right.width, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0)} hidden={!terminals || !right.open || fullPage} offered={offeredRight} onTab={(tab) => {
+    <RightSidebar tab={right.tab} width={fit(dragWidth ?? right.width)} max={fit(1e4)} hidden={!terminals || !right.open || fullPage} offered={offeredRight} onTab={(tab) => {
       const patch: Record<string, unknown> = { [RIGHT_KEYS.tab]: tab };
       if (wsKind.folder && activeDir !== null) patch[FOLDER_TAB_KEY] = rememberTab(settingsRef.current[FOLDER_TAB_KEY], activeDir, tab);
       const { was, next } = applySettings(settingsRef, patch);
       setSettings(next);
       saveChanged(was, next).catch((err) => setNotice(String(err)));
     }} onWidth={(w, done) => {
-      const used = clampWidth(w, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0);
+      const used = fit(w);
       setDragWidth(done ? null : used);
       if (done) saveRight({ width: used });
     }}>
