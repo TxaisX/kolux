@@ -839,6 +839,8 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .look-slider input { accent-color: var(--fg-muted); }
 .look-slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-muted); }
 .look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; font-size: 13px; color: var(--fg-row); }
+/* T-707 (DT-C143): a row whose box comes first keeps its text right beside the box */
+.look-select:has(> input[type="checkbox"]:first-child) { justify-content: flex-start; }
 .notif-volume { display: flex; align-items: center; gap: 8px; }
 .notif-volume input { width: 180px; accent-color: var(--done); }
 .notif-volume output { width: 44px; text-align: right; color: var(--fg-muted); font-size: 12px; }

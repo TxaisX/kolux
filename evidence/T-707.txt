@@ -1,0 +1,39 @@
+T-707 / DT-C143: lane D (72): a box-first settings row keeps its text beside the box
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md, section "72: T-707 / DT-C143" (the sessions proof dir, not in this repo).
+Built on main d552a974, branch s-72/g9b, 2026-11-03.
+
+FOUND (by 72 during T-701): Settings > Git & worktrees, "Show the AI actions in Source Control" puts its box first
+inside the settings look row, which spreads its parts to the edges (made for text left, control right), so the text
+sat at the far edge of the row, away from its box.
+
+SWEEP: every rule with justify-content: space-between in src/**/*.css, against every label, div or li in src/**/*.tsx
+whose first element is a checkbox (plain or switch). One hit: src/settings/AiRecipesSection.tsx (the row above). The
+shared check row (T-701) has no space-between, so its box-first rows were already fine.
+
+CHANGE (src/styles.css, CSS only): .look-select:has(> input[type="checkbox"]:first-child) switches the row to
+justify-content: flex-start; the row keeps its own 10px gap. Rows with text first (selects, fields) are unchanged.
+
+TESTS (src/shell/checkboxHit.test.ts)
+ ✓ src/shell/checkboxHit.test.ts > AllChangesPane: the checkbox has its name and a 24px hit area 3ms
+ ✓ src/shell/checkboxHit.test.ts > ChangeTree: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > SkillsPage: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > SpaceView: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > PullRequestPage: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > Git and worktrees: Show the AI actions in Source Control sits in a flex row at least 24px tall 1ms
+ ✓ src/shell/checkboxHit.test.ts > Repository: Wait for setup sits in a flex row at least 24px tall 1ms
+ ✓ src/shell/checkboxHit.test.ts > Agents: each agent's switch sits in a flex row at least 24px tall 1ms
+ ✓ src/shell/checkboxHit.test.ts > a box-first look-select row keeps its text beside the box 2ms
+ ✓ src/shell/checkboxHit.test.ts > the hit-box label is at least 24px square 1ms
+TDD: with main d552a974 styles.css the new test fails (1 failed | 9 passed); with this change 10/10 pass.
+
+RUNTIME (headless Chrome, the real styles.css, the row markup in a 600px wide page; text edges by a Range over the text)
+- main d552a974: box to text 382.2px, text flush with the row's right edge (0.0px)
+- this branch:   box to text 13.0px (the 10px gap plus the box's own 3px margin), 369.2px free to the right
+
+TOTALS
+- VITEST_MAX_WORKERS=2 pnpm vitest run src/settings src/shell: Test Files 126 passed (126), Tests 667 passed (667).
+- pnpm tsc --noEmit: exit 0.
+- scripts/firewall-check.ps1 -Baseline: 0 new.
+- FIRST LOAD (node scripts/bundle-budget.mjs after vite build): main d552a974 styles.css 1,489,090 bytes; this branch
+  1,489,090 bytes, +0.
+- No Rust touched.

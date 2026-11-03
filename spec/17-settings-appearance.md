@@ -186,13 +186,16 @@ Rules: the pages are General, Appearance, Accounts & keys, Agents, Terminal & se
   again while already showing, and opening Settings empties any search left over from before; Safety
   holds the protected-action rules (area 10) and Usage holds the stats page (area 06), and this area
   only places them in the page list. (Kolux RS, T-701: every checkbox or switch row with text beside it
-  is at least 24px tall, and a click anywhere on the row ticks it.)
+  is at least 24px tall, and a click anywhere on the row ticks it; T-707: when the box comes first, its
+  text sits right beside it.)
 Acceptance:
   - [x] Press Mod+Comma → Settings opens on the last page used, or the first. (cards; evidence/cards-SET-006.txt)
   - [x] Count the pages in the side list → exactly the ten named, plus one per repository. (cards; evidence/cards-SET-006.txt)
   - [x] Follow an in-app link to the shortcut policy → Shortcuts opens, scrolled to that setting. (cards; evidence/cards-SET-006.txt)
   - [x] Measure the Show the AI actions in Source Control row, a repository's Wait for setup row and an
       agent's switch row → each is at least 24px tall. (unit + headless browser; evidence/T-701.txt)
+  - [x] Look at Show the AI actions in Source Control → its text starts just right of its box, not at
+      the far edge. (unit + headless browser; evidence/T-707.txt)
 Compat: the keybinding command id app.settings stays, with Mod+Comma as its default.
 Source: D-17-006
 
