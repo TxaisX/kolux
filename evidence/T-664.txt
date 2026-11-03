@@ -10,24 +10,43 @@ Txais's ask: "i wnat this to come up as the first thing when they open a new wor
     src/launch/agentInstall.test.ts  T-570 / T-664: ["aider","claude","codex","goose","grok"], plus a lower-case name sorting with the rest
     src/launch/ChooserPane.test.ts   the rendered options: Choose an AI…, Aider, Claude Code, Codex, Goose (not installed), Grok (not installed), Terminal
 
-(b) Chooser first on a new workspace: no code change was needed.
-  T-569 (a5782e35, 2026-10-28) already does this: useWorkspaces.select (src/projects/useWorkspaces.ts:81-91) gives a workspace
-  with no pane yet chooser pane(s) from startPanes (src/projects/workspaceStart.ts), as many as the default pane count for a
-  fresh one. ProjectsPanel's new-workspace path ends in onSelect(wt.path, wt.branch, true), which is that same select
-  (Sidebar onSelect={select}), so a workspace made with no agent already opens on the chooser. "No terminal open here"
-  (Grid.tsx empty state) only shows for a workspace whose panes were all closed. Adding addChooser(dir) on top would
-  open a second chooser next to the one select already made, so addChooser/ProjectsPanel were left alone.
-  Likely cause of what Txais saw: an installed build older than 2026-10-28. REST: confirm on the installed app after a reinstall.
+(b) Chooser first on a new workspace, now also when the form picks an AI or types a note (Txais 2026-11-02).
+  T-569 already opened the chooser for a workspace made with no AI and no note (useWorkspaces.select -> startPanes).
+  The new-workspace form (src/projects/ProjectsPanel.tsx, create) still auto-started the agent via onStartIn (or via
+  onSetup(..., () => onStartIn(...)) when a setup script had to finish first). That was the case Txais hit.
+  Change, scoped to FRONT creates (front true: the new workspace takes the front):
+    src/projects/workspaceStart.ts  startPanes takes an optional prefill {agent, task}: the first chooser's Seat 1 = agent
+                                    (model stays unpicked), pane.task = the note. Other panes stay empty.
+    src/projects/useWorkspaces.ts   select(dir, branch, fresh, prefill?) passes it to startPanes; only used when the
+                                    workspace has no pane yet, so selecting an existing workspace is unchanged.
+    src/projects/ProjectsPanel.tsx  create: front + agent -> onSelect(path, branch, true, {agent: agent.id, task: prompt}),
+                                    never onStartIn; the waitsForSetup branch (onSetup with a then-callback that starts the
+                                    agent) now needs !front. Seat 1's AI is the picked one, or the fallback AI for a note alone.
+                                    The setup script still runs (onSetup, show=false, so focus stays on the chooser).
+    Background creates (Create more, or one overtaken: front false) keep today's auto-start, including the
+    wait-for-setup path.
+  Setup gating: a front start is now the person's press of Start, so it does not wait for the setup script; the script runs
+  in its Setup tab behind the chooser. Making Start wait for setup would need a new mechanism and was not built.
+  KNOWN LEFTOVER (existed before this change, not fixed): a background create with a setup script and no agent gets only
+  a Setup pane and no chooser, because nothing selects it.
+  Tests (the first three fail on the old code: 3 failed | 5 passed with the sources reverted, 8 passed with them):
+    src/projects/workspaceStart.test.ts   prefill puts the AI in Seat 1 and the note in task, other panes empty; AI only / note only / none
+    src/projects/useWorkspaces.test.ts    select(new dir, ..., prefill) -> chooser with seats[0].agent and task, no program;
+                                          select on a workspace that has panes ignores the prefill
+    src/launch/agentInstall.test.ts       pickList leaves its input array's order unchanged
+  The ProjectsPanel create path itself is not unit-tested: it is one async handler inside a 2.9k-line component driven by
+  invoke() calls to the Rust side, and the repo has no harness that mounts it through a create. The decision it makes is
+  covered at the select/startPanes seam; REST: confirm live on Windows.
 
 Rows: PLAN.md T-664, DECISIONS.md DT-C100 (T-570's "featured three first" is replaced by A to Z on Txais's ask).
 (PLAN.md, DECISIONS.md and evidence files in this checkout use LF line ends, so the new rows and this file do too.)
 
-Gates (worktree G:/Dev/kolux-rs-sessions/wt/57-launch, run 2026-11-02):
+Gates (worktree G:/Dev/kolux-rs-sessions/wt/57-launch, run 2026-11-02, after part b):
   node scripts/plan-check.mjs                    -> plan-check: OK (head: cutline left 0/18 · merge gate 1 waiting · P0 cards passing 217/228 · done 747/804 tasks)
   pnpm exec tsc --noEmit                         -> exit 0, no output
-  VITEST_MAX_WORKERS=2 pnpm exec vitest run      -> first full run: Test Files 2 failed | 730 passed (732); Tests 4 failed | 5411 passed (5415)
+  VITEST_MAX_WORKERS=2 pnpm exec vitest run      -> Test Files 2 failed | 730 passed (732); Tests 4 failed | 5415 passed (5419)
       the 4 failures: 3 in src/editor/pdfjsCopy.test.ts (known CRLF-checkout failure, ignored) and 1 in
-      src/launch/ChooserPane.test.ts (asserted the old order; fixed above)
-  VITEST_MAX_WORKERS=2 pnpm exec vitest run src/launch -> Test Files 22 passed (22); Tests 134 passed (134)
-  pnpm exec vite build                           -> built in 1.99s
-  node scripts/bundle-budget.mjs                 -> bundle-budget: first load 1455752 bytes in 44 chunks (ceiling 1485000); bundle-budget: OK
+      src/editor/editPlacement.test.ts (60 paragraphs; passes alone: Test Files 1 passed (1); Tests 43 passed (43); a load flake of the full run)
+  VITEST_MAX_WORKERS=2 pnpm exec vitest run src/projects/workspaceStart.test.ts src/projects/useWorkspaces.test.ts -> Test Files 2 passed (2); Tests 8 passed (8)
+  pnpm exec vite build                           -> built in 2.18s
+  node scripts/bundle-budget.mjs                 -> bundle-budget: first load 1455881 bytes in 44 chunks (ceiling 1485000); bundle-budget: OK

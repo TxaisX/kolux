@@ -113,7 +113,7 @@ type Props = {
   activeDir: string | null;
   /** A click on a row shows that workspace. */
   /** `fresh`: the workspace was just made (TERM-005 seeds its grid). */
-  onSelect: (dir: string, branch: string | null, fresh?: boolean) => void;
+  onSelect: (dir: string, branch: string | null, fresh?: boolean, prefill?: { agent: string | null; task: string }) => void;
   /** A new project was added and its main checkout opened (ONB-010 starts the default agent there once). */
   onAdded?: (dir: string, branch: string | null) => void;
   /** After a workspace and its folder are gone, so the window drops its panes. */
@@ -890,17 +890,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const extra = [wt.note, ...wt.warnings.filter((x) => !isBehindHint(x))].filter(Boolean).join(" · ");
       say(extra ? "warn" : "ok", `created ${worktreeLabel(wt)} in ${wt.path} from ${wt.base}${extra ? ` · ${extra}` : ""}`);
       await reload();
-      // The agent's tab is the workspace's first; a shell is only opened when no agent runs. With
-      // Create more the new workspace does not take the front, so the next name can be typed.
+      // T-664 (b): a workspace that takes the front opens its launch chooser with the form's AI in Seat 1 and the
+      // note as the task; nothing runs until the person presses Start. With Create more the new workspace does not
+      // take the front (no chooser on screen), so there the agent starts as before and the next name can be typed.
       // A create overtaken after Git had already finished it stays, but never takes the front.
       const front = !keepOpen && !lost && shown.current === from;
       // PROJ-033: the project's setup script runs in a Setup terminal; a script that cannot run says why.
       const setup = setupSkip || !onSetup ? null : await trustedSetup(wt.path).catch((err) => (say("warn", String(err)), null));
-      if (agent && setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)) {
+      // The chooser's Start is the person's, so it never waits for the setup script; the script still runs, behind it.
+      if (agent && !front && setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)) {
         onSetup(wt.path, wt.branch, setup, setupWhere, front, () => onStartIn(agent, wt.path, wt.branch, prompt, front));
       } else {
-        if (agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
-        else if (front) onSelect(wt.path, wt.branch, true);
+        if (agent && !front) onStartIn(agent, wt.path, wt.branch, prompt, front);
+        else if (front) onSelect(wt.path, wt.branch, true, agent ? { agent: agent.id, task: prompt } : undefined);
         if (setup && onSetup) onSetup(wt.path, wt.branch, setup, setupWhere, false);
       }
       // PROJ-036: a workspace made from a linked issue runs the project's issue command in a tab.

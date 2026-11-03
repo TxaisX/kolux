@@ -10,6 +10,7 @@ test("T-570 / T-664: every agent is listed A to Z by name, and nothing while det
   // Case does not matter: a lower-case name sorts with the rest.
   expect(pickList([a("z", true, { name: "Zed" }), a("b", true, { name: "bob" }), a("a", true, { name: "Amp" })], false).map((x) => x.id)).toEqual(["a", "b", "z"]);
   expect(pickList(list, true)).toEqual([]);
+  expect(list.map((x) => x.id), "the input array keeps its order").toEqual(["aider", "grok", "codex", "claude", "goose"]);
 });
 
 test("T-570: a missing agent reads (not installed); an installed one is plain", () => {

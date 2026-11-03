@@ -58,3 +58,22 @@ test("removing several at once is one call: the shown workspace gives way to a s
   expect(host.active, "B was used more recently but is going too").toBe(C);
   expect([3, 5]).toContain(host.focused);
 });
+
+test("T-664 (b): selecting a new workspace with a prefill opens its chooser with Seat 1 and the task filled, and starts nothing", async () => {
+  const D = "C:/w/ws/d";
+  await mount(createElement(Harness, { start: [pane(1, A)], active: A, recent: [A] }), doc);
+  await act(async () => host.actions.select(D, "d-branch", true, { agent: "claude", task: "write the tests" }));
+  const made = host.panes.filter((p) => p.cwd === D);
+  expect(made.length).toBeGreaterThan(0);
+  expect(made[0].seats).toEqual([{ agent: "claude", model: null }]);
+  expect(made[0].task).toBe("write the tests");
+  expect(made.every((p) => p.program === null), "no program: nothing is running").toBe(true);
+  expect(host.active).toBe(D);
+});
+
+test("T-664 (b): a prefill never changes a workspace that already has panes", async () => {
+  await mount(createElement(Harness, { start: [pane(1, A), pane(2, B)], active: A, recent: [A, B] }), doc);
+  await act(async () => host.actions.select(B, null, false, { agent: "claude", task: "ignored" }));
+  expect(host.panes).toEqual([pane(1, A), pane(2, B)]);
+  expect(host.active).toBe(B);
+});
