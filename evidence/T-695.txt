@@ -66,7 +66,8 @@ G9 [polish] checkbox/switch hit areas under 24 px. FIXED where the hit area was 
 - Two label styles are one line of text, under 24 px. Both now have min-height 24px:
   - .status-tick (Appearance, the status bar items): 12 px text in rows that wrap only 6 px apart, so 24 px circles
     around neighbours overlapped (WCAG 2.5.8's spacing exception did not hold).
-  - .auto-radio (Feedback's "Submit anonymously"; the same rows in the automation dialog).
+  - .auto-radio (Feedback's "Submit anonymously"; the same rows in the automation dialog and the agent list in
+    AgentStartHost.tsx:74, all vertical one-line rows).
 - Repo's <label className="check"> is an inline sentence label with a select beside it. Left as is: it is shared by
   about 20 other places outside Settings, and changing its display there is outside these rows.
 - Not checked live: the 24 px rows were not re-measured in the running app. 57's live-wave3-b tiny-control probe
@@ -130,4 +131,12 @@ pnpm exec vite build && node scripts/bundle-budget.mjs
   Difference: +0 bytes. Only tests and two CSS declarations changed.
 
 REVIEW
-__REVIEW__
+Fresh opus-high-review (read-only) graded A- at df25f223. It ran the HelpSheet, src/feedback and src/tasks tests (30 files,
+263 tests passed) and tsc (exit 0) there. All findings are low severity:
+- G3 rests on reasoning about the harness, not a live re-run. The fix (clear data-w3b tags document-wide, or look up
+  inside the root, then re-run S34) belongs to lane 57's script, not this PR.
+- fakeDom's plainDefault field was not declared. Fixed: it is now declared on FakeNode.
+- G9 list missed AgentStartHost.tsx:74. Fixed above.
+- DT-C131 sits after DT-C110 rather than last. Kept: the table is already not in number order (C117 before C106,
+  C118 before C104), and the rows sit where their topics do.
+Follow-up commit df25f223 only reworded the PLAN row so plan-check sees each card once.

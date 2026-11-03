@@ -23,6 +23,8 @@ export class FakeNode {
   localName: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [extra: string]: any;
+  /** T-695: a non-textarea's defaultValue (a textarea keeps it as its text). */
+  declare plainDefault?: string;
   constructor(
     public nodeType: number,
     public nodeName: string,
