@@ -135,8 +135,48 @@ export function asleepAfter(asleep: string[], ws: { path: string; parent?: strin
   return [...new Set([...asleep, ...pinnedSet([path], ws)])];
 }
 
+/** A key on a workspace row: only the row itself answers (Enter or Space shows it, F2 renames); the same key on a button inside it belongs to that button. */
+export function rowKey(key: string, onRow: boolean): "show" | "rename" | null {
+  if (!onRow) return null;
+  if (key === "Enter" || key === " ") return "show";
+  return key === "F2" ? "rename" : null;
+}
+
+/** What sleeping `path` would newly put to sleep: the new asleep list and the folders that change. */
+export function sleepPlan(asleep: string[], ws: { path: string; parent?: string | null; isMain?: boolean }[], path: string): { next: string[]; paths: string[] } {
+  const next = asleepAfter(asleep, ws.filter((x) => !x.isMain), path, true);
+  return { next, paths: ws.map((x) => x.path).filter((d) => next.includes(pathKey(d)) && !asleep.includes(pathKey(d))) };
+}
+
+/** How many of these running terminals (by folder) sit in or under any of the given workspaces. */
+export function runningUnder(roots: string[], cwds: string[]): number {
+  const key = pathKey;
+  const under = (c: string) => roots.some((p) => key(c) === key(p) || key(c).startsWith(key(p) + "/"));
+  return cwds.filter(under).length;
+}
+
+/** The sentence a sleep or removal question adds when terminals would be closed; empty for none. */
+export function closingNote(n: number): string {
+  return n ? ` ${n} terminal${n === 1 ? " is" : "s are"} still running and will be closed.` : "";
+}
+
 /** PROJ-059: the name Enter saves (trimmed, shortcodes turned into emoji), or null to cancel. */
 export function renameTo(typed: string, current: string): string | null {
   const n = shortcodes(typed).trim();
   return n === "" || n === current ? null : n;
+}
+
+export type AddOutcome = { path: string; kind: "added" | "plain" | "failed"; error?: string };
+
+/** Several folders added at once: the first plain folder is asked about now; the others and any failures are counted in one note. */
+export function addReport(outs: AddOutcome[]): { ask: string | null; note: string | null; kind: "ok" | "warn" | "error" } {
+  const plain = outs.filter((o) => o.kind === "plain");
+  const failed = outs.filter((o) => o.kind === "failed");
+  const added = outs.filter((o) => o.kind === "added").length;
+  const parts = [
+    added ? `${added} project${added === 1 ? "" : "s"} added.` : "",
+    plain.length > 1 ? `${plain.length - 1} more folder${plain.length === 2 ? " is" : "s are"} not Git repositories: add ${plain.length === 2 ? "it" : "them"} one at a time.` : "",
+    failed.length ? `${failed.length} could not be added (${failed[0].path}: ${failed[0].error ?? "unknown error"}${failed.length > 1 ? ", and others" : ""}).` : "",
+  ].filter(Boolean);
+  return { ask: plain[0]?.path ?? null, note: parts.length ? parts.join(" ") : null, kind: failed.length ? "error" : plain.length > 1 ? "warn" : "ok" };
 }

@@ -98,3 +98,13 @@ export function edgeScroll(pointerY: number, top: number, bottom: number, zone =
   if (pointerY > bottom - zone) return step;
   return 0;
 }
+
+/** The order after `id` swaps places with its neighbour (up = earlier); at either end nothing changes. */
+export function stepRow(order: string[], id: string, dir: -1 | 1): string[] {
+  const at = order.indexOf(id);
+  const to = at + dir;
+  if (at < 0 || to < 0 || to >= order.length) return order;
+  const next = [...order];
+  [next[at], next[to]] = [next[to], next[at]];
+  return next;
+}

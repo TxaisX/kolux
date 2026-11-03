@@ -8,6 +8,8 @@ import {
   DEFAULT_VIEW,
   arrangeRows,
   childrenFirst,
+  directionLabel,
+  tickRows,
   needsSizes,
   sizeText,
   type CleanupView,
@@ -117,7 +119,17 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
   };
 
   return (
-    <div className="sb-form" data-cleanup={project.id} role="dialog" aria-label={`Clean up workspaces in ${project.name}`}>
+    <div
+      className="sb-form"
+      data-cleanup={project.id}
+      role="dialog"
+      aria-label={`Clean up workspaces in ${project.name}`}
+      onKeyDown={(e) => {
+        if (e.key !== "Escape" || removing) return;
+        e.stopPropagation();
+        if (confirming) setConfirming(false);
+        else onClose();
+      }}>
       <label>Clean up workspaces in {project.name}</label>
       {scanning && (
         <span aria-busy="true" data-cleanup-progress>
@@ -158,11 +170,21 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
           <option value="idle">Idle time</option>
         </select>
         <button className="btn" aria-label="sort direction" onClick={() => pick("desc", !view.desc)}>
-          {view.desc ? "Largest first" : "Smallest first"}
+          {directionLabel(view.sort, view.desc)}
         </button>
       </div>
       {scan && listed.length > 0 && rows.length === 0 && <span>No workspace matches the filters.</span>}
       {scan && listed.length === 0 && !scanning && !scan.error && <span>{showAll ? "This project has no workspaces Kolux made." : "No workspace has gone quiet."}</span>}
+      {rows.length > 0 && (
+        <div className="btn-row" data-cleanup-tick>
+          <button className="btn" disabled={removing} onClick={() => setTicks(tickRows(ticks, rows, true))}>
+            Tick all
+          </button>
+          <button className="btn" disabled={removing} onClick={() => setTicks(tickRows(ticks, rows, false))}>
+            Untick all
+          </button>
+        </div>
+      )}
       {rows.map((r) => (
         <label className="check" key={r.path} title={r.path}>
           <input type="checkbox" aria-label={`clean up ${rowLabel(r)}`} checked={ticks[r.path] === true} disabled={removing} onChange={(e) => setTicks({ ...ticks, [r.path]: e.target.checked })} />

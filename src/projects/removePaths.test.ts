@@ -19,6 +19,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
     if (cmd === "groups_get") return Promise.resolve({ groups: [{ id: "g1", name: "Clients", parent: null }], members: { p1: "g1" }, rev: 1 });
     if (cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
+    if (cmd === "skills_scan") return Promise.resolve({ skills: [] }); // the sidebar checklist reads it
     return Promise.resolve(null);
   },
 }));
@@ -103,7 +104,7 @@ test("right-click on the project header lists Remove project last; Escape closes
   expect(menu(c)).toBeUndefined();
 });
 
-test("the main checkout row has a menu with Remove project and a hover X that asks the same question", async () => {
+test("the main checkout row has a menu with Remove project and the header X asks the same question", async () => {
   const c = await panel();
   await rightClick(c, find(c, (n) => hasClass(n, "branch"))[0]);
   const list = items(c);
@@ -112,7 +113,7 @@ test("the main checkout row has a menu with Remove project and a hover X that as
   await click(c, byText(c, "button", "Remove project…")[0]);
   expect(ask(c)).toBeDefined();
   await click(c, byText(c, "button", "Keep it")[0]);
-  await click(c, attr(c, "data-main-x"));
+  await click(c, attr(c, "data-proj-x"));
   expect(ask(c)).toBeDefined();
 });
 
@@ -138,9 +139,9 @@ test("a group row has a menu and a hover X, both asking Delete group", async () 
   expect(find(c, (n) => n.textContent.includes("Delete Clients?")).length).toBeGreaterThan(0);
 });
 
-test("Remove project from the main row's X goes to project_remove, never to workspace_remove", async () => {
+test("Remove project from the header X goes to project_remove, never to workspace_remove", async () => {
   const c = await panel();
-  await click(c, attr(c, "data-main-x"));
+  await click(c, attr(c, "data-proj-x"));
   await click(c, attr(c, "data-remove-project-yes"));
   await settle(40);
   expect(h.calls).toContain("project_remove");
@@ -150,7 +151,7 @@ test("Remove project from the main row's X goes to project_remove, never to work
 test("a clean workspace with quick delete on still asks while a terminal runs below its folder", async () => {
   h.settings = { confirmWorkspaceDelete: false };
   const c = await panel([{ key: 1, agent: "claude", title: "a", cwd: "C:\\w\\ws\\fix\\src", running: true }]);
-  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Remove this workspace"))[0]);
+  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this workspace"))[0]);
   await settle(60);
   expect(find(c, (n) => n.textContent.includes("1 terminal is still running and will be closed.")).length).toBeGreaterThan(0);
   expect(h.calls).not.toContain("workspace_remove");
