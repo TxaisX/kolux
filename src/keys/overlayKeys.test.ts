@@ -1,7 +1,7 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { actionById } from "./actions";
 import { defaultsOnly } from "./keymap";
-import { explorerSearchKey, heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
+import { CHROME_FIRST, explorerSearchKey, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -57,13 +57,49 @@ test("real markup: a docked tip, the hooks card, a tour and the floating panel h
   const prDraft = real("scm-ask scm-pr", { role: "dialog", "aria-label": "Create pull request" }); // scm/PrStart.tsx
   const resolve = real("scm-ask", { role: "dialog" }); // source control: resolve conflicts with an agent
   const grab = real("grab-sheet", { role: "dialog" }); // browser/GrabSheet.tsx, inside one browser pane
+  const draw = real("draw-canvas", { role: "dialog" }); // browser/DrawCanvas.tsx, inside one browser pane
+  const found = real("pick-list found-list", {}); // the create-worktree form's found issues, inside .sb-form
+  const permission = real("chat-permission", { role: "alertdialog" }); // an inline permission card, not modal
   const modal = real("crash-report", { role: "dialog" });
   // The palette tip names the Switch worktree key: that key works while the tip shows.
   expect(heldByOverlay("worktree.palette", false, dom([tip, tour, float, cleanup]) as never)).toBe(false);
-  for (const form of [prDraft, resolve, grab]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
+  for (const form of [prDraft, resolve, grab, draw, found, permission]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
   expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);
   expect(heldByOverlay("worktree.palette", false, dom([tip, modal]) as never)).toBe(true);
   expect(heldByOverlay("tab.newTerminal", false, dom([real("menu", {})]) as never)).toBe(true);
+  // chrome/Ask (the reload question, delete confirmations), editor/CloseDialog and the floating panel's ask
+  const ask = real("ask", { role: "alertdialog", "aria-modal": "true" });
+  for (const id of ["tab.newTerminal", "tab.close", "tab.previousRecent", "terminals.focusNextNeedsYou", "tab.selectByIndex"])
+    expect(heldByOverlay(id, false, dom([ask]) as never), id).toBe(true);
+});
+
+test("Move Focus to the Top Bar focuses the top bar's first enabled control", () => {
+  expect(CHROME_FIRST).toMatch(/^header\[data-tauri-drag-region\] button:not\(:disabled\), /);
+  const focus = vi.fn();
+  let asked = "";
+  focusChrome({ querySelector: ((s: string) => ((asked = s), { focus })) as never });
+  expect(asked).toBe(CHROME_FIRST);
+  expect(focus).toHaveBeenCalledTimes(1);
+  expect(() => focusChrome({ querySelector: () => null })).not.toThrow(); // no top bar (classic layout)
+});
+
+test("the menu's Force Reload asks over unsaved text and reloads without; View > Space opens Space (Terminals in classic)", () => {
+  const b = (unsaved: string[], classic = false) => ({ unsaved: { current: unsaved }, setReloadAsk: vi.fn(), setScreen: vi.fn(), classic });
+  const reload = vi.fn();
+  const dirty = b(["a.ts"]);
+  menuAction("app.forceReload", dirty, reload);
+  expect(dirty.setReloadAsk).toHaveBeenCalledWith(["a.ts"]);
+  expect(reload).not.toHaveBeenCalled();
+  menuAction("app.forceReload", b([]), reload);
+  expect(reload).toHaveBeenCalledTimes(1);
+  const s = b([]);
+  menuAction("screen.space", s, reload);
+  expect(s.setScreen).toHaveBeenCalledWith("space");
+  const c = b([], true);
+  menuAction("screen.space", c, reload);
+  expect(c.setScreen).toHaveBeenCalledWith("terminals");
+  menuAction("screen.agents", s, reload); // the other screens go through the settings plumbing, not here
+  expect(s.setScreen).toHaveBeenCalledTimes(1);
 });
 
 test("a page's own browser chord, an editor or an explorer chord is not held: Ctrl+C in a browser pane still copies under a dialog", () => {

@@ -52,10 +52,10 @@ export function paneCloseClaimed(paneId: number): boolean {
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
 // Panels that stay on screen while the user works (the floating workspace, an agent's question card, the browser's
-// cookie steps and grab sheet, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
-// inline sidebar form: projects, source control, the pull request draft) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
-export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], .pick-list, .font-list, .popover, .palette';
-export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet';
+// cookie steps, grab sheet and drawing canvas, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
+// inline sidebar form: projects (and its found-issues list), source control, the pull request draft) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
+export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], [aria-modal="true"], .pick-list, .font-list, .popover, .palette';
+export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet, .draw-canvas, .found-list';
 // Only the app's own chords wait. An editor or explorer chord, and a browser chord the window does not run itself
 // (Ctrl+C in a page is browser.grabElement), is the focused pane's or the overlay's own and falls through as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
@@ -74,6 +74,21 @@ export const WINDOW_TERMINAL = new Set([
  *  defaultPrevented: a focused terminal cancels every Kolux chord (the shell never sees it) and the search still opens. */
 export const explorerSearchKey = (map: Keymap, e: KeyLike, doc: Root = document): boolean =>
   matchEvent(map, e, ["global"])?.id === "sidebar.search.toggle" && !heldByOverlay("sidebar.search.toggle", false, doc);
+
+/** The top bar's first control that takes focus: a disabled button (the sign-in mark while signed out) is passed over. */
+export const CHROME_FIRST = "header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']";
+export const focusChrome = (doc: Pick<ParentNode, "querySelector"> = document): void => doc.querySelector<HTMLElement>(CHROME_FIRST)?.focus();
+
+/** The native menu items that come to the page: Force Reload asks over unsaved editor text; View > Workspace View > Space
+ *  (the classic layout has one view, as every other screen item). */
+export function menuAction(
+  id: string,
+  b: { unsaved: { current: readonly string[] }; setReloadAsk: (files: string[]) => void; setScreen: (s: Screen) => void; classic: boolean },
+  reload: () => void = () => location.reload(),
+): void {
+  if (id === "app.forceReload") forceReload(b.unsaved.current, b.setReloadAsk, reload);
+  else if (id === "screen.space") b.setScreen(b.classic ? "terminals" : "space");
+}
 
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
@@ -132,7 +147,7 @@ export function useWindowKeys(w: WindowBag) {
         case "focus.chrome":
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.
           e.preventDefault();
-          document.querySelector<HTMLElement>("header[data-tauri-drag-region] button:not(:disabled), header[data-tauri-drag-region] [tabindex='0']")?.focus();
+          focusChrome();
           break;
         case "browser.focusAddressBar":
         case "browser.back":
@@ -485,11 +500,7 @@ export function useWindowKeys(w: WindowBag) {
   const bag = useRef(w);
   bag.current = w;
   useEffect(() => {
-    const off = listen<{ id: string }>("menu-action", (e) => {
-      const { unsaved, setReloadAsk, setScreen } = bag.current;
-      if (e.payload.id === "app.forceReload") forceReload(unsaved.current, setReloadAsk, () => location.reload());
-      else if (e.payload.id === "screen.space") setScreen("space");
-    });
+    const off = listen<{ id: string }>("menu-action", (e) => menuAction(e.payload.id, bag.current));
     // UX lane C (request from D-ux3, editor/AddProjectRow): a folder added while the project list is not shown opens it.
     const showProjects = () => { bag.current.setScreen("terminals"); bag.current.setSidebarOpen(true); };
     window.addEventListener(SHOW_PROJECTS_EVENT, showProjects);

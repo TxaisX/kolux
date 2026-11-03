@@ -28,7 +28,7 @@ fired behind open dialogs, a Reload menu item one click from throwing away unsav
 Space view missing from the menu.
 
 REVIEW
-Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass (d70b712e) -> re-review B -> fix pass -> re-review PENDING.
+Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass (d70b712e) -> re-review B -> fix pass (87284a71) -> re-review B -> fix pass -> re-review PENDING.
 Re-review B findings fixed: docked tips/tours/inline forms no longer hold keys (the key a tip names
 works); only global/tab/terminal chords are held (Ctrl+C in a browser pane copies under a dialog);
 real-selector tests for both; Move Focus to the Top Bar skips the disabled Kolux mark (macOS); the
@@ -51,8 +51,19 @@ explorer's listener no longer skips a press the terminal cancelled; it waits onl
 dialog: explorerSearchKey in src/keys/useWindowKeys.ts, test "Show Search (Mod+Shift+F) opens from a
 terminal that already cancelled the press"); the source-control and pull request inline forms (.scm-ask)
 and the browser's grab sheet hold no app chords ("real markup" test); focus.chrome ends like every other
-case. Bundle: 1,460,892 bytes first load (ceiling 1,485,000). Left as low: the floating panel's hold is
+case. Bundle then: 1,460,892 bytes. Left as low: the floating panel's hold is
 tested through heldByOverlay, not by rendering FloatingLayer.
+Fifth re-review B findings fixed: the app's modal questions (chrome/Ask such as the reload question and delete
+confirmations, Save changes before closing?, the floating panel's ask; aria-modal="true") now hold app chords,
+so Ctrl+T never opens a tab behind them, while inline non-modal alertdialogs still hold nothing ("real markup"
+test). A browser pane's drawing canvas and the create-worktree form's found-issues list hold nothing. Move
+Focus to the Top Bar and the menu's Force Reload / View > Space go through focusChrome and menuAction, each
+tested ("Move Focus to the Top Bar focuses the top bar's first enabled control", "the menu's Force Reload asks
+over unsaved text..."); View > Space opens Terminals in the classic layout. The Space acceptance line moved to
+VIEW-002 with its Rules updated; DT-C109 records the overlay-hold rule and the Ctrl+Shift+H/Backslash cost; a
+spec/17 acceptance line points at overlayKeys.test.ts. Bundle: 1,460,997 bytes first load (ceiling 1,485,000).
+Left as low: the new toasts (Back/Forward, classic view cycle, account switch, Nothing needs you) are text on
+paths that did nothing before and are checked by reading; SHOW_PROJECTS_EVENT has no sender until lane D lands.
 
 TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > T-240 BROW-035: Mod+C is forwarded only for a grab (marked n), follows a rebinding, and Mac uses the command key
@@ -77,6 +88,7 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/keys/keymap.test.ts > the table registers the 138 carried commands (UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 56 ship unbound (UX lane C: view.automations added unbound, floatingWorkspace.minimize now bound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound) and only New agent tab (TERM-041) and workspace rename have a macOS chord only (UX lane C gave three Ctrl+Shift chords)
  ✓ src/keys/keymap.test.ts > two custom chords that clash inside their scope are dropped and the defaults stay; defaults may overlap
  ✓ src/keys/overlayKeys.test.ts > Automations has a command, so the palette lists it
+ ✓ src/keys/overlayKeys.test.ts > Move Focus to the Top Bar focuses the top bar's first enabled control
  ✓ src/keys/overlayKeys.test.ts > Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog
  ✓ src/keys/overlayKeys.test.ts > Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the palette's field; a split still waits
  ✓ src/keys/overlayKeys.test.ts > UX lane C (request from D): Ctrl+W closes directly unless the pane claims the close for its own warning
@@ -86,6 +98,7 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/keys/overlayKeys.test.ts > real markup: a docked tip, the hooks card, a tour and the floating panel hold nothing; a modal dialog does
  ✓ src/keys/overlayKeys.test.ts > the Ctrl+Tab list (itself a menu) still steps while it is open
  ✓ src/keys/overlayKeys.test.ts > the floating panel's own chords (Ctrl+Alt+A, maximize, minimize) wait under a modal, not under the panel itself
+ ✓ src/keys/overlayKeys.test.ts > the menu's Force Reload asks over unsaved text and reloads without; View > Space opens Space (Terminals in classic)
  ✓ src/keys/overlayKeys.test.ts > the open Settings page alone holds nothing; a dialog inside it does
  ✓ src/keys/overlayKeys.test.ts > under a dialog the browser chords the window runs itself wait (Ctrl+L stays in the dialog); a page's own Ctrl+C does not
  ✓ src/projects/nav.test.ts > EDIT-047: the palette finds a worktree by number, link, shortcode, comment, and recent ones lead an empty box
@@ -116,7 +129,7 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/settings/shortcutRows.test.ts > groups the commands by area under the four filters and a capped search box
  ✓ src/settings/shortcutRows.test.ts > search: titles, areas, ids and chords for every platform, as written or as drawn
  Test Files  5 passed (5)
-      Tests  60 passed (60)
+      Tests  62 passed (62)
 
 cargo test --lib menu (src-tauri):
 test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; finished in 0.00s
@@ -124,7 +137,7 @@ test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; 
 FULL SUITE (pnpm vitest run)
 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
  Test Files  1 failed | 732 passed (733)
-      Tests  3 failed | 5426 passed (5429)
+      Tests  3 failed | 5428 passed (5431)
 The 3 failures are src/editor/pdfjsCopy.test.ts on this machine only (CRLF checkout of public/pdfjs
 files vs the LF package copy); they pass on CI and are not touched by this PR.
 
