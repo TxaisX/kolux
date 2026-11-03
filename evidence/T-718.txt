@@ -13,8 +13,10 @@ TEST (scm::tests::t718_abort_checks_the_fence_before_git_like_stage_and_discard)
 - Reads scm.rs: scm_abort, scm_stage and scm_discard each have the fence check ahead of spawn_blocking.
 - A repository mid-merge outside every project: fence.allow refuses it and it is still mid-merge.
   Registered as a project, the same path passes and the abort clears the merge.
-- RESULTS_PLACEHOLDER
+- 1/1 pass. Trap: scm_abort with its fence line removed fails ("scm_abort has no fence check"). Restored: pass.
+- cargo test --lib -- scm:: fence:: : 161 pass; 1 fails, t606_the_claude_writer (its 20 s stand-in timeout, the
+  known local-only failure in PROTOCOL.md:102 and proof/baseline-rust-failed.txt). cargo clippy --all-targets -D warnings: clean.
 
 GATES
-- GATES_PLACEHOLDER
+- plan-check: OK. firewall-check -Baseline: 0 new. Main 45146f78 merged in.
 - First load: back end only, +0 expected; CI figure in the PR.
