@@ -3,9 +3,11 @@
    layout strip (6), panes (7), status bar (8). */
 
 :root { color-scheme: dark; }
-/* T-698 (DT-C134): one z-index scale for every window-level overlay. The floating panel sits over sheets and under
-   every page overlay, menu, pop, dialog, notice and tip. Inside a pane (its own stacking context) numbers stay local. */
-:root { --z-sheet: 20; --z-float: 30; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
+/* T-698 (DT-C134): one z-index scale for every layer drawn over the page. A pane is NOT a stacking context (container-type
+   only contains size), so the pops inside panes take the pane tier, under the floating panel. The panel sits over sheets,
+   pane pops, the review tray and the plan sheet, and under every page overlay, menu, pop, dialog, notice and tip.
+   A bare z-index of 20 or more anywhere in src is a test failure. */
+:root { --z-sheet: 20; --z-pane: 22; --z-float: 30; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
 
 /* ---- --kx-* foundation (Claude-design port, phase 0) ----
    The vocabulary later surfaces build on. The dark and light sets are the same ramp: the ink flips
@@ -362,7 +364,7 @@ input { font: inherit; }
 .needs-chip:hover, .needs-chip:focus-visible { border-color: var(--line-focus); outline: none; }
 .name-field { min-width: 0; width: 14em; max-width: 100%; padding: 1px 5px; border: 1px solid var(--line-focus); border-radius: 4px; background: var(--input-bg); color: var(--fg); font: inherit; font-size: 12px; }
 .tab .name-field { width: 10em; }
-.review-tray { position: fixed; z-index: calc(var(--z-pop) - 1); right: 16px; bottom: 36px; width: 340px; max-height: 50vh; overflow: auto; padding: 8px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); font-size: 12.5px; }
+.review-tray { position: fixed; z-index: calc(var(--z-float) - 2); right: 16px; bottom: 36px; width: 340px; max-height: 50vh; overflow: auto; padding: 8px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); font-size: 12.5px; }
 .review-head { display: flex; align-items: center; gap: 8px; }
 .review-send { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; }
 .review-send-item { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; border: none; border-radius: 6px; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
@@ -1483,7 +1485,7 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 @container (max-width: 204px) { .pane-head .right .ib { display: none; } }
 @container (max-width: 134px) { .pane-head .status, .pane-head .right { display: none; } }
 /* SAFE-002..004: the plan review sheet, from the right edge over the window. */
-.plan-sheet { position: fixed; z-index: calc(var(--z-sheet) + 1); top: calc(env(safe-area-inset-top, 0px) + 40px); right: 0; bottom: 24px; width: min(520px, 100vw); display: flex; flex-direction: column; background: var(--pane-bg); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35); font-size: 13px; }
+.plan-sheet { position: fixed; z-index: calc(var(--z-float) - 1); top: calc(env(safe-area-inset-top, 0px) + 40px); right: 0; bottom: 24px; width: min(520px, 100vw); display: flex; flex-direction: column; background: var(--pane-bg); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35); font-size: 13px; }
 .plan-sheet-head { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
 .plan-sheet-head h3 { margin: 0; font-size: 14px; color: var(--fg); }
 .plan-sheet-head .muted { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

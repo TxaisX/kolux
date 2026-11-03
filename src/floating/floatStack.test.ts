@@ -1,13 +1,15 @@
-// T-694 (F13, F16, F17; DT-C130) and T-698 (DT-C134): the window-level overlays share one z-index scale (the --z-*
-// variables in styles.css). The floating panel and its button sit over sheets and under every page overlay, menu, pop,
-// dialog, notice and tip; the chooser footer's buttons wrap in a narrow pane instead of running past its edge.
+// T-694 (F13, F16, F17; DT-C130) and T-698 (DT-C134): every layer drawn over the page shares one z-index scale (the
+// --z-* variables in styles.css). A pane is not a stacking context, so the pops inside panes are on the scale too. The
+// floating panel and its button sit over sheets, pane pops, the review tray and the plan sheet, and under every page
+// overlay, menu, pop, dialog, notice and tip; the chooser footer's buttons wrap in a narrow pane instead of running past its edge.
 import { expect, test } from "vitest";
 
 // Vitest returns "" for a .css import, so the stylesheets are read from disk (the project carries no Node types).
-const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+type Fs = { readFileSync(p: URL, enc: string): string; readdirSync(p: URL, o: { recursive: true }): string[] };
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): Fs } }).process.getBuiltinModule("node:fs");
 const read = (p: string) => nodeFs.readFileSync(new URL(p, import.meta.url), "utf8");
 const styles = read("../styles.css");
-const css = [styles, ...["./floating.css", "../update/update.css", "../projects/sidebar.css", "../onboarding/onboarding.css", "../skills/skillNotice.css", "../shell/shell.css", "../setup/trust.css"].map(read)].join("\n");
+const css = [styles, ...["./floating.css", "../update/update.css", "../projects/sidebar.css", "../onboarding/onboarding.css", "../skills/skillNotice.css", "../shell/shell.css", "../setup/trust.css", "../editor/editor-extras.css", "../chat/chat.css"].map(read)].join("\n");
 
 const scale: Record<string, number> = {};
 for (const m of css.matchAll(/--(z-[a-z]+):\s*(\d+)/g)) scale[m[1]] = Number(m[2]);
@@ -17,36 +19,53 @@ const rule = (sel: string): string => {
   expect(m, sel).not.toBeNull();
   return m![1];
 };
-// Resolves "41", "var(--z-menu)" and "calc(var(--z-menu) + 1)" to a number.
+// Resolves "41", "var(--z-menu)" and "calc(var(--z-menu) + 1)" to a number; anything else fails.
 const z = (sel: string): number => {
   const v = rule(sel).match(/z-index:\s*([^;]+);/)![1].trim();
-  const m = v.match(/^(?:calc\()?(?:var\(--(z-[a-z]+)\)|(\d+))(?:\s*([+-])\s*(\d+)\))?$/);
+  const m = v.match(/^(?:(\d+)|var\(--(z-[a-z]+)\)|calc\(var\(--(z-[a-z]+)\)\s*([+-])\s*(\d+)\))$/);
   expect(m, `${sel}: ${v}`).not.toBeNull();
-  const base = m![1] ? scale[m![1]] : Number(m![2]);
+  if (m![1]) return Number(m![1]);
+  const base = scale[m![2] ?? m![3]];
   expect(base, `${sel}: ${v}`).toBeTypeOf("number");
-  return base + (m![3] ? (m![3] === "+" ? 1 : -1) * Number(m![4]) : 0);
+  return base + (m![4] ? (m![4] === "+" ? 1 : -1) * Number(m![5]) : 0);
 };
 
-test("T-698: the scale runs sheet < floating panel < page < menu < pop < dialog < notice < tip < tour < trust", () => {
-  const order = ["z-sheet", "z-float", "z-page", "z-menu", "z-pop", "z-dialog", "z-notice", "z-top", "z-tour", "z-trust"];
+const PANE_POPS = [".slash-menu", ".rich-draw", ".chat-composer .chat-full", ".table-ctl", ".code-label", ".table-ctx", ".search-pick-list"];
+
+test("T-698: the scale runs sheet < pane < floating panel < page < menu < pop < dialog < notice < tip < tour < trust", () => {
+  const order = ["z-sheet", "z-pane", "z-float", "z-page", "z-menu", "z-pop", "z-dialog", "z-notice", "z-top", "z-tour", "z-trust"];
   const values = order.map((k) => scale[k]);
   expect(values.every((n) => typeof n === "number")).toBe(true);
   expect([...values].sort((a, b) => a - b)).toEqual(values);
   expect(new Set(values).size).toBe(values.length);
 });
 
-test("T-694, T-698: every window-level overlay draws over the floating panel and its button; sheets draw under", () => {
+test("T-694, T-698: every page overlay, menu, pop and dialog draws over the floating panel and its button", () => {
   const top = Math.max(z(".float-panel"), z(".float-btn"));
-  const bottom = Math.min(z(".float-panel"), z(".float-btn"));
-  for (const sel of [".settings", ".menu-backdrop", ".menu", ".diff-note-pop", ".copy-hint", ".review-tray", ".review-pop", ".upd-pop.upd-fixed", ".sb-menu-back", ".sb-menu", ".scrim", ".star-card, .star-toast", ".tour-notice", ".skill-notice", ".ask-backdrop", ".tip", ".picker-tip", ".tab-switcher", ".tip-dock", ".about-panel", ".tour", ".trust-prompt .ask-backdrop"]) {
+  for (const sel of [".settings", ".menu-backdrop", ".menu", ".diff-note-pop", ".copy-hint", ".review-pop", ".upd-pop.upd-fixed", ".sb-menu-back", ".sb-menu", ".scrim", ".star-card, .star-toast", ".tour-notice", ".skill-notice", ".ask-backdrop", ".tip", ".picker-tip", ".tab-switcher", ".tip-dock", ".about-panel", ".tour", ".trust-prompt .ask-backdrop", ".link-bubble"]) {
     expect(z(sel), sel).toBeGreaterThan(top);
   }
-  for (const sel of [".sheet-wrap", ".plan-sheet"]) expect(z(sel), sel).toBeLessThan(bottom);
   expect(z(".float-btn")).toBeGreaterThan(z(".float-panel"));
 });
 
-test("T-698: styles.css puts every window-level layer (z-index 20 and up) on the scale, not a bare number", () => {
-  const bare = [...styles.matchAll(/z-index:\s*(\d+)/g)].map((m) => Number(m[1])).filter((n) => n >= 20);
+test("T-698: sheets, pane pops, the review tray and the plan sheet draw under the panel, in main's order", () => {
+  const panel = Math.min(z(".float-panel"), z(".float-btn"));
+  const pops = PANE_POPS.map(z);
+  for (const sel of [".sheet-wrap", ".chat-browser-menu", ...PANE_POPS, ".review-tray", ".plan-sheet"]) expect(z(sel), sel).toBeLessThan(panel);
+  expect(z(".sheet-wrap")).toBeLessThan(Math.min(...pops));
+  expect(z(".chat-browser-menu")).toBeLessThan(Math.min(...pops));
+  expect(Math.max(...pops)).toBeLessThan(z(".review-tray"));
+  expect(z(".review-tray")).toBeLessThan(z(".plan-sheet"));
+});
+
+test("T-698: no stylesheet in src sets a bare z-index of 20 or more; every layer over the page is on the scale", () => {
+  const src = new URL("../", import.meta.url);
+  const bare: string[] = [];
+  for (const f of nodeFs.readdirSync(src, { recursive: true }).filter((p) => p.endsWith(".css"))) {
+    for (const m of nodeFs.readFileSync(new URL(f.replace(/\\/g, "/"), src), "utf8").matchAll(/z-index:\s*(\d+)/g)) {
+      if (Number(m[1]) >= 20) bare.push(`${f}: ${m[1]}`);
+    }
+  }
   expect(bare).toEqual([]);
 });
 
