@@ -12,7 +12,9 @@ WHAT CHANGED (src/projects only; lane C commits 9d677875 and cf05a307)
   children would close; the plan lists only the folders that change.
 - One Remove project button with its own icon (no longer the workspace-delete ×). This supersedes T-640's
   hover X on the main checkout row (DT-C123); scripts/prove/live-T-640.mjs still looks for data-main-x
-  and needs updating (asked of coordinator 57).
+  was updated with it (coordinator 57, 01:44): the T-640 live proof selectors moved with T-687
+  (data-main-x -> data-proj-x, "Remove this workspace" -> "Delete this workspace"); node --check passes; the
+  live run waits for 0.1.6.
 - Row menu (menu.ts, ProjectsPanel.tsx): focuses its first item once, arrows wrap, Home/End jump, it is
   clamped on screen on both axes, and a note says when statuses or editors failed to load (menuGaps).
   Move up / Move down step among siblings only (order.ts stepRow, stepSiblings), are off at the ends and
@@ -33,7 +35,7 @@ WHAT CHANGED (src/projects only; lane C commits 9d677875 and cf05a307)
 - Rename saves on click-away inside the window (not on window blur) and returns focus to the row.
 - A group made from New group and closed before Save is deleted again, once; the disabled New group
   button says why.
-- The sidebar's Getting Started entry (SidebarStart) is mounted, loaded with deferred() after the first
+- The sidebar's Getting Started entry (SidebarStart, the VIEW-114 slot; approved by coordinator 57) is mounted, loaded with deferred() after the first
   frame; first load 1,465,855 bytes (ceiling 1,485,000).
 
 WHY
@@ -66,7 +68,7 @@ FOLLOW-UPS (from the A- re-review; not fixed in this PR)
 - The T-687 acceptance lines for PROJ-001, PROJ-014, PROJ-020, PROJ-053 and PROJ-065 are proved through
   the helpers (addReport, freshGroupToDrop, mayRestoreDraft, sleepPlan, stepRow); panel-level wiring tests
   in the removePaths.test.ts style are a follow-up.
-- SidebarStart mount is outside the audit rows: coordinator 57 to keep or drop.
+- (resolved) SidebarStart mount: approved by coordinator 57 as the VIEW-114 sidebar Getting Started slot.
 
 TESTS (verbose, the lane C test files this PR changes or adds)
 pnpm vitest run --reporter=verbose src/projects/__cards__/SET-032.test.ts src/projects/__cards__/VIEW-051.test.ts src/projects/forgetAsk.test.ts src/projects/removeCommits.test.ts src/projects/removeOnce.test.ts src/projects/removePaths.test.ts src/projects/uxRows4.test.ts
