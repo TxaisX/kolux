@@ -202,7 +202,7 @@ Tier: P0 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens a changed file's diff from source control or with `kolux file diff`, and moves
   through the changes with F7 and Shift+F7.
 User sees: a diff tab that starts inline and can switch to two columns; its actions menu toggles
-  whitespace display and wrapping; F7 jumps to the next change and Shift+F7 to the previous one.
+  whitespace display and wrapping (it works from the keyboard: focus goes to its first item, arrows move, Escape closes it and focus returns to its button; the embedded Changes bar has the same menu); F7 jumps to the next change and Shift+F7 to the previous one.
 Rules: inline view leaves out the original side's line numbers; showing whitespace changes and
   wrapping both start off; Shift plus the scroll wheel scrolls sideways in whichever side is under
   the pointer; staged and unstaged diffs open as separate tabs, and the header says which one it is;
@@ -215,6 +215,7 @@ Acceptance:
   - [x] Open a diff → inline; switch to two columns → side by side; press F7 → the caret lands on
         the next change. (cards live; evidence/cards-EDIT-027.txt)
   - [x] Change the file in a terminal → the diff updates without reopening. (cards live; evidence/cards-EDIT-027.txt)
+  - [ ] Open the diff actions menu with the keyboard → the first item has focus; Down moves; Escape closes it and focus returns to the button. (unit tests; evidence/T-683.txt)
 Compat: the existing keybinding ids for next change (F7) and previous change (Shift+F7) keep
   working.
 Source: D-12-027
@@ -234,11 +235,12 @@ Rules: the side tree starts hidden, can be resized, and stays quick with thousan
   a section reuses content fetched earlier only if that file's change is the same as before;
   otherwise it fetches again; a section still loading or still waiting for a click never counts as
   viewed; a file with both staged and unstaged changes gets two tree entries, each leading to its
-  own section.
+  own section; a Viewed box that is greyed out because its diff has not loaded says so in its tooltip and description.
 Acceptance:
   - [x] Change 30 files and open All Changes → sections appear while scrolling; show the tree,
         filter by name and jump to a file. (cards live; evidence/cards-EDIT-029.txt)
   - [x] Mark a file viewed, switch tabs and come back → the mark and the scroll position are kept. (cards live; evidence/cards-EDIT-029.txt)
+  - [ ] Hover a greyed-out Viewed box → it says it waits for the diff to load. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-12-029
 
@@ -301,11 +303,12 @@ Rules: hits in the file name outrank hits only in the folder path, and no more t
   rather than reported as a missing install; it stays quick on worktrees of around 100,000 files;
   when the file list reaches its cap, the dialog says the list is incomplete rather than implying it
   covers everything; the new-tab menu's file search ranks results the same way and shows the full
-  path on hover.
+  path on hover; the arrow keys scroll the active result into view, and a hover never scrolls.
 Acceptance:
   - [x] Press Mod+P and type panel → files with panel in their name come before files that only sit
         in a panel folder. (cards; evidence/cards-EDIT-036.txt)
   - [x] Hover a result → the path tooltip appears and follows the pointer. (cards; evidence/cards-EDIT-036.txt)
+  - [ ] Press Down past the last visible result → the list scrolls to keep the active one in view. (unit tests; evidence/T-683.txt)
 Compat: the existing keybinding id for Quick Open keeps working.
 Source: D-12-036
 
@@ -375,10 +378,13 @@ Rules: the chosen agent is checked again at the moment of the click, and nothing
   settings; adding a note defaults to Mod+Shift+A and can be rebound; holding the keys adds just one
   note, and the keystroke passes through untouched when there is nothing to annotate; sending notes
   has a shortcut slot with no key assigned by default; notes attach to the right line whatever the
-  file's line endings, and notes sharing one anchor are listed in the order of their source lines.
+  file's line endings, and notes sharing one anchor are listed in the order of their source lines; in a diff the "+" beside a line is
+  drawn only where a note can be saved (the embedded Changes view shows its note cards without it); deleting a note from its card
+  shows "Review note deleted. Undo" for 8 seconds, and Undo saves it again.
 Acceptance:
   - [ ] Add two notes and send them to a running agent → both reach its prompt and the rail empties.
   - [ ] Kill the agent after opening the menu and before clicking it → the notes stay unsent.
+  - [ ] Delete a note on a diff card → "Review note deleted. Undo" shows, and Undo brings it back. (unit tests; evidence/T-683.txt)
 Compat: the existing keybinding ids for adding a review note and for sending review notes keep
   working.
 Source: D-12-020
@@ -535,7 +541,8 @@ Rules: the slash menu also matches each entry's alternative names, not just its 
   the only column left removes the whole table; table hover controls never block a click into a
   cell, header cells included; in lists, Tab and Shift+Tab indent and outdent, Enter continues the
   list, Enter on an empty item leaves it, and task boxes can be ticked; code blocks carry a language
-  label and colouring that is redone only for the part that changed; a language the editor does not
+  label and colouring that is redone only for the part that changed; a caret inside a code block shows the language list too, so
+  the keyboard reaches it; a language the editor does not
   know can be set to plain text from the language picker; collapsible sections open and close from
   the keyboard; nested ones come back as editable sections, and nesting the editor cannot represent
   is kept as raw text, untouched; cutting or deleting empty paragraphs removes the block cleanly;
@@ -545,6 +552,7 @@ Rules: the slash menu also matches each entry's alternative names, not just its 
 Acceptance:
   - [ ] Type /table → a table appears; press Tab in its last cell → a new row is added.
   - [ ] In a bullet list press Enter twice → the list ends and the caret sits in a plain paragraph.
+  - [ ] Put the caret inside a code block → its language list shows. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-12-013
 
@@ -558,8 +566,8 @@ User sees: web links open in Kolux's built-in browser, and Mod+Shift-click sends
 Rules: line anchors are accepted as #L10, #L10C5 or :10:5, and a Windows drive letter is never read
   as a line number; heading anchors follow GitHub's slug style, and [[note#heading]] jumps to that
   heading; a [[name]] that fits more than one file is flagged rather than guessed, and a [[link]]
-  never spans a line break; hovering a link in the rich editor shows a small bubble to open, edit or
-  copy it, drawn above the side panels so the explorer never hides it; a shortcut adds a link;
+  never spans a line break; hovering a link in the rich editor, or moving the caret into it, shows a small bubble to open, edit or
+  copy it (Escape closes it), drawn above the side panels so the explorer never hides it; a shortcut adds a link;
   reference-style links and HTML superscript citation links work like ordinary links, and reference
   definitions are folded into their links instead of showing as stray text; backslashes and forward
   slashes in a link target mean the same thing; links into a network share keep the server name; a
@@ -573,6 +581,7 @@ Acceptance:
         opens in the system browser.
   - [ ] Click a link to a code file with a line-10 anchor → the file opens with line 10 in view.
   - [ ] Type [[ → a list of notes appears; pick one → a link is inserted and can be clicked.
+  - [ ] Move the caret into a link with the arrow keys → the link bubble shows. (unit tests; evidence/T-683.txt)
 Compat: link anchor forms #L<line>, #L<line>C<column> and :<line>:<column>; [[note]] link syntax.
 Source: D-12-014
 
@@ -631,11 +640,12 @@ User does: opens an image file (PNG, JPEG and similar) and zooms with Ctrl or Cm
 User sees: the image in a tab of its own; zoom centres on the pointer and stays between fixed
   limits; a picture that cannot load produces an error message, never an empty tab.
 Rules: at 100% a small picture is shown at its real size, not stretched; SVG files also count as
-  text, so their source can be diffed; trackpad pinch-zoom has the same limits as wheel zoom.
+  text, so their source can be diffed; trackpad pinch-zoom has the same limits as wheel zoom; the header's copy button reads "Copy path" and Retry is a small button like the others.
 Acceptance:
   - [ ] Open an image and zoom in with the wheel → the zoom heads toward the pointer and stops at
         the maximum.
   - [ ] Open a small icon at 100% → it shows at its real size.
+  - [ ] The header's copy button reads "Copy path"; a picture that fails shows a small Retry button. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-12-021
 
@@ -679,13 +689,14 @@ User sees: the header shows the full path, which can be copied, with a diff or s
 Rules: the open-file action on a diff is greyed out when the file has been deleted; All Changes
   carries its own label, but copying from it gives the worktree path; closing a new untitled file
   that was never typed in deletes it, but only when Kolux can tell which worktree it belongs to;
-  otherwise the file stays on disk; a new file made from a template is kept on close; closing a tab
+  otherwise the file stays on disk; the unsaved-changes dialog keeps Tab among its own buttons and keeps focus while a save runs (Escape is ignored only then); a new file made from a template is kept on close; closing a tab
   releases its memory and cached view state, and only its own: another tab whose name merely begins
   the same way is unaffected.
 Acceptance:
   - [ ] Open the diff of a deleted file → the open-file action is greyed out.
   - [ ] Press Mod+Alt+W → every editor tab closes.
   - [ ] Start a new note and close it without typing → the file is gone from disk.
+  - [ ] Close a tab with unsaved changes and press Tab repeatedly → focus cycles among the dialog's buttons only. (unit tests; evidence/T-683.txt)
 Compat: the existing keybinding id for closing all tabs keeps working.
 Source: D-12-031
 
@@ -701,11 +712,12 @@ Rules: git-ignored files are visible by default; find in folder opens search lim
   into one refresh, and if the watcher falls behind the whole tree reloads; a project reached
   through a symlink, a Windows junction or a path in different letter case still refreshes live;
   removing a worktree stops its file watching first, including a watcher that is still starting up;
-  if the watching cannot be stopped, the removal reports a failure.
+  if the watching cannot be stopped, the removal reports a failure; the live refresh skips a folder whose last read is still out; Expand all marks folders it cannot read "not readable" and says when it stopped at its folder cap; the Open in menu is keyboard-reachable (see EDIT-043); Expand all and Collapse all are double chevrons and Open in uses the rocket icon.
 Acceptance:
   - [ ] Create a file from a terminal → it shows in the tree without clicking refresh.
   - [ ] Type test into the filter → only matching rows remain; the clear button brings every row
         back.
+  - [ ] Expand all on a tree with an unreadable folder → that row says "not readable" and a note names the count. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-12-035
 
@@ -720,10 +732,11 @@ Rules: by default it searches plain text, ignores case, covers hidden files and 
   makes it literal; the number of results is capped and the panel says when results were cut; very
   long lines are trimmed around the hit; without ripgrep it falls back to git's own search; slow
   searches time out and overly long queries are rejected; the explorer view toggles between
-  searching file names and searching contents.
+  searching file names and searching contents; Escape in the search box closes the search and puts focus back on the tree, and closing it does not fill the box again.
 Acceptance:
   - [ ] Search todo → hits in any capitalisation; tick match case → only exact-case hits.
   - [ ] Exclude a pattern that matches test files → no test files in the results.
+  - [ ] Press Escape in the search box → the search closes and the tree has focus. (unit tests; evidence/T-683.txt)
 Compat: keybinding id sidebar.search.toggle; include and exclude pattern syntax as described above.
 Source: D-12-037
 
@@ -774,10 +787,11 @@ Rules: every launcher is offered for local folders; the list is managed in Gener
   user adds a ready-made preset or a custom app (a label and a launch command), and edits or removes
   rows; rows lacking a label or a command are discarded, and the list has a maximum length; an app
   with an empty command falls back to VS Code; relative or missing paths are refused, and a launch
-  that fails is reported rather than ignored.
+  that fails is reported rather than ignored; the explorer's Open in menu takes focus on its first item, moves with the arrow keys, closes on Escape or a click outside, returns focus to its button and stays inside the window.
 Acceptance:
   - [ ] With VS Code installed, choose Open in → VS Code → it opens the worktree folder.
   - [ ] Add a custom app with a label but no command → that row is discarded.
+  - [ ] Open the explorer's Open in menu → the first app has focus; Escape closes it and focus returns to the button. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-12-043
 
