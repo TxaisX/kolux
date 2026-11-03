@@ -149,6 +149,7 @@
 .chat-question-other { margin-top: 6px; width: 100%; box-sizing: border-box; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--chip-bg); color: var(--fg); font: inherit; }
 
 /* T-334: CHAT-026 zoom, CHAT-008 paging, CHAT-019 menu, CHAT-024 controls, CHAT-021 chips. */
+.chat-zoom:empty { opacity: 0; padding: 0; border: 0; }
 .chat-list, .chat-box { zoom: var(--chat-zoom, 1); }
 .chat-load-earlier { align-self: center; flex: none; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
 .chat-composer { flex-wrap: wrap; }

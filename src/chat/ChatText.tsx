@@ -81,7 +81,7 @@ export function ChatText({ text }: { text: string }) {
 
 /** The small choice a plain click on a web link opens: the in-app browser or the system one. Arrows move between the three
  * choices, Escape or a click outside closes it, and focus goes back to where it was. */
-export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: { x: number; y: number }; onPick: (where: "kolux" | "system") => void; onClose: () => void }) {
+export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: { x: number; y: number }; onPick: (where: "kolux" | "system") => boolean; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -102,8 +102,9 @@ export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: {
     };
   }, []);
   const pick = (where: "kolux" | "system") => {
-    picked.current = true; // a pick opens something else; it keeps the focus it moved
-    onPick(where);
+    // Only a pick that opened an in-app pane keeps the focus it moved; the system browser leaves
+    // nothing in the app focused, so focus goes back to the link.
+    picked.current = onPick(where);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);

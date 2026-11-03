@@ -199,11 +199,14 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
     say: setNote,
     chooseBrowser: (url, at) => setMenu({ url, at }),
   };
-  const pickBrowser = (where: "kolux" | "system") => {
-    if (!menu) return;
-    if (where === "kolux" && opener?.onOpenLink) opener.onOpenLink(menu.url);
+  /** True when the link opened in an in-app pane (which takes focus); false for the system browser. */
+  const pickBrowser = (where: "kolux" | "system"): boolean => {
+    if (!menu) return false;
+    const inApp = where === "kolux" && !!opener?.onOpenLink;
+    if (inApp) opener!.onOpenLink!(menu.url);
     else invoke("open_external", { url: menu.url }).catch((e) => setNote(String(e)));
     setMenu(null);
+    return inApp;
   };
   // CHAT-027: within 48 px of the bottom the view follows new output; further up it holds still.
   const list = useRef<HTMLDivElement>(null);
@@ -338,7 +341,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
       {menu && <BrowserChoice url={menu.url} at={menu.at} onPick={pickBrowser} onClose={() => setMenu(null)} />}
       <Composer ref={box} paneKey={pane.key} live={terminalOf(key) !== undefined} blocked={held} note={note ?? undefined} onSend={send} working={open} onStop={stop} agent={agent} cwd={pane.cwd} shownModel={shownModel} onTerminal={onTerminal} />
       {/* The live region stays mounted and only its text changes: a region created with its text is skipped by screen readers. */}
-      <div className="chat-zoom" role="status" hidden={!zoomShown}>{zoomShown ? zoomLabel(zoom) : ""}</div>
+      <div className="chat-zoom" role="status">{zoomShown ? zoomLabel(zoom) : ""}</div>
       {full && (
         <button type="button" className="chat-full" aria-label="Close image" onClick={() => setFull(null)}>
           <img src={full} alt="Attached" />
