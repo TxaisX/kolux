@@ -1221,6 +1221,15 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 /* T-699 (DT-C135): under 900 px the side panels take turns, so the workspace and its sheets keep their room.
    The left toggle (shell/window/narrow.ts) brings the left sidebar back by closing the right one. */
 @media (max-width: 899px) { .body:has(> .rside:not([hidden])) > :is(.sidebar-wrap, .lside-grip) { display: none; } }
+/* T-703 (DT-C139): a widened side panel gives its width back before the workspace drops under 340 px (the T-699
+   floor), during a drag and when the window shrinks; the saved widths are kept, so the room comes back with the window.
+   The left sidebar (8 px gutter) leaves room for the right one's 240 px minimum while that shows; the right one leaves
+   room for the left sidebar as drawn. The right sidebar's own clamp (Right.tsx) is unchanged; these only catch a width
+   drawn before the window shrank. The step-aside above still starts at 899 px. */
+.body > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
+.body:has(> .rside:not([hidden])) > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
+.body > .rside { max-width: max(240px, 100vw - 340px); }
+.body:has(> .sidebar-wrap) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
 /* USAGE-012: usage analytics. Green squares = days with use, deeper green = more tokens. */
 .ta { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
 /* The notices' live region is always drawn (so a notice is announced); empty, it takes no room in the column. */
