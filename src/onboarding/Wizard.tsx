@@ -3,6 +3,7 @@
 // hands every real action (a session, Add Project) to App through its props.
 import { useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import Ask from "../chrome/Ask";
 import { Close, Mark } from "../chrome/icons";
 import { ConnectGrid } from "../settings/ConnectGrid";
@@ -12,7 +13,7 @@ import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
 import type { AgentInfo } from "../launch/PlusMenu";
-import { NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
+import { followAgents, lastMain, NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
 import { HOOKS_LINE, hooksDefault, recordHooks, recordsHooks } from "./hooksOn";
 import { useSettings } from "../settings/useSettings";
 
@@ -49,11 +50,11 @@ type ViewProps = {
   onStay?: () => void;
 };
 
-export const mainOff = (at: number, connected: boolean, noAgent = false) => (at === 1 && !connected) || (at === 3 && noAgent);
+export const mainOff = (at: number, connected: boolean) => at === 1 && !connected;
 
 export function WizardView(p: ViewProps) {
   const screen = SCREENS[p.at];
-  const main = ["Get started", "Continue", "Continue", "Open a session"][p.at];
+  const main = ["Get started", "Continue", "Continue", lastMain(!!p.noAgent)][p.at];
   const secondary = [null, "I’ll do this later", null, null][p.at];
   return (
     <div className="ask-backdrop onb-backdrop" onMouseDown={(e) => e.button === 0 && e.target === e.currentTarget && p.onOutside?.()}>
@@ -121,7 +122,7 @@ export function WizardView(p: ViewProps) {
           )}
           {mainOff(p.at, p.connected) && p.at === 1 ? (
             <span className="onb-gap onb-why">{t("onboarding.connect.wait")}</span>
-          ) : mainOff(p.at, p.connected, p.noAgent) ? (
+          ) : p.at === 3 && p.noAgent ? (
             <span className="onb-gap onb-why" role="status">
               {NO_AGENT_WHY}{" "}
               <button className="link" onClick={p.onRecheck}>
@@ -136,7 +137,7 @@ export function WizardView(p: ViewProps) {
               Back
             </button>
           )}
-          <button className="btn primary onb-main" disabled={mainOff(p.at, p.connected, p.noAgent)} onClick={p.onMain}>
+          <button className="btn primary onb-main" disabled={mainOff(p.at, p.connected)} onClick={p.onMain}>
             {main}
             <span className="onb-chord">{/Mac/i.test(globalThis.navigator?.platform ?? "") ? "⌘ ↵" : "Ctrl ↵"}</span>
           </button>
@@ -185,7 +186,8 @@ export default function Wizard(props: Props) {
   // 49-ux2: the last button needs an agent to start; the list is read here (the window's own list is App's).
   const [agents, setAgents] = useState<AgentInfo[] | null>(null);
   const readAgents = () => void invoke<AgentInfo[]>("agent_list").then(setAgents, () => {});
-  useEffect(readAgents, []);
+  // Read again on every screen and on agents-changed: an agent installed from the Connect screen counts at once.
+  useEffect(() => followAgents(() => invoke<AgentInfo[]>("agent_list"), (cb) => listen("agents-changed", (e) => cb(e.payload)), setAgents), [at]);
   const noAgent = agents !== null && sessionAgent(agents, settings) === null;
   const go = (to: number, later = false) => {
     // The stored step is the last screen finished (onboarding.rs); a failed save keeps the wizard going.
@@ -194,9 +196,9 @@ export default function Wizard(props: Props) {
     if (recordsHooks(at, to, later)) void recordHooks(hooksNow).catch(() => {});
     setAt(to);
   };
-  const main = () => [() => go(1), () => go(2), () => go(3), () => props.onSession()][at]();
+  const main = () => [() => go(1), () => go(2), () => go(3), () => (noAgent ? props.onPickFolder() : props.onSession())][at]();
   const secondary = () => (at === 1 ? go(2, true) : undefined);
-  const off = mainOff(at, connected, noAgent);
+  const off = mainOff(at, connected);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (leaveKey(e)) return setLeaving(true);

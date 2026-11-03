@@ -2,8 +2,8 @@
 // Open a session needs, the focus helper every dialog shares, the shortcut label, and the tour notice.
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
-import { NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
-import { enterDialog, isTopDialog } from "./dialogFocus";
+import { followAgents, lastMain, NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
+import { enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
 import { submitKeys } from "./submitKeys";
 import { tourNotice, type Want } from "./tour";
 import { mainOff } from "./Wizard";
@@ -29,9 +29,26 @@ describe("row 3: Open a session needs an agent", () => {
     expect(sessionAgent([], {})).toBeNull();
     expect(sessionAgent([{ ...claude, installed: false }], {})).toBeNull();
     expect(sessionAgent([claude], {})?.id).toBe("claude");
-    expect(mainOff(3, true, true)).toBe(true);
-    expect(mainOff(3, true, false)).toBe(false);
+    expect(mainOff(3, true)).toBe(false); // never greyed out: with no agent it picks a folder (a plain terminal)
+    expect(lastMain(true)).toBe("Pick a folder");
+    expect(lastMain(false)).toBe("Open a session");
     expect(NO_AGENT_WHY).toMatch(/Settings > Agents/);
+  });
+
+  it("follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes", async () => {
+    let fire: (l: unknown) => void = () => {};
+    const off = vi.fn();
+    const seen: unknown[] = [];
+    const stop = followAgents(() => Promise.resolve([]), (cb) => ((fire = cb), Promise.resolve(off)), (l) => seen.push(l));
+    await Promise.resolve();
+    fire([claude]);
+    fire(null); // a malformed event changes nothing
+    expect(seen).toEqual([[], [claude]]);
+    stop();
+    fire([]);
+    await Promise.resolve();
+    expect(seen).toHaveLength(2);
+    expect(off).toHaveBeenCalled();
   });
 });
 
@@ -44,6 +61,21 @@ describe("row 5: hooks consent only on an explicit move on", () => {
 });
 
 describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere", () => {
+  it("a docked tip card (aria-modal=false) after the dialog does not take its Escape", () => {
+    const modal = { getAttribute: () => null };
+    const tip = { getAttribute: (n: string) => (n === "aria-modal" ? "false" : null) };
+    const list = [modal, tip].filter(isModal) as unknown as Element[];
+    expect(isTopDialog(modal as unknown as Element, list)).toBe(true);
+  });
+  it("Tab wraps at both ends and stays inside", () => {
+    const [a, b, c] = ["a", "b", "c"];
+    expect(wrapTab([a, b, c], c, false)).toBe(a);
+    expect(wrapTab([a, b, c], a, true)).toBe(c);
+    expect(wrapTab([a, b, c], b, false)).toBeNull(); // the browser moves inside the dialog
+    expect(wrapTab([a, b, c], "outside", false)).toBe(a);
+    expect(wrapTab([a, b, c], "outside", true)).toBe(c);
+    expect(wrapTab([], a, false)).toBeNull();
+  });
   const el = (id: string) => ({ id, focus: vi.fn() }) as unknown as Element & { focus: () => void };
   it("only the top dialog answers Escape", () => {
     const a = el("a");
@@ -69,6 +101,12 @@ describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere",
     await Promise.resolve();
     await Promise.resolve();
     expect(back.focus).toHaveBeenCalled();
+    // An Escape typed in a terminal inside the dialog (a sign-in) is the terminal's.
+    const l2: Array<(e: Event) => void> = [];
+    const close2 = vi.fn();
+    enterDialog({ root, active: null, win: { addEventListener: (_t: string, f: EventListenerOrEventListenerObject) => void l2.push(f as (e: Event) => void), removeEventListener() {} }, dialogs: () => [root], find: () => null, inTerminal: () => true }, close2);
+    l2[0]({ key: "Escape", stopPropagation() {}, preventDefault() {} } as unknown as Event);
+    expect(close2).not.toHaveBeenCalled();
     expect(win.removeEventListener).toHaveBeenCalled();
   });
 });
