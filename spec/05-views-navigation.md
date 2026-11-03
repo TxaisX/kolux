@@ -210,13 +210,15 @@ Rules: the order follows the left-to-right order of the labels in the top-bar sw
   current; the chord printed in the menu is only a label; the key press is handled inside the
   window, not by the menu.
   Since T-610 (DT-C68) the submenu lists Agents, Board, Terminals, Tower and Floor, each ticked while
-  shown; the boxes above are unchanged.
+  shown; since T-673 (DT-C109) it lists Space too, and in the classic look the chord shows a short note
+  saying the classic layout has one view instead of doing nothing silently.
 Acceptance:
   - [x] New look, on Agents, press the chord four times → Board, Terminals, Tower, Agents.
         (Reworded per Txais 2026-10-28 decisions file, A: Tower stays in the cycle.)
-  - [x] Classic look, press the chord → nothing changes. (cards live; evidence/cards-VIEW-002.txt)
+  - [x] Classic look, press the chord → the screen does not change (since T-673 a note says why). (cards live; evidence/cards-VIEW-002.txt)
   - [x] Switch to Board with the mouse, open the menu → Board is checked. (cards; evidence/cards-VIEW-002.txt)
   - [x] Turn the new look off → the submenu is gone. (cards; evidence/cards-VIEW-002.txt)
+  - [x] View → Workspace View → Space opens the Space view and is ticked while shown. (T-673; evidence/T-673.txt)
 Compat: the cycle command is a keybinding command with default Mod+Alt+V; its exact command id is
   held back pending the allowlist.
 Source: D-05-002

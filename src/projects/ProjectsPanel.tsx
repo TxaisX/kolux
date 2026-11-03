@@ -1130,7 +1130,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       )}
       {findNote && <div className="preview warn">{findNote}</div>}
       {found.length > 0 && (
-        <div className="pick-list" aria-label="issues and pull requests">
+        <div className="pick-list found-list" aria-label="issues and pull requests">
           {found.map((f) => (
             <button key={f.url} type="button" className="pick-item" title={f.url} onClick={() => (setLinked(f), setName(f.title), nameRef.current?.focus())}>
               <span className="name">#{f.number} {f.title}</span>

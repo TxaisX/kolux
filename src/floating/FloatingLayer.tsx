@@ -14,6 +14,7 @@ import { useKeymap } from "../keys/KeymapContext";
 import { matchEvent } from "../keys/keymap";
 import type { Scope } from "../keys/actions";
 import { heldByTerminal } from "../keys/terminalPolicy";
+import { heldByOverlay } from "../keys/useWindowKeys";
 import { useSettings } from "../settings/useSettings";
 import {
   clampButton, insetFor, moveBy, parseButton, parseSaved, resizeBy, SETTING_BUTTON, SETTING_PANEL, shown, startsPanelMove, toggleMaximize, toStored,
@@ -122,6 +123,8 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
       const scopes: Scope[] = inPanel && activeKind === "markdown" ? ["global", "tabs", "editor"] : ["global", "tabs"];
       const hit = matchEvent(keymap, e, scopes);
       if (!hit || heldByTerminal(hit.id, s)) return false;
+      // UX lane C: under a menu or a modal dialog the window holds the chord (and cancels it) instead of the panel acting.
+      if (!inPanel && heldByOverlay(hit.id, false)) return false;
       const op = routeFloating(hit.id, hit.index, p.open, inPanel);
       if (!op) return false;
       e.preventDefault();

@@ -97,6 +97,12 @@ test("rows come out in section order", () => {
   expect(rows.map((r) => r.section)).toEqual(["Open tabs", "Settings", "Quick actions"]);
 });
 
+test("with no query, unnamed sections (Commands, Accounts) come after the named ones, so Enter never runs Go to File", () => {
+  const it = (section: string, label: string): PaletteItem => ({ section, label, run: () => {} });
+  const rows = paletteRows([it("Commands", "Go to File"), it("Accounts", "Switch Claude to work"), it("Open tabs", "terminal 1"), it("Quick actions", "New session")], "");
+  expect(rows.map((r) => r.section)).toEqual(["Open tabs", "Quick actions", "Commands", "Accounts"]);
+});
+
 test("palette rows carry the agent's mark, permission over unread over a fresh finish (VIEW-040)", () => {
   expect(dirMark("permission", true)).toBe("permission");
   expect(dirMark("waiting", true)).toBe("permission");
