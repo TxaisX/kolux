@@ -260,3 +260,24 @@ describe("T-702 content search", () => {
     expect(find(container, (n) => n.attrs.class === "cs-hit").length).toBe(0);
   });
 });
+
+describe("T-710 Explorer row menu from the keyboard", () => {
+  it("Shift+F10 on the focused list opens the active row's menu under that row; a right-click on blank list opens none", async () => {
+    const { container } = await explorer();
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    const menus = () => find(container, (n) => n.attrs.role === "menu");
+    await fire(container, "focusin", tree); // the list takes focus: its first row is active
+    await settle();
+    expect(tree.attrs["aria-activedescendant"]).toBe("ex-row-0");
+    await fire(container, "contextmenu", tree, { button: 2, clientX: 300, clientY: 400 });
+    await settle();
+    expect(menus().length, "a mouse right-click on blank list").toBe(0);
+    // The engine raises contextmenu for Shift+F10 / the Menu key on the focused element, with button -1.
+    (doc as unknown as Record<string, unknown>).getElementById = (id: string) =>
+      id === "ex-row-0" ? { getBoundingClientRect: () => ({ left: 40, bottom: 120 }) } : null;
+    await fire(container, "contextmenu", tree, { button: -1, clientX: 100, clientY: 30 });
+    await until(() => menus().length === 1, "the row menu");
+    expect(menus()[0].attrs["aria-label"]).toBe("Actions for src");
+    expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["56px", "120px"]);
+  });
+});

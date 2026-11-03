@@ -7,7 +7,7 @@ import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, typ
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
-import PaneMenu, { paneMenuItems, withChord } from "./PaneMenu";
+import PaneMenu, { menuKey, paneMenuItems, withChord } from "./PaneMenu";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
@@ -602,8 +602,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     };
     el.addEventListener("mousedown", claim, true);
     // TERM-094: the right-click that opened the link menu opens neither the pane menu nor right-click paste
+    // (T-710: a keyboard contextmenu, button -1, opened no link menu, so it goes on to the pane menu)
     const menuClick = (e: MouseEvent) => {
-      if (!hot || !opensMenu({ button: 2, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey }, keys.current.platform === "darwin", currentText().linkMenu)) return;
+      if (e.button < 0 || !hot || !opensMenu({ button: 2, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey }, keys.current.platform === "darwin", currentText().linkMenu)) return;
       e.preventDefault();
       e.stopPropagation();
     };
@@ -818,6 +819,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // Latin control byte. AltGr (Ctrl+Alt on Windows) still types its character.
     const keyFor = (e: KeyboardEvent) => ({ type: e.type, key: e.key, code: e.code, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, altKey: e.altKey, metaKey: e.metaKey, repeat: e.repeat, isComposing: e.isComposing, keyCode: e.keyCode, altGraph: e.getModifierState?.("AltGraph") ?? false, capsLock: e.getModifierState?.("CapsLock") ?? false, numLock: e.getModifierState?.("NumLock") ?? false });
     term.attachCustomKeyEventHandler((e) => {
+      if (menuKey(e)) return false; // T-710: left to the engine, which raises contextmenu: the pane menu (rightClick)
       if (e.type === "keyup") {
         const up = kitty.encode(keyFor(e), onAlt());
         if (up === null) return true;
@@ -1110,6 +1112,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     pasteRef.current = pasteApi;
     const rightClick = (e: MouseEvent) => {
       e.preventDefault();
+      // T-710: from the keyboard (button -1) it is always the menu, at the cursor, whatever the right-click settings
+      if (e.button < 0) return menuRef.current(e.clientX, e.clientY);
       if (!currentText().rightClickPaste) {
         // TERM-035: a program that tracks the mouse keeps its right-click (Shift takes it back for the menu).
         if (term.modes.mouseTrackingMode !== "none" && !e.shiftKey) return;
