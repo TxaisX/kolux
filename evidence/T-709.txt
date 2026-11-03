@@ -10,8 +10,9 @@ FIX (src/editor/AllChangesPane.tsx)
   "A merge is in progress, with N files in conflict." and holds one button named by the existing abortLabel():
   "Abort merge" / "Abort rebase". It is off while another git action runs.
 - The button opens the shared confirm dialog (chrome/Ask). Its text (abortLoss) names what is lost: the branch and
-  files go back to before the operation began, conflicts resolved and fixes staged during it are lost, a rebase
-  also drops the commits already replayed, and uncommitted changes from before it began may not all come back.
+  files go back to before the operation began and the conflicts resolved (staged or not) are lost; a merge may not
+  bring back changes uncommitted when it began; a rebase throws away the commits already replayed (the branch keeps
+  its own); a cherry-pick or revert removes the commits it already made.
 - Only Confirm calls scm_abort { worktree }. It runs through the pane's act() guard, which then reads the status
   and the change list again, so the notice and the conflict sections clear. The result shows in the commit row
   ("Abort merge: the workspace is back where it was", or the failure in the warning colour).
@@ -23,8 +24,11 @@ TEST (src/editor/AllChangesPane.abort.test.ts, the real pane on the small DOM, i
   scm_abort call; Cancel closes it with no call; Confirm calls scm_abort once with { worktree: "C:/repo" }, the
   success line shows, the notice clears, and scm_status and change_entries are read again after the abort.
 - Mid-rebase: the dialog names the replayed commits it drops; no call before Confirm.
-- 3/3 pass. Trap: the button wired straight to the abort (no dialog) fails 2 of 3 (no dialog found). Restored: 3/3.
-- VITEST_MAX_WORKERS=1 pnpm vitest run src/editor src/scm: 145 files, 1510 tests pass. pnpm tsc --noEmit: clean.
+- Mid-cherry-pick: the dialog says the commits it already made are removed, with no merge-only caveat.
+- A failed abort: the failure shows as an alert (warning colour) and the notice stays up.
+- Review follow-up: no-operation test also checks the commit box is there and no in-progress text.
+- 3/3 pass (5/5 after the review follow-up). Trap: the button wired straight to the abort (no dialog) fails 2 of 3 (no dialog found). Restored: 3/3.
+- VITEST_MAX_WORKERS=1 pnpm vitest run src/editor src/scm: 145 files, 1512 tests pass. pnpm tsc --noEmit: clean.
 
 GATES
 - plan-check: OK. firewall-check -Baseline: 0 new.

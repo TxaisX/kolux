@@ -103,14 +103,16 @@ export function openStatus(read: () => Promise<Status>, watch: (on: (s: Status) 
   });
   return { first, stop, reread: gate.reread };
 }
-/** The command and arguments a section reads its two texts with. */
 /** T-709 (DT-C145): what the abort Ask says is lost; `op` is git's operation in progress (Status.operation). */
 export const abortLoss = (op: string): string =>
   `git ${op} --abort puts the branch and its files back where they were before the ${op} began. ` +
-  (op === "rebase" ? "Commits already replayed onto the new base are dropped from the branch, and the " : "The ") +
-  "conflicts you resolved and the fixes you staged during it are lost. Changes that were not committed when it began may not all come back.";
+  (op === "merge"
+    ? "The conflicts you resolved (staged or not) are lost. Changes that were not committed when it began may not all come back."
+    : op === "rebase"
+      ? "Commits already replayed onto the new base are thrown away (the branch keeps the commits it had), and the conflicts you resolved (staged or not) are lost."
+      : `Commits the ${op} already made are removed from the branch, and the conflicts you resolved (staged or not) are lost.`);
 /** The command and arguments a section reads its two texts with. */
-export const sidesCall =(base: Base | null, root: string, e: Entry): [string, Record<string, unknown>] => (base ? ["scm_base_sides", { worktree: root, path: e.path, since: base.since }] : ["diff_sides", { path: e.path, staged: e.staged }]);
+export const sidesCall = (base: Base | null, root: string, e: Entry): [string, Record<string, unknown>] => (base ? ["scm_base_sides", { worktree: root, path: e.path, since: base.since }] : ["diff_sides", { path: e.path, staged: e.staged }]);
 
 type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onOpenDiff?: (path: string, staged: boolean) => void; pinnedBase?: string | null };
 
@@ -425,14 +427,14 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
         </div>
       </div>
       {status?.operation && (
-        <div className="notice ac-op" role="group" aria-label="Operation in progress">
+        <div className="notice ac-op" role="status" aria-label="Operation in progress">
           A {status.operation} is in progress{status.conflicts.length ? `, with ${status.conflicts.length} ${status.conflicts.length === 1 ? "file" : "files"} in conflict` : ""}.{" "}
           <button className="btn" data-abort={status.operation} disabled={pending !== null} onClick={() => setAborting(status.operation)} title={pending !== null ? `Waiting for ${pending.toLowerCase()}` : `Stop the ${status.operation} and go back to where it began`}>
             {abortLabel(status.operation)}
           </button>
         </div>
       )}
-      {aborting && <Ask title={`${abortLabel(aborting)}?`} body={abortLoss(aborting)} confirm={abortLabel(aborting)} onConfirm={() => abortOp(aborting)} onCancel={() => setAborting(null)} />}
+      {aborting && status?.operation === aborting && <Ask title={`${abortLabel(aborting)}?`} body={abortLoss(aborting)} confirm={abortLabel(aborting)} onConfirm={() => abortOp(aborting)} onCancel={() => setAborting(null)} />}
       <div className="scm-commit ac-commit" aria-label="Commit">
           <textarea className="field multi" aria-label="Commit message" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={(e) => isCommitShortcut(e) && (e.preventDefault(), commit())} />
           <div className="ac-commit-row">
