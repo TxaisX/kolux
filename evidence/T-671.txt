@@ -65,6 +65,16 @@ the new run and not to the older orphan. Follow-ups (not in this PR): S3 Add a p
 nothing with the sidebar collapsed (needs Content.tsx, outside this lane); N1 a red refresh note
 can stay after a later good refresh; N2 rows 2-4 are tested through helpers only; N3 Keep editing
 moves focus to the prompt box; N4 a clock stepped back can hold the guard longer.
+-> fresh Opus review (opus-high-review) of the S1/S2 change and its two tests only: A-. S1 holds
+with no gap against the settle step's own deadline; S2 closes only runs that no longer hold Run
+now, all under one store lock, and leaves scheduled and event runs alone; removing either fix
+makes its test fail. Its one SHOULD-FIX is older than this PR and outside Run now: a scheduled
+or event run, or a run of another automation in the same worktree, can still have its pane
+claimed by an older run whose pane never started, because claim takes the oldest free run. The
+suggested follow-up moves the stale-run close into the 30-second settle step and makes claim
+skip stale runs, so every trigger is covered. Its nits (N1 detail wording for a run past
+settleBy, N2 the start event sent before the run is marked dispatched, N3 more guard rows in the
+store test) go with that follow-up. No code changed after this review.
 
 ROWS
 findings/skills-automations.md:3 fixed
