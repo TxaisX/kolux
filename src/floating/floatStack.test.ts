@@ -65,7 +65,7 @@ test("T-698: pane pops, the review tray and the plan sheet draw under the panel,
 // sheet's Start button, so a sheet now draws over the floating panel and its button (and so over everything under
 // them), and under every page overlay, menu and dialog. The sheet's parents (.app > .body > .content) must not form
 // a stacking context, or the sheet's own z-index would stop counting against the panel (mounted outside them).
-const TRAPS = /(?:^|[;{\s])(z-index|transform|filter|backdrop-filter|opacity|isolation|contain|will-change|perspective|mix-blend-mode|clip-path|mask|translate|rotate|scale)\s*:/;
+const TRAPS = /(?:^|[;{\s])(?:-webkit-)?((?:z-index|transform|filter|backdrop-filter|opacity|isolation|contain|content-visibility|will-change|perspective|mix-blend-mode|clip-path|mask(?:-[a-z-]+)?|view-transition-name|translate|rotate|scale)\s*:|position\s*:\s*(?:fixed|sticky))/;
 test("T-704: sheets draw over the floating panel and its button, and under every page overlay, menu and dialog", () => {
   const sheet = z(".sheet-wrap");
   for (const sel of [".float-panel", ".float-btn", ".plan-sheet", ".review-tray", ".chat-browser-menu", ...PANE_POPS]) expect(sheet, sel).toBeGreaterThan(z(sel));
@@ -79,7 +79,8 @@ test("T-704: no rule in any stylesheet under src makes the sheet's parents a sta
   for (const f of nodeFs.readdirSync(src, { recursive: true }).filter((p) => p.endsWith(".css"))) {
     const text = nodeFs.readFileSync(new URL(f.replace(/\\/g, "/"), src), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
     for (const m of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      let sel = m[1];
+      // :is() and :where() can hold the subject itself, so they are unwrapped before the other pseudo-classes are dropped.
+      let sel = m[1].replace(/:(?:is|where)\(([^()]*)\)/g, "$1");
       while (/\([^()]*\)/.test(sel)) sel = sel.replace(/\([^()]*\)/g, "");
       // The subject is the last compound of each selector; the floating panel has its own .body, outside the sheet's tree.
       const parent = sel.split(",").some((s) => !/\.float-panel\b/.test(s) && /\.(app|body|content)(?![\w-])/.test(s.trim().split(/[\s>+~]+/).pop() ?? ""));

@@ -32,9 +32,11 @@ TEST (src/floating/floatStack.test.ts)
   whose subject is .app, .body or .content (any rule, :has() included; the floating panel's own .body is skipped), and
   fails on z-index, transform, filter, opacity, isolation, contain, will-change and the other stacking properties.
   Proved by planting each trap the review named, one at a time: "z-index: 1" on the second .body rule, "transform" on
-  .content, "isolation" in a .app:has() rule. Each fails the test, naming the rule. Restored: 7/7 pass.
+  .content, "isolation" in a .app:has() rule; after the second review pass also "position: sticky" on .body,
+  "content-visibility", "-webkit-mask-image" and "view-transition-name" on .content, and an ":is(.content)" rule.
+  Each fails the test, naming the rule. Restored: 7/7 pass.
 - The T-698 "under the panel" test no longer lists .sheet-wrap.
-- pnpm vitest run src/floating/floatStack.test.ts: 7/7 pass (6/6 before the review follow-up). With main's styles.css swapped in, 2 of 6 fail: the
+- pnpm vitest run src/floating/floatStack.test.ts: 7/7 pass (6/6 before the review follow-up). With main's styles.css swapped in, 2 of 7 fail: the
   T-704 test (sheet 20 is not over panel 30) and the scale-order test.
 - VITEST_MAX_WORKERS=2 pnpm vitest run src/floating src/chat src/shell: 78 files, 586 tests pass.
 
