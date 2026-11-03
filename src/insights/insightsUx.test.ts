@@ -22,7 +22,7 @@ test('usage-status.md:6: "Turn it on in Settings → Usage" is a button, wired t
 
 test("usage-status.md:20: more sessions than the eight shown add a link to Usage, and nothing when all are shown", () => {
   const html = renderToStaticMarkup(createElement(MoreSessions, { total: 23, shown: 8, onOpen: () => {} }));
-  expect(html).toContain("All usage in Settings → Usage");
+  expect(html).toContain("Usage details in Settings → Usage");
   expect(html).not.toContain("23"); // Usage lists up to ten per provider, so no count is promised
   expect(renderToStaticMarkup(createElement(MoreSessions, { total: 8, shown: 8, onOpen: () => {} }))).toBe("");
   expect(source).toContain('<MoreSessions total={all.length} shown={SESSION_ROWS} onOpen={() => openSettings("usage")} />');

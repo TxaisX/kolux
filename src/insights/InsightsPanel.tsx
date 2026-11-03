@@ -69,7 +69,7 @@ export function MoreSessions({ total, shown, onOpen }: { total: number; shown: n
   return (
     <p className="ins-note">
       <button type="button" className="ins-link" onClick={onOpen}>
-        All usage in Settings → Usage
+        Usage details in Settings → Usage
       </button>
     </p>
   );

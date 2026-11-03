@@ -32,9 +32,15 @@ test("usage-status.md:3: a token_usage failure draws the error and a Retry butto
   expect(html).toContain(loadFailedText("db locked"));
   expect(html).toContain('role="alert"');
   expect(html).toMatch(/<button[^>]*>Retry<\/button>/);
-  // while a retry runs the button says so and is greyed, so a second failure with the same text still shows it ran
+  // while a retry runs the button says so and ignores presses, so a second failure with the same text still shows it
+  // ran; it stays focusable (aria-disabled, not disabled), so focus is not dropped from under the keyboard user
   const busy = renderToStaticMarkup(createElement(LoadFailed, { error: "db locked", onRetry: () => {}, busy: true }));
-  expect(busy).toMatch(/<button[^>]*disabled=""[^>]*>Retrying…<\/button>/);
+  expect(busy).toMatch(/<button[^>]*aria-disabled="true"[^>]*>Retrying…<\/button>/);
+  expect(busy).not.toMatch(/<button[^>]* disabled=""/);
+  expect(analyticsSource).toContain("onClick={busy ? undefined : onRetry}");
+  // the flag is set for the read and cleared however it ends
+  expect(analyticsSource).toMatch(/setLoading\(true\);\s*invoke<Usage>\("token_usage"\)/);
+  expect(analyticsSource).toContain(".finally(() => setLoading(false))");
   expect(busy).toContain(loadFailedText("db locked"));
   expect(analyticsSource).toContain("<LoadFailed error={loadError} onRetry={load} busy={loading} />");
   // Retry keeps the error on screen until the read works, instead of blanking the panel while it runs

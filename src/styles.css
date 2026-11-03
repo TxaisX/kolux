@@ -262,7 +262,7 @@ input { font: inherit; }
 .field:focus { border-color: var(--line-focus); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--button-border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg); }
 .btn:hover:not(:disabled) { background: var(--row-selected); }
-.btn:disabled { color: var(--fg-icon-dim); }
+.btn:disabled, .btn[aria-disabled="true"] { color: var(--fg-icon-dim); }
 .btn.danger { border-color: #7a3b1e; color: #f0a07a; }
 .btn.danger:hover:not(:disabled) { background: #2a1911; }
 .btn-row { display: flex; gap: 6px; }

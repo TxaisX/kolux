@@ -278,7 +278,8 @@ export function LoadFailed({ error, onRetry, busy = false }: { error: string; on
         {loadFailedText(error)}
       </p>
       <div className="btn-row">
-        <button type="button" className="btn" disabled={busy} onClick={onRetry}>
+        {/* aria-disabled, not disabled: a focused button that becomes disabled loses focus, and the keyboard user with it. */}
+        <button type="button" className="btn" aria-disabled={busy} onClick={busy ? undefined : onRetry}>
           {busy ? "Retrying…" : "Retry"}
         </button>
       </div>
@@ -319,7 +320,7 @@ export default function TokenAnalytics() {
 
   const load = useCallback(() => {
     // The error stays until the read works, so Retry does not blank the panel while it runs; Retry shows
-    // "Retrying…" and is greyed meanwhile, so a read that fails again the same way still shows it ran.
+    // "Retrying…" and ignores presses meanwhile, so a read that fails again the same way still shows it ran.
     setLoading(true);
     invoke<Usage>("token_usage")
       .then((u) => { setUsage(u); setLoadError(""); }, (e) => setLoadError(String(e)))
