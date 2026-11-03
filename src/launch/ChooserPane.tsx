@@ -21,22 +21,39 @@ import { canLaunch, type AgentPass } from "./agents";
 import { seatStart, type SeatDefault } from "./defaultSeat";
 import { canInstall, installTip, optionLabel, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
-import { allReady, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
+import { allReady, countPlan, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
 function DocsLink({ agent }: { agent: AgentInfo }) {
+  const [error, setError] = useState<string | null>(null);
   if (!agent.docs) return null;
   return (
-    <button className="btn link agent-link" onClick={() => void invoke("open_install_page", { agent: agent.id }).catch(() => {})} aria-label={`${agent.name} docs`} title={`Open ${agent.name}'s own documentation`}>
-      Docs
-    </button>
+    <>
+      <button className="btn link agent-link" onClick={() => void invoke("open_install_page", { agent: agent.id }).then(() => setError(null), (e) => setError(`Could not open the ${agent.name} page: ${String(e)}`))} aria-label={`${agent.name} docs`} title={`Open ${agent.name}'s own documentation`}>
+        Docs
+      </button>
+      {error && (
+        <span className="agent-missing" role="alert">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
+/** UX audit F4: what a missing agent with no Install route and no docs page tells the person to do. */
+export const selfInstallHint = (a: AgentInfo): string | null => (!a.installed && !canInstall(a) && !a.docs ? `Kolux cannot install ${a.name} for you. Install it yourself, then press Refresh agents.` : null);
+
+/** UX audit F4: Esc inside a text box that holds typing only leaves the box, so a stray Esc does not throw the typing away. */
+export const holdsTyping = (el: { tagName?: string; value?: string; type?: string } | null): boolean => {
+  const tag = el?.tagName?.toUpperCase();
+  return (tag === "TEXTAREA" || (tag === "INPUT" && (el?.type === "text" || el?.type === undefined))) && !!el?.value?.trim();
+};
+
 /** SESS-018: what a key does on the New session page: Ctrl+Enter (Cmd+Enter on a Mac) launches a
  * complete lineup and is "blocked" while a seat is unfinished; Escape closes the page. */
-export function sheetKey(e: { key: string; ctrlKey: boolean; metaKey: boolean }, seats: Seat[], mac: boolean): "launch" | "blocked" | "close" | null {
-  if (e.key === "Escape") return "close";
+export function sheetKey(e: { key: string; ctrlKey: boolean; metaKey: boolean }, seats: Seat[], mac: boolean, busy = false): "launch" | "blocked" | "close" | null {
+  if (e.key === "Escape") return busy ? null : "close";
   if (e.key !== "Enter" || !(mac ? e.metaKey : e.ctrlKey)) return null;
   return allReady(seats) ? "launch" : "blocked";
 }
@@ -113,6 +130,11 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const nameOf = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
   // TERM-012: a chooser Kolux focuses takes the keyboard, so typing no longer lands in the last pane.
   const box = useRef<HTMLElement>(null);
+  // An install finishes later: what it writes is worked out from the seats as they are then, not as they were at the click.
+  const seatsRef = useRef(seats);
+  seatsRef.current = seats;
+  const shownRef = useRef(shown);
+  shownRef.current = shown;
   useEffect(() => {
     if (focused && !hidden && !box.current?.contains(document.activeElement)) box.current?.focus();
   }, [focused, hidden]);
@@ -135,7 +157,12 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const warnings = launchWarnings(seats.map((s) => s.agent), useLaunchUsage());
   const [naming, setNaming] = useState<string | null>(null); // the Save as team name field, open when set
   const [menu, setMenu] = useState<{ i: number; name: string } | null>(null); // a saved shape's rename/delete menu
-  const [undo, setUndo] = useState<{ list: SavedShape[]; name: string } | null>(null); // the list before a delete
+  const [undo, setUndo] = useState<{ team: SavedShape; index: number } | null>(null); // the team just deleted, and where it sat
+  const [bigCount, setBigCount] = useState<number | null>(null); // a typed count above ASK_ABOVE, waiting for a yes
+  const countBox = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (countBox.current && document.activeElement !== countBox.current) countBox.current.value = String(seats.length);
+  }, [seats.length]);
   const [problem, setProblem] = useState<string | null>(null);
   const undoTimer = useRef<number | null>(null);
   useEffect(() => () => void (undoTimer.current !== null && window.clearTimeout(undoTimer.current)), []);
@@ -146,9 +173,16 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     setNaming(null);
     onSaved(out.list);
   };
+  const rename = () => {
+    if (!menu) return;
+    if (!menu.name.trim()) return setProblem("A team needs a name. Type one, or press Cancel.");
+    setProblem(null);
+    onSaved(renameShape(saved, menu.i, menu.name));
+    setMenu(null);
+  };
   const remove = (i: number) => {
     setMenu(null);
-    setUndo({ list: saved, name: saved[i].name });
+    setUndo({ team: saved[i], index: i });
     onSaved(saved.filter((_, j) => j !== i));
     if (undoTimer.current !== null) window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setUndo(null), 8000);
@@ -156,21 +190,30 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   // The free field applies on Enter or blur, not per keystroke: typing "15" must not pass
   // through a one-seat moment that drops the picks of seats 2 and up.
   const recount = (n: number) => {
+    setBigCount(null);
     const next = resizeLineup(shape, seats, n);
     onLineup(next.shape, next.seats);
   };
   const applyCount = (e: { currentTarget: HTMLInputElement }) => {
     const n = e.currentTarget.valueAsNumber;
-    if (Number.isFinite(n) && n >= 1 && n !== seats.length) recount(n);
-    else e.currentTarget.value = String(seats.length);
+    if (Number.isFinite(n) && n >= 1 && n !== seats.length) {
+      // UX audit F7: a big number is asked about first, and nothing goes past MAX_SESSIONS.
+      const plan = countPlan(n, seats.length);
+      if (plan.ask) setBigCount(plan.n);
+      else recount(plan.n);
+      e.currentTarget.value = String(plan.ask ? seats.length : plan.n);
+    } else e.currentTarget.value = String(seats.length);
   };
   const onSheetKey = (e: KeyboardEvent) => {
     if (!sheet || e.defaultPrevented) return;
-    const what = sheetKey(e, seats, mac);
+    const what = sheetKey(e, seats, mac, busy);
+    if (busy && e.key === "Escape") e.preventDefault(); // Starting: the launch is under way and cannot be called off
     if (what === "close") {
       // Escape inside an open name field closes that field first (its own handler).
       if ((e.target as HTMLElement).closest?.(".count-row input")) return;
       e.preventDefault();
+      // A box that holds typing is left first; a second Esc closes the page.
+      if (holdsTyping(e.target as HTMLInputElement)) return void box.current?.focus();
       onClose();
     } else if (what === "launch" && ready) {
       e.preventDefault();
@@ -192,7 +235,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               {sheet.path}
             </span>
           </div>
-          <button className="ib" onClick={onClose} title="Close (Esc)" aria-label="Close New session">
+          <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this page closes by itself" : "Close (Esc)"} aria-label="Close New session">
             <Close size={12} />
           </button>
         </header>
@@ -202,7 +245,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         <span className="word">Choose what to run</span>
         <span className="right">
           {closable && (
-            <button className="ib" onClick={onClose} title="Close this chooser">
+            <button className="ib" onClick={onClose} disabled={busy} title={busy ? "Starting: this chooser is replaced by the sessions" : "Close this chooser"}>
               <Close size={12} />
             </button>
           )}
@@ -258,9 +301,12 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         )}
         {menu && saved[menu.i] && (
           <div className="count-row" role="group" aria-label={`Saved shape ${saved[menu.i].name}`}>
-            <input className="seat-job" autoFocus type="text" maxLength={60} aria-label="New name" value={menu.name} onChange={(e) => setMenu({ ...menu, name: e.currentTarget.value })} onKeyDown={(e) => e.key === "Enter" && (onSaved(renameShape(saved, menu.i, menu.name)), setMenu(null))} />
-            <button className="btn" onClick={() => (onSaved(renameShape(saved, menu.i, menu.name)), setMenu(null))}>
+            <input className="seat-job" autoFocus type="text" maxLength={60} aria-label="New name" value={menu.name} onChange={(e) => setMenu({ ...menu, name: e.currentTarget.value })} onKeyDown={(e) => (e.key === "Enter" ? rename() : e.key === "Escape" && setMenu(null))} />
+            <button className="btn" onClick={rename}>
               Rename
+            </button>
+            <button className="btn" onClick={() => setMenu(null)}>
+              Cancel
             </button>
             <button className="btn danger" onClick={() => remove(menu.i)}>
               Delete
@@ -274,8 +320,8 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         )}
         {undo && (
           <div className="note" role="status">
-            Deleted {undo.name}.{" "}
-            <button className="btn" onClick={() => (onSaved(undo.list), setUndo(null))}>
+            Deleted {undo.team.name}.{" "}
+            <button className="btn" onClick={() => (onSaved(restoreTeam(saved, undo.team, undo.index)), setUndo(null))}>
               Undo
             </button>
           </div>
@@ -288,10 +334,11 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </button>
           ))}
           <input
-            key={seats.length}
+            ref={countBox}
             className="count-field"
             type="number"
             min={1}
+            max={MAX_SESSIONS}
             aria-label="Any number of sessions"
             defaultValue={seats.length}
             onFocus={(e) => e.currentTarget.select()}
@@ -308,6 +355,17 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             Same for all
           </button>
         </div>
+        {bigCount !== null && (
+          <div className="note warn" role="alert">
+            {`${bigCount} sessions is a lot: with separate copies each AI seat makes its own folder. `}
+            <button className="btn" onClick={() => recount(bigCount)}>
+              {`Use ${bigCount}`}
+            </button>{" "}
+            <button className="btn" onClick={() => setBigCount(null)}>
+              {`Keep ${seats.length}`}
+            </button>
+          </div>
+        )}
         <div className="count-row" role="radiogroup" aria-label="Where the AIs work">
           <span className="label">Folders</span>
           <label className="choice" title={inGit ? "Each AI seat gets a fresh worktree of its own" : NOT_GIT}>
@@ -357,11 +415,19 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               </div>
               <div className="choices agent-pick">
                 {detecting && !pass && <span className="caption">Looking for AI programs…</span>}
-                {none && <span className="caption">No AI programs have been found yet.</span>}
-                {(shown[i] ?? seat.agent) && <VendorMark agent={(shown[i] ?? seat.agent) === TERMINAL ? "shell" : markFor(shown[i] ?? seat.agent ?? "")} size={12} />}
+                {none && (
+                  <span className="caption">
+                    No AI programs have been found yet. Pick one below to install it, or{" "}
+                    <button className="btn link" onClick={() => openSettings("accounts")}>
+                      open Settings
+                    </button>
+                    .
+                  </span>
+                )}
+                {shownPick(seats, shown, i) && <VendorMark agent={shownPick(seats, shown, i) === TERMINAL ? "shell" : markFor(shownPick(seats, shown, i) ?? "")} size={12} />}
                 <select
                   aria-label={`Seat ${i + 1}: which AI`}
-                  value={shown[i] ?? seat.agent ?? ""}
+                  value={shownPick(seats, shown, i) ?? ""}
                   onChange={(e) => {
                     const id = e.currentTarget.value;
                     const a = rows.find((x) => x.id === id);
@@ -381,7 +447,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                   <option value={TERMINAL}>Terminal</option>
                 </select>
                 {(() => {
-                  const a = rows.find((x) => x.id === (shown[i] ?? seat.agent));
+                  const a = rows.find((x) => x.id === shownPick(seats, shown, i));
                   if (!a) return null;
                   return (
                     <>
@@ -397,7 +463,11 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                             setInstalling(null);
                             if ("error" in r) return setInstallError((x) => ({ ...x, [a.id]: r.error }));
                             setFixed((x) => ({ ...x, [a.id]: r.agent }));
-                            pickAgent(i, a.id);
+                            // Every empty seat that was showing this same missing agent takes it too.
+                            const now = seatsRef.current;
+                            const same = new Set(now.flatMap((_, j) => (j === i || shownPick(now, shownRef.current, j) === a.id ? [j] : [])));
+                            setShown((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !same.has(Number(k)))));
+                            onSeats(now.map((s, j) => (same.has(j) && (j === i || s.agent === null) ? { ...s, ...seatStart(a.id, seatDefault_) } : s)));
                             onRefresh?.();
                           });
                         }}
@@ -405,6 +475,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                         {installing === a.id ? "Installing…" : "Install"}
                       </button>
                       )}
+                      {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
                       {installError[a.id] && (
                         <span className="agent-missing" role="alert">
                           {installError[a.id]}
@@ -480,7 +551,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         ))}
         <div className="btn-row">
           {sheet && (
-            <button className="btn" onClick={onClose}>
+            <button className="btn" onClick={onClose} disabled={busy}>
               Cancel
             </button>
           )}

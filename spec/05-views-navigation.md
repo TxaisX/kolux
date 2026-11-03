@@ -210,13 +210,15 @@ Rules: the order follows the left-to-right order of the labels in the top-bar sw
   current; the chord printed in the menu is only a label; the key press is handled inside the
   window, not by the menu.
   Since T-610 (DT-C68) the submenu lists Agents, Board, Terminals, Tower and Floor, each ticked while
-  shown; the boxes above are unchanged.
+  shown; since T-673 (DT-C109) it lists Space too, and in the classic look the chord shows a short note
+  saying the classic layout has one view instead of doing nothing silently.
 Acceptance:
   - [x] New look, on Agents, press the chord four times → Board, Terminals, Tower, Agents.
         (Reworded per Txais 2026-10-28 decisions file, A: Tower stays in the cycle.)
-  - [x] Classic look, press the chord → nothing changes. (cards live; evidence/cards-VIEW-002.txt)
+  - [x] Classic look, press the chord → the screen does not change (since T-673 a note says why). (cards live; evidence/cards-VIEW-002.txt)
   - [x] Switch to Board with the mouse, open the menu → Board is checked. (cards; evidence/cards-VIEW-002.txt)
   - [x] Turn the new look off → the submenu is gone. (cards; evidence/cards-VIEW-002.txt)
+  - [x] View → Workspace View → Space opens the Space view and is ticked while shown. (T-673; evidence/T-673.txt)
 Compat: the cycle command is a keybinding command with default Mod+Alt+V; its exact command id is
   held back pending the allowlist.
 Source: D-05-002
@@ -228,10 +230,12 @@ User sees: a bar spanning the whole window above the sidebar row, carrying the w
   controls, the screen switch, a search hint, a bell and the usage pill. The search hint opens the
   worktree palette; the bell opens the Inbox.
 Rules: classic chrome keeps a sidebar-width title header and no top bar; the top bar never overlaps
-  the native window controls on Windows.
+  the native window controls on Windows; the bell is named Inbox, and clicking it while the Inbox shows
+  goes back to the screen shown before it (DT-C103).
 Acceptance:
   - [x] Click the search hint → the worktree palette opens with focus in its input. (cards live; evidence/cards-VIEW-003.txt)
   - [x] Click the bell → the Inbox page opens. (cards; evidence/cards-VIEW-003.txt)
+  - [x] Open the Inbox from Projects, click the bell again → back on Projects, not Terminals. (unit; evidence/T-667.txt)
 Compat: —
 Source: D-05-003
 
@@ -390,9 +394,12 @@ User sees: a short list of other chat-capable agents' sessions, the last viewed 
   drops the result into that session's composer.
 Rules: the target list is capped; whatever the user already typed in the target composer is kept;
   file paths with spaces are quoted.
+  the list closes on a pick, on Escape (focus back on its button) and on a click outside it; that
+  Escape never reaches the agent or a terminal.
 Acceptance:
   - [x] Two other chat sessions exist, one viewed last → it is listed first. (cards; evidence/cards-VIEW-020.txt)
   - [x] Result path contains a space → it arrives quoted. (cards; evidence/cards-VIEW-020.txt)
+  - [ ] Open the list, click elsewhere → it closes. (evidence/T-678.txt)
 Compat: —
 Source: D-05-020
 
@@ -401,14 +408,20 @@ Tier: P0 · Pushed: — · State at 0.15.0: live
 User does: opens the Artifacts page, adds a file with Add artifact, types in the search box, selects
   an item, or removes one.
 User sees: a list of saved artifacts, newest first, each with its title, size and source; selecting
-  one shows a preview beside the list; a remove button takes it out of the library.
+  one shows a preview beside the list; a remove button asks "Remove <title>?" and, once confirmed,
+  takes it out of the library.
 Rules: Search matches titles only and requires every typed word to appear; an empty library and a
   search with no matches show different messages; sizes read in B, KB or MB with one decimal; each
-  preview gets a stable page identity so reopening the same artifact reuses it.
+  preview gets a stable page identity so reopening the same artifact reuses it; the remove button
+  never deletes on its own: it asks first, names the artifact and says the original file is not
+  touched, and Cancel or Escape leaves everything as it was with focus back on the button; the list
+  is one list per project with a select button and a Remove button per row, moved by Up/Down/Home/End,
+  and after a removal focus goes to the next row, else the previous, else the search box.
 Acceptance:
   - [x] Add two files → newest is on top. (cards; evidence/cards-VIEW-012.txt)
   - [x] Search two words where only one matches a title → that item is hidden. (cards; evidence/cards-VIEW-012.txt)
-  - [x] Remove the selected item → it leaves the list and the preview closes. (cards; evidence/cards-VIEW-012.txt)
+  - [x] Remove the selected item → a confirm names it; nothing is removed until Remove is pressed, then it leaves the list and the preview closes. (cards; evidence/T-685.txt)
+  - [x] Cancel or Escape on the confirm → the item stays and focus is back on its Remove button; after Remove focus is on the next row. (cards; evidence/T-685.txt)
 Compat: —
 Source: D-05-012
 
@@ -462,6 +475,9 @@ Acceptance:
   - [ ] Sort the table by size → biggest first.
   - [ ] Search a branch name → only matching rows remain.
   - [ ] Select one deletable and one active worktree, delete → only the deletable one goes.
+  - [x] Tick two rows, search so one is hidden, Delete → the dialog lists only the one still shown and says
+        branches stay; only that one is sent, asking to keep its branch; a worktree that cannot be deleted has
+        its box off, with the reason on hover. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-05-014
 
@@ -707,9 +723,12 @@ Rules: only local, real paths are deletable; symlinks are refused; a session fol
   say in one plain sentence why, naming the agent; every cached list drops the row at once; only
   local sessions offer these; if the log is already open in an editable tab, that tab comes forward
   with a note that it is already editable instead of opening a second read-only copy.
+  the Delete question names the session; Keep and Delete take keyboard focus as they replace each
+  other.
 Acceptance:
   - [ ] Delete a Claude folder session → companions trashed, file-history kept.
   - [ ] Open log → read-only tab with the transcript.
+  - [ ] Choose Delete on a row → the question names that session. (evidence/T-678.txt)
 Compat: —
 Source: D-05-089
 
@@ -812,9 +831,12 @@ Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: chooses to resume a session in chat.
 User sees: the session reopens as a chat.
 Rules: Claude only in its own workspace; Codex anywhere; remote and WSL sessions are refused.
+  a second press on Resume as chat while the first is still starting is ignored; when it is off,
+  text under the row says why.
 Acceptance:
   - [ ] Claude session from another workspace → chat resume not offered.
   - [ ] Codex session from any workspace → chat resume is offered.
+  - [ ] Double-click Resume as chat → one chat opens. (evidence/T-678.txt)
 Compat: —
 Source: D-05-086
 
@@ -951,10 +973,13 @@ Rules: sessions with no turns cannot be resumed; copy stays available; the copie
   successful drop confirms the session is queued; the resume command is quoted for the shell the
   target tab really runs, even when the default shell setting names WSL but the workspace runs on
   the Windows host.
+  a second press on Resume while the first is still starting is ignored, so one press (or one double
+  click) opens one terminal; a Resume that is off says why in text under the row.
 Acceptance:
   - [ ] Resume a Claude session from another worktree → terminal opens there and continues the
         conversation.
   - [ ] Copy the command with PowerShell as shell → it runs as pasted.
+  - [ ] Double-click Resume → one terminal opens, not two. (evidence/T-678.txt)
 Compat: —
 Source: D-05-085
 
@@ -1078,12 +1103,13 @@ Rules: the tree updates on its own when files change on disk, including at a dri
   only on whole folder boundaries, so a neighbouring share with a similar name is not treated as
   inside the tree; filtering the tree to a folder does not change which folders stay expanded
   afterwards; hiding and reopening the Explorer on the same worktree keeps its expanded folders;
-  showing another worktree starts fresh; pressing Down with nothing focused selects the first row.
+  showing another worktree starts fresh; pressing Down with nothing focused selects the first row; in an empty Explorer, Add a project adds the chosen folder itself when the project list is not on screen (a Git project, else a plain folder project) and asks the window to show the list, so it never ends in a message sending the user elsewhere.
 Acceptance:
   - [ ] Create a file in a terminal → it appears in the tree without manual refresh.
   - [ ] Arrow down through the list → selection moves row by row.
   - [ ] Type a file name → only it and its parents show.
-  - [ ] No project → the Explorer offers an add-project row.
+  - [ ] No project → the Explorer offers an add-project row. (unit tests; evidence/T-683.txt)
+  - [ ] Add a project from the empty Explorer with the project list hidden → the folder is added. (unit tests; evidence/T-683.txt)
 Compat: —
 Source: D-05-059
 
@@ -1101,10 +1127,11 @@ Rules: deleting a folder and a file inside it deletes the folder once; Delete is
   opens or closes the folder; on case-sensitive file systems, two selected files whose names differ
   only by case are both deleted; row menus offer only what fits the row: collapse for an expanded
   folder, find in folder and open in terminal for folders, view for files, and copy as a file to the
-  system clipboard for a single file; a failed system copy shows an error toast.
+  system clipboard for a single file; a failed system copy shows an error toast; Escape on the delete question cancels it and returns focus to the tree; a drag the system cancels ends cleanly and moves nothing.
 Acceptance:
   - [ ] Rename then press Escape → name unchanged on disk.
   - [ ] Select a folder and a file inside it, delete → one delete, no error.
+  - [ ] Press Delete, then Escape at the question → nothing is deleted and the tree has focus. (unit tests; evidence/T-683.txt)
 Compat: five Explorer keybinding commands (undo, redo, copy path, copy relative path, delete); their
   exact ids are held back pending the allowlist.
 Source: D-05-060
@@ -1117,10 +1144,11 @@ User sees: matches grouped by file; clicking opens the file at the match.
 Rules: searching from a folder pre-fills the query and limits it to that folder; when a search
   fails, the panel explains the failure rather than showing nothing; a search that simply finds no
   matches shows no error; a result opens in the worktree the search ran in, even if the active
-  worktree changed since.
+  worktree changed since; Escape in the search box closes the search and puts focus back on the tree.
 Acceptance:
   - [ ] Search from a folder's menu → include pattern is that folder.
   - [ ] Break the search tool → an error message, not an empty list.
+  - [ ] Press Escape in the search box → the search closes and the tree has focus. (unit tests; evidence/T-683.txt)
 Compat: keybinding id sidebar.search.toggle
 Source: D-05-061
 
@@ -1254,10 +1282,16 @@ Rules: Ports are tied to a workspace by their process; URLs are picked up from t
   and keeps the last good list; Open uses the address the dev server printed when known, otherwise
   plain http on the listening address; Ports held by processes outside the workspace are listed as
   external and can never be stopped from here; a port belongs to the deepest worktree containing its
-  process's working folder, so nested worktrees keep their own ports.
+  process's working folder, so nested worktrees keep their own ports; the popover closes on Escape
+  (focus goes into it on open and back to the item on close), scrolls instead of running off the
+  screen, names its buttons by port ("Open port N", "Stop port N"), shows Stop as "Stopping…" and
+  not pressable twice while it runs, shows a failed stop as a red "Could not stop port N" note, and
+  says "Showing the first 12 external ports; more may be listening." when the scan's cut of 12 external
+  ports is reached.
 Acceptance:
   - [ ] Start a dev server on 5173 → port listed with its URL; stop it → it disappears.
   - [ ] A port held by a process outside the workspace → listed as external with no stop button.
+  - [x] Escape closes the popover and focus returns to the Ports item; Stop reads "Stopping…" while it runs and a failed Stop shows a red note; at 12 external ports the popover says the list is cut. (cards; evidence/T-685.txt)
 Compat: —
 Source: D-05-078
 
@@ -1316,6 +1350,7 @@ Rules: blocked and waiting both show as needs-you; segments are clamped to the c
 Acceptance:
   - [ ] Range today at 09:00 → axis starts at local midnight.
   - [ ] An agent blocked on approval for 5 minutes → a needs-you segment of that length.
+  - [x] A re-read fails → the last lanes stay, dimmed, with a line saying so. (T-675; evidence/T-675.txt)
 Compat: keybinding id view.floor
 Source: D-05-013
 

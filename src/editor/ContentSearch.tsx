@@ -7,13 +7,13 @@ import { joinPath, revealAt, searchSession, summary, type Found } from "./search
 import "./editor-extras.css";
 
 // It stays mounted while the tree is shown, so going back to it keeps the search and its results.
-type Props = { root: string; hidden: boolean; focusAsk: number; onOpen: (path: string) => void; /** EDIT-038: the text to search for, set each time a search is started from an editor. */ seed?: { text: string; at: number }; /** EDIT-035: "Find in folder" limits the search to one folder through the include pattern. */ scope?: { glob: string; at: number } };
+type Props = { root: string; hidden: boolean; focusAsk: number; onOpen: (path: string) => void; /** EDIT-038: the text to search for, set each time a search is started from an editor. */ seed?: { text: string; at: number }; /** EDIT-035: "Find in folder" limits the search to one folder through the include pattern. */ scope?: { glob: string; at: number }; /** Escape in the search hands the view back to the file tree. */ onClose?: () => void };
 
 // The panel is narrow, so only the words just before a hit are shown and the hit stays in sight.
 const LEAD = 20;
 const lead = (s: string) => (s.length > LEAD ? "…" + s.slice(-LEAD) : s);
 
-export default function ContentSearch({ root, hidden, focusAsk, onOpen, seed, scope }: Props) {
+export default function ContentSearch({ root, hidden, focusAsk, onOpen, seed, scope, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [matchCase, setMatchCase] = useState(false);
   const [wholeWord, setWholeWord] = useState(false);
@@ -78,7 +78,7 @@ export default function ContentSearch({ root, hidden, focusAsk, onOpen, seed, sc
   );
 
   return (
-    <div className="content-search" hidden={hidden} role="search" aria-label="Search file contents">
+    <div className="content-search" hidden={hidden} role="search" aria-label="Search file contents" onKeyDown={(e) => e.key === "Escape" && onClose && (e.preventDefault(), e.stopPropagation(), onClose())}>
       <div className="cs-row">
         <input ref={input} value={query} placeholder="Search" aria-label="Search text" spellCheck={false} onChange={(e) => setQuery(e.target.value)} />
         {toggle(matchCase, setMatchCase, "Match case", "Aa")}

@@ -160,7 +160,7 @@ Source: D-04-045
 
 ### STAT-050 · Inbox of what needs you, what is running and what finished today
 Tier: P0 · Pushed: 3 · State at 0.15.0: live-unverified
-User does: clicks the bell button labelled 'Notifications' in the top bar, then steps through the
+User does: clicks the bell button labelled 'Inbox' in the top bar, then steps through the
   items with the arrow keys.
 User sees: three groups: needs you (questions and permissions, newest first), waiting on agent
   (running sessions, plus stale ones that cannot be confirmed) and done today (newest first, 20 at
@@ -170,8 +170,10 @@ Rules: prompts that ask for approval are labelled as permissions and the rest as
   interrupted sessions and anything older than 30 minutes stay out of done today; Up and Down walk
   through needs you, then waiting, then done, and Enter opens the selected item; with nothing
   selected, Down picks the first row and Up the last; movement stops at both ends; if the selected
-  item disappears, the selection goes back to the first row; a 'Show Inbox' shortcut exists but has
-  no key by default.
+  item disappears, the selection goes back to the first row; keys pressed on the detail panel's
+  buttons are not the list's, so Enter and Space on a button work; a changes read that fails says
+  "Could not read the changes" with the reason, never "No files changed"; a 'Show Inbox' shortcut
+  exists but has no key by default.
 Acceptance:
   - [x] Two agents waiting and one finished → two items under needs you and one under done today. (cards; evidence/cards-STAT-050.txt)
   - [x] Press Down with nothing selected → the first row is selected; Enter → it opens. (cards; evidence/cards-STAT-050.txt)

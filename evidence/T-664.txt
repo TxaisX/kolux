@@ -1,0 +1,55 @@
+T-664 (DT-C100) · the launch chooser's AI dropdown is A to Z · s-57/launch-first · 2026-11-02
+
+Txais's ask: "i wnat this to come up as the first thing when they open a new workspace. also sort the ai models by alphabetical order too."
+
+(a) A to Z, done.
+  src/launch/agentInstall.ts  pickList sorts a copy of the agents by shown name, case-insensitive (localeCompare, sensitivity base).
+  The chooser still puts "Choose an AI…" first and "Terminal" last (they are separate <option>s around rows).
+  FEATURED stays in src/launch/agents.ts: the plus menu's three-then-fold list (agentRows) still uses it.
+  Tests changed to the new order (both fail on the old code, which led with claude, codex, grok):
+    src/launch/agentInstall.test.ts  T-570 / T-664: ["aider","claude","codex","goose","grok"], plus a lower-case name sorting with the rest
+    src/launch/ChooserPane.test.ts   the rendered options: Choose an AI…, Aider, Claude Code, Codex, Goose (not installed), Grok (not installed), Terminal
+
+(b) Chooser first on a new workspace, now also when the form picks an AI or types a note (Txais 2026-11-02).
+  T-569 already opened the chooser for a workspace made with no AI and no note (useWorkspaces.select -> startPanes).
+  The new-workspace form (src/projects/ProjectsPanel.tsx, create) still auto-started the agent via onStartIn (or via
+  onSetup(..., () => onStartIn(...)) when a setup script had to finish first). That was the case Txais hit.
+  Change, scoped to FRONT creates (front true: the new workspace takes the front):
+    src/projects/workspaceStart.ts  startPanes takes an optional prefill {agent, task}: the first chooser's Seat 1 = agent
+                                    (model stays unpicked), pane.task = the note. Other panes stay empty.
+    src/projects/useWorkspaces.ts   select(dir, branch, fresh, prefill?) passes it to startPanes; only used when the
+                                    workspace has no pane yet, so selecting an existing workspace is unchanged.
+    src/projects/ProjectsPanel.tsx  create: front + agent -> onSelect(path, branch, true, {agent: agent.id, task: prompt}),
+                                    never onStartIn; the waitsForSetup branch (onSetup with a then-callback that starts the
+                                    agent) now needs !front. Seat 1's AI is the picked one, or the fallback AI for a note alone.
+                                    The setup script still runs (onSetup, show=false, so focus stays on the chooser).
+    Background creates (Create more, or one overtaken: front false) keep today's auto-start, including the
+    wait-for-setup path.
+  Setup gating: a front start is now the person's press of Start, so it does not wait for the setup script; the script runs
+  in its Setup tab behind the chooser. Making Start wait for setup would need a new mechanism and was not built.
+  KNOWN LEFTOVER (existed before this change, not fixed): a background create with a setup script and no agent gets only
+  a Setup pane and no chooser, because nothing selects it.
+  Tests (the first three fail on the old code: 3 failed | 5 passed with the sources reverted, 8 passed with them):
+    src/projects/workspaceStart.test.ts   prefill puts the AI in Seat 1 and the note in task, other panes empty; AI only / note only / none
+    src/projects/useWorkspaces.test.ts    select(new dir, ..., prefill) -> chooser with seats[0].agent and task, no program;
+                                          select on a workspace that has panes ignores the prefill
+    src/launch/agentInstall.test.ts       pickList leaves its input array's order unchanged
+  The ProjectsPanel create handler itself is not mounted in a test (one async handler in a very large component, driven by
+  invoke() calls to Rust); its branching is the pure createStart, table-tested below. REST: confirm live on Windows.
+
+Review fixes (second commit, B+ review):
+  1. The pre-filled Seat 1 now starts the way a dropdown pick does: useWorkspaces.select builds it with
+     seatStart(agent, seatDefault(settings)) (src/launch/defaultSeat.ts, T-571), so it carries the default model and effort and
+     Start is ready. startPanes now takes a finished seat ({seat, task}). Test: a pre-filled claude seat has model "opus" and passes seatReady.
+  2. A note with no AI installed still reaches the task: ProjectsPanel passes the prefill when agent || note.
+  3. The create decision is the small pure function createStart(hasAgent, hasNote, front, waits) in workspaceStart.ts, table-tested
+     (11 rows): no front row returns "start" or "setup-then-start"; background keeps "start" / "setup-then-start" / "none".
+  4. The stale "opens with a shell of its own" comments in ProjectsPanel.tsx now say the launch chooser.
+
+Gates (worktree G:/Dev/kolux-rs-sessions/wt/57-launch, run 2026-11-02, after the review fixes, inside the s-57 slot):
+  node scripts/plan-check.mjs                    -> plan-check: OK (head: cutline left 0/18 · merge gate 1 waiting · P0 cards passing 217/228 · done 747/804 tasks)
+  pnpm exec tsc --noEmit                         -> exit 0, no output
+  VITEST_MAX_WORKERS=2 pnpm exec vitest run      -> Test Files 1 failed | 731 passed (732); Tests 3 failed | 5418 passed (5421)
+      the 3 failures are all src/editor/pdfjsCopy.test.ts (known CRLF-checkout failure, ignored)
+  pnpm exec vite build                           -> built in 2.30s
+  node scripts/bundle-budget.mjs                 -> bundle-budget: first load 1456134 bytes in 44 chunks (ceiling 1485000); bundle-budget: OK

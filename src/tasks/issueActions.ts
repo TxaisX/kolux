@@ -14,18 +14,26 @@ export function actionError(error: string, what: IssueAction): string {
 }
 
 /** Sends one action, then (on success) runs `after` and waits for `refresh`; busy is set for the
- * whole run and cleared only after the refresh has come back. `onFail` runs after a failure (GIT-048: the
- * change shown at once is put back). */
+ * whole run and cleared only after the refresh has come back. `onFail` runs after the write itself fails
+ * (GIT-048: the change shown at once is put back); a refresh that fails after a good write is told but puts nothing back. */
 export async function runAction(o: { send: Promise<unknown>; refresh: () => Promise<unknown>; after?: () => void; setBusy: (b: boolean) => void; setError: (e: string | null) => void; what: IssueAction; onFail?: () => void }): Promise<void> {
   o.setBusy(true);
   o.setError(null);
   try {
-    await o.send;
+    // Only the write itself puts a change back: once GitHub took it, a failed refresh must not undo it.
+    try {
+      await o.send;
+    } catch (e) {
+      o.setError(actionError(String(e), o.what));
+      o.onFail?.();
+      return;
+    }
     o.after?.();
-    await o.refresh();
-  } catch (e) {
-    o.setError(actionError(String(e), o.what));
-    o.onFail?.();
+    try {
+      await o.refresh();
+    } catch (e) {
+      o.setError(`It went through, but reading it back failed: ${String(e)}`);
+    }
   } finally {
     o.setBusy(false);
   }

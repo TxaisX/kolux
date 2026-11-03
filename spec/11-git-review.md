@@ -726,7 +726,7 @@ Rules: whether issues or PRs show follows the preset and any is:issue or is:pr t
   the repository picker has one row per GitHub project, folding local and duplicate checkouts
   together; repositories with no GitHub remote are left out, and ones still being checked stay
   visible; pages beyond GitHub's search window say they cannot be reached; scroll position and
-  recent pages are restored on return; the checks pill reads passing, failing, running or
+  recent pages are restored on return; the pager stays on an empty page after the first, so the user can go back; the checks pill reads passing, failing, running or
   unresolved; merged and open PRs each have their own muted status colour; the repository choice
   becomes the default for next time; a source label names the GitHub host and the signed-in account,
   shows a count when several repositories are chosen, and warns about hosts that cannot be reached.
@@ -734,6 +734,7 @@ Acceptance:
   - [ ] Choose the assigned preset → only items assigned to the user; add is:pr → the list switches
         to PRs.
   - [ ] Go to page 3, open an item, come back → still on page 3 at the same scroll position.
+  - [ ] Go to a page past the last result → it says nothing matches and the pager still lets the user go back. (unit tests: evidence/T-670.txt)
 Compat: —
 Source: D-11-043
 
@@ -787,13 +788,17 @@ Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: clicks an item in Tasks.
 User sees: a dialog with the description, a timeline (closed, reopened, assigned, mentioned and
   similar events), labels, assignees and actions, including opening a workspace.
-Rules: body edits keep an unsaved draft while the dialog is open; the dialog does not redraw for
-  list updates while it is closed; while the body is not being edited it shows GitHub's latest
-  version.
+Rules: body edits keep an unsaved draft for that item for as long as Kolux runs and put it back in
+  the editor when the item is opened again (it is dropped once saved or put back); a load that
+  fails says so with a Retry, never "Loading…" for ever; closing the dialog returns focus to what had
+  it; the dialog does not redraw for list updates while it is closed; while the body is not being
+  edited it shows GitHub's latest version.
 Acceptance:
   - [ ] Open an issue and add a label in the dialog → the label shows in the dialog and in the list.
   - [ ] Change the issue body on GitHub while the dialog is open but not being edited → the dialog
         shows the new body.
+  - [ ] Type in the description, close the dialog without saving, open the same item → the typed text is back in the editor. (unit tests: evidence/T-670.txt)
+  - [ ] Open an item while GitHub cannot be read → the dialog says so and Retry reads it again. (unit tests: evidence/T-670.txt)
 Compat: —
 Source: D-11-050
 
@@ -805,10 +810,14 @@ User sees: Conversation, Checks and Files changed tabs; editable description, as
   failed ones; fix broken checks with AI; copy link; open GitHub's merge box; start or resume a
   workspace.
 Rules: copy link briefly shows that it copied; merging from the page needs the repository added in
-  Kolux, and says so otherwise; the Checks tab keeps its state between visits.
+  Kolux, and says so otherwise; the Checks tab keeps its state between visits; a Back button with an
+  arrow, and Escape, return to Tasks unless a text field, menu, dialog or edit is open (an open merge
+  confirm closes first); a Refresh button reads the PR again; a failed checks or review-threads read
+  leaves a note above the tabs instead of an empty list; "Yes, merge it" is the red danger button.
 Acceptance:
   - [ ] Open a PR, go to Checks, rerun failed → GitHub reruns the failed jobs.
   - [ ] Click copy link → the clipboard holds the PR URL and the button briefly confirms it.
+  - [ ] Press Escape on a PR page with a merge confirm open → the confirm closes; press it again → back at Tasks. (unit tests: evidence/T-670.txt)
 Compat: —
 Source: D-11-051
 
@@ -905,11 +914,13 @@ User sees: the change shows straight away; items that stop matching the filter f
   change is rolled back with a message.
 Rules: a late search response that still carries the old value does not undo a confirmed change; two
   quick edits to different people on one item both stick; a hard refresh takes GitHub's current
-  state again.
+  state again; a change that went through but whose read-back then fails says so and is not put
+  back.
 Acceptance:
   - [ ] Close an issue while filtering for open ones → it leaves the list and does not return on the
         next refresh.
   - [ ] Add two assignees in quick succession → both remain.
+  - [ ] A change goes through but the read-back fails → the item says so and keeps the change. (unit tests: evidence/T-670.txt)
 Compat: —
 Source: D-11-048
 
@@ -1079,10 +1090,14 @@ User sees: a table of project items whose columns sort and group, with editable 
 Rules: board and roadmap views are marked unsupported, with a suggestion to switch to a table view;
   rows can be limited to repositories open in Kolux or to chosen ones, and a repository not in Kolux
   offers to add it; items the user cannot see show as restricted; pinned and recent projects and
-  each project's last view are remembered; the view can be opened on GitHub.
+  each project's last view are remembered; the view can be opened on GitHub; "Chosen repositories"
+  starts with the project's repositories that are open in Kolux ticked, else all of the project's
+  repositories, so the table is never empty before the user picks; a failed read shows the error
+  with a Retry.
 Acceptance:
   - [ ] Paste a project URL → its table loads; edit a status cell → GitHub shows the new value.
   - [ ] Pick a board view → it is marked unsupported, with the table suggestion.
+  - [ ] Open a project with none of its repositories open in Kolux → all its repositories start ticked. (unit tests: evidence/T-670.txt)
 Compat: —
 Source: D-11-056
 

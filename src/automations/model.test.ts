@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { hermesEdit, scheduleChanged, confirmDelete, keepSelection, runActions, runStep, pageKey, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, findNext, lastRun, agentChoices, canDo, rowActions, splitWarnings, whereItRuns, matches, normalizeQuery, noFilters, passes, preselect, PROMPT_SEARCH_CHARS, sortRows, statusWord, triggerLabel, upcoming, GRACE, graceWord, PRECHECK, precheckWord, type Automation, type Names, type Run } from "./model";
+import { runsKey, failedLoad, deleteWords, hermesEdit, scheduleChanged, confirmDelete, keepSelection, runActions, runStep, pageKey, dashboardRows, onScreen, outputNote, RUN_BATCH, runTiles, findNext, lastRun, agentChoices, canDo, rowActions, splitWarnings, whereItRuns, matches, normalizeQuery, noFilters, passes, preselect, PROMPT_SEARCH_CHARS, sortRows, statusWord, triggerLabel, upcoming, GRACE, graceWord, PRECHECK, precheckWord, type Automation, type Names, type Run } from "./model";
 
 test("T-085-h a run reconnected after a restart says its output is the replay so far, not the end", () => {
   const r: Run = { id: "run-1", automationId: "a", number: 1, trigger: "schedule", status: "dispatched", at: 0, output: "hi", outputFrom: "replay", reconnected: true };
@@ -272,4 +272,60 @@ test("T-193-b a job whose timetable is not cron never has a schedule sent", () =
   const sent = hermesEdit(interval, { name: "New name", prompt: "tick", form: { preset: "weekdays", time: "09:00", day: 1, custom: "" }, cron: "0 9 * * 1-5" });
   expect(sent).toEqual({ name: "New name" });
   expect(scheduleChanged(interval, { preset: "daily", time: "10:00", day: null, custom: "" })).toBe(false);
+});
+
+test("UX2: Escape on the Runs dashboard steps back, on a run page it goes to Runs, and never over a field, pop-up or modifier", () => {
+  const k = (o: Partial<Parameters<typeof runsKey>[0]> = {}) => runsKey({ key: "Escape", mods: false, field: false, overlay: false, run: false, ...o });
+  expect(k()).toBe("runs");
+  expect(k({ run: true })).toBe("run");
+  expect(k({ field: true })).toBeNull();
+  expect(k({ overlay: true })).toBeNull();
+  expect(k({ mods: true })).toBeNull();
+  expect(runsKey({ key: "Enter", mods: false, field: false, overlay: false, run: false })).toBeNull();
+});
+
+test("UX2: a failed list read keeps the rows with a note, and is the page error only with nothing shown", () => {
+  expect(failedLoad(true, "disk")).toEqual({ error: null, note: "Could not refresh the list: disk" });
+  expect(failedLoad(false, "disk")).toEqual({ error: "disk", note: null });
+});
+
+test("UX2: the delete words name Hermes or OpenClaw for their jobs and the run history for Kolux ones", () => {
+  expect(deleteWords({ name: "A" })).toEqual({ title: "Delete A?", body: "Its run history goes with it." });
+  expect(deleteWords({ name: "B", source: "hermes" }).body).toContain("from Hermes itself");
+  expect(deleteWords({ name: "C", source: "openclaw" }).body).toContain("from OpenClaw itself");
+  expect(deleteWords(undefined).title).toBe("Delete this automation?");
+});
+
+import { closesOnScrim, holdWhile, joinNotes } from "./model";
+
+test("UX-T671: the scrim closes the dialog only when the press and the release were both on it", () => {
+  expect(closesOnScrim(true, true)).toBe(true);
+  expect(closesOnScrim(true, false)).toBe(false); // pressed on the scrim, released inside the dialog
+  expect(closesOnScrim(false, true)).toBe(false); // pressed inside, released on the scrim
+  expect(closesOnScrim(false, false)).toBe(false);
+});
+
+test("UX-T671: Refresh shows the failed ask and the failed list read together, not only the last", () => {
+  const ask = "Hermes and OpenClaw could not be asked again: offline";
+  const list = failedLoad(true, "disk busy").note;
+  expect(joinNotes(ask, list)).toBe(`${ask} ${list}`);
+  expect(joinNotes(ask, null)).toBe(ask);
+  expect(joinNotes(null, list)).toBe(list);
+  expect(joinNotes(null, undefined, "")).toBeNull();
+});
+
+test("UX-T671: Run now holds an automation while its ask is on the way and lets it go on success and on failure", async () => {
+  let list: string[] = [];
+  const set = (change: (l: string[]) => string[]) => {
+    list = change(list);
+  };
+  let finish!: () => void;
+  const slow = holdWhile(set, "a", () => new Promise<void>((done) => (finish = done)));
+  expect(list).toEqual(["a"]);
+  finish();
+  await slow;
+  expect(list).toEqual([]);
+  list = ["b"];
+  await holdWhile(set, "a", () => Promise.reject(new Error("no")));
+  expect(list).toEqual(["b"]);
 });

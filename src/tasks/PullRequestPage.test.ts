@@ -3,7 +3,8 @@
 // component, mounted into the small stand-in DOM in fakeDom.ts and clicked like a user would.
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { byLabel, byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "./fakeDom";
+import { byLabel, byText, click, fire, type FakeDocument, type FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "./fakeDom";
+import { escapeStep, partialNote } from "./prPageState";
 import type { PrPageData } from "./prModel";
 
 const h = vi.hoisted(() => ({
@@ -72,9 +73,9 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-async function open(over: { added?: boolean; host?: string; workspace?: string | null } = {}) {
+async function open(over: { added?: boolean; host?: string; workspace?: string | null; onClose?: () => void } = {}) {
   const { default: PullRequestPage } = await import("./PullRequestPage");
-  const m = await mount(createElement(PullRequestPage, { target: { host: over.host ?? "github.com", repo: "acme/app", number: 7, kind: "pull" }, added: over.added ?? true, onClose: () => {}, workspace: over.workspace ?? null }), doc);
+  const m = await mount(createElement(PullRequestPage, { target: { host: over.host ?? "github.com", repo: "acme/app", number: 7, kind: "pull" }, added: over.added ?? true, onClose: over.onClose ?? (() => {}), workspace: over.workspace ?? null }), doc);
   unmount = m.unmount;
   await until(() => byText(m.container, "button", "Close pull request").length > 0, "the page to load");
   return m.container as FakeNode;
@@ -123,7 +124,7 @@ describe("T-232-c the pull request page only writes when told to", () => {
     expect(byLabel(c, "div", "Confirm merge")).toHaveLength(1);
     // someone pushes: the next read of the page answers a new head commit
     h.answers.pr_page = page({ headSha: "fed9876cba" });
-    await click(c, byText(c, "button", "Reload")[0]);
+    await click(c, byText(c, "button", "Refresh")[0]);
     await until(() => sent("pr_threads").length > 1, "the reload");
     await settle();
     expect(byLabel(c, "div", "Confirm merge")).toHaveLength(0);
@@ -147,7 +148,7 @@ describe("T-232-c the pull request page only writes when told to", () => {
     await until(() => withText(c, "summary", "src/a.ts").length > 0, "the files");
     await click(c, withText(c, "button", "Conversation")[0]);
     await click(c, byText(c, "button", "Merge...")[0]);
-    await click(c, byText(c, "button", "Reload")[0]);
+    await click(c, byText(c, "button", "Refresh")[0]);
     await until(() => sent("pr_threads").length > 1, "the reload");
     await settle();
     expect(byLabel(c, "div", "Confirm merge")).toHaveLength(1);
@@ -168,7 +169,7 @@ describe("T-232-c the pull request page only writes when told to", () => {
     // someone pushes; the page is reloaded (the button sits on the Conversation tab) while the old read is still pending
     await click(c, withText(c, "button", "Conversation")[0]);
     h.answers.pr_page = page({ headSha: "fed9876cba" });
-    await click(c, byText(c, "button", "Reload")[0]);
+    await click(c, byText(c, "button", "Refresh")[0]);
     await until(() => sent("pr_threads").length > 1, "the reload");
     await settle();
     // the old head's answer arrives late
@@ -303,5 +304,87 @@ describe("T-232-d the page's extra reads and writes", () => {
     await click(c, withText(c, "button", "Files changed")[0]);
     await until(() => c.textContent.includes("0 of 1 files viewed"), "the viewed count");
     expect(sent("pr_viewed")).toHaveLength(1);
+  });
+});
+
+describe("UX audit: errors shown, Refresh, Escape and Back", () => {
+  it("says so when the checks could not be read, instead of showing an empty list", async () => {
+    h.answers.pr_checks = () => Promise.reject(new Error("rate limited"));
+    const c = await open();
+    await until(() => c.textContent.includes("Could not read the checks (rate limited)"), "the warning");
+    expect(c.textContent).toContain("press Refresh to try again");
+    // a good read on Refresh clears it
+    h.answers.pr_checks = [];
+    await click(c, byText(c, "button", "Refresh")[0]);
+    await until(() => !c.textContent.includes("Could not read"), "the warning to clear");
+  });
+
+  it("names both when the checks and the review threads fail", async () => {
+    h.answers.pr_checks = () => Promise.reject(new Error("a"));
+    h.answers.pr_threads = () => Promise.reject(new Error("b"));
+    const c = await open();
+    await until(() => c.textContent.includes("the checks (a) or the review threads (b)"), "both named");
+  });
+
+  it("Refresh reads the pull request again and writes nothing", async () => {
+    const c = await open();
+    const before = sent("pr_page").length;
+    await click(c, byText(c, "button", "Refresh")[0]);
+    await until(() => sent("pr_page").length > before, "the second read");
+    expect(writes()).toEqual([]);
+  });
+
+  it("the way out is labelled Back, not an X", async () => {
+    const c = await open();
+    expect(byLabel(c, "button", "Back to Tasks")).toHaveLength(1);
+    expect(byText(c, "button", "Back")).toHaveLength(1);
+  });
+
+  it("Escape goes back to Tasks, but first closes an open merge confirm", async () => {
+    // window keydown listeners as the browser runs them: capture ones first, then bubble ones in the order added.
+    type L = { f: (e: unknown) => void; capture: boolean };
+    let keys: L[] = [];
+    const w = window as unknown as { addEventListener: (t: string, f: (e: unknown) => void, o?: unknown) => void; removeEventListener: (t: string, f: (e: unknown) => void, o?: unknown) => void };
+    w.addEventListener = (t, f, o) => void (t === "keydown" && keys.push({ f, capture: o === true }));
+    w.removeEventListener = (_t, f, o) => void (keys = keys.filter((k) => !(k.f === f && k.capture === (o === true))));
+    (doc as unknown as { querySelectorAll: () => unknown[] }).querySelectorAll = () => [];
+    // The Tasks screen's own "Escape leaves the page" listener, added before the PR page opens.
+    const leftPage = vi.fn();
+    w.addEventListener("keydown", (e) => void (!(e as { defaultPrevented: boolean }).defaultPrevented && leftPage()));
+    const onClose = vi.fn();
+    const c = await open({ onClose });
+    const esc = async () => {
+      const ev = { key: "Escape", target: null, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      await fire(c, "keydown", c, {}); // lets React settle between presses
+      for (const k of [...keys.filter((k) => k.capture), ...keys.filter((k) => !k.capture)]) k.f(ev);
+      return ev;
+    };
+    await click(c, byText(c, "button", "Merge...")[0]);
+    expect(byLabel(c, "div", "Confirm merge")).toHaveLength(1);
+    await esc();
+    await settle();
+    expect(byLabel(c, "div", "Confirm merge")).toHaveLength(0);
+    expect(onClose).not.toHaveBeenCalled();
+    const ev = await esc();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(leftPage).not.toHaveBeenCalled(); // back to Tasks, not out of the whole Tasks page
+  });
+});
+
+describe("UX audit: pure steps", () => {
+  it("partialNote is empty when nothing failed", () => {
+    expect(partialNote([])).toBeNull();
+    expect(partialNote(["the checks (x)"])).toContain("What is shown for it may be empty");
+  });
+  it("escapeStep: merge confirm first, then stay for a field, menu or edit, else back", () => {
+    const base = { confirming: false, typing: false, overlay: false, editing: false };
+    expect(escapeStep({ ...base, confirming: true })).toBe("cancel-merge");
+    expect(escapeStep({ ...base, confirming: true, typing: true })).toBe("stay"); // the comment field's own Escape
+    expect(escapeStep({ ...base, confirming: true, overlay: true })).toBe("stay");
+    expect(escapeStep({ ...base, typing: true })).toBe("stay");
+    expect(escapeStep({ ...base, overlay: true })).toBe("stay");
+    expect(escapeStep({ ...base, editing: true })).toBe("hold");
+    expect(escapeStep(base)).toBe("back");
   });
 });

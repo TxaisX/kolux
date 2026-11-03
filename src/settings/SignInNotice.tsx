@@ -23,7 +23,7 @@ export function lapsed(claude: AccountsView | null, codex: CodexView | null): La
   return null;
 }
 
-export function SignInNoticeView({ lapsed: l, onSignIn }: { lapsed: Lapsed | null; onSignIn: (l: Lapsed) => void }) {
+export function SignInNoticeView({ lapsed: l, onSignIn, error = null }: { lapsed: Lapsed | null; onSignIn: (l: Lapsed) => void; error?: string | null }) {
   if (!l) return null;
   return (
     <div className="notice signin-notice" role="status" data-agent={l.agent}>
@@ -31,6 +31,11 @@ export function SignInNoticeView({ lapsed: l, onSignIn }: { lapsed: Lapsed | nul
       <button className="btn" disabled={l.busy} onClick={() => onSignIn(l)}>
         {l.busy ? "Signing in…" : "Sign in again"}
       </button>
+      {error && (
+        <span className="warn" role="alert" data-signin-error>
+          {error}
+        </span>
+      )}
     </div>
   );
 }
@@ -53,9 +58,15 @@ export default function SignInNotice() {
       offs.forEach((o) => void o.then((u) => u()).catch(() => {}));
     };
   }, []);
+  // The error belongs to the account whose sign-in failed to start (a Claude and a Codex account can share an id):
+  // another lapsed account does not show it, and it goes when the lapsed account changes.
+  const [error, setError] = useState<{ key: string; text: string } | null>(null);
   const signIn = (l: Lapsed) => {
+    setError(null);
     const call = l.agent === "claude" ? invoke("claude_account_sign_in", { id: l.id }) : invoke("codex_account_sign_in", { device: false, again: l.id });
-    call.catch(() => {});
+    call.catch((e) => setError({ key: `${l.agent}:${l.id}`, text: `Sign-in did not start: ${String(e)}` }));
   };
-  return <SignInNoticeView lapsed={lapsed(claude, codex)} onSignIn={signIn} />;
+  const now = lapsed(claude, codex);
+  useEffect(() => setError(null), [now?.agent, now?.id]);
+  return <SignInNoticeView lapsed={now} onSignIn={signIn} error={error && error.key === (now && `${now.agent}:${now.id}`) ? error.text : null} />;
 }

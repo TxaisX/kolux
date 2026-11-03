@@ -189,15 +189,27 @@ fn line_of(program: &str, args: &[String], prompt: &str) -> String {
     parts.join(" ")
 }
 
-/// The program a composed command runs: an agent's installed program, else the template's, looked up on the PATH.
+/// The program a composed command runs: an agent's installed program, else the template's, by full path (T-663).
 pub fn resolve(c: &Composed) -> Result<PathBuf, String> {
     match &c.agent {
         Some(id) => {
             let spec = writers::spec(id).ok_or_else(|| format!("unknown agent {id}"))?;
             writers::program_of(spec).ok_or_else(|| format!("{} was not found on this computer", spec.name))
         }
-        None => Ok(crate::agents::find_program(&c.program).unwrap_or_else(|| PathBuf::from(&c.program))),
+        None => program_by_full_path(&c.program),
     }
+}
+
+/// T-663: a writer or template program Kolux starts itself (the commit-message writer's own command
+/// too): by full path or a lookup in full-path folders only, else refused, never run by its bare name.
+pub(crate) fn program_by_full_path(word: &str) -> Result<PathBuf, String> {
+    crate::pty::full_path_program(word).ok_or_else(|| {
+        if word.contains(['/', '\\']) && !std::path::Path::new(word).is_absolute() {
+            format!("{word} is not a full path, so Kolux did not start it; give its full path")
+        } else {
+            format!("{word} was not found as a full path or on the PATH, so Kolux did not start it")
+        }
+    })
 }
 
 fn git_lines(dir: &Path, args: &[&str]) -> String {
@@ -294,6 +306,18 @@ mod tests {
     }
     fn agent(id: &str, args: &str) -> Recipe {
         Recipe { agent: Some(id.to_string()), args: args.to_string(), template: String::new() }
+    }
+
+    /// T-663: a template program that is not found by full path is refused, never run by its bare name.
+    #[test]
+    fn t663_an_unknown_template_program_is_refused() {
+        let c = Composed { program: "kolux-rs-t663-no-such-writer".into(), agent: None, args: vec![], input: None, line: String::new() };
+        let err = resolve(&c).unwrap_err();
+        assert!(err.contains("kolux-rs-t663-no-such-writer") && err.contains("did not start it"), "{err}");
+        // The commit-message writer's own command goes through the same lookup; a relative path is named as one.
+        let err = program_by_full_path("./scripts/msg.sh").unwrap_err();
+        assert!(err.contains("is not a full path"), "{err}");
+        assert!(program_by_full_path(r"src\scm.rs").is_err());
     }
 
     #[test]

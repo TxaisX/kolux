@@ -40,3 +40,9 @@ test("T-263 USAGE-025: the status bar section offers Usage percentages as Used o
   expect(html).toContain(`<option value="used">Used</option>`);
   expect(html).toContain(`<option value="remaining" selected="">Remaining</option>`);
 });
+
+test("UX-audit: the zoom note names the real interface-zoom keys, not the pane zoom ones", () => {
+  const html = renderToString(createElement(AppearanceView, { look: readAppearance({}), onChange: () => {} } as never));
+  expect(html).toContain("Ctrl+Alt+=");
+  expect(html).not.toContain("The zoom shortcuts do the same");
+});

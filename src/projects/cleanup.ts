@@ -204,3 +204,18 @@ export function sizeText(bytes: number | null | undefined): string | null {
   while (n >= 1024 && u < units.length - 1) (n /= 1024), u++;
   return `${u === 0 ? n : n.toFixed(n < 10 ? 1 : 0)} ${units[u]}`;
 }
+
+/** The sort-direction button's words, by the key being sorted: "Largest first" only makes sense for size. */
+export function directionLabel(sort: SortBy, desc: boolean): string {
+  if (sort === "size") return desc ? "Largest first" : "Smallest first";
+  if (sort === "idle") return desc ? "Idle longest first" : "Idle shortest first";
+  if (sort === "name") return desc ? "Z to A" : "A to Z";
+  return desc ? "Newest scan first" : "Scan order";
+}
+
+/** Ticks every listed row on or off, leaving rows that are filtered out as they were. */
+export function tickRows(ticks: Record<string, boolean>, rows: ScanRow[], on: boolean): Record<string, boolean> {
+  const next = { ...ticks };
+  for (const r of rows) next[r.path] = on;
+  return next;
+}

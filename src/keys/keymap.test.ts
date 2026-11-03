@@ -6,16 +6,16 @@ import { chordMatches, chordsOf, labelOf, labelParts, matchEvent, parseChord, re
 
 const key = (k: Partial<KeyLike>): KeyLike => ({ key: "", code: "", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...k });
 
-test("the table registers the 137 carried commands (TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 56 ship unbound (T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound) and 4 have only a macOS chord", () => {
-  expect(actions.length).toBe(136);
+test("the table registers the 138 carried commands (UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 56 ship unbound (UX lane C: view.automations added unbound, floatingWorkspace.minimize now bound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound) and only New agent tab (TERM-041) and workspace rename have a macOS chord only (UX lane C gave three Ctrl+Shift chords)", () => {
+  expect(actions.length).toBe(138);
   const ids = new Set(actions.map((a) => a.id));
-  expect(ids.size).toBe(136);
+  expect(ids.size).toBe(138);
   expect(ids.has("sidebar.sourceControl.toggle")).toBe(false); // T-644
   expect(ids.has("tab.newSimulator")).toBe(false);
   expect(ids.has("tab.openQuickCommandsMenu")).toBe(false);
   expect(ids.has("sidebar.ports.toggle")).toBe(false); // T-611: VIEW-079's Ports tab is dropped
   expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).length).toBe(56);
-  expect(actions.filter((a) => a.win32.length === 0 && a.darwin).map((a) => a.id).sort()).toEqual(["floatingWorkspace.maximize", "tab.newAgent", "tab.rename", "workspace.rename"].sort());
+  expect(actions.filter((a) => a.win32.length === 0 && a.darwin).map((a) => a.id).sort()).toEqual(["tab.newAgent", "workspace.rename"]);
   expect(actions.filter((a) => a.id.startsWith("tab.newAgent.")).length).toBe(36);
 });
 
@@ -115,7 +115,7 @@ test("two custom chords that clash inside their scope are dropped and the defaul
   expect(apart.errors).toEqual([]);
   // The conflict groups bite across scopes: tab.rename (tabs) and workspace.rename (global) share "workspace-shell".
   const grouped = resolve({ keybindings: { "tab.rename": "Mod+Alt+R", "workspace.rename": "Mod+Alt+R" } }, "win32");
-  expect(chordsOf(grouped, "tab.rename")).toEqual([]);
+  expect(chordsOf(grouped, "tab.rename"), "the clashing custom chord drops; the default stays").toEqual(["Mod+Shift+G"]);
   expect(grouped.errors[0]).toContain("Rename active tab");
 });
 
@@ -204,4 +204,8 @@ test("TERM-053: Search open tabs is a tab command with its own chord, bound wher
   expect(chordMatches(chord, key({ ctrlKey: true, shiftKey: true, code: "KeyK", key: "K" }), "win32")).not.toBeNull();
   const others = actions.filter((x) => x.id !== "tab.search").flatMap((x) => [...defaultsFor(x, "win32"), ...defaultsFor(x, "darwin")]);
   expect(others).not.toContain(chord);
+});
+
+test("UX lane C: no two default chords clash in a shared scope on any platform", () => {
+  for (const p of ["win32", "linux", "darwin"] as const) expect(resolve({}, p).clashes, p).toEqual([]);
 });

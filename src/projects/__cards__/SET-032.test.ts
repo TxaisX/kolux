@@ -24,6 +24,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "visibility_get") return Promise.resolve([]);
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
     if (cmd === "groups_get" || cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
+    if (cmd === "skills_scan") return Promise.resolve({ skills: [] }); // the sidebar checklist reads it
     return Promise.resolve(null);
   },
 }));
@@ -59,13 +60,19 @@ async function panel() {
   await settle(120);
   return m.container as FakeNode;
 }
-const gear = (c: FakeNode) => find(c, (n) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Add a project by path, or change the workspaces folder"))[0];
+const addButton = (c: FakeNode) => find(c, (n) => n.localName === "button" && String(n.attrs.title ?? "").startsWith("Add project:"))[0];
+const byPath = (c: FakeNode) => find(c, (n) => n.localName === "button" && n.attrs["data-add-by-path"] !== undefined)[0];
+/** The by-path form (with the workspaces folder) opens from the Add project dialog's link; the footer gear is Settings now. */
+const openByPath = async (c: FakeNode) => {
+  await click(c, addButton(c));
+  await click(c, byPath(c));
+};
 const field = (c: FakeNode) => find(c, (n) => n.localName === "input" && n.attrs["aria-label"] === "workspaces folder")[0];
 const valueOf = (n: FakeNode) => String((n as unknown as { value?: unknown }).value ?? n.attrs.value ?? "");
 
 test("box 1: Browse to a folder saves it with the nested layout and the field shows it", async () => {
   const c = await panel();
-  await click(c, gear(c));
+  await openByPath(c);
   await until(() => field(c) !== undefined, "the workspaces folder field");
   h.pick = "D:/wt";
   const browse = find(c, (n) => n.localName === "button" && n.textContent.trim() === "Browse…");
@@ -85,7 +92,7 @@ test("box 1: Browse to a folder saves it with the nested layout and the field sh
 test("box 2: with KOLUX_WORKSPACES_DIR supplying the folder the field shows it and says where it came from", async () => {
   h.place = { dir: "E:/from-env", flat: false, used: [], fromEnv: true };
   const c = await panel();
-  await click(c, gear(c));
+  await openByPath(c);
   await until(() => field(c) !== undefined, "the workspaces folder field");
   await settle(40);
   expect(valueOf(field(c))).toBe("E:/from-env");

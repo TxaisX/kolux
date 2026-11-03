@@ -40,13 +40,13 @@ test("box 1 (the click half): the search hint is one button that asks for the wo
 
 test("box 2 (the click half): the bell asks for the Inbox screen; on the Inbox it returns to Terminals", async () => {
   const { c, calls } = await open("terminals");
-  const bell = find(c, (n) => n.localName === "button" && n.attrs["aria-label"] === "Notifications");
+  const bell = find(c, (n) => n.localName === "button" && n.attrs["aria-label"] === "Inbox");
   expect(bell).toHaveLength(1);
   await click(c, bell[0]);
   expect(calls).toEqual(["screen inbox"]);
   await unmount();
   const again = await open("inbox");
-  const bell2 = find(again.c, (n) => n.attrs["aria-label"] === "Notifications")[0];
+  const bell2 = find(again.c, (n) => n.attrs["aria-label"] === "Inbox")[0];
   expect(bell2.attrs["aria-pressed"]).toBe("true");
   await click(again.c, bell2);
   expect(again.calls).toEqual(["screen terminals"]);

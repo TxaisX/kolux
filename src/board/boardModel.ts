@@ -115,3 +115,16 @@ export function droppedPaths(raw: string | null | undefined): string[] {
     return [];
   }
 }
+
+/** What the board says when a drop or Move was refused and the cards went back where they were. */
+export function moveFailure(count: number, reason: string): string {
+  const what = count === 1 ? "that workspace was" : `those ${count} workspaces were`;
+  return `The move did not go through, so ${what} put back where ${count === 1 ? "it" : "they"} came from. ${reason}`.trim();
+}
+
+/** What the board says when some projects' workspaces could not be listed (their cards are missing); null when all were read. */
+export function listFailure(projects: string[]): string | null {
+  if (projects.length === 0) return null;
+  const shown = projects.slice(0, 3).join(", ") + (projects.length > 3 ? `, and ${projects.length - 3} more` : "");
+  return `Could not list the workspaces of ${shown}, so their cards are missing here.`;
+}

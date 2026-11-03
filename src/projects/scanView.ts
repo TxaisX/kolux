@@ -46,3 +46,6 @@ export function importLine(s: ScanState, grouped: boolean): string {
   if (n === 0) return "Nothing is ticked.";
   return `${plural(n, "repository", "repositories")} will be added ${grouped ? "as one group" : "as separate projects"}.`;
 }
+
+/** The scan to stop when the dialog goes away: only one that is still running. */
+export const scanToStop = (s: ScanState | null): number | null => (s?.running ? s.scanId : null);

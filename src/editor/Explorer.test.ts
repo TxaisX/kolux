@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { between, dirAt, DRAFT, flatten, isWsl, movesInto, redoOf, tops, undoOf, type Node } from "./Explorer";
+import { between, claimRead, dirAt, DRAFT, expandNote, flatten, isWsl, movesInto, redoOf, tops, undoOf, type Node } from "./Explorer";
 
 const dir = (path: string): Node => ({ name: path.split("/").pop()!, path, kind: "dir" });
 const file = (path: string): Node => ({ name: path.split("/").pop()!, path, kind: "file" });
@@ -67,5 +67,22 @@ describe("explorer file operations", () => {
   it("moves a folder chosen with its own children once, and skips what is already there", () => {
     expect(movesInto(["/r/d", "/r/d/g.ts", "/r/f.ts", "/r/e/h.ts"], "/r/e")).toEqual([["/r/d", "/r/e"], ["/r/f.ts", "/r/e"]]);
     expect(movesInto(["/r/e"], "/r/e")).toEqual([]);
+  });
+});
+
+describe("explorer live reads and Expand all", () => {
+  it("lets the live poll skip a folder whose read is still out, but never an asked-for read", () => {
+    const out = new Set<string>();
+    expect(claimRead(out, "/r", true)).toBe(true);
+    expect(claimRead(out, "/r", true)).toBe(false);
+    expect(claimRead(out, "/r", false)).toBe(true);
+    out.delete("/r");
+    expect(claimRead(out, "/r", true)).toBe(true);
+  });
+  it("says nothing when Expand all finished cleanly, and names the cap and the folders it could not read", () => {
+    expect(expandNote(false, 0)).toBeNull();
+    expect(expandNote(true, 0)).toMatch(/stopped at 300 folders/);
+    expect(expandNote(false, 1)).toMatch(/1 folder could not be read/);
+    expect(expandNote(true, 2)).toMatch(/300 folders.*2 folders could not be read/);
   });
 });

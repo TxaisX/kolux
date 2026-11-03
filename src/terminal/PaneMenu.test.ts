@@ -4,7 +4,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import PaneMenu, { chooseItem, fitIn, OPEN_GUARD_MS, outsideDismisses, paneMenuItems, type MenuContext } from "./PaneMenu";
+import PaneMenu, { chooseItem, fitIn, menuStep, OPEN_GUARD_MS, outsideDismisses, paneMenuItems, withChord, type MenuContext } from "./PaneMenu";
 
 const noop = () => {};
 /** A pane that can do everything and is split, expandable, selected, titled, with an agent action. */
@@ -35,13 +35,13 @@ const full: MenuContext = {
 const names = (c: MenuContext) => paneMenuItems(c).map((i) => i.name);
 const html = (c: MenuContext) => renderToString(createElement(PaneMenu, { style: {}, items: paneMenuItems(c), onDismiss: noop }));
 
-test("TERM-035: the menu lists Copy, Select All, Paste; agent actions; splits, Equalize, Expand; title; ids; diagnostics; Close; Clear Screen, in that order", () => {
+test("TERM-035: the menu lists Copy, Select All, Paste; agent actions; splits, Equalize, Expand; title; ids; diagnostics; Clear Screen, Find; Close last, in that order", () => {
   expect(names(full)).toEqual([
     "Copy", "Select All", "Paste",
     "Review plan",
     "Split Right", "Split Down", "Equalize", "Expand",
     "Set Title…", "Clear Title", "Copy Session ID", "Copy Terminal ID", "Copy Pane ID", "Copy terminal diagnostics",
-    "Close Pane", "Clear Screen", "Find…",
+    "Clear Screen", "Find…", "Close Pane",
   ]);
 });
 
@@ -111,4 +111,29 @@ test("TERM-035: a tall menu opened near the bottom or right edge is moved back i
   expect(fitIn(100, 420, 1000)).toBe(100); // already fits
   expect(fitIn(-30, 420, 1000)).toBe(8); // never above the margin
   expect(fitIn(5, 2000, 1000)).toBe(8); // taller than the window: the top, then it scrolls
+});
+
+test("UX audit terminal F5: Close Pane is the last item and takes the danger token, not a hard-coded colour", () => {
+  const items = paneMenuItems(full);
+  expect(items[items.length - 1].name).toBe("Close Pane");
+  expect(items[items.length - 1].group).not.toBe(items[items.length - 2].group);
+  const out = html(full);
+  expect(out).toContain("var(--danger)");
+  expect(out).not.toContain("#f0a07a");
+});
+
+test("UX audit terminal F1: the menu names itself, a host can rename it, and its rows are menu items the arrows can walk", () => {
+  expect(html(full)).toContain("aria-label=\"Pane menu\"");
+  expect(renderToString(createElement(PaneMenu, { style: {}, items: paneMenuItems(full), onDismiss: noop, label: "New tab menu", layer: 70 }))).toContain("aria-label=\"New tab menu\"");
+  const rows = paneMenuItems(full).length;
+  expect(menuStep(rows, -1, "ArrowDown")).toBe(0);
+  expect(menuStep(rows, rows - 1, "ArrowDown")).toBe(0);
+  expect(menuStep(rows, 0, "ArrowUp")).toBe(rows - 1);
+  expect(menuStep(rows, 3, "x")).toBeNull();
+});
+
+test("UX audit terminal F4: a header tooltip shows the chord the keymap has, and none when it has none", () => {
+  expect(withChord("Close pane", ["Ctrl", "W"])).toBe("Close pane (Ctrl+W)");
+  expect(withChord("Close pane", ["Cmd", "W"])).toBe("Close pane (Cmd+W)");
+  expect(withChord("Close pane", [])).toBe("Close pane");
 });
