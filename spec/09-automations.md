@@ -50,13 +50,18 @@ Rules: a finish reported at a session boundary, an old idle state, or a ready pr
   run is marked failed rather than completed; when Kolux cannot be sure a run was lost it leaves it
   dispatched, and a genuine finish later still completes it; after a restart, tracked runs
   reconnect, and any that cannot be found are closed after a short settling period; the same refusal
-  repeated for the same due time collapses into one entry with a counter.
+  repeated for the same due time collapses into one entry with a counter; a run is followed through
+  the pane Kolux opened for it, and a pane opened any other way is credited only to a run still
+  waiting for its pane (just dispatched, or settling after a restart), never to a run whose pane
+  never started (DT-C126).
 Acceptance:
   - [x] Kill the agent before it starts working → the run reads failed, not completed. (cards; evidence/cards-AUTO-012.txt)
   - [x] Restart Kolux while a run is still going → tracking continues and the run completes when the
         agent finishes. (cards; evidence/cards-AUTO-012.txt)
   - [x] An every-five-minutes automation whose project is gone for an hour → one collapsed skipped
         entry, not twelve. (cards; evidence/cards-AUTO-012.txt)
+  - [x] An older run whose pane never started sits in the same worktree when a new run starts → the
+        new run's pane is credited to the new run, not to the older one. (T-690; evidence/T-690.txt)
 Compat: carried-over run history must keep each run's status (the four progress states, the four
   skip causes, and failed to dispatch) and how it was started (timetable, by hand, or event).
 Source: D-09-012
