@@ -1,0 +1,42 @@
+T-705 - UX audit Wave 3 live verify N1b: the left toggle stays "pressed" after the narrow step hid the sidebar (DT-C141; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-9 from main d552a974, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "49: T-705 / DT-C141". Found by the trains 7+8 live verify (findings/live-verify-t7-8.md, N1b).
+
+WHAT WAS WRONG
+- After a 1400 to 640 px resize with the right sidebar open, the T-699 step-aside (styles.css) hid the left sidebar, but
+  the top bar's left toggle kept aria-pressed=true and the title "Hide sidebar" (still stale after 1 frame, 2 frames and
+  700 ms). It caught up only when something else redrew the top bar.
+- Cause: shell/window/TopBar.tsx passed leftShown(sidebarOpen, isNarrow(), ...) and isNarrow() (shell/window/narrow.ts)
+  read matchMedia at render with no subscription, so a resize alone never redrew the top bar.
+
+THE FIX (DT-C141)
+- narrow.ts: watchNarrow(f) sets the onchange slot of one matchMedia("(max-width: 899px)") list, the same query as the
+  stylesheet and isNarrow. Each matchMedia call returns its own list, so the slot is not shared with anyone.
+- shell/window/TopBar.tsx: narrow = useSyncExternalStore(watchNarrow, isNarrow), passed to leftShown in place of the
+  render-time isNarrow(). React redraws the top bar when the window crosses 900 px (only then, not on every resize), and
+  the toggle's aria-pressed and title follow the step-aside in the same frame.
+- The subscription returns an empty unsubscribe (ponytail note in narrow.ts): the top bar lives as long as its window,
+  and a late call only asks React to redraw a top bar that is gone. Clearing the slot cost the last bytes over +100 B.
+- The setters (Ctrl+B, menu, palette, create rows via windowStore.ts nextLeft) already read isNarrow() live; unchanged.
+- Also removed: a duplicate DT-C139 row in DECISIONS.md. Train 9's rows union kept both the round-1 text and the final
+  text of T-703's row; the older one (without the Classic header sentence) is gone, the final one stays.
+
+TESTS (VITEST_MAX_WORKERS=1, one file at a time)
+- src/shell/window/narrowToggle.test.ts (new, 1 test): mounts the real shell top bar (WindowTopBar in the window store,
+  with chrome/TopBar under it) in the fake DOM, right sidebar showing; flips the fake matchMedia list to narrow and fires
+  its onchange, then asserts aria-pressed="false" and the title "Show sidebar"; flips back and asserts "true"; one
+  listener in all.
+  - On main d552a974 (both files back to main's): fails at narrowToggle.test.ts:54, "expected 'true' to be 'false'",
+    the live-verify symptom. On this branch: passes.
+- Also run, all pass: shell/window/narrow.test.ts 6/6, panelFit.test.ts 4/4, chrome/shell.test.ts 10/10,
+  chrome/titleHeader.test.ts 6/6, and the files that mount the whole window live: chrome/__cards__/VIEW-001 1/1,
+  VIEW-002 2/2, VIEW-003 2/2, chrome/helpAbout 2/2, projects/__cards__/VIEW-037 2/2, VIEW-040 2/2, VIEW-051 2/2,
+  projects/useWorkspaces 5/5, forgetAsk 4/4, removeCommits 5/5.
+- pnpm exec tsc --noEmit -p . : clean. node scripts/plan-check.mjs: OK. firewall-check.ps1 -Baseline: 0 new.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main d552a974: 1,489,090 B first load. This branch: 1,489,172 B (+82 B; the limit was +100). Ceiling 1,490,000.
+- On the way: a hook wrapper with add/removeEventListener was +148 B, the onchange slot with a cleanup +108 B.
+
+REVIEW
+- Fresh opus-high-review: see the PR conversation.

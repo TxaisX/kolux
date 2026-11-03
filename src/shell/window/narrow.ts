@@ -2,9 +2,18 @@
 // or a small window) the two side panels take turns. styles.css hides the left sidebar while the right sidebar is
 // showing; this keeps the left toggle honest about that, and every path that opens the left sidebar brings it back.
 export const NARROW_PX = 900;
-/** True while the window is under NARROW_PX CSS px wide. Read at render, not subscribed (first-load budget): the left
- *  toggle's pressed state catches up with a resize on the top bar's next render; the setters read it live. */
-export const isNarrow = () => !!globalThis.matchMedia?.(`(max-width: ${NARROW_PX - 1}px)`)?.matches;
+const query = () => globalThis.matchMedia?.(`(max-width: ${NARROW_PX - 1}px)`);
+/** True while the window is under NARROW_PX CSS px wide, read live (the setters use it). */
+export const isNarrow = () => !!query()?.matches;
+/** T-705 (DT-C141): the subscribe half of useSyncExternalStore(watchNarrow, isNarrow), so the top bar redraws when the
+ *  window crosses NARROW_PX and the left toggle's pressed state follows the step-aside at once. One listener on the
+ *  breakpoint, not on every resize; each matchMedia call returns its own list, so its onchange slot is ours alone. */
+export const watchNarrow = (f: () => void) => {
+  (query() ?? ({} as MediaQueryList)).onchange = f;
+  // ponytail: no unsubscribe (first-load budget, +100 B). The top bar lives as long as its window, and a late call only
+  // asks React to redraw a top bar that is gone (a no-op). Clear the slot here if a surface that unmounts ever uses this.
+  return () => {};
+};
 
 /** Whether the left sidebar is in view: open, and not stepped aside for the right sidebar in a narrow window. */
 export const leftShown = (open: boolean, narrow: boolean, rightShown: boolean) => open && !(narrow && rightShown);
