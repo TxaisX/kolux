@@ -219,3 +219,74 @@ export function seenBy(s: Skill): string[] {
 /** The toast Copy path shows, and what it says when the clipboard refuses. */
 export const COPIED = "Path copied";
 export const COPY_FAILED = "Could not copy; the path is shown in View details to select";
+
+// UX audit (skills-automations.md): Escape order, the Delete skills guard, the Install entry, the
+// Update dialog's keys and its Stop.
+
+export type EscapeState = { menu: boolean; rowMenu: boolean; picking: boolean; /** A dialog or popover is showing on the page (chrome/fullPage.ts overlayShowing). */ overlay: boolean };
+export type EscapeStep = "menu" | "row-menu" | "picking" | "close" | "none";
+
+/** What one Escape does on the page: the open menus first, then a dialog showing (which owns the key, so
+ *  the page never closes underneath it), then the selection, then the page itself. */
+export function pageEscape(s: EscapeState, target: EventTarget | null): EscapeStep {
+  if (s.menu) return "menu";
+  if (s.rowMenu) return "row-menu";
+  if (s.overlay) return "none";
+  if (s.picking) return "picking";
+  return escapeCloses(target) ? "close" : "none";
+}
+
+export const DELETE_NOT_SCANNED = "The skill folders have not been scanned yet";
+export const DELETE_SCAN_FAILED = "The scan failed; retry it before deleting skills";
+export const DELETE_NONE_ELIGIBLE = "Only your own and project skills can be deleted";
+
+/** Why Delete skills cannot start now, or null when it can. A failed scan shows no rows to choose. */
+export function deleteBlocked(scan: Scan | null, view: View): string | null {
+  if (!scan) return DELETE_NOT_SCANNED;
+  if (view === "failed") return DELETE_SCAN_FAILED;
+  return eligible(scan.skills).length === 0 ? DELETE_NONE_ELIGIBLE : null;
+}
+
+export const INSTALL_ITEM = "Install / reinstall Kolux skills";
+export const INSTALL_NO_SKILLS = "The scan found no Kolux skills to install";
+
+/** Why the Install / reinstall entry cannot open its panel, or null. The panel offers the bundled skills the scan found. */
+export const installBlocked = (scan: Scan | null): string | null => (scan && scan.skills.some((s) => s.source === "bundled") ? null : INSTALL_NO_SKILLS);
+
+/** The Update dialog's own keys: Escape closes only the dialog. */
+export const dialogKey = (key: string): "close" | "pass" => (key === "Escape" ? "close" : "pass");
+
+/** Tab inside a dialog wraps at the ends: the index to focus instead, or null to let Tab move on. */
+export function tabWrap(count: number, at: number, shift: boolean): number | null {
+  if (count === 0) return null;
+  if (shift) return at <= 0 ? count - 1 : null;
+  return at < 0 || at === count - 1 ? 0 : null;
+}
+
+/** What a key inside the Update dialog does: Escape closes it, Tab wraps at the ends (focus item `to`), the rest passes. */
+export type DialogStep = { act: "close" } | { act: "focus"; to: number } | { act: "pass" };
+export function dialogStep(key: string, shift: boolean, count: number, at: number): DialogStep {
+  if (dialogKey(key) === "close") return { act: "close" };
+  if (key !== "Tab") return { act: "pass" };
+  const to = tabWrap(count, at, shift);
+  return to === null ? { act: "pass" } : { act: "focus", to };
+}
+
+/** A "show the Update dialog" request arrived. Closed: it opens (on the Install panel if asked). Open already: an Install
+ *  request only moves focus to the panel, and nothing stays pending for the next open. */
+export function showStep(open: boolean, install: boolean): { open: boolean; wantsInstall: boolean; focusInstall: boolean } {
+  return open ? { open: false, wantsInstall: false, focusInstall: install } : { open: true, wantsInstall: install, focusInstall: false };
+}
+
+/** A dialog showing on the page: one the page raised itself (an Ask, which the DOM scan does not list) or one the scan finds. */
+export const pageOverlay = (own: unknown[], inDom: () => boolean): boolean => own.some((x) => x != null && x !== false) || inDom();
+
+/** Stops a running skill update. Resolves to the reason when the app refused, or null when it took the stop. */
+export async function stopRun(call: (cmd: string) => Promise<unknown>): Promise<string | null> {
+  try {
+    await call("skills_update_stop");
+    return null;
+  } catch (e) {
+    return String(e);
+  }
+}
