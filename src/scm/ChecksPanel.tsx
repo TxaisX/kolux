@@ -13,6 +13,9 @@ import GhBanner, { classify } from "../tasks/GhBanner";
 import CommentsPanel from "./CommentsPanel";
 import ConflictPanel from "./ConflictPanel";
 import PrStart from "./PrStart";
+import StackMap from "./StackMap";
+import { REFRESH, RERUN, openFailed } from "./panelUx";
+import "./scmUx.css";
 import { checkIdOf, type CheckRef } from "./checkCard";
 import { reviewHint, reviewWhere } from "./startPr";
 import { CHECKS_POLL_MS, CHECKS_UNLINKED_KEY, checksSummary, panelBody, reusableNoPr, reuseNoPr, showing, stillRunning, unlinkedPrs, withUnlinkedPr, type PrChecks } from "./checks";
@@ -36,14 +39,23 @@ const GROUPS = [
 const when = (t?: string | null) => (t ? new Date(t).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : null);
 
 export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props) {
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
+  const [rerunning, setRerunning] = useState<string | null>(null); // the check whose rerun is still being asked for
   const { settings, save } = useSettings();
   const inKolux = settings?.linksOpenInKolux === true;
+  /** A link that will not open says so in the note, never silently. */
+  const openOut = (url: string) => void invoke("open_external", { url }).catch((err) => setNote({ text: openFailed(err), error: true }));
   const rerun = (c: Check) => {
+    if (rerunning !== null) return;
     setNote(null);
+    setRerunning(c.name);
     invoke("scm_check_rerun", { worktree: dir, link: c.link, failedOnly: true })
-      .then(() => setNote(`Asked GitHub to rerun ${c.name}`))
-      .catch((err) => setNote(String(err)));
+      .then(() => {
+        setNote({ text: `Asked GitHub to rerun ${c.name}`, error: false });
+        load(true); // the checks go back to running, so read them again
+      })
+      .catch((err) => setNote({ text: String(err), error: true }))
+      .finally(() => setRerunning(null));
   };
   const key = dir === null ? null : `${dir}|${linked ?? ""}`;
   const [got, setGot] = useState<{ key: string; data: PrChecks | null; error: string | null; loading: boolean } | null>(null);
@@ -101,7 +113,7 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
           {pr && <span className="count">{data!.checks.length}</span>}
           <div className="icons">
             {dir !== null && (
-              <button className="ib" title={shown?.loading ? "Looking…" : "Refresh the checks"} aria-label="Refresh the checks" disabled={!!shown?.loading} onClick={() => load(true)}>
+              <button className="ib" title={shown?.loading ? "Looking…" : `${REFRESH} the checks`} aria-label={`${REFRESH} the checks`} disabled={!!shown?.loading} onClick={() => load(true)}>
                 <Refresh />
               </button>
             )}
@@ -139,7 +151,7 @@ ${reviewHint(inKolux)}`.trim()}
                 onClick={(e) => {
                   e.preventDefault();
                   if (reviewWhere(e, inKolux) === "kolux") openInBrowser(pr.url);
-                  else void invoke("open_external", { url: pr.url });
+                  else openOut(pr.url);
                 }}
               >
                 #{pr.number} {pr.title}
@@ -151,9 +163,14 @@ ${reviewHint(inKolux)}`.trim()}
                 Unlink
               </button>
             </div>
+            <StackMap dir={dir} pr={pr} />
             {data.conflict && <ConflictPanel dir={dir} url={pr.url} />}
             <div className="sb-hint checks-sum">{checksSummary(data.checks)}</div>
-            {note && <div className="note">{note}</div>}
+            {note && (
+              <div className={note.error ? "note error" : "note"} role={note.error ? "alert" : "status"}>
+                {note.text}
+              </div>
+            )}
             {(() => {
               const groups = checkGroups(data.checks);
               const cap = capped(data.checks, CHECK_CAP, "checks");
@@ -170,7 +187,7 @@ ${reviewHint(inKolux)}`.trim()}
                           {label} <span className="count">{groups[key].length}</span>
                           {key === "failing" && (
                             <button className="btn" data-fix-checks title="Start an agent on the failing checks of this pull request" onClick={() => void fixChecks({ dir, pr, checks: data.checks })}>
-                              Fix with an agent
+                              Fix with AI
                             </button>
                           )}
                         </h4>
@@ -205,13 +222,13 @@ ${reviewHint(inKolux)}`.trim()}
                               {c.outcome === "unresolved" && <div>It finished without reporting an outcome.</div>}
                               {c.outcome === "neutral" && <div>It finished neutral, which is not counted as passed.</div>}
                               {c.link && (
-                                <button className="btn" onClick={() => void invoke("open_external", { url: c.link })}>
+                                <button className="btn" onClick={() => openOut(c.link!)}>
                                   Open the check's page
                                 </button>
                               )}
                               {c.outcome === "failed" && c.link && (
-                                <button className="btn" onClick={() => rerun(c)}>
-                                  Rerun failed jobs
+                                <button className="btn" data-rerun disabled={rerunning !== null} title="Ask GitHub to run this check's failed jobs again" onClick={() => rerun(c)}>
+                                  {rerunning === c.name ? "Asking…" : RERUN}
                                 </button>
                               )}
                             </div>

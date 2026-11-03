@@ -8,6 +8,8 @@ import { botToggle, relabelAsBot, toggleBotIn } from "../settings/reviewBots";
 import { useSettings } from "../settings/useSettings";
 import Markdown from "../tasks/MarkdownView";
 import "./comments.css";
+import "./scmUx.css";
+import { emptyBook, rowBusy, rowDone, rowStart, replyBlock, type RowBook } from "./panelUx";
 import {
   REACTION_CHOICES,
   REVIEW_BOTS_KEY,
@@ -36,7 +38,7 @@ type Props = { dir: string; url: string; visible: boolean; extra?: (t: Thread) =
 type Mode = "groups" | "time";
 
 /** A box that sends on Enter (not while an input method composes), Shift+Enter for a new line. */
-function Composer({ label, send, cancel, initial }: { label: string; send: (text: string) => Promise<void>; cancel: () => void; initial?: string }) {
+export function Composer({ label, send, cancel, initial }: { label: string; send: (text: string) => Promise<void>; cancel: () => void; initial?: string }) {
   const [text, setText] = useState(initial ?? "");
   const [busy, setBusy] = useState(false);
   const clean = cleanComment(text);
@@ -64,6 +66,9 @@ function Composer({ label, send, cancel, initial }: { label: string; send: (text
           }
         }}
       />
+      <div className="sb-hint cm-hint" data-composer-hint>
+        Enter sends. Shift+Enter adds a new line.
+      </div>
       <div className="cm-row">
         <button className="btn" disabled={clean === null || busy} onClick={go}>
           {busy ? "Sending…" : "Send"}
@@ -89,6 +94,8 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
   const [adding, setAdding] = useState(false);
   const [replying, setReplying] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // Which cards are mid-action, and the error each last stopped on, so a failure sits next to the card it came from.
+  const [book, setBook] = useState<RowBook>(emptyBook);
   const [picking, setPicking] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -118,19 +125,22 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dir, url, visible]);
 
-  /** One change on GitHub, then the comments are read again so the card shows what GitHub has. */
-  const act = (kind: string, id: string, text?: string): Promise<void> => {
+  /** One change on GitHub, then the comments are read again so the card shows what GitHub has. `row` is the card it belongs to: that card's buttons wait, and its error shows under it. */
+  const act = (kind: string, id: string, text?: string, row: string = id): Promise<void> => {
     setNote(null);
+    setBook((b) => rowStart(b, row));
     return invoke("scm_review_act", { worktree: dir, url, kind, id, text: text ?? null }).then(
       () => {
+        setBook((b) => rowDone(b, row));
         load();
       },
       (e) => {
-        setNote(String(e));
+        setBook((b) => rowDone(b, row, String(e)));
         throw e;
       },
     );
   };
+  const rowError = (row: string) => (book.errors[row] ? <div className="note error" role="alert" data-row-error={row}>{book.errors[row]}</div> : null);
 
   /** GIT-030: puts an author on (or takes one off) the bot list setting, then reads again so their cards sit apart. */
   const toggleBot = (author: string) => {
@@ -185,16 +195,16 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
           key={r.content}
           className={`cm-react${r.mine ? " mine" : ""}`}
           title={r.mine ? "You reacted: press to take it back" : "React the same"}
-          disabled={reactionCall(c, r, inThread) === null}
+          disabled={reactionCall(c, r, inThread) === null || rowBusy(book, c.id)}
           onClick={() => {
             const call = reactionCall(c, r, inThread);
-            if (call) void act(call.kind, call.id, call.text).catch(() => {});
+            if (call) void act(call.kind, call.id, call.text, c.id).catch(() => {});
           }}
         >
           {emojiOf(r.content)} {r.count}
         </button>
       ))}
-      <button className="cm-react add" aria-label="Add a reaction" title="Add a reaction" disabled={c.db_id === null} onClick={() => setPicking(picking === c.id ? null : c.id)}>
+      <button className="cm-react add" aria-label="Add a reaction" title="Add a reaction" disabled={c.db_id === null || rowBusy(book, c.id)} onClick={() => setPicking(picking === c.id ? null : c.id)}>
         +
       </button>
       {picking === c.id && (
@@ -207,7 +217,7 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
               aria-label={r.label}
               onClick={() => {
                 setPicking(null);
-                if (c.db_id !== null) void act(reactKind(inThread), String(c.db_id), r.content).catch(() => {});
+                if (c.db_id !== null) void act(reactKind(inThread), String(c.db_id), r.content, c.id).catch(() => {});
               }}
             >
               {r.emoji}
@@ -236,7 +246,7 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
         </span>
       </div>
       {edit && editing === c.id ? (
-        <Composer label="Edit this comment" initial={c.body} cancel={() => setEditing(null)} send={(text) => act(edit.kind, edit.id, text).then(() => setEditing(null))} />
+        <Composer label="Edit this comment" initial={c.body} cancel={() => setEditing(null)} send={(text) => act(edit.kind, edit.id, text, c.id).then(() => setEditing(null))} />
       ) : (
         <div className="cm-body">
           <Markdown text={c.body} />
@@ -248,10 +258,10 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
           {deleting === c.id ? (
             <>
               <span className="sb-hint">Delete this comment from GitHub?</span>
-              <button className="btn" onClick={() => void act(del.kind, del.id).then(() => setDeleting(null), () => {})}>
-                Delete
+              <button className="btn" disabled={rowBusy(book, c.id)} onClick={() => void act(del.kind, del.id, undefined, c.id).then(() => setDeleting(null), () => {})}>
+                {rowBusy(book, c.id) ? "Deleting…" : "Delete"}
               </button>
-              <button className="btn" onClick={() => setDeleting(null)}>
+              <button className="btn" disabled={rowBusy(book, c.id)} onClick={() => setDeleting(null)}>
                 Keep
               </button>
             </>
@@ -267,11 +277,14 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
           )}
         </div>
       )}
+      {rowError(c.id)}
     </div>
     );
   };
 
-  const thread = (t: Thread) => (
+  const thread = (t: Thread) => {
+    const noReply = replyBlock(t);
+    return (
     <article className={`cm-card thread${t.resolved ? " resolved" : ""}`} key={t.id} data-thread={t.id}>
       {placeOf(t) && (
         <div className="cm-place" title={placeOf(t)}>
@@ -282,12 +295,12 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
       {moreNote(t.more) && <div className="sb-hint">{moreNote(t.more)}</div>}
       <div className="cm-row">
         {replying === t.id ? null : (
-          <button className="btn" onClick={() => setReplying(t.id)}>
+          <button className="btn" data-reply disabled={noReply !== null} title={noReply ?? "Reply to this thread"} onClick={() => setReplying(t.id)}>
             Reply
           </button>
         )}
-        <button className="btn" onClick={() => void act(t.resolved ? "unresolve" : "resolve", t.id).catch(() => {})}>
-          {t.resolved ? "Reopen" : "Resolve"}
+        <button className="btn" disabled={rowBusy(book, t.id)} onClick={() => void act(t.resolved ? "unresolve" : "resolve", t.id).catch(() => {})}>
+          {rowBusy(book, t.id) ? "Working…" : t.resolved ? "Reopen" : "Resolve"}
         </button>
         {!t.resolved && (
           <button className="btn" aria-pressed={queue.includes(t.id)} title="Collect this comment to send to the agent with others" onClick={() => toggleQueue(t.id)}>
@@ -296,15 +309,22 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
         )}
         {extra?.(t)}
       </div>
+      {noReply && replying !== t.id && (
+        <div className="sb-hint" data-reply-block>
+          {noReply}
+        </div>
+      )}
+      {rowError(t.id)}
       {replying === t.id && t.comments[0]?.db_id != null && (
         <Composer
           label="Reply to this thread"
           cancel={() => setReplying(null)}
-          send={(text) => act("reply", String(t.comments[0].db_id), text).then(() => setReplying(null))}
+          send={(text) => act("reply", String(t.comments[0].db_id), text, t.id).then(() => setReplying(null))}
         />
       )}
     </article>
-  );
+    );
+  };
 
   const talk = (c: Comment) => (
     <article className="cm-card" key={c.id}>
@@ -343,7 +363,8 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
           </button>
         </div>
       </div>
-      {adding && <Composer label="Write a comment on the pull request" cancel={() => setAdding(false)} send={(text) => act("comment", "0", text).then(() => setAdding(false))} />}
+      {adding && <Composer label="Write a comment on the pull request" cancel={() => setAdding(false)} send={(text) => act("comment", "0", text, "add").then(() => setAdding(false))} />}
+      {rowError("add")}
       {note && <div className="note error">{note}</div>}
       {queued.length > 0 && (
         <div className="cm-row cm-queue">

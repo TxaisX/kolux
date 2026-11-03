@@ -5,6 +5,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ActionOutcome, Pr, Status } from "./model";
+import { restoreFocus } from "../shell/paletteCaps";
+import { watchEscape } from "../switcher/accounts";
+import { hideDraft, keepDraft, shownDraft, startDraft, type DraftBook } from "./panelUx";
 import SearchPick from "../editor/SearchPick";
 import { needsOneClick, useOneClick } from "./oneClick";
 import OneClickNotice from "./OneClickNotice";
@@ -18,6 +21,8 @@ type Draft = { title: string; body: string; base: string; draft: boolean };
 
 /** Hard errors by worktree live outside the component so another worktree's panel never clears them. */
 let errors: ErrorBook = {};
+/** The composer's text by folder, so another folder's panel never shows (or loses) this one's draft. */
+const drafts: DraftBook = new Map();
 
 export default function PrStart({ dir, provider, host, onCreated }: Props) {
   const [seen, setSeen] = useState<{ dir: string; status: Status; ready: Readiness } | null>(null);
@@ -34,6 +39,14 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
   asking.current = dir;
   const latest = useRef<Draft | null>(null);
   latest.current = draft;
+  /** Sets the composer's text and keeps it for this folder (null forgets it). */
+  const setDraftFor = (d: Draft | null) => {
+    keepDraft(drafts, dir, d);
+    setDraft(d);
+  };
+  const opener = useRef<HTMLElement | null>(null); // what had focus when the composer was asked for, to give it back on dismiss
+  const focusTitle = useRef(false);
+  const titleBox = useRef<HTMLInputElement>(null);
   const [review, setReview] = useState<ReviewSlot>(null); // VIEW-074 / GIT-025: the linked-pull-request lookup, kept by worktree and branch
   const session = useRef(0); // bumped each time the composer opens or closes; a draft finishing in an older one is dropped
 
@@ -52,7 +65,9 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
   };
   useEffect(() => {
     session.current++;
-    setDraft(null);
+    const kept = shownDraft(drafts, dir); // this folder's composer, if it was open when the user left it
+    setDraft(kept);
+    if (kept) prepareComposer();
     setSeen(null);
     setWriteNote(null);
     void check();
@@ -84,18 +99,51 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
   };
   // The composer opens only on a confirmed answer; a stale one is read again first.
   const open = async () => {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; // before the state change that opens the form
     errors = dismiss(errors, dir);
     if (blockedBy !== null) return;
     let now: { status: Status; ready: Readiness } | null = mine;
     if (!now || !confirmed(now.ready, readinessKey(dir, now.status), Date.now())) now = await check();
     if (!now || now.ready.reason !== null) return tick((n) => n + 1);
     session.current++;
-    setDraft({ title: "", body: "", base: (now.status.base ?? "").replace(/^origin\//, ""), draft: false });
+    focusTitle.current = true;
+    setDraftFor(startDraft(drafts, dir, { title: "", body: "", base: (now.status.base ?? "").replace(/^origin\//, ""), draft: false }));
+    prepareComposer();
+  };
+  /** What the open composer needs: the branch suggestions for Base and whether the AI draft button is offered. */
+  function prepareComposer() {
     invoke<string[]>("worktree_branches", { path: dir }).then((b) => asking.current === dir && setBranches(b), () => setBranches([]));
     setAiOffered(false);
     setWriteNote(null);
     void offerDraft();
+  }
+  /** Closes the composer. `keep` leaves what was typed for the next time (Escape); Cancel throws it away. Focus goes back to the button that opened it. */
+  const closeComposer = (keep: boolean) => {
+    session.current++;
+    if (keep) hideDraft(drafts, dir);
+    else keepDraft(drafts, dir, null);
+    setDraft(null);
+    setWriteNote(null);
+    queueMicrotask(() => {
+      const prev = opener.current;
+      const again = document.querySelector<HTMLElement>("[data-pr-start] [data-pr-open]"); // the button is drawn again once the form is gone
+      restoreFocus(prev && prev.isConnected ? prev : again, (sel) => document.querySelector<HTMLElement>(sel));
+    });
   };
+  // Escape closes the form while it is open; a list open inside it (the Base suggestions) takes the key first.
+  const composerOpen = draft !== null;
+  useEffect(() => {
+    if (!composerOpen || busy) return;
+    return watchEscape(window, () => closeComposer(true), () => !document.querySelector(".scm-pr [aria-expanded='true']"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [composerOpen, busy, dir]);
+  // The title box takes focus when the user opens the form (not when a kept form comes back with its folder).
+  useEffect(() => {
+    if (composerOpen && focusTitle.current) {
+      focusTitle.current = false;
+      titleBox.current?.focus();
+    }
+  }, [composerOpen]);
   const readGate = () => readDraftGate(dir);
   const offerDraft = async () => {
     const { settings, gate } = await readGate();
@@ -119,7 +167,7 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
         if (result.state === "busy") setWriteNote("A draft is already being written for this worktree.");
       }
       const out = settleDraft(latest.current, snap, result, started, session.current);
-      setDraft(out.draft);
+      setDraftFor(out.draft);
       if (out.note) setWriteNote(out.note);
     }
   };
@@ -133,7 +181,7 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
       }
       const pr = await invoke<Pr>("scm_pr_create", { worktree: dir, title: d.title, body: d.body, base: d.base, draft: d.draft });
       session.current++;
-      setDraft(null);
+      setDraftFor(null);
       onCreated(pr);
     } catch (err) {
       fail(String(err));
@@ -191,8 +239,8 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
       )}
       {draft && (
         <div className="scm-ask scm-pr" role="dialog" aria-label="Create pull request">
-          <input className="field" aria-label="pull request title" placeholder="Title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
-          <textarea className="field multi" aria-label="pull request description" placeholder="Description" value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+          <input ref={titleBox} className="field" aria-label="pull request title" placeholder="Title" value={draft.title} onChange={(e) => setDraftFor({ ...draft, title: e.target.value })} />
+          <textarea className="field multi" aria-label="pull request description" placeholder="Description" value={draft.body} onChange={(e) => setDraftFor({ ...draft, body: e.target.value })} />
           {aiOffered && (
             <div className="btn-row">
               <button className="btn" data-pr-draft disabled={writingNow || busy || !draft.base.trim()} title="Write the title and description from this branch's changes" onClick={() => void write(draft)}>
@@ -207,20 +255,21 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
           )}
           <label className="scm-pr-base">
             <span>Base</span>
-            <SearchPick items={branches} label="base branch" value={draft.base} onChange={(base) => setDraft({ ...draft, base })} />
+            <SearchPick items={branches} label="base branch" value={draft.base} onChange={(base) => setDraftFor({ ...draft, base })} />
           </label>
           <label className="conn-switch">
-            <input type="checkbox" checked={draft.draft} onChange={(e) => setDraft({ ...draft, draft: e.target.checked })} />
+            <input type="checkbox" checked={draft.draft} onChange={(e) => setDraftFor({ ...draft, draft: e.target.checked })} />
             <span>Open as a draft</span>
           </label>
           <div className="btn-row">
             <button className="btn primary" data-pr-create disabled={busy || !draft.title.trim() || !draft.base.trim()} title={!draft.title.trim() ? "Write a title first" : undefined} onClick={() => void create(draft, push)}>
               {busy ? "Creating…" : `${push === "none" ? "Create" : "Push and create"}${draft.draft ? " draft" : ""} pull request`}
             </button>
-            <button className="btn" onClick={() => (session.current++, setDraft(null), setWriteNote(null))}>
+            <button className="btn" data-pr-cancel onClick={() => closeComposer(false)}>
               Cancel
             </button>
           </div>
+          <div className="sb-hint">Esc closes this form and keeps what you typed; Cancel clears it.</div>
         </div>
       )}
     </div>

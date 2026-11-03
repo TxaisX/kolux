@@ -3,24 +3,26 @@
 // through the orchestration send. If no agent runs there, it says so and the prompt can be copied.
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
+import { copyText } from "./panelUx";
 import { conflictView, type Conflicts } from "./review";
 
 type Props = { dir: string; url: string };
 
-function CopyButton({ text, label }: { text: string; label: string }) {
-  const [done, setDone] = useState(false);
+function CopyButton({ text, label, onFail }: { text: string; label: string; onFail: (failed: boolean) => void }) {
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
   return (
     <button
       className="btn"
+      data-copy-state={state}
       onClick={() => {
-        const ok = () => {
-          setDone(true);
-          setTimeout(() => setDone(false), 1500);
-        };
-        navigator.clipboard?.writeText(text).then(ok, () => {});
+        void copyText(text).then((ok) => {
+          setState(ok ? "done" : "failed");
+          onFail(!ok);
+          setTimeout(() => setState("idle"), 1500);
+        });
       }}
     >
-      {done ? "Copied" : label}
+      {state === "done" ? "Copied" : state === "failed" ? "Copy failed" : label}
     </button>
   );
 }
@@ -30,12 +32,14 @@ export default function ConflictPanel({ dir, url }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   useEffect(() => {
     let live = true;
     setC(null);
     setError(null);
     setSent(null);
+    setCopyFailed(false);
     invoke<Conflicts>("scm_pr_conflicts", { worktree: dir, url }).then(
       (r) => live && setC(r),
       (e) => live && setError(String(e)),
@@ -71,12 +75,17 @@ export default function ConflictPanel({ dir, url }: Props) {
       <div className="cm-row">
         {c?.prompt && (
           <button className="btn" disabled={busy} onClick={resolve}>
-            {busy ? "Sending…" : "AI resolve"}
+            {busy ? "Sending…" : "Resolve with AI"}
           </button>
         )}
-        {c?.prompt && <CopyButton text={c.prompt} label="Copy prompt" />}
-        {v.commands.length > 0 && <CopyButton text={v.commands.join("\n")} label="Copy commands" />}
+        {c?.prompt && <CopyButton text={c.prompt} label="Copy prompt" onFail={setCopyFailed} />}
+        {v.commands.length > 0 && <CopyButton text={v.commands.join("\n")} label="Copy commands" onFail={setCopyFailed} />}
       </div>
+      {copyFailed && (
+        <div className="note error" role="alert" data-copy-error>
+          Copy failed: this window could not write to the clipboard. Select the text above and copy it by hand.
+        </div>
+      )}
       {sent && <div className="sb-hint">Sent to {sent}. Check the pull request again once the agent has merged and pushed.</div>}
     </div>
   );

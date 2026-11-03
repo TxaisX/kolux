@@ -14,3 +14,6 @@
 .apr-files li { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono, monospace); font-size: 11px; color: var(--fg-muted); }
 .apr-notes { min-width: 0; margin-top: 6px; }
 .apr-empty { margin: 0; color: var(--fg-muted); font-size: 12px; }
+
+.apr-actions { display: flex; gap: 4px; }
+.apr-actions .btn { padding: 2px 8px; font-size: 12px; }

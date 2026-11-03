@@ -6,6 +6,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { mergeActions, mergeLabel, type MergeInfo, type Pr } from "./model";
 import { chainThrough, mergeThrough, nextInStack, type StackItem } from "./stack";
 import { createNext } from "./stackCreate";
+import { openFailed } from "./panelUx";
+import "./scmUx.css";
 
 type StackList = { trunk: string; prs: StackItem[] };
 type Open = { trunk: string; prs: StackItem[] };
@@ -89,6 +91,8 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
   };
 
   const next = shown ? nextInStack(shown.items, pr.number) : null;
+  /** A link that will not open says so in the note, never silently. */
+  const openOut = (url: string) => void invoke("open_external", { url }).catch((e) => setNote(openFailed(e)));
   return (
     <details className="stack-map" data-stack-map onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && void load()}>
       <summary>Stack</summary>
@@ -97,7 +101,7 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
         <ol className="stack-list">
           {shown.items.map((p) => (
             <li key={p.number} aria-current={p.number === pr.number ? "true" : undefined}>
-              <a href={p.url} onClick={(e) => (e.preventDefault(), void invoke("open_external", { url: p.url }))}>
+              <a href={p.url} onClick={(e) => (e.preventDefault(), openOut(p.url))}>
                 #{p.number}
               </a>{" "}
               <span className="name">{p.title || p.head}</span> <code>{p.head}</code> <span className="sb-hint">{shown.holds[p.number] ?? "Ready to merge"}</span>
@@ -109,7 +113,7 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
         </ol>
       )}
       {next && (
-        <button className="btn" data-stack-next onClick={() => void invoke("open_external", { url: next.url })}>
+        <button className="btn" data-stack-next onClick={() => openOut(next.url)}>
           Open the next pull request (#{next.number})
         </button>
       )}
