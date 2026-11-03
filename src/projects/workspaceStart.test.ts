@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { startPanes } from "./workspaceStart";
+import { emptySeat } from "../launch/seats";
+import { createStart, startPanes } from "./workspaceStart";
 
 test("T-569: a workspace with no pane starts with one chooser (seats, no program), not a terminal", () => {
   let k = 5;
@@ -16,22 +17,45 @@ test("T-569: a fresh workspace gets one chooser per default pane, each with its 
   expect(startPanes("d", null, 0, () => k++)).toHaveLength(1);
 });
 
-test("T-664 (b): a prefill puts the picked AI in Seat 1 of the first chooser and the note in its task; other choosers stay empty", () => {
+test("T-664 (b): a prefill puts its seat in Seat 1 of the first chooser and the note in its task; other choosers stay empty", () => {
   let k = 1;
-  const [first, second] = startPanes("d", "main", 2, () => k++, { agent: "claude", task: "fix the login bug" });
-  expect(first.seats).toEqual([{ agent: "claude", model: null }]);
+  const seat = { agent: "claude", model: "opus", effort: "high" };
+  const [first, second] = startPanes("d", "main", 2, () => k++, { seat, task: "fix the login bug" });
+  expect(first.seats).toEqual([seat]);
   expect(first.task).toBe("fix the login bug");
   expect(first.program, "nothing runs until Start").toBeNull();
   expect(second.seats).toEqual([{ agent: null, model: null }]);
   expect(second.task).toBeUndefined();
 });
 
-test("T-664 (b): an AI with no note leaves the task unset; a note with no AI leaves Seat 1 unpicked; no prefill is unchanged", () => {
+test("T-664 (b): no note leaves the task unset; a note with an empty seat leaves Seat 1 unpicked; no prefill is unchanged", () => {
   let k = 1;
-  const [a] = startPanes("d", null, 1, () => k++, { agent: "codex", task: "" });
+  const [a] = startPanes("d", null, 1, () => k++, { seat: { agent: "codex", model: null }, task: "" });
   expect([a.seats, a.task]).toEqual([[{ agent: "codex", model: null }], undefined]);
-  const [b] = startPanes("d", null, 1, () => k++, { agent: null, task: "note" });
+  const [b] = startPanes("d", null, 1, () => k++, { seat: emptySeat(), task: "note" });
   expect([b.seats, b.task]).toEqual([[{ agent: null, model: null }], "note"]);
   const [c] = startPanes("d", null, 1, () => k++);
   expect("task" in c).toBe(false);
+});
+
+// T-664 (b): every row of the create decision. No front create may start an agent; a background create keeps its auto-start.
+test("T-664 (b): createStart: hasAgent, hasNote, front, waits -> what happens", () => {
+  const rows: [boolean, boolean, boolean, boolean, string][] = [
+    [true, false, true, false, "select-prefill"],
+    [true, true, true, true, "select-prefill"],
+    [true, false, true, true, "select-prefill"],
+    [false, true, true, false, "select-prefill"], // a note with no AI installed still reaches the task
+    [false, false, true, false, "select"],
+    [false, false, true, true, "select"],
+    [true, false, false, false, "start"],
+    [true, true, false, false, "start"],
+    [true, true, false, true, "setup-then-start"],
+    [false, true, false, false, "none"],
+    [false, false, false, true, "none"],
+  ];
+  for (const [agent, note, front, waits, want] of rows) {
+    const got = createStart(agent, note, front, waits);
+    expect(got, JSON.stringify({ agent, note, front, waits })).toBe(want);
+    if (front) expect(["start", "setup-then-start"]).not.toContain(got);
+  }
 });

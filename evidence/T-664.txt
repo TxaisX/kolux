@@ -34,19 +34,22 @@ Txais's ask: "i wnat this to come up as the first thing when they open a new wor
     src/projects/useWorkspaces.test.ts    select(new dir, ..., prefill) -> chooser with seats[0].agent and task, no program;
                                           select on a workspace that has panes ignores the prefill
     src/launch/agentInstall.test.ts       pickList leaves its input array's order unchanged
-  The ProjectsPanel create path itself is not unit-tested: it is one async handler inside a 2.9k-line component driven by
-  invoke() calls to the Rust side, and the repo has no harness that mounts it through a create. The decision it makes is
-  covered at the select/startPanes seam; REST: confirm live on Windows.
+  The ProjectsPanel create handler itself is not mounted in a test (one async handler in a very large component, driven by
+  invoke() calls to Rust); its branching is the pure createStart, table-tested below. REST: confirm live on Windows.
 
-Rows: PLAN.md T-664, DECISIONS.md DT-C100 (T-570's "featured three first" is replaced by A to Z on Txais's ask).
-(PLAN.md, DECISIONS.md and evidence files in this checkout use LF line ends, so the new rows and this file do too.)
+Review fixes (second commit, B+ review):
+  1. The pre-filled Seat 1 now starts the way a dropdown pick does: useWorkspaces.select builds it with
+     seatStart(agent, seatDefault(settings)) (src/launch/defaultSeat.ts, T-571), so it carries the default model and effort and
+     Start is ready. startPanes now takes a finished seat ({seat, task}). Test: a pre-filled claude seat has model "opus" and passes seatReady.
+  2. A note with no AI installed still reaches the task: ProjectsPanel passes the prefill when agent || note.
+  3. The create decision is the small pure function createStart(hasAgent, hasNote, front, waits) in workspaceStart.ts, table-tested
+     (11 rows): no front row returns "start" or "setup-then-start"; background keeps "start" / "setup-then-start" / "none".
+  4. The stale "opens with a shell of its own" comments in ProjectsPanel.tsx now say the launch chooser.
 
-Gates (worktree G:/Dev/kolux-rs-sessions/wt/57-launch, run 2026-11-02, after part b):
+Gates (worktree G:/Dev/kolux-rs-sessions/wt/57-launch, run 2026-11-02, after the review fixes, inside the s-57 slot):
   node scripts/plan-check.mjs                    -> plan-check: OK (head: cutline left 0/18 · merge gate 1 waiting · P0 cards passing 217/228 · done 747/804 tasks)
   pnpm exec tsc --noEmit                         -> exit 0, no output
-  VITEST_MAX_WORKERS=2 pnpm exec vitest run      -> Test Files 2 failed | 730 passed (732); Tests 4 failed | 5415 passed (5419)
-      the 4 failures: 3 in src/editor/pdfjsCopy.test.ts (known CRLF-checkout failure, ignored) and 1 in
-      src/editor/editPlacement.test.ts (60 paragraphs; passes alone: Test Files 1 passed (1); Tests 43 passed (43); a load flake of the full run)
-  VITEST_MAX_WORKERS=2 pnpm exec vitest run src/projects/workspaceStart.test.ts src/projects/useWorkspaces.test.ts -> Test Files 2 passed (2); Tests 8 passed (8)
-  pnpm exec vite build                           -> built in 2.18s
-  node scripts/bundle-budget.mjs                 -> bundle-budget: first load 1455881 bytes in 44 chunks (ceiling 1485000); bundle-budget: OK
+  VITEST_MAX_WORKERS=2 pnpm exec vitest run      -> Test Files 1 failed | 731 passed (732); Tests 3 failed | 5418 passed (5421)
+      the 3 failures are all src/editor/pdfjsCopy.test.ts (known CRLF-checkout failure, ignored)
+  pnpm exec vite build                           -> built in 2.30s
+  node scripts/bundle-budget.mjs                 -> bundle-budget: first load 1456134 bytes in 44 chunks (ceiling 1485000); bundle-budget: OK
