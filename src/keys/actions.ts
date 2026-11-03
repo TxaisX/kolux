@@ -92,7 +92,7 @@ export const actions: Action[] = [
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
   a("sidebar.focusWorktreeList", "Focus worktree list", "global", ["Mod+Shift+0"]),
   a("floatingTerminal.toggle", "Toggle Floating Terminal", "global", ["Mod+Alt+A"], { terminalSafe: true }),
-  a("floatingWorkspace.maximize", "Maximize Floating Workspace Panel", "global", ["Mod+Shift+Period"], { darwin: ["Mod+Alt+Shift+A"] }),
+  a("floatingWorkspace.maximize", "Maximize Floating Workspace Panel", "global", ["Mod+Shift+Backslash"], { darwin: ["Mod+Alt+Shift+A"] }),
   a("view.inbox", "Show Inbox", "global", []),
   a("view.tower", "Show Tower", "global", []),
   // T-548 (OD-11): one key moves new panes to the provider's next account; unbound until Txais picks a chord.

@@ -3,7 +3,7 @@ import { actionById } from "./actions";
 import { heldByOverlay, PANE_CLOSE_EVENT, paneCloseClaimed } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
-const box = (shown: boolean) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null });
+const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
 const root = (overlays: unknown[], settings: unknown = null) => ({
   querySelector: (s: string) => (s.startsWith(".settings") ? settings : null),
   querySelectorAll: () => overlays,
@@ -13,6 +13,11 @@ test("a showing dialog or menu holds global shortcuts; none showing lets them ru
   expect(heldByOverlay("tab.newTerminal", false, root([]) as never)).toBe(false);
   expect(heldByOverlay("tab.newTerminal", false, root([box(true)]) as never)).toBe(true);
   expect(heldByOverlay("tab.newTerminal", false, root([box(false)]) as never), "hidden").toBe(false);
+});
+
+test("a panel that stays open (floating workspace, agent question card, plan sheet) holds nothing", () => {
+  expect(heldByOverlay("terminals.focusNextNeedsYou", false, root([box(true, true)]) as never)).toBe(false);
+  expect(heldByOverlay("tab.newTerminal", false, root([box(true, true), box(true)]) as never), "a menu over it still holds").toBe(true);
 });
 
 test("the open Settings page alone holds nothing; a dialog inside it does", () => {

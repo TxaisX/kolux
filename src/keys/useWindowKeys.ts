@@ -9,14 +9,13 @@ import { openInBrowser } from "../browser/openIn";
 import { takeClosed } from "../browser/pages";
 import { screens, type Screen } from "../chrome/TopBar";
 import { SCREEN_OF } from "../chrome/reach";
-import { overlayShowing } from "../chrome/fullPage";
 import { closedPanes, folderKind, paneFor, placement } from "../chrome/reopenTab";
 import { isMarkdown } from "../editor/mdFiles";
 import { copiers, diffNav, editors } from "../keys/handles";
 import { NOTHING_TO_SEND, sendRoute } from "../editor/noteCommands";
 import { reviewOn, selections } from "../editor/notes";
 import { floatingKeys } from "../floating/keys";
-import { navTarget } from "../projects/nav";
+import { navTarget, stepAllowed } from "../projects/nav";
 import { SHOW_SLEEPING_SETTING, showSleepingFrom } from "../projects/rows";
 import { stepZoom } from "../settings/zoom";
 import { openTabSearch } from "../shell/findTab";
@@ -39,10 +38,6 @@ import { flushSync } from "react-dom";
 
 type Root = Pick<ParentNode, "querySelector" | "querySelectorAll">;
 
-/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up (chrome/fullPage.ts
- *  overlayShowing), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
- *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
- *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
 export const SHOW_PROJECTS_EVENT = "kolux:show-projects";
 /** UX lane C (request from D): Ctrl+W asks the pane first. A pane with its own close path (the browser pane's
  * download / unsent-notes warning) listens for this event on window, calls preventDefault and closes itself. */
@@ -51,10 +46,22 @@ export function paneCloseClaimed(paneId: number): boolean {
   return !window.dispatchEvent(new CustomEvent(PANE_CLOSE_EVENT, { detail: { paneId }, cancelable: true }));
 }
 
+/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up (the same overlays as
+ *  chrome/fullPage.ts), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
+ *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
+ *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
+// Panels that stay on screen while the user works (the floating workspace, an agent's question card, the browser's
+// cookie steps, a plan under review, the update card) carry role="dialog" too but are not in the way: they hold nothing.
+const OVERLAYS = '.menu, [role="menu"], [role="dialog"], .pick-list, .font-list, .popover, .palette';
+const STAYS_OPEN = ".float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card";
+
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
-  const settings = doc.querySelector(".settings[role='dialog']");
-  return overlayShowing((settings ?? doc) as ParentNode);
+  const root = doc.querySelector(".settings[role='dialog']") ?? doc;
+  return [...root.querySelectorAll(OVERLAYS)].some((el) => {
+    const h = el as HTMLElement;
+    return h.getClientRects().length > 0 && !h.closest("[hidden]") && !h.matches(STAYS_OPEN);
+  });
 }
 
 /** The next screen in the Agents / Board / Terminals cycle. */
@@ -92,7 +99,11 @@ export function useWindowKeys(w: WindowBag) {
         matchEvent(keymap, e, scopesFor({ screen, kind, inTree })) ||
         // GIT-042: a preview tab takes the one editor shortcut that applies to it.
         (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
-      if (!hit || heldByTerminal(hit.id, settings) || heldByOverlay(hit.id, !!switcherRef.current)) return;
+      if (!hit || heldByTerminal(hit.id, settings)) return;
+      if (heldByOverlay(hit.id, !!switcherRef.current)) {
+        e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
+        return;
+      }
       const inFront = panesIn(panes, activeDir).some((p) => p.key === focused);
       switch (hit.id) {
         case "focus.chrome":
@@ -173,7 +184,8 @@ export function useWindowKeys(w: WindowBag) {
         case "worktree.history.back":
         case "worktree.history.forward":
           if (!step(hit.id === "worktree.history.back" ? -1 : 1)) {
-            setToast(hit.id === "worktree.history.back" ? "No earlier workspace to go back to." : "No later workspace to go forward to.");
+            if (!stepAllowed(screen === "terminals", settingsOpen)) setToast("Back and Forward work on the Terminals screen.");
+            else setToast(hit.id === "worktree.history.back" ? "No earlier workspace to go back to." : "No later workspace to go forward to.");
             return;
           }
           break;
