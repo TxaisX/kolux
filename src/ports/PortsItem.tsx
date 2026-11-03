@@ -10,7 +10,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { openInBrowser } from "../browser/openIn";
-import { PrintedUrls, afterScan, decodeOutput, openAddress, openWhere, ownCount, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
+import { restoreFocus } from "../shell/paletteCaps";
+import { watchEscape } from "../switcher/accounts";
+import { PrintedUrls, afterScan, capNote, decodeOutput, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
+import "./ports.css";
 
 type Props = { active: string | null; workspaces: string[] };
 
@@ -22,7 +25,13 @@ export default function PortsItem({ active, workspaces }: Props) {
   const [view, setView] = useState<PortsView>({ rows: [], error: null });
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [noteBad, setNoteBad] = useState(false);
+  const [stopping, setStopping] = useState<string[]>([]);
   const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const wasOpen = useRef(false);
+  // The row key of a Stop that was pressed with keyboard focus on it: when that row disappears focus would fall to the page body.
+  const stopFocus = useRef<string | null>(null);
   const latest = useRef({ active, workspaces });
   latest.current = { active, workspaces };
 
@@ -31,6 +40,21 @@ export default function PortsItem({ active, workspaces }: Props) {
     const off = listen<{ id: number; data: string }>("terminal-output", (e) => printed.record(decodeOutput(e.payload.data), e.payload.id));
     return () => void off.then((f) => f());
   }, [printed]);
+
+  // Escape closes the popover wherever focus is; focus goes into it on open and back to the trigger on close.
+  useEffect(() => (open ? watchEscape(window, () => setOpen(false)) : undefined), [open]);
+  useEffect(() => {
+    if (open) menu.current?.focus();
+    else if (wasOpen.current) restoreFocus(button.current, (sel) => document.querySelector<HTMLElement>(sel));
+    wasOpen.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    const k = stopFocus.current;
+    if (k === null || !open || view.rows.some((r) => rowKey(r) === k)) return;
+    stopFocus.current = null;
+    menu.current?.focus();
+  }, [view.rows, open]);
 
   useEffect(() => {
     if (active === null) return setView({ rows: [], error: null });
@@ -50,44 +74,59 @@ export default function PortsItem({ active, workspaces }: Props) {
 
   if (active === null) return null;
   const rect = open ? button.current?.getBoundingClientRect() : null;
-  const stop = (r: PortRow) =>
-    invoke<StopOutcome>("ports_stop", stopArgs(workspaces, active, r))
-      .then((outcome) => setNote(stopNote(r.port, outcome)))
-      .catch((err) => setNote(String(err)));
+  const say = (text: string, bad = false) => (setNote(text), setNoteBad(bad));
+  const stop = (r: PortRow, focused: boolean) => {
+    const k = rowKey(r);
+    // aria-disabled, not disabled: a disabled button drops the focus it holds.
+    if (stopping.includes(k)) return Promise.resolve();
+    stopFocus.current = focused ? k : null;
+    setStopping((s) => [...s, k]);
+    return invoke<StopOutcome>("ports_stop", stopArgs(workspaces, active, r))
+      .then((outcome) => {
+        if (outcome !== "stopped") stopFocus.current = null;
+        say(stopNote(r.port, outcome));
+      })
+      .catch((err) => {
+        stopFocus.current = null;
+        say(`Could not stop port ${r.port}: ${err}`, true);
+      })
+      .finally(() => setStopping((s) => s.filter((x) => x !== k)));
+  };
   const openRow = (r: PortRow, e: MouseEvent) => {
     const url = openAddress(r, printed.forPort(r.port, view.rows));
-    if (openWhere(e) === "system") void invoke("open_external", { url }).catch((err) => setNote(String(err)));
+    if (openWhere(e) === "system") void invoke("open_external", { url }).catch((err) => say(String(err), true));
     else openInBrowser(url);
   };
   return (
     <>
-      <button ref={button} className="item ports-open" data-item="ports" title="Ports this workspace is listening on" aria-haspopup="dialog" aria-expanded={open} onClick={() => (setNote(null), setOpen((o) => !o))}>
+      <button ref={button} className="item ports-open" data-item="ports" title="Ports this workspace is listening on" aria-haspopup="dialog" aria-expanded={open} onClick={() => (setNote(null), setNoteBad(false), setOpen((o) => !o))}>
         Ports {ownCount(view.rows)}
       </button>
       {open && (
         <>
           <div className="menu-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div className="menu ports-menu" role="dialog" aria-label="Ports" style={{ left: Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - 380)), bottom: Math.max(8, window.innerHeight - (rect?.top ?? 0) + 4), minWidth: 340 }}>
+          <div ref={menu} tabIndex={-1} className="menu ports-menu" role="dialog" aria-label="Ports" style={{ left: Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - 380)), bottom: Math.max(8, window.innerHeight - (rect?.top ?? 0) + 4), minWidth: 340 }}>
             <div className="menu-title">Ports</div>
             {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
-            {note && <div className="note">{note}</div>}
+            <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>
             {view.rows.length === 0 && !view.error && <div className="sb-hint">Nothing in this workspace is listening on a port.</div>}
             {view.rows.map((r) => (
-              <div key={`${r.port}-${r.pid}`} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
+              <div key={rowKey(r)} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
                 <span className="name">
                   {r.port} <span className="reason">{openAddress(r, printed.forPort(r.port, view.rows))}</span>
                   {r.external && <span className="reason"> · external</span>}
                 </span>
-                <button className="btn" title="Open in the Kolux browser (Shift+Ctrl-click: system browser)" onClick={(e) => openRow(r, e)}>
+                <button className="btn" aria-label={`Open port ${r.port}`} title="Open in the Kolux browser (Shift+Ctrl-click: system browser)" onClick={(e) => openRow(r, e)}>
                   Open
                 </button>
                 {!r.external && (
-                  <button className="btn" title="Stop the process listening here" onClick={() => void stop(r)}>
-                    Stop
+                  <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" aria-disabled={stopping.includes(rowKey(r)) ? true : undefined} onClick={(e) => void stop(r, document.activeElement === e.currentTarget)}>
+                    {stopping.includes(rowKey(r)) ? "Stopping…" : "Stop"}
                   </button>
                 )}
               </div>
             ))}
+            {capNote(view.rows) && <div className="sb-hint">{capNote(view.rows)}</div>}
           </div>
         </>
       )}

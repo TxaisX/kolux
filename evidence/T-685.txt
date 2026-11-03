@@ -1,0 +1,65 @@
+T-685 - The Artifacts page and the Ports popover work from the keyboard, and Remove asks first (DT-C121; VIEW-012, SKILL-036, VIEW-078; UX audit lane D)
+Lane D (72), branch s-72/ux-5 (#102), base e93a23ba (origin/main), code commits 31ab6f1d and f75258aa, 2026-11-02.
+This is the artifacts-and-ports part of the browser/artifacts/ports group; its sibling #99 (T-677 / DT-C113) covers the browser pane. Merge after #99.
+Source: proof/ux-audit/findings/browser-artifacts.md (rows F4, F6, picker and loading rows) and findings/destructive.md row 4.
+
+WHAT CHANGED
+- Artifacts: the x on a row now opens an "Remove <title>?" confirm (the shared Ask dialog) that says the stored copy is
+  deleted and the original file is not touched; nothing is deleted until Remove is pressed. It used to delete on one click.
+- Artifacts list: each row is a plain select button with its own Remove button beside it (named "Remove <title>"), in a list
+  per project, instead of a button inside a listbox option. Enter and Space select; Up/Down/Home/End move between rows
+  (wrapping). After Cancel or Escape, focus goes back to the x; after Remove it goes to the next row, else the previous one,
+  else the search box.
+- Artifacts viewer: a failed file picker shows a toast (closing the picker without a pick stays silent); "Loading..." turns
+  into "This page is taking a long time to load. It may be empty or broken." after 10 s; the frame stays hidden until it
+  loads, which removes the white flash in a dark theme. The status line is mounted before its text so it is announced.
+- Ports popover: Escape closes it wherever focus is; focus goes into it on open and back to the Ports button on close;
+  a long list scrolls inside the popover (at most 60% of the window or 420 px high); Open and Stop are named by port
+  ("Open port 5173", "Stop port 5173"); Stop reads "Stopping..." and cannot be pressed twice while it runs; a failed Stop
+  shows a red "Could not stop port N: ..." note; when the row whose Stop had focus goes away, focus moves to the popover
+  instead of falling to the page. When the scan hits its cut of 12 external ports the popover says "Showing the first 12
+  external ports; more may be listening."
+- Not done (listed, not hidden): "Open <ext>" opening the stored copy's folder (needs a new Rust field: the stored copy's
+  path is not sent to the front end); the shared netstat poll (spans another PR's files); an exact "N more" external count
+  (needs Rust). No Rust was touched.
+- spec/05-views-navigation.md (VIEW-012, VIEW-078) and spec/15-skills-plugins-kits.md (SKILL-036): Rules and Acceptance
+  match the above; Acceptance lines point here.
+
+WHY
+Static UX audit found that the x on an artifact deleted the stored copy on one click, that a button inside a listbox option
+could not be reached or named properly by keyboard and screen readers, that the Ports popover ignored Escape, lost focus and
+could run off the screen, that Stop could be pressed twice and its failures were shown as plain text, and that a page which
+never loaded showed "Loading..." for good. Each fix is the smallest change that gives the keyboard and the second chance back.
+
+REVIEW
+Opus review B+ -> fix pass (f75258aa) -> re-review A-.
+
+TESTS (named; pnpm vitest run <the seven files below> --reporter=verbose, 35 tests)
+ ✓ src/artifacts/ArtifactsPage.focus.test.ts > Cancel returns focus to the x that opened the confirm and leaves the row in place 212ms
+ ✓ src/artifacts/ArtifactsPage.focus.test.ts > Escape returns focus to the x that opened the confirm 59ms
+ ✓ src/artifacts/ArtifactsPage.focus.test.ts > Remove moves focus to the next row's select button 46ms
+ ✓ src/artifacts/ArtifactsPage.focus.test.ts > removing the last row moves focus to the previous row 47ms
+ ✓ src/artifacts/ArtifactsPage.focus.test.ts > removing the only row moves focus to the search box 46ms
+ ✓ src/artifacts/ArtifactsPage.ux.test.ts > a file picker that fails is reported; closing it without a pick is not 178ms
+ ✓ src/artifacts/ArtifactsPage.ux.test.ts > a page that never loads says so after the wait, and its frame stays hidden until it loads 49ms
+ ✓ src/artifacts/ArtifactsPage.test.ts > focus after a removal > goes to the next row, else the previous, else nowhere 0ms
+ ✓ src/artifacts/__cards__/VIEW-012.test.ts > box 3: removing the selected item leaves the list and the preview closes 50ms   (now asks first: nothing is removed before Remove is pressed)
+ ✓ src/artifacts/__cards__/SKILL-036.test.ts > box 2: a clicked link leaves the viewer as a message, and the page hands it to the system opener, not to Kolux 289ms
+ ✓ src/ports/PortsItem.test.ts > Open and Stop name their port, and Stop is off while it runs and then reports a failure 133ms
+ ✓ src/ports/PortsItem.test.ts > Escape closes the popover and gives focus back to the trigger 62ms
+ ✓ src/ports/PortsItem.test.ts > the status region is mounted before a note fills it 60ms
+ ✓ src/ports/PortsItem.test.ts > when the row whose Stop had focus disappears, focus moves to the popover 49ms
+ ✓ src/ports/PortsItem.test.ts > a Stop that was not focused leaves focus alone when its row goes 45ms
+ ✓ src/ports/ports.test.ts > the scan's silent cut of external rows is announced once the cap is reached 0ms
+ Test Files  7 passed (7)
+      Tests  35 passed (35)
+Limit: vitest runs in node with a fake DOM, so real key events, the popover's scroll cap and the frame's visibility in a dark
+theme are checked through the fake DOM and the helpers (menuStep, restoreFocus, capNote, rowKey), not in a real window.
+
+TOTALS
+ pnpm vitest run src/artifacts src/ports (VITEST_MAX_WORKERS=2)
+ Test Files  7 passed (7)
+      Tests  35 passed (35)
+ pnpm tsc --noEmit
+ tsc exit 0
+ No Rust was touched; no cargo run.
