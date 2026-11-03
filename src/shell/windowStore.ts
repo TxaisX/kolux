@@ -39,7 +39,8 @@ import type { Note, Picked } from "../editor/notes";
 import { usePromptScan } from "../status/promptScan";
 import { pickWithNotice } from "../switcher/accounts";
 import type { Gap } from "../terminal/dividers";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
 export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null) {
   const keymap = useKeymap();
@@ -50,7 +51,13 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [settingsAt, setSettingsAt] = useState<{ target: SettingsTarget | null; n: number }>({ target: null, n: 0 }); // SET-006: a link's page and section
   const [expanded, setExpanded] = useState<number | null>(null); // VIEW-026: the Board card showing its terminal
   const [zoom, setZoom] = useState<Zoom>({}); // TERM-013: each workspace's expanded cell
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setLeftState] = useState(true);
+  // T-699 (DT-C135): every path that opens or toggles the left sidebar (top bar, Ctrl+B, the menu, the palette, the
+  // create and rename rows) goes through nextLeft, which in a narrow window closes the right sidebar to make room.
+  const rightAside = useRef<RightAside>({ shown: false, open: false, close: () => undefined }); // kept current by App.tsx
+  const leftNow = useRef(sidebarOpen);
+  leftNow.current = sidebarOpen;
+  const setSidebarOpen = useCallback((v: boolean | ((shown: boolean) => boolean)) => setLeftState((leftNow.current = nextLeft(leftNow.current, v, isNarrow(), rightAside.current))), []);
   // DT-17: Automations is a page of its own over the content column, opened from the sidebar;
   // the grid stays mounted (hidden) behind it.
   // SET-028: Model routing opens the same way until Settings > Agents exists.
@@ -152,7 +159,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const { palette, setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
-    setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
+    setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
     setDragWidth, dragLeft, setDragLeft, panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir,
     setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,

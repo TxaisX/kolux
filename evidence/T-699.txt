@@ -16,16 +16,25 @@ THE RULE (DT-C135)
   - While the right sidebar shows, the left sidebar and its drag edge are hidden. This is one stylesheet rule:
     @media (max-width: 899px) { .body:has(> .rside:not([hidden])) > :is(.sidebar-wrap, .lside-grip) { display: none; } }
   - The top bar's sidebar toggle shows the left sidebar as hidden while it is stepped aside (aria-pressed false,
-    "Show sidebar"). Pressing it brings the left sidebar back and closes the right one (shell/window/narrow.ts toggleLeft).
-  - Closing the right sidebar any other way brings the left back too: its own toggle, the Explorer's close, or
+    "Show sidebar").
+  - Every path that opens or toggles the left sidebar goes through one setter in the window store
+    (shell/windowStore.ts setSidebarOpen -> shell/window/narrow.ts nextLeft). That covers the top bar toggle, Ctrl+B,
+    the menu's sidebar.left.toggle, the palette's workspace rows, and workspace create, rename and delete. A toggle reads
+    what is in view; opening the left sidebar in a narrow window while the right one is open closes the right one, so a
+    create or rename row never opens inside a hidden sidebar. "Open" is the right sidebar's saved state, not only what
+    is in view, because the openers used from another screen switch to Terminals in the same step.
+    App.tsx keeps the setter's view of the right sidebar current, using the same test as its hidden attribute:
+    terminals && right.open && !fullPage. TopBar reads that same value for the toggle's state.
+  - Closing the right sidebar any other way brings back a left sidebar that was open: its own toggle, the Explorer's close, or
     Ctrl+Shift+E.
-  - The palette's "create a workspace" path opens the left sidebar for its create row. In a narrow window it now
-    closes the right sidebar first (Dialogs.tsx), so the row is in view.
 - Nothing overlays, so sheets and their Start button are never covered.
   - No z-index line was touched; T-698 / #134 owns those.
 - At 900 px and up nothing changes.
-- Known limit: at 900 px and up, a left sidebar dragged wide (up to 480 px) can still leave the workspace narrow,
-  because the right sidebar keeps its 240 px minimum. This is noted in DT-C135.
+- Known limit: a left sidebar dragged wider than its default (up to 480 px) can still leave the workspace narrow at
+  any width, as before this change. For example, at 640 px with the left sidebar alone at 480, the workspace is 152 px.
+  The 340 px floor holds for the default widths. This is noted in DT-C135.
+- Left as is: the right sidebar's width clamp still counts a stepped-aside left sidebar (Right.tsx). In a narrow window
+  that keeps the right sidebar at its 240 px minimum, which leaves the workspace more room (560 px at 800, not 400).
 
 PROOF IN A REAL BROWSER (Chromium 1248, the engine behind WebView2)
 - Setup:
@@ -47,19 +56,26 @@ TESTS (named, verbose)
 VITEST_MAX_WORKERS=2 pnpm exec vitest run src/shell/window/narrow.test.ts --reporter=verbose
  ✓ src/shell/window/narrow.test.ts > T-699: under 900 px the stylesheet hides the left sidebar and its grip while the right sidebar shows
  ✓ src/shell/window/narrow.test.ts > T-699: at 640 and 800 px the workspace keeps at least 340 px whichever panels are open; at 640 it used to get about 100
- ✓ src/shell/window/narrow.test.ts > T-699: the left toggle shows what is in view, and in a narrow window it brings the left sidebar back by closing the right one
+ ✓ src/shell/window/narrow.test.ts > T-699: every left-sidebar opener (toggle, Ctrl+B, menu, palette, create rows) shows what is in view and, in a narrow window, closes the right one
+ ✓ src/shell/window/narrow.test.ts > T-699: the selector's class names are the ones the body's children render
+ ✓ src/shell/window/narrow.test.ts > T-699: every left-sidebar setter goes through nextLeft, with the right sidebar's state filled in by App
  ✓ src/shell/window/narrow.test.ts > T-699: isNarrow asks for the same 899 px query as the stylesheet
-      Tests  4 passed (4)
+      Tests  6 passed (6)
+The second test is a model of the layout. The real-layout pin is the Chromium run above, and the class-name test ties
+the selector to the components (ProjectsPanel .sidebar-wrap, Sidebar .lside-grip, RightSidebar aside.rside hidden=, all direct children of
+WindowView's .body). The routing test pins that windowStore's setSidebarOpen runs through nextLeft and that App fills the
+right sidebar's state.
+Affected folders: vitest run src/shell src/keys src/terminal/paneActions src/settings/useSettingsPlumbing
+  -> Test Files 55 passed (55), Tests 293 passed (293)
 Fail first: on main the first test fails, because styles.css has no such rule. The second test's own line for
 640 px with both panels and no rule gives about 100 px (103 in Chromium).
 
 FULL SUITE
-VITEST_MAX_WORKERS=2 pnpm exec vitest run (at c82cedc5 + this change)
- Test Files  2 failed | 789 passed (791)
-      Tests  4 failed | 5874 passed (5878)
-- 3 failures are the known local-only CRLF checks in src/editor/pdfjsCopy.test.ts.
-- 1 is src/editor/editPlacement.test.ts "60 paragraphs", a timing test under full-suite load. Run alone after the
-  merge of main 1fa0e52f: src/editor/editPlacement.test.ts + src/shell/window -> 12 files, 80 tests passed.
+VITEST_MAX_WORKERS=2 pnpm exec vitest run (at main 1fa0e52f + this change, after the review fixes)
+ Test Files  1 failed | 792 passed (793)
+      Tests  3 failed | 5890 passed (5893)
+- The 3 failures are the known local-only CRLF checks in src/editor/pdfjsCopy.test.ts (LICENSE_OPENJPEG,
+  LICENSE_PDFJS_OPENJPEG, openjpeg_nowasm_fallback.js). They pass on CI.
 
 TYPES, PLAN AND FIREWALL
 pnpm exec tsc --noEmit -p .  -> exit 0
@@ -69,9 +85,9 @@ scripts/firewall-check.ps1 -Baseline -> 53 hit(s) in 22 file(s), 0 new, 0 baseli
 FIRST-LOAD BUNDLE (at main 1fa0e52f, merged in)
 pnpm exec vite build && node scripts/bundle-budget.mjs
   main (styles.css, TopBar.tsx, Dialogs.tsx as on main): first load 1488511 bytes in 47 chunks (ceiling 1490000)
-  this branch:                                          first load 1488982 bytes in 47 chunks (ceiling 1490000)
-  Difference: +471 bytes. These are the media query, narrow.ts (the media-query hook and the toggle rule), and the
-  TopBar and Dialogs wiring.
+  this branch:                                          first load 1489218 bytes in 47 chunks (ceiling 1490000)
+  Difference: +707 bytes. These are the media query, narrow.ts (the media-query hook and the shared setter rule), the
+  store's setter wrapper and App's right-sidebar ref.
 
 REVIEW
 __REVIEW__

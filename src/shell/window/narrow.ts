@@ -1,6 +1,6 @@
 // T-699 (DT-C135): in a window under 900 CSS px (the app's minimum width at 100 % zoom, so reached by zooming in
 // or a small window) the two side panels take turns. styles.css hides the left sidebar while the right sidebar is
-// showing; this keeps the left toggle honest about that and lets it bring the left sidebar back.
+// showing; this keeps the left toggle honest about that, and every path that opens the left sidebar brings it back.
 import { useSyncExternalStore } from "react";
 
 export const NARROW_PX = 900;
@@ -19,6 +19,14 @@ export const useNarrow = () => useSyncExternalStore(subscribe, isNarrow, () => f
 /** Whether the left sidebar is in view: open, and not stepped aside for the right sidebar in a narrow window. */
 export const leftShown = (open: boolean, narrow: boolean, rightShown: boolean) => open && !(narrow && rightShown);
 
-/** What the left toggle does: hide a shown sidebar; otherwise show it, closing the right sidebar if the two cannot fit. */
-export const toggleLeft = (open: boolean, narrow: boolean, rightShown: boolean) =>
-  leftShown(open, narrow, rightShown) ? { left: false, closeRight: false } : { left: true, closeRight: narrow && rightShown };
+/** The right sidebar as the left one's setter sees it (App.tsx keeps it current): `shown` is in view now, `open` is
+ *  its saved state, which shows again on the Terminals screen. */
+export type RightAside = { shown: boolean; open: boolean; close: () => void };
+/** The left sidebar's next open state, for every path that sets it (shell/windowStore.ts): a toggle `(o) => !o` reads
+ *  what is in view, and opening it in a narrow window while the right sidebar is open closes the right one, also from
+ *  another screen, since the openers switch to Terminals in the same step. */
+export const nextLeft = (open: boolean, v: boolean | ((shown: boolean) => boolean), narrow: boolean, right: RightAside) => {
+  const next = typeof v === "function" ? v(leftShown(open, narrow, right.shown)) : v;
+  if (next && narrow && right.open) right.close();
+  return next;
+};
