@@ -135,11 +135,11 @@ export function Grip({ side, width, min, max, label, className, onWidth }: { sid
       aria-valuemin={min}
       aria-valuemax={max}
       onKeyDown={(e) => {
-        const k = ["ArrowLeft", "ArrowRight", "Home", "End"].indexOf(e.key);
-        if (k < 0) return;
-        e.preventDefault();
         // Home/End ask for far past either end and the caller's clamp lands on min/max (first-load budget: no branch per key).
-        onWidth(k > 1 ? (k - 2.5) * 1e5 : drawn(e.currentTarget) + dir * (k * 2 - 1) * (e.shiftKey ? 64 : 16), true);
+        const d = ({ ArrowLeft: -dir * 16, ArrowRight: dir * 16, Home: -1e5, End: 1e5 } as Record<string, number>)[e.key];
+        if (!d) return;
+        e.preventDefault();
+        onWidth(drawn(e.currentTarget) + d * (e.shiftKey ? 4 : 1), true);
       }}
       onPointerDown={(e) => {
         drag.current = { x: e.clientX, w: drawn(e.currentTarget) };
