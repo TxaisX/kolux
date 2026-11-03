@@ -1,0 +1,41 @@
+T-667 · UX lane A PR 2: the chrome popups keep keyboard focus, one keyboard focus ring, chrome polish rows (DT-C103)
+branch s-90/ux-2 (from origin/main e93a23ba) · PR #103 · 2026-11-02 · worker 90, coordinator 57
+
+THE ISSUE
+The UX audit (proof/ux-audit/findings, against main e93a23b) found the confirmation dialog (chrome/Ask.tsx) let Tab
+leave it, closed on Escape only while one of its own controls had focus, and left focus nowhere when it closed; the New
+tab menu, the status bar's right-click menu and the right sidebar's More menu took no focus, had no arrow keys, and let
+Escape through to the terminal underneath (where it interrupts an agent). Many controls showed no keyboard focus at all,
+the project row's icon buttons stayed invisible when tabbed to, hidden icon buttons still showed, long menus and the
+dialog ran off short windows, the dots menu was named "Menu", a failed app menu did nothing, and the bell closed the
+Inbox to Terminals whatever was showing before.
+
+WHAT CHANGED
+- src/chrome/dialogFocus.ts (new): useDialogFocus / trapDialog and useMenuFocus / trapMenu. Reuses switcher/accounts.ts
+  watchEscape (capture phase, stopped), shell/paletteCaps.ts restoreFocus and terminal/LinkActionMenu menuStep.
+  A popup inside a hidden pane leaves every key alone; a menu leaves the keys alone while focus is outside it, closes on
+  Tab, skips disabled rows, and caps its height from its own top (or bottom, when it opens upward).
+- Ask.tsx uses the dialog trap; LayoutStrip, StatusBar and RightSidebar use the menu one. RightSidebar tabs: one tab
+  stop, arrows / Home / End, tabpanel.
+- styles.css: `:where(:focus-visible)` ring (zero specificity; off for xterm and tabindex -1; dropped where a control
+  already shows focus with a border or background); `.proj .ib` shows on focus-visible; `.ib[hidden]` hides; `.menu`
+  and `.ask` scroll inside the window; app icon radios show focus; the menu warn hint uses --warn.
+- TopBar.tsx: "Terminal zoom" names; bell "Inbox", closes back to the screen before it; useChrome popAppMenu reports a
+  failure, shown as a window notice (shell/window/TopBar.tsx passes setNotice).
+Rows: 16 fixed, chrome.md:25 partly (the window close hover keeps the Windows close red; no matching token). None stale.
+
+TESTS
+pnpm exec vitest run src/chrome src/switcher src/shell: 52 files, 269 passed. pnpm exec tsc --noEmit -p .: clean.
+node scripts/plan-check.mjs: OK. New: dialogFocus.test.ts (trap, restore, menu keys, hidden pane, focus outside the
+menu, height cap), popupWiring.test.ts, chromeKeyboard.test.ts. Shown to fail on the old code: the popupWiring tests
+with Ask, LayoutStrip and StatusBar reverted (3 of 5 failed); the hidden-pane and focus-outside tests with their
+guards removed (2 failed). CSS rows are pinned by reading styles.css, as topBarLayout.test.ts does.
+
+REVIEW (fresh, opus-high-review): B on 79ecefb8. Fixed in 48294ca2: a hidden popup took Tab and Escape; menus took
+arrows with focus outside; menus ran off short windows; doubled focus rings; .ib[hidden] lost to .sess:hover .ib.
+Re-review on 48294ca2: A-, ready to merge; its two small items (the upward status bar menu's cap, a test for the cap)
+fixed in the next commit. Follow-ups, not here: one Escape can close two stacked popups when the other uses its own
+window listener; an options-object hook API; wiring tests that render the DOM; the account switcher menu's own cap.
+
+NO LIVE PROOF
+Unit tests pin the key handling and the CSS rules; a live keyboard pass belongs to the wave's proof run.

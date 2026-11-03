@@ -60,6 +60,10 @@ export function trapDialog(box: Box, onClose: () => void, initial?: () => HTMLEl
   return openPopup(box, onClose, initial ?? (() => null), onTab);
 }
 
+/** The height a menu may take: the room from its top to the window's bottom, or from the window's top to its bottom when it opens upward. */
+export const menuRoom = (r: { top: number; bottom: number }, windowHeight: number, upward: boolean): number =>
+  Math.max(80, (upward ? r.bottom : windowHeight - r.top) - 8);
+
 /** The rows a menu's arrow keys move between (a disabled row cannot take focus). */
 export const MENU_ROWS = '[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])';
 
@@ -67,9 +71,10 @@ export const MENU_ROWS = '[role^="menuitem"]:not(:disabled):not([aria-disabled="
  * (focus goes on to the next control). Keys pressed while focus is outside the menu are left alone. Returns the stop. */
 export function trapMenu(box: Box, onClose: () => void): () => void {
   const rows = () => Array.from(box.querySelectorAll<HTMLElement>(MENU_ROWS));
-  // A menu opened low in a short window scrolls inside the space left below its top instead of running off it.
+  // A menu scrolls inside the space it has instead of running off a short window: below its top when it opens
+  // downward, above its bottom when it is anchored by its bottom and opens upward (the status bar's).
   const el = box as Partial<HTMLElement>;
-  if (el.style && el.getBoundingClientRect) el.style.maxHeight = `${Math.max(80, window.innerHeight - el.getBoundingClientRect().top - 8)}px`;
+  if (el.style && el.getBoundingClientRect) el.style.maxHeight = `${menuRoom(el.getBoundingClientRect(), window.innerHeight, !!el.style.bottom)}px`;
   const onArrow = (e: KeyboardEvent) => {
     if (!box.contains(document.activeElement)) return;
     if (e.key === "Tab") return onClose();

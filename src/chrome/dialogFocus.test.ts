@@ -3,7 +3,7 @@
 // There is no jsdom, so the page is a small stand-in: a window that keeps its listeners, a document with an active
 // element, and boxes that answer the two selector queries the helper makes.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FOCUSABLE, MENU_ROWS, tabTarget, trapDialog, trapMenu } from "./dialogFocus";
+import { FOCUSABLE, MENU_ROWS, menuRoom, tabTarget, trapDialog, trapMenu } from "./dialogFocus";
 
 type Fake = { name: string; isConnected: boolean; focus: () => void };
 type Handler = (e: Record<string, unknown>) => void;
@@ -159,5 +159,18 @@ test("a menu leaves the arrows alone once focus is outside it, and Tab closes it
   active = rows[0];
   press("Tab");
   expect(onClose).toHaveBeenCalledTimes(1);
+  stop();
+});
+
+test("a menu's height cap: the room below its top, or above its bottom when it opens upward", () => {
+  expect(menuRoom({ top: 70, bottom: 400 }, 300, false), "downward: 300 - 70 - 8").toBe(222);
+  expect(menuRoom({ top: -20, bottom: 290 }, 300, true), "upward: 290 - 8, never past the window's top").toBe(282);
+  expect(menuRoom({ top: 290, bottom: 300 }, 300, false), "never below 80").toBe(80);
+  const rows = [el("one")];
+  const style: Record<string, string> = { bottom: "28px" };
+  const b = Object.assign(box([], rows), { style, getBoundingClientRect: () => ({ top: -20, bottom: 290 }) });
+  vi.stubGlobal("window", { ...fakeWindow, innerHeight: 300 });
+  const stop = trapMenu(b, () => {});
+  expect(style.maxHeight, "the hook sets it from the menu's own box").toBe("282px");
   stop();
 });
