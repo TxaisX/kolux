@@ -1208,6 +1208,9 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .rside-body > .sidebar-wrap.right > .sidebar.scm { width: auto; flex: 1; }
 .rside-body > .sb-hint { padding: 12px; }
 .rside[hidden], .rside-body > .explorer[hidden] { display: none; }
+/* T-699 (DT-C135): under 900 px the side panels take turns, so the workspace and its sheets keep their room.
+   The left toggle (shell/window/narrow.ts) brings the left sidebar back by closing the right one. */
+@media (max-width: 899px) { .body:has(> .rside:not([hidden])) > :is(.sidebar-wrap, .lside-grip) { display: none; } }
 /* USAGE-012: usage analytics. Green squares = days with use, deeper green = more tokens. */
 .ta { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
 /* The notices' live region is always drawn (so a notice is announced); empty, it takes no room in the column. */

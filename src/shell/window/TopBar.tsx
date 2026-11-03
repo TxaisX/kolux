@@ -6,6 +6,7 @@ import { chromeShown } from "../../chrome/chromeItems";
 import { stepAllowed, travel } from "../../projects/nav";
 import { zoomFactor } from "../../settings/zoom";
 import { zoomTerm } from "../../theme";
+import { leftShown, toggleLeft, useNarrow } from "./narrow";
 import { useWindow } from "./store";
 
 export default function WindowTopBar() {
@@ -14,6 +15,9 @@ export default function WindowTopBar() {
     installedIds, codex, sidebarOpen, setSidebarOpen, focused, fullPage, right, saveRight, showRight, step,
     hist, stillThere, settingsOpen, setNotice,
   } = useWindow();
+  // T-699 (DT-C135): in a narrow window the left sidebar steps aside while the right one shows (styles.css).
+  const narrow = useNarrow();
+  const rightShown = terminals && right.open && !fullPage;
   return (
     <TopBar
       appName={chromeShown(settings, "titleBarAppName")}
@@ -39,6 +43,10 @@ export default function WindowTopBar() {
         if (s === "terminals") setPage(null); // W3 F3 (T-693, VIEW-009): Terminals leaves a full page (Automations, Tasks or Routing)
         setScreen(s);
       }}
-      installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} onZoom={(how) => zoomTerm(focused, how)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
+      installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, narrow, rightShown)} onToggleSidebar={() => {
+        const next = toggleLeft(sidebarOpen, narrow, rightShown);
+        if (next.closeRight) saveRight({ open: false });
+        setSidebarOpen(next.left);
+      }} onZoom={(how) => zoomTerm(focused, how)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
   );
 }

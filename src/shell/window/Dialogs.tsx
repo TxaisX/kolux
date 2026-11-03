@@ -20,6 +20,7 @@ import { isTabRow } from "../findTab";
 import { quitQuestion } from "../closeAsk";
 import { deferred } from "../../lazy/deferred";
 import { closeConfirmLabel } from "./tabMenuStart";
+import { isNarrow } from "./narrow";
 import { useWindow } from "./store";
 import { SettingsPage } from "../../lazy/pages";
 import { WorkspaceBoard } from "../../lazy/pages";
@@ -36,7 +37,7 @@ export default function WindowDialogs() {
     setCreateName, setCreateRequest, setPalette, settings, setAsking, asking, dropPanes,
     guard, quitAsk, quitting, setQuitAsk, reloadAsking, setReloadAsk, switcher,
     titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt,
-    boardOpen, setBoardOpen, setPanes, setActiveDir, setRefresh, recentDirs,
+    boardOpen, setBoardOpen, setPanes, setActiveDir, setRefresh, recentDirs, right, saveRight,
   } = useWindow();
   return (
     <>
@@ -68,6 +69,7 @@ export default function WindowDialogs() {
             if (item) return fromItem(item);
             const pid = repo ?? projectOf(activeDir) ?? projectFor(null);
             if (pid) return fromName(pid, name);
+            if (isNarrow() && right.open) saveRight({ open: false }); // T-699: the create row is in the left sidebar, which a narrow window shows only alone
             setSidebarOpen(true);
             setCreateName(name);
             setCreateRequest((n) => n + 1);
