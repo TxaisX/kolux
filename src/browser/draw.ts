@@ -76,6 +76,9 @@ export function addText(d: Drawing, x: number, y: number, text: string): Drawing
 /** Everything off: nothing to redo either. */
 export const clear = (): Drawing => empty();
 
+/** UX audit: Clear that Undo can take back: every mark goes onto the undone stack, last one on top, so Redo restores them in order. */
+export const clearUndoable = (d: Drawing): Drawing => ({ shapes: [], undone: [...d.undone, ...[...d.shapes].reverse()] });
+
 /** How much of the picture shows: its whole size, shrunk to fit the room (never enlarged). */
 export function fitScale(picW: number, picH: number, roomW: number, roomH: number): number {
   if (!(picW > 0 && picH > 0 && roomW > 0 && roomH > 0)) return 1;

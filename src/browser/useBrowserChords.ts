@@ -6,16 +6,27 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 
+/** Ctrl+L: the address bar, or, on a previewed document (whose bar is hidden), the chip that opens for typing. */
+export function focusAddress(inBrowser: (sel: string) => HTMLElement | null) {
+  const chip = inBrowser(".preview-open");
+  if (chip) return chip.click();
+  const bar = inBrowser(".address") as HTMLInputElement | null;
+  bar?.focus();
+  bar?.select();
+}
+
 export function useBrowserChords({ setFocused }: Pick<WindowState, "setFocused">) {
   // BROW-003, BROW-005: a browser chord for one tab, pressed in the app or forwarded by the page
   // itself when the keyboard was inside it (T-012-b-fix; the back end's `browser-chord` event).
   const browserAction = (key: number, what: string) => {
     const inBrowser = (sel: string) => document.querySelector<HTMLElement>(`.pane.browser[data-key="${key}"] ${sel}`);
-    if (what === "focusAddressBar") {
-      const bar = inBrowser(".address") as HTMLInputElement | null;
-      bar?.focus();
-      bar?.select();
-    } else if (what === "reload") void invoke("browser_go", { id: key, what: "reload" });
+    if (what === "focusAddressBar") focusAddress(inBrowser);
+    else if (what === "reload") {
+      // The pane's own reload says a failure in its notice; with no pane to ask, the engine is told directly.
+      const own = inBrowser('[data-go="reloadAny"]');
+      if (own) own.click();
+      else void invoke("browser_go", { id: key, what: "reload" }).catch(() => {});
+    }
     else inBrowser(`[data-go="${what}"]`)?.click();
   };
   const chord = useRef(browserAction);
