@@ -1,0 +1,46 @@
+T-715 - A workspace's archive script runs when the workspace is removed (DT-C151; STAT-055)
+Worker 90, coordinator 57, branch s-90/t715 from main 8c9536aa, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "T-715 / DT-C151" (backend-wiring finding: setup.rs workspace_archive was dead code).
+
+WHAT WAS WRONG
+- setup.rs had the archive runner (run_archive, kolux.yaml "archive" entry, 120 s limit) but its only entry point,
+  workspace_archive, was marked dead_code: no removal path called it, so STAT-055's second Acceptance box
+  ("Remove that worktree -> the archive script runs") could never pass.
+
+THE FIX (DT-C151)
+- setup.rs: run_archive takes a `trusted` check that is asked about the exact script text it read, so what was checked
+  is what runs. workspace_archive is replaced by archive_on_remove(store, root, wt): SAFE-025's trust_ask with kind
+  "archive"; an untrusted script is skipped and the removal goes on.
+- projects.rs: the shared remove_one (the single delete, the batch PROJ-071 and the cleanup dialog all route through it)
+  runs the archive script in the folder before anything of it goes. A script that fails or runs past its time stops
+  the delete with its error ("... It was not deleted; tick Delete my changes too to delete it anyway."); the force box
+  waives it. remove_with(.., archive: bool) lets the CLI keep its behaviour.
+- cli/mod.rs: `kolux worktree rm` calls remove_with(.., false): unchanged, it still warns that --run-hooks teardown
+  scripts do not run yet (CLI-020 wiring is a follow-up).
+- Front end (SAFE-025 asks first, as for setup): TrustPrompt.tsx askArchive(path) = trusted(path, "archive"), and a
+  question that cannot be asked resolves false. Every removal caller awaits it before removing: ProjectsPanel (one
+  workspace; a parent with its children), ProjectsExtras PickedBar, bulkRemove removeOne (cleanup dialog), SpaceView
+  (each pick before workspace_remove_many).
+
+TESTS
+- cargo: projects::tests::t715_removing_a_workspace_runs_its_trusted_archive_script_first (new): untrusted -> the
+  folder goes and the script did not run; after trust_grant -> archived.txt says "done" and the folder goes; a granted
+  script that exits 3 -> "The archive script failed with exit code 3: boom ... It was not deleted", the folder stays,
+  and force removes it. 1 passed. setup:: stat055 tests 5 passed (six run_archive calls gained `&|_| Ok(true)`).
+  REVERT_CHECK
+- vitest: src/setup/askArchive.test.ts (new, 3 tests): Run once asks script_trust_needed then script_trust_grant with
+  kind "archive"; with no prompt host nothing is granted, and a failing question resolves false; every removal caller
+  awaits askArchive before its remove command (both of the panel's). src/setup src/projects src/shell src/space:
+  109 files, 585 tests passed. FULL_VITEST
+- RUST_RUN
+- tsc --noEmit clean. CLIPPY
+
+BUNDLE (same slot, vite build + scripts/bundle-budget.mjs)
+- main 8c9536aa: first load 1,489,577 B; this branch: 1,489,684 B = +107 B (cap +0 raised to +107 by 57, 15:01,
+  option (a)). Made of the askArchive helper and one await at each of the four first-load removal sites; SpaceView is
+  a lazy chunk. An import() per site was not taken: TrustPrompt is already in first load (trustedSetup), so it could
+  only add bytes.
+
+NOT DONE (follow-ups)
+- `kolux worktree rm --run-hooks` (CLI-020) still does not run the archive script; the CLI has no prompt to ask with.
+- STAT-055's Acceptance boxes stay unticked until a live proof runs it in the app.

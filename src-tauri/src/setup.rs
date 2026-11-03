@@ -333,9 +333,13 @@ fn setup_for_on(path: &str, local: Option<String>, policy: Option<String>, trust
 /// per-repository archive setting) in that worktree with the script variables, before it goes,
 /// and waits up to `limit`, then ends it and every process it started. Ok(false) when there is
 /// none, Ok(true) when it ran and exited 0; otherwise the failure, ending with the last of what
-/// the script wrote to its error output, for the UI to show.
-pub fn run_archive(root: &Path, worktree: &Path, limit: std::time::Duration) -> Result<bool, String> {
+/// the script wrote to its error output, for the UI to show. `trusted` is asked about the exact text
+/// read here (so what was checked is what runs); false skips it, Ok(false).
+pub fn run_archive(root: &Path, worktree: &Path, limit: std::time::Duration, trusted: &dyn Fn(&str) -> Result<bool, String>) -> Result<bool, String> {
     let Some(script) = std::fs::read_to_string(worktree.join(crate::include::CONFIG_FILE)).ok().and_then(|y| scripts_entry(&y, "archive")) else { return Ok(false) };
+    if !trusted(&script)? {
+        return Ok(false);
+    }
     let line = setup_line(&script, cfg!(windows), configured_shell().as_deref(), find_posix).map_err(|e| e.replacen("The setup script", "The archive script", 1))?;
     let mut cmd = std::process::Command::new(&line.program);
     cmd.args(&line.args).current_dir(worktree).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped());
@@ -405,19 +409,13 @@ fn tail_of(r: &mut impl std::io::Read) -> String {
     String::from_utf8_lossy(&keep).into_owned()
 }
 
-/// STAT-055: the archive script for the worktree at `path`, run before it is removed.
-/// SAFE-025: it runs only once the repository trusts it; an untrusted one is refused with why.
-// ponytail: the trust prompt (T-156-a) is in; registration still waits for a removal that does not
-// wait on the window (council MERGE 53: after T-156 trust and an async workspace_remove); only the tests call it.
-#[allow(dead_code)]
-#[tauri::command(async)]
-pub fn workspace_archive(store: StoreState<'_>, path: String) -> Result<bool, String> {
-    let wt = Path::new(&path);
-    let root = main_folder(wt);
-    if let Some(script) = shared_script("archive", &root, wt, None, None) {
-        require_trust(&store, &root, "archive", &script)?;
-    }
-    run_archive(&root, wt, std::time::Duration::from_secs(120))
+/// STAT-055 (T-715): removal's archive step for the worktree at `wt` of the project at `root`.
+/// SAFE-025: the script runs only when the repository trusts that exact text (the page asks first,
+/// script_trust_needed with kind "archive"); one it does not trust (Don't run, or nobody asked) is
+/// skipped and the removal goes on, as is one whose trust cannot be read. Ok(true) when it ran and
+/// exited 0.
+pub fn archive_on_remove(store: &std::sync::Mutex<crate::state::Store>, root: &Path, wt: &Path) -> Result<bool, String> {
+    run_archive(root, wt, std::time::Duration::from_secs(120), &|script| Ok(store.lock().is_ok_and(|s| matches!(trust_ask(&s, root, "archive", script), Ok(None)))))
 }
 
 type StoreState<'a> = tauri::State<'a, std::sync::Mutex<crate::state::Store>>;
@@ -1701,17 +1699,17 @@ mod tests {
     #[test]
     fn stat055_removing_a_worktree_runs_its_archive_script_inside_it() {
         let wt = tree(&[("kolux.yaml", b"scripts:\n  archive: echo done>archived.txt\n")]);
-        assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60)).unwrap());
+        assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap());
         assert_eq!(std::fs::read_to_string(wt.join("archived.txt")).unwrap().trim(), "done");
         std::fs::write(wt.join("kolux.yaml"), "scripts:\n  setup: x\n").unwrap();
-        assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60)).unwrap(), "no archive script, nothing runs");
+        assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap(), "no archive script, nothing runs");
         let slow = if cfg!(windows) { "ping -n 6 127.0.0.1>nul" } else { "sleep 5" };
         std::fs::write(wt.join("kolux.yaml"), format!("scripts:\n  archive: {slow}\n")).unwrap();
-        assert!(run_archive(&wt, &wt, std::time::Duration::from_millis(300)).unwrap_err().contains("stopped after"));
+        assert!(run_archive(&wt, &wt, std::time::Duration::from_millis(300), &|_| Ok(true)).unwrap_err().contains("stopped after"));
         // with a POSIX shell the variables reach the script
         if cfg!(not(windows)) || find_posix("sh").is_some() {
             std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: |\n    #!/bin/sh\n    printf '%s|%s' \"$KOLUX_WORKSPACE_NAME\" \"$KOLUX_ROOT_PATH\" > vars.txt\n").unwrap();
-            assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60)).unwrap());
+            assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap());
             let name = wt.file_name().unwrap().to_string_lossy().into_owned();
             assert_eq!(std::fs::read_to_string(wt.join("vars.txt")).unwrap(), format!("{name}|C:/repos/app"));
         }
@@ -1721,7 +1719,7 @@ mod tests {
     #[test]
     fn stat055_a_failed_archive_script_says_why_and_a_stopped_one_takes_everything_it_started() {
         let wt = tree(&[("kolux.yaml", b"scripts:\n  archive: echo boom 1>&2 && exit 3\n")]);
-        let err = run_archive(&wt, &wt, std::time::Duration::from_secs(60)).unwrap_err();
+        let err = run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap_err();
         assert!(err.starts_with("The archive script failed with exit code 3"), "{err}");
         assert!(err.ends_with(": boom"), "what it wrote to its error output comes with the failure: {err}");
         if cfg!(windows) {
@@ -1729,7 +1727,7 @@ mod tests {
             std::fs::write(wt.join("inner.bat"), "@ping -n 6 127.0.0.1 >nul\r\n@echo late>late.txt\r\n").unwrap();
             std::fs::write(wt.join("slow.bat"), "@cmd /d /c .\\inner.bat\r\n").unwrap();
             std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: .\\slow.bat\n").unwrap();
-            let err = run_archive(&wt, &wt, std::time::Duration::from_millis(1500)).unwrap_err();
+            let err = run_archive(&wt, &wt, std::time::Duration::from_millis(1500), &|_| Ok(true)).unwrap_err();
             assert!(err.starts_with("The archive script was stopped after 1 seconds"), "{err}");
             std::thread::sleep(std::time::Duration::from_secs(7));
             assert!(!wt.join("late.txt").exists(), "the process the script started was ended with it");
