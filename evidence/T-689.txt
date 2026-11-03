@@ -37,12 +37,20 @@ Fresh re-review: B+ on 7e944a15. Must-fix: (3) was fixed only for the ref, so th
   second new group's form opened meanwhile (left behind empty), and Cancel during the save still deleted the
   saved group. Fixed in the next commit (two tests above fail on 7e944a15's save code: expected +0 to be 1;
   expected [ 'n1' ] to deeply equal []). Should-fix: the question text and Deleting… now have assertions;
-  this file's follow-up and save wording corrected. Second fresh re-review: PENDING.
+  this file's follow-up and save wording corrected.
+Second fresh re-review: A- on a3c318f6, no must-fix; traced New/New, Save then New, Save pending then New or
+  Cancel, a failed Save, and Delete group then New, all correct. Its should-fixes are listed below.
 
 FOLLOW-UPS (not in this PR)
 - Keep it and Escape in the delete-group question put focus on the group's header X even when the question
   was opened from the group form's Delete… button; that button (still there, since Keep it leaves the form
   open) would be the more natural target.
+- deleteGroup has the same shape saveGroup had: if Delete group is still waiting when New group opens a second
+  form, its answer closes that form and clears its unsaved flag (needs group_delete to answer after
+  group_create). Same fix as saveGroup: close only its own form; add a held-delete test.
+- New, type, Save (pending), New, and the first save then fails: the first group stays as an empty group with
+  its form closed (visible, can be deleted).
+- The move test's row stub answers any [data-path] selector, so it does not prove which row gets focus.
 - Delete all's busy text (Deleting…) has no test of its own; it is the same wording change as the single
   delete, which is tested.
 
