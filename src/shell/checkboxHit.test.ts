@@ -24,10 +24,13 @@ test.each(boxes)("%s: the checkbox has its name and a 24px hit area", (_, src, n
   const inputs = [...src.matchAll(/<input\s[^]*?\/>/g)].filter((m) => /type="checkbox"/.test(m[0]) && m[0].includes(`aria-label={\`${name}\`}`));
   expect(inputs, "one checkbox with this name").toHaveLength(1);
   const at = inputs[0].index!;
-  expect(src.slice(0, at).trimEnd().endsWith('<label className="hit-box">'), "inside the hit-box label").toBe(true);
+  expect(src.slice(0, at).trimEnd(), "inside the hit-box label").toMatch(/<label className="hit-box"[^>]*>$/);
   expect(src.slice(at + inputs[0][0].length).trimStart().startsWith("</label>"), "the label holds only the box").toBe(true);
 });
 
 test("the hit-box label is at least 24px square", () => {
-  expect(styles).toMatch(/\.hit-box \{[^}]*min-width: 24px;[^}]*min-height: 24px;/);
+  const rule = styles.match(/\.hit-box \{([^}]*)\}/)?.[1] ?? "";
+  for (const d of ["min-width: 24px", "min-height: 24px", "flex: none"]) expect(rule, d).toContain(d);
+  // the box's own margin would push the label past 24px
+  expect(styles).toMatch(/\.hit-box input \{ margin: 0; \}/);
 });

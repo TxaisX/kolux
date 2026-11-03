@@ -1,10 +1,10 @@
 T-697 / DT-C133: UX live audit W3 G9b, lane A (90): five lone checkboxes, their names and hit areas
-Row: proof/ux-audit/requests/W3.md section "90: T-697". Built on main 00fd7ddc.
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md section "90: T-697" (the sessions proof dir, not in this repo). Built on main 00fd7ddc.
 
 Name part: NOT REPRODUCED. On main 00fd7ddc each of the five boxes already carries an aria-label naming what it
   ticks: AllChangesPane "Viewed <file>", ChangeTree "Viewed <path>", SkillsPage "Choose <skill>", SpaceView
   "Select <worktree>", PullRequestPage "Viewed <file>". The live part B harness's "unlabeled" list was empty on
-  every screen it measured (findings/live-wave3-b.md, the "layout: fits the window" rows). The names are kept.
+  every screen it measured (sessions proof dir findings/live-wave3-b.md, the "layout: fits the window" rows). The names are kept.
 Hit area part: FIXED. Each box was a bare native checkbox (about 13px) with nothing around it to catch a near
   miss. Each now sits in a label (class hit-box) at least 24px square, centred on the box. The box keeps its size,
   and a click anywhere in the label ticks it, as .auto-radio's wrapping label does for its radios. A disabled box
@@ -16,3 +16,8 @@ Test: src/shell/checkboxHit.test.ts (6 tests). For each file it finds the one ch
   npx vitest run (full): 5867/5870 (the 3 are the known local CRLF pdfjsCopy failures). npx tsc --noEmit: 0.
   First load (npx vite build && node scripts/bundle-budget.mjs, on this branch and on a detached origin/main):
   1,487,806 vs 1,487,806, main +0 (the five screens load lazily).
+
+Review (Opus, read-only) of be3b1b05: A-, no should-fix. It checked the <summary> case in headless Edge: a click on the
+  label ticks the box and does not open the <details>, as a click on the box did. Its three nits are fixed in the
+  follow-up: the DT-C133 row gets its Why cell, these audit paths name the sessions proof dir, and the test also pins
+  flex: none and the box margin.
