@@ -1,12 +1,12 @@
 // Settings > Appearance: the colour theme row (SET-001), its tint / saturation / depth sliders
 // (SET-002) and the terminal colours picker with "Match app theme" (SET-003). Every change shows at
 // once on the whole window; the save follows a moment later so a slider drag is one write.
-import { useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useLeaveSave } from "./leave";
 import { MAX_LEVEL, MIN_LEVEL, onZoom, percentOf, stepZoom, zoomLevel, type ZoomStep } from "./zoom";
 import { SearchFolds } from "./search";
 import { saveChanged, settingsDiff } from "./saveChanged";
-import { applyAppearance, buildTheme, isDark, MODES, previewOf, readAppearance, SPAN, swatch, themeLabel, terminalFor, themeVars, THEMES, uiFont, monoFont, writeAppearance, WEIGHTS, THEMED_SCREENS, type Appearance, type FontWeight, type Mode } from "../theme";
+import { applyAppearance, buildTheme, customOf, isDark, MODES, previewOf, readAppearance, SPAN, swatch, themeLabel, terminalFor, themeVars, THEMES, uiFont, monoFont, writeAppearance, WEIGHTS, THEMED_SCREENS, type Appearance, type FontWeight, type Mode } from "../theme";
 import { importScheme, type CustomScheme } from "../terminal/schemes";
 import { parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
 import { GPU_FIELD, gpuOn } from "../terminal/renderer";
@@ -21,6 +21,9 @@ import { Segmented } from "./GeneralPage";
 import { CardDensityBody, SidebarLookBody } from "../look/SidebarSettings";
 import { applyLanguage, LANGUAGE_FIELD, LANGUAGES, savedLanguage, systemLanguage, type LanguageChoice } from "../language";
 
+/** T-648: the editor for the user's own themes loads when the Colour theme card draws it, not with the page. */
+const CustomThemeEditor = lazy(() => import("./CustomThemeEditor"));
+
 const MODE_LABEL: Record<Mode, string> = { system: "System", light: "Light", dark: "Dark" };
 
 const SLIDERS = [
@@ -32,7 +35,7 @@ const SLIDERS = [
 /** A small window drawn in the given look, beside the swatches. */
 export function ThemePreview({ look }: { look: Appearance }) {
   return (
-    <div className="look-preview" style={themeVars(buildTheme(previewOf(look), isDark(look))) as CSSProperties} aria-label={`Preview: ${themeLabel(previewOf(look).theme)}`}>
+    <div className="look-preview" style={themeVars(buildTheme(previewOf(look), isDark(look))) as CSSProperties} aria-label={`Preview: ${customOf(look)?.name ?? themeLabel(previewOf(look).theme)}`}>
       <div className="lp-top" />
       <div className="lp-body">
         <div className="lp-side">
@@ -47,6 +50,12 @@ export function ThemePreview({ look }: { look: Appearance }) {
       </div>
     </div>
   );
+}
+
+/** The picker dot for one of the user's themes: its background and its accent, split on the diagonal. */
+function customSwatch(look: Appearance, name: string): CSSProperties {
+  const t = buildTheme({ ...look, userTheme: name }, true);
+  return { background: `linear-gradient(135deg, ${t["app-bg"]} 50%, ${t.accent ?? t.link} 50%)` };
 }
 
 /** SET-016: a foldable section of the Appearance page; folded, its header sums up what it holds. */
@@ -183,7 +192,8 @@ export function LanguageView({ value, onPick, os = navigator.languages }: { valu
 let folds = { interface: true, terminal: true, window: true };
 
 export function AppearanceView({ look, onChange, windowPart, windowSummary = "", languagePart }: { look: Appearance; onChange: (a: Appearance) => void; windowPart?: ReactNode; windowSummary?: string; languagePart?: ReactNode }) {
-  const classic = look.theme === "classic";
+  const custom = customOf(look);
+  const classic = look.theme === "classic" || !!custom; // a custom theme sets its own colours, so the sliders rest
   // All three sections open at first; a link into a folded one unfolds it (SettingsPage). The
   // state outlives the page, which a search draws afresh, so clearing a search restores it.
   const [open, setOpen] = useState(() => ({ ...folds }));
@@ -191,13 +201,14 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
   const name = (id: string) => schemeOptions(look, true).find((o) => o.id === id)?.name ?? id;
   return (
     <>
-      <Fold id="interface" title="Interface" summary={[MODE_LABEL[look.mode], themeLabel(look.theme), look.appFont || "Default font"].join(" · ")} {...fold("interface")}>
+      <Fold id="interface" title="Interface" summary={[MODE_LABEL[look.mode], custom?.name ?? themeLabel(look.theme), look.appFont || "Default font"].join(" · ")} {...fold("interface")}>
       <section className="conn-card" data-section="interface">
         <h2 className="conn-name">Mode</h2>
         <div className="look-select">
           <span>Mode</span>
-          <Segmented<Mode> label="Mode" options={MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))} value={look.mode} onPick={(mode) => onChange({ ...look, mode })} />
+          <Segmented<Mode> label="Mode" options={MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))} value={look.mode} off={custom ? [...MODES] : []} onPick={(mode) => onChange({ ...look, mode })} />
         </div>
+        {custom && <p className="conn-detail" data-note="custom-mode">A custom theme sets its own light or dark look, so these are off while it is on.</p>}
         {look.mode === "system" && <p className="conn-detail">Follows Windows, also while Kolux is running.</p>}
         {/* VIEW-006: one of the three workspace screens can paint in its own mode. */}
         {THEMED_SCREENS.map((s) => (
@@ -207,6 +218,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
               label={`${s} screen mode`}
               options={[{ id: "app", label: "Same as app" }, ...MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))]}
               value={look.screens[s] ?? "app"}
+              off={custom ? ["app", ...MODES] : []}
               onPick={(m) => {
                 const rest = Object.fromEntries(Object.entries(look.screens).filter(([k]) => k !== s));
                 onChange({ ...look, screens: m === "app" ? rest : { ...rest, [s]: m } });
@@ -223,9 +235,13 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
         <div className="look-row">
           <div className="look-swatches" role="radiogroup" aria-label="Colour theme">
             {THEMES.map((t) => (
-              <button key={t} role="radio" aria-checked={look.theme === t} title={themeLabel(t)} aria-label={themeLabel(t)} className={look.theme === t ? "look-swatch on" : "look-swatch"} style={{ background: swatch(t) }} onClick={() => onChange({ ...look, theme: t })} />
+              <button key={t} role="radio" aria-checked={look.theme === t && !custom} title={themeLabel(t)} aria-label={themeLabel(t)} className={look.theme === t && !custom ? "look-swatch on" : "look-swatch"} style={{ background: swatch(t) }} onClick={() => onChange({ ...look, theme: t, userTheme: "" })} />
             ))}
-            <div className="look-name">{themeLabel(look.theme)}</div>
+            {/* T-648: the user's own themes sit in the same row; the dot shows the accent over the background. */}
+            {look.userThemes.map((c) => (
+              <button key={"custom:" + c.name} role="radio" aria-checked={c.name === look.userTheme} title={c.name} aria-label={c.name} className={c.name === look.userTheme ? "look-swatch custom on" : "look-swatch custom"} style={customSwatch(look, c.name)} onClick={() => onChange({ ...look, userTheme: c.name })} />
+            ))}
+            <div className="look-name">{custom?.name ?? themeLabel(look.theme)}</div>
           </div>
           <ThemePreview look={look} />
         </div>
@@ -239,7 +255,10 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
             </output>
           </label>
         ))}
-        {classic && <p className="conn-detail">Classic keeps the original neutral look; pick a colour to use the sliders.</p>}
+        {classic && <p className="conn-detail">{custom ? "A custom theme sets its own colours, so the sliders rest. Pick a built-in colour to use them." : "Classic keeps the original neutral look; pick a colour to use the sliders."}</p>}
+        <Suspense fallback={<p className="conn-detail">Loading the theme editor…</p>}>
+          <CustomThemeEditor look={look} onChange={onChange} />
+        </Suspense>
       </section>
       <section className="conn-card" data-section="fonts">
         <h2 className="conn-name">Fonts</h2>

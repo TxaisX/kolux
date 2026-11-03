@@ -65,7 +65,7 @@ test("a repository that no longer exists shows General and the stored value is k
   h.projects = [{ id: "p1", name: "alpha" }];
   store.set(KEY, "repo:gone");
   const m = await open();
-  await until(() => links(m.container).length === 11, "the repositories");
+  await until(() => links(m.container).length === 12, "the repositories");
   await settle();
   expect(current(m.container)).toEqual(["General"]);
   expect(store.get(KEY)).toBe("repo:gone");
@@ -74,7 +74,7 @@ test("a repository that no longer exists shows General and the stored value is k
 test("a page the user picks is remembered", async () => {
   h.projects = [{ id: "p1", name: "alpha" }];
   const m = await open();
-  await until(() => links(m.container).length === 11, "the repositories");
+  await until(() => links(m.container).length === 12, "the repositories");
   await click(m.container, links(m.container).find((n) => n.textContent.trim() === "alpha")!);
   expect(store.get(KEY)).toBe("repo:p1");
   await click(m.container, links(m.container).find((n) => n.textContent.trim() === "Appearance")!);

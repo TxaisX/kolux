@@ -5,6 +5,7 @@
 import type { ITheme } from "@xterm/xterm";
 import { fontStack } from "./settings/fonts";
 import { CATALOGUE, tidySchemes, type CustomScheme } from "./terminal/schemes";
+import type { CustomTheme } from "./settings/customTheme";
 import { DEFAULT_TINT, STRENGTH_SPAN, sidebarBackground, sidebarLookOf, type SidebarLook } from "./look/sidebar";
 
 export const classic = {
@@ -59,7 +60,12 @@ export const classic = {
   "cost-fg": "#1f9db0",
 } as const;
 
-export type Theme = Record<keyof typeof classic, string>;
+/** `accent` (T-648) is not part of any built-in theme: only a custom theme that sets it defines `--accent`, so
+ *  the fallbacks written beside `var(--accent, ...)` keep deciding the look for everyone else. */
+export type Theme = Record<keyof typeof classic, string> & { accent?: string };
+
+/** Every colour name a custom theme may set (the palette, plus the optional accent). */
+export const TOKEN_KEYS: readonly string[] = [...Object.keys(classic), "accent"];
 
 /** The ten colours the whole chrome is built from; the test checks them against DESIGN.md. */
 export const coreTokens = ["app-bg", "strip-bg", "pane-bg", "input-bg", "surface", "line-subtle", "line-strong", "line-focus", "fg", "fg-muted"] as const;
@@ -69,7 +75,7 @@ export const coreTokens = ["app-bg", "strip-bg", "pane-bg", "input-bg", "surface
 export const uiFont = 'Inter, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif';
 export const monoFont = '"Cascadia Mono", Consolas, monospace';
 
-type StyleHost = { style: { setProperty(name: string, value: string): void } };
+type StyleHost = { style: { setProperty(name: string, value: string): void; removeProperty?(name: string): string } };
 
 /** Writes every token as `--name` on the element (normally the document root). */
 export function applyTheme(el: StyleHost, theme: Theme = classic): void {
@@ -103,7 +109,7 @@ export type TerminalScheme = string;
 export type Mode = "system" | "light" | "dark";
 export const MODES: Mode[] = ["system", "light", "dark"];
 /** `lightTerminal`: in light mode terminals use `lightScheme`; off keeps `terminal` for both. */
-export type Appearance = { theme: ThemeName; tint: number; saturation: number; depth: number; terminal: TerminalScheme; mode: Mode; lightTerminal: boolean; lightScheme: TerminalScheme; custom: CustomScheme[]; appFont: string; editorFont: string; dividerWidth: number; dividerDark: string; dividerLight: string; paneDim: number; termFont: string; termSize: number; termLineHeight: number; termWeight: FontWeight; termWeightBold: FontWeight; screens: ScreenModes; sidebarLook: SidebarLook; sidebarTint: string; sidebarStrength: number };
+export type Appearance = { theme: ThemeName; tint: number; saturation: number; depth: number; terminal: TerminalScheme; mode: Mode; lightTerminal: boolean; lightScheme: TerminalScheme; custom: CustomScheme[]; appFont: string; editorFont: string; dividerWidth: number; dividerDark: string; dividerLight: string; paneDim: number; termFont: string; termSize: number; termLineHeight: number; termWeight: FontWeight; termWeightBold: FontWeight; screens: ScreenModes; sidebarLook: SidebarLook; sidebarTint: string; sidebarStrength: number; userThemes: CustomTheme[]; userTheme: string };
 /** VIEW-006: a mode of its own for one of the three workspace screens; a screen not listed follows `mode`. */
 export type ScreenModes = Partial<Record<"agents" | "board" | "terminals", Mode>>;
 export const THEMED_SCREENS = ["agents", "board", "terminals"] as const;
@@ -114,7 +120,7 @@ export const WEIGHTS = ["normal", "bold", "100", "200", "300", "400", "500", "60
 export type FontWeight = (typeof WEIGHTS)[number];
 const weightOr = (v: unknown, dflt: FontWeight): FontWeight => (typeof v === "string" && (WEIGHTS as readonly string[]).includes(v) ? (v as FontWeight) : typeof v === "number" && (WEIGHTS as readonly string[]).includes(String(v)) ? (String(v) as FontWeight) : dflt);
 /** The settings fields the appearance lives in. */
-export const FIELD = { theme: "appTheme", tint: "themeTint", saturation: "themeSaturation", depth: "themeDepth", terminal: "terminalScheme", mode: "appearanceMode", lightTerminal: "terminalLightScheme", lightScheme: "terminalSchemeLight", custom: "terminalCustomSchemes", appFont: "appFont", editorFont: "editorFont", dividerWidth: "paneDividerWidth", dividerDark: "paneDividerDark", dividerLight: "paneDividerLight", paneDim: "paneDim", termFont: "terminalFont", termSize: "terminalFontSize", termLineHeight: "terminalLineHeight", termWeight: "terminalFontWeight", termWeightBold: "terminalFontWeightBold", screens: "screenThemes", sidebarLook: "sidebarLook", sidebarTint: "sidebarTint", sidebarStrength: "sidebarTintStrength" } as const;
+export const FIELD = { theme: "appTheme", tint: "themeTint", saturation: "themeSaturation", depth: "themeDepth", terminal: "terminalScheme", mode: "appearanceMode", lightTerminal: "terminalLightScheme", lightScheme: "terminalSchemeLight", custom: "terminalCustomSchemes", appFont: "appFont", editorFont: "editorFont", dividerWidth: "paneDividerWidth", dividerDark: "paneDividerDark", dividerLight: "paneDividerLight", paneDim: "paneDim", termFont: "terminalFont", termSize: "terminalFontSize", termLineHeight: "terminalLineHeight", termWeight: "terminalFontWeight", termWeightBold: "terminalFontWeightBold", screens: "screenThemes", sidebarLook: "sidebarLook", sidebarTint: "sidebarTint", sidebarStrength: "sidebarTintStrength", userThemes: "customThemes", userTheme: "customThemeActive" } as const;
 export const SPAN = { tint: [-180, 180, 0], saturation: [0, 160, 100], depth: [-3, 6, 0], dividerWidth: [2, 12, 6], paneDim: [30, 100, 100], termSize: [8, 32, 13], termLineHeight: [1, 2, 1], sidebarStrength: STRENGTH_SPAN } as const;
 /** A divider colour is #rrggbb or empty (the window shows through, as DESIGN.md measured). */
 const hexOrEmpty = (v: unknown) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim().toLowerCase() : "");
@@ -136,6 +142,8 @@ export function readAppearance(s: Record<string, unknown>): Appearance {
   const t = s[FIELD.theme];
   const custom = tidySchemes(s[FIELD.custom]);
   const terminal = knownScheme(s[FIELD.terminal], custom, "default");
+  // T-648: the saved list as stored; the editor (loaded on demand) tidies it, here only the shape is checked.
+  const userThemes = (Array.isArray(s[FIELD.userThemes]) ? (s[FIELD.userThemes] as CustomTheme[]) : []).filter((c) => c && typeof c.name === "string");
   return {
     theme: typeof t === "string" && (THEMES as readonly string[]).includes(t.toLowerCase()) ? (t.toLowerCase() as ThemeName) : "classic",
     tint: clampNum(s[FIELD.tint], SPAN.tint),
@@ -165,6 +173,9 @@ export function readAppearance(s: Record<string, unknown>): Appearance {
     sidebarLook: sidebarLookOf(s[FIELD.sidebarLook]),
     sidebarTint: hexOrEmpty(s[FIELD.sidebarTint]) || DEFAULT_TINT,
     sidebarStrength: Math.round(clampNum(s[FIELD.sidebarStrength], SPAN.sidebarStrength)),
+    userThemes,
+    // T-648: the custom theme in use, or "" for the built-in one; a name that no longer exists is "".
+    userTheme: typeof s[FIELD.userTheme] === "string" && userThemes.some((c) => c.name === s[FIELD.userTheme]) ? (s[FIELD.userTheme] as string) : "",
   };
 }
 
@@ -201,13 +212,31 @@ export const themeHue = (a: Appearance) => (a.theme === "classic" ? null : (((HU
 
 /** Whether the operating system asks for dark (dark when there is no way to tell). */
 export const systemDark = () => typeof matchMedia !== "function" || matchMedia("(prefers-color-scheme: dark)").matches;
-export const isDark = (a: Appearance, system = systemDark()) => a.mode === "dark" || (a.mode === "system" && system);
+/** T-648: the custom theme in use, if any. */
+export const customOf = (a: Appearance) => a.userThemes.find((c) => c.name === a.userTheme);
+/** Only #rrggbb values under names that match `key`: a saved theme can never put anything else on the window. */
+const hexMap = (m: unknown, key: (k: string) => boolean): Record<string, string> => Object.fromEntries(Object.entries(m && typeof m === "object" ? m : {}).filter(([k, v]) => key(k) && /^#[0-9a-f]{6}$/i.test(String(v))));
+const baseOf = (c: CustomTheme) => ((THEMES as readonly string[]).includes(c.base) ? c.base : "classic") as ThemeName;
+const modeDark = (a: Appearance, system: boolean) => a.mode === "dark" || (a.mode === "system" && system);
+/** A custom theme's window is dark when its background is, whatever the mode says. */
+export const isDark = (a: Appearance, system = systemDark()) => {
+  const c = customOf(a);
+  return c ? c.dark !== false : modeDark(a, system);
+};
 
 /** Every token for an appearance: Classic as measured; a hued theme recolours the neutral greys
  *  (backgrounds, lines, text) and leaves the status colours alone so their meaning holds. Light
  *  mode turns the greys over (backgrounds light, text dark) and darkens the status colours a
  *  quarter so they still read on a light ground. */
 export function buildTheme(a: Appearance, dark = true): Theme {
+  const c = customOf(a);
+  if (!c) return builtIn(a, dark);
+  // T-648: a custom theme is its base with the colours resolved when it was saved laid over it.
+  const t: Record<string, string> = builtIn({ ...a, theme: baseOf(c) }, c.dark !== false);
+  for (const [k, v] of Object.entries(hexMap(c.vars, (k) => k.startsWith("--") && TOKEN_KEYS.includes(k.slice(2))))) t[k.slice(2)] = v;
+  return t as Theme;
+}
+function builtIn(a: Appearance, dark: boolean): Theme {
   const hue = themeHue(a);
   if (hue === null && dark) return { ...classic };
   const sat = hue === null || a.theme === "graphite" ? 0 : (BASE_SAT * a.saturation) / 100;
@@ -226,15 +255,18 @@ export function buildTheme(a: Appearance, dark = true): Theme {
 }
 
 /** The preview beside the swatches: the chosen theme, or a violet sample while Classic is chosen. */
-export const previewOf = (a: Appearance): Appearance => (a.theme === "classic" ? { ...a, theme: "violet" } : a);
+export const previewOf = (a: Appearance): Appearance => (a.theme === "classic" && !a.userTheme ? { ...a, theme: "violet" } : a);
 
-function mix(a: string, b: string, t: number): string {
+export function mix(a: string, b: string, t: number): string {
   const p = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const [x, y] = [p(a), p(b)];
   return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
 }
 
 const ANSI = { red: 0, green: 135, yellow: 45, blue: 215, magenta: 300, cyan: 185 } as const;
+/** The terminal colours a theme may set: text, ground, cursor, selection and the 16 palette slots. */
+const ANSI_NAMES = ["black", ...Object.keys(ANSI), "white"];
+export const TERMINAL_KEYS = ["foreground", "background", "cursor", "selectionBackground", ...ANSI_NAMES, ...ANSI_NAMES.map((c) => "bright" + c[0].toUpperCase() + c.slice(1))];
 
 /** SET-003: the terminal colours for an appearance. "match" works background, text and the 16-colour
  *  palette out of the app hue; "default" is Kolux's own dark scheme whatever the app hue. SET-023: in
@@ -249,7 +281,9 @@ export function terminalFor(a: Appearance, dark = isDark(a)): ITheme {
     return colours;
   }
   if (name !== "match") return terminalTheme(classic);
-  const base = a;
+  const ct = customOf(a);
+  // A custom theme's own tint, saturation and depth, not the window's resting sliders.
+  const base = ct ? { ...a, tint: clampNum(ct.tint, SPAN.tint), saturation: clampNum(ct.saturation, SPAN.saturation), depth: clampNum(ct.depth, SPAN.depth), theme: baseOf(ct) } : a;
   const t = buildTheme(base, !light);
   const hue = themeHue(base);
   const pull = (h: number, l: number) => (hue === null || base.theme === "graphite" ? hsl(h, 0.6, l) : mix(hsl(h, 0.6, l), hsl(hue, 0.6, l), 0.2));
@@ -260,7 +294,7 @@ export function terminalFor(a: Appearance, dark = isDark(a)): ITheme {
     colours["bright" + name[0].toUpperCase() + name.slice(1)] = pull(h, hi);
   }
   const greys = light ? { black: t.fg, brightBlack: t["fg-muted"], white: t["seg-active"], brightWhite: t["line-strong"] } : { black: t.surface, brightBlack: t["fg-faint"], white: t["fg-row"], brightWhite: t.fg };
-  return { ...terminalTheme(t), ...greys, ...colours };
+  return { ...terminalTheme(t), ...greys, ...colours, ...hexMap(ct?.terminal, (k) => TERMINAL_KEYS.includes(k)) };
 }
 
 // ---- SET-004: the first frame already has the saved look ----
@@ -363,6 +397,7 @@ export function applyAppearance(a: Appearance, root: StyleHost = document.docume
   lastDark = dark;
   const vars = { ...themeVars(buildTheme(a, dark)), ...appearanceVars(a, dark), "color-scheme": dark ? "dark" : "light" };
   if (typeof document !== "undefined") document.documentElement.dataset.mode = dark ? "dark" : "light";
+  root.style.removeProperty?.("--accent"); // a custom theme's accent must not outlive it; set again just below when the theme has one
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ vars, appearance: a }));

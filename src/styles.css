@@ -205,8 +205,6 @@ input { font: inherit; }
 .hdr-swatch.on { border-color: var(--fg); }
 .hdr-swatch:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px; }
 .sess-line { margin-top: -6px; padding: 0 8px 6px 44px; font-size: 11px; line-height: 14px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sess.pane-row { height: 26px; gap: 8px; font-size: 12px; }
-.sess.pane-row .name { overflow: hidden; text-overflow: ellipsis; }
 .branch .dot { margin-right: 2px; }
 .branch .chev { color: #797979; display: inline-flex; }
 .branch:hover { background: #1f1f1f; }
@@ -306,8 +304,7 @@ input { font: inherit; }
 .notice { flex: none; display: flex; align-items: center; gap: 8px; margin: 8px 8px 0; padding: 4px 4px 4px 10px; border: 1px solid #7a3b1e; border-radius: 8px; font-size: 12px; color: #f0a07a; }
 .notice .ib { margin-left: auto; }
 .sb-foot { height: 37px; border-top: 1px solid var(--line-strong); display: flex; align-items: center; padding: 0 5px 0 9px; gap: 3px; color: var(--fg-muted); }
-/* At the left sidebar's narrow end the update row keeps its icon and its accessible name; the
-   text is the only thing that goes. Sessions already ellipsize their names. */
+/* At the left sidebar's narrow end the footer tightens its padding. */
 @container (max-width: 260px) {
   .sb-foot { padding: 0 4px 0 6px; gap: 2px; }
 }
@@ -997,8 +994,8 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .scm-handoff .btn-row { display: flex; gap: 6px; margin-top: 6px; }
 .scm-handoff .btn-row select { flex: 1; min-width: 0; }
 
-/* ---- update card and ready pop-up (APP-025, APP-026): bottom-left, above the sidebar footer ---- */
-.upd-wrap { position: fixed; left: 16px; bottom: 148px; z-index: 45; width: 300px; display: flex; flex-direction: column; gap: 6px; }
+/* ---- update card and ready pop-up (APP-025, APP-026); placement lives in src/update/update.css ---- */
+.upd-wrap { display: flex; flex-direction: column; gap: 6px; }
 .upd-card { background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--fg-row); outline: none; animation: upd-in 160ms ease-out; }
 .upd-card:focus-visible { border-color: var(--seg-active); }
 .upd-head { display: flex; align-items: center; gap: 8px; padding: 8px 6px 8px 10px; }
@@ -1017,7 +1014,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .upd-actions { display: flex; justify-content: flex-end; }
 .upd-tip { display: flex; align-items: center; gap: 6px; padding: 6px 4px 6px 10px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; font-size: 12px; color: var(--fg-muted); }
 .upd-tip .ib { margin-left: auto; }
-.upd-pop { position: fixed; left: 16px; bottom: 148px; z-index: 45; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--fg); animation: upd-in 160ms ease-out; }
+.upd-pop { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 12px; color: var(--fg); animation: upd-in 160ms ease-out; }
 @keyframes upd-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .upd-card, .upd-pop { animation: none; } .upd-bar > div { transition: none; } .upd-icon svg { animation: none !important; } }
 /* EDIT-001: an editor tab is one file in CodeMirror; the dot is the unsaved marker, in the header and the tab. */
@@ -1565,3 +1562,35 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 .agent-pick-state { max-width: 55%; font-size: 12px; color: var(--fg-muted); text-align: right; overflow-wrap: anywhere; }
 .agent-pick-state.ok { color: var(--done); }
 .agent-pick-state.warn { color: var(--warn); }
+
+/* T-648: the custom theme editor (Settings > Appearance > Colour theme). */
+.ct { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ct-bar, .ct .btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ct-file { position: relative; cursor: pointer; }
+.ct-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.ct-paste summary, .ct-fold summary { cursor: pointer; font-size: 13px; color: var(--fg-row); }
+.ct-paste textarea { display: block; width: 100%; box-sizing: border-box; margin: 6px 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--fg); font: 12px monospace; resize: vertical; }
+.ct-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; justify-content: space-between; }
+.ct-rename { display: flex; flex-direction: column; gap: 4px; flex: 1 1 200px; min-width: 0; font-size: 12px; color: var(--fg-muted); }
+.ct-rename input { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--input-bg); color: var(--fg); font-size: 13px; min-width: 0; }
+.ct-main, .ct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.ct-grid { margin-top: 6px; }
+.ct-ansi { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ct-colour { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); }
+.ct-colour input[type=color] { flex: none; width: 34px; height: 26px; padding: 0 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.ct-name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12px; color: var(--fg-row); }
+.ct-name b, .ct-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.ct-name small { color: var(--fg-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ct-undo { flex: none; border: 0; background: none; color: var(--fg-muted); cursor: pointer; font-size: 15px; padding: 0 4px; }
+.ct-undo:hover { color: var(--fg); }
+.ct-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ct-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 11px; color: var(--fg-row); }
+.ct-chip.ok { border-color: var(--done-icon); }
+.ct-chip.low { border-color: var(--warn); color: var(--warn); }
+.ct-fix { border: 1px solid var(--warn); border-radius: 999px; background: none; color: var(--warn); font-size: 11px; padding: 0 8px; cursor: pointer; }
+.ct-group { margin: 10px 0 0; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-muted); }
+.ct-fold { border-top: 1px solid var(--line); padding-top: 8px; }
+.ct-term { display: flex; flex-direction: column; gap: 2px; margin: 10px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: 12px var(--mono-font); overflow: hidden; }
+.ct-dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.ct-dots i { width: 14px; height: 10px; border-radius: 2px; }
+.look-swatch.custom { border-radius: 6px; }

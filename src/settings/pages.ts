@@ -1,4 +1,4 @@
-// SET-006: the ten Settings pages, one small page per repository, and links that open Settings at a
+// SET-006: the eleven Settings pages, one small page per repository, and links that open Settings at a
 // chosen page and section from anywhere in the app.
 
 export const PAGES = {
@@ -12,6 +12,7 @@ export const PAGES = {
   notifications: "Notifications",
   shortcuts: "Shortcuts",
   usage: "Usage",
+  claude: "Claude",
 } as const;
 export type PageId = keyof typeof PAGES;
 export type Page = PageId | `repo:${string}`;
@@ -23,7 +24,7 @@ export function openSettings(page: Page, section?: string): void {
   window.dispatchEvent(new CustomEvent<SettingsTarget>(OPEN_SETTINGS, { detail: { page, section } }));
 }
 
-/** A page that exists: one of the ten, or a repository still in the list; anything else is the first. */
+/** A page that exists: one of the eleven, or a repository still in the list; anything else is the first. */
 export function pageOf(p: unknown, repoIds: string[]): Page {
   if (typeof p !== "string") return "general";
   if (p in PAGES) return p as PageId;
