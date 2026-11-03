@@ -185,7 +185,7 @@ describe("GIT-022 one click", () => {
   it("renders every step with long names cut to one line", () => {
     const html = renderToString(createElement(OneClickView, { run: { dir: "d", step: "text", state: "running", message: null, pr: null, skipped: ["message"], push: "force" } }));
     for (const id of STEPS) expect(html).toContain(`data-step="${id}"`);
-    expect(html).toContain("text-overflow:ellipsis");
+    expect(html).toContain("oc-cut");
     expect(html).toContain('data-mark="now"');
     expect(html).toContain("Pushing the branch (force with lease)");
   });

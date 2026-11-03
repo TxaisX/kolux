@@ -1,0 +1,91 @@
+T-686 - The Checks tab pieces say what they are doing and what went wrong (DT-C122; GIT-021/022/029/030/032/034, EDIT-030; UX audit lane D)
+Branch s-72/ux-7 (PR #107, stacked on #101 / T-676), base e93a23ba, code commits a52e434a and 3df0e8c1, 2026-11-02.
+No Rust in this PR: `git diff --stat e93a23ba 3df0e8c1` shows only src/scm files, so cargo was not run (no Rust change).
+
+WHAT CHANGED (src/scm; 21 audit rows fixed, 1 skipped for time)
+- ChecksPanel: Rerun failed jobs waits while it asks ("Asking..."), reads the checks again afterwards, and a failure
+  shows in a red note (role alert); the note and the answer belong to the folder that was clicked, so a late answer
+  after a folder switch is dropped. A link that will not open shows its reason in the note instead of nothing.
+  The collapsed stack map (GIT-034) is mounted under the PR row, keyed by folder and pull request.
+- CheckPane: Refresh button on the card, Retry beside a read error; the close button is named "Close the <name> check
+  tab"; inline px styles moved to classes in src/scm/scmUx.css (OneClickNotice too).
+- CommentsPanel: waiting state and error kept per comment or thread, shown under that card, its buttons wait; they clear
+  when the folder or pull request changes. Reply is disabled, with a tooltip and a visible hint, when GitHub gave no id
+  for the thread's first comment. Every comment box says "Enter sends. Shift+Enter adds a new line."
+- PrStart: composer text kept per folder; Cancel clears, Escape (inside the form only) keeps; an open Base list takes
+  the first Escape; the title box takes focus on open and focus returns to the opener; a finished AI write touches the
+  kept draft only in the composer session it began in.
+- ConflictPanel: a failed copy shows "Copy failed" on the button and a red note.
+- AutoPrStatus: Dismiss on any line that is not running; Retry on a line that stopped on a failure runs the automatic
+  flow again, after checking the automatic switch for that folder (a note says why when it is off or settings are
+  unreadable); a running line has neither. A link that will not open shows the reason.
+- One verb per action: Rerun failed jobs, Retry, Refresh, Fix with AI (the ChecksPanel button was "Fix with an agent"),
+  Resolve with AI (was "AI resolve").
+- New pure helpers src/scm/panelUx.ts; oneClick.test.ts assertion moved from a style string to a class.
+- Skipped: LineNotes (its only home would be Source Control, SourceControlPanel is dead code, out of scope); not deleted.
+- Spec: GIT-021, GIT-022, GIT-029, GIT-030, GIT-032, GIT-034 (spec/11-git-review.md) and EDIT-030 (spec/12-editor-files.md)
+  Rules lines extended and Acceptance lines point here. GIT-032 is retitled to the new button name.
+
+WHY
+The Checks tab buttons did nothing visible while working, swallowed failures (a rerun, a copy, a link that would not
+open), let one comment's action block or blame another, and lost a half-written pull request when the user switched
+folder or pressed Escape. Static UX audit rows in proof/ux-audit/findings (listed in D-ux7).
+
+REVIEW
+Opus review B -> fix pass (3df0e8c1) -> re-review A-.
+
+TESTS (named, the two changed files; pure-helper and source-shape tests, not a live run of the panels)
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > commits, publishes and opens the pull request, ending in success 4ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > audit row 8: a cut status stages the whole worktree, and cut alone counts as work 1ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > audit row 8: a cut status is scanned first, and nothing is staged when the scan blocks 1ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > audit row 8: a clean scan comes before the whole-worktree stage, and a short status is not scanned 1ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > folders that differ only in case or slash style are one folder 62ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > publishes a branch with no upstream and plain-pushes one that is ahead 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > forces with lease after a rewrite and stops when a sync is needed 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > stops with the sync message before writing any text 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > stops when the branch changed while the text was being written 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > skips message and commit on a clean branch and names the push step by kind 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > falls back to a plain message when the writer fails, and reports a failed push 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > refuses the default branch, conflicts and a blocked commit 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > keeps a second start from doubling a running flow, and runs per folder 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > with AI off it commits with the plain message, pushes, writes no text and stops asking the user to write it 1ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > with AI off on a clean branch it still pushes and stops before any writer call 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > the AI-off stop is shown as a neutral end, not as Stopped with a cross 8ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > offers the flow only when there is work to carry 0ms
+ ✓ src/scm/oneClick.test.ts > GIT-022 one click > renders every step with long names cut to one line 1ms
+ ✓ src/scm/panelUx.test.ts > row 3: a thread with no GitHub id says why Reply is off > names the reason, and says nothing for a thread that can take a reply 1ms
+ ✓ src/scm/panelUx.test.ts > row 4: each card keeps its own pending state and error > one card's action neither blocks nor shows its error on another 1ms
+ ✓ src/scm/panelUx.test.ts > row 6 and 8: the pull request draft is kept per folder, and Escape hides it without losing it > keeps one draft per folder 0ms
+ ✓ src/scm/panelUx.test.ts > row 6 and 8: the pull request draft is kept per folder, and Escape hides it without losing it > Escape hides the form but a reopened one starts with the typed text 0ms
+ ✓ src/scm/panelUx.test.ts > row 9: a clipboard that fails says so > answers false for no clipboard or a refused write, true for a written one 2ms
+ ✓ src/scm/panelUx.test.ts > row 2 and 14: the check tab can be refreshed, retried and closed by name > offers Refresh when it can read again, and Retry beside a read error 10ms
+ ✓ src/scm/panelUx.test.ts > row 2 and 14: the check tab can be refreshed, retried and closed by name > Refresh and Retry call the reader again; a card with no reader has neither 1ms
+ ✓ src/scm/panelUx.test.ts > row 2 and 14: the check tab can be refreshed, retried and closed by name > Refresh waits while the card is reading 1ms
+ ✓ src/scm/panelUx.test.ts > row 2 and 14: the check tab can be refreshed, retried and closed by name > the close button carries the check's name for a screen reader 1ms
+ ✓ src/scm/panelUx.test.ts > row 13: the check card and the one-click notice use classes, not inline pixel styles > the card has no style attribute 1ms
+ ✓ src/scm/panelUx.test.ts > row 13: the check card and the one-click notice use classes, not inline pixel styles > the notice has no style attribute and keeps its cut-to-one-line class 1ms
+ ✓ src/scm/panelUx.test.ts > row 11: the comment box says what Enter does > tells Enter from Shift+Enter 1ms
+ ✓ src/scm/panelUx.test.ts > row 10: an automatic pull request line can be dismissed or tried again > decides the buttons from the state 0ms
+ ✓ src/scm/panelUx.test.ts > row 10: an automatic pull request line can be dismissed or tried again > draws them 1ms
+ ✓ src/scm/panelUx.test.ts > row 5 and 15: the stack map draws, and a link that will not open has words > StackMap renders its collapsed Stack section 0ms
+ ✓ src/scm/panelUx.test.ts > row 5 and 15: the stack map draws, and a link that will not open has words > names the reason 0ms
+ ✓ src/scm/panelUx.test.ts > review fixes: Escape, folder switches and late answers > Escape closes the PR form only when it is the Escape key and no list inside is open 0ms
+ ✓ src/scm/panelUx.test.ts > review fixes: Escape, folder switches and late answers > PrStart no longer listens on the window for Escape 0ms
+ ✓ src/scm/panelUx.test.ts > review fixes: Escape, folder switches and late answers > the stack map is keyed by folder and pull request, and a late answer for another one is dropped 0ms
+ ✓ src/scm/panelUx.test.ts > review fixes: Escape, folder switches and late answers > ChecksPanel keys StackMap and drops a rerun answer from another folder 0ms
+ ✓ src/scm/panelUx.test.ts > review fixes: Escape, folder switches and late answers > a finished AI write touches the kept draft only in the composer session it began in 0ms
+ ✓ src/scm/panelUx.test.ts > review fixes: Escape, folder switches and late answers > Retry on an auto-PR line follows the automatic switch 0ms
+ Test Files  2 passed (2)
+      Tests  40 passed (40)
+
+TOTALS
+- pnpm vitest run src/scm (VITEST_MAX_WORKERS=2):
+ Test Files  37 passed (37)
+      Tests  336 passed (336)
+- pnpm tsc --noEmit
+tsc exit 0
+- Known local-only failures (src/editor/pdfjsCopy.test.ts) are outside src/scm and did not run here.
+
+AFTER MERGING origin/main 4bd4d2de (merge 6b58f082)
+ pnpm vitest run src/scm -> Test Files 37 passed (37), Tests 336 passed (336)
+ pnpm tsc --noEmit -> exit 0

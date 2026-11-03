@@ -688,10 +688,14 @@ User sees: an editor tab listing the check's steps with their status and its ann
 Rules: Fix with AI needs an open pull request; clicking an annotation opens that file at that line,
   but only for files inside the worktree; the tab header shows the check's name and has no path to
   copy; each check gets one tab per worktree: opening it again returns to that tab, and two checks
-  with the same name never share one.
+  with the same name never share one. (Kolux RS, T-686: the card has Refresh, and Retry beside a
+  read error; its close button is named "Close the <name> check tab"; its layout comes from classes,
+  not inline styles.)
 Acceptance:
   - [ ] Open a failing check → its steps are listed and Fix with AI is enabled; click an annotation
         → the file opens at that line.
+  - [ ] Open a check whose read failed → Retry sits beside the error and reads it again. (unit;
+        evidence/T-686.txt)
   - [ ] Open the same check a second time → the existing tab comes forward instead of a new one.
 Compat: —
 Source: D-12-030
