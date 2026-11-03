@@ -21,10 +21,11 @@ const off = (p: Promise<() => void>) => void p.then((u) => u()).catch(() => {});
 
 export default function TowerWindow() {
   const [snap, setSnap] = useState<Snapshot>({ seats: [], usage: [] });
+  const [loaded, setLoaded] = useState(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const tick = window.setInterval(() => setNow(Date.now()), 1000);
-    const un = listen<Snapshot>(TOWER_SNAPSHOT, (e) => setSnap(e.payload));
+    const un = listen<Snapshot>(TOWER_SNAPSHOT, (e) => (setSnap(e.payload), setLoaded(true)));
     void un.then(() => emitTo(MAIN, TOWER_READY)).catch(() => {});
     return () => {
       window.clearInterval(tick);
@@ -33,7 +34,7 @@ export default function TowerWindow() {
   }, []);
   return (
     <div className="tower-window">
-      <TowerView rows={towerRows(snap.seats)} usage={snap.usage} now={now} detached onOpen={(key) => void emitTo(MAIN, TOWER_OPEN, key).catch(() => {})} onRefresh={() => void emitTo(MAIN, TOWER_REFRESH).catch(() => {})} />
+      <TowerView rows={towerRows(snap.seats)} usage={snap.usage} now={now} loading={!loaded} detached onOpen={(key) => void emitTo(MAIN, TOWER_OPEN, key).catch(() => {})} onRefresh={() => void emitTo(MAIN, TOWER_REFRESH).catch(() => {})} />
     </div>
   );
 }

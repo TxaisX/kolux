@@ -86,3 +86,6 @@ export function lanes(tracks: Track[], from: number, to: number) {
 /** FIX-2: the Floor indents a nested lane by its depth up to this many levels, then stops. */
 export const INDENT_LIMIT = 5;
 export const indent = (depth: number): number => Math.min(depth, INDENT_LIMIT);
+
+/** When a re-read fails but earlier lanes are still on screen, they are old: say so instead of showing them as live. */
+export const staleNote = (error: string | null, haveTracks: boolean): string | null => (error !== null && haveTracks ? "These lanes are from the last successful reading and may be out of date." : null);

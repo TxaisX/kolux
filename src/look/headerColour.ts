@@ -59,3 +59,17 @@ export function colourSaveAfterDelete(settings: Record<string, unknown>, gone: R
   const had = readHeaderColours(settings);
   return gone.some((g) => keyOf(g.kind, g.id) in had) ? forgetHeaderColours(settings, gone) : null;
 }
+
+/** Roving focus for a swatch row: the id Arrow keys move to from `value` (wrapping), or null for other keys. */
+export function swatchStep(key: string, ids: readonly string[], value: string): string | null {
+  if (ids.length === 0) return null;
+  const at = Math.max(0, ids.indexOf(value));
+  if (key === "ArrowRight" || key === "ArrowDown") return ids[(at + 1) % ids.length];
+  if (key === "ArrowLeft" || key === "ArrowUp") return ids[(at + ids.length - 1) % ids.length];
+  if (key === "Home") return ids[0];
+  if (key === "End") return ids[ids.length - 1];
+  return null;
+}
+
+/** Only the picked swatch (the first, when none is) is a Tab stop. */
+export const swatchTabIndex = (id: string, ids: readonly string[], value: string): 0 | -1 => (id === (ids.includes(value) ? value : ids[0]) ? 0 : -1);

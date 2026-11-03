@@ -124,17 +124,21 @@ Source: D-19-024
 ### APP-025 · A downloaded update waits behind a small ready pop-up and installs on restart or quit
 Tier: P0 · Pushed: 8 · State at 0.15.0: live
 User does: carries on working after an update finished downloading in the background.
-User sees: a small pop-up in the bottom-left corner saying the new version is ready, with Restart to
-  update and a close control; ignoring it is fine, because the update installs the next time the
+User sees: a small pop-up in the bottom-left corner saying the new version is ready, with Update now
+  (which asks first, since T-675) and Later; ignoring it is fine, because the update installs the next time the
   app quits.
 Rules: the download starts by itself; the pop-up appears once per version per launch and stays until
   the user acts on it or closes it; it stays silent if the update card is on screen for that same
   update; it goes away if the update stops being ready; the app never restarts itself to update,
   only on the user's click or quit.
+  Since T-675 (DT-C111): Update now on the pop-up, or Restart to update on the card, first asks
+  "Restart to update?" (Restart now / Cancel), because a restart ends every open terminal and agent.
 Acceptance:
   - [x] Let an update download in the background → the pop-up appears once; close it → it does not
         come back this launch. (cards; evidence/cards-APP-025.txt)
   - [ ] Quit without clicking anything → the next launch runs the new version.
+  - [x] Click Update now on the pop-up, or Restart to update on the card → "Restart to update?" asks first;
+        Cancel leaves everything running, Restart now restarts and the button reads Restarting… until the app ends. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-025
 
@@ -149,14 +153,18 @@ Rules: only checks the user asked for, and download errors, bring up the card, n
   click and never installs on its own; Escape collapses the card, Enter runs its main action, and
   the reduced-motion preference turns its animation off; clicking again during a running check does
   not start a second one; a check that never reaches the updater times out and says so; the first
-  time an update is offered or downloading, a small dismissible tip above the card reassures the
-  user that running terminal sessions carry on, and it is gone for good once dismissed or once a
+  time an update is offered or downloading, a small dismissible tip above the card warns that
+  restarting to update closes open terminals and agents and that Kolux RS asks first, and it is gone for good once dismissed or once a
   download starts; a check requested while a quiet background check is already running takes that
   check over, so its result shows in the card.
+  Since T-675 (DT-C111): the tip used to say running terminal sessions carry on; it now gives the warning
+  above. A check asked for before the status has loaded waits and then runs, and a Check after a failed
+  status load fails with the reason; Escape on the ready pop-up is Later.
 Acceptance:
   - [x] On the newest version, click Check for Updates → the card reports up to date and closes itself. (cards; evidence/cards-APP-026.txt)
   - [x] With an update offered, dismiss the card → it stays away for that version; publish a newer
         one → it returns. (cards; evidence/cards-APP-026.txt)
+  - [x] Offer an update for the first time → the tip says a restart closes open terminals and agents. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-026
 
@@ -720,6 +728,8 @@ Acceptance:
   - [ ] Send feedback with some text → the browser opens a new-issue page whose title begins
         [Feedback] and whose body includes the version.
   - [ ] Tick Submit anonymously → the body has no GitHub login.
+  - [x] Press Open on GitHub twice quickly → one new-issue page opens (the button reads Opening… and keeps
+        focus); close the box → focus goes back to what opened it. (T-675; evidence/T-675.txt)
 Compat: issues go to the owner's public repository TxaisX/kolux, through GitHub's own new-issue page
   with the title and body passed in its address.
 Source: D-19-037
@@ -960,6 +970,8 @@ Rules: PNG, JPEG, WebP or GIF only, at most four images of at most 8 MB each; cr
 Acceptance:
   - [ ] Attach five images → the fifth is refused.
   - [ ] Attach one PNG and submit → pasting into the issue page inserts that image.
+  - [x] Add screenshot is a real button (Tab reaches it, Enter presses it) → the file picker opens; a picked
+        screenshot is attached and its remove button names the file. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-038
 

@@ -14,7 +14,9 @@ export type NotifyKind = "finish" | "stop" | "bell" | "quiet" | "test";
 export type NotifyEvent = { id: string; worktree: string | null; pane: string | null; kind: NotifyKind };
 
 export type PaceMemory = { shown: Map<string, number>; lastByDir: Map<string, number> };
-export type PaceOptions = { cooldownMs?: number; focused?: boolean; quietWhenFocused?: boolean; test?: boolean };
+/** `kind`: a "stop" (the agent needs you) keeps its own cooldown per worktree, so a task-complete just before it never hides it.
+ *  The same event is still shown once (its id), and callers that pass no kind pace as before. */
+export type PaceOptions = { cooldownMs?: number; focused?: boolean; quietWhenFocused?: boolean; test?: boolean; kind?: NotifyKind };
 
 export function newPaceMemory(): PaceMemory {
   return { shown: new Map(), lastByDir: new Map() };
@@ -35,7 +37,7 @@ export function paced(mem: PaceMemory, dir: string | null, id: string, now: numb
   if (opts.test) return true;
   if (opts.focused && opts.quietWhenFocused) return false;
   if (mem.shown.has(id)) return false;
-  const key = dir ?? "";
+  const key = (dir ?? "") + (opts.kind === "stop" ? "\u0000needs-you" : "");
   const last = mem.lastByDir.get(key);
   const cooldown = opts.cooldownMs ?? COOLDOWN_MS;
   if (last !== undefined && now - last < cooldown) {
