@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DISPATCH_ENV, sessionEnv, startFields, startTail } from "./startArgs";
+import { DISPATCH_ENV, RUN_ENV, sessionEnv, startFields, startTail } from "./startArgs";
 
 test("T-172-e / cli FIX-7: a worker start's first session carries its dispatch id, last, and only one", () => {
   const base: [string, string][] = [["A", "1"]];
@@ -16,8 +16,8 @@ test("T-172-e / cli FIX-7: a worker start's first session carries its dispatch i
 
 test("T-172-e: the runtime's start notice hands its dispatch id to startIn", () => {
   const notice = { kind: "start", path: "C:/w", branch: "b", agent: "claude", prompt: "do it", extra: ["--x"], title: null, dispatch: "dispatch-9" } as const;
-  expect(startTail({ ...notice, extra: [...notice.extra] })).toEqual(["do it", false, ["--x"], undefined, "dispatch-9"]);
-  expect(startTail({ ...notice, extra: [], title: "T", dispatch: undefined })).toEqual(["do it", false, [], "T", undefined]);
+  expect(startTail({ ...notice, extra: [...notice.extra] })).toEqual(["do it", false, ["--x"], undefined, "dispatch-9", undefined]);
+  expect(startTail({ ...notice, extra: [], title: "T", dispatch: undefined })).toEqual(["do it", false, [], "T", undefined, undefined]);
 });
 
 test("cli FIX-8: the environment a worker's first pane hands to terminal_spawn names the notice's dispatch, once, last", () => {
@@ -35,4 +35,17 @@ test("cli FIX-8: the environment a worker's first pane hands to terminal_spawn n
   const plain = startFields({ ...line, program: "npx", typed: "hi" }, "claude");
   expect(plain.env).toBe(line.env);
   expect([plain.program, plain.typed]).toEqual(["npx", "hi"]);
+});
+
+test("T-690: an automation run's start notice hands its run id to the pane's environment, once, last", () => {
+  const notice = { kind: "start", path: "C:/w", branch: "b", agent: "claude", prompt: "check", extra: [], title: "Nightly", runId: "run-7" } as const;
+  const [, , , , dispatch, run] = startTail({ ...notice, extra: [] });
+  expect([dispatch, run]).toEqual([undefined, "run-7"]);
+  expect(RUN_ENV).toBe("KOLUX_RUN_ID");
+  const line = { args: [], typed: null, program: null, env: [["KOLUX_RUN_ID", "run-user"], ["A", "1"]] as [string, string][] };
+  expect(startFields(line, "claude", dispatch, run).env).toEqual([["A", "1"], ["KOLUX_RUN_ID", "run-7"]]);
+  // A worker start that is also a run keeps both ids.
+  expect(sessionEnv([["A", "1"]], "dispatch-2", "run-7")).toEqual([["A", "1"], ["KOLUX_DISPATCH_ID", "dispatch-2"], ["KOLUX_RUN_ID", "run-7"]]);
+  // A tab the user opens never carries a run id, even one the agent's settings set.
+  expect(startFields(line, "claude").env).toEqual([["A", "1"]]);
 });

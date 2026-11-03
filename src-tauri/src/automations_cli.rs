@@ -323,7 +323,7 @@ pub(super) fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
                 }
             };
             let launch = automations::Launch { git: ctx.git, store: ctx.store, claude_config: ctx.claude_config.clone(), installed: &installed, notify: &notify };
-            Ok(automations::run(&launch, &id, "manual")?)
+            Ok(automations::run_manual(&launch, &id)?)
         }
         other => Err(Fail::args(format!("unknown command {other}"))),
     }
@@ -643,5 +643,20 @@ mod tests {
         drop(ctx);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_command_line_run_is_refused_while_the_same_automation_is_still_running() {
+        with_cli("busy", |_, store, _, call| {
+            let made = call("automations.create", json!({ "name": "r", "trigger": "daily", "prompt": "review", "provider": "claude", "timezone": "UTC" })).unwrap();
+            let id = made["id"].as_str().unwrap();
+            // A run of it is still going (as if the window's Run now had just started it).
+            let busy = json!([{ "id": "run-1", "automationId": id, "number": 1, "status": "dispatched", "terminal": "pane-1" }]);
+            store.lock().unwrap().set(crate::automations::RUNS_KEY, &busy.to_string()).unwrap();
+            let why = call("automations.run", json!({ "id": id })).unwrap_err().message;
+            assert!(why.contains("already running") && why.contains("#1"), "{why}");
+            let runs = store.lock().unwrap().get(crate::automations::RUNS_KEY).unwrap().unwrap();
+            assert_eq!(serde_json::from_str::<Value>(&runs).unwrap().as_array().unwrap().len(), 1, "no second run was made");
+        });
     }
 }
