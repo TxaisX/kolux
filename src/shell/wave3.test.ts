@@ -7,7 +7,7 @@ import { commandRows } from "../keys/commands";
 import { resolve } from "../keys/keymap";
 import { paletteRows } from "../projects/WorktreePalette";
 import { toggleSkills } from "../skills/nav";
-import { heldByOverlay, OVERLAYS } from "../keys/useWindowKeys";
+import { heldByOverlay, OVERLAYS, STAYS_OPEN } from "../keys/useWindowKeys";
 import type { Screen } from "../chrome/TopBar";
 import panel from "../projects/ProjectsPanel.tsx?raw";
 import topBar from "./window/TopBar.tsx?raw";
@@ -67,6 +67,6 @@ test("F11: an open sidebar form does not hold the palette chord; a menu left ope
   expect(heldByOverlay("worktree.palette", false, doc([]) as never)).toBe(false);
   expect(heldByOverlay("worktree.palette", false, doc([el("sb-form")]) as never), "an open sidebar form").toBe(false);
   expect(heldByOverlay("worktree.palette", false, doc([el("sb-form"), el("menu")]) as never), "a menu left open").toBe(true);
-  // the five sidebar forms are .sb-form elements with no dialog or menu role
-  for (const m of panel.matchAll(/className={?[`"]sb-form[^>]*>/g)) expect(m[0]).not.toMatch(/role="(dialog|menu|alertdialog)"|aria-modal="true"/);
+  // what keeps a sidebar form from holding the chord, whatever role it carries
+  expect(sel(STAYS_OPEN), "sidebar forms stay out of the overlay hold").toContain(".sb-form");
 });
