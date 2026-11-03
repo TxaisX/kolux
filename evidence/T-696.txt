@@ -10,7 +10,11 @@ G1 [wrong?] Palette "Filter by repository" / "Filter by kind" selects do not cha
   purpose, so it saw "no change". Test "G1 (not reproduced)": picking a repository adds "Repository: app", picking a kind
   adds "Kind: Worktrees", each picked entry leaves its picker, and the chip's button removes it again.
 
-G5 [polish] Ctrl+Shift+E never hides the Explorer - NOT REPRODUCED; the action's name now says it hides.
+G5 [polish] Ctrl+Shift+E never hides the Explorer - REPRODUCED ONLY WITH THE CONTENT SEARCH OPEN, FIXED; the action's
+  name now says it hides.
+  Found in review: with the Explorer's content search open, the press showed the panel but moved no focus into it
+  (Explorer.tsx skipped the focus while searching), so every later press from a terminal showed it again and never hid
+  it. Now the press focuses the content search box (inside the panel) in that state, so the next press hides.
   Code path: Ctrl+Shift+E runs sidebar.explorer.toggle (useWindowKeys.ts), which calls toggleExplorer
   (useSettingsPlumbing.ts): with the Explorer open and focus inside .explorer it hides it; otherwise it shows the Explorer
   and asks it to focus its tree (Explorer.tsx focuses the tree box, which sits inside <aside class="explorer">). The global
@@ -27,11 +31,14 @@ G6 [polish] Find bar: Previous/Next with no matches shows nothing - FIXED.
   greyed out and disabled while there is nothing to step to (count 0: no text yet, or No matches). Test "G6": with
   count 0 both are disabled, a click steps nothing, typed text with no match shows "No matches"; with 3 matches both
   step. Run against main's FindBar.tsx, the first G6 test fails (1 failed | 7 passed); with this change it passes.
+  Found in review: a step button that had the focus when the count fell to 0 (Clear Screen re-runs the search) went
+  disabled under it, and the focus fell to the page, out of reach of Escape / Enter / F3. The field now takes the focus
+  back. Test "a step button that goes grey under the focus hands it back to the field" fails without that guard.
 
 G8 [polish?] Editor: no diff / all-changes control for a dirty file - NOT REPRODUCED.
   The editor's view switch offers Changes for any file in the worktree (src/editor/viewSwitch.ts; tooltip "Compares with
   the last commit (uncommitted work), not with the base branch."). The same harness run clicked it in S28
-  (findings/live-wave3-b.md line 145: PASS, view changed). All Changes (and "Changed file diff...") open from the New tab menu (LayoutStrip.tsx) and from
+  (findings/live-wave3-b.md line 145: PASS, view changed). All Changes opens from the New tab menu (LayoutStrip) and from
   Review changes on a Board card. The SKIP at line 147 was the harness not finding a control by its own name.
 
 G7 [verify only] Browser "Grab an element" gives no visible feedback - VERIFIED, no change.
@@ -42,9 +49,9 @@ G7 [verify only] Browser "Grab an element" gives no visible feedback - VERIFIED,
 
 S24 [not tested] Tab context menu: every item - TESTED.
   Test "S24" mounts the menu (src/shell/window/TabMenuView.tsx) on the right-clicked middle tab of three in one cell and
-  clicks every item: Change Title asks to rename that tab; Pin tab pins it; a colour and No color set the colour; Split
-  Right and Split Down split that tab; Close, Close others, Close to the right, Close to the left and Close all each close
-  their own set ([2], [1,3], [3], [1], [1,2,3]); every item closes the menu. With the tab alone, Close to the right is
+  clicks every item: Change Title asks to rename that tab; Pin tab pins it; each colour swatch sets that colour on that
+  tab only and No color clears it; Split Right and Split Down split that tab; Close, Close others, Close to the right,
+  Close to the left and Close all each close their own set ([2], [1,3], [3], [1], [1,2,3]); every item closes the menu. With the tab alone, Close to the right is
   marked disabled and closes nothing, and the splits are disabled. Its arrow keys, Escape and placement are covered by
   tabMenuKeys.test.ts (T-668), so the hook is stubbed here.
 
@@ -52,20 +59,26 @@ Rules changed: none reversed (DT-C132). Spec: TERM-077 (Rules note + Acceptance)
 (Rules + Acceptance), VIEW-041 (Acceptance), each pointing here.
 
 TESTS (pnpm vitest run src/shell/wave3b.test.ts --reporter=verbose)
- ✓ src/shell/wave3b.test.ts > G1 (not reproduced): the palette's filter selects add a chip, then go back to their prompt > picking a repository or a kind adds its chip, the picked entry leaves the list, and the chip removes it again 206ms
- ✓ src/shell/wave3b.test.ts > G5 (not reproduced): Ctrl+Shift+E is a toggle > a press with focus inside the open Explorer hides it; any other press shows and focuses it 1ms
- ✓ src/shell/wave3b.test.ts > G5 (not reproduced): Ctrl+Shift+E is a toggle > its name in the palette and the shortcut list says it hides too 0ms
- ✓ src/shell/wave3b.test.ts > G6: the find bar's Previous / Next > with no matches the bar says so and the step buttons are greyed out 63ms
- ✓ src/shell/wave3b.test.ts > G6: the find bar's Previous / Next > with matches they step 46ms
- ✓ src/shell/wave3b.test.ts > S24: every item of the tab menu > lists the title, pin, color, split and close items 152ms
- ✓ src/shell/wave3b.test.ts > S24: every item of the tab menu > each head item does what it says and closes the menu 48ms
- ✓ src/shell/wave3b.test.ts > S24: every item of the tab menu > each close item closes its own set; one with nothing to close does nothing 92ms
-      Tests  8 passed (8)
+ ✓ src/shell/wave3b.test.ts > G1 (not reproduced): the palette's filter selects add a chip, then go back to their prompt > picking a repository or a kind adds its chip, the picked entry leaves the list, and the chip removes it again
+ ✓ src/shell/wave3b.test.ts > G5 (reproduced only with the content search open): Ctrl+Shift+E is a toggle > a press with focus inside the open Explorer hides it; any other press shows and focuses it
+ ✓ src/shell/wave3b.test.ts > G5 (reproduced only with the content search open): Ctrl+Shift+E is a toggle > its name in the palette and the shortcut list says it hides too
+ ✓ src/shell/wave3b.test.ts > G6: the find bar's Previous / Next > with no matches the bar says so and the step buttons are greyed out
+ ✓ src/shell/wave3b.test.ts > G6: the find bar's Previous / Next > a step button that goes grey under the focus hands it back to the field
+ ✓ src/shell/wave3b.test.ts > G6: the find bar's Previous / Next > with matches they step
+ ✓ src/shell/wave3b.test.ts > S24: every item of the tab menu > lists the title, pin, color, split and close items
+ ✓ src/shell/wave3b.test.ts > S24: every item of the tab menu > each head item does what it says and closes the menu
+ ✓ src/shell/wave3b.test.ts > S24: every item of the tab menu > each close item closes its own set; one with nothing to close does nothing
 
 TOTALS
-- pnpm vitest run src/keys src/terminal src/shell src/projects: Test Files 211 passed (211), Tests 1244 passed (1244).
+- pnpm vitest run src/keys src/terminal src/shell src/projects: Test Files 211 passed (211), Tests 1244 passed (1244)
+  (before the review fixes).
+- After the review fixes, pnpm vitest run src/shell/wave3b.test.ts src/editor src/terminal: 1758 passed, 3 failed; the
+  3 are src/editor/pdfjsCopy.test.ts, local only: this checkout turns public/pdfjs/* into CRLF, so the byte compare
+  with node_modules fails. Not touched here.
+- Review (Opus, read-only): A-, no must-fix; its four should-fixes applied (G5 search state, the step-button focus,
+  every colour swatch checked, close items checked to close the menu).
 - pnpm tsc --noEmit: exit 0.
 - scripts/firewall-check.ps1 -Baseline: 0 new.
-- FIRST LOAD (node scripts/bundle-budget.mjs after vite build): main 00fd7ddc 1,487,806 bytes; this branch 1,487,893
-  bytes, +87 (limit +500, ceiling 1,490,000).
+- FIRST LOAD (node scripts/bundle-budget.mjs after vite build): main 00fd7ddc 1,487,806 bytes; this branch 1,488,006
+  bytes, +200 (limit +500, ceiling 1,490,000).
 - No Rust touched.

@@ -1,9 +1,10 @@
 // T-696 (DT-C132): UX audit Wave 3 part B, lane D's rows, reproduced on the small DOM in src/tasks/fakeDom.ts
 // before any change. G1 palette filters, G5 the Explorer shortcut, G6 the find bar, S24 the tab menu.
-import { type FunctionComponent, createElement } from "react";
+import { type FunctionComponent, act, createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
 import type { Project, Worktree } from "../projects/model";
+import { TAB_COLORS } from "../terminal/tabColor";
 
 const h = vi.hoisted(() => ({ lists: {} as Record<string, unknown[]>, win: {} as Record<string, unknown> }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -57,15 +58,16 @@ describe("G1 (not reproduced): the palette's filter selects add a chip, then go 
   });
 });
 
-describe("G5 (not reproduced): Ctrl+Shift+E is a toggle", () => {
+describe("G5 (reproduced only with the content search open): Ctrl+Shift+E is a toggle", () => {
   it("a press with focus inside the open Explorer hides it; any other press shows and focuses it", () => {
     const plumbing = src("../settings/useSettingsPlumbing.ts");
     expect(plumbing).toContain(`if (explorerOpen && document.activeElement?.closest(".explorer")) return saveRight({ open: false });`);
     // the first press focuses the tree, which sits inside the .explorer panel, so the second press hides it
     const explorer = src("../editor/Explorer.tsx");
-    expect(explorer).toContain(`if (focusAsk && !hidden && !searching) box.current?.focus();`);
     expect(explorer.indexOf(`<aside className="explorer"`)).toBeLessThan(explorer.indexOf("ref={box}"));
     expect(src("../keys/keyScopes.ts")).toContain(`if (inTree) return ["global", "tabs"];`);
+    // with the content search open, the press focuses the search box instead (also inside the panel)
+    expect(explorer).toContain(`if (focusAsk && !hidden) searching ? setSearchAsk((n) => n + 1) : box.current?.focus();`);
   });
   it("its name in the palette and the shortcut list says it hides too", () => {
     expect(src("../keys/actions.ts")).toContain(`a("sidebar.explorer.toggle", "Show or hide Explorer", "global", ["Mod+Shift+E"])`);
@@ -89,6 +91,22 @@ describe("G6: the find bar's Previous / Next", () => {
     const box = byLabel(c, "input", "Find")[0];
     await typeInto(c, box, "zzz");
     await until(() => status.textContent === "No matches", "No matches");
+  });
+  it("a step button that goes grey under the focus hands it back to the field", async () => {
+    const { default: FindBar } = await import("../terminal/FindBar");
+    const { doc } = installDom();
+    let set: (n: number) => void = () => {};
+    const Host = () => {
+      const [count, setCount] = useState(3);
+      set = setCount;
+      return createElement(FindBar, { count, current: 0, onSearch: () => {}, onStep: () => {}, onClose: () => {} });
+    };
+    const m = await mount(createElement(Host), doc);
+    unmount = m.unmount;
+    const box = byLabel(m.container as FakeNode, "input", "Find")[0];
+    const focus = vi.spyOn(box, "focus");
+    await act(async () => set(0));
+    expect(focus).toHaveBeenCalled();
   });
   it("with matches they step", async () => {
     const { c, onStep, prev, next } = await bar(3);
@@ -139,20 +157,24 @@ describe("S24: every item of the tab menu", () => {
     await click(c, item("Split Down"));
     expect(fn("splitTab").mock.calls).toEqual([[2, "right"], [2, "down"]]);
     const swatches = find(c, (n) => n.attrs.role === "menuitemradio");
-    expect(swatches.length).toBeGreaterThan(0);
-    await click(c, swatches[0]);
+    expect(swatches.length).toBe(TAB_COLORS.length);
+    for (const s of swatches) await click(c, s);
     await click(c, item("No color"));
-    expect(fn("setTabColors")).toHaveBeenCalledTimes(2);
+    const set = fn("setTabColors").mock.calls.map(([up]) => up({ 1: TAB_COLORS[0].id }));
+    expect(set.slice(0, -1)).toEqual(TAB_COLORS.map((t) => ({ 1: TAB_COLORS[0].id, 2: t.id })));
+    expect(set[set.length - 1]).toEqual({ 1: TAB_COLORS[0].id });
     expect(fn("setTabMenu").mock.calls.every(([v]) => v === null)).toBe(true);
-    expect(fn("setTabMenu")).toHaveBeenCalledTimes(6);
+    expect(fn("setTabMenu")).toHaveBeenCalledTimes(5 + TAB_COLORS.length);
   });
   it("each close item closes its own set; one with nothing to close does nothing", async () => {
     const { c, item } = await open();
     const sets: Record<string, number[]> = { "Close": [2], "Close others": [1, 3], "Close to the right": [3], "Close to the left": [1], "Close all": [1, 2, 3] };
     for (const [name, keys] of Object.entries(sets)) {
       fn("closeTab").mockClear();
+      fn("setTabMenu").mockClear();
       await click(c, item(name));
       expect(fn("closeTab"), name).toHaveBeenCalledWith(keys);
+      expect(fn("setTabMenu"), name).toHaveBeenCalledWith(null);
     }
     h.win.orderOf = () => [2];
     h.win.panes = [panes[1]];

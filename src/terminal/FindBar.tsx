@@ -33,6 +33,10 @@ export default function FindBar({ focusTick = 0, count, current, slow = false, o
     input.current?.focus();
     input.current?.select();
   }, [focusTick]);
+  useEffect(() => {
+    const a = document.activeElement as HTMLButtonElement | null;
+    if (!count && (a === document.body || a?.disabled)) input.current?.focus();
+  }, [count]);
   const update = (q: string, o: FindOptions) => {
     setQuery(q);
     setOpts(o);
