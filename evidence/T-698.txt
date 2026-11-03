@@ -24,8 +24,11 @@ WHAT CHANGED
 - Order changes against main, all intended:
   - The floating panel (47/48 -> 30/31) is now under Settings, every menu and pop, so their dialogs are never covered.
   - The same move puts Settings (40), the menu backdrop and copy hint (40) and menus (41) over the review tray (44 on
-    main) and the plan sheet (46 on main), and the update pop (45) over the plan sheet. Settings covering the plan sheet
-    follows from Settings > panel > plan sheet; the update pop reaches the plan sheet only in a window under ~900px wide.
+    main) and the plan sheet (46 on main), and the review and update pops (45) over the plan sheet. Settings covering the
+    plan sheet follows from Settings > panel > plan sheet: a plan sheet that arrives while Settings is open stays under
+    it until Settings closes. The review pop opens at the selection and can reach the sheet; the update pop reaches it
+    only in a window under ~900px wide. The PR picker list (.search-pick-list) tied Settings, the menu backdrop and the
+    copy hint at 40 on main (DOM order decided); it is now strictly under them.
   - Every other pair keeps main's order, including sheets < pane pops < review tray < plan sheet < panel.
 - Settings now covers the floating panel. That is the only way its dialogs are over the panel without moving them out
   of the page (DT-C134 revises DT-C130 on this point); closing Settings brings the panel back.
@@ -42,6 +45,10 @@ REVIEW
   (.settings is inside .body). NITs taken: the value parser rejects half-written calc(); .link-bubble is on the top tier
   (same 60 as before, over the panel as on main). NIT left: rule() reads the first rule for a selector; no listed
   selector sets z-index twice today.
+- Second Opus review (opus-high-review) of efc99e97: A-. No MUST-FIX. SHOULD-FIX taken: the review pop over the plan
+  sheet and the PR picker tie are listed above. NITs taken: the stylesheet scan must find styles.css and more than 20
+  files; the pane tier keeps main's order inside it; the styles.css comment says "stylesheet"; DT-C134 names the
+  sidebar menu's backdrop. The Settings-over-plan-sheet consequence is in the PR description.
 
 TESTS
 - src/floating/floatStack.test.ts (rewritten from T-694), 5 tests: the tiers are in order and distinct; every page

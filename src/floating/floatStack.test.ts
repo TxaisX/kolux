@@ -56,12 +56,19 @@ test("T-698: sheets, pane pops, the review tray and the plan sheet draw under th
   expect(z(".chat-browser-menu")).toBeLessThan(Math.min(...pops));
   expect(Math.max(...pops)).toBeLessThan(z(".review-tray"));
   expect(z(".review-tray")).toBeLessThan(z(".plan-sheet"));
+  // Inside the pane tier, main's order: slash menu < table buttons < table menu < PR picker list.
+  expect(z(".slash-menu")).toBeLessThan(z(".table-ctl"));
+  expect(z(".table-ctl")).toBeLessThan(z(".table-ctx"));
+  expect(z(".table-ctx")).toBeLessThan(z(".search-pick-list"));
 });
 
 test("T-698: no stylesheet in src sets a bare z-index of 20 or more; every layer over the page is on the scale", () => {
   const src = new URL("../", import.meta.url);
   const bare: string[] = [];
-  for (const f of nodeFs.readdirSync(src, { recursive: true }).filter((p) => p.endsWith(".css"))) {
+  const sheets = nodeFs.readdirSync(src, { recursive: true }).filter((p) => p.endsWith(".css"));
+  expect(sheets).toContain("styles.css");
+  expect(sheets.length).toBeGreaterThan(20);
+  for (const f of sheets) {
     for (const m of nodeFs.readFileSync(new URL(f.replace(/\\/g, "/"), src), "utf8").matchAll(/z-index:\s*(\d+)/g)) {
       if (Number(m[1]) >= 20) bare.push(`${f}: ${m[1]}`);
     }
