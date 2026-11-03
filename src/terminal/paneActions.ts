@@ -33,7 +33,7 @@ import { removeShortcutAsk } from "../launch/removeAsk";
 import { emptySeat, removeTarget, sheetStart, type Seat, withoutFailed } from "../launch/seats";
 import { startWatch } from "../launch/startWatch";
 import type { Page } from "../projects/ProjectsPanel";
-import { PROJECT_COMMANDS, runProjectCommand } from "../projects/commands";
+import { projectRows } from "./projectRows";
 import type { PaletteItem } from "../projects/WorktreePalette";
 import { folderName } from "../projects/model";
 import { stepAllowed, travel, type Place } from "../projects/nav";
@@ -373,8 +373,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))), // T-610: Artifacts and Skills
     tabSearchCommand(() => openTabSearch()), // TERM-053
     { section: "Quick actions", label: "New session", run: () => addChooser() },
-    // palette.md:7: the sidebar's Add project, New group and Scan for repos (projects/commands.ts).
-    ...PROJECT_COMMANDS.map((c) => ({ section: "Quick actions", label: c.label, hint: c.hint, run: () => runProjectCommand(c.id) })),
+    ...projectRows(), // palette.md:7: the sidebar's Add project, New group and Scan for repos
     // VIEW-042: actions on the worktree in front, not runnable while none is open
     {
       section: "Quick actions",

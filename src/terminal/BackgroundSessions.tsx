@@ -11,9 +11,7 @@ type ViewProps = { rows: HostSession[] | null; loaded: boolean; asking: HostSess
 
 /** What the part draws, from its state (rendered alone in tests). */
 export function HostSessionsView({ rows, loaded, asking, failed, onAsk, onEnd, onKeep }: ViewProps) {
-  const summary = hostSummary(rows, loaded);
-  if (summary === null && !failed) return null;
-  const offered = offerable(rows, loaded);
+  // T-692: the question first, so an open one never goes unseen while the Resource Manager's Escape waits on it.
   if (asking) {
     const what = hostPlural(asking.length);
     return (
@@ -32,6 +30,9 @@ export function HostSessionsView({ rows, loaded, asking, failed, onAsk, onEnd, o
       </div>
     );
   }
+  const summary = hostSummary(rows, loaded);
+  if (summary === null && !failed) return null;
+  const offered = offerable(rows, loaded);
   return (
     <div className="res-row res-manage" data-host={offered.length > 0 ? "offer" : "none"} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
       <span className="menu-hint">{failed ? `Background sessions: ${failed}` : summary}</span>

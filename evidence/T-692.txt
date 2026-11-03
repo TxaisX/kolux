@@ -2,9 +2,12 @@ T-692 - Wave 2b: the E1, E2 and E3 requests and QUEUE.md lines 8 and 11 (DT-C128
 Worker 2f, branch s-2f/wave2b off origin/main 5177a5f2, 2026-11-03.
 
 WHAT CHANGED
-- E1 (small-views.md:22): src/settings/notifications.ts hands the pacer the event's kind, so a "stop"
-  (needs you) keeps its own cooldown per worktree and is no longer merged into a finish shown just
-  before it in the same worktree.
+- E1 (small-views.md:22): both pacers an agent notice passes through hear its kind: the window's own
+  (src/status/useAgentStatus.ts, noticed) and the notification one (src/settings/notifications.ts).
+  A "stop" (an agent that stopped and needs you) keeps its own cooldown per worktree, so it is no
+  longer merged into a note shown just before it in the same worktree. A bell still shares the
+  finish cooldown: the pacer gives only "stop" its own key (src/notify/pace.ts, from #111), and the
+  finding's bell half is left to that file's owner.
 - E1 (comment only): src/settings/SettingsPage.tsx:323 no longer names the Share card's window
   listener, which T-669 removed; the comment now says the card's dialog focus catches Escape in the
   capture phase.
@@ -13,12 +16,15 @@ WHAT CHANGED
   passes it from the Projects sidebar as the follow-up. The request's data attribute was left out to
   keep the first load within budget; the test reads the text instead.
 - E3 (palette.md:7): the palette gains one Quick actions row per project command (Add project, New
-  group, Scan for repos), each with its hint, run through runProjectCommand.
+  group, Scan for repos), each with its hint, run through runProjectCommand
+  (src/terminal/projectRows.ts, used by paneActions.ts).
 - E3 (EDIT-031): closing panes passes the toast to trashUnusedNotes, so a failed trash of an empty
   note is said instead of only logged.
 - E3 (usage-status.md:8): with the background sessions' End question open, Escape in the Resource
   Manager closes that question first, then the panel. escapeStep gains a "background" step after
   bulk, single and End N; BackgroundSessions hands its close to the Resource Manager through a ref.
+  The question is now drawn before the list's own "nothing to show" check, so an open question
+  never goes unseen when the 2-second re-read finds the offered sessions already gone.
 
 NO CHANGE NEEDED (checked)
 - E3 view.automations: commandRows (src/keys/commands.ts) lists every command, the unbound ones
@@ -38,13 +44,31 @@ WAITING
 
 FIRST LOAD
 - node scripts/bundle-budget.mjs: main 5177a5f2 1,485,561 bytes (CI run 41660758611 and a local
-  build agree); this branch 1,486,025 bytes, +464 (limit +500, ceiling 1,490,000).
+  build agree); this branch 1,486,051 bytes, +490 (limit +500, ceiling 1,490,000).
 
 TESTS (only the touched ones, per the 0.1.6 build window)
 - pnpm vitest run src/settings/notifications.test.ts src/launch/PlusMenu.test.ts
   src/status/resourceManagerUx.test.ts src/terminal/shellKeys.test.ts
-  src/terminal/paletteProjectRows.test.ts src/terminal/hostSessions.test.ts: 6 files, 49 tests pass.
+  src/terminal/paletteProjectRows.test.ts src/terminal/hostSessions.test.ts
+  src/status/notifyFocused.test.ts src/projects/uxRows4.test.ts: 8 files, 77 tests pass.
+- The new notifyFocused test (a stop right after a permission note in the same worktree) fails with
+  the useAgentStatus.ts change taken out ("expected [ 'notify_event' ] to have a length of 2 but
+  got 1") and passes with it.
 - pnpm tsc --noEmit: clean. node scripts/plan-check.mjs: OK.
 
 REVIEW
-- See below.
+- Opus review (opus-high-review) of 3d8110d9: B. MUST-FIX: agent notices pass the window's own
+  pacer in useAgentStatus.ts first, which still got no kind, so a stop right after a finish was
+  dropped there before notifications.ts saw it. SHOULD-FIX: the background End question could stay
+  open but undrawn after a re-read, so the first Escape seemed to do nothing; the palette rows test
+  read the source text instead of running the rows. NITs: this section was empty; the bell half of
+  the finding was not mentioned.
+- Fixed after it: the kind goes to that pacer too, with a test through the agent-status listener;
+  the question is drawn first; the rows come from projectRows() and the test runs them; this
+  section and the bell note filled in.
+
+LANES
+- src/status (useAgentStatus.ts, ResourceManager.tsx, resources.ts and their tests) is lane A's; the
+  Resource Manager change was lane A's own request (E3) and the useAgentStatus.ts line is the same
+  E1 fix one step earlier. src/projects is untouched: lane C passing the target project name from
+  ProjectsPanel.tsx is its follow-up.
