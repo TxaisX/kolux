@@ -3,7 +3,7 @@
 // There is no jsdom, so the page is a small stand-in: a window that keeps its listeners, a document with an active
 // element, and boxes that answer the two selector queries the helper makes.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FOCUSABLE, tabTarget, trapDialog, trapMenu } from "./dialogFocus";
+import { FOCUSABLE, MENU_ROWS, tabTarget, trapDialog, trapMenu } from "./dialogFocus";
 
 type Fake = { name: string; isConnected: boolean; focus: () => void };
 type Handler = (e: Record<string, unknown>) => void;
@@ -26,7 +26,7 @@ const press = (key: string, extra: Record<string, unknown> = {}) => {
   return e;
 };
 const box = (focusables: Fake[], rows: Fake[] = []) => ({
-  querySelectorAll: (sel: string) => (sel === FOCUSABLE ? focusables : sel === '[role^="menuitem"]' ? rows : []),
+  querySelectorAll: (sel: string) => (sel === FOCUSABLE ? focusables : sel === MENU_ROWS ? rows : []),
   contains: (x: unknown) => focusables.includes(x as Fake) || rows.includes(x as Fake),
 }) as unknown as HTMLElement;
 
@@ -125,4 +125,39 @@ test("a menu: focus on the first row, arrows wrap between rows, Escape closes it
   expect(esc.stopped).toBe(true);
   stop();
   expect(active).toBe(trigger);
+});
+
+test("a popup in a hidden pane leaves Tab, Escape and the arrows alone", () => {
+  let hidden = false;
+  const ok = el("ok");
+  const b = Object.assign(box([ok], [ok]), { closest: (sel: string) => (sel === "[hidden]" && hidden ? {} : null) });
+  const onClose = vi.fn();
+  const stopDialog = trapDialog(b, onClose);
+  hidden = true;
+  const other = el("field");
+  active = other;
+  expect(press("Tab").defaultPrevented, "Tab is not trapped by a hidden dialog").toBe(false);
+  expect(press("Escape").stopped, "Escape goes on to whatever is shown").toBe(false);
+  expect(onClose).not.toHaveBeenCalled();
+  stopDialog();
+  hidden = false;
+  const stopMenu = trapMenu(b, onClose);
+  hidden = true;
+  active = ok;
+  expect(press("ArrowDown").defaultPrevented).toBe(false);
+  stopMenu();
+});
+
+test("a menu leaves the arrows alone once focus is outside it, and Tab closes it", () => {
+  const rows = [el("one"), el("two")];
+  const onClose = vi.fn();
+  const stop = trapMenu(box([], rows), onClose);
+  const field = el("field");
+  active = field;
+  expect(press("ArrowDown").defaultPrevented, "the arrows belong to the field").toBe(false);
+  expect(active).toBe(field);
+  active = rows[0];
+  press("Tab");
+  expect(onClose).toHaveBeenCalledTimes(1);
+  stop();
 });

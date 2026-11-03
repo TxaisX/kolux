@@ -37,11 +37,14 @@ function giveBack(prev: Element | null, box: Box) {
 function openPopup(box: Box, onClose: () => void, first: () => HTMLElement | null, extra: (e: KeyboardEvent) => void): () => void {
   const prev = document.activeElement;
   (first() ?? Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE))[0])?.focus();
-  const stopEscape = watchEscape(window, onClose);
-  window.addEventListener("keydown", extra as EventListener, true);
+  // A popup inside a hidden pane (panes stay mounted while another is shown) leaves every key alone.
+  const shown = () => !(box as Partial<Element>).closest?.("[hidden]");
+  const stopEscape = watchEscape(window, onClose, shown);
+  const keys = (e: Event) => shown() && extra(e as KeyboardEvent);
+  window.addEventListener("keydown", keys, true);
   return () => {
     stopEscape();
-    window.removeEventListener("keydown", extra as EventListener, true);
+    window.removeEventListener("keydown", keys, true);
     giveBack(prev, box);
   };
 }
@@ -57,10 +60,19 @@ export function trapDialog(box: Box, onClose: () => void, initial?: () => HTMLEl
   return openPopup(box, onClose, initial ?? (() => null), onTab);
 }
 
-/** A menu's keyboard: focus on the first row, arrows / Home / End move between the rows (wrapping). Returns the stop. */
+/** The rows a menu's arrow keys move between (a disabled row cannot take focus). */
+export const MENU_ROWS = '[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])';
+
+/** A menu's keyboard: focus on the first row, arrows / Home / End move between the rows (wrapping), Tab closes it
+ * (focus goes on to the next control). Keys pressed while focus is outside the menu are left alone. Returns the stop. */
 export function trapMenu(box: Box, onClose: () => void): () => void {
-  const rows = () => Array.from(box.querySelectorAll<HTMLElement>('[role^="menuitem"]'));
+  const rows = () => Array.from(box.querySelectorAll<HTMLElement>(MENU_ROWS));
+  // A menu opened low in a short window scrolls inside the space left below its top instead of running off it.
+  const el = box as Partial<HTMLElement>;
+  if (el.style && el.getBoundingClientRect) el.style.maxHeight = `${Math.max(80, window.innerHeight - el.getBoundingClientRect().top - 8)}px`;
   const onArrow = (e: KeyboardEvent) => {
+    if (!box.contains(document.activeElement)) return;
+    if (e.key === "Tab") return onClose();
     const all = rows();
     const to = menuStep(all.length, all.indexOf(document.activeElement as HTMLElement), e.key);
     if (to === null) return;
