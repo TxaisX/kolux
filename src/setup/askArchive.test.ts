@@ -1,7 +1,5 @@
 // STAT-055 / SAFE-025 (T-715): before a workspace is removed, the page asks about its kolux.yaml
 // archive script; Rust runs it during the removal only when trusted. Every removal caller asks first.
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 
 const calls: [string, Record<string, unknown>][] = [];
@@ -49,15 +47,13 @@ test("T-715: with no prompt, or a question that fails, nothing is approved and t
 });
 
 test("T-715: every removal command the page sends is preceded by its own archive ask", () => {
-  const src = join(__dirname, "..");
-  const files = (readdirSync(src, { recursive: true }) as string[]).filter((f) => /\.tsx?$/.test(f) && !/\.test\.|__cards__/.test(f));
+  const files = import.meta.glob(["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}", "!/src/**/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
   const remove = /"(workspace_remove|workspace_remove_many|cleanup_remove)"/g;
   const callers: string[] = [];
-  for (const f of files) {
-    const text = readFileSync(join(src, f), "utf8");
+  for (const [f, text] of Object.entries(files)) {
     let from = 0;
     for (const m of text.matchAll(remove)) {
-      callers.push(f.replace(/\\/g, "/"));
+      callers.push(f.replace("/src/", ""));
       // between the previous removal command and this one there is an ask
       expect(text.slice(from, m.index), `${f} at ${m.index}`).toContain("await askArchive(");
       from = m.index + m[0].length;

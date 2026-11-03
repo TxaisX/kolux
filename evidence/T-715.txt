@@ -1,5 +1,5 @@
 T-715 - A workspace's archive script runs when the workspace is removed (DT-C151; STAT-055)
-Worker 90, coordinator 57, branch s-90/t715 from main 8c9536aa, 2026-11-03.
+Worker 90, coordinator 57, branch s-90/t715 from main 8c9536aa, merged with main ec26a0da, 2026-11-03.
 Row: proof/ux-audit/requests/W3.md, "T-715 / DT-C151" (backend-wiring finding: setup.rs workspace_archive was dead code).
 
 WHAT WAS WRONG
@@ -10,11 +10,14 @@ WHAT WAS WRONG
 THE FIX (DT-C151)
 - setup.rs: run_archive takes a `trusted` check that is asked about the exact script text it read, so what was checked
   is what runs. workspace_archive is replaced by archive_on_remove(store, root, wt): SAFE-025's trust_ask with kind
-  "archive"; an untrusted script is skipped and the removal goes on.
+  "archive"; an untrusted script, or one whose trust record cannot be read, is skipped and the removal goes on. The
+  store lock is held only for the trust check, never while the script runs.
 - projects.rs: the shared remove_one (the single delete, the batch PROJ-071 and the cleanup dialog all route through it)
-  runs the archive script in the folder before anything of it goes. A script that fails or runs past its time stops
-  the delete with its error ("... It was not deleted; tick Delete my changes too to delete it anyway."); the force box
-  waives it. remove_with(.., archive: bool) lets the CLI keep its behaviour.
+  stops the folder's terminals, then runs the archive script in the folder, before anything of it goes. A script that
+  fails or runs past its time stops the delete with its error ("... It was not deleted."); a forced delete goes on.
+  A script that ran and exited 0 may leave files in the folder (a log, a marker): the later "uncommitted changes" check
+  is waived for it, since the stamp check before the script already guarded the user's own changes.
+  remove_with(.., archive: bool) lets the CLI keep its behaviour.
 - cli/mod.rs: `kolux worktree rm` calls remove_with(.., false): unchanged, it still warns that --run-hooks teardown
   scripts do not run yet (CLI-020 wiring is a follow-up).
 - Front end (SAFE-025 asks first, as for setup): TrustPrompt.tsx askArchive(path) = trusted(path, "archive"), and a
@@ -23,23 +26,39 @@ THE FIX (DT-C151)
   (each pick before workspace_remove_many).
 
 TESTS
-- cargo: projects::tests::t715_removing_a_workspace_runs_its_trusted_archive_script_first (new): untrusted -> the
-  folder goes and the script did not run; after trust_grant -> archived.txt says "done" and the folder goes; a granted
-  script that exits 3 -> "The archive script failed with exit code 3: boom ... It was not deleted", the folder stays,
-  and force removes it. 1 passed. setup:: stat055 tests 5 passed (six run_archive calls gained `&|_| Ok(true)`).
-  REVERT_CHECK
+- cargo: projects::tests::t715_removing_a_workspace_runs_its_trusted_archive_script_first (new), five workspaces:
+  untrusted -> the folder goes and the script did not run; after trust_grant -> archived.txt says "done" and the folder
+  goes; a granted script that exits 3 -> "The archive script failed with exit code 3: boom ... It was not deleted.",
+  the folder stays, and force removes it; a granted script that writes left.txt inside the workspace -> it ran and the
+  folder goes without force; the CLI's remove_with(.., false) with a trusted script -> the folder goes, the script
+  did not run. setup:: stat055 tests 5 passed (six run_archive calls gained `&|_| Ok(true)`).
+  Revert check: with the archive call switched off (`if archive && false`) the test fails at projects.rs:4878
+  ("the archive script ran": archived.txt not found); restored, it passes.
+- cargo test --lib -- projects:: bulk:: cleanup:: setup:: cli:: : 369 passed, 0 failed (before the main merge);
+  after merging main ec26a0da: 369 passed, 0 failed.
+- cargo clippy --all-targets -- -D warnings: clean. (again clean after the ec26a0da merge.)
 - vitest: src/setup/askArchive.test.ts (new, 3 tests): Run once asks script_trust_needed then script_trust_grant with
-  kind "archive"; with no prompt host nothing is granted, and a failing question resolves false; every removal caller
-  awaits askArchive before its remove command (both of the panel's). src/setup src/projects src/shell src/space:
-  109 files, 585 tests passed. FULL_VITEST
-- RUST_RUN
-- tsc --noEmit clean. CLIPPY
+  kind "archive"; with no prompt host nothing is granted, and a failing question resolves false; every removal command
+  string in src (outside tests and cards) has its own `await askArchive(` since the previous one, and the callers are
+  exactly the five known sites. Revert check: with main's SpaceView.tsx it fails ("space/SpaceView.tsx ... expected
+  ... to contain 'await askArchive('"); with main's TrustPrompt.tsx the other two fail.
+- Full vitest after the main merge (VITEST_MAX_WORKERS=2): 804 files, 5983 tests passed. (An earlier full run under
+  heavier load failed timing-bound tests in editor/, projects/uxRows5 and scripts/release.test.mjs; each passed when
+  rerun alone, 47/47 and 43/43, and none touches this change.)
+- tsc --noEmit: clean.
 
-BUNDLE (same slot, vite build + scripts/bundle-budget.mjs)
-- main 8c9536aa: first load 1,489,577 B; this branch: 1,489,684 B = +107 B (cap +0 raised to +107 by 57, 15:01,
-  option (a)). Made of the askArchive helper and one await at each of the four first-load removal sites; SpaceView is
-  a lazy chunk. An import() per site was not taken: TrustPrompt is already in first load (trustedSetup), so it could
-  only add bytes.
+BUNDLE (same slot, vite build + scripts/bundle-budget.mjs, the five changed files swapped to main's for the base)
+- main 8c9536aa: 1,489,577 B; branch: 1,489,684 B = +107 B.
+- main ec26a0da: 1,489,509 B; branch after the merge: 1,489,615 B = +106 B.
+- Cap +0 raised to +107 B by 57 (15:01, option (a)). Made of the askArchive helper and one await at each of the four
+  first-load removal sites; SpaceView is a lazy chunk. An import() per site was not taken: TrustPrompt is already in
+  first load (trustedSetup), so it could only add bytes.
+
+KNOWN LIMITS (in DT-C151)
+- A retry after a failure runs the script again; a forced delete whose script failed says nothing about it.
+- Space asks about every pick before its one batch call, and trust keeps one approved archive text per repository, so
+  picks on branches with different archive scripts: only the last one approved runs.
+- The fingerprint covers the kolux.yaml line, not files it calls in the worktree (as for setup).
 
 NOT DONE (follow-ups)
 - `kolux worktree rm --run-hooks` (CLI-020) still does not run the archive script; the CLI has no prompt to ask with.
