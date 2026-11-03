@@ -5,11 +5,12 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle, typeInto } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: unknown }[], groups: [] as { id: string; name: string; parent: string | null }[], rev: 1, made: 0, check: null as unknown, hold: false, release: () => {} }));
+const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: unknown }[], groups: [] as { id: string; name: string; parent: string | null }[], rev: 1, made: 0, check: null as unknown, hold: "", release: () => {} }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: { id?: string }) => {
     h.calls.push({ cmd, args });
     const answer = () => Promise.resolve({ groups: h.groups, members: { p1: "g1" }, rev: ++h.rev });
+    if (cmd === h.hold) return new Promise((done) => (h.release = () => done(cmd === "workspace_remove" ? null : answer()))); // answered when the test says
     if (cmd === "get_settings") return Promise.resolve({});
     if (cmd === "workspace_remove_check") return Promise.resolve(h.check);
     if (cmd === "workspace_statuses") return Promise.resolve({ list: [] });
@@ -23,7 +24,6 @@ vi.mock("@tauri-apps/api/core", () => ({
       h.groups = [...h.groups, { id: `n${++h.made}`, name: "", parent: null }];
       return answer();
     }
-    if (cmd === "group_rename" && h.hold) return new Promise((done) => (h.release = () => done(answer())));
     if (cmd === "group_delete") {
       h.groups = h.groups.filter((x) => x.id !== args?.id);
       return answer();
@@ -60,7 +60,7 @@ beforeEach(() => {
   h.groups = [{ id: "g1", name: "Clients", parent: null }];
   h.rev = 1;
   h.made = 0;
-  h.hold = false;
+  h.hold = "";
   h.check = { changes: [], locked: null, nested: [], stamp: "s", commits: [] };
   focused.length = 0;
 });
@@ -86,6 +86,7 @@ const hasText = (c: FakeNode, t: string) => find(c, (n) => n.textContent.include
 const deletes = () => h.calls.filter((x) => x.cmd === "group_delete").map((x) => (x.args as { id: string }).id);
 const newGroup = (c: FakeNode) => byLabel(c, "button", "New group")[0];
 const groupX = (c: FakeNode) => find(c, (n) => n.attrs["data-group-x"] !== undefined)[0];
+const settingsOf = (c: FakeNode, id: string) => find(c, (n) => n.attrs["data-group-settings"] === id);
 const escape = (c: FakeNode, on: FakeNode) => fire(c, "keydown", on, { key: "Escape" });
 
 test("New group pressed twice with the first still unsaved drops the first and keeps one", async () => {
@@ -116,7 +117,7 @@ test("New group pressed while the first group's Save is still being answered kee
   await click(c, newGroup(c));
   await settle(60);
   await typeInto(c, byLabel(c, "input", "group name")[0], "Acme");
-  h.hold = true;
+  h.hold = "group_rename";
   await click(c, byText(c, "button", "Save")[0]);
   await click(c, newGroup(c));
   await settle(60);
@@ -125,6 +126,26 @@ test("New group pressed while the first group's Save is still being answered kee
   expect(h.calls.some((x) => x.cmd === "group_rename")).toBe(true);
   expect(deletes()).toEqual([]);
   expect(h.groups.map((x) => x.id)).toEqual(["g1", "n1", "n2"]);
+  // n1's answer closes only n1's form: n2's stays open, so closing it unsaved still takes n2 away
+  expect(settingsOf(c, "n2").length).toBe(1);
+  await click(c, byText(c, "button", "Cancel")[0]);
+  await settle(60);
+  expect(deletes()).toEqual(["n2"]);
+});
+
+test("Cancel pressed while a new group's Save is still being answered keeps the saved group", async () => {
+  const c = await panel();
+  await click(c, newGroup(c));
+  await settle(60);
+  await typeInto(c, byLabel(c, "input", "group name")[0], "Acme");
+  h.hold = "group_rename";
+  await click(c, byText(c, "button", "Save")[0]);
+  await click(c, byText(c, "button", "Cancel")[0]);
+  await settle(60);
+  h.release();
+  await settle(60);
+  expect(deletes()).toEqual([]);
+  expect(h.groups.map((x) => x.id)).toEqual(["g1", "n1"]);
 });
 
 test("a new group deleted from its own form is not removed a second time by the next New group", async () => {
@@ -192,14 +213,26 @@ test("the move question gives focus back to the row on Cancel, on Escape and aft
   expect(focused).toEqual(["row", "row", "row"]);
 });
 
-test("the workspace delete question's button says Delete, not Remove, and the project question keeps Remove project", async () => {
+test("the workspace delete question and its button say Delete, not Remove, and it shows Deleting… while it works", async () => {
   const c = await panel();
   await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this workspace"))[0]);
   await settle(60);
+  expect(hasText(c, "Delete fix and its folder?")).toBe(true);
+  expect(hasText(c, "Remove fix")).toBe(false);
   expect(byText(c, "button", "Delete").length).toBe(1);
   expect(byText(c, "button", "Remove")).toEqual([]);
+  h.hold = "workspace_remove";
+  await click(c, byText(c, "button", "Delete")[0]);
+  await settle(60);
+  expect(byText(c, "button", "Deleting…").length).toBe(1);
   expect(find(c, (n) => n.localName === "button" && n.textContent.trim().startsWith("Removing"))).toEqual([]);
-  await click(c, byText(c, "button", "Keep")[0]);
+  h.release();
+  await settle(60);
+  expect(h.calls.some((x) => x.cmd === "workspace_remove")).toBe(true);
+}, 15000);
+
+test("the project question keeps Remove project", async () => {
+  const c = await panel();
   await click(c, find(c, (n) => n.attrs["data-proj-x"] !== undefined)[0]);
   expect(byText(c, "button", "Remove app").length).toBe(1);
 });

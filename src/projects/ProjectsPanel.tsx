@@ -868,13 +868,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupFor, freshGroup]);
   const saveGroup = async (g: Group) => {
-    freshRef.current = null; // being saved: a New group pressed before the rename answers must not drop it
+    // Saved: it stays. It stops being the unsaved new group before the backend answers, so a New group, Cancel or another
+    // form opened meanwhile cannot drop it; and the answer closes only this group's form, not one opened since.
+    const wasFresh = freshRef.current === g.id;
+    if (wasFresh) setFreshGroup(null);
     try {
       if (groupName.trim() !== g.name) takeGroups(await invoke<Groups>("group_rename", { id: g.id, name: groupName }));
       if (groupParent !== (g.parent ?? "")) takeGroups(await invoke<Groups>("group_nest", { id: g.id, parent: groupParent || null }));
-      setFreshGroup(null); // saved: it stays
-      setGroupFor(null);
+      setGroupFor((open) => (open === g.id ? null : open));
     } catch (err) {
+      if (wasFresh && freshRef.current === null) setFreshGroup(g.id); // not saved: still the unsaved new group
       fail(err);
     }
   };
