@@ -304,7 +304,8 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     if (hidden && box.current?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
   }, [hidden]);
   useEffect(() => {
-    if (focusAsk && !hidden && !searching) box.current?.focus();
+    // T-696: with the content search open, its box takes the focus, so the next Mod+Shift+E hides the panel.
+    if (focusAsk && !hidden) searching ? setSearchAsk((n) => n + 1) : box.current?.focus();
   }, [focusAsk, hidden]);
 
   // EDIT-035: the name filter shows every match in the loaded folders with the folders above it; the
