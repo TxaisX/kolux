@@ -711,6 +711,8 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .hit-box { display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; vertical-align: middle; cursor: pointer; }
 .hit-box input { margin: 0; }
 .hit-box:has(:disabled) { cursor: default; }
+/* T-701 (DT-C137): the shared checkbox / switch label rows are at least 24px tall too */
+label.check { display: flex; align-items: center; gap: 8px; min-height: 24px; }
 .auto-prompt { flex: 1; height: auto; min-height: 0; padding: 8px 10px; resize: none; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.55 var(--mono-font); }
 .auto-find { display: flex; align-items: center; gap: 6px; }
 .auto-find .field { width: 220px; }
@@ -835,7 +837,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .look-slider.off { color: var(--fg-disabled); }
 .look-slider input { accent-color: var(--fg-muted); }
 .look-slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-muted); }
-.look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--fg-row); }
+.look-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; font-size: 13px; color: var(--fg-row); }
 .notif-volume { display: flex; align-items: center; gap: 8px; }
 .notif-volume input { width: 180px; accent-color: var(--done); }
 .notif-volume output { width: 44px; text-align: right; color: var(--fg-muted); font-size: 12px; }
@@ -930,7 +932,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 /* ACCT-064: a question over one pane's terminal, not the window. */
 .pane-ask { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); }
 .agent-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--chip-bg); min-width: 0; }
-.agent-on { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.agent-on { display: flex; align-items: center; gap: 10px; min-height: 24px; cursor: pointer; }
 .agent-name { font-size: 13px; color: var(--fg-row); }
 .agent-row details { margin-left: 24px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }
 .agent-row summary { cursor: pointer; }
