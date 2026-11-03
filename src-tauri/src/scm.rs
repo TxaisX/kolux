@@ -2898,8 +2898,10 @@ pub async fn scm_summary(worktree: String, pinned: Option<String>, upstream: boo
 }
 
 #[tauri::command]
-pub async fn scm_abort(worktree: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || abort(Path::new(&worktree))).await.map_err(|e| e.to_string())?
+/// ACCT-055: abort only in a project or worktree (fence.rs), like stage and discard (T-718).
+pub async fn scm_abort(worktree: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<(), String> {
+    let root = fence.allow(&worktree, &store, &git, false)?;
+    tauri::async_runtime::spawn_blocking(move || abort(&root)).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -4401,6 +4403,40 @@ and more
         let st = status(&repo).unwrap();
         assert_eq!((st.operation, st.branch.as_deref()), (None, Some("other")));
         assert_eq!(run(&["rev-parse", "HEAD"], Some(&repo)).unwrap(), other);
+        let _ = fs::remove_dir_all(&repo);
+    }
+
+    #[test]
+    fn t718_abort_checks_the_fence_before_git_like_stage_and_discard() {
+        // The command: each destructive one asks the fence before it starts git.
+        let src = include_str!("scm.rs");
+        for name in ["scm_abort", "scm_stage", "scm_discard"] {
+            let at = src.find(&format!("pub async fn {name}(")).unwrap();
+            let body = &src[at..at + src[at..].find("\n}").unwrap()];
+            let fenced = body.find("fence.allow(&worktree, &store, &git, false)?").unwrap_or_else(|| panic!("{name} has no fence check"));
+            assert!(fenced < body.find("spawn_blocking").unwrap(), "{name} starts git before the fence check");
+        }
+        // The fence: a repository mid-merge outside every project is refused and left as it was.
+        let repo = temp_repo("t718");
+        run(&["checkout", "-q", "-b", "other"], Some(&repo)).unwrap();
+        commit_file(&repo, "README.md", "theirs\n");
+        run(&["checkout", "-q", "main"], Some(&repo)).unwrap();
+        commit_file(&repo, "README.md", "ours\n");
+        assert!(run(&["merge", "other"], Some(&repo)).is_err());
+        let dir = std::env::temp_dir().join(format!("kolux-rs-scm-t718-store-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let store = std::sync::Mutex::new(crate::state::Store::open(&dir).unwrap());
+        let (fence, git) = (crate::fence::Fence::default(), Git::detect().unwrap());
+        let path = repo.to_string_lossy().into_owned();
+        assert!(fence.allow(&path, &store, &git, false).is_err());
+        assert_eq!(status(&repo).unwrap().operation.as_deref(), Some("merge"));
+        // Once it is a project, the same path passes and the abort runs.
+        let entry = crate::projects::Project { id: "p1".into(), name: "p".into(), path: path.clone(), workspaces_dir: None, base: None, display_name: None };
+        crate::projects::save_projects(&store.lock().unwrap(), &[entry]).unwrap();
+        abort(&fence.allow(&path, &store, &git, false).unwrap()).unwrap();
+        assert_eq!(status(&repo).unwrap().operation, None);
+        drop(store);
+        let _ = fs::remove_dir_all(&dir);
         let _ = fs::remove_dir_all(&repo);
     }
 

@@ -1,0 +1,20 @@
+T-718 - scm_abort checks the fence first, like scm_stage and scm_discard (DT-C154; UX audit W3)
+Worker 2f, branch s-2f/abort-fence off origin/main 32695d1e, 2026-11-03.
+
+FOUND BY
+- Worker 2f in T-709 (#148): scm_abort ran git on whatever path it was given; its siblings scm_stage and
+  scm_discard first ask the fence (ACCT-055, fence.rs) whether the path is a project or one of its worktrees.
+
+FIX (src-tauri/src/scm.rs)
+- scm_abort takes the fence, store and git states and calls fence.allow(&worktree, &store, &git, false)? before
+  spawn_blocking, then aborts in the path the fence returns. Same shape as scm_stage. Front end unchanged.
+
+TEST (scm::tests::t718_abort_checks_the_fence_before_git_like_stage_and_discard)
+- Reads scm.rs: scm_abort, scm_stage and scm_discard each have the fence check ahead of spawn_blocking.
+- A repository mid-merge outside every project: fence.allow refuses it and it is still mid-merge.
+  Registered as a project, the same path passes and the abort clears the merge.
+- RESULTS_PLACEHOLDER
+
+GATES
+- GATES_PLACEHOLDER
+- First load: back end only, +0 expected; CI figure in the PR.
