@@ -1,12 +1,14 @@
 // Native chat, the rows of an agent's work (CHAT-012..CHAT-016; T-326): Thought buttons, plans,
 // the compaction divider, provider notices, folded tool steps, diff cards, the subagent roster and
 // the working, worked-for and responding lines. `fold` in steps.ts decides which rows exist.
-import { useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
+import { useContext, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { renderMarkdown } from "../editor/PreviewPane";
 import { Dots, FileCode, Globe, Plug, Search, Shell, Spark, Spinner } from "../chrome/icons";
 import type { ChatItem } from "./model";
 import { shortTokens } from "../usage/meter";
+import { LinkContext, openLink as openChatLink, type LinkHost } from "./ChatText";
+import { useCopy } from "./ux";
 import { diffLineKind, diffText, duration, linkParts, looksLikeDiff, type Child, type FileDiff, type Tool, type View } from "./steps";
 
 // CHAT-016: one clock for every elapsed timer in the chat, paused while the window is hidden.
@@ -44,14 +46,23 @@ const Icon = ({ group }: { group: Tool["group"] }) => {
 /** CHAT-013: a shell call shows its command; every other call its name and what it works on. */
 const callLine = (t: Tool) => (t.group === "shell" && t.preview ? t.preview : [t.server ? `${t.server} · ${t.name}` : t.name, t.preview].filter(Boolean).join(" "));
 
-/** CHAT-013: only web links are clickable, and they open in the browser, not in the app. */
-export function openLink(e: MouseEvent) {
+/** CHAT-013: only web links are clickable. With the chat's link host (always, inside a chat) a click goes the same way as a
+ * link in a reply: the "Open links in Kolux" setting, the browser choice, and a failure said under the box. */
+export function openLink(e: MouseEvent, host?: LinkHost | null) {
   const a = (e.target as HTMLElement).closest("a");
   if (!a) return;
   e.preventDefault();
   const href = a.getAttribute("href") ?? "";
-  if (/^https?:\/\//i.test(href)) invoke("open_external", { url: href }).catch(() => {});
+  if (!/^https?:\/\//i.test(href)) return;
+  if (host) return openChatLink({ kind: "web", url: href }, e, host);
+  invoke("open_external", { url: href }).catch(() => {});
 }
+
+/** A click handler for text with links in it, bound to the chat's link host. */
+const useOpenLink = () => {
+  const host = useContext(LinkContext);
+  return (e: MouseEvent) => openLink(e, host);
+};
 
 function Linked({ text }: { text: string }) {
   return (
@@ -108,20 +119,22 @@ export function ThoughtRow({ item, open, onToggle }: { item: ChatItem; open: boo
 }
 
 export function PlanRow({ item }: { item: ChatItem }) {
-  return <div className="chat-plan" onClick={openLink} dangerouslySetInnerHTML={{ __html: renderMarkdown(item.text) }} />;
+  const onLink = useOpenLink();
+  return <div className="chat-plan" onClick={onLink} dangerouslySetInnerHTML={{ __html: renderMarkdown(item.text) }} />;
 }
 
 /** CHAT-012: a notice's details are shown up to a limit, and the rest is one click away. */
 const DETAILS_SHOWN = 4000;
 export function NoticeRow({ item }: { item: ChatItem }) {
   const [all, setAll] = useState(false);
+  const onLink = useOpenLink();
   const d = item.details;
   return (
     <div className="chat-notice" role="status">
       <div>{item.text}</div>
       {d && (
         <Fold label="Details">
-          <pre className="chat-out" onClick={openLink}>
+          <pre className="chat-out" onClick={onLink}>
             <Linked text={all ? d : d.slice(0, DETAILS_SHOWN)} />
           </pre>
           {!all && d.length > DETAILS_SHOWN && (
@@ -136,6 +149,7 @@ export function NoticeRow({ item }: { item: ChatItem }) {
 }
 
 function StepsRow({ view }: { view: Extract<View, { row: "steps" }> }) {
+  const onLink = useOpenLink();
   const latest = view.steps[view.steps.length - 1].tool!;
   const groups = [...new Set(view.steps.map((s) => s.tool!.group))];
   const label = view.live ? (
@@ -150,7 +164,7 @@ function StepsRow({ view }: { view: Extract<View, { row: "steps" }> }) {
   return (
     <Fold label={label} className="chat-steps">
       {view.steps.map((s) => (
-        <div key={s.id} className="chat-step" onClick={openLink}>
+        <div key={s.id} className="chat-step" onClick={onLink}>
           <div className="chat-step-call">
             <Icon group={s.tool!.group} /> <span className="chat-call">{callLine(s.tool!)}</span>
             {!s.tool!.done && <span className="chat-faint"> · running</span>}
@@ -166,7 +180,7 @@ function StepsRow({ view }: { view: Extract<View, { row: "steps" }> }) {
 const CHANGE: Record<FileDiff["change"], string> = { added: "Added", deleted: "Deleted", renamed: "Renamed", edited: "Edited" };
 
 function DiffCard({ tool, diff }: { tool: Tool; diff?: FileDiff }) {
-  const [copied, setCopied] = useState(false);
+  const [copyText, copy] = useCopy("Copy diff");
   const path = diff?.path ?? tool.preview;
   const name = path.split(/[\\/]/).pop();
   return (
@@ -181,14 +195,9 @@ function DiffCard({ tool, diff }: { tool: Tool; diff?: FileDiff }) {
           <button
             type="button"
             className="chat-copy"
-            onClick={() =>
-              navigator.clipboard.writeText(diffText(diff)).then(
-                () => setCopied(true),
-                () => {},
-              )
-            }
+            onClick={() => copy(diffText(diff))}
           >
-            {copied ? "Copied" : "Copy diff"}
+            {copyText}
           </button>
         )}
       </div>

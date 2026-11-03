@@ -1,14 +1,14 @@
 // SKILL-028: the Install panel. Choose Kolux skills, see the community skills installer's command,
-// copy it, or (when the inline terminal exists, T-244-b) type it into a small terminal without
-// running it. The command stays interactive: the installer asks its own questions.
+// copy it. The command stays interactive: the installer asks its own questions, so it is run by hand
+// in a terminal (the old "Type in terminal" button had no terminal to type into and is gone).
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { COPIED, COPY_FAILED } from "./skills";
 import { noteUse } from "../onboarding/features";
 
-type Props = { names: string[]; onType?: (line: string) => void };
+type Props = { names: string[] };
 
-export default function SkillInstall({ names, onType }: Props) {
+export default function SkillInstall({ names }: Props) {
   const [picked, setPicked] = useState<string[]>(names);
   const [line, setLine] = useState("");
   const [note, setNote] = useState<string | null>(null);
@@ -31,11 +31,6 @@ export default function SkillInstall({ names, onType }: Props) {
         <button className="btn" disabled={!line} onClick={copy}>
           Copy command
         </button>
-        {onType && (
-          <button className="btn primary" disabled={!line} onClick={() => (noteUse("skill-setup"), onType(line))}>
-            Type in terminal
-          </button>
-        )}
       </div>
       {note && <div role="status">{note}</div>}
     </div>

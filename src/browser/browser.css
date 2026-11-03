@@ -57,7 +57,7 @@
 .pane.browser .notice.preview-ask { color: var(--fg); border-color: var(--line); flex-wrap: wrap; }
 .pane.browser .notice.preview-ask span { flex: 1; min-width: 0; }
 .pane.browser .notice.preview-ask code { overflow-wrap: anywhere; user-select: text; }
-.pane.browser .notice.preview-ask .ib { margin-left: 0; }
+.pane.browser .notice.preview-ask .ib { margin-left: 0; white-space: nowrap; }
 
 /* T-238-b (BROW-004): the address bar's drop-down, in the pane's flow above the page. */
 .pane.browser .suggest { list-style: none; margin: 0; padding: 2px 0; border-bottom: 1px solid var(--border); background: var(--bg-raised, var(--bg)); max-height: 240px; overflow-y: auto; }

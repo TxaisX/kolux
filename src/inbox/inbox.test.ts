@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DONE_LIMIT, GROUPS, exitNote, inboxItems, moveSelection, openLabel, settle, type Source } from "./inbox";
+import { changesLine, fromDetail, DONE_LIMIT, GROUPS, exitNote, inboxItems, moveSelection, openLabel, settle, type Source } from "./inbox";
 
 const MIN = 60_000;
 const now = 10_000 * MIN;
@@ -87,4 +87,20 @@ test("DT-C52: an agent whose program has exited is listed as Stopped, after Done
   expect(GROUPS.find((g) => g.id === "stopped")!.about).toMatch(/program exited/);
   expect(GROUPS.find((g) => g.id === "done")!.about).toMatch(/still running/);
   expect(inboxItems(Array.from({ length: 25 }, (_, i) => src(i + 1, "done", { running: false, finishedAt: now - i * 1000 })), now)).toHaveLength(DONE_LIMIT);
+});
+
+test("a key pressed on the detail pane's button is not the list's (so Enter on Review changes still works)", () => {
+  const inside = { closest: (s: string) => (s === ".detail" ? {} : null) };
+  const outside = { closest: () => null };
+  expect(fromDetail(inside)).toBe(true);
+  expect(fromDetail(outside)).toBe(false);
+  expect(fromDetail(null)).toBe(false);
+});
+
+test("a failed status read is told, not shown as 'No files changed'", () => {
+  expect(changesLine({ hasCwd: true, changed: null, staged: 0, failed: "not a git repository" })).toBe("Could not read the changes: not a git repository");
+  expect(changesLine({ hasCwd: true, changed: 0, staged: 0, failed: null })).toBe("No files changed");
+  expect(changesLine({ hasCwd: true, changed: 3, staged: 1, failed: null })).toBe("3 files changed, 1 staged");
+  expect(changesLine({ hasCwd: true, changed: null, staged: 0, failed: null })).toBe("…");
+  expect(changesLine({ hasCwd: false, changed: null, staged: 0, failed: null })).toBe("—");
 });

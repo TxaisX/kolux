@@ -12,17 +12,18 @@ const TRIM_NOTE = "trimmed to fit in a browser address";
 
 export type Issue = { ok: true; url: string; trimmed: boolean } | { ok: false; error: string };
 
-export type State = { open: boolean; draft: string; anonymous: boolean; facts: FeedbackFacts | null; error: string; note: string };
+export type State = { open: boolean; draft: string; anonymous: boolean; facts: FeedbackFacts | null; error: string; note: string; sending: boolean };
 export type Act =
   | { t: "open"; facts: FeedbackFacts; text?: string }
   | { t: "facts"; facts: FeedbackFacts }
   | { t: "type"; draft: string }
   | { t: "anon"; on: boolean }
+  | { t: "send" }
   | { t: "sent"; trimmed: boolean; extra?: string }
   | { t: "fail"; error: string }
   | { t: "close" };
 
-export const closed: State = { open: false, draft: "", anonymous: false, facts: null, error: "", note: "" };
+export const closed: State = { open: false, draft: "", anonymous: false, facts: null, error: "", note: "", sending: false };
 
 /** The lines after the first one: the system, and the GitHub login unless the user is anonymous. */
 function extra(f: FeedbackFacts, anonymous: boolean): string {
@@ -70,7 +71,7 @@ export function reduce(s: State, a: Act): State {
       // FIX-1: a report closed unsent (Cancel, Escape, a stray click on the background) is still there
       // at the next open; text handed in on purpose, such as a crash report, replaces it
       const keep = !a.text && typedText(s.draft).trim() !== "";
-      return { open: true, draft: withBlock(keep ? typedText(s.draft) : (a.text ?? ""), a.facts, keep && s.anonymous), anonymous: keep && s.anonymous, facts: a.facts, error: "", note: "" };
+      return { open: true, draft: withBlock(keep ? typedText(s.draft) : (a.text ?? ""), a.facts, keep && s.anonymous), anonymous: keep && s.anonymous, facts: a.facts, error: "", note: "", sending: false };
     }
     case "facts":
       return { ...s, facts: a.facts, draft: withBlock(s.draft, a.facts, s.anonymous) };
@@ -78,10 +79,12 @@ export function reduce(s: State, a: Act): State {
       return { ...s, draft: a.draft, error: "" };
     case "anon":
       return { ...s, anonymous: a.on, draft: s.facts ? withBlock(s.draft, s.facts, a.on) : s.draft };
+    case "send":
+      return { ...s, sending: true, error: "" };
     case "sent":
-      return { ...s, open: false, draft: "", error: "", note: (a.trimmed ? `${SENT} Your report was long, so it was ${TRIM_NOTE}.` : SENT) + (a.extra ? ` ${a.extra}` : "") };
+      return { ...s, sending: false, open: false, draft: "", error: "", note: (a.trimmed ? `${SENT} Your report was long, so it was ${TRIM_NOTE}.` : SENT) + (a.extra ? ` ${a.extra}` : "") };
     case "fail":
-      return { ...s, error: a.error };
+      return { ...s, sending: false, error: a.error };
     case "close":
       return { ...s, open: false };
   }
@@ -92,4 +95,15 @@ export function tabTarget(count: number, at: number, shift: boolean): number {
   if (count <= 0) return -1;
   if (at < 0) return shift ? count - 1 : 0;
   return (at + (shift ? count - 1 : 1)) % count;
+}
+
+/** Where the "sent" note sits: bottom-right, 40px up. The update card and notice take the bottom-left at the same 40px
+ *  (update/update.css), above the 24px status bar, so the two never overlap and neither covers the bar. */
+export const NOTE_POS = { right: 16, bottom: 40 } as const;
+
+/** Puts focus back on what had it before the box opened, when that is still on the page. */
+export function restoreFocus(prev: { isConnected: boolean; focus: () => void } | null): boolean {
+  if (!prev || !prev.isConnected) return false;
+  prev.focus();
+  return true;
 }

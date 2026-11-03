@@ -15,7 +15,7 @@ import { taskSource } from "./taskSource";
 import { applyEdits, editAssign, editLabels, editState, type Edits, leavesFilter, settle, undoAssign, undoLabels, undoState } from "./edits";
 import type { Worktree } from "../projects/model";
 import { useSettings } from "../settings/useSettings";
-import { beyondWindow, defaultPreset, FILTERS, type FilterKey, filterValue, issueSource, listState, pageButtons, pageCount, PER_PAGE, PRESETS, setFilter, type Task, type TaskDetail, type TaskLabel, type TaskPage, taskKind, taskQueries } from "./model";
+import { beyondWindow, defaultPreset, FILTERS, type FilterKey, filterValue, issueSource, listState, pageButtons, pageCount, PER_PAGE, PRESETS, showPager, setFilter, type Task, type TaskDetail, type TaskLabel, type TaskPage, taskKind, taskQueries } from "./model";
 import NewIssueDialog from "./NewIssueDialog";
 import { closesDialog, createdHere } from "./newIssue";
 import { type GhRepo, loadRepoFacts, type ParentRead, type Person, resetFacts } from "./repoFacts";
@@ -539,7 +539,7 @@ export default function TasksPage({ repo, onStart, onResume }: { repo: { dir: st
           ))}
         </ul>
       )}
-      {result && result.items.length > 0 && error === null && (
+      {result && showPager(result.items.length, page) && error === null && (
         <div className="tasks-foot">
           <span className="tasks-count">{result.total === 1 ? "1 result" : `${result.total.toLocaleString()} results`}</span>
           <span className="autos-gap" />

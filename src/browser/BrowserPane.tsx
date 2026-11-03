@@ -3,7 +3,7 @@
 // screen, so the page lives on untouched while its tab, workspace or screen is away. The header
 // holds the address bar, which takes the cursor with its text selected as the tab opens, and
 // the back / forward / reload toolbar; what the bar makes of typed text is in address.ts.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -31,6 +31,7 @@ import { zoomFactor } from "../settings/zoom";
 import { notePage } from "../onboarding/guide";
 import { CHROME_STEPS, type CookieReport, cookieReportText, type CookieSource, dismissHint, GOOGLE_NOTE, hintDismissed, importHintText, IMPORT_SOURCES, pickerFor } from "./cookies";
 import { chipCommit } from "./preview";
+import { type Leave, LEAVE_ARM_MS, leaveAsk, leaveReady, leaveText, sameOrigin } from "./leave";
 import { documentPathOf, dropVerdict, openSource, openWithSystemApp, overPane, previewAddress } from "./previewActions";
 import { addNote, MAX_NOTES, type Note, notesMarkdown, type Pick, readPicks, sameAddress } from "./annotate";
 import type { SendTarget } from "../editor/notes";
@@ -176,6 +177,23 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   const [chipEdit, setChipEdit] = useState<string | null>(null);
   // T-159 (BROW-040): the outside address a previewed document asked to open; offered, never followed.
   const [outbound, setOutbound] = useState<string | null>(null);
+  // T-661 (DT-C97): a page's request to leave Kolux (system browser) or drop a certificate's trust,
+  // asked in Kolux's own bar; the confirm counts only LEAVE_ARM_MS after each new ask (leaveReady, the
+  // ask's own clock), and `armedLook` only greys the button until then (reset before paint). A tab that
+  // goes behind drops its ask, so it never waits armed out of sight.
+  const [leave, setLeave] = useState<Leave | null>(null);
+  const [armedLook, setArmedLook] = useState(false);
+  useLayoutEffect(() => {
+    setArmedLook(false);
+    if (!leave) return;
+    const t = window.setTimeout(() => setArmedLook(true), LEAVE_ARM_MS);
+    return () => window.clearTimeout(t);
+  }, [leave]);
+  const hiddenNow = useRef(hidden);
+  hiddenNow.current = hidden;
+  useEffect(() => {
+    if (hidden) setLeave(null);
+  }, [hidden]);
   // T-272-c (BROW-016): tabs this tab's family asked for past its allowance, said in the toolbar.
   const [blocked, setBlocked] = useState<Blocked>(null);
   // T-272-b (BROW-032): the last permission a page here was refused, named in plain words.
@@ -296,6 +314,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           setCan(canGo(h));
           setLoading(true);
           setOutbound(null);
+          setLeave(null);
           if (!typing.current) setAddress(url === BLANK ? "" : url); // BROW-004: typed text survives
           if (!sameAddress(at.current, url)) {
             setNotes([]);
@@ -359,6 +378,12 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
       unlisteners.push(
         await listen<{ id: number; url: string }>("browser-outbound", (e) => {
           if (e.payload.id === id) setOutbound(e.payload.url);
+        }),
+      );
+      // T-661 (DT-C97): a sized window the page opened before its first load wants the system browser.
+      unlisteners.push(
+        await listen<{ id: number; url: string }>("browser-leave", (e) => {
+          if (e.payload.id === id && !hiddenNow.current) setLeave(leaveAsk("system", e.payload.url));
         }),
       );
       unlisteners.push(
@@ -797,14 +822,26 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
     const u = /^https?:/i.test(p.u ?? "") ? p.u! : "";
     if (p.what === "back" || p.what === "forward") act(p.what);
     else if (p.what === "open-kolux" && u) openInBrowser(u);
-    else if (p.what === "open-default" && u) invoke("open_external", { url: u }).catch((err) => setNote(String(err)));
-    else if (p.what === "cert-revoke" && u)
-      invoke<CertState>("browser_cert", { id, url: u, action: "revoke" })
-        .then((c) => {
-          setNote(`${c.site ?? "This site"}: its certificate is no longer trusted`);
-          act("reload");
-        })
-        .catch((err) => setNote(String(err)));
+    // T-661 (DT-C97): the page draws this menu, so a pick is the page's word plus a click it may have
+    // steered; leaving Kolux or dropping a certificate's trust is asked in Kolux's own bar first.
+    else if (p.what === "open-default" && u) setLeave(leaveAsk("system", u));
+    else if (p.what === "cert-revoke" && u && !(leave?.what === "revoke") && sameOrigin(u, at.current)) {
+      // Asked only for the site on show, only when Kolux itself says it is trusted, one ask at a time, and
+      // only if the tab is still on that page and in front once the state is back.
+      const page = at.current;
+      const cs = await invoke<CertState>("browser_cert", { id, url: u, action: "state" }).catch(() => null);
+      if (cs?.trusted && at.current === page && !hiddenNow.current) setLeave(leaveAsk("revoke", u));
+    }
+  };
+  const leaveConfirmed = (l: Leave) => {
+    setLeave(null);
+    if (l.what === "system") return void invoke("open_external", { url: l.url }).catch((err) => setNote(String(err)));
+    invoke<CertState>("browser_cert", { id, url: l.url, action: "revoke" })
+      .then((c) => {
+        setNote(`${c.site ?? "This site"}: its certificate is no longer trusted`);
+        act("reload");
+      })
+      .catch((err) => setNote(String(err)));
   };
   // T-239 (BROW-018): an app shortcut the page handed over is pressed again on the window, after
   // this split has taken focus (flushSync, so the app's key handler already sees it focused), and
@@ -1187,6 +1224,21 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
             Open
           </button>
           <button type="button" className="ib" onClick={() => setOutbound(null)}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {leave && (
+        <div className="notice preview-ask" role="alertdialog" aria-label={leaveText(leave).question} data-leave={leave.what}>
+          <span>
+            {leaveText(leave).lead}
+            <strong>{leave.host}</strong>
+            {leaveText(leave).tail} <code>{leaveText(leave).shown}</code>
+          </span>
+          <button type="button" className="ib" data-leave-go disabled={!armedLook} onClick={() => leaveReady(leave) && leaveConfirmed(leave)}>
+            {leaveText(leave).confirm}
+          </button>
+          <button type="button" className="ib" data-leave-cancel onClick={() => setLeave(null)}>
             Cancel
           </button>
         </div>

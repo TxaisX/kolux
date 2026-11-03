@@ -46,6 +46,8 @@ type Props = {
   runs: Run[];
   automations: Automation[];
   now: number;
+  /** The runs could not be read: said plainly, never as "No runs yet" with zero counts. */
+  error?: string;
   onRefresh: () => void;
   onAutomations: () => void;
   onOpen: (run: Run) => void;
@@ -54,7 +56,7 @@ type Props = {
   initialFilter?: RunFilter;
 };
 
-export default function RunsDashboard({ runs, automations, now, onRefresh, onAutomations, onOpen, hidden, initialFilter = "all" }: Props) {
+export default function RunsDashboard({ runs, automations, now, error, onRefresh, onAutomations, onOpen, hidden, initialFilter = "all" }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RunFilter>(initialFilter);
   const [shown, setShown] = useState(RUN_BATCH); // leaving the dashboard drops this: back from Automations starts at the newest
@@ -106,6 +108,7 @@ export default function RunsDashboard({ runs, automations, now, onRefresh, onAut
           <Refresh />
         </button>
       </div>
+      {!error && (
       <div className="runs-tiles">
         <div className="runs-tile ok">
           <b>{tiles.day.ok}</b> succeeded in 24 h
@@ -120,7 +123,16 @@ export default function RunsDashboard({ runs, automations, now, onRefresh, onAut
           <b>{tiles.week.failed}</b> failed in 7 days
         </div>
       </div>
-      {runs.length === 0 ? (
+      )}
+      {error ? (
+        <div className="empty" role="alert">
+          <h2>The runs could not be read</h2>
+          <p>{error}</p>
+          <button className="btn" onClick={onRefresh}>
+            Retry
+          </button>
+        </div>
+      ) : runs.length === 0 ? (
         <div className="empty">
           <h2>No runs yet</h2>
           <p>Each time an automation starts, by hand, on its timetable or on an event, its run is listed here.</p>
@@ -146,7 +158,18 @@ export default function RunsDashboard({ runs, automations, now, onRefresh, onAut
               {start > 0 && <tr style={{ height: start * ROW }} aria-hidden />}
               {loaded.slice(start, end).map((r) => (
                 <tr key={r.id} className="runs-row" onClick={() => onOpen(r)}>
-                  <td>{name(r.automationId)}</td>
+                  <td>
+                    <button
+                      className="btn link"
+                      aria-label={`Open run #${r.number} of ${name(r.automationId)}`}
+                      onClick={(e) => {
+                        e.stopPropagation(); // the row's own click would open it a second time
+                        onOpen(r);
+                      }}
+                    >
+                      {name(r.automationId)}
+                    </button>
+                  </td>
                   <td>#{r.number}</td>
                   <td title={eventTip(r, byId.get(r.automationId))}>{startedBy(r)}</td>
                   <td title={new Date(r.at).toLocaleString()}>{ago(r.at, now)}</td>

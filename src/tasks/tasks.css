@@ -81,11 +81,11 @@
 .md-h1 { font-size: 1.3em; }
 .md-h2 { font-size: 1.15em; }
 .md blockquote { margin: 0 0 8px; padding-left: 10px; border-left: 3px solid var(--border, currentColor); opacity: 0.85; }
-.md-code { overflow-x: auto; padding: 8px; border-radius: 6px; background: rgba(128, 128, 128, 0.15); font-size: 12px; margin: 0 0 8px; }
+.md-code { overflow-x: auto; padding: 8px; border-radius: 6px; background: var(--line-subtle); font-size: 12px; margin: 0 0 8px; }
 .pr-page { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; overflow: auto; background: var(--pane-bg); color: inherit; padding: 12px 16px; }
 .pr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pr-head h2 { margin: 0; font-size: 1.1em; min-width: 0; overflow-wrap: anywhere; }
-.pr-tabs { display: flex; gap: 4px; margin-block: 8px; border-bottom: 1px solid var(--border, rgba(128, 128, 128, 0.4)); }
+.pr-tabs { display: flex; gap: 4px; margin-block: 8px; border-bottom: 1px solid var(--line-strong); }
 .pr-tabs button { background: none; border: 0; padding: 6px 10px; color: inherit; cursor: pointer; border-bottom: 2px solid transparent; }
 .pr-tabs button.on { border-bottom-color: currentColor; font-weight: 600; }
 .pr-body { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
@@ -93,17 +93,19 @@
 .pr-side { flex: 0 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .pr-side h3, .pr-main h3 { margin: 8px 0 2px; font-size: 0.95em; }
 .pr-person { display: flex; gap: 6px; align-items: center; }
-.pr-review.approved { color: #1a7f37; }
-.pr-review.changes_requested { color: #cf222e; }
+.pr-review.approved { color: var(--done); }
+.pr-review.changes_requested { color: var(--danger); }
 .pr-review.requested, .pr-review.commented, .pr-review.dismissed { opacity: 0.75; }
 .pr-reactions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.pr-thread { border: 1px solid var(--border, rgba(128, 128, 128, 0.4)); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+.pr-thread { border: 1px solid var(--line-strong); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
 .pr-checks { list-style: none; padding: 0; }
-.pr-checks li.success::before { content: "✓ "; color: #1a7f37; }
-.pr-checks li.failure::before, .pr-checks li.timed_out::before { content: "✗ "; color: #cf222e; }
+.pr-checks li.success::before { content: "✓ "; color: var(--done); }
+.pr-checks li.failure::before, .pr-checks li.timed_out::before { content: "✗ "; color: var(--danger); }
 .pr-checks li.running::before { content: "… "; }
 .pr-file summary { cursor: pointer; overflow-wrap: anywhere; }
 .tasks { position: relative; }
 .gh-banner p{margin:4px 0}
 .gh-banner ol{margin:4px 0 0 18px;padding:0}
 .tasks-list li.leaving{opacity:.35;transition:opacity .4s}
+/* The little × on a label or assignee chip: a hit area a pointer can land on, without making the chip taller. */
+.task-labels .task-x { min-width: 20px; min-height: 20px; display: inline-flex; align-items: center; justify-content: center; }

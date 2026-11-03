@@ -73,3 +73,16 @@ test("a pane with no status yet keeps being watched, a future turn is acknowledg
   stamps[1] = 700;
   expect(toAcknowledge({ ...i, acked: new Set(first.acks) }).panes).toEqual([1]);
 });
+
+test("a needs-you stop is not hidden by a task-complete just before it in the same worktree", () => {
+  const mem = newPaceMemory();
+  expect(paced(mem, "G:/w/a", fixed(1, "done", 1_000), 1_000, { kind: "finish" })).toBe(true);
+  expect(paced(mem, "G:/w/a", fixed(2, "stop", 1_500), 1_500, { kind: "stop" })).toBe(true);
+  // a second stop inside the cooldown still folds into the first stop, and a finish folds into the finish
+  expect(paced(mem, "G:/w/a", fixed(3, "stop", 1_800), 1_800, { kind: "stop" })).toBe(false);
+  expect(paced(mem, "G:/w/a", fixed(4, "done", 1_900), 1_900, { kind: "finish" })).toBe(false);
+  // without a kind nothing changes: the finish cooldown covers it
+  const old = newPaceMemory();
+  expect(paced(old, "G:/w/a", fixed(1, "done", 1_000), 1_000)).toBe(true);
+  expect(paced(old, "G:/w/a", fixed(2, "stop", 1_500), 1_500)).toBe(false);
+});

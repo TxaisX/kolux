@@ -2,6 +2,7 @@
 // tested without one. Wire shapes are frozen with the Rust side (agents_install_many and the
 // "agent-install-progress" event, both camelCase).
 import type { AgentInfo } from "./PlusMenu";
+import { canInstall } from "./agentInstall";
 
 /** One entry of agents_install_many's answer. */
 export type InstallResult = { id: string; ok: boolean; error?: string | null; agent?: AgentInfo | null };
@@ -13,8 +14,8 @@ export type Progress = Record<string, { state: ProgressEvent["state"]; error?: s
 export const PROGRESS_EVENT = "agent-install-progress";
 export const INSTALL_MANY = "agents_install_many";
 
-/** Kolux knows an official install route for this agent and it is not on the PC yet. */
-export const canInstall = (a: AgentInfo): boolean => a.installable === true && !a.installed;
+/** Kolux knows an official install route for this agent and it is not on the PC yet. One rule, shared with the chooser's Install button (agentInstall.ts). */
+export { canInstall };
 
 /** Agents with no install route here and nothing installed: the row sends people to the agent's own website. */
 export const websiteOnly = (a: AgentInfo): boolean => a.installable === false && !a.installed;

@@ -4,16 +4,19 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type CompositionEvent, type KeyboardEvent } from "react";
 import { createDraft } from "./draft";
 
-export function useDraft(value: string, save: (text: string) => Promise<unknown>) {
+/** `ready` (see draft.ts): the texts the pause saves; any other text saves on leaving, page change or close. */
+export function useDraft(value: string, save: (text: string) => Promise<unknown>, ready?: (text: string) => boolean) {
   const latest = useRef(save);
   latest.current = save;
   // T-598: a settings save that failed settles false (useSettings shows why on the page); the draft
   // takes that as the failure it is, so the typed text stays in the field for another try.
   const [draft] = useState(() =>
     createDraft(value, {
+      ready,
       save: (t) =>
         latest.current(t).then((ok) => {
           if (ok === false) throw new Error("not saved");
+          return ok; // a string is the text that was really stored (a clamped number), see draft.ts
         }),
     }),
   );
@@ -32,6 +35,8 @@ export function useDraft(value: string, save: (text: string) => Promise<unknown>
   }, [draft]);
   return {
     state,
+    /** The controller itself: `draft.discard()` puts the box back to the stored text. */
+    draft,
     props: {
       value: state.text,
       onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => draft.type(e.target.value),

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { AccountRow, signedInAt } from "./AccountRow";
+import { AccountRow, AccountsReadError, signedInAt } from "./AccountRow";
 import { liveCheck } from "./ConnectGrid";
 import type { CodexAccount, CodexView } from "./CodexCard";
 
@@ -170,5 +170,6 @@ export default function CodexAccounts() {
             : invoke("codex_account_sign_in", { device: false, again: a.kind === "again" ? a.id : null });
     call.catch((e) => setError(String(e))).finally(read);
   };
+  if (!view && error) return <AccountsReadError name="Codex" error={error} onRetry={() => (setError(null), read())} />;
   return <CodexAccountsView view={view} error={error} confirming={confirming} naming={naming} onAction={act} />;
 }

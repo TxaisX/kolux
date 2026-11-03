@@ -1,0 +1,111 @@
+T-672 - The Skills page from the keyboard, and honest about failures (DT-C108; UX audit findings/skills-automations.md:5, :6, :7, :15, :16, :19 and :22, findings/keyboard.md:9 (the SkillUpdate part) and findings/backend-wiring.md:7)
+Worker 2f, branch s-2f/ux-3, base e93a23ba (uncommitted at the time of writing), 2026-11-02.
+
+WHAT CHANGED
+- The Update Kolux skills dialog takes the keyboard when it opens (focus lands on Close), Escape
+  closes only that dialog, Tab wraps inside it, and focus goes back to where it was when it closes.
+  When focus falls to nothing while it is open (Stop leaves, or the button just pressed turns off),
+  the dialog box takes it back on that render, so its Escape and Tab keep working and Tab does not
+  walk into the page behind. Focus goes back to the button that opened it; when that was Review (which
+  is replaced while the dialog is open) it goes to the new Review button, and when the opener is gone
+  to the page's More actions button or the Skills heading, never to a terminal hidden behind the page.
+  Asking for Install while the dialog is already open moves focus to the Install panel and leaves
+  nothing pending for the next open.
+- The Skills page's own Escape does nothing while any dialog is showing: the Update dialog, a skill's
+  details, the Delete confirmation, its result or its error (the page counts its own dialogs, because
+  the shared overlay scan does not list the alert dialogs), whatever has focus. A focus that falls
+  to nothing is now caught by the Update dialog (above); when the last menu or dialog of the page
+  closes with focus on nothing, and the button that opened it is gone (a deleted row), focus goes to
+  the Skills heading so the next Escape does not close the page.
+- A skill update whose progress cannot be read is tried again; the third failure in a row ends the
+  run as failed: the status bar says "Skill update failed" and the dialog gives the reason, instead
+  of "Updating N skills" for ever. A read that fails and is followed by a good one starts the count
+  again. Starting an update while a progress read is in flight leaves one poll chain: a read of the
+  old chain that comes back late is ignored.
+- A refused Stop shows its reason in the dialog.
+- Delete skills is switched off, with the reason, while the scan failed; a selection in progress
+  ends when a rescan fails.
+- More actions has "Install / reinstall Kolux skills" (first entry). It opens the existing Update
+  dialog on its Install panel and puts focus on the panel. It is off, with the reason, when the scan
+  found no Kolux skills. No new back-end command.
+- The "Type in terminal" button is gone from the Install panel, with the unused prop. The Skills
+  page has no way to reach the active terminal, so the button could never appear. Copy command stays.
+  To bring it back, the window that shows the page (shell/window/Content.tsx) would hand it a typer.
+- The More actions, Filter by agent and row action menus put focus on their first enabled item when
+  they open, step with the arrow keys (wrapping; Home and End jump), and give focus back to their
+  button when they close. The More actions button now has the name "More actions".
+- Not touched: anything under automations (the other half of row 19), tasks, board, inbox, and
+  the chrome/projects/shell row (skills-automations.md:17).
+
+WHY
+Static UX audit lane B, the Skills half (findings/skills-automations.md, keyboard.md:9,
+backend-wiring.md:7): the Update dialog never took the keyboard, so Escape closed the whole Skills
+page behind it; a skill update whose progress read failed spun for ever; a refused Stop was dropped;
+Delete skills stayed on after a failed scan; Install / reinstall was reachable only inside a dialog
+that has nothing to do when every skill is current; and a "Type in terminal" button could never be
+drawn. DT-C108 records it; it reverses SKILL-028's "Install opens a terminal with the command typed"
+for the Skills page's Install panel.
+
+REVIEW
+Opus review B- -> fix pass -> re-review A-. The coordinator then fixed its two SHOULD-FIX items: the
+Update dialog reclaims focus only when it last held it, so an overlay opened over it keeps focus
+(test "the dialog reclaims focus only if it last had it, never from an overlay opened over it"),
+and the DT-C108 table row had 7 cells instead of 5. Graded A-.
+
+ROWS
+findings/skills-automations.md:5 fixed (Update dialog focus and Escape, including after Stop; focus back to Review)
+findings/skills-automations.md:6 fixed (failed status read ends the run as failed)
+findings/skills-automations.md:7 fixed (Install / reinstall in More actions)
+findings/skills-automations.md:15 fixed (Stop shows its error)
+findings/skills-automations.md:16 fixed (no clean way to type into the active terminal; dead button and prop removed)
+findings/skills-automations.md:19 fixed (Skills half only; the Automations half is another PR)
+findings/skills-automations.md:22 fixed (Delete skills off while the scan failed)
+findings/keyboard.md:9 fixed (the skills/SkillUpdate.tsx part; the other three files are other lanes)
+findings/backend-wiring.md:7 fixed (same as skills-automations.md:15)
+findings/skills-automations.md:17 not-ours (chrome, projects and shell lane)
+
+TESTS (named, the new test lines of the batch)
+ src/skills/skillsKeys.test.ts > Escape with the Update dialog showing leaves the page open; with nothing showing it closes the page
+ src/skills/skillsKeys.test.ts > Escape closes the open menu first, then a row menu, then the selection, and never leaves from a text field
+ src/skills/skillsKeys.test.ts > an Ask the page raised itself counts as a dialog showing, even though the DOM scan does not list it
+ src/skills/skillsKeys.test.ts > Delete skills is off while the scan failed, even with deletable skills in the old list
+ src/skills/skillsKeys.test.ts > Install / reinstall is offered when the scan found Kolux skills, and says why not otherwise
+ src/skills/skillsKeys.test.ts > the Update dialog closes on Escape only, and Tab wraps at its ends
+ src/skills/skillsKeys.test.ts > the dialog's keys: Escape closes, Tab wraps at the ends and from nowhere, other keys pass
+ src/skills/skillsKeys.test.ts > focus is stranded when nothing, the body or a button that just turned off has it, so the dialog takes it back
+ src/skills/skillsKeys.test.ts > the dialog reclaims focus only if it last had it, never from an overlay opened over it
+ src/skills/skillsKeys.test.ts > a show request while the dialog is open focuses the Install panel and leaves nothing pending; closed, it opens
+ src/skills/skillsKeys.test.ts > focus goes back to the opener when it is still there, else the first fallback that is, and never anywhere else
+ src/skills/skillsKeys.test.ts > Stop reports the app's refusal instead of dropping it
+ src/skills/skillsKeys.test.ts > menu arrows step through the enabled items with wrapping; Home and End jump; a menu with none does nothing
+ src/skills/skillsKeys.test.ts > focus counts as lost only when nothing, or the page body, has it
+ src/skills/skillsKeys.test.ts > the pages use these rules: dialog box is focusable and wired to the key rules, the dots button is named, no dead Type in terminal
+ src/skills/skillBarStore.test.ts > a progress read that keeps failing ends the run as failed with a reason, after a few tries
+ src/skills/skillBarStore.test.ts > one failed progress read in the middle of a run is tried again and the run goes on to its real end
+ src/skills/skillBarStore.test.ts > failures that are not in a row do not add up: fail, ok, fail, fail is still running
+ src/skills/skillBarStore.test.ts > starting an update again while a progress read is in flight leaves one poll chain, not two
+- Reverting each fix made its test fail, and restoring it made all pass:
+    store: no restart of the fail count after a good read -> "fail, ok, fail, fail" test failed (1 failed, 58 passed);
+    store: no retry of a failed read -> 3 tests failed (the keeps-failing test read 1, not 3);
+    store: no generation check -> the one-poll-chain test failed (8 reads, not 5);
+    focusStranded without the disabled-button case -> its test failed;
+    the dialog's refocus effect removed from SkillUpdate.tsx -> the source check failed.
+
+GATES
+- pnpm vitest run src/skills (VITEST_MAX_WORKERS=2): Test Files 7 passed (7); Tests 60 passed (60).
+- pnpm tsc --noEmit: tsc exit 0, no output.
+- node scripts/plan-check.mjs: plan-check: OK.
+- No cargo run (no Rust changed). Full vitest suite not run, by instruction.
+- Not tried in a running window: the Escape and focus behaviour is covered by the rules' tests and the
+  source checks, not by clicking through the app.
+
+SPEC
+- DECISIONS.md DT-C108 names the one reversal: SKILL-028 (spec/15-skills-plugins-kits.md): the Skills
+  page's Install panel no longer opens or types into a terminal; "User sees" names that exception
+  and a new box 4 points here; the other setup panels keep Install-opens-a-terminal and boxes 1-2.
+- Rules lines that gained clauses, none contradicted: SKILL-017 (More actions holds Install /
+  reinstall first; menu focus and arrow keys; Escape does nothing while a page dialog shows),
+  SKILL-022 (Delete skills off while the scan failed), SKILL-026 (dialog keyboard and focus, refused
+  Stop shown, three failed progress reads end the run as failed).
+- Acceptance lines now pointing here, "unit tests: evidence/T-672.txt", all unticked:
+  SKILL-028 box 4; SKILL-017 box 4; SKILL-022 box 4; SKILL-026 boxes 4 and 5.
