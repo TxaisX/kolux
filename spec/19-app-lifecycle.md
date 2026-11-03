@@ -489,9 +489,12 @@ Rules: only the newest pending report prompts, and only once, after which it is 
   Help → Report Crash reopens the newest report even after dismissal; attaching logs copies a
   scrubbed log bundle to the clipboard for pasting into the issue; issue titles are marked as crash
   reports; clipboard failures show a toast instead of failing quietly.
+  Not now has focus when the report opens, Escape closes it from anywhere in the window, and Copy
+  Details stays off until the details have loaded.
 Acceptance:
   - [ ] Crash the interface process and relaunch → the dialog appears once; relaunch again → no dialog.
   - [ ] Dismiss it, then choose Help → Report Crash → the same report opens.
+  - [ ] Open the crash report, press Escape → it closes. (evidence/T-678.txt)
 Compat: —
 Source: D-19-039
 
@@ -524,10 +527,13 @@ Rules: a burst of crashes within a short window sets it off, at most once; the s
   before the user answers the prompt, and Keep Running removes it; on the recovered launch,
   staying in safe graphics is preselected and the choice is remembered; the flag is cleared when
   the app version changes and ignored outside Windows.
+  when Restart in safe graphics or Try hardware again fails, one line under the buttons says so.
 Acceptance:
   - [ ] Simulate three graphics crashes inside a minute → the restart prompt appears; accept → the app
         relaunches in safe graphics.
   - [ ] Update the app → hardware acceleration is tried again.
+  - [ ] Make the safe-graphics restart fail → one line under the buttons says it could not restart.
+        (evidence/T-678.txt)
 Compat: —
 Source: D-19-043
 

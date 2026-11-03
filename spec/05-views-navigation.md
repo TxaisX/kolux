@@ -390,9 +390,12 @@ User sees: a short list of other chat-capable agents' sessions, the last viewed 
   drops the result into that session's composer.
 Rules: the target list is capped; whatever the user already typed in the target composer is kept;
   file paths with spaces are quoted.
+  the list closes on a pick, on Escape (focus back on its button) and on a click outside it; that
+  Escape never reaches the agent or a terminal.
 Acceptance:
   - [x] Two other chat sessions exist, one viewed last → it is listed first. (cards; evidence/cards-VIEW-020.txt)
   - [x] Result path contains a space → it arrives quoted. (cards; evidence/cards-VIEW-020.txt)
+  - [ ] Open the list, click elsewhere → it closes. (evidence/T-678.txt)
 Compat: —
 Source: D-05-020
 
@@ -707,9 +710,12 @@ Rules: only local, real paths are deletable; symlinks are refused; a session fol
   say in one plain sentence why, naming the agent; every cached list drops the row at once; only
   local sessions offer these; if the log is already open in an editable tab, that tab comes forward
   with a note that it is already editable instead of opening a second read-only copy.
+  the Delete question names the session; Keep and Delete take keyboard focus as they replace each
+  other.
 Acceptance:
   - [ ] Delete a Claude folder session → companions trashed, file-history kept.
   - [ ] Open log → read-only tab with the transcript.
+  - [ ] Choose Delete on a row → the question names that session. (evidence/T-678.txt)
 Compat: —
 Source: D-05-089
 
@@ -812,9 +818,12 @@ Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: chooses to resume a session in chat.
 User sees: the session reopens as a chat.
 Rules: Claude only in its own workspace; Codex anywhere; remote and WSL sessions are refused.
+  a second press on Resume as chat while the first is still starting is ignored; when it is off,
+  text under the row says why.
 Acceptance:
   - [ ] Claude session from another workspace → chat resume not offered.
   - [ ] Codex session from any workspace → chat resume is offered.
+  - [ ] Double-click Resume as chat → one chat opens. (evidence/T-678.txt)
 Compat: —
 Source: D-05-086
 
@@ -951,10 +960,13 @@ Rules: sessions with no turns cannot be resumed; copy stays available; the copie
   successful drop confirms the session is queued; the resume command is quoted for the shell the
   target tab really runs, even when the default shell setting names WSL but the workspace runs on
   the Windows host.
+  a second press on Resume while the first is still starting is ignored, so one press (or one double
+  click) opens one terminal; a Resume that is off says why in text under the row.
 Acceptance:
   - [ ] Resume a Claude session from another worktree → terminal opens there and continues the
         conversation.
   - [ ] Copy the command with PowerShell as shell → it runs as pasted.
+  - [ ] Double-click Resume → one terminal opens, not two. (evidence/T-678.txt)
 Compat: —
 Source: D-05-085
 

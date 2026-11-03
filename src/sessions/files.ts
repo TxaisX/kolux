@@ -10,6 +10,13 @@ const COMMAND: Record<FileAction, string> = { reveal: "session_reveal", open: "s
 
 export const DELETE_WARNING = "Delete this session's files? This cannot be undone.";
 
+/** The delete question, naming the session so a click on the wrong row is noticed before Delete. */
+export const deleteQuestion = (title?: string): string => {
+  const name = (title ?? "").replace(/\s+/g, " ").trim();
+  if (!name) return DELETE_WARNING;
+  return `Delete "${name.length > 60 ? name.slice(0, 59) + "…" : name}" and its files? This cannot be undone.`;
+};
+
 /** The one-line result shown after an action. */
 export const doneNote = (action: FileAction, removed: number | null): string =>
   action === "delete" ? `Session deleted (${removed ?? 0} item${removed === 1 ? "" : "s"} removed).` : action === "reveal" ? "Shown in the file manager." : "Opened.";
