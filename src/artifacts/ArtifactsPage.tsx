@@ -86,12 +86,13 @@ export function focusAfterRemove(order: string[], removed: string): string | nul
 }
 
 /** The address a viewer message asks to open, or null when it must be ignored: it has to come from the viewer's own
- *  frame and arrive while a click is still active (a click inside the frame activates this window too; a script that
- *  posts on its own, such as on load, has none). An engine that cannot say whether a click happened opens nothing. */
-export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown, activation: { isActive: boolean } | undefined): string | null {
+ *  frame, while a click is still active and focus is inside the frame. A click or key in the frame does both; a script
+ *  that posts on its own (on load, say) has neither, and the click that selected the row leaves focus on the row, so
+ *  its activation does not count for the page it opens. An engine that cannot say whether a click happened opens nothing. */
+export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown, activation: { isActive: boolean } | undefined, frameFocused: boolean): string | null {
   const url = (e.data as { koluxOpen?: unknown } | null)?.koluxOpen;
   if (!frame || e.source !== frame || typeof url !== "string") return null;
-  return activation?.isActive ? url : null;
+  return activation?.isActive && frameFocused ? url : null;
 }
 
 /** How long a page may take to load before the viewer says so. */
@@ -125,7 +126,7 @@ export default function ArtifactsPage({ onToast }: Props) {
   // A link clicked inside the viewer: only a message from our own frame, sent during a click, opens anything.
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      const url = viewerLink(e, frame.current?.contentWindow, (navigator as { userActivation?: { isActive: boolean } }).userActivation);
+      const url = viewerLink(e, frame.current?.contentWindow, (navigator as { userActivation?: { isActive: boolean } }).userActivation, !!frame.current && document.activeElement === frame.current);
       if (url === null) return;
       invoke("open_external", { url }).catch((err) => onToast(String(err)));
     };
