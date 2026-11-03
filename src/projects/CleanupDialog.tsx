@@ -138,7 +138,7 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
       )}
       {scan?.error && <span className="note warn">{scan.error}</span>}
       <div className="btn-row" data-cleanup-view>
-        <input type="search" aria-label="search workspaces" placeholder="Search" value={view.query} onChange={(e) => pick("query", e.target.value)} />
+        <input type="search" aria-label="search workspaces" autoFocus placeholder="Search" value={view.query} onChange={(e) => pick("query", e.target.value)} />
         <select aria-label="Git state" value={view.git} onChange={(e) => pick("git", e.target.value as CleanupView["git"])}>
           <option value="any">Any Git state</option>
           <option value="merged">Merged</option>
