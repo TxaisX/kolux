@@ -36,7 +36,8 @@ import { readyStore, SECTION_CHROME, SECTION_GAP, type ReadyStore } from "./sect
 import { useReadyStamp, useReadyVersion, useSectionWindow, type Meter } from "./useSectionWindow";
 import { useSettings } from "../settings/useSettings";
 import { allChangesStart } from "../settings/editorPrefs";
-import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
+import Ask from "../chrome/Ask";
+import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, abortLabel, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
 import { bulkPaths, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
 
 export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string };
@@ -102,6 +103,14 @@ export function openStatus(read: () => Promise<Status>, watch: (on: (s: Status) 
   });
   return { first, stop, reread: gate.reread };
 }
+/** T-709 (DT-C145): what the abort Ask says is lost; `op` is git's operation in progress (Status.operation). */
+export const abortLoss = (op: string): string =>
+  `git ${op} --abort puts the branch and its files back where they were before the ${op} began. ` +
+  (op === "merge"
+    ? "The conflicts you resolved (staged or not) are lost. Changes that were not committed when it began may not all come back."
+    : op === "rebase"
+      ? "Commits already replayed onto the new base are thrown away (the branch keeps the commits it had), and the conflicts you resolved (staged or not) are lost."
+      : `Commits the ${op} already made are removed from the branch, and the conflicts you resolved (staged or not) are lost.`);
 /** The command and arguments a section reads its two texts with. */
 export const sidesCall = (base: Base | null, root: string, e: Entry): [string, Record<string, unknown>] => (base ? ["scm_base_sides", { worktree: root, path: e.path, since: base.since }] : ["diff_sides", { path: e.path, staged: e.staged }]);
 
@@ -120,6 +129,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   // One git action at a time (commit, stage, push, pull, sync): a second click or Ctrl+Enter while one runs does nothing.
   const [turn] = useState(oneAtATime);
   const [pending, setPending] = useState<string | null>(null);
+  const [aborting, setAborting] = useState<string | null>(null); // the operation the abort Ask is open for
   const reload = useRef<() => void>(() => undefined); // reads the changes again; set by the effect that owns the read
   const { settings, save } = useSettings();
   const [over, setOver] = useState<Partial<AcLayout>>({}); // this tab's toggles over the saved defaults
@@ -282,6 +292,16 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     [stage, root],
   );
   const remote = (id: "push" | "pull" | "sync", label: string) => act(`${id === "sync" ? "Syncing" : id === "push" ? "Pushing" : "Pulling"}`, () => runRemote(call, root, id, label));
+  // T-709: runs only from the Ask's confirm; act re-reads the status and the list, so the conflicts clear when it succeeds.
+  const abortOp = (op: string) => {
+    setAborting(null);
+    act(`Aborting the ${op}`, () =>
+      invoke("scm_abort", { worktree: root }).then(
+        (): Say => ({ text: `${abortLabel(op)}: the workspace is back where it was`, bad: false }),
+        (e): Say => ({ text: `${abortLabel(op)} failed: ${String(e)}`, bad: true }),
+      ),
+    );
+  };
   const say = (text: string) => {
     setSaid(text);
     window.clearTimeout(saidTimer.current);
@@ -406,6 +426,15 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           )}
         </div>
       </div>
+      {status?.operation && (
+        <div className="notice ac-op" role="status" aria-label="Operation in progress">
+          A {status.operation} is in progress{status.conflicts.length ? `, with ${status.conflicts.length} ${status.conflicts.length === 1 ? "file" : "files"} in conflict` : ""}.{" "}
+          <button className="btn" data-abort={status.operation} disabled={pending !== null} onClick={() => setAborting(status.operation)} title={pending !== null ? `Waiting for ${pending.toLowerCase()}` : `Stop the ${status.operation} and go back to where it began`}>
+            {abortLabel(status.operation)}
+          </button>
+        </div>
+      )}
+      {aborting && status?.operation === aborting && <Ask title={`${abortLabel(aborting)}?`} body={abortLoss(aborting)} confirm={abortLabel(aborting)} onConfirm={() => abortOp(aborting)} onCancel={() => setAborting(null)} />}
       <div className="scm-commit ac-commit" aria-label="Commit">
           <textarea className="field multi" aria-label="Commit message" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={(e) => isCommitShortcut(e) && (e.preventDefault(), commit())} />
           <div className="ac-commit-row">
