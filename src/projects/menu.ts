@@ -36,6 +36,9 @@ export type MenuFor = {
   editors: { label: string; command: string }[];
   /** Manual order is by drag; these two are the keyboard way. */
   reorder?: boolean;
+  /** The row is the first / last of its siblings, so Move up / Move down is off. */
+  first?: boolean;
+  last?: boolean;
 };
 
 const REMOVE_PROJECT: MenuItem = { id: "proj:remove", label: "Remove project…", danger: true, sep: true };
@@ -69,7 +72,8 @@ export function rowMenu(o: MenuFor): MenuItem[] {
       ],
     });
   }
-  if (one && o.reorder) items.push({ id: "move:up", label: "Move up" }, { id: "move:down", label: "Move down" });
+  // Reordering steps among siblings only: never on the main checkout, and the ends of the siblings cannot go further.
+  if (one && o.reorder && !o.isMain) items.push({ id: "move:up", label: "Move up", disabled: o.first }, { id: "move:down", label: "Move down", disabled: o.last });
   if (one && !o.isMain) items.push({ id: "hide", label: "Hide from the sidebar" });
   if (one && o.alt) items.push({ id: "developer", label: "Developer", children: [{ id: "dev:copy-path", label: "Copy path" }, { id: "dev:copy-branch", label: "Copy branch name" }] });
   // The main checkout cannot be hidden or deleted, so its way out is removing the project.

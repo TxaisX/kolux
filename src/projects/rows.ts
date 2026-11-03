@@ -142,6 +142,18 @@ export function rowKey(key: string, onRow: boolean): "show" | "rename" | null {
   return key === "F2" ? "rename" : null;
 }
 
+/** Escape closes the Add project form, except while an edited workspaces-folder field is still reverting itself or an IME is composing. */
+export const closeAddOnEscape = (key: string, composing: boolean, editingRoot: boolean): boolean => key === "Escape" && !composing && !editingRoot;
+
+/**
+ * The group to take away when its form closes unsaved: only one still in the list. A group the user already
+ * deleted from its own form is gone, and deleting it a second time would replace the green note with an error.
+ */
+export const freshGroupToDrop = (fresh: string | null, open: string | null, ids: string[]): string | null => (fresh !== null && open !== fresh && ids.includes(fresh) ? fresh : null);
+
+/** A failed create puts the typed words back only where nobody has moved on: no form open, or this project's own. */
+export const mayRestoreDraft = (creating: string | null, projectId: string): boolean => creating === null || creating === projectId;
+
 /** What sleeping `path` would newly put to sleep: the new asleep list and the folders that change. */
 export function sleepPlan(asleep: string[], ws: { path: string; parent?: string | null; isMain?: boolean }[], path: string): { next: string[]; paths: string[] } {
   const next = asleepAfter(asleep, ws.filter((x) => !x.isMain), path, true);
@@ -175,7 +187,7 @@ export function addReport(outs: AddOutcome[]): { ask: string | null; note: strin
   const added = outs.filter((o) => o.kind === "added").length;
   const parts = [
     added ? `${added} project${added === 1 ? "" : "s"} added.` : "",
-    plain.length > 1 ? `${plain.length - 1} more folder${plain.length === 2 ? " is" : "s are"} not Git repositories: add ${plain.length === 2 ? "it" : "them"} one at a time.` : "",
+    plain.length > 1 ? `${plain.length - 1} more folder${plain.length === 2 ? " is" : "s are"} ${plain.length === 2 ? "not a Git repository" : "not Git repositories"}: add ${plain.length === 2 ? "it" : "them"} one at a time.` : "",
     failed.length ? `${failed.length} could not be added (${failed[0].path}: ${failed[0].error ?? "unknown error"}${failed.length > 1 ? ", and others" : ""}).` : "",
   ].filter(Boolean);
   return { ask: plain[0]?.path ?? null, note: parts.length ? parts.join(" ") : null, kind: failed.length ? "error" : plain.length > 1 ? "warn" : "ok" };

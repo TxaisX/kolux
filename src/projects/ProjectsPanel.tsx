@@ -24,7 +24,7 @@ import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keep
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, runningUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
+import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, runningUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
 import { recordPoll } from "../scm/prSearch";
@@ -76,7 +76,9 @@ import type { AgentPass } from "../launch/agents";
 import { KeyText } from "../keys/KeymapContext";
 import { GLOSSARY } from "../glossary";
 import HelpMenu from "../onboarding/HelpMenu";
-import SidebarStart from "../onboarding/SidebarStart";
+import { deferred } from "../lazy/deferred";
+// UX lane C: the Getting Started entry (and the Setup Guide behind it) loads after the first frame, not in it.
+const SidebarStart = deferred(() => import("../onboarding/SidebarStart"));
 import { asksBeforeClose } from "../terminal/closing";
 import "./sidebar.css";
 import ImportSetup, { refusedLine, type SetupImport } from "./ImportSetup";
@@ -84,7 +86,7 @@ import { issueCommand } from "../setup/IssueCommand";
 import { trustedSetup } from "../setup/TrustPrompt";
 import { NO_GROUPS, groupChoices, groupTree, keepNewer, type Group, type Groups, type Node } from "./groups";
 import { dropBand, parentDropTarget } from "./parentDrop";
-import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow } from "./order";
+import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow, stepSiblings } from "./order";
 import { pendingWrites } from "./settingWrite";
 import { CLEAR_FILTERS, FILTER_DEFAULT_SETTING, FILTER_PROJECTS_SETTING, filtersFrom, filtersOn, rowShown, toggleProject } from "./filter";
 import { deletePlan, groupMenu, menuGaps, menuMove, projectMenu, rowMenu, type MenuItem } from "./menu";
@@ -206,8 +208,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   useEffect(() => {
     if (!menu) return;
     const back = document.activeElement as HTMLElement | null;
+    // Once, as it opens (not on every render): the first item takes the focus so the arrow keys work at once.
+    document.querySelector<HTMLElement>('.sb-menu [role="menuitem"]:not(:disabled)')?.focus();
     const esc = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" && e.key !== "Tab") return; // Tab leaves the menu: it closes and focus goes back
       e.preventDefault();
       e.stopPropagation();
       setMenu(null);
@@ -296,6 +300,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   }, []);
   const [creating, setCreating] = useState<string | null>(null); // project id whose name field is open; "" with no project yet
   const [pending, setPendingList] = useState<PendingCreate[]>([]); // the stand-in rows while Git works
+  const creatingNow = useRef<string | null>(null); // the project whose composer is open right now, for a create that fails after an await
+  creatingNow.current = creating;
   const pendingNow = useRef<PendingCreate[]>([]);
   const setPending = (next: PendingCreate[]) => {
     pendingNow.current = next;
@@ -848,6 +854,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (freshGroup === null || groupFor === freshGroup) return;
     const id = freshGroup;
     setFreshGroup(null);
+    if (freshGroupToDrop(id, groupFor, groups.groups.map((x) => x.id)) === null) return; // already deleted from its own form
     invoke<Groups>("group_delete", { id, removeProjects: false }).then((g) => takeGroups(g), fail);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupFor, freshGroup]);
@@ -867,6 +874,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       takeGroups(await invoke<Groups>("group_delete", { id: g.id, removeProjects: remove }));
       const colours = colourSaveAfterDelete(live.current.settings, gone); // null when none of them had a colour: nothing is saved
       if (colours) live.current.onSetting(HEADER_COLOURS_SETTING, colours);
+      setFreshGroup(null); // a just-made group deleted from its own form: nothing is left for the form's close to take away
       setGroupFor(null);
       setDropGroup(null);
       say("ok", remove ? `Deleted the group ${g.name} and took its projects out of Kolux; their folders are still on disk` : `Deleted the group ${g.name}; its projects are at the top level now`);
@@ -977,12 +985,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       else {
         fail(err);
         // The form was cleared for the next one; a failure puts the typed words back (only into empty fields).
-        if (!made) {
+        if (!made && mayRestoreDraft(creatingNow.current, project.id)) {
           setName((n) => restoreField(n, saved.name));
           setBranchDraft((x) => restoreField(x, saved.branch));
           setPromptDraft((x) => restoreField(x, saved.prompt));
           setBaseDraft((x) => restoreField(x, saved.base));
           setPrDraft((x) => x ?? savedPr);
+          setLinked((l) => l ?? linked);
+          setParentDraft((x) => x ?? parent);
           setCreating((c) => c ?? project.id);
         }
       }
@@ -1254,6 +1264,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
 
+  // Move up and Move down step among the siblings of a row (same project and parent, main excluded) as drawn now.
+  const screenKeys = () => [...new Set([...document.querySelectorAll(".sb-list [data-path]")].map((n) => pathKey((n as HTMLElement).dataset.path ?? "")))];
+  const stepSiblingsOf = (p: Project, w: Worktree) => stepSiblings(worktrees[p.id] ?? [], w, screenKeys(), pathKey);
   // PROJ-065: right-click on a workspace row lists what can be done to it.
   const openMenu = async (e: { preventDefault(): void; altKey: boolean; clientX: number; clientY: number }, p: Project, w: Worktree) => {
     e.preventDefault();
@@ -1266,7 +1279,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const gaps = menuGaps(failed);
     if (gaps) say("warn", gaps);
     const deleting = busy === "removing" && confirm?.path === w.path;
-    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), reorder: true }) });
+    const sibs = stepSiblingsOf(p, w);
+    const at = sibs.indexOf(pathKey(w.path));
+    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 }) });
   };
   // A project header or a group row opens its own short list; `projectId` holds the group id for a group.
   const pop = (e: { preventDefault(): void; clientX: number; clientY: number }, id: string, items: MenuItem[], label: string) => {
@@ -1331,8 +1346,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       else if (id === "wake") wake(w);
       else if (id === "parent") setMoving(w.path);
       else if (id === "move:up" || id === "move:down") {
-        const keys = [...new Set([...document.querySelectorAll(".sb-list [data-path]")].map((n) => pathKey((n as HTMLElement).dataset.path ?? "")))];
-        onSetting(MANUAL_ORDER_SETTING, stepRow(dragStart(sortBy, idsFrom(settings[MANUAL_ORDER_SETTING]), keys), pathKey(w.path), id === "move:up" ? -1 : 1));
+        const keys = screenKeys();
+        const sibs = stepSiblings(worktrees[p.id] ?? [], w, keys, pathKey);
+        const next = stepRow(dragStart(sortBy, idsFrom(settings[MANUAL_ORDER_SETTING]), keys), pathKey(w.path), id === "move:up" ? -1 : 1, sibs);
+        onSetting(MANUAL_ORDER_SETTING, next);
         if (sortBy !== "manual") onSetting(SORT_SETTING, "manual");
       }
       else if (id === "details") {
@@ -1669,7 +1686,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // Clicking away commits the name (it used to be thrown away); Escape cancels, and the row gets focus back.
   const renameOpen = useRef<string | null>(null);
   const focusRow = (path: string) =>
-    window.setTimeout(() => (Array.from(document.querySelectorAll<HTMLElement>(".sb-list [data-path]")).find((el) => same(el.getAttribute("data-path") ?? "", path))?.querySelector<HTMLElement>(".sess") ?? null)?.focus(), 0);
+    window.setTimeout(() => (Array.from(document.querySelectorAll<HTMLElement>(".sb-list [data-path]")).find((el) => same(el.dataset?.path ?? "", path))?.querySelector?.<HTMLElement>(".sess") ?? null)?.focus?.(), 0);
+  // A question that closes puts the keyboard back on what asked it: the row, or the project's Remove button.
+  const focusProjectX = (p: Project) =>
+    window.setTimeout(() => Array.from(document.querySelectorAll<HTMLElement>("[data-proj-x]")).find((el) => el.getAttribute("aria-label") === `Remove ${projectLabel(p)}`)?.focus(), 0);
+  const closeSleepAsk = (path: string) => (setSleepAsk(null), focusRow(path));
+  const closeBatch = (path: string) => (setBatch(null), focusRow(path));
+  const closeForget = (path: string) => (setForgetAsk(null), focusRow(path));
+  const closeConfirm = (path: string) => (setConfirm(null), focusRow(path));
+  const closeDrop = (p: Project) => (setDropProject(null), focusProjectX(p));
   function cancelRename(w: Worktree) {
     renameOpen.current = null;
     setRenaming(null);
@@ -1807,7 +1832,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               value={renameText}
               onClick={(e) => e.stopPropagation()}
               onValue={setRenameText}
-              onBlur={() => void saveRename(w, false)}
+              onBlur={() => document.hasFocus() && void saveRename(w, false)}
               onKeyDown={(e) => {
                 e.stopPropagation();
                 if (e.key === "Enter") void saveRename(w);
@@ -1923,13 +1948,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         </div>
         <CardLine shown={cardDetails.shown} facts={facts} depth={depth} />
         {sleepAsk?.path === w.path && (
-          <div className="note sb-form warn" role="alertdialog" aria-label="Put to sleep" data-sleep-ask={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setSleepAsk(null))}>
+          <div className="note sb-form warn" role="alertdialog" aria-label="Put to sleep" data-sleep-ask={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeSleepAsk(w.path))}>
             <div>Put <b>{worktreeLabel(w)}</b> to sleep? Its tabs and terminals close, and so do those of the workspaces made from it.{sleepAsk.note}</div>
             <div className="btn-row">
-              <button className="btn" autoFocus onClick={() => setSleepAsk(null)}>
+              <button className="btn" autoFocus onClick={() => closeSleepAsk(w.path)}>
                 Keep awake
               </button>
-              <button className="btn danger" onClick={() => sleep(w)}>
+              <button className="btn danger" onClick={() => (sleep(w), focusRow(w.path))}>
                 Sleep
               </button>
             </div>
@@ -1989,7 +2014,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {batch?.root === w.path && (
-          <div className="sb-form warn" data-delete-all={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setBatch(null))}>
+          <div className="sb-form warn" data-delete-all={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeBatch(w.path))}>
             <div>
               Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
             </div>
@@ -2007,7 +2032,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <button className="btn danger" onClick={() => void removeBatch()} disabled={busy !== ""}>
                 {busy === "removing" ? "Removing…" : "Delete all"}
               </button>
-              <button className="btn" autoFocus onClick={() => setBatch(null)}>
+              <button className="btn" autoFocus onClick={() => closeBatch(w.path)}>
                 Keep
               </button>
             </div>
@@ -2024,12 +2049,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {forgetAsk && same(forgetAsk.path, w.path) && (
-          <div className="sb-form warn" data-forget={forgetAsk.label} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setForgetAsk(null))}>
+          <div className="sb-form warn" data-forget={forgetAsk.label} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeForget(w.path))}>
             {forgetAsk.refused ? (
               <>
                 <span>{forgetAsk.refused}</span>
                 <div className="btn-row">
-                  <button className="btn" autoFocus onClick={() => setForgetAsk(null)}>
+                  <button className="btn" autoFocus onClick={() => closeForget(w.path)}>
                     OK
                   </button>
                 </div>
@@ -2043,7 +2068,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                   <button className="btn danger" onClick={() => void forget(forgetAsk)}>
                     Take out
                   </button>
-                  <button className="btn" autoFocus onClick={() => setForgetAsk(null)}>
+                  <button className="btn" autoFocus onClick={() => closeForget(w.path)}>
                     Keep
                   </button>
                 </div>
@@ -2052,7 +2077,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {asking && (
-          <div className="sb-form warn" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setConfirm(null))}>
+          <div className="sb-form warn" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeConfirm(w.path))}>
             <span>
               Remove <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
               {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
@@ -2098,7 +2123,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               <button className="btn danger" onClick={() => remove()} disabled={busy !== "" || blocker(confirm.check) !== null}>
                 {busy === "removing" ? "Removing…" : "Remove"}
               </button>
-              <button className="btn" autoFocus onClick={() => setConfirm(null)}>
+              <button className="btn" autoFocus onClick={() => closeConfirm(w.path)}>
                 Keep
               </button>
             </div>
@@ -2157,13 +2182,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </button>
           </div>
           {dropProject === p.id && (
-            <div className="note sb-form warn" role="alertdialog" aria-label="Remove project" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setDropProject(null))}>
+            <div className="note sb-form warn" role="alertdialog" aria-label="Remove project" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeDrop(p))}>
               <div>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</div>
               <div className="btn-row">
                 <button className="btn danger" data-remove-project-yes onClick={() => removeProject(p)}>
                   Remove {p.name}
                 </button>
-                <button className="btn" autoFocus onClick={() => setDropProject(null)}>
+                <button className="btn" autoFocus onClick={() => closeDrop(p)}>
                   Keep it
                 </button>
               </div>
@@ -2424,7 +2449,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           }}
         >
           {showAdd && (
-            <div className="sb-form">
+            <div className="sb-form" onKeyDown={(e) => closeAddOnEscape(e.key, e.nativeEvent.isComposing, (e.target as HTMLElement).getAttribute("aria-label") === "workspaces folder" && rootDraft !== place.dir) && setShowAdd(false)}>
               <label>Add a project by path</label>
               <input aria-label="project folder" className="field" placeholder="path to a folder" value={pathDraft} onChange={(e) => setPathDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPath(pathDraft)} />
               <div className="btn-row">
@@ -2433,6 +2458,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 </button>
                 <button className="btn" onClick={browse} disabled={busy !== ""}>
                   Browse…
+                </button>
+                <button className="btn" onClick={() => setShowAdd(false)}>
+                  Close
                 </button>
               </div>
               <label>Workspaces folder{place.fromEnv && rootDraft === place.dir ? " (from KOLUX_WORKSPACES_DIR)" : ""}</label>
@@ -2600,10 +2628,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 }}
                 ref={(el) => {
                   if (!el) return;
-                  // Kept on screen on both axes, and the first item takes the focus so the keys work at once.
+                  // Kept on screen on both axes (the first item takes the focus once, in the effect above).
                   el.style.top = `${Math.max(8, Math.min(menu.y, window.innerHeight - el.offsetHeight - 8))}px`;
                   el.style.left = `${Math.max(8, Math.min(menu.x, window.innerWidth - el.offsetWidth - 8))}px`;
-                  if (!el.contains?.(document.activeElement)) el.querySelector?.<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus();
                 }}
               >
                 {menu.items.map((it) =>
