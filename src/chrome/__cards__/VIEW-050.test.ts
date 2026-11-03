@@ -12,7 +12,7 @@ test("box 2: dragging the left edge past the maximum stops the width at the limi
   let dragLeft: number | null = null;
   const settings: Record<string, unknown> = { [LEFT_KEY]: 300 };
   const el = () =>
-    Grip({ side: "left", width: dragLeft ?? readLeft(settings), label: "Resize the sidebar", className: "lside-grip", onWidth: (w, done) => {
+    Grip({ side: "left", width: dragLeft ?? readLeft(settings), min: LEFT_MIN, max: LEFT_MAX, label: "Resize the sidebar", className: "lside-grip", onWidth: (w, done) => {
       dragLeft = done ? null : clampLeft(w);
       if (done) settings[LEFT_KEY] = clampLeft(w);
     } }) as ReactElement<Record<string, (e: unknown) => void>>;

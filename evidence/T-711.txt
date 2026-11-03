@@ -1,0 +1,40 @@
+T-711 - Both sidebar resize grips work from the keyboard (DT-C147; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-10 from main d552a974, merged with main 32695d1e, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "49: T-711 / DT-C147". Findings: keyboard.md:14, chrome.md:14; backlog sweep item 6
+(proof/ux-audit/requests/backlog-sweep-49.md).
+
+WHAT WAS WRONG
+- The left and right sidebar grips (one shared Grip in chrome/RightSidebar.tsx) were role=separator with no tabIndex, no
+  keys and no value: keyboard users could not resize either sidebar, and screen readers announced no width.
+
+THE FIX (DT-C147)
+- chrome/RightSidebar.tsx Grip: tabIndex 0, aria-valuenow (the width), aria-valuemin and aria-valuemax (new min/max props).
+  Left/Right step 16 px, Shift 64 px, in the direction a drag would (dir: +1 for the left sidebar, -1 for the right).
+  Home/End ask for far past either end; the callers' existing clamps land on min/max. Each key press is saved
+  (onWidth(w, true)) like the end of a drag. Keys and drags start from the width as drawn (the T-703 helper, now shared).
+  Other keys pass through untouched; the four handled keys call preventDefault so nothing behind scrolls.
+- shell/window/Sidebar.tsx: the left grip passes LEFT_MIN/LEFT_MAX (220/480).
+- shell/window/Right.tsx: one fit() wraps the existing clampWidth; the right sidebar gets max = fit(1e4), i.e. the window
+  less the left sidebar and the 400 px reserve; RightSidebar passes RIGHT_MIN/max to its grip.
+- styles.css: the grip shows its drag line on :focus-visible as on hover (no outline box on an 8 px strip).
+- T-703's 340 px workspace floor is the stylesheet's and is unchanged.
+
+TESTS (VITEST_MAX_WORKERS=1, one file at a time)
+- src/chrome/gripKeys.test.ts (new, 2 tests): the real Grip with the real clampLeft and clampWidth. Left grip: separator,
+  tabIndex 0, valuenow/min/max; Right +16, Shift+Left -64, the clamp at 220, End = 480, Right past the end stays 480,
+  Home = 220, other keys untouched. Right grip: Left widens, a step starts from the drawn width under a T-703 clamp,
+  End = window - left - 400, Shift+Left past it stays there.
+  - With main's RightSidebar.tsx: fails 2/2 (gripKeys.test.ts:23 "expected { className: 'lside-grip', ... } to match
+    object { role: 'separator', ... }", gripKeys.test.ts:49 "expected undefined to be 703"). On this branch: passes 2/2.
+- Updated for the new required props: chrome/__cards__/VIEW-050 1/1, shell/window/panelFit 4/4, chrome/RightSidebar 11/11,
+  chrome/popupWiring 5/5. Also run: shell/window/narrowToggle 1/1, chrome/__cards__/VIEW-001 1/1, chrome/shell 10/10.
+- pnpm exec tsc --noEmit -p . : clean.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 32695d1e: 1,489,172 B first load. This branch: 1,489,428 B (+256 B). Ceiling 1,490,000.
+- Cap +200 raised to +256 by coordinator 57 (2026-11-03): ~62 B tabIndex and values, ~120 B key handler (one lookup
+  table), ~45 B min/max through the callers. The first build (one branch per key) was +311.
+  Turned down: (a) arrows only, ~+215, still over; (b) (a) without preventDefault, ~+195, but arrows would scroll an ancestor.
+
+REVIEW
+- Fresh opus-high-review: see the PR conversation.
