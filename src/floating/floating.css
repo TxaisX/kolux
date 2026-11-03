@@ -1,5 +1,6 @@
 /* TERM-059 / TERM-060 / TERM-061: the floating workspace panel and its button.
-   T-694, T-698: on the z-index scale in styles.css, over sheets and under every page overlay, menu, pop and dialog. */
+   T-694, T-698, T-704: on the z-index scale in styles.css, over pane pops, the review tray and the plan sheet, and under
+   sheets and every page overlay, menu, pop and dialog. */
 .float-btn { position: fixed; z-index: calc(var(--z-float) + 1); width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); touch-action: none; }
 .float-btn:hover { border-color: var(--line-focus); }
 .float-btn[aria-pressed="true"] { border-color: var(--line-focus); background: var(--row-selected); }

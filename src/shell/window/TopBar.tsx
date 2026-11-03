@@ -1,12 +1,13 @@
 // Cycle 3 (the WindowView split): the top bar and the four things it does, moved out of
 // shell/WindowView.tsx as they were. VIEW-005 / VIEW-011 keep the screen and the page; SET-020 and
 // VIEW-011 show the app name and the Automations button only when Settings says so.
+import { useSyncExternalStore } from "react";
 import TopBar from "../../chrome/TopBar";
 import { chromeShown } from "../../chrome/chromeItems";
 import { stepAllowed, travel } from "../../projects/nav";
 import { zoomFactor } from "../../settings/zoom";
 import { zoomTerm } from "../../theme";
-import { isNarrow, leftShown } from "./narrow";
+import { isNarrow, leftShown, watchNarrow } from "./narrow";
 import { useWindow } from "./store";
 
 export default function WindowTopBar() {
@@ -15,6 +16,7 @@ export default function WindowTopBar() {
     installedIds, codex, sidebarOpen, setSidebarOpen, focused, fullPage, right, saveRight, showRight, step,
     hist, stillThere, settingsOpen, setNotice, rightAside,
   } = useWindow();
+  const narrow = useSyncExternalStore(watchNarrow, isNarrow); // T-705 (DT-C141): redraws when the window crosses 900 px
   // T-699 (DT-C135): in a narrow window the left sidebar steps aside while the right one shows (styles.css).
   return (
     <TopBar
@@ -41,6 +43,6 @@ export default function WindowTopBar() {
         if (s === "terminals") setPage(null); // W3 F3 (T-693, VIEW-009): Terminals leaves a full page (Automations, Tasks or Routing)
         setScreen(s);
       }}
-      installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, isNarrow(), rightAside.current.shown /* filled by App.tsx before the drawing */)} onToggleSidebar={() => setSidebarOpen((o) => !o)} onZoom={(how) => zoomTerm(focused, how)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
+      installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, narrow, rightAside.current.shown /* filled by App.tsx before the drawing */)} onToggleSidebar={() => setSidebarOpen((o) => !o)} onZoom={(how) => zoomTerm(focused, how)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
   );
 }
