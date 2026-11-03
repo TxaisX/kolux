@@ -3,7 +3,7 @@
 //! change, it sends `menu_sync` the state it shows and the menu is rebuilt from it, so the ticks and
 //! the accelerators always agree with Settings (SET-020, SET-009). On Windows and Linux the menu
 //! opens from the Kolux mark (`menu_popup`); on macOS it is the app menu bar. A click on an item either acts
-//! here (reload, developer tools, full screen, minimise, maximise, exit) or comes back
+//! here (developer tools, full screen, minimise, maximise, exit) or comes back
 //! to the page as a `menu-action` event carrying the item id, which is the keymap action id where
 //! one exists (`app.settings`, `sidebar.left.toggle`, ...), so the page runs the same code as the
 //! shortcut. T-248-b: the Help items, the native-accelerator list the Shortcuts page judges clashes

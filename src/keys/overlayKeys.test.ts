@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { actionById } from "./actions";
 import { defaultsOnly } from "./keymap";
-import { CHROME_FIRST, explorerSearchKey, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
+import { CHROME_FIRST, explorerSearchKey, focusChrome, heldByOverlay, menuAction, OVERLAYS, PANE_LOCAL, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -38,9 +38,10 @@ const one = (el: El, s: string): boolean => {
   return true;
 };
 const matchesAny = (el: El, list: string) => list.split(",").some((s) => one(el, s));
-const real = (cls: string, attrs: Record<string, string>) => {
+const real = (cls: string, attrs: Record<string, string>, parent?: string) => {
   const el: El = { cls: cls.split(" "), attrs };
-  return { el, getClientRects: () => ({ length: 1 }), closest: () => null, matches: (s: string) => matchesAny(el, s) };
+  const up: El[] = [el, ...(parent ? [{ cls: parent.split(" "), attrs: {} }] : [])];
+  return { el, getClientRects: () => ({ length: 1 }), closest: (s: string) => up.find((x) => matchesAny(x, s)) ?? null, matches: (s: string) => matchesAny(el, s) };
 };
 const dom = (els: ReturnType<typeof real>[]) => ({
   querySelector: () => null,
@@ -67,10 +68,14 @@ test("real markup: a docked tip, the hooks card, a tour and the floating panel h
   expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);
   expect(heldByOverlay("worktree.palette", false, dom([tip, modal]) as never)).toBe(true);
   expect(heldByOverlay("tab.newTerminal", false, dom([real("menu", {})]) as never)).toBe(true);
-  // chrome/Ask (the reload question, delete confirmations), editor/CloseDialog and the floating panel's ask
-  const ask = real("ask", { role: "alertdialog", "aria-modal": "true" });
-  for (const id of ["tab.newTerminal", "tab.close", "tab.previousRecent", "terminals.focusNextNeedsYou", "tab.selectByIndex"])
+  // chrome/Ask (the reload question, delete confirmations) and editor/CloseDialog: window-modal, behind .ask-backdrop
+  const ask = real("ask", { role: "alertdialog", "aria-modal": "true" }, "ask-backdrop");
+  // terminal/TerminalPane.tsx: a dead shell's exit code, Paste N lines? and an account notice cover one pane only
+  const paneAsk = real("ask", { role: "alertdialog", "aria-modal": "true" }, PANE_LOCAL.slice(1));
+  for (const id of ["tab.newTerminal", "tab.close", "tab.previousRecent", "terminals.focusNextNeedsYou", "tab.selectByIndex"]) {
     expect(heldByOverlay(id, false, dom([ask]) as never), id).toBe(true);
+    expect(heldByOverlay(id, false, dom([paneAsk]) as never), "pane-local " + id).toBe(false);
+  }
 });
 
 test("Move Focus to the Top Bar focuses the top bar's first enabled control", () => {

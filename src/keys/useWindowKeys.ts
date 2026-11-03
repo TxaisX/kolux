@@ -55,6 +55,9 @@ export function paneCloseClaimed(paneId: number): boolean {
 // cookie steps, grab sheet and drawing canvas, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
 // inline sidebar form: projects (and its found-issues list), source control, the pull request draft) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
 export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], [aria-modal="true"], .pick-list, .font-list, .popover, .palette';
+// A terminal pane's own questions (a dead shell's exit code, Paste N lines?, an account notice) are aria-modal but cover
+// only that pane: the rest of the window, and Ctrl+W on that pane, keep working.
+export const PANE_LOCAL = ".pane-ask";
 export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet, .draw-canvas, .found-list';
 // Only the app's own chords wait. An editor or explorer chord, and a browser chord the window does not run itself
 // (Ctrl+C in a page is browser.grabElement), is the focused pane's or the overlay's own and falls through as before.
@@ -98,7 +101,7 @@ export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = doc
   const root = doc.querySelector(".settings[role='dialog']") ?? doc;
   return [...root.querySelectorAll(OVERLAYS)].some((el) => {
     const h = el as HTMLElement;
-    return h.getClientRects().length > 0 && !h.closest("[hidden]") && !h.matches(STAYS_OPEN);
+    return h.getClientRects().length > 0 && !h.closest(`[hidden], ${PANE_LOCAL}`) && !h.matches(STAYS_OPEN);
   });
 }
 
