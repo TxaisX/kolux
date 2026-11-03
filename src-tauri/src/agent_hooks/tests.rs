@@ -469,10 +469,13 @@ mod script_runs {
         let mut cmd = Command::new("cmd");
         cmd.args(["/d", "/v:on", "/c"]).arg(&script).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
         for (k, _) in std::env::vars() {
-            if k.starts_with("KOLUX_") || k == "CLAUDE_CONFIG_DIR" {
+            if k.starts_with("KOLUX_") {
                 cmd.env_remove(k);
             }
         }
+        // T-700 (K3): always, not only when it is set right now: `with_claude_config` in another test can set
+        // it between the look and the spawn, and the script would then report that test's folder.
+        cmd.env_remove("CLAUDE_CONFIG_DIR");
         cmd.envs(env.iter().map(|(k, v)| (*k, v.as_str())));
         let mut child = cmd.spawn().unwrap();
         child.stdin.take().unwrap().write_all(event.as_bytes()).unwrap();
@@ -1082,15 +1085,25 @@ mod script_runs {
             let endpoint = data.join(super::super::super::ENDPOINT_FILE);
             let listener = TcpListener::bind("127.0.0.1:0").unwrap();
             fs::write(&endpoint, format!("{} sekrit\n", listener.local_addr().unwrap().port())).unwrap();
-            let got = std::thread::spawn(move || {
+            // T-700 (K3): the same load fix as the live test above: curl's 1.5 s limit can run out on a loaded PC,
+            // so the script holds the event instead; each retry starts from a fresh spool.
+            let got = std::thread::spawn(move || loop {
                 let (mut s, _) = listener.accept().unwrap();
-                let req = super::super::super::parse_request(&mut BufReader::new(&s)).unwrap();
-                let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}");
-                req
+                if let Some(req) = super::super::super::parse_request(&mut BufReader::new(&s)) {
+                    let _ = write!(s, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}");
+                    return req;
+                }
             });
             let mut env = vec![("KOLUX_PANE_KEY", "7".to_string()), ("KOLUX_HOOK_IDENTITY", who(7)), ("KOLUX_HOOK_ENDPOINT", endpoint.display().to_string())];
             env.extend(config.map(|c| ("CLAUDE_CONFIG_DIR", c.to_string())));
-            let out = run(&dir, &env, STOP);
+            let mut out = run(&dir, &env, STOP);
+            for _ in 0..4 {
+                if out.stdout == b"{}" {
+                    break;
+                }
+                fs::remove_file(data.join(saved::SPOOL_FILE)).ok();
+                out = run(&dir, &env, STOP);
+            }
             assert!(out.status.success() && out.stdout == b"{}" && out.stderr.is_empty(), "{tag}: {out:?}");
             let req = got.join().unwrap();
             assert_eq!(req.path, "/claude", "{tag}");
