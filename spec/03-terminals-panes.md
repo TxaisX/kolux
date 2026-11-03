@@ -527,6 +527,9 @@ Acceptance:
   - [ ] Middle-clicking an unpinned tab closes it.
   - [x] Arrow keys move along the tabs and the menu, Escape closes the menu first, the menu stays
       inside the window, a disabled close item carries its reason. (unit; evidence/T-668.txt)
+  - [x] Click each item of the menu → Change Title, Pin, each colour, No color, both splits and the
+      five close items each do what they say and close the menu; a close item with nothing to close
+      does nothing. (unit; evidence/T-696.txt)
 Compat: —
 Source: D-03-049
 
@@ -1204,9 +1207,13 @@ Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: presses Cmd/Ctrl+F in a pane.
 User sees: a find bar highlights matches in the output and scrollback.
 Rules: invalid search patterns do not crash the find bar; very long search text is capped.
+  (Kolux RS, T-696: a search with nothing found says No matches, and Previous and Next are greyed
+  out while there is nothing to step to.)
 Acceptance:
   - [ ] Searching a word present 3 times lets the user step through all 3.
   - [ ] An invalid pattern in the find bar shows no matches and the bar keeps working.
+  - [x] Search for text that is not there → the bar says No matches and Previous and Next are greyed
+      out. (unit; evidence/T-696.txt)
 Compat: keybinding id terminal.search.
 Source: D-03-077
 

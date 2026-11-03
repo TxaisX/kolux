@@ -22,6 +22,8 @@ const bar: React.CSSProperties = { position: "absolute", top: 4, right: 12, zInd
 const field: React.CSSProperties = { width: 180, padding: "2px 6px", background: "var(--input-bg)", color: "var(--fg)", border: "1px solid var(--line)", borderRadius: 4, font: "inherit" };
 const toggle = (on: boolean): React.CSSProperties => ({ padding: "2px 5px", border: `1px solid ${on ? "var(--line-focus)" : "var(--line)"}`, borderRadius: 4, background: on ? "var(--row-selected)" : "transparent", color: "var(--fg)", font: "inherit", cursor: "pointer" });
 const plain: React.CSSProperties = { padding: "2px 5px", border: "1px solid transparent", borderRadius: 4, background: "transparent", color: "var(--fg)", font: "inherit", cursor: "pointer" };
+// T-696: Previous / Next are greyed out while there is nothing to step to (no query, or "No matches").
+const step = (off: boolean): React.CSSProperties => (off ? { ...plain, opacity: 0.4, cursor: "default" } : plain);
 
 export default function FindBar({ focusTick = 0, count, current, slow = false, onSearch, onStep, onClose }: Props) {
   const [query, setQuery] = useState("");
@@ -31,6 +33,10 @@ export default function FindBar({ focusTick = 0, count, current, slow = false, o
     input.current?.focus();
     input.current?.select();
   }, [focusTick]);
+  useEffect(() => {
+    const a = document.activeElement as HTMLButtonElement | null;
+    if (!count && (a === document.body || a?.disabled)) input.current?.focus();
+  }, [count]);
   const update = (q: string, o: FindOptions) => {
     setQuery(q);
     setOpts(o);
@@ -67,10 +73,10 @@ export default function FindBar({ focusTick = 0, count, current, slow = false, o
       <button type="button" style={toggle(opts.regex)} aria-pressed={opts.regex} title="Regular expression" onClick={() => update(query, { ...opts, regex: !opts.regex })}>
         .*
       </button>
-      <button type="button" style={plain} title="Previous match (Shift+Enter)" aria-label="Previous match" onClick={() => onStep(-1)}>
+      <button type="button" style={step(!count)} disabled={!count} title="Previous match (Shift+Enter)" aria-label="Previous match" onClick={() => onStep(-1)}>
         ↑
       </button>
-      <button type="button" style={plain} title="Next match (Enter)" aria-label="Next match" onClick={() => onStep(1)}>
+      <button type="button" style={step(!count)} disabled={!count} title="Next match (Enter)" aria-label="Next match" onClick={() => onStep(1)}>
         ↓
       </button>
       <button type="button" className="ib" title="Close (Escape)" aria-label="Close find" onClick={onClose}>
