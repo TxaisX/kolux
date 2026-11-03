@@ -1,0 +1,71 @@
+T-710 / DT-C146: UX audit keyboard.md rows 5, 6, 7 and chrome.md row 12, lane A (90): Shift+F10 and the Menu key open the
+  terminal pane, Explorer row and status-bar menus; the text field's edit menu takes focus and answers the arrow keys
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md, section "90: T-710" (the sessions proof dir, not in this repo).
+  Built on main 45146f78 (after train 11, #147).
+
+What was asked: the terminal pane menu (TerminalPane.tsx), the Explorer row menu (Explorer.tsx) and the status-bar menu
+  (StatusBar.tsx) opened only on a right-click. Shift+F10 and the Menu key should open each one at the focused item, or at
+  the element's own position when there is no item. The edit menu should move focus to its first row; Up/Down move, Enter
+  picks, Escape closes and gives focus back to the field. Reuse the menu-key handling the other menus have; no second
+  helper. +270 B or less on first load.
+
+HOW THE ENGINE OPENS A MENU FROM THE KEYBOARD (probe: headless Edge over CDP, a page with a button, an input and a focusable
+  list; Input.dispatchKeyEvent for Shift+F10 and the Menu key)
+  - Both keys raise a native contextmenu event on the focused element, with button -1 (a mouse right-click has button 2)
+    and clientX/clientY at the element's centre (an input: 4 px in from its left, at its vertical centre).
+  - A keydown handler that calls preventDefault on F10 stops the Shift+F10 contextmenu. The Menu key still raises it (on
+    Windows it acts on key-up).
+  So every menu that already opens on contextmenu opens from the keyboard too, as long as nothing eats the key and the
+  handler copes with where the event lands. No key handler was added: the engine's own path is the "existing handling",
+  and button < 0 tells a keyboard menu from a mouse one where that matters.
+
+FIXED
+  - Terminal pane menu. The terminal's key handler encoded Shift+F10 (and the Menu key) for the program in the pane and
+    called preventDefault, so the engine raised no contextmenu. src/terminal/PaneMenu.tsx: menuKey(e) names the two keys;
+    TerminalPane.tsx: the custom key handler returns false for them before anything else, so the terminal leaves them to
+    the engine. rightClick: a contextmenu with button < 0 always opens the pane menu at the event's point (the focused
+    terminal's centre), whatever the right-click paste and mouse-tracking settings say; those settings are about the mouse.
+    The link-menu guard (TERM-094), which drops the contextmenu after a right-click on a hovered link, lets a keyboard
+    contextmenu through, since no link menu opened for it.
+  - Explorer row menu. Focus sits on the tree itself (role=tree, aria-activedescendant names the active row), so the
+    engine raises contextmenu on the tree, not on a row, and nothing listened there. Explorer.tsx: the tree's
+    onContextMenu (keyContext) takes a keyboard contextmenu (button < 0, raised on the tree itself) and opens the active
+    row's menu just under that row (16 px in from its left edge), or at the engine's point when the row is scrolled out
+    of the drawn rows. A mouse right-click on blank list still opens nothing. The row-is-a-folder test the rows used
+    inline moved to dirRow() so both paths share it.
+  - Edit menu. src/editmenu/EditMenuHost.tsx: the menu used its own window listener for Escape only and left focus in
+    the field. It now uses useMenuFocus (src/chrome/dialogFocus.ts), the helper the status-bar, New tab and More tabs
+    menus use: focus on the first enabled row, Up/Down/Home/End move (wrapping), Tab closes, Escape closes, and focus
+    goes back to the field. Enter on a row is the button's own click, which runs the edit on the field (runEdit puts
+    focus back on the field first, so the field's selection is what Cut/Copy act on).
+
+NOT REPRODUCED
+  - Status-bar menu (StatusBar.tsx). It already opens from the keyboard: a focused status-bar item (the memory item, the
+    update item) raises contextmenu, which reaches the footer's onContextMenu, and the menu already uses useMenuFocus. A
+    test now pins it. The status bar has no item that is not a button, so "no focused item" does not arise there.
+
+TESTS (fakeDom unless said)
+  - src/terminal/PaneMenu.test.ts: menuKey is true for Shift+F10 and the Menu key and false for F10 and Shift+F9; source
+    guards that the key handler returns false for them first, that rightClick opens the menu for button < 0, and that
+    the link-menu guard lets button < 0 through. (TerminalPane cannot be mounted here: its xterm effect needs a real DOM.
+    The guards are a check, not the proof; the probe above is the engine side.)
+  - src/editor/Explorer.ux.test.ts: the mounted Explorer; the tree takes focus (row 0 active); a mouse right-click
+    (button 2) on the blank tree opens no menu; a contextmenu with button -1 on the tree opens "Actions for src" at
+    left 56 px, top 120 px (row rect left 40, bottom 120).
+  - src/chrome/statusItems.test.ts: the mounted StatusBar; a contextmenu with button -1 on the memory item opens "Status
+    bar items" at left 960 px (1100 clamped to 1200 - 240), bottom 14 px.
+  - src/editmenu/EditMenuHost.test.ts (new): the mounted host; a contextmenu on an input opens the Text menu with focus on
+    its first enabled row; ArrowDown moves to the next row, ArrowUp back; Escape closes it and focus is on the input.
+  - Against main's EditMenuHost.tsx, Explorer.tsx and TerminalPane.tsx, the edit-menu, Explorer and terminal tests fail
+    and the status-bar test passes (it was already right).
+
+KNOWN DEVIATION
+  - A program running in a terminal pane no longer receives Shift+F10 or the Menu key: they open the pane menu. Recorded
+    in DT-C146.
+
+VERIFY
+  - vitest run src/terminal src/editor src/chrome src/editmenu: 227 files, 1900/1900 passed.
+  - tsc --noEmit: 0 errors. plan-check: OK. firewall-check -Baseline: 0 new.
+  - First load (vite build + scripts/bundle-budget.mjs, both in one slot): main 45146f78 1,489,321 bytes, this branch
+    1,489,277 bytes, so main -44 B (budget +270 B; ceiling 1,490,000).
+  - Not checked live in the app: the probe shows what the engine raises, and the tests show what each menu does with it.
