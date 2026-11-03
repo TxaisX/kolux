@@ -6,7 +6,7 @@
 // Every action goes to the Rust side; this file only draws the state it gets back.
 // T-013: adding a project opens its main checkout (PROJ-007); Mod+N or the header's plus opens
 // the name field for the project in front, a stand-in row shows while Git works, and the new
-// workspace opens with a shell of its own unless the user moved on meanwhile (PROJ-020).
+// workspace opens on its launch chooser unless the user moved on meanwhile (PROJ-020, T-569).
 // T-014-a: the name field also takes a start ref, an agent and a first prompt (PROJ-028,
 // PROJ-038); the footer gear sets the global workspaces folder and layout, a project's own gear
 // its folder and base ref (PROJ-025).
@@ -29,6 +29,7 @@ import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/mod
 import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
 import { recordPoll } from "../scm/prSearch";
 import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
+import { createStart } from "./workspaceStart";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, splitGitSaid, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
 import { ArrowRight, Bell, ChevronDown, Close, EyeOff, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Sliders, Target, Box, Pin, Moon } from "../chrome/icons";
 import AddProject from "./AddProject";
@@ -113,7 +114,7 @@ type Props = {
   activeDir: string | null;
   /** A click on a row shows that workspace. */
   /** `fresh`: the workspace was just made (TERM-005 seeds its grid). */
-  onSelect: (dir: string, branch: string | null, fresh?: boolean) => void;
+  onSelect: (dir: string, branch: string | null, fresh?: boolean, prefill?: { agent: string | null; task: string }) => void;
   /** A new project was added and its main checkout opened (ONB-010 starts the default agent there once). */
   onAdded?: (dir: string, branch: string | null) => void;
   /** After a workspace and its folder are gone, so the window drops its panes. */
@@ -834,7 +835,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
 
-  // PROJ-020: a stand-in row at once, then the workspace opens with a shell of its own; if the
+  // PROJ-020: a stand-in row at once, then the workspace opens on its launch chooser (T-569); if the
   // user moved to another workspace meanwhile the create finishes without pulling focus back.
   // A newer create overtakes a running one (unless that one was made with Create more): Kolux
   // cancels it, and Git's half-made checkout is removed; one that finished first stays, in the
@@ -890,17 +891,21 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const extra = [wt.note, ...wt.warnings.filter((x) => !isBehindHint(x))].filter(Boolean).join(" · ");
       say(extra ? "warn" : "ok", `created ${worktreeLabel(wt)} in ${wt.path} from ${wt.base}${extra ? ` · ${extra}` : ""}`);
       await reload();
-      // The agent's tab is the workspace's first; a shell is only opened when no agent runs. With
-      // Create more the new workspace does not take the front, so the next name can be typed.
+      // T-664 (b): a workspace that takes the front opens its launch chooser with the form's AI in Seat 1 and the
+      // note as the task; nothing runs until the person presses Start. With Create more the new workspace does not
+      // take the front (no chooser on screen), so there the agent starts as before and the next name can be typed.
       // A create overtaken after Git had already finished it stays, but never takes the front.
       const front = !keepOpen && !lost && shown.current === from;
       // PROJ-033: the project's setup script runs in a Setup terminal; a script that cannot run says why.
       const setup = setupSkip || !onSetup ? null : await trustedSetup(wt.path).catch((err) => (say("warn", String(err)), null));
-      if (agent && setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)) {
+      // The chooser's Start is the person's, so it never waits for the setup script; the script still runs, behind it.
+      const how = createStart(!!agent, !!prompt, front, !!(setup && onSetup && waitsForSetup(setupWhere, setupWait, true, true)));
+      if (how === "setup-then-start" && agent && setup && onSetup) {
         onSetup(wt.path, wt.branch, setup, setupWhere, front, () => onStartIn(agent, wt.path, wt.branch, prompt, front));
       } else {
-        if (agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
-        else if (front) onSelect(wt.path, wt.branch, true);
+        if (how === "start" && agent) onStartIn(agent, wt.path, wt.branch, prompt, front);
+        else if (how === "select-prefill") onSelect(wt.path, wt.branch, true, { agent: agent?.id ?? null, task: prompt });
+        else if (how === "select") onSelect(wt.path, wt.branch, true);
         if (setup && onSetup) onSetup(wt.path, wt.branch, setup, setupWhere, false);
       }
       // PROJ-036: a workspace made from a linked issue runs the project's issue command in a tab.
