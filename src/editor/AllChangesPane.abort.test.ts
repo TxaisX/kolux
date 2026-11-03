@@ -37,7 +37,7 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-const conflict = { path: "a.txt", code: "UU" } as Status["conflicts"][number];
+const conflict: Status["conflicts"][number] = { path: "a.txt", status: "UU", from: null };
 async function pane(status: Status) {
   h.status = status;
   const { default: AllChangesPane } = await import("./AllChangesPane");
