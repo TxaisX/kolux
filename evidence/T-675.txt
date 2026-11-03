@@ -28,7 +28,7 @@ WHAT CHANGED
 - Re-review B findings fixed: harness tests now drive the real components (Space batch delete and its disabled
   boxes; feedback double press, focus return, Add screenshot, reopen during a send; Update Center check after a
   failed status and the window Escape; Tower reveal, Refreshing… and the own window's Loading…; Floor stale
-  lanes), each checked to fail with its line reverted. TowerView's alive flag is set again when the effect
+  lanes), each checked to fail with its line reverted (the early check that later succeeds is not yet covered: follow-up). TowerView's alive flag is set again when the effect
   re-runs, so under StrictMode Refresh no longer sticks at Refreshing…. Tower Refresh and Open on GitHub use
   aria-disabled and ignore presses while busy, so focus stays on them. A feedback send carries a sequence
   number; a result from a send started before the box was closed and reopened is ignored. Spec, PLAN and
@@ -43,11 +43,18 @@ no sign of work; parts were unreachable by keyboard. Row 4 (Space and Floor only
 in #104 (View menu). L rows: none.
 
 REVIEW
-Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape scope, Space tick filter, feedback reopen) -> re-review B (9733b7b9) -> fix pass (983b8931) -> re-review PENDING.
+Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape scope, Space tick filter, feedback reopen) -> re-review B (9733b7b9) -> fix pass (983b8931) -> re-review A- (5c903fd1).
 
 FOLLOW-UPS
 - The feedback sent note shares the bottom-right corner with the tip dock and the skill notice and can sit over
   them; a shared notice stack is the fix (src/styles.css belongs to lane A).
+- From the A- re-review: with a crash report or a screenshot attached, a second press of Open on GitHub during
+  the bundle or clipboard copy can open a second tab (sending.current is cleared before those awaits).
+- No test yet for an early Check whose status load then succeeds (only the failing path is tested).
+- Cancelling "Restart to update?" leaves focus on the page, not on the button that opened it.
+- The notify pacer keys only kind "stop"; bell is not covered, and nothing passes kind yet (requests A.md, E1.md).
+- FloorView imports Segmented from the General settings page module; move it to src/chrome.
+- VIEW-014 acceptance line reworded to match its test (two rows ticked, one hidden).
 
 TESTS (verbose, the 14 test files this PR changes or adds)
 VITEST_MAX_WORKERS=2 pnpm vitest run --reporter=verbose src/feedback/FeedbackDialog.test.ts src/feedback/model.test.ts src/floor/FloorView.test.ts src/floor/timeline.test.ts src/look/headerColour.test.ts src/notify/notify.test.ts src/space/SpaceView.test.ts src/space/view.test.ts src/tower/TowerView.harness.test.ts src/tower/TowerView.test.ts src/update/UpdateCenter.keys.test.ts src/update/UpdateCenterView.test.ts src/update/__cards__/APP-024-027.test.ts src/update/restart.test.ts
