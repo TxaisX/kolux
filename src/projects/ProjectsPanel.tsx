@@ -404,9 +404,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const top = useTopButton(); // PROJ-054
   const [picked, setPicked] = useState<string[]>([]); // PROJ-058: Ctrl/Cmd-clicked rows, by folder
   const [behind, setBehind] = useState<string | null>(null); // PROJ-029: the "base is behind" suggestion of the last create
-  // W3 F2 (T-693): one sidebar form at a time, the last opened wins; F1: the Jump button hides while one is open.
-  const forms = { filter: filterOpen, group: groupFor !== null, create: creating !== null, settings: settingsFor !== null };
-  useOneForm(forms, { filter: () => setFilterOpen(false), group: () => setGroupFor(null), create: () => setCreating(null), settings: () => setSettingsFor(null) });
+  // W3 F2 (T-693): one sidebar form at a time, the last opened wins; F1: the floating Jump and Top buttons hide while one is open.
+  const forms = { filter: filterOpen, group: groupFor !== null, create: creating !== null, settings: settingsFor !== null, add: showAdd };
+  useOneForm(forms, { filter: () => setFilterOpen(false), group: () => setGroupFor(null), create: () => setCreating(null), settings: () => setSettingsFor(null), add: () => setShowAdd(false) });
+  const anyForm = Object.values(forms).some(Boolean);
+  const formOpen = useRef(false);
+  formOpen.current = anyForm;
   const setIcon = async (p: Project, icon: string) => {
     try {
       const kept = await invoke<string | null>("project_icon_set", { projectId: p.id, icon });
@@ -1011,7 +1014,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           setPrDraft((x) => x ?? savedPr);
           setLinked((l) => l ?? linked);
           setParentDraft((x) => x ?? parent);
-          setCreating((c) => c ?? project.id);
+          // W3 F2: a failed create reopens its form only if no other form was opened since; the drafts are kept either way
+          if (!formOpen.current) setCreating(project.id);
         }
       }
     } finally {
@@ -2679,7 +2683,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </>
           )}
         </div>
-        <ListButtons topShown={top.shown} onTop={top.toTop} canJump={activeDir !== null && !Object.values(forms).some(Boolean)} onJump={() => void jumpHere()} />
+        <ListButtons topShown={top.shown && !anyForm} onTop={top.toTop} canJump={activeDir !== null && !anyForm} onJump={() => void jumpHere()} />
 
         <div className="sb-divider" />
         <div className="sb-next">

@@ -1,6 +1,10 @@
 T-693 / DT-C129: UX live audit Wave 3, lane A (90): shell, sidebar and palette rows
 Rows: findings/live-wave3-a.md section (b) F1, F2, F3, F4, F11 (requests/W3.md section "90"). Built on main 4bd4d2de.
 
+Review (Opus, read-only) of 0a6e6693: A-, three should-fix (a failed background create closed a form opened since;
+  the workspaces-folder form was outside the rule; F11 proof lacked the chord side), all fixed in the follow-up commit,
+  with the nits: close before paint (layout effect), the Top button hides with Jump, comment and spec wording.
+
 F1 fixed. Reproduced by reading the layout: the Jump to current workspace button floats at the sidebar's bottom-left
   (absolute, bottom 8px) over the list, so an open form's last row (Save, Create workspace) sits under it. It now hides
   while any sidebar form is open.
@@ -17,8 +21,11 @@ F11 not reproduced (harness artefact). The palette opened by Ctrl+Shift+J (workt
   accepts any input whose label contains "earch", which the Terminals screen's Explorer search boxes match, so a run
   where the palette did not come up still typed "Show Skills" into whatever had focus and reported "nothing changed".
   The walker then reported Terminals controls under S17 (findings section c already marks S17 not tested).
+  Live cause not identified. Two harness-side paths fit: Ctrl+Shift+J is a window chord, so a menu or popover the
+  walker left open (its closeAll Escapes only dialogs and menus by role) holds it by design; and viaPal's closeAll after
+  Enter presses Escape, which closes Skills again. An open sidebar form does not hold the chord (tested).
   Proof: src/shell/wave3.test.ts "F11 (not reproduced) ..." builds the real palette rows (commandRows + screenRows),
   ranks them with the real paletteRows for "Show Skills", runs row 0 and checks the screen became "skills".
 
-Tests: src/shell/wave3.test.ts (5 tests: F2 rule as a pure function, F1/F2/F3/F4 wiring by source, F11 path).
+Tests: src/shell/wave3.test.ts (6 tests: F2 rule as a pure function, F1/F2/F3/F4 wiring by source, F11 path).
   npx vitest run src/shell/wave3.test.ts src/chrome src/projects/nav.test.ts -> 24 files, 131 tests passed. tsc 0.

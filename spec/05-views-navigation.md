@@ -778,8 +778,9 @@ Source: D-05-006
 Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: opens Tasks, Automations, Skills, Artifacts, Space, Inbox, Floor or Settings; presses
   Mod+Shift+3 to leave.
-User sees: the page fills the workspace area; Show Code, and the top bar's Terminals switch, close it
-  and return to the terminal workspace; the top-bar bell opens Inbox.
+User sees: the page fills the workspace area; Show Code closes it and returns to the terminal
+  workspace, and the top bar's Terminals switch leaves Tasks or Automations too; the top-bar bell
+  opens Inbox.
 Rules: only one full page is open at a time; while a full page is showing, the right-sidebar
   controls are hidden; the set of pages is fixed; a request for an unknown page is refused; Floor
   and Inbox each have their own page shortcut command, shipped with no key; what lands in the Inbox

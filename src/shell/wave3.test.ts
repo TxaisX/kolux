@@ -7,6 +7,7 @@ import { commandRows } from "../keys/commands";
 import { resolve } from "../keys/keymap";
 import { paletteRows } from "../projects/WorktreePalette";
 import { toggleSkills } from "../skills/nav";
+import { heldByOverlay } from "../keys/useWindowKeys";
 import type { Screen } from "../chrome/TopBar";
 import panel from "../projects/ProjectsPanel.tsx?raw";
 import topBar from "./window/TopBar.tsx?raw";
@@ -24,9 +25,13 @@ test("F2: opening a form closes the others that are open, and the last opened st
   expect(formsToClose({ ...none, settings: true }, { ...none, settings: true })).toEqual([]);
 });
 
-test("F2 + F1: the sidebar wires the one-form rule to its four forms, and Jump hides while one is open", () => {
-  expect(panel).toContain("useOneForm(forms, { filter: () => setFilterOpen(false), group: () => setGroupFor(null), create: () => setCreating(null), settings: () => setSettingsFor(null) })");
-  expect(panel).toContain("canJump={activeDir !== null && !Object.values(forms).some(Boolean)}");
+test("F2 + F1: the sidebar wires the one-form rule to its five forms, and Jump hides while one is open", () => {
+  expect(panel).toContain("const forms = { filter: filterOpen, group: groupFor !== null, create: creating !== null, settings: settingsFor !== null, add: showAdd };");
+  expect(panel).toContain("useOneForm(forms, { filter: () => setFilterOpen(false), group: () => setGroupFor(null), create: () => setCreating(null), settings: () => setSettingsFor(null), add: () => setShowAdd(false) })");
+  expect(panel).toContain("canJump={activeDir !== null && !anyForm}");
+  expect(panel).toContain("topShown={top.shown && !anyForm}");
+  // a create that fails in the background does not close a form opened since
+  expect(panel).toContain("if (!formOpen.current) setCreating(project.id);");
 });
 
 test("F4: with one view the sidebar shows a Workspaces heading, not a lone tab", () => {
@@ -51,4 +56,12 @@ test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Skills' is its
   expect(rows[0].label).toBe("Show Skills");
   rows[0].run();
   expect(screen).toBe("skills");
+});
+
+test("F11: an open sidebar form does not hold the palette chord; a menu or popover left open does", () => {
+  const el = (staysOpen: boolean) => ({ getClientRects: () => ({ length: 1 }), closest: () => null, matches: () => staysOpen });
+  const doc = (els: unknown[]) => ({ querySelector: () => null, querySelectorAll: () => els });
+  expect(heldByOverlay("worktree.palette", false, doc([]) as never)).toBe(false);
+  expect(heldByOverlay("worktree.palette", false, doc([el(true)]) as never), ".sb-form stays open").toBe(false);
+  expect(heldByOverlay("worktree.palette", false, doc([el(false)]) as never), "a menu holds it").toBe(true);
 });
