@@ -1,5 +1,5 @@
 // UX lane A (keyboard.md row 3, shell.md row 8): the tab right-click menu is reachable and leavable from the
-// keyboard. Opening it puts focus on its first enabled row and keeps it inside the window; the arrows, Home and
+// keyboard. Opening it puts focus on its first focusable row and keeps it inside the window; the arrows, Home and
 // End move between the rows (the same keys as the link menu); Escape closes it without reaching the pane under it;
 // closing it gives focus back to where it came from, unless a row already moved focus on (Change Title).
 import { useLayoutEffect, type RefObject } from "react";
@@ -17,7 +17,8 @@ type Box = {
 type Doc = { activeElement: unknown; body: unknown; querySelector: (selector: string) => El | null };
 type Win = Pick<EventTarget, "addEventListener" | "removeEventListener"> & { innerWidth: number; innerHeight: number };
 
-/** The menu's focusable rows, in order: every enabled button (rows and colour swatches). */
+/** The menu's focusable rows, in order: every button not natively disabled (rows and colour swatches), so the
+ *  aria-disabled close rows stay reachable and their reason (title) can be read. */
 export const ROWS = "button:not(:disabled)";
 
 /** Whether closing the menu should give focus back: only when focus is nowhere (it left with the menu), never when

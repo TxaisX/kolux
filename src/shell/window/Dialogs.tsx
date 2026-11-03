@@ -200,7 +200,6 @@ export default function WindowDialogs() {
                 role="menuitem"
                 className="menu-item"
                 aria-disabled={disabled || undefined}
-                aria-label={why ? `${label}. ${why}` : undefined}
                 title={why}
                 onClick={() => {
                   if (disabled) return;
