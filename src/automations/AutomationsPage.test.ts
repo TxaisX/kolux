@@ -149,7 +149,8 @@ test("T-193-b a paused OpenClaw row reads Paused and carries the same label", ()
 test("T-193-b a tool that is missing is one note above the list, never an error that hides the Kolux rows", () => {
   const warning = { id: "warning:hermes", kind: "warning" as const, source: "hermes" as const, warning: "hermes was not found on the PATH", name: "hermes", prompt: "", provider: "hermes", projectId: "", enabled: false, actions: [] };
   const html = render({ data: { automations: [{ id: "auto-1", name: "Kolux one", prompt: "p", provider: "claude", projectId: "p1", enabled: true }, warning], runs: [] } });
-  expect(html).toContain("hermes was not found on the PATH");
+  expect(html.replace(/<!-- -->/g, "")).toContain("hermes was not found on the PATH. Its automations show here once that is fixed (install the tool, sign it in, or check its setup); then");
+  expect(html).toMatch(/<button class="btn link" aria-label="Refresh automations"[^>]*>refresh<\/button>/); // T-694 (F10): the next step, not a bare line
   expect(html).toContain("Kolux one");
   expect(html).not.toContain("Automations could not be loaded");
   expect(html.match(/<tr /g)?.length).toBe(1);

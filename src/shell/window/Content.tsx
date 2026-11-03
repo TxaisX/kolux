@@ -144,7 +144,7 @@ export default function WindowContent() {
       )}
       {/* UX lane A (shell.md row 6): a screen that fails to draw shows Try again here instead of taking the whole window down; a new screen starts clean. A screen whose code failed to load stays failed until Reload (lazy() keeps the failed load). */}
       <ScreenBoundary key={screen}>
-      {screen === "artifacts" && <ArtifactsPage onToast={setToast} />}
+      {screen === "artifacts" && <ArtifactsPage onToast={setToast} onClose={() => setScreen("terminals")} />}
       {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}
       {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} onReview={reviewChanges} />}
       {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: openInBrowser, inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
