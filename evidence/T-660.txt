@@ -1,0 +1,69 @@
+T-660 - Programs Kolux starts are never looked up in the current folder (DT-C96; audit backlog rows 49 and 50)
+Worker 2f, branch s-2f/bare-name-spawn, base 6540632a (main merged at e34b3e59 and fa163d5c), 2026-11-02.
+
+WHAT CHANGED
+- cmd.exe is started by its full path in the system folder Windows reports (GetSystemDirectoryW;
+  else %SystemRoot%\System32, else C:\Windows\System32) for the community skills installer, for
+  command-script shims, and as the automatic and menu Command Prompt. The prompt's UTF-8 switch runs
+  chcp by its full path too, so cmd.exe never looks for chcp in the pane's folder. ComSpec is used
+  for the automatic pick only when it is a full path to a file.
+- The menu's Windows PowerShell entry falls back to its System32 path when no lookup finds it. The
+  non-Windows fallback shell is /bin/sh, not a bare sh.
+- Every pane start (PtySession::spawn_first, the one path every terminal, agent and shell goes
+  through) checks its program first. A name without a full path is looked up in the full-path
+  folders of the PATH the pane is given, then in the app's own search folders, and swapped for
+  what is found. A command script found that way starts through the same shim handling as any
+  other (T-605). A name not found there, or one with a separator or drive in it (./x, bin\x, C:x),
+  is refused with a message naming it. program_command no longer wraps an unresolved name in
+  cmd.exe.
+- scm_writers.rs (one line, a follow-on): the writer's "a command script cannot take a prompt with
+  line breaks" refusal compared against the bare name "cmd.exe"; it now compares against the full
+  path, so the refusal still fires.
+
+WHY
+A bare name reached Windows (CreateProcess searches the app's folder) or the terminal library (on
+Unix it joins the pane's folder with relative PATH entries), and cmd.exe itself looks in its current
+folder first, so a cloned project could plant its own cmd.exe, chcp or tool and have Kolux start it.
+
+REGRESSION TEST
+pty::tests::t660_a_program_planted_in_the_pane_folder_is_never_started:
+- the system cmd.exe is absolute and sits in the folder GetSystemDirectoryW reports;
+- a shim start uses that cmd.exe, never one planted in the folder;
+- a tool only the pane's folder has is passed bare and refused at spawn by name;
+- Windows: a Command Prompt started in a folder holding a planted chcp.bat does not run it; the
+  control (bare chcp, as before this change) does run it, so the plant is one Windows reaches. The
+  child's NoDefaultCurrentDirectoryInExePath is cleared because this PC sets it;
+- Unix: a pane whose PATH is "." never runs a tool planted in its folder (a marker file stays absent);
+- a tool in a folder on the pane's own PATH is found; ./x, C:x, C:, x/ and bin\x are never looked up;
+- the automatic shells and the menu name only full paths, none in the planted folder.
+skills::installer test: the interpreter is the system cmd.exe by full path.
+
+GATES (worktree, CARGO_TARGET_DIR=target-2f, -j 2)
+- cargo test --lib pty: 110 passed, 1 failed (t606_the_claude_writer_runs_from_an_empty_folder...,
+  the known environment failure; it fails the same on unchanged code and is skipped on CI)
+- cargo test --lib installer: 28 passed
+- cargo test --lib t606_an_npm_writer: passed (it caught the scm_writers follow-on before the fix)
+- cargo test --lib (full, on the merged code): 2841 passed, 1 failed (the same t606 environment failure), 6 ignored
+- cargo clippy --all-targets -- -D warnings: clean
+- node scripts/plan-check.mjs: OK
+- scripts/firewall-check.ps1 -Baseline: 0 new
+- Windows CI: run on the PR head (see the PR checks)
+
+REVIEWS
+- opus-high-review (fresh): B- in round 1. Fixed: the pane's own PATH is searched; regression
+  test recreates the placement; DT wording; PowerShell fallback scoped to the menu. Round 2: A-.
+  Round 3 (delta): A-, merge-ready (its nits: visible escape characters, prompt match, a rewrapped comment, all fixed).
+- agent-skills:security-auditor: B+ in round 1 (bare chcp inside the prompt arguments; fixed).
+  Round 2: A-, no blocking issue. Its low findings (drive or trailing-separator names, pane-PATH
+  scripts skipping the shim handling) were fixed in round 3.
+
+KNOWN AND LEFT (follow-ups)
+- A shim run through cmd /d /c can still make its own bare calls, which cmd.exe looks up in the pane
+  folder first. Setting NoDefaultCurrentDirectoryInExePath for agents would change how agents' own
+  children resolve, so it is left as a decision.
+- ComSpec is trusted when it is a full path to a file (the app's own environment, ACCT-046).
+- The refusal text is not stripped of control characters (as before).
+- Bare-name spawns outside this task's files, listed to the coordinator: automations.rs,
+  codex_usage.rs, editor_search.rs (row 61), fonts.rs, include.rs, session_scan.rs, setup.rs (the
+  Setup terminal's "cmd.exe"; the spawn guard now resolves it through full-path folders only),
+  scm.rs and scm_recipe.rs fallbacks, and the agent start line typed into a cmd.exe shell (to confirm).
