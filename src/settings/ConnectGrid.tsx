@@ -11,6 +11,7 @@ import { emit, listen } from "@tauri-apps/api/event";
 import VendorMark from "../chrome/VendorMark";
 import { AttentionNote, CHECK_AGAIN, openInstallPage, type Attention } from "./Attention";
 import type { AgentInfo } from "../launch/PlusMenu";
+import { watchEscape } from "../switcher/accounts";
 
 export type ConnectId = "claude" | "codex" | "grok";
 export const CONNECT: { id: ConnectId; name: string; tagline: string }[] = [
@@ -22,15 +23,45 @@ export const taglineOf = (id: ConnectId): string => CONNECT.find((c) => c.id ===
 export type Way = { label: string; onPick: () => void; disabled?: boolean };
 
 /** ACCT-002: an agent's other sign-in methods, behind one small menu next to Connect. */
-/** A small menu of choices; a connected card's Manage uses the same menu (ACCT-015). */
+/** A small menu of choices; a connected card's Manage uses the same menu (ACCT-015).
+ *  T-712 (DT-C148): it closes on a pick, on Escape (focus back on the summary) and on a click outside it, like HandOff. */
 export function OtherWays({ ways, label = "Other ways to connect" }: { ways: Way[]; label?: string }) {
+  const box = useRef<HTMLDetailsElement>(null);
+  const head = useRef<HTMLElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    if (!isOpen) return;
+    const shut = () => box.current?.removeAttribute("open");
+    const onDown = (e: Event) => box.current?.contains(e.target as Node) || shut();
+    // Capture phase and stopped, so the Escape that closes the menu does not also close Settings.
+    const offEsc = watchEscape(document, () => {
+      shut();
+      head.current?.focus();
+    });
+    document.addEventListener("pointerdown", onDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      offEsc();
+    };
+  }, [isOpen]);
   if (ways.length === 0) return null;
   return (
-    <details className="conn-more">
-      <summary className="btn link">{label}</summary>
+    <details className="conn-more" ref={box} onToggle={(e) => setIsOpen(e.currentTarget.hasAttribute("open"))}>
+      <summary className="btn link" ref={head}>
+        {label}
+      </summary>
       <div className="conn-more-list" role="menu">
         {ways.map((w) => (
-          <button key={w.label} role="menuitem" className="btn" disabled={w.disabled} onClick={w.onPick}>
+          <button
+            key={w.label}
+            role="menuitem"
+            className="btn"
+            disabled={w.disabled}
+            onClick={() => {
+              box.current?.removeAttribute("open");
+              w.onPick();
+            }}
+          >
             {w.label}
           </button>
         ))}
