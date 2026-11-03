@@ -160,7 +160,7 @@ Source: D-04-045
 
 ### STAT-050 · Inbox of what needs you, what is running and what finished today
 Tier: P0 · Pushed: 3 · State at 0.15.0: live-unverified
-User does: clicks the bell button labelled 'Notifications' in the top bar, then steps through the
+User does: clicks the bell button labelled 'Inbox' in the top bar, then steps through the
   items with the arrow keys.
 User sees: three groups: needs you (questions and permissions, newest first), waiting on agent
   (running sessions, plus stale ones that cannot be confirmed) and done today (newest first, 20 at
