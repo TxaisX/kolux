@@ -29,7 +29,11 @@ export default function StripTotals() {
     };
   }, []);
 
-  if (!usage) return null;
+  return usage ? <TotalsView usage={usage} /> : null;
+}
+
+/** The totals for a saved scan, or nothing when no provider is tracked or nothing was counted. */
+export function TotalsView({ usage }: { usage: Usage }) {
   const sets: Partial<Record<Provider, Row[]>> = {};
   for (const p of PROVIDERS) {
     const saved = usage[p];
@@ -41,7 +45,7 @@ export default function StripTotals() {
     o.partial ? "; some models have no published price, so the cost is a floor" : ""
   }`;
   return (
-    <span className="strip-totals" title={title} aria-label={title}>
+    <span className="strip-totals" role="group" title={title} aria-label={title}>
       <b>{compact(o.tokens)}</b> tok <span className="sep">/</span> <b>{o.partial ? "at least " : ""}{money(o.usd)}</b>
     </span>
   );
