@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
 import { followAgents, lastMain, NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
-import { closeOnSettings, SETTINGS_SHOWN, enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
+import { closeOnSettings, settingsShown, stepAside, SETTINGS_SHOWN, enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
 import { OPEN_SETTINGS } from "../settings/pages";
 import { submitKeys } from "./submitKeys";
 import { tourNotice, type Want } from "./tour";
@@ -87,12 +87,37 @@ describe("onboarding.md:8: the dialogs take the focus and Escape works from anyw
     const stop = closeOnSettings(close, w);
     w.dispatchEvent(new Event(OPEN_SETTINGS));
     expect(close).toHaveBeenCalledTimes(1);
-    w.dispatchEvent(new Event(SETTINGS_SHOWN)); // Ctrl+, opens Settings without OPEN_SETTINGS
+    settingsShown(w); // Ctrl+, opens Settings without OPEN_SETTINGS
     expect(close).toHaveBeenCalledTimes(2);
     stop();
     w.dispatchEvent(new Event(OPEN_SETTINGS));
     w.dispatchEvent(new Event(SETTINGS_SHOWN));
     expect(close).toHaveBeenCalledTimes(2);
+  });
+  it("Settings opening closes Explore, and the guide (telling the sidebar) only when the guide is open", () => {
+    const explore = vi.fn();
+    const guide = vi.fn();
+    stepAside(false, explore, guide);
+    expect([explore.mock.calls.length, guide.mock.calls.length]).toEqual([1, 0]);
+    stepAside(true, explore, guide);
+    expect([explore.mock.calls.length, guide.mock.calls.length]).toEqual([2, 1]);
+  });
+  it("closing leaves the focus where something that opened at the same moment (Settings) put it", async () => {
+    const back = { isConnected: true, focus: vi.fn() };
+    const win = { addEventListener() {}, removeEventListener() {} };
+    const settings = { tag: "settings" };
+    let now: unknown = null;
+    const stop = enterDialog({ root: el("root"), active: back, win, dialogs: () => [], find: () => null, focused: () => now }, () => {});
+    now = settings; // Settings mounted in the same commit and focused itself
+    stop();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(back.focus).not.toHaveBeenCalled();
+    now = null;
+    enterDialog({ root: el("root"), active: back, win, dialogs: () => [], find: () => null, focused: () => now }, () => {})();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(back.focus).toHaveBeenCalledTimes(1); // nothing took it: it goes back
   });
   it("Tab wraps at both ends and stays inside", () => {
     const [a, b, c] = ["a", "b", "c"];

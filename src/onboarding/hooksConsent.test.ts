@@ -26,9 +26,11 @@ vi.mock("react", async (orig) => {
 
 const calls: Array<[string, unknown]> = [];
 let agentList: unknown = null;
+let projectList: unknown = [];
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: unknown) => {
     calls.push([cmd, args]);
+    if (cmd === "project_list") return projectList instanceof Error ? Promise.reject(projectList) : Promise.resolve(projectList);
     return Promise.resolve(cmd === "get_settings" ? {} : cmd === "agent_list" ? agentList : null);
   },
 }));
@@ -38,6 +40,7 @@ beforeEach(() => {
   h.slots = [];
   calls.length = 0;
   agentList = null;
+  projectList = [];
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -47,6 +50,7 @@ const { HOOKS_FIELD, HOOKS_LINE, askHooks, hooksChosen, hooksDefault, recordHook
 const { SCREENS } = await import("./firstRun");
 const { default: Wizard, WizardView } = await import("./Wizard");
 const { HooksAsk, HooksAskView } = await import("./Guides");
+const { MultitaskPanel } = await import("./StepPanels");
 
 const writes = () => calls.filter(([c]) => c === "settings_patch" || c === "agent_hooks_sync");
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -199,4 +203,29 @@ test("49-ux2 (onboarding.md:7): the one-time card's Turn off records off and clo
     ["agent_hooks_sync", { clear: true }],
   ]);
   expect(done).toHaveBeenCalledTimes(2);
+});
+
+test("49-ux2 (onboarding.md:13): Create a workspace again clears the earlier \"needs a git project\" line", async () => {
+  vi.stubGlobal("document", { querySelector: () => null });
+  type Node = { props?: { className?: string; onClick?: () => void; children?: unknown } };
+  const find = (n: unknown, cls: string): Node | null => {
+    if (!n || typeof n !== "object") return null;
+    if (Array.isArray(n)) return n.map((c) => find(c, cls)).find(Boolean) ?? null;
+    const p = (n as Node).props;
+    if (p?.className === cls) return n as Node;
+    return find(p?.children, cls);
+  };
+  const draw = () => {
+    h.i = 0;
+    return MultitaskPanel({ close() {} }) as unknown;
+  };
+  find(draw(), "btn primary")!.props!.onClick!(); // no git project
+  await flush();
+  expect(renderToString(draw() as never)).toContain("Multi-task needs a git project");
+  projectList = new Error("offline");
+  find(draw(), "btn primary")!.props!.onClick!();
+  await flush();
+  const html = renderToString(draw() as never);
+  expect(html).not.toContain("Multi-task needs a git project");
+  expect(html).toContain("Could not start a workspace: offline");
 });

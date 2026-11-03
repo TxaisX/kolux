@@ -32,7 +32,7 @@ import { matchEvent } from "./keymap";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
-import { SETTINGS_SHOWN } from "../onboarding/dialogFocus";
+import { settingsShown } from "../onboarding/dialogFocus";
 import { useEffect } from "react";
 import { flushSync } from "react-dom";
 
@@ -84,7 +84,7 @@ export function useWindowKeys(w: WindowBag) {
         case "app.settings":
           if (!settingsOpen) setSettingsAt((a) => ({ target: null, n: a.n }));
           setSettingsOpen(true);
-          window.dispatchEvent(new Event(SETTINGS_SHOWN)); // 49-ux2: Explore and the Setup Guide step aside
+          settingsShown(); // 49-ux2: Explore and the Setup Guide step aside
           break;
         case "editor.save": {
           const save = editors.get(focused);

@@ -18,7 +18,8 @@ WHAT CHANGED
   with the terminal) and give focus back. Explore and the Setup Guide close when Settings opens from
   their own Open Settings buttons, a palette Settings page or Ctrl+, (SETTINGS_SHOWN), so Settings is not left
   behind them. The native menu's Settings item (src/settings/useSettingsPlumbing.ts, lane E1) is requested in
-  proof/ux-audit/requests/E1.md.
+  proof/ux-audit/requests/E1.md. On macOS Cmd+, is that native menu item, so it waits on the same
+  request.
 - Notes: failed save, failed workspace start in the Multitask step (failedNote, src/onboarding/StepPanels.tsx),
   no agent installed (NO_AGENT_NOTE, src/onboarding/useWizard.ts), missing GitHub
   sign-in naming gh auth login (ConnectGithub.tsx); the Accounts step opens Settings > Accounts.
@@ -45,7 +46,9 @@ Help > Onboarding completes nothing; ONB-004/005 acceptance wording) -> re-revie
 agents-changed event reads the list again; wizard and PLAN wording) -> re-review B+ -> fix pass
 (Ctrl+, closes Explore and the Setup Guide too (SETTINGS_SHOWN); closing the guide that way tells the
 sidebar; wiring tests for the no-agent button, Check again and the card's Turn off; a Multitask retry clears
-the git-project answer; notes and labels name the findings lines) -> re-review PENDING.
+the git-project answer; notes and labels name the findings lines) -> re-review B+ -> fix pass (focus
+stays with Settings when it opens over Explore; tests for Ctrl+,'s event, the guide closing and the Multitask
+retry; macOS note) -> re-review PENDING.
 Left as low follow-ups from the first review: a failed close toast after Pick a folder, the GitHub
 card not refreshed after sign-in, a load error worded as a save error, an unused once() message, a
 failure reported after the panel closed.
@@ -69,6 +72,7 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > Settings, Keyboard Shortcuts, Send Feedback, Check for Updates and Onboarding reach their own actions
  ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > drops Milestones once the core steps are done and keeps the rest
  ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > has every named entry, in the card's order, Settings first
+ ✓ src/onboarding/hooksConsent.test.ts > 49-ux2 (onboarding.md:13): Create a workspace again clears the earlier "needs a git project" line
  ✓ src/onboarding/hooksConsent.test.ts > 49-ux2 (onboarding.md:4, :15): with no agent the last button picks a folder; Check again reads the list, and an agent then opens a session
  ✓ src/onboarding/hooksConsent.test.ts > 49-ux2 (onboarding.md:7): the one-time card's Turn off records off and closes; Not now records nothing
  ✓ src/onboarding/hooksConsent.test.ts > 49-ux2: the card also offers Not now and Turn off
@@ -100,8 +104,10 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/ux2.test.ts > onboarding.md:4, :15: Open a session needs an agent > is null with no agent installed, and the wizard holds the button back with a reason
  ✓ src/onboarding/ux2.test.ts > onboarding.md:6: hooks consent only on an explicit move on > a later skip records nothing
  ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > Open Settings (a button, a palette page or Ctrl+,) closes Explore and the Setup Guide, so Settings is not left behind; the stop unsubscribes
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > Settings opening closes Explore, and the guide (telling the sidebar) only when the guide is open
  ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > Tab wraps at both ends and stays inside
  ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > a docked tip card (aria-modal=false) after the dialog does not take its Escape
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > closing leaves the focus where something that opened at the same moment (Settings) put it
  ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > focuses the dialog on open, closes on a window-level Escape, and gives the focus back
  ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > only the top dialog answers Escape
  ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > the floating workspace panel (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does
@@ -118,14 +124,14 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > with no prompt mounted, nothing is approved and nothing waits
 
   Test Files  7 passed (7)
-  Tests  62 passed (62)
+  Tests  65 passed (65)
 
 FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
   ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
   Test Files  1 failed | 733 passed (734)
-  Tests  3 failed | 5434 passed (5437)
+  Tests  3 failed | 5437 passed (5440)
   The 3 failures are src/editor/pdfjsCopy.test.ts (openjpeg_nowasm_fallback.js, LICENSE_OPENJPEG,
   LICENSE_PDFJS_OPENJPEG): CRLF line endings in this local checkout, not part of this change; they pass on CI.
 
 TYPES
-pnpm tsc --noEmit: exit 0
+pnpm exec tsc --noEmit -p .: exit 0

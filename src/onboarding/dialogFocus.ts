@@ -9,6 +9,16 @@ import { OPEN_SETTINGS } from "../settings/pages";
 /** Settings opened without OPEN_SETTINGS (the Ctrl+, key; the native menu once lane E1 sends it too). */
 export const SETTINGS_SHOWN = "kolux-settings-shown";
 
+/** Says Settings is showing: Ctrl+, sends it (src/keys/useWindowKeys.ts). */
+export const settingsShown = (w: EventTarget = window): void => void w.dispatchEvent(new Event(SETTINGS_SHOWN));
+
+/** What Explore and the Setup Guide do when Settings opens: Explore closes; the guide closes only when it is open, and then
+ *  tells the sidebar as its own close does. */
+export function stepAside(guideOpen: boolean, closeExplore: () => void, closeGuide: () => void): void {
+  closeExplore();
+  if (guideOpen) closeGuide();
+}
+
 /** An onboarding dialog steps aside when Settings opens (its own Open Settings button, a palette page, Ctrl+,), so
  *  Settings is not left behind it. Returns the unsubscribe. */
 export function closeOnSettings(close: () => void, w: EventTarget = window): () => void {
@@ -50,6 +60,8 @@ export type DialogDeps = {
   find: (selector: string) => Focusable | null;
   /** True while the keyboard is in a terminal inside the dialog (a sign-in): its Escape is the terminal's. */
   inTerminal?: () => boolean;
+  /** What has the focus now (null for nothing or the page body). */
+  focused?: () => unknown;
 };
 
 /** Focuses the dialog, starts the Escape watch; returns the cleanup that stops it and restores the focus. */
@@ -70,7 +82,13 @@ export function enterDialog(d: DialogDeps, onClose: () => void): () => void {
   return () => {
     stop();
     root?.removeEventListener?.("keydown", onTab);
-    queueMicrotask(() => void restoreFocus(d.active, d.find));
+    // Something that opened in the same moment (Settings over Explore) has taken the focus: leave it there. Restoring
+    // anyway could fall back to a terminal behind Settings.
+    queueMicrotask(() => {
+      const now = d.focused?.() ?? null;
+      if (now && !root?.contains?.(now as Node)) return;
+      void restoreFocus(d.active, d.find);
+    });
   };
 }
 
@@ -79,7 +97,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
   useEffect(() => {
     const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     return enterDialog(
-      { root: ref.current, active, win: window, dialogs: () => [...document.querySelectorAll("[role=dialog], [role=alertdialog]")].filter((el) => isModal(el) && !el.closest("[hidden]")), find: (s) => document.querySelector<HTMLElement>(s), inTerminal: () => !!document.activeElement?.closest(".xterm") },
+      { root: ref.current, active, win: window, dialogs: () => [...document.querySelectorAll("[role=dialog], [role=alertdialog]")].filter((el) => isModal(el) && !el.closest("[hidden]")), find: (s) => document.querySelector<HTMLElement>(s), inTerminal: () => !!document.activeElement?.closest(".xterm"), focused: () => (document.activeElement === document.body ? null : document.activeElement) },
       () => onClose(),
     );
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
