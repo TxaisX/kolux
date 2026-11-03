@@ -21,3 +21,8 @@ Review (Opus, read-only) of be3b1b05: A-, no should-fix. It checked the <summary
   label ticks the box and does not open the <details>, as a click on the box did. Its three nits are fixed in the
   follow-up: the DT-C133 row gets its Why cell, these audit paths name the sessions proof dir, and the test also pins
   flex: none and the box margin.
+
+Review 2 (Sonnet, read-only) of the nit diff 56db8443: A, no should-fix.
+Main c82cedc5 merged in (c486e138; the PLAN and DECISIONS rows keep main's first, nothing else conflicted). After the merge:
+  vitest on src/shell, the five files, src/skills, src/space, src/tasks: 453/453. npx tsc --noEmit: 0. plan-check OK.
+  firewall-check -Baseline: 0 new. First load 1,488,312 vs main c82cedc5 1,488,312: main +0.
