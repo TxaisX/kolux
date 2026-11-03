@@ -509,6 +509,9 @@ Rules: several values in one field mean any of them; different fields must all m
   count.
 Acceptance:
   - [ ] Pick two repositories → rows from either remain.
+  - [x] Pick a repository, then a kind, from the pickers → each adds its chip, the picker goes back
+        to its prompt and no longer offers the picked entry; the chip's button removes it.
+        (unit; evidence/T-696.txt)
   - [ ] Open the palette while the sidebar is scoped to one repository → the chips start with that
         repository.
 Compat: —
