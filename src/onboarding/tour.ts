@@ -287,6 +287,16 @@ export function lookAt(w: Want, l: Look): "start" | "wait" | "drop" | "miss" {
   return "miss";
 }
 
+/** 49-ux2: what to tell the user when a tour they asked for (Help > a tour) is dropped or gives up, so a
+ *  replay is never silent. `off` is the owning feature being switched off. A page change or another tour
+ *  starting is the user's own doing and says nothing; an automatic tour never speaks. */
+export function tourNotice(name: string, w: Want, act: ReturnType<typeof lookAt>, gave: boolean, off: boolean): string | null {
+  if (!w.forced) return null;
+  if (act === "drop" && off) return `The ${name} tour is off because its feature is switched off in Settings.`;
+  if (act === "miss" && gave) return `The ${name} tour needs its screen showing. Open that screen, then replay the tour from Help.`;
+  return null;
+}
+
 /** Whether a waiting tour has used up its looks. */
 export const gaveUp = (w: Want) => w.tries >= (w.limit ?? (w.forced ? 4 * FIRST_TARGET_TRIES : FIRST_TARGET_TRIES));
 

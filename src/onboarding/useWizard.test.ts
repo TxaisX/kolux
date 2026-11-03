@@ -194,11 +194,15 @@ test("T-612: Open a session with no workspace yet closes setup as completed, ope
   const app = await mountWizard(); // a new profile: no saved default agent, no workspace
   await app.now().wizardSession();
   await app.settle();
-  expect(closes).toEqual(["completed"]);
+  // 49-ux2: Pick a folder hides the wizard and says why, but stores nothing until a folder was really added.
+  expect(closes).toEqual([]);
   expect(app.now().wizard).toBeNull();
   expect(heard).toContain("add-project");
+  expect(toasts).toHaveLength(1);
   expect(started).toEqual([]);
   app.now().projectAdded("C:/new", "main");
+  await app.settle();
+  expect(closes).toEqual(["completed"]);
   expect(started).toEqual(["claude@C:/new"]); // the agent Open a session would have used: the first one offered
   app.now().projectAdded("C:/other", null);
   expect(started).toEqual(["claude@C:/new"]);

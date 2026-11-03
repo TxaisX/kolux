@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import TrustPrompt, { answerFirst, askTrust, hostMounted, otherDialog, trusted, trustedSetup, trustWords, waiting, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
+import TrustPrompt, { TRUST_MEMORY, answerFirst, askTrust, hostMounted, otherDialog, trusted, trustedSetup, trustWords, waiting, type TrustAnswer, type TrustAsk } from "./TrustPrompt";
 import { issueCommand } from "./IssueCommand";
 
 const ASK: TrustAsk = { kind: "setup", script: "pnpm install\necho <done>", changed: false, project: "web" };
@@ -23,6 +23,17 @@ const answer = (a: TrustAnswer) => async () => a;
 afterEach(() => {
   hostMounted(false);
   hostMounted(false);
+});
+
+describe("49-ux2 the trust prompt says what is remembered", () => {
+  it("shows the memory line beside Run hooks and Don't run", () => {
+    hostMounted(true);
+    void askTrust({ kind: "setup", script: "pnpm i", changed: false, project: "p" });
+    const html = renderToStaticMarkup(createElement(TrustPrompt));
+    expect(html).toContain(TRUST_MEMORY.replace("'", "&#x27;"));
+    answerFirst("skip");
+    hostMounted(false);
+  });
 });
 
 describe("SAFE-025 / STAT-056 the trust prompt", () => {

@@ -1,7 +1,8 @@
 // SESS-031 / VIEW-087 (T-187-b, T-189-b): the dialog for continuing a conversation in an agent, and
 // the single mount that gives the "start an agent" buttons what they need. Mounted once by the window.
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDialogFocus } from "../onboarding/dialogFocus";
 import "./agentstart.css";
 import { carryLine, runCarry, type CarryContext } from "./carry";
 import { closeCarry, currentEnv, folderReady, report, setEnv, useCarryDialog, type Env } from "./host";
@@ -23,6 +24,8 @@ function CarryDialog({ source }: { source: { agent: string; id: string; title?: 
   const [target, setTarget] = useState<string>(() => pickTarget(agents, source.agent, env?.defaultId)?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialog, closeCarry); // 49-ux2: focus on open, Escape from anywhere, focus back on close
 
   useEffect(() => {
     let live = true;
@@ -50,7 +53,7 @@ function CarryDialog({ source }: { source: { agent: string; id: string; title?: 
 
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && closeCarry()}>
-      <div className="agentstart-dialog" role="dialog" aria-modal="true" aria-label="Continue in an agent" onKeyDown={(e) => e.key === "Escape" && closeCarry()}>
+      <div ref={dialog} tabIndex={-1} className="agentstart-dialog" role="dialog" aria-modal="true" aria-label="Continue in an agent">
         <h2>Continue in an agent</h2>
         <p className="conn-detail">
           {source.title ? `"${source.title}" · ` : ""}

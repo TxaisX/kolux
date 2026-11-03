@@ -11,6 +11,8 @@ import CodexCard from "../settings/CodexCard";
 import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
+import type { AgentInfo } from "../launch/PlusMenu";
+import { NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
 import { HOOKS_LINE, hooksDefault, recordHooks, recordsHooks } from "./hooksOn";
 import { useSettings } from "../settings/useSettings";
 
@@ -28,6 +30,9 @@ type ViewProps = {
   ping: boolean;
   /** T-608: the status hooks switch beside the one line of consent (on until the user turns it off). */
   hooks: boolean;
+  /** 49-ux2: no AI agent is installed, so Open a session is held back with its reason and a Re-check. */
+  noAgent?: boolean;
+  onRecheck?: () => void;
   cards?: ReactNode;
   onPing: (on: boolean) => void;
   onHooks: (on: boolean) => void;
@@ -44,7 +49,7 @@ type ViewProps = {
   onStay?: () => void;
 };
 
-export const mainOff = (at: number, connected: boolean) => at === 1 && !connected;
+export const mainOff = (at: number, connected: boolean, noAgent = false) => (at === 1 && !connected) || (at === 3 && noAgent);
 
 export function WizardView(p: ViewProps) {
   const screen = SCREENS[p.at];
@@ -114,13 +119,24 @@ export function WizardView(p: ViewProps) {
               {secondary}
             </button>
           )}
-          {mainOff(p.at, p.connected) && p.at === 1 ? <span className="onb-gap onb-why">{t("onboarding.connect.wait")}</span> : <span className="onb-gap" />}
+          {mainOff(p.at, p.connected) && p.at === 1 ? (
+            <span className="onb-gap onb-why">{t("onboarding.connect.wait")}</span>
+          ) : mainOff(p.at, p.connected, p.noAgent) ? (
+            <span className="onb-gap onb-why" role="status">
+              {NO_AGENT_WHY}{" "}
+              <button className="link" onClick={p.onRecheck}>
+                Check again
+              </button>
+            </span>
+          ) : (
+            <span className="onb-gap" />
+          )}
           {p.at > 0 && (
             <button className="btn" onClick={p.onBack}>
               Back
             </button>
           )}
-          <button className="btn primary onb-main" disabled={mainOff(p.at, p.connected)} onClick={p.onMain}>
+          <button className="btn primary onb-main" disabled={mainOff(p.at, p.connected, p.noAgent)} onClick={p.onMain}>
             {main}
             <span className="onb-chord">{/Mac/i.test(globalThis.navigator?.platform ?? "") ? "⌘ ↵" : "Ctrl ↵"}</span>
           </button>
@@ -166,16 +182,21 @@ export default function Wizard(props: Props) {
   useEffect(() => {
     if (connected) void milestone("aiConnected");
   }, [connected]);
-  const go = (to: number) => {
+  // 49-ux2: the last button needs an agent to start; the list is read here (the window's own list is App's).
+  const [agents, setAgents] = useState<AgentInfo[] | null>(null);
+  const readAgents = () => void invoke<AgentInfo[]>("agent_list").then(setAgents, () => {});
+  useEffect(readAgents, []);
+  const noAgent = agents !== null && sessionAgent(agents, settings) === null;
+  const go = (to: number, later = false) => {
     // The stored step is the last screen finished (onboarding.rs); a failed save keeps the wizard going.
     if (to > at) invoke("onboarding_step", { step: to - 1 }).catch(() => {});
     // T-608: a failed record leaves the choice unsaved, so the one-time card asks again (nothing is installed).
-    if (recordsHooks(at, to)) void recordHooks(hooksNow).catch(() => {});
+    if (recordsHooks(at, to, later)) void recordHooks(hooksNow).catch(() => {});
     setAt(to);
   };
   const main = () => [() => go(1), () => go(2), () => go(3), () => props.onSession()][at]();
-  const secondary = () => (at === 1 ? go(2) : undefined);
-  const off = mainOff(at, connected);
+  const secondary = () => (at === 1 ? go(2, true) : undefined);
+  const off = mainOff(at, connected, noAgent);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (leaveKey(e)) return setLeaving(true);
@@ -202,6 +223,8 @@ export default function Wizard(props: Props) {
       connected={connected}
       ping={props.ping}
       hooks={hooksNow}
+      noAgent={noAgent}
+      onRecheck={readAgents}
       cards={<ConnectGrid cards={cards} />}
       onPing={props.onPing}
       onHooks={setHooks}

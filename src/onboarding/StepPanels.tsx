@@ -5,6 +5,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../settings/useSettings";
+import { openSettings } from "../settings/pages";
+import ConnectGithub from "./ConnectGithub";
 import { playTone, readNotifications, SOUND_FIELD, testPlan, VOLUME_FIELD, type Sound } from "../settings/notifications";
 import { DEFAULT_AGENT_KEY } from "../launch/agents";
 import type { AgentInfo } from "../launch/PlusMenu";
@@ -44,11 +46,16 @@ const domHands: Hands = {
 /** The window's one composer-request queue: the guide opening or closing voids what is waiting. */
 export const composer = composerRequests(domHands);
 
+/** 49-ux2: the line shown when listing projects or opening the composer throws. */
+export const failedNote = (e: unknown): string => `Could not start a workspace: ${e instanceof Error ? e.message : String(e)}. Try again.`;
+
 export function MultitaskPanel({ close }: { close: () => void }) {
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null); // 49-ux2: say what went wrong instead of guessing "no git project"
   const go = async () => {
     setBusy(true);
+    setFailed(null);
     try {
       const projects = await invoke<Proj[]>("project_list");
       const lists = await Promise.all(projects.map((p) => invoke<Place[]>("workspace_list", { projectId: p.id }).catch(() => null)));
@@ -58,8 +65,8 @@ export function MultitaskPanel({ close }: { close: () => void }) {
       composer.reset();
       close();
       if ((await composer.open(target)) === "opened") replayTour("create");
-    } catch {
-      setAsk(true);
+    } catch (e) {
+      setFailed(failedNote(e));
     } finally {
       setBusy(false);
     }
@@ -67,6 +74,11 @@ export function MultitaskPanel({ close }: { close: () => void }) {
   return (
     <>
       <p className="guide-note">A workspace is a copy of your project in its own folder, so a second agent never collides with the first.</p>
+      {failed && (
+        <p className="guide-note warn" role="alert">
+          {failed}
+        </p>
+      )}
       {ask && (
         <p className="guide-note" role="status">
           Multi-task needs a git project. Add a folder that is a git repository, then come back.{" "}
@@ -91,8 +103,18 @@ export function MultitaskPanel({ close }: { close: () => void }) {
   );
 }
 
+/** 49-ux2: useSettings().save already puts a failed change back; this says so. */
+export const SAVE_FAILED = "That change could not be saved, so it was put back.";
+export function SaveFailed({ error }: { error: string | null }) {
+  return error ? (
+    <p className="guide-note warn" role="alert">
+      {SAVE_FAILED} {error}
+    </p>
+  ) : null;
+}
+
 export function NotificationsPanel() {
-  const { settings, save } = useSettings();
+  const { settings, save, error } = useSettings();
   const [result, setResult] = useState<{ shown: boolean; blocked: boolean } | { error: string } | null>(null);
   const [asked, setAsked] = useState(false);
   useEffect(() => {
@@ -118,6 +140,7 @@ export function NotificationsPanel() {
   const card = permissionCard(platformOf(navigator.userAgent), result && !("error" in result) ? result : null, asked);
   return (
     <>
+      <SaveFailed error={error} />
       <label className="conn-switch">
         <input type="checkbox" role="switch" checked={n.kinds.notifyOnFinish} onChange={(e) => void save({ notifyOnFinish: e.target.checked })} />
         Tell me when an agent finishes or needs me
@@ -153,14 +176,32 @@ export function NotificationsPanel() {
   );
 }
 
+/** 49-ux2: no agent found: say so, with the two things to do next as buttons. */
+export function NoAgent({ onCheck }: { onCheck: () => void }) {
+  return (
+    <>
+      <p className="guide-note" role="status">
+        No agent is installed yet. Install Claude Code or Codex, then check again.
+      </p>
+      <div className="btn-row">
+        <button className="btn" onClick={onCheck}>
+          Check again
+        </button>
+        <button className="btn" onClick={() => openSettings("agents")}>
+          Open Agents settings
+        </button>
+      </div>
+    </>
+  );
+}
+
 export function AgentPanel() {
-  const { settings, save } = useSettings();
+  const { settings, save, error } = useSettings();
   const [agents, setAgents] = useState<AgentInfo[] | null>(null);
   const [open, setOpen] = useState(false);
   const offered = useRef(false); // T-579: the install checklist stays on screen once it was offered, so its results can be read
-  useEffect(() => {
-    invoke<AgentInfo[]>("agent_list").then(setAgents, () => setAgents([]));
-  }, []);
+  const look = () => void invoke<AgentInfo[]>("agent_list").then(setAgents, () => setAgents([]));
+  useEffect(look, []);
   if (!settings || !agents) return null;
   const p = agentPanel(agents, settings);
   if (p.picker.length === 0 && p.fallback.length === 0) offered.current = true;
@@ -172,7 +213,8 @@ export function AgentPanel() {
   );
   return (
     <>
-      {offered.current && (agents.length > 0 ? <AgentPicker agents={agents} onChanged={setAgents} level={3} /> : <p className="guide-note">No agent is installed yet. Install Claude Code or Codex, then check again.</p>)}
+      <SaveFailed error={error} />
+      {offered.current && (agents.length > 0 ? <AgentPicker agents={agents} onChanged={setAgents} level={3} /> : <NoAgent onCheck={look} />)}
       {p.picker.length > 0 && (
         <div role="radiogroup" aria-label="Default agent">
           {p.picker.map(row)}
@@ -251,6 +293,7 @@ export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
       <section aria-label="Connect a code host for review" data-state={s.review}>
         <p className="guide-group">1. Connect GitHub for review {s.review === "done" && <span className="mark ok">Connected{seen.account ? ` as ${seen.account}` : ""}</span>}</p>
         {s.review !== "done" && <p className="guide-note">{looked ? s.reviewNote : "Checking the GitHub sign-in..."}</p>}
+        {s.review !== "done" && <ConnectGithub onExit={() => check(true)} />}
       </section>
       {s.tasks === "done" ? (
         <p className="guide-note" data-state="done">{taskSummary(s, seen.account)}</p>
@@ -272,7 +315,7 @@ export function IntegrationsPanel({ onCheck }: { onCheck: () => void }) {
 /** ONB-024: the setup an Explore Kolux stop carries, right on the stop. Usage and the skill stops
  *  (orchestration, browser) read live facts, so they are their own components (LiveStopCards.tsx). */
 export function StopSetup({ stop, taskSource }: { stop: string; taskSource: boolean | null }) {
-  const { settings, save } = useSettings();
+  const { settings, save, error } = useSettings();
   // The writer mode the switch had before it was turned off, so turning it on again puts that back.
   const before = useRef<string | null>(null);
   // The settings cards draw nothing until the saved settings have arrived (stopCard), so a switch or box
@@ -284,19 +327,21 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
   if (card.kind !== "provider" && card.kind !== "awake" && card.kind !== "writer") return null;
   if (card.kind === "provider") {
     return (
-      <p className="guide-note" data-card="provider" data-connected={card.connected}>
+      <div className="guide-note" data-card="provider" data-connected={card.connected}>
         {card.label}:{" "}
         {card.connected === null
           ? "Checking the GitHub sign-in..."
           : card.connected
             ? "GitHub is connected."
-            : "GitHub is not connected. Open Getting Started > Connect integrations to connect it."}
-      </p>
+            : "GitHub is not connected."}
+        {card.connected === false && <ConnectGithub onExit={() => {}} />}
+      </div>
     );
   }
   if (card.kind === "awake") {
     return (
       <div data-card="awake">
+        <SaveFailed error={error} />
         <label className="conn-switch">
           <input type="checkbox" role="switch" checked={card.on} onChange={() => void save({ [AWAKE_KEY]: awakeToggle(card.mode) })} />
           Keep this computer awake while an agent is working
@@ -313,6 +358,7 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
   const stored = typeof saved === "string" ? saved : "";
   return (
     <div data-card="writer">
+      <SaveFailed error={error} />
       <label className="conn-switch">
         <input
           type="checkbox"

@@ -29,6 +29,10 @@ export function trustWords(ask: TrustAsk): { title: string; lead: string } {
     : { title: `Run ${ask.project}'s ${what}?`, lead: `${ask.project}'s committed kolux.yaml asks Kolux to run this ${what}. Run it only if you trust this repository:` };
 }
 
+/** 49-ux2: what each answer remembers, said on the prompt. Run hooks stores this exact text (a changed script
+ *  asks again); Don't run stores nothing (it asks next time); Always trusts the whole kolux.yaml. */
+export const TRUST_MEMORY = "Run hooks remembers this exact script and asks again only if it changes. Don't run remembers nothing, so you are asked next time.";
+
 // The line of waiting prompts, outside React so any caller can ask; one host draws the first.
 let line: Waiting[] = [];
 let hosts = 0;
@@ -138,6 +142,9 @@ function TrustDialog({ ask }: { ask: TrustAsk }) {
             <pre className="trust-script" aria-label={`The ${KIND_WORDS[ask.kind] ?? "script"} that would run`}>
               {ask.script}
             </pre>
+            <p className="trust-lead" role="note">
+              {TRUST_MEMORY}
+            </p>
             <label className="check trust-always">
               <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} /> Always trust this repository&apos;s kolux.yaml
             </label>

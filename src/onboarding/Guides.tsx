@@ -18,10 +18,12 @@ import { integrationSteps, readSeenCached, taskSourceOf } from "./integrations";
 import { guideOpenChanged } from "./actions";
 import { MOVED, splitCredit } from "./moved";
 import { askHooks, HOOKS_LINE, hooksDefault, recordHooks } from "./hooksOn";
+import { useDialogFocus } from "./dialogFocus";
+import { submitKeys } from "./submitKeys";
 import { defaultAgentId } from "../launch/agents";
 import {
   caps, demoFrames, doneFrom, paletteKeys, doneId, firstOpen, forward, latest, markGuide, moveOn, nextTip, OPEN_EXPLORE, OPEN_GUIDE, guideClosed, PAGE_SHOWN, railKey, ring, STEPS, stopDone, stopOf, TWO_REPOS, withRecord, words, workflowDone, WORKFLOWS,
-  legacyProfile, type At, type CliStatus, type Facts, type GuideRecord, type Place, type Setup, type StepId, type TipId,
+  checklistHidden, HIDE_PATCH, legacyProfile, type At, type CliStatus, type Facts, type GuideRecord, type Place, type Setup, type StepId, type TipId,
 } from "./guide";
 
 type Scan = { skills: { name: string; source: string }[] };
@@ -128,7 +130,9 @@ function useClosing(open: boolean): boolean {
 
 function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean; onClose: () => void }) {
   const g = useGuideState(open);
-  const { save } = useSettings();
+  const { save, settings } = useSettings();
+  const [hideFailed, setHideFailed] = useState(false);
+  const hidden = checklistHidden(settings);
   const [at, setAt] = useState<StepId>(() => firstOpen(g.done, ask));
   const doneKey = [...g.done].join();
   useEffect(() => {
@@ -160,10 +164,21 @@ function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean;
               </p>
             </div>
             <span className="spacer" />
-            <button className="ib" title="Remove the checklist from the sidebar" onClick={() => void save({ setupChecklist: false })}>
+            <button
+              className="ib"
+              title={hidden ? "The checklist is hidden from the sidebar" : "Remove the checklist from the sidebar"}
+              aria-label="Remove the checklist from the sidebar"
+              disabled={hidden}
+              onClick={() => void save(HIDE_PATCH).then((ok) => setHideFailed(!ok))}
+            >
               <EyeOff />
             </button>
           </header>
+          {hideFailed && (
+            <p className="guide-note warn" role="status">
+              The checklist could not be hidden. Try again.
+            </p>
+          )}
           <p className="guide-group">Setup</p>
           {STEPS.filter((s) => s.group === "setup").map((s) => row(s))}
           <p className="guide-group">Parallel work</p>
@@ -197,6 +212,8 @@ function Explore({ onClose }: { onClose: () => void }) {
   const [setup, setSetup] = useState<Setup>({ taskSource: false, skills: [] });
   const [gh, setGh] = useState<boolean | null>(null);
   const rail = useRef<HTMLDivElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialog, onClose); // 49-ux2: focus on open, Escape from anywhere, focus back on close
   useEffect(() => {
     // Merged, not replaced: a stop visited before the record arrived stays seen (FIX-1).
     invoke<GuideRecord>("guide_get").then((g) => (setSeen((s) => withRecord(s, new Set(), g).seen), setKept((k) => withRecord(new Set(), k, g).kept)), () => {});
@@ -225,12 +242,13 @@ function Explore({ onClose }: { onClose: () => void }) {
   return (
     <div className="ask-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
+        ref={dialog}
+        tabIndex={-1}
         className="explore"
         role="dialog"
         aria-modal="true"
         aria-label="Explore Kolux"
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
           if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             go();
@@ -288,7 +306,12 @@ function Explore({ onClose }: { onClose: () => void }) {
           <div className="btn-row">
             <span className="spacer" />
             <span className="hint">
-              <span className="kbd">Ctrl</span>+<span className="kbd">Enter</span>
+              {submitKeys().map((k, i) => (
+                <span key={i}>
+                  {i > 0 && "+"}
+                  <span className="kbd">{k}</span>
+                </span>
+              ))}
             </span>
             <button className="btn primary" onClick={go}>
               {next ? "Continue" : "Done"}
@@ -496,7 +519,23 @@ export function TipView({ tip, cli, setup, onSetup, onClose: close, dock = { rig
 }
 
 /** T-608: the one line of consent for a profile that never answered it, outside the first-run wizard. */
-export function HooksAskView({ on, onSwitch, onDone, dock = { right: 16, bottom: 40 } }: { on: boolean; onSwitch: (on: boolean) => void; onDone: () => void; dock?: CSSProperties }) {
+export function HooksAskView({
+  on,
+  onSwitch,
+  onDone,
+  onLater,
+  onOff,
+  dock = { right: 16, bottom: 40 },
+}: {
+  on: boolean;
+  onSwitch: (on: boolean) => void;
+  onDone: () => void;
+  /** 49-ux2: Not now closes the card without answering; it asks again at the next launch. */
+  onLater?: () => void;
+  /** 49-ux2: Off records "no" and closes the card. */
+  onOff?: () => void;
+  dock?: CSSProperties;
+}) {
   return (
     <div className="tip-dock" style={dock} data-docked={dock.left !== undefined ? "" : undefined}>
       <div className="tip-card" role="dialog" aria-modal="false" aria-label="Agent status hooks">
@@ -507,6 +546,16 @@ export function HooksAskView({ on, onSwitch, onDone, dock = { right: 16, bottom:
         </label>
         <div className="btn-row">
           <span className="spacer" />
+          {onLater && (
+            <button className="btn" onClick={onLater}>
+              Not now
+            </button>
+          )}
+          {onOff && (
+            <button className="btn" onClick={onOff}>
+              Turn off
+            </button>
+          )}
           <button className="btn primary" onClick={onDone}>
             Done
           </button>
@@ -529,7 +578,16 @@ function HooksAsk({ settings, onDone }: { settings: Record<string, unknown> | nu
     return () => window.clearTimeout(timer);
   }, []);
   if (!shown) return null;
-  return <HooksAskView on={on} onSwitch={setOn} dock={dock} onDone={() => (void recordHooks(on).catch(() => {}), onDone())} />;
+  return (
+    <HooksAskView
+      on={on}
+      onSwitch={setOn}
+      dock={dock}
+      onDone={() => (void recordHooks(on).catch(() => {}), onDone())}
+      onLater={onDone}
+      onOff={() => (void recordHooks(false).catch(() => {}), onDone())}
+    />
+  );
 }
 
 /** The window's guides: one mount line in App.tsx. */

@@ -12,6 +12,13 @@ export const DOCS_URL = "https://github.com/TxaisX/kolux-rs/tree/main/docs";
 /** What Restart Kolux shows while the save point and relaunch run. */
 export const RESTARTING = "Restarting…";
 
+/** 49-ux2: the two setup entries and the tours say plainly which is which. */
+export const HINTS = {
+  "getting-started": "Checklist of setup steps",
+  onboarding: "First-run setup wizard",
+} as const;
+export const TOURS_HINT = "Each tour runs once its screen is showing.";
+
 export type HelpCtx = {
   /** Milestones stays only while a core step is unfinished (ONB-014). */
   milestones: { shown: boolean; done: number; total: number };
@@ -22,6 +29,8 @@ export type HelpCtx = {
   openExplore: () => void;
   reopenWizard: () => void;
   requestFeedback: () => void;
+  /** Opens the crash report dialog, the same one the chrome's Report Crash opens. */
+  reportCrash: () => void;
   copyDiagnostics: () => void;
   checkForUpdates: () => void;
   restart: () => void;
@@ -36,6 +45,8 @@ export type HelpItem = {
   /** The sheet stays open after the click (it has a status line to show, or the app is restarting). */
   keepOpen?: boolean;
   disabled?: boolean;
+  /** Visible secondary text beside the label (not a hover title): what this entry opens. */
+  hint?: string;
   /** Milestones only: the mini ring and its count. */
   ring?: { done: number; total: number };
 };
@@ -46,7 +57,7 @@ export function helpItems(c: HelpCtx): HelpItem[] {
   const help = (id: string, label: string, run: () => void, extra: Partial<HelpItem> = {}): HelpItem => ({ id, label, group: "help", run, ...extra });
   const items: HelpItem[] = [
     { id: "settings", label: "Settings", group: "top", run: () => c.openSettings("general") },
-    help("getting-started", "Getting Started with Kolux", c.openGuide),
+    help("getting-started", "Getting Started with Kolux", c.openGuide, { hint: HINTS["getting-started"] }),
     help("explore", "Explore Kolux", c.openExplore),
     help("docs", "Docs", () => c.openExternal(DOCS_URL)),
     help("changelog", "Changelog", () => c.openExternal(CHANGELOG_URL)),
@@ -55,8 +66,9 @@ export function helpItems(c: HelpCtx): HelpItem[] {
   if (c.milestones.shown) items.push(help("milestones", "Milestones", c.openGuide, { ring: { done: c.milestones.done, total: c.milestones.total } }));
   items.push(
     help("shortcuts", "Keyboard Shortcuts", () => c.openSettings("shortcuts")),
-    help("onboarding", "Onboarding", c.reopenWizard),
+    help("onboarding", "Onboarding", c.reopenWizard, { hint: HINTS.onboarding }),
     help("feedback", "Send Feedback", c.requestFeedback),
+    help("report-crash", "Report Crash", c.reportCrash),
     help("diagnostics", "Copy terminal diagnostics", c.copyDiagnostics, { keepOpen: true }),
     help("updates", "Check for Updates", c.checkForUpdates),
     help("restart", c.restarting ? RESTARTING : "Restart Kolux", c.restart, { keepOpen: true, disabled: c.restarting }),

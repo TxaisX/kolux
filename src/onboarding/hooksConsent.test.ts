@@ -110,6 +110,12 @@ test("T-608: the card carries the same line, its switch on by default, and Done"
   expect(renderToString(createElement(HooksAskView, { on: false, onSwitch() {}, onDone() {} }))).not.toMatch(/role="switch" checked=""/);
 });
 
+test("49-ux2: the card also offers Not now and Turn off", () => {
+  const html = renderToString(createElement(HooksAskView, { on: true, onSwitch() {}, onDone() {}, onLater() {}, onOff() {} }));
+  expect(html).toContain(">Not now<");
+  expect(html).toContain(">Turn off<");
+});
+
 test("T-608: the wizard writes no hooks until the user moves on from the line; then it records what the switch shows", async () => {
   vi.stubGlobal("navigator", { platform: "Win32" });
   const draw = (start = 0) => {
@@ -130,15 +136,19 @@ test("T-608: the wizard writes no hooks until the user moves on from the line; t
   el = draw();
   expect(el.props.hooks).toBe(false);
   expect(writes()).toEqual([]);
-  el.props.onSecondary(); // I'll do this later: moving on records the choice
+  el.props.onSecondary(); // 49-ux2: I'll do this later leaves the screen but is not consent: nothing is recorded
+  await flush();
+  expect(writes()).toEqual([]);
+  el = draw();
+  expect(el.props.at).toBe(2);
+  el.props.onBack(); // Back to the line, then Continue: the explicit move on records the choice
+  await flush();
+  el = draw();
+  expect(el.props.at).toBe(1);
+  el.props.onMain();
   await flush();
   expect(writes()).toEqual([
     ["settings_patch", { set: { [HOOKS_FIELD]: false }, remove: [] }],
     ["agent_hooks_sync", { clear: true }],
   ]);
-  el = draw();
-  expect(el.props.at).toBe(2);
-  el.props.onBack(); // Back to the line records nothing more
-  await flush();
-  expect(writes()).toHaveLength(2);
 });
