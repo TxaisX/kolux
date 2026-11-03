@@ -62,7 +62,7 @@ async function page() {
   await settle();
   return c;
 }
-const rows = (c: FakeNode) => find(c, (n) => n.attrs.role === "option");
+const rows = (c: FakeNode) => find(c, (n) => n.attrs.role === "listitem" && String(n.attrs.className ?? n.attrs.class ?? "") === "art-item");
 const titles = (c: FakeNode) => rows(c).map((r) => find(r, (n) => String(n.attrs.className ?? n.attrs.class ?? "") === "name")[0]?.textContent);
 
 test("box 1: a search with two words keeps only the titles holding both", async () => {
@@ -120,7 +120,7 @@ test("box 2: a clicked link leaves the viewer as a message, and the page hands i
   // In the library page: the message from its own frame becomes open_external; Kolux itself navigates nowhere.
   h.lib = [{ id: replay.id, title: "Viewed", added: 1 }];
   const c = await page();
-  await click(c, rows(c)[0]);
+  await click(c, find(rows(c)[0], (n) => n.localName === "button")[0]);
   await until(() => find(c, (n) => n.localName === "iframe").length === 1);
   const frame = find(c, (n) => n.localName === "iframe")[0] as FakeNode & { contentWindow?: unknown };
   const own = {};

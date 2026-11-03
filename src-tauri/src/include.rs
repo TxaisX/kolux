@@ -173,7 +173,7 @@ fn link_dir(target: &Path, link: &Path) -> std::io::Result<()> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        let mut cmd = std::process::Command::new("cmd");
+        let mut cmd = std::process::Command::new(crate::pty::system_program("cmd.exe")); // T-663
         cmd.raw_arg(format!("/C mklink /J \"{}\" \"{}\"", link.display(), target.display())).creation_flags(0x0800_0000);
         match cmd.output() {
             Ok(out) if out.status.success() => Ok(()),

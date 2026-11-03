@@ -4,7 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { SendTarget } from "../editor/notes";
-import { addText, clear, dismissHint, drawMessage, type Drawing, empty, finishDrag, fitScale, hintSeen, paint, redo, type Shape, strokeFor, type Tool, toolForKey, toPicture, TOOLS, undo } from "./draw";
+import { useArm } from "./arm";
+import { addText, canRedo, canUndo, clearUndoable, dismissHint, drawMessage, type Drawing, empty, finishDrag, fitScale, hintSeen, paint, redo, type Shape, strokeFor, type Tool, toolForKey, toPicture, TOOLS, undo } from "./draw";
 import { asDataUrl, type Picture, sendPicture } from "./picture";
 import { SendButton } from "./SendButton";
 
@@ -35,12 +36,19 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
   const [tool, setTool] = useState<Tool>("rect");
   const [drag, setDrag] = useState<{ x: number; y: number; to: { x: number; y: number } } | null>(null);
   const [typing, setTyping] = useState<{ x: number; y: number } | null>(null);
+  const textBox = useRef<HTMLInputElement>(null);
   const [room, setRoom] = useState({ w: 0, h: 0 });
   const [hint, setHint] = useState(() => !hintSeen(store()));
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  // UX audit: the text box is committed by blur too, once; this mirror says whether one is still open (blur can follow Enter's unmount).
+  const typingAt = useRef<{ x: number; y: number } | null>(null);
+  const [leaveArmed, pressLeave] = useArm();
+  const marks = drawing.shapes.length;
+  // Close and Esc with marks on the picture ask once more: leaving drops them.
+  const leave = () => (marks ? pressLeave(() => onClose()) : onClose());
 
   useEffect(() => {
     const i = new Image();
@@ -80,7 +88,11 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
   const down = (e: React.PointerEvent) => {
     if (!img || busy) return;
     const p = where(e);
-    if (tool === "text") return setTyping({ x: p.x, y: p.y });
+    if (tool === "text") {
+      // A box already open is committed at its own point first, so a click elsewhere does not move its text.
+      if (typingAt.current) commitText(textBox.current?.value ?? "");
+      return openText({ x: p.x, y: p.y });
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({ x: p.x, y: p.y, to: { x: p.x, y: p.y } });
   };
@@ -101,12 +113,21 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
       setHint(false);
     }
   };
+  const openText = (at: { x: number; y: number }) => {
+    typingAt.current = at;
+    setTyping(at);
+  };
+  const closeText = () => {
+    typingAt.current = null;
+    setTyping(null);
+  };
   const commitText = (value: string) => {
-    if (typing) {
-      const next = addText(drawing, typing.x, typing.y, value);
+    const at = typingAt.current;
+    if (at) {
+      const next = addText(drawing, at.x, at.y, value);
       if (next !== drawing) shapeAdded(next);
     }
-    setTyping(null);
+    closeText();
   };
 
   const keys = (e: React.KeyboardEvent) => {
@@ -114,7 +135,7 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
     const ctrl = e.ctrlKey || e.metaKey;
     if (ctrl && e.key.toLowerCase() === "z") setDrawing(e.shiftKey ? redo(drawing) : undo(drawing));
     else if (ctrl && e.key.toLowerCase() === "y") setDrawing(redo(drawing));
-    else if (e.key === "Escape") onClose();
+    else if (e.key === "Escape") leave();
     else if (!ctrl && toolForKey(e.key)) setTool(toolForKey(e.key)!);
     else return;
     e.preventDefault();
@@ -152,19 +173,19 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
           </button>
         ))}
         <span className="draw-gap" />
-        <button type="button" className="btn" data-go="undo" disabled={!drawing.shapes.length} onClick={() => setDrawing(undo(drawing))} title="Undo (Ctrl+Z)">
+        <button type="button" className="btn" data-go="undo" disabled={!canUndo(drawing)} onClick={() => setDrawing(undo(drawing))} title="Undo (Ctrl+Z)">
           Undo
         </button>
-        <button type="button" className="btn" data-go="redo" disabled={!drawing.undone.length} onClick={() => setDrawing(redo(drawing))} title="Redo (Ctrl+Shift+Z)">
+        <button type="button" className="btn" data-go="redo" disabled={!canRedo(drawing)} onClick={() => setDrawing(redo(drawing))} title="Redo (Ctrl+Shift+Z)">
           Redo
         </button>
-        <button type="button" className="btn" data-go="clear" disabled={!drawing.shapes.length} onClick={() => setDrawing(clear())}>
+        <button type="button" className="btn" data-go="clear" disabled={!drawing.shapes.length} onClick={() => setDrawing(clearUndoable(drawing))} title="Clear every mark (Undo brings them back)">
           Clear
         </button>
         <span className="draw-gap" />
         <SendButton targets={targets} busy={busy} onPick={send} />
-        <button type="button" className="btn" data-go="close" onClick={() => onClose()} title="Back to the page (Esc)">
-          Close
+        <button type="button" className="btn" data-go="close" onClick={leave} title={leaveArmed ? "Press again to leave and drop the marks" : "Back to the page (Esc)"}>
+          {leaveArmed ? "Discard marks?" : "Close"}
         </button>
       </div>
       {(hint || problem) && (
@@ -178,6 +199,8 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
             <canvas ref={canvas} width={w} height={h} style={{ width: w * scale, height: h * scale }} onPointerDown={down} onPointerMove={move} onPointerUp={up} data-tool={tool} />
             {typing && (
               <input
+                key={`${typing.x},${typing.y}`}
+                ref={textBox}
                 className="draw-text"
                 autoFocus
                 maxLength={200}
@@ -185,10 +208,13 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
                 aria-label="Text on the picture"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commitText(e.currentTarget.value);
-                  else if (e.key === "Escape") setTyping(null);
+                  else if (e.key === "Escape") closeText();
                   e.stopPropagation();
                 }}
-                onBlur={() => setTyping(null)}
+                onBlur={(e) => {
+                  // Only the box that is still the open one commits; an older box already committed at its own point.
+                  if (typingAt.current === typing) commitText(e.currentTarget.value);
+                }}
               />
             )}
           </div>
