@@ -27,6 +27,9 @@ import { trashUnusedNotes } from "../editor/trashUnused";
 import { discardDraftsOf } from "../editor/useFileMoves";
 import { onClose } from "../inbox/exitedPrompt";
 import { commandRows } from "../keys/commands";
+import { runCommand } from "../keys/runCommand";
+import { actionById } from "../keys/actions";
+import { openTabSearch, TAB_SEARCH_ACTION } from "../shell/findTab";
 import { paneMark } from "../launch/PlusMenu";
 import { seatDefault, seatStart } from "../launch/defaultSeat";
 import { removeShortcutAsk } from "../launch/removeAsk";
@@ -368,7 +371,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", run: () => openSettings(id) })),
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
     // T-708: New terminal tab and Search open tabs are their Commands rows (with their keys), no longer second hand-built rows
-    ...commandRows(keymap, installedIds, setToast), // T-611: every command, the unbound ones included, run as its shortcut runs
+    ...commandRows(keymap, installedIds, setToast, (id, i) => (id === TAB_SEARCH_ACTION ? openTabSearch() : runCommand(id, i, { scope: actionById.get(id)?.scope, unanswered: setToast }))), // T-611: every command, the unbound ones included, run as its shortcut runs; T-708: Search open tabs from any screen (TERM-053)
     ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))), // T-610 / T-708: every screen
     { section: "Quick actions", label: "New session", run: () => addChooser() },
     // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them

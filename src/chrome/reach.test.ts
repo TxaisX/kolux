@@ -66,6 +66,8 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
   // No hand-built row repeats a bound command by name: its Commands row is the one (New terminal tab, Search open tabs).
   expect(bound.filter((a) => paneActions.includes(`label: "${a.title}"`)).map((a) => a.id)).toEqual([]);
   expect(paneActions).not.toMatch(/tabSearchCommand|section: "Quick actions", label: "(New terminal tab|Search open tabs)"/);
+  // Its key works only where tabs are (scope "tabs"); the palette row opens the box from any screen, as the old row did.
+  expect(paneActions).toMatch(/commandRows\([^\n]*id === TAB_SEARCH_ACTION \? openTabSearch\(\)/);
 });
 
 // Every dialog in the app (an element with role="dialog" or role="alertdialog" in src/**/*.tsx) and how its Escape
@@ -88,7 +90,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["browser/GrabSheet.tsx", "Grabbed element", "tag"],
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
-  ["chrome/Ask.tsx", "title", "tag"],
+  ["chrome/Ask.tsx", "title", "hook"],
   ["editor/CloseDialog.tsx", "Save changes before closing?", "tag"],
   ["editor/DiffPane.tsx", "pop.note ? \"Edit review note\" : \"Add review note\"", "inner"],
   ["editor/Explorer.tsx", "Delete", "tag"],
@@ -219,13 +221,21 @@ const ESCAPE = /"Escape"|leavesGrab|escapeClosesForm|dialogStep|leaveKey|escapeL
 function handler(d: Found): string {
   const named = /onKeyDown=\{(\w+)\}/.exec(d.tag)?.[1];
   if (!named) return d.tag;
-  const def = new RegExp(`(const|function) ${named}\\b`).exec(d.src);
-  return def ? d.src.slice(def.index, def.index + 800) : "";
+  // the nearest definition above the dialog (two components may use the same name), up to the next definition
+  const defs = [...d.src.matchAll(new RegExp(`(const|function) ${named}\\b`, "g"))];
+  const def = defs.filter((m) => m.index < d.at).pop() ?? defs[0];
+  if (!def) return "";
+  const indent = /[ \t]*$/.exec(d.src.slice(0, def.index))![0];
+  const rest = d.src.slice(def.index + 1);
+  const end = rest.search(new RegExp(`\\n${indent}(const|function|let|useEffect|return) `));
+  return d.src.slice(def.index, def.index + 1 + (end < 0 ? 800 : end));
 }
-/** It takes focus when it opens: autoFocus or .focus() inside it, a ref inside it that is focused, or the shared hooks. */
+/** It takes focus when it opens: autoFocus on it or inside it, .focus() inside it (not its own Escape handler, which
+ *  hands focus back on the way out), or a ref inside it that is focused. */
 function focuses(d: Found): boolean {
-  if (FOCUS.test(d.body) || /useDialogFocus\(|trapDialog\(/.test(d.src)) return true;
-  return [...d.body.matchAll(/\bref=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(`).test(d.src));
+  if (/autoFocus/.test(d.tag) || FOCUS.test(d.body.slice(d.tag.length))) return true;
+  // r.current?.focus(), or const el = r.current; ... el.focus()
+  return [...d.body.matchAll(/\bref=\{(\w+)\}/g)].some(([, r]) => new RegExp(`\\b${r}\\.current\\??\\.focus\\(|= ${r}\\.current;[^]{0,200}?\\.focus\\(`).test(d.src));
 }
 function closes(d: Found, how: string, all: Found[]): boolean {
   const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];
@@ -246,6 +256,12 @@ function closes(d: Found, how: string, all: Found[]): boolean {
       return how.startsWith("exempt: ");
   }
 }
+
+test("T-708: the browser's two asks take focus only in the focused pane (BROW-001)", () => {
+  const browser = SRC["/src/browser/BrowserPane.tsx"];
+  expect(browser.match(/onClick=\{\(\) => set(Outbound|Leave)\(null\)\}/g)).toHaveLength(2);
+  for (const what of ["Outbound", "Leave"]) expect(browser).toMatch(new RegExp(`autoFocus=\\{focused\\} onClick=\\{\\(\\) => set${what}\\(null\\)\\}`));
+});
 
 test("T-708: every role=dialog / alertdialog element is in the table and closes on Escape the way it says", () => {
   const all = dialogs();
