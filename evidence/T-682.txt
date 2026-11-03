@@ -1,0 +1,35 @@
+T-682 - A viewer link opens only from the viewer's own frame during a click (DT-C118; SKILL-036; audit backlog row 4)
+Lane D (72), branch s-72/ux-8, base 4bd4d2de (origin/main), code commit fcb862e9, 2026-11-03.
+
+WHAT CHANGED
+- src/artifacts/ArtifactsPage.tsx: new viewerLink(message, frame, activation). The library page opens a link the viewer asks
+  for only when the request comes from its own frame and the window has an active click (a click inside the frame gives the
+  window one; a page script that asks on its own, such as on load, has none). An engine that cannot report clicks opens nothing.
+- src/artifacts/ArtifactsPage.test.ts: four tests for viewerLink.
+- src/artifacts/__cards__/SKILL-036.test.ts box 2: a request with no click opens nothing; the clicked links still open.
+- spec/15-skills-plugins-kits.md SKILL-036: the Rules say only clicked links open; a new Acceptance line points here.
+- Rules changed: none reversed (DT-C118).
+
+WHY
+Audit backlog row 4 (held on the old #37 until now): a page shown in the viewer could ask Kolux to open the system browser or
+mail client without the user clicking anything.
+
+TESTS (named; pnpm vitest run src/artifacts/ArtifactsPage.test.ts src/artifacts/__cards__/SKILL-036.test.ts --reporter=verbose)
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > matches titles holding every typed word, in any case and order 2ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > writes sizes as B, KB or MB with one decimal 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > points the viewer at the entry's stored page on the app's scheme 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > cuts the list into one section per project, the newest project first 1ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > shows a page or text in the frame, an image as a picture, and the rest in its own app 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > focus after a removal > goes to the next row, else the previous, else nowhere 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > opens a link clicked inside the viewer's own frame 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > ignores a page script that posts with no click, such as on load 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > opens nothing on an engine that cannot say whether a click happened 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > ignores other windows, a missing frame and messages that are not a link 0ms
+✓ src/artifacts/__cards__/SKILL-036.test.ts > box 1: a search with two words keeps only the titles holding both 255ms
+✓ src/artifacts/__cards__/SKILL-036.test.ts > box 2: a clicked link leaves the viewer as a message, and the page hands it to the system opener, not to Kolux 333ms
+✓ src/artifacts/__cards__/SKILL-036.test.ts > box 3: Add artifact with a file that cannot be read shows an error toast and the list stays as it was 140ms
+
+TOTALS
+- pnpm vitest run src/artifacts: Test Files 5 passed (5), Tests 23 passed (23).
+- pnpm tsc --noEmit: exit 0
+- No Rust touched (the frame's click script and the opener's web/mail-only check are unchanged).
