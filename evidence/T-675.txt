@@ -43,7 +43,7 @@ no sign of work; parts were unreachable by keyboard. Row 4 (Space and Floor only
 in #104 (View menu). L rows: none.
 
 REVIEW
-Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape scope, Space tick filter, feedback reopen) -> re-review B (9733b7b9) -> fix pass (FIXSHA) -> re-review PENDING.
+Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape scope, Space tick filter, feedback reopen) -> re-review B (9733b7b9) -> fix pass (983b8931) -> re-review PENDING.
 
 FOLLOW-UPS
 - The feedback sent note shares the bottom-right corner with the tip dock and the skill notice and can sit over
