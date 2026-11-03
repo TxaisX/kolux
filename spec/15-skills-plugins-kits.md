@@ -658,7 +658,7 @@ Rules:
   - Codex plugin caches are scanned within a limit, and partial coverage is reported rather than
     hidden.
   - Links are followed without looping and only to a limited depth.
-  - A project stored in WSL is scanned through its `\\wsl.localhost\` path like any folder;
+  - A project stored in WSL is scanned through its WSL share path like any folder;
     its names keep their letter case; distributions' own home folders are not listed and nothing runs
     inside one (OD-12, DT-C94).
   - Repeated scans are merged and cached; a scan target that hangs becomes an error the user can
