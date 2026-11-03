@@ -1,0 +1,39 @@
+T-708 / DT-C144: lane D (72): reachability matrix, every screen, sheet, dialog and dock has a way in and a way out
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md line 109 (the sessions proof dir, not in this repo).
+Built on main d552a974, branch s-72/reach, main 32695d1e merged in, 2026-11-03.
+
+SWEEP: every element with role="dialog" or role="alertdialog" in src/**/*.tsx (67), every Screen id (9), every
+hand-built palette row against the command list. Ways in were checked from the default layout; ways out by its
+visible close or cancel control and by Escape.
+
+FOUND AND FIXED
+  [wrong] no Escape (9): Scan for repos (focus never went in), Clean up workspaces (same), Remove account confirm,
+          stack merge confirm, browser Import from Google Chrome, browser Open an outside address?, browser leave
+          ask, Source Control Create pull request, Source Control Resolve conflicts with an agent.
+          Each now handles Escape and takes focus when it opens. The pull request form closes only while its title
+          and description are empty.
+  [wrong] no way in from the palette (3): Agents, Board, Terminals (switcher only). Now Show rows, like Artifacts
+          and Skills.
+  [polish] palette rows without their keys (2): Search open tabs now shows Ctrl+Shift+K; the second New terminal
+          tab row (Quick actions, no keys) is removed, the command's own row shows Ctrl+T.
+  No item lacked a visible way out.
+
+EXEMPT (in the table with the reason): the chat's permission and question cards, the graphics fallback, the
+Resource Manager's three inner panels, the docked status-hooks tip.
+
+NOT DONE (out of scope, not verified): Settings and the palette do not close on their own shortcut pressed again.
+
+TEST (src/chrome/reach.test.ts, table-driven, 67 dialog rows: 37 tag, 4 hook, 8 inner, 3 parent, 1 wrapper,
+7 window, 7 exempt)
+  T-708: every Screen id has a palette row of its own
+  T-708: a hand-built palette row for a command shows the command's keys
+  T-708: every dialog and sheet is in the table and closes on Escape the way it says
+TDD: with main's versions of the 8 changed source files the new tests fail (3 failed, 5 passed: the 9 dialogs,
+the 3 screens, the rows without keys); with the fixes they pass.
+ Test Files  2 passed (2)
+      Tests  15 passed (15)
+
+TOTALS: VITEST_MAX_WORKERS=2 pnpm vitest run src/chrome src/terminal src/projects src/scm src/settings src/browser
+src/shell src/keys: 401 files, 2485 tests, all passed. pnpm tsc --noEmit: exit 0.
+BUNDLE: first load 1,489,157 bytes vs main 32695d1e 1,489,172 (-15 B; ceiling 1,490,000). The new code in the
+first load is paid for by the removed duplicate row and a shorter screen-row list.
