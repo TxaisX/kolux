@@ -1,5 +1,31 @@
-import { describe, expect, it } from "vitest";
-import { dueAlerts, windowWords, type Fired } from "./alerts";
+import { describe, expect, it, vi } from "vitest";
+import { dueAlerts, useUsageAlerts, windowWords, type Fired } from "./alerts";
+
+// T-716: the hook runs outside React here; useEffect runs at once, the figures feed and invoke are stand-ins.
+const h = vi.hoisted(() => ({ feed: (_: Record<string, unknown>) => {}, send: vi.fn() }));
+vi.mock("react", async (orig) => ({ ...(await orig<object>()), useEffect: (f: () => void) => f() }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (cmd: string, a: unknown) => (cmd === "usage_alerts_fired" ? Promise.resolve({}) : h.send(a)) }));
+vi.mock("./launchWarn", () => ({ onFigures: Object.assign((f: (a: Record<string, unknown>) => void) => ((h.feed = f), () => {}), { current: () => ({}) }) }));
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+describe("T-716 an alert counts as sent only once the send succeeds", () => {
+  it("a failed send is tried again on the next reading; a sent alert is not repeated", async () => {
+    h.send.mockRejectedValueOnce(new Error("no notification")).mockResolvedValue(undefined);
+    useUsageAlerts({});
+    await settle(); // the saved record has loaded
+    const reading = { codex: codex(82) };
+    h.feed(reading);
+    h.feed(reading); // a reading while the send is out does not send it twice
+    expect(h.send).toHaveBeenCalledTimes(1);
+    await settle(); // the send fails
+    h.feed(reading);
+    expect(h.send).toHaveBeenCalledTimes(2);
+    expect(h.send.mock.calls[1][0]).toMatchObject({ fired: { "codex:5-hour:80": at(17) }, alerts: [{ title: "Codex · usage alert" }] });
+    await settle(); // this one goes out
+    h.feed(reading);
+    expect(h.send).toHaveBeenCalledTimes(2);
+  });
+});
 
 const now = new Date(2026, 9, 11, 12, 0);
 const at = (h: number) => Math.floor(new Date(2026, 9, 11, h, 5).getTime() / 1000);

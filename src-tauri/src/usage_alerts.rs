@@ -20,14 +20,16 @@ pub fn usage_alerts_fired(store: tauri::State<'_, Mutex<Store>>) -> Result<serde
     Ok(saved.and_then(|v| serde_json::from_str(&v).ok()).unwrap_or_else(|| serde_json::json!({})))
 }
 
-/// Saves the record first, so an alert that fails to show is still not repeated after a restart.
+/// Shows the alerts, then saves the record (T-716): an alert that fails to show is not marked sent, so the
+/// page tries it again on the next reading. A save that fails after the show may repeat it once; a missed alert
+/// would be worse.
 #[tauri::command]
 pub fn usage_alert_send(app: tauri::AppHandle, store: tauri::State<'_, Mutex<Store>>, fired: serde_json::Value, alerts: Vec<Alert>) -> Result<(), String> {
-    store.lock().map_err(|e| e.to_string())?.set(KEY, &fired.to_string()).map_err(|e| e.to_string())?;
     // USAGE-009: while the window is hidden the tray dot lights, even when the toast itself is held back.
     crate::tray::ping(&app, crate::tray::Ping::UsageAlert);
     for a in alerts {
         app.notification().builder().title(a.title).body(a.body).show().map_err(|e| e.to_string())?;
     }
+    store.lock().map_err(|e| e.to_string())?.set(KEY, &fired.to_string()).map_err(|e| e.to_string())?;
     Ok(())
 }

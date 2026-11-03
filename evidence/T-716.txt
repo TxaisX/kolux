@@ -1,0 +1,31 @@
+T-716 - A usage alert counts as sent only once the send succeeds; a failed send is tried again (DT-C152; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-13, rebased on main ec26a0da, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "T-716 / DT-C152". Finding: proof/ux-audit/findings/usage-status.md F3 ("80/95% alert
+marked fired before send; failure swallowed, never retried").
+
+WHAT WAS WRONG
+- src/usage/alerts.ts wrote the new fired record into memory before it called usage_alert_send, and dropped any error.
+  Rust (usage_alerts.rs) saved the record to state.db before showing the toast. An alert whose toast failed was marked
+  sent in both places, so it was never shown, not on the next reading and not after a restart.
+
+THE FIX (DT-C152)
+- src/usage/alerts.ts: when a reading has alerts due, the page holds the record empty while the send is out (so no
+  reading sends the same alert twice), keeps the new record when the send resolves, and puts the old one back when it
+  fails, so the next figures reading sends it again. One provider's alerts go per reading; the next goes on the next.
+- src-tauri/src/usage_alerts.rs: usage_alert_send shows the toasts (and lights the tray dot) first and saves the record
+  after. A save that fails after the toast showed may show it once more; a missed alert would be worse.
+
+TESTS
+- src/usage/alerts.test.ts "T-716 an alert counts as sent only once the send succeeds": the hook with useEffect run at
+  once, invoke and the figures feed stood in. A Codex reading at 82%: one send; a second reading while it is out sends
+  nothing; the send fails; the next reading sends it again with the same record and alert; that send succeeds; the next
+  reading sends nothing. With main's alerts.ts: 1 failed ("expected to be called 2 times, but got 1 times").
+- On this branch: src/usage + src/settings + src/status, 127 files, 714 tests passed (VITEST_MAX_WORKERS=2).
+  pnpm exec tsc --noEmit -p . : clean. cargo clippy --lib --tests -- -D warnings: clean (usage_alerts.rs has no Rust
+  tests; the change there is the order of two calls).
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main ec26a0da: 1,489,509 B first load. This branch: 1,489,501 B (-8).
+
+REVIEW
+- Fresh opus-high-review: see the PR conversation.
