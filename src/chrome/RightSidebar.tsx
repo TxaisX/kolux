@@ -125,7 +125,8 @@ export function Grip({ side, width, label, className, onWidth }: { side: "left" 
       aria-orientation="vertical"
       aria-label={label}
       onPointerDown={(e) => {
-        // T-703 (DT-C139): start from the width as drawn, which styles.css may have narrowed below `width`.
+        // T-703 (DT-C139): start from the width as drawn, which styles.css may have narrowed below `width`. The left grip
+        // sits right after ProjectsPanel's .sidebar-wrap (shell/window/Sidebar.tsx renders both on one condition); the right one is inside aside.rside.
         const el = e.currentTarget;
         drag.current = { x: e.clientX, w: side === "left" ? (el.previousElementSibling as HTMLElement).offsetWidth - 8 : (el.parentElement as HTMLElement).offsetWidth };
         e.currentTarget.setPointerCapture(e.pointerId);

@@ -16,10 +16,10 @@ const css = nodeFs.readFileSync(new URL("../../styles.css", import.meta.url), "u
 
 const FLOOR = 340;
 const RULES = [
-  ".body > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }",
-  ".body:has(> .rside:not([hidden])) > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
+  ".body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }",
+  ".body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
   ".body > .rside { max-width: max(240px, 100vw - 340px); }",
-  ".body:has(> .sidebar-wrap) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }",
+  ".body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }",
 ];
 
 /** The body as the stylesheet lays it out, rule for rule (RULES above and the T-699 step-aside).
@@ -37,6 +37,8 @@ test("T-703: the stylesheet carries the four clamp rules, after the T-699 step-a
   const stepAside = css.indexOf(`@media (max-width: ${NARROW_PX - 1}px) { .body:has(> .rside:not([hidden]))`);
   expect(stepAside).toBeGreaterThan(-1);
   for (const rule of RULES) expect(css.indexOf(rule), rule).toBeGreaterThan(stepAside);
+  // The Agents screen's rail is also a .sidebar-wrap beside .body; it keeps its own width (.rail), so no clamp names a bare one.
+  expect(css.match(/^\.body[^{]*\.sidebar-wrap(?!:not\(\.rail-wrap\))[^{]*\{[^}]*--sidebar-w/gm)).toBeNull();
   // The constants: 348 = the floor + the left gutter; 588 = that + the right sidebar's minimum.
   expect([LEFT_MIN, RIGHT_MIN, LEFT_MAX]).toEqual([220, 240, 480]);
   expect(348).toBe(FLOOR + 8);

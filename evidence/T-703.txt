@@ -12,14 +12,20 @@ WHAT WAS WRONG
 THE RULE (DT-C139)
 - The workspace keeps at least 340 CSS px, the T-699 floor, whatever width a sidebar was dragged to.
 - Four stylesheet rules in src/styles.css, right after the T-699 step-aside rule:
-    .body > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
-    .body:has(> .rside:not([hidden])) > .sidebar-wrap > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
+    .body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
+    .body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
     .body > .rside { max-width: max(240px, 100vw - 340px); }
-    .body:has(> .sidebar-wrap) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
+    .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
   - 348 = the floor + the left sidebar's 8 px gutter. 588 = that + the right sidebar's 240 px minimum, so a widened left
     sidebar leaves the right one its minimum while it shows.
   - The right sidebar's cap subtracts the left sidebar as drawn, so the two never both take the room.
   - Neither sidebar goes under its own minimum (220 left, 240 right).
+  - The Agents screen's rail is also a .sidebar-wrap right under .body; :not(.rail-wrap) leaves it at its own .rail width
+    (268 px, Classic 240). The right sidebar only shows on Terminals (shell/window/Right.tsx hidden={!terminals ...}),
+    never beside the rail. Review round 1 caught that the first version also widened the rail to --sidebar-w (480 when
+    the projects sidebar was dragged wide). Headless Chromium at 1400 px, normal and Classic rail, --sidebar-w 289 and 480:
+    main 80687a7d 268/268/240/240, first version 289/480/289/480, this branch 268/268/240/240.
+  - A press and release on a narrowed left edge saves the width as drawn (the drag starts there).
 - Because the clamps are CSS, they follow the window live: during a drag (the pointer can ask for 480, the sidebar
   stops where the floor is) and when the window shrinks after a drag.
 - Order as the window shrinks: the dragged panel gives back its width first; the T-699 step-aside starts only under
@@ -69,7 +75,8 @@ REAL-LAYOUT CHECK (headless Chromium 1248)
   unchanged (1400 / 289 / hidden = 1103 before and after).
 
 TESTS (VITEST_MAX_WORKERS=1, one file at a time, during coordinator 57's live verify)
-- src/shell/window/panelFit.test.ts (new, 4 tests): pins the four rules and that they come after the T-699 step-aside;
+- src/shell/window/panelFit.test.ts (new, 4 tests): pins the four rules and that they come after the T-699 step-aside,
+  and that no clamp rule names a .sidebar-wrap without :not(.rail-wrap);
   models the body rule for rule and checks the workspace is 340 px or more at 640, 800, 900, 1000 and 1400 px with the
   left sidebar closed, default or at 480, and the right sidebar hidden, at 240, 300 or drawn at 900; the order (the
   dragged panel gives back first, the step-aside starts under 900 px, a wide window keeps the saved width); that the
