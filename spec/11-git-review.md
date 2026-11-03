@@ -484,11 +484,17 @@ User sees: the PR opens on GitHub and is linked to the workspace; an unpushed br
 Rules: base and head must differ; if the branch already has a PR, that one is linked instead of a
   second being made; a failed create keeps everything typed and shows the error; uncommitted tracked
   changes block creation with a clear reason; a base that exists only locally gets a message saying
-  what to do; GitHub Enterprise Server works as well.
+  what to do; GitHub Enterprise Server works as well. (Kolux RS, T-686: the title box takes focus
+  when the form opens; Escape pressed inside the form closes it and keeps what was typed, while
+  Cancel clears it, and an open Base list takes the first Escape; each folder keeps its own text, so
+  switching folders neither drops it nor shows it in another folder; focus returns to the button
+  that opened the form; a finished AI draft does not overwrite text typed or kept since it began.)
 Acceptance:
   - [ ] On a pushed branch, fill in a title and create → the PR exists on GitHub and the panel shows
         its number.
   - [ ] Make the create fail → title and description stay in the composer next to the error.
+  - [ ] Type a title, press Escape, open the form again, or switch to another folder and back → the
+        text is still there; Cancel clears it. (unit; evidence/T-686.txt)
 Compat: —
 Source: D-11-021
 
@@ -500,12 +506,18 @@ User sees: a progress notice stepping through preparing the branch, writing a co
   opening the review.
 Rules: the flow keeps going while the user is busy in a different workspace and shows its progress
   on return; it stops with a specific message if the branch has to be synced first or changed while
-  the text was being written; the notice keeps its shape with long step names.
+  the text was being written; the notice keeps its shape with long step names. (Kolux RS, T-686: in
+  the right panel's automatic-flow line, Dismiss hides any line that is not still running, and
+  Retry on a line that stopped on a failure runs the automatic flow again, only if automatic pull
+  requests are still switched on for that folder, otherwise it says why nothing ran; a running line
+  has neither. A link that will not open shows the reason under the line.)
 Acceptance:
   - [ ] Edit a file and click create PR → commit, push and PR all happen and the notice ends in
         success.
   - [ ] Start it, switch workspace, then come back → it is either finished or showing its current
         step.
+  - [ ] A line that stopped on a failure offers Retry and Dismiss; a running line offers neither.
+        (unit; evidence/T-686.txt)
 Compat: —
 Source: D-11-022
 
@@ -577,10 +589,15 @@ User sees: checks grouped into failing, pending and passing; each opens into job
 Rules: long lists show the first 100 checks or jobs and the first 20 annotations, with a note about
   the rest; fix with AI lets the user pick the agent and sends the failing output, trimmed to its
   final part; a blocked check that needs action counts as failing, never passing, and neutral checks
-  are not counted as passed; folder workspaces get a separate PR checks panel.
+  are not counted as passed; folder workspaces get a separate PR checks panel. (Kolux RS, T-686: the
+  button words are Rerun failed jobs, Retry (a read failed), Refresh (read again) and Fix with AI;
+  Rerun waits while it is asking, reads the checks again afterwards, and shows a failure in a red
+  note; a link that will not open says so in that note; the check card has a Refresh button, and a
+  Retry beside a read error; its close button names the check for a screen reader; the PR row has
+  the collapsed stack map, GIT-034.)
 Acceptance:
   - [ ] Break a test and push → the failing job is listed; expand it → its log shows; fix with AI →
-        an agent opens with the failure.
+        an agent opens with the failure. (button words, Rerun and Refresh; evidence/T-686.txt)
   - [ ] A run with 150 jobs → 100 are listed with a note about the rest.
 Compat: keybinding id sidebar.checks.toggle, unbound by default.
 Source: D-11-029
@@ -594,10 +611,16 @@ User sees: comments grouped by file and thread, or laid out as a timeline; every
 Rules: deleting asks for confirmation; authors can be marked as bots so their comments sit apart,
   and that list is a setting; long threads show the first 100 comments with a note; blank comments
   cannot be sent, and text is trimmed first; times are compact, relative when recent, and an invalid
-  time shows nothing.
+  time shows nothing. (Kolux RS, T-686: every comment box says "Enter sends. Shift+Enter adds a new
+  line."; each comment or thread shows its own waiting state and error, so one card's action does
+  not block or blame another, and the errors clear when the folder or pull request changes; Reply
+  is disabled, with the reason as its tooltip and a hint, for a thread whose first comment GitHub
+  gave no id.)
 Acceptance:
   - [ ] Reply to a review thread and resolve it → GitHub shows the reply and the thread resolved.
   - [ ] Try to send a comment made only of spaces → nothing is sent.
+  - [ ] Make one comment's save fail → the error sits under that comment and the others still work.
+        (unit; evidence/T-686.txt)
 Compat: —
 Source: D-11-030
 
@@ -615,16 +638,17 @@ Acceptance:
 Compat: —
 Source: D-11-031
 
-### GIT-032 · PR merge conflicts are explained, with AI resolve
+### GIT-032 · PR merge conflicts are explained, with Resolve with AI
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens Checks for a PR that GitHub reports as conflicting.
 User sees: a conflict section stating that the conflicts must be fixed before checks run and the PR
-  can merge, listing the conflicting files, with an AI resolve action.
+  can merge, listing the conflicting files, with a Resolve with AI action (T-686: renamed from
+  "AI resolve"; a failed copy of the commands shows "Copy failed" on the button and a red note).
 Rules: when GitHub reports conflicts that do not happen locally, the panel says so and offers
   commands to copy that make GitHub recompute whether the PR can merge.
 Acceptance:
   - [ ] Open a PR that conflicts with its base → the files are listed; resolve with AI starts an
-        agent.
+        agent. (button name; evidence/T-686.txt)
   - [ ] A PR that GitHub flags as conflicting but that merges cleanly here → the panel says so and
         offers the commands.
 Compat: —
@@ -983,10 +1007,12 @@ User sees: a collapsible stack map of the PRs with each one's state; actions to 
   the stack, and to merge or queue everything up to a chosen PR after confirming.
 Rules: creating a stacked PR makes the current PR first and then records the stack, and a retry
   never duplicates anything; parent links that do not form one chain create nothing; merging up to a
-  PR is refused when a lower one cannot merge.
+  PR is refused when a lower one cannot merge. (Kolux RS, T-686: the map sits under the PR row in
+  the Checks tab, collapsed, and reads GitHub only once opened; it is per folder and pull request,
+  so an answer for another one is dropped; a link that will not open shows the reason in its note.)
 Acceptance:
   - [ ] Build two stacked branches and create their PRs → the map shows both; merge through the top
-        one → both merge in order.
+        one → both merge in order. (the map's place in the Checks tab; evidence/T-686.txt)
   - [ ] Make the lower PR unmergeable → merging through the top one is refused.
 Compat: —
 Source: D-11-034
