@@ -113,9 +113,10 @@ export default function Grid() {
                       const act = tabKeyAction(e.key, order, p.key);
                       if (!act) return;
                       e.preventDefault();
-                      const to = "focus" in act ? act.focus : act.activate;
-                      setFocused(to);
-                      if ("focus" in act) (e.currentTarget.parentElement?.querySelectorAll<HTMLElement>(':scope > [role="tab"]')[order.indexOf(to)])?.focus();
+                      // Manual activation: the arrows only move focus along the strip. Enter or Space brings the tab
+                      // forward, and then its pane takes the keyboard (TERM-012), which would end an arrow walk after one step.
+                      if ("activate" in act) setFocused(act.activate);
+                      else (e.currentTarget.parentElement?.querySelectorAll<HTMLElement>(':scope > [role="tab"]')[order.indexOf(act.focus)])?.focus();
                     }}
                     style={tabStyle(tabColors, p.key)}
                     data-drop={dropHint?.tab === p.key ? dropHint.half : undefined}
@@ -173,7 +174,7 @@ export default function Grid() {
                       tabLabel(p)
                     )}
                     {dirty[p.key] && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
-                    <button className="tab-x" aria-label={`Close ${tabName(p, titles)}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => closePane(p.key)}>
+                    <button className="tab-x" tabIndex={-1} aria-label={`Close ${tabName(p, titles)}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => closePane(p.key)}>
                       ×
                     </button>
                   </div>

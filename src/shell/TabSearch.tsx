@@ -35,7 +35,6 @@ export default function TabSearch({ tabs }: Props) {
   if (!open) return null;
   const go = (row: TabEntry | undefined) => {
     if (!row) return;
-    leaveTabSearch(from.current, true, () => null);
     setOpen(false);
     row.run();
   };

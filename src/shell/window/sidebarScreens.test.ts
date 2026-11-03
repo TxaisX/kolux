@@ -8,7 +8,7 @@ test("the project card follows the sidebar toggle on every screen except Agents 
 });
 
 test("picking a project from any other screen lands on Terminals", () => {
-  for (const s of SCREEN_IDS) expect(screenAfterPick(s), s).toBe(s === "agents" ? "agents" : "terminals");
+  for (const s of SCREEN_IDS) expect(screenAfterPick(s), s).toBe(["agents", "skills", "artifacts", "space"].includes(s) ? s : "terminals");
 });
 
 test("Sidebar.tsx gates the card and its grip on showsProjects, not on terminals", () => {

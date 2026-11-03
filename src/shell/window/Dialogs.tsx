@@ -199,9 +199,11 @@ export default function WindowDialogs() {
                 key={which}
                 role="menuitem"
                 className="menu-item"
-                disabled={disabled}
+                aria-disabled={disabled || undefined}
+                aria-label={why ? `${label}. ${why}` : undefined}
                 title={why}
                 onClick={() => {
+                  if (disabled) return;
                   setTabMenu(null);
                   void closeTab(keys);
                 }}

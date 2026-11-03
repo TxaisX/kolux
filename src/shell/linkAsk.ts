@@ -21,7 +21,7 @@ export const switchPatch = (on: boolean): Record<string, boolean> => answerPatch
  *  Shift (and Alt, which flips the saved destination) with the link modifier open at once. */
 export const needsAsk = (state: LinkState, named: boolean): boolean => !state.asked && !named;
 
-/** Escape, a click outside or the close button count as the system browser. */
+/** Escape or a click outside opens the waiting links in the system browser, once (nothing is saved). */
 export const dismissed: Dest = "system";
 
 /** The site the link points to, for the dialog (host only; a malformed address is shown as typed, cut short). */

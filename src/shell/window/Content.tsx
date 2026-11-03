@@ -142,7 +142,7 @@ export default function WindowContent() {
           )}
         </>
       )}
-      {/* UX lane A (shell.md row 6): a screen that fails to load or draw shows Try again here instead of taking the whole window down; a new screen starts clean. */}
+      {/* UX lane A (shell.md row 6): a screen that fails to draw shows Try again here instead of taking the whole window down; a new screen starts clean. A screen whose code failed to load stays failed until Reload (lazy() keeps the failed load). */}
       <ScreenBoundary key={screen}>
       {screen === "artifacts" && <ArtifactsPage onToast={setToast} />}
       {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}

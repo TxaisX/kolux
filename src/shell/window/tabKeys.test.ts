@@ -34,3 +34,9 @@ test("the grid draws the roving tabindex and the key handler, not tabIndex={0} o
   expect(grid).toContain("tabKeyAction(");
   expect(grid).not.toMatch(/role="tab"[\s\S]{0,120}tabIndex=\{0\}/);
 });
+
+test("the arrows only move focus; only Enter and Space bring a tab forward, and the close buttons are no tab stop", () => {
+  expect(grid).toContain('if ("activate" in act) setFocused(act.activate);');
+  expect(grid).not.toContain("const to = \"focus\" in act");
+  expect(grid).toContain('<button className="tab-x" tabIndex={-1}');
+});

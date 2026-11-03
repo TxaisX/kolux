@@ -6,5 +6,10 @@ import type { Screen } from "../../chrome/TopBar";
 /** Whether the project card (and its resize grip) is drawn on `screen` while the sidebar is open. */
 export const showsProjects = (screen: Screen): boolean => screen !== "agents";
 
-/** The screen a project picked in the card leaves you on: its workspace, so Terminals, from any other screen. */
-export const screenAfterPick = (screen: Screen): Screen => (screen === "agents" ? screen : "terminals");
+/** Screens that show the picked project themselves (Skills rescans its workspace, Space reads the active folder),
+ *  so picking a project there stays put, as it did before the card showed on every screen. */
+const STAYS: readonly Screen[] = ["agents", "skills", "artifacts", "space"];
+
+/** The screen a project picked in the card leaves you on: the same screen when it shows that project, else its
+ *  workspace, Terminals. */
+export const screenAfterPick = (screen: Screen): Screen => (STAYS.includes(screen) ? screen : "terminals");
