@@ -12,6 +12,7 @@ import { editChords, recordKey, recording, removeChord } from "../keys/record";
 import { createDoubleTap, recordDoubleTap } from "../keys/doubleTap";
 import { layoutNotes } from "../keys/helpNotes";
 import { Segmented } from "./GeneralPage";
+import { ResetButton } from "./SafetyRules";
 import { openShortcutsFileIn, shortcutsFileApps } from "./shortcutsFileOpen";
 import { AREAS, FILTERS, MAX_QUERY, filterRows, shortcutRows, type Filter, type Row } from "./shortcutRows";
 
@@ -162,9 +163,7 @@ export default function ShortcutsPage() {
                               <button className={`keys-chord${at === i ? " on" : ""}`} title="Click, then press the new keys" onClick={() => record(r.id, i)}>
                                 {at === i ? "Press keys..." : l}
                               </button>
-                              <button className="keys-x" aria-label={`Remove ${l}`} title="Remove this shortcut" onClick={() => remove(r, i)}>
-                                ×
-                              </button>
+                              <ResetButton label="×" className="keys-x" title="Remove this shortcut" ariaLabel={`Remove ${l}`} yes="Yes, remove" onReset={() => remove(r, i)} />
                             </span>
                           ))}
                           {at === r.labels.length && <span className="keys-chord on">Press keys...</span>}

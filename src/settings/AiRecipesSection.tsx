@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { RECIPE_ACTIONS, RECIPES_KEY, REPO_AI_KEY, migrateRecipes, recipeProblem, recipeVariables, recipesOf, repoAiMode, withRepoAi, type Recipe, type RecipeAction, type RepoAiMode } from "../scm/recipes";
 import { typedRepoId } from "../scm/repoId";
 import { SCM_AI_HIDDEN_KEY, aiControlsShown } from "../scm/rules";
+import { ResetButton } from "./SafetyRules";
 
 type Props = { settings: Record<string, unknown>; save: (patch: Record<string, unknown>) => unknown };
 const BLANK: Recipe = { agent: null, args: "", template: "" };
@@ -26,7 +27,7 @@ function RecipeEditor({ action, label, saved, onSave }: { action: RecipeAction; 
       </div>
       {problem && <p className="conn-detail" role="alert">{problem}</p>}
       <button type="button" className="btn" disabled={problem !== null} onClick={() => onSave(draft)}>Save</button>
-      {saved && <button type="button" className="btn" onClick={() => (setDraft(BLANK), onSave(null))}>Clear</button>}
+      {saved && <ResetButton label="Clear" ariaLabel={`Clear ${label} recipe`} yes="Yes, clear" onReset={() => (setDraft(BLANK), onSave(null))} />}
     </div>
   );
 }
