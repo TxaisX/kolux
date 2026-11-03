@@ -373,16 +373,34 @@ fn mask_word(w: &str) -> String {
     if t.is_empty() {
         return w.to_string();
     }
+    // ponytail: a 4 KB+ single word is no readable command; hidden whole, which keeps the `=` walk below cheap
+    if t.len() > 4096 {
+        return MASK.to_string();
+    }
     let at = w.find(t).unwrap_or(0);
-    let inner = if t.split_once("://").is_some_and(|(s, _)| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c))) {
-        mask_url(t)
-    } else if is_token(t) {
-        MASK.to_string()
-    } else if let Some((k, v)) = t.split_once('=') {
-        if secret_name(k.trim_start_matches("$env:")) { format!("{k}={MASK}") } else { format!("{k}={}", mask_word(v)) }
-    } else {
-        t.to_string()
-    };
+    let url = |t: &str| t.split_once("://").is_some_and(|(s, _)| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c)));
+    // `a=b=KEY=v`: each `name=` in turn, a loop (not recursion) so a word of a million `=` cannot overflow the stack
+    let mut inner = String::new();
+    let mut rest = t;
+    loop {
+        if url(rest) {
+            inner += &mask_url(rest);
+        } else if is_token(rest) {
+            inner += MASK;
+        } else if let Some((k, v)) = rest.split_once('=') {
+            inner += k;
+            inner += "=";
+            if secret_name(var_name(k)) {
+                inner += MASK;
+            } else {
+                rest = v;
+                continue;
+            }
+        } else {
+            inner += rest;
+        }
+        break;
+    }
     format!("{}{inner}{}", &w[..at], &w[at + t.len()..])
 }
 
@@ -396,17 +414,28 @@ fn secret_name(n: &str) -> bool {
 /// A flag name (dashes trimmed) whose value is a credential. curl's `-u`/`-b`/`--user` only count after
 /// `curl` (case kept), so `pip install -U x` and `git checkout -b x` stay readable.
 fn secret_flag(f: &str, curl: bool) -> bool {
-    secret_name(f) || curl && matches!(f, "u" | "b" | "user")
+    secret_name(f) || curl && matches!(f, "u" | "b" | "user" | "U" | "proxy-user")
+}
+
+/// A shell variable's name without its `$` / `$env:` (any case): `$Env:MY_KEY` -> `MY_KEY`.
+fn var_name(a: &str) -> &str {
+    let a = a.trim_start_matches('$');
+    match a.get(..4) {
+        Some(p) if p.eq_ignore_ascii_case("env:") => &a[4..],
+        _ => a,
+    }
 }
 
 fn quote(c: char) -> bool {
     c == '"' || c == '\''
 }
 
-/// Whether word `a` ends a span closed by `c` (trailing `)`, `;`, `,` and, for a quote, `}` ignored).
+/// Whether word `a` ends a span closed by `c` (trailing `)`, `;`, `,` and, for a quote, `}` ignored). An escaped
+/// quote (`\"` inside a double-quoted JSON body) does not close it.
 fn closes(a: &str, c: char) -> bool {
+    let end = |s: &str| s.ends_with(c) && !s[..s.len() - c.len_utf8()].ends_with('\\');
     let t = a.trim_end_matches([')', ';', ',']);
-    t.ends_with(c) || c != '}' && t.trim_end_matches('}').ends_with(c)
+    end(t) || c != '}' && end(t.trim_end_matches('}'))
 }
 
 /// The closer of a span opened by word `a`, unless `a` already closes it.
@@ -423,6 +452,7 @@ struct Words {
     hide_next: bool,
     hide_rest: bool,
     curl: bool,
+    named: bool,        // the last word was a secret name, so a lone `=` after it assigns a secret
     span: Option<char>, // hide words until one ends with this character
 }
 
@@ -433,6 +463,11 @@ impl Words {
                 self.span = None;
             }
             return MASK.to_string();
+        }
+        // `$env:DB_PASSWORD = "v"`, `$token = 'v'`: the word after the `=` is the value
+        if std::mem::replace(&mut self.named, secret_name(var_name(a))) && a == "=" {
+            self.hide_next = true;
+            return a.to_string();
         }
         let out = self.word(a);
         // a new command starts: curl's -u / -b are no longer curl's
@@ -452,6 +487,8 @@ impl Words {
         if std::mem::take(&mut self.hide_next) {
             // `Bearer x`: the scheme and the token after it both go
             self.hide_next = matches!(bare.to_ascii_lowercase().as_str(), "bearer" | "basic" | "token" | "digest");
+            // a quoted value (`--password "a b"`) is hidden up to its closing quote
+            self.span = opens(a, None);
             return MASK.to_string();
         }
         let low = a.to_ascii_lowercase();
@@ -459,7 +496,8 @@ impl Words {
             return MASK.to_string();
         }
         // a JSON body ('{"password": "v"}', however split) or a PowerShell table (@{ Authorization = "v" }): hidden whole
-        if bare.starts_with('{') || bare.starts_with("@{") {
+        let open = bare.trim_start_matches('(');
+        if open.starts_with('{') || open.starts_with("@{") {
             self.span = opens(a, Some('}'));
             return MASK.to_string();
         }
@@ -471,7 +509,7 @@ impl Words {
         }
         // a header word such as "X-Api-Key:", "Cookie: a=1; sid=v" or "Token:abc": the value is hidden
         if let Some((name, value)) = a.split_once(':') {
-            let n = name.trim_matches(quote).to_ascii_lowercase();
+            let n = name.trim_matches(|c| quote(c) || c == '\\').to_ascii_lowercase();
             let header = !name.contains(['/', '{', '=']) && (secret_name(&n) || n == "cookie");
             // a permission rule's wildcard ("token:*)") is not a value
             let wildcard = !value.is_empty() && value.chars().all(|c| matches!(c, '*' | ')'));
@@ -491,24 +529,25 @@ impl Words {
         if let Some(f) = a.strip_prefix('-') {
             let f = f.trim_start_matches('-');
             let dashes = &a[..a.len() - f.len()];
+            // curl's joined `-ubob:v` / `-bsid=v` (before the `=` split, which would read `sid` as the flag)
+            if self.curl && !a.starts_with("--") && a.len() > 2 && matches!(a.get(..2), Some("-u" | "-b" | "-U")) {
+                return format!("{}{MASK}", &a[..2]);
+            }
             if let Some((name, value)) = f.split_once('=') {
                 // `--key=v`, `--user=bob:v`
                 if secret_flag(name, self.curl) {
                     return format!("{dashes}{name}={MASK}");
                 }
-                // `--header="X-Api-Key: v"`, `--data='{"pin":"v"}'`: the value is read like a word of its own
-                if !value.is_empty() {
+                // `--header="X-Api-Key: v"`, `--data='{"pin":"v"}'`: the value is read like a word of its own.
+                // Not when it is itself a flag, so `-=-=-=…` cannot recurse once per pair.
+                if !value.is_empty() && !value.starts_with('-') {
                     return format!("{dashes}{name}={}", self.word(value));
                 }
             }
-            // curl's joined `-ubob:v` / `-bsid=v`
-            if self.curl && !a.starts_with("--") && a.len() > 2 && matches!(a.get(..2), Some("-u" | "-b")) {
-                return format!("{}{MASK}", &a[..2]);
-            }
         }
-        // `TOKEN="a b"`, `$env:MY_KEY='v w'`: a quoted secret value is hidden up to its closing quote
+        // `TOKEN="a b"`, `$Env:MY_KEY='v w'`: a quoted secret value is hidden up to its closing quote
         if let Some((k, v)) = a.split_once('=') {
-            if secret_name(k.trim_start_matches("$env:")) {
+            if secret_name(var_name(k)) {
                 self.span = opens(v, None);
                 return format!("{k}={MASK}");
             }
@@ -530,9 +569,20 @@ fn mask_words<'a>(words: impl Iterator<Item = &'a str>) -> Vec<String> {
 }
 
 /// An MCP server's command and args as one line: an arg may itself hold a whole command line (`-c "npx s --token v"`),
-/// and curl's state carries from the command into its args.
+/// and curl's state carries from the command into its args. An arg is one value however many words it holds
+/// (`"correct horse v"`, `"Cookie: a=1; sid=v"`), so once a word in it is hidden, the rest of that arg goes too.
 fn mask_command(cmd: &str, args: &[Value]) -> String {
-    mask_words(std::iter::once(cmd).chain(args.iter().filter_map(Value::as_str)).flat_map(str::split_whitespace)).join(" ")
+    let mut st = Words::default();
+    let mut out = Vec::new();
+    for arg in std::iter::once(cmd).chain(args.iter().filter_map(Value::as_str)) {
+        let mut hidden = false;
+        for w in arg.split_whitespace() {
+            let m = if hidden { MASK.to_string() } else { st.step(w) };
+            hidden |= m != w || st.hide_next || st.hide_rest || st.span.is_some();
+            out.push(m);
+        }
+    }
+    out.join(" ")
 }
 
 /// Free text (a hook command, a status line, a permission rule): masked word by word.
@@ -1285,16 +1335,28 @@ mod tests {
             r#"API_TOKEN="x Hunter2xq" node s.js"#,
             "Connect-Thing -Key Hunter2xq",
             "gpg --passphrase Hunter2xq -d f",
+            "curl -bsid=Hunter2xq h",
+            "curl -ubob:pa=Hunter2xq h",
+            "curl --proxy-user bob:Hunter2xq h",
+            r#"tool --password "a Hunter2xq""#,
+            r#"$env:DB_PASSWORD = "Hunter2xq""#,
+            "$token = 'Hunter2xq'",
+            "(@{ key = 'Hunter2xq' } | ConvertTo-Json)",
+            "$Env:MY_KEY=Hunter2xq node s.js",
+            r#"curl -d "{\"user\": \"bob\", \"key\": \"Hunter2xq\"}" h"#,
         ] {
             let out = mask_text(line);
             assert!(!out.contains(S), "{line} -> {out}");
         }
         // an MCP arg that is itself a command line, and curl's -u carried from the command into the args
-        for (cmd, args) in [("sh", vec!["-c", "npx srv --token Hunter2xq"]), ("sh", vec!["-c", "npx srv https://u:Hunter2xq@h.example"]), ("curl", vec!["-u", "bob:Hunter2xq", "https://h.example"])] {
+        for (cmd, args) in [("sh", vec!["-c", "npx srv --token Hunter2xq"]), ("sh", vec!["-c", "npx srv https://u:Hunter2xq@h.example"]), ("curl", vec!["-u", "bob:Hunter2xq", "https://h.example"]), ("srv", vec!["--password", "correct horse Hunter2xq"]), ("curl", vec!["-H", "Cookie: a=1; sid=Hunter2xq", "h"])] {
             let args: Vec<Value> = args.into_iter().map(Value::from).collect();
             let out = mask_command(cmd, &args);
             assert!(!out.contains(S), "{cmd} {args:?} -> {out}");
         }
+        // a hook word built to recurse deep (`-=-=-=…`, up to the 1 MB file cap) cannot overflow the stack
+        let deep = "-=".repeat(500_000);
+        assert!(!mask_text(&deep).is_empty());
         // a new command after curl gets its own -u / -b back, and a table ends with its brace
         assert_eq!(mask_text("curl https://h.example && git checkout -b feature"), "curl https://h.example && git checkout -b feature");
         assert!(mask_text("pwsh -c @{ a = 1 } ; echo done").ends_with("; echo done"));
