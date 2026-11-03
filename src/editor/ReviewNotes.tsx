@@ -1,7 +1,7 @@
 // GIT-042: the note popover beside the selection and the tray that keeps the notes until they are
 // copied as one Markdown block. EDIT-020: or sent to an agent running in this worktree, picked
 // from the Send menu.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMenuKeys } from "./menuKeys";
 import { Close } from "../chrome/icons";
 import { baseName } from "./buffers";
@@ -36,6 +36,15 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
   const [open, setOpen] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [sure, setSure] = useState(false); // the X asks once before it drops every note
+  const clearBtn = useRef<HTMLButtonElement>(null);
+  // The question belongs to the notes it was asked about: once they are all gone it must not come back with the next one.
+  useEffect(() => {
+    if (notes.length === 0) setSure(false);
+  }, [notes.length]);
+  const keep = () => {
+    setSure(false);
+    clearBtn.current?.focus(); // the X that asked takes focus back
+  };
   const { box, remember } = useMenuKeys(menu, () => onMenu(false));
   // A send or a start that throws says so in the tray instead of leaving an unhandled rejection.
   const go = async (run: () => Promise<string | null>) => {
@@ -106,15 +115,23 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
             <button className="btn" data-notes-copy onClick={() => void copy()}>
               Copy as Markdown
             </button>
-            <button className="ib" title="Clear the notes" aria-label="Clear all notes" onClick={() => setSure(true)}>
+            <button ref={clearBtn} className="ib" title="Clear the notes" aria-label="Clear all notes" onClick={() => setSure(true)}>
               <Close size={12} />
             </button>
           </div>
           {sure && (
-            <div className="sb-hint" role="alert">
+            <div
+              className="sb-hint"
+              role="alert"
+              onKeyDown={(e) => {
+                if (e.key !== "Escape") return;
+                e.stopPropagation();
+                keep();
+              }}
+            >
               Clear all {notes.length === 1 ? "1 note" : `${notes.length} notes`}? This cannot be undone.
               <span className="btn-row">
-                <button className="btn" autoFocus onClick={() => setSure(false)}>
+                <button className="btn" autoFocus onClick={keep}>
                   Keep them
                 </button>
                 <button

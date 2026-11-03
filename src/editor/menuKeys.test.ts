@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { wireMenuKeys } from "./menuKeys";
+import { restoreIfLost, wireMenuKeys } from "./menuKeys";
 
 const key = (name: string) => Object.assign(new Event("keydown", { cancelable: true }), { key: name });
 
@@ -58,5 +58,24 @@ describe("wireMenuKeys", () => {
     wireMenuKeys(win, { rows: () => [], at: () => -1, inside: () => true, close: () => {}, restore: () => {} });
     expect(calls.length).toBe(2);
     expect(calls.every((c) => c.type === "keydown" && c.capture === true)).toBe(true);
+  });
+});
+
+describe("restoreIfLost", () => {
+  const body = {};
+  it("gives focus back to the opener once focus has dropped to the body or nowhere (deferred)", async () => {
+    for (const active of [body, null, undefined]) {
+      const restore = vi.fn();
+      restoreIfLost({ activeElement: active }, body, restore);
+      expect(restore, "deferred, not during the close").not.toHaveBeenCalled();
+      await Promise.resolve();
+      expect(restore).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("leaves focus alone when an action already put it somewhere, such as a dialog it opened", async () => {
+    const restore = vi.fn();
+    restoreIfLost({ activeElement: {} }, body, restore);
+    await Promise.resolve();
+    expect(restore).not.toHaveBeenCalled();
   });
 });

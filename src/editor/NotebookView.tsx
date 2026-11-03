@@ -8,7 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import Ask from "../chrome/Ask";
 import { subscribe, textOf } from "./buffers";
 import { runCell, TRUST_BODY, TRUST_TITLE } from "./notebookRun";
-import { insertCell, kindOf, limited, moveCell, outputText, parseNotebook, removeCell, serialize, setKind, sourceOf, withSource, type CellKind, type Notebook } from "./notebook";
+import { insertCell, kindOf, limited, moveCell, outputText, parseNotebook, removeCell, serialize, setKind, sourceOf, withSource, type Cell, type CellKind, type Notebook } from "./notebook";
 
 type Props = { path: string; loaded: number; hidden?: boolean; readOnly?: boolean; onText: (text: string) => void };
 
@@ -65,12 +65,21 @@ function CellBox({ text, kind, readOnly, onEdit }: { text: string; kind: CellKin
   );
 }
 
+/** What a Remove asked about: the cell's place, text and kind when the question was put. */
+export type Removal = { i: number; src: string; kind: CellKind };
+/** The note shown when the notebook moved under an open Remove question. */
+export const REMOVE_STALE = "The notebook changed; nothing was removed.";
+/** Whether the cell now at `ask.i` is still the one the question was about (an agent may have rewritten the file). */
+export const sameCell = (c: Cell | undefined, ask: Removal): boolean => !!c && kindOf(c) === ask.kind && sourceOf(c) === ask.src;
+/** A cell with text or saved outputs asks before it goes; an empty one goes at once. */
+export const needsAsk = (c: Cell): boolean => sourceOf(c).trim() !== "" || (Array.isArray(c.outputs) && c.outputs.length > 0);
+
 export default function NotebookView({ path, loaded, hidden = false, readOnly = false, onText }: Props) {
   const [text, setText] = useState(() => textOf(path) ?? "");
   const [asking, setAsking] = useState<((yes: boolean) => void) | null>(null);
   const [running, setRunning] = useState<number | null>(null);
   const [problem, setProblem] = useState("");
-  const [removing, setRemoving] = useState<number | null>(null); // the cell a Remove is waiting on a yes for
+  const [removing, setRemoving] = useState<Removal | null>(null); // the cell a Remove is waiting on a yes for
   useEffect(() => {
     const read = () => setText(textOf(path) ?? "");
     read();
@@ -110,8 +119,8 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
       setRunning(null);
     }
   };
-  // A cell with something in it asks first; an empty one goes at once.
-  const remove = (i: number) => (sourceOf(nb.cells[i]).trim() === "" ? change(removeCell(nb, i)) : setRemoving(i));
+  // A cell with something in it (text or saved outputs) asks first; an empty one goes at once.
+  const remove = (i: number) => (needsAsk(nb.cells[i]) ? setRemoving({ i, src: sourceOf(nb.cells[i]), kind: kindOf(nb.cells[i]) }) : change(removeCell(nb, i)));
   const addRow = (at: number) =>
     readOnly ? null : (
       <div className="nb-add">
@@ -147,13 +156,15 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
           }}
         />
       )}
-      {removing !== null && removing < nb.cells.length && (
+      {removing !== null && (
         <Ask
-          title={`Remove cell ${removing + 1}?`}
+          title={`Remove cell ${removing.i + 1}?`}
           body="The cell and its text are taken out of the notebook."
           confirm="Remove"
           onConfirm={() => {
-            change(removeCell(nb, removing));
+            // the notebook may have changed while the question was open: remove only the cell that was asked about
+            if (sameCell(nb.cells[removing.i], removing)) change(removeCell(nb, removing.i));
+            else setProblem(REMOVE_STALE);
             setRemoving(null);
           }}
           onCancel={() => setRemoving(null)}
