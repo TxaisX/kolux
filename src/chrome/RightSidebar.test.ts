@@ -22,7 +22,8 @@ test("VIEW-056: a saved width wider than 500 is honoured; the minimum and the wo
   expect(clampWidth(640, 1916, 297)).toBe(640);
   expect(clampWidth(100, 1916, 297)).toBe(RIGHT_MIN);
   expect(clampWidth(1400, 1416, 297)).toBe(1416 - 297 - 400);
-  expect(clampWidth(500, 700, 297)).toBe(RIGHT_MIN);
+  expect(clampWidth(500, 700, 297)).toBe(300); // T-719: under 900 px the left sidebar is stepped aside, so it doesn't count
+  expect(clampWidth(500, 900, 297)).toBe(RIGHT_MIN);
 });
 
 test("VIEW-080: a saved Agents tab comes back as Agents", () => {
