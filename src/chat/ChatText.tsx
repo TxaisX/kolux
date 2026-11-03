@@ -6,8 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openablePath, partsOf, webClick, type LinkTarget } from "./chatLinks";
 import { menuStep } from "../terminal/LinkActionMenu";
 import { watchEscape } from "../switcher/accounts";
-import { restoreFocus } from "../shell/paletteCaps";
-import { outside } from "./ux";
+import { outside, restoreWhenDismissed } from "./ux";
 
 /** What the chat gives its text so a click can open things. `onOpenLink`: Kolux's own viewer for a web page (none: every
  * web link goes to the system browser); `onOpenFile`: the editor at a line (none: the system opens the file). */
@@ -86,8 +85,11 @@ export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: {
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
+  const picked = useRef(false);
   useEffect(() => {
+    // Read the opener before the first choice takes focus (autoFocus would run first and be mistaken for it).
     const prev = document.activeElement as HTMLElement | null;
+    box.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const offEsc = watchEscape(document, () => close.current());
     const onDown = (e: Event) => {
       if (outside(box.current, e.target)) close.current();
@@ -96,9 +98,13 @@ export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: {
     return () => {
       offEsc();
       document.removeEventListener("pointerdown", onDown, true);
-      restoreFocus(prev, (sel) => document.querySelector<HTMLElement>(sel));
+      restoreWhenDismissed(!picked.current, prev, (sel) => document.querySelector<HTMLElement>(sel));
     };
   }, []);
+  const pick = (where: "kolux" | "system") => {
+    picked.current = true; // a pick opens something else; it keeps the focus it moved
+    onPick(where);
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
     const next = menuStep(items.length, items.indexOf(document.activeElement as HTMLElement), e.key);
@@ -109,8 +115,8 @@ export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: {
   return (
     <div ref={box} className="chat-browser-menu" role="menu" aria-label="Open link in" style={{ left: Math.max(8, at.x), top: Math.max(8, at.y) }} onKeyDown={onKeyDown}>
       <div className="chat-browser-url" title={url}>{url}</div>
-      <button type="button" role="menuitem" autoFocus onClick={() => onPick("kolux")}>Open in Kolux</button>
-      <button type="button" role="menuitem" onClick={() => onPick("system")}>Open in your browser</button>
+      <button type="button" role="menuitem" onClick={() => pick("kolux")}>Open in Kolux</button>
+      <button type="button" role="menuitem" onClick={() => pick("system")}>Open in your browser</button>
       <button type="button" role="menuitem" onClick={onClose}>Cancel</button>
     </div>
   );

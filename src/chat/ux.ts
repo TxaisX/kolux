@@ -50,17 +50,29 @@ export function useCopy(idle: string): [string, (text: string) => void] {
   return [copyLabel(outcome, idle), copy];
 }
 
-/** While `active`: Escape calls `onClose`, and when it ends focus goes back to where it was. */
-export function useDismiss(active: boolean, onClose: () => void) {
+type Focusable = Parameters<typeof restoreFocus>[0];
+
+/** Give focus back to the opener, one microtask later (after the unmounting commit settles), but only when the
+ *  popup was dismissed. A pick that opens something else (a browser pane) must keep the focus it moved. */
+export function restoreWhenDismissed(dismissed: boolean, prev: Focusable, find: (selector: string) => NonNullable<Focusable> | null): void {
+  if (!dismissed) return;
+  queueMicrotask(() => void restoreFocus(prev, find));
+}
+
+/** While `active`: Escape calls `onClose`, and when it ends focus goes back to where it was. The opener is read in
+ *  this effect, which runs before anything has moved focus: `focusFirst` (a selector) is what takes focus here, so no
+ *  autoFocus on the popup (React applies that during commit, before this effect, and it would be mistaken for the opener). */
+export function useDismiss(active: boolean, onClose: () => void, focusFirst?: string) {
   const close = useRef(onClose);
   close.current = onClose;
   useEffect(() => {
     if (!active) return;
     const prev = document.activeElement as HTMLElement | null;
+    if (focusFirst) document.querySelector<HTMLElement>(focusFirst)?.focus();
     const off = watchEscape(window, () => close.current());
     return () => {
       off();
-      restoreFocus(prev, (sel) => document.querySelector<HTMLElement>(sel));
+      restoreWhenDismissed(true, prev, (sel) => document.querySelector<HTMLElement>(sel));
     };
-  }, [active]);
+  }, [active, focusFirst]);
 }

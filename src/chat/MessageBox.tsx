@@ -112,7 +112,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
   // --- CHAT-021: attachments ---
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [preview, setPreview] = useState<Attachment | null>(null);
-  useDismiss(!!preview?.thumb, () => setPreview(null));
+  useDismiss(!!preview?.thumb, () => setPreview(null), ".chat-full");
   const [broken, setBroken] = useState<ReadonlySet<string>>(() => new Set());
   const [local, setLocal] = useState<string | null>(null);
   const thumbs = useRef<Set<string>>(new Set());
@@ -438,7 +438,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
         {mode === "stop" ? "Stop" : "Send"}
       </button>
       {preview?.thumb && (
-        <button type="button" className="chat-full" aria-label="Close preview" autoFocus onClick={() => setPreview(null)}>
+        <button type="button" className="chat-full" aria-label="Close preview" onClick={() => setPreview(null)}>
           <img src={preview.thumb} alt={preview.name} />
         </button>
       )}

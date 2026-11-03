@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { POLL_MS, copyLabel, copyText, outside, pollMs, selfClearing } from "./ux";
+import { POLL_MS, copyLabel, copyText, outside, pollMs, restoreWhenDismissed, selfClearing } from "./ux";
 
 describe("copy", () => {
   it("reports copied when the clipboard takes the text", async () => {
@@ -33,5 +33,36 @@ describe("polling and notes", () => {
     expect(outside(box, inner)).toBe(false);
     expect(outside(box, {} as Node)).toBe(true);
     expect(outside(null, inner)).toBe(false);
+  });
+});
+
+describe("giving focus back to the opener", () => {
+  const opener = () => {
+    const el = { isConnected: true, focus: () => void (el.focused = true), focused: false };
+    return el;
+  };
+  it("focuses the opener (not a fallback) one microtask after a dismissal", async () => {
+    const prev = opener();
+    let looked = false;
+    restoreWhenDismissed(true, prev, () => ((looked = true), null));
+    expect(prev.focused).toBe(false); // deferred, not synchronous
+    await Promise.resolve();
+    expect(prev.focused).toBe(true);
+    expect(looked).toBe(false);
+  });
+  it("leaves focus alone after a pick that opened something else", async () => {
+    const prev = opener();
+    let looked = false;
+    restoreWhenDismissed(false, prev, () => ((looked = true), null));
+    await Promise.resolve();
+    expect(prev.focused).toBe(false);
+    expect(looked).toBe(false);
+  });
+  it("falls back when the opener has left the page", async () => {
+    const prev = { ...opener(), isConnected: false };
+    const fallback = opener();
+    restoreWhenDismissed(true, prev, () => fallback);
+    await Promise.resolve();
+    expect(fallback.focused).toBe(true);
   });
 });

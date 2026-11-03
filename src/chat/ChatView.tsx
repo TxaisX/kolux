@@ -19,6 +19,7 @@ import { FIRST_LINES, hiddenCount, keepPosition, loadLabel, visibleRows } from "
 import { chatZoom, setChatZoom, stepZoom, zoomChord, zoomLabel } from "./zoom";
 import { EARLIER_FAILED_NOTE, NOTE_MS, ZOOM_SHOWN_MS, outside, pollMs, selfClearing, useCopy, useDismiss } from "./ux";
 import { draftOf, forwardsToBox, keepDraft, nearBottom } from "./composer";
+import { watchEscape } from "../switcher/accounts";
 import { sessionLabel } from "../agents/rail";
 import { NO_TERMINAL_NOTE, boxSend, hearStates, holdReading, stopPane, writeTerminal } from "./send";
 import { answerCard, askOf, cardOf, dismissAsk, hearAsks, subscribeAsk } from "./ask";
@@ -283,7 +284,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   }, [views]);
   const shownModel = useMemo(() => (agent ? readModel(agent, items) : null), [agent, items]);
   const [full, setFull] = useState<string | null>(null);
-  useDismiss(full !== null, () => setFull(null));
+  useDismiss(full !== null, () => setFull(null), ".chat-full");
   // STAT-053: Thought rows start folded; the toolbar opens or folds them all.
   const [thoughts, setThoughts] = useState<Set<string>>(() => new Set());
   const thoughtIds = idsOf(items);
@@ -336,9 +337,10 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
       )}
       {menu && <BrowserChoice url={menu.url} at={menu.at} onPick={pickBrowser} onClose={() => setMenu(null)} />}
       <Composer ref={box} paneKey={pane.key} live={terminalOf(key) !== undefined} blocked={held} note={note ?? undefined} onSend={send} working={open} onStop={stop} agent={agent} cwd={pane.cwd} shownModel={shownModel} onTerminal={onTerminal} />
-      {zoomShown && <div className="chat-zoom" role="status">{zoomLabel(zoom)}</div>}
+      {/* The live region stays mounted and only its text changes: a region created with its text is skipped by screen readers. */}
+      <div className="chat-zoom" role="status" hidden={!zoomShown}>{zoomShown ? zoomLabel(zoom) : ""}</div>
       {full && (
-        <button type="button" className="chat-full" aria-label="Close image" autoFocus onClick={() => setFull(null)}>
+        <button type="button" className="chat-full" aria-label="Close image" onClick={() => setFull(null)}>
           <img src={full} alt="Attached" />
         </button>
       )}
@@ -550,16 +552,15 @@ export function HandOff({ targets, onPick, label = "Send result to…", what = "
     const onDown = (e: Event) => {
       if (outside(box.current, e.target)) box.current?.removeAttribute("open");
     };
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+    // Capture phase and stopped, so Escape pressed while the menu is open never reaches a terminal or interrupts the agent.
+    const offEsc = watchEscape(document, () => {
       box.current?.removeAttribute("open");
       box.current?.querySelector("summary")?.focus();
-    };
+    });
     document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
+      offEsc();
     };
   }, [isOpen]);
   return (

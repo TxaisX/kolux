@@ -28,6 +28,7 @@ export default function RecoveryMount() {
   }, []);
 
   useHeartbeat();
+  useEffect(() => setGerr(""), [g]); // an old failure line does not outlive the prompt it was about
 
   // T-286-b (APP-017): after the computer wakes the page replays held updates and repaints.
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function RecoveryMount() {
             <button className="btn" autoFocus={stay} onClick={() => void invoke("graphics_choose", { stay: true }).catch(() => {}).then(() => setG(null))}>
               Stay in safe graphics
             </button>
-            <button className="btn" autoFocus={!stay} onClick={() => void invoke("graphics_choose", { stay: false }).catch((e) => setGerr(`Could not switch back to hardware graphics: ${String(e)}`))}>
+            <button className="btn" autoFocus={!stay} onClick={() => (setGerr(""), void invoke("graphics_choose", { stay: false }).catch((e) => setGerr(`Could not switch back to hardware graphics: ${String(e)}`)))}>
               Try hardware again
             </button>
           </>

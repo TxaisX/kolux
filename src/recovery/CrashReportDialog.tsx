@@ -4,6 +4,7 @@
 // opens the pre-filled issue in the browser. Kolux sends nothing itself.
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { watchEscape } from "../switcher/accounts";
 import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
 import { dialogLead, issueUrl, openFromHelp, openPending, type Crash, type Dialog } from "./model";
 
@@ -49,11 +50,7 @@ export default function CrashReportDialog() {
   // Escape closes the report from anywhere, not only after clicking inside it
   useEffect(() => {
     if (!d) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setD(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return watchEscape(window, () => setD(null));
   }, [d]);
 
   useEffect(() => {
