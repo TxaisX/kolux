@@ -1,6 +1,6 @@
 T-708 / DT-C144: lane D (72): reachability matrix, every screen, sheet, dialog and dock has a way in and a way out
 Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md line 109 (the sessions proof dir, not in this repo).
-Built on main d552a974, branch s-72/reach, main 32695d1e merged in, 2026-11-03.
+Built on main d552a974, branch s-72/reach, main 45146f78 merged in, 2026-11-03.
 
 SWEEP: every element with role="dialog" or role="alertdialog" in src/**/*.tsx (67), every Screen id (9), every
 hand-built palette row against the command list. Ways in were checked from the default layout; ways out by its
@@ -17,7 +17,8 @@ FOUND AND FIXED
   [wrong] no way in from the palette (3): Agents, Board, Terminals (switcher only). Now Show rows, like Artifacts
           and Skills.
   [polish] keyless second palette rows (2): New terminal tab and Search open tabs had a hand-built Quick actions row
-          beside their own Commands row; both removed, the rows left show Ctrl+T and Ctrl+Shift+K.
+          beside their own Commands row; both removed, the rows left show Ctrl+T and Ctrl+Shift+K. Search open tabs'
+          palette row opens the box from any screen, as the removed row did (its key works only where tabs are).
   No item lacked a visible way out.
 
 EXEMPT (in the table with the reason): the chat's permission and question cards, the graphics fallback, the
@@ -26,17 +27,20 @@ Resource Manager's three inner panels, the docked status-hooks tip.
 NOT DONE: Settings and the palette do not close on their own shortcut pressed again (out of scope, not verified).
 PENDING: the fixes are unit-proven; a live check in the app (CDP, isolated worktree) has not been run.
 
-TEST (src/chrome/reach.test.ts, table-driven, 67 dialog rows: 36 tag, 5 hook, 8 inner, 3 parent, 1 wrapper,
+TEST (src/chrome/reach.test.ts, table-driven, 67 dialog rows: 35 tag, 6 hook, 8 inner, 3 parent, 1 wrapper,
 7 window, 7 exempt). A "tag" row is checked against the dialog's own onKeyDown (or the function it names) and
-focus inside it (autoFocus, .focus(), or a ref inside it that is focused), not against the whole file.
+focus taken inside it (autoFocus, .focus() in its children, or a ref inside it that is focused; focus handed
+back by its own Escape handler does not count), not against the whole file. Mutation check: removing either
+browser ask's autoFocus={focused}, Scan for repos' autoFocus, or the any-screen Search open tabs run fails it.
   T-708: every Screen id has a palette row of its own, the switcher's four too
   T-708: no hand-built palette row repeats a command; its Commands row, with its keys, is the one
+  T-708: the browser's two asks take focus only in the focused pane (BROW-001)
   T-708: every role=dialog / alertdialog element is in the table and closes on Escape the way it says
 TDD: with main's versions of the changed source files the new tests fail (3 failed, 5 passed: the 9 dialogs,
 the 3 screens, the duplicate rows); with the fixes they pass.
-  pnpm vitest run src/chrome/reach.test.ts src/shell/findTab.test.ts: 2 files, 14 tests passed
+  pnpm vitest run src/chrome/reach.test.ts src/shell/findTab.test.ts: 2 files, 15 tests passed
 
 TOTALS: VITEST_MAX_WORKERS=2 pnpm vitest run src/chrome src/terminal src/projects src/scm src/settings src/browser
-src/shell src/keys: 402 files, 2486 tests, all passed. pnpm tsc --noEmit: exit 0. firewall-check -Baseline: 0 new.
-BUNDLE: first load 1,488,992 bytes vs main 32695d1e 1,489,172 (-180 B; ceiling 1,490,000). The new code in the
+src/shell src/keys src/lazy: 404 files, 2492 tests, all passed. pnpm tsc --noEmit: exit 0. firewall-check -Baseline: 0 new.
+BUNDLE: first load 1,489,221 bytes vs main 45146f78 1,489,321 (-100 B; ceiling 1,490,000). The new code in the
 first load is paid for by the two removed duplicate rows and a shorter screen-row list.
