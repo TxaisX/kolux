@@ -1,10 +1,10 @@
 /* TERM-059 / TERM-060 / TERM-061: the floating workspace panel and its button.
-   T-694: both sit under a modal's .scrim (50), so a dialog mounted at the window root is never covered; still over pages and sheets. */
-.float-btn { position: fixed; z-index: 48; width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); touch-action: none; }
+   T-694, T-698: on the z-index scale in styles.css, over sheets and under every page overlay, menu, pop and dialog. */
+.float-btn { position: fixed; z-index: calc(var(--z-float) + 1); width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--fg); cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); touch-action: none; }
 .float-btn:hover { border-color: var(--line-focus); }
 .float-btn[aria-pressed="true"] { border-color: var(--line-focus); background: var(--row-selected); }
 .float-btn .dot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--warn); border: 1px solid var(--surface); }
-.float-panel { position: fixed; z-index: 47; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--pane-bg); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); overflow: hidden; }
+.float-panel { position: fixed; z-index: var(--z-float); display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--pane-bg); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); overflow: hidden; }
 .float-panel[hidden] { display: none; }
 .float-panel.max { border-radius: 0; }
 .float-panel .bar { flex: none; display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 6px 0 4px; background: var(--surface); border-bottom: 1px solid var(--line-subtle); cursor: grab; user-select: none; }

@@ -20,7 +20,7 @@ html[data-pane-density="compact"] .pane-head .title { font-weight: 500; }
 .confirm-clear .confirm-q { color: var(--fg-muted); font-size: 12px; }
 
 /* VIEW-106: the About panel. */
-.about-panel { top: 20%; left: 50%; transform: translateX(-50%); z-index: 60; min-width: 320px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.about-panel { top: 20%; left: 50%; transform: translateX(-50%); z-index: var(--z-top); min-width: 320px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .about-rows { margin: 0; display: grid; gap: 6px; }
 .about-row { display: grid; grid-template-columns: 11rem 1fr; gap: 10px; font-size: 12px; }
 .about-row dt { color: var(--fg-muted); }

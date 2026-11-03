@@ -1,24 +1,79 @@
-// T-694 (F13, F16, F17; DT-C130): the stylesheet rules the Wave 3 live run found broken. The floating panel and its
-// button sit under a modal's scrim, so a dialog's Cancel is never covered, but still over the plan sheet and pages; the
-// chooser footer's buttons wrap in a narrow pane instead of running past its edge.
+// T-694 (F13, F16, F17; DT-C130) and T-698 (DT-C134): every layer drawn over the page shares one z-index scale (the
+// --z-* variables in styles.css). A pane is not a stacking context, so the pops inside panes are on the scale too. The
+// floating panel and its button sit over sheets, pane pops, the review tray and the plan sheet, and under every page
+// overlay, menu, pop, dialog, notice and tip; the chooser footer's buttons wrap in a narrow pane instead of running past its edge.
 import { expect, test } from "vitest";
 
 // Vitest returns "" for a .css import, so the stylesheets are read from disk (the project carries no Node types).
-const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
-const css = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8") + nodeFs.readFileSync(new URL("./floating.css", import.meta.url), "utf8");
+type Fs = { readFileSync(p: URL, enc: string): string; readdirSync(p: URL, o: { recursive: true }): string[] };
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): Fs } }).process.getBuiltinModule("node:fs");
+const read = (p: string) => nodeFs.readFileSync(new URL(p, import.meta.url), "utf8");
+const styles = read("../styles.css");
+const css = [styles, ...["./floating.css", "../update/update.css", "../projects/sidebar.css", "../onboarding/onboarding.css", "../skills/skillNotice.css", "../shell/shell.css", "../setup/trust.css", "../editor/editor-extras.css", "../chat/chat.css"].map(read)].join("\n");
+
+const scale: Record<string, number> = {};
+for (const m of css.matchAll(/--(z-[a-z]+):\s*(\d+)/g)) scale[m[1]] = Number(m[2]);
+
 const rule = (sel: string): string => {
   const m = css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{([^}]*)\\}`));
   expect(m, sel).not.toBeNull();
   return m![1];
 };
-const z = (sel: string) => Number(rule(sel).match(/z-index:\s*(\d+)/)![1]);
+// Resolves "41", "var(--z-menu)" and "calc(var(--z-menu) + 1)" to a number; anything else fails.
+const z = (sel: string): number => {
+  const v = rule(sel).match(/z-index:\s*([^;]+);/)![1].trim();
+  const m = v.match(/^(?:(\d+)|var\(--(z-[a-z]+)\)|calc\(var\(--(z-[a-z]+)\)\s*([+-])\s*(\d+)\))$/);
+  expect(m, `${sel}: ${v}`).not.toBeNull();
+  if (m![1]) return Number(m![1]);
+  const base = scale[m![2] ?? m![3]];
+  expect(base, `${sel}: ${v}`).toBeTypeOf("number");
+  return base + (m![4] ? (m![4] === "+" ? 1 : -1) * Number(m![5]) : 0);
+};
 
-test("T-694: a modal's scrim covers the floating panel and its button; both stay over the plan sheet", () => {
-  for (const sel of [".float-panel", ".float-btn"]) {
-    expect(z(sel), sel).toBeLessThan(z(".scrim"));
-    expect(z(sel), sel).toBeGreaterThan(z(".plan-sheet"));
+const PANE_POPS = [".slash-menu", ".rich-draw", ".chat-composer .chat-full", ".table-ctl", ".code-label", ".table-ctx", ".search-pick-list"];
+
+test("T-698: the scale runs sheet < pane < floating panel < page < menu < pop < dialog < notice < tip < tour < trust", () => {
+  const order = ["z-sheet", "z-pane", "z-float", "z-page", "z-menu", "z-pop", "z-dialog", "z-notice", "z-top", "z-tour", "z-trust"];
+  const values = order.map((k) => scale[k]);
+  expect(values.every((n) => typeof n === "number")).toBe(true);
+  expect([...values].sort((a, b) => a - b)).toEqual(values);
+  expect(new Set(values).size).toBe(values.length);
+});
+
+test("T-694, T-698: every page overlay, menu, pop and dialog draws over the floating panel and its button", () => {
+  const top = Math.max(z(".float-panel"), z(".float-btn"));
+  for (const sel of [".settings", ".menu-backdrop", ".menu", ".diff-note-pop", ".copy-hint", ".review-pop", ".upd-pop.upd-fixed", ".sb-menu-back", ".sb-menu", ".scrim", ".star-card, .star-toast", ".tour-notice", ".skill-notice", ".ask-backdrop", ".tip", ".picker-tip", ".tab-switcher", ".tip-dock", ".about-panel", ".tour", ".trust-prompt .ask-backdrop", ".link-bubble"]) {
+    expect(z(sel), sel).toBeGreaterThan(top);
   }
   expect(z(".float-btn")).toBeGreaterThan(z(".float-panel"));
+});
+
+test("T-698: sheets, pane pops, the review tray and the plan sheet draw under the panel, in main's order", () => {
+  const panel = Math.min(z(".float-panel"), z(".float-btn"));
+  const pops = PANE_POPS.map(z);
+  for (const sel of [".sheet-wrap", ".chat-browser-menu", ...PANE_POPS, ".review-tray", ".plan-sheet"]) expect(z(sel), sel).toBeLessThan(panel);
+  expect(z(".sheet-wrap")).toBeLessThan(Math.min(...pops));
+  expect(z(".chat-browser-menu")).toBeLessThan(Math.min(...pops));
+  expect(Math.max(...pops)).toBeLessThan(z(".review-tray"));
+  expect(z(".review-tray")).toBeLessThan(z(".plan-sheet"));
+  // Inside the pane tier, main's order: slash menu < table buttons < table menu < PR picker list.
+  expect(z(".slash-menu")).toBeLessThan(z(".table-ctl"));
+  expect(z(".table-ctl")).toBeLessThan(z(".table-ctx"));
+  expect(z(".table-ctx")).toBeLessThan(z(".search-pick-list"));
+});
+
+test("T-698: no stylesheet in src sets a bare z-index of 20 or more; every layer over the page is on the scale", () => {
+  const src = new URL("../", import.meta.url);
+  const bare: string[] = [];
+  const sheets = nodeFs.readdirSync(src, { recursive: true }).filter((p) => p.endsWith(".css"));
+  expect(sheets).toContain("styles.css");
+  expect(sheets.length).toBeGreaterThan(20);
+  for (const f of sheets) {
+    for (const m of nodeFs.readFileSync(new URL(f.replace(/\\/g, "/"), src), "utf8").matchAll(/z-index:\s*(\d+)/g)) {
+      if (Number(m[1]) >= 20) bare.push(`${f}: ${m[1]}`);
+    }
+  }
+  expect(bare).toEqual([]);
 });
 
 test("T-694: the chooser footer's buttons wrap rather than clip", () => {

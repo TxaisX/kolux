@@ -9,7 +9,7 @@
   left: max(16px, env(safe-area-inset-left, 0px));
   right: auto;
   bottom: 40px;
-  z-index: 45;
+  z-index: var(--z-pop);
   box-sizing: border-box;
   width: min(360px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
