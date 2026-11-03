@@ -1,0 +1,153 @@
+T-671 - The Automations page: errors, Escape, Run now twice, and a way to every control (DT-C107; UX audit)
+Worker 2f, branch s-2f/ux-2, base e93a23ba (uncommitted at the time of writing), 2026-11-02.
+
+WHAT CHANGED
+- Run now twice: the button (row menu and opened page) is disabled and reads Starting while the ask
+  is on its way. Kolux itself refuses a manual run of an automation that still has a run pending,
+  dispatching or dispatched, with a message naming the run in progress. The check and the new run
+  share one lock. Timetable, event and catch-up runs are not refused. Running by hand from the
+  command line (automations.run in automations_cli.rs) goes through the same run_manual, so it is
+  refused the same way.
+  A dispatched run holds Run now only while it has a terminal, or for 120 seconds (SETTLE_MS) after
+  it was dispatched. A new-pane run gets its terminal only when the window starts the pane; if the
+  window never does, the run would stay dispatched until the next restart, so after the 120 seconds
+  it no longer blocks. A young one without a terminal is refused with "NAME is still starting
+  (run #N); try again in a moment". A run with no dispatch time counts as old.
+- The opened automation page now shows the last action's note and the delete confirmation (they
+  were drawn only on the list), and has Edit and Delete in its header.
+- The row menu has a backdrop: a click outside, or Escape from anywhere, shuts it.
+- Escape on the Runs dashboard goes back to Automations; on a run page it goes back to Runs. It does
+  nothing over a dialog, a menu or a text field.
+- A failed runs read shows "The runs could not be read" with the reason and Retry, not "No runs
+  yet" and zero counts. Run rows hold a button that opens the run, so the keyboard reaches them.
+- Refresh keeps the rows already shown when the read fails and says so in a note. A failure of the
+  Hermes and OpenClaw refresh is shown in the same note instead of being thrown away.
+- With no projects, the bar and the empty state offer Add a project, which opens the sidebar's
+  existing Add Project dialog.
+- Templates are hidden when editing a saved automation.
+- A worktree list that cannot be read shows the real reason with Try again; Save's hint says to use it.
+- Closing the dialog (Escape, Cancel, the dark area) asks "Discard your changes?" when any field the
+  form submits differs from how the dialog opened (name, prompt, agent, project, worktree, base
+  branch, setup, session reuse, catch-up, precheck, timetable, time zone, trigger, Hermes folder).
+  The dark area closes it only when the press and the release both landed on the dark area.
+- Refresh shows a failed Hermes and OpenClaw ask and a failed list read together in one note.
+- Deleting a Hermes or OpenClaw job says it is removed from that tool and that Kolux keeps no
+  history for it; Kolux automations say their run history goes with them.
+- The Automations bar has a Close button; the Refresh button is disabled and marked busy while it runs.
+- Run now's hold on the page is one helper (holdWhile in automations/model.ts): the automation's id
+  is held while the ask is on its way and let go when it returns, on success and on failure; it
+  covers Kolux automations and Hermes and OpenClaw jobs.
+- One line outside the lane's usual files: src-tauri/src/automations_cli.rs calls
+  automations::run_manual instead of automations::run(.., "manual") for automations.run, so the
+  command line gets the same refusal. Flagged in the PR.
+
+WHY
+Static UX audit lane B, the Automations half (findings/skills-automations.md, stress.md:9,
+empty-error.md:11 and :12, backend-wiring.md:10): Run now could start the same automation twice
+(two agents in one worktree) from the button, the row menu and the command line; the opened
+automation page showed no note, no delete confirmation and had no Edit or Delete; the row menu had
+no way out; Escape did nothing in Runs; a failed runs read said "No runs yet"; a failed refresh
+replaced the rows with an error; the dialog threw away unsaved work on Escape, Cancel or a stray
+drag on the dark area; Templates overwrote a saved automation; with no projects the page offered
+nothing. DT-C107 records it. The 120-second limit is there because a new-pane run gets its
+terminal only when the window starts the pane; without it one lost pane would block Run now until
+the next restart (the Opus review's one BLOCKING item).
+
+REVIEW
+Opus review B+ (1 BLOCKING: a stale dispatched run blocked Run now for ever; plus smaller items)
+-> fix pass (the 120-second limit, the scrim press-and-release rule, the unsaved check over all
+fields, joined refresh notes, the in-flight hold) -> Opus re-review A- with two
+SHOULD-FIX items, both fixed after it: (S1) after a restart a run still waiting for its pane
+(settleBy set) now holds Run now until settleBy, however old its dispatch, so a resumed run is
+not started twice; (S2) when Run now starts, this automation's old runs whose pane never started
+are closed as failed ("This run's terminal never started"), so the new run's pane is credited to
+the new run and not to the older orphan. Follow-ups (not in this PR): S3 Add a project does
+nothing with the sidebar collapsed (needs Content.tsx, outside this lane); N1 a red refresh note
+can stay after a later good refresh; N2 rows 2-4 are tested through helpers only; N3 Keep editing
+moves focus to the prompt box; N4 a clock stepped back can hold the guard longer.
+-> fresh Opus review (opus-high-review) of the S1/S2 change and its two tests only: A-. S1 holds
+with no gap against the settle step's own deadline; S2 closes only runs that no longer hold Run
+now, all under one store lock, and leaves scheduled and event runs alone; removing either fix
+makes its test fail. Its one SHOULD-FIX is older than this PR and outside Run now: a scheduled
+or event run, or a run of another automation in the same worktree, can still have its pane
+claimed by an older run whose pane never started, because claim takes the oldest free run. The
+suggested follow-up moves the stale-run close into the 30-second settle step and makes claim
+skip stale runs, so every trigger is covered. Its nits (N1 detail wording for a run past
+settleBy, N2 the start event sent before the run is marked dispatched, N3 more guard rows in the
+store test) go with that follow-up. No code changed after this review.
+
+ROWS
+findings/skills-automations.md:3 fixed
+findings/skills-automations.md:14 fixed
+findings/stress.md:9 fixed
+findings/skills-automations.md:2 fixed
+findings/skills-automations.md:9 fixed
+findings/skills-automations.md:8 fixed
+findings/skills-automations.md:10 fixed
+findings/empty-error.md:11 fixed
+findings/backend-wiring.md:10 fixed
+findings/skills-automations.md:23 fixed (second half; the first half is skipped(M))
+findings/empty-error.md:12 fixed
+findings/skills-automations.md:11 fixed
+findings/skills-automations.md:13 fixed
+findings/skills-automations.md:12 fixed
+findings/skills-automations.md:18 fixed
+findings/skills-automations.md:20 fixed
+findings/skills-automations.md:4 fixed
+findings/skills-automations.md:19 skipped(M)
+findings/skills-automations.md:21 skipped(M)
+findings/backend-wiring.md:3 skipped(M)
+findings/skills-automations.md:23 skipped(M) (first half: the Hermes history control)
+findings/skills-automations.md:17 not-ours
+
+TESTS (named, the new test lines of the batch)
+ src/automations/AutomationsPage.test.ts > UX2: the opened page shows the last action's note and the delete confirmation, and Edit and Delete in its header
+ src/automations/AutomationsPage.test.ts > UX2: a failing action reads as an alert, a good one as a status
+ src/automations/AutomationsPage.test.ts > UX2: an open row menu has a backdrop to click outside of, and the dots say it is expanded
+ src/automations/AutomationsPage.test.ts > UX2: while Run now is being asked for, the button is disabled and says Starting, in the menu and in the page
+ src/automations/AutomationsPage.test.ts > UX2: a failed runs read says so with Retry, and never No runs yet
+ src/automations/AutomationsPage.test.ts > UX2: every run row has a button that opens it, so the keyboard can reach it
+ src/automations/AutomationsPage.test.ts > UX2: the bar has a Close button when the page can be closed, and Refresh shows busy
+ src/automations/AutomationsPage.test.ts > UX2: with no projects the bar and the empty state offer Add a project
+ src/automations/AutomationsPage.test.ts > UX2: deleting a Hermes job says it is removed from Hermes itself
+ src/automations/AutomationDialog.test.ts > UX2: Templates are offered for a new automation and hidden when editing a saved one
+ src/automations/AutomationDialog.test.ts > UX2: leaving asks when any field the form submits changed, not only the name or prompt
+ src/automations/AutomationDialog.test.ts > UX2: unreadable worktrees show the real reason with Try again, and Save's hint says to use it
+ src/automations/model.test.ts > UX2: Escape on the Runs dashboard steps back, on a run page it goes to Runs, and never over a field, pop-up or modifier
+ src/automations/model.test.ts > UX2: a failed list read keeps the rows with a note, and is the page error only with nothing shown
+ src/automations/model.test.ts > UX2: the delete words name Hermes or OpenClaw for their jobs and the run history for Kolux ones
+ src/automations/model.test.ts > UX-T671: the scrim closes the dialog only when the press and the release were both on it
+ src/automations/model.test.ts > UX-T671: Refresh shows the failed ask and the failed list read together, not only the last
+ src/automations/model.test.ts > UX-T671: Run now holds an automation while its ask is on the way and lets it go on success and on failure
+ src-tauri/src/automations.rs > already_running_names_the_newest_run_in_progress_and_ignores_finished_ones
+ src-tauri/src/automations.rs > a_dispatched_run_whose_pane_never_started_holds_run_now_only_while_it_is_young (young: "still starting"; old or no dispatch time: not blocked; with a terminal: blocked however old; after a restart with settleBy ahead: still starting until settleBy)
+ src-tauri/src/automations.rs > run_now_is_not_blocked_by_an_old_dispatched_run_whose_pane_never_started (end to end; the old run is closed as failed and the next pane is claimed by run #2)
+ src-tauri/src/automations.rs > run_now_is_refused_while_the_same_automation_is_still_running (a second manual run is refused; a finished first run lets a third start)
+ src-tauri/src/automations_cli.rs > a_command_line_run_is_refused_while_the_same_automation_is_still_running (automations.run refused, no second run stored)
+- Regression check by the worker, not rerun by the coordinator: with each fix taken out in turn its
+  test failed, and passed again with the fix put back (opened page note and delete confirmation,
+  Run now disabled, menu backdrop, runs error, the back-end refusal).
+
+GATES (run by the coordinator on this tree)
+- pnpm vitest run src/automations (VITEST_MAX_WORKERS=2): 12 test files passed, 114 tests passed, vitest exit 0.
+- pnpm tsc --noEmit: tsc exit 0.
+- cargo test -j 2 --lib automations: 84 passed, 0 failed, 1 ignored.
+- cargo clippy -j 2 --all-targets -- -D warnings: exit 0.
+- node scripts/plan-check.mjs: plan-check: OK.
+- Not tried in a running window: Escape, the scrim press and release and the menu backdrop are
+  covered by the rule tests and the page's source checks, not by clicking through the app.
+
+SPEC
+- DECISIONS.md DT-C107: no spec rule is reversed. Run Now (AUTO-019, AUTO-020) and the command
+  line's run (CLI-029) gain one exception in their Rules: refused while that automation is still
+  running. The other cards gain clauses; their other wording is kept.
+- Rules lines that gained clauses (spec/09-automations.md unless noted): AUTO-005 (discard check,
+  scrim press and release, worktree error with Try again), AUTO-006 (no templates when editing),
+  AUTO-015 (failed runs read, run rows as buttons), AUTO-016 (rows kept on a failed refresh, menu
+  closes, Add a project, Close, busy Refresh), AUTO-017 (Escape in Runs and on a run page),
+  AUTO-019 (Run now refused while running, Starting, opened page note and Edit/Delete, Hermes delete
+  words), AUTO-020 (run refused while running), CLI-029 in spec/20-cli.md (run refused while
+  running).
+- Acceptance lines added, all unticked, ending "(unit tests: evidence/T-671.txt)": AUTO-005 boxes 4
+  and 5; AUTO-006 box 2; AUTO-015 boxes 3 and 4; AUTO-016 boxes 4, 5 and 6; AUTO-017 box 3;
+  AUTO-019 boxes 4, 5, 6 and 7; AUTO-020 box 3; CLI-029 box 4. No existing box was ticked or reworded.

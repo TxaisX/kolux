@@ -10,7 +10,9 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import Ask from "../chrome/Ask";
-import { Dots, Plus, Refresh, Search } from "../chrome/icons";
+import { Close, Dots, Plus, Refresh, Search } from "../chrome/icons";
+import { ADD_PROJECT } from "../onboarding/firstRun";
+import { watchEscape } from "../switcher/accounts";
 import type { AgentInfo } from "../launch/PlusMenu";
 import type { Project } from "../projects/model";
 import AutomationDialog, { TemplateCards } from "./AutomationDialog";
@@ -19,7 +21,7 @@ import RunsDashboard, { Breadcrumb, RunPage } from "./RunsDashboard";
 import { totalUsage } from "./usage";
 import { PROVIDERS, type Usage } from "../usage/tokens";
 import { folderName } from "../projects/model";
-import { agentChoices, ago, CONFIRM_DELETE_KEY, confirmDelete, rowActions, splitWarnings, whereItRuns, keepSelection, lastRun, runActions, runStep, startedBy, type RunAction, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, graceWord, precheckWord, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
+import { agentChoices, ago, CONFIRM_DELETE_KEY, confirmDelete, deleteWords, failedLoad, holdWhile, joinNotes, runsKey, rowActions, splitWarnings, whereItRuns, keepSelection, lastRun, runActions, runStep, startedBy, type RunAction, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, graceWord, precheckWord, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
 
 /** `runsError` says the history could not be read (AUTO-018: the run count then reads unknown). */
 export type Data = { automations: Automation[]; runs: Run[]; runsError?: string };
@@ -32,7 +34,7 @@ type Props = {
   /** Escape on the list closes the page (AUTO-017). */
   onClose?: () => void;
   /** Seeds the page without asking the back end (tests render it to HTML); `open` opens one automation. */
-  initial?: { data?: Data; error?: string; runs?: boolean; open?: string; usage?: Usage };
+  initial?: { data?: Data; error?: string; runs?: boolean; open?: string; usage?: Usage; menu?: string; asking?: string; note?: { text: string; bad?: boolean }; running?: string[]; refreshing?: boolean };
   /** AUTO-013: whether a run's own terminal is still open, and how View run and Resume workspace get there. */
   liveRun?: (r: Run) => boolean;
   onViewRun?: (r: Run) => void;
@@ -74,9 +76,12 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   const root = useRef<HTMLDivElement>(null);
   const lastIndex = useRef(0);
   const keyRef = useRef<(e: globalThis.KeyboardEvent) => void>(() => {});
-  const [menu, setMenu] = useState<string | null>(null);
-  const [asking, setAsking] = useState<string | null>(null); // the automation whose delete waits for a yes
-  const [note, setNote] = useState<string | null>(null);
+  const [menu, setMenu] = useState<string | null>(initial?.menu ?? null);
+  const [asking, setAsking] = useState<string | null>(initial?.asking ?? null); // the automation whose delete waits for a yes
+  // What the last action said; a failure (`bad`) reads as a warning, and shows in the opened page too.
+  const [note, setNote] = useState<{ text: string; bad: boolean } | null>(initial?.note ? { text: initial.note.text, bad: !!initial.note.bad } : null);
+  const say = (text: string) => setNote({ text, bad: false });
+  const fail = (text: string) => setNote({ text, bad: true });
   const [now, setNow] = useState(() => Date.now());
   // The dialog: undefined shut, null a new automation, else the latest saved copy being edited.
   const [dialog, setDialog] = useState<Automation | null | undefined>(undefined);
@@ -91,16 +96,43 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   const [openRun, setOpenRun] = useState<string | null>(null);
   // AUTO-014: the token usage Kolux reads from the agents' logs, matched to finished runs.
   const [usage, setUsage] = useState<Usage | null>(initial?.usage ?? null);
+  // The automations whose Run now is still being asked for, so a second click cannot start the same job twice.
+  const [running, setRunning] = useState<string[]>(initial?.running ?? []);
+  const [refreshing, setRefreshing] = useState(initial?.refreshing ?? false);
+  const dataRef = useRef<Data | null>(null);
+  dataRef.current = data;
+  const menuRef = useRef<string | null>(null);
+  menuRef.current = menu;
 
   // T-193-b: Refresh asks Hermes and OpenClaw again (their answers are kept until the next Refresh), then reads the list.
-  const refresh = () => invoke("automations_external_refresh").catch(() => {}).then(() => load());
+  // A failed ask is said in a note; the rows already shown stay.
+  const refresh = () => {
+    setRefreshing(true);
+    return invoke("automations_external_refresh")
+      .then(
+        () => null,
+        (e) => `Hermes and OpenClaw could not be asked again: ${String(e)}`,
+      )
+      .then((bad) => load().then((listed) => {
+        const both = joinNotes(bad, listed);
+        if (both) fail(both); // a failed list read does not hide the failed ask, or the other way round
+      }))
+      .finally(() => setRefreshing(false));
+  };
+  // A failed read keeps the rows already shown and says so; only a page with nothing yet shows the error.
   const load = () =>
     invoke<Data>("automations_list")
       .then((d) => {
         setData(d);
         setError(null);
+        return null;
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => {
+        const f = failedLoad(dataRef.current !== null, String(e));
+        setError(f.error);
+        if (f.note) fail(f.note);
+        return f.note;
+      });
   useEffect(() => {
     if (initial) return;
     void load();
@@ -123,7 +155,10 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
       })
       .catch(() => {});
     const tick = window.setInterval(() => setNow(Date.now()), 30000);
+    // Escape shuts an open row menu first, wherever focus is (as the Skills page's menus do).
+    const stopEscape = watchEscape(window, () => setMenu(null), () => menuRef.current !== null);
     return () => {
+      stopEscape();
       window.clearInterval(tick);
       void off.then((u) => u());
     };
@@ -152,9 +187,24 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   useEffect(() => {
     if (currentId && (document.activeElement === document.body || document.activeElement === null)) rowEl(currentId)?.focus();
   }, [currentId]);
+  const toAutomations = () => {
+    setOpenRun(null);
+    setRunsView(false);
+    setNote(null);
+  };
   keyRef.current = (e) => {
     const t = e.target as HTMLElement;
-    if (runsView || (t !== document.body && !root.current?.contains(t))) return;
+    if (t !== document.body && !root.current?.contains(t)) return;
+    if (runsView) {
+      // Escape steps back one level: a run page to Runs, Runs to Automations (never over a dialog or menu).
+      const covered = t.closest('[role="dialog"],[role="menu"],[role="alertdialog"]') !== null || document.querySelector('[aria-modal="true"]') !== null;
+      const what = runsKey({ key: e.key, mods: e.altKey || e.ctrlKey || e.metaKey || e.shiftKey, field: t.closest("input,textarea,select,[contenteditable]") !== null, overlay: covered, run: openRun !== null });
+      if (!what) return;
+      e.preventDefault();
+      if (what === "run") setOpenRun(null);
+      else toAutomations();
+      return;
+    }
     const overlay = dialog !== undefined || asking !== null || menu !== null || t.closest('[role="dialog"],[role="menu"],[role="listbox"]:not(.autos-runs),[role="alertdialog"]') !== null || document.querySelector('[aria-modal="true"]') !== null;
     const control = t.closest("input,textarea,select,button,a,[contenteditable]") !== null;
     const what = pageKey({ key: e.key, mods: e.altKey || e.ctrlKey || e.metaKey || e.shiftKey, control, search: t === search.current, row: t.tagName === "TR", overlay, opened: openedA !== undefined });
@@ -188,14 +238,15 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   }, []);
   const agentIds = agentChoices(all);
 
-  const act = (p: Promise<unknown>) => p.then(() => load()).catch((e) => setNote(String(e)));
+  const act = (p: Promise<unknown>) => p.then(() => load()).catch((e) => fail(String(e)));
   // T-193-b: a Hermes or OpenClaw job is run, paused and deleted in its own tool, then the tools are asked again.
   const external = (a: Automation, action: "run" | "pause" | "resume" | "delete") =>
     act(invoke("automation_external_act", { tool: a.source, action, id: a.jobId, input: null }).then(() => refresh()));
   const runNow = (a: Automation) => {
     setMenu(null);
-    setNote(`Run now: ${a.name} is queued`);
-    void (a.source ? external(a, "run") : act(invoke("automation_run_now", { id: a.id })));
+    if (running.includes(a.id)) return; // the first ask is still on its way
+    say(`Run now: ${a.name} is queued`);
+    void holdWhile(setRunning, a.id, () => (a.source ? external(a, "run") : act(invoke("automation_run_now", { id: a.id }))));
   };
   const toggle = (a: Automation) => {
     setMenu(null);
@@ -221,15 +272,24 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
         setData(d);
         const latest = d.automations.find((x) => x.id === a.id);
         if (latest) setDialog(latest);
-        else setNote(`${a.name} was deleted elsewhere`);
+        else fail(`${a.name} was deleted elsewhere`);
       })
-      .catch((e) => setNote(String(e)));
+      .catch((e) => fail(String(e)));
   };
   const saved = (a: Automation) => {
     setSelected(a.id);
-    setNote(`Saved ${a.name}`);
+    say(`Saved ${a.name}`);
     void load();
   };
+  const noteEl = note && (
+    <div className={`note ${note.bad ? "warn" : "ok"}`} role={note.bad ? "alert" : "status"}>
+      {note.text}
+    </div>
+  );
+  const askedAuto = asking === null ? undefined : all.find((a) => a.id === asking);
+  const askEl = asking && (
+    <Ask key={asking} title={deleteWords(askedAuto).title} body={deleteWords(askedAuto).body} confirm="Delete" dontAsk onConfirm={(dontAsk) => confirmRemove(asking, dontAsk)} onCancel={() => setAsking(null)} />
+  );
   // A failed refresh keeps the rows already shown and says so, rather than emptying the dashboard.
   const refreshRuns = () =>
     invoke<Data>("automations_list")
@@ -237,26 +297,18 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
         setData(d);
         setNote(null);
       })
-      .catch((e) => setNote(`Refresh failed: ${String(e)}`));
+      .catch((e) => fail(`Refresh failed: ${String(e)}`));
   if (runsView) {
     const shown = runs.find((r) => r.id === openRun);
-    const toAutomations = () => {
-      setOpenRun(null);
-      setRunsView(false);
-      setNote(null);
-    };
     return (
-      <div className="autos">
-        {note && (
-          <div className="note warn" role="status">
-            {note}
-          </div>
-        )}
-        <RunsDashboard runs={runs} automations={all} now={now} onRefresh={() => void refreshRuns()} onAutomations={toAutomations} onOpen={(r) => setOpenRun(r.id)} hidden={shown !== undefined} />
+      <div className="autos" ref={root}>
+        {noteEl}
+        <RunsDashboard runs={runs} automations={all} now={now} error={data?.runsError} onRefresh={() => void refreshRuns()} onAutomations={toAutomations} onOpen={(r) => setOpenRun(r.id)} hidden={shown !== undefined} />
         {shown && <RunPage run={shown} automation={all.find((a) => a.id === shown.automationId)} now={now} usage={usage} agentName={names.agent(shown.provider ?? "")} onRuns={() => setOpenRun(null)} onAutomations={toAutomations} />}
       </div>
     );
   }
+  const addProject = () => window.dispatchEvent(new CustomEvent(ADD_PROJECT)); // opens the sidebar's Add Project dialog
   const sortBy = (key: SortKey) => setSort((s) => ({ key, desc: s.key === key ? !s.desc : false }));
   const filtered = filters.state !== "all" || filters.result !== "all" || filters.agents.length > 0 || (q ?? "") !== "";
 
@@ -266,7 +318,9 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
         <div className="autos-bar">
           <Breadcrumb onAutomations={() => setOpened(null)} last={openedA.name} />
         </div>
-        <Detail key={openedA.id} a={openedA} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(openedA.provider)} tab={tab} onTab={setTab} onRun={() => runNow(openedA)} onToggle={() => toggle(openedA)} live={liveRun} onView={onViewRun} onResume={onResume} onRetry={() => void load()} />
+        {noteEl}
+        {askEl}
+        <Detail key={openedA.id} a={openedA} running={running.includes(openedA.id)} onEdit={() => edit(openedA)} onDelete={() => remove(openedA)} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(openedA.provider)} tab={tab} onTab={setTab} onRun={() => runNow(openedA)} onToggle={() => toggle(openedA)} live={liveRun} onView={onViewRun} onResume={onResume} onRetry={() => void load()} />
         {dialog !== undefined && <AutomationDialog projects={projects} agents={agents} editing={dialog} template={template} onClose={() => setDialog(undefined)} onSaved={saved} />}
       </div>
     );
@@ -275,6 +329,11 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   return (
     <div className="autos" ref={root}>
       <div className="autos-bar">
+        {onClose && (
+          <button className="ib" title="Close (Escape)" aria-label="Close Automations" onClick={onClose}>
+            <Close size={14} />
+          </button>
+        )}
         <h2>Automations</h2>
         <label className="autos-search">
           <Search />
@@ -302,12 +361,17 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
           </span>
         )}
         <span className="autos-gap" />
-        <button className="ib" title="Refresh" onClick={() => void refresh()}>
+        <button className="ib" title={refreshing ? "Refreshing…" : "Refresh"} aria-label="Refresh" aria-busy={refreshing} disabled={refreshing} onClick={() => void refresh()}>
           <Refresh />
         </button>
         <button className="btn" title="Every automation's runs in one place" onClick={() => setRunsView(true)}>
           Runs
         </button>
+        {projects.length === 0 && (
+          <button className="btn" onClick={addProject}>
+            Add a project
+          </button>
+        )}
         <button className="btn primary" disabled={projects.length === 0} title={projects.length === 0 ? "Add a project first" : undefined} onClick={() => open(null)}>
           <Plus size={12} />
           New Automation
@@ -319,22 +383,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
           {w}
         </div>
       ))}
-      {note && (
-        <div className="note ok" role="status">
-          {note}
-        </div>
-      )}
-      {asking && (
-        <Ask
-          key={asking}
-          title={`Delete ${all.find((a) => a.id === asking)?.name ?? "this automation"}?`}
-          body="Its run history goes with it."
-          confirm="Delete"
-          dontAsk
-          onConfirm={(dontAsk) => confirmRemove(asking, dontAsk)}
-          onCancel={() => setAsking(null)}
-        />
-      )}
+      {noteEl}
+      {askEl}
       {error !== null ? (
         <div className="empty" role="alert">
           <h2>Automations could not be loaded</h2>
@@ -351,6 +401,14 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
         <div className="empty">
           <h2>No automations yet</h2>
           <p>An automation starts an agent with a saved prompt on a timetable or when something happens in a project. Start from one of these, or from blank:</p>
+          {projects.length === 0 && (
+            <p>
+              Automations run inside a project, and none is added yet.{" "}
+              <button className="btn primary" onClick={addProject}>
+                Add a project
+              </button>
+            </p>
+          )}
           <TemplateCards onPick={open} disabled={projects.length === 0} />
         </div>
       ) : rows.length === 0 ? (
@@ -406,6 +464,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                           className="ib"
                           title="Quick actions"
                           aria-haspopup="menu"
+                          aria-expanded={menu === a.id}
                           onClick={(e) => {
                             e.stopPropagation(); // opening the menu does not select the row
                             setMenu(menu === a.id ? null : a.id);
@@ -414,10 +473,19 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                           <Dots />
                         </button>
                         {menu === a.id && (
+                          <>
+                            <div
+                              className="menu-backdrop"
+                              onClick={(e) => {
+                                e.stopPropagation(); // shutting the menu does not select the row under it
+                                setMenu(null);
+                              }}
+                              onDoubleClick={(e) => e.stopPropagation()}
+                            />
                           <div className="menu autos-menu" role="menu" onClick={(e) => e.stopPropagation()}>
                             {rowActions(a).map((what) =>
                               what === "run" ? (
-                                <button key={what} className="menu-item" role="menuitem" disabled={!!a.problem} title={a.problem ? `Run now is blocked: ${a.problem}` : undefined} onClick={() => runNow(a)}>
+                                <button key={what} className="menu-item" role="menuitem" disabled={!!a.problem || running.includes(a.id)} title={a.problem ? `Run now is blocked: ${a.problem}` : running.includes(a.id) ? "Run now is already being started" : undefined} onClick={() => runNow(a)}>
                                   <span className="name">Run now</span>
                                 </button>
                               ) : what === "toggle" ? (
@@ -435,6 +503,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                               ),
                             )}
                           </div>
+                          </>
                         )}
                       </td>
                     </tr>
@@ -443,7 +512,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
               </tbody>
             </table>
           </div>
-          {current && <Detail key={current.id} a={current} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(current.provider)} tab={tab} onTab={setTab} onRun={() => runNow(current)} onToggle={() => toggle(current)} live={liveRun} onView={onViewRun} onResume={onResume} onRetry={() => void load()} />}
+          {current && <Detail key={current.id} a={current} running={running.includes(current.id)} onEdit={() => edit(current)} onDelete={() => remove(current)} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(current.provider)} tab={tab} onTab={setTab} onRun={() => runNow(current)} onToggle={() => toggle(current)} live={liveRun} onView={onViewRun} onResume={onResume} onRetry={() => void load()} />}
         </>
       )}
       {dialog !== undefined && <AutomationDialog projects={projects} agents={agents} editing={dialog} template={template} onClose={() => setDialog(undefined)} onSaved={saved} />}
@@ -451,8 +520,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   );
 }
 
-type DetailProps = { a: Automation; runs: Run[]; runsError?: string; now: number; usage: Usage | null; agent: string; tab: "overview" | "runs"; onTab: (t: "overview" | "runs") => void; onRun: () => void; onToggle: () => void; live?: (r: Run) => boolean; onView?: (r: Run) => void; onResume?: (r: Run) => void; onRetry: () => void };
-function Detail({ a, runs, runsError, now, usage, agent, tab, onTab, onRun, onToggle, live, onView, onResume, onRetry }: DetailProps) {
+type DetailProps = { a: Automation; running?: boolean; onEdit?: () => void; onDelete?: () => void; runs: Run[]; runsError?: string; now: number; usage: Usage | null; agent: string; tab: "overview" | "runs"; onTab: (t: "overview" | "runs") => void; onRun: () => void; onToggle: () => void; live?: (r: Run) => boolean; onView?: (r: Run) => void; onResume?: (r: Run) => void; onRetry: () => void };
+function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, usage, agent, tab, onTab, onRun, onToggle, live, onView, onResume, onRetry }: DetailProps) {
   const mine = runs.filter((r) => r.automationId === a.id).sort((x, y) => y.number - x.number);
   // AUTO-018: a prompt that does not fit is folded; the guess holds until the box is measured, and
   // a narrower window brings the control up. The control stays put when used, so focus stays on it.
@@ -512,8 +581,18 @@ function Detail({ a, runs, runsError, now, usage, agent, tab, onTab, onRun, onTo
           </label>
         )}
         {rowActions(a).includes("run") && (
-          <button className="btn" disabled={!!a.problem} title={a.problem ? `Run now is blocked: ${a.problem}` : undefined} onClick={onRun}>
-            Run now
+          <button className="btn" disabled={!!a.problem || running} title={a.problem ? `Run now is blocked: ${a.problem}` : running ? "Run now is already being started" : undefined} onClick={onRun}>
+            {running ? "Starting…" : "Run now"}
+          </button>
+        )}
+        {onEdit && rowActions(a).includes("edit") && (
+          <button className="btn" onClick={onEdit}>
+            Edit
+          </button>
+        )}
+        {onDelete && rowActions(a).includes("delete") && (
+          <button className="btn" onClick={onDelete}>
+            Delete
           </button>
         )}
       </div>
