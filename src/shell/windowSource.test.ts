@@ -22,7 +22,7 @@ test("the window's drawing folder joins the source tests whole", () => {
 test("the window's files outside the drawing folder are all present, so a rename cannot quietly drop one", () => {
   // App.tsx + WindowView.tsx + the 6 shell files beside it, the 5 the split's review found missing
   // from every source test, and the 14 hooks the App.tsx split made.
-  expect(Object.keys(windowFiles).filter((f) => !f.startsWith("./shell/window/"))).toHaveLength(26);
+  expect(Object.keys(windowFiles).filter((f) => !f.startsWith("./shell/window/"))).toHaveLength(28);
   for (const f of ["./App.tsx", "./shell/WindowView.tsx", "./shell/windowStore.ts", "./shell/windowBag.ts", "./shell/useWindowSave.ts", "./settings/useSettingsPlumbing.ts"]) {
     expect(windowFiles[f], f).toBeTruthy();
   }

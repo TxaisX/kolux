@@ -27,6 +27,9 @@ export function tabSearchCommand(open: () => void): { section: string; label: st
 /** A tab the box can list: its own name, and the worktree folder it sits in (shown, never searched). */
 export type TabEntry = { label: string; hint?: string; run: () => void };
 
+/** The palette sections the tab search lists: terminal tabs and browser pages are both tabs to the user. */
+export const isTabRow = (row: { section: string }): boolean => row.section === "Open tabs" || row.section === "Browser pages";
+
 /** The box's answer to a typed query: tabs whose own name matches. The worktree name is never part of the match. */
 export function tabMatches(query: string, tabs: TabEntry[]): TabEntry[] {
   return searchTabs(query, tabs.map((t) => ({ ...t, name: t.label })));

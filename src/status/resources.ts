@@ -71,6 +71,6 @@ export function singleFlight<T>(fn: () => Promise<T>): () => Promise<T | undefin
 
 /** usage-status.md:8: what Escape closes in the Resource Manager: an open End question first (the Restart/End all one,
  * then a single session's, then End N's), the whole panel only when none is open. */
-export function escapeStep(open: { bulk: boolean; ending: boolean; asking: boolean }): "bulk" | "ending" | "asking" | "close" {
-  return open.bulk ? "bulk" : open.ending ? "ending" : open.asking ? "asking" : "close";
+export function escapeStep(open: { bulk: boolean; ending: boolean; asking: boolean; background?: boolean }): "bulk" | "ending" | "asking" | "background" | "close" {
+  return open.bulk ? "bulk" : open.ending ? "ending" : open.asking ? "asking" : open.background ? "background" : "close";
 }

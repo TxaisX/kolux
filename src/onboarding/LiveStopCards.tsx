@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import InlineTerminal from "./InlineTerminal";
+import { openSettings } from "../settings/pages";
 import { ONBOARDING_TERMINAL_HEIGHT, stopCard, type ClaudeFacts, type CodexFacts, type UsageFacts, type Via } from "./stopCards";
 
 const VIA_WORDS: Record<Via, string> = {
@@ -45,7 +46,12 @@ export function UsageStop() {
           </li>
         ))}
       </ul>
-      {card.anyConnected === false && <p className="guide-note">Add an account in Settings, then Accounts, and its usage shows here.</p>}
+      {card.anyConnected === false && <p className="guide-note">
+          Add an account, and its usage shows here.{" "}
+          <button className="btn" onClick={() => openSettings("accounts")}>
+            Open Settings &gt; Accounts
+          </button>
+        </p>}
     </div>
   );
 }

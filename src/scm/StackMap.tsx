@@ -1,11 +1,13 @@
 // GIT-034 (T-313-b): the stack the checked pull request belongs to, in the Checks tab. Lists the
 // chain bottom first, links to the next pull request up, and merges from the bottom up to a chosen
 // one after a confirmation that names them. The rules are stack.ts's; this only asks GitHub and shows.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { mergeActions, mergeLabel, type MergeInfo, type Pr } from "./model";
 import { chainThrough, mergeThrough, nextInStack, type StackItem } from "./stack";
 import { createNext } from "./stackCreate";
+import { openLinkFailed, stackKey, stillCurrent } from "./panelUx";
+import "./scmUx.css";
 
 type StackList = { trunk: string; prs: StackItem[] };
 type Open = { trunk: string; prs: StackItem[] };
@@ -20,11 +22,17 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
   const [making, setMaking] = useState<{ branch: string; title: string; draft: boolean } | null>(null);
   const [list, setList] = useState<Open | null>(null);
 
+  const asking = useRef(stackKey(dir, pr.number)); // the map on screen; a late answer for another folder or pull request is dropped
+  asking.current = stackKey(dir, pr.number);
+
   const load = async () => {
+    const at = asking.current;
+    const current = () => stillCurrent(asking.current, at);
     setNote(null);
     setConfirm(null);
     try {
       const list = await invoke<StackList>("scm_stack_prs", { worktree: dir });
+      if (!current()) return;
       setList(list);
       const chain = pr.head ? chainThrough(list.prs, list.trunk, pr.head) : { items: [] as StackItem[], error: "this pull request's branch is not known" };
       const infos: Record<number, MergeInfo> = {};
@@ -32,6 +40,7 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
       for (const p of chain.items) {
         try {
           const info = await invoke<MergeInfo>("scm_merge_info", { worktree: dir, url: p.url });
+          if (!current()) return;
           infos[p.number] = info;
           const label = mergeLabel(info);
           holds[p.number] = label === "Ready to merge" ? null : label;
@@ -39,9 +48,10 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
           holds[p.number] = String(e);
         }
       }
+      if (!current()) return;
       setShown({ items: chain.items, infos, holds, error: chain.error });
     } catch (e) {
-      setShown({ items: [], infos: {}, holds: {}, error: String(e) });
+      if (current()) setShown({ items: [], infos: {}, holds: {}, error: String(e) });
     }
   };
 
@@ -89,6 +99,8 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
   };
 
   const next = shown ? nextInStack(shown.items, pr.number) : null;
+  /** A link that will not open says so in the note, never silently. */
+  const openOut = (url: string) => void invoke("open_external", { url }).catch((e) => setNote(openLinkFailed(e)));
   return (
     <details className="stack-map" data-stack-map onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && void load()}>
       <summary>Stack</summary>
@@ -97,7 +109,7 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
         <ol className="stack-list">
           {shown.items.map((p) => (
             <li key={p.number} aria-current={p.number === pr.number ? "true" : undefined}>
-              <a href={p.url} onClick={(e) => (e.preventDefault(), void invoke("open_external", { url: p.url }))}>
+              <a href={p.url} onClick={(e) => (e.preventDefault(), openOut(p.url))}>
                 #{p.number}
               </a>{" "}
               <span className="name">{p.title || p.head}</span> <code>{p.head}</code> <span className="sb-hint">{shown.holds[p.number] ?? "Ready to merge"}</span>
@@ -109,7 +121,7 @@ export default function StackMap({ dir, pr }: { dir: string; pr: Pr }) {
         </ol>
       )}
       {next && (
-        <button className="btn" data-stack-next onClick={() => void invoke("open_external", { url: next.url })}>
+        <button className="btn" data-stack-next onClick={() => openOut(next.url)}>
           Open the next pull request (#{next.number})
         </button>
       )}

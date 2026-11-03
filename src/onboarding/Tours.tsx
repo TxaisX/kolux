@@ -163,12 +163,24 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   );
 }
 
+/** 49-ux2: what to tell the user when a tour they asked for (Help > a tour) is dropped or gives up, so a
+ *  replay is never silent. `off` is the owning feature being switched off. A page change or another tour
+ *  starting is the user's own doing and says nothing; an automatic tour never speaks. Kept here, not in
+ *  tour.ts, so the code loaded at start does not carry it. */
+export function tourNotice(name: string, w: Want, act: ReturnType<typeof lookAt>, gave: boolean, off: boolean): string | null {
+  if (!w.forced) return null;
+  if (act === "drop" && off) return `The ${name} tour is off because its feature is switched off in Settings.`;
+  if (act === "miss" && gave) return `The ${name} tour needs its screen showing. Open that screen, then replay the tour from Help.`;
+  return null;
+}
+
 export default function Tours() {
   const rec = useRef<GuideRecord | null>(null);
   const slot = useRef(false);
   const want = useRef<Want | null>(null);
   const settings = useRef<Record<string, unknown> | null>(null);
   const [run, setRun] = useState<{ tour: Tour; at: number } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null); // 49-ux2: why a replay did not start
   const running = useRef<TourId | null>(null);
   running.current = run?.tour.id ?? null;
   const here = useRef(0); // the step the running tour is on, for the hand-over
@@ -219,13 +231,17 @@ export default function Tours() {
       if (w) {
         const tour = TOURS.find((t) => t.id === w.id);
         const first = tour && nextShown(tour.steps.map((st) => !!stepEl(st)), -1);
-        const act = lookAt(w, { running: running.current, page: pageKey(), firstShown: first !== null && first !== undefined, blocked: blocked(), off: ownerOff(settings.current, w.id), detached: !!tour?.detached });
+        const off = ownerOff(settings.current, w.id);
+        const act = lookAt(w, { running: running.current, page: pageKey(), firstShown: first !== null && first !== undefined, blocked: blocked(), off, detached: !!tour?.detached });
+        const gave = act === "miss" && (++w.tries, gaveUp(w));
         if (act === "start" && tour && first !== null && first !== undefined) {
           want.current = null;
           setRun({ tour, at: first });
-        } else if (act === "drop" || (act === "miss" && (++w.tries, gaveUp(w)))) {
+        } else if (act === "drop" || gave) {
           // Gave up or was called off without showing: an automatic tour hands its slot back and is not marked seen.
           want.current = null;
+          const why = tourNotice(tour?.name ?? w.id, w, act, gave, off && !tour?.detached);
+          if (why) setNotice(why);
           if (!w.forced) slot.current = false;
         }
         return;
@@ -250,7 +266,17 @@ export default function Tours() {
     };
   }, []);
 
-  if (!run) return null;
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+  if (!run)
+    return notice ? (
+      <div className="tour-notice" role="status" onClick={() => setNotice(null)}>
+        {notice}
+      </div>
+    ) : null;
   const end = (how: "done" | "skipped" | "lost") => {
     const id = run.tour.id;
     const next = handsOver(id, how, here.current);

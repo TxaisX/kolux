@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import sheet from "./HelpSheet.tsx?raw";
 import { PAGES } from "../settings/pages";
-import { CHANGELOG_URL, copyDiagnostics, createRestart, DIAG_COPIED, DOCS_URL, GITHUB_URL, helpItems, RESTARTING, type HelpCtx } from "./helpItems";
+import { CHANGELOG_URL, copyDiagnostics, createRestart, DIAG_COPIED, DOCS_URL, GITHUB_URL, helpItems, HINTS, RESTARTING, TOURS_HINT, type HelpCtx } from "./helpItems";
 
 /** Every action is a spy; `invoke` records what the three web links hand to the back end. */
 function ctx(over: Partial<HelpCtx> = {}) {
@@ -17,6 +17,7 @@ function ctx(over: Partial<HelpCtx> = {}) {
     openExplore: vi.fn(),
     reopenWizard: vi.fn(),
     requestFeedback: vi.fn(),
+    reportCrash: vi.fn(),
     copyDiagnostics: vi.fn(),
     checkForUpdates: vi.fn(),
     restart: vi.fn(),
@@ -25,6 +26,25 @@ function ctx(over: Partial<HelpCtx> = {}) {
   return { c, invoke };
 }
 const label = (c: HelpCtx, id: string) => helpItems(c).find((i) => i.id === id)!;
+
+describe("49-ux2 the help menu says what each entry is", () => {
+  it("has a Report Crash row after Send Feedback that runs reportCrash", () => {
+    const { c } = ctx();
+    const ids = helpItems(c).map((i) => i.id);
+    expect(ids.indexOf("report-crash")).toBe(ids.indexOf("feedback") + 1);
+    label(c, "report-crash").run();
+    expect(c.reportCrash).toHaveBeenCalledTimes(1);
+  });
+  it("tells the checklist from the wizard in visible text, and the tours' wait is no hover title", () => {
+    const { c } = ctx();
+    expect(label(c, "getting-started").hint).toBe(HINTS["getting-started"]);
+    expect(label(c, "onboarding").hint).toBe(HINTS.onboarding);
+    expect(HINTS["getting-started"]).not.toBe(HINTS.onboarding);
+    expect(TOURS_HINT).toMatch(/screen is showing/);
+    expect(sheet).not.toMatch(/title="Runs once/);
+    expect(sheet).toMatch(/TOURS_HINT/);
+  });
+});
 
 describe("APP-010 the help menu list", () => {
   it("has every named entry, in the card's order, Settings first", () => {

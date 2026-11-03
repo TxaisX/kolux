@@ -10,6 +10,7 @@ import type { AgentInfo } from "../launch/PlusMenu";
 import { clearMissing } from "../launch/seats";
 import { groupOf } from "../terminal/grid";
 import { applyAppearance, readAppearance } from "../theme";
+import { readSettingsInto } from "./settingsRead";
 import { sameDir } from "../workspaces";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -30,15 +31,13 @@ export function useWindowStart({ activeDir, agentPass, focused, installedIds, ne
     });
     // SET-001: the saved look is put on the window every time the settings are read.
     const readSettings = () =>
-      void invoke<Record<string, unknown>>("get_settings")
-        .then((s) => {
+      void readSettingsInto(() => invoke<Record<string, unknown>>("get_settings"), (s) => {
           setSettings(s);
           setSettingsRead(true);
           applyAppearance(readAppearance(s));
           applyWindowBlur(s);
           // after-list #39 / row 789: the fallback sentence is told by RecoveryMount now (its own notice, not the single slot the shortcuts file overwrote)
-        })
-        .catch(() => setSettings({}));
+        });
     readSettings();
     const off = listen("settings-saved", () => (readSettings(), invoke<ShellInfo[]>("shell_list").then(setShells, () => {}))); // SET-026: the chosen default shell leads the list
     return () => {

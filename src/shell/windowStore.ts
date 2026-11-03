@@ -118,12 +118,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const dragging = useRef<{ tab: number } | { cell: number } | null>(null);
   const [dropHint, setDropHint] = useState<{ group: number; zone?: Zone; tab?: number; half?: "before" | "after" } | null>(null);
   const recentTabs = useRef<number[]>([]); // TERM-044: panes focused, newest first, so a closed tab returns to the one used before it
-  useEffect(() => {
-    if (!tabMenu) return;
-    const h = (e: KeyboardEvent) => e.key === "Escape" && setTabMenu(null);
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [tabMenu]);
+  // Escape, the arrows and focus for the tab menu are in window/tabMenuKeys.ts (UX lane A): it listens before a focused pane does.
   const [titles, setTitles] = useState<Record<number, string>>({}); // browser tabs' page titles
   const [liveIds, setLiveIds] = useState<Record<number, Identity>>({}); // TERM-058: terminal panes' running program, from the shell marks
   const liveRef = useRef(liveIds);

@@ -54,11 +54,12 @@ Rules: the Artifacts sidebar button is always there; search looks at titles, ign
   and deletes the stored copy only once confirmed; a failed file picker raises an error toast, while
   closing it without a pick is silent;
   the viewer is sandboxed, serves only the files stored for that entry, and hands clicked links to
-  the system browser; the viewer has remote, loading and could-not-show states, and a page still not loaded after 10 s
+  the system browser, but only links the user clicked: a page that asks to open one on its own opens nothing; the viewer has remote, loading and could-not-show states, and a page still not loaded after 10 s
   says it is taking a long time, with its frame hidden until it loads.
 Acceptance:
   - [x] Search with two words → only titles holding both stay in the list. (cards; evidence/cards-SKILL-036.txt)
   - [x] Click a link inside a viewed artifact → it opens in the system browser, not in Kolux. (cards; evidence/cards-SKILL-036.txt)
+  - [ ] View a page whose script asks to open a link as it loads → nothing opens; click a link in it → it opens. (cards; evidence/T-682.txt)
   - [x] Add artifact with a file that cannot be read → an error toast, and the list is unchanged. (cards; evidence/cards-SKILL-036.txt)
   - [x] Remove from library → a confirm asks first; Cancel leaves the entry and returns focus to its x. (cards; evidence/T-685.txt)
   - [x] A page that never loads → after 10 s the viewer says it is taking a long time; a file picker that fails shows a toast. (cards; evidence/T-685.txt)

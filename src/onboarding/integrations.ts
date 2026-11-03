@@ -16,6 +16,9 @@ export type Steps = { review: IntState; tasks: IntState; source: string | null; 
  *  is not connected while its token check is stale, pending or failed, and a failed token sign-in does
  *  not count as ready for review. A connected code host completes the task step only once review is
  *  connected and the tracker checks have finished; then the step folds into a summary naming the source. */
+/** The command the Connect GitHub button types into the small terminal (the user presses Enter). */
+export const GH_LOGIN = "gh auth login";
+
 export function integrationSteps(s: Seen): Steps {
   const review: IntState = s.account && s.token === "ok" ? "done" : "active";
   const reviewNote =

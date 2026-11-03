@@ -6,10 +6,7 @@
 // show one at a time; Escape, a click outside, or another dialog opening over it counts as Don't
 // run, and the next prompt still shows.
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import Ask from "../chrome/Ask";
 import type { SetupLine } from "../projects/model";
-import "./trust.css";
 
 /** What Rust says the prompt must ask (SAFE-025): the script's kind, its exact text, the project's
  *  name, and whether an approved version of it has since changed. */
@@ -19,7 +16,7 @@ export type TrustAnswer = "skip" | "once" | "always";
 type Invoke = <T>(cmd: string, args: Record<string, unknown>) => Promise<T>;
 type Waiting = { id: number; ask: TrustAsk; done: (a: TrustAnswer) => void };
 
-const KIND_WORDS: Record<TrustAsk["kind"], string> = { setup: "setup script", archive: "archive script", issue: "issue command", tabs: "default tab commands" };
+export const KIND_WORDS: Record<TrustAsk["kind"], string> = { setup: "setup script", archive: "archive script", issue: "issue command", tabs: "default tab commands" };
 
 /** The prompt's title and lead line, worded for a changed script when one approved earlier changed. */
 export function trustWords(ask: TrustAsk): { title: string; lead: string } {
@@ -35,6 +32,10 @@ let hosts = 0;
 let ids = 0;
 const subs = new Set<() => void>();
 const changed = () => subs.forEach((f) => f());
+/** For the prompt host (TrustDialog.tsx): follows the line; returns the stop. */
+export const follow = (f: () => void) => (subs.add(f), () => void subs.delete(f));
+/** The prompt on show, if any. */
+export const shown = (): { id: number; ask: TrustAsk } | undefined => line[0];
 
 /** SAFE-025: ask the user about `ask`; resolves when answered. With no prompt mounted it resolves
  *  "skip" at once, so nothing runs unasked. */
@@ -99,53 +100,3 @@ export async function trustedSetup(path: string, opts: { local?: string | null; 
   return invoke<SetupLine | null>("workspace_setup", { path, ...args });
 }
 
-/** The prompt host: mount once near the app's root. Draws the first waiting prompt. */
-export default function TrustPrompt() {
-  const count = useSyncExternalStore(
-    (f) => (subs.add(f), () => void subs.delete(f)),
-    () => line.length,
-    () => line.length,
-  );
-  useEffect(() => {
-    hostMounted(true);
-    return () => hostMounted(false);
-  }, []);
-  const first = count > 0 ? line[0] : undefined;
-  return first ? <TrustDialog key={first.id} ask={first.ask} /> : null;
-}
-
-function TrustDialog({ ask }: { ask: TrustAsk }) {
-  const [always, setAlways] = useState(false);
-  const mine = useRef<HTMLDivElement>(null);
-  const { title, lead } = trustWords(ask);
-  // SAFE-025: another dialog replacing this one counts as Don't run; the next prompt still shows.
-  useEffect(() => {
-    const seen = new MutationObserver((records) => {
-      if (records.some((r) => otherDialog(r.addedNodes, mine.current))) answerFirst("skip");
-    });
-    seen.observe(document.body, { childList: true, subtree: true });
-    return () => seen.disconnect();
-  }, []);
-  return (
-    <div ref={mine} className="trust-prompt">
-      <Ask
-        title={title}
-        confirm="Run hooks"
-        cancel="Don't run"
-        body={
-          <>
-            <p className="trust-lead">{lead}</p>
-            <pre className="trust-script" aria-label={`The ${KIND_WORDS[ask.kind] ?? "script"} that would run`}>
-              {ask.script}
-            </pre>
-            <label className="check trust-always">
-              <input type="checkbox" checked={always} onChange={(e) => setAlways(e.target.checked)} /> Always trust this repository&apos;s kolux.yaml
-            </label>
-          </>
-        }
-        onConfirm={() => answerFirst(always ? "always" : "once")}
-        onCancel={() => answerFirst("skip")}
-      />
-    </div>
-  );
-}

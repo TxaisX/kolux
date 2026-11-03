@@ -20,6 +20,8 @@ import NameField from "../../terminal/NameField";
 import { sameDir } from "../../workspaces";
 import Pane from "./Pane";
 import { gridFrame } from "./gridFrame";
+import { tabKeyAction, tabStop } from "./tabKeys";
+import { menuAnchor } from "./tabMenuStart";
 import { useWindow } from "./store";
 
 export default function Grid() {
@@ -68,6 +70,7 @@ export default function Grid() {
         // VIEW-015: on the Agents screen the picked session is the one shown, whatever tab its cell had in front.
         const mine = agentsScreen && c.panes.some((p) => p.key === selected);
         const active = mine ? (selected as number) : activeOf(c);
+        const order = orderPinnedFirst(c.panes.map((p) => p.key), pinned); // the strip's order: pinned tabs first
         return (
           <div
             key={c.group}
@@ -95,7 +98,7 @@ export default function Grid() {
           >
             {(c.panes.length > 1 || classic) && (
               <div className="tabs" role="tablist" aria-label="Tabs">
-                {orderPinnedFirst(c.panes.map((p) => p.key), pinned)
+                {order
                   .map((k) => c.panes.find((p) => p.key === k) as (typeof c.panes)[number])
                   .map((p) => (
                   <div
@@ -103,7 +106,18 @@ export default function Grid() {
                     role="tab"
                     aria-selected={p.key === active}
                     className="tab"
-                    tabIndex={0}
+                    tabIndex={tabStop(p.key, active, order)}
+                    onKeyDown={(e) => {
+                      // Arrows, Home and End move along the strip; keys typed in the rename field or on the close button stay theirs.
+                      if (e.target !== e.currentTarget) return;
+                      const act = tabKeyAction(e.key, order, p.key);
+                      if (!act) return;
+                      e.preventDefault();
+                      // Manual activation: the arrows only move focus along the strip. Enter or Space brings the tab
+                      // forward, and then its pane takes the keyboard (TERM-012), which would end an arrow walk after one step.
+                      if ("activate" in act) setFocused(act.activate);
+                      else (e.currentTarget.parentElement?.querySelectorAll<HTMLElement>(':scope > [role="tab"]')[order.indexOf(act.focus)])?.focus();
+                    }}
                     style={tabStyle(tabColors, p.key)}
                     data-drop={dropHint?.tab === p.key ? dropHint.half : undefined}
                     draggable
@@ -137,7 +151,7 @@ export default function Grid() {
                       // TERM-049: the tab menu opens where the pointer is; this click never closes it.
                       e.preventDefault();
                       e.stopPropagation();
-                      setTabMenu({ key: p.key, top: Math.min(e.clientY, window.innerHeight - 220), left: Math.min(e.clientX, window.innerWidth - 240) });
+                      setTabMenu({ key: p.key, ...menuAnchor(e.clientX, e.clientY, window.innerWidth, window.innerHeight) });
                     }}
                     onAuxClick={(e) => {
                       // TERM-049 / TERM-046: middle-click closes the tab; a pinned tab is exempt.
@@ -160,7 +174,7 @@ export default function Grid() {
                       tabLabel(p)
                     )}
                     {dirty[p.key] && <span className="unsaved" title="Unsaved changes" aria-label="Unsaved changes" />}
-                    <button className="tab-x" aria-label={`Close ${tabName(p, titles)}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => closePane(p.key)}>
+                    <button className="tab-x" tabIndex={-1} aria-label={`Close ${tabName(p, titles)}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => closePane(p.key)}>
                       ×
                     </button>
                   </div>

@@ -3,6 +3,7 @@
 // hands every real action (a session, Add Project) to App through its props.
 import { useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import Ask from "../chrome/Ask";
 import { Close, Mark } from "../chrome/icons";
 import { ConnectGrid } from "../settings/ConnectGrid";
@@ -11,6 +12,8 @@ import CodexCard from "../settings/CodexCard";
 import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
+import type { AgentInfo } from "../launch/PlusMenu";
+import { sessionAgent } from "./sessionAgent";
 import { HOOKS_LINE, hooksDefault, recordHooks, recordsHooks } from "./hooksOn";
 import { useSettings } from "../settings/useSettings";
 
@@ -28,6 +31,9 @@ type ViewProps = {
   ping: boolean;
   /** T-608: the status hooks switch beside the one line of consent (on until the user turns it off). */
   hooks: boolean;
+  /** 49-ux2: no AI agent is installed, so Open a session is held back with its reason and a Re-check. */
+  noAgent?: boolean;
+  onRecheck?: () => void;
   cards?: ReactNode;
   onPing: (on: boolean) => void;
   onHooks: (on: boolean) => void;
@@ -46,9 +52,32 @@ type ViewProps = {
 
 export const mainOff = (at: number, connected: boolean) => at === 1 && !connected;
 
+// 49-ux2: these live here, not in sessionAgent.ts, so the code loaded at start does not carry them.
+/** Why the last button picks a folder instead of opening a session while no agent is installed. */
+export const NO_AGENT_WHY = "No AI agent is installed yet, so this opens a plain terminal in a folder. Install one in Settings > Agents, then check again.";
+
+/** The wizard's last button: an agent session when one is installed, otherwise a folder (a plain terminal needs no agent). */
+export const lastMain = (noAgent: boolean): "Open a session" | "Pick a folder" => (noAgent ? "Pick a folder" : "Open a session");
+
+/** Reads the agent list now and again whenever another view installs or changes one (agents-changed). Returns the stop. */
+export function followAgents(
+  read: () => Promise<AgentInfo[]>,
+  on: (cb: (list: unknown) => void) => Promise<() => void>,
+  set: (list: AgentInfo[]) => void,
+): () => void {
+  let alive = true;
+  const load = () => void read().then((l) => alive && set(l), () => {});
+  load();
+  const off = on((l) => alive && (Array.isArray(l) ? set(l as AgentInfo[]) : load()));
+  return () => {
+    alive = false;
+    void off.then((f) => f());
+  };
+}
+
 export function WizardView(p: ViewProps) {
   const screen = SCREENS[p.at];
-  const main = ["Get started", "Continue", "Continue", "Open a session"][p.at];
+  const main = ["Get started", "Continue", "Continue", lastMain(!!p.noAgent)][p.at];
   const secondary = [null, "I’ll do this later", null, null][p.at];
   return (
     <div className="ask-backdrop onb-backdrop" onMouseDown={(e) => e.button === 0 && e.target === e.currentTarget && p.onOutside?.()}>
@@ -114,7 +143,18 @@ export function WizardView(p: ViewProps) {
               {secondary}
             </button>
           )}
-          {mainOff(p.at, p.connected) && p.at === 1 ? <span className="onb-gap onb-why">{t("onboarding.connect.wait")}</span> : <span className="onb-gap" />}
+          {mainOff(p.at, p.connected) && p.at === 1 ? (
+            <span className="onb-gap onb-why">{t("onboarding.connect.wait")}</span>
+          ) : p.at === 3 && p.noAgent ? (
+            <span className="onb-gap onb-why" role="status">
+              {NO_AGENT_WHY}{" "}
+              <button className="link" onClick={p.onRecheck}>
+                Check again
+              </button>
+            </span>
+          ) : (
+            <span className="onb-gap" />
+          )}
           {p.at > 0 && (
             <button className="btn" onClick={p.onBack}>
               Back
@@ -166,15 +206,21 @@ export default function Wizard(props: Props) {
   useEffect(() => {
     if (connected) void milestone("aiConnected");
   }, [connected]);
-  const go = (to: number) => {
+  // 49-ux2: the last button needs an agent to start; the list is read here (the window's own list is App's).
+  const [agents, setAgents] = useState<AgentInfo[] | null>(null);
+  const readAgents = () => void invoke<AgentInfo[]>("agent_list").then(setAgents, () => {});
+  // Read again on every screen and on agents-changed: an agent installed from the Connect screen counts at once.
+  useEffect(() => followAgents(() => invoke<AgentInfo[]>("agent_list"), (cb) => listen("agents-changed", (e) => cb(e.payload)), setAgents), [at]);
+  const noAgent = agents !== null && sessionAgent(agents, settings) === null;
+  const go = (to: number, later = false) => {
     // The stored step is the last screen finished (onboarding.rs); a failed save keeps the wizard going.
     if (to > at) invoke("onboarding_step", { step: to - 1 }).catch(() => {});
     // T-608: a failed record leaves the choice unsaved, so the one-time card asks again (nothing is installed).
-    if (recordsHooks(at, to)) void recordHooks(hooksNow).catch(() => {});
+    if (recordsHooks(at, to, later)) void recordHooks(hooksNow).catch(() => {});
     setAt(to);
   };
-  const main = () => [() => go(1), () => go(2), () => go(3), () => props.onSession()][at]();
-  const secondary = () => (at === 1 ? go(2) : undefined);
+  const main = () => [() => go(1), () => go(2), () => go(3), () => (noAgent ? props.onPickFolder() : props.onSession())][at]();
+  const secondary = () => (at === 1 ? go(2, true) : undefined);
   const off = mainOff(at, connected);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -202,6 +248,8 @@ export default function Wizard(props: Props) {
       connected={connected}
       ping={props.ping}
       hooks={hooksNow}
+      noAgent={noAgent}
+      onRecheck={readAgents}
       cards={<ConnectGrid cards={cards} />}
       onPing={props.onPing}
       onHooks={setHooks}

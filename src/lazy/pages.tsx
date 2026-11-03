@@ -55,7 +55,7 @@ export const UpdateCenter = deferred(() => import("../update/UpdateCenter"));
 export const AboutPanel = deferred(() => import("../shell/AboutPanel"));
 export const FeedbackDialog = deferred(() => import("../feedback/FeedbackDialog"));
 export const LinkAskHost = deferred(() => import("../shell/LinkAskDialog"));
-export const TrustPrompt = deferred(() => import("../setup/TrustPrompt"));
+export const TrustPrompt = deferred(() => import("../setup/TrustDialog"));
 export const RecoveryMount = deferred(() => import("../recovery/RecoveryMount"));
 export const ToolNotices = deferred(() => import("../launch/ToolNotices"));
 export const AgentStartHost = deferred(() => import("../agentstart/AgentStartHost"));

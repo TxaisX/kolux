@@ -1,0 +1,43 @@
+T-682 - A viewer link opens only from the viewer's own frame during a click (DT-C118; SKILL-036; audit backlog row 4)
+Lane D (72), branch s-72/ux-8, base 4bd4d2de (origin/main), code commits fcb862e9 and the review fix, 2026-11-03.
+
+WHAT CHANGED
+- src/artifacts/ArtifactsPage.tsx: new viewerLink(message, frame, activation). The library page opens a link the viewer asks
+  for only when the request comes from its own frame, the window has an active click and focus is inside the frame (a click
+  or key in the frame gives both; a page script that asks on its own, such as on load, has neither; the row click that opened
+  the page is still active for a few seconds but leaves focus on the row). An engine that cannot report clicks opens nothing.
+- src/artifacts/ArtifactsPage.test.ts: five tests for viewerLink.
+- src/artifacts/__cards__/SKILL-036.test.ts box 2: the source and shape checks run with a click active; a request with no click, or with the row click still active
+  but focus outside the frame, opens nothing; the clicked links still open. The test restores navigator in afterEach.
+- spec/15-skills-plugins-kits.md SKILL-036: the Rules say only clicked links open; a new Acceptance line points here.
+- Rules changed: none reversed (DT-C118).
+
+WHY
+Audit backlog row 4 (held on the old #37 until now): a page shown in the viewer could ask Kolux to open the system browser or
+mail client without the user clicking anything.
+
+REVIEW
+Opus review B on fcb862e9: the row click's activation still counted for a page posting on load; fixed by also requiring focus in
+the frame, and the card test's source and shape checks now run with a click active. Re-review A- on a2b4dbdc, no must-fix. Left as a live check: older WebKitGTK
+without click reporting opens no viewer links; whether a page can focus its own frame without a click on each engine.
+
+TESTS (named; pnpm vitest run src/artifacts/ArtifactsPage.test.ts src/artifacts/__cards__/SKILL-036.test.ts --reporter=verbose)
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > matches titles holding every typed word, in any case and order 1ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > writes sizes as B, KB or MB with one decimal 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > points the viewer at the entry's stored page on the app's scheme 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > cuts the list into one section per project, the newest project first 1ms
+✓ src/artifacts/ArtifactsPage.test.ts > Artifacts library (SKILL-036) > shows a page or text in the frame, an image as a picture, and the rest in its own app 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > focus after a removal > goes to the next row, else the previous, else nowhere 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > opens a link clicked inside the viewer's own frame 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > ignores a page script that posts with no click, such as on load 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > ignores a page that posts while focus is outside the frame, such as right after the row click that opened it 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > opens nothing on an engine that cannot say whether a click happened 0ms
+✓ src/artifacts/ArtifactsPage.test.ts > a link the viewer asks to open (T-682) > ignores other windows, a missing frame and messages that are not a link 0ms
+✓ src/artifacts/__cards__/SKILL-036.test.ts > box 1: a search with two words keeps only the titles holding both 253ms
+✓ src/artifacts/__cards__/SKILL-036.test.ts > box 2: a clicked link leaves the viewer as a message, and the page hands it to the system opener, not to Kolux 375ms
+✓ src/artifacts/__cards__/SKILL-036.test.ts > box 3: Add artifact with a file that cannot be read shows an error toast and the list stays as it was 137ms
+
+TOTALS
+- pnpm vitest run src/artifacts: Test Files 5 passed (5), Tests 24 passed (24).
+- pnpm tsc --noEmit: exit 0
+- No Rust touched (the frame's click script and the opener's web/mail-only check are unchanged).

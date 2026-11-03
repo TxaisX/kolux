@@ -188,20 +188,46 @@ test("a plain terminal as the saved default starts nothing in the first folder (
 
 // T-612 (audit F08-onboarding-look-misc.2): since kits went (T-568), "Your work"'s Continue reaches the last screen with no
 // workspace, and Open a session silently did nothing there. Now it leads to picking a folder and opens the session in it.
-test("T-612: Open a session with no workspace yet closes setup as completed, opens Add Project, and starts the session in the folder picked, once", async () => {
+test("T-612 / 49-ux2: Open a session with no workspace yet opens Add Project, stores setup as completed only when the folder is added, and starts the session there, once", async () => {
   const { ADD_PROJECT } = await import("./firstRun");
   win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
   const app = await mountWizard(); // a new profile: no saved default agent, no workspace
   await app.now().wizardSession();
   await app.settle();
-  expect(closes).toEqual(["completed"]);
+  // 49-ux2: Pick a folder hides the wizard and says why, but stores nothing until a folder was really added.
+  expect(closes).toEqual([]);
   expect(app.now().wizard).toBeNull();
   expect(heard).toContain("add-project");
+  expect(toasts).toHaveLength(1);
   expect(started).toEqual([]);
   app.now().projectAdded("C:/new", "main");
+  await app.settle();
+  expect(closes).toEqual(["completed"]);
   expect(started).toEqual(["claude@C:/new"]); // the agent Open a session would have used: the first one offered
   app.now().projectAdded("C:/other", null);
   expect(started).toEqual(["claude@C:/new"]);
+});
+
+test("49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is back and a project added later does not complete setup", async () => {
+  const { REOPEN_WIZARD } = await import("./firstRun");
+  const app = await mountWizard();
+  app.now().pickFolder();
+  await app.settle();
+  expect(app.now().wizard).toBeNull();
+  expect(closes).toEqual([]);
+  const realNow = Date.now;
+  vi.spyOn(Date, "now").mockImplementation(() => realNow() + 10_000);
+  try {
+    win.dispatchEvent(new Event(REOPEN_WIZARD));
+    await app.settle();
+  } finally {
+    vi.restoreAllMocks();
+  }
+  expect(app.now().wizard).toBe(0);
+  app.now().projectAdded("C:/later", null);
+  await app.settle();
+  expect(closes).toEqual([]);
+  expect(started).toEqual([]);
 });
 
 test("T-612: with a workspace in front, Open a session starts the session there and closes setup as completed", async () => {

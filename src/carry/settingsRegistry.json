@@ -82,6 +82,7 @@
     "scmRecipes",
     "scmRepoAi",
     "scmSummaryUpstream",
+    "setupChecklistHidden",
     "setupPolicy",
     "tabKeysSeeded",
     "tabSwitchOrder",
