@@ -23,8 +23,8 @@ export const leftShown = (open: boolean, narrow: boolean, rightShown: boolean) =
  *  its saved state, which shows again on the Terminals screen. */
 export type RightAside = { shown: boolean; open: boolean; close: () => void };
 /** The left sidebar's next open state, for every path that sets it (shell/windowStore.ts): a toggle `(o) => !o` reads
- *  what is in view, and opening it in a narrow window while the right sidebar is open closes the right one, also from
- *  another screen, since the openers switch to Terminals in the same step. */
+ *  what is in view, and opening it in a narrow window while the right sidebar is open closes the right one. From another
+ *  screen that closes its saved state, so it stays closed when Terminals comes back (the create rows switch there at once). */
 export const nextLeft = (open: boolean, v: boolean | ((shown: boolean) => boolean), narrow: boolean, right: RightAside) => {
   const next = typeof v === "function" ? v(leftShown(open, narrow, right.shown)) : v;
   if (next && narrow && right.open) right.close();

@@ -22,7 +22,8 @@ THE RULE (DT-C135)
     the menu's sidebar.left.toggle, the palette's workspace rows, and workspace create, rename and delete. A toggle reads
     what is in view; opening the left sidebar in a narrow window while the right one is open closes the right one, so a
     create or rename row never opens inside a hidden sidebar. "Open" is the right sidebar's saved state, not only what
-    is in view, because the openers used from another screen switch to Terminals in the same step.
+    is in view. The create, rename and palette rows switch to Terminals in the same step, and the toggles (top bar,
+    Ctrl+B, menu) used from another screen close the saved state, so the right sidebar is closed when Terminals comes back.
     App.tsx keeps the setter's view of the right sidebar current, using the same test as its hidden attribute:
     terminals && right.open && !fullPage. TopBar reads that same value for the toggle's state.
   - Closing the right sidebar any other way brings back a left sidebar that was open: its own toggle, the Explorer's close, or
@@ -90,4 +91,12 @@ pnpm exec vite build && node scripts/bundle-budget.mjs
   store's setter wrapper and App's right-sidebar ref.
 
 REVIEW
-__REVIEW__
+Three fresh opus-high-review passes (read-only):
+- 1st, at 84cb27c0: B+. Only the top-bar toggle knew the rule; Ctrl+B, the menu, the palette and the create/rename/
+  delete rows opened a hidden sidebar. Fixed by routing every setter through nextLeft (windowStore.ts).
+- 2nd, on that fix: B+. Openers used from another screen saw the right sidebar as not shown and closed nothing.
+  Fixed by checking the saved state (open). Routing, DOM-structure and class-name pins added; docs reworded.
+- 3rd, at 3ef071e7: A-. One should-fix: the docs claimed every opener switches to Terminals; the toggles do not.
+  Reworded (narrow.ts comment, DT-C135, this file); "delete" and the Classic header note were added to DT-C135.
+  Nits left as is: (max-width: 899px) vs (width < 900px) at fractional widths (both sides agree); render-time ref
+  writes (no transitions call the setter); the unused server snapshot argument.
