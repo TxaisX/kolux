@@ -178,6 +178,8 @@ input { font: inherit; }
 .sb-tabs { display: flex; margin: 8px 8px 0; height: 30px; padding: 3px; gap: 2px; background: var(--tab-track); border: 1px solid var(--tab-track-border); border-radius: 8px; }
 .sb-tabs button { flex: 1; height: 22px; border-radius: 6px; font-size: 12px; font-weight: 500; color: #9a989a; }
 .sb-tabs button[aria-pressed="true"] { background: var(--row-selected); color: var(--fg); font-weight: 600; }
+/* W3 F4 (T-693): the sidebar title while it has one view (the tabs come back with Status) */
+.sb-heading { margin: 10px 12px 2px; font-size: 12px; font-weight: 600; color: var(--fg); }
 .sb-list { flex: 1; min-height: 0; overflow-y: auto; padding: 9px 4px 8px; }
 .sb-list::-webkit-scrollbar { width: 6px; }
 .sb-list::-webkit-scrollbar-thumb { background: var(--line-focus); border-radius: 3px; }

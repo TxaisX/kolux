@@ -60,6 +60,7 @@ import { restoreField } from "./draft";
 import PlusMenu, { type AgentInfo } from "../launch/PlusMenu";
 import { openSettings as openSettingsPage } from "../settings/pages";
 import { BehindNote, ListButtons, OutsideCard, PickedBar } from "../shell/ProjectsExtras";
+import { useOneForm } from "../shell/oneForm";
 import { dismissedOutside, jumpToCurrent, outsideOf, toggleRow, useAutoIcons, useTopButton, withDismissed, OUTSIDE_DISMISSED_SETTING } from "../shell/projectsGlue";
 import { headerLabels } from "./headers";
 import { renameTarget } from "../keys/commands";
@@ -403,6 +404,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const top = useTopButton(); // PROJ-054
   const [picked, setPicked] = useState<string[]>([]); // PROJ-058: Ctrl/Cmd-clicked rows, by folder
   const [behind, setBehind] = useState<string | null>(null); // PROJ-029: the "base is behind" suggestion of the last create
+  // W3 F2 (T-693): one sidebar form at a time, the last opened wins; F1: the Jump button hides while one is open.
+  const forms = { filter: filterOpen, group: groupFor !== null, create: creating !== null, settings: settingsFor !== null };
+  useOneForm(forms, { filter: () => setFilterOpen(false), group: () => setGroupFor(null), create: () => setCreating(null), settings: () => setSettingsFor(null) });
   const setIcon = async (p: Project, icon: string) => {
     try {
       const kept = await invoke<string | null>("project_icon_set", { projectId: p.id, icon });
@@ -2432,16 +2436,19 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </span>
         </div>
 
-        <div className="sb-tabs" role="tablist">
-          <button role="tab" aria-selected="true">
-            Workspaces
-          </button>
-          {NOT_BUILT && (
+        {/* W3 F4 (T-693): one view only, so a heading, not a lone tab that does nothing; tabs come back with Status. */}
+        {NOT_BUILT ? (
+          <div className="sb-tabs" role="tablist">
+            <button role="tab" aria-selected="true">
+              Workspaces
+            </button>
             <button role="tab" aria-selected="false" title="Status (not built yet)">
               Status
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <h2 className="sb-heading">Workspaces</h2>
+        )}
 
         {behind && <BehindNote text={behind} refresh={refreshesOnCreate(settings)} onRefresh={(on) => onSetting(REFRESH_SETTING, on)} onDismiss={() => (onSetting(HINT_DISMISSED_SETTING, true), setBehind(null))} />}
         <PickedBar
@@ -2672,7 +2679,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </>
           )}
         </div>
-        <ListButtons topShown={top.shown} onTop={top.toTop} canJump={activeDir !== null} onJump={() => void jumpHere()} />
+        <ListButtons topShown={top.shown} onTop={top.toTop} canJump={activeDir !== null && !Object.values(forms).some(Boolean)} onJump={() => void jumpHere()} />
 
         <div className="sb-divider" />
         <div className="sb-next">

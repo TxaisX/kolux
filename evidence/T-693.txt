@@ -1,0 +1,24 @@
+T-693 / DT-C129: UX live audit Wave 3, lane A (90): shell, sidebar and palette rows
+Rows: findings/live-wave3-a.md section (b) F1, F2, F3, F4, F11 (requests/W3.md section "90"). Built on main 4bd4d2de.
+
+F1 fixed. Reproduced by reading the layout: the Jump to current workspace button floats at the sidebar's bottom-left
+  (absolute, bottom 8px) over the list, so an open form's last row (Save, Create workspace) sits under it. It now hides
+  while any sidebar form is open.
+F2 fixed. Reproduced by reading the code: the filter panel, a group's settings, the new-workspace form and a project's
+  settings each had their own open state and nothing closed the others. A small hook now closes the others when one
+  opens; the one opened last stays.
+F3 fixed. Reproduced by reading the code: the top bar's switcher set the screen only, and the full page (Automations,
+  Tasks, Routing) is drawn under the Terminals screen, so it stayed up. Picking Terminals now closes the page first,
+  as Show Code does (VIEW-009, spec line updated).
+F4 fixed. The lone Workspaces tab is now a plain heading while the sidebar has one view; the tab row returns with Status.
+F11 not reproduced (harness artefact). The palette opened by Ctrl+Shift+J (worktree.palette) lists every command and
+  screen row, "Show Skills" included; typed in full it is the first row (exact label match ranks first), and its Enter
+  runs toggleSkills, which opens Skills from the Terminals screen. The live harness's "palette is open" check also
+  accepts any input whose label contains "earch", which the Terminals screen's Explorer search boxes match, so a run
+  where the palette did not come up still typed "Show Skills" into whatever had focus and reported "nothing changed".
+  The walker then reported Terminals controls under S17 (findings section c already marks S17 not tested).
+  Proof: src/shell/wave3.test.ts "F11 (not reproduced) ..." builds the real palette rows (commandRows + screenRows),
+  ranks them with the real paletteRows for "Show Skills", runs row 0 and checks the screen became "skills".
+
+Tests: src/shell/wave3.test.ts (5 tests: F2 rule as a pure function, F1/F2/F3/F4 wiring by source, F11 path).
+  npx vitest run src/shell/wave3.test.ts src/chrome src/projects/nav.test.ts -> 24 files, 131 tests passed. tsc 0.
