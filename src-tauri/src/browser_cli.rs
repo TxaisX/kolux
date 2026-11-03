@@ -1288,7 +1288,9 @@ fn tabs_cmd(req: &Request, worktree: Option<&str>, page_no: Option<u32>) -> Resu
             let mut answer = json!({});
             if preview::is_document(&url) {
                 // BROW-039: an HTML document on disk opens as a preview.
-                let p = preview::add(&url).map_err(fail)?;
+                // T-659 (DT-C94): only from a project or workspace open in Kolux.
+                let app = super::APP.get().ok_or_else(|| fail("no browser tab has been opened yet".into()))?;
+                let p = preview::add(&url, &preview::opened(app)).map_err(fail)?;
                 url = p["url"].as_str().unwrap_or_default().to_string();
                 answer = p;
             } else {

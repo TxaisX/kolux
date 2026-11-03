@@ -8,9 +8,12 @@
 //! lie under the real folder), a file past FILE_MAX is explained, and the tab showing a preview
 //! (`loading`/`rendered`, one `Page` per tab) gets outbound navigations offered once instead of
 //! followed, downloads refused with one notice per burst, and agent commands only once rendered.
+//! T-659 (DT-C94, X-sec.3, R07-browser.4): each folder's token is 128 random bits from the
+//! system, kept in memory for the run; the server answers only requests addressed to its own
+//! loopback host and port; a preview is made, and its folder allowed, only for a folder inside a
+//! project or workspace open in Kolux (one already made stays served for the run).
 //! ponytail: a thread per connection and whole files in memory; a worktree's own documents are small.
 use serde_json::{json, Value};
-use std::hash::{Hash, Hasher};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Component, Path, PathBuf};
@@ -52,10 +55,71 @@ fn port() -> Result<u16, String> {
     Ok(*PORT.get_or_init(|| p))
 }
 
-fn token_of(root: &Path) -> String {
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    root.to_string_lossy().to_lowercase().hash(&mut h);
-    format!("{:016x}", h.finish())
+/// X-sec.3: a folder's token, 128 bits from the system's random source; nobody can work it out
+/// from the folder's path.
+fn fresh_token() -> Result<String, String> {
+    let mut b = [0u8; 16];
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::Security::Cryptography::{BCryptGenRandom, BCRYPT_USE_SYSTEM_PREFERRED_RNG};
+        // SAFETY: no algorithm handle with the system-preferred flag, as documented; the buffer is ours, 16 bytes.
+        let status = unsafe { BCryptGenRandom(std::ptr::null_mut(), b.as_mut_ptr(), b.len() as u32, BCRYPT_USE_SYSTEM_PREFERRED_RNG) };
+        if status != 0 {
+            return Err(format!("preview token: the system's random source failed ({status:#x})"));
+        }
+    }
+    #[cfg(not(windows))]
+    std::fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut b)).map_err(|e| format!("preview token: {e}"))?;
+    Ok(b.iter().map(|x| format!("{x:02x}")).collect())
+}
+
+/// T-659 (DT-C94): is `root` one of `folders` or inside one? Both sides are compared as real paths;
+/// a folder that is not a full path, or not there, holds nothing.
+pub fn inside(root: &Path, folders: &[String]) -> bool {
+    let real: Vec<String> = folders.iter().map(|f| Path::new(f.trim())).filter(|f| f.is_absolute()).filter_map(|f| f.canonicalize().ok()).map(|c| plain(&c)).collect();
+    crate::ports::deepest_workspace(&plain(root), &real).is_some()
+}
+
+/// T-659 (DT-C94): is `wt` a worktree of `project`'s own repository? Its `.git` file must name a
+/// folder under `<project>/.git/worktrees`. A path Git lists is not enough on its own: a repository
+/// can list any folder, and a plain-folder project inside a bigger repository would list that one.
+/// ponytail: a project that is itself a linked worktree accepts none of its siblings; Kolux's own
+/// workspaces are in its workspaces folders, which count without this.
+fn linked_to(project: &Path, wt: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(wt.join(".git")) else { return false };
+    let Some(dir) = text.lines().find_map(|l| l.strip_prefix("gitdir:")).map(str::trim) else { return false };
+    let dir = if Path::new(dir).is_absolute() { PathBuf::from(dir) } else { wt.join(dir) };
+    match (dir.canonicalize(), project.join(".git").join("worktrees").canonicalize()) {
+        (Ok(d), Ok(w)) => d.starts_with(&w) && d != w,
+        _ => false,
+    }
+}
+
+/// T-659 (DT-C94): does `root` lie inside a folder the user opened in Kolux? First every project
+/// (Git or plain folder) and the workspaces folders, with no Git; then the worktrees Git lists for
+/// a project that are its own (`linked_to`).
+pub fn opened(app: &tauri::AppHandle) -> impl Fn(&Path) -> bool + '_ {
+    use tauri::Manager;
+    move |root| {
+        let Some(store) = app.try_state::<Mutex<crate::state::Store>>() else { return false };
+        if inside(root, &crate::links::roots(&store)) {
+            return true;
+        }
+        let Some(git) = app.try_state::<crate::git::Git>() else { return false };
+        let projects = store.lock().map(|s| crate::projects::load_projects(&s)).unwrap_or_default();
+        projects.iter().any(|p| {
+            let own: Vec<String> = git.worktrees(Path::new(&p.path)).unwrap_or_default().into_iter().map(|w| w.path).filter(|w| linked_to(Path::new(&p.path), Path::new(w))).collect();
+            inside(root, &own)
+        })
+    }
+}
+
+/// X-sec.3: the request names this server: one Host line, 127.0.0.1:<port> or localhost:<port>.
+/// A page on another name that was pointed at the loopback (DNS rebinding) is refused.
+pub fn host_ok(head: &str, port: u16) -> bool {
+    let hosts: Vec<&str> = head.lines().skip(1).take_while(|l| !l.is_empty()).filter_map(|l| l.split_once(':')).filter(|(k, _)| k.eq_ignore_ascii_case("host")).map(|(_, v)| v.trim()).collect();
+    let ours = [format!("127.0.0.1:{port}"), format!("localhost:{port}")];
+    matches!(hosts.as_slice(), [h] if ours.iter().any(|o| h.eq_ignore_ascii_case(o)))
 }
 
 /// Is this address an HTML document on disk? (`tab create --url` takes a path as well.)
@@ -64,28 +128,36 @@ pub fn is_document(path: &str) -> bool {
     p.is_file() && p.extension().and_then(|e| e.to_str()).is_some_and(|e| EXTENSIONS.contains(&e.to_lowercase().as_str()))
 }
 
-/// The preview of a document: its address, folder and file name.
-pub fn add(path: &str) -> Result<Value, String> {
+/// The preview of a document: its address, folder and file name. T-659 (DT-C94): the document's
+/// folder must be one `open` holds (`opened`); one token per folder for the run.
+pub fn add(path: &str, open: &dyn Fn(&Path) -> bool) -> Result<Value, String> {
     if !is_document(path) {
         return Err(format!("{path} is not an HTML document on disk (.html or .htm)"));
     }
     let real = Path::new(path).canonicalize().map_err(|e| format!("{path}: {e}"))?;
     let root = real.parent().ok_or("the document has no folder")?.to_path_buf();
+    if !open(&root) {
+        return Err(format!("{} is not inside a project or workspace open in Kolux; a preview shows only documents from one", plain(&real)));
+    }
     let file = real.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let token = token_of(&root);
-    let mut granted = false;
-    if let Ok(mut p) = PREVIEWS.lock() {
-        match p.iter_mut().find(|p| p.token == token) {
+    let port = port()?;
+    let (token, granted) = {
+        let mut p = PREVIEWS.lock().map_err(|e| e.to_string())?;
+        match p.iter_mut().find(|p| p.root == root) {
             Some(p) => {
-                granted = p.granted;
                 if !p.files.contains(&file) {
                     p.files.push(file.clone());
                 }
+                (p.token.clone(), p.granted)
             }
-            None => p.push(Preview { token: token.clone(), root: root.clone(), files: vec![file.clone()], granted: false }),
+            None => {
+                let token = fresh_token()?;
+                p.push(Preview { token: token.clone(), root: root.clone(), files: vec![file.clone()], granted: false });
+                (token, false)
+            }
         }
-    }
-    let url = format!("http://127.0.0.1:{}/{token}/{}", port()?, encode(&file));
+    };
+    let url = format!("http://127.0.0.1:{port}/{token}/{}", encode(&file));
     Ok(json!({ "url": url, "folder": plain(&root), "file": file, "path": plain(&real), "granted": granted }))
 }
 
@@ -105,12 +177,17 @@ pub fn of(url: &str) -> Option<Value> {
 }
 
 /// The user allows the folder of the preview a tab shows (`url`): from here on every file under
-/// it is served, not only the documents opened. The grant lasts for the run.
-pub fn grant(url: &str) -> Result<(), String> {
+/// it is served, not only the documents opened. The grant lasts for the run. T-659 (DT-C94): only
+/// while `open` still holds the folder (it is checked without the lock: it may ask Git).
+pub fn grant(url: &str, open: &dyn Fn(&Path) -> bool) -> Result<(), String> {
     let (token, _) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;
-    let mut p = PREVIEWS.lock().map_err(|e| e.to_string())?;
-    let p = p.iter_mut().find(|p| p.token == token).ok_or("no such preview")?;
-    p.granted = true;
+    let root = PREVIEWS.lock().map_err(|e| e.to_string())?.iter().find(|p| p.token == token).map(|p| p.root.clone()).ok_or("no such preview")?;
+    if !open(&root) {
+        return Err(format!("{} is not inside a project or workspace open in Kolux, so its folder cannot be allowed", plain(&root)));
+    }
+    if let Some(p) = PREVIEWS.lock().map_err(|e| e.to_string())?.iter_mut().find(|p| p.token == token) {
+        p.granted = true;
+    }
     Ok(())
 }
 
@@ -160,7 +237,8 @@ fn decode(s: &str) -> String {
     let mut i = 0;
     while i < b.len() {
         if b[i] == b'%' && i + 2 < b.len() {
-            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+            // A multi-byte character after the % is not a split point: get() keeps it from panicking.
+            if let Some(v) = s.get(i + 1..i + 3).and_then(|h| u8::from_str_radix(h, 16).ok()) {
                 out.push(v);
                 i += 3;
                 continue;
@@ -242,7 +320,9 @@ fn serve(mut s: TcpStream) {
     }
     let head = String::from_utf8_lossy(&buf);
     let mut words = head.lines().next().unwrap_or_default().split(' ');
+    let port = PORT.get().copied().unwrap_or_default();
     let (status, kind, body) = match (words.next(), words.next()) {
+        _ if !host_ok(&head, port) => (403, "text/plain", b"a preview answers only at its own loopback address".to_vec()),
         (Some("GET") | Some("HEAD"), Some(target)) => respond(&PREVIEWS.lock().map(|p| p.clone()).unwrap_or_default(), target),
         _ => (405, "text/plain", b"GET only".to_vec()),
     };
@@ -262,9 +342,10 @@ fn serve(mut s: TcpStream) {
 
 /// The front end asks for a document's preview address (a drop or a menu); the command line goes
 /// through `add` itself.
+/// T-659: the open folders are read off the main thread (Git may list a project's worktrees).
 #[tauri::command]
-pub fn browser_preview(path: String) -> Result<Value, String> {
-    add(&path)
+pub async fn browser_preview(app: tauri::AppHandle, path: String) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || add(&path, &opened(&app))).await.map_err(|e| e.to_string())?
 }
 
 /// Whether a tab's address is a preview of ours, and of which file (the pane shows a folder/file
@@ -277,8 +358,8 @@ pub fn browser_preview_of(url: String) -> Option<Value> {
 /// T-159 (BROW-040): the user allows the folder of the preview the tab is on (`url`), from the
 /// chip's Allow folder button; the pane reloads the page afterwards.
 #[tauri::command]
-pub fn browser_preview_grant(url: String) -> Result<(), String> {
-    grant(&url)
+pub async fn browser_preview_grant(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || grant(&url, &opened(&app))).await.map_err(|e| e.to_string())?
 }
 
 // ---- The tab that shows a preview (T-159, BROW-040) ----
@@ -583,7 +664,8 @@ mod tests {
         assert!(is_document(&doc));
         assert!(!is_document(&dir.join("css").join("a.css").to_string_lossy()));
         assert!(!is_document("https://example.com/index.html"));
-        let v = add(&doc).unwrap();
+        let open = [dir.to_string_lossy().to_string()];
+        let v = add(&doc, &within(&open)).unwrap();
         let url = v["url"].as_str().unwrap();
         assert!(url.starts_with("http://127.0.0.1:") && url.ends_with("/index.html"), "{url}");
         assert_eq!(v["file"], "index.html");
@@ -591,9 +673,9 @@ mod tests {
         assert_eq!(back["file"], "index.html");
         assert_eq!(back["folder"], v["folder"]);
         assert!(of("https://example.com/").is_none());
-        assert!(add(&dir.join("css").join("a.css").to_string_lossy()).unwrap_err().contains("not an HTML document"));
+        assert!(add(&dir.join("css").join("a.css").to_string_lossy(), &within(&open)).unwrap_err().contains("not an HTML document"));
         // The same folder keeps one token, so two documents share the port and prefix.
-        let v2 = add(&dir.join("a b.html").to_string_lossy()).unwrap();
+        let v2 = add(&dir.join("a b.html").to_string_lossy(), &within(&open)).unwrap();
         assert_eq!(v2["url"].as_str().unwrap().rsplit_once('/').unwrap().0, url.rsplit_once('/').unwrap().0);
         assert!(v2["url"].as_str().unwrap().ends_with("/a%20b.html"));
         let _ = std::fs::remove_dir_all(&dir);
@@ -611,5 +693,108 @@ mod tests {
             assert!(!f(out), "{out}");
         }
         assert!(frame_allowed(None, "https://example.com/", 4000), "a tab that shows no preview is not fenced");
+    }
+
+    #[test]
+    fn t659_a_token_worked_out_from_the_folder_path_reaches_nothing() {
+        let dir = site("guess");
+        let open = [dir.to_string_lossy().to_string()];
+        let url = add(&dir.join("index.html").to_string_lossy(), &within(&open)).unwrap()["url"].as_str().unwrap().to_string();
+        let (token, _) = split(&url, *PORT.get().unwrap()).unwrap();
+        assert!(token.len() == 32 && token.bytes().all(|b| b.is_ascii_hexdigit()), "{token}");
+        // The old token: the fixed-key hash of the lower-cased real folder, the same on every run.
+        let guessed = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            dir.canonicalize().unwrap().to_string_lossy().to_lowercase().hash(&mut h);
+            format!("{:016x}", h.finish())
+        };
+        assert_ne!(token, guessed);
+        let all = PREVIEWS.lock().unwrap().clone();
+        assert_eq!(respond(&all, &format!("/{guessed}/index.html")).0, 404, "a token worked out from the path gets nothing");
+        assert_eq!(respond(&all, &format!("/{token}/index.html")).0, 200);
+        assert_ne!(fresh_token().unwrap(), fresh_token().unwrap());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t659_a_request_addressed_to_another_host_name_is_refused() {
+        let ok = |h: &str| host_ok(&format!("GET /t/x HTTP/1.1\r\n{h}\r\nAccept: */*\r\n\r\n"), 4000);
+        assert!(ok("Host: 127.0.0.1:4000"));
+        assert!(ok("host: LOCALHOST:4000"));
+        for bad in ["Host: rebound.example:4000", "Host: 127.0.0.1:4001", "Host: 127.0.0.1", "Host: 127.0.0.1:4000.rebound.example", "Host: [::1]:4000", "X-Host: 127.0.0.1:4000", ""] {
+            assert!(!ok(bad), "{bad}");
+        }
+        assert!(!host_ok("GET /t/x HTTP/1.1\r\nHost: 127.0.0.1:4000\r\nHost: rebound.example:4000\r\n\r\n", 4000), "two Host lines");
+        assert!(!host_ok("GET /t/x HTTP/1.1\r\n\r\nHost: 127.0.0.1:4000\r\n", 4000), "a Host line after the headers is body");
+        // Through the real server: the same request for an opened document, under two names.
+        let dir = site("host");
+        let open = [dir.to_string_lossy().to_string()];
+        let url = add(&dir.join("index.html").to_string_lossy(), &within(&open)).unwrap()["url"].as_str().unwrap().to_string();
+        let port = *PORT.get().unwrap();
+        let path = url.split_once(&format!(":{port}")).unwrap().1.to_string();
+        let ask = |host: String| {
+            let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
+            write!(s, "GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\n").unwrap();
+            let mut out = String::new();
+            let _ = s.read_to_string(&mut out);
+            out
+        };
+        assert!(ask(format!("rebound.example:{port}")).starts_with("HTTP/1.1 403"), "a rebound name gets 403");
+        assert!(ask(format!("127.0.0.1:{port}")).starts_with("HTTP/1.1 200"), "the loopback address gets the document");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The open-folder test the commands use, for a fixed list of folders.
+    fn within(folders: &[String]) -> impl Fn(&Path) -> bool + '_ {
+        move |r| inside(r, folders)
+    }
+
+    #[test]
+    fn t659_a_document_outside_every_open_folder_is_not_previewed_and_its_folder_not_allowed() {
+        let dir = site("fence");
+        let doc = dir.join("index.html").to_string_lossy().to_string();
+        let parent = dir.parent().unwrap().to_string_lossy().to_string();
+        // A real folder whose name the document's folder only starts with ("…fence" vs "…fence-<pid>").
+        let prefix = dir.parent().unwrap().join("kolux-preview-fence");
+        std::fs::create_dir_all(&prefix).unwrap();
+        let sibling = prefix.to_string_lossy().to_string();
+        assert!(dir.to_string_lossy().starts_with(&*sibling), "the look-alike is a text prefix of the folder");
+        assert!(add(&doc, &within(&[])).unwrap_err().contains("not inside a project or workspace"));
+        assert!(add(&doc, &within(std::slice::from_ref(&sibling))).is_err(), "a folder whose name it only starts with does not hold it");
+        assert!(add(&doc, &within(&[dir.join("css").to_string_lossy().to_string(), ".".into(), String::new()])).is_err(), "a subfolder, a relative path or nothing does not hold it");
+        let url = add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["url"].as_str().unwrap().to_string();
+        assert!(grant(&url, &within(&[sibling])).unwrap_err().contains("cannot be allowed"));
+        assert_eq!(of(&url).unwrap()["granted"], false);
+        grant(&url, &within(&[parent])).unwrap();
+        assert_eq!(of(&url).unwrap()["granted"], true);
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir(&prefix);
+    }
+
+    #[test]
+    fn t659_only_a_worktree_whose_git_file_points_back_into_the_project_counts() {
+        let base = std::env::temp_dir().join(format!("kolux-preview-wt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let project = base.join("project");
+        let other = base.join("other");
+        for d in [project.join(".git/worktrees/x"), other.join(".git/worktrees/x"), base.join("good"), base.join("forged"), base.join("plain/.git"), base.join("none")] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        let point = |wt: &str, at: &Path| std::fs::write(base.join(wt).join(".git"), format!("gitdir: {}\n", at.join(".git/worktrees/x").display())).unwrap();
+        point("good", &project);
+        point("forged", &other);
+        assert!(linked_to(&project, &base.join("good")));
+        assert!(!linked_to(&project, &base.join("forged")), "a worktree of another repository");
+        assert!(!linked_to(&project, &base.join("plain")), "a main checkout (a .git folder), e.g. a repository the project sits in");
+        assert!(!linked_to(&project, &base.join("none")), "a folder with no .git at all");
+        assert!(!linked_to(&project, &base), "a parent of the project");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn t659_a_percent_before_a_multi_byte_character_does_not_panic() {
+        assert_eq!(decode("%a\u{e9}x"), "%a\u{e9}x");
+        assert_eq!(decode("a%20b"), "a b");
     }
 }

@@ -1,0 +1,18 @@
+a document outside every open folder, by the CLI: exit 1
+the same document through the app's own preview command: refused: <scratch>\outside\index.html is not inside a project or workspace open in Kolux; a preview shows only documents from one
+a document inside the opened project: exit 0, address http://127.0.0.1:<port>/<32 hex>/index.html
+Host 127.0.0.1:<port> -> 200; localhost:<port> -> 200; rebound.example:<port> -> 403 "a preview answers only at its own loopback address"; 127.0.0.1:<other port> -> 403
+a 16-hex token of the old shape -> 404; the real token with its last character changed -> 404
+allowing the opened project's folder for its preview: allowed
+screenshot: <scratch>
+PASS a document outside every open folder is not previewed (CLI): { "requestId": "8214-18e467201ec79104", "success": false, "error": { "code": "failed", "message": "<scratch> is not inside a project or workspace open in Kolux; a preview 
+PASS a document outside every open folder is not previewed (app command): refused: <scratch> is not inside a project or workspace open in Kolux; a preview shows only documents from one
+PASS a document inside the opened project is previewed: http://127.0.0.1:49767/c6fb089c288c5b9d24b2556bc2382935/index.html
+PASS its token is 32 hex characters (128 bits): length 32
+PASS the same folder keeps its address for the run: {"url":"http://127.0.0.1:49767/c6fb089c288c5b9d24b2556bc2382935/index.html","folder":"<scratch>
+PASS its own loopback address gets the document: 200
+PASS localhost with its port gets the document: 200
+PASS another host name gets 403 and no document: 403
+PASS another port in the Host line gets 403: 403
+PASS a token the server did not issue reaches nothing: 404 404
+PASS the opened project's folder can still be allowed: allowed
