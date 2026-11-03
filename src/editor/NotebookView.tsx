@@ -74,6 +74,17 @@ export const sameCell = (c: Cell | undefined, ask: Removal): boolean => !!c && k
 /** A cell with text or saved outputs asks before it goes; an empty one goes at once. */
 export const needsAsk = (c: Cell): boolean => sourceOf(c).trim() !== "" || (Array.isArray(c.outputs) && c.outputs.length > 0);
 
+/** T-713 (DT-C149): a code cell's Run button, which is its Stop button while that cell runs. One element for
+ *  both, so the focus stays on it when the run starts; the other cells' Run waits for the run to end. */
+export function RunButton({ i, running, onRun, onStop }: { i: number; running: number | null; onRun: () => void; onStop: () => void }) {
+  const mine = running === i;
+  return (
+    <button type="button" disabled={running !== null && !mine} aria-label={`${mine ? "Stop" : "Run"} cell ${i + 1}`} onClick={mine ? onStop : onRun}>
+      {mine ? "Stop" : "Run"}
+    </button>
+  );
+}
+
 export default function NotebookView({ path, loaded, hidden = false, readOnly = false, onText }: Props) {
   const [text, setText] = useState(() => textOf(path) ?? "");
   const [asking, setAsking] = useState<((yes: boolean) => void) | null>(null);
@@ -187,9 +198,7 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
                 </select>
                 {kindOf(c) === "code" && typeof c.execution_count === "number" && <span className="nb-n">[{c.execution_count}]</span>}
                 {!readOnly && c.cell_type === "code" && (
-                  <button type="button" disabled={running !== null} aria-label={`Run cell ${i + 1}`} onClick={() => void run(i)}>
-                    {running === i ? "Running..." : "Run"}
-                  </button>
+                  <RunButton i={i} running={running} onRun={() => void run(i)} onStop={() => void invoke("notebook_stop")} />
                 )}
                 {!readOnly && (
                   <span className="nb-tools">

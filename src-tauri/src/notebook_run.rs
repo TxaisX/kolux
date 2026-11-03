@@ -125,6 +125,19 @@ pub fn notebook_trust(path: String, store: Store<'_>) -> Result<(), String> {
 
 /// Whether a cell is running now: one at a time for the whole app.
 static RUNNING: AtomicBool = AtomicBool::new(false);
+/// T-713 (DT-C149): set by the cell's Stop button; the running cell's wait loop sees it and ends the run.
+static STOP: AtomicBool = AtomicBool::new(false);
+/// What a stopped cell shows, told apart from the time ceiling's message.
+const STOPPED: &str = "The cell was stopped.";
+
+/// Stops the running cell, if there is one; with none running it does nothing, so a late press cannot stop
+/// the next run. A press while the notebook is still being saved, before Python starts, is not kept.
+#[tauri::command]
+pub fn notebook_stop() {
+    if RUNNING.load(Ordering::Acquire) {
+        STOP.store(true, Ordering::Release);
+    }
+}
 
 /// Held for the length of one run; dropping it (on any path out, a panic included) frees the slot.
 struct RunGuard;
@@ -148,6 +161,7 @@ impl Drop for RunGuard {
 pub async fn notebook_run_cell(app: tauri::AppHandle, path: String, index: usize) -> Result<RunResult, String> {
     use tauri::Manager;
     let guard = RunGuard::take().ok_or("Another cell is still running.")?;
+    STOP.store(false, Ordering::Release);
     tauri::async_runtime::spawn_blocking(move || {
         let _guard = guard;
         let store = app.state::<Mutex<crate::state::Store>>();
@@ -155,7 +169,7 @@ pub async fn notebook_run_cell(app: tauri::AppHandle, path: String, index: usize
             let raw = lock(&store).get(KEY).ok().flatten();
             is_listed(raw.as_deref(), real)
         };
-        run_cell_in(&path, index, &trusted, &Setup { path_var: std::env::var_os("PATH"), limit: RUN_LIMIT, cap: OUT_CAP })
+        run_cell_in(&path, index, &trusted, &Setup { path_var: std::env::var_os("PATH"), limit: RUN_LIMIT, cap: OUT_CAP, stop: &STOP })
     })
     .await
     .map_err(|_| "The run stopped unexpectedly.".to_string())?
@@ -163,10 +177,12 @@ pub async fn notebook_run_cell(app: tauri::AppHandle, path: String, index: usize
 
 // ---- the run ----------------------------------------------------------------------------------------------------
 
-struct Setup {
+struct Setup<'a> {
     path_var: Option<OsString>,
     limit: Duration,
     cap: usize,
+    /// Set from outside to end the run early (the Stop button).
+    stop: &'a AtomicBool,
 }
 
 /// The whole run, with the trust list, the PATH and the limits handed in so a test can drive it.
@@ -178,7 +194,7 @@ fn run_cell_in(path: &str, index: usize, trusted: &dyn Fn(&Path) -> bool, setup:
     let (source, count) = read_cell(&real, index)?;
     let dir = plain(real.parent().ok_or("That notebook has no folder.")?);
     let python = pick_python(setup.path_var.clone(), &dir).ok_or("No Python found. Install Python and make sure it is on the PATH.")?;
-    let ran = run_python(&python, &source, &dir, setup.limit, setup.cap)?;
+    let ran = run_python(&python, &source, &dir, setup.limit, setup.cap, setup.stop)?;
     Ok(RunResult { outputs: outputs_of(&ran, setup.limit), execution_count: count })
 }
 
@@ -255,6 +271,7 @@ struct Ran {
     err: Capture,
     code: Option<i32>,
     timed_out: bool,
+    stopped: bool,
 }
 
 /// Reads `r` in chunks into `sink`, keeping at most `cap` bytes. Past the cap it keeps reading and drops
@@ -279,8 +296,8 @@ fn drain(mut r: impl Read + Send + 'static, cap: usize, sink: Arc<Mutex<Capture>
 }
 
 /// Starts `python -I -X utf8 -` on the absolute `python`, hands it `source` on standard input only, and
-/// waits for it up to `limit`. Past the limit the program and everything it started are ended.
-fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usize) -> Result<Ran, String> {
+/// waits for it up to `limit` or until `halt` is set. Then the program and everything it started are ended.
+fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usize, halt: &AtomicBool) -> Result<Ran, String> {
     let mut cmd = Command::new(python);
     cmd.args(["-I", "-X", "utf8", "-"]).current_dir(cwd).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     // The cell must not see Kolux's own tokens (the hook endpoint's, a pane's identity, a sign-in token).
@@ -324,11 +341,16 @@ fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usi
         let _ = stdin.write_all(&text);
     });
     let deadline = Instant::now() + limit;
-    let (mut code, mut timed_out) = (None, false);
+    let (mut code, mut timed_out, mut stopped) = (None, false, false);
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {
                 code = status.code();
+                break;
+            }
+            Ok(None) if halt.load(Ordering::Acquire) => {
+                stopped = true;
+                stop(&mut child);
                 break;
             }
             Ok(None) if Instant::now() >= deadline => {
@@ -354,7 +376,7 @@ fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usi
         let _ = rx.recv_timeout(end.saturating_duration_since(Instant::now()));
     }
     let take = |c: &Arc<Mutex<Capture>>| std::mem::take(&mut *c.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
-    Ok(Ran { out: take(&out), err: take(&err), code, timed_out })
+    Ok(Ran { out: take(&out), err: take(&err), code, timed_out, stopped })
 }
 
 // ---- what the notebook gets back ---------------------------------------------------------------------------------
@@ -375,7 +397,9 @@ fn outputs_of(ran: &Ran, limit: Duration) -> Vec<Value> {
         outputs.push(json!({ "output_type": "stream", "name": "stdout", "text": lines_of(&ran.out) }));
     }
     let failed = ran.timed_out || ran.code != Some(0);
-    if ran.timed_out {
+    if ran.stopped {
+        outputs.push(json!({ "output_type": "error", "ename": "Error", "evalue": STOPPED, "traceback": [STOPPED] }));
+    } else if ran.timed_out {
         let why = format!("The cell ran for more than {} seconds and was stopped.", limit.as_secs().max(1));
         outputs.push(json!({ "output_type": "error", "ename": "Error", "evalue": why, "traceback": [why] }));
     } else if failed {
@@ -408,8 +432,10 @@ mod tests {
         json!({ "cell_type": "code", "metadata": {}, "execution_count": null, "outputs": [], "source": source })
     }
 
-    fn setup(limit: Duration, cap: usize) -> Setup {
-        Setup { path_var: std::env::var_os("PATH"), limit, cap }
+    static NEVER: AtomicBool = AtomicBool::new(false);
+
+    fn setup(limit: Duration, cap: usize) -> Setup<'static> {
+        Setup { path_var: std::env::var_os("PATH"), limit, cap, stop: &NEVER }
     }
 
     /// True when this PC has a Python; otherwise the test says so and skips.
@@ -618,7 +644,7 @@ mod tests {
         // And a whole run with the planted files in the way still uses the real one (or reports none).
         if picked.is_some() {
             let nb = notebook(&d, "a.ipynb", json!([code("print('real')")]));
-            let r = run_cell_in(&nb, 0, &|_| true, &Setup { path_var: Some(path_var), limit: FAST, cap: OUT_CAP }).unwrap();
+            let r = run_cell_in(&nb, 0, &|_| true, &Setup { path_var: Some(path_var), limit: FAST, cap: OUT_CAP, stop: &NEVER }).unwrap();
             assert_eq!(r.outputs[0]["text"], json!(["real\n"]));
         }
     }
@@ -636,6 +662,26 @@ mod tests {
         std::env::remove_var("KOLUX_NBRUN_TEST_TOKEN");
         std::env::remove_var(crate::claude_key::ENV);
         assert_eq!(r.outputs[0]["text"], json!(["[]\n", "True\n"]), "no Kolux variable, but PATH stays");
+    }
+
+    #[test]
+    fn t713_stop_ends_a_running_cell_at_once() {
+        static HALT: AtomicBool = AtomicBool::new(false);
+        let d = crate::test_dir::temp("nbrun-stop");
+        if !python_here(&d) {
+            return;
+        }
+        let nb = notebook(&d, "a.ipynb", json!([code("import time\ntime.sleep(120)")]));
+        std::thread::spawn(|| {
+            std::thread::sleep(Duration::from_millis(500));
+            HALT.store(true, Ordering::Release);
+        });
+        let began = Instant::now();
+        let r = run_cell_in(&nb, 0, &|_| true, &Setup { stop: &HALT, ..setup(Duration::from_secs(60), OUT_CAP) }).unwrap();
+        assert!(began.elapsed() < Duration::from_secs(20), "the stop took {:?}", began.elapsed());
+        let last = r.outputs.last().unwrap();
+        assert_eq!(last["output_type"], "error", "{:?}", r.outputs);
+        assert_eq!(last["evalue"], STOPPED, "a stop is told apart from the time ceiling");
     }
 
     #[test]

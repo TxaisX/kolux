@@ -859,6 +859,7 @@ pub fn run() {
             notebook_run::notebook_trusted,
             notebook_run::notebook_trust,
             notebook_run::notebook_run_cell,
+            notebook_run::notebook_stop,
             editor_drafts::editor_draft_set,
             editor_drafts::editor_draft_clear,
             editor_drafts::editor_drafts_get,
