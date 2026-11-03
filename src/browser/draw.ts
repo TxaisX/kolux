@@ -5,16 +5,29 @@ import { cleanUrl, maskSecrets } from "./scrub";
 
 export type Tool = "rect" | "arrow" | "text";
 export type Shape = { tool: Tool; x: number; y: number; w: number; h: number; text?: string };
-export type Drawing = { shapes: Shape[]; undone: Shape[] };
+/** `cleared` holds the marks Clear took away (one Undo brings them all back); `reclear` says Redo may clear them again. */
+export type Drawing = { shapes: Shape[]; undone: Shape[]; cleared?: Shape[]; reclear?: boolean };
 
 export const empty = (): Drawing => ({ shapes: [], undone: [] });
 
 /** A new shape drops whatever was undone (the usual editor rule). */
 export const add = (d: Drawing, s: Shape): Drawing => ({ shapes: [...d.shapes, s], undone: [] });
 
-export const undo = (d: Drawing): Drawing => (d.shapes.length ? { shapes: d.shapes.slice(0, -1), undone: [...d.undone, d.shapes[d.shapes.length - 1]] } : d);
+export const canUndo = (d: Drawing): boolean => d.shapes.length > 0 || !!d.cleared?.length;
 
-export const redo = (d: Drawing): Drawing => (d.undone.length ? { shapes: [...d.shapes, d.undone[d.undone.length - 1]], undone: d.undone.slice(0, -1) } : d);
+export const canRedo = (d: Drawing): boolean => d.undone.length > 0 || !!d.reclear;
+
+export function undo(d: Drawing): Drawing {
+  if (d.shapes.length) return { ...d, shapes: d.shapes.slice(0, -1), undone: [...d.undone, d.shapes[d.shapes.length - 1]] };
+  if (d.cleared?.length) return { shapes: d.cleared, undone: [], reclear: true };
+  return d;
+}
+
+export function redo(d: Drawing): Drawing {
+  if (d.undone.length) return { ...d, shapes: [...d.shapes, d.undone[d.undone.length - 1]], undone: d.undone.slice(0, -1) };
+  if (d.reclear && d.shapes.length) return clearUndoable(d);
+  return d;
+}
 
 /** A drag in any direction becomes a box with a positive size; an arrow keeps its direction. */
 export const normalise = (tool: Tool, x0: number, y0: number, x1: number, y1: number): Shape =>
@@ -76,8 +89,10 @@ export function addText(d: Drawing, x: number, y: number, text: string): Drawing
 /** Everything off: nothing to redo either. */
 export const clear = (): Drawing => empty();
 
-/** UX audit: Clear that Undo can take back: every mark goes onto the undone stack, last one on top, so Redo restores them in order. */
-export const clearUndoable = (d: Drawing): Drawing => ({ shapes: [], undone: [...d.undone, ...[...d.shapes].reverse()] });
+/** UX audit: Clear that Undo can take back: one Undo restores every cleared mark, and Redo clears them again. */
+export function clearUndoable(d: Drawing): Drawing {
+  return d.shapes.length ? { shapes: [], undone: [], cleared: d.shapes } : d;
+}
 
 /** How much of the picture shows: its whole size, shrunk to fit the room (never enlarged). */
 export function fitScale(picW: number, picH: number, roomW: number, roomH: number): number {

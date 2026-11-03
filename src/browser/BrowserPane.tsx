@@ -3,7 +3,7 @@
 // screen, so the page lives on untouched while its tab, workspace or screen is away. The header
 // holds the address bar, which takes the cursor with its text selected as the tab opens, and
 // the back / forward / reload toolbar; what the bar makes of typed text is in address.ts.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -135,13 +135,19 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   const typing = useRef(false);
   const suggestTimer = useRef<number | undefined>(undefined);
   const [downloads, setDownloads] = useState<DownloadRow[]>([]);
-  const [note, setNote] = useState<string | null>(null);
-  // UX audit: a notice goes by itself after a while (it also has a close button); every setNote starts the clock.
+  const [note, setNoteText] = useState<string | null>(null);
+  // UX audit: a notice goes by itself after a while (it also has a close button); every setNote starts the clock,
+  // even when the words are the same as the notice already showing.
+  const [noteSeq, setNoteSeq] = useState(0);
+  const setNote = useCallback((m: string | null) => {
+    setNoteText(m);
+    setNoteSeq((n) => n + 1);
+  }, []);
   useEffect(() => {
     if (!note) return;
     const t = window.setTimeout(() => setNote(null), NOTICE_MS);
     return () => window.clearTimeout(t);
-  }, [note]);
+  }, [note, noteSeq, setNote]);
   // UX audit: Clear on the notes tray and Close on a tab that still has work in it ask for a second press.
   const [clearArmed, pressClear] = useArm();
   const [closeArmed, pressClose] = useArm();
@@ -187,6 +193,14 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   const [preview, setPreview] = useState<Preview | null>(null);
   // T-319-b (BROW-041): what is typed in the preview chip while it is open for typing.
   const [chipEdit, setChipEdit] = useState<string | null>(null);
+  // UX audit: leaving the chip editor by Escape (or with focus nowhere) puts focus back on the chip's button, not on the page body.
+  const chipSlot = useRef<HTMLSpanElement>(null);
+  const chipBack = useRef(false);
+  useEffect(() => {
+    if (chipEdit !== null || !chipBack.current) return;
+    chipBack.current = false;
+    chipSlot.current?.querySelector<HTMLElement>(".preview-open")?.focus();
+  }, [chipEdit]);
   // T-159 (BROW-040): the outside address a previewed document asked to open; offered, never followed.
   const [outbound, setOutbound] = useState<string | null>(null);
   // T-272-c (BROW-016): tabs this tab's family asked for past its allowance, said in the toolbar.
@@ -862,7 +876,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
         )}
         {/* BROW-006: the slot keeps the bar's place in the toolbar; in a narrow pane the bar inside it
             is compact and, while focused, floats across the toolbar (browser.css). */}
-        <span className="address-slot">
+        <span className="address-slot" ref={chipSlot}>
           {preview && chipEdit !== null ? (
             <input
               className="address chip-edit"
@@ -875,10 +889,14 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
                 if (e.key === "Enter") commitChip(preview.path);
                 else if (e.key === "Escape") {
                   e.stopPropagation();
+                  chipBack.current = true;
                   setChipEdit(null);
                 }
               }}
-              onBlur={() => setChipEdit(null)}
+              onBlur={(e) => {
+                if (!e.relatedTarget) chipBack.current = true;
+                setChipEdit(null);
+              }}
             />
           ) : preview ? (
             // BROW-039: a previewed document shows where it is instead of its loopback address.
@@ -1204,7 +1222,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
               <li key={s}>{s}</li>
             ))}
           </ol>
-          <button type="button" className="ib" disabled={importing} onClick={() => void importCookies("chrome")}>
+          <button type="button" className="ib" autoFocus disabled={importing} onClick={() => void importCookies("chrome")}>
             Choose cookies.txt…
           </button>
           <button type="button" className="ib" onClick={() => setCookieMenu(null)}>

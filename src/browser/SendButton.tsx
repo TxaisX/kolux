@@ -32,20 +32,21 @@ export function SendButton({ targets, busy, onPick }: Props) {
     const t = window.setTimeout(() => setNone(false), NONE_MS);
     return () => window.clearTimeout(t);
   }, [none]);
+  // Escape is claimed only while the list is open; the short "no agent sessions" note leaves Escape to the rest of the app.
   useEffect(() => {
-    if (!shown) return;
-    const stopEsc = watchEscape(window, () => {
+    if (!list) return;
+    return watchEscape(window, () => {
       close();
       trigger.current?.focus();
     });
+  }, [list]);
+  useEffect(() => {
+    if (!shown) return;
     const outside = (e: Event) => {
       if (!wrap.current?.contains(e.target as Node)) close();
     };
     document.addEventListener("mousedown", outside);
-    return () => {
-      stopEsc();
-      document.removeEventListener("mousedown", outside);
-    };
+    return () => document.removeEventListener("mousedown", outside);
   }, [shown]);
   useEffect(() => {
     if (list) wrap.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();

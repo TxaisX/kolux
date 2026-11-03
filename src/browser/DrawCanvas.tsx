@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { SendTarget } from "../editor/notes";
 import { useArm } from "./arm";
-import { addText, clearUndoable, dismissHint, drawMessage, type Drawing, empty, finishDrag, fitScale, hintSeen, paint, redo, type Shape, strokeFor, type Tool, toolForKey, toPicture, TOOLS, undo } from "./draw";
+import { addText, canRedo, canUndo, clearUndoable, dismissHint, drawMessage, type Drawing, empty, finishDrag, fitScale, hintSeen, paint, redo, type Shape, strokeFor, type Tool, toolForKey, toPicture, TOOLS, undo } from "./draw";
 import { asDataUrl, type Picture, sendPicture } from "./picture";
 import { SendButton } from "./SendButton";
 
@@ -36,6 +36,7 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
   const [tool, setTool] = useState<Tool>("rect");
   const [drag, setDrag] = useState<{ x: number; y: number; to: { x: number; y: number } } | null>(null);
   const [typing, setTyping] = useState<{ x: number; y: number } | null>(null);
+  const textBox = useRef<HTMLInputElement>(null);
   const [room, setRoom] = useState({ w: 0, h: 0 });
   const [hint, setHint] = useState(() => !hintSeen(store()));
   const [busy, setBusy] = useState(false);
@@ -87,7 +88,11 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
   const down = (e: React.PointerEvent) => {
     if (!img || busy) return;
     const p = where(e);
-    if (tool === "text") return openText({ x: p.x, y: p.y });
+    if (tool === "text") {
+      // A box already open is committed at its own point first, so a click elsewhere does not move its text.
+      if (typingAt.current) commitText(textBox.current?.value ?? "");
+      return openText({ x: p.x, y: p.y });
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({ x: p.x, y: p.y, to: { x: p.x, y: p.y } });
   };
@@ -168,10 +173,10 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
           </button>
         ))}
         <span className="draw-gap" />
-        <button type="button" className="btn" data-go="undo" disabled={!drawing.shapes.length} onClick={() => setDrawing(undo(drawing))} title="Undo (Ctrl+Z)">
+        <button type="button" className="btn" data-go="undo" disabled={!canUndo(drawing)} onClick={() => setDrawing(undo(drawing))} title="Undo (Ctrl+Z)">
           Undo
         </button>
-        <button type="button" className="btn" data-go="redo" disabled={!drawing.undone.length} onClick={() => setDrawing(redo(drawing))} title="Redo (Ctrl+Shift+Z)">
+        <button type="button" className="btn" data-go="redo" disabled={!canRedo(drawing)} onClick={() => setDrawing(redo(drawing))} title="Redo (Ctrl+Shift+Z)">
           Redo
         </button>
         <button type="button" className="btn" data-go="clear" disabled={!drawing.shapes.length} onClick={() => setDrawing(clearUndoable(drawing))} title="Clear every mark (Undo brings them back)">
@@ -194,6 +199,8 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
             <canvas ref={canvas} width={w} height={h} style={{ width: w * scale, height: h * scale }} onPointerDown={down} onPointerMove={move} onPointerUp={up} data-tool={tool} />
             {typing && (
               <input
+                key={`${typing.x},${typing.y}`}
+                ref={textBox}
                 className="draw-text"
                 autoFocus
                 maxLength={200}
@@ -204,7 +211,10 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
                   else if (e.key === "Escape") closeText();
                   e.stopPropagation();
                 }}
-                onBlur={(e) => commitText(e.currentTarget.value)}
+                onBlur={(e) => {
+                  // Only the box that is still the open one commits; an older box already committed at its own point.
+                  if (typingAt.current === typing) commitText(e.currentTarget.value);
+                }}
               />
             )}
           </div>
