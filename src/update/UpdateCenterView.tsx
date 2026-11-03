@@ -2,13 +2,14 @@
 // brings up, and the one notice ("A new Kolux RS version is out on GitHub." with Update now / Later) that
 // appears once the update has downloaded. Both sit in the bottom-left corner (update.css), clear of the
 // status bar, and none depends on any sidebar element.
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import "./update.css";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import Ask from "../chrome/Ask";
 import { Close, Refresh, Spinner, CheckCircle } from "../chrome/icons";
 import { TICK_MS, UpdateSchedule, type Outcome } from "./schedule";
-import { actionLabel, barItem, cardReducer, initialCard, isQuiet, mainAction, SHORT_RECHECK_MS, STALE_MARK, tipVisible, type UpdateInfo } from "./card";
+import { actionLabel, barItem, cardReducer, initialCard, isQuiet, mainAction, popupEscapes, RESTART_ASK, RESTART_TIP, restartingLabel, SHORT_RECHECK_MS, STALE_MARK, tipVisible, type UpdateInfo } from "./card";
 import { BAR_EVENT, CHECK_EVENT, SHOW_EVENT, setBar } from "./bus";
 
 interface Status {
@@ -30,6 +31,10 @@ export default function UpdateCenterView() {
   const downloading = useRef<string | null>(null);
   const cardEl = useRef<HTMLDivElement | null>(null);
   const recheck = useRef(0);
+  // A check asked for before update_status answered waits here and runs the moment it does.
+  const askedEarly = useRef(false);
+  const [confirming, setConfirming] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   // T-600: counts the user's own clicks that open the card (Check for updates, the status-bar item, the
   // card's expand); only a new one moves the keyboard to the card.
   const [clicks, clicked] = useReducer((n: number) => n + 1, 0);
@@ -66,9 +71,12 @@ export default function UpdateCenterView() {
 
   const check = () => {
     const st = status.current;
-    if (!st) return;
     clicked(); // the user's click: the card that comes up takes the keyboard
     dispatch({ type: "checkStart", requested: true });
+    if (!st) {
+      askedEarly.current = true; // "Checking for updates…" shows now; the check itself runs once the status is known
+      return;
+    }
     if (!st.enabled || !schedule.current) {
       dispatch({ type: "checkFailed", requested: true, message: st.reason ?? "Updates are off in this copy.", offline: false, next: "Install Kolux RS from its releases page to get updates." });
       return;
@@ -85,7 +93,12 @@ export default function UpdateCenterView() {
       // Start from what the store remembers.
       dispatch({ type: "hydrate", dismissed: st.dismissedVersion, tipDone: st.tipDone });
       if (st.ready) dispatch({ type: "ready", info: st.ready });
-      if (!st.enabled) return;
+      const early = askedEarly.current;
+      askedEarly.current = false;
+      if (!st.enabled) {
+        if (early) check();
+        return;
+      }
       const sched = new UpdateSchedule<UpdateInfo>(
         {
           now: () => Date.now(),
@@ -113,6 +126,12 @@ export default function UpdateCenterView() {
         window.removeEventListener("online", onOnline);
         sched.stop();
       });
+      if (early) check();
+    }).catch((e) => {
+      if (alive && askedEarly.current) {
+        askedEarly.current = false;
+        dispatch({ type: "checkFailed", requested: true, message: String(e), offline: !navigator.onLine });
+      }
     });
     const unlisten = listen<{ version: string; received: number; total: number | null }>("update-progress", (e) =>
       dispatch({ type: "progress", version: e.payload.version, received: e.payload.received, total: e.payload.total }),
@@ -139,6 +158,16 @@ export default function UpdateCenterView() {
     return () => window.removeEventListener(SHOW_EVENT, onShow);
   }, []);
 
+  // Escape closes the ready notice (Later) even though it never takes the keyboard.
+  useEffect(() => {
+    if (!s.popup || confirming) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (popupEscapes(e)) dispatch({ type: "popupClose" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [s.popup, confirming]);
+
   // Up to date: the card closes itself.
   useEffect(() => {
     if (s.phase.kind !== "upToDate") return;
@@ -149,14 +178,14 @@ export default function UpdateCenterView() {
   // What the store remembers follows the card.
   useEffect(() => {
     if (s.dismissed && s.dismissed !== status.current?.dismissedVersion) {
-      void invoke("update_mark", { key: "dismissedVersion", value: s.dismissed });
+      void invoke("update_mark", { key: "dismissedVersion", value: s.dismissed }).catch(() => {});
       if (status.current) status.current.dismissedVersion = s.dismissed;
     }
   }, [s.dismissed]);
   useEffect(() => {
     if (s.tipDone && status.current && !status.current.tipDone) {
       status.current.tipDone = true;
-      void invoke("update_mark", { key: "tipDone", value: "1" });
+      void invoke("update_mark", { key: "tipDone", value: "1" }).catch(() => {});
     }
   }, [s.tipDone]);
 
@@ -169,18 +198,26 @@ export default function UpdateCenterView() {
 
   // On success the app ends here and the installer takes over; a failure means nothing is ready any more.
   // T-199 (APP-029): an installer that cannot start leaves the app open with the real reason.
-  const restart = () =>
+  const restart = () => {
+    setConfirming(false);
+    setRestarting(true); // the button reads Restarting… and stays off until the app ends or the restart fails
     void invoke("update_restart").catch((e) => {
       const message = String(e);
+      setRestarting(false);
       dispatch(message === "No update is ready." ? { type: "notReady" } : { type: "restartFailed", message });
     });
+  };
+  // Restarting ends every terminal and agent, so every route to it asks first.
+  const askRestart = () => {
+    if (!restarting) setConfirming(true);
+  };
   // T-199 (APP-031): compatibility mode is remembered, then the check runs again.
   const compat = () => void invoke("update_compat", { on: true }).then(check, check);
   const act = () => {
     const a = mainAction(s.phase);
     if (a === "close") dispatch({ type: s.phase.kind === "error" ? "dismiss" : "faded" });
     else if (a === "download" && "info" in s.phase && s.phase.info) download(s.phase.info);
-    else if (a === "restart") restart();
+    else if (a === "restart") askRestart();
     else if (a === "retryCheck") check();
     else if (a === "compat") compat();
     else if (a === "retryDownload" && s.phase.kind === "error" && s.phase.info) download(s.phase.info);
@@ -212,7 +249,7 @@ export default function UpdateCenterView() {
                 : "";
   const pct = p.kind === "downloading" && p.total ? Math.min(100, Math.round((p.received / p.total) * 100)) : null;
   const action = mainAction(p);
-  const label = actionLabel(p);
+  const label = restartingLabel(actionLabel(p), restarting);
 
   return (
     <>
@@ -220,7 +257,7 @@ export default function UpdateCenterView() {
         <div className="upd-wrap upd-fixed" aria-live="polite">
           {tipVisible(s) && (
             <div className="upd-tip" role="note">
-              Your terminal sessions keep running while Kolux RS updates.
+              {RESTART_TIP}
               <button className="ib" title="Got it" onClick={() => dispatch({ type: "tipDismiss" })}>
                 <Close size={11} />
               </button>
@@ -279,7 +316,7 @@ export default function UpdateCenterView() {
                 {p.kind === "ready" && <div className="upd-next">It also installs by itself the next time you quit.</div>}
                 {label && (
                   <div className="upd-actions">
-                    <button className={`btn ${action === "restart" || action === "download" ? "primary" : ""}`} onClick={act}>
+                    <button className={`btn ${action === "restart" || action === "download" ? "primary" : ""}`} disabled={restarting} onClick={act}>
                       {label}
                     </button>
                   </div>
@@ -313,12 +350,13 @@ export default function UpdateCenterView() {
             <button type="button" className="btn" onClick={() => dispatch({ type: "popupClose" })}>
               Later
             </button>
-            <button type="button" className="btn primary" onClick={restart}>
-              Update now
+            <button type="button" className="btn primary" disabled={restarting} onClick={askRestart}>
+              {restarting ? "Restarting…" : "Update now"}
             </button>
           </span>
         </div>
       )}
+      {confirming && <Ask title={RESTART_ASK.title} body={RESTART_ASK.body} confirm={RESTART_ASK.confirm} onConfirm={restart} onCancel={() => setConfirming(false)} />}
     </>
   );
 }

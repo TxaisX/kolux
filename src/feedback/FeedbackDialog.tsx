@@ -8,7 +8,8 @@ import type { AppInfo } from "../app-info";
 import type { FeedbackFacts } from "../settings/privacy";
 import { copyCrashBundle, CRASH_BUNDLE_HINT } from "./crashBundle";
 import { addImages, clipboardNote, MAX_IMAGES, MIME, type Shot } from "./images";
-import { closed, issue, reduce, tabTarget, typedText } from "./model";
+import { Close } from "../chrome/icons";
+import { closed, issue, NOTE_POS, reduce, restoreFocus, tabTarget, typedText } from "./model";
 
 const EVENT = "kolux-feedback";
 const NOTE_MS = 8000;
@@ -47,6 +48,8 @@ async function copyFirst(shot: Shot): Promise<boolean> {
 export default function FeedbackDialog() {
   const [s, dispatch] = useReducer(reduce, closed);
   const box = useRef<HTMLTextAreaElement | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
+  const sending = useRef(false);
   const [shots, setShots] = useState<Shot[]>([]);
   const [refused, setRefused] = useState<string[]>([]);
   const [crash, setCrash] = useState(false);
@@ -75,11 +78,15 @@ export default function FeedbackDialog() {
   // The cursor starts above the block, where the user types.
   useEffect(() => {
     if (!s.open) return;
+    const prev = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const el = box.current;
-    if (!el) return;
-    el.focus();
-    const end = typedText(el.value).length;
-    el.setSelectionRange(end, end);
+    if (el) {
+      el.focus();
+      const end = typedText(el.value).length;
+      el.setSelectionRange(end, end);
+    }
+    // Closing (or sending) hands the keyboard back to whatever opened the box.
+    return () => void restoreFocus(prev);
   }, [s.open]);
 
   // The note after a send fades on its own.
@@ -90,31 +97,35 @@ export default function FeedbackDialog() {
   }, [s.open, s.note]);
 
   const send = () => {
-    if (!s.facts) return;
+    if (!s.facts || sending.current) return; // one send at a time: a second click opens no second tab
     // FIX-1: whatever goes wrong while the address is built shows in the box; the button never does nothing
     try {
       const r = issue(s.draft, s.facts, s.anonymous);
       if (!r.ok) return dispatch({ t: "fail", error: r.error });
+      sending.current = true;
+      dispatch({ t: "send" });
       // the copy starts inside the click, while the page may still write to the clipboard
       const bundle = crash ? copyCrashBundle(() => invoke<string>("diag_bundle"), (t) => navigator.clipboard.writeText(t)) : null;
       const copied = !crash && shots.length ? copyFirst(shots[0]) : Promise.resolve(false);
       invoke("open_external", { url: r.url }).then(
         async () => {
+          sending.current = false;
           const extra = bundle ? await bundle : clipboardNote(shots.length, await copied);
           setShots([]);
           setRefused([]);
           dispatch({ t: "sent", trimmed: r.trimmed, extra });
         },
-        (e: unknown) => dispatch({ t: "fail", error: `Could not open the browser: ${String(e)}` }),
+        (e: unknown) => ((sending.current = false), dispatch({ t: "fail", error: `Could not open the browser: ${String(e)}` })),
       );
     } catch (e) {
+      sending.current = false;
       dispatch({ t: "fail", error: `Could not build the report: ${String(e)}` });
     }
   };
 
   if (!s.open) {
     return s.note ? (
-      <div role="status" className="conn-detail" style={{ position: "fixed", left: 16, bottom: 16, maxWidth: 360, padding: "10px 12px", zIndex: 50, background: "var(--pane-bg)", border: "1px solid var(--line-subtle)", borderRadius: 8, color: "var(--fg-row)" }}>
+      <div role="status" className="conn-detail" style={{ position: "fixed", right: NOTE_POS.right, bottom: NOTE_POS.bottom, maxWidth: 360, padding: "10px 12px", zIndex: 50, background: "var(--pane-bg)", border: "1px solid var(--line-subtle)", borderRadius: 8, color: "var(--fg-row)" }}>
         {s.note}
       </div>
     ) : null;
@@ -160,15 +171,15 @@ export default function FeedbackDialog() {
           <span className="muted">{CRASH_BUNDLE_HINT}</span>
         ) : (
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-          <label className="btn" style={{ cursor: "pointer" }}>
+          <button type="button" className="btn" onClick={() => fileInput.current?.click()}>
             Add screenshot
-            <input type="file" multiple accept={Object.values(MIME).join(",")} hidden aria-label="Add screenshots" onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
-          </label>
+          </button>
+          <input ref={fileInput} type="file" multiple accept={Object.values(MIME).join(",")} hidden aria-label="Add screenshots" onChange={(e) => { void pick(e.target.files); e.target.value = ""; }} />
           {shots.map((x, i) => (
             <span key={`${x.name}-${i}`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <img src={previews[i]} alt={x.name} title={x.name} style={{ height: 36, borderRadius: 4 }} />
-              <button className="btn" aria-label={`Remove ${x.name}`} onClick={() => setShots(shots.filter((_, j) => j !== i))}>
-                x
+              <button className="btn" aria-label={`Remove ${x.name}`} title={`Remove ${x.name}`} onClick={() => setShots(shots.filter((_, j) => j !== i))}>
+                <Close size={11} />
               </button>
             </span>
           ))}
@@ -190,8 +201,8 @@ export default function FeedbackDialog() {
           <button className="btn" onClick={() => dispatch({ t: "close" })}>
             Cancel
           </button>
-          <button className="btn primary" onClick={send}>
-            Open on GitHub
+          <button className="btn primary" disabled={s.sending} onClick={send}>
+            {s.sending ? "Opening…" : "Open on GitHub"}
           </button>
         </div>
       </div>

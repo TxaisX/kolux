@@ -2,12 +2,12 @@
 // treemap draws the biggest worktrees in a fixed square, and the table sorts, searches, filters to
 // deletable rows and deletes the ticked ones after the same safety checks as a single delete (no force).
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Ask from "../chrome/Ask";
 import type { RemoveCheck } from "../projects/deleting";
 import { folderName } from "../projects/model";
 import { ageOf, deletable, formatBytes, formatCount, reclaimableBytes, selectedForDelete, treemap, visibleRows, type SortKey, type SpaceRow } from "../projects/space";
-import { activeOf, afterBatch, labelOf, plan, question, stateOf, treemapItems, type Batch, type Pick, type Skipped } from "./view";
+import { activeOf, afterBatch, chosenVisible, labelOf, latest, plan, question, removeArgs, stateOf, treemapItems, whyNotDeletable, type Batch, type Pick, type Skipped } from "./view";
 
 type Props = { projectId: string | null; projectName: string; openDirs: string[] };
 type Pending = { go: SpaceRow[]; picks: Pick[]; skipped: Skipped[] };
@@ -26,15 +26,20 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Latest-wins: a scan that finishes after a newer one (or after the project changed) is dropped.
+  const scans = useRef(latest());
   const scan = async (id: string) => {
+    const token = scans.current.begin();
     setScanning(true);
     try {
-      setRows(await invoke<SpaceRow[]>("space_scan", { projectId: id }));
+      const out = await invoke<SpaceRow[]>("space_scan", { projectId: id });
+      if (!scans.current.current(token)) return;
+      setRows(out);
       setNote(null);
     } catch (e) {
-      setNote(`The scan failed: ${String(e)}`);
+      if (scans.current.current(token)) setNote(`The scan failed: ${String(e)}`);
     } finally {
-      setScanning(false);
+      if (scans.current.current(token)) setScanning(false);
     }
   };
   // PROJ-083: saved results first, then a fresh scan.
@@ -42,6 +47,8 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
     setRows([]);
     setSelected([]);
     setNote(null);
+    scans.current.cancel();
+    setScanning(false);
     if (projectId === null) return;
     let gone = false;
     invoke<SpaceRow[]>("space_saved", { projectId })
@@ -58,7 +65,8 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
   const active = useMemo(() => activeOf(rows, openDirs), [rows, openDirs]);
   const shown = useMemo(() => visibleRows(rows, { query, sort, deletableOnly, active }), [rows, query, sort, deletableOnly, active]);
   const map = useMemo(() => treemap(treemapItems(rows)), [rows]);
-  const chosen = selected.filter((p) => rows.some((r) => r.path === p));
+  // Ticked rows the filter hides are not acted on.
+  const chosen = useMemo(() => chosenVisible(selected, shown, rows), [selected, shown, rows]);
   const toggle = (path: string) => setSelected((s) => (s.includes(path) ? s.filter((p) => p !== path) : [...s, path]));
 
   // The question comes after the checks, so it can say which ticked rows are skipped and why.
@@ -79,7 +87,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
     setPending(null);
     setBusy(true);
     try {
-      const batch = await invoke<Batch>("workspace_remove_many", { projectId, picks: pending.picks, force: false, keepBranch: null });
+      const batch = await invoke<Batch>("workspace_remove_many", removeArgs(projectId, pending.picks));
       const out = afterBatch(rows, batch);
       setRows(out.rows);
       setSelected([]);
@@ -158,7 +166,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
                     return (
                       <tr key={r.path} style={{ opacity: can ? 1 : 0.7 }}>
                         <td style={cell}>
-                          <input type="checkbox" aria-label={`Select ${labelOf(r)}`} checked={chosen.includes(r.path)} onChange={() => toggle(r.path)} />
+                          <input type="checkbox" aria-label={`Select ${labelOf(r)}`} disabled={!can} title={whyNotDeletable(r, active) ?? undefined} checked={can && chosen.includes(r.path)} onChange={() => toggle(r.path)} />
                         </td>
                         <td style={cell}>{r.branch ?? <i>detached</i>}</td>
                         <td style={{ ...cell, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 320 }} title={r.path}>
@@ -194,6 +202,13 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
                   {l}
                 </p>
               ))}
+              {q.list.length > 0 && (
+                <ul aria-label="Worktrees to delete" style={{ margin: "0 0 6px", paddingLeft: 18 }}>
+                  {q.list.map((l, i) => (
+                    <li key={i}>{l}</li>
+                  ))}
+                </ul>
+              )}
             </>
           }
           confirm={q.confirm}

@@ -286,3 +286,20 @@ export function barItem(p: Phase): BarItem | null {
       return null;
   }
 }
+
+/** The tip above the card. Restarting really does close every terminal and agent, so it says so. */
+export const RESTART_TIP = "Restarting to update closes your open terminals and agents. Kolux RS asks before it restarts.";
+
+/** What the restart confirmation says: nothing restarts until the user agrees. */
+export const RESTART_ASK = { title: "Restart to update?", body: "Restarting closes every open terminal and agent. Anything still running in them ends. Save what you need first.", confirm: "Restart now" } as const;
+
+/** The action button's words while the restart is under way. */
+export const restartingLabel = (label: string | null, restarting: boolean): string | null => (restarting ? "Restarting…" : label);
+
+/** Escape on the ready pop-up (nothing inside it holds the keyboard) is Later, unless a field or another handler took the key. */
+export function popupEscapes(e: { key: string; defaultPrevented: boolean; target: object | null }): boolean {
+  if (e.key !== "Escape" || e.defaultPrevented) return false;
+  const t = e.target as { tagName?: string; isContentEditable?: boolean } | null;
+  const tag = t?.tagName?.toLowerCase();
+  return !(tag === "input" || tag === "textarea" || tag === "select" || t?.isContentEditable);
+}

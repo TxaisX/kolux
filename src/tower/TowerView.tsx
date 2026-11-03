@@ -16,11 +16,11 @@ import { meterText, tone } from "../usage/meter";
 import { refreshAll } from "../usage/refresh";
 import { OWN_WINDOW_WIRED, openTowerWindow } from "./ownWindow";
 import Ring from "../usage/Ring";
-import { laneCounts, selectionForKey, type AccountUsage, type Row } from "./tower";
+import { emptyWords, laneCounts, refreshLabel, revealRow, selectionForKey, type AccountUsage, type Row } from "./tower";
 
 /** T-546-c: `detached` = drawn in the Tower's own window (no Own window button; Refresh asks the main window). */
 /** `ownWindow` = offer the Own window button (FIX-2: only once T-546-c's window side is wired). */
-type Props = { rows: Row[]; usage: AccountUsage[]; now: number; onOpen: (key: number) => void; detached?: boolean; onRefresh?: () => void; ownWindow?: boolean };
+type Props = { rows: Row[]; usage: AccountUsage[]; now: number; onOpen: (key: number) => void; detached?: boolean; onRefresh?: () => void; ownWindow?: boolean; loading?: boolean };
 
 /** T-546-c: the words when the Tower's own window could not open; the Tower stays on this screen. */
 export const NO_WINDOW = "The Tower could not open in its own window here, so it stays on this screen.";
@@ -36,7 +36,7 @@ function glyphOf(r: Row): GlyphName {
 
 const laneTitle = (lane: Lane) => LANES.find((l) => l.id === lane)?.title ?? lane;
 
-export default function TowerView({ rows, usage, now, onOpen, detached = false, onRefresh = refreshAll, ownWindow: offerOwn = OWN_WINDOW_WIRED }: Props) {
+export default function TowerView({ rows, usage, now, onOpen, detached = false, onRefresh = refreshAll, ownWindow: offerOwn = OWN_WINDOW_WIRED, loading = false }: Props) {
   const [noWindow, setNoWindow] = useState(false);
   const ownWindow = () => void openTowerWindow().then((r) => setNoWindow(r === "failed"));
   const [selected, setSelected] = useState<number | null>(null);
@@ -44,6 +44,17 @@ export default function TowerView({ rows, usage, now, onOpen, detached = false, 
   const current = settle(keys, selected);
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => list.current?.focus(), []);
+  // Arrow keys move the selection; keep the selected row on screen.
+  useEffect(() => void revealRow(list.current, current), [current]);
+  // Refresh shows it is working (and cannot be pressed again) for a moment, then settles.
+  const [refreshing, setRefreshing] = useState(false);
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
+  const refresh = () => {
+    setRefreshing(true);
+    const done = () => window.setTimeout(() => alive.current && setRefreshing(false), 800);
+    Promise.resolve(onRefresh()).then(done, done);
+  };
 
   const onKeyDown = (e: KeyboardEvent) => {
     const pick = selectionForKey(e.key, keys, current);
@@ -69,8 +80,8 @@ export default function TowerView({ rows, usage, now, onOpen, detached = false, 
             ))}
           </span>
           {/* USAGE-023 (T-070): a manual refresh reads every provider at once, past the debounce and any retry-after. */}
-          <button type="button" className="refresh" title="Read the usage figures again now" onClick={() => onRefresh()}>
-            Refresh
+          <button type="button" className="refresh" title="Read the usage figures again now" disabled={refreshing} aria-busy={refreshing} onClick={refresh}>
+            {refreshLabel(refreshing)}
           </button>
           {/* T-546-c: the Tower in its own window, for a second screen; it stays here when that window cannot open. */}
           {!detached && offerOwn && (
@@ -126,7 +137,7 @@ export default function TowerView({ rows, usage, now, onOpen, detached = false, 
         {rows.length === 0 && (
           <div className="clear" role="status">
             <StatusGlyph glyph="check" size={14} />
-            Nothing is running. Start an agent and it shows up here.
+            {emptyWords(loading)}
           </div>
         )}
         {LANES.map((l) => {
