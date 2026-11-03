@@ -170,6 +170,14 @@ export function scopeItems(items: ProjectItem[], scope: Scope, inKolux: string[]
   return items.filter((it) => it.repo && allowed.has(it.repo.toLowerCase()));
 }
 
+/** The repositories ticked when "Chosen repositories" is picked: those of this project that are open in Kolux;
+ *  when none is, all of the project's repositories, so the table is never empty before the user has chosen. */
+export function chosenDefault(repos: string[], inKolux: string[]): string[] {
+  const here = new Set(inKolux.map((r) => r.toLowerCase()));
+  const open = repos.filter((r) => here.has(r.toLowerCase()));
+  return open.length > 0 ? open : [...repos];
+}
+
 /** A label edit as GitHub's add / remove lists, from the typed comma list. */
 export function labelChange(before: string[], typed: string): { add: string[]; remove: string[] } {
   const after = [...new Set(typed.split(",").map((s) => s.trim()).filter(Boolean))];

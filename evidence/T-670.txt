@@ -1,0 +1,71 @@
+T-670 - Tasks, Board and Inbox say when something failed, offer Retry, and keep what you typed (DT-C106; UX audit findings tasks.md and empty-error.md)
+Worker 2f, branch s-2f/ux-1, base e93a23ba, 2026-11-03.
+
+WHAT CHANGED
+- Task dialog: a failed load now says "This could not be read from GitHub" with a Retry button, not
+  "Loading…" forever. An unsaved description is kept while Kolux runs and comes back in the editor when
+  the same item is opened again. Closing the dialog gives focus back to what had it; a button that goes
+  away (a label x, Close issue) hands focus back to the dialog. The close button and the label and
+  assignee x buttons have names and a 20 pixel hit area.
+- Pull request page: Escape goes back to Tasks, unless a text field, menu, dialog or an edit is open
+  (an open merge confirm closes first). The button is "Back" with an arrow, not an X. A Refresh button
+  replaces Reload. A failed checks or review-threads read puts a note above the tabs instead of showing
+  an empty list. "Yes, merge it" is the red danger button.
+- Workspace board: a failed load shows the error with Retry; projects whose workspaces could not be
+  listed are named with a Retry; a board with no workspaces says so; a failed move says the cards were
+  put back.
+- Inbox: Enter and Space on the detail pane's buttons work again (the list no longer takes them); a
+  failed status read says "Could not read the changes" instead of "No files changed"; the selected row
+  scrolls into view.
+- Tasks list: the pager stays on an empty page after the first, so you can go back.
+- Projects view: failures have a Retry. "Chosen repositories" starts with the project's repositories
+  that are open in Kolux ticked, else all of the project's repositories (never an empty table).
+- Issue actions: a read-back that fails after a good change says so and no longer puts the change back.
+- tasks.css: the GitHub green and red, the code and border greys use the theme colours (done, danger,
+  line). styles.css is untouched.
+
+ROWS
+findings/tasks.md:2 fixed
+findings/tasks.md:3 fixed
+findings/tasks.md:4 fixed
+findings/tasks.md:5 fixed
+findings/tasks.md:6 fixed
+findings/tasks.md:7 fixed
+findings/tasks.md:8 fixed
+findings/tasks.md:9 fixed
+findings/tasks.md:10 fixed
+findings/tasks.md:11 fixed
+findings/tasks.md:12 fixed
+findings/tasks.md:13 not-ours
+findings/tasks.md:14 fixed
+findings/tasks.md:15 fixed
+findings/tasks.md:16 fixed
+findings/tasks.md:17 fixed
+findings/tasks.md:18 skipped(M)
+findings/tasks.md:19 skipped(M)
+findings/tasks.md:20 skipped(M)
+findings/tasks.md:21 fixed
+findings/tasks.md:22 skipped(M)
+findings/tasks.md:23 fixed
+findings/empty-error.md:9 fixed
+findings/empty-error.md:21 fixed
+findings/destructive.md:16 partial (the PR page merge confirm is danger-styled; scm/CommentsPanel is lane D)
+findings/visual.md:8 fixed
+findings/onboarding.md:12 not-ours
+
+TESTS
+- New: dialogState.test.ts (load state, draft kept and dropped, focus lost), TaskDialog.test.ts (Retry,
+  draft comes back, button names), PullRequestPage.test.ts additions (checks note, both named, Refresh
+  reads again and writes nothing, Back label, Escape closes the merge confirm then goes back, pure
+  steps), issueActions.test.ts (failed read-back), model.test.ts (pager), projects.test.ts (default
+  ticked repositories), boardModel.test.ts (move and list failure wording), inbox.test.ts (detail keys,
+  changes line).
+- Reverted on purpose, test failed, restored: Inbox detail guard (inbox.test.ts fails), task dialog
+  load state (Retry test fails), draft restore (draft test fails), Escape listener (Escape test fails).
+- Not covered by a test: the Inbox list wiring itself (the guard is one line; its rule is tested), the
+  Projects Retry button, the board Retry button, focus return on close.
+
+GATES
+- vitest run src/tasks src/board src/inbox: 35 files passed, 258 tests passed, 0 failed.
+- pnpm tsc --noEmit: exit 0, no errors.
+- node scripts/plan-check.mjs: "plan-check: OK" (1030 planned ids, done 747/804 tasks).

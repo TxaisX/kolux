@@ -10,7 +10,7 @@ import type { Project, Worktree } from "../projects/model";
 import { projectLabel, worktreeLabel } from "../projects/model";
 import { dropBand, parentDropMoves } from "../projects/parentDrop";
 import {
-  buildLanes, DRAG_TYPE, dragSet, droppedPaths, escapeAction, FRESH_QUERY, laneLeft, laneRange, laneWidth, nearestLane, pick, selectLane, windowRange,
+  buildLanes, DRAG_TYPE, dragSet, droppedPaths, escapeAction, FRESH_QUERY, laneLeft, laneRange, laneWidth, listFailure, moveFailure, nearestLane, pick, selectLane, windowRange,
   type BoardCard, type BoardLane, type Status, LANE_GAP,
 } from "./boardModel";
 import "./board.css";
@@ -18,21 +18,25 @@ import "./board.css";
 const CARD_H = 56;
 const CARD_STEP = CARD_H + 6;
 
-type Load = { statuses: Status[]; cards: BoardCard[]; trees: Record<string, Worktree[]> };
+type Load = { statuses: Status[]; cards: BoardCard[]; trees: Record<string, Worktree[]>; unread: string[] };
 
 async function load(): Promise<Load> {
   const projects = await invoke<Project[]>("project_list");
   const lists = await Promise.allSettled(projects.map((p) => invoke<Worktree[]>("workspace_list", { projectId: p.id })));
   const rows: Array<{ p: Project; w: Worktree }> = [];
   const trees: Record<string, Worktree[]> = {};
+  const unread: string[] = []; // projects whose workspaces could not be listed
   lists.forEach((r, i) => {
-    if (r.status !== "fulfilled") return;
+    if (r.status !== "fulfilled") {
+      unread.push(projectLabel(projects[i]));
+      return;
+    }
     trees[projects[i].id] = r.value;
     for (const w of r.value) if (!w.hidden) rows.push({ p: projects[i], w });
   });
   const st = await invoke<{ list: Status[]; of: string[] }>("workspace_statuses", { paths: rows.map((r) => r.w.path) });
   const cards = rows.map(({ p, w }, i): BoardCard => ({ path: w.path, project: projectLabel(p), projectId: p.id, label: worktreeLabel(w), branch: w.branch, status: st.of[i] ?? st.list[0]?.id ?? "", isMain: w.isMain }));
-  return { statuses: st.list, cards, trees };
+  return { statuses: st.list, cards, trees, unread };
 }
 
 export default function WorkspaceBoard({ onClose }: { onClose: () => void }) {
@@ -72,6 +76,7 @@ export default function WorkspaceBoard({ onClose }: { onClose: () => void }) {
     if (!data || paths.length === 0) return;
     noteUse("board");
     const before = data;
+    setError("");
     const set = new Set(paths);
     setData({ ...data, cards: data.cards.map((c) => (set.has(c.path) ? { ...c, status } : c)) });
     try {
@@ -79,7 +84,7 @@ export default function WorkspaceBoard({ onClose }: { onClose: () => void }) {
       window.dispatchEvent(new CustomEvent("kolux:workspace-status", { detail: { paths, status } }));
     } catch (e) {
       setData(before);
-      setError(String(e));
+      setError(moveFailure(paths.length, String(e)));
     }
   };
 
@@ -130,8 +135,19 @@ export default function WorkspaceBoard({ onClose }: { onClose: () => void }) {
           </label>
           <button className="ib" aria-label="Close workspace statuses" onClick={onClose}><Close /></button>
         </header>
-        {error && <p className="board-error" role="alert">{error}</p>}
+        {error && (
+          <p className="board-error" role="alert">
+            {error}
+            {!data && <> <button className="btn" onClick={reload}>Retry</button></>}
+          </p>
+        )}
+        {data && listFailure(data.unread) && (
+          <p className="board-error" role="alert">
+            {listFailure(data.unread)} <button className="btn" onClick={reload}>Retry</button>
+          </p>
+        )}
         {!data && !error && <p className="board-note">Loading workspaces…</p>}
+        {data && data.cards.length === 0 && data.unread.length === 0 && <p className="board-note" role="status">No workspaces yet. Add a project in the sidebar and its workspaces show up here, one lane for each status.</p>}
         {data && (
           <div
             className="board-lanes"
