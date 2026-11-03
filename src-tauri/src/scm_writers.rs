@@ -575,7 +575,8 @@ pub fn run(spec: &Spec, program: &Path, inv: &Invocation, key: &str, limit: std:
 /// with its own escaping but cannot pass it a line break, so such a prompt is refused in plain words.
 fn launch_on(program: &Path, args: &[String], windows: bool) -> Result<(std::path::PathBuf, Vec<String>), String> {
     let (exe, head) = crate::pty::start_line_on(program, windows);
-    if exe != "cmd.exe" {
+    // T-660: the command prompt now goes by its full path in Windows' system folder.
+    if exe != crate::pty::system_program("cmd.exe").as_os_str() {
         return Ok((exe.into(), head.iter().map(|h| h.to_string_lossy().into_owned()).chain(args.iter().cloned()).collect()));
     }
     if args.iter().any(|a| a.contains(['\r', '\n'])) {

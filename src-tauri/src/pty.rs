@@ -51,18 +51,21 @@ pub fn as_key_events(data: &[u8]) -> Vec<u8> {
 // ponytail: PowerShell gets no prompt markers yet; nothing in Kolux reads them (DT-R36).
 pub fn auto_shells(find: impl Fn(&str) -> Option<PathBuf>, comspec: Option<PathBuf>) -> Vec<(PathBuf, Vec<&'static str>)> {
     if !cfg!(windows) {
-        return vec![(std::env::var_os("SHELL").map(PathBuf::from).unwrap_or_else(|| "sh".into()), Vec::new())];
+        return vec![(std::env::var_os("SHELL").map(PathBuf::from).unwrap_or_else(|| "/bin/sh".into()), Vec::new())];
     }
     let mut out = Vec::new();
     out.extend(find("pwsh.exe").filter(|p| !store_alias(p)).map(|p| (p, vec!["-NoLogo"])));
     out.extend(find("powershell.exe").map(|p| (p, vec!["-NoLogo"])));
-    let cmd = comspec.filter(|p| p.is_file()).or_else(|| find("cmd.exe")).unwrap_or_else(|| "cmd.exe".into());
+    // T-660: the command prompt from Windows' own folder, never a lookup that could reach the current one.
+    let cmd = comspec.filter(|p| p.is_absolute() && p.is_file()).unwrap_or_else(|| system_program("cmd.exe"));
     out.push((cmd, CMD_ARGS.to_vec()));
     out
 }
 
 /// The command prompt, switched to UTF-8 before its first prompt.
-const CMD_ARGS: [&str; 4] = ["/k", "chcp", "65001", ">nul"];
+// T-660: chcp by its full path too, or cmd.exe looks for it in the pane's folder first. Built once.
+static CMD_ARGS: std::sync::LazyLock<[&'static str; 4]> =
+    std::sync::LazyLock::new(|| ["/k", Box::leak(system_program("chcp.com").to_string_lossy().into_owned().into_boxed_str()), "65001", ">nul"]);
 
 /// A Microsoft Store app alias: a stand-in under WindowsApps rather than the program itself.
 fn store_alias(p: &Path) -> bool {
@@ -221,9 +224,9 @@ pub fn shells(find: impl Fn(&str) -> Option<std::path::PathBuf>) -> Vec<ShellInf
         // ACCT-046: the automatic pick's order, so the first item (the one Ctrl+T opens) names it.
         let pwsh = find("pwsh.exe");
         add("pwsh", "PowerShell 7", pwsh.clone().filter(|p| !store_alias(p)), &["-NoLogo"]);
-        add("powershell", "Windows PowerShell", Some(find("powershell.exe").unwrap_or_else(|| "powershell.exe".into())), &["-NoLogo"]);
+        add("powershell", "Windows PowerShell", Some(find("powershell.exe").unwrap_or_else(|| system_program(r"WindowsPowerShell\v1.0\powershell.exe"))), &["-NoLogo"]);
         add("pwsh", "PowerShell 7", pwsh, &["-NoLogo"]);
-        add("cmd", "Command Prompt", find("cmd.exe"), &CMD_ARGS);
+        add("cmd", "Command Prompt", Some(system_program("cmd.exe")), &*CMD_ARGS);
         // Git for Windows' own bash, never the WSL launcher that System32 calls bash.exe.
         let git = std::env::var_os("ProgramFiles").map(|p| std::path::PathBuf::from(p).join("Git").join("bin").join("bash.exe")).filter(|p| p.is_file());
         add("gitbash", "Git Bash", git, &["--login", "-i"]);
@@ -313,12 +316,29 @@ pub fn start_dir(workspace: &str, requested: Option<&str>) -> String {
 
 /// A pane that runs one program (an agent such as `claude`) instead of a shell. `program` is
 /// resolved the way a shell would (`claude` becomes `...\claude.exe`) so the process starts
-/// without a shell in between; a name that does not resolve is passed through unchanged and the
-/// spawn error says what was missing. A Windows command-script shim is started the way
-/// `start_line` says. Starts in `cwd` when that folder exists.
+/// without a shell in between; a name that does not resolve to a full path is passed through
+/// unchanged, never wrapped in cmd.exe (which would look it up in `cwd`), and the spawn looks it
+/// up in full-path folders only or refuses it by name (T-660). A Windows command-script shim is
+/// started the way `start_line` says. Starts in `cwd` when that folder exists.
 pub fn program_command(program: &str, args: &[String], cwd: Option<&str>) -> CommandBuilder {
-    let resolved = crate::agents::find_program(program).unwrap_or_else(|| program.into());
-    command_for(&resolved, args, cwd, cfg!(windows))
+    match crate::agents::find_program(program).filter(|p| p.is_absolute()) {
+        Some(resolved) => command_for(&resolved, args, cwd, cfg!(windows)),
+        None => command_for(Path::new(program), args, cwd, false),
+    }
+}
+
+/// T-660: a program that ships with Windows, by its full path in the system folder Windows reports
+/// (else %SystemRoot%\System32), so no lookup by bare name can reach a copy planted in the current
+/// folder.
+pub(crate) fn system_program(name: &str) -> PathBuf {
+    #[cfg(windows)]
+    {
+        if let Some(dir) = crate::resources::update_guard::system_dir() {
+            return dir.join(name);
+        }
+    }
+    let root = std::env::var_os("SystemRoot").map(PathBuf::from).filter(|r| r.is_absolute());
+    root.unwrap_or_else(|| r"C:\Windows".into()).join("System32").join(name)
 }
 
 /// `program_command` once the program is found, under Windows' start rules or not (`windows`), so
@@ -349,7 +369,7 @@ pub fn start_line(resolved: &std::path::Path) -> (std::ffi::OsString, Vec<std::f
 
 /// Whether `resolved` starts through cmd.exe (T-605).
 pub fn through_cmd(resolved: &Path) -> bool {
-    start_line(resolved).0 == "cmd.exe"
+    start_line(resolved).0 == system_program("cmd.exe").as_os_str()
 }
 
 /// `start_line` under Windows' rules or not (`windows`), so a test builds the Windows line anywhere.
@@ -362,7 +382,7 @@ pub(crate) fn start_line_on(resolved: &Path, windows: bool) -> (std::ffi::OsStri
     if !shim {
         return (resolved.as_os_str().to_owned(), Vec::new());
     }
-    npm_target(resolved).unwrap_or_else(|| ("cmd.exe".into(), vec!["/d".into(), "/c".into(), resolved.as_os_str().to_owned()]))
+    npm_target(resolved).unwrap_or_else(|| (system_program("cmd.exe").into_os_string(), vec!["/d".into(), "/c".into(), resolved.as_os_str().to_owned()]))
 }
 
 /// T-605: what npm's shim at `shim` runs, read from the shim as npm writes it: `"%_prog%"
@@ -452,6 +472,18 @@ fn fallback_note(failed: &[(String, String)], opened: &str) -> Option<String> {
     Some(format!("\x1b[2m{} did not start; opened {}\x1b[0m\r\n", menu_name(first), menu_name(opened)))
 }
 
+/// T-660: where a program named without a full path is found for `cmd`: in the full-path folders
+/// of the PATH the pane is given, then the app's own search folders. A name with a separator or a
+/// drive in it (`./x`, `bin\x`, `C:x`, `x/`) is never looked up.
+fn resolve_bare(cmd: &CommandBuilder, name: &str) -> Option<PathBuf> {
+    if name.contains(['/', '\\', ':']) {
+        return None;
+    }
+    let mut dirs: Vec<PathBuf> = cmd.get_env("PATH").map(|p| std::env::split_paths(p).filter(|d| d.is_absolute() && d.is_dir()).collect()).unwrap_or_default();
+    dirs.extend(crate::agents::search_dirs());
+    crate::agents::find_in(&dirs, name).filter(|p| p.is_absolute())
+}
+
 impl PtySession {
     /// Spawns `cmd` in a fresh PTY of `cols` x `rows`. `on_output` receives every chunk the program
     /// prints; `on_exit` runs once with the exit code when the program ends.
@@ -479,8 +511,24 @@ impl PtySession {
             .map_err(|e| e.to_string())?;
         let mut failed = Vec::new();
         let mut started = None;
-        for cmd in cmds {
+        for mut cmd in cmds {
             let name = cmd.get_argv().first().map(|a| a.to_string_lossy().into_owned()).unwrap_or_default();
+            // T-660: a program named without a full path is looked up only in full-path folders (the
+            // pane's own PATH, then the app's search folders), never in the pane's folder or the
+            // app's own (Windows and this library both would); one not found there is refused.
+            if !name.is_empty() && !Path::new(&name).is_absolute() {
+                match resolve_bare(&cmd, &name) {
+                    // A command script found this way starts the way every other one does (T-605).
+                    Some(p) => {
+                        let (exe, head) = start_line_on(&p, cfg!(windows));
+                        cmd.get_argv_mut().splice(0..1, std::iter::once(exe).chain(head));
+                    }
+                    None => {
+                        failed.push((name.clone(), format!("{name} was not found on this PC, so Kolux did not start it")));
+                        continue;
+                    }
+                }
+            }
             match pair.slave.spawn_command(cmd) {
                 Ok(c) => {
                     started = Some((c, name));
@@ -637,7 +685,7 @@ mod tests {
         let shim = std::path::Path::new("C:/Users/me/AppData/Roaming/npm/codex.CMD");
         let (program, head) = start_line(shim);
         if cfg!(windows) {
-            assert_eq!(program, "cmd.exe");
+            assert_eq!(program, system_program("cmd.exe").into_os_string());
             assert_eq!(head, vec!["/d", "/c", "C:/Users/me/AppData/Roaming/npm/codex.CMD"]);
         } else {
             assert_eq!(program, shim.as_os_str());
@@ -767,7 +815,7 @@ mod tests {
         std::fs::write(&gone, npm_node_shim("node_modules\\missing\\cli.js")).unwrap();
         for p in [&own, &pnpm, &gone] {
             let (program, head) = start_line_on(p, true);
-            assert_eq!(program, "cmd.exe", "{p:?}");
+            assert_eq!(program, system_program("cmd.exe").into_os_string(), "{p:?}");
             assert_eq!(head, [std::ffi::OsString::from("/d"), "/c".into(), p.as_os_str().to_owned()]);
         }
         // Outside Windows a .cmd file is a plain file and runs itself.
@@ -785,8 +833,9 @@ mod tests {
         let list = shells(found);
         let ids: Vec<_> = list.iter().map(|s| s.id).collect();
         assert_eq!(&ids[..3], &["pwsh", "powershell", "cmd"]);
-        assert_eq!(list[1].program, "powershell.exe");
-        assert_eq!(list[2].args, ["/k", "chcp", "65001", ">nul"]);
+        assert_eq!(list[1].program, system_program(r"WindowsPowerShell\v1.0\powershell.exe").to_string_lossy());
+        assert_eq!(list[2].program, system_program("cmd.exe").to_string_lossy(), "the command prompt is Windows' own, whatever a lookup finds");
+        assert_eq!(list[2].args, CMD_ARGS.to_vec());
         assert!(!ids.contains(&"wsl"));
         // Nothing found but the built-in one: still one item.
         assert_eq!(shells(|_| None).first().map(|s| s.id), Some("powershell"));
@@ -843,11 +892,11 @@ mod tests {
         let auto = || vec![(PathBuf::from("C:/PS7/pwsh.exe"), vec!["-NoLogo"]), (PathBuf::from("C:/Windows/cmd.exe"), CMD_ARGS.to_vec())];
         let line = |l: Vec<(PathBuf, Vec<String>)>| l.into_iter().map(|(p, a)| format!("{} {}", p.display(), a.join(" ")).trim().to_string()).collect::<Vec<_>>();
         let bash = Some(("C:/Git/bin/bash.exe".to_string(), vec!["--login".to_string(), "-i".to_string()]));
-        assert_eq!(line(chosen_then_auto(bash, auto())), ["C:/Git/bin/bash.exe --login -i", "C:/PS7/pwsh.exe -NoLogo", "C:/Windows/cmd.exe /k chcp 65001 >nul"]);
+        assert_eq!(line(chosen_then_auto(bash, auto())), ["C:/Git/bin/bash.exe --login -i".to_string(), "C:/PS7/pwsh.exe -NoLogo".into(), format!("C:/Windows/cmd.exe /k {} 65001 >nul", CMD_ARGS[1])]);
         // The chosen shell is one of the automatic ones: it moves to the front, not in twice.
         let cmd = Some(("c:/windows/CMD.EXE".to_string(), CMD_ARGS.iter().map(|s| s.to_string()).collect()));
-        assert_eq!(line(chosen_then_auto(cmd, auto())), ["c:/windows/CMD.EXE /k chcp 65001 >nul", "C:/PS7/pwsh.exe -NoLogo"]);
-        assert_eq!(line(chosen_then_auto(None, auto())), ["C:/PS7/pwsh.exe -NoLogo", "C:/Windows/cmd.exe /k chcp 65001 >nul"]);
+        assert_eq!(line(chosen_then_auto(cmd, auto())), [format!("c:/windows/CMD.EXE /k {} 65001 >nul", CMD_ARGS[1]), "C:/PS7/pwsh.exe -NoLogo".into()]);
+        assert_eq!(line(chosen_then_auto(None, auto())), ["C:/PS7/pwsh.exe -NoLogo".to_string(), format!("C:/Windows/cmd.exe /k {} 65001 >nul", CMD_ARGS[1])]);
         // And the real list: a chosen shell that will not start gives way to the automatic ones.
         let (tx, rx) = mpsc::channel::<Vec<u8>>();
         let gone = Some(("kolux-rs-no-such-default-shell-9c1d".to_string(), vec![]));
@@ -1086,10 +1135,11 @@ mod tests {
         std::fs::write(&comspec, b"").unwrap();
         let line = |v: Vec<(PathBuf, Vec<&str>)>| v.into_iter().map(|(p, a)| format!("{} {}", p.to_string_lossy(), a.join(" "))).collect::<Vec<_>>();
         let all = |n: &str| Some(PathBuf::from(format!("C:/pf/{n}")));
-        let cmd = format!("{} /k chcp 65001 >nul", comspec.to_string_lossy());
+        let cmd = format!("{} /k {} 65001 >nul", comspec.to_string_lossy(), CMD_ARGS[1]);
         assert_eq!(line(auto_shells(all, Some(comspec.clone()))), ["C:/pf/pwsh.exe -NoLogo".to_string(), "C:/pf/powershell.exe -NoLogo".into(), cmd]);
         let store = |n: &str| (n == "pwsh.exe").then(|| PathBuf::from("C:/Users/u/AppData/Local/Microsoft/WindowsApps/pwsh.exe"));
-        assert_eq!(line(auto_shells(store, None)), ["cmd.exe /k chcp 65001 >nul".to_string()]);
+        assert_eq!(line(auto_shells(store, None)), [format!("{} /k {} 65001 >nul", system_program("cmd.exe").to_string_lossy(), CMD_ARGS[1])]);
+        assert_eq!(line(auto_shells(store, Some("cmd.exe".into()))), line(auto_shells(store, None)), "a ComSpec that is not a full path is not used");
         let _ = std::fs::remove_file(&comspec);
     }
 
@@ -1192,6 +1242,100 @@ mod tests {
     fn a_missing_program_is_refused_at_spawn() {
         let r = PtySession::spawn(program_command("kolux-rs-no-such-program-7f3a", &[], None), 80, 24, |_| {}, |_| {});
         assert!(r.is_err());
+    }
+
+    /// T-660: the command prompt is started by its full path in Windows' system folder, and a
+    /// program named without a full path is never found in the pane's folder: a cmd.exe and a
+    /// tool planted there are not started.
+    #[test]
+    fn t660_a_program_planted_in_the_pane_folder_is_never_started() {
+        let cmd = system_program("cmd.exe");
+        assert!(cmd.is_absolute() || !cfg!(windows), "{cmd:?}");
+        #[cfg(windows)]
+        assert_eq!(Some(cmd.parent().unwrap().to_path_buf()), crate::resources::update_guard::system_dir());
+        let dir = crate::test_dir::temp("t660 planted");
+        std::fs::write(dir.join("cmd.exe"), b"MZ").unwrap();
+        std::fs::write(dir.join("kolux-rs-t660-planted.exe"), b"MZ").unwrap();
+        std::fs::write(dir.join("kolux-rs-t660-planted.cmd"), b"@echo planted\r\n").unwrap();
+        let cwd = dir.to_string_lossy().into_owned();
+        // A shim start goes through the system cmd.exe, never the planted one.
+        let (exe, _) = start_line_on(&dir.join("x.cmd"), true);
+        assert_eq!(exe, cmd.as_os_str());
+        assert!(!std::path::Path::new(&exe).starts_with(&*dir));
+        // A name only the pane's folder has is passed bare, unwrapped, and refused at spawn by name.
+        let planted = program_command("kolux-rs-t660-planted", &[], Some(&cwd));
+        assert_eq!(planted.get_argv()[0], "kolux-rs-t660-planted");
+        let err = PtySession::spawn(planted, 80, 24, |_| {}, |_| {}).err().expect("a name found only in the pane's folder is refused");
+        assert!(err.contains("kolux-rs-t660-planted") && err.contains("not found"), "{err}");
+        // The command prompt's UTF-8 switch is Windows' own chcp, not one planted beside the project.
+        assert_eq!(Path::new(CMD_ARGS[1]), system_program("chcp.com"));
+        // A pane whose PATH reaches its own folder (a relative entry) still never runs a tool planted there.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let marker = dir.join("ran");
+            let tool = dir.join("kolux-rs-t660-tool");
+            std::fs::write(&tool, format!("#!/bin/sh\ntouch '{}'\n", marker.display())).unwrap();
+            std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+            let mut c = program_command("kolux-rs-t660-tool", &[], Some(&cwd));
+            c.env("PATH", ".");
+            assert!(PtySession::spawn(c, 80, 24, |_| {}, |_| {}).is_err(), "a tool reached only through a relative PATH entry is refused");
+            std::thread::sleep(Duration::from_millis(300));
+            assert!(!marker.exists(), "the planted tool never ran");
+        }
+        // A Command Prompt started in a folder holding a planted chcp never runs it. The control
+        // (the bare name, as before T-660) does, which shows the plant is one Windows would reach.
+        #[cfg(windows)]
+        {
+            let marker = dir.join("ran");
+            std::fs::write(dir.join("chcp.bat"), format!("@echo x>\"{}\"\r\n", marker.display())).unwrap();
+            let prompt = |chcp: &str| {
+                let mut c = CommandBuilder::new(system_program("cmd.exe"));
+                c.args(["/k", chcp, "65001", ">nul"]);
+                c.cwd(&*dir);
+                // A PC (or this test's parent) may have switched off the current-folder search; the
+                // plant is tested where it is on, as on most PCs.
+                c.env_remove("NoDefaultCurrentDirectoryInExePath");
+                let (tx, rx) = mpsc::channel::<Vec<u8>>();
+                let mut s = PtySession::spawn(c, 200, 24, move |b| { let _ = tx.send(b.to_vec()); }, |_| {}).expect("the prompt starts");
+                // The prompt (the folder, then >) shows once chcp has run; the console host asks
+                // where the cursor is first and waits for the answer, as in the shell test.
+                let shown = format!("planted-{}>", std::process::id());
+                let (deadline, mut seen, mut answered) = (Instant::now() + Duration::from_secs(30), String::new(), 0);
+                while Instant::now() < deadline && !seen.contains(&shown) {
+                    if let Ok(b) = rx.recv_timeout(Duration::from_millis(200)) { seen.push_str(&String::from_utf8_lossy(&b)); }
+                    let asks = seen.matches("\x1b[6n").count();
+                    while answered < asks {
+                        s.write(b"\x1b[1;1R").expect("answer cursor query");
+                        answered += 1;
+                    }
+                }
+                assert!(seen.contains(&shown), "the prompt showed: {seen:?}");
+                s.kill();
+            };
+            prompt(CMD_ARGS[1]);
+            assert!(!marker.exists(), "the Command Prompt ran Windows' chcp, not the planted one");
+            prompt("chcp");
+            assert!(marker.exists(), "control: a bare chcp would have run the planted one");
+        }
+        // The pane's own PATH is searched (its full-path folders): a tool only there is found.
+        let own = crate::test_dir::temp("t660 pane path");
+        #[cfg(windows)]
+        std::fs::copy(system_program("whoami.exe"), own.join("kolux-rs-t660-own.exe")).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("/bin/true", own.join("kolux-rs-t660-own")).unwrap();
+        let mut c = program_command("kolux-rs-t660-own", &[], None);
+        c.env("PATH", own.as_os_str());
+        assert!(resolve_bare(&c, "kolux-rs-t660-own").is_some_and(|p| p.starts_with(&*own)), "found through the pane's PATH");
+        for named in ["./kolux-rs-t660-own", "C:kolux-rs-t660-own", "C:", "kolux-rs-t660-own/", "bin\\kolux-rs-t660-own"] {
+            assert!(resolve_bare(&c, named).is_none(), "{named} is never looked up");
+        }
+        // The automatic shells and the menu never name the planted cmd.exe.
+        if cfg!(windows) {
+            let found = |_: &str| None;
+            assert!(auto_shells(found, Some("cmd.exe".into())).iter().all(|(p, _)| p.is_absolute() && !p.starts_with(&*dir)));
+            assert!(shells(found).iter().all(|s| std::path::Path::new(&s.program).is_absolute()));
+        }
     }
 
     /// Closing a pane ends its program even when the program is still waiting for input.
