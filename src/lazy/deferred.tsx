@@ -5,14 +5,23 @@
 import { createElement, lazy, Suspense, type ComponentType, type ReactElement } from "react";
 
 /** Every surface made here, in the order it was declared: `prefetch()` reads them after the first frame. */
-const loaders: Array<() => Promise<unknown>> = [];
+const loaders: Array<() => PromiseLike<unknown>> = [];
 
-/** `load` names the module the surface lives in; its default export is the surface. */
-export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>) {
-  loaders.push(load);
-  const Body = lazy(load);
+/**
+ * `load` names the module the surface lives in; its default export is the surface. `fallback` is drawn
+ * while that code is read: only the full-page screens pass one (T-706), the rest draw nothing.
+ * Once `prefetch()` has read the module, `get` hands it over as a thenable that answers at once, so
+ * React draws the surface on its first open without suspending (no fallback frame at all).
+ */
+export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>, fallback?: ReactElement) {
+  let mod: { default: ComponentType<P> } | undefined;
+  // A bare thenable (no catch, no chaining), cast only because lazy()'s types ask for a Promise: it is for
+  // lazy() and prefetch's allSettled alone, which is why `loaders` holds PromiseLike, not Promise.
+  const get = () => (mod ? ({ then: (ok: (m: typeof mod) => void) => ok(mod) } as Promise<typeof mod & object>) : load().then((m) => (mod = m)));
+  loaders.push(get);
+  const Body = lazy(get);
   return function Deferred(props: P): ReactElement {
-    return createElement(Suspense, { fallback: null }, createElement(Body, props));
+    return createElement(Suspense, { fallback }, createElement(Body, props));
   };
 }
 
