@@ -85,10 +85,15 @@ pub fn capped(mut st: Status, worktree: &Path) -> Status {
         list.truncate(PANEL_CAP);
     }
     if st.cut > 0 {
-        // `git check-ignore` exits 0 for an ignored path and 1 for one that is not.
-        st.heavy = HEAVY.iter().filter(|h| worktree.join(h).is_dir() && command(&["check-ignore", "-q", &format!("{h}/")], Some(worktree)).status().is_ok_and(|s| s.code() == Some(1))).map(|h| h.to_string()).collect();
+        st.heavy = heavy_folders(worktree);
     }
     st
+}
+
+/// GIT-012: the heavy folders (see `HEAVY`) that exist at the top of the worktree and are not
+/// ignored yet. `git check-ignore` exits 0 for an ignored path and 1 for one that is not.
+pub(crate) fn heavy_folders(worktree: &Path) -> Vec<String> {
+    HEAVY.iter().filter(|h| worktree.join(h).is_dir() && command(&["check-ignore", "-q", &format!("{h}/")], Some(worktree)).status().is_ok_and(|s| s.code() == Some(1))).map(|h| h.to_string()).collect()
 }
 
 /// GIT-012: adds a `/<folder>/` line to the worktree's `.gitignore` for each named heavy folder,
@@ -1551,7 +1556,10 @@ pub async fn scm_prs_poll(app: tauri::AppHandle, items: Vec<PollItem>) -> Result
 /// GIT-021: creates the branch's pull request against `base` on origin, pushing unpushed work
 /// first. An open one the branch already has is returned instead of a second being made. The
 /// head must still be checked out and ahead of the base, with no uncommitted tracked change.
-pub fn pr_create(gh: &Path, worktree: &Path, title: &str, body: &str, base: &str, draft: bool) -> Result<Pr, String> {
+/// T-652: with `push` false nothing is pushed here; a branch whose commits are not all on
+/// `origin/<branch>` is refused instead, so the automatic flow's guarded push is the only push.
+/// `push`: the automatic flow must always pass false, so that the guarded push in `auto_pr.rs` stays the only push.
+pub fn pr_create(gh: &Path, worktree: &Path, title: &str, body: &str, base: &str, draft: bool, push: bool) -> Result<Pr, String> {
     let st = status(worktree)?;
     let branch = st.branch.clone().ok_or("No branch is checked out here; check out the head branch first")?;
     let base = base.trim().trim_start_matches("origin/");
@@ -1579,7 +1587,14 @@ pub fn pr_create(gh: &Path, worktree: &Path, title: &str, body: &str, base: &str
         Some(pr) if pr.state == "MERGED" => return Err(format!("Pull request #{} for {branch} is already merged", pr.number)),
         _ => {}
     }
-    let push: Vec<&str> = if st.upstream.is_none() { vec!["push", "--set-upstream", "origin", &branch] } else { vec!["push"] };
+    let published = st.upstream.as_deref() == Some(format!("origin/{branch}").as_str()) && st.ahead == 0;
+    if !push && !published {
+        return Err("The branch has commits that are not pushed yet; push first".into());
+    }
+    if branch.starts_with('-') {
+        return Err(format!("{branch} cannot be pushed from here: a branch name must not start with a dash"));
+    }
+    let push: Vec<&str> = if st.upstream.is_none() { vec!["push", "--set-upstream", "--", "origin", &branch] } else { vec!["push"] };
     if st.upstream.is_none() || st.ahead > 0 {
         let out = command(&push, Some(worktree)).envs(crate::git::NO_PROMPT).output().map_err(|e| format!("could not run git: {e}"))?;
         if !out.status.success() {
@@ -2196,12 +2211,14 @@ pub async fn scm_pr_checks(worktree: String, linked: Option<String>) -> Result<P
 }
 
 #[tauri::command]
-pub async fn scm_pr_create(worktree: String, title: String, body: String, base: String, draft: bool) -> Result<Pr, String> {
+pub async fn scm_pr_create(worktree: String, title: String, body: String, base: String, draft: bool, push: Option<bool>) -> Result<Pr, String> {
+    // T-652: a caller that says nothing keeps the old behaviour (push first); the automatic flow passes false.
+    let push = push.unwrap_or(true);
     tauri::async_runtime::spawn_blocking(move || {
         let dir = Path::new(&worktree);
         // Row 76: gh creates pull requests on GitHub only; any other remote is refused by name before gh is looked for.
         let provider = crate::pr_review::provider_for(repo_id::primary_host(dir, &ssh_config())?.as_deref());
-        crate::pr_review::create_for(&provider, || pr_create(&gh_program()?, dir, &title, &body, &base, draft))
+        crate::pr_review::create_for(&provider, || pr_create(&gh_program()?, dir, &title, &body, &base, draft, push))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -3441,21 +3458,21 @@ mod tests {
         let calls = || fs::read_to_string(tools.join("calls.txt")).unwrap_or_default();
 
         // GIT-023: on the default branch there is nothing to compare.
-        let err = pr_create(&gh, &dir, "Title", "", "main", false).unwrap_err();
+        let err = pr_create(&gh, &dir, "Title", "", "main", false, true).unwrap_err();
         assert!(err.contains("feature branch"), "{err}");
 
         run(&["checkout", "-q", "-b", "feat"], Some(&dir)).unwrap();
-        let err = pr_create(&gh, &dir, "Title", "", "main", false).unwrap_err();
+        let err = pr_create(&gh, &dir, "Title", "", "main", false, true).unwrap_err();
         assert!(err.contains("No commits"), "{err}");
         commit_file(&dir, "feat.txt", "f\n");
 
         // GIT-021: uncommitted tracked changes block it; a base only on this computer says what to do.
         fs::write(dir.join("README.md"), "changed\n").unwrap();
-        let err = pr_create(&gh, &dir, "Title", "", "main", false).unwrap_err();
+        let err = pr_create(&gh, &dir, "Title", "", "main", false, true).unwrap_err();
         assert!(err.contains("Commit or stash"), "{err}");
         run(&["checkout", "--", "README.md"], Some(&dir)).unwrap();
         run(&["branch", "only-here", "main"], Some(&dir)).unwrap();
-        let err = pr_create(&gh, &dir, "Title", "", "only-here", false).unwrap_err();
+        let err = pr_create(&gh, &dir, "Title", "", "only-here", false, true).unwrap_err();
         assert!(err.contains("only on this computer"), "{err}");
         assert!(calls().is_empty(), "nothing reached gh while the branch could not have a PR");
 
@@ -3463,7 +3480,7 @@ mod tests {
         // head and draft flag, with the description on standard input.
         assert_eq!(pr_find(&gh, &dir, "feat").unwrap(), None);
         let counted = crate::activity::activity_counts().prs_created;
-        let pr = pr_create(&gh, &dir, "Add feat", "Why:\nbecause", "origin/main", true).unwrap();
+        let pr = pr_create(&gh, &dir, "Add feat", "Why:\nbecause", "origin/main", true, true).unwrap();
         // USAGE-011: a pull request Kolux made counts once on the Stats & Usage page.
         assert_eq!(crate::activity::activity_counts().prs_created, counted + 1);
         assert_eq!((pr.number, pr.url.as_str(), pr.state.as_str()), (7, "https://github.com/o/r/pull/7", "OPEN"));
@@ -3473,7 +3490,7 @@ mod tests {
         assert!(fs::read_to_string(tools.join("body.txt")).unwrap().contains("because"));
 
         // A second create links the PR the branch already has instead of making another.
-        assert_eq!(pr_create(&gh, &dir, "Add feat", "", "main", false).unwrap().number, 7);
+        assert_eq!(pr_create(&gh, &dir, "Add feat", "", "main", false, true).unwrap().number, 7);
         assert_eq!(calls().matches("pr create").count(), 1);
         assert_eq!(crate::activity::activity_counts().prs_created, counted + 1, "linking the PR a branch has is not a new one");
 
@@ -3488,6 +3505,48 @@ mod tests {
         assert!(gh_words("HTTP 403: API rate limit exceeded for user ID 1.").contains("rate limit"), "a spent limit stays a limit");
         assert!(gh_words("HTTP 422: Validation Failed: The listed users and repositories cannot be searched").contains("cannot be searched"));
         assert!(gh_words("GraphQL: Could not resolve to a Repository with the name 'a/b'.").contains("Could not resolve to a Repository"));
+        let _ = fs::remove_dir_all(&tools);
+        let _ = fs::remove_dir_all(&bare);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // T-652: the automatic flow asks for no push at all; unpushed work is refused in words, and nothing reaches the remote.
+    #[test]
+    fn t652_pr_create_without_push_refuses_unpushed_commits_and_pushes_nothing() {
+        let bare = std::env::temp_dir().join(format!("kolux-rs-scm-pr-nopush-bare-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&bare);
+        fs::create_dir_all(&bare).unwrap();
+        run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
+        let dir = temp_repo("pr-nopush");
+        run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
+        run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
+        run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
+        let tools = std::env::temp_dir().join(format!("kolux-rs-scm-pr-nopush-gh-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&tools);
+        let gh = stand_in_gh(&tools);
+        let want = "The branch has commits that are not pushed yet; push first";
+        run(&["checkout", "-q", "-b", "feat"], Some(&dir)).unwrap();
+        commit_file(&dir, "feat.txt", "f\n");
+        // No upstream at all.
+        assert_eq!(pr_create(&gh, &dir, "Add feat", "", "main", true, false).unwrap_err(), want);
+        assert!(run(&["rev-parse", "--verify", "-q", "refs/heads/feat"], Some(&bare)).is_err(), "nothing was pushed");
+        // An upstream with another name (the branch still tracks origin/main).
+        run(&["branch", "--set-upstream-to=origin/main"], Some(&dir)).unwrap();
+        assert_eq!(pr_create(&gh, &dir, "Add feat", "", "main", true, false).unwrap_err(), want);
+        // Published, then one more commit: ahead of its own upstream.
+        run(&["push", "-q", "origin", "feat:feat"], Some(&dir)).unwrap();
+        run(&["branch", "--set-upstream-to=origin/feat"], Some(&dir)).unwrap();
+        commit_file(&dir, "more.txt", "m\n");
+        assert_eq!(pr_create(&gh, &dir, "Add feat", "", "main", true, false).unwrap_err(), want);
+        assert_ne!(run(&["rev-parse", "refs/heads/feat"], Some(&bare)).unwrap(), run(&["rev-parse", "HEAD"], Some(&dir)).unwrap(), "the new commit stayed here");
+        // Everything is on origin/feat: now the pull request is made, still without a push.
+        run(&["push", "-q", "origin", "feat:feat"], Some(&dir)).unwrap();
+        assert_eq!(pr_create(&gh, &dir, "Add feat", "", "main", true, false).unwrap().number, 7);
+        // With push true (the old callers) the unpushed work is still pushed first.
+        commit_file(&dir, "later.txt", "l\n");
+        fs::remove_file(tools.join("made")).unwrap();
+        assert!(pr_create(&gh, &dir, "Add feat", "", "main", true, true).is_ok());
+        assert_eq!(run(&["rev-parse", "refs/heads/feat"], Some(&bare)).unwrap(), run(&["rev-parse", "HEAD"], Some(&dir)).unwrap());
         let _ = fs::remove_dir_all(&tools);
         let _ = fs::remove_dir_all(&bare);
         let _ = fs::remove_dir_all(&dir);

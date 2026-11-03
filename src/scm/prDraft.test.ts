@@ -150,6 +150,7 @@ describe("row 915 one click honours the AI switches", () => {
     let i = 0;
     return {
       status: vi.fn(async () => seq[Math.min(i++, seq.length - 1)]),
+      scan: vi.fn(async () => ({ kind: "clean" as const, message: "", files: [] })),
       stage: vi.fn(async () => undefined),
       message: vi.fn(async () => "Fix the thing"),
       commit: vi.fn(async () => ({ id: "abc", blocked: false, output: "" })),

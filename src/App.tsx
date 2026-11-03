@@ -169,6 +169,7 @@ function Window({ initial, layout, read }: { initial: Record<string, unknown>; l
   const wizardState = useWizard({ setToast, agents, settings, activeDir, startIn });
 
   useEffect(() => void hearStates(listen).catch(() => {}), []);
+  useEffect(() => void import("./scm/autoPrWatch").catch(() => {}), []); // T-653: on demand after mount, kept out of the first load
   // Stand-in review of 1e9613e, FIX-SOON 2: hooks off in Settings drop the chat's readings.
   useEffect(() => setHooksOn(hooksOn(settings)), [settings]);
 
