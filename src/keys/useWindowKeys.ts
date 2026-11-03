@@ -9,6 +9,7 @@ import { openInBrowser } from "../browser/openIn";
 import { takeClosed } from "../browser/pages";
 import { screens, type Screen } from "../chrome/TopBar";
 import { SCREEN_OF } from "../chrome/reach";
+import { overlayShowing } from "../chrome/fullPage";
 import { closedPanes, folderKind, paneFor, placement } from "../chrome/reopenTab";
 import { isMarkdown } from "../editor/mdFiles";
 import { copiers, diffNav, editors } from "../keys/handles";
@@ -32,8 +33,29 @@ import { matchEvent } from "./keymap";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
-import { useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
+
+type Root = Pick<ParentNode, "querySelector" | "querySelectorAll">;
+
+/** UX lane C (keyboard F2): a global shortcut waits while a menu, popover or dialog is up (chrome/fullPage.ts
+ *  overlayShowing), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
+ *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
+ *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
+export const SHOW_PROJECTS_EVENT = "kolux:show-projects";
+/** UX lane C (request from D): Ctrl+W asks the pane first. A pane with its own close path (the browser pane's
+ * download / unsent-notes warning) listens for this event on window, calls preventDefault and closes itself. */
+export const PANE_CLOSE_EVENT = "kolux:pane-close";
+export function paneCloseClaimed(paneId: number): boolean {
+  return !window.dispatchEvent(new CustomEvent(PANE_CLOSE_EVENT, { detail: { paneId }, cancelable: true }));
+}
+
+export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
+  if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
+  const settings = doc.querySelector(".settings[role='dialog']");
+  return overlayShowing((settings ?? doc) as ParentNode);
+}
 
 /** The next screen in the Agents / Board / Terminals cycle. */
 export function nextScreen(s: Screen): Screen {
@@ -70,9 +92,14 @@ export function useWindowKeys(w: WindowBag) {
         matchEvent(keymap, e, scopesFor({ screen, kind, inTree })) ||
         // GIT-042: a preview tab takes the one editor shortcut that applies to it.
         (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
-      if (!hit || heldByTerminal(hit.id, settings)) return;
+      if (!hit || heldByTerminal(hit.id, settings) || heldByOverlay(hit.id, !!switcherRef.current)) return;
       const inFront = panesIn(panes, activeDir).some((p) => p.key === focused);
       switch (hit.id) {
+        case "focus.chrome":
+          // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.
+          e.preventDefault();
+          document.querySelector<HTMLElement>("header button, header [tabindex='0']")?.focus();
+          return;
         case "browser.focusAddressBar":
         case "browser.back":
         case "browser.forward":
@@ -145,15 +172,23 @@ export function useWindowKeys(w: WindowBag) {
         }
         case "worktree.history.back":
         case "worktree.history.forward":
-          if (!step(hit.id === "worktree.history.back" ? -1 : 1)) return;
+          if (!step(hit.id === "worktree.history.back" ? -1 : 1)) {
+            setToast(hit.id === "worktree.history.back" ? "No earlier workspace to go back to." : "No later workspace to go forward to.");
+            return;
+          }
           break;
         case "view.cycleWorkspaceView":
-          if (!classic) setScreen((s) => nextScreen(s));
+          if (classic) setToast("The classic layout has one view; turn it off in Settings > Appearance to switch views.");
+          else setScreen((s) => nextScreen(s));
           break;
         case "view.tasks":
+        case "view.automations": {
+          // UX lane C (palette F2): Automations gets a command (and so a palette row), as Tasks has.
+          const page = hit.id === "view.tasks" ? "tasks" : "automations";
           setScreen("terminals");
-          setPage((p) => (terminals && p === "tasks" ? null : "tasks"));
+          setPage((p) => (terminals && p === page ? null : page));
           break;
+        }
         case "sidebar.sleeping.toggle":
           saveSetting(SHOW_SLEEPING_SETTING, !showSleepingFrom(settings[SHOW_SLEEPING_SETTING]));
           break;
@@ -165,7 +200,10 @@ export function useWindowKeys(w: WindowBag) {
           // T-548: one key moves new panes to the provider's next account (wrapping through System default).
           const group = accountSwitcher.groups.find((g) => g.provider === (hit.id === "account.switchClaude" ? "claude" : "codex"));
           const to = group ? cycleTarget(group) : undefined;
-          if (!group || to === undefined) return;
+          if (!group || to === undefined) {
+            setToast(`No ${hit.id === "account.switchClaude" ? "Claude" : "Codex"} account to switch to. Add one in Settings > Accounts.`);
+            return;
+          }
           switchAccount(group.provider, to);
           break;
         }
@@ -295,6 +333,7 @@ export function useWindowKeys(w: WindowBag) {
         case "tab.close":
         case "terminal.closePane":
           if (!inFront) return;
+          if (paneCloseClaimed(focused)) break;
           closePane(focused);
           break;
         case "tab.reopenClosed": {
@@ -324,7 +363,10 @@ export function useWindowKeys(w: WindowBag) {
           // TERM-030: cycle through the panes waiting on the user in grid order, across workspaces;
           // with none waiting, focus stays where it is. DT-C52: a permission or a question only (the one status).
           const k = nextNeedsYou(panes.filter((p) => p.kind !== "browser").map((p) => p.key), new Set(panes.filter((p) => needsYou(statusOf(p))).map((p) => p.key)), focused);
-          if (k === null) return;
+          if (k === null) {
+            setToast("Nothing needs you right now.");
+            return;
+          }
           openPane(k); // EDIT-041: the same jump as Open in Code
           break;
         }
@@ -400,6 +442,23 @@ export function useWindowKeys(w: WindowBag) {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   });
+
+  // UX lane C (menu.rs:229): the menu's Force Reload comes to the page and runs the chord's reload, so unsaved
+  // editor text is asked about first instead of being thrown away by a native reload. View > Workspace View > Space
+  // lands here too (chrome/chromeItems MENU_SCREENS lists only the switcher screens).
+  const bag = useRef(w);
+  bag.current = w;
+  useEffect(() => {
+    const off = listen<{ id: string }>("menu-action", (e) => {
+      const { unsaved, setReloadAsk, setScreen } = bag.current;
+      if (e.payload.id === "app.forceReload") forceReload(unsaved.current, setReloadAsk, () => location.reload());
+      else if (e.payload.id === "screen.space") setScreen("space");
+    });
+    // UX lane C (request from D-ux3, editor/AddProjectRow): a folder added while the project list is not shown opens it.
+    const showProjects = () => { bag.current.setScreen("terminals"); bag.current.setSidebarOpen(true); };
+    window.addEventListener(SHOW_PROJECTS_EVENT, showProjects);
+    return () => { void off.then((f) => f()); window.removeEventListener(SHOW_PROJECTS_EVENT, showProjects); };
+  }, []);
 
   // TERM-050: letting go of Ctrl switches to the chosen tab; Escape or leaving the window drops the list.
   useEffect(() => {
