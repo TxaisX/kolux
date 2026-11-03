@@ -1,7 +1,7 @@
 // The Agent Teams mode preference for Settings > Agents: Off (the default), In-process or Native
 // panes. On Windows and WSL the help says teammates always run in-process and the picker has no
 // Agent Teams entry; the choice is kept for when the same profile runs elsewhere.
-import { effectiveMode, teamsMode, TEAMS_MODE_KEY, TEAMS_MODE_LABEL, TEAMS_MODES, type TeamsHost } from "./teams";
+import { effectiveMode, pickableModes, teamsMode, TEAMS_MODE_KEY, TEAMS_MODE_LABEL, type TeamsHost } from "./teams";
 
 type Props = {
   settings: Record<string, unknown>;
@@ -16,7 +16,7 @@ export default function TeamsModeCard({ settings, save, host }: Props) {
     <section className="conn-card" data-section="agent-teams">
       <h2 className="conn-name">Claude Agent Teams</h2>
       <select aria-label="Agent Teams mode" className="field" value={mode} onChange={(e) => save({ [TEAMS_MODE_KEY]: e.target.value })}>
-        {TEAMS_MODES.map((m) => (
+        {pickableModes(mode).map((m) => (
           <option key={m} value={m}>
             {TEAMS_MODE_LABEL[m]}
           </option>

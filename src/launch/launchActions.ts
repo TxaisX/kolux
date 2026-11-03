@@ -24,8 +24,8 @@ import { cellsOf, freeCell } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn } from "../workspaces";
 import { paneMark, type AgentInfo } from "./PlusMenu";
-import { bulkRefusal, settleSetups, setupMode, type NewPlace } from "./launchOrder";
-import { LAST_LINEUP_KEY, TERMINAL, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
+import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
+import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -64,8 +64,14 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   const startSeats = async (key: number, seats: Seat[]) => {
     const chooser = panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
     if (!chooser) return;
+    const tooMany = tooManySeats(seats.length);
+    if (tooMany) {
+      setNotice(tooMany);
+      return;
+    }
     const inGrid = panes.some((p) => p.key === key);
     setLaunching(true);
+    const kept: NewPlace[] = [];
     try {
       const picked = seats.map((s) => (s.agent === TERMINAL ? null : agents.find((a) => a.id === s.agent && a.installed) ?? null));
       const missing = seats.find((s, i) => s.agent !== TERMINAL && !picked[i]);
@@ -85,6 +91,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if (!pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
         const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
         madeNew.push({ cwd: wt.path, branch: wt.branch });
+        kept.push({ cwd: wt.path, branch: wt.branch });
         return { cwd: wt.path, branch: wt.branch };
       };
       const places: { cwd: string | null; branch: string | null }[] = [];
@@ -141,7 +148,9 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       setRefresh((n) => n + 1);
       setNotice(setupTrouble.length ? setupTrouble.join(" ") : null);
     } catch (err) {
-      setNotice(String(err));
+      // A seat that failed leaves the earlier seats' new workspaces behind: refresh the sidebar so they show, and say so.
+      if (kept.length) setRefresh((n) => n + 1);
+      setNotice(failureNote(err, kept.length));
     } finally {
       setLaunching(false);
     }

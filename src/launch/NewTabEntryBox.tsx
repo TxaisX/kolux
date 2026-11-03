@@ -6,9 +6,9 @@ import { entryRows, looksLikePath, moveHighlight, runRow, webAddress } from "../
 import { entryTarget, loadEntries, remember, type EntryTarget } from "./newTabEntryRun";
 import "./plusMenuExtras.css";
 
-type Props = { tabs: { key: number; name: string }[]; onRun: (target: EntryTarget) => void; onClose: () => void };
+type Props = { tabs: { key: number; name: string }[]; onRun: (target: EntryTarget) => void };
 
-export default function NewTabEntryBox({ tabs, onRun, onClose }: Props) {
+export default function NewTabEntryBox({ tabs, onRun }: Props) {
   const id = useId();
   const [text, setText] = useState("");
   const [at, setAt] = useState(0);
@@ -56,8 +56,13 @@ export default function NewTabEntryBox({ tabs, onRun, onClose }: Props) {
           setAt(0);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
-          else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          // The menu closes on Escape itself (PlusMenu); a box holding text is only cleared first.
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            e.preventDefault();
+            setText("");
+            setAt(0);
+          } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             e.preventDefault();
             setAt(moveHighlight(active, rows.length, e.key === "ArrowDown" ? 1 : -1));
           } else if (e.key === "Enter") run(active);
