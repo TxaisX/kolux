@@ -550,8 +550,9 @@ fn hook_detail(worktree: &Path, output: &str, against: Option<&str>) -> String {
     format!("{tail}\n\nFiles in this push:\n{}", shown.join("\n"))
 }
 
-/// UX-D: how long one network git step (push, pull, fetch) may run before Kolux stops it.
-const REMOTE_LIMIT: std::time::Duration = std::time::Duration::from_secs(300);
+/// UX-D: how long one network git step (push, pull, fetch) may run before Kolux stops it. Local steps
+/// (a rebase) have no limit: stopping one halfway can leave index.lock or rebase state behind.
+const REMOTE_LIMIT: std::time::Duration = std::time::Duration::from_secs(600);
 
 /// What a timed network git step came to; `timed_out` says Kolux stopped it.
 struct NetOut {
@@ -561,30 +562,39 @@ struct NetOut {
     stderr: String,
 }
 
-/// UX-D: a network git step with every prompt off (GIT_TERMINAL_PROMPT=0, GCM_INTERACTIVE=never),
-/// no standard input, and a time limit: a step that has not finished by `limit` is stopped with its
+/// UX-D: a git step with every prompt off (GIT_TERMINAL_PROMPT=0, GCM_INTERACTIVE=never), no
+/// standard input, and a time limit: a step that has not finished by `limit` is stopped with its
 /// whole tree (ssh and the remote helpers included), so a hidden credential prompt can never hang
-/// the app. Saved credentials still work.
-fn git_network(args: &[&str], worktree: &Path, limit: std::time::Duration) -> Result<NetOut, String> {
+/// the app. Saved credentials still work. `None` is no limit, for local steps that must not be cut
+/// off halfway.
+fn git_network(args: &[&str], worktree: &Path, limit: Option<std::time::Duration>) -> Result<NetOut, String> {
     use std::io::Read;
     use std::process::Stdio;
     let mut child = command(args, Some(worktree)).envs(crate::git::NO_PROMPT).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    // Each pipe is read on its own thread into a shared buffer; the channel says it reached its end.
     let drain = |mut r: Box<dyn Read + Send>| {
         let (tx, rx) = std::sync::mpsc::channel();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let into = seen.clone();
         std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = r.read_to_end(&mut buf);
-            let _ = tx.send(buf);
+            let mut chunk = [0u8; 8192];
+            while let Ok(n) = r.read(&mut chunk) {
+                if n == 0 {
+                    break;
+                }
+                into.lock().unwrap_or_else(|e| e.into_inner()).extend_from_slice(&chunk[..n]);
+            }
+            let _ = tx.send(());
         });
-        rx
+        (rx, seen)
     };
-    let out = drain(Box::new(child.stdout.take().expect("piped")));
-    let err = drain(Box::new(child.stderr.take().expect("piped")));
-    let deadline = std::time::Instant::now() + limit;
+    let (out, partial_out) = drain(Box::new(child.stdout.take().expect("piped")));
+    let (err, partial_err) = drain(Box::new(child.stderr.take().expect("piped")));
+    let deadline = limit.map(|l| std::time::Instant::now() + l);
     let (success, timed_out) = loop {
         match child.try_wait() {
             Ok(Some(status)) => break (status.success(), false),
-            Ok(None) if std::time::Instant::now() >= deadline => {
+            Ok(None) if deadline.is_some_and(|d| std::time::Instant::now() >= d) => {
                 crate::procs::kill_tree(child.id());
                 let _ = child.kill();
                 let _ = child.wait();
@@ -594,16 +604,22 @@ fn git_network(args: &[&str], worktree: &Path, limit: std::time::Duration) -> Re
             Err(e) => return Err(format!("could not wait for git: {e}")),
         }
     };
-    // After a stop a program may still hold a pipe: wait a moment, keep what was read.
-    let grace = std::time::Duration::from_secs(if timed_out { 1 } else { 30 });
-    let stdout = String::from_utf8_lossy(&out.recv_timeout(grace).unwrap_or_default()).to_string();
-    let stderr = String::from_utf8_lossy(&err.recv_timeout(grace).unwrap_or_default()).to_string();
+    // A program git started may still hold a pipe after git is gone (or was stopped): wait a moment,
+    // then go on with whatever was read so far instead of losing it all.
+    let grace = std::time::Duration::from_secs(if timed_out { 1 } else { 2 });
+    let (stdout, stderr) = (pipe_text(&out, &partial_out, grace), pipe_text(&err, &partial_err, grace));
     Ok(NetOut { success, timed_out, stdout, stderr })
+}
+
+/// The text a pipe gave: waits up to `grace` for its end, then keeps whatever has come so far.
+fn pipe_text(done: &std::sync::mpsc::Receiver<()>, seen: &std::sync::Mutex<Vec<u8>>, grace: std::time::Duration) -> String {
+    let _ = done.recv_timeout(grace);
+    String::from_utf8_lossy(&seen.lock().unwrap_or_else(|e| e.into_inner())).to_string()
 }
 
 /// UX-D: the sentence for a network step Kolux stopped; "timed out" sorts it as a network failure.
 fn timed_out_note(args: &[&str], limit: std::time::Duration) -> String {
-    format!("git {} timed out after {} seconds, so Kolux stopped it. The remote may be slow, or may be waiting for a sign-in that cannot be shown here; sign in with your git credential helper, then try again.", args.first().copied().unwrap_or("push"), limit.as_secs())
+    format!("git {} timed out after {} seconds: the step took too long, so Kolux stopped it. Causes include a slow remote, a large push, a slow pre-push hook, or a sign-in that cannot be shown here (sign in with your git credential helper, then try again).", args.first().copied().unwrap_or("push"), limit.as_secs())
 }
 
 /// GIT-007: one remote action against the branch's own remote, never a target of its own:
@@ -643,7 +659,10 @@ fn remote_within(worktree: &Path, action: &str, limit: std::time::Duration) -> R
     };
     let mut output = String::new();
     for args in steps {
-        let out = git_network(&args, worktree, limit)?;
+        // A rebase is local work: it runs to its end, since stopping it halfway can leave index.lock
+        // or rebase state behind. Every other step is network and keeps the limit.
+        let local = args[0] == "rebase";
+        let out = git_network(&args, worktree, (!local).then_some(limit))?;
         output.push_str(out.stdout.trim());
         output.push_str(out.stderr.trim());
         if out.timed_out {
@@ -1660,7 +1679,7 @@ pub fn pr_create(gh: &Path, worktree: &Path, title: &str, body: &str, base: &str
     }
     let push: Vec<&str> = if st.upstream.is_none() { vec!["push", "--set-upstream", "--", "origin", &branch] } else { vec!["push"] };
     if st.upstream.is_none() || st.ahead > 0 {
-        let out = git_network(&push, worktree, REMOTE_LIMIT)?;
+        let out = git_network(&push, worktree, Some(REMOTE_LIMIT))?;
         if out.timed_out {
             return Err(format!("Push failed, so no pull request was made: {}", timed_out_note(&push, REMOTE_LIMIT)));
         }
@@ -2588,7 +2607,16 @@ fn check_paths(paths: &[String]) -> Result<(), String> {
 /// holding `*` or `[` matches only itself.
 pub fn stage(worktree: &Path, paths: &[String], on: bool) -> Result<(), String> {
     check_paths(paths)?;
-    let args: &[&str] = if on { &["--literal-pathspecs", "add", "--pathspec-from-file=-", "--pathspec-file-nul"] } else { &["--literal-pathspecs", "restore", "--staged", "--pathspec-from-file=-", "--pathspec-file-nul"] };
+    // `restore --staged` needs a commit to restore from; in a repository with none, unstaging is
+    // taking the paths out of the index.
+    let no_commits = !on && run(&["rev-parse", "--verify", "-q", "HEAD"], Some(worktree)).is_err();
+    let args: &[&str] = if on {
+        &["--literal-pathspecs", "add", "--pathspec-from-file=-", "--pathspec-file-nul"]
+    } else if no_commits {
+        &["--literal-pathspecs", "rm", "--cached", "-r", "-q", "--ignore-unmatch", "--pathspec-from-file=-", "--pathspec-file-nul"]
+    } else {
+        &["--literal-pathspecs", "restore", "--staged", "--pathspec-from-file=-", "--pathspec-file-nul"]
+    };
     piped(worktree, args, paths)
 }
 
@@ -3799,16 +3827,72 @@ mod tests {
     fn a_network_git_step_runs_with_prompts_off_and_a_stuck_one_is_stopped() {
         let dir = temp_repo("net-limit");
         // The prompt switches reach the step (an alias prints what git was given).
-        let seen = git_network(&["-c", "alias.seen=!echo $GIT_TERMINAL_PROMPT $GCM_INTERACTIVE", "seen"], &dir, std::time::Duration::from_secs(60)).unwrap();
+        let seen = git_network(&["-c", "alias.seen=!echo $GIT_TERMINAL_PROMPT $GCM_INTERACTIVE", "seen"], &dir, Some(std::time::Duration::from_secs(60))).unwrap();
         assert!(seen.success && !seen.timed_out, "{}", seen.stderr);
         assert_eq!(seen.stdout.trim(), "0 never");
         // A step that never ends is stopped at the limit and says so.
         let started = std::time::Instant::now();
-        let stuck = git_network(&["-c", "alias.stuck=!sleep 60", "stuck"], &dir, std::time::Duration::from_secs(1)).unwrap();
+        let stuck = git_network(&["-c", "alias.stuck=!sleep 60", "stuck"], &dir, Some(std::time::Duration::from_secs(1))).unwrap();
         assert!(stuck.timed_out && !stuck.success);
         assert!(started.elapsed() < std::time::Duration::from_secs(30), "stopped long after the limit: {:?}", started.elapsed());
-        assert!(timed_out_note(&["push"], std::time::Duration::from_secs(300)).contains("timed out after 300 seconds"));
+        let note = timed_out_note(&["push"], std::time::Duration::from_secs(600));
+        assert!(note.contains("timed out after 600 seconds") && note.contains("took too long"), "{note}");
+        assert!(note.contains("slow") && note.contains("sign-in"), "{note}");
+        assert!(!note.starts_with("The remote may be waiting for a sign-in"), "{note}");
+        assert_eq!(REMOTE_LIMIT.as_secs(), 600);
+        // No limit: a step that takes longer than a short wait is left to finish.
+        let slow = git_network(&["-c", "alias.slow=!sleep 2; echo done", "slow"], &dir, None).unwrap();
+        assert!(slow.success && !slow.timed_out && slow.stdout.trim() == "done", "{}", slow.stderr);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_program_holding_the_pipe_after_git_exits_costs_a_short_wait_and_keeps_the_output() {
+        let dir = temp_repo("net-grace");
+        // The alias prints, then leaves a background process holding stdout and stderr for 20 seconds.
+        let started = std::time::Instant::now();
+        let out = git_network(&["-c", "alias.held=!echo kept; (sleep 20 &) ; true", "held"], &dir, Some(std::time::Duration::from_secs(60))).unwrap();
+        assert!(out.success && !out.timed_out);
+        assert!(out.stdout.contains("kept"), "output lost: {:?}", out.stdout);
+        assert!(started.elapsed() < std::time::Duration::from_secs(10), "waited on the held pipe: {:?}", started.elapsed());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unstaging_works_on_the_whole_worktree_on_a_renamed_file_and_before_the_first_commit() {
+        let dir = temp_repo("unstage-all");
+        commit_file(&dir, "old.txt", "some content here
+and more
+");
+        run(&["mv", "old.txt", "new.txt"], Some(&dir)).unwrap();
+        // Only the new path leaves the old one's delete staged; both together put the rename back.
+        stage(&dir, &["new.txt".into()], false).unwrap();
+        let half = status(&dir).unwrap();
+        assert_eq!(half.staged.iter().map(|c| c.path.as_str()).collect::<Vec<_>>(), ["old.txt"]);
+        run(&["add", "-A"], Some(&dir)).unwrap();
+        let renamed = status(&dir).unwrap();
+        let r = renamed.staged.iter().find(|c| c.from.is_some()).expect("a staged rename");
+        stage(&dir, &[r.from.clone().unwrap(), r.path.clone()], false).unwrap();
+        assert!(status(&dir).unwrap().staged.is_empty());
+        // "." takes the whole worktree, in both directions.
+        stage(&dir, &[".".into()], true).unwrap();
+        assert!(!status(&dir).unwrap().staged.is_empty());
+        stage(&dir, &[".".into()], false).unwrap();
+        assert!(status(&dir).unwrap().staged.is_empty());
+        let _ = fs::remove_dir_all(&dir);
+        // A repository with no commit yet: unstage all still works.
+        let fresh = std::env::temp_dir().join(format!("kolux-rs-scm-nohead-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&fresh);
+        fs::create_dir_all(&fresh).unwrap();
+        run(&["init", "-q", "-b", "main"], Some(&fresh)).unwrap();
+        fs::write(fresh.join("a.txt"), "a
+").unwrap();
+        stage(&fresh, &[".".into()], true).unwrap();
+        assert_eq!(status(&fresh).unwrap().staged.len(), 1);
+        stage(&fresh, &[".".into()], false).unwrap();
+        let st = status(&fresh).unwrap();
+        assert!(st.staged.is_empty() && st.untracked.len() == 1, "{:?}", st.staged);
+        let _ = fs::remove_dir_all(&fresh);
     }
 
     #[test]
@@ -3825,7 +3909,7 @@ mod tests {
         let out = remote_within(&dir, "push", std::time::Duration::from_secs(1)).unwrap();
         assert!(!out.ok);
         assert_eq!(out.kind, Some("network"), "{}", out.output);
-        assert!(out.output.contains("timed out after 1 second"), "{}", out.output);
+        assert!(out.output.contains("timed out after 1 second") && out.output.contains("took too long"), "{}", out.output);
         let _ = fs::remove_dir_all(&dir);
         let _ = fs::remove_dir_all(&bare);
     }

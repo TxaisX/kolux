@@ -37,7 +37,7 @@ import { useReadyStamp, useReadyVersion, useSectionWindow, type Meter } from "./
 import { useSettings } from "../settings/useSettings";
 import { allChangesStart } from "../settings/editorPrefs";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
-import { bulkPaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
+import { bulkPaths, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
 
 export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string };
 /** The base a branch is measured against and the snapshot commit the sides are read from. */
@@ -68,15 +68,24 @@ export const tagOf = (e: Entry, base: boolean) => (e.clash ? "Conflict" : base ?
 /** The call that reads the branch against its base; `known` is the base the last status named. */
 export const baseCall = (root: string, pinned: string | null, status: Status | null): [string, Record<string, unknown>] => ["scm_base_changes", { worktree: root, pinned, known: status?.base ?? null }];
 /** FIX-2: the status read as the tab opens is used only until the watcher's first status lands, so a late answer never replaces a newer one. */
-export function statusGate(take: (s: Status) => void): { first: (s: Status) => void; watched: (s: Status) => void } {
+export function statusGate(take: (s: Status) => void): { first: (s: Status) => void; watched: (s: Status) => void; reread: () => (s: Status) => void } {
   let fresh = false;
+  let seq = 0;
   return {
     first: (s) => {
       if (!fresh) take(s);
     },
     watched: (s) => {
       fresh = true;
+      seq++;
       take(s);
+    },
+    // A read started now (after an action): its answer is used unless the watcher gave a newer status while it ran.
+    reread: () => {
+      const at = seq;
+      return (s) => {
+        if (seq === at) take(s);
+      };
     },
   };
 }
@@ -84,14 +93,14 @@ export function statusGate(take: (s: Status) => void): { first: (s: Status) => v
  * read (`first` settles once it has been used or has failed), `watch` starts the watcher and returns
  * its stop; both feed `take` through statusGate, so the read never replaces a watcher status that
  * arrived first. `onWatched` runs after each watcher status has been taken. */
-export function openStatus(read: () => Promise<Status>, watch: (on: (s: Status) => void) => () => void, take: (s: Status) => void, onWatched: (s: Status) => void): { first: Promise<void>; stop: () => void } {
+export function openStatus(read: () => Promise<Status>, watch: (on: (s: Status) => void) => () => void, take: (s: Status) => void, onWatched: (s: Status) => void): { first: Promise<void>; stop: () => void; reread: () => (s: Status) => void } {
   const gate = statusGate(take);
   const first = read().then(gate.first, () => undefined);
   const stop = watch((s) => {
     gate.watched(s);
     onWatched(s);
   });
-  return { first, stop };
+  return { first, stop, reread: gate.reread };
 }
 /** The command and arguments a section reads its two texts with. */
 export const sidesCall = (base: Base | null, root: string, e: Entry): [string, Record<string, unknown>] => (base ? ["scm_base_sides", { worktree: root, path: e.path, since: base.since }] : ["diff_sides", { path: e.path, staged: e.staged }]);
@@ -124,6 +133,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   const jumpRef = useRef<((index: number) => void) | null>(null);
   const front = useRef(!hidden);
   const latest = useRef<Status | null>(null); // the last status, read by refreshes without re-running the effect
+  const rereadRef = useRef<(() => (s: Status) => void) | null>(null); // starts a status read whose answer yields to a newer watcher status
   const last = useRef<LastFocus | null>(null); // the diff view the cursor was last in, for Copy Context
   const [said, setSaid] = useState<string | null>(null);
   const saidTimer = useRef(0);
@@ -156,7 +166,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     // One status as the tab opens: Commit is ready at once instead of after the watcher's first
     // tick, and in base mode the first read already knows the base. A watcher status that came in
     // first wins over it (openStatus wires the two through statusGate).
-    const { first, stop } = openStatus(
+    const { first, stop, reread } = openStatus(
       () => invoke<Status>("scm_status", { worktree: root }),
       (on) => watchStatus(root, on),
       (s) => {
@@ -169,11 +179,13 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
         else missed.current = () => void fetch();
       },
     );
+    rereadRef.current = reread;
     if (mode === "base") void first.then(fetch);
     else void fetch();
     return () => {
       alive = false;
       missed.current = null;
+      rereadRef.current = null;
       stop();
     };
   }, [root, mode, pinnedBase]);
@@ -226,10 +238,12 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
       } finally {
         setPending(null);
         // Read again at once, so the lists and the Commit button match git without waiting for the watcher.
+        // The answer yields to a watcher status that landed while it ran (statusGate.reread).
+        const use = rereadRef.current?.();
         invoke<Status>("scm_status", { worktree: root }).then(
           (s) => {
-            latest.current = s;
-            setStatus(s);
+            if (!use) return;
+            use(s);
           },
           () => undefined,
         );
@@ -258,7 +272,15 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     },
     [root],
   );
-  const stageEntry = useCallback((e: Entry) => stage([relTo(root, e.path)], !e.staged), [stage, root]);
+  // Unstaging a renamed file names its old path too; the entry's own path alone would leave the delete staged.
+  const stageEntry = useCallback(
+    (e: Entry) => {
+      const rel = relTo(root, e.path);
+      const from = e.staged ? latest.current?.staged.find((c) => c.path === rel)?.from : null;
+      stage(from ? unstagePaths({ path: rel, from }) : [rel], !e.staged);
+    },
+    [stage, root],
+  );
   const remote = (id: "push" | "pull" | "sync", label: string) => act(`${id === "sync" ? "Syncing" : id === "push" ? "Pushing" : "Pulling"}`, () => runRemote(call, root, id, label));
   const say = (text: string) => {
     setSaid(text);
@@ -366,10 +388,10 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
       )}
       <div className="scm-commit ac-commit ac-actions" role="group" aria-label="Stage, push and pull">
         <div className="ac-commit-row">
-          <button className="btn" disabled={pending !== null || bulkPaths(status, true).length === 0} onClick={() => stage(bulkPaths(status, true), true)} title="Stage every changed and new file">
+          <button className="btn" disabled={pending !== null || bulkPaths(status, true).length === 0} onClick={() => stage(bulkPaths(status, true), true)} title={pending !== null ? `Waiting for ${pending.toLowerCase()}` : bulkPaths(status, true).length === 0 ? "Nothing to stage" : "Stage every changed and new file"}>
             Stage all
           </button>
-          <button className="btn" disabled={pending !== null || bulkPaths(status, false).length === 0} onClick={() => stage(bulkPaths(status, false), false)} title="Unstage every staged file">
+          <button className="btn" disabled={pending !== null || bulkPaths(status, false).length === 0} onClick={() => stage(bulkPaths(status, false), false)} title={pending !== null ? `Waiting for ${pending.toLowerCase()}` : bulkPaths(status, false).length === 0 ? "Nothing to unstage" : "Unstage every staged file"}>
             Unstage all
           </button>
           {remoteButtons(status).map((b) => (

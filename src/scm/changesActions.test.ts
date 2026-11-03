@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bulkPaths, oneAtATime, remoteButtons, remoteSay, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Call } from "./changesActions";
+import { bulkPaths, unstagePaths, oneAtATime, remoteButtons, remoteSay, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Call } from "./changesActions";
 import { emptyStatus, type Status } from "./model";
 
 const ch = (path: string) => ({ path, status: "M", from: null });
@@ -11,6 +11,20 @@ describe("the Changes tab's stage buttons", () => {
     expect(bulkPaths(s, true)).toEqual(["b.ts", "c.ts"]);
     expect(bulkPaths(s, false)).toEqual(["a.ts"]);
     expect(bulkPaths(null, true)).toEqual([]);
+  });
+
+  it("on a list the back end cut short, stage all and unstage all take the whole worktree", () => {
+    const s = st({ staged: [ch("a.ts")], changed: [ch("b.ts")], cut: 4 });
+    expect(bulkPaths(s, true)).toEqual(["."]);
+    expect(bulkPaths(s, false)).toEqual(["."]);
+    expect(bulkPaths(st({ staged: [ch("a.ts")], cut: 0 }), false)).toEqual(["a.ts"]);
+  });
+
+  it("unstaging a staged rename names the old path too, so no half of it stays staged", () => {
+    const rename = { path: "new.ts", status: "R", from: "old.ts" };
+    expect(unstagePaths(rename)).toEqual(["old.ts", "new.ts"]);
+    expect(unstagePaths(ch("a.ts"))).toEqual(["a.ts"]);
+    expect(bulkPaths(st({ staged: [rename, ch("a.ts")] }), false)).toEqual(["old.ts", "new.ts", "a.ts"]);
   });
 
   it("sends scm_stage with the worktree, the paths and the direction, and answers null when it worked", async () => {

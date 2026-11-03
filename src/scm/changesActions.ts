@@ -28,12 +28,19 @@ export function oneAtATime() {
 }
 
 /** The paths "Stage all" takes (everything changed or new; conflicts are resolved by hand) or
- * "Unstage all" takes (everything staged), worktree-relative as scm_stage wants them. */
+ * "Unstage all" takes (everything staged), worktree-relative as scm_stage wants them. A list the
+ * back end cut short (`cut` > 0) shows only some of the rows, so the whole worktree (".") is sent
+ * instead. A staged rename also names its old path: unstaging only the new one would leave the
+ * delete of the old one staged. */
 export const bulkPaths = (s: Status | null, on: boolean): string[] => {
   if (!s) return [];
+  if ((s.cut ?? 0) > 0) return ["."];
   const rows = on ? [...s.changed, ...s.untracked] : s.staged;
-  return [...new Set(rows.map((r) => r.path))];
+  return [...new Set(on ? rows.map((r) => r.path) : rows.flatMap(unstagePaths))];
 };
+
+/** The paths that unstage one staged row: a rename names its old path too. */
+export const unstagePaths = (r: { path: string; from?: string | null }): string[] => (r.from ? [r.from, r.path] : [r.path]);
 
 /** Stages (`on`) or unstages `paths`; null when it worked, else the failure to show. */
 export async function stagePaths(call: Call, worktree: string, paths: string[], on: boolean): Promise<Say | null> {

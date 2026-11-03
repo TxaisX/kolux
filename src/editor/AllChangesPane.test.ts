@@ -68,6 +68,25 @@ describe("FIX-2: the status read as the tab opens", () => {
   });
 });
 
+describe("the read after an action", () => {
+  it("is used when no watcher status landed while it ran", () => {
+    const seen: (string | null)[] = [];
+    const gate = statusGate((s) => seen.push(s.branch));
+    gate.watched({ ...emptyStatus, branch: "before" });
+    const use = gate.reread();
+    use({ ...emptyStatus, branch: "read" });
+    expect(seen).toEqual(["before", "read"]);
+  });
+  it("never replaces a watcher status that landed while it ran", () => {
+    const seen: (string | null)[] = [];
+    const gate = statusGate((s) => seen.push(s.branch));
+    const use = gate.reread();
+    gate.watched({ ...emptyStatus, branch: "newer" });
+    use({ ...emptyStatus, branch: "stale-read" });
+    expect(seen).toEqual(["newer"]);
+  });
+});
+
 describe("FIX-3: the tab's status wiring", () => {
   const status = (branch: string) => ({ ...emptyStatus, branch });
   it("a watcher status that lands before the slow opening read is kept, and the read is dropped", async () => {
