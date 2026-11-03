@@ -1,0 +1,55 @@
+T-694 - Wave 3 live-audit rows for lane 2f (requests/W3.md "2f"; DT-C130)
+Worker 2f, branch s-2f/wave3 off origin/main 4bd4d2de, 2026-11-03.
+Each row reproduced first, from the live run's own results and shots (scripts/prove/live-wave3-a.mjs, run 1
+and run 2 under the live-wave3 work folder) or by a test. Rows the run did not reproduce are closed with why.
+
+FIXED
+- F13 [wrong] New Automation dialog: Cancel "covered by DIV.body". REPRODUCED: shot S19-new-dialog.png shows the
+  floating panel (opened earlier by the walker) drawn over the dialog's lower right, where Cancel sits. Cause:
+  .float-panel (z 59) and .float-btn (z 60) were above the modal .scrim (z 50). Fix: src/floating/floating.css,
+  panel 47 and button 48: under any modal backdrop, still over pages, sheets and the plan sheet (46).
+- F16 [polish] the floating panel covers sheets and the Start button. Same cause for dialogs (fixed above). Over a
+  page or a New session sheet it stays on top on purpose: it is the panel that floats over work, with Minimize and
+  the round button to move it out of the way (DT-C130).
+- F17 [polish] New session footer "Start Ctrl+Enter" clipped ("Ente"). The cited shot (S12-tower.png) is a
+  28-pixel crop and S29-chooser.png at 1400 px shows the footer whole, so the exact frame is not reproduced. The
+  rule that allows it is: .chooser-foot .btn-row could not wrap, so in any chooser narrower than Cancel + Refresh
+  agents + Start with its keys the row ran past the edge and was cut. Fix: src/styles.css, the row wraps.
+- F10 [polish] the bare yellow "OpenClaw could not list its automations: gateway cron.list requires
+  credentials ..." line. REPRODUCED: shots S19-automations.png and S19-new-dialog.png. Fix:
+  src/automations/AutomationsPage.tsx: each tool warning keeps the tool's own words and adds "Its automations show
+  here once that is fixed in the tool itself; then refresh", the last word a button that re-reads the list.
+- F5 [polish] Artifacts has no Close/Back. REPRODUCED: run 1 and run 2 tables, "Page has a Close/Back control:
+  none". Fix: src/artifacts/ArtifactsPage.tsx takes onClose and shows a Close (Escape) button before the title, as
+  Automations does; src/shell/window/Content.tsx passes the same step Escape already took (back to Terminals).
+- F12 [polish] an empty Floor gives no hint. REPRODUCED: shot S13-floor.png. Fix: src/floor/FloorView.tsx adds
+  "An agent gets a lane here once it runs in a Kolux pane: start one with New session, or pick a longer range."
+
+NOT REPRODUCED
+- F6 Skills "More actions" opens no menu ("covered by HEADER.sheet-head", run 1). The run's own shot
+  S17-more-actions.png shows the menu open with "Install / reinstall Kolux skills" and "Delete skills". The button
+  sits inside header.sheet-head, so the probe point landing on the header is the geometry artefact W3.md warns
+  about. In run 2 the walker never reached Skills (finding 11). No change.
+- F14 Tasks search "not-focused" and no gh guidance. The input (src/tasks/TasksPage.tsx:363) is a plain enabled
+  text field. In the same table the walker had just pressed the Projects tab, which swaps the page's controls, and
+  the next row reads "control changed under the walker": its numbered tags pointed at other controls by then. The
+  "Issues & pull requests" FAIL is a click on the tab already selected. Guidance is there: S18-tasks.png reads
+  "wave3-a has no GitHub remote, so there are no issues or pull requests to list. Add one (git remote add origin
+  <url>) and press Refresh." No change.
+
+FIRST LOAD
+- node scripts/bundle-budget.mjs after pnpm vite build: 1,486,966 bytes, main 4bd4d2de 1,486,939 (CI's figure):
+  +27 (limit +500, ceiling 1,490,000). Pages touched are lazy already; the first load carries only the CSS and the
+  onClose line in Content.tsx.
+
+TESTS (only the touched ones)
+- pnpm vitest run src/floating/floatStack.test.ts src/automations/AutomationsPage.test.ts
+  src/floor/FloorView.test.ts src/artifacts/ src/keys/overlayKeys.test.ts src/launch/
+  src/chrome/topBarLayout.test.ts: 33 files, 215 tests pass.
+- The new floatStack tests fail with the two stylesheets put back as on main (2 failed) and pass with the fix.
+- pnpm tsc --noEmit: clean. node scripts/plan-check.mjs: OK. firewall-check -Baseline: 0 new.
+
+LANES
+- 57 handed these rows to 2f (W3.md). Files outside lane B: src/floating (E3), src/styles.css and
+  src/shell/window/Content.tsx (A), src/artifacts (D), src/floor (C). Each change is the row's own fix, one line
+  to a few; listed in the PR body.

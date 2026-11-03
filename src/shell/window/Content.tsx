@@ -160,7 +160,7 @@ export default function WindowContent() {
       )}
       {screen === "artifacts" && (
         <>
-          <ArtifactsPage onToast={setToast} />
+          <ArtifactsPage onToast={setToast} onClose={() => setScreen("terminals")} />
           {toast && (
             <div className="toast" role="status">
               {toast}

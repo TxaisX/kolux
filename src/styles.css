@@ -157,7 +157,7 @@ input { font: inherit; }
 .artifacts { flex: 1; min-height: 0; display: flex; gap: 8px; }
 .art-side { flex: none; width: min(340px, 40%); min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 8px; background: var(--pane-bg); border-radius: 10px; }
 .art-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
-.art-head h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--fg); }
+.art-head h2 { flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: var(--fg); }
 .art-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .art-row { position: relative; padding: 6px 30px 6px 8px; border-radius: 6px; cursor: default; }
 .art-row:hover, .art-row.sel { background: var(--row-selected); }
@@ -577,6 +577,7 @@ input { font: inherit; }
 .chooser-body > * { flex-shrink: 0; }
 .chooser-body .label { color: var(--fg-muted); margin-right: 4px; }
 .chooser-foot { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 8px 14px; border-top: 1px solid var(--line-subtle); font-size: 12px; }
+.chooser-foot .btn-row { flex-wrap: wrap; }
 .count-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .count-row .btn { min-width: 30px; padding: 0 8px; }
 .btn[aria-pressed="true"] { background: var(--row-selected); border-color: var(--line-focus); color: var(--fg); }
