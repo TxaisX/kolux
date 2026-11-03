@@ -1234,6 +1234,9 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
 .body > .rside { max-width: max(240px, 100vw - 340px); }
 .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
+/* Classic's title header cell (chrome/titleHeader.ts, saved width + 8) follows the card as drawn: 228 = 220 + the gutter. */
+.app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }
+.app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }
 /* USAGE-012: usage analytics. Green squares = days with use, deeper green = more tokens. */
 .ta { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
 /* The notices' live region is always drawn (so a notice is announced); empty, it takes no room in the column. */

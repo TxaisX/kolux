@@ -11,7 +11,7 @@ WHAT WAS WRONG
 
 THE RULE (DT-C139)
 - The workspace keeps at least 340 CSS px, the T-699 floor, whatever width a sidebar was dragged to.
-- Four stylesheet rules in src/styles.css, right after the T-699 step-aside rule:
+- Four stylesheet rules (plus two for the Classic header, below) in src/styles.css, right after the T-699 step-aside rule:
     .body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
     .body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
     .body > .rside { max-width: max(240px, 100vw - 340px); }
@@ -26,6 +26,12 @@ THE RULE (DT-C139)
     the projects sidebar was dragged wide). Headless Chromium at 1400 px, normal and Classic rail, --sidebar-w 289 and 480:
     main 80687a7d 268/268/240/240, first version 289/480/289/480, this branch 268/268/240/240.
   - A press and release on a narrowed left edge saves the width as drawn (the drag starts there).
+  - Classic's title header cell (chrome/titleHeader.ts: saved width + 8, inline) gets a matching max-width, two more rules:
+    .app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }
+    .app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }
+    228 = the card's 220 minimum + the gutter. Review round 2 caught the mismatch (Classic, 1000 px, left 480, right open:
+    header 488 over a card drawn 420). Headless Chromium, the 30 cases below with the header added: in every case where
+    the left sidebar shows, the header cell equals the card as drawn (e.g. 1000 px, left 480, right 240: both 420).
 - Because the clamps are CSS, they follow the window live: during a drag (the pointer can ask for 480, the sidebar
   stops where the floor is) and when the window shrinks after a drag.
 - Order as the window shrinks: the dragged panel gives back its width first; the T-699 step-aside starts only under
@@ -75,8 +81,8 @@ REAL-LAYOUT CHECK (headless Chromium 1248)
   unchanged (1400 / 289 / hidden = 1103 before and after).
 
 TESTS (VITEST_MAX_WORKERS=1, one file at a time, during coordinator 57's live verify)
-- src/shell/window/panelFit.test.ts (new, 4 tests): pins the four rules and that they come after the T-699 step-aside,
-  and that no clamp rule names a .sidebar-wrap without :not(.rail-wrap);
+- src/shell/window/panelFit.test.ts (new, 4 tests): pins the six rules and that they come after the T-699 step-aside,
+  that no clamp rule names a .sidebar-wrap without :not(.rail-wrap), and that the Classic header cell matches the card;
   models the body rule for rule and checks the workspace is 340 px or more at 640, 800, 900, 1000 and 1400 px with the
   left sidebar closed, default or at 480, and the right sidebar hidden, at 240, 300 or drawn at 900; the order (the
   dragged panel gives back first, the step-aside starts under 900 px, a wide window keeps the saved width); that the

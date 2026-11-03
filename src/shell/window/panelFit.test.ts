@@ -20,6 +20,8 @@ const RULES = [
   ".body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }",
   ".body > .rside { max-width: max(240px, 100vw - 340px); }",
   ".body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }",
+  ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)) .titlebar .topbar-left { max-width: max(228px, 100vw - 340px); }",
+  ".app:has(> .body > .sidebar-wrap:not(.rail-wrap)):has(> .body > .rside:not([hidden])) .titlebar .topbar-left { max-width: max(228px, 100vw - 580px); }",
 ];
 
 /** The body as the stylesheet lays it out, rule for rule (RULES above and the T-699 step-aside).
@@ -33,7 +35,7 @@ const layout = (W: number, left: number | null, right: number | null) => {
   return { l, r, work: W - l - r };
 };
 
-test("T-703: the stylesheet carries the four clamp rules, after the T-699 step-aside", () => {
+test("T-703: the stylesheet carries the clamp rules, after the T-699 step-aside", () => {
   const stepAside = css.indexOf(`@media (max-width: ${NARROW_PX - 1}px) { .body:has(> .rside:not([hidden]))`);
   expect(stepAside).toBeGreaterThan(-1);
   for (const rule of RULES) expect(css.indexOf(rule), rule).toBeGreaterThan(stepAside);
@@ -49,7 +51,10 @@ test("T-703: at 640, 800 and 1400 px a widened panel (left 480, or the right dra
   for (const W of [640, 800, 900, 1000, 1400]) {
     for (const left of [null, 289, LEFT_MAX]) {
       for (const right of [null, RIGHT_MIN, 300, 900]) {
-        expect(layout(W, left, right).work, `${W} px, left ${left}, right ${right}`).toBeGreaterThanOrEqual(FLOOR);
+        const { l, work } = layout(W, left, right);
+        expect(work, `${W} px, left ${left}, right ${right}`).toBeGreaterThanOrEqual(FLOOR);
+        // Classic's title header cell (saved width + 8, capped by the last two rules) lines up with the card as drawn.
+        if (l > 0 && left !== null) expect(Math.min(left + 8, Math.max(228, W - (right === null ? 340 : 580))), `header at ${W} px`).toBe(l);
       }
     }
   }
