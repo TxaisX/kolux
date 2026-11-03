@@ -226,7 +226,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
           }}
         />
         <div className="skills-anchor">
-          <button className={`btn${f.agent !== "all" ? " on" : ""}`} aria-haspopup="menu" aria-expanded={open === "agent"} onClick={(e) => (opens(e), setOpen(open === "agent" ? null : "agent"))}>
+          <button className={`btn${f.agent !== "all" ? " on" : ""}`} aria-haspopup="menu" aria-expanded={open === "agent"} aria-label={f.agent === "all" ? "Filter by agent" : `Filter by agent: ${agentLabel}`} onClick={(e) => (opens(e), setOpen(open === "agent" ? null : "agent"))}>
             <Funnel size={12} /> {f.agent === "all" ? "Filter by agent" : agentLabel}
           </button>
           {open === "agent" && (
@@ -295,8 +295,8 @@ export default function SkillsPage({ workspace, onClose }: Props) {
             </>
           )}
         </div>
-        <button className="btn" title="Scan every folder again" onClick={() => load(true)} disabled={scanning}>
-          <Refresh size={12} /> Refresh
+        <button className="btn" title="Scan every folder again" onClick={() => load(true)} disabled={scanning} aria-busy={scanning}>
+          <Refresh size={12} className={scanning ? "spin" : undefined} /> {scanning ? "Scanning…" : "Refresh"}
         </button>
       </div>
       {picking && (
