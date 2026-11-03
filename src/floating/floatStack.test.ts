@@ -1,6 +1,6 @@
 // T-694 (F13, F16, F17; DT-C130) and T-698 (DT-C134): every layer drawn over the page shares one z-index scale (the
 // --z-* variables in styles.css). A pane is not a stacking context, so the pops inside panes are on the scale too. The
-// floating panel and its button sit over sheets, pane pops, the review tray and the plan sheet, and under every page
+// floating panel and its button sit over pane pops, the review tray and the plan sheet, and under every page
 // overlay, menu, pop, dialog, notice and tip; the chooser footer's buttons wrap in a narrow pane instead of running past its edge.
 import { expect, test } from "vitest";
 
@@ -32,8 +32,8 @@ const z = (sel: string): number => {
 
 const PANE_POPS = [".slash-menu", ".rich-draw", ".chat-composer .chat-full", ".table-ctl", ".code-label", ".table-ctx", ".search-pick-list"];
 
-test("T-698: the scale runs sheet < pane < floating panel < page < menu < pop < dialog < notice < tip < tour < trust", () => {
-  const order = ["z-sheet", "z-pane", "z-float", "z-page", "z-menu", "z-pop", "z-dialog", "z-notice", "z-top", "z-tour", "z-trust"];
+test("T-698, T-704: the scale runs pane < floating panel < sheet < page < menu < pop < dialog < notice < tip < tour < trust", () => {
+  const order = ["z-pane", "z-float", "z-sheet", "z-page", "z-menu", "z-pop", "z-dialog", "z-notice", "z-top", "z-tour", "z-trust"];
   const values = order.map((k) => scale[k]);
   expect(values.every((n) => typeof n === "number")).toBe(true);
   expect([...values].sort((a, b) => a - b)).toEqual(values);
@@ -48,11 +48,10 @@ test("T-694, T-698: every page overlay, menu, pop and dialog draws over the floa
   expect(z(".float-btn")).toBeGreaterThan(z(".float-panel"));
 });
 
-test("T-698: sheets, pane pops, the review tray and the plan sheet draw under the panel, in main's order", () => {
+test("T-698: pane pops, the review tray and the plan sheet draw under the panel, in main's order", () => {
   const panel = Math.min(z(".float-panel"), z(".float-btn"));
   const pops = PANE_POPS.map(z);
-  for (const sel of [".sheet-wrap", ".chat-browser-menu", ...PANE_POPS, ".review-tray", ".plan-sheet"]) expect(z(sel), sel).toBeLessThan(panel);
-  expect(z(".sheet-wrap")).toBeLessThan(Math.min(...pops));
+  for (const sel of [".chat-browser-menu", ...PANE_POPS, ".review-tray", ".plan-sheet"]) expect(z(sel), sel).toBeLessThan(panel);
   expect(z(".chat-browser-menu")).toBeLessThan(Math.min(...pops));
   expect(Math.max(...pops)).toBeLessThan(z(".review-tray"));
   expect(z(".review-tray")).toBeLessThan(z(".plan-sheet"));
@@ -60,6 +59,16 @@ test("T-698: sheets, pane pops, the review tray and the plan sheet draw under th
   expect(z(".slash-menu")).toBeLessThan(z(".table-ctl"));
   expect(z(".table-ctl")).toBeLessThan(z(".table-ctx"));
   expect(z(".table-ctx")).toBeLessThan(z(".search-pick-list"));
+});
+
+// T-704 (DT-C140): T-699's rule is that a sheet and its Start button are never covered, so the New-session sheet
+// draws over the floating panel and its button (and so over everything under them), and under every page overlay,
+// menu and dialog. The sheet's parents set no z-index, so its own z-index is the one that counts.
+test("T-704: sheets draw over the floating panel and its button, and under every page overlay, menu and dialog", () => {
+  const sheet = z(".sheet-wrap");
+  for (const sel of [".float-panel", ".float-btn", ".plan-sheet", ".review-tray", ".chat-browser-menu", ...PANE_POPS]) expect(sheet, sel).toBeGreaterThan(z(sel));
+  for (const sel of [".settings", ".menu-backdrop", ".menu", ".diff-note-pop", ".review-pop", ".scrim", ".ask-backdrop", ".tip", ".tour"]) expect(z(sel), sel).toBeGreaterThan(sheet);
+  for (const sel of [".app", ".body", ".content"]) expect(rule(sel), sel).not.toMatch(/z-index/);
 });
 
 test("T-698: no stylesheet in src sets a bare z-index of 20 or more; every layer over the page is on the scale", () => {

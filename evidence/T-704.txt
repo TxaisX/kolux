@@ -1,0 +1,39 @@
+T-704 - The floating panel no longer covers the New-session sheet's Start button (DT-C140; UX audit W3 row L1d)
+Worker 2f, branch s-2f/sheet-layer off origin/main d552a974, 2026-11-03. CSS and one test file; no app code.
+
+FOUND BY
+- The trains 7+8 live verify (findings/live-verify-t7-8.md, row L1d-sheet, main 80687a7d): with the floating panel
+  dragged over the New-session sheet, the point at Start's centre hit the panel's body. .sheet-wrap was --z-sheet 20,
+  under .float-panel --z-float 30.
+
+FIX
+- src/styles.css: the scale is now pane 22 < float 30 (its button 31) < sheet 35 < page 40 < menu 41 < ... (only
+  --z-sheet moved). A sheet now draws over the floating panel, its button, the plan sheet (29), the review tray (28)
+  and the pane pops, and under every page overlay, menu, pop and dialog. That is T-699's rule: a sheet and its Start
+  button are never covered.
+- src/chat/chat.css: .chat-browser-menu had borrowed --z-sheet as its number. It is a menu inside a chat pane, not a
+  sheet, so it keeps its old place (under the pane pops and the panel) as calc(var(--z-pane) - 1) = 21 (was 20).
+  Nothing sits at 21, so its order against every other layer is unchanged.
+- The panel never opens a sheet (nothing under src/floating renders .sheet-wrap; Content.tsx is its only mount),
+  so there is no sheet-inside-the-panel case to layer.
+- The sheet's parents (.app, .body, .content) set no z-index, so they make no stacking context and the sheet's own
+  z-index is the one that counts against the panel (mounted outside them).
+
+TEST (src/floating/floatStack.test.ts)
+- The scale-order test now reads pane < float < sheet < page < ... .
+- New "T-704" test: the sheet is over .float-panel, .float-btn, .plan-sheet, .review-tray, .chat-browser-menu and
+  every pane pop; .settings, .menu-backdrop, .menu, .diff-note-pop, .review-pop, .scrim, .ask-backdrop, .tip and .tour
+  are over the sheet; .app, .body and .content carry no z-index (so a later one would fail the test, not the user).
+- The T-698 "under the panel" test no longer lists .sheet-wrap.
+- pnpm vitest run src/floating/floatStack.test.ts: 6/6 pass. With main's styles.css swapped in, 2 of 6 fail: the
+  T-704 test (sheet 20 is not over panel 30) and the scale-order test.
+- VITEST_MAX_WORKERS=2 pnpm vitest run src/floating src/chat src/shell: 78 files, 586 tests pass.
+
+IN A REAL BROWSER (headless Edge, the real styles.css + floating.css, sheet markup inside .app > .body > .content,
+a .float-panel placed over Start, elementFromPoint at Start's centre)
+- main's styles.css: "covered by body#panelbody | sheet z=20 panel z=30" (the live verify's finding, reproduced)
+- this branch:       "Start is on top | sheet z=35 panel z=30"
+
+GATES
+- plan-check and firewall-check -Baseline: see the PR. First load: CI figure in the PR (CSS only; expected +0 or a
+  few bytes).
