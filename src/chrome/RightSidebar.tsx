@@ -12,6 +12,7 @@
 import { Component, useEffect, useRef, useState, type ErrorInfo, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { useMenuFocus } from "./dialogFocus";
 import { menuStep } from "../terminal/LinkActionMenu";
+import { NARROW_PX } from "../shell/window/narrow";
 
 export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
@@ -100,8 +101,9 @@ export class PanelGuard extends Component<{ tab: string; children: ReactNode }, 
   }
 }
 
-/** The width actually used: at least the minimum, and never into the workspace's reserved room. */
-export const clampWidth = (w: number, windowWidth: number, leftWidth: number) => Math.max(RIGHT_MIN, Math.min(w, windowWidth - leftWidth - RESERVED));
+/** The width actually used: at least the minimum, and never into the workspace's reserved room. T-719 (DT-C155): under
+ *  NARROW_PX the left sidebar is stepped aside (T-699), so its width does not count. */
+export const clampWidth = (w: number, windowWidth: number, leftWidth: number) => Math.max(RIGHT_MIN, Math.min(w, windowWidth - (windowWidth < NARROW_PX ? 0 : leftWidth) - RESERVED));
 
 export const LEFT_KEY = "leftSidebarWidth";
 export const LEFT_MIN = 220;

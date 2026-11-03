@@ -366,6 +366,8 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const rows = query.trim() ? filterRows(flatten(root, visible, new Set(Object.keys(visible)), null), query) : flatten(root, visible, open, draft);
   const index = rows.findIndex((r) => r.node.path === at);
   const isDir = (n: Node) => n.kind === "dir" || (n.kind === "link" && real[n.path] === "dir");
+  /** A row drawn as a folder: anything but a file, unless it is a link already known to point at a file. */
+  const dirRow = (n: Node) => n.kind !== "file" && !(n.kind === "link" && real[n.path] && !isDir(n));
 
   const show = (i: number) => {
     const el = box.current;
@@ -709,13 +711,21 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
 
   // EDIT-035: the row menu (right-click): find in folder, open in terminal, view file, add as project, copy, and the file actions.
   const [menu, setMenu] = useState<{ x: number; y: number; path: string; dir: boolean } | null>(null);
-  const rowContext = (e: React.MouseEvent, path: string, dir: boolean) => {
+  const rowContext = (e: React.MouseEvent, path: string, dir: boolean, x = e.clientX, y = e.clientY) => {
     if (path === DRAFT || path === renaming) return;
     e.preventDefault();
     box.current?.focus();
     setAt(path);
     if (!sel.has(path)) pick(path);
-    setMenu({ x: e.clientX, y: e.clientY, path, dir });
+    setMenu({ x, y, path, dir });
+  };
+  // T-710: Shift+F10 and the Menu key raise contextmenu on the focused list itself (button -1): the menu is the
+  // active row's, opened under that row (or where the engine put it when the row is scrolled out of the drawn set).
+  const keyContext = (e: React.MouseEvent) => {
+    const r = e.target === e.currentTarget && e.button < 0 && rows[index];
+    if (!r) return;
+    const at = document.getElementById(`ex-row-${index}`)?.getBoundingClientRect();
+    rowContext(e, r.node.path, dirRow(r.node), at && at.left + 16, at?.bottom);
   };
   useEffect(() => {
     if (!menu || menu.dir) return;
@@ -895,6 +905,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         aria-multiselectable
         aria-activedescendant={index >= 0 ? `ex-row-${index}` : undefined}
         onKeyDown={onKey}
+        onContextMenu={keyContext}
         onFocus={() => index < 0 && rows.length && setAt(rows[0].node.path)}
         onScroll={(e) => setScroll(e.currentTarget.scrollTop)}
       >
@@ -902,7 +913,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         <div style={{ height: rows.length * ROW, position: "relative" }}>
           {rows.slice(first, last).map((r, k) => {
             const i = first + k;
-            const dir = r.node.kind !== "file" && !(r.node.kind === "link" && real[r.node.path] && !isDir(r.node));
+            const dir = dirRow(r.node);
             const isOpen = open.has(r.node.path);
             const editing = r.node.path === DRAFT || r.node.path === renaming;
             return (

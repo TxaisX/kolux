@@ -90,6 +90,10 @@ export const outsideDismisses = (openedAt: number, now: number): boolean => now 
 /** Where a menu of `size` px starting at `at` sits so it stays inside a window of `limit` px. */
 export const fitIn = (at: number, size: number, limit: number, margin = 8): number => Math.max(margin, Math.min(at, limit - size - margin));
 
+/** T-710: the keys that open a context menu (Shift+F10 and the Menu key). The terminal leaves them to the engine,
+ *  which raises contextmenu on the focused element with button -1; the program in the pane never sees them. */
+export const menuKey = (e: { key: string; shiftKey: boolean }): boolean => e.key === "ContextMenu" || (e.shiftKey && e.key === "F10");
+
 /** The row to focus after `key` when `at` of `count` rows has focus (-1: none), or null when the key is not a menu key. */
 export function menuStep(count: number, at: number, key: string): number | null {
   if (count === 0) return null;
