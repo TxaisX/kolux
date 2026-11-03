@@ -473,7 +473,7 @@ Rules: Multi-task is done once a real workspace exists besides the main checkout
   a desktop-control capability that is unavailable never holds it back, and merely starting setup
   does not count; for the setup-script step, readiness resets when its inputs change, late answers
   from an older check are ignored, and a check that fails settles as having no script; old profiles
-  that had finished the earlier steps, or had saved the legacy setupChecklist off, count as complete
+  that had finished the earlier steps, or had turned the old checklist setting off, count as complete
   under the legacy rule everywhere (since T-674, DT-C110, hiding the checklist is saved separately and
   does not count), while a failed status read is never taken as completion; a retired
   split-terminal step no longer counts toward progress.
@@ -537,7 +537,7 @@ Acceptance:
   - [ ] 'Hide from sidebar' → the entry goes and stays gone.
   - [ ] Relaunch with every step done and slow capability checks → the entry never shows, not even
         for a moment.
-  - [x] 'Hide from sidebar' → saved as setupChecklistHidden; the entry stays gone and no step turns
+  - [x] 'Hide from sidebar' → saved as its own setting; the entry stays gone and no step turns
         ticked. (T-674; evidence/T-674.txt)
 Compat: —
 Source: D-16-020
