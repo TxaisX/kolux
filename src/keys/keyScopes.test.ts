@@ -66,6 +66,13 @@ describe("APP-013 tab keys from every focus", () => {
 // is one that a handler passes to matchEvent: the window's (scopesFor), a focused terminal's (shellKeys), the
 // floating panel's, and each pane's own. Two actions on one chord in a live set means the table order picks the
 // winner and the other's chord is dead.
+// The pane close ships unbound, so a menu or tooltip that showed its chord would show none; they show tab.close's.
+const SRC = import.meta.glob(["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}", "!/src/**/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+test("T-717: no menu or tooltip reads the pane close's chord (Mod+W is tab.close's)", () => {
+  const readers = Object.entries(SRC).filter(([, s]) => /(labelOf|chordsOf)\(\w+, "terminal\.closePane"\)|key: "terminal\.closePane"/.test(s)).map(([f]) => f);
+  expect(readers).toEqual([]);
+});
+
 describe("T-717 every default chord is unique per live scope set", () => {
   const live: Scope[][] = [
     ...surfaces.map(([, s]) => scopesFor(s)),

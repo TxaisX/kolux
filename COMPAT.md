@@ -992,7 +992,7 @@ Each card below keeps the action ids named here, with the defaults of 4.3, so a 
 | TERM-009 | `terminal.equalizePaneSizes`, shipped unbound. |
 | TERM-012 | `terminal.focusNextPane` and `terminal.focusPreviousPane`. |
 | TERM-013 | `terminal.expandPane`. |
-| TERM-014 | `terminal.closePane`. |
+| TERM-014 | `terminal.closePane` (ships unbound; Mod+W is `tab.close`'s, DT-C153). |
 | TERM-027 | `terminal.setTitle` and `terminal.clearPaneTitle`, both shipped unbound. |
 | TERM-030, STAT-051, VIEW-047 | `terminals.focusNextNeedsYou`. |
 | TERM-040 | `tab.newTerminal`, `tab.newBrowser`, `tab.newMarkdown` and `tab.openMarkdown`. |
