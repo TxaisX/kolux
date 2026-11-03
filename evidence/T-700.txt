@@ -8,6 +8,9 @@ K1 notebook_run::tests::a_cell_that_sleeps_past_the_ceiling_is_killed (6 sightin
   must still take at least its ceiling and under ceiling + 20 s, and must end in the "was stopped" error. A run with no
   print must have that error as its only output. The ceiling that passed is printed (eprintln), so a log shows when a
   runner needed 40 s. Not a bigger single timeout: a quiet PC passes at 5 s, faster than before.
+- Review (A-) follow-up: the cell writes a marker file right after its print. A run retries only when the marker is
+  missing (Python had not printed); a marker with no "before" output fails at once as lost text, so the retry can
+  never hide a capture bug. The pass log says whether the marker was there.
 
 K2 git::tests::an_unattended_git_fails_fast_on_a_remote_that_wants_a_password
 - Cause, from CI run 41664093769 (job 126014646375): "began.elapsed() < 30 s" failed at git.rs:1160. Git had failed
@@ -45,6 +48,9 @@ PROOF: 20 looped runs per fixed test, one test at a time (cargo test -j 2 --lib 
 - script_runs::fix_2_an_unset_or_empty_claude_config_dir_still_posts: 20/20 passed
 - script_runs::fix_2_s7_a_held_event_never_carries_tool_input_prompt_or_reply: 20/20 passed
 - K1 again after adding the ceiling log: 20/20 passed, all 20 printed within the 5 s ceiling
+- K1 again after the review's marker fix: 20/20 passed, all 20 at the 5 s ceiling with the marker present
+- K2 again after fa's nit (stdout to Stdio::null(); stderr stays piped for the "terminal prompts disabled" check):
+  20/20 passed
 - Full cargo test and clippy: not run locally. 57 asked for low-RAM local work while the trains 7+8 live verify ran,
   so the full suite and clippy are proved by Windows CI on the PR head (sha in the PR).
 

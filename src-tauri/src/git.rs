@@ -1149,7 +1149,7 @@ mod tests {
         ISOLATED.with(|i| i.set(true));
         let url = format!("http://127.0.0.1:{port}/private.git");
         let mut cmd = command(&["-c", "credential.helper=", "ls-remote", &url], None);
-        cmd.envs(NO_PROMPT).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+        cmd.envs(NO_PROMPT).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped());
         // T-700 (K2): the clock covers git alone, from its start to its exit. A prompt never returns, so the
         // watchdog only has to tell "waiting for an answer" from "slow": a busy CI runner once took git past
         // 30 s to fail as it should. "Terminal prompts disabled" below is the proof that git asked nobody.
