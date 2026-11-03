@@ -1,0 +1,42 @@
+T-698 - One z-index scale for the window-level overlays (proof/ux-audit/requests/W3.md, last row; DT-C134)
+Worker 2f, branch s-2f/zscale off origin/main c82cedc5, 2026-11-03.
+
+THE PROBLEM (follow-up from T-694's review)
+- .settings is absolute with z-index 40 inside .content, so it is a stacking context: its Ask dialogs (60) stacked
+  at 40, under the floating panel (47). The pane menu (.menu 41), the diff note pop (41), the review tray (44), the
+  review pop (45) and the update pop (45) also drew under the panel where they overlapped it.
+
+WHAT CHANGED
+- src/styles.css: one :root line defines the scale, low to high: --z-sheet 20, --z-float 30, --z-page 40,
+  --z-menu 41, --z-pop 45, --z-dialog 50, --z-notice 55, --z-top 60, --z-tour 70, --z-trust 200.
+- Every window-level rule now takes its tier (or "one above / one below" with calc): .sheet-wrap and .plan-sheet
+  (sheet), .float-panel and .float-btn (float), .settings, .menu-backdrop, .copy-hint (page), .menu, .diff-note-pop
+  (menu), .review-tray, .review-pop, the update pop (pop), .sb-menu-back, .sb-menu, .scrim (dialog), .star-card,
+  .star-toast, .tour-notice, .skill-notice (notice), .ask-backdrop, .tip, .picker-tip, .tab-switcher, .tip-dock,
+  .about-panel (top), .tour-ring, .tour, .onb-backdrop (tour), the trust prompt's backdrop (trust).
+- Order changes against main, all intended: the floating panel moves from 47/48 to 30/31, so it is now under
+  Settings, every menu and pop; the plan sheet moves from 46 to 21, still under the panel and now under menus and
+  pops opened over it. Every other pair keeps its order (same numbers as before).
+- Settings now covers the floating panel. That is the only way its dialogs are over the panel without moving them out
+  of the page (DT-C134 revises DT-C130 on this point); closing Settings brings the panel back.
+- Left local on purpose: z-index values inside a pane (menus, pickers, the editor's pops). Each .pane is its own
+  stacking context (container-type: inline-size), so those numbers never compete with the window's layers. Inline
+  values in components (two notes at 50, the floating panel's own Ask and menus at 70) are already above the panel.
+
+TESTS
+- src/floating/floatStack.test.ts (rewritten from T-694): the tiers are in order and distinct; every window-level
+  overlay listed above resolves above the floating panel and its button, the two sheets below; styles.css has no
+  bare z-index of 20 or more; the chooser footer still wraps.
+- With the stylesheets put back as on main the new tests fail (3 failed, the chooser one passes); with the change
+  all 4 pass.
+- pnpm vitest run src/editor/PreviewPane.test.ts src/floating/ src/onboarding/ src/projects/ src/skills/ src/update/
+  src/setup/ src/shell/: 155 files, 1047 tests pass. pnpm tsc --noEmit: clean.
+
+FIRST LOAD
+- node scripts/bundle-budget.mjs after pnpm vite build: 1,488,312 bytes; main c82cedc5 1,488,312 (CI run
+  41689786036): +0.
+
+LANES
+- 57 handed this row to 2f. Files outside lane B: src/styles.css and src/shell/shell.css (A), src/floating (E3),
+  src/projects/sidebar.css (C), src/onboarding, src/update, src/setup. Each change is the z-index value only; listed
+  in the PR body. src/skills/skillNotice.css is lane B.
