@@ -35,10 +35,16 @@ Rules: a process tree is counted under one terminal only, so a subtree already c
   memory follows each system's own measure (memory pressure on macOS, available memory on Linux);
   ending a session that is not shown in any pane leaves every other session alone; when the app's
   own process row is missing, its working-set figure stands in; CPU figures are clamped to the
-  machine's total core capacity, so a bad sample never shows an impossible percentage.
+  machine's total core capacity, so a bad sample never shows an impossible percentage; a failed End
+  keeps its error until the user dismisses it or ends something else; while an End all runs, End all
+  and Restart terminals are greyed out; Escape closes the popover's own open End question before the
+  popover (the background sessions' End question still closes the whole popover, DT-C105); the
+  popover takes focus and gives it back; a refresh is skipped while the last read still runs (DT-C105).
 Acceptance:
   - [x] Open the popover with three sessions running → three session rows, each with a memory figure. (cards; evidence/cards-APP-054.txt)
   - [x] Confirm ending one of them → only that session stops; the other two keep running. (cards; evidence/cards-APP-054.txt)
+  - [x] An End that fails → its error stays past the next refresh; Escape with one of the popover's own End
+        questions open closes only the question. (background sessions' question: known limit, DT-C105) (unit; evidence/T-669.txt)
 Compat: —
 Source: D-19-054
 
