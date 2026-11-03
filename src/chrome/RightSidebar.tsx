@@ -114,21 +114,35 @@ export function readLeft(s: Record<string, unknown>, current = LEFT_DEFAULT): nu
   return typeof w === "number" && Number.isFinite(w) ? clampLeft(w) : current;
 }
 
-/** A sidebar's drag edge. `side` is where the sidebar sits: dragging away from it widens it. */
-export function Grip({ side, width, label, className, onWidth }: { side: "left" | "right"; width: number; label: string; className: string; onWidth: (w: number, done: boolean) => void }) {
+/** A sidebar's drag edge. `side` is where the sidebar sits: dragging away from it widens it. T-711 (DT-C147): it is also
+ *  a focusable separator: Left/Right move it 16 px (Shift: 64), Home/End go to `min`/`max`, each step saved; the
+ *  caller's onWidth clamps keys and drags alike, and styles.css keeps T-703's workspace floor. */
+export function Grip({ side, width, min, max, label, className, onWidth }: { side: "left" | "right"; width: number; min: number; max: number; label: string; className: string; onWidth: (w: number, done: boolean) => void }) {
   const drag = useRef<{ x: number; w: number } | null>(null);
-  const at = (x: number) => (drag.current ? drag.current.w + (side === "left" ? x - drag.current.x : drag.current.x - x) : width);
+  const dir = side === "left" ? 1 : -1; // which way of the pointer or arrow key widens it
+  const at = (x: number) => (drag.current ? drag.current.w + dir * (x - drag.current.x) : width);
+  // T-703 (DT-C139): the width as drawn, which styles.css may have narrowed below `width`. The left grip sits right after
+  // ProjectsPanel's .sidebar-wrap (shell/window/Sidebar.tsx renders both on one condition); the right one is inside aside.rside.
+  const drawn = (el: Element) => (side === "left" ? (el.previousElementSibling as HTMLElement).offsetWidth - 8 : (el.parentElement as HTMLElement).offsetWidth);
   return (
     <div
       className={className}
       role="separator"
       aria-orientation="vertical"
       aria-label={label}
+      tabIndex={0}
+      aria-valuenow={width}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      onKeyDown={(e) => {
+        // Home/End ask for far past either end and the caller's clamp lands on min/max (first-load budget: no branch per key).
+        const d = ({ ArrowLeft: -dir * 16, ArrowRight: dir * 16, Home: -1e5, End: 1e5 } as Record<string, number>)[e.key];
+        if (!d) return;
+        e.preventDefault();
+        onWidth(drawn(e.currentTarget) + d * (e.shiftKey ? 4 : 1), true);
+      }}
       onPointerDown={(e) => {
-        // T-703 (DT-C139): start from the width as drawn, which styles.css may have narrowed below `width`. The left grip
-        // sits right after ProjectsPanel's .sidebar-wrap (shell/window/Sidebar.tsx renders both on one condition); the right one is inside aside.rside.
-        const el = e.currentTarget;
-        drag.current = { x: e.clientX, w: side === "left" ? (el.previousElementSibling as HTMLElement).offsetWidth - 8 : (el.parentElement as HTMLElement).offsetWidth };
+        drag.current = { x: e.clientX, w: drawn(e.currentTarget) };
         e.currentTarget.setPointerCapture(e.pointerId);
       }}
       onPointerMove={(e) => drag.current && onWidth(at(e.clientX), false)}
@@ -141,9 +155,9 @@ export function Grip({ side, width, label, className, onWidth }: { side: "left" 
   );
 }
 
-type Props = { tab: RightTab; width: number; hidden?: boolean; offered?: RightTab[]; onTab: (t: RightTab) => void; onWidth: (w: number, done: boolean) => void; children: ReactNode };
+type Props = { tab: RightTab; width: number; max: number; hidden?: boolean; offered?: RightTab[]; onTab: (t: RightTab) => void; onWidth: (w: number, done: boolean) => void; children: ReactNode };
 
-export default function RightSidebar({ tab, width, hidden = false, offered, onTab, onWidth, children }: Props) {
+export default function RightSidebar({ tab, width, max, hidden = false, offered, onTab, onWidth, children }: Props) {
   const tabs = offered ? RIGHT_TABS.filter((t) => offered.includes(t.id)) : RIGHT_TABS;
   const current = pickTab(tab, tabs.map((t) => t.id));
   const { shown, more } = splitTabs(tabs, current ?? "", width);
@@ -165,7 +179,7 @@ export default function RightSidebar({ tab, width, hidden = false, offered, onTa
   };
   return (
     <aside className="rside" aria-label="Right sidebar" hidden={hidden} style={{ width }}>
-      <Grip side="right" width={width} label="Resize the right sidebar" className="rside-grip" onWidth={onWidth} />
+      <Grip side="right" width={width} min={RIGHT_MIN} max={max} label="Resize the right sidebar" className="rside-grip" onWidth={onWidth} />
       <div className="rside-tabs" role="tablist" aria-label="Right sidebar tabs" onKeyDown={onTabKey}>
         {shown.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={t.id === current} tabIndex={t.id === current ? 0 : -1} title={t.hint} className="rside-tab" onClick={() => onTab(t.id)}>

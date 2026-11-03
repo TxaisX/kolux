@@ -3,7 +3,7 @@
 // (VIEW-015, VIEW-021, VIEW-024). The content column beside it is in Content.tsx.
 import AgentsRail from "../../agents/AgentsRail";
 import { rowStatus } from "../../agents/rail";
-import { Grip, LEFT_KEY, clampLeft } from "../../chrome/RightSidebar";
+import { Grip, LEFT_KEY, LEFT_MAX, LEFT_MIN, clampLeft } from "../../chrome/RightSidebar";
 import { allSwitchedOff } from "../../launch/agents";
 import { NESTING_KEY } from "../../projects/model";
 import ProjectsPanel from "../../projects/ProjectsPanel";
@@ -78,7 +78,7 @@ export default function WindowSidebar() {
         />
       )}
       {showsProjects(screen) && sidebarOpen && (
-        <Grip side="left" width={leftWidth} label="Resize the sidebar" className="lside-grip" onWidth={(w, done) => {
+        <Grip side="left" width={leftWidth} min={LEFT_MIN} max={LEFT_MAX} label="Resize the sidebar" className="lside-grip" onWidth={(w, done) => {
           setDragLeft(done ? null : clampLeft(w));
           if (done) saveSetting(LEFT_KEY, clampLeft(w));
         }} />
