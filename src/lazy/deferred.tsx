@@ -5,7 +5,7 @@
 import { createElement, lazy, Suspense, type ComponentType, type ReactElement } from "react";
 
 /** Every surface made here, in the order it was declared: `prefetch()` reads them after the first frame. */
-const loaders: Array<() => Promise<unknown>> = [];
+const loaders: Array<() => PromiseLike<unknown>> = [];
 
 /**
  * `load` names the module the surface lives in; its default export is the surface. `fallback` is drawn
@@ -15,6 +15,8 @@ const loaders: Array<() => Promise<unknown>> = [];
  */
 export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>, fallback?: ReactElement) {
   let mod: { default: ComponentType<P> } | undefined;
+  // A bare thenable (no catch, no chaining), cast only because lazy()'s types ask for a Promise: it is for
+  // lazy() and prefetch's allSettled alone, which is why `loaders` holds PromiseLike, not Promise.
   const get = () => (mod ? ({ then: (ok: (m: typeof mod) => void) => ok(mod) } as Promise<typeof mod & object>) : load().then((m) => (mod = m)));
   loaders.push(get);
   const Body = lazy(get);
