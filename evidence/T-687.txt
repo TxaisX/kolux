@@ -4,13 +4,15 @@ Worker 49, coordinator 57, branch s-49/ux-4 (PR #113, stacked on #95 s-57/launch
 WHAT CHANGED (src/projects only; lane C commits 9d677875 and cf05a307)
 - Notes (MessageNote.tsx, ProjectsPanel.tsx): status and error notes sit above the list with a close
   button; good-news notes fade after 8 s; Hide shows Undo.
-- Create (ProjectsPanel.tsx, rows.ts restoreField): a failed create puts the typed name, branch, prompt
+- Create (ProjectsPanel.tsx, draft.ts restoreField): a failed create puts the typed name, branch, prompt
   and base back, only into an empty field and only when the same project's composer (or none) is open.
 - Rows (rows.ts rowKey): Enter, Space and F2 act only when the row itself has focus; keys on the icon
   buttons no longer also open the row.
 - Sleep (rows.ts sleepPlan): asks first, naming the count, when running terminals in the workspace or its
   children would close; the plan lists only the folders that change.
-- One Remove project button with its own icon (no longer the workspace-delete ×).
+- One Remove project button with its own icon (no longer the workspace-delete ×). This supersedes T-640's
+  hover X on the main checkout row (DT-C123); scripts/prove/live-T-640.mjs still looks for data-main-x
+  and needs updating (asked of coordinator 57).
 - Row menu (menu.ts, ProjectsPanel.tsx): focuses its first item once, arrows wrap, Home/End jump, it is
   clamped on screen on both axes, and a note says when statuses or editors failed to load (menuGaps).
   Move up / Move down step among siblings only (order.ts stepRow, stepSiblings), are off at the ends and
@@ -24,8 +26,9 @@ WHAT CHANGED (src/projects only; lane C commits 9d677875 and cf05a307)
 - One verb and one noun in menu.ts and the row titles (Delete workspace, Set parent, workspace).
 - Cleanup dialog (cleanup.ts, CleanupDialog.tsx): sort direction named per key, Tick all / Untick all
   on the listed rows, Escape.
-- Inline confirms (batch delete, move, forget, remove project, remove group): Escape = keep, the safe
-  button takes focus, focus goes back to the row on close.
+- Inline confirms (batch delete, move, forget, remove project, remove group): Escape = keep and the safe
+  button takes focus; focus goes back to the row for batch delete, forget, single delete, remove project
+  and sleep (not yet for move and remove group: follow-up).
 - Add project (AddProject.tsx): Close on the first step; asks before stopping a clone (closeAction).
 - Rename saves on click-away inside the window (not on window blur) and returns focus to the row.
 - A group made from New group and closed before Save is deleted again, once; the disabled New group
@@ -53,7 +56,17 @@ ROWS LEFT OR PART-DONE (recorded in the PR body)
 REVIEW
 Opus review B (9d677875) -> fix pass (cf05a307: by-path form closes, fresh group deleted once, Move
 up/down among siblings, no save on window blur, menu focuses once, draft restore only into the same
-composer, singular/plural report, confirms give focus back) -> re-review PENDING.
+composer, singular/plural report, confirms give focus back) -> re-review A- (45555f53).
+
+FOLLOW-UPS (from the A- re-review; not fixed in this PR)
+- New group pressed twice while the first new group's form is open leaves the first group behind.
+- Move and remove-group confirms do not give focus back; remove group's Escape works only from its buttons.
+- The workspace delete confirm still says Remove (row tooltip and menu say Delete): row 14 is part-done.
+- AddProject: focus falls to the page after Keep copying; the asking flag is not reset when a clone ends.
+- The T-687 acceptance lines for PROJ-001, PROJ-014, PROJ-020, PROJ-053 and PROJ-065 are proved through
+  the helpers (addReport, freshGroupToDrop, mayRestoreDraft, sleepPlan, stepRow); panel-level wiring tests
+  in the removePaths.test.ts style are a follow-up.
+- SidebarStart mount is outside the audit rows: coordinator 57 to keep or drop.
 
 TESTS (verbose, the lane C test files this PR changes or adds)
 pnpm vitest run --reporter=verbose src/projects/__cards__/SET-032.test.ts src/projects/__cards__/VIEW-051.test.ts src/projects/forgetAsk.test.ts src/projects/removeCommits.test.ts src/projects/removeOnce.test.ts src/projects/removePaths.test.ts src/projects/uxRows4.test.ts
