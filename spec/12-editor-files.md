@@ -380,11 +380,17 @@ Rules: the chosen agent is checked again at the moment of the click, and nothing
   has a shortcut slot with no key assigned by default; notes attach to the right line whatever the
   file's line endings, and notes sharing one anchor are listed in the order of their source lines; in a diff the "+" beside a line is
   drawn only where a note can be saved (the embedded Changes view shows its note cards without it); deleting a note from its card
-  shows "Review note deleted. Undo" for 8 seconds, and Undo saves it again.
+  shows "Review note deleted. Undo" for 8 seconds, and Undo saves it again;
+  the clear-all button asks first ("Clear all N notes? This cannot be undone.", Keep them focused)
+  and the question goes away with the notes; a failed copy says so and opens the Markdown for
+  selecting, and a send or start that throws says why and keeps the notes; the Send menu works
+  from the keyboard (arrows, Home and End, Escape returns focus to its button) and each rail card
+  takes Tab, with Enter or Space showing the text it is about.
 Acceptance:
   - [ ] Add two notes and send them to a running agent → both reach its prompt and the rail empties.
   - [ ] Kill the agent after opening the menu and before clicking it → the notes stay unsent.
   - [ ] Delete a note on a diff card → "Review note deleted. Undo" shows, and Undo brings it back. (unit tests; evidence/T-683.txt)
+  - [x] Press the clear-all X with three notes → it asks first; Keep them leaves the notes, Clear all drops them; a failed copy says so; a send that throws keeps the notes and says why. (tests; evidence/T-684.txt)
 Compat: the existing keybinding ids for adding a review note and for sending review notes keep
   working.
 Source: D-12-020
@@ -548,11 +554,13 @@ Rules: the slash menu also matches each entry's alternative names, not just its 
   is kept as raw text, untouched; cutting or deleting empty paragraphs removes the block cleanly;
   cut with nothing selected removes the whole block at the caret: a paragraph, a list item together
   with its sub-list, or only the current visual line of a hard-wrapped paragraph; spelling
-  underlines are on by default and can be switched off in settings.
+  underlines are on by default and can be switched off in settings; a greyed row in the table menu
+  carries a tooltip saying why it is unavailable.
 Acceptance:
   - [ ] Type /table → a table appears; press Tab in its last cell → a new row is added.
   - [ ] In a bullet list press Enter twice → the list ends and the caret sits in a plain paragraph.
   - [ ] Put the caret inside a code block → its language list shows. (unit tests; evidence/T-683.txt)
+  - [x] Hover a greyed row in the table menu → its tooltip says why. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-12-013
 
@@ -656,10 +664,12 @@ User sees: the PDF first fills the width of the tab; when the user returns, zoom
   that file are as they were.
 Rules: stored positions are dropped when the tab closes; a stored page beyond the end of a document
   that has since become shorter opens at its last page; a stored position that cannot be read is
-  ignored.
+  ignored; the page number in the facts bar is a box: Enter jumps to the typed page (kept inside
+  the document), Escape cancels the typing, and text that is not a page number does nothing.
 Acceptance:
   - [ ] Scroll to page 5, switch tabs and back → still on page 5.
   - [ ] Close the tab and open the PDF again → it starts at the top, fitted to the width.
+  - [x] Type 7 in the page box and press Enter → the view jumps to page 7; type a page beyond the end → it lands on the last page; type letters → nothing moves. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-12-022
 
@@ -808,7 +818,8 @@ Rules: a new note never overwrites an existing file; if a name is taken in the m
   rejects a name that already exists, and accepting the suggested name simply saves; a new note
   opens as an edit tab, not a preview, and starts without an unsaved marker; when a split group is
   the chosen target, the note opens there and not in whichever group is active; closing a new note
-  that was never typed in deletes it (see EDIT-031).
+  that was never typed in deletes it (see EDIT-031); in the naming prompt, Enter on the Cancel
+  button presses Cancel, and keys pressed while an input method is composing are left to it.
 Acceptance:
   - [ ] Press Mod+Shift+M twice in a fresh worktree → the untitled and untitled-2 notes exist, and
         two tabs are added after the existing ones.
@@ -816,6 +827,7 @@ Acceptance:
         not exist yet → the folder is created, the file moves there and the tab follows with its
         text.
   - [ ] Enter a name that already exists → the prompt shows an error and nothing moves.
+  - [x] In the name prompt press Tab to Cancel, then Enter → it cancels and nothing is saved. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-12-054
 
@@ -940,10 +952,11 @@ Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: picks PDF export from a markdown tab's actions menu.
 User sees: a PDF of the rendered note, pictures included.
 Rules: pictures held only in memory are embedded so they appear in the PDF; a note with no title is
-  exported under the name Untitled.
+  exported under the name Untitled; Export cannot start a second time while one is running.
 Acceptance:
   - [ ] Export a note holding a pasted picture → the PDF shows the text and the picture.
   - [ ] Export a note with no title → the PDF is named Untitled.
+  - [ ] Press Export twice quickly → one PDF is made. (evidence/T-684.txt; code guard only, no unit test)
 Compat: —
 Source: D-12-018
 
@@ -967,11 +980,14 @@ User sees: cells as code and markdown blocks; running a cell first asks whether 
 Rules: a notebook that is not trusted never runs; multi-line cell source is kept exactly; very long
   cells, or cells with a great many lines, show a limited preview so the view never locks up; cells
   can be added, removed and switched between code and markdown, and notebook details the viewer does
-  not display are kept when saving.
+  not display are kept when saving; removing a cell that has text or saved output asks first
+  ("Remove cell N?") and removes nothing if the notebook changed under the question, while an
+  empty cell goes at once.
 Acceptance:
   - [ ] Open a notebook and run a cell that prints → trust prompt; accept → output shows and is
         saved into the file.
   - [ ] Decline the trust prompt → nothing runs and no output is written.
+  - [x] Remove a cell holding code → a question asks first; Remove takes it out, Cancel keeps it; an empty cell goes with no question; if an agent rewrote the file meanwhile, nothing is removed and a note says so. (tests; evidence/T-684.txt)
 Compat: file format: Jupyter notebook (cells, their source, their outputs).
 Source: D-12-024
 
@@ -1015,11 +1031,13 @@ Tier: P2 · Pushed: — · State at 0.15.0: live-unverified
 User does: types into the repository picker or the base-branch picker.
 User sees: a filtered list of repositories or branches, kept to a manageable length.
 Rules: the number of results is limited, so large organisations and long branch lists stay
-  responsive.
+  responsive; Down from the box enters the suggestions, the arrows, Home and End walk them, and
+  Escape or a click returns focus to the box.
 Acceptance:
   - [ ] Type part of a branch name in the base picker → the matching branches are listed.
   - [ ] In a repository with thousands of branches → the filtered list appears without a noticeable
         pause.
+  - [x] Type in the picker, press Down, then the arrows → the suggestions take focus and are walked in order; Escape goes back to the box. (tests; evidence/T-684.txt)
 Compat: —
 Source: D-12-048
 
@@ -1058,12 +1076,15 @@ Rules: only markdown files count as templates; subfolders are searched, while sy
   words with a capital first letter; placeholders may have spaces inside the braces; dates are
   written year-month-day and times as 24-hour hours and minutes; placeholders Kolux does not know
   are left as typed; with no templates folder there is no picker, and a blank note is made; a note
-  made from a template is kept on close even if it was never edited.
+  made from a template is kept on close even if it was never edited; if reading the templates
+  folder takes more than a moment, the picker area says "Looking for note templates..." until the
+  list is ready.
 Acceptance:
   - [ ] Put two templates in the folder → Mod+Shift+M shows a picker with Blank and both names.
   - [ ] A template holding a date placeholder → the new note shows today's date as year-month-day.
   - [ ] Remove the folder → Mod+Shift+M makes a blank note with no picker.
   - [ ] Pick a template and close the note without typing → the file stays on disk.
+  - [x] Open Mod+Shift+M on a slow folder read → after about 0.4 s a "Looking for note templates..." line shows, and not at all when the answer is instant. (tests; evidence/T-684.txt)
 Compat: templates are read from a templates folder inside a hidden folder at the repository root
   that has the same name as the `~/.kolux` folder; reading the same place keeps existing templates
   working.

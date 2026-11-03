@@ -18,6 +18,11 @@ import { markSent, noteBlocks } from "./diffNotes";
 import { notesMarkdown } from "./notes";
 import { invoke } from "@tauri-apps/api/core";
 
+/** Said when Approve or Request changes is pressed after the agent has moved on from the plan the sheet shows. */
+export const PLAN_STALE = "The agent is no longer waiting on this plan, so nothing was sent.";
+/** Said when Kolux could not pass an Approve or Deny to the agent. */
+export const answerFailed = (e: unknown) => `Kolux could not answer the agent: ${e instanceof Error ? e.message : String(e)}. Answer it in its terminal.`;
+
 export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
     activeDir, agents, focused, hookRef, notes, panes, planDrafts, ptys, setHook, setNotes, setPlanDrafts, setReviewing, setStamp, setToast, titles, turn
@@ -40,7 +45,8 @@ export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         if (cardAnswered(p.key, state, since)) setHook((h) => ({ ...h, [p.key]: state }));
         setStamp((m) => ({ ...m, [p.key]: { at: Date.now(), interrupted: false } }));
       })
-      .catch(() => {});
+      // A failed answer used to vanish; say it, and point at the terminal where the agent still waits.
+      .catch((e) => setToast(answerFailed(e)));
   };
   // SAFE-003, SAFE-004: Approve is the agent's own yes; Request changes is its no, then the
   // feedback typed into its prompt as one paste once it has left the question.
@@ -49,13 +55,13 @@ export function reviewActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // SAFE-007: an answer goes only while the pane still waits on the plan the sheet shows.
   const planLive = (p: Pane, plan: string) => stillPending(hookRef.current[p.key], turn[p.key], plan);
   const approvePlan = (p: Pane, plan: string) => {
-    if (!planLive(p, plan)) return;
+    if (!planLive(p, plan)) return setToast(PLAN_STALE);
     setReviewing(null);
     dropDraft(draftKey(p.key, plan));
     void answer(p, true);
   };
   const requestChanges = async (p: Pane, plan: string) => {
-    if (!planLive(p, plan)) return;
+    if (!planLive(p, plan)) return setToast(PLAN_STALE);
     const key = draftKey(p.key, plan);
     const d = planDrafts[key] ?? { comments: [], note: "" };
     // A write that did not reach the pane says false, so a failed paste is never followed by Enter.
