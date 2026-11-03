@@ -1,0 +1,96 @@
+T-703 - UX audit Wave 3, widened side panel: a sidebar dragged wide crushes the workspace (DT-C139; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-8 from main 80687a7d, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, last section (N2). Follows T-699 / DT-C135, whose known limit this closes.
+
+WHAT WAS WRONG
+- T-699 kept the workspace at 340 px or wider only at default sidebar widths.
+- The left sidebar drags up to 480 px (VIEW-050). Dragged wide, it kept that width at any window size:
+  152 px of workspace at 640 px with the left sidebar alone, 272 px at 1000 px beside the right sidebar.
+- The right sidebar is clamped when the app draws it (chrome/RightSidebar.tsx clampWidth), but not again when the
+  window shrinks with no re-render: dragged to 900 px at a wide window, then narrowed, the workspace went to 0.
+
+THE RULE (DT-C139)
+- The workspace keeps at least 340 CSS px, the T-699 floor, whatever width a sidebar was dragged to.
+- Four stylesheet rules in src/styles.css, right after the T-699 step-aside rule:
+    .body > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 348px)); }
+    .body:has(> .rside:not([hidden])) > .sidebar-wrap:not(.rail-wrap) > .sidebar { width: max(220px, min(var(--sidebar-w), 100vw - 588px)); }
+    .body > .rside { max-width: max(240px, 100vw - 340px); }
+    .body:has(> .sidebar-wrap:not(.rail-wrap)) > .rside { max-width: max(240px, 100vw - 348px - min(var(--sidebar-w), 100vw - 588px)); }
+  - 348 = the floor + the left sidebar's 8 px gutter. 588 = that + the right sidebar's 240 px minimum, so a widened left
+    sidebar leaves the right one its minimum while it shows.
+  - The right sidebar's cap subtracts the left sidebar as drawn, so the two never both take the room.
+  - Neither sidebar goes under its own minimum (220 left, 240 right).
+  - The Agents screen's rail is also a .sidebar-wrap right under .body; :not(.rail-wrap) leaves it at its own .rail width
+    (268 px, Classic 240). The right sidebar only shows on Terminals (shell/window/Right.tsx hidden={!terminals ...}),
+    never beside the rail. Review round 1 caught that the first version also widened the rail to --sidebar-w (480 when
+    the projects sidebar was dragged wide). Headless Chromium at 1400 px, normal and Classic rail, --sidebar-w 289 and 480:
+    main 80687a7d 268/268/240/240, first version 289/480/289/480, this branch 268/268/240/240.
+  - A press and release on a narrowed left edge saves the width as drawn (the drag starts there).
+- Because the clamps are CSS, they follow the window live: during a drag (the pointer can ask for 480, the sidebar
+  stops where the floor is) and when the window shrinks after a drag.
+- Order as the window shrinks: the dragged panel gives back its width first; the T-699 step-aside starts only under
+  900 px, as before.
+- The saved width is what the pointer reached (VIEW-050's 220-480 range is unchanged), so the panel grows back when the
+  window widens.
+- The drag edge (Grip in chrome/RightSidebar.tsx) now starts a drag from the width as drawn (offsetWidth of the left
+  sidebar's wrapper minus its 8 px gutter, or of the right sidebar), not the saved width, so a narrowed panel answers the
+  pointer at once instead of after a dead zone.
+- The right sidebar's own clamp (clampWidth) is unchanged; the stylesheet cap is never under what it draws (pinned by a
+  test), so the rules only catch a width drawn before the window shrank.
+
+KNOWN LIMITS
+- With the right sidebar hidden, the left sidebar's 220 px minimum means a window under 568 px can still go below 340.
+  Only reachable by zooming far in; the window's own minimum is 900 px at 100 % zoom.
+- The right sidebar's tab overflow (More menu) still splits on the width the app computed, not a narrower one the
+  stylesheet drew.
+
+REAL-LAYOUT CHECK (headless Chromium 1248)
+- Harness: the real src/styles.css, the body's real structure (.body with --sidebar-w, .sidebar-wrap > .sidebar,
+  .lside-grip, .content, aside.rside with its inline width), window inner width W. "left" = the saved left width,
+  "right" = the inline width the app last drew (900 = a stale wide drag), or hidden. Widths in CSS px.
+- Before = main 80687a7d. After = this branch.
+
+  W     left  right   | before: content left right | after: content left right
+  640   480   hidden  |   152   488    0           |   340   300    0
+  640   480   240     |   400     0  240           |   400     0  240
+  640   480   900     |     0     0  900           |   400     0  240
+  640   289   900     |     0     0  900           |   400     0  240
+  640   289   hidden  |   343   297    0           |   343   297    0
+  800   480   hidden  |   312   488    0           |   340   460    0
+  800   480   900     |     0     0  900           |   560     0  240
+  800   289   hidden  |   503   297    0           |   503   297    0
+  900   480   240     |   172   488  240           |   340   320  240
+  900   480   900     |     0   488  900           |   340   320  240
+  900   289   900     |     0   297  900           |   340   297  263
+  900   289   240     |   363   297  240           |   363   297  240
+  1000  480   240     |   272   488  240           |   340   420  240
+  1000  480   900     |     0   488  900           |   340   420  240
+  1000  289   900     |     0   297  900           |   340   297  363
+  1400  480   hidden  |   912   488    0           |   912   488    0
+  1400  480   240     |   672   488  240           |   672   488  240
+  1400  480   900     |    12   488  900           |   340   488  572
+  1400  289   900     |   203   297  900           |   340   297  763
+  1400  289   hidden  |  1103   297    0           |  1103   297    0
+- All 30 cases run (5 widths x 6 cases); after, every workspace is 340 px or more. Default widths with room are
+  unchanged (1400 / 289 / hidden = 1103 before and after).
+
+TESTS (VITEST_MAX_WORKERS=1, one file at a time, during coordinator 57's live verify)
+- src/shell/window/panelFit.test.ts (new, 4 tests): pins the four rules and that they come after the T-699 step-aside,
+  and that no clamp rule names a .sidebar-wrap without :not(.rail-wrap);
+  models the body rule for rule and checks the workspace is 340 px or more at 640, 800, 900, 1000 and 1400 px with the
+  left sidebar closed, default or at 480, and the right sidebar hidden, at 240, 300 or drawn at 900; the order (the
+  dragged panel gives back first, the step-aside starts under 900 px, a wide window keeps the saved width); that the
+  stylesheet never cuts what clampWidth draws; and that a drag starts from the drawn width (left and right). 4/4 pass.
+- src/chrome/__cards__/VIEW-050.test.ts: its fake drag edge now carries the drawn width (the saved width in a wide
+  window); the drag still follows the pointer and stops at 480 and 220. 1/1 pass.
+- src/shell/window/narrow.test.ts (T-699): 6/6 pass.
+- Every test file under src/chrome and src/chrome/__cards__ (22 files), run one by one: all pass.
+- pnpm exec tsc --noEmit -p . : clean. node scripts/plan-check.mjs: OK.
+  firewall-check.ps1 -Baseline: 0 new.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 80687a7d: 1,488,992 B first load. This branch: 1,489,090 B (+98 B; the limit was +150). Ceiling 1,490,000.
+- The clamps are CSS, which the first-load budget does not count; the +98 B is the drag-start change in Grip.
+
+REVIEW
+- Fresh opus-high-review: see the PR conversation.

@@ -16,7 +16,8 @@ test("box 2: dragging the left edge past the maximum stops the width at the limi
       dragLeft = done ? null : clampLeft(w);
       if (done) settings[LEFT_KEY] = clampLeft(w);
     } }) as ReactElement<Record<string, (e: unknown) => void>>;
-  const capture = { setPointerCapture: () => {} };
+  // T-703: the drag starts from the sidebar as drawn (its wrapper, 8 px gutter included); in a wide window that is the saved width.
+  const capture = { setPointerCapture: () => {}, previousElementSibling: { get offsetWidth() { return (dragLeft ?? readLeft(settings)) + 8; } } };
   el().props.onPointerDown({ clientX: 300, pointerId: 1, currentTarget: capture });
   el().props.onPointerMove({ clientX: 300 + 100 });
   expect(dragLeft).toBe(400); // inside the range it follows the pointer
