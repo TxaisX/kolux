@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import Ask from "../chrome/Ask";
+import { Close } from "../chrome/icons";
 import { locale } from "../language";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
@@ -98,9 +99,9 @@ export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown
 /** How long a page may take to load before the viewer says so. */
 export const SLOW_MS = 10_000;
 
-type Props = { onToast: (text: string) => void };
+type Props = { onToast: (text: string) => void; onClose?: () => void };
 
-export default function ArtifactsPage({ onToast }: Props) {
+export default function ArtifactsPage({ onToast, onClose }: Props) {
   const [list, setList] = useState<Artifact[] | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -232,6 +233,11 @@ export default function ArtifactsPage({ onToast }: Props) {
       )}
       <div className="art-side">
         <div className="art-head">
+          {onClose && (
+            <button className="ib" title="Close (Escape)" aria-label="Close Artifacts" onClick={onClose}>
+              <Close size={14} />
+            </button>
+          )}
           <h2>Artifacts</h2>
           <button className="btn" onClick={() => void add()}>
             Add artifact

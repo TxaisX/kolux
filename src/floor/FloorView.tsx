@@ -61,7 +61,7 @@ export default function FloorView({ initial, now: fixed, load = () => invoke<Tra
           {stale}
         </p>
       )}
-      {!error && shown.length === 0 && <p className="muted">No agent reported any activity in this range.</p>}
+      {!error && shown.length === 0 && <p className="muted">No agent reported any activity in this range. An agent gets a lane here once it runs in a Kolux pane: start one with New session, or pick a longer range.</p>}
       {shown.map(({ track, segs, depth }) => (
         <div key={track.pane} className="floor-lane" data-depth={depth} data-stale={stale ? "" : undefined} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, opacity: stale ? 0.5 : 1 }}>
           <span className="floor-name" title={nameOf(track)} style={{ width: gutter, boxSizing: "border-box", paddingLeft: indent(depth) * 14, flexShrink: 0, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

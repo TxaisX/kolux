@@ -31,9 +31,9 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-async function page() {
+async function page(onClose?: () => void) {
   const { default: ArtifactsPage } = await import("./ArtifactsPage");
-  const m = await mount(createElement(ArtifactsPage, { onToast: (t: string) => toasts.push(t) }), doc);
+  const m = await mount(createElement(ArtifactsPage, { onToast: (t: string) => toasts.push(t), onClose }), doc);
   unmount = m.unmount;
   const c = m.container as FakeNode;
   await settle();
@@ -68,4 +68,13 @@ test("a page that never loads says so after the wait, and its frame stays hidden
   });
   expect(c.textContent).not.toContain("Loading…");
   expect(c.textContent).toContain("taking a long time to load");
+});
+
+test("T-694 (F5): the page has its own Close when the window gives it one", async () => {
+  const closed = vi.fn();
+  const c = await page(closed);
+  const close = find(c, (n) => n.localName === "button" && n.attrs["aria-label"] === "Close Artifacts");
+  expect(close).toHaveLength(1);
+  await click(c, close[0]);
+  expect(closed).toHaveBeenCalledTimes(1);
 });
