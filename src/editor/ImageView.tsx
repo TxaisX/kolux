@@ -48,7 +48,7 @@ export default function ImageView({ id, path, hidden = false, focused = false, o
           {path}
         </span>
         <button
-          className="ib"
+          className="btn small"
           title="Copy the full path"
           aria-label="Copy the full path"
           onClick={() =>
@@ -58,10 +58,10 @@ export default function ImageView({ id, path, hidden = false, focused = false, o
             )
           }
         >
-          Copy
+          Copy path
         </button>
         {error && (
-          <button className="ib" title="Try loading the picture again" onClick={() => setTries((n) => n + 1)}>
+          <button className="btn small" title="Try loading the picture again" onClick={() => setTries((n) => n + 1)}>
             Retry
           </button>
         )}

@@ -25,8 +25,19 @@ export default function CodeLabel({ editor }: { editor: LexicalEditor | null }) 
         setSpot(null);
       });
     };
+    // The keyboard path: a caret inside a code block shows the same language list (Tab then reaches it).
+    const caret = () => {
+      const n = document.getSelection()?.anchorNode;
+      if (!n) return;
+      for (const b of codeBlocks(editor)) {
+        const r = b.el?.contains(n) ? b.el.getBoundingClientRect() : null;
+        if (r) return setSpot({ key: b.key, language: b.language, right: r.right, top: r.top });
+      }
+    };
     document.addEventListener("mousemove", move);
+    document.addEventListener("selectionchange", caret);
     return () => {
+      document.removeEventListener("selectionchange", caret);
       cancelAnimationFrame(frame);
       document.removeEventListener("mousemove", move);
     };
