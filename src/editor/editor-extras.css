@@ -56,6 +56,9 @@
 .content-search .cs-row .ib { font: 600 11px var(--mono-font); width: auto; padding: 2px 5px; color: var(--fg-muted); border: 1px solid transparent; border-radius: 5px; }
 .content-search .cs-row .ib.on { color: var(--fg); border-color: var(--line-focus); background: color-mix(in srgb, var(--line-focus) 25%, transparent); }
 .content-search .cs-glob { font-size: 11.5px; }
+/* T-702 (DT-C138): the search boxes, the Aa/ab/.* toggles and the result rows are at least 24px targets. */
+.content-search input, .cs-file > button { min-height: 24px; }
+.content-search .cs-row .ib { min-width: 24px; }
 .cs-status { color: var(--fg-muted); padding: 2px 1px; }
 .cs-status.bad { color: var(--warn); }
 .cs-results { flex: 1; min-height: 0; overflow: auto; margin: 0 -8px; }

@@ -7,7 +7,7 @@
 .ins-stale { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; color: var(--warn); }
 .ins-refresh { font: inherit; font-size: var(--kx-text-caption, 11px); padding: 1px 8px; color: var(--fg); background: var(--chip-bg); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
 .ins-refresh:hover { border-color: var(--fg-muted); }
-.ins-link { font: inherit; padding: 0; color: var(--fg); background: none; border: 0; text-decoration: underline; cursor: pointer; }
+.ins-link { min-height: 24px; font: inherit; padding: 0; color: var(--fg); background: none; border: 0; text-decoration: underline; cursor: pointer; }
 .ins-link:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 1px; }
 .ins-refresh:focus-visible, .ins-row:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 1px; }
 
