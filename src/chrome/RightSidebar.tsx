@@ -9,7 +9,9 @@
 // the first offered one; and if a panel's code throws, the panel shows a plain notice with Try again
 // while the rest of the window keeps running (VIEW 056 rest). The Agents, Search and folder-workspace
 // tabs are T-146-g.
-import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, type ErrorInfo, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useMenuFocus } from "./dialogFocus";
+import { menuStep } from "../terminal/LinkActionMenu";
 
 export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
@@ -67,6 +69,9 @@ export function splitTabs<T extends { id: string; label: string }>(tabs: T[], ac
 }
 
 /** T-146-b: the tab to show: the remembered one when it is offered here, else the first offered. */
+/** The tab a key moves to from the one at `at` of `count`: Left and Right wrap, Home and End jump; null for any other key. */
+export const tabStep = (count: number, at: number, key: string): number | null => key === "ArrowRight" ? menuStep(count, at, "ArrowDown") : key === "ArrowLeft" ? menuStep(count, at, "ArrowUp") : key === "Home" || key === "End" ? menuStep(count, at, key) : null;
+
 export const pickTab = (remembered: RightTab, offered: RightTab[]): RightTab | null => (offered.includes(remembered) ? remembered : (offered[0] ?? null));
 
 /** VIEW 056 rest: a panel whose code throws (or fails to load) is caught here; the notice says so
@@ -143,18 +148,24 @@ export default function RightSidebar({ tab, width, hidden = false, offered, onTa
   useEffect(() => {
     if (current !== null && current !== tab) onTab(current);
   }, [current, tab]);
-  useEffect(() => {
-    if (!menu) return;
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setMenu(null);
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [menu]);
+  // The More menu takes focus, answers the arrow keys, and Escape closes it before the terminal sees the key.
+  const moreMenu = useRef<HTMLDivElement>(null);
+  useMenuFocus(moreMenu, menu !== null, () => setMenu(null));
+  // Only the open tab is a tab stop; Left, Right, Home and End move between the tabs and open the one reached.
+  const onTabKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const tabEls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const to = tabStep(tabEls.length, tabEls.indexOf(document.activeElement as HTMLElement), e.key);
+    if (to === null) return;
+    e.preventDefault();
+    tabEls[to].focus();
+    onTab(shown[to].id);
+  };
   return (
     <aside className="rside" aria-label="Right sidebar" hidden={hidden} style={{ width }}>
       <Grip side="right" width={width} label="Resize the right sidebar" className="rside-grip" onWidth={onWidth} />
-      <div className="rside-tabs" role="tablist">
+      <div className="rside-tabs" role="tablist" aria-label="Right sidebar tabs" onKeyDown={onTabKey}>
         {shown.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={t.id === current} title={t.hint} className="rside-tab" onClick={() => onTab(t.id)}>
+          <button key={t.id} type="button" role="tab" aria-selected={t.id === current} tabIndex={t.id === current ? 0 : -1} title={t.hint} className="rside-tab" onClick={() => onTab(t.id)}>
             {t.label}
           </button>
         ))}
@@ -177,7 +188,7 @@ export default function RightSidebar({ tab, width, hidden = false, offered, onTa
       {menu && more.length > 0 && (
         <>
           <div className="menu-backdrop" onClick={() => setMenu(null)} aria-hidden="true" />
-          <div className="menu" role="menu" aria-label="More tabs" style={{ left: menu.x, top: menu.y }}>
+          <div ref={moreMenu} className="menu" role="menu" aria-label="More tabs" style={{ left: menu.x, top: menu.y }}>
             {more.map((t) => (
               <button
                 key={t.id}
@@ -196,7 +207,7 @@ export default function RightSidebar({ tab, width, hidden = false, offered, onTa
           </div>
         </>
       )}
-      <div className="rside-body">
+      <div className="rside-body" role="tabpanel" aria-label={tabs.find((t) => t.id === current)?.label}>
         <PanelGuard tab={current ?? ""}>{children}</PanelGuard>
       </div>
     </aside>

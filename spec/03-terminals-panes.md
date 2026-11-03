@@ -718,7 +718,8 @@ Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: uses zoom in, zoom out or reset (shortcut or View menu).
 User sees: the terminal text gets bigger or smaller.
 Rules: only the pane that owns keyboard focus reacts; View menu holds Zoom In, Zoom Out and Reset
-  Size; from the menu they change the focused terminal's text size.
+  Size, and so does the top bar's dots menu, named Terminal zoom (DT-C103); from the menu they change the
+  focused terminal's text size.
 Acceptance:
   - [ ] Zooming in twice then reset returns to the configured font size.
   - [ ] Zoom In from the View menu enlarges only the focused terminal.

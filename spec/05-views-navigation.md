@@ -228,10 +228,12 @@ User sees: a bar spanning the whole window above the sidebar row, carrying the w
   controls, the screen switch, a search hint, a bell and the usage pill. The search hint opens the
   worktree palette; the bell opens the Inbox.
 Rules: classic chrome keeps a sidebar-width title header and no top bar; the top bar never overlaps
-  the native window controls on Windows.
+  the native window controls on Windows; the bell is named Inbox, and clicking it while the Inbox shows
+  goes back to the screen shown before it (DT-C103).
 Acceptance:
   - [x] Click the search hint → the worktree palette opens with focus in its input. (cards live; evidence/cards-VIEW-003.txt)
   - [x] Click the bell → the Inbox page opens. (cards; evidence/cards-VIEW-003.txt)
+  - [x] Open the Inbox from Projects, click the bell again → back on Projects, not Terminals. (unit; evidence/T-667.txt)
 Compat: —
 Source: D-05-003
 
