@@ -686,18 +686,22 @@ pub fn run_in(env: &[(String, String)]) -> Option<String> {
 
 /// A pane `terminal` (hook pane `pane_key`) just started `agent` in `cwd`. T-690: a pane that names
 /// its run (`run`, from RUN_ENV) is followed by that run only, while it still waits for a pane, so
-/// an older run can never take it. A pane that names none (one reopened after a restart) is followed
-/// by the oldest run of that agent in that worktree still waiting for its pane; a run whose pane
-/// never started has stopped waiting and is never picked. Shells and other agents are never a run's
-/// pane. Returns the run picked up.
+/// an older run can never take it; a run already followed or finished takes nothing. A pane that
+/// names no run Kolux knows (one reopened after a restart) is followed only by a run settling after
+/// that restart that had a pane before it, and a run whose hook pane is known only by that same
+/// hook pane; the oldest such run wins. A run whose pane never started is never picked. Shells and
+/// other agents are never a run's pane. Returns the run picked up.
 pub fn claim(store: &Store, terminal: u32, pane_key: Option<u32>, cwd: &str, agent: Option<&str>, run: Option<&str>, now: u64) -> Result<Option<String>, String> {
     let Some(agent) = agent else { return Ok(None) };
     let mut runs = load(store, RUNS_KEY)?;
-    let open = |r: &Value| in_progress(r) && r.get("terminal").is_none_or(Value::is_null);
-    let picked = match run {
-        Some(id) => runs.iter().position(|r| r["id"] == id && open(r)),
+    let open = |r: &Value| in_progress(r) && r.get("terminal").is_none_or(Value::is_null) && r["provider"].as_str().is_none_or(|p| p == agent);
+    let picked = match run.filter(|id| runs.iter().any(|r| r["id"] == *id)) {
+        Some(id) => runs.iter().position(|r| r["id"] == id && open(r) && r["worktree"].as_str().is_none_or(|w| same_dir(w, cwd))),
         None => {
-            let free = |r: &Value| tracked(r) && open(r) && holds_manual_run(r, now) && r["provider"].as_str().is_none_or(|p| p == agent) && r["worktree"].as_str().is_some_and(|w| same_dir(w, cwd));
+            let had_pane = |r: &Value| r["lastTerminal"].is_u64() || r["lastPaneKey"].is_u64();
+            let same_pane = |r: &Value| r["lastPaneKey"].as_u64().is_none_or(|k| pane_key.is_some_and(|p| u64::from(p) == k));
+            let settling = |r: &Value| r["settleBy"].as_u64().is_some_and(|by| now <= by);
+            let free = |r: &Value| tracked(r) && open(r) && settling(r) && had_pane(r) && same_pane(r) && r["worktree"].as_str().is_some_and(|w| same_dir(w, cwd));
             (0..runs.len()).filter(|&i| free(&runs[i])).min_by_key(|&i| runs[i]["at"].as_u64().unwrap_or(0))
         }
     };
@@ -1756,7 +1760,7 @@ mod tests {
         assert!(start.1["prompt"].as_str().unwrap().ends_with(line), "{}", start.1["prompt"]);
         // The run it started is this automation's own pane once a terminal claims it: no self-trigger.
         let s = store.lock().unwrap();
-        claim(&s, 11, Some(110), &repo.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&s, 11, Some(110), &repo.to_string_lossy(), Some("claude"), start.1["runId"].as_str(), 1_001).unwrap();
         assert!(own_pane(&load(&s, RUNS_KEY).unwrap(), Some(11), 110));
         drop(s);
         drop(l);
@@ -2392,7 +2396,7 @@ mod tests {
         let old = runs.iter().find(|r| r["id"] == first["id"]).unwrap();
         assert_eq!(old["status"], json!("failed"));
         assert_eq!(old["detail"], json!("This run's terminal never started"));
-        let picked = claim(&s, 9, Some(90), second["worktree"].as_str().unwrap(), Some("claude"), None, 1_001).unwrap();
+        let picked = claim(&s, 9, Some(90), second["worktree"].as_str().unwrap(), Some("claude"), second["id"].as_str(), 1_001).unwrap();
         assert_eq!(picked.as_deref(), second["id"].as_str());
         drop(s);
         drop(store);
@@ -2499,7 +2503,7 @@ mod tests {
         let store = Store::open(&dir.join("db")).unwrap();
         seed(&store, &ws);
         dispatched(&store, &ws, 1, "claude");
-        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap();
         let session = || load(&store, RUNS_KEY).unwrap().into_iter().find(|r| r["id"] == "run-1").unwrap()["sessionId"].clone();
         // The session start reports at its boundary and carries the id: kept, nothing finished.
         assert_eq!(on_status(&store, Some(6), 60, "done", true, false, Some("sess-a"), 10).unwrap(), None);
@@ -2551,7 +2555,7 @@ mod tests {
         dispatched(&store, &ws, 1, "codex");
         // Still going: nothing is saved yet.
         assert_eq!(keep_output(&store, "run-1", "partial", false).unwrap(), None);
-        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("codex"), None, 1_001).unwrap();
+        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("codex"), Some("run-1"), 1_001).unwrap();
         on_status(&store, Some(6), 60, "working", false, false, None, 10).unwrap();
         on_status(&store, Some(6), 60, "done", false, false, None, 11).unwrap();
         // Nothing on screen saves nothing; then the text is kept, once.
@@ -2630,7 +2634,8 @@ mod tests {
         let starts = || said.borrow().iter().filter(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").count();
         let finish = |terminal: u32, pane: u32| {
             let s = store.lock().unwrap();
-            claim(&s, terminal, Some(pane), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+            let last_start = || said.borrow().iter().rev().find(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").and_then(|(_, v)| v["runId"].as_str().map(String::from));
+            claim(&s, terminal, Some(pane), &ws.to_string_lossy(), Some("claude"), last_start().as_deref(), 1_001).unwrap();
             on_status(&s, Some(terminal), pane, "working", false, false, None, 10).unwrap();
             assert!(on_status(&s, Some(terminal), pane, "done", false, false, None, 11).unwrap().is_some());
         };
@@ -2728,7 +2733,7 @@ mod tests {
         let store = Store::open(&dir.join("db")).unwrap();
         seed(&store, &ws);
         dispatched(&store, &ws, 1, "claude");
-        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap();
         // Still going: nothing is kept.
         assert_eq!(keep_transcript(&store, "run-1", "said", false).unwrap(), None);
         on_status(&store, Some(6), 60, "working", false, false, None, 10).unwrap();
@@ -2746,7 +2751,7 @@ mod tests {
         assert_eq!(keep_output(&store, "run-1", "late screen", false).unwrap(), None);
         // A run with no pane text yet takes the transcript too, and a precheck's own output stays.
         dispatched(&store, &ws, 2, "claude");
-        claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("claude"), Some("run-2"), 1_001).unwrap();
         pane_ended(&store, 7, Some(1), 20).unwrap();
         assert!(keep_transcript(&store, "run-2", "from the transcript", false).unwrap().is_some());
         dispatched(&store, &ws, 3, "claude");
@@ -2773,7 +2778,7 @@ mod tests {
         let store = Store::open(&dir.join("db")).unwrap();
         seed(&store, &ws);
         dispatched(&store, &ws, 1, "codex");
-        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("codex"), None, 1_001).unwrap();
+        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("codex"), Some("run-1"), 1_001).unwrap();
         on_status(&store, Some(6), 60, "working", false, false, None, 10).unwrap();
         on_status(&store, Some(6), 60, "done", false, false, None, 11).unwrap();
         let big = "y".repeat(RUN_OUTPUT_CHARS);
@@ -2788,7 +2793,7 @@ mod tests {
         // A run that finished on its own never says its terminal closed; one its pane ended does.
         assert!(list(&store).unwrap()["runs"][0].get("paneEnded").is_none());
         dispatched(&store, &ws, 2, "codex");
-        claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("codex"), None, 1_001).unwrap();
+        claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("codex"), Some("run-2"), 1_001).unwrap();
         pane_ended(&store, 7, Some(1), 20).unwrap();
         let runs = list(&store).unwrap()["runs"].clone();
         assert_eq!(runs.as_array().unwrap().iter().find(|r| r["id"] == "run-2").unwrap()["paneEnded"], json!(true));
@@ -2820,7 +2825,7 @@ mod tests {
         assert_eq!(claim(&store, 5, Some(50), &ws.to_string_lossy(), Some("codex"), None, 1_001).unwrap(), None);
         // The run's agent opens in its worktree (spelled with a trailing slash) and is picked up.
         let spelled = format!("{}/", ws.to_string_lossy());
-        assert_eq!(claim(&store, 6, Some(60), &spelled, Some("claude"), None, 1_001).unwrap().as_deref(), Some("run-1"));
+        assert_eq!(claim(&store, 6, Some(60), &spelled, Some("claude"), Some("run-1"), 1_001).unwrap().as_deref(), Some("run-1"));
         // A second claude pane in the same folder takes nothing: the run already has its pane.
         assert_eq!(claim(&store, 7, Some(70), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap(), None);
         // The session boundary (start, resume, clear) and an idle prompt at launch never finish it.
@@ -2852,8 +2857,8 @@ mod tests {
         seed(&store, &ws);
         dispatched(&store, &ws, 1, "claude");
         dispatched(&store, &ws, 2, "claude");
-        claim(&store, 3, Some(30), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
-        claim(&store, 4, Some(40), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 3, Some(30), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap();
+        claim(&store, 4, Some(40), &ws.to_string_lossy(), Some("claude"), Some("run-2"), 1_001).unwrap();
         on_status(&store, Some(3), 30, "working", true, false, None, 5).unwrap();
         assert_eq!(pane_ended(&store, 3, None, 6).unwrap().as_deref(), Some("run-1"));
         let (st, why) = status_of(&store, "run-1");
@@ -2868,8 +2873,8 @@ mod tests {
         // An agent without status hooks: a clean exit is its finish, anything else a failure.
         dispatched(&store, &ws, 3, "gemini");
         dispatched(&store, &ws, 4, "gemini");
-        claim(&store, 8, None, &ws.to_string_lossy(), Some("gemini"), None, 1_001).unwrap();
-        claim(&store, 9, None, &ws.to_string_lossy(), Some("gemini"), None, 1_001).unwrap();
+        claim(&store, 8, None, &ws.to_string_lossy(), Some("gemini"), Some("run-3"), 1_001).unwrap();
+        claim(&store, 9, None, &ws.to_string_lossy(), Some("gemini"), Some("run-4"), 1_001).unwrap();
         pane_ended(&store, 8, Some(0), 9).unwrap();
         pane_ended(&store, 9, Some(1), 9).unwrap();
         assert_eq!((status_of(&store, "run-3").0.as_str(), status_of(&store, "run-4").0.as_str()), ("completed", "failed"));
@@ -2885,7 +2890,7 @@ mod tests {
         let store = Store::open(&dir.join("db")).unwrap();
         seed(&store, &ws);
         dispatched(&store, &ws, 1, "claude");
-        claim(&store, 3, Some(30), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 3, Some(30), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap();
         on_status(&store, Some(3), 30, "working", false, false, None, 4).unwrap();
         tidy(&store, 1_000).unwrap();
         let after_tidy = load(&store, RUNS_KEY).unwrap()[0].clone();
@@ -2932,8 +2937,8 @@ mod tests {
         dispatched(&store, &ws, 1, "claude");
         dispatched(&store, &ws, 2, "claude");
         dispatched(&store, &ws, 3, "claude");
-        claim(&store, 5, Some(50), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
-        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 5, Some(50), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap();
+        claim(&store, 6, Some(60), &ws.to_string_lossy(), Some("claude"), Some("run-2"), 1_001).unwrap();
         // run-3 was dispatched but no pane ever claimed it: nothing to ask the service about.
         tidy(&store, 1_000).unwrap();
         // The service knows terminal 5 ended while Kolux was away, and nothing of terminal 6.
@@ -2948,7 +2953,7 @@ mod tests {
         let r2 = load(&store, RUNS_KEY).unwrap()[1].clone();
         assert_eq!((r2["status"].as_str(), r2["settleBy"].is_u64(), r2["terminal"].is_null()), (Some("dispatched"), true, true));
         // Its pane coming back claims it; the other unknown one closes at settling with the usual reason.
-        assert_eq!(claim(&store, 1, Some(10), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap().as_deref(), Some("run-2"));
+        assert_eq!(claim(&store, 1, Some(60), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap().as_deref(), Some("run-2"));
         assert_eq!(settle(&store, 1_000 + SETTLE_MS + 1).unwrap(), vec!["run-3".to_string()]);
         assert!(status_of(&store, "run-3").1.contains("could not be found again"));
         drop(store);
@@ -2967,7 +2972,7 @@ mod tests {
         dispatched(&store, &ws, 1, "claude");
         dispatched(&store, &other, 2, "claude");
         // Before the restart run-1 had its pane and its agent was at work.
-        claim(&store, 3, Some(30), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap();
+        claim(&store, 3, Some(30), &ws.to_string_lossy(), Some("claude"), Some("run-1"), 1_001).unwrap();
         on_status(&store, Some(3), 30, "working", false, false, None, 4).unwrap();
         tidy(&store, 1_000).unwrap();
         // The old terminal number means nothing in the new process.
@@ -2975,7 +2980,7 @@ mod tests {
         assert_eq!(status_of(&store, "run-1").0, "dispatched");
         // Inside the settling period nothing is closed; the resumed pane is picked up again.
         assert!(settle(&store, 1_000 + SETTLE_MS - 1).unwrap().is_empty());
-        assert_eq!(claim(&store, 1, Some(10), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap().as_deref(), Some("run-1"));
+        assert_eq!(claim(&store, 1, Some(30), &ws.to_string_lossy(), Some("claude"), None, 1_001).unwrap().as_deref(), Some("run-1"));
         // Past it, the run whose pane never came back is closed; the reconnected one is kept.
         assert_eq!(settle(&store, 1_000 + SETTLE_MS + 1).unwrap(), vec!["run-2".to_string()]);
         let (st, why) = status_of(&store, "run-2");
@@ -3029,11 +3034,10 @@ mod tests {
         assert_eq!(claim(&store, 1, Some(10), &w, Some("claude"), Some("mine"), now).unwrap().as_deref(), Some("mine"));
         assert_eq!(pane_of("mine"), json!(1));
         assert!(pane_of("orphan").is_null() && pane_of("older").is_null());
-        // A pane with no run id skips the orphan (its pane never started) and takes the live older run.
-        assert_eq!(claim(&store, 2, Some(20), &w, Some("claude"), None, now).unwrap().as_deref(), Some("older"));
-        assert!(pane_of("orphan").is_null());
-        // With only the orphan left, a pane with no run id takes nothing.
-        assert_eq!(claim(&store, 3, Some(30), &w, Some("claude"), None, now).unwrap(), None);
+        // A pane with no run id (a tab the user opens) takes nothing, not the orphan, not a fresh run.
+        assert_eq!(claim(&store, 2, Some(20), &w, Some("claude"), None, now).unwrap(), None);
+        assert!(pane_of("orphan").is_null() && pane_of("older").is_null());
+        assert_eq!(claim(&store, 3, Some(30), &w, Some("claude"), Some("older"), now).unwrap().as_deref(), Some("older"));
         // A run still marked pending when its pane starts (the start notice goes out first) is claimed by id.
         push(json!({ "id": "early", "automationId": "auto-1", "number": 3, "status": "pending", "at": now, "worktree": w, "provider": "claude" }));
         assert_eq!(claim(&store, 4, Some(40), &w, Some("claude"), Some("early"), now).unwrap().as_deref(), Some("early"));
@@ -3045,11 +3049,26 @@ mod tests {
         assert_eq!(claim(&store, 7, Some(70), &w, Some("claude"), Some("no-such-run"), now).unwrap(), None);
         assert!(pane_of("orphan").is_null() && pane_of("done").is_null());
         assert_eq!(pane_of("mine"), json!(1));
-        // After a restart the orphan's settling deadline lets a pane with no run id take it again.
+        // The early run is then marked dispatched and keeps the pane it took while pending.
         let mut runs = load(&store, RUNS_KEY).unwrap();
-        runs[0]["settleBy"] = json!(now + 1);
+        let early = runs.iter_mut().find(|r| r["id"] == "early").unwrap();
+        early["status"] = json!("dispatched");
+        early["dispatchedAt"] = json!(now);
+        assert_eq!(early["terminal"], json!(4));
         save(&store, RUNS_KEY, &runs).unwrap();
-        assert_eq!(claim(&store, 8, Some(80), &w, Some("claude"), None, now).unwrap().as_deref(), Some("orphan"));
+        // Kolux restarts: the runs that had panes lose them and settle, and so does the orphan.
+        tidy(&store, now).unwrap();
+        assert!(load(&store, RUNS_KEY).unwrap().iter().filter(|r| in_progress(r)).all(|r| r["terminal"].is_null() && r["settleBy"].is_u64()));
+        // A restored pane comes back with no run id and its old hook pane: its own run, never the orphan.
+        assert_eq!(claim(&store, 11, Some(20), &w, Some("claude"), None, now + 1).unwrap(), None, "no run had hook pane 20");
+        assert_eq!(claim(&store, 12, Some(10), &w, Some("claude"), None, now + 1).unwrap().as_deref(), Some("mine"));
+        // A run id from the agent's own settings names no run: the restored pane still finds its run.
+        assert_eq!(claim(&store, 13, Some(30), &w, Some("claude"), Some("from-settings"), now + 1).unwrap().as_deref(), Some("older"));
+        // The orphan never had a pane, so no restored pane takes it; settling closes it.
+        assert_eq!(claim(&store, 14, Some(40), &w, Some("claude"), None, now + 1).unwrap().as_deref(), Some("early"));
+        assert_eq!(claim(&store, 15, None, &w, Some("claude"), None, now + 1).unwrap(), None);
+        assert!(pane_of("orphan").is_null());
+        assert!(settle(&store, now + SETTLE_MS + 1).unwrap().contains(&"orphan".to_string()));
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }
