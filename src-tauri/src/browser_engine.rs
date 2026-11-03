@@ -34,7 +34,7 @@ mod imp {
     use crate::browser::certs;
     use webview2_com::Microsoft::Web::WebView2::Win32::*;
     use std::sync::mpsc::Sender;
-    use crate::browser::{cookies, crash, holder, permissions, preview, profiles};
+    use crate::browser::{cookies, crash, holder, permissions, popup, preview, profiles};
     use cookies::Entry;
     use tauri::webview::cookie::SameSite;
     use std::path::PathBuf;
@@ -83,6 +83,39 @@ mod imp {
         frames(controller, Some(id), crate::browser::APP.get().and_then(crate::browser::app_origin));
         // SAFETY: CoreWebView2 hands back the page's engine object.
         let Ok(core) = (unsafe { controller.CoreWebView2() }) else { return };
+        // T-657 (DT-C93): the engine's word on whether the user started each new window and each
+        // of the page's own `kolux-chord:` requests (a click or key behind it, not a timer). The
+        // toolkit's new-window handler runs later (it defers to the message loop), so the word is
+        // there first; for a request, `popup::Meet` pairs the two in either order. Both handlers
+        // only read the event: what happens to it stays the toolkit handler's call.
+        let nav = NavigationStartingEventHandler::create(Box::new(move |_sender, args| {
+            let Some(args) = args else { return Ok(()) };
+            // SAFETY: Uri writes a CoTaskMem string `take` frees; IsUserInitiated a plain value.
+            let uri = unsafe { take(|p| args.Uri(p)) };
+            if crate::browser::needs_word(&uri) {
+                // A redirect is the server's doing, not the user's, whatever started the first load.
+                let (mut user, mut redirect) = (BOOL::default(), BOOL::default());
+                let user = unsafe { args.IsUserInitiated(&mut user) }.is_ok() && user.as_bool();
+                let user = user && unsafe { args.IsRedirected(&mut redirect) }.is_ok() && !redirect.as_bool();
+                popup::request_word(id, &uri, user);
+            }
+            Ok(())
+        }));
+        let mut nav_token = 0i64;
+        // SAFETY: the handler lives as long as the engine holds it; the token is written once.
+        let _ = unsafe { core.add_NavigationStarting(&nav, &mut nav_token) };
+        let window = webview2_com::NewWindowRequestedEventHandler::create(Box::new(move |_sender, args| {
+            let Some(args) = args else { return Ok(()) };
+            // SAFETY: as above.
+            let uri = unsafe { take(|p| args.Uri(p)) };
+            let mut user = BOOL::default();
+            let user = unsafe { args.IsUserInitiated(&mut user) }.is_ok() && user.as_bool();
+            popup::window_word(id, &uri, user);
+            Ok(())
+        }));
+        let mut window_token = 0i64;
+        // SAFETY: as above.
+        let _ = unsafe { core.add_NewWindowRequested(&window, &mut window_token) };
         if let Ok(core14) = core.cast::<ICoreWebView2_14>() {
             let handler = ServerCertificateErrorDetectedEventHandler::create(Box::new(move |_sender, args| {
                 let Some(args) = args else { return Ok(()) };
@@ -312,6 +345,30 @@ mod imp {
         }
     }
 
+    /// T-657: runs the app's own `script` in the page without a user gesture; `done` gets its
+    /// value as JSON text (as the toolkit's eval hands it), and nothing when it failed.
+    pub fn quiet_eval(controller: &ICoreWebView2Controller, script: &str, done: Option<Box<dyn FnOnce(String) + Send>>) {
+        let params = serde_json::json!({ "expression": script, "returnByValue": true }).to_string();
+        // SAFETY: CoreWebView2 hands back the page's engine object.
+        let Ok(core) = (unsafe { controller.CoreWebView2() }) else { return };
+        let handler = CallDevToolsProtocolMethodCompletedHandler::create(Box::new(move |r, json| {
+            // Like the toolkit's eval, every finished call answers: "null" for no value or a failure,
+            // so Back/Forward still falls back to the tab's trail and `kolux eval` does not time out.
+            // A script that threw answers "null" too, as the toolkit's eval does.
+            let value = r
+                .ok()
+                .and_then(|_| serde_json::from_str::<serde_json::Value>(&json).ok())
+                .filter(|v| v.get("exceptionDetails").is_none())
+                .and_then(|v| v.pointer("/result/value").cloned());
+            if let Some(done) = done {
+                done(value.map_or_else(|| "null".to_string(), |v| v.to_string()));
+            }
+            Ok(())
+        }));
+        // SAFETY: the strings outlive the call; the engine keeps the handler until it runs.
+        let _ = unsafe { core.CallDevToolsProtocolMethod(&HSTRING::from("Runtime.evaluate"), &HSTRING::from(params), &handler) };
+    }
+
     /// The engine prints the page to `path`; whether it succeeded (or why not) goes to `tx`.
     pub fn print_pdf(controller: &ICoreWebView2Controller, path: &str, tx: Sender<Result<bool, String>>) {
         let fail = tx.clone();
@@ -518,6 +575,28 @@ pub fn devtools(v: &Webview, method: &str, params: String, wait: Duration) -> Re
     {
         let _ = (v, method, params, wait);
         Err("page capture needs WebView2 (Windows)".into())
+    }
+}
+
+/// T-657 (DT-C93): runs one of the app's own scripts in a page the way that gives the page no
+/// user gesture. The toolkit's eval does give one (for about five seconds the engine calls the
+/// page's popups and requests user-started), so the scripts the app runs on its own (on each load,
+/// the shortcut list, the menu it draws) go this way. `done` gets the value as JSON text.
+pub fn quiet_eval(v: &Webview, script: String, done: Option<Box<dyn FnOnce(String) + Send>>) {
+    #[cfg(windows)]
+    let _ = v.with_webview(move |pw| imp::quiet_eval(&pw.controller(), &script, done));
+    #[cfg(not(windows))]
+    match done {
+        // The toolkit's callback may be called more than once in its type; `done` runs on the first.
+        Some(done) => {
+            let done = std::sync::Mutex::new(Some(done));
+            drop(v.eval_with_callback(script, move |answer: String| {
+                if let Some(done) = done.lock().ok().and_then(|mut d| d.take()) {
+                    done(answer);
+                }
+            }));
+        }
+        None => drop(v.eval(script)),
     }
 }
 

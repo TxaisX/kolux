@@ -9,6 +9,7 @@
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
 use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
 use tauri::Url;
 
 /// The longest origin the strip shows whole; a longer one keeps its right end (the real domain).
@@ -139,6 +140,125 @@ pub fn mark_ready(tab: u32) {
 
 pub fn is_ready(tab: u32) -> bool {
     LINKS.lock().map(|l| l.is_ready(tab)).unwrap_or(false)
+}
+
+// T-657 (R07-browser.3, DT-C93): a page opens a window, a tab or the system browser only when the
+// user started it. The engine's own handlers (browser_engine::attach) record its word on that
+// (`IsUserInitiated`) for every new-window request and for every `kolux-chord:` request the
+// page's script makes; the app's handlers act only on a request recorded as user-started. No
+// record (the engine said nothing) counts as not started: it fails closed.
+
+/// How long the engine's word on one request is kept for the app's handler to read.
+const WORD_KEPT: Duration = Duration::from_secs(2);
+/// The words kept at most (a page flooding requests cannot grow the list).
+const WORDS_KEPT: usize = 32;
+
+/// The engine's word on new-window requests: (tab, address, user started, when).
+#[derive(Default)]
+pub struct Windows(Vec<(u32, String, bool, Instant)>);
+
+impl Windows {
+    pub fn note(&mut self, tab: u32, uri: &str, user: bool, now: Instant) {
+        self.0.retain(|w| now.saturating_duration_since(w.3) <= WORD_KEPT);
+        if self.0.len() >= WORDS_KEPT {
+            self.0.remove(0);
+        }
+        self.0.push((tab, same_form(uri), user, now));
+    }
+    /// Whether the user started `tab`'s request for `url` (the word is used up).
+    pub fn take(&mut self, tab: u32, url: &Url, now: Instant) -> bool {
+        self.0.retain(|w| now.saturating_duration_since(w.3) <= WORD_KEPT);
+        let want = same_form(url.as_str());
+        match self.0.iter().position(|w| w.0 == tab && w.1 == want) {
+            Some(i) => self.0.remove(i).2,
+            None => false,
+        }
+    }
+}
+
+/// An address in one written form, so the engine's text and the toolkit's parsed address compare.
+fn same_form(uri: &str) -> String {
+    Url::parse(uri).map(|u| u.to_string()).unwrap_or_else(|_| uri.to_string())
+}
+
+/// What the app does with a page's request once the engine says the user started it.
+pub type Act = Box<dyn FnOnce() + Send>;
+
+enum Half {
+    Word(bool),
+    Act(Act),
+}
+
+/// The two halves of a page's `kolux-chord:` request: the engine's word and the app's action.
+/// Both handlers see the same navigation, in an order neither controls; whichever comes second
+/// completes it.
+#[derive(Default)]
+pub struct Meet(Vec<(u32, String, Half, Instant)>);
+
+impl Meet {
+    /// The engine's word on `tab`'s request `uri`: the action to run now, if the app's came first
+    /// and the user started it.
+    pub fn word(&mut self, tab: u32, uri: &str, user: bool, now: Instant) -> Option<Act> {
+        self.half(tab, same_form(uri), Half::Word(user), now)
+    }
+    /// The app's action for `tab`'s request `uri`: itself, to run now, if the engine's word came
+    /// first and says the user started it.
+    pub fn act(&mut self, tab: u32, uri: &str, act: Act, now: Instant) -> Option<Act> {
+        self.half(tab, same_form(uri), Half::Act(act), now)
+    }
+    fn half(&mut self, tab: u32, uri: String, h: Half, now: Instant) -> Option<Act> {
+        self.0.retain(|m| now.saturating_duration_since(m.3) <= WORD_KEPT);
+        let pairs = |m: &Half| matches!((m, &h), (Half::Word(_), Half::Act(_)) | (Half::Act(_), Half::Word(_)));
+        let Some(i) = self.0.iter().position(|m| m.0 == tab && m.1 == uri && pairs(&m.2)) else {
+            if self.0.len() >= WORDS_KEPT {
+                self.0.remove(0);
+            }
+            self.0.push((tab, uri, h, now));
+            return None;
+        };
+        match (self.0.remove(i).2, h) {
+            (Half::Word(user), Half::Act(act)) | (Half::Act(act), Half::Word(user)) => user.then_some(act),
+            _ => None,
+        }
+    }
+}
+
+static WINDOWS: LazyLock<Mutex<Windows>> = LazyLock::new(Default::default);
+static MEET: LazyLock<Mutex<Meet>> = LazyLock::new(Default::default);
+
+/// The engine's word on a new-window request from `tab` (its handler runs before the toolkit's).
+pub fn window_word(tab: u32, uri: &str, user: bool) {
+    if let Ok(mut w) = WINDOWS.lock() {
+        w.note(tab, uri, user, Instant::now());
+    }
+}
+
+/// Whether the user started `tab`'s new-window request for `url`, by the engine's word.
+pub fn window_started(tab: u32, url: &Url) -> bool {
+    // Only WebView2 gives the word; on other engines the earlier checks alone apply (DT-C93).
+    if cfg!(not(windows)) {
+        return true;
+    }
+    WINDOWS.lock().map(|mut w| w.take(tab, url, Instant::now())).unwrap_or(false)
+}
+
+/// The engine's word on a `kolux-chord:` request from `tab`.
+pub fn request_word(tab: u32, uri: &str, user: bool) {
+    let run = MEET.lock().ok().and_then(|mut m| m.word(tab, uri, user, Instant::now()));
+    if let Some(run) = run {
+        run();
+    }
+}
+
+/// Runs `act` for `tab`'s `kolux-chord:` request `uri` once the engine says the user started it.
+pub fn when_started(tab: u32, uri: &str, act: Act) {
+    if cfg!(not(windows)) {
+        return act();
+    }
+    let run = MEET.lock().ok().and_then(|mut m| m.act(tab, uri, act, Instant::now()));
+    if let Some(run) = run {
+        run();
+    }
 }
 
 /// Opens the popup window for `tab` on the opener's engine. `None` when the window toolkit refused.
@@ -343,5 +463,67 @@ mod tests {
         assert!(!l.is_ready(7));
         assert_eq!(l.popups_of(9), [c]);
         assert!(l.tab_closed(7).is_empty());
+    }
+
+    // T-657 (DT-C93)
+    #[test]
+    fn t657_a_window_the_user_did_not_start_is_refused_and_one_they_did_passes() {
+        let now = Instant::now();
+        let mut w = Windows::default();
+        let timer = Url::parse("http://127.0.0.1:9/tick-0").unwrap();
+        let click = Url::parse("http://127.0.0.1:9/clicked-open").unwrap();
+        w.note(4, "http://127.0.0.1:9/tick-0", false, now);
+        w.note(4, "http://127.0.0.1:9/clicked-open", true, now);
+        assert!(!w.take(4, &timer, now), "a page timer opens nothing");
+        assert!(w.take(4, &click, now), "the user's click opens its window");
+        // The word is used up, belongs to one tab, and no word at all is a refusal (fails closed).
+        assert!(!w.take(4, &click, now));
+        w.note(4, "http://127.0.0.1:9/clicked-open", true, now);
+        assert!(!w.take(5, &click, now));
+        assert!(!w.take(4, &Url::parse("http://127.0.0.1:9/never").unwrap(), now));
+        // An old word is gone; the list stays bounded under a flood.
+        assert!(!w.take(4, &click, now + WORD_KEPT + Duration::from_millis(1)));
+        for i in 0..100 {
+            w.note(4, &format!("http://127.0.0.1:9/f{i}"), false, now);
+        }
+        assert!(w.0.len() <= WORDS_KEPT);
+        // The engine's text and the toolkit's parsed address compare in one form.
+        w.note(4, "HTTP://127.0.0.1:9", true, now);
+        assert!(w.take(4, &Url::parse("http://127.0.0.1:9/").unwrap(), now));
+    }
+
+    #[test]
+    fn t657_a_page_request_acts_only_on_the_engines_word_in_either_order() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        let now = Instant::now();
+        let ran = Arc::new(AtomicUsize::new(0));
+        let act = || {
+            let ran = ran.clone();
+            Box::new(move || {
+                ran.fetch_add(1, Ordering::SeqCst);
+            }) as Act
+        };
+        let pick = "kolux-chord:pick?what=open-kolux&u=http%3A%2F%2F127.0.0.1%3A9%2Fp";
+        let mut m = Meet::default();
+        // The app first, then the engine: user started runs it, not started drops it.
+        assert!(m.act(1, pick, act(), now).is_none());
+        m.word(1, pick, true, now).unwrap()();
+        assert!(m.act(1, pick, act(), now).is_none());
+        assert!(m.word(1, pick, false, now).is_none());
+        // The engine first, then the app.
+        assert!(m.word(1, pick, true, now).is_none());
+        m.act(1, pick, act(), now).unwrap()();
+        assert!(m.word(1, pick, false, now).is_none());
+        assert!(m.act(1, pick, act(), now).is_none());
+        // Another tab or another request does not complete the pair; an old half is gone.
+        assert!(m.word(2, pick, true, now).is_none());
+        assert!(m.act(1, "kolux-chord:open-front?u=x", act(), now).is_none());
+        assert!(m.word(1, "kolux-chord:open-front?u=x", true, now + WORD_KEPT + Duration::from_millis(1)).is_none());
+        assert_eq!(ran.load(Ordering::SeqCst), 2);
+        for i in 0..100 {
+            m.act(3, &format!("kolux-chord:pick?n={i}"), act(), now);
+        }
+        assert!(m.0.len() <= WORDS_KEPT);
     }
 }
