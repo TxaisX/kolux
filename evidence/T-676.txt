@@ -95,5 +95,11 @@ FULL RUN: pnpm vitest run src/editor src/scm (VITEST_MAX_WORKERS=2)
 TYPE CHECK: pnpm tsc --noEmit
  tsc exit 0
 RUST (run by 72 at f5f87cbe):
- cargo test -p kolux-rs --lib scm::  -> 144 passed, 1 failed (scm::writers t606, a local-only 20 s timeout unrelated to this PR; passes in CI)
+ cargo test -p kolux-rs --lib scm::  -> 144 passed, 1 failed (scm::writers t606, a local-only 20 s timeout in a file this PR does not touch; CI skips it, e2c747ff)
  cargo clippy -p kolux-rs --all-targets -- -D warnings -> clean
+
+AFTER MERGING origin/main 4bd4d2de (merge ecf44a48)
+ cargo test --lib scm -> 163 passed, 1 failed (the same t606 writer timeout, also when run alone)
+ pnpm vitest run src/scm src/editor/AllChangesPane -> Test Files 38 passed (38), Tests 341 passed (341)
+ pnpm tsc --noEmit -> exit 0
+ No new program start: every git call in this PR goes through git::command, as before.
