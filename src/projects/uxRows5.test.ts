@@ -3,9 +3,9 @@
 // and the workspace delete button says Delete. The real ProjectsPanel on the small DOM, backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle, typeInto } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: unknown }[], groups: [] as { id: string; name: string; parent: string | null }[], rev: 1, made: 0, check: null as unknown }));
+const h = vi.hoisted(() => ({ calls: [] as { cmd: string; args: unknown }[], groups: [] as { id: string; name: string; parent: string | null }[], rev: 1, made: 0, check: null as unknown, hold: false, release: () => {} }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: { id?: string }) => {
     h.calls.push({ cmd, args });
@@ -23,6 +23,7 @@ vi.mock("@tauri-apps/api/core", () => ({
       h.groups = [...h.groups, { id: `n${++h.made}`, name: "", parent: null }];
       return answer();
     }
+    if (cmd === "group_rename" && h.hold) return new Promise((done) => (h.release = () => done(answer())));
     if (cmd === "group_delete") {
       h.groups = h.groups.filter((x) => x.id !== args?.id);
       return answer();
@@ -51,7 +52,7 @@ beforeEach(() => {
   Object.assign(dom.win, { setInterval, clearInterval, setTimeout, clearTimeout });
   Object.assign(doc, {
     querySelectorAll: (sel: string) => (sel.includes("[data-path]") ? [{ dataset: { path: ws.path }, querySelector: () => focusable("row") }] : []),
-    querySelector: (sel: string) => (sel.includes("data-group-x") ? focusable("group-x") : sel.includes("New group") ? focusable("new-group") : null),
+    querySelector: (sel: string) => (sel.includes('[data-project-group="g1"] [data-group-x]') ? focusable("group-x") : sel.includes("New group") ? focusable("new-group") : null),
     visibilityState: "visible",
     hidden: false,
   });
@@ -59,6 +60,7 @@ beforeEach(() => {
   h.groups = [{ id: "g1", name: "Clients", parent: null }];
   h.rev = 1;
   h.made = 0;
+  h.hold = false;
   h.check = { changes: [], locked: null, nested: [], stamp: "s", commits: [] };
   focused.length = 0;
 });
@@ -105,6 +107,22 @@ test("a new group that was saved first stays when New group is pressed again", a
   await settle(60);
   await click(c, newGroup(c));
   await settle(60);
+  expect(deletes()).toEqual([]);
+  expect(h.groups.map((x) => x.id)).toEqual(["g1", "n1", "n2"]);
+});
+
+test("New group pressed while the first group's Save is still being answered keeps the saved group", async () => {
+  const c = await panel();
+  await click(c, newGroup(c));
+  await settle(60);
+  await typeInto(c, byLabel(c, "input", "group name")[0], "Acme");
+  h.hold = true;
+  await click(c, byText(c, "button", "Save")[0]);
+  await click(c, newGroup(c));
+  await settle(60);
+  h.release();
+  await settle(60);
+  expect(h.calls.some((x) => x.cmd === "group_rename")).toBe(true);
   expect(deletes()).toEqual([]);
   expect(h.groups.map((x) => x.id)).toEqual(["g1", "n1", "n2"]);
 });

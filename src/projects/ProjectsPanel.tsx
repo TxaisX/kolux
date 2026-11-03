@@ -868,6 +868,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupFor, freshGroup]);
   const saveGroup = async (g: Group) => {
+    freshRef.current = null; // being saved: a New group pressed before the rename answers must not drop it
     try {
       if (groupName.trim() !== g.name) takeGroups(await invoke<Groups>("group_rename", { id: g.id, name: groupName }));
       if (groupParent !== (g.parent ?? "")) takeGroups(await invoke<Groups>("group_nest", { id: g.id, parent: groupParent || null }));
@@ -2045,7 +2046,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             )}
             <div className="btn-row">
               <button className="btn danger" onClick={() => void removeBatch()} disabled={busy !== ""}>
-                {busy === "removing" ? "Removing…" : "Delete all"}
+                {busy === "removing" ? "Deleting…" : "Delete all"}
               </button>
               <button className="btn" autoFocus onClick={() => closeBatch(w.path)}>
                 Keep
@@ -2094,7 +2095,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         {asking && (
           <div className="sb-form warn" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeConfirm(w.path))}>
             <span>
-              Remove <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
+              Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
               {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
               {runNote([confirm.path])}
             </span>

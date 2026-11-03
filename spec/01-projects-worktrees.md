@@ -246,8 +246,8 @@ Acceptance:
   - [x] Delete the active row while the list is scrolled → no row still on screen moves; the list's
         scroll offset may shift by about one row (~70 px) because the active row is pinned. (Reworded
         per Txais 2026-10-28 decisions file, A.) (live 2026-10-27; evidence/cards-PROJ-070.txt)
-  - [x] Open the delete question for a workspace → its button says Delete, the word the row and its
-        menu use; removing a project still says Remove project. (T-689; evidence/T-689.txt)
+  - [x] Open the delete question for a workspace → the question and its button say Delete, the word
+        the row and its menu use; removing a project still says Remove project. (T-689; evidence/T-689.txt)
 Compat: Keybinding id workspace.delete.
 Source: D-01-070
 
