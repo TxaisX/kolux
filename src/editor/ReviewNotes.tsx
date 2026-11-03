@@ -2,9 +2,16 @@
 // copied as one Markdown block. EDIT-020: or sent to an agent running in this worktree, picked
 // from the Send menu.
 import { useState } from "react";
+import { useMenuKeys } from "./menuKeys";
 import { Close } from "../chrome/icons";
 import { baseName } from "./buffers";
 import { notesMarkdown, type Note, type Picked, type SendTarget, type StartChoice } from "./notes";
+
+/** What the tray says about copying; the failure text points at the Markdown below, which the tray then shows. */
+export const COPY_OK = "Copied the notes as Markdown";
+export const COPY_FAILED = "Could not copy; select the text below instead";
+/** What the tray says when a send or a start threw instead of answering. */
+export const sendThrew = (e: unknown) => `The notes were not sent, so they are kept: ${e instanceof Error ? e.message : String(e)}`;
 
 type Props = {
   picked: Picked | null;
@@ -28,6 +35,17 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const [sure, setSure] = useState(false); // the X asks once before it drops every note
+  const { box, remember } = useMenuKeys(menu, () => onMenu(false));
+  // A send or a start that throws says so in the tray instead of leaving an unhandled rejection.
+  const go = async (run: () => Promise<string | null>) => {
+    onMenu(false);
+    try {
+      setSaid(await run());
+    } catch (e) {
+      setSaid(sendThrew(e));
+    }
+  };
   const add = () => {
     if (!picked || !text.trim()) return;
     onAdd({ ...picked.draft, note: text, time: Date.now() });
@@ -35,8 +53,8 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
   };
   const copy = () =>
     navigator.clipboard.writeText(notesMarkdown(notes)).then(
-      () => setSaid("Copied the notes as Markdown"),
-      () => setSaid("Could not copy; select the text below instead"),
+      () => setSaid(COPY_OK),
+      () => (setOpen(true), setSaid(COPY_FAILED)),
     );
   return (
     <>
@@ -74,28 +92,52 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
             <button className="review-count" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
               {notes.length === 1 ? "1 review note" : `${notes.length} review notes`}
             </button>
-            <button className="btn primary" aria-expanded={menu} onClick={() => onMenu(!menu)}>
+            <button
+              className="btn primary"
+              aria-haspopup="menu"
+              aria-expanded={menu}
+              onClick={(e) => {
+                remember(e.currentTarget); // before the menu opens: its first row takes focus at once
+                onMenu(!menu);
+              }}
+            >
               Send…
             </button>
             <button className="btn" data-notes-copy onClick={() => void copy()}>
               Copy as Markdown
             </button>
-            <button className="ib" title="Clear the notes" onClick={onClear}>
+            <button className="ib" title="Clear the notes" aria-label="Clear all notes" onClick={() => setSure(true)}>
               <Close size={12} />
             </button>
           </div>
+          {sure && (
+            <div className="sb-hint" role="alert">
+              Clear all {notes.length === 1 ? "1 note" : `${notes.length} notes`}? This cannot be undone.
+              <span className="btn-row">
+                <button className="btn" autoFocus onClick={() => setSure(false)}>
+                  Keep them
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setSure(false);
+                    onClear();
+                  }}
+                >
+                  Clear all
+                </button>
+              </span>
+            </div>
+          )}
           {menu && (
-            <div className="review-send" role="menu" aria-label="Send the notes to">
+            <div ref={box} className="review-send" role="menu" aria-label="Send the notes to">
               {targets.length === 0 && <div className="sb-hint">{starters.length > 0 && onStart ? "No agent is running in this worktree. Start one below, or copy the notes instead." : "No agent is running in this worktree. Start one, or copy the notes instead."}</div>}
               {targets.map((t) => (
                 <button
                   key={t.key}
                   role="menuitem"
                   className="review-send-item"
-                  onClick={async () => {
-                    onMenu(false);
-                    setSaid(await onSend(t.key));
-                  }}
+                  onClick={() => void go(() => onSend(t.key))}
                 >
                   <span className="name">{t.label}</span>
                   <span className="muted">{t.since}</span>
@@ -110,10 +152,7 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
                       role="menuitem"
                       className="review-send-item"
                       data-start-agent={s.id}
-                      onClick={async () => {
-                        onMenu(false);
-                        setSaid(await onStart(s.id));
-                      }}
+                      onClick={() => void go(() => onStart(s.id))}
                     >
                       <span className="name">{s.label}</span>
                       <span className="muted">new</span>
@@ -132,7 +171,7 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
                   {baseName(n.path)}:{n.line}
                 </span>
                 <span className="txt">{n.note}</span>
-                <button className="ib" title="Remove this note" onClick={() => onRemove(i)}>
+                <button className="ib" title="Remove this note" aria-label={`Remove the note on ${baseName(n.path)} line ${n.line}`} onClick={() => onRemove(i)}>
                   <Close size={10} />
                 </button>
               </div>

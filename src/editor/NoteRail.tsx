@@ -8,6 +8,12 @@ import { placeRail, quoteTop, railEdit, railItems } from "./rail";
 /** The least a card takes in px, and what it counts as before it is measured; a longer note makes its card grow. */
 export const CARD_HEIGHT = 58;
 
+/** Whether a key press brings a card's text into view, as a click on the card does: Enter or Space on the card itself
+ *  (not on a button or box inside it, which keep their own keys). */
+export function cardKey(key: string, onCard: boolean): boolean {
+  return onCard && (key === "Enter" || key === " ");
+}
+
 type Props = {
   host: RefObject<HTMLElement | null>;
   notes: Note[];
@@ -57,6 +63,7 @@ export default function NoteRail({ host, notes, version, onRemove, onEdit }: Pro
     };
   }, [host, notes]);
   const items = railItems(notes, notes.map(() => null), CARD_HEIGHT);
+  const bringIntoView = (top: number) => host.current && host.current.scrollTo({ top: Math.max(0, top - 40), behavior: "smooth" });
   return (
     <div className="note-rail" role="complementary" aria-label="Review notes" style={{ top: frame.top, height: frame.height }}>
       {notes.map((n, i) => {
@@ -67,8 +74,15 @@ export default function NoteRail({ host, notes, version, onRemove, onEdit }: Pro
             key={`${n.time}:${i}`}
             ref={(el) => void (cards.current[i] = el)}
             className="rail-card"
+            role="group"
+            tabIndex={0}
+            aria-label={`Review note on line ${n.line}`}
+            title="Click, or press Enter, to show the text this note is about"
             style={{ transform: `translateY(${top - scroll}px)`, minHeight: CARD_HEIGHT }}
-            onClick={() => !mine && host.current && host.current.scrollTo({ top: Math.max(0, top - 40), behavior: "smooth" })}
+            onClick={() => !mine && bringIntoView(top)}
+            onKeyDown={(e) => {
+              if (!mine && cardKey(e.key, e.target === e.currentTarget)) (e.preventDefault(), bringIntoView(top));
+            }}
           >
             <span className="rail-where">
               Line {n.line}

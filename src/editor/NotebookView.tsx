@@ -70,6 +70,7 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
   const [asking, setAsking] = useState<((yes: boolean) => void) | null>(null);
   const [running, setRunning] = useState<number | null>(null);
   const [problem, setProblem] = useState("");
+  const [removing, setRemoving] = useState<number | null>(null); // the cell a Remove is waiting on a yes for
   useEffect(() => {
     const read = () => setText(textOf(path) ?? "");
     read();
@@ -109,6 +110,8 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
       setRunning(null);
     }
   };
+  // A cell with something in it asks first; an empty one goes at once.
+  const remove = (i: number) => (sourceOf(nb.cells[i]).trim() === "" ? change(removeCell(nb, i)) : setRemoving(i));
   const addRow = (at: number) =>
     readOnly ? null : (
       <div className="nb-add">
@@ -144,6 +147,18 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
           }}
         />
       )}
+      {removing !== null && removing < nb.cells.length && (
+        <Ask
+          title={`Remove cell ${removing + 1}?`}
+          body="The cell and its text are taken out of the notebook."
+          confirm="Remove"
+          onConfirm={() => {
+            change(removeCell(nb, removing));
+            setRemoving(null);
+          }}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
       <div className="csv-scroll nb-cells">
         {addRow(0)}
         {nb.cells.map((c, i) => {
@@ -173,7 +188,7 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
                     <button type="button" disabled={i === nb.cells.length - 1} aria-label={`Move cell ${i + 1} down`} onClick={() => change(moveCell(nb, i, 1))}>
                       Down
                     </button>
-                    <button type="button" aria-label={`Remove cell ${i + 1}`} onClick={() => change(removeCell(nb, i))}>
+                    <button type="button" aria-label={`Remove cell ${i + 1}`} onClick={() => remove(i)}>
                       Remove
                     </button>
                   </span>
