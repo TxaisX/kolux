@@ -3,7 +3,7 @@
 // under fake time, on the APP-024..027 harness; focus is tracked, and `enter` sends the user's next Enter wherever the
 // keyboard is: on the card it is the card's Enter, anywhere else (a terminal) the card never sees it.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, FakeNode, fire } from "../tasks/fakeDom";
+import { click, type FakeDocument, FakeNode, fire, withText } from "../tasks/fakeDom";
 import { card, cardTitle, feed, info, installUpdateDom, mountCenter, pump, sendWindow, sent } from "./__cards__/updateHarness";
 
 const fail = vi.hoisted(() => ({ download: false }));
@@ -107,6 +107,8 @@ test("Trigger B and rule 5: a background download error brings the card up witho
   await sendWindow("kolux-update-show"); // the user opens it from the status bar
   expect(keys()).toBe("card");
   await enter();
+  expect(sent("update_restart")).toHaveLength(0); // Enter asks first
+  await click(root, withText(doc.body, "button", "Restart now")[0]);
   expect(sent("update_restart")).toHaveLength(1);
 });
 
@@ -116,6 +118,8 @@ test("rule 5 positive: on a card the user opened with Check for updates, Enter r
   await sendWindow("kolux-check-updates");
   expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
   await enter();
+  expect(sent("update_restart")).toHaveLength(0); // Enter asks first
+  await click(root, withText(doc.body, "button", "Restart now")[0]);
   expect(sent("update_restart")).toHaveLength(1);
 });
 

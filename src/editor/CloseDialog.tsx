@@ -12,6 +12,13 @@ import { needsName } from "./untitled";
  *  drawn for any tab, so the window does not carry CodeMirror before a file is opened (cycle 3, first load). */
 const saveQuiet = async (path: string, onToast?: (text: string) => void) => (await import("./EditorPane")).saveQuiet(path, onToast);
 
+/** The stop Tab (or Shift+Tab) moves to among `count` enabled controls when `at` has focus (-1: none), wrapping at the ends. */
+export function tabStop(count: number, at: number, back: boolean): number {
+  if (count <= 0) return -1;
+  if (back) return at <= 0 ? count - 1 : at - 1;
+  return at < 0 || at >= count - 1 ? 0 : at + 1;
+}
+
 type Options = {
   panes: GuardPane[];
   dirty: Record<number, boolean>;
@@ -59,15 +66,22 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
   };
 
   const cancel = useRef<HTMLButtonElement>(null);
+  const card = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (ask) cancel.current?.focus();
   }, [ask]);
+  // While a save runs the buttons are off and would drop the focus; the card keeps it so Tab and Escape stay inside.
+  useEffect(() => {
+    if (ask && busy) card.current?.focus();
+  }, [busy]);
 
   const dialog = (
     <>
       {ask && !naming && (
         <div className="ask-backdrop" onMouseDown={() => void choose("cancel")}>
           <div
+            ref={card}
+            tabIndex={-1}
             className="ask"
             role="alertdialog"
             aria-modal="true"
@@ -75,7 +89,14 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
             onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               e.stopPropagation();
-              if (e.key === "Escape") (e.preventDefault(), void choose("cancel"));
+              if (e.key === "Escape") (e.preventDefault(), void choose("cancel")); // choose() ignores it while a save runs
+              else if (e.key === "Tab") {
+                // aria-modal: Tab stays among the dialog's own buttons.
+                e.preventDefault();
+                const stops = [...e.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)")];
+                const to = tabStop(stops.length, stops.indexOf(document.activeElement as HTMLElement), e.shiftKey);
+                (stops[to] ?? e.currentTarget).focus();
+              }
             }}
           >
             <h2 className="ask-title">Save changes before closing?</h2>

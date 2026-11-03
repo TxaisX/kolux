@@ -175,15 +175,18 @@ pub fn act(trust: &mut Trust, tab: u32, url: &str, action: &str) -> Result<CertS
 }
 
 /// The app's command (never the page's): the overlay's Trust, the menu's Stop Trusting, and the
-/// state both read. A revoke also clears the engine's remembered allowances, so the next visit is
-/// asked again (other approved sites are then simply allowed again by these rules).
+/// state both read. A revoke that dropped a trust also clears the engine's remembered allowances, so
+/// the next visit is asked again (other approved sites are then simply allowed again by these rules);
+/// one that dropped nothing leaves them alone (T-661).
 #[tauri::command]
 pub async fn browser_cert(app: tauri::AppHandle, id: u32, url: String, action: String) -> Result<CertState, String> {
-    let state = {
+    let (state, dropped) = {
         let mut t = TRUST.lock().map_err(|_| "the certificate rules are not available".to_string())?;
-        act(&mut t, id, &url, &action)?
+        let before = t.approved.len();
+        let state = act(&mut t, id, &url, &action)?;
+        (state, t.approved.len() < before)
     };
-    if action == "revoke" {
+    if dropped {
         super::engine::clear_certificate_allowances(&app);
     }
     Ok(state)

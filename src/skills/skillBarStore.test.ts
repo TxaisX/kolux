@@ -1,7 +1,7 @@
 // SKILL-027: the store that follows a skill update for the status bar, driven by fake timers and a fake app.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { FADE_MS } from "./skillBar";
-import { POLL_MS, createSkillBar, type Clock } from "./skillBarStore";
+import { MAX_POLL_FAILS, POLL_FAILED, POLL_MS, createSkillBar, type Clock } from "./skillBarStore";
 import type { UpdateStatus } from "./updateNotice";
 
 const st = (over: Partial<UpdateStatus>): UpdateStatus => ({ state: "done", names: ["a", "b"], command: "", log: "", code: 0, stopped: false, error: null, results: [], ...over });
@@ -113,4 +113,79 @@ test("a stopping run shows stopping, then a stopped run reads as a failure", asy
   backend = st({ stopped: true, code: null, results: [{ name: "a", ok: false, reason: "Stopped before it finished" }, { name: "b", ok: false, reason: "Stopped before it finished" }] });
   await settleAll(POLL_MS);
   expect(bar.get().item).toMatchObject({ tone: "bad" });
+});
+
+// UX audit skills-automations.md:6: a status read that keeps failing used to leave "Updating N skills" spinning for ever.
+test("a progress read that keeps failing ends the run as failed with a reason, after a few tries", async () => {
+  let reads = 0;
+  const broken = (<T>(cmd: string): Promise<T> => {
+    if (cmd === "skills_update_status") {
+      reads++;
+      return Promise.reject(new Error("backend gone"));
+    }
+    return Promise.resolve(undefined as T);
+  }) as Parameters<typeof createSkillBar>[0];
+  const bar = createSkillBar(broken, clock, vi.fn());
+  bar.begin(["a", "b"]);
+  expect(bar.get().item).toMatchObject({ tone: "info", text: "Updating 2 skills" });
+  await settleAll(POLL_MS * (MAX_POLL_FAILS + 2));
+  expect(reads).toBe(MAX_POLL_FAILS); // tried again, then gave up and stopped asking
+  expect(bar.get().item).toMatchObject({ tone: "bad", text: "Skill update failed" });
+  expect(bar.lastStatus()).toMatchObject({ state: "done", error: POLL_FAILED });
+  await settleAll(POLL_MS * 10);
+  expect(reads).toBe(MAX_POLL_FAILS);
+});
+
+// A fake app whose progress reads answer from a script: "fail" rejects, a status resolves, and once the script runs out it keeps saying "running".
+const scripted = (script: Array<"fail" | UpdateStatus>) => {
+  const reads = { n: 0 };
+  const app = (<T>(cmd: string): Promise<T> => {
+    if (cmd !== "skills_update_status") return Promise.resolve(undefined as T);
+    const next = script[reads.n++] ?? st({ state: "running", code: null });
+    return next === "fail" ? Promise.reject(new Error("blip")) : Promise.resolve(next as T);
+  }) as Parameters<typeof createSkillBar>[0];
+  return { reads, bar: createSkillBar(app, clock, vi.fn()) };
+};
+
+test("one failed progress read in the middle of a run is tried again and the run goes on to its real end", async () => {
+  const { reads, bar } = scripted(["fail", st({ state: "running", code: null }), st({ results: [{ name: "a", ok: true, reason: null }, { name: "b", ok: true, reason: null }] })]);
+  bar.begin(["a", "b"]);
+  await settleAll(POLL_MS * 4);
+  expect(reads.n).toBe(3); // the failed read was tried again, then the run was followed to its end, then reading stopped
+  expect(bar.lastStatus()).toMatchObject({ state: "done", error: null });
+  expect(bar.get().item).toMatchObject({ tone: "ok", text: "Updated 2 skills" });
+  bar.dispose();
+});
+
+test("failures that are not in a row do not add up: fail, ok, fail, fail is still running", async () => {
+  const { reads, bar } = scripted(["fail", st({ state: "running", code: null }), "fail", "fail"]);
+  bar.begin(["a", "b"]);
+  await settleAll(POLL_MS * 3); // reads 1 to 4 have happened (the first at once)
+  expect(reads.n).toBe(4);
+  expect(bar.get().item).toMatchObject({ tone: "info", text: "Updating 2 skills" });
+  await settleAll(POLL_MS * 3); // and it keeps asking
+  expect(reads.n).toBeGreaterThan(4);
+  expect(bar.lastStatus()).toMatchObject({ state: "running", error: null });
+  bar.dispose();
+});
+
+test("starting an update again while a progress read is in flight leaves one poll chain, not two", async () => {
+  const waiting: Array<(s: UpdateStatus) => void> = [];
+  let reads = 0;
+  let live = false; // before the first read comes back, reads wait; after, they answer at once
+  const app = (<T>(cmd: string): Promise<T> => {
+    if (cmd !== "skills_update_status") return Promise.resolve(undefined as T);
+    reads++;
+    const running = st({ state: "running", code: null });
+    return live ? Promise.resolve(running as T) : new Promise<T>((res) => waiting.push(res as (s: UpdateStatus) => void));
+  }) as Parameters<typeof createSkillBar>[0];
+  const bar = createSkillBar(app, clock, vi.fn());
+  bar.begin(["a", "b"]); // read 1 in flight
+  bar.begin(["a", "b"]); // a new run: read 2 in flight, read 1 is now stale
+  expect(reads).toBe(2);
+  live = true;
+  waiting.forEach((res) => res(st({ state: "running", code: null }))); // the stale read comes back first and must be ignored
+  await settleAll(POLL_MS * 3);
+  expect(reads).toBe(2 + 3); // one chain: one read per half second, not two
+  bar.dispose();
 });

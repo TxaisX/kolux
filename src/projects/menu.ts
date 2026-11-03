@@ -3,8 +3,24 @@
 
 export type MenuItem = { id: string; label: string; disabled?: boolean; danger?: boolean; /** A divider is drawn above this item. */ sep?: boolean; children?: MenuItem[] };
 
+/** Arrow keys, Home and End inside an open menu: the index to focus next (wrapping), or null for any other key. */
+export function menuMove(key: string, at: number, count: number): number | null {
+  if (count <= 0) return null;
+  if (key === "Home") return 0;
+  if (key === "End") return count - 1;
+  if (key === "ArrowDown") return at < 0 ? 0 : (at + 1) % count;
+  if (key === "ArrowUp") return at < 0 ? count - 1 : (at + count - 1) % count;
+  return null;
+}
+
 /** The file manager's name follows the platform. */
 export const fileManagerName = (platform: string): string => (/^mac|darwin/i.test(platform) ? "Finder" : /^win/i.test(platform) ? "Explorer" : "Files");
+
+/** The note for a menu that opened with parts missing because a list could not be read; null when nothing failed. */
+export function menuGaps(failed: { statuses?: boolean; editors?: boolean }): string | null {
+  const gone = [failed.statuses && "Move to status", failed.editors && "the editors in Open in"].filter(Boolean);
+  return gone.length ? `The menu is missing ${gone.join(" and ")}: that list could not be read.` : null;
+}
 
 export type MenuFor = {
   /** Rows the menu acts on: the right-clicked row, or the whole selection when it is part of it. */
@@ -18,6 +34,11 @@ export type MenuFor = {
   alt: boolean;
   statuses: { id: string; label: string }[];
   editors: { label: string; command: string }[];
+  /** Manual order is by drag; these two are the keyboard way. */
+  reorder?: boolean;
+  /** The row is the first / last of its siblings, so Move up / Move down is off. */
+  first?: boolean;
+  last?: boolean;
 };
 
 const REMOVE_PROJECT: MenuItem = { id: "proj:remove", label: "Remove project…", danger: true, sep: true };
@@ -51,6 +72,8 @@ export function rowMenu(o: MenuFor): MenuItem[] {
       ],
     });
   }
+  // Reordering steps among siblings only: never on the main checkout, and the ends of the siblings cannot go further.
+  if (one && o.reorder && !o.isMain) items.push({ id: "move:up", label: "Move up", disabled: o.first }, { id: "move:down", label: "Move down", disabled: o.last });
   if (one && !o.isMain) items.push({ id: "hide", label: "Hide from the sidebar" });
   if (one && o.alt) items.push({ id: "developer", label: "Developer", children: [{ id: "dev:copy-path", label: "Copy path" }, { id: "dev:copy-branch", label: "Copy branch name" }] });
   // The main checkout cannot be hidden or deleted, so its way out is removing the project.

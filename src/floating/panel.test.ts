@@ -1,6 +1,6 @@
 // TERM-059 / TERM-061 / TERM-052 / T-093-a: the floating panel's tabs, close rules and keys.
 import { expect, test } from "vitest";
-import { add, answer, asked, close, closeKey, empty, focused, isTrusted, KEY_BASE, programExited, reorder, route, saved, saveTarget, select, selectNumber, setDirty, show, hide, startFolder, step, toggle, trust, type Panel } from "./panel";
+import { add, answer, asked, close, closeKey, empty, focused, isTrusted, KEY_BASE, liveTerminalTabs, modalHolds, programExited, reorder, route, saved, saveTarget, select, selectNumber, setDirty, show, hide, startFolder, step, toggle, trust, type Panel } from "./panel";
 
 const three = (): Panel => {
   let p = empty();
@@ -183,4 +183,51 @@ test("TERM-061: Save never closes a different tab when the question moved on dur
   const after = saved(moved, a, false); // a's save finishes late
   expect(after.tabs.map((t) => t.key)).toEqual([b]);
   expect(asked(after)?.key).toBe(b);
+});
+
+test("UX audit destructive F4: only started, unexited terminals and agents are checked before a tab closes", () => {
+  let p = empty();
+  p = add(p, { kind: "terminal" }); // 1000000: running
+  p = add(p, { kind: "browser" });
+  p = add(p, { kind: "agent", agent: "claude" }); // exited, and still checked (it may have started again)
+  p = add(p, { kind: "terminal" }); // not started yet
+  p = add(p, { kind: "markdown", path: "C:\\notes\\a.md" });
+  const [term, web, agent, fresh, note] = keys(p);
+  p = programExited(p, agent);
+  const ptys = { [term]: 7, [web]: 8, [agent]: 9, [note]: 10 };
+  expect(liveTerminalTabs(p, keys(p), ptys)).toEqual({ keys: [term, agent], ids: [7, 9] });
+  expect(liveTerminalTabs(p, [fresh], ptys)).toEqual({ keys: [], ids: [] });
+  expect(liveTerminalTabs(p, [999], ptys)).toEqual({ keys: [], ids: [] });
+});
+
+test("UX audit destructive: a tab that exited and then started again is still counted before it closes", () => {
+  let p = empty();
+  p = add(p, { kind: "agent", agent: "claude" });
+  const [agent] = keys(p);
+  p = programExited(p, agent); // the agent quit; Enter in the pane starts a shell in the same tab, and the mark stays
+  expect(p.tabs[0].exited).toBe(true);
+  expect(liveTerminalTabs(p, [agent], { [agent]: 21 })).toEqual({ keys: [agent], ids: [21] });
+});
+
+test("UX audit destructive F4: a terminal that fails to start stays as an exited tab, its error readable (TERM-061)", () => {
+  let p = empty();
+  p = add(p, { kind: "terminal" });
+  p = add(p, { kind: "terminal" });
+  const [a, b] = keys(p);
+  p = programExited(p, a); // what FloatingLayer onFailed now does, instead of closing the tab
+  expect(p.tabs.map((t) => t.key)).toEqual([a, b]);
+  expect(p.tabs[0].exited).toBe(true);
+});
+
+test("UX audit destructive: while a layer dialog is up every chord but Escape is the dialog's, plain keys stay plain", () => {
+  const k = (key: string, mods: Partial<{ ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}) => ({ key, ctrlKey: false, metaKey: false, altKey: false, ...mods });
+  expect(modalHolds(true, k("w", { ctrlKey: true }))).toBe(true);
+  expect(modalHolds(true, k("w", { metaKey: true }))).toBe(true);
+  expect(modalHolds(true, k("a", { altKey: true, ctrlKey: true }))).toBe(true);
+  expect(modalHolds(true, k("F5"))).toBe(true);
+  expect(modalHolds(true, k("Escape"))).toBe(false);
+  expect(modalHolds(true, k("Escape", { ctrlKey: true }))).toBe(false);
+  expect(modalHolds(true, k("Tab"))).toBe(false);
+  expect(modalHolds(true, k("Enter"))).toBe(false);
+  expect(modalHolds(false, k("w", { ctrlKey: true }))).toBe(false);
 });

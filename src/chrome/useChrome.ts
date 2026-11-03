@@ -76,6 +76,10 @@ export function useMenuBar(state: MenuBarState, onAction: (id: string) => void) 
 /** APP-009: opens the app menu at (x, y) in the window's own pixels (Windows and Linux, where the
  *  frameless window has no native bar to draw it in). */
 /** (x, y) in CSS pixels; `zoom` is the interface zoom (SET-019), since the menu opens in window pixels. */
-export function popAppMenu(x: number, y: number, zoom = 1) {
-  invoke("menu_popup", { x: x * zoom, y: y * zoom }).catch(() => {});
+/** The note shown when the menu cannot open (the mark is the only in-window way to File, Edit, View and Help). */
+export const APP_MENU_FAILED = "The app menu could not open. Try again, and restart the app if it keeps happening.";
+
+/** `onFail` runs when the menu could not open, so the click is never silent. */
+export function popAppMenu(x: number, y: number, zoom = 1, onFail?: () => void) {
+  invoke("menu_popup", { x: x * zoom, y: y * zoom }).catch(() => onFail?.());
 }

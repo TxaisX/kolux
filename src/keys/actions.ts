@@ -83,6 +83,7 @@ export const actions: Action[] = [
   a("dashboard.toggle", "Toggle Agent Dashboard", "global", []),
   a("workspace.selectByIndex", "Select Workspace 1–9", "global", ["Mod+1"], { index: true }),
   a("view.tasks", "Open Tasks", "global", []),
+  a("view.automations", "Open Automations", "global", [], { keywords: ["schedule", "cron", "recurring"] }), // UX lane C: reachable with the sidebar row hidden
   a("sidebar.left.toggle", "Toggle Sidebar", "global", ["Mod+B"]),
   a("sidebar.right.toggle", "Toggle Right Sidebar", "global", ["Mod+L"]),
   a("sidebar.explorer.toggle", "Show Explorer", "global", ["Mod+Shift+E"]),
@@ -91,7 +92,7 @@ export const actions: Action[] = [
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
   a("sidebar.focusWorktreeList", "Focus worktree list", "global", ["Mod+Shift+0"]),
   a("floatingTerminal.toggle", "Toggle Floating Terminal", "global", ["Mod+Alt+A"], { terminalSafe: true }),
-  a("floatingWorkspace.maximize", "Maximize Floating Workspace Panel", "global", [], { darwin: ["Mod+Alt+Shift+A"] }),
+  a("floatingWorkspace.maximize", "Maximize Floating Workspace Panel", "global", ["Mod+Shift+Backslash"], { darwin: ["Mod+Alt+Shift+A"] }),
   a("view.inbox", "Show Inbox", "global", []),
   a("view.tower", "Show Tower", "global", []),
   // T-548 (OD-11): one key moves new panes to the provider's next account; unbound until Txais picks a chord.
@@ -99,9 +100,11 @@ export const actions: Action[] = [
   a("account.switchCodex", "Switch Codex account", "global", [], { keywords: ["account", "sign in", "login"] }),
   a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake"] }),
   a("view.floor", "Show Floor", "global", []),
+  // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there.
+  a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+Shift+P"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
   a("view.space", "Show Space", "global", [], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
-  a("floatingWorkspace.minimize", "Minimize Floating Workspace Panel", "global", []),
+  a("floatingWorkspace.minimize", "Minimize Floating Workspace Panel", "global", ["Mod+Shift+H"]),
   a("zoom.in", "Zoom In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),
   a("zoom.out", "Zoom Out", "global", ["Mod+Minus", "Mod+NumpadSubtract"], { terminalSafe: true }),
   a("zoom.reset", "Reset Size", "global", ["Mod+0"], { terminalSafe: true }),
@@ -118,7 +121,7 @@ export const actions: Action[] = [
   a("tab.openMarkdown", "Open markdown tab", "tabs", ["Mod+Shift+O"]),
   a("tab.close", "Close active tab", "tabs", ["Mod+W"]),
   a("tab.closeAll", "Close all editor tabs", "tabs", ["Mod+Alt+W"]),
-  a("tab.rename", "Rename active tab", "tabs", [], { darwin: ["Mod+R"], group: "workspace-shell" }),
+  a("tab.rename", "Rename active tab", "tabs", ["Mod+Shift+G"], { darwin: ["Mod+R"], group: "workspace-shell" }),
   // T-239 (BROW-019): bound again now that the window reopens a closed browser tab (browser/pages.ts;
   // T-164-b adds terminal tabs through src/terminal/closedTabs.ts). T-543-b had shipped it unbound.
   a("tab.reopenClosed", "Reopen closed tab", "tabs", ["Mod+Shift+T"]),
@@ -137,7 +140,7 @@ export const actions: Action[] = [
   a("browser.back", "Go Back in Browser", "browser", ["Alt+ArrowLeft"]),
   a("browser.forward", "Go Forward in Browser", "browser", ["Alt+ArrowRight"]),
   a("browser.reload", "Reload Browser Page", "browser", ["Mod+R"]),
-  a("browser.hardReload", "Hard Reload Browser Page", "browser", ["Mod+Shift+R"]),
+  a("browser.hardReload", "Reload Browser Page (second key)", "browser", ["Mod+Shift+R"]), // runs browser.reload (sameAs below), so it is not called Hard
   a("browser.focusAddressBar", "Focus Browser Address Bar", "browser", ["Mod+L"]),
   a("browser.grabElement", "Grab Page Element", "browser", ["Mod+C"]),
   a("editor.find", "Find in editor", "editor", ["Mod+F"]),
@@ -171,7 +174,7 @@ export const actions: Action[] = [
   a("terminal.splitRight", "Split terminal right", "terminal", ["Mod+Shift+D"], { darwin: ["Mod+D"], terminalSafe: true }),
   a("terminal.splitDown", "Split terminal down", "terminal", ["Alt+Shift+D"], { darwin: ["Mod+Shift+D"], terminalSafe: true }),
   a("terminal.switchInputSource", "Switch input source / language (native)", "terminal", []),
-  a("view.cycleWorkspaceView", "Cycle Workspace View (Agents / Board / Terminals)", "global", ["Mod+Alt+V"]),
+  a("view.cycleWorkspaceView", "Cycle Workspace View (Agents / Board / Terminals / Tower)", "global", ["Mod+Alt+V"]),
   a("sessions.add", "Add a Session", "global", []),
   a("sessions.remove", "Remove a Session", "global", []),
   a("terminals.focusNextNeedsYou", "Next That Needs You", "global", ["Mod+J"], { darwin: ["Mod+Shift+J"] }),

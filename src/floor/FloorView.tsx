@@ -2,7 +2,8 @@
 // and idle over the chosen range, and six time ticks along the axis.
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
-import { indent, lanes, RANGES, rangeStart, ticks, type Kind, type Range, type Track } from "./timeline";
+import { Segmented } from "../settings/GeneralPage";
+import { indent, lanes, RANGES, rangeStart, staleNote, ticks, type Kind, type Range, type Track } from "./timeline";
 
 const COLOUR: Record<Kind, string> = { working: "var(--working)", needs: "var(--warn)", idle: "var(--line-strong)", unverifiable: "var(--line-subtle)" };
 const WORD: Record<Kind, string> = { working: "Working", needs: "Needs you", idle: "Idle", unverifiable: "Unverifiable" };
@@ -31,6 +32,7 @@ export default function FloorView({ initial, now: fixed, load = () => invoke<Tra
     const id = setInterval(tick, 5_000);
     return () => clearInterval(id);
   }, []);
+  const stale = staleNote(error, tracks.length > 0);
   const from = rangeStart(range, now);
   const shown = lanes(tracks, from, now);
   const pct = (ms: number) => `${(ms / (now - from)) * 100}%`;
@@ -43,11 +45,7 @@ export default function FloorView({ initial, now: fixed, load = () => invoke<Tra
     <section className="floor" aria-label="Floor" style={{ padding: "16px 20px", color: "var(--fg)", overflow: "auto", height: "100%" }}>
       <header style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontSize: 15, flex: 1 }}>Floor</h2>
-        {RANGES.map((r) => (
-          <button key={r.id} type="button" aria-pressed={range === r.id} onClick={() => setRange(r.id)} style={{ fontWeight: range === r.id ? 600 : 400 }}>
-            {r.label}
-          </button>
-        ))}
+        <Segmented<Range> label="Time range" options={RANGES} value={range} onPick={setRange} />
       </header>
       <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--fg-muted)", marginBottom: 8 }}>
         {(Object.keys(WORD) as Kind[]).map((k) => (
@@ -58,9 +56,14 @@ export default function FloorView({ initial, now: fixed, load = () => invoke<Tra
         ))}
       </div>
       {error && <p className="muted">The Floor could not be read: {error}</p>}
+      {stale && (
+        <p className="muted" role="status">
+          {stale}
+        </p>
+      )}
       {!error && shown.length === 0 && <p className="muted">No agent reported any activity in this range.</p>}
       {shown.map(({ track, segs, depth }) => (
-        <div key={track.pane} className="floor-lane" data-depth={depth} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <div key={track.pane} className="floor-lane" data-depth={depth} data-stale={stale ? "" : undefined} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, opacity: stale ? 0.5 : 1 }}>
           <span className="floor-name" title={nameOf(track)} style={{ width: gutter, boxSizing: "border-box", paddingLeft: indent(depth) * 14, flexShrink: 0, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {depth > 0 ? "↳ " : ""}
             {onOpen && track.live ? (

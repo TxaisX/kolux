@@ -12,7 +12,11 @@ export type Tools = {
   gitlabProjects: string[];
   dismissed: Record<string, string>;
 };
-export type Notice = { id: string; text: string };
+/** `action: "settings"` adds an Open Settings button (Settings > Accounts, where an AI program is connected or installed). */
+export type Notice = { id: string; text: string; action?: "settings" };
+
+/** UX audit F2: shown when the tool probe itself could not run, so the screen is never silently empty. */
+export const CHECK_FAILED: Notice = { id: "check-failed", text: "Kolux could not check which tools are installed. Try again." };
 
 /** The GitHub project set a dismissal is recorded under. */
 export const dismissKey = (t: Tools) => t.githubProjects.join(",");
@@ -25,7 +29,7 @@ export function toolNotices(t: Tools, agents: boolean | null): Notice[] {
   if (github && t.gh === "missing") list.push({ id: "gh", text: "GitHub's gh program is not installed. Kolux uses it for pull requests and issues on your GitHub projects." });
   if (github && t.gh === "ok" && t.ghSignedIn === "missing") list.push({ id: "gh-signin", text: "GitHub's gh program is not signed in. Run gh auth login in a terminal, then check again." });
   if (t.gitlabProjects.length > 0 && t.glab === "missing") list.push({ id: "glab", text: "GitLab's glab program is not installed or does not start. Kolux uses it for merge requests on your GitLab projects." });
-  if (agents === false) list.push({ id: "agents", text: "No AI program found on this computer. Install one, such as Claude Code or Codex, then check again." });
+  if (agents === false) list.push({ id: "agents", text: "No AI program found on this computer. Install one, such as Claude Code or Codex, then check again.", action: "settings" });
   const key = dismissKey(t);
   return list.filter((n) => t.dismissed[n.id] !== key);
 }

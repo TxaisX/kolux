@@ -72,3 +72,16 @@ export function exitNote(item: Pick<Item, "exited" | "state">): string | null {
 export function openLabel(item: Pick<Item, "group">): "Answer in Code" | "Open in Code" {
   return item.group === "needs" ? "Answer in Code" : "Open in Code";
 }
+
+/** Whether a key press came from the detail pane (one of its buttons), where Enter and Space belong to that button, not to the list. */
+export function fromDetail(target: { closest?: (selector: string) => unknown } | null | undefined): boolean {
+  return !!target?.closest?.(".detail");
+}
+
+/** The detail's "Changes" line: waiting, no workspace, the read failed (said, never shown as "No files changed"), or the count. */
+export function changesLine(o: { hasCwd: boolean; changed: number | null; staged: number; failed: string | null }): string {
+  if (o.failed) return `Could not read the changes: ${o.failed}`;
+  if (o.changed === null) return o.hasCwd ? "…" : "—";
+  if (o.changed === 0) return "No files changed";
+  return `${o.changed} file${o.changed === 1 ? "" : "s"} changed${o.staged ? `, ${o.staged} staged` : ""}`;
+}

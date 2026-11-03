@@ -7,13 +7,14 @@
 // offers nothing while the window is still loading its workspaces. FIX-2: never told that the window
 // has loaded means still loading; a shell with a program running in it is not offered; End N ends
 // only the sessions its question named.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory } from "./memory";
 import { cleanupCandidates, EndQuestion, endConfirmed, ManageSessions, paneless, sessionsLoaded, type InventoryTab } from "./manage";
-import { committedNote, endNeedsAsk, formatCommitted, formatCpu, groupSessions, RES_COLUMNS, type Resources, type Row, type SessionUsage, type Usage } from "./resources";
+import { committedNote, endNeedsAsk, escapeStep, formatCommitted, formatCpu, groupSessions, RES_COLUMNS, singleFlight, type Resources, type Row, type SessionUsage, type Usage } from "./resources";
 import { bulkQuestion, bulkReport, leftOver, type Bulk, type BulkKind } from "../shell/endAll";
 import BackgroundSessions from "../terminal/BackgroundSessions";
+import { useDialogFocus } from "../chrome/dialogFocus";
 
 const cols = { gridTemplateColumns: RES_COLUMNS };
 
@@ -25,6 +26,13 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   const [data, setData] = useState<Resources | null>(null);
   const [tabs, setTabs] = useState<InventoryTab[] | null>(null);
   const [failed, setFailed] = useState("");
+  // usage-status.md:2: a kill that failed keeps its own message, which only the user (Dismiss) or the next End clears;
+  // the 2 s read clears `failed` on success, so the kill's error cannot live there.
+  const [killError, setKillError] = useState("");
+  const killFailed = (e: unknown) => setKillError(`Could not end the session: ${String(e)}`);
+  // usage-status.md:19: true while an End all / Restart / End N run is going, so a second one cannot start on top.
+  const [running, setRunning] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   const [ending, setEnding] = useState<Row | null>(null);
   // TERM-045's close check per paneless shell: true when a program runs in it; null when it failed.
   const [busy, setBusy] = useState<Record<number, boolean> | null>(null);
@@ -76,8 +84,14 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   const endAll = async () => {
     const confirmed = (asking ?? []).map((c) => c.id);
     setAsking(null);
-    await endConfirmed(confirmed, refresh, (id) => invoke("terminal_kill", { id }).catch((e) => setFailed(String(e))));
-    await refresh();
+    setKillError("");
+    setRunning(true);
+    try {
+      await endConfirmed(confirmed, refresh, (id) => invoke("terminal_kill", { id }).catch(killFailed));
+      await refresh();
+    } finally {
+      setRunning(false);
+    }
   };
   const ask = async (row: Row) => {
     if (endNeedsAsk(await read(), row.id)) setEnding(row);
@@ -95,25 +109,39 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   const runBulk = async () => {
     if (!bulk) return;
     setBulk(null);
-    const ended = await endConfirmed(bulk.ids, () => read().then((r) => r?.sessions ?? []), (id) => invoke("terminal_kill", { id }).catch((e) => setFailed(String(e))));
-    const fresh = await read();
-    setReport(bulkReport(bulk.kind, ended, leftOver(ended, fresh?.sessions ?? null)));
-    await refresh();
+    setKillError("");
+    setRunning(true);
+    try {
+      const ended = await endConfirmed(bulk.ids, () => read().then((r) => r?.sessions ?? []), (id) => invoke("terminal_kill", { id }).catch(killFailed));
+      const fresh = await read();
+      setReport(bulkReport(bulk.kind, ended, leftOver(ended, fresh?.sessions ?? null)));
+      await refresh();
+    } finally {
+      setRunning(false);
+    }
   };
   const bulkQ = bulk ? bulkQuestion(bulk.kind, bulk.ids) : null;
   useEffect(() => {
-    void refresh();
-    const t = setInterval(() => void refresh(), 2000);
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", esc);
-    return () => {
-      clearInterval(t);
-      window.removeEventListener("keydown", esc);
-    };
+    // usage-status.md:11: a tick is skipped while the last read is still running, so slow reads do not pile up.
+    const tick = singleFlight(refresh);
+    void tick();
+    const t = setInterval(() => void tick(), 2000);
+    return () => clearInterval(t);
   }, []);
+  // usage-status.md:8: the popup takes focus, keeps Tab inside and gives focus back; Escape closes the End question
+  // that is open first, and the whole panel only when none is.
+  // The box itself takes focus on open (tabindex -1, not a Tab stop): at mount the figures, and so the buttons, are not drawn yet.
+  useDialogFocus(box, () => {
+    const step = escapeStep({ bulk: bulk !== null, ending: ending !== null, asking: asking !== null });
+    if (step === "bulk") setBulk(null);
+    else if (step === "ending") setEnding(null);
+    else if (step === "asking") setAsking(null);
+    else onClose();
+  }, () => box.current);
   const end = async (row: Row) => {
     setEnding(null);
-    await invoke("terminal_kill", { id: row.id }).catch((e) => setFailed(String(e)));
+    setKillError("");
+    await invoke("terminal_kill", { id: row.id }).catch(killFailed);
     await read();
   };
   const isLoaded = sessionsLoaded(loaded);
@@ -123,12 +151,20 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   return (
     <>
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="menu res-pop" role="dialog" aria-label="Resource Manager">
+      <div ref={box} className="menu res-pop" role="dialog" aria-label="Resource Manager" tabIndex={-1}>
         <div className="res-head">
           <span className="menu-title">Resources</span>
           {data && <span className="res-free">{data.free === null ? "Free memory unknown" : `${formatMemory(data.free)} free${data.total === null ? "" : ` of ${formatMemory(data.total)}`}`}</span>}
         </div>
         {failed && <div className="menu-hint warn">{failed}</div>}
+        {killError && (
+          <div className="menu-hint warn" role="alert" data-kill="error">
+            <span>{killError}</span>{" "}
+            <button className="btn" onClick={() => setKillError("")}>
+              Dismiss
+            </button>
+          </div>
+        )}
         {data && (
           <div className="res-row res-cols" style={cols} aria-hidden="true">
             <span className="res-label">Name</span>
@@ -172,10 +208,10 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
         {data && data.sessions.length === 0 && <div className="menu-hint">No terminal sessions are running.</div>}
         {data && data.sessions.length > 0 && !bulkQ && (
           <div className="res-row res-bulk" data-bulk="offer" style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-            <button className="btn" onClick={() => void askBulk("all")} title="End every terminal session that is running now; asks first">
+            <button className="btn" disabled={running} onClick={() => void askBulk("all")} title="End every terminal session that is running now; asks first">
               End all
             </button>
-            <button className="btn" onClick={() => void askBulk("restart")} title="Kill every terminal pane and start over; asks first (the terminals run inside Kolux, there is no separate service)">
+            <button className="btn" disabled={running} onClick={() => void askBulk("restart")} title="Kill every terminal pane and start over; asks first (the terminals run inside Kolux, there is no separate service)">
               Restart terminals
             </button>
           </div>
@@ -199,7 +235,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
                   <span className="res-fig">{formatMemory(r.bytes)}</span>
                   {committedCell(r)}
                   <span className="res-fig">{formatCpu(r.cpu)}</span>
-                  <button className="btn res-end" onClick={() => void ask(r)} title={`End ${r.name}`}>
+                  <button className="btn res-end" onClick={() => void ask(r)} title={`End ${r.name}`} aria-label={`End ${r.name}`}>
                     End
                   </button>
                 </div>

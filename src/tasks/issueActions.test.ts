@@ -51,4 +51,12 @@ describe("GIT-048 (T-281-b) a change shown at once is put back when GitHub refus
     await runAction({ send: Promise.resolve(), refresh: async () => {}, setBusy: () => {}, setError: () => {}, what: "close", onFail: () => ok.push("put back") });
     expect(ok).toEqual([]);
   });
+
+  it("a refresh that fails after a good write is told, and does not put the change back", async () => {
+    const errors: (string | null)[] = [];
+    const back: string[] = [];
+    await runAction({ send: Promise.resolve(), refresh: () => Promise.reject("offline"), setBusy: () => {}, setError: (e) => errors.push(e), what: "close", onFail: () => back.push("put back") });
+    expect(back).toEqual([]);
+    expect(errors[errors.length - 1]).toMatch(/went through.*offline/);
+  });
 });

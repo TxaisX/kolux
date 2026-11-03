@@ -28,8 +28,6 @@
 .float-panel .none .acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
 .float-panel .btn { font: 12px var(--ui-font); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--button-border); background: none; color: var(--fg); cursor: pointer; }
 .float-panel .btn:hover { border-color: var(--line-focus); }
-.float-panel .ask { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; background: var(--chip-bg); border-bottom: 1px solid var(--line-subtle); font: 12px var(--ui-font); }
-.float-panel .ask .msg { flex: 1; min-width: 160px; }
 .float-panel .note { flex: none; padding: 4px 10px; color: var(--danger); font: 12px var(--ui-font); }
 .float-panel .edge { position: absolute; z-index: 2; touch-action: none; }
 .float-panel .edge.n, .float-panel .edge.s { left: 8px; right: 8px; height: 6px; cursor: ns-resize; }

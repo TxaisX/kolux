@@ -5,9 +5,10 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { AUDIO_TYPES, audioTypeAllowed, CLOSE_TO_TRAY_FIELD, CUSTOM_FIELD, KINDS, loadSound, preparePlan, readNotifications, SOUND_FIELD, SOUNDS, SUPPRESS_FOCUSED_FIELD, VOLUME_FIELD, type Sound } from "./notifications";
+import { AUDIO_TYPES, audioTypeAllowed, CLOSE_TO_TRAY_FIELD, CUSTOM_FIELD, KINDS, loadSound, preparePlan, readNotifications, SOUND_FIELD, SOUNDS, settledValue, SUPPRESS_FOCUSED_FIELD, VOLUME_FIELD, type Sound } from "./notifications";
 import { ALERTS_FIELD, alertsOn } from "../usage/alerts";
 import { useSettings } from "./useSettings";
+import { useLeaveSave } from "./leave";
 import { MASTER_FIELD, masterOn, testOutcome } from "../status/notifyMaster";
 
 type Result = { shown: boolean; blocked: boolean };
@@ -16,6 +17,15 @@ export function NotificationsView({ settings, onSave }: { settings: Record<strin
   const n = readNotifications(settings);
   const [result, setResult] = useState<Result | { error: string } | null>(null);
   const openSystem = () => invoke("open_notification_settings").catch((e) => setResult({ error: String(e) }));
+  // The volume saves when the slider is let go, not on every step of the drag.
+  const [volumeDraft, setVolumeDraft] = useState<number | null>(null);
+  const releaseVolume = () => {
+    const v = settledValue(volumeDraft, n.volume);
+    setVolumeDraft(null);
+    if (v !== null) onSave({ [VOLUME_FIELD]: v });
+  };
+  useLeaveSave(releaseVolume); // leaving the page or closing the window with the slider moved saves it too (SET-036)
+  const volume = volumeDraft ?? n.volume;
   const [fileProblem, setFileProblem] = useState<string | null>(null);
   // APP-007: the close-to-tray switch shows only where closing can hide the window and a tray icon exists.
   const [closeSwitch, setCloseSwitch] = useState(false);
@@ -123,8 +133,8 @@ export function NotificationsView({ settings, onSave }: { settings: Record<strin
         <div className="look-select">
           <span>Volume</span>
           <span className="notif-volume">
-            <input type="range" min={0} max={100} step={5} aria-label="Volume" value={n.volume} onChange={(e) => onSave({ [VOLUME_FIELD]: Number(e.target.value) })} />
-            <output>{n.volume === 0 ? "Silent" : `${n.volume}%`}</output>
+            <input type="range" min={0} max={100} step={5} aria-label="Volume" value={volume} onChange={(e) => setVolumeDraft(Number(e.target.value))} onPointerUp={releaseVolume} onPointerCancel={releaseVolume} onKeyUp={releaseVolume} onBlur={releaseVolume} />
+            <output>{volume === 0 ? "Silent" : `${volume}%`}</output>
           </span>
         </div>
         <p className="conn-detail">The volume covers every sound Kolux plays. The system default sound plays at the system's own volume, and not at all at 0.</p>

@@ -961,6 +961,17 @@ pub fn plan(places: &Places, picks: &[Pick]) -> Result<Vec<Planned>, String> {
             continue;
         }
         let file = PathBuf::from(&pick.path);
+        // T-666: a skill on another computer is refused by its text (or a link's target) before
+        // anything below resolves it, which would make Windows sign in to that machine. A WSL path
+        // by its text is answered first, so its share is not touched either.
+        if skills::wsl_text(&file) {
+            out.push(blocked("wsl"));
+            continue;
+        }
+        if skills::remote_path(&file) {
+            out.push(blocked("outside"));
+            continue;
+        }
         // DT-C94: a skill in a project stored in WSL, by any spelling or a drive or link that leads
         // there, is refused before it is planned.
         if skills::in_wsl(&file) {
@@ -1565,6 +1576,47 @@ mod tests {
 
     fn kinds(p: &Planned) -> Vec<&'static str> {
         p.items.iter().map(|i| i.kind).collect()
+    }
+
+    #[test]
+    fn t666_a_workspace_or_a_skill_on_another_computer_counts_as_outside_before_anything_resolves_it() {
+        let home = temp("t666").join("home");
+        std::fs::create_dir_all(home.join(".claude").join("skills")).unwrap();
+        // A workspace on a share: none of its folders is a place a delete acts in.
+        let at = skills::places(&env(&home), Some(Path::new(r"\\kolux-unc-test.invalid\share\proj")));
+        assert!(at.deletable.iter().chain(&at.plugin).all(|p| !skills::remote_path(p)), "{:?}", at.deletable);
+        assert!(at.deletable.iter().any(|p| p.starts_with(&home)), "the home folders stay: {:?}", at.deletable);
+        // A pick on a share is "outside", not "gone": refused by its text before it is looked up.
+        let at = places(&[&home], &[]);
+        for p in [r"\\kolux-unc-test.invalid\share\skills\alpha\SKILL.md", "//kolux-unc-test.invalid/share/skills/alpha/SKILL.md", r"\\?\UNC\kolux-unc-test.invalid\share\skills\alpha\SKILL.md"] {
+            let got = plan(&at, &[Pick { path: p.into(), updated: None }]).unwrap();
+            assert_eq!(got[0].blocked, Some("outside"), "{p}");
+        }
+        // A project stored in WSL keeps its own answer.
+        let wsl = plan(&at, &[Pick { path: r"\\wsl.localhost\Ubuntu\home\u\.claude\skills\a\SKILL.md".into(), updated: None }]).unwrap();
+        assert_eq!(wsl[0].blocked, Some("wsl"));
+        // A plugin installed on a share is not a plugin folder the delete resolves.
+        let claude = home.join(".claude");
+        std::fs::create_dir_all(claude.join("plugins")).unwrap();
+        std::fs::write(claude.join("settings.json"), r#"{"enabledPlugins":{"p@m":true}}"#).unwrap();
+        std::fs::write(claude.join("plugins").join("installed_plugins.json"), r#"{"plugins":{"p@m":[{"scope":"user","installPath":"\\\\kolux-unc-test.invalid\\share\\p"}]}}"#).unwrap();
+        let at = skills::places(&env(&home), None);
+        assert_eq!(at.plugin.len(), 1, "only the Codex cache on this computer: {:?}", at.plugin);
+        assert!(at.plugin.iter().all(|p| !skills::remote_path(p)), "{:?}", at.plugin);
+        // A home folder on a share (a redirected profile) gives no place to delete in.
+        let far = skills::places(&env(Path::new(r"\\kolux-unc-test.invalid\share\home")), None);
+        assert!(far.deletable.is_empty(), "{:?}", far.deletable);
+        // A skill reached through a local link to a share is "outside" too (Windows: needs link rights).
+        #[cfg(windows)]
+        {
+            let link = claude.join("skills").join("far");
+            if std::os::windows::fs::symlink_dir(r"\\kolux-unc-test.invalid\share\skills", &link).is_ok() {
+                let got = plan(&places(&[&home], &[]), &[Pick { path: skills::plain(&link.join(SKILL_FILE)), updated: None }]).unwrap();
+                assert_eq!(got[0].blocked, Some("outside"), "through a link");
+            } else {
+                eprintln!("t666: no symlink rights here, the link case was not run");
+            }
+        }
     }
 
     #[test]

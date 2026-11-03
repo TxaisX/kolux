@@ -35,10 +35,16 @@ Rules: a process tree is counted under one terminal only, so a subtree already c
   memory follows each system's own measure (memory pressure on macOS, available memory on Linux);
   ending a session that is not shown in any pane leaves every other session alone; when the app's
   own process row is missing, its working-set figure stands in; CPU figures are clamped to the
-  machine's total core capacity, so a bad sample never shows an impossible percentage.
+  machine's total core capacity, so a bad sample never shows an impossible percentage; a failed End
+  keeps its error until the user dismisses it or ends something else; while an End all runs, End all
+  and Restart terminals are greyed out; Escape closes the popover's own open End question before the
+  popover (the background sessions' End question still closes the whole popover, DT-C105); the
+  popover takes focus and gives it back; a refresh is skipped while the last read still runs (DT-C105).
 Acceptance:
   - [x] Open the popover with three sessions running → three session rows, each with a memory figure. (cards; evidence/cards-APP-054.txt)
   - [x] Confirm ending one of them → only that session stops; the other two keep running. (cards; evidence/cards-APP-054.txt)
+  - [x] An End that fails → its error stays past the next refresh; Escape with one of the popover's own End
+        questions open closes only the question. (background sessions' question: known limit, DT-C105) (unit; evidence/T-669.txt)
 Compat: —
 Source: D-19-054
 
@@ -118,17 +124,21 @@ Source: D-19-024
 ### APP-025 · A downloaded update waits behind a small ready pop-up and installs on restart or quit
 Tier: P0 · Pushed: 8 · State at 0.15.0: live
 User does: carries on working after an update finished downloading in the background.
-User sees: a small pop-up in the bottom-left corner saying the new version is ready, with Restart to
-  update and a close control; ignoring it is fine, because the update installs the next time the
+User sees: a small pop-up in the bottom-left corner saying the new version is ready, with Update now
+  (which asks first, since T-675) and Later; ignoring it is fine, because the update installs the next time the
   app quits.
 Rules: the download starts by itself; the pop-up appears once per version per launch and stays until
   the user acts on it or closes it; it stays silent if the update card is on screen for that same
   update; it goes away if the update stops being ready; the app never restarts itself to update,
   only on the user's click or quit.
+  Since T-675 (DT-C111): Update now on the pop-up, or Restart to update on the card, first asks
+  "Restart to update?" (Restart now / Cancel), because a restart ends every open terminal and agent.
 Acceptance:
   - [x] Let an update download in the background → the pop-up appears once; close it → it does not
         come back this launch. (cards; evidence/cards-APP-025.txt)
   - [ ] Quit without clicking anything → the next launch runs the new version.
+  - [x] Click Update now on the pop-up, or Restart to update on the card → "Restart to update?" asks first;
+        Cancel leaves everything running, Restart now restarts and the button reads Restarting… until the app ends. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-025
 
@@ -143,14 +153,18 @@ Rules: only checks the user asked for, and download errors, bring up the card, n
   click and never installs on its own; Escape collapses the card, Enter runs its main action, and
   the reduced-motion preference turns its animation off; clicking again during a running check does
   not start a second one; a check that never reaches the updater times out and says so; the first
-  time an update is offered or downloading, a small dismissible tip above the card reassures the
-  user that running terminal sessions carry on, and it is gone for good once dismissed or once a
+  time an update is offered or downloading, a small dismissible tip above the card warns that
+  restarting to update closes open terminals and agents and that Kolux RS asks first, and it is gone for good once dismissed or once a
   download starts; a check requested while a quiet background check is already running takes that
   check over, so its result shows in the card.
+  Since T-675 (DT-C111): the tip used to say running terminal sessions carry on; it now gives the warning
+  above. A check asked for before the status has loaded waits and then runs, and a Check after a failed
+  status load fails with the reason; Escape on the ready pop-up is Later.
 Acceptance:
   - [x] On the newest version, click Check for Updates → the card reports up to date and closes itself. (cards; evidence/cards-APP-026.txt)
   - [x] With an update offered, dismiss the card → it stays away for that version; publish a newer
         one → it returns. (cards; evidence/cards-APP-026.txt)
+  - [x] Offer an update for the first time → the tip says a restart closes open terminals and agents. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-026
 
@@ -489,9 +503,12 @@ Rules: only the newest pending report prompts, and only once, after which it is 
   Help → Report Crash reopens the newest report even after dismissal; attaching logs copies a
   scrubbed log bundle to the clipboard for pasting into the issue; issue titles are marked as crash
   reports; clipboard failures show a toast instead of failing quietly.
+  Not now has focus when the report opens, Escape closes it from anywhere in the window, and Copy
+  Details stays off until the details have loaded.
 Acceptance:
   - [ ] Crash the interface process and relaunch → the dialog appears once; relaunch again → no dialog.
   - [ ] Dismiss it, then choose Help → Report Crash → the same report opens.
+  - [ ] Open the crash report, press Escape → it closes. (evidence/T-678.txt)
 Compat: —
 Source: D-19-039
 
@@ -524,10 +541,13 @@ Rules: a burst of crashes within a short window sets it off, at most once; the s
   before the user answers the prompt, and Keep Running removes it; on the recovered launch,
   staying in safe graphics is preselected and the choice is remembered; the flag is cleared when
   the app version changes and ignored outside Windows.
+  when Restart in safe graphics or Try hardware again fails, one line under the buttons says so.
 Acceptance:
   - [ ] Simulate three graphics crashes inside a minute → the restart prompt appears; accept → the app
         relaunches in safe graphics.
   - [ ] Update the app → hardware acceleration is tried again.
+  - [ ] Make the safe-graphics restart fail → one line under the buttons says it could not restart.
+        (evidence/T-678.txt)
 Compat: —
 Source: D-19-043
 
@@ -609,8 +629,8 @@ Source: D-19-008
 ### APP-009 · Standard menu bar: File, Edit, View, Window, Help
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens the menus in the menu bar.
-User sees: File (Settings, Exit); View (reload, force reload, developer tools, reset size, zoom in,
-  zoom out, full screen); Window (minimise, zoom); Help (report a crash, explore the app, getting
+User sees: File (Settings, Exit); View (force reload, developer tools in debug builds only since
+  T-673, reset size, zoom in, zoom out, full screen); Window (minimise, zoom); Help (report a crash, explore the app, getting
   started, plus About and Check for Updates on Windows and Linux).
 Rules: on macOS the app menu holds About, Check for Updates, Settings, Services, hide and quit in
   place of File; Help → Report Crash reopens the newest crash report even if it was dismissed; menu
@@ -625,6 +645,8 @@ Rules: on macOS the app menu holds About, Check for Updates, Settings, Services,
 Acceptance:
   - [ ] On Windows open Help → Check for Updates is there and starts a check that shows the update card.
   - [ ] View → zoom in enlarges the interface; reset size returns it to normal.
+  - [x] View has no plain Reload (Force Reload stays), Developer Tools only in a debug build, and Help →
+        Report Crash on every platform. (T-673; evidence/T-673.txt)
 Compat: —
 Source: D-19-009
 
@@ -706,6 +728,8 @@ Acceptance:
   - [ ] Send feedback with some text → the browser opens a new-issue page whose title begins
         [Feedback] and whose body includes the version.
   - [ ] Tick Submit anonymously → the body has no GitHub login.
+  - [x] Press Open on GitHub twice quickly → one new-issue page opens (the button reads Opening… and keeps
+        focus); close the box → focus goes back to what opened it. (T-675; evidence/T-675.txt)
 Compat: issues go to the owner's public repository TxaisX/kolux, through GitHub's own new-issue page
   with the title and body passed in its address.
 Source: D-19-037
@@ -946,6 +970,8 @@ Rules: PNG, JPEG, WebP or GIF only, at most four images of at most 8 MB each; cr
 Acceptance:
   - [ ] Attach five images → the fifth is refused.
   - [ ] Attach one PNG and submit → pasting into the issue page inserts that image.
+  - [x] Add screenshot is a real button (Tab reaches it, Enter presses it) → the file picker opens; a picked
+        screenshot is attached and its remove button names the file. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-038
 

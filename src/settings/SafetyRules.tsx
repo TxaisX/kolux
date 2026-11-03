@@ -68,23 +68,28 @@ export function resetProject(s: Settings, root: string): Settings {
 
 export const newId = () => `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
+/** Saves a new rule's patch: null once it is stored, or the sentence for a refused save (the typed text stays in the form). */
+export async function saveRule(save: (patch: Settings) => unknown, patch: Settings): Promise<string | null> {
+  return (await save(patch)) === false ? "The rule was not saved. What you typed is kept: press Add rule to try again." : null;
+}
+
 /** A reset button that asks on the page itself (no dialog can open here). */
-export function ResetButton({ label, onReset }: { label: string; onReset: () => unknown }) {
+export function ResetButton({ label, onReset, yes = "Yes, reset", keep = "Keep", ariaLabel, className = "btn", title }: { label: string; onReset: () => unknown; yes?: string; keep?: string; ariaLabel?: string; className?: string; title?: string }) {
   const [asking, setAsking] = useState(false);
   if (!asking)
     return (
-      <button type="button" className="btn" data-reset onClick={() => setAsking(true)}>
+      <button type="button" className={className} title={title} data-reset aria-label={ariaLabel} onClick={() => setAsking(true)}>
         {label}
       </button>
     );
   return (
-    <span data-reset-confirm role="group" aria-label={label}>
+    <span data-reset-confirm role="group" aria-label={ariaLabel ?? label}>
       Sure?{" "}
       <button type="button" className="btn danger" onClick={() => (setAsking(false), onReset())}>
-        Yes, reset
+        {yes}
       </button>{" "}
       <button type="button" className="btn" onClick={() => setAsking(false)}>
-        Keep
+        {keep}
       </button>
     </span>
   );
@@ -115,7 +120,9 @@ export function SafetyRulesView({ settings, rules, projects, scope, setScope, sa
     const why = await check(kind, pattern);
     setProblem(why);
     if (why) return;
-    await save(addRule(settings, scope, { id: newId(), name: name.trim(), kind, pattern: pattern.trim() }, dirs));
+    const refused = await saveRule(save, addRule(settings, scope, { id: newId(), name: name.trim(), kind, pattern: pattern.trim() }, dirs));
+    // A refused save keeps what was typed, so one more press tries again (the page above says why).
+    if (refused) return setProblem(refused);
     setPattern("");
     setName("");
   };
@@ -150,9 +157,7 @@ export function SafetyRulesView({ settings, rules, projects, scope, setScope, sa
         {own.map((r) => (
           <li key={r.id} data-custom={r.id}>
             <code>{r.pattern}</code> <small>({KINDS.find((k) => k.kind === r.kind)?.label ?? r.kind})</small> {r.name && <span>{r.name}</span>}{" "}
-            <button type="button" className="btn" aria-label={`Remove ${r.name || r.pattern}`} onClick={() => void save(removeRule(settings, scope, r.id))}>
-              Remove
-            </button>
+            <ResetButton label="Remove" ariaLabel={`Remove ${r.name || r.pattern}`} yes="Yes, remove" onReset={() => void save(removeRule(settings, scope, r.id))} />
           </li>
         ))}
       </ul>
@@ -201,7 +206,7 @@ export function SafetyRules({ settings, rules, save }: { settings: Settings; rul
 
 const when = (ms: number) => new Date(ms).toLocaleString();
 
-export function SafetyAttemptsView({ attempts, clear }: { attempts: Attempt[]; clear: () => unknown }) {
+export function SafetyAttemptsView({ attempts, clear, error = null }: { attempts: Attempt[]; clear: () => unknown; error?: string | null }) {
   return (
     <section className="conn-card" data-section="attempts" aria-label="Recent attempts">
       <h2 className="conn-name">Recent attempts</h2>
@@ -223,15 +228,25 @@ export function SafetyAttemptsView({ attempts, clear }: { attempts: Attempt[]; c
           ))}
         </ul>
       )}
-      <button type="button" className="btn" data-clear disabled={attempts.length === 0} onClick={() => void clear()}>
-        Clear
-      </button>
+      {attempts.length === 0 ? (
+        <button type="button" className="btn" data-clear disabled>
+          Clear
+        </button>
+      ) : (
+        <ResetButton label="Clear" ariaLabel="Clear recent attempts" yes="Yes, clear" onReset={() => void clear()} />
+      )}
+      {error && (
+        <p className="conn-detail warn" role="alert" data-clear-error>
+          {error}
+        </p>
+      )}
     </section>
   );
 }
 
 export function SafetyAttempts() {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const load = () => invoke<Attempt[]>("protected_attempts").then(setAttempts, () => {});
     void load();
@@ -239,6 +254,6 @@ export function SafetyAttempts() {
     const off = listen("agent-status", () => void load());
     return () => void off.then((f) => f());
   }, []);
-  const clear = () => invoke("protected_attempts_clear").then(() => setAttempts([]), () => {});
-  return <SafetyAttemptsView attempts={attempts} clear={clear} />;
+  const clear = () => invoke("protected_attempts_clear").then(() => (setError(null), setAttempts([])), (e) => setError(`The list was not cleared: ${String(e)}`));
+  return <SafetyAttemptsView attempts={attempts} clear={clear} error={error} />;
 }

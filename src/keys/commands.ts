@@ -36,7 +36,7 @@ export function windowCommand(id: string, w: WindowCalls): boolean {
     case "workspace.rename": // PROJ-059: the sidebar starts the inline rename of the workspace in front
       w.renameWorkspace();
       return true;
-    case "app.forceReload": // APP-009: the same reload as the View menu's Force Reload (menu.rs Route::Reload)
+    case "app.forceReload": // APP-009: the same reload as the View menu's Force Reload (menu.rs sends it to the page, UX lane C)
       w.reload();
       return true;
   }

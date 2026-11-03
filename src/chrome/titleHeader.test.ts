@@ -45,7 +45,7 @@ test("Classic renders the title header with its left cell at the sidebar width a
   for (const control of ["Minimize", "Maximize", "Close"]) expect(html).toContain(`title="${control}"`);
   expect(html).toContain('class="searchbox"');
   // the header's left controls are all there
-  for (const t of ["Kolux RS", "Menu", "Hide sidebar", "Forward"]) expect(html).toContain(t);
+  for (const t of ["Kolux RS", "Terminal zoom", "Hide sidebar", "Forward"]) expect(html).toContain(t);
   expect(bar(true, false, 333)).toContain(`style="width:${HEADER_MIN}px"`);
 });
 
