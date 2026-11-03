@@ -30,6 +30,8 @@ export default function PortsItem({ active, workspaces }: Props) {
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const wasOpen = useRef(false);
+  // The row key of a Stop that was pressed with keyboard focus on it: when that row disappears focus would fall to the page body.
+  const stopFocus = useRef<string | null>(null);
   const latest = useRef({ active, workspaces });
   latest.current = { active, workspaces };
 
@@ -46,6 +48,13 @@ export default function PortsItem({ active, workspaces }: Props) {
     else if (wasOpen.current) restoreFocus(button.current, (sel) => document.querySelector<HTMLElement>(sel));
     wasOpen.current = open;
   }, [open]);
+
+  useEffect(() => {
+    const k = stopFocus.current;
+    if (k === null || !open || view.rows.some((r) => rowKey(r) === k)) return;
+    stopFocus.current = null;
+    menu.current?.focus();
+  }, [view.rows, open]);
 
   useEffect(() => {
     if (active === null) return setView({ rows: [], error: null });
@@ -66,12 +75,21 @@ export default function PortsItem({ active, workspaces }: Props) {
   if (active === null) return null;
   const rect = open ? button.current?.getBoundingClientRect() : null;
   const say = (text: string, bad = false) => (setNote(text), setNoteBad(bad));
-  const stop = (r: PortRow) => {
+  const stop = (r: PortRow, focused: boolean) => {
     const k = rowKey(r);
+    // aria-disabled, not disabled: a disabled button drops the focus it holds.
+    if (stopping.includes(k)) return Promise.resolve();
+    stopFocus.current = focused ? k : null;
     setStopping((s) => [...s, k]);
     return invoke<StopOutcome>("ports_stop", stopArgs(workspaces, active, r))
-      .then((outcome) => say(stopNote(r.port, outcome)))
-      .catch((err) => say(`Could not stop port ${r.port}: ${err}`, true))
+      .then((outcome) => {
+        if (outcome !== "stopped") stopFocus.current = null;
+        say(stopNote(r.port, outcome));
+      })
+      .catch((err) => {
+        stopFocus.current = null;
+        say(`Could not stop port ${r.port}: ${err}`, true);
+      })
       .finally(() => setStopping((s) => s.filter((x) => x !== k)));
   };
   const openRow = (r: PortRow, e: MouseEvent) => {
@@ -90,7 +108,7 @@ export default function PortsItem({ active, workspaces }: Props) {
           <div ref={menu} tabIndex={-1} className="menu ports-menu" role="dialog" aria-label="Ports" style={{ left: Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - 380)), bottom: Math.max(8, window.innerHeight - (rect?.top ?? 0) + 4), minWidth: 340 }}>
             <div className="menu-title">Ports</div>
             {view.error && <div className="note error">{view.error}{view.rows.length > 0 ? " Showing the last list." : ""}</div>}
-            {note && <div className={noteBad ? "note error" : "note"} role="status">{note}</div>}
+            <div role="status">{note && <div className={noteBad ? "note error" : "note"}>{note}</div>}</div>
             {view.rows.length === 0 && !view.error && <div className="sb-hint">Nothing in this workspace is listening on a port.</div>}
             {view.rows.map((r) => (
               <div key={rowKey(r)} className="menu-item ports-row" data-port={r.port} data-external={r.external}>
@@ -102,7 +120,7 @@ export default function PortsItem({ active, workspaces }: Props) {
                   Open
                 </button>
                 {!r.external && (
-                  <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" disabled={stopping.includes(rowKey(r))} onClick={() => void stop(r)}>
+                  <button className="btn" aria-label={`Stop port ${r.port}`} title="Stop the process listening here" aria-disabled={stopping.includes(rowKey(r)) ? true : undefined} onClick={(e) => void stop(r, document.activeElement === e.currentTarget)}>
                     {stopping.includes(rowKey(r)) ? "Stopping…" : "Stop"}
                   </button>
                 )}

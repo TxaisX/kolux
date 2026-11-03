@@ -10,6 +10,8 @@ import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import Ask from "../chrome/Ask";
 import { locale } from "../language";
+import { restoreFocus } from "../shell/paletteCaps";
+import { menuStep } from "../terminal/LinkActionMenu";
 import "./artifacts.css";
 
 export type Artifact = {
@@ -76,14 +78,11 @@ export function viewerUrl(a: Pick<Artifact, "id" | "page">, windows = navigator.
   return `${base}/${a.id}/${a.page.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-/** Which row an arrow key lands on in a list of `count` rows: Up and Down step (and stop at the ends), Home and End jump. */
-export function stepRow(count: number, from: number, key: string): number | null {
-  if (count === 0) return null;
-  if (key === "ArrowDown") return Math.min(count - 1, from + 1);
-  if (key === "ArrowUp") return Math.max(0, from - 1);
-  if (key === "Home") return 0;
-  if (key === "End") return count - 1;
-  return null;
+/** The row to focus once `removed` is gone from `order`: the one after it, else the one before, else none. */
+export function focusAfterRemove(order: string[], removed: string): string | null {
+  const at = order.indexOf(removed);
+  if (at < 0) return null;
+  return order[at + 1] ?? order[at - 1] ?? null;
 }
 
 /** How long a page may take to load before the viewer says so. */
@@ -99,6 +98,12 @@ export default function ArtifactsPage({ onToast }: Props) {
   const [slow, setSlow] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Artifact | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
+  // Focus bookkeeping for the Remove confirm: the "x" that opened it, the rows' select buttons, and where focus goes once a removal's list is drawn.
+  const opener = useRef<HTMLElement | null>(null);
+  const wasAsking = useRef(false);
+  const rowButtons = useRef(new Map<string, HTMLButtonElement>());
+  const search = useRef<HTMLInputElement>(null);
+  const refocus = useRef<{ id: string | null } | null>(null);
 
   const refresh = () => invoke<Artifact[]>("artifacts_list").then(setList, (e) => onToast(`Could not read the library: ${e}`));
   useEffect(() => {
@@ -127,6 +132,25 @@ export default function ArtifactsPage({ onToast }: Props) {
   }, [selected, loaded]);
 
   const shown = useMemo(() => group((list ?? []).filter((a) => matches(a.title, query))), [list, query]);
+
+  // Ask unmounts when it closes, and focus would fall to the page body (a second Escape then leaves the page). A back-out hands
+  // focus to the "x" that opened it; a confirmed removal hands it on to a neighbouring row once the new list is drawn (below).
+  useEffect(() => {
+    if (removing) wasAsking.current = true;
+    else if (wasAsking.current) {
+      wasAsking.current = false;
+      const from = opener.current;
+      if (!refocus.current) queueMicrotask(() => restoreFocus(from, (sel) => document.querySelector<HTMLElement>(sel)));
+    }
+  }, [removing]);
+  useEffect(() => {
+    const want = refocus.current;
+    if (!want) return;
+    refocus.current = null;
+    const row = want.id ? rowButtons.current.get(want.id) : undefined;
+    if (row) row.focus();
+    else search.current?.focus();
+  }, [list]);
   const current = list?.find((a) => a.id === selected) ?? null;
 
   const add = async () => {
@@ -155,22 +179,29 @@ export default function ArtifactsPage({ onToast }: Props) {
     }
   };
   const remove = async (a: Artifact) => {
+    // Where focus lands after the list is redrawn without it: the next row, else the previous, else the search box.
+    refocus.current = { id: focusAfterRemove(shown.flatMap((s) => s.items.map((x) => x.id)), a.id) };
     try {
       await invoke("artifact_remove", { id: a.id });
       if (selected === a.id) setSelected(null);
       await refresh();
     } catch (e) {
+      refocus.current = null;
       onToast(`Could not remove ${a.title}: ${e}`);
+      const from = opener.current;
+      queueMicrotask(() => restoreFocus(from, (sel) => document.querySelector<HTMLElement>(sel)));
     }
   };
   const pick = (id: string) => (setSelected(id), setLoaded(null));
   const arrows = (e: KeyboardEvent<HTMLDivElement>) => {
     const rows = [...e.currentTarget.querySelectorAll<HTMLElement>("button.art-row")];
-    const to = stepRow(rows.length, rows.indexOf(e.target as HTMLElement), e.key);
+    const to = menuStep(rows.length, rows.indexOf(e.target as HTMLElement), e.key);
     if (to === null || !rows.includes(e.target as HTMLElement)) return;
     e.preventDefault();
     rows[to].focus();
   };
+  const framed = current?.state === "ok" && current.stored && view(current.kind) === "frame";
+  const loadingText = !current || !framed || loaded === current.id ? "" : slow === current.id ? "This page is taking a long time to load. It may be empty or broken." : "Loading…";
   const openFile = (a: Artifact) => invoke("open_path", { path: a.origin }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
 
   return (
@@ -195,7 +226,7 @@ export default function ArtifactsPage({ onToast }: Props) {
             Add artifact
           </button>
         </div>
-        <input className="picker-input" placeholder="Search titles" aria-label="Search artifacts" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input ref={search} className="picker-input" placeholder="Search titles" aria-label="Search artifacts" value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="art-list" role="group" aria-label="Saved artifacts" onKeyDown={arrows}>
           {list && list.length === 0 && <div className="menu-hint">No artifacts yet. Pages and files your agents make land here, or add one yourself.</div>}
           {list && list.length > 0 && shown.length === 0 && <div className="menu-hint">No titles hold every word of “{query.trim()}”.</div>}
@@ -205,7 +236,7 @@ export default function ArtifactsPage({ onToast }: Props) {
               <div role="list" aria-label={s.project} className="art-items">
                 {s.items.map((a) => (
                   <div key={a.id} role="listitem" className="art-item">
-                    <button type="button" aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => pick(a.id)}>
+                    <button type="button" ref={(el) => void (el ? rowButtons.current.set(a.id, el) : rowButtons.current.delete(a.id))} aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => pick(a.id)}>
                       <span className="art-title">
                         <span className="name">{a.title}</span>
                         {a.kind !== "page" && <span className="preview-tag">{extText(a.page)}</span>}
@@ -216,7 +247,7 @@ export default function ArtifactsPage({ onToast }: Props) {
                         {[a.project ?? (a.source === "hand" ? "Added by hand" : "An agent"), a.session && "session " + a.session.slice(0, 8), new Date(a.added).toLocaleString(locale(), { dateStyle: "medium", timeStyle: "short" }), sizeText(a.size)].filter(Boolean).join(" · ")}
                       </span>
                     </button>
-                    <button type="button" className="ib art-remove" title="Remove from library" aria-label={`Remove ${a.title}`} onClick={() => setRemoving(a)}>
+                    <button type="button" className="ib art-remove" title="Remove from library" aria-label={`Remove ${a.title}`} onClick={(e) => (void (opener.current = e.currentTarget), setRemoving(a))}>
                       ×
                     </button>
                   </div>
@@ -227,6 +258,8 @@ export default function ArtifactsPage({ onToast }: Props) {
         </div>
       </div>
       <div className="art-view">
+        {/* Mounted before its text appears (a live region added with its text may go unannounced); empty, it takes no room. */}
+        <div role="status" className={loadingText ? `art-loading menu-hint${slow === current?.id ? " art-slow" : ""}` : undefined}>{loadingText}</div>
         {!current && <div className="empty"><p>Pick an artifact to view it here.</p></div>}
         {current?.state === "remote" && <div className="empty"><h2>{current.title}</h2><p>This page is on a machine this computer cannot read (WSL or SSH).</p></div>}
         {current?.state === "unavailable" && <div className="empty"><h2>{current.title}</h2><p>This page is on a network share, which Kolux never opens.</p></div>}
@@ -241,8 +274,6 @@ export default function ArtifactsPage({ onToast }: Props) {
         )}
         {current?.state === "ok" && current.stored && view(current.kind) === "frame" && (
           <>
-            {loaded !== current.id && slow !== current.id && <div className="art-loading menu-hint" role="status">Loading…</div>}
-            {loaded !== current.id && slow === current.id && <div className="art-loading art-slow menu-hint" role="status">This page is taking a long time to load. It may be empty or broken.</div>}
             <iframe
               // A republished page has a newer time: show the new version.
               key={`${current.id}-${current.added}`}

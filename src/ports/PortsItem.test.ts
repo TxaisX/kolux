@@ -1,14 +1,14 @@
 // The Ports popover on the small DOM: named buttons, a Stop that cannot be pressed twice and says when it failed,
 // Escape that closes it with focus handed back to the trigger.
-import { createElement } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { type FakeDocument, type FakeNode, FakeNode as Node, click, find, installDom, mount, settle, until } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ stop: null as null | { resolve: (v: string) => void; reject: (e: string) => void } }));
+const h = vi.hoisted(() => ({ stop: null as null | { resolve: (v: string) => void; reject: (e: string) => void }, rows: [] as unknown[], stops: 0 }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string) => {
-    if (cmd === "ports_list") return Promise.resolve([{ port: 5173, addr: "127.0.0.1", pid: 9, external: false, started: "t", terminal: 7 }]);
-    if (cmd === "ports_stop") return new Promise((resolve, reject) => (h.stop = { resolve, reject }));
+    if (cmd === "ports_list") return Promise.resolve(h.rows);
+    if (cmd === "ports_stop") return new Promise((resolve, reject) => (h.stops++, (h.stop = { resolve, reject })));
     return Promise.resolve(null);
   },
 }));
@@ -31,8 +31,11 @@ beforeEach(() => {
   });
   Object.assign(Node.prototype, { getBoundingClientRect: () => ({ left: 10, top: 780 }), isConnected: true, focus() { focused.push(this); } });
   h.stop = null;
+  h.stops = 0;
+  h.rows = [{ port: 5173, addr: "127.0.0.1", pid: 9, external: false, started: "t", terminal: 7 }];
 });
 afterEach(async () => {
+  vi.useRealTimers();
   await unmount();
   unmount = async () => {};
 });
@@ -56,11 +59,15 @@ test("Open and Stop name their port, and Stop is off while it runs and then repo
   expect(labelled(c, "Open port 5173")).toBeTruthy();
   await click(c, labelled(c, "Stop port 5173"));
   const stop = labelled(c, "Stop port 5173");
-  expect(stop.attrs.disabled).toBeDefined();
+  // aria-disabled, not disabled: a disabled button drops the focus it holds
+  expect(stop.attrs["aria-disabled"]).toBe("true");
+  expect(stop.attrs.disabled).toBeUndefined();
   expect(stop.textContent).toBe("Stopping…");
+  await click(c, stop);
+  expect(h.stops).toBe(1);
   h.stop!.reject("refused");
   await until(() => c.textContent.includes("Could not stop port 5173: refused"));
-  expect(labelled(c, "Stop port 5173").attrs.disabled).toBeUndefined();
+  expect(labelled(c, "Stop port 5173").attrs["aria-disabled"]).toBeUndefined();
   expect(find(c, (n) => n.localName === "div" && String(n.attrs.className ?? n.attrs.class ?? "") === "note error")).toHaveLength(1);
 });
 
@@ -76,4 +83,50 @@ test("Escape closes the popover and gives focus back to the trigger", async () =
   expect(e.stopPropagation).toHaveBeenCalled();
   expect(focused[focused.length - 1]).toBe(trigger(c));
   expect(keydown.length).toBe(0);
+});
+
+test("the status region is mounted before a note fills it", async () => {
+  const c = await page();
+  await click(c, trigger(c));
+  await until(() => !!labelled(c, "Stop port 5173"));
+  const status = find(c, (n) => n.attrs.role === "status")[0];
+  expect(status).toBeTruthy();
+  expect(status.textContent).toBe("");
+  await click(c, labelled(c, "Stop port 5173"));
+  h.stop!.reject("refused");
+  await until(() => status.textContent.includes("Could not stop port 5173: refused"));
+  expect(find(c, (n) => n.attrs.role === "status")[0]).toBe(status);
+});
+
+test("when the row whose Stop had focus disappears, focus moves to the popover", async () => {
+  const c = await page();
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  await click(c, trigger(c));
+  await until(() => !!labelled(c, "Stop port 5173"));
+  doc.activeElement = labelled(c, "Stop port 5173");
+  await click(c, labelled(c, "Stop port 5173"));
+  focused.length = 0;
+  h.stop!.resolve("stopped");
+  h.rows = [];
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000);
+  });
+  await until(() => !labelled(c, "Stop port 5173"));
+  await until(() => focused.includes(dialog(c)));
+});
+
+test("a Stop that was not focused leaves focus alone when its row goes", async () => {
+  const c = await page();
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  await click(c, trigger(c));
+  await until(() => !!labelled(c, "Stop port 5173"));
+  await click(c, labelled(c, "Stop port 5173"));
+  focused.length = 0;
+  h.stop!.resolve("stopped");
+  h.rows = [];
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000);
+  });
+  await until(() => !labelled(c, "Stop port 5173"));
+  expect(focused).not.toContain(dialog(c));
 });

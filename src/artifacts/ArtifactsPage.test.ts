@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extText, group, matches, section, sizeText, view, viewerUrl } from "./ArtifactsPage";
+import { extText, focusAfterRemove, group, matches, section, sizeText, view, viewerUrl } from "./ArtifactsPage";
 import type { Artifact } from "./ArtifactsPage";
 
 const art = (over: Partial<Artifact>): Artifact => ({
@@ -52,16 +52,11 @@ describe("Artifacts library (SKILL-036)", () => {
   });
 });
 
-describe("arrow keys in the library list", () => {
-  it("step one row, stop at the ends, jump with Home and End, and ignore other keys", async () => {
-    const { stepRow } = await import("./ArtifactsPage");
-    expect(stepRow(3, 0, "ArrowDown")).toBe(1);
-    expect(stepRow(3, 2, "ArrowDown")).toBe(2);
-    expect(stepRow(3, 0, "ArrowUp")).toBe(0);
-    expect(stepRow(3, 1, "ArrowUp")).toBe(0);
-    expect(stepRow(3, 1, "End")).toBe(2);
-    expect(stepRow(3, 2, "Home")).toBe(0);
-    expect(stepRow(3, 1, "a")).toBeNull();
-    expect(stepRow(0, -1, "ArrowDown")).toBeNull();
+describe("focus after a removal", () => {
+  it("goes to the next row, else the previous, else nowhere", () => {
+    expect(focusAfterRemove(["a", "b", "c"], "b")).toBe("c");
+    expect(focusAfterRemove(["a", "b", "c"], "c")).toBe("b");
+    expect(focusAfterRemove(["a"], "a")).toBeNull();
+    expect(focusAfterRemove(["a", "b"], "zz")).toBeNull();
   });
 });

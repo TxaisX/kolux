@@ -1,4 +1,5 @@
 /* The Ports popover is capped so a long list scrolls inside it instead of running off the screen. */
 .ports-menu { max-height: min(60vh, 420px); overflow-y: auto; }
 .ports-menu:focus { outline: none; }
-.ports-menu .btn:disabled { opacity: 0.55; }
+.ports-menu .btn:disabled,
+.ports-menu .btn[aria-disabled="true"] { opacity: 0.55; }
