@@ -463,7 +463,7 @@ mod tests {
         let dir = repo("create-gitlab");
         run(&["remote", "add", "origin", "git@gitlab.com:group/app.git"], Some(&dir)).unwrap();
         let wt = dir.to_string_lossy().to_string();
-        let created = tauri::async_runtime::block_on(crate::scm::scm_pr_create(wt.clone(), "t".into(), String::new(), "main".into(), false)).unwrap_err();
+        let created = tauri::async_runtime::block_on(crate::scm::scm_pr_create(wt.clone(), "t".into(), String::new(), "main".into(), false, None)).unwrap_err();
         let written = tauri::async_runtime::block_on(crate::pr_review::scm_pr_text(wt, "main".into(), None, None, None, false, None, None, None)).unwrap_err();
         for err in [created, written] {
             assert!(err.contains("needs a GitHub remote") && err.contains("gitlab.com is not one"), "{err}");

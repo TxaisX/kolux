@@ -56,8 +56,8 @@ export function OneClickView({ run, onDismiss }: { run: Run; onDismiss?: () => v
   );
 }
 
-/** The notice for a folder's run, if it has one. */
+/** The notice for a folder's manual run, if it has one. An automatic run (T-653) shows in AutoPrStatus instead. */
 export default function OneClickNotice({ dir }: { dir: string }) {
   const run = useOneClick(dir);
-  return run === null ? null : <OneClickView run={run} onDismiss={() => dismissOneClick(dir)} />;
+  return run === null || run.auto ? null : <OneClickView run={run} onDismiss={() => dismissOneClick(dir)} />;
 }
