@@ -47,7 +47,7 @@ WAITING
 
 FIRST LOAD
 - node scripts/bundle-budget.mjs: main 5177a5f2 1,485,561 bytes (CI run 41660758611 and a local
-  build agree); this branch 1,483,565 bytes, 1,996 under main (limit +500, ceiling 1,490,000).
+  build agree); on 5177a5f2 this branch was 1,483,565 bytes, 1,996 under main; after merging main 4bd4d2de it is 1,484,967 (limit +500, ceiling 1,490,000).
   The Resource Manager's background sessions row and its helpers moved out of the first load; before
   that the branch stood at +542.
 
@@ -79,6 +79,12 @@ REVIEW
   (left: one frame, harmless); an older comment in useAgentStatus.ts (left: still true).
 - Fixed after it: the rows show the sidebar first (test with fake timers checks the order); a
   hostSessions test draws the question with no rows left.
+- Opus third review of 3057aa50: A. No MUST-FIX or SHOULD-FIX; the next-tick dispatch holds (React 19
+  createRoot, the palette runs rows from a click or keydown, ProjectsPanel loads with the app) and the
+  lazy BackgroundSessions breaks nothing. NITs taken: fake timers reset in afterEach; the rows keep
+  their old shape (no stray id). NIT left: the rows switch Artifacts or Skills to terminals, as the
+  Delete and New workspace rows do.
+- Merged main 4bd4d2de (train 2) in: clean, the same gates pass after it.
 
 LANES
 - src/status (useAgentStatus.ts, ResourceManager.tsx, resources.ts and their tests) is lane A's; the
