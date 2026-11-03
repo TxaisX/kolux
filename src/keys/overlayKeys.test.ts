@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { actionById } from "./actions";
-import { heldByOverlay, PANE_CLOSE_EVENT, paneCloseClaimed } from "./useWindowKeys";
+import { heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -24,6 +24,48 @@ test("the open Settings page alone holds nothing; a dialog inside it does", () =
   const page = (inner: unknown[]) => root([box(true)], { querySelectorAll: () => inner });
   expect(heldByOverlay("sidebar.left.toggle", false, page([]) as never)).toBe(false);
   expect(heldByOverlay("sidebar.left.toggle", false, page([box(true)]) as never)).toBe(true);
+});
+
+// A just-enough element: class names and attributes, matched against the real selector lists (simple selectors only,
+// which is all OVERLAYS and STAYS_OPEN use; a selector this cannot read fails the test instead of passing quietly).
+type El = { cls: string[]; attrs: Record<string, string> };
+const one = (el: El, s: string): boolean => {
+  const m = s.trim().match(/^(\.[\w-]+)?(\[([\w-]+)(?:="([^"]*)")?\])?$/);
+  if (!m || (!m[1] && !m[2])) throw new Error("selector the test cannot read: " + s);
+  if (m[1] && !el.cls.includes(m[1].slice(1))) return false;
+  if (m[3] && !(m[3] in el.attrs && (m[4] === undefined || el.attrs[m[3]] === m[4]))) return false;
+  return true;
+};
+const matchesAny = (el: El, list: string) => list.split(",").some((s) => one(el, s));
+const real = (cls: string, attrs: Record<string, string>) => {
+  const el: El = { cls: cls.split(" "), attrs };
+  return { el, getClientRects: () => ({ length: 1 }), closest: () => null, matches: (s: string) => matchesAny(el, s) };
+};
+const dom = (els: ReturnType<typeof real>[]) => ({
+  querySelector: () => null,
+  querySelectorAll: (s: string) => els.filter((x) => matchesAny(x.el, s)),
+});
+
+test("real markup: a docked tip, the hooks card, a tour and the floating panel hold nothing; a modal dialog does", () => {
+  expect(OVERLAYS).toContain('[role="dialog"]');
+  expect(STAYS_OPEN).toContain('[aria-modal="false"]');
+  const tip = real("tip-card", { role: "dialog", "aria-modal": "false" }); // Guides.tsx docked Tip and the hooks consent card
+  const tour = real("tour", { role: "dialog", "aria-modal": "false" }); // Tours.tsx
+  const float = real("float-panel", { role: "dialog" });
+  const cleanup = real("sb-form", { role: "dialog" }); // projects CleanupDialog, inline in the sidebar
+  const modal = real("crash-report", { role: "dialog" });
+  // The palette tip names the Switch worktree key: that key works while the tip shows.
+  expect(heldByOverlay("worktree.palette", false, dom([tip, tour, float, cleanup]) as never)).toBe(false);
+  expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);
+  expect(heldByOverlay("worktree.palette", false, dom([tip, modal]) as never)).toBe(true);
+  expect(heldByOverlay("tab.newTerminal", false, dom([real("menu", {})]) as never)).toBe(true);
+});
+
+test("a browser, editor or explorer chord is never held: Ctrl+C in a browser pane still copies under a dialog", () => {
+  expect(actionById.get("browser.grabElement")?.scope).toBe("browser");
+  const modal = real("crash-report", { role: "dialog" });
+  expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
+  for (const id of ["tab.newTerminal", "terminal.splitRight", "worktree.palette"]) expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
 });
 
 test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {

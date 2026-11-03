@@ -26,6 +26,7 @@ import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabByNumber, type CycleMode } from "../terminal/tabCycle";
 import { zoomTerm } from "../theme";
 import { panesIn, sameDir } from "../workspaces";
+import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
 import { scopesFor } from "./keyScopes";
 import { matchEvent } from "./keymap";
@@ -51,12 +52,18 @@ export function paneCloseClaimed(paneId: number): boolean {
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
 // Panels that stay on screen while the user works (the floating workspace, an agent's question card, the browser's
-// cookie steps, a plan under review, the update card) carry role="dialog" too but are not in the way: they hold nothing.
-const OVERLAYS = '.menu, [role="menu"], [role="dialog"], .pick-list, .font-list, .popover, .palette';
-const STAYS_OPEN = ".float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card";
+// cookie steps, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an inline sidebar
+// form) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
+export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], .pick-list, .font-list, .popover, .palette';
+export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form';
+// Only the app's own chords wait. A browser, editor or explorer chord (Ctrl+C in a page is browser.grabElement) is the
+// focused pane's or the overlay's own, so it falls through to the webview as before.
+const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
 
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
+  const scope = actionById.get(id)?.scope;
+  if (scope && !HELD_SCOPES.has(scope)) return false;
   const root = doc.querySelector(".settings[role='dialog']") ?? doc;
   return [...root.querySelectorAll(OVERLAYS)].some((el) => {
     const h = el as HTMLElement;
@@ -109,7 +116,7 @@ export function useWindowKeys(w: WindowBag) {
         case "focus.chrome":
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.
           e.preventDefault();
-          document.querySelector<HTMLElement>("header button, header [tabindex='0']")?.focus();
+          document.querySelector<HTMLElement>("header button:not(:disabled), header [tabindex='0']")?.focus();
           return;
         case "browser.focusAddressBar":
         case "browser.back":
@@ -184,7 +191,8 @@ export function useWindowKeys(w: WindowBag) {
         case "worktree.history.back":
         case "worktree.history.forward":
           if (!step(hit.id === "worktree.history.back" ? -1 : 1)) {
-            if (!stepAllowed(screen === "terminals", settingsOpen)) setToast("Back and Forward work on the Terminals screen.");
+            if (settingsOpen) setToast("Close Settings to go back or forward.");
+            else if (!stepAllowed(screen === "terminals", settingsOpen)) setToast("Back and Forward work on the Terminals screen.");
             else setToast(hit.id === "worktree.history.back" ? "No earlier workspace to go back to." : "No later workspace to go forward to.");
             return;
           }

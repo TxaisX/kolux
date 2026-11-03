@@ -33,6 +33,7 @@ User sees: the live terminal moves into the card; on close it returns to its exa
   grid.
 Rules: the process and scrollback are kept; only the view moves.
 Acceptance:
+  - [x] View → Workspace View → Space opens the Space view and is ticked while shown. (T-673; evidence/T-673.txt)
   - [x] Expand a card, type a command, collapse → the grid pane shows the same output in the same
         position. (cards live; evidence/cards-VIEW-026.txt)
   - [x] Close the expanded card → the terminal is back in its grid slot and its process is still

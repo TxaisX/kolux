@@ -609,8 +609,8 @@ Source: D-19-008
 ### APP-009 · Standard menu bar: File, Edit, View, Window, Help
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens the menus in the menu bar.
-User sees: File (Settings, Exit); View (reload, force reload, developer tools, reset size, zoom in,
-  zoom out, full screen); Window (minimise, zoom); Help (report a crash, explore the app, getting
+User sees: File (Settings, Exit); View (force reload, developer tools in debug builds only since
+  T-673, reset size, zoom in, zoom out, full screen); Window (minimise, zoom); Help (report a crash, explore the app, getting
   started, plus About and Check for Updates on Windows and Linux).
 Rules: on macOS the app menu holds About, Check for Updates, Settings, Services, hide and quit in
   place of File; Help → Report Crash reopens the newest crash report even if it was dismissed; menu
@@ -625,6 +625,8 @@ Rules: on macOS the app menu holds About, Check for Updates, Settings, Services,
 Acceptance:
   - [ ] On Windows open Help → Check for Updates is there and starts a check that shows the update card.
   - [ ] View → zoom in enlarges the interface; reset size returns it to normal.
+  - [x] View has no plain Reload (Force Reload stays), Developer Tools only in a debug build, and Help →
+        Report Crash on every platform. (T-673; evidence/T-673.txt)
 Compat: —
 Source: D-19-009
 
