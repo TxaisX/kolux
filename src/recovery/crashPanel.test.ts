@@ -18,3 +18,13 @@ it("enables Copy Details once the details are there", () => {
   expect(copyButton(html)).not.toContain("disabled");
   expect(html).toContain("Not now");
 });
+
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+const source = nodeFs.readFileSync(new URL("./CrashReportDialog.tsx", import.meta.url), "utf8");
+
+it("uses the shared dialog focus: Tab stays inside, focus starts on Not now and goes back on close", () => {
+  expect(source).toContain("useDialogFocus(box, onClose, () => notNow.current);");
+  // autoFocus would run before the hook's effect, so the hook would remember the dialog's own button as the opener.
+  expect(source).not.toMatch(/\bautoFocus\b/);
+  expect(source, "Escape now comes from the shared hook, not a second listener").not.toContain("watchEscape");
+});

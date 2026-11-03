@@ -2,7 +2,7 @@
 // copied as one Markdown block. EDIT-020: or sent to an agent running in this worktree, picked
 // from the Send menu.
 import { useEffect, useRef, useState } from "react";
-import { useMenuKeys } from "./menuKeys";
+import { useMenuKeys } from "./menuNav";
 import { Close } from "../chrome/icons";
 import { baseName } from "./buffers";
 import { notesMarkdown, type Note, type Picked, type SendTarget, type StartChoice } from "./notes";
