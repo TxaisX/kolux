@@ -29,6 +29,7 @@ export default function StartGit({ folder, files, busy, onStart, onFolder, onSca
         className="ask start-git"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Start Git in this folder"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {

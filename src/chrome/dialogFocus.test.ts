@@ -104,9 +104,13 @@ test("T-714: trapTab, the trap alone as an onKeyDown: wraps at both ends, leaves
   expect(active, "Shift+Tab from the first wraps to the last").toBe(last);
   active = mid;
   expect(key("Tab").defaultPrevented, "middle: the browser steps on").toBe(false);
-  active = body;
+  const itself = el("the box, focused by a click on its text (tabIndex -1)");
+  active = itself;
   key("Tab");
-  expect(active, "Tab from outside lands in the dialog").toBe(first);
+  expect(active, "Tab from the box itself lands on the first control").toBe(first);
+  active = itself;
+  key("Tab", { shiftKey: true });
+  expect(active, "Shift+Tab from the box itself lands on the last").toBe(last);
   active = last;
   key("Tab", { defaultPrevented: true });
   expect(active, "a Tab a dialog inside it already wrapped is left alone").toBe(last);

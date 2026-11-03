@@ -98,7 +98,7 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
   const nothing = scan !== null && scan.ticked.length === 0;
   return (
     <div className="ask-backdrop" onMouseDown={onClose}>
-      <div className="ask scan-repos" role="dialog" aria-modal="true" aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => (e.stopPropagation(), trapTab(e), e.key === "Escape" && onClose())}>
+      <div className="ask scan-repos" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => (e.stopPropagation(), trapTab(e), e.key === "Escape" && onClose())}>
         <h2 className="ask-title">Look for repositories</h2>
         <div className="btn-row">
           <input className="field" aria-label="folder to scan" autoFocus value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />

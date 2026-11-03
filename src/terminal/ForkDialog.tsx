@@ -20,7 +20,7 @@ export default function ForkDialog({ onCreate, onCancel }: Props) {
   };
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="agentstart-dialog" role="dialog" aria-modal="true" aria-label="Fork Agent Session" onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onCancel())}>
+      <div className="agentstart-dialog" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Fork Agent Session" onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onCancel())}>
         <h2>Fork Agent Session</h2>
         <p className="conn-detail">The new session starts from this one's history and then goes its own way.</p>
         <label className="auto-label">

@@ -22,6 +22,7 @@ function Dialog({ url }: { url: string }) {
         className="ask"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label={w.title}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {

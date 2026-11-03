@@ -160,6 +160,7 @@ export function GrokKeyDialog({ open, onSubmit, onClose }: { open: boolean; onSu
         className="ask"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Use an xAI API key"
         onKeyDown={trapTab}
         onSubmit={(e) => {

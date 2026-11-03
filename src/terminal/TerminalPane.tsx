@@ -1800,6 +1800,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             className="ask"
             role="alertdialog"
             aria-modal="true"
+            tabIndex={-1}
             aria-label={notice.title}
             onKeyDown={(e) => {
               e.stopPropagation();
@@ -1828,6 +1829,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             className="ask"
             role="alertdialog"
             aria-modal="true"
+            tabIndex={-1}
             aria-label={`Paste ${pasteAsk.lines} lines?`}
             onKeyDown={(e) => {
               e.stopPropagation();
@@ -1874,6 +1876,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             className="ask"
             role="alertdialog"
             aria-modal="true"
+            tabIndex={-1}
             aria-label="The shell ended"
             onKeyDown={(e) => {
               e.stopPropagation();

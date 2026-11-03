@@ -291,8 +291,13 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
 function traps(d: Found, how: string): boolean {
   const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];
   if (how === "hook") return !!ref && new RegExp(`(useDialogFocus|trapDialog)\\(${ref}\\b`).test(d.src);
-  if (how === "own") return /"Tab"|dialogStep\(/.test(handler(d));
-  return /onKeyDown=\{trapTab\}/.test(d.tag) || /\btrapTab\(e\)/.test(handler(d));
+  if (how === "own") return /key === "Tab"\) \{|dialogStep\(/.test(handler(d));
+  if (!/tabIndex=\{-1\}/.test(d.tag)) return false;
+  if (/onKeyDown=\{trapTab\}/.test(d.tag)) return true;
+  const h = handler(d);
+  const keys = h.slice(Math.max(0, h.indexOf("onKeyDown=")));
+  const at = keys.search(/\btrapTab\(e\)/);
+  return at >= 0 && !/\breturn\b/.test(keys.slice(0, at));
 }
 
 test("T-714: every aria-modal dialog is in the table and keeps Tab inside it the way it says", () => {

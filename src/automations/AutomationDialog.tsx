@@ -342,7 +342,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
         upOnScrim.current = false;
       }}
     >
-      <div className="auto-dialog" role="dialog" aria-modal="true" aria-label={editing ? `Edit ${editing.name}` : "New Automation"} onKeyDown={keys}>
+      <div className="auto-dialog" role="dialog" aria-modal="true" tabIndex={-1} aria-label={editing ? `Edit ${editing.name}` : "New Automation"} onKeyDown={keys}>
         <div className="auto-dialog-head">
           <h2>{editing ? "Edit automation" : "New Automation"}</h2>
           {!editing && (

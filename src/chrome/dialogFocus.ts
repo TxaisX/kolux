@@ -49,17 +49,19 @@ function openPopup(box: Box, onClose: () => void, first: () => HTMLElement | nul
   };
 }
 
-/** Tab and Shift+Tab wrap inside `box`. A Tab a dialog inside it already wrapped (default prevented) is left alone. */
-function wrapTab(box: Box, e: Pick<KeyboardEvent, "key" | "shiftKey" | "defaultPrevented" | "preventDefault">) {
-  if (e.key !== "Tab" || e.defaultPrevented) return;
+/** Tab and Shift+Tab wrap inside `box`. */
+function wrapTab(box: Box, e: Pick<KeyboardEvent, "key" | "shiftKey" | "preventDefault">) {
+  if (e.key !== "Tab") return;
   const { to, prevent } = tabTarget(Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE)), document.activeElement, e.shiftKey);
   if (prevent) e.preventDefault();
   to?.focus();
 }
 
 /** T-714: the Tab trap alone, as an onKeyDown, for an aria-modal dialog that handles its own Escape and focus
- * (useDialogFocus would take Escape from it on the window: no find bar, menu or typed-text rule could keep it). */
-export const trapTab = (e: ReactKeyboardEvent<Element>) => wrapTab(e.currentTarget, e);
+ * (useDialogFocus would take Escape from it on the window: no find bar, menu or typed-text rule could keep it).
+ * A Tab a dialog inside it already wrapped (default prevented) is left alone. The box needs tabIndex -1, so a click
+ * on its text keeps focus in it and the key still reaches it. */
+export const trapTab = (e: ReactKeyboardEvent<Element>) => e.defaultPrevented || wrapTab(e.currentTarget, e);
 
 /** A modal dialog's keyboard: see the file header. Tab and Shift+Tab wrap inside `box`. Returns the stop. */
 export function trapDialog(box: Box, onClose: () => void, initial?: () => HTMLElement | null): () => void {

@@ -76,6 +76,7 @@ function Question({ label, title, body, choices, onCancel, busy = false }: { lab
         className="ask"
         role="alertdialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label={label}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {

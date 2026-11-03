@@ -75,6 +75,7 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel }: Prop
         className="ask"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Name this note"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {

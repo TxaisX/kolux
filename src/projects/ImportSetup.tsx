@@ -21,6 +21,7 @@ export default function ImportSetup({ project, path, list, busy, onImport, onClo
         className="ask start-git"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Import setup commands"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
