@@ -562,7 +562,8 @@ fn fields_of(url: &str, kinds: &[&str]) -> Option<serde_json::Value> {
     let full = Url::parse(&format!("{CHORD_SCHEME}x?{query}")).ok()?;
     let mut m = serde_json::Map::new();
     m.insert("kind".to_string(), kind.into());
-    for (k, v) in full.query_pairs() {
+    // T-657: the kind comes from the address itself; a query field named `kind` cannot replace it.
+    for (k, v) in full.query_pairs().filter(|(k, _)| k != "kind") {
         m.insert(k.into_owned(), serde_json::Value::String(v.into_owned()));
     }
     Some(serde_json::Value::Object(m))
@@ -586,6 +587,16 @@ fn with_id(id: u32, mut v: serde_json::Value) -> serde_json::Value {
     v
 }
 
+/// T-657 (DT-C93): whether a menu request may go to the pane. A pick that opens a Kolux tab or the
+/// system browser takes one from the tab family's allowance, so picks in a burst stop at it.
+pub fn pick_allowed(v: &serde_json::Value, dev: Option<&Url>, tabs: &Mutex<Allowance>, now: Instant) -> bool {
+    let field = |k: &str| v.get(k).and_then(|s| s.as_str());
+    if field("kind") == Some("menu") || !matches!(field("what"), Some("open-kolux" | "open-default")) {
+        return true;
+    }
+    field("u").and_then(|u| parse(u).ok()).is_some_and(|t| may_open(&t, dev, tabs, now))
+}
+
 /// T-239: the page's menu renderer and shortcut list take their data as one JSON text, embedded
 /// as a string and parsed in the page, so nothing from the app ever runs there as code.
 pub fn menu_script(spec: &str) -> String {
@@ -596,14 +607,27 @@ pub fn keys_script(list: &str) -> String {
     format!("window.__kxKeys && window.__kxKeys(JSON.parse({}))", serde_json::Value::from(list))
 }
 
+/// T-657 (DT-C93): whether a link request the user started may open its tab now; it takes one
+/// from the tab family's allowance. Asked only after the engine's word, so a page's script sending
+/// links on its own uses up nothing the user's own clicks share.
+pub fn link_opens(link: &str, dev: Option<&Url>, tabs: &Mutex<Allowance>, now: Instant) -> bool {
+    parse(link).ok().is_some_and(|t| may_open(&t, dev, tabs, now))
+}
+
+/// T-657 (DT-C93): the page's own requests the engine's word decides (links and the right-click menu).
+pub fn needs_word(uri: &str) -> bool {
+    link_of(uri).is_some() || menu_of(uri).is_some()
+}
+
 /// Decides one navigation of a tab's page. `on_screen` is whether that tab is shown now: a tab
 /// that is not cannot have a user's click or key behind it (council FIX-2, FS1), so it opens no
 /// tab, takes nothing from the allowance the user's own clicks share, and sends no chord (a
 /// hidden page looping `focusAddressBar` would pull the keyboard off the pane the user types in).
-pub fn navigation(url: &Url, dev: Option<&Url>, tabs: &Mutex<Allowance>, on_screen: bool, now: Instant) -> Nav {
+pub fn navigation(url: &Url, dev: Option<&Url>, on_screen: bool) -> Nav {
     if let Some((target, front)) = link_of(url.as_str()) {
         return match parse(&target) {
-            Ok(t) if on_screen && may_open(&t, dev, tabs, now) => Nav::Link(target, front),
+            // T-657: the allowance is taken later, once the engine says the user started it (link_opens).
+            Ok(t) if on_screen && allowed(&t, dev).is_ok() => Nav::Link(target, front),
             _ => Nav::Load(false),
         };
     }
@@ -1262,11 +1286,21 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
         .initialization_script(NO_CLOSE_SCRIPT)
         // BROW-014: a link or script asking for a new window becomes another Kolux tab, in front.
         .on_new_window(move |url, features| {
+            // T-657: the engine's word is used up first, so none is left over for a later window.
+            let started = popup::window_started(id, &url);
             // T-159 (BROW-040): a document preview's popups and script-opened windows are blocked;
             // an outside address is offered to the user once, with its full address.
             if let Some(v) = preview::navigating(id, url.as_str()) {
                 if v == preview::Verdict::Offer {
                     let _ = window_app.emit(OUTBOUND_EVENT, LinkPayload { id, url: url.to_string(), front: true });
+                }
+                return NewWindowResponse::Deny;
+            }
+            // T-657 (DT-C93): a window the user did not start (a page's timer) opens nothing, not
+            // even the system browser; the toolbar says a popup was blocked.
+            if !started {
+                if popup_refused(&url, window_dev.as_ref(), is_shown(id)) {
+                    let _ = window_app.emit(BLOCKED_EVENT, BlockedPayload { id });
                 }
                 return NewWindowResponse::Deny;
             }
@@ -1303,17 +1337,8 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
             NewWindowResponse::Deny
         })
         .on_navigation(move |url| {
-            let (now, shown) = (Instant::now(), is_shown(id));
-            let family = families().of(id);
-            let nav = navigation(url, dev.as_ref(), &family, shown, now);
-            // T-272-c: a link the page asked to open as a tab, refused only by the family's allowance.
-            if nav == Nav::Load(false) {
-                if let Some(target) = link_of(url.as_str()).and_then(|(t, _)| parse(&t).ok()) {
-                    if popup_refused(&target, dev.as_ref(), shown) {
-                        let _ = chord_app.emit(BLOCKED_EVENT, BlockedPayload { id });
-                    }
-                }
-            }
+            let shown = is_shown(id);
+            let nav = navigation(url, dev.as_ref(), shown);
             match nav {
             // T-159 (BROW-040): a document preview follows its own files and what the app asked for;
             // the first outside address is offered to the user, the rest are dropped.
@@ -1326,9 +1351,19 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
                 Some(preview::Verdict::Drop) => false,
                 _ => go && !cli::offline(id),
             },
-            Nav::Link(url, front) => {
-                families().promise(id, &url, now);
-                let _ = chord_app.emit(LINK_EVENT, LinkPayload { id, url, front });
+            // T-657 (DT-C93): a link or menu request acts only once the engine says the user
+            // started it; one a page's script sent on its own is dropped.
+            // T-272-c: one refused only by the family's allowance is shown in the toolbar.
+            Nav::Link(link, front) => {
+                let (app, dev) = (chord_app.clone(), dev.clone());
+                popup::when_started(id, url.as_str(), Box::new(move || {
+                    if link_opens(&link, dev.as_ref(), &families().of(id), Instant::now()) {
+                        families().promise(id, &link, Instant::now());
+                        let _ = app.emit(LINK_EVENT, LinkPayload { id, url: link, front });
+                    } else {
+                        let _ = app.emit(BLOCKED_EVENT, BlockedPayload { id });
+                    }
+                }));
                 false
             }
             // T-272-d: a keyboard chord or app shortcut with no real key pressed in that very page
@@ -1344,8 +1379,16 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
                 false
             }
             // T-239: the pane decides the menu (BROW-017) and replays the shortcut (BROW-018).
+            // T-657: a pick that opens a tab or the system browser counts against the family's allowance.
             Nav::Menu(v) => {
-                let _ = chord_app.emit(MENU_EVENT, with_id(id, v));
+                let (app, dev) = (chord_app.clone(), dev.clone());
+                popup::when_started(id, url.as_str(), Box::new(move || {
+                    if pick_allowed(&v, dev.as_ref(), &families().of(id), Instant::now()) {
+                        let _ = app.emit(MENU_EVENT, with_id(id, v));
+                    } else {
+                        let _ = app.emit(BLOCKED_EVENT, BlockedPayload { id });
+                    }
+                }));
                 false
             }
             Nav::Key(v) => {
@@ -1362,17 +1405,19 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
             // is tried again after a reload; the pane keeps the old one while the site is the same.
             // T-242 (BROW-050): what the command line emulates for this tab stays in force across
             // loads; a new document starts from the script's defaults, so the state goes in again.
+            // T-657 (DT-C93): the app's own scripts run without a user gesture, so they never let
+            // the page's timers pass for the user's click.
             if let Some(script) = cli::emu_hand_in(id, payload.url().as_str()) {
-                let _ = page.eval(script);
+                engine::quiet_eval(&page, script, None);
             }
             if event == "finished" {
                 let (icon_app, icon_dev, at) = (load_app.clone(), icon_dev.clone(), payload.url().to_string());
-                let _ = page.eval_with_callback(ICON_QUERY, move |answer| {
+                engine::quiet_eval(&page, ICON_QUERY.to_string(), Some(Box::new(move |answer: String| {
                     let Ok(page) = parse(&at) else { return };
                     let Some(url) = icon_address(&answer, icon_dev.as_ref(), &page) else { return };
                     let near = icon_near(&url, &page);
                     icon_for(icon_app.clone(), icon_dev.clone(), id, at.clone(), url, near);
-                });
+                })));
             }
             if event == "finished" {
                 history::noted_load(id, payload.url().as_str()); // T-238-b (BROW-004)
@@ -1564,12 +1609,20 @@ pub async fn browser_go(app: AppHandle, id: u32, what: String, text: Option<Stri
     match what.as_str() {
         "reload" => v.reload().map_err(err),
         "zoom" => v.set_zoom(zoom_level(level.unwrap_or(1.0))).map_err(err),
-        "find" | "findBack" => v.eval(find_script(text.as_deref().unwrap_or_default(), what == "findBack")).map_err(err),
-        // T-239: `text` is the menu's JSON spec (BROW-017) or the JSON list of chords the page forwards (BROW-018).
-        "menu" => v.eval(menu_script(text.as_deref().unwrap_or("{}"))).map_err(err),
-        "keys" => v.eval(keys_script(text.as_deref().unwrap_or("[]"))).map_err(err),
         "back" | "forward" => step_history(&v, id, &what),
-        _ => v.eval(script(&what).ok_or_else(|| format!("unknown browser action {what}"))?).map_err(err),
+        // T-657 (DT-C93): the app's scripts run without a user gesture (the keys list goes in on
+        // every load), so a page's timer never borrows one to open windows.
+        _ => {
+            let script = match what.as_str() {
+                "find" | "findBack" => find_script(text.as_deref().unwrap_or_default(), what == "findBack"),
+                // T-239: `text` is the menu's JSON spec (BROW-017) or the JSON list of chords the page forwards (BROW-018).
+                "menu" => menu_script(text.as_deref().unwrap_or("{}")),
+                "keys" => keys_script(text.as_deref().unwrap_or("[]")),
+                _ => script(&what).ok_or_else(|| format!("unknown browser action {what}"))?.to_string(),
+            };
+            engine::quiet_eval(&v, script, None);
+            Ok(())
+        }
     }
 }
 
@@ -1581,14 +1634,14 @@ fn step_history(v: &Webview, id: u32, what: &str) -> Result<(), String> {
     let page = v.clone();
     let own = script(what).ok_or_else(|| format!("unknown browser action {what}"))?;
     preview::expect(id); // T-159: Back and Forward leave a preview freely
-    v.eval_with_callback(probe, move |answer| {
+    engine::quiet_eval(v, probe.to_string(), Some(Box::new(move |answer: String| {
         if answer.trim() == "true" {
-            let _ = page.eval(own);
+            engine::quiet_eval(&page, own.to_string(), None);
         } else if let Some(url) = session::step_tab(id, delta).and_then(|u| parse(&u).ok()) {
             let _ = page.navigate(url);
         }
-    })
-    .map_err(err)
+    })));
+    Ok(())
 }
 
 #[tauri::command]
@@ -1692,11 +1745,11 @@ pub fn probe_verdict(sent: bool, answer: Option<&str>) -> &'static str {
 pub async fn browser_probe(app: AppHandle, id: u32) -> Result<&'static str, String> {
     let v = view(&app, id)?;
     let (tx, rx) = std::sync::mpsc::channel::<String>();
-    let sent = v
-        .eval_with_callback(PROBE_QUERY, move |answer| {
-            let _ = tx.send(answer);
-        })
-        .is_ok();
+    // T-657: quietly, or the pane's few-times-a-second probe would keep the page user-activated.
+    engine::quiet_eval(&v, PROBE_QUERY.to_string(), Some(Box::new(move |answer: String| {
+        let _ = tx.send(answer);
+    })));
+    let sent = true;
     let answer = if sent { tauri::async_runtime::spawn_blocking(move || rx.recv_timeout(PROBE_WAIT).ok()).await.map_err(|e| e.to_string())? } else { None };
     let verdict = probe_verdict(sent, answer.as_deref());
     if verdict == "no-answer" {
@@ -1875,10 +1928,10 @@ fn drive(act: Act) -> Result<serde_json::Value, String> {
         Act::Eval(id, script, wait) => {
             let v = view(app, id)?;
             let (tx, rx) = std::sync::mpsc::channel::<String>();
-            v.eval_with_callback(script, move |answer| {
+            // T-657 (DT-C93): quietly, so an agent's script lends the page no user gesture either.
+            engine::quiet_eval(&v, script.to_string(), Some(Box::new(move |answer: String| {
                 let _ = tx.send(answer);
-            })
-            .map_err(err)?;
+            })));
             match rx.recv_timeout(wait) {
                 Ok(answer) => {
                     if let Ok(mut s) = STRIKES.lock() {
@@ -1898,7 +1951,7 @@ fn drive(act: Act) -> Result<serde_json::Value, String> {
                         }
                     });
                     if strikes.is_ok_and(|n| n >= EVAL_STRIKES) {
-                        let _ = v.eval("delete window.__kx; delete window.__kxa");
+                        engine::quiet_eval(&v, "delete window.__kx; delete window.__kxa".to_string(), None);
                         if let Ok(mut s) = STRIKES.lock() {
                             s.retain(|s| s.0 != id);
                         }
@@ -1921,7 +1974,7 @@ fn drive(act: Act) -> Result<serde_json::Value, String> {
             match what {
                 "reload" => v.reload().map_err(err)?,
                 "back" | "forward" => step_history(&v, id, what)?,
-                _ => v.eval(script(what).ok_or_else(|| format!("unknown browser action {what}"))?).map_err(err)?,
+                _ => engine::quiet_eval(&v, script(what).ok_or_else(|| format!("unknown browser action {what}"))?.to_string(), None),
             }
             Ok(serde_json::Value::Null)
         }
@@ -2402,10 +2455,9 @@ mod tests {
         assert_eq!(menu_of("kolux-chord:key?k=w"), None);
         assert_eq!(menu_of("https://example.com/kolux-chord:menu?x=1"), None);
         // Only a page on screen gets a menu (FS1); a hidden page's request is dropped, not loaded.
-        let tabs = Mutex::new(Allowance::default());
         let menu = Url::parse("kolux-chord:menu?x=1&y=2&vw=3&vh=4&s=0&l=").unwrap();
-        assert!(matches!(navigation(&menu, None, &tabs, true, Instant::now()), Nav::Menu(_)));
-        assert!(matches!(navigation(&menu, None, &tabs, false, Instant::now()), Nav::Load(false)));
+        assert!(matches!(navigation(&menu, None, true), Nav::Menu(_)));
+        assert!(matches!(navigation(&menu, None, false), Nav::Load(false)));
         // The menu's data goes into the page as a string, never as code.
         assert_eq!(menu_script(r#"{"x":1,"items":[]}"#), r#"window.__kxMenu && window.__kxMenu(JSON.parse("{\"x\":1,\"items\":[]}"))"#);
         for needle in ["contextmenu", "__kxMenu", "execCommand(\"copy\")", "e.button !== 2", "\"Escape\""] {
@@ -2423,10 +2475,9 @@ mod tests {
         assert_eq!(v["m"], "c");
         assert_eq!(key_of("kolux-chord:menu?x=1"), None);
         assert_eq!(key_of("kolux-chord:key"), None);
-        let tabs = Mutex::new(Allowance::default());
         let url = Url::parse("kolux-chord:key?k=w&c=KeyW&m=c").unwrap();
-        assert!(matches!(navigation(&url, None, &tabs, true, Instant::now()), Nav::Key(_)));
-        assert!(matches!(navigation(&url, None, &tabs, false, Instant::now()), Nav::Load(false)));
+        assert!(matches!(navigation(&url, None, true), Nav::Key(_)));
+        assert!(matches!(navigation(&url, None, false), Nav::Load(false)));
         assert_eq!(keys_script("[]"), r#"window.__kxKeys && window.__kxKeys(JSON.parse("[]"))"#);
         // The page takes a held key once, honours the app's list, and mirrors the app's key matching.
         for needle in ["__kxKeys", "if (e.repeat) return;", "AltGraph", "\"Key\" + k", "\"Digit\" + k", "k === \"Plus\"", "d.n && copying()", "a.selectionStart !== a.selectionEnd", "s.isCollapsed"] {
@@ -2590,7 +2641,7 @@ mod tests {
         assert_eq!(opened, TABS_ALLOWED);
         // A link navigation from the newest copy draws on the same, used-up allowance.
         let link = Url::parse("kolux-chord:open-front?u=https%3A%2F%2Fcopy.example%2Fx").unwrap();
-        assert_eq!(navigation(&link, None, &f.of(opener), true, now), Nav::Load(false));
+        assert_eq!(link_nav(&link, None, &f.of(opener), true, now), Nav::Load(false));
     }
 
     // T-272-c: a tab nobody promised (the user's own, a restored one), a promise past its window,
@@ -2664,6 +2715,14 @@ mod tests {
         assert_eq!(icon_data("image/png", &vec![0; ICON_MAX + 1]), None);
     }
 
+    /// A link request as it ends once the user started it: `Nav::Link` only if the allowance had room.
+    fn link_nav(url: &Url, dev: Option<&Url>, tabs: &Mutex<Allowance>, on_screen: bool, now: Instant) -> Nav {
+        match navigation(url, dev, on_screen) {
+            Nav::Link(l, _) if !link_opens(&l, dev, tabs, now) => Nav::Load(false),
+            nav => nav,
+        }
+    }
+
     // Council FIX-1 (d2/browser-80d198b-review.md). A page that loops
     // `location.assign("kolux-chord:open-front?u=" + location.href)` must hit the same allowance a
     // window storm does, or each new tab copies itself until memory runs out.
@@ -2673,33 +2732,33 @@ mod tests {
         let me = Url::parse("kolux-chord:open-front?u=https%3A%2F%2Fexample.com%2F").unwrap();
         let web = Url::parse("https://example.com/").unwrap();
         let tabs = Mutex::new(Allowance::default());
-        let links = (0..100).filter(|_| matches!(navigation(&me, None, &tabs, true, now), Nav::Link(..))).count();
+        let links = (0..100).filter(|_| matches!(link_nav(&me, None, &tabs, true, now), Nav::Link(..))).count();
         assert_eq!(links, TABS_ALLOWED);
-        assert_eq!(navigation(&me, None, &tabs, true, now), Nav::Load(false));
+        assert_eq!(link_nav(&me, None, &tabs, true, now), Nav::Load(false));
         // The two ways share one allowance, in either order.
         assert_eq!(new_window(&web, None, &tabs, true, now), None);
         let tabs = Mutex::new(Allowance::default());
         for _ in 0..TABS_ALLOWED {
             assert_eq!(new_window(&web, None, &tabs, true, now), Some(("https://example.com/".into(), true)));
         }
-        assert_eq!(navigation(&me, None, &tabs, true, now), Nav::Load(false));
+        assert_eq!(link_nav(&me, None, &tabs, true, now), Nav::Load(false));
         // It comes back once the window has passed.
-        assert_eq!(navigation(&me, None, &tabs, true, now + TABS_WINDOW), Nav::Link("https://example.com/".into(), true));
+        assert_eq!(link_nav(&me, None, &tabs, true, now + TABS_WINDOW), Nav::Link("https://example.com/".into(), true));
         // A refused address takes nothing from it.
         let tabs = Mutex::new(Allowance::default());
         let bad = Url::parse("kolux-chord:open-back?u=http%3A%2F%2Ftauri.localhost%2F").unwrap();
         for _ in 0..50 {
-            assert_eq!(navigation(&bad, None, &tabs, true, now), Nav::Load(false));
+            assert_eq!(link_nav(&bad, None, &tabs, true, now), Nav::Load(false));
             assert_eq!(new_window(&Url::parse("http://tauri.localhost/").unwrap(), None, &tabs, true, now), None);
         }
-        assert!(matches!(navigation(&me, None, &tabs, true, now), Nav::Link(..)));
+        assert!(matches!(link_nav(&me, None, &tabs, true, now), Nav::Link(..)));
         // Ordinary navigations and chords are not counted and behave as before.
         for _ in 0..20 {
-            assert_eq!(navigation(&web, None, &tabs, true, now), Nav::Load(true));
-            assert_eq!(navigation(&Url::parse("kolux-chord:back").unwrap(), None, &tabs, true, now), Nav::Chord("back"));
+            assert_eq!(link_nav(&web, None, &tabs, true, now), Nav::Load(true));
+            assert_eq!(link_nav(&Url::parse("kolux-chord:back").unwrap(), None, &tabs, true, now), Nav::Chord("back"));
         }
-        assert_eq!(navigation(&Url::parse("http://tauri.localhost/").unwrap(), None, &tabs, true, now), Nav::Load(false));
-        assert_eq!(navigation(&Url::parse("kolux-chord:close").unwrap(), None, &tabs, true, now), Nav::Load(false));
+        assert_eq!(link_nav(&Url::parse("http://tauri.localhost/").unwrap(), None, &tabs, true, now), Nav::Load(false));
+        assert_eq!(link_nav(&Url::parse("kolux-chord:close").unwrap(), None, &tabs, true, now), Nav::Load(false));
     }
 
     #[test]
@@ -2901,24 +2960,24 @@ mod tests {
         let back = Url::parse("kolux-chord:open-back?u=https%3A%2F%2Fexample.com%2F").unwrap();
         let web = Url::parse("https://example.com/").unwrap();
         for _ in 0..100 {
-            assert_eq!(navigation(&front, None, &tabs, false, now), Nav::Load(false));
-            assert_eq!(navigation(&back, None, &tabs, false, now), Nav::Load(false));
+            assert_eq!(link_nav(&front, None, &tabs, false, now), Nav::Load(false));
+            assert_eq!(link_nav(&back, None, &tabs, false, now), Nav::Load(false));
             assert_eq!(new_window(&web, None, &tabs, false, now), None);
             for what in CHORDS {
                 let chord = Url::parse(&format!("kolux-chord:{what}")).unwrap();
-                assert_eq!(navigation(&chord, None, &tabs, false, now), Nav::Load(false), "{what}");
+                assert_eq!(link_nav(&chord, None, &tabs, false, now), Nav::Load(false), "{what}");
             }
         }
         // The hidden storm took nothing: a shown tab's real clicks still get the whole allowance.
         for _ in 0..TABS_ALLOWED - 1 {
-            assert_eq!(navigation(&back, None, &tabs, true, now), Nav::Link("https://example.com/".into(), false));
+            assert_eq!(link_nav(&back, None, &tabs, true, now), Nav::Link("https://example.com/".into(), false));
         }
         assert_eq!(new_window(&web, None, &tabs, true, now), Some(("https://example.com/".into(), true)));
-        assert_eq!(navigation(&front, None, &tabs, true, now + TABS_WINDOW), Nav::Link("https://example.com/".into(), true));
-        assert_eq!(navigation(&Url::parse("kolux-chord:focusAddressBar").unwrap(), None, &tabs, true, now), Nav::Chord("focusAddressBar"));
+        assert_eq!(link_nav(&front, None, &tabs, true, now + TABS_WINDOW), Nav::Link("https://example.com/".into(), true));
+        assert_eq!(link_nav(&Url::parse("kolux-chord:focusAddressBar").unwrap(), None, &tabs, true, now), Nav::Chord("focusAddressBar"));
         // A hidden tab still loads ordinary pages and still refuses the app's own.
-        assert_eq!(navigation(&web, None, &tabs, false, now), Nav::Load(true));
-        assert_eq!(navigation(&Url::parse("http://tauri.localhost/").unwrap(), None, &tabs, false, now), Nav::Load(false));
+        assert_eq!(link_nav(&web, None, &tabs, false, now), Nav::Load(true));
+        assert_eq!(link_nav(&Url::parse("http://tauri.localhost/").unwrap(), None, &tabs, false, now), Nav::Load(false));
     }
 
     /// An icon server on a loopback port that answers every request with a 3-byte image; the
@@ -3561,5 +3620,83 @@ mod t074_tests {
             let e = proxy_of(Some(bad)).unwrap_err();
             assert!(e.contains("http:// or socks5://") && !e.contains("secret") && !e.contains("proxy.test"), "{bad}: {e}");
         }
+    }
+
+    // T-657 (DT-C93)
+    #[test]
+    fn t657_a_burst_of_menu_picks_that_open_tabs_is_capped_by_the_family_allowance() {
+        let now = Instant::now();
+        let tabs = Mutex::new(Allowance::default());
+        let pick = |what: &str, u: &str| menu_of(&format!("kolux-chord:pick?what={what}&u={u}")).unwrap();
+        let kolux = pick("open-kolux", "https%3A%2F%2Fexample.com%2F");
+        let default = pick("open-default", "https%3A%2F%2Fexample.com%2F");
+        for i in 0..TABS_ALLOWED {
+            let v = if i % 2 == 0 { &kolux } else { &default };
+            assert!(pick_allowed(v, None, &tabs, now), "pick {i}");
+        }
+        assert!(!pick_allowed(&kolux, None, &tabs, now));
+        assert!(!pick_allowed(&default, None, &tabs, now));
+        // Picks that open nothing, and the right-click itself, never take from it.
+        assert!(pick_allowed(&pick("copy-link", "https%3A%2F%2Fexample.com%2F"), None, &tabs, now));
+        assert!(pick_allowed(&menu_of("kolux-chord:menu?x=1&y=2").unwrap(), None, &tabs, now));
+        // An address no tab may open, or none at all, is refused and takes nothing.
+        let fresh = Mutex::new(Allowance::default());
+        assert!(!pick_allowed(&pick("open-kolux", "javascript%3Aalert(1)"), None, &fresh, now));
+        assert!(!pick_allowed(&menu_of("kolux-chord:pick?what=open-default").unwrap(), None, &fresh, now));
+        assert!(pick_allowed(&kolux, None, &fresh, now));
+    }
+
+    #[test]
+    fn t657_a_query_field_cannot_turn_a_pick_into_something_the_allowance_skips() {
+        let now = Instant::now();
+        let tabs = Mutex::new(Allowance::default());
+        let sly = menu_of("kolux-chord:pick?kind=menu&what=open-kolux&u=https%3A%2F%2Fexample.com%2F").unwrap();
+        assert_eq!(sly["kind"], "pick");
+        let taken = (0..50).filter(|_| pick_allowed(&sly, None, &tabs, now)).count();
+        assert_eq!(taken, TABS_ALLOWED);
+    }
+
+    #[test]
+    fn t657_link_requests_a_page_sent_on_its_own_use_up_nothing() {
+        let now = Instant::now();
+        let tabs = Mutex::new(Allowance::default());
+        let link = Url::parse("kolux-chord:open-front?u=https%3A%2F%2Fexample.com%2F").unwrap();
+        // Deciding the navigation takes nothing; only the user-started action does (link_opens).
+        for _ in 0..100 {
+            assert_eq!(navigation(&link, None, true), Nav::Link("https://example.com/".into(), true));
+        }
+        for i in 0..TABS_ALLOWED {
+            assert!(link_opens("https://example.com/", None, &tabs, now), "user link {i}");
+        }
+        assert!(!link_opens("https://example.com/", None, &tabs, now));
+        // Only links and the menu wait for the engine's word.
+        assert!(needs_word(link.as_str()) && needs_word("kolux-chord:menu?x=1&y=2") && needs_word("kolux-chord:pick?what=copy-link&u=x"));
+        assert!(!needs_word("kolux-chord:back") && !needs_word("kolux-chord:key?k=a") && !needs_word("https://example.com/"));
+    }
+
+    #[test]
+    fn t657_windows_links_and_menus_wait_for_the_engines_word_and_app_scripts_run_quietly() {
+        let src = include_str!("browser.rs");
+        let newwin = &src[src.find(".on_new_window(move |url, features|").unwrap()..src.find(".on_navigation(move |url|").unwrap()];
+        assert!(newwin.find("popup::window_started(id, &url)").unwrap() < newwin.find("new_window(&url").unwrap());
+        let nav = &src[src.find(".on_navigation(move |url|").unwrap()..src.find(".on_page_load(").unwrap()];
+        assert_eq!(nav.matches("popup::when_started(id, url.as_str()").count(), 2);
+        assert!(nav.contains("pick_allowed(&v") && nav.contains("link_opens(&link"));
+        let load = &src[src.find(".on_page_load(").unwrap()..src.find(".on_document_title_changed(").unwrap()];
+        assert!(!load.contains(".eval("), "load scripts go through engine::quiet_eval");
+        assert!(!load.contains("eval_with_callback"));
+        let go = &src[src.find("\"back\" | \"forward\" => step_history").unwrap()..];
+        let go = &go[..go.find("\n}").unwrap()];
+        assert!(go.contains("engine::quiet_eval(&v, script, None)") && !go.contains("v.eval("));
+        // The pane's probe and Back/Forward run often or on their own; a toolkit eval there lends the page a gesture.
+        for name in ["fn browser_probe(", "fn step_history(", "fn drive("] {
+            let body = &src[src.find(name).unwrap()..];
+            let body = &body[..body.find("\n}").unwrap()];
+            assert!(!body.contains(".eval(") && !body.contains("eval_with_callback("), "{name} runs quietly");
+        }
+        let engine = include_str!("browser_engine.rs");
+        assert!(engine.contains("popup::window_word(id, &uri, user)") && engine.contains("popup::request_word(id, &uri, user)"));
+        assert!(engine.contains("crate::browser::needs_word(&uri)") && engine.contains("IsRedirected"));
+        assert!(engine.contains("\"Runtime.evaluate\""));
     }
 }
