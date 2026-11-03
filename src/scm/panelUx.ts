@@ -11,7 +11,7 @@ export const RETRY = "Retry";
 export const REFRESH = "Refresh";
 
 /** What a link that did not open says. */
-export const openFailed = (err: unknown): string => `The page could not be opened: ${String(err)}`;
+export const openLinkFailed = (err: unknown): string => `The page could not be opened: ${String(err)}`;
 
 /** Which rows are mid-action, and the error each last stopped on. Immutable, so React state can hold it. */
 export type RowBook = { pending: readonly string[]; errors: Readonly<Record<string, string>> };
@@ -54,3 +54,15 @@ export const hideDraft = (book: DraftBook, dir: string): void => {
 };
 /** The text a reopened composer starts with: the kept draft, else `fresh`. */
 export const startDraft = (book: DraftBook, dir: string, fresh: PrDraft): PrDraft => book.get(dir)?.draft ?? fresh;
+
+/** Escape closes the pull request form only when it is pressed inside the form and no list inside it (the Base suggestions) is open. */
+export const escapeClosesForm = (e: { key: string; defaultPrevented?: boolean }, listOpen: boolean): boolean => e.key === "Escape" && !e.defaultPrevented && !listOpen;
+
+/** The key a stack map belongs to; a different folder or pull request is a different map. */
+export const stackKey = (dir: string, prNumber: number): string => `${dir}|${prNumber}`;
+
+/** Whether an answer that started under `then` still belongs on screen now (`now` is the key the panel currently shows, or null). */
+export const stillCurrent = (now: string | number | null | undefined, then: string | number | null): boolean => then !== null && now === then;
+
+/** Whether a finished AI write may touch the draft book: only the composer session it began in. A closed (Escape) or reopened one keeps what it has. */
+export const writeMayTouchDraft = (started: number, now: number): boolean => started === now;

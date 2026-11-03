@@ -2,6 +2,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToString } from "react-dom/server";
+import prStartSrc from "./PrStart.tsx?raw";
+import checksSrc from "./ChecksPanel.tsx?raw";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => null }));
 
@@ -9,10 +11,10 @@ import CheckPane, { CheckCard } from "./CheckPane";
 import { Composer } from "./CommentsPanel";
 import StackMap from "./StackMap";
 import { OneClickView } from "./OneClickNotice";
-import { AutoPrRow, rowButtons } from "./AutoPrStatus";
+import { AutoPrRow, retryBlock, rowButtons } from "./AutoPrStatus";
 import type { Run } from "./oneClick";
 import type { CheckRef } from "./checkCard";
-import { copyText, emptyBook, hideDraft, keepDraft, openFailed, replyBlock, rowBusy, rowDone, rowStart, shownDraft, startDraft, type DraftBook, type PrDraft } from "./panelUx";
+import { copyText, emptyBook, hideDraft, keepDraft, escapeClosesForm, openLinkFailed, replyBlock, rowBusy, rowDone, rowStart, shownDraft, stackKey, startDraft, stillCurrent, writeMayTouchDraft, type DraftBook, type PrDraft } from "./panelUx";
 
 type Click = { onClick?: () => void; [k: string]: unknown };
 function find(node: ReactNode, attr: string): ReactElement<Click> | null {
@@ -151,6 +153,48 @@ describe("row 5 and 15: the stack map draws, and a link that will not open has w
     expect(html).toContain("data-stack-map");
   });
   it("names the reason", () => {
-    expect(openFailed("no browser")).toBe("The page could not be opened: no browser");
+    expect(openLinkFailed("no browser")).toBe("The page could not be opened: no browser");
+  });
+});
+
+describe("review fixes: Escape, folder switches and late answers", () => {
+  it("Escape closes the PR form only when it is the Escape key and no list inside is open", () => {
+    expect(escapeClosesForm({ key: "Escape" }, false)).toBe(true);
+    expect(escapeClosesForm({ key: "Escape" }, true)).toBe(false); // the Base list takes the key first
+    expect(escapeClosesForm({ key: "Escape", defaultPrevented: true }, false)).toBe(false);
+    expect(escapeClosesForm({ key: "a" }, false)).toBe(false);
+  });
+  it("PrStart no longer listens on the window for Escape", () => {
+    const src = prStartSrc;
+    expect(src).not.toContain("watchEscape");
+    expect(src).toContain("onKeyDown={formKey}");
+  });
+  it("the stack map is keyed by folder and pull request, and a late answer for another one is dropped", () => {
+    expect(stackKey("C:/a", 3)).not.toBe(stackKey("C:/b", 3));
+    expect(stackKey("C:/a", 3)).not.toBe(stackKey("C:/a", 4));
+    expect(stillCurrent(stackKey("C:/b", 3), stackKey("C:/a", 3))).toBe(false);
+    expect(stillCurrent(stackKey("C:/a", 3), stackKey("C:/a", 3))).toBe(true);
+    expect(stillCurrent(null, null)).toBe(false);
+  });
+  it("ChecksPanel keys StackMap and drops a rerun answer from another folder", () => {
+    const src = checksSrc;
+    expect(src).toContain("<StackMap key={stackKey(dir, pr.number)}");
+    expect(src).toContain("stillCurrent(asking.current, at)");
+  });
+  it("a finished AI write touches the kept draft only in the composer session it began in", () => {
+    expect(writeMayTouchDraft(4, 4)).toBe(true);
+    expect(writeMayTouchDraft(4, 5)).toBe(false); // Escape closed it, or it was reopened
+    const book: DraftBook = new Map();
+    const d: PrDraft = { title: "t", body: "b", base: "main", draft: false };
+    keepDraft(book, "C:/w", d);
+    hideDraft(book, "C:/w"); // Escape
+    if (writeMayTouchDraft(4, 5)) keepDraft(book, "C:/w", null);
+    expect(startDraft(book, "C:/w", { ...d, title: "" }).title).toBe("t");
+  });
+  it("Retry on an auto-PR line follows the automatic switch", () => {
+    expect(retryBlock(null, "C:/w", "github")).toMatch(/could not be read/);
+    expect(retryBlock({ autoPr: { default: "off" } }, "C:/w", "github")).toMatch(/switched off/);
+    expect(retryBlock({}, "C:/w", "github")).toBeNull();
+    expect(retryBlock({ autoPr: { default: "off", workspaces: { "C:/w": true } } }, "C:/w", "none")).toBeNull();
   });
 });

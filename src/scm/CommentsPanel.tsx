@@ -121,6 +121,7 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
   useEffect(() => {
     setReview(null);
     setError(null);
+    setBook(emptyBook); // a card's pending state and error belong to the pull request they came from
     if (visible) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dir, url, visible]);

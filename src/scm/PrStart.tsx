@@ -6,8 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ActionOutcome, Pr, Status } from "./model";
 import { restoreFocus } from "../shell/paletteCaps";
-import { watchEscape } from "../switcher/accounts";
-import { hideDraft, keepDraft, shownDraft, startDraft, type DraftBook } from "./panelUx";
+import { escapeClosesForm, hideDraft, keepDraft, shownDraft, startDraft, writeMayTouchDraft, type DraftBook } from "./panelUx";
 import SearchPick from "../editor/SearchPick";
 import { needsOneClick, useOneClick } from "./oneClick";
 import OneClickNotice from "./OneClickNotice";
@@ -130,13 +129,14 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
       restoreFocus(prev && prev.isConnected ? prev : again, (sel) => document.querySelector<HTMLElement>(sel));
     });
   };
-  // Escape closes the form while it is open; a list open inside it (the Base suggestions) takes the key first.
+  // Escape closes the form only when pressed inside it (never taken from a terminal or anything else in the app); a list open inside it (the Base suggestions) takes the key first.
   const composerOpen = draft !== null;
-  useEffect(() => {
-    if (!composerOpen || busy) return;
-    return watchEscape(window, () => closeComposer(true), () => !document.querySelector(".scm-pr [aria-expanded='true']"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [composerOpen, busy, dir]);
+  const formKey = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (busy || !escapeClosesForm(e, !!e.currentTarget.querySelector("[aria-expanded='true']"))) return;
+    e.stopPropagation();
+    e.preventDefault();
+    closeComposer(true);
+  };
   // The title box takes focus when the user opens the form (not when a kept form comes back with its folder).
   useEffect(() => {
     if (composerOpen && focusTitle.current) {
@@ -166,9 +166,12 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
         if (result.state === "failed") setWriteNote(result.message);
         if (result.state === "busy") setWriteNote("A draft is already being written for this worktree.");
       }
-      const out = settleDraft(latest.current, snap, result, started, session.current);
-      setDraftFor(out.draft);
-      if (out.note) setWriteNote(out.note);
+      // A composer closed (Escape keeps the draft) or reopened meanwhile keeps what it has: the finished write never touches the book then.
+      if (writeMayTouchDraft(started, session.current)) {
+        const out = settleDraft(latest.current, snap, result, started, session.current);
+        setDraftFor(out.draft);
+        if (out.note) setWriteNote(out.note);
+      }
     }
   };
   const create = async (d: Draft, push: "none" | "publish" | "push") => {
@@ -238,7 +241,7 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
         </button>
       )}
       {draft && (
-        <div className="scm-ask scm-pr" role="dialog" aria-label="Create pull request">
+        <div className="scm-ask scm-pr" role="dialog" aria-label="Create pull request" onKeyDown={formKey}>
           <input ref={titleBox} className="field" aria-label="pull request title" placeholder="Title" value={draft.title} onChange={(e) => setDraftFor({ ...draft, title: e.target.value })} />
           <textarea className="field multi" aria-label="pull request description" placeholder="Description" value={draft.body} onChange={(e) => setDraftFor({ ...draft, body: e.target.value })} />
           {aiOffered && (

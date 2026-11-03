@@ -14,7 +14,7 @@ import CommentsPanel from "./CommentsPanel";
 import ConflictPanel from "./ConflictPanel";
 import PrStart from "./PrStart";
 import StackMap from "./StackMap";
-import { REFRESH, RERUN, openFailed } from "./panelUx";
+import { REFRESH, RERUN, openLinkFailed, stackKey, stillCurrent } from "./panelUx";
 import "./scmUx.css";
 import { checkIdOf, type CheckRef } from "./checkCard";
 import { reviewHint, reviewWhere } from "./startPr";
@@ -44,18 +44,21 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
   const { settings, save } = useSettings();
   const inKolux = settings?.linksOpenInKolux === true;
   /** A link that will not open says so in the note, never silently. */
-  const openOut = (url: string) => void invoke("open_external", { url }).catch((err) => setNote({ text: openFailed(err), error: true }));
+  const openOut = (url: string) => void invoke("open_external", { url }).catch((err) => setNote({ text: openLinkFailed(err), error: true }));
   const rerun = (c: Check) => {
     if (rerunning !== null) return;
     setNote(null);
-    setRerunning(c.name);
+    const at = asking.current; // the folder this click was made in; an answer that comes back after a switch is dropped
+    const id = c.link ?? c.name;
+    setRerunning(id);
     invoke("scm_check_rerun", { worktree: dir, link: c.link, failedOnly: true })
       .then(() => {
+        if (!stillCurrent(asking.current, at)) return;
         setNote({ text: `Asked GitHub to rerun ${c.name}`, error: false });
         load(true); // the checks go back to running, so read them again
       })
-      .catch((err) => setNote({ text: String(err), error: true }))
-      .finally(() => setRerunning(null));
+      .catch((err) => stillCurrent(asking.current, at) && setNote({ text: String(err), error: true }))
+      .finally(() => setRerunning((r) => (r === id ? null : r)));
   };
   const key = dir === null ? null : `${dir}|${linked ?? ""}`;
   const [got, setGot] = useState<{ key: string; data: PrChecks | null; error: string | null; loading: boolean } | null>(null);
@@ -80,6 +83,7 @@ export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props
   };
 
   useEffect(() => {
+    setNote(null); // a note belongs to the folder it was made in
     if (visible) load(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, visible]);
@@ -163,7 +167,7 @@ ${reviewHint(inKolux)}`.trim()}
                 Unlink
               </button>
             </div>
-            <StackMap dir={dir} pr={pr} />
+            <StackMap key={stackKey(dir, pr.number)} dir={dir} pr={pr} />
             {data.conflict && <ConflictPanel dir={dir} url={pr.url} />}
             <div className="sb-hint checks-sum">{checksSummary(data.checks)}</div>
             {note && (
@@ -228,7 +232,7 @@ ${reviewHint(inKolux)}`.trim()}
                               )}
                               {c.outcome === "failed" && c.link && (
                                 <button className="btn" data-rerun disabled={rerunning !== null} title="Ask GitHub to run this check's failed jobs again" onClick={() => rerun(c)}>
-                                  {rerunning === c.name ? "Asking…" : RERUN}
+                                  {rerunning === c.link ? "Asking…" : RERUN}
                                 </button>
                               )}
                             </div>
