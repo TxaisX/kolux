@@ -1,0 +1,56 @@
+T-701 / DT-C137: live verify G9, lane D (72): the checkbox and switch rows still under 24px
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md, last section (DT-C137; the sessions proof dir, not in this repo).
+Built on main 80687a7d, branch s-72/g9, 2026-11-03.
+
+THE THREE ROWS (from the live verify)
+- Settings > Git & worktrees, "Show the AI actions in Source Control": 19px tall.
+- Settings > a repository, "Wait for setup": 19.9px tall.
+- Settings > Agents, each of the 32 per-agent switches: 19px tall.
+
+CHANGE (src/styles.css, CSS only)
+The look row (Git & worktrees) and the agent switch row get min-height 24px on their existing flex
+rules. The shared check row had a rule only inside the sidebar form and the source control summary, so
+it gets a base rule: a centred flex row, gap 8px, at least 24px tall, written :where(label).check so it
+weighs one class and every more specific rule still wins. Every other user of the check row:
+- cleanup dialog, kept branches, card details chooser, projects panel (and its extras), source control
+  summary: already flex rows from their own rules; they only gain the 24px minimum.
+- "Don't ask again" (ask dialog) and "Always trust this repository's kolux.yaml" (trust dialog): keep
+  their own 6px gap (their one-class rules come later, so they win over the base rule); 24px minimum.
+- the skill install list: its labels had no layout rule and sat side by side; now one skill per row,
+  each 24px tall, a plain checklist.
+A check span in the diff menu is not a label, so it is untouched.
+Review (Opus, read-only): A-, no must-fix; applied the gap weight (:where), the full user list here,
+the Agents test can no longer match past the label's end, and declarations are matched whole
+(24px, not 240px).
+
+TESTS (src/shell/checkboxHit.test.ts, extended from T-697): each row is found by its page and its
+text (the label class around the box), and its rule must hold display flex, align-items center and
+min-height 24px.
+ ✓ src/shell/checkboxHit.test.ts > AllChangesPane: the checkbox has its name and a 24px hit area 3ms
+ ✓ src/shell/checkboxHit.test.ts > ChangeTree: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > SkillsPage: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > SpaceView: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > PullRequestPage: the checkbox has its name and a 24px hit area 0ms
+ ✓ src/shell/checkboxHit.test.ts > Git and worktrees: Show the AI actions in Source Control sits in a flex row at least 24px tall 1ms
+ ✓ src/shell/checkboxHit.test.ts > Repository: Wait for setup sits in a flex row at least 24px tall 1ms
+ ✓ src/shell/checkboxHit.test.ts > Agents: each agent's switch sits in a flex row at least 24px tall 1ms
+ ✓ src/shell/checkboxHit.test.ts > the hit-box label is at least 24px square 1ms
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+TDD: with main's styles.css swapped in, the three new tests fail (3 failed | 6 passed); with this
+change all 9 pass.
+
+RUNTIME (headless Chrome, the real styles.css, each row's markup copied from its page; heights by
+getBoundingClientRect)
+- main 80687a7d: look row 19.0, check row 20.0, agent switch row 19.0
+- this branch:   look row 24.0, check row 24.0, agent switch row 24.0
+
+TOTALS
+- VITEST_MAX_WORKERS=1 pnpm vitest run src/settings src/chrome/__cards__/STAT-052.test.ts
+  src/settings/Attention.test.ts src/shell/window/lostWords.test.ts: Test Files 87 passed (87),
+  Tests 480 passed (480). (Low-RAM run while the train 7+8 live verify was running; no full suite.)
+- pnpm tsc --noEmit: exit 0.
+- scripts/firewall-check.ps1 -Baseline: 0 new.
+- FIRST LOAD (node scripts/bundle-budget.mjs after vite build): main's styles.css 1,488,992 bytes;
+  this branch 1,488,992 bytes, +0 (the budget counts the first-load scripts; CSS only here).
+- No Rust touched.
