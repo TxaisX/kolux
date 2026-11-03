@@ -13,6 +13,9 @@ import type { AgentInfo } from "./PlusMenu";
 export const TEAMS_MODE_KEY = "agentTeamsMode";
 export const TEAMS_MODES = ["off", "in-process", "native"] as const;
 export type TeamsMode = (typeof TEAMS_MODES)[number];
+/** UX audit F4: Native panes is not built, so it is offered only to a profile that already has it saved. */
+export const pickableModes = (current: TeamsMode): readonly TeamsMode[] => TEAMS_MODES.filter((m) => m !== "native" || current === "native");
+
 export const TEAMS_MODE_LABEL: Record<TeamsMode, string> = { off: "Off", "in-process": "In-process", native: "Native panes" };
 /** The picker entry's stable agent id (COMPAT agents table); it also names the keybinding command
  *  `tab.newAgent.claude-agent-teams` already listed in the keys. */

@@ -22,6 +22,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "scm_prs_poll") return Promise.resolve({ prs: [], limitedUntil: null });
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
     if (cmd === "groups_get" || cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
+    if (cmd === "skills_scan") return Promise.resolve({ skills: [] }); // the sidebar checklist reads it
     return Promise.resolve(null);
   },
 }));
@@ -92,7 +93,7 @@ test("the delete question names the commits, starts with Keep the branch ticked,
   expect(text).toContain("3 commits are on no other branch and were never pushed");
   for (const line of THREE) expect(text).toContain(line);
   expect(keepBox(c)?.checked, "Keep the branch starts ticked").toBe(true);
-  await click(c, byText(c, "button", "Remove")[0]);
+  await click(c, byText(c, "button", "Delete")[0]);
   await settle(60);
   expect(removes()).toEqual([{ projectId: "p1", path: fix.path, force: false, stamp: "s-fix", keepBranch: true }]);
 });
@@ -105,7 +106,7 @@ test("unticking Keep the branch is the user's own choice to delete it", async ()
   await click(c, box);
   await settle(20);
   expect(keepBox(c)?.checked).toBe(false);
-  await click(c, byText(c, "button", "Remove")[0]);
+  await click(c, byText(c, "button", "Delete")[0]);
   await settle(60);
   expect(removes()).toEqual([{ projectId: "p1", path: fix.path, force: false, stamp: "s-fix", keepBranch: false }]);
 });

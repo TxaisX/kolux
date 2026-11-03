@@ -133,7 +133,7 @@ export default function AgentPicker({ agents, onChanged, level }: { agents: Agen
       onAll={() => setTicks(selectAll(agents))}
       onNone={() => setTicks([])}
       onInstall={() => void install()}
-      onWebsite={(id) => void invoke("open_install_page", { agent: id }).catch(() => {})}
+      onWebsite={(id) => void invoke("open_install_page", { agent: id }).then(() => setError(null), (e) => setError(`Could not open the agent's page: ${String(e)}`))}
     />
   );
 }

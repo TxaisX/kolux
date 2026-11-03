@@ -1,0 +1,68 @@
+T-667 · UX lane A PR 2: the chrome popups keep keyboard focus, one keyboard focus ring, chrome polish rows (DT-C103)
+branch s-90/ux-2 (from origin/main e93a23ba) · PR #103 · 2026-11-02 · worker 90, coordinator 57
+
+THE ISSUE
+The UX audit (proof/ux-audit/findings, against main e93a23b) found the confirmation dialog (chrome/Ask.tsx) let Tab
+leave it, closed on Escape only while one of its own controls had focus, and left focus nowhere when it closed; the New
+tab menu, the status bar's right-click menu and the right sidebar's More menu took no focus, had no arrow keys, and let
+Escape through to the terminal underneath (where it interrupts an agent). Many controls showed no keyboard focus at all,
+the project row's icon buttons stayed invisible when tabbed to, hidden icon buttons still showed, long menus and the
+dialog ran off short windows, the dots menu was named "Menu", a failed app menu did nothing, and the bell closed the
+Inbox to Terminals whatever was showing before.
+
+WHAT CHANGED
+- src/chrome/dialogFocus.ts (new): useDialogFocus / trapDialog and useMenuFocus / trapMenu. Reuses switcher/accounts.ts
+  watchEscape (capture phase, stopped), shell/paletteCaps.ts restoreFocus and terminal/LinkActionMenu menuStep.
+  A popup inside a hidden pane leaves every key alone; a menu leaves the keys alone while focus is outside it, closes on
+  Tab, skips disabled rows, and caps its height from its own top (or bottom, when it opens upward).
+- Ask.tsx uses the dialog trap; LayoutStrip, StatusBar and RightSidebar use the menu one. RightSidebar tabs: one tab
+  stop, arrows / Home / End, tabpanel.
+- styles.css: `:where(:focus-visible)` ring (zero specificity; off for xterm and tabindex -1; dropped where a control
+  already shows focus with a border or background); `.proj .ib` shows on focus-visible; `.ib[hidden]` hides; `.menu`
+  and `.ask` scroll inside the window; app icon radios show focus; the menu warn hint uses --warn.
+- TopBar.tsx: "Terminal zoom" names; bell "Inbox", closes back to the screen before it; useChrome popAppMenu reports a
+  failure, shown as a window notice (shell/window/TopBar.tsx passes setNotice).
+Rows: 16 fixed, chrome.md:25 partly (the window close hover keeps the Windows close red; no matching token). None stale.
+
+TESTS
+pnpm exec vitest run src/chrome src/switcher src/shell: 52 files, 269 passed. pnpm exec tsc --noEmit -p .: exit 0.
+node scripts/plan-check.mjs: OK. New: dialogFocus.test.ts (trap, restore, menu keys, hidden pane, focus outside the
+menu, height cap), popupWiring.test.ts, chromeKeyboard.test.ts. Shown to fail on the old code: the popupWiring tests
+with Ask, LayoutStrip and StatusBar reverted (3 of 5 failed); the hidden-pane and focus-outside tests with their
+guards removed (2 failed). CSS rows are pinned by reading styles.css, as topBarLayout.test.ts does.
+
+REVIEW (fresh, opus-high-review): B on 79ecefb8. Fixed in 48294ca2: a hidden popup took Tab and Escape; menus took
+arrows with focus outside; menus ran off short windows; doubled focus rings; .ib[hidden] lost to .sess:hover .ib.
+Re-review on 48294ca2: A-, ready to merge; its two small items (the upward status bar menu's cap, a test for the cap)
+fixed in the next commit. Follow-ups, not here: one Escape can close two stacked popups when the other uses its own
+window listener; an options-object hook API; wiring tests that render the DOM; the account switcher menu's own cap.
+
+NAMED TESTS (new)
+src/chrome/dialogFocus.test.ts:46 tabTarget wraps at both ends, pulls a stray focus in and leaves the middle to the browser
+src/chrome/dialogFocus.test.ts:57 a dialog: focus moves in, Tab and Shift+Tab stay inside, Escape closes from anywhere and focus goes back
+src/chrome/dialogFocus.test.ts:91 a dialog gives focus back only when nobody else took it
+src/chrome/dialogFocus.test.ts:102 a menu: focus on the first row, arrows wrap between rows, Escape closes it before the terminal and focus goes back
+src/chrome/dialogFocus.test.ts:130 a popup in a hidden pane leaves Tab, Escape and the arrows alone
+src/chrome/dialogFocus.test.ts:151 a menu leaves the arrows alone once focus is outside it, and Tab closes it
+src/chrome/dialogFocus.test.ts:165 a menu's height cap: the room below its top, or above its bottom when it opens upward
+src/chrome/popupWiring.test.ts:23 the confirmation dialog traps focus: Escape runs Cancel, and Cancel is the control that gets focus
+src/chrome/popupWiring.test.ts:32 the New tab menu takes the menu keys while it is open, and not while it is shut
+src/chrome/popupWiring.test.ts:39 the status bar's right-click menu and the More tabs menu use the menu keys too
+src/chrome/popupWiring.test.ts:46 chrome.md:15: only the open right-sidebar tab is a tab stop, and the body is its tab panel
+src/chrome/popupWiring.test.ts:53 tabStep: Left and Right wrap around the tabs, Home and End jump, other keys do nothing
+src/chrome/chromeKeyboard.test.ts:13 chrome.md:20: closing the Inbox goes back to the screen shown before it, not always Terminals (VIEW-003)
+src/chrome/chromeKeyboard.test.ts:20 chrome.md:10: when the app menu cannot open, the click says so instead of doing nothing
+src/chrome/chromeKeyboard.test.ts:46 chrome.md:6: a hidden icon button really is hidden
+src/chrome/chromeKeyboard.test.ts:50 keyboard.md:12 / visual.md:2: the project row's buttons show when the keyboard lands on them
+src/chrome/chromeKeyboard.test.ts:54 one keyboard ring for every control without its own focus style; none for the mouse, the terminal or script focus
+src/chrome/chromeKeyboard.test.ts:64 chrome.md:9 / destructive.md:18: menus and the dialog scroll inside the window instead of running off it
+src/chrome/chromeKeyboard.test.ts:71 chrome.md:17: the app icon choice shows keyboard focus on its label; chrome.md:25: the menu warning uses the warn token
+Label tests updated to the new names: titleHeader.test.ts, topBarDrag.test.ts, shell.test.ts, __cards__/VIEW-003.test.ts.
+
+SPEC
+STAT-050 User does: the bell is labelled Inbox (was Notifications). TERM-078 Rules: the top bar dots menu is named
+Terminal zoom and holds Zoom In, Zoom Out and Reset Size. VIEW-003 Rules + acceptance: the bell closes the Inbox back to
+the screen before it; the new acceptance line points here. All named in DT-C103.
+
+NO LIVE PROOF
+Unit tests pin the key handling and the CSS rules; a live keyboard pass belongs to the wave's proof run.

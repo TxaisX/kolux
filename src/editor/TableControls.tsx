@@ -21,6 +21,12 @@ export function watchMenuClose(win: Pick<Window, "addEventListener" | "removeEve
   };
 }
 
+/** Why a cell-menu row is greyed out, so the grey is not a mystery (null when the row is on). */
+export function whyDisabled(label: string, disabled: boolean): string | undefined {
+  if (!disabled) return undefined;
+  return label === "Delete row" ? "The header row cannot be deleted" : "Not available here";
+}
+
 /** A table's box and its row and column edges in screen pixels. */
 function geoOf(el: HTMLElement): Geo | null {
   const t = el as HTMLTableElement;
@@ -106,7 +112,7 @@ export default function TableControls({ editor }: { editor: LexicalEditor | null
       {menu && (
         <div className="table-ctx" role="menu" aria-label="Table" style={{ left: Math.min(menu.x, window.innerWidth - 170), top: Math.min(menu.y, window.innerHeight - 200) }} onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => (e.stopPropagation(), e.preventDefault())}>
           {menu.items.map((it) => (
-            <button key={it.label} type="button" role="menuitem" className="table-ctx-item" disabled={it.disabled} onClick={() => run(it.edit)}>
+            <button key={it.label} type="button" role="menuitem" className="table-ctx-item" disabled={it.disabled} title={whyDisabled(it.label, it.disabled)} onClick={() => run(it.edit)}>
               {it.label}
             </button>
           ))}

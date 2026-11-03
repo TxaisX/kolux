@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { audioTypeAllowed, AUDIO_TYPES, CLOSE_TO_TRAY_FIELD, raiseNotification, readNotifications, resetPacer, SOUNDS, TONES, testPlan } from "./notifications";
+import { audioTypeAllowed, AUDIO_TYPES, CLOSE_TO_TRAY_FIELD, quietFromText, raiseNotification, readNotifications, resetPacer, settledValue, SOUNDS, TONES, testPlan } from "./notifications";
 
 test("APP-007: close to tray is off by default and on only when saved as true", () => {
   expect(CLOSE_TO_TRAY_FIELD).toBe("closeToTray");
@@ -161,4 +161,15 @@ test("STAT-044: with Kolux focused and 'Stay quiet' on (the default), nothing is
     else g.document = had;
     resetPacer();
   }
+});
+
+test("UX-audit: a slider saves on release only when the value moved, and the quiet minutes read whole numbers from 0", () => {
+  expect(settledValue(null, 50)).toBeNull();
+  expect(settledValue(50, 50)).toBeNull();
+  expect(settledValue(35, 50)).toBe(35);
+  expect(settledValue(0, 50)).toBe(0);
+  expect(quietFromText("12.9")).toBe(12);
+  expect(quietFromText("-4")).toBe(0);
+  expect(quietFromText("")).toBe(0);
+  expect(quietFromText("abc")).toBe(0);
 });

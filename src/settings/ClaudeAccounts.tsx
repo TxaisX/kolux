@@ -9,7 +9,7 @@
 // the lapsed warnings. Kolux never renews a sign-in itself (DT-C16).
 import { useCallback, useEffect, useState } from "react";
 import { saveChanged } from "./saveChanged";
-import { AccountRow, signedInAt } from "./AccountRow";
+import { AccountRow, AccountsReadError, signedInAt } from "./AccountRow";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AttentionNote, fixDoes, openInstallPage, type Attention } from "./Attention";
@@ -165,5 +165,6 @@ export default function ClaudeAccounts() {
                   : invoke("claude_account_cancel");
     call.catch((e) => setError(String(e))).finally(read);
   };
+  if (!view && error) return <AccountsReadError name="Claude" error={error} onRetry={() => (setError(null), read())} />;
   return <ClaudeAccountsView view={view} error={error} confirming={confirming} onAction={act} />;
 }

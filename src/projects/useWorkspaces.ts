@@ -11,7 +11,9 @@ import { EMPTY_HISTORY } from "./nav";
 import { cellsOf, DEFAULT_PANES_FIELD, groupOf, MAX_PANES, seedCount } from "../terminal/grid";
 import { activeAfterRemove, focusIn, panesIn, sameDir, withoutDir } from "../workspaces";
 import { readLook } from "../settings/general";
-import { startPanes } from "./workspaceStart";
+import { seatDefault, seatStart } from "../launch/defaultSeat";
+import { emptySeat } from "../launch/seats";
+import { startPanes, type StartPrefill } from "./workspaceStart";
 
 export function useWorkspaces(activeDir: string | null) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -78,14 +80,16 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
   // kept while hidden, so they come back as they were; a workspace with no pane yet gets the launch chooser (T-569), not a terminal.
   // TERM-005: `fresh` says the workspace was just made: its grid starts with the default pane
   // count. Only then, so nothing re-seeds later.
-  const select = (dir: string, branch: string | null, fresh = false) => {
+  // T-664 (b): `prefill` (a front create from the new-workspace form) puts the picked AI in Seat 1 (with the default
+  // model and effort, as a dropdown pick would, so Start is ready) and the note in the task; it only matters when the workspace has no pane yet, and nothing runs until Start.
+  const select = (dir: string, branch: string | null, fresh = false, prefill?: StartPrefill) => {
     setPage(null);
     recentDirs.current = [dir, ...recentDirs.current.filter((d) => !sameDir(d, dir))].slice(0, 20);
     setActiveDir(dir);
     if (screen === "artifacts" || screen === "skills") setScreen("terminals");
     if (panesIn(panes, dir).length > 0) setFocused((f) => focusIn(panes, dir, f));
     else {
-      const made = startPanes(dir, branch, fresh ? seedCount(settings[DEFAULT_PANES_FIELD], readLook(settings) === "classic") : 1, () => nextKey.current++);
+      const made = startPanes(dir, branch, fresh ? seedCount(settings[DEFAULT_PANES_FIELD], readLook(settings) === "classic") : 1, () => nextKey.current++, prefill && { seat: prefill.agent ? { ...emptySeat(), ...seatStart(prefill.agent, seatDefault(settings)) } : emptySeat(), task: prefill.task });
       setPanes((ps) => [...ps, ...made]);
       setFocused(made[0].key);
     }

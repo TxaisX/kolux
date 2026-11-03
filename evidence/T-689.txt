@@ -1,0 +1,83 @@
+T-689 - Projects sidebar follow-ups from the T-687 review (DT-C125; PROJ-014, PROJ-015, PROJ-048, PROJ-070; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-5 (stacked on #113 s-49/ux-4, which is stacked on #95), 2026-11-03.
+
+WHAT CHANGED (src/projects and the T-640 live proof)
+- New group pressed twice (ProjectsPanel.tsx newGroup): while an unsaved new group's form is still open,
+  a second New group drops that group first, so only one new group is left. A ref follows the fresh group
+  at once, so a second press before the next render still sees it; the existing freshGroupToDrop guard
+  keeps a group from being removed twice; a group saved in between stays. Save stops treating the group as
+  the unsaved new one before the backend answers, so New group or Cancel pressed meanwhile cannot drop it,
+  and the answer closes only that group's form (a second new group's form opened meanwhile stays open, and
+  closing it unsaved still takes that group away). A failed save makes it the unsaved new group again.
+- Move (parent) question: Cancel, Escape and picking a parent all close it through one helper that puts
+  focus back on the workspace's row, the same way the other confirms do.
+- Delete-group question: Keep it puts focus back on the group's delete button; after Delete group, focus
+  goes to New group (the group's own buttons are gone). Escape is handled on a wrapper around the whole
+  question, so it keeps the group from the checkbox too, not only from the buttons.
+- Workspace delete question: it asks "Delete <branch> and its folder?" and the button reads Delete / Deleting…
+  (was Remove / Removing…), matching the row tooltip and menu; Delete all shows Deleting… while it works.
+  The Remove project confirm keeps its wording.
+- scripts/prove/live-T-640.mjs: the confirm-button match is /^Delete/ (was /^Remove/); node --check passes;
+  the live run waits for 0.1.6.
+- evidence/T-687.txt: one garbled sentence about the T-640 script fixed (wording only).
+
+WHY
+The fresh opus-high re-review of T-687 (A-, 45555f53) listed these as follow-ups: a second New group press
+left an empty default-named group behind; keyboard users lost their place after the move and delete-group
+questions, and the delete-group Escape worked only from its buttons; the row and menu said Delete while the
+confirm said Remove (findings/projects.md:14 was part-done, now fixed; :16 was part-done, now fixed).
+
+REVIEW
+opus-high-review (read-only, fresh): A- on 201f16d5, no must-fix. Should-fix 1-3 fixed in the next commit:
+  (1) the question still said Remove while its button said Delete; (2) Delete all showed Removing… while busy;
+  (3) Save then New group before the rename answered deleted the saved group (new test below, which fails
+  with the one-line fix removed: expected [ 'n1' ] to deeply equal []). The focus stubs now answer only the
+  group's own selector ([data-project-group="g1"] [data-group-x]).
+Fresh re-review: B+ on 7e944a15. Must-fix: (3) was fixed only for the ref, so the save's answer closed a
+  second new group's form opened meanwhile (left behind empty), and Cancel during the save still deleted the
+  saved group. Fixed in the next commit (two tests above fail on 7e944a15's save code: expected +0 to be 1;
+  expected [ 'n1' ] to deeply equal []). Should-fix: the question text and Deleting… now have assertions;
+  this file's follow-up and save wording corrected.
+Second fresh re-review: A- on a3c318f6, no must-fix; traced New/New, Save then New, Save pending then New or
+  Cancel, a failed Save, and Delete group then New, all correct. Its should-fixes are listed below.
+
+FOLLOW-UPS (not in this PR)
+- Keep it and Escape in the delete-group question put focus on the group's header X even when the question
+  was opened from the group form's Delete… button; that button (still there, since Keep it leaves the form
+  open) would be the more natural target.
+- deleteGroup has the same shape saveGroup had: if Delete group is still waiting when New group opens a second
+  form, its answer closes that form and clears its unsaved flag (needs group_delete to answer after
+  group_create). Same fix as saveGroup: close only its own form; add a held-delete test.
+- New, type, Save (pending), New, and the first save then fails: the first group stays as an empty group with
+  its form closed (visible, can be deleted).
+- The move test's row stub answers any [data-path] selector, so it does not prove which row gets focus.
+- Delete all's busy text (Deleting…) has no test of its own; it is the same wording change as the single
+  delete, which is tested.
+
+TESTS (vitest --reporter=verbose, src/projects/uxRows5.test.ts new, removeCommits.test.ts changed)
+ ✓ src/projects/uxRows5.test.ts > New group pressed twice with the first still unsaved drops the first and keeps one
+ ✓ src/projects/uxRows5.test.ts > a new group that was saved first stays when New group is pressed again
+ ✓ src/projects/uxRows5.test.ts > New group pressed while the first group's Save is still being answered keeps the saved group
+ ✓ src/projects/uxRows5.test.ts > Cancel pressed while a new group's Save is still being answered keeps the saved group
+ ✓ src/projects/uxRows5.test.ts > a new group deleted from its own form is not removed a second time by the next New group
+ ✓ src/projects/uxRows5.test.ts > Escape on the remove-group question's checkbox keeps the group, and Keep it puts focus back on the group's X
+ ✓ src/projects/uxRows5.test.ts > Delete group closes the question, deletes the group and puts focus on New group
+ ✓ src/projects/uxRows5.test.ts > the move question gives focus back to the row on Cancel, on Escape and after picking a parent
+ ✓ src/projects/uxRows5.test.ts > the workspace delete question and its button say Delete, not Remove, and it shows Deleting… while it works
+ ✓ src/projects/uxRows5.test.ts > the project question keeps Remove project
+ ✓ src/projects/removeCommits.test.ts > the delete question names the commits, starts with Keep the branch ticked, and is asked even with the question switched off
+ ✓ src/projects/removeCommits.test.ts > unticking Keep the branch is the user's own choice to delete it
+With the ProjectsPanel.tsx change reverted, tests 1, 6, 7, 8 and 9 fail; 2, 5 and 10 pass either way
+(guards); 3 and 4 fail with the Save code of 7e944a15 (see REVIEW).
+The focus tests stub document.querySelector to see which element is focused (the test DOM has no real focus).
+
+FULL SUITE (VITEST_MAX_WORKERS=2 pnpm exec vitest run, 02:31)
+ Test Files  1 failed | 733 passed (734)
+      Tests  3 failed | 5450 passed (5453)
+The 3 failures are the known local-only CRLF ones in src/editor/pdfjsCopy.test.ts (green on Windows CI).
+
+TSC
+pnpm exec tsc --noEmit -p . -> exit 0
+
+FIREWALL
+scripts/firewall-check.ps1 -Baseline -> 0 new.

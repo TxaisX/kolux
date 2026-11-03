@@ -6,6 +6,7 @@ import { locale } from "../language";
 import { span, type Lane } from "../board/chip";
 import { agents as AGENTS } from "../keys/actions";
 import { NAMES, type Usage } from "../usage/tokens";
+import { openSettings } from "../settings/pages";
 import { anyTracked, chipOfLive, costKind, countedAt, dueForCount, sessionsOf, totals, usageFor, type Figure, type LiveSession } from "./model";
 import "./insights.css";
 import AutoPrStatus from "../scm/AutoPrStatus"; // T-655, plain import: this panel is already a lazy chunk
@@ -47,6 +48,30 @@ function Tile({ label, f }: { label: string; f: Figure }) {
       <span className="ins-tile-unit">tokens</span>
       <span className="ins-tile-cost">{costText(f.usd, f.partial, f.tokens)}</span>
     </div>
+  );
+}
+
+/** usage-status.md:6: tracking is off; the way to turn it on is a button that opens Settings > Usage, not a sentence. */
+export function TrackingOff({ onOpen }: { onOpen: () => void }) {
+  return (
+    <p className="ins-note">
+      Token tracking is off.{" "}
+      <button type="button" className="ins-link" onClick={onOpen}>
+        Turn it on in Settings → Usage
+      </button>
+    </p>
+  );
+}
+
+/** usage-status.md:20: the list stops at `shown` rows; when there are more, this opens Settings > Usage, the full usage view (with its own range and scope filters). */
+export function MoreSessions({ total, shown, onOpen }: { total: number; shown: number; onOpen: () => void }) {
+  if (total <= shown) return null;
+  return (
+    <p className="ins-note">
+      <button type="button" className="ins-link" onClick={onOpen}>
+        Usage details in Settings → Usage
+      </button>
+    </p>
   );
 }
 
@@ -101,7 +126,7 @@ export default function InsightsPanel({ sessions, onJump }: InsightsProps) {
         {usage === null ? (
           <p className="ins-note">{failed ? "Usage could not be loaded." : "Loading usage…"}</p>
         ) : !tracked ? (
-          <p className="ins-note">Token tracking is off. Turn it on in Settings → Usage.</p>
+          <TrackingOff onOpen={() => openSettings("usage")} />
         ) : (
           sum && (
             <>
@@ -185,6 +210,7 @@ export default function InsightsPanel({ sessions, onJump }: InsightsProps) {
             ))}
           </ul>
         )}
+        {usage !== null && tracked && <MoreSessions total={all.length} shown={SESSION_ROWS} onOpen={() => openSettings("usage")} />}
       </section>
 
       <section className="ins-sec" aria-labelledby="ins-auto-pr">

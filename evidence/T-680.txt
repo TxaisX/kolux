@@ -1,0 +1,56 @@
+T-680 - Launching and agents guard Start, Esc and errors (DT-C116; SESS-013, SESS-015; UX audit lane E2)
+Coordinator 57, branch s-57/ux-launch, based on #95 (s-57/launch-first), code commit eaeab1ff, 2026-11-02.
+
+WHAT CHANGED
+- One launch holds at most 24 seats (MAX_SESSIONS); a typed count above that becomes 24, a launch
+  asking for more is refused with a message, and growing the lineup past 8 (ASK_ABOVE) asks once
+  first. Shrinking never asks.
+- A Start that fails part-way says how many new workspaces it already made and refreshes the
+  sidebar so they show; spare worktree folders are no longer reused on the next try.
+- While Starting, Esc, the sheet's X and Cancel do nothing. Esc in a text box leaves the box first;
+  the next Esc closes the page.
+- The stored pick is derived from the seat (no stale pick); Install covers seats that share an agent;
+  the chooser and the checklist use one canInstall rule.
+- The plus menu works from the keyboard (arrows, menu item roles) and does not take focus back
+  from a chooser it just opened.
+- Notices name their buttons for screen readers; the no-AI-program notice has Open Settings, a
+  failed check offers Try again, a dismissal that could not be saved says so.
+- spec/02-sessions-launching.md: SESS-013 Rules gain the 24 cap and the ask above 8; its box 2
+  acceptance points here; SESS-015 names the cap.
+
+WHY
+Static UX audit rows findings/launch-agents.md 2-10 and more: a stray "500" started hundreds of
+agents and worktrees, Esc mid-Start left half a launch, and failed Starts left folders unannounced.
+
+REVIEW
+Opus review B -> fix pass -> re-review B+ -> plus-menu focus fix -> A-.
+
+TESTS (named: uxAudit.test.ts and the SESS-013 card)
+ ✓ src/launch/__cards__/SESS-013.test.ts > SESS-013 box 1: count 3 gives three empty seats; count 2 drops the third and leaves the first two as they were 3ms
+ ✓ src/launch/__cards__/SESS-013.test.ts > SESS-013 box 2: 15 in the free field gives fifteen empty seats beside the one already picked 1ms
+ ✓ src/launch/uxAudit.test.ts > F7: a typed session count is capped, and asked about above 8 only when it grows the lineup 4ms
+ ✓ src/launch/uxAudit.test.ts > F7: the count field is capped in the page and a pending big count shows nothing until typed 14ms
+ ✓ src/launch/uxAudit.test.ts > F7: a failed Start says how many workspaces it already made and that they are in the sidebar 0ms
+ ✓ src/launch/uxAudit.test.ts > F7: a launch past MAX_SESSIONS seats is refused, and a remembered lineup is clamped to it 1ms
+ ✓ src/launch/uxAudit.test.ts > F1: Esc is ignored while Starting, and a box holding typing is left before the page closes 0ms
+ ✓ src/launch/uxAudit.test.ts > F1: the sheet's X and Cancel are disabled while Starting 4ms
+ ✓ src/launch/uxAudit.test.ts > F3: a seat shows its not-yet-startable pick only while the seat is still empty 0ms
+ ✓ src/launch/uxAudit.test.ts > F4: undo puts back only the deleted team at its old place, keeping newer edits 1ms
+ ✓ src/launch/uxAudit.test.ts > F4: a missing agent with no install route and no docs page says to install it by hand 0ms
+ ✓ src/launch/uxAudit.test.ts > F5: the chooser's Install and the checklist use one canInstall rule 0ms
+ ✓ src/launch/uxAudit.test.ts > F4: Native panes is offered in Agent Teams only to a profile that already has it 0ms
+ ✓ src/launch/uxAudit.test.ts > F2: the no-AI-program notice has an Open Settings button; a failed check says so with Try again 1ms
+ ✓ src/launch/uxAudit.test.ts > F2: a dismissal that could not be saved shows its own notice, with Dismiss only 0ms
+ ✓ src/launch/uxAudit.test.ts > F6: each notice's buttons name their notice for a screen reader 0ms
+ ✓ src/launch/uxAudit.test.ts > F1: the plus menu's extra buttons are menu items 2ms
+ ✓ src/launch/uxAudit.test.ts > F4/F6: the Agents rail marks the picked session, and its empty text covers 'nothing installed' 2ms
+ Test Files  2 passed (2)
+      Tests  18 passed (18)
+
+FULL RUN: pnpm vitest run src/launch src/agents (VITEST_MAX_WORKERS=2)
+ Test Files  31 passed (31)
+      Tests  199 passed (199)
+vitest exit 0
+
+TYPE CHECK: pnpm tsc --noEmit
+tsc exit 0

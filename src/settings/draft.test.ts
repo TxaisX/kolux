@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { createDraft } from "./draft";
+import { delayFromText } from "./editorPrefs";
 
 /** A timer the test steps by hand. */
 function clock() {
@@ -158,4 +159,167 @@ test("SET-036: closing the window flushes the pending text; Escape puts the stor
   d.discard();
   expect(d.state()).toMatchObject({ text: "typed just now", dirty: false });
   expect(c.pending()).toBe(0);
+});
+test("SET-036: a save that resolves to the stored text puts that text in the box (typed 5, stored 200)", async () => {
+  const d = createDraft("1000", { save: async (t) => String(Math.max(200, Number(t))), timer: clock().timer });
+  d.type("5");
+  await d.leave();
+  expect(d.state()).toMatchObject({ text: "200", saved: "200", dirty: false, error: null });
+});
+
+test("SET-036: a keystroke made while a clamped save runs is kept, not overwritten by the stored text", async () => {
+  const g = gate();
+  const seen: string[] = [];
+  const d = createDraft("1000", {
+    save: async (t) => {
+      seen.push(t);
+      if (seen.length === 1) await g.p;
+      return String(Math.max(200, Number(t)));
+    },
+    timer: clock().timer,
+  });
+  d.type("5");
+  const done = d.leave();
+  await flushMicro();
+  d.type("3000");
+  g.open();
+  await done;
+  expect(seen).toEqual(["5", "3000"]);
+  expect(d.state()).toMatchObject({ text: "3000", saved: "3000", dirty: false });
+});
+
+test("SET-036: an empty or unreadable delay fails to save and discard puts the saved delay back", async () => {
+  const saved = 1000;
+  const d = createDraft(String(saved), {
+    save: async (t) => {
+      const v = delayFromText(t);
+      if (v === null) throw new Error("not saved");
+      return String(v);
+    },
+    timer: clock().timer,
+  });
+  d.type("");
+  await d.leave();
+  expect(d.state()).toMatchObject({ text: "", dirty: true, error: "not saved" });
+  expect(delayFromText(d.state().text)).toBeNull();
+  d.discard();
+  expect(d.state()).toMatchObject({ text: "1000", dirty: false, error: null });
+});
+
+// A number box like the auto-save delay: 200..10000, shown in normal form.
+const delayDraft = (stored: string, c: ReturnType<typeof clock>, seen: string[], block?: () => Promise<void>) =>
+  createDraft(stored, {
+    save: async (t) => {
+      seen.push(t);
+      await block?.();
+      return String(delayFromText(t));
+    },
+    ready: (t) => String(delayFromText(t)) === t && delayFromText(t) !== null,
+    timer: c.timer,
+  });
+
+test("SET-036: a pause mid-typing leaves the box alone: 1, pause, then 500 gives 1500, and 5, pause, 00 gives 500", async () => {
+  const c = clock();
+  const seen: string[] = [];
+  const d = delayDraft("1000", c, seen);
+  d.type("1");
+  expect(c.pending()).toBe(0); // "1" is below the range: no pause save is even scheduled
+  c.fire();
+  await flushMicro();
+  expect(seen).toEqual([]);
+  expect(d.state().text).toBe("1");
+  d.type("1500");
+  c.fire();
+  await flushMicro();
+  expect(seen).toEqual(["1500"]);
+  expect(d.state()).toMatchObject({ text: "1500", saved: "1500", dirty: false });
+  d.type("5"); // select all, type 5, pause
+  c.fire();
+  await flushMicro();
+  expect(d.state().text).toBe("5");
+  d.type("500");
+  c.fire();
+  await flushMicro();
+  expect(seen).toEqual(["1500", "500"]);
+  expect(d.state().text).toBe("500");
+});
+
+test("SET-036: only leaving clamps: 5 shows 200, 20000 shows 10000, and the same text left by closing the window is stored too", async () => {
+  const c = clock();
+  const seen: string[] = [];
+  const d = delayDraft("1000", c, seen);
+  d.type("5");
+  c.fire();
+  await flushMicro();
+  expect(seen).toEqual([]);
+  await d.leave();
+  expect(seen).toEqual(["5"]);
+  expect(d.state()).toMatchObject({ text: "200", saved: "200", dirty: false, error: null });
+  d.type("20000");
+  await d.flush(); // the window closes
+  expect(seen).toEqual(["5", "20000"]);
+  expect(d.state().text).toBe("10000");
+});
+
+test("SET-036: an emptied box is not saved by the pause, so retyping never passes through a stored value", async () => {
+  const c = clock();
+  const seen: string[] = [];
+  const d = createDraft("10", {
+    save: async (t) => void seen.push(t),
+    ready: (t) => String(Math.max(0, Math.floor(Number(t)) || 0)) === t, // the quiet-alert minutes
+    timer: c.timer,
+  });
+  d.type("");
+  expect(c.pending()).toBe(0);
+  d.type("3");
+  c.fire();
+  await flushMicro();
+  expect(seen).toEqual(["3"]);
+});
+
+test("SET-036: leaving while a pause save runs still saves the text that is not ready (and clamps it)", async () => {
+  const c = clock();
+  const g = gate();
+  const seen: string[] = [];
+  const d = delayDraft("1000", c, seen, () => (seen.length === 1 ? g.p : Promise.resolve()));
+  d.type("1500");
+  c.fire();
+  await flushMicro();
+  expect(d.state().saving).toBe(true);
+  d.type("5"); // typed during the save
+  const leaving = d.leave();
+  g.open();
+  await leaving;
+  expect(seen).toEqual(["1500", "5"]);
+  expect(d.state()).toMatchObject({ text: "200", saved: "200", dirty: false, saving: false });
+});
+
+test("SET-036: a pause save that is running does not go on to save a text that is not ready", async () => {
+  const c = clock();
+  const g = gate();
+  const seen: string[] = [];
+  const d = delayDraft("1000", c, seen, () => (seen.length === 1 ? g.p : Promise.resolve()));
+  d.type("1500");
+  c.fire();
+  await flushMicro();
+  d.type("5"); // typed during the save, the box stays as typed
+  g.open();
+  await flushMicro();
+  expect(seen).toEqual(["1500"]);
+  expect(d.state()).toMatchObject({ text: "5", saved: "1500", dirty: true });
+});
+
+test("SET-036: typing again after a leave while its save runs goes back to pause rules", async () => {
+  const c = clock();
+  const g = gate();
+  const seen: string[] = [];
+  const d = delayDraft("1000", c, seen, () => (seen.length === 1 ? g.p : Promise.resolve()));
+  d.type("1500");
+  const leaving = d.leave(); // left the box, save in flight
+  await flushMicro();
+  d.type("30"); // clicked back in and typing, not ready yet
+  g.open();
+  await leaving;
+  expect(seen).toEqual(["1500"]);
+  expect(d.state()).toMatchObject({ text: "30", saved: "1500", dirty: true });
 });

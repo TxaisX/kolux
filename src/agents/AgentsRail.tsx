@@ -17,7 +17,7 @@ export default function AgentsRail<S extends Session>({ groups, selected, classi
         {groups.length === 0 ? (
           <div className="empty">
             <h2>No agents yet</h2>
-            <p>Switch one on to start a session.</p>
+            <p>None is installed and switched on. Install one or switch one on in Settings to start a session.</p>
             <button className="btn" onClick={onSettings}>
               Open Settings
             </button>
@@ -38,7 +38,7 @@ export default function AgentsRail<S extends Session>({ groups, selected, classi
                 const ring = ringOf(p);
                 return (
                 <Fragment key={p.key}>
-                <div className={`sess${p.key === selected ? " sel" : ""}${p.seats ? " pending" : ""}`} role="button" tabIndex={0} data-session={p.key} onClick={() => onSelect(p.key)} onKeyDown={(e) => e.key === "Enter" && onSelect(p.key)}>
+                <div className={`sess${p.key === selected ? " sel" : ""}${p.seats ? " pending" : ""}`} role="button" tabIndex={0} data-session={p.key} aria-current={p.key === selected ? "true" : undefined} onClick={() => onSelect(p.key)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(p.key); } }}>
                   <VendorMark agent={markFor(p.agentId ?? g.id, p.program)} size={13} />
                   <span className="name">{p.seats ? "New session" : sessionLabel(p, taskOf?.(p.key))}</span>
                   {ring && <Ring percent={ring.percent} size={10} title={ring.title} />}

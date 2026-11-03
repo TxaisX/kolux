@@ -59,3 +59,10 @@ test("every reason has its one fix, or none (ACCT-013)", () => {
   expect(attentionText({ reason: "usage-limit", message: "Claude's usage limit was reached.", resetsAt: new Date(2026, 9, 9, 15, 40).getTime() }, now)).toMatch(/It can be used again at .*3.*40/);
   expect(attentionText({ reason: "usage-limit", message: "x", resetsAt: new Date(2026, 9, 10, 9, 5).getTime() }, now)).toMatch(/Sat|sam|Sa/i);
 });
+
+test("UX-audit: a sign-in that could not start says so next to the button", () => {
+  const l = lapsed(claude, codex);
+  const html = renderToString(createElement(SignInNoticeView, { lapsed: l, onSignIn: () => {}, error: "Sign-in did not start: no browser" }));
+  expect(html).toContain("Sign-in did not start: no browser");
+  expect(renderToString(createElement(SignInNoticeView, { lapsed: l, onSignIn: () => {} }))).not.toContain("data-signin-error");
+});

@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { HEADER_COLOURS_SETTING, PALETTE, headerColourOf, pickHeaderColour, readHeaderColours } from "./headerColour";
+import { HEADER_COLOURS_SETTING, PALETTE, headerColourOf, pickHeaderColour, readHeaderColours, swatchStep, swatchTabIndex } from "./headerColour";
 import { HeaderBadge, HeaderSwatches } from "./HeaderBadge";
 
 test("PROJ-017: a project that was never coloured has a grey badge", () => {
@@ -30,4 +30,17 @@ test("PROJ-017: the badge shows the colour and the swatch row marks the chosen o
   expect(row).toMatch(/aria-checked="true"[^>]*aria-label="Red"|aria-label="Red"[^>]*aria-checked="true"/);
   expect(row.match(/aria-checked="true"/g)).toHaveLength(1);
   expect(row.match(/role="radio"/g)).toHaveLength(PALETTE.length);
+});
+
+test("swatch row: one Tab stop, arrows wrap, Home and End jump", () => {
+  const ids = ["a", "b", "c"];
+  expect(ids.map((i) => swatchTabIndex(i, ids, "b"))).toEqual([-1, 0, -1]);
+  expect(ids.map((i) => swatchTabIndex(i, ids, "zzz"))).toEqual([0, -1, -1]);
+  expect(swatchStep("ArrowRight", ids, "c")).toBe("a");
+  expect(swatchStep("ArrowLeft", ids, "a")).toBe("c");
+  expect(swatchStep("End", ids, "a")).toBe("c");
+  expect(swatchStep("x", ids, "a")).toBeNull();
+  const html = renderToString(createElement(HeaderSwatches, { value: PALETTE[0].id, onPick: () => {} }));
+  expect(html.match(/tabindex="0"/g)?.length).toBe(1);
+  expect(html.match(/tabindex="-1"/g)?.length).toBe(PALETTE.length - 1);
 });

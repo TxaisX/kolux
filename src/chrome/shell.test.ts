@@ -107,7 +107,7 @@ test("ux fix 2: the bell carries the count of panes that need you and clears at 
   expect(two).toMatch(/class="bell-count"[^>]*>2</);
   expect(renderToString(createElement(TopBar, { ...base, needsYou: 1 }))).toContain('aria-label="Inbox, 1 needs you"');
   for (const html of [renderToString(createElement(TopBar, { ...base, needsYou: 0 })), renderToString(createElement(TopBar, base))]) {
-    expect(html).toContain('aria-label="Notifications"');
+    expect(html).toContain('aria-label="Inbox"');
     expect(html).not.toContain("bell-count");
   }
 });

@@ -66,6 +66,9 @@ export { HOOKS_FIELD, hooksOn };
 
 // T-152-c (3): `agent_hooks_sync` answers with one {agent, done, error} per agent; the errors are
 // shown beside the switch so a refused install or a failed removal never stays silent.
+/** The hooks sync follows a switch only when the switch was saved: after a refused save the page shows the old state, and a sync would write hooks to match a choice that did not stick. */
+export const syncIfSaved = <T,>(saved: boolean, sync: () => Promise<T>): Promise<T | undefined> => (saved === false ? Promise.resolve(undefined) : sync());
+
 export const hookProblems = (reply: unknown): string[] =>
   Array.isArray(reply) ? reply.filter((o) => o && typeof o.error === "string").map((o) => `${o.agent}: ${o.error}`) : [];
 
@@ -205,7 +208,7 @@ export default function AgentsPage() {
             <div key={a.id} className="agent-row" data-agent={a.id}>
               <label className="agent-on">
                 {/* T-598: only the keys the switch changes; the page's copy can be older than the disk */}
-                <input type="checkbox" role="switch" checked={on} onChange={(e) => void save(settingsDiff(settings, switchAgent(settings, a.id, e.target.checked)).set).then(() => invoke("agent_hooks_sync")).then(synced, syncFailed)} />
+                <input type="checkbox" role="switch" checked={on} onChange={(e) => void save(settingsDiff(settings, switchAgent(settings, a.id, e.target.checked)).set).then((ok) => syncIfSaved(ok, () => invoke("agent_hooks_sync"))).then(synced, syncFailed)} />
                 <span className="agent-name">{a.name}</span>
                 {a.id === def && on && <span className="conn-chip">default</span>}
               </label>
@@ -221,7 +224,7 @@ export default function AgentsPage() {
         })}
       </section>
       {agents !== null && agents.length > 0 && <AgentPicker agents={agents} onChanged={(list) => (setAgents(list), void emit("agents-changed", list))} />}
-      <HooksSwitch on={hooksOn(settings)} file={hooksFile} problems={problems} onSwitch={(on) => void save({ [HOOKS_FIELD]: on }).then(() => invoke("agent_hooks_sync", { clear: !on })).then(synced, syncFailed)} />
+      <HooksSwitch on={hooksOn(settings)} file={hooksFile} problems={problems} onSwitch={(on) => void save({ [HOOKS_FIELD]: on }).then((ok) => syncIfSaved(ok, () => invoke("agent_hooks_sync", { clear: !on }))).then(synced, syncFailed)} />
       <AgentsPageView cap={capOn(settings ?? {})} onCap={(on) => void save({ [CAP_FIELD]: on })} />
       <TeamsModeCard settings={settings} save={save} host={teamsHost} />
       <KeepAwakeCard settings={settings} save={save} />

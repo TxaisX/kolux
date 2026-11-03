@@ -120,8 +120,10 @@ export default function SafetyPage() {
   // refused save wrote, so dropping it at the start of a save would flash that wrong switch.
   const guarded = (patch: Settings) => {
     const mine = ++latest.current;
-    return savedState(save, () => invoke<Settings>("get_settings"), patch).then((s) => {
+    let ok = true;
+    return savedState(async (q) => void (ok = (await save(q)) !== false), () => invoke<Settings>("get_settings"), patch).then((s) => {
       if (mine === latest.current) setDisk(s);
+      return ok;
     });
   };
   const shown = disk ?? settings;

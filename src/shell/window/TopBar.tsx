@@ -12,7 +12,7 @@ export default function WindowTopBar() {
   const {
     settings, screen, setScreen, needing, classic, leftWidth, terminals, page, setPage, setPalette,
     installedIds, codex, sidebarOpen, setSidebarOpen, focused, fullPage, right, saveRight, showRight, step,
-    hist, stillThere, settingsOpen,
+    hist, stillThere, settingsOpen, setNotice,
   } = useWindow();
   return (
     <TopBar
@@ -33,6 +33,7 @@ export default function WindowTopBar() {
       classic={classic}
       sidebarWidth={leftWidth}
       appMenu
+      onNotice={setNotice}
       uiZoom={zoomFactor()}
       onScreen={setScreen} installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} onZoom={(how) => zoomTerm(focused, how)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
   );

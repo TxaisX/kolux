@@ -78,3 +78,7 @@ test("t634: the statement names SmartScreen, which checks pages and downloads in
   expect(row?.to).toBe("Microsoft Defender SmartScreen, from Kolux's windows (chiefly the browser pane)");
   expect(row?.when).toMatch(/pages you open .*files you download.*name, size and fingerprint/);
 });
+
+test("UX-audit: feedback and crash reports open the new-issue page of this project, kolux-rs", () => {
+  expect(FEEDBACK_REPO).toBe("https://github.com/TxaisX/kolux-rs/issues/new");
+});

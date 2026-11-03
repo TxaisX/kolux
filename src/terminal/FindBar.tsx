@@ -7,6 +7,8 @@ import { Close } from "../chrome/icons";
 import { compile, countLabel, type FindOptions } from "./find";
 
 type Props = {
+  /** Changes each time Find is asked for again while the bar is open; the field takes focus. */
+  focusTick?: number;
   count: number;
   current: number;
   /** The regex search was stopped for running too long. */
@@ -21,11 +23,14 @@ const field: React.CSSProperties = { width: 180, padding: "2px 6px", background:
 const toggle = (on: boolean): React.CSSProperties => ({ padding: "2px 5px", border: `1px solid ${on ? "var(--line-focus)" : "var(--line)"}`, borderRadius: 4, background: on ? "var(--row-selected)" : "transparent", color: "var(--fg)", font: "inherit", cursor: "pointer" });
 const plain: React.CSSProperties = { padding: "2px 5px", border: "1px solid transparent", borderRadius: 4, background: "transparent", color: "var(--fg)", font: "inherit", cursor: "pointer" };
 
-export default function FindBar({ count, current, slow = false, onSearch, onStep, onClose }: Props) {
+export default function FindBar({ focusTick = 0, count, current, slow = false, onSearch, onStep, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [opts, setOpts] = useState<FindOptions>({ caseSensitive: false, regex: false });
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => input.current?.focus(), []);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, [focusTick]);
   const update = (q: string, o: FindOptions) => {
     setQuery(q);
     setOpts(o);

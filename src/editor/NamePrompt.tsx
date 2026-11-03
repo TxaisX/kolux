@@ -24,6 +24,15 @@ const realIo: FirstSaveIo = {
 /** The first save against the real disk. */
 export const firstSaveReal = (root: string, oldPath: string, typed: string, text: string): Promise<FirstSave> => firstSave(realIo, root, oldPath, typed, text);
 
+/** What a key does in the box: Escape cancels and Enter saves, except while an input method is composing (the key then
+ *  belongs to it) and except on a button (Enter on Cancel presses Cancel, not Save). */
+export function nameKey(key: string, composing: boolean, onButton: boolean): "cancel" | "accept" | null {
+  if (composing) return null;
+  if (key === "Escape") return "cancel";
+  if (key === "Enter" && !onButton) return "accept";
+  return null;
+}
+
 type Props = {
   path: string;
   root: string;
@@ -69,8 +78,9 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel }: Prop
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (e.key === "Escape") onCancel();
-          else if (e.key === "Enter") (e.preventDefault(), accept());
+          const todo = nameKey(e.key, e.nativeEvent.isComposing || e.keyCode === 229, (e.target as HTMLElement).tagName === "BUTTON");
+          if (todo === "cancel") onCancel();
+          else if (todo === "accept") (e.preventDefault(), accept());
         }}
       >
         <h2 className="ask-title">Name this note</h2>

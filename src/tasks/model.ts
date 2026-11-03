@@ -123,6 +123,9 @@ const WINDOW = 1000;
 export const pageCount = (deepest: number) => Math.max(1, Math.ceil(Math.min(deepest, WINDOW) / PER_PAGE));
 export const beyondWindow = (deepest: number) => deepest > WINDOW;
 
+/** Whether the pager shows: on any page with rows, and on an empty page past the first, so the user can go back. */
+export const showPager = (rows: number, page: number) => rows > 0 || page > 1;
+
 /** Numbered page buttons: the first, the last and two either side of the current; null is a gap. */
 export function pageButtons(page: number, count: number): (number | null)[] {
   const out: (number | null)[] = [];

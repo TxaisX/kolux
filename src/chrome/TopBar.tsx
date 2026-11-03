@@ -6,7 +6,7 @@
 // out ("false"), so a press that just misses a segment does not move the window and a click on a
 // menu's backdrop still closes it. The search box shows the palette chord
 // from the keymap (T-005), so an edit to ~/.kolux/keybindings.json changes the chips.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ArrowLeft, ArrowRight, Bell, Clock, Close, Dots, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
 import { Kbd } from "../keys/KeymapContext";
@@ -14,7 +14,7 @@ import UsagePill from "../usage/UsagePill";
 import AccountSwitcher from "../switcher/AccountSwitcher";
 import { weeklyOf } from "../usage/claude";
 import { usePlan } from "../usage/plan";
-import { popAppMenu } from "./useChrome";
+import { APP_MENU_FAILED, popAppMenu } from "./useChrome";
 import { chromeLayout } from "./titleHeader";
 import { t } from "../i18n/lookup";
 import { useSettings } from "../settings/useSettings";
@@ -35,7 +35,10 @@ export const screens: Array<{ id: Screen; label: string }> = [
 /** `classic` (SET-037): the Classic look has no screen switcher; the window stays on Terminals.
  * `sidebarWidth` (T-049-c): Classic draws a title header exactly as wide as the left sidebar card, so it follows the card. */
 /** `automations` (VIEW-011): the Automations page button, present only when it is turned on in Settings > Appearance. */
-export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; onZoom?: (how: "in" | "out" | "reset") => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; needsYou?: number };
+export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; onZoom?: (how: "in" | "out" | "reset") => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; needsYou?: number; onNotice?: (text: string) => void };
+
+/** The bell opens the Inbox, and closes it back to the screen that was showing before (never past it to Terminals). */
+export const bellTarget = (screen: Screen, before: Screen): Screen => (screen === "inbox" ? before : "inbox");
 
 /** TERM-078: the overflow menu's View section; each item names its keybinding id. */
 export const VIEW_ITEMS = [
@@ -45,7 +48,10 @@ export const VIEW_ITEMS = [
 ] as const;
 
 /** `appName` (SET-020): the app name beside the mark, off by default (DT-A6). */
-export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, onZoom, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0 }: TopBarProps) {
+export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, onZoom, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0, onNotice }: TopBarProps) {
+  // The screen the bell returns to when the Inbox is closed: the one that was showing before it opened.
+  const before = useRef<Screen>("terminals");
+  if (screen !== "inbox") before.current = screen;
   const [maximized, setMaximized] = useState(false);
   const [menuAt, setMenuAt] = useState<{ top: number; left: number } | null>(null);
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused
@@ -92,7 +98,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
           onMouseDown={(e) => e.preventDefault()}
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
-            popAppMenu(r.left, r.bottom + 4, uiZoom);
+            popAppMenu(r.left, r.bottom + 4, uiZoom, () => onNotice?.(APP_MENU_FAILED));
           }}
         >
           <Mark />
@@ -102,7 +108,8 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         )}
         <button
           className="ib dots"
-          title="Menu"
+          title="Terminal zoom"
+          aria-label="Terminal zoom"
           aria-haspopup="menu"
           aria-expanded={menuAt !== null}
           onClick={(e) => {
@@ -115,8 +122,8 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         {menuAt && (
           <>
             <div className="menu-backdrop" onClick={() => setMenuAt(null)} aria-hidden="true" data-tauri-drag-region="false" />
-            <div className="menu" role="menu" aria-label="View" style={menuAt} onKeyDown={(e) => e.key === "Escape" && setMenuAt(null)} data-tauri-drag-region="false">
-              <div className="menu-title">View</div>
+            <div className="menu" role="menu" aria-label="Terminal zoom" style={menuAt} onKeyDown={(e) => e.key === "Escape" && setMenuAt(null)} data-tauri-drag-region="false">
+              <div className="menu-title">Terminal zoom</div>
               {VIEW_ITEMS.map((i, n) => (
                 <button key={i.id} role="menuitem" className="menu-item" autoFocus={n === 0} disabled={!onZoom} title={`${i.label} the focused terminal`} onClick={() => (setMenuAt(null), onZoom?.(i.how))}>
                   <span className="name">{i.label}</span>
@@ -162,7 +169,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
           <span className="ph">Search</span>
           <Kbd id="worktree.palette" />
         </button>
-        <button className="ib bell" aria-label={needsYou > 0 ? t(needsYou === 1 ? "inbox.bell.needs.one" : "inbox.bell.needs.many", { count: needsYou }) : "Notifications"} title="Inbox" aria-pressed={screen === "inbox"} onClick={() => onScreen(screen === "inbox" ? "terminals" : "inbox")}>
+        <button className="ib bell" aria-label={needsYou > 0 ? t(needsYou === 1 ? "inbox.bell.needs.one" : "inbox.bell.needs.many", { count: needsYou }) : "Inbox"} title="Inbox" aria-pressed={screen === "inbox"} onClick={() => onScreen(bellTarget(screen, before.current))}>
           <Bell />
           {needsYou > 0 && <span className="bell-count" aria-hidden="true">{needsYou > 99 ? "99+" : needsYou}</span>}
         </button>
