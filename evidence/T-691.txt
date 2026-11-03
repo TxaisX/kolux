@@ -1,0 +1,46 @@
+T-691 - One keyboard helper for the editor's popup menus; the crash report on the shared dialog focus (DT-C127; APP-039; UX audit lane D follow-up to T-683 / T-684)
+Lane D (72), branch s-72/ux-9, base 5177a5f2 (origin/main), code commits 504e99fb and c89e2f39, 2026-11-03.
+
+WHAT CHANGED
+- src/editor/menuKeys.ts is folded into src/editor/menuNav.ts and deleted. menuNav.ts keeps clampMenu and now holds wireMenuKeys,
+  restoreIfLost and the useMenuKeys(open, close) -> { box, remember } hook; the old four-argument hook and menuKeyTarget are gone.
+- The rows are found with [role^="menuitem"], so the Diff actions menu's checkbox rows are reached by the arrow keys.
+- DiffPane.tsx (Diff actions) and Explorer.tsx (Open in) call remember(e.currentTarget) in the click that opens the menu;
+  PreviewPane.tsx (Send) and ReviewNotes.tsx (note actions) only change their import.
+- A menu in a hidden pane (panes stay mounted) leaves Escape and the arrows alone, so the key still reaches the terminal.
+- src/recovery/CrashReportDialog.tsx: CrashPanel uses useDialogFocus (src/chrome/dialogFocus.ts) with Not now as the first focus:
+  Tab stays inside, Escape closes from anywhere, focus goes back where it was. The component's own Escape listener and the
+  autoFocus attribute are removed (autoFocus runs before the hook's effect, which would then remember the dialog's own button).
+- spec/19-app-lifecycle.md: APP-039 Rules say Tab stays inside and focus goes back on close; a new Acceptance line points here.
+- Rules changed: none reversed (DT-C127).
+
+WHY
+The UX audit's lane D left two copies of the same menu keyboard code (T-683 menuNav.ts, T-684 menuKeys.ts) that differed on
+how they found the opener and which rows they took, and the crash report was the one dialog not on the shared dialog focus.
+
+REVIEW
+Opus review A- on 504e99fb, no must-fix; its two test and guard suggestions applied in c89e2f39.
+
+TESTS (named, the two test files this PR changed; pnpm vitest run src/editor/menuNav.test.ts src/recovery/crashPanel.test.ts --reporter=verbose)
+ ✓ src/editor/menuNav.test.ts > popup menu placement > keeps a menu that fits where it was asked for 2ms
+ ✓ src/editor/menuNav.test.ts > popup menu placement > pulls a menu back from the right and bottom edges 0ms
+ ✓ src/editor/menuNav.test.ts > popup menu placement > never leaves the top-left corner either 0ms
+ ✓ src/editor/menuNav.test.ts > wireMenuKeys > Escape closes the menu, then hands focus back after the close (deferred) 1ms
+ ✓ src/editor/menuNav.test.ts > wireMenuKeys > the arrow keys step through the rows, wrapping, and Home and End jump 0ms
+ ✓ src/editor/menuNav.test.ts > wireMenuKeys > leaves the arrows alone when focus is outside the menu, and other keys always 0ms
+ ✓ src/editor/menuNav.test.ts > wireMenuKeys > leaves every key alone while the menu sits in a hidden pane 0ms
+ ✓ src/editor/menuNav.test.ts > wireMenuKeys > takes its listeners off when stopped 0ms
+ ✓ src/editor/menuNav.test.ts > wireMenuKeys > listens in the capture phase, so a focused pane behind the menu never sees the Escape 0ms
+ ✓ src/editor/menuNav.test.ts > restoreIfLost > gives focus back to the opener once focus has dropped to the body or nowhere (deferred) 0ms
+ ✓ src/editor/menuNav.test.ts > restoreIfLost > leaves focus alone when an action already put it somewhere, such as a dialog it opened 0ms
+ ✓ src/editor/menuNav.test.ts > every editor popup menu uses the one hook > takes checkbox rows too (the diff menu's rows are menuitemcheckbox) 0ms
+ ✓ src/editor/menuNav.test.ts > every editor popup menu uses the one hook > the diff and Open-in menus remember their opener from the click that opens them 0ms
+ ✓ src/recovery/crashPanel.test.ts > disables Copy Details while the details are loading 8ms
+ ✓ src/recovery/crashPanel.test.ts > enables Copy Details once the details are there 1ms
+ ✓ src/recovery/crashPanel.test.ts > uses the shared dialog focus: Tab stays inside, focus starts on Not now and goes back on close 0ms
+
+TOTALS
+- pnpm vitest run <every test file that names DiffPane, Explorer, PreviewPane, ReviewNotes, menuNav or CrashReportDialog>:
+  Test Files 30 passed (30), Tests 201 passed (201). (Full suite not run: the 0.1.6 release build was running on this PC; CI runs it.)
+- pnpm tsc --noEmit: exit 0
+- No Rust touched.
