@@ -1,0 +1,33 @@
+T-664 (DT-C100) · the launch chooser's AI dropdown is A to Z · s-57/launch-first · 2026-11-02
+
+Txais's ask: "i wnat this to come up as the first thing when they open a new workspace. also sort the ai models by alphabetical order too."
+
+(a) A to Z, done.
+  src/launch/agentInstall.ts  pickList sorts a copy of the agents by shown name, case-insensitive (localeCompare, sensitivity base).
+  The chooser still puts "Choose an AI…" first and "Terminal" last (they are separate <option>s around rows).
+  FEATURED stays in src/launch/agents.ts: the plus menu's three-then-fold list (agentRows) still uses it.
+  Tests changed to the new order (both fail on the old code, which led with claude, codex, grok):
+    src/launch/agentInstall.test.ts  T-570 / T-664: ["aider","claude","codex","goose","grok"], plus a lower-case name sorting with the rest
+    src/launch/ChooserPane.test.ts   the rendered options: Choose an AI…, Aider, Claude Code, Codex, Goose (not installed), Grok (not installed), Terminal
+
+(b) Chooser first on a new workspace: no code change was needed.
+  T-569 (a5782e35, 2026-10-28) already does this: useWorkspaces.select (src/projects/useWorkspaces.ts:81-91) gives a workspace
+  with no pane yet chooser pane(s) from startPanes (src/projects/workspaceStart.ts), as many as the default pane count for a
+  fresh one. ProjectsPanel's new-workspace path ends in onSelect(wt.path, wt.branch, true), which is that same select
+  (Sidebar onSelect={select}), so a workspace made with no agent already opens on the chooser. "No terminal open here"
+  (Grid.tsx empty state) only shows for a workspace whose panes were all closed. Adding addChooser(dir) on top would
+  open a second chooser next to the one select already made, so addChooser/ProjectsPanel were left alone.
+  Likely cause of what Txais saw: an installed build older than 2026-10-28. REST: confirm on the installed app after a reinstall.
+
+Rows: PLAN.md T-664, DECISIONS.md DT-C100 (T-570's "featured three first" is replaced by A to Z on Txais's ask).
+(PLAN.md, DECISIONS.md and evidence files in this checkout use LF line ends, so the new rows and this file do too.)
+
+Gates (worktree G:/Dev/kolux-rs-sessions/wt/57-launch, run 2026-11-02):
+  node scripts/plan-check.mjs                    -> plan-check: OK (head: cutline left 0/18 · merge gate 1 waiting · P0 cards passing 217/228 · done 747/804 tasks)
+  pnpm exec tsc --noEmit                         -> exit 0, no output
+  VITEST_MAX_WORKERS=2 pnpm exec vitest run      -> first full run: Test Files 2 failed | 730 passed (732); Tests 4 failed | 5411 passed (5415)
+      the 4 failures: 3 in src/editor/pdfjsCopy.test.ts (known CRLF-checkout failure, ignored) and 1 in
+      src/launch/ChooserPane.test.ts (asserted the old order; fixed above)
+  VITEST_MAX_WORKERS=2 pnpm exec vitest run src/launch -> Test Files 22 passed (22); Tests 134 passed (134)
+  pnpm exec vite build                           -> built in 1.99s
+  node scripts/bundle-budget.mjs                 -> bundle-budget: first load 1455752 bytes in 44 chunks (ceiling 1485000); bundle-budget: OK
