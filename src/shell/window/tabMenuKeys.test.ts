@@ -8,6 +8,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) })
 import { focusIsLost, openTabMenu } from "./tabMenuKeys";
 import dialogs from "./Dialogs.tsx?raw";
 import menu from "./TabMenuView.tsx?raw";
+import grid from "./Grid.tsx?raw";
 import store from "../windowStore.ts?raw";
 
 type Handler = (e: Event) => void;
@@ -106,7 +107,7 @@ test("the tab menu wires the hook to its element and loads on first use; the old
   expect(menu).toContain("ref={tabBox}");
   expect(menu).toContain("title={why}");
   expect(dialogs).toContain("deferred(() => import(\"./TabMenuView\"))");
-  expect(dialogs).not.toMatch(/from "\.\/(TabMenuView|tabMenuKeys)"/);
+  for (const src of [dialogs, grid]) expect(src).not.toMatch(/from "\.\/(TabMenuView|tabMenu|tabMenuKeys)"/);
   expect(dialogs).toContain("closeConfirmLabel(asking.keys.length)");
   expect(store).not.toMatch(/Escape" && setTabMenu/);
 });

@@ -124,8 +124,8 @@ FIRST LOAD (train 2 hand-back)
 scripts/bundle-budget.mjs: main 1,485,561, branch 1,489,640). The tab menu moved to TabMenuView.tsx (with
 tabMenuKeys.ts and the close rows of tabMenu.ts), loaded through lazy/deferred on its first right-click;
 menuAnchor and closeConfirmLabel moved to tabMenuStart.ts, the two parts Grid and Dialogs need at start;
-LostPane loads when a lost tab is drawn. deferred() prefetches both after the first frame, so a right-click
-finds the menu loaded. After: branch 1,485,799 bytes, main +238 (target main +500). The rest of the +238 is
+LostPane loads when a lost tab is drawn. deferred() fetches both after the first frame, so the code is already
+there; the menu still appears one React tick after the first right-click. After: branch 1,485,799 bytes, main +238 (target main +500). The rest of the +238 is
 tabKeys, Notices, browserOpen and the ScreenBoundary import in Content, which moved the crash report code
 from index into a shared chunk (index -14,391, FeedbackDialog + privacy +14,765).
 

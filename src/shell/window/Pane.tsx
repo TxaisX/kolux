@@ -27,7 +27,6 @@ import { deferred } from "../../lazy/deferred";
 import SeatChooser from "./SeatChooser";
 import TerminalPane from "../../terminal/TerminalPane";
 import { useWindow } from "./store";
-
 import { EditorPane } from "../../lazy/panes";
 import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
