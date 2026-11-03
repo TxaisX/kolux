@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { baseCall, entryKey, estimate, openStatus, sidesCall, statusGate, tagOf, WAIT_OVER, type Entry } from "./AllChangesPane";
+import { createElement } from "react";
+import { renderToString } from "react-dom/server";
+import { baseCall, entryKey, estimate, openStatus, Section, sidesCall, statusGate, tagOf, WAIT_OVER, type Entry } from "./AllChangesPane";
+import { readyStore } from "./sectionWindow";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, acLayoutOf, emptyStatus } from "../scm/model";
 
 const e = (over: Partial<Entry>): Entry => ({ path: "C:/r/a.ts", staged: false, code: "M", lines: 10, binary: false, stamp: "x", ...over });
@@ -93,5 +96,40 @@ describe("FIX-3: the tab's status wiring", () => {
     await expect(b.first).resolves.toBeUndefined();
     tick(status("only-watcher"));
     expect(seen).toEqual(["open", "tick", "only-watcher"]);
+  });
+});
+
+describe("UX-D: the live Changes tab stages from its section headers", () => {
+  const props = (entry: Entry, extra: Record<string, unknown> = {}) => ({
+    anchor: "ac-1-0",
+    e: entry,
+    name: "a.ts",
+    root: "C:/r",
+    base: null,
+    draw: { split: false, wrap: false, spaces: false },
+    cache: new Map(),
+    ready: readyStore(),
+    meter: { watch: () => () => undefined },
+    loaded: new Set<string>(),
+    onFocusView: () => undefined,
+    onGoneView: () => undefined,
+    viewedStamp: undefined,
+    onToggleViewed: () => undefined,
+    folded: true,
+    onToggleFold: () => undefined,
+    ...extra,
+  });
+  const html = (entry: Entry, extra?: Record<string, unknown>) => renderToString(createElement(Section, props(entry, extra)));
+  it("offers Stage on an unstaged file and Unstage on a staged one", () => {
+    expect(html(e({ staged: false }), { onStage: () => undefined })).toContain('aria-label="Stage a.ts"');
+    expect(html(e({ staged: true }), { onStage: () => undefined })).toContain('aria-label="Unstage a.ts"');
+  });
+  it("offers nothing against a base, on a conflicted file, or when the tab gave no stage handler", () => {
+    expect(html(e({}))).not.toContain("Stage a.ts");
+    expect(html(e({ clash: "UU" }), { onStage: () => undefined })).not.toContain("Stage a.ts");
+  });
+  it("disables the button while another git action runs", () => {
+    const out = html(e({}), { onStage: () => undefined, stageBusy: true });
+    expect(out).toMatch(/<button[^>]*disabled[^>]*aria-label="Stage a.ts"|<button[^>]*aria-label="Stage a.ts"[^>]*disabled/);
   });
 });

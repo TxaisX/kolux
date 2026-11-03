@@ -37,6 +37,7 @@ import { useReadyStamp, useReadyVersion, useSectionWindow, type Meter } from "./
 import { useSettings } from "../settings/useSettings";
 import { allChangesStart } from "../settings/editorPrefs";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
+import { bulkPaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
 
 export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string };
 /** The base a branch is measured against and the snapshot commit the sides are read from. */
@@ -106,7 +107,11 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   // T-227-d: unresolved conflicts come first, one section each, marked and drawn without a diff.
   const entries = useMemo(() => (raw ? withClashes(raw, clashesOf(status), root) : null), [raw, status, root]);
   const [message, setMessage] = useState("");
-  const [outcome, setOutcome] = useState<{ text: string; bad: boolean } | null>(null);
+  const [outcome, setOutcome] = useState<Say | null>(null);
+  // One git action at a time (commit, stage, push, pull, sync): a second click or Ctrl+Enter while one runs does nothing.
+  const [turn] = useState(oneAtATime);
+  const [pending, setPending] = useState<string | null>(null);
+  const reload = useRef<() => void>(() => undefined); // reads the changes again; set by the effect that owns the read
   const { settings, save } = useSettings();
   const [over, setOver] = useState<Partial<AcLayout>>({}); // this tab's toggles over the saved defaults
   const layout: AcLayout = { ...allChangesStart(settings, { split: AC_SPLIT_KEY, wrap: AC_WRAP_KEY, spaces: AC_WHITESPACE_KEY, tree: AC_TREE_KEY }), ...over };
@@ -147,6 +152,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
         },
         (err) => alive && setError(String(err)),
       );
+    reload.current = () => void fetch();
     // One status as the tab opens: Commit is ready at once instead of after the watcher's first
     // tick, and in base mode the first read already knows the base. A watcher status that came in
     // first wins over it (openStatus wires the two through statusGate).
@@ -190,29 +196,70 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   const openRef = useRef(onOpenDiff);
   openRef.current = onOpenDiff;
   const openDiff = useCallback((path: string, staged: boolean) => openRef.current?.(path, staged), []);
+  // The drag's listeners end on release, on a cancelled pointer (the system took it) and when the tab closes mid-drag.
+  const endDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => endDrag.current?.(), []);
   const resize = (down: React.PointerEvent) => {
+    endDrag.current?.();
     const x0 = down.clientX;
     const w0 = width;
-    const move = (m: PointerEvent) => setWidth(Math.max(160, Math.min(640, w0 + m.clientX - x0)));
+    const move = (m: PointerEvent) => setWidth(Math.max(TREE_MIN, Math.min(TREE_MAX, w0 + m.clientX - x0)));
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      endDrag.current = null;
     };
+    endDrag.current = up;
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
+  // Runs one git action under the one-at-a-time guard, showing what it is doing and what came of it.
+  const act = (what: string, work: () => Promise<Say | null>) =>
+    void turn.run(async () => {
+      setPending(what);
+      setOutcome(null);
+      try {
+        const say = await work();
+        if (say) setOutcome(say);
+      } finally {
+        setPending(null);
+        // Read again at once, so the lists and the Commit button match git without waiting for the watcher.
+        invoke<Status>("scm_status", { worktree: root }).then(
+          (s) => {
+            latest.current = s;
+            setStatus(s);
+          },
+          () => undefined,
+        );
+        reload.current();
+      }
+    });
   const commit = () => {
-    if (!canCommit(status, message)) return;
-    invoke<CommitOutcome>("scm_commit", { worktree: root, message }).then(
-      (out) => {
-        if (out.id) {
-          setMessage("");
-          setOutcome({ text: `Committed ${out.id}`, bad: false });
-        } else setOutcome({ text: `${out.blocked ? "Commit blocked by a hook" : "Commit failed"}: ${out.output}`, bad: true });
-      },
-      (e) => setOutcome({ text: String(e), bad: true }),
+    if (turn.busy() || !canCommit(status, message)) return;
+    act("Committing", () =>
+      invoke<CommitOutcome>("scm_commit", { worktree: root, message }).then(
+        (out): Say => {
+          if (out.id) {
+            setMessage("");
+            return { text: `Committed ${out.id}`, bad: false };
+          }
+          return { text: `${out.blocked ? "Commit blocked by a hook" : "Commit failed"}: ${out.output}`, bad: true };
+        },
+        (e): Say => ({ text: String(e), bad: true }),
+      ),
     );
   };
+  const call = invoke as <T>(cmd: string, args: Record<string, unknown>) => Promise<T>;
+  const stage = useCallback(
+    (paths: string[], on: boolean) => {
+      if (paths.length) act(on ? "Staging" : "Unstaging", () => stagePaths(call, root, paths, on));
+    },
+    [root],
+  );
+  const stageEntry = useCallback((e: Entry) => stage([relTo(root, e.path)], !e.staged), [stage, root]);
+  const remote = (id: "push" | "pull" | "sync", label: string) => act(`${id === "sync" ? "Syncing" : id === "push" ? "Pushing" : "Pulling"}`, () => runRemote(call, root, id, label));
   const say = (text: string) => {
     setSaid(text);
     window.clearTimeout(saidTimer.current);
@@ -264,16 +311,30 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
             <option value="tree">Working tree</option>
             <option value="base">{base ? `Branch vs ${base.against}` : "Branch vs base"}</option>
           </select>
-          <label className="ac-opt" title="Two columns instead of one">
-            <input type="checkbox" checked={layout.split} onChange={() => toggle("split")} aria-label="Side by side" /> Side by side
-          </label>
+          <span className="view-switch" role="group" aria-label="Layout">
+            <button aria-pressed={!layout.split} onClick={() => setOver((o) => ({ ...o, split: false }))} title="Inline">
+              Inline
+            </button>
+            <button aria-pressed={layout.split} onClick={() => setOver((o) => ({ ...o, split: true }))} title="Side by side">
+              Side by side
+            </button>
+          </span>
           <label className="ac-opt" title="Wrap long lines">
             <input type="checkbox" checked={layout.wrap} onChange={() => toggle("wrap")} aria-label="Wrap lines" /> Wrap
           </label>
           <label className="ac-opt" title="Show changes that only move whitespace">
             <input type="checkbox" checked={layout.spaces} onChange={() => toggle("spaces")} aria-label="Show whitespace changes" /> Whitespace
           </label>
-          <button className="link" onClick={() => void save({ [AC_SPLIT_KEY]: layout.split, [AC_WRAP_KEY]: layout.wrap, [AC_WHITESPACE_KEY]: layout.spaces, [AC_TREE_KEY]: layout.tree })} title="New All Changes tabs start with this layout">
+          <button
+            className="link"
+            onClick={() =>
+              void save({ [AC_SPLIT_KEY]: layout.split, [AC_WRAP_KEY]: layout.wrap, [AC_WHITESPACE_KEY]: layout.spaces, [AC_TREE_KEY]: layout.tree }).then(
+                (ok) => say(ok ? "Saved as the default layout" : "The default layout was not saved; try again"),
+                () => say("The default layout was not saved; try again"),
+              )
+            }
+            title="New All Changes tabs start with this layout"
+          >
             Make default
           </button>
           {said && (
@@ -297,28 +358,69 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
       </header>
       {error && (
         <div className="notice load-failed" role="alert">
-          The changes did not load: {error}. They are read again when git state moves.
+          The changes did not load: {error}. They are read again when git state moves.{" "}
+          <button className="btn" onClick={() => reload.current()}>
+            Retry
+          </button>
         </div>
       )}
-      {mode === "base" && (
-        <div className="scm-commit ac-commit" aria-label="Commit">
+      <div className="scm-commit ac-commit ac-actions" role="group" aria-label="Stage, push and pull">
+        <div className="ac-commit-row">
+          <button className="btn" disabled={pending !== null || bulkPaths(status, true).length === 0} onClick={() => stage(bulkPaths(status, true), true)} title="Stage every changed and new file">
+            Stage all
+          </button>
+          <button className="btn" disabled={pending !== null || bulkPaths(status, false).length === 0} onClick={() => stage(bulkPaths(status, false), false)} title="Unstage every staged file">
+            Unstage all
+          </button>
+          {remoteButtons(status).map((b) => (
+            <button key={b.id} className="btn" disabled={pending !== null || b.reason !== null} onClick={() => remote(b.id, b.label)} title={b.reason ?? b.label}>
+              {b.label}
+            </button>
+          ))}
+          {pending && (
+            <span className="note" role="status">
+              {pending}…
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="scm-commit ac-commit" aria-label="Commit">
           <textarea className="field multi" aria-label="Commit message" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={(e) => isCommitShortcut(e) && (e.preventDefault(), commit())} />
           <div className="ac-commit-row">
-            <button className="btn" disabled={!canCommit(status, message)} onClick={commit} title={status && status.staged.length === 0 ? "Nothing is staged" : status && status.conflicts.length ? "Conflicts remain" : undefined}>
+            <button className="btn" disabled={pending !== null || !canCommit(status, message)} onClick={commit} title={status && status.staged.length === 0 ? "Nothing is staged: use Stage all above, or Stage on a file in the Working tree view" : status && status.conflicts.length ? "Conflicts remain" : undefined}>
               Commit{status?.staged.length ? ` ${status.staged.length} staged` : ""}
             </button>
+            {status && status.staged.length === 0 && message.trim() !== "" && !outcome && <span className="note">Nothing is staged yet: use Stage all, or Stage on a file in the Working tree view.</span>}
             {outcome && (
-              <span className={`note${outcome.bad ? " warn" : ""}`} role="status">
+              <span className={`note${outcome.bad ? " warn" : ""}`} role={outcome.bad ? "alert" : "status"}>
                 {outcome.text}
               </span>
             )}
           </div>
-        </div>
-      )}
+      </div>
       <div className="pane-body ac-body">
         {layout.tree && <ChangeTree entries={entries} root={root} width={width} ready={ready} viewed={viewed} keyOf={entryKey} tagOf={tagFor} onJump={jump} onToggleViewed={toggleViewed} />}
-        {layout.tree && <div className="ac-handle" onPointerDown={resize} role="separator" aria-orientation="vertical" aria-label="Resize the file tree" />}
-        <AllChangesList entries={entries} root={root} base={base} draw={draw} cache={cache.current} ready={ready} fold={fold} viewed={viewed} hidden={hidden} idPrefix={`ac-${id}`} jumpRef={jumpRef} loaded={loaded.current} onFocusView={focusedView} onGoneView={goneView} onToggleViewed={toggleViewed} onToggleFold={toggleFold} onOpenDiff={onOpenDiff && base === null ? openDiff : undefined}>
+        {layout.tree && (
+          <div
+            className="ac-handle"
+            onPointerDown={resize}
+            onKeyDown={(ev) => {
+              const w = treeWidthForKey(width, ev.key);
+              if (w === null) return;
+              ev.preventDefault();
+              setWidth(w);
+            }}
+            role="separator"
+            tabIndex={0}
+            aria-orientation="vertical"
+            aria-label="Resize the file tree"
+            aria-valuemin={TREE_MIN}
+            aria-valuemax={TREE_MAX}
+            aria-valuenow={width}
+            title="Drag, or press the left and right arrow keys, to resize the file tree"
+          />
+        )}
+        <AllChangesList entries={entries} root={root} base={base} draw={draw} cache={cache.current} ready={ready} fold={fold} viewed={viewed} hidden={hidden} idPrefix={`ac-${id}`} jumpRef={jumpRef} loaded={loaded.current} onFocusView={focusedView} onGoneView={goneView} onToggleViewed={toggleViewed} onToggleFold={toggleFold} onOpenDiff={onOpenDiff && base === null ? openDiff : undefined} onStage={base === null ? stageEntry : undefined} stageBusy={pending !== null}>
           {entries === null && !error && <div className="menu-hint">Reading the changes…</div>}
           {base?.note && <div className="menu-hint ac-note">{base.note}</div>}
           {entries && !entries.length && <div className="menu-hint">{base ? `This branch has no changes against ${base.against}.` : "This worktree has no changes."}</div>}
@@ -328,10 +430,10 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   );
 }
 
-type SectionProps = { anchor: string; e: Entry; name: string; root: string; base: Base | null; draw: Draw; cache: Cache; ready: ReadyStore; meter: Meter; loaded: Set<string>; onFocusView: (f: LastFocus) => void; onGoneView: (v: object) => void; viewedStamp: string | undefined; onToggleViewed: (e: Entry) => void; folded: boolean; onToggleFold: (key: string) => void; onOpenDiff?: (path: string, staged: boolean) => void };
+type SectionProps = { anchor: string; e: Entry; name: string; root: string; base: Base | null; draw: Draw; cache: Cache; ready: ReadyStore; meter: Meter; loaded: Set<string>; onFocusView: (f: LastFocus) => void; onGoneView: (v: object) => void; viewedStamp: string | undefined; onToggleViewed: (e: Entry) => void; folded: boolean; onToggleFold: (key: string) => void; onOpenDiff?: (path: string, staged: boolean) => void; /** Stages (or, for a staged section, unstages) the file; absent against a base, where there is no index side. */ onStage?: (e: Entry) => void; stageBusy?: boolean };
 
 /** Exported for the render-cost test. */
-export const Section = memo(function Section({ anchor, e, name, root, base, draw, cache, ready, meter, loaded, onFocusView, onGoneView, viewedStamp, onToggleViewed, folded, onToggleFold, onOpenDiff }: SectionProps) {
+export const Section = memo(function Section({ anchor, e, name, root, base, draw, cache, ready, meter, loaded, onFocusView, onGoneView, viewedStamp, onToggleViewed, folded, onToggleFold, onOpenDiff, onStage, stageBusy }: SectionProps) {
   const key = entryKey(e);
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -448,6 +550,11 @@ export const Section = memo(function Section({ anchor, e, name, root, base, draw
         </span>
         <span className={`preview-tag${e.clash ? " ac-conflict" : ""}`} title={e.clash ? `Unresolved conflict: ${clashWord(e.clash)}` : undefined}>{tagOf(e, base !== null)}</span>
         {e.lines !== null && <span className="ac-lines">{e.lines} changed {e.lines === 1 ? "line" : "lines"}</span>}
+        {onStage && !e.clash && (
+          <button className="link" onClick={() => onStage(e)} disabled={stageBusy} title={e.staged ? "Unstage this file" : "Stage this file"} aria-label={`${e.staged ? "Unstage" : "Stage"} ${name}`}>
+            {e.staged ? "Unstage" : "Stage"}
+          </button>
+        )}
         {onOpenDiff && (
           <button className="ib" onClick={() => onOpenDiff(e.path, e.staged)} title="Open as a diff tab, in the split chosen in Source Control" aria-label={`Open ${name} as a tab`}>
             <FileCode size={12} />
@@ -528,13 +635,15 @@ type ListProps = {
   onToggleViewed: (e: Entry) => void;
   onToggleFold: (key: string) => void;
   onOpenDiff?: (path: string, staged: boolean) => void;
+  onStage?: (e: Entry) => void;
+  stageBusy?: boolean;
   children?: ReactNode;
   /** The scroll offset of the first paint; a tab keeps its own scroll, so only a test sets it. */
   initialTop?: number;
 };
 
 /** The scrolling column of sections: only those near the viewport are mounted. */
-export function AllChangesList({ entries, root, base, draw, cache, ready, fold, viewed, hidden, idPrefix, jumpRef, loaded, onFocusView, onGoneView, onToggleViewed, onToggleFold, onOpenDiff, children, initialTop }: ListProps) {
+export function AllChangesList({ entries, root, base, draw, cache, ready, fold, viewed, hidden, idPrefix, jumpRef, loaded, onFocusView, onGoneView, onToggleViewed, onToggleFold, onOpenDiff, onStage, stageBusy, children, initialTop }: ListProps) {
   const list = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   const top = useRef(0);
@@ -573,7 +682,7 @@ export function AllChangesList({ entries, root, base, draw, cache, ready, fold, 
       <div ref={inner} style={{ flex: "none", display: "flex", flexDirection: "column", gap: SECTION_GAP }}>
         {slice.top > 0 && spacer(slice.top)}
         {(entries ?? []).slice(slice.start, slice.end).map((e, k) => (
-          <Section key={entryKey(e)} anchor={`${idPrefix}-${slice.start + k}`} e={e} name={relTo(root, e.path)} root={root} base={base} draw={draw} cache={cache} ready={ready} meter={meter} loaded={loaded} onFocusView={onFocusView} onGoneView={onGoneView} viewedStamp={viewed[entryKey(e)]} onToggleViewed={onToggleViewed} folded={!!fold[entryKey(e)]} onToggleFold={onToggleFold} onOpenDiff={onOpenDiff} />
+          <Section key={entryKey(e)} anchor={`${idPrefix}-${slice.start + k}`} e={e} name={relTo(root, e.path)} root={root} base={base} draw={draw} cache={cache} ready={ready} meter={meter} loaded={loaded} onFocusView={onFocusView} onGoneView={onGoneView} viewedStamp={viewed[entryKey(e)]} onToggleViewed={onToggleViewed} folded={!!fold[entryKey(e)]} onToggleFold={onToggleFold} onOpenDiff={onOpenDiff} onStage={onStage} stageBusy={stageBusy} />
         ))}
         {slice.bottom > 0 && spacer(slice.bottom)}
       </div>

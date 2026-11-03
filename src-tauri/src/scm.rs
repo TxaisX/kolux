@@ -550,12 +550,73 @@ fn hook_detail(worktree: &Path, output: &str, against: Option<&str>) -> String {
     format!("{tail}\n\nFiles in this push:\n{}", shown.join("\n"))
 }
 
+/// UX-D: how long one network git step (push, pull, fetch) may run before Kolux stops it.
+const REMOTE_LIMIT: std::time::Duration = std::time::Duration::from_secs(300);
+
+/// What a timed network git step came to; `timed_out` says Kolux stopped it.
+struct NetOut {
+    success: bool,
+    timed_out: bool,
+    stdout: String,
+    stderr: String,
+}
+
+/// UX-D: a network git step with every prompt off (GIT_TERMINAL_PROMPT=0, GCM_INTERACTIVE=never),
+/// no standard input, and a time limit: a step that has not finished by `limit` is stopped with its
+/// whole tree (ssh and the remote helpers included), so a hidden credential prompt can never hang
+/// the app. Saved credentials still work.
+fn git_network(args: &[&str], worktree: &Path, limit: std::time::Duration) -> Result<NetOut, String> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let mut child = command(args, Some(worktree)).envs(crate::git::NO_PROMPT).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let drain = |mut r: Box<dyn Read + Send>| {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = r.read_to_end(&mut buf);
+            let _ = tx.send(buf);
+        });
+        rx
+    };
+    let out = drain(Box::new(child.stdout.take().expect("piped")));
+    let err = drain(Box::new(child.stderr.take().expect("piped")));
+    let deadline = std::time::Instant::now() + limit;
+    let (success, timed_out) = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break (status.success(), false),
+            Ok(None) if std::time::Instant::now() >= deadline => {
+                crate::procs::kill_tree(child.id());
+                let _ = child.kill();
+                let _ = child.wait();
+                break (false, true);
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(10)),
+            Err(e) => return Err(format!("could not wait for git: {e}")),
+        }
+    };
+    // After a stop a program may still hold a pipe: wait a moment, keep what was read.
+    let grace = std::time::Duration::from_secs(if timed_out { 1 } else { 30 });
+    let stdout = String::from_utf8_lossy(&out.recv_timeout(grace).unwrap_or_default()).to_string();
+    let stderr = String::from_utf8_lossy(&err.recv_timeout(grace).unwrap_or_default()).to_string();
+    Ok(NetOut { success, timed_out, stdout, stderr })
+}
+
+/// UX-D: the sentence for a network step Kolux stopped; "timed out" sorts it as a network failure.
+fn timed_out_note(args: &[&str], limit: std::time::Duration) -> String {
+    format!("git {} timed out after {} seconds, so Kolux stopped it. The remote may be slow, or may be waiting for a sign-in that cannot be shown here; sign in with your git credential helper, then try again.", args.first().copied().unwrap_or("push"), limit.as_secs())
+}
+
 /// GIT-007: one remote action against the branch's own remote, never a target of its own:
 /// `publish` pushes to origin and makes it the upstream, `force` always carries a lease, `sync`
 /// is pull then push, `ff` pulls fast-forward only, `rebase` fetches and rebases onto the base
 /// branch, and the rest are git's plain forms, so the user's own pull and push settings apply.
 /// The output of every step is kept; a failing step stops the rest.
 pub fn remote(worktree: &Path, action: &str) -> Result<ActionOutcome, String> {
+    remote_within(worktree, action, REMOTE_LIMIT)
+}
+
+/// `remote` with the time limit of each git step given, so a test can use a short one.
+fn remote_within(worktree: &Path, action: &str, limit: std::time::Duration) -> Result<ActionOutcome, String> {
     let st = status(worktree)?;
     let branch = st.branch.clone().ok_or("no branch checked out")?;
     let base = st.base.clone();
@@ -582,11 +643,14 @@ pub fn remote(worktree: &Path, action: &str) -> Result<ActionOutcome, String> {
     };
     let mut output = String::new();
     for args in steps {
-        let out = command(&args, Some(worktree)).output().map_err(|e| format!("could not run git: {e}"))?;
-        output.push_str(String::from_utf8_lossy(&out.stdout).trim());
-        output.push_str(String::from_utf8_lossy(&out.stderr).trim());
+        let out = git_network(&args, worktree, limit)?;
+        output.push_str(out.stdout.trim());
+        output.push_str(out.stderr.trim());
+        if out.timed_out {
+            output.push_str(&timed_out_note(&args, limit));
+        }
         output.push('\n');
-        if !out.status.success() {
+        if !out.success {
             let pushing = args[0] == "push";
             let hooks = run(&["rev-parse", "--git-path", "hooks"], Some(worktree)).map(|d| worktree.join(native(&d))).ok();
             let local_hook = pushing && hooks.is_some_and(|d| d.join("pre-push").is_file());
@@ -1596,9 +1660,12 @@ pub fn pr_create(gh: &Path, worktree: &Path, title: &str, body: &str, base: &str
     }
     let push: Vec<&str> = if st.upstream.is_none() { vec!["push", "--set-upstream", "--", "origin", &branch] } else { vec!["push"] };
     if st.upstream.is_none() || st.ahead > 0 {
-        let out = command(&push, Some(worktree)).envs(crate::git::NO_PROMPT).output().map_err(|e| format!("could not run git: {e}"))?;
-        if !out.status.success() {
-            return Err(format!("Push failed, so no pull request was made: {}", plain(String::from_utf8_lossy(&out.stderr).trim())));
+        let out = git_network(&push, worktree, REMOTE_LIMIT)?;
+        if out.timed_out {
+            return Err(format!("Push failed, so no pull request was made: {}", timed_out_note(&push, REMOTE_LIMIT)));
+        }
+        if !out.success {
+            return Err(format!("Push failed, so no pull request was made: {}", plain(out.stderr.trim())));
         }
     }
     let mut args = vec!["pr", "create", "--title", title.trim(), "--body-file", "-", "--base", base, "--head", &branch];
@@ -2316,6 +2383,10 @@ pub struct Commit {
     pub labels: Vec<Label>,
     pub outgoing: bool,
     pub incoming: bool,
+    /// UX-D: set (only) on the last commit when older commits exist that the `limit` left out, so
+    /// the list can say it stops there. Absent otherwise, so older readers see the same shape.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub capped: bool,
 }
 
 /// The refs `git log --decorate=full` printed for one commit, sorted into kinds. A remote label
@@ -2361,7 +2432,8 @@ pub fn history(worktree: &Path, limit: usize) -> Result<Vec<Commit>, String> {
         return Ok(Vec::new());
     }
     let st = status(worktree)?;
-    let count = format!("-n{limit}");
+    // One more than asked for, so a cut-off history can be told from one that ends here.
+    let count = format!("-n{}", limit + 1);
     let mut args = vec!["log", "--topo-order", count.as_str(), "--decorate=full", "--format=%H%x1f%h%x1f%P%x1f%an%x1f%at%x1f%D%x1f%s%x1f%B%x1e", "HEAD"];
     if st.upstream.is_some() {
         args.push("@{upstream}");
@@ -2369,7 +2441,7 @@ pub fn history(worktree: &Path, limit: usize) -> Result<Vec<Commit>, String> {
     let text = run(&args, Some(worktree))?;
     let set = |range: &str| run(&["rev-list", range], Some(worktree)).map(|t| t.lines().map(str::to_string).collect::<std::collections::HashSet<_>>()).unwrap_or_default();
     let (outgoing, incoming) = if st.upstream.is_some() { (set("@{upstream}..HEAD"), set("HEAD..@{upstream}")) } else { Default::default() };
-    Ok(text
+    let mut commits: Vec<Commit> = text
         .split('\x1e')
         .map(|r| r.trim_start_matches(['\n', '\r']))
         .filter(|r| !r.is_empty())
@@ -2386,9 +2458,17 @@ pub fn history(worktree: &Path, limit: usize) -> Result<Vec<Commit>, String> {
                 message: f[7].trim_end().to_string(),
                 outgoing: outgoing.contains(f[0]),
                 incoming: incoming.contains(f[0]),
+                capped: false,
             })
         })
-        .collect())
+        .collect();
+    if commits.len() > limit {
+        commits.truncate(limit);
+        if let Some(last) = commits.last_mut() {
+            last.capped = true;
+        }
+    }
+    Ok(commits)
 }
 
 /// GIT-035: the files one commit changed (against its first parent; a root commit adds all).
@@ -2423,7 +2503,7 @@ pub async fn scm_history(worktree: String) -> Result<Vec<Commit>, String> {
 
 #[tauri::command]
 pub async fn scm_commit_files(worktree: String, hash: String) -> Result<Vec<Change>, String> {
-    commit_files(Path::new(&worktree), &hash)
+    tauri::async_runtime::spawn_blocking(move || commit_files(Path::new(&worktree), &hash)).await.map_err(|e| e.to_string())?
 }
 
 /// Parses porcelain v2 with NUL separators, so names with spaces, quotes or non-ASCII letters
@@ -2749,7 +2829,8 @@ pub async fn scm_base_sides(worktree: String, path: String, since: String) -> Re
     if !file.starts_with(root) {
         return Err(format!("{path} is not inside {worktree}"));
     }
-    let (original, modified) = crate::git::base_sides(file, &since)?;
+    let file = file.to_path_buf();
+    let (original, modified) = tauri::async_runtime::spawn_blocking(move || crate::git::base_sides(&file, &since)).await.map_err(|e| e.to_string())??;
     Ok(BaseSides { original, modified })
 }
 
@@ -2789,13 +2870,14 @@ pub async fn scm_summary(worktree: String, pinned: Option<String>, upstream: boo
 
 #[tauri::command]
 pub async fn scm_abort(worktree: String) -> Result<(), String> {
-    abort(Path::new(&worktree))
+    tauri::async_runtime::spawn_blocking(move || abort(Path::new(&worktree))).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
 /// ACCT-055: stage and discard only in a project or worktree (fence.rs).
 pub async fn scm_stage(worktree: String, paths: Vec<String>, on: bool, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<(), String> {
-    stage(&fence.allow(&worktree, &store, &git, false)?, &paths, on)
+    let root = fence.allow(&worktree, &store, &git, false)?;
+    tauri::async_runtime::spawn_blocking(move || stage(&root, &paths, on)).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -2803,20 +2885,22 @@ pub async fn scm_stage(worktree: String, paths: Vec<String>, on: bool, fence: ta
 /// ACCT-055: only inside a project or worktree (fence.rs).
 pub async fn scm_discard(worktree: String, section: Option<String>, paths: Vec<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<(), String> {
     let root = fence.allow(&worktree, &store, &git, false)?;
-    match section {
+    tauri::async_runtime::spawn_blocking(move || match section {
         Some(section) => discard(&root, &section, &paths),
         None => discard_paths(&root, &paths),
-    }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
 pub async fn scm_commit(worktree: String, message: String) -> Result<CommitOutcome, String> {
-    commit(Path::new(&worktree), &message)
+    tauri::async_runtime::spawn_blocking(move || commit(Path::new(&worktree), &message)).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
 pub async fn scm_remote(worktree: String, action: String) -> Result<ActionOutcome, String> {
-    remote(Path::new(&worktree), &action)
+    tauri::async_runtime::spawn_blocking(move || remote(Path::new(&worktree), &action)).await.map_err(|e| e.to_string())?
 }
 
 #[cfg(test)]
@@ -3709,6 +3793,63 @@ mod tests {
         assert_eq!((done.kind, counts(&dir).1), (None, 0));
         let _ = fs::remove_dir_all(&dir);
         let _ = fs::remove_dir_all(&bare);
+    }
+
+    #[test]
+    fn a_network_git_step_runs_with_prompts_off_and_a_stuck_one_is_stopped() {
+        let dir = temp_repo("net-limit");
+        // The prompt switches reach the step (an alias prints what git was given).
+        let seen = git_network(&["-c", "alias.seen=!echo $GIT_TERMINAL_PROMPT $GCM_INTERACTIVE", "seen"], &dir, std::time::Duration::from_secs(60)).unwrap();
+        assert!(seen.success && !seen.timed_out, "{}", seen.stderr);
+        assert_eq!(seen.stdout.trim(), "0 never");
+        // A step that never ends is stopped at the limit and says so.
+        let started = std::time::Instant::now();
+        let stuck = git_network(&["-c", "alias.stuck=!sleep 60", "stuck"], &dir, std::time::Duration::from_secs(1)).unwrap();
+        assert!(stuck.timed_out && !stuck.success);
+        assert!(started.elapsed() < std::time::Duration::from_secs(30), "stopped long after the limit: {:?}", started.elapsed());
+        assert!(timed_out_note(&["push"], std::time::Duration::from_secs(300)).contains("timed out after 300 seconds"));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_push_that_hangs_comes_back_as_a_network_failure_that_says_it_timed_out() {
+        let bare = std::env::temp_dir().join(format!("kolux-rs-scm-hang-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&bare);
+        fs::create_dir_all(&bare).unwrap();
+        run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
+        let dir = temp_repo("hang");
+        run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
+        run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
+        commit_file(&dir, "slow.txt", "x\n");
+        fs::write(dir.join(".git").join("hooks").join("pre-push"), "#!/bin/sh\nsleep 60\n").unwrap();
+        let out = remote_within(&dir, "push", std::time::Duration::from_secs(1)).unwrap();
+        assert!(!out.ok);
+        assert_eq!(out.kind, Some("network"), "{}", out.output);
+        assert!(out.output.contains("timed out after 1 second"), "{}", out.output);
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&bare);
+    }
+
+    #[test]
+    fn history_flags_the_last_commit_only_when_the_cap_cut_older_ones_off() {
+        let dir = temp_repo("hist-cap");
+        for i in 0..4 {
+            commit_file(&dir, &format!("f{i}.txt"), "x\n");
+        }
+        // Five commits in all.
+        let all = history(&dir, 10).unwrap();
+        assert_eq!(all.len(), 5);
+        assert!(all.iter().all(|c| !c.capped), "nothing was cut");
+        let exact = history(&dir, 5).unwrap();
+        assert_eq!(exact.len(), 5);
+        assert!(exact.iter().all(|c| !c.capped), "a history that ends exactly at the cap is not cut");
+        let cut = history(&dir, 3).unwrap();
+        assert_eq!(cut.len(), 3);
+        assert_eq!(cut.iter().map(|c| c.capped).collect::<Vec<_>>(), vec![false, false, true]);
+        // The wire shape: the flag is absent unless set.
+        assert!(!serde_json::to_string(&all[0]).unwrap().contains("capped"));
+        assert!(serde_json::to_string(&cut[2]).unwrap().contains("\"capped\":true"));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
