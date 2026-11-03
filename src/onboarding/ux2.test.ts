@@ -3,7 +3,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
 import { followAgents, lastMain, NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
-import { enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
+import { closeOnSettings, enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
+import { OPEN_SETTINGS } from "../settings/pages";
 import { submitKeys } from "./submitKeys";
 import { tourNotice, type Want } from "./tour";
 import { mainOff } from "./Wizard";
@@ -39,15 +40,18 @@ describe("row 3: Open a session needs an agent", () => {
     let fire: (l: unknown) => void = () => {};
     const off = vi.fn();
     const seen: unknown[] = [];
-    const stop = followAgents(() => Promise.resolve([]), (cb) => ((fire = cb), Promise.resolve(off)), (l) => seen.push(l));
+    const read = vi.fn(() => Promise.resolve([] as (typeof claude)[]));
+    const stop = followAgents(read, (cb) => ((fire = cb), Promise.resolve(off)), (l) => seen.push(l));
     await Promise.resolve();
     fire([claude]);
-    fire(null); // a malformed event changes nothing
-    expect(seen).toEqual([[], [claude]]);
+    fire(null); // a malformed event reads the list again instead of keeping a stale one
+    await Promise.resolve();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(seen).toEqual([[], [claude], []]);
     stop();
     fire([]);
     await Promise.resolve();
-    expect(seen).toHaveLength(2);
+    expect(seen).toHaveLength(3);
     expect(off).toHaveBeenCalled();
   });
 });
@@ -76,6 +80,16 @@ describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere",
     const top = (list: ReturnType<typeof attrs>[]) => isTopDialog(explore as unknown as Element, list.filter(isModal) as unknown as Element[]);
     expect(top([explore, floating, review])).toBe(true);
     expect(top([explore, floating, confirm])).toBe(false);
+  });
+  it("Open Settings from Explore or the Setup Guide closes them, so Settings is not left behind; the stop unsubscribes", () => {
+    const w = new EventTarget();
+    const close = vi.fn();
+    const stop = closeOnSettings(close, w);
+    w.dispatchEvent(new Event(OPEN_SETTINGS));
+    expect(close).toHaveBeenCalledTimes(1);
+    stop();
+    w.dispatchEvent(new Event(OPEN_SETTINGS));
+    expect(close).toHaveBeenCalledTimes(1);
   });
   it("Tab wraps at both ends and stays inside", () => {
     const [a, b, c] = ["a", "b", "c"];

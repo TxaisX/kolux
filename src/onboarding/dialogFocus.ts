@@ -4,6 +4,14 @@
 import { useEffect, type RefObject } from "react";
 import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
+import { OPEN_SETTINGS } from "../settings/pages";
+
+/** An onboarding dialog steps aside when Settings opens (its own Open Settings button, a palette command), so Settings
+ *  is not left behind it. Returns the unsubscribe. */
+export function closeOnSettings(close: () => void, w: EventTarget = window): () => void {
+  w.addEventListener(OPEN_SETTINGS, close);
+  return () => w.removeEventListener(OPEN_SETTINGS, close);
+}
 
 /** Escape belongs to the top dialog only: a confirmation opened over this one answers it first. */
 export const isTopDialog = (root: Element | null, dialogs: ArrayLike<Element>): boolean => root !== null && dialogs.length > 0 && dialogs[dialogs.length - 1] === root;

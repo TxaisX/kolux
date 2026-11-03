@@ -20,8 +20,9 @@ export function followAgents(
   set: (list: AgentInfo[]) => void,
 ): () => void {
   let alive = true;
-  void read().then((l) => alive && set(l), () => {});
-  const off = on((l) => alive && Array.isArray(l) && set(l as AgentInfo[]));
+  const load = () => void read().then((l) => alive && set(l), () => {});
+  load();
+  const off = on((l) => alive && (Array.isArray(l) ? set(l as AgentInfo[]) : load()));
   return () => {
     alive = false;
     void off.then((f) => f());

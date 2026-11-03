@@ -18,7 +18,7 @@ import { integrationSteps, readSeenCached, taskSourceOf } from "./integrations";
 import { guideOpenChanged } from "./actions";
 import { MOVED, splitCredit } from "./moved";
 import { askHooks, HOOKS_LINE, hooksDefault, recordHooks } from "./hooksOn";
-import { useDialogFocus } from "./dialogFocus";
+import { closeOnSettings, useDialogFocus } from "./dialogFocus";
 import { submitKeys } from "./submitKeys";
 import { defaultAgentId } from "../launch/agents";
 import {
@@ -608,9 +608,11 @@ export default function Guides() {
     const x = () => setExplore(true);
     window.addEventListener(OPEN_GUIDE, g);
     window.addEventListener(OPEN_EXPLORE, x);
+    const off = closeOnSettings(() => (setExplore(false), setGuide((s) => ({ ...s, open: false }))));
     return () => {
       window.removeEventListener(OPEN_GUIDE, g);
       window.removeEventListener(OPEN_EXPLORE, x);
+      off();
     };
   }, []);
   return (

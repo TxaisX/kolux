@@ -7,15 +7,16 @@ WHAT CHANGED
   src/carry/settingsRegistry.json as one the import leaves off). Hiding no longer counts every step
   as done; only the legacy setupChecklist false from older profiles still does.
 - Wizard (src/onboarding/useWizard.ts, Wizard.tsx, sessionAgent.ts): with no agent installed the last
-  button is Pick a folder, with a line saying why, Check again and Open Agents settings; the agent list
-  is read on every screen and on agents-changed, so an agent installed from Connect counts at once.
+  button is Pick a folder, with a line saying why (it names Settings > Agents) and Check again; the agent list
+  is read on every screen and on agents-changed (a malformed event reads it again), so an agent installed from Connect counts at once.
   Pick a folder steps aside for Add Project and records setup completed only once a project is added;
   cancelling leaves it unfinished: Help > Onboarding brings it back and it shows again at the next launch. Open a session with no agent
   says nothing started.
-- Dialog focus (src/onboarding/dialogFocus.ts): onboarding dialogs take focus, keep Tab and Shift+Tab
+- Dialog focus (src/onboarding/dialogFocus.ts): Explore and Continue in an agent take focus, keep Tab and Shift+Tab
   inside, close on Escape (only a dialog marked aria-modal="true" or a confirmation over it takes it, so a docked
   tip card or the floating workspace panel never does; an Escape in the sign-in terminal stays
-  with the terminal) and give focus back.
+  with the terminal) and give focus back. Explore and the Setup Guide close when Settings opens, so
+  their Open Settings buttons no longer leave Settings behind them.
 - Notes: failed save, failed agent start (src/agentstart/host.ts, AgentStartHost.tsx), missing GitHub
   sign-in naming gh auth login (ConnectGithub.tsx); the Accounts step opens Settings > Accounts.
 - Hooks card (Guides.tsx, hooksOn.ts): Not now and Turn off are separate; a later skip records nothing.
@@ -36,7 +37,9 @@ Opus review B -> fix pass (d329c1d3: agent list followed, no-agent last step pic
 counts only modal dialogs, Tab trap, sign-in terminal keeps its Escape) -> re-review B -> fix pass
 (modality opt-in: aria-modal="true" or alertdialog, hidden dialogs skipped, so the floating panel no
 longer takes Explore's Escape; T-612 test renamed for what it asserts; a cancelled Pick a folder then
-Help > Onboarding completes nothing; ONB-004/005 acceptance wording) -> re-review PENDING.
+Help > Onboarding completes nothing; ONB-004/005 acceptance wording) -> re-review B -> fix pass
+(Open Settings closes Explore and the Setup Guide so Settings is not left behind them; a malformed
+agents-changed event reads the list again; wizard and PLAN wording) -> re-review PENDING.
 Left as low follow-ups from the first review: a failed close toast after Pick a folder, the GitHub
 card not refreshed after sign-in, a load error worded as a save error, an unused once() message, a
 failure reported after the panel closed.
@@ -88,6 +91,7 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/ux2.test.ts > row 5: hooks consent only on an explicit move on > a later skip records nothing
  ✓ src/onboarding/ux2.test.ts > row 9: a tour replay that cannot start says why > speaks for a forced replay that gave up or whose feature is off, and not for the rest
  ✓ src/onboarding/ux2.test.ts > rows 12, 15: the error and connect words > names what failed
+ ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > Open Settings from Explore or the Setup Guide closes them, so Settings is not left behind; the stop unsubscribes
  ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > Tab wraps at both ends and stays inside
  ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > a docked tip card (aria-modal=false) after the dialog does not take its Escape
  ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > focuses the dialog on open, closes on a window-level Escape, and gives the focus back
@@ -106,12 +110,12 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > with no prompt mounted, nothing is approved and nothing waits
 
   Test Files  7 passed (7)
-  Tests  59 passed (59)
+  Tests  60 passed (60)
 
 FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
   ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
   Test Files  1 failed | 733 passed (734)
-  Tests  3 failed | 5431 passed (5434)
+  Tests  3 failed | 5432 passed (5435)
   The 3 failures are src/editor/pdfjsCopy.test.ts (openjpeg_nowasm_fallback.js, LICENSE_OPENJPEG,
   LICENSE_PDFJS_OPENJPEG): CRLF line endings in this local checkout, not part of this change; they pass on CI.
 
