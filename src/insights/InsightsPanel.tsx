@@ -63,13 +63,13 @@ export function TrackingOff({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-/** usage-status.md:20: the list stops at `shown` rows; this says how many more there are and opens Settings > Usage, which has them all. */
+/** usage-status.md:20: the list stops at `shown` rows; when there are more, this opens Settings > Usage, which lists more of them. */
 export function MoreSessions({ total, shown, onOpen }: { total: number; shown: number; onOpen: () => void }) {
   if (total <= shown) return null;
   return (
     <p className="ins-note">
       <button type="button" className="ins-link" onClick={onOpen}>
-        {`See all ${total} sessions in Usage`}
+        More sessions in Settings → Usage
       </button>
     </p>
   );

@@ -130,13 +130,14 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   }, []);
   // usage-status.md:8: the popup takes focus, keeps Tab inside and gives focus back; Escape closes the End question
   // that is open first, and the whole panel only when none is.
+  // The box itself takes focus on open (tabindex -1, not a Tab stop): at mount the figures, and so the buttons, are not drawn yet.
   useDialogFocus(box, () => {
     const step = escapeStep({ bulk: bulk !== null, ending: ending !== null, asking: asking !== null });
     if (step === "bulk") setBulk(null);
     else if (step === "ending") setEnding(null);
     else if (step === "asking") setAsking(null);
     else onClose();
-  });
+  }, () => box.current);
   const end = async (row: Row) => {
     setEnding(null);
     setKillError("");
@@ -150,7 +151,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   return (
     <>
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
-      <div ref={box} className="menu res-pop" role="dialog" aria-label="Resource Manager">
+      <div ref={box} className="menu res-pop" role="dialog" aria-label="Resource Manager" tabIndex={-1}>
         <div className="res-head">
           <span className="menu-title">Resources</span>
           {data && <span className="res-free">{data.free === null ? "Free memory unknown" : `${formatMemory(data.free)} free${data.total === null ? "" : ` of ${formatMemory(data.total)}`}`}</span>}

@@ -153,3 +153,8 @@ test("usage-status.md:11: the poll runs through singleFlight and the old window 
   expect(src).not.toMatch(/setInterval\(\(\) => void refresh\(\)/);
   expect(src).not.toContain('window.addEventListener("keydown"');
 });
+
+test("usage-status.md:8: the popup itself takes focus on open, before its buttons are drawn, without becoming a Tab stop", () => {
+  expect(rmSource).toMatch(/className="menu res-pop" role="dialog" aria-label="Resource Manager" tabIndex={-1}/);
+  expect(rmSource).toContain("}, () => box.current);");
+});

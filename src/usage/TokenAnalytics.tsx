@@ -257,11 +257,14 @@ export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTra
           {busy ? "Refreshing…" : "Refresh"}
         </button>
       </div>
-      {(notices ?? []).map((n) => (
-        <p key={n} className="conn-detail warn" role="status" data-ta-notice>
-          {n}
-        </p>
-      ))}
+      {/* One live region that is always there, so a notice that appears in it is announced. */}
+      <div role="status">
+        {(notices ?? []).map((n) => (
+          <p key={n} className="conn-detail warn" data-ta-notice>
+            {n}
+          </p>
+        ))}
+      </div>
       {pick === "overview" ? <OverviewPanel usage={usage} today={today} onTrack={onTrack} /> : <ProviderPanel usage={usage} p={pick} today={today} filters={filters} onTrack={onTrack} onFilters={onFilters} />}
     </div>
   );
@@ -314,8 +317,8 @@ export default function TokenAnalytics() {
   }, [note]);
 
   const load = useCallback(() => {
-    setLoadError("");
-    invoke<Usage>("token_usage").then(setUsage, (e) => setLoadError(String(e)));
+    // The error stays until the read works, so Retry does not blank the panel while it runs.
+    invoke<Usage>("token_usage").then((u) => { setUsage(u); setLoadError(""); }, (e) => setLoadError(String(e)));
   }, []);
   useEffect(load, [load]);
   useEffect(() => {

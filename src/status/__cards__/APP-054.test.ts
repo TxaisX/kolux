@@ -27,7 +27,7 @@ vi.mock("@tauri-apps/api/core", () => ({
   },
 }));
 
-// The small DOM has no querySelectorAll; the dialog keys (chrome/dialogFocus.ts) are proved in dialogFocus.test.ts and resourceManagerUx.test.ts.
+// The small DOM has no querySelectorAll; the dialog keys (chrome/dialogFocus.ts) are proved in chrome/dialogFocus.test.ts; this card covers the rows and End.
 vi.mock("../../chrome/dialogFocus", () => ({ useDialogFocus: () => {} }));
 
 let doc: FakeDocument;

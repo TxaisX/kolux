@@ -40,25 +40,6 @@ export function dueAlerts(provider: string, u: ProviderUsage, fired: Fired, now:
   return { alerts, fired: next };
 }
 
-/** usage-status.md:12: sends what this reading calls for and gives back the fired record to keep. The record moves on only
- * after the send worked; when it fails the old one is returned, so the next reading sends the same alerts again. */
-export async function sendDue(
-  provider: string,
-  u: ProviderUsage,
-  fired: Fired,
-  send: (fired: Fired, alerts: Alert[]) => Promise<unknown>,
-  now: Date = new Date(),
-): Promise<Fired> {
-  const r = dueAlerts(provider, u, fired, now);
-  if (r.alerts.length === 0) return fired;
-  try {
-    await send(r.fired, r.alerts);
-    return r.fired;
-  } catch {
-    return fired;
-  }
-}
-
 export const ALERTS_FIELD = "usageAlerts";
 /** The usage-alerts preference, on unless turned off. */
 export const alertsOn = (s: Record<string, unknown>) => s[ALERTS_FIELD] !== false;
@@ -71,20 +52,14 @@ export function useUsageAlerts(settings: Record<string, unknown> | null) {
     if (!on) return;
     let fired: Fired | null = null;
     let live = true;
-    // Sends run one after another, each on the record the one before left, so the saved record keeps every provider's
-    // keys; a provider whose send is still queued is left alone, so a second reading cannot send the same alert twice.
-    const sending = new Set<string>();
-    let queue: Promise<unknown> = Promise.resolve();
     const check = (all: Record<string, ProviderUsage | undefined>) => {
       if (!fired) return;
       for (const [p, u] of Object.entries(all)) {
-        if (!u || sending.has(p)) continue;
-        sending.add(p);
-        queue = queue
-          .then(async () => {
-            if (live && fired) fired = await sendDue(p, u, fired, (f, alerts) => invoke("usage_alert_send", { fired: f, alerts }));
-          })
-          .finally(() => sending.delete(p));
+        if (!u) continue;
+        const r = dueAlerts(p, u, fired);
+        if (r.alerts.length === 0) continue;
+        fired = r.fired;
+        void invoke("usage_alert_send", { fired, alerts: r.alerts }).catch(() => {});
       }
     };
     const off = onFigures(check);
