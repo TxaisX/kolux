@@ -59,3 +59,7 @@ firewall-check -Baseline: 0 new.
 BUNDLE: first load 1,489,527 bytes vs s-72/reach b03fd29a 1,489,477 (+50 B) and main 8c9536aa 1,489,577 (-50 B);
 ceiling 1,490,000, cap +100. The 18 new trap calls and 13 tabIndex are mostly paid for by the close-with-changes
 ask's removed copy.
+AFTER MERGING MAIN ec26a0da (#150 merged in train 13): first load 1,489,559 bytes vs main ec26a0da 1,489,509 (+50 B,
+cap +100). VITEST_MAX_WORKERS=2 pnpm vitest run src/chrome src/terminal src/projects src/shell src/settings
+src/editor/closeGuard.test.ts: 309 files, 1758 tests, 1757 passed; the 1 failure (outputFlood, timing under load)
+passes alone (2 passed). pnpm tsc --noEmit: exit 0. firewall-check -Baseline: 0 new.
