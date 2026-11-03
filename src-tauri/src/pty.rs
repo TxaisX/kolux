@@ -224,7 +224,7 @@ pub fn shells(find: impl Fn(&str) -> Option<std::path::PathBuf>) -> Vec<ShellInf
         // ACCT-046: the automatic pick's order, so the first item (the one Ctrl+T opens) names it.
         let pwsh = find("pwsh.exe");
         add("pwsh", "PowerShell 7", pwsh.clone().filter(|p| !store_alias(p)), &["-NoLogo"]);
-        add("powershell", "Windows PowerShell", Some(find("powershell.exe").unwrap_or_else(|| system_program(r"WindowsPowerShell\v1.0\powershell.exe"))), &["-NoLogo"]);
+        add("powershell", "Windows PowerShell", Some(find("powershell.exe").unwrap_or_else(|| system_program(WINDOWS_POWERSHELL))), &["-NoLogo"]);
         add("pwsh", "PowerShell 7", pwsh, &["-NoLogo"]);
         add("cmd", "Command Prompt", Some(system_program("cmd.exe")), &*CMD_ARGS);
         // Git for Windows' own bash, never the WSL launcher that System32 calls bash.exe.
@@ -321,11 +321,21 @@ pub fn start_dir(workspace: &str, requested: Option<&str>) -> String {
 /// up in full-path folders only or refuses it by name (T-660). A Windows command-script shim is
 /// started the way `start_line` says. Starts in `cwd` when that folder exists.
 pub fn program_command(program: &str, args: &[String], cwd: Option<&str>) -> CommandBuilder {
-    match crate::agents::find_program(program).filter(|p| p.is_absolute()) {
+    match full_path_program(program) {
         Some(resolved) => command_for(&resolved, args, cwd, cfg!(windows)),
         None => command_for(Path::new(program), args, cwd, false),
     }
 }
+
+/// T-663: `name` by a full path, for a program Kolux starts itself: a bare name is looked up in
+/// full-path folders only (as for finding agents), and a name with a folder in it must already be a
+/// full path to a runnable file. None otherwise, so no start resolves through the current folder.
+pub(crate) fn full_path_program(name: &str) -> Option<PathBuf> {
+    crate::agents::find_program(name).filter(|p| p.is_absolute())
+}
+
+/// T-663: Windows PowerShell under the system folder (`system_program`).
+pub(crate) const WINDOWS_POWERSHELL: &str = r"WindowsPowerShell\v1.0\powershell.exe";
 
 /// T-660: a program that ships with Windows, by its full path in the system folder Windows reports
 /// (else %SystemRoot%\System32), so no lookup by bare name can reach a copy planted in the current
@@ -484,6 +494,12 @@ fn resolve_bare(cmd: &CommandBuilder, name: &str) -> Option<PathBuf> {
     crate::agents::find_in(&dirs, name).filter(|p| p.is_absolute())
 }
 
+/// T-663: what a start that failed says. On Windows the terminal library's message quotes the whole
+/// command line (an opening prompt included); only the program's name and the system's reason are kept.
+fn spawn_error(name: &str, text: &str) -> String {
+    text.rsplit_once(" failed: ").map_or_else(|| text.to_string(), |(_, why)| format!("{name} could not be started: {why}"))
+}
+
 impl PtySession {
     /// Spawns `cmd` in a fresh PTY of `cols` x `rows`. `on_output` receives every chunk the program
     /// prints; `on_exit` runs once with the exit code when the program ends.
@@ -534,7 +550,7 @@ impl PtySession {
                     started = Some((c, name));
                     break;
                 }
-                Err(e) => failed.push((name, e.to_string())),
+                Err(e) => failed.push((name.clone(), spawn_error(&name, &e.to_string()))),
             }
         }
         let Some((mut child, program)) = started else {
@@ -1242,6 +1258,36 @@ mod tests {
     fn a_missing_program_is_refused_at_spawn() {
         let r = PtySession::spawn(program_command("kolux-rs-no-such-program-7f3a", &[], None), 80, 24, |_| {}, |_| {});
         assert!(r.is_err());
+    }
+
+    /// T-663: no program Kolux starts itself resolves through the current folder. A relative name
+    /// (even one naming a real file), a drive-relative one and a name only an off-PATH folder has
+    /// get no full path; Windows PowerShell is absolute; a failed start no longer quotes its command
+    /// line; and the swept files' own code names no program by a bare literal.
+    #[test]
+    fn t663_programs_kolux_starts_are_full_paths_or_refused() {
+        #[cfg(windows)]
+        assert!(crate::agents::find_program("./Cargo.toml").is_some(), "the lookup alone would take a relative file");
+        let dir = crate::test_dir::temp("t663 off path");
+        std::fs::write(dir.join("kolux-rs-t663-only-here.exe"), b"MZ").unwrap();
+        for name in ["./Cargo.toml", r"src\pty.rs", "src/pty.rs", "C:Cargo.toml", "kolux-rs-t663-only-here"] {
+            assert_eq!(full_path_program(name), None, "{name}");
+        }
+        assert!(system_program(WINDOWS_POWERSHELL).is_absolute() || !cfg!(windows));
+        let os = "CreateProcessW `x --prompt secret` in cwd `None` failed: The system cannot find the file specified. (os error 2)";
+        let said = spawn_error("x", os);
+        assert_eq!(said, "x could not be started: The system cannot find the file specified. (os error 2)");
+        assert_eq!(spawn_error("x", "some other error"), "some other error");
+        // Bare `Command::new("name")` literals left in production code: only editor_search's rg and git (out of T-663's list).
+        let allowed = [("editor_search.rs", "rg"), ("editor_search.rs", "git")];
+        for file in ["automations.rs", "codex_usage.rs", "editor_search.rs", "fonts.rs", "include.rs", "session_scan.rs", "scm.rs", "scm_recipe.rs", "pty.rs"] {
+            let text = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src").join(file)).unwrap();
+            let prod = text.split("\nmod tests {").next().unwrap();
+            for part in prod.split("Command::new(\"").skip(1) {
+                let name = part.split('"').next().unwrap();
+                assert!(Path::new(name).is_absolute() || name.starts_with('/') || allowed.contains(&(file, name)), "{file}: bare {name}");
+            }
+        }
     }
 
     /// T-660: the command prompt is started by its full path in Windows' system folder, and a

@@ -1,0 +1,77 @@
+T-663 - The rest of the programs Kolux starts by bare name are started by full path (DT-C99; audit backlog row 67)
+Worker 2f, branch s-2f/spawn-sweep, base e93a23ba (#93), 2026-11-02.
+
+WHAT CHANGED
+- pty.rs:
+  - full_path_program(name): the agent lookup (find_program) kept to absolute results, so a bare
+    name is found in full-path folders only and a name with a folder or drive in it (./x, bin\x,
+    C:x) is never taken. program_command now uses it (same behaviour as T-660).
+  - WINDOWS_POWERSHELL: Windows PowerShell's sub-path under the system folder, used with
+    system_program by the menu fallback (T-660) and the sites below.
+  - spawn_error(name, text): when a pane start fails, keeps "<name> could not be started: <the
+    system's reason>" instead of the terminal library's Windows text, which quotes the whole
+    command line (an agent's opening prompt included). Text without " failed: " is kept as is.
+- automations.rs (run_precheck): Windows PowerShell by full path (system folder), /bin/sh
+  elsewhere; taskkill.exe by full path.
+- codex_usage.rs: cmd.exe and taskkill.exe by full path.
+- editor_search.rs:246 (wsl_rg_command): wsl.exe by full path. Whether WSL search runs at all
+  belongs to backlog row 61; only the start changed here.
+- fonts.rs: Windows PowerShell by full path; fc-list by full_path_program, else an error ("fc-list
+  was not found on this computer"), which the font list already reports.
+- include.rs (link_dir): cmd.exe by full path.
+- session_scan.rs (running_distros): wsl.exe by full path.
+- scm.rs:1383 (commit-message writer's own command) and scm_recipe.rs:199 (resolve, a recipe
+  template's program): full_path_program, else refused with "<name> was not found on this
+  computer, so Kolux did not start it". Both used to fall back to the bare name.
+
+CHECKED, NO CHANGE NEEDED
+- setup.rs:281 is unchanged: it compares the Setup terminal's program with "cmd.exe", and setup.rs
+  line 139 still names "cmd.exe" (coordinator 57 dropped 139 from this row: #93's spawn guard
+  resolves it through full-path folders only), so the comparison still holds.
+- The agents.rs start line (agent_start_line / launch_line) is started as the pane's program, so
+  it goes through spawn_first's T-660 guard (full-path folders only, else refused).
+- `typed` is the agent's opening prompt, typed into the agent after it starts. It is never a
+  program name typed into cmd.exe.
+
+WHY
+A program started by bare name can resolve to a copy planted in a folder Kolux does not control.
+On Windows, Rust's std Command no longer searches the current folder (Rust 1.58+): it looks in the
+app's folder, System32 and then PATH, so the remaining Windows exposure is PATH order. On Unix a
+relative PATH entry resolves against the child's folder. Naming system programs by their full
+path in the system folder, and other programs by a full-path lookup or a refusal, closes both.
+
+REGRESSION TESTS
+- pty::tests::t663_programs_kolux_starts_are_full_paths_or_refused:
+  - full_path_program is None for ./Cargo.toml (a real file the plain lookup does take on
+    Windows, asserted), src\pty.rs, src/pty.rs, C:Cargo.toml and a name only an off-PATH temp
+    folder holds;
+  - system_program(WINDOWS_POWERSHELL) is absolute;
+  - spawn_error turns "CreateProcessW `x --prompt secret` in cwd `None` failed: The system cannot
+    find the file specified. (os error 2)" into "x could not be started: The system cannot find
+    the file specified. (os error 2)", and keeps other text unchanged;
+  - a scan of the production code (before `mod tests`) of the nine files in this row finds no
+    Command::new("<bare name>") literal; the only allowed ones are editor_search.rs's rg and git,
+    which are outside this row (row 69).
+  - Mutation check: putting include.rs back to Command::new("cmd") makes the scan fail with
+    "include.rs: bare cmd"; restored.
+- scm_recipe::tests::t663_an_unknown_template_program_is_refused: a template program not found by
+  full path is refused with the new message.
+- editor_search::tests::t663_the_wsl_search_starts_wsl_by_full_path: wsl_rg_command's program is
+  absolute.
+
+GATES (local, Windows 11, CARGO_TARGET_DIR=target-2f)
+- cargo clippy -j 2 --all-targets -- -D warnings: clean
+- cargo test --lib t663: 3 passed
+- cargo test --lib (full): 2843 passed, 2 failed, 6 ignored. The failures: the known t606_the_claude_writer environment failure, and edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments, which pinned the bare "wsl.exe"; it now expects the system-folder path, and rerun with every edit044 and t663 test: 12 passed
+- node scripts/plan-check.mjs: OK
+- Windows CI: run on the PR head (see the PR checks)
+
+REVIEWS
+REVIEWS_PLACEHOLDER
+
+KNOWN AND LEFT (follow-ups)
+- Bare-name spawns outside this row were reported to coordinator 57, who filed them as backlog
+  row 69 (git, attrib, rg, taskkill, netstat, icacls, reg, explorer.exe / open / xdg-open, the
+  CLI's claude, and Unix-only ps / pgrep / kill / osascript).
+- portable-pty also logs the full command line through log::error! before it returns the error.
+  No logger is wired in this app (no env_logger or tauri-plugin-log), so it goes nowhere today.

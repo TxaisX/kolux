@@ -219,7 +219,7 @@ const CLOSE_GRACE: Duration = Duration::from_secs(3);
 
 pub(crate) fn app_server(program: &Path, home: &Path) -> std::io::Result<Child> {
     let mut cmd = if program.extension().is_some_and(|e| e.eq_ignore_ascii_case("cmd") || e.eq_ignore_ascii_case("bat")) {
-        let mut c = Command::new("cmd.exe");
+        let mut c = Command::new(crate::pty::system_program("cmd.exe")); // T-663
         c.arg("/d").arg("/c").arg(program);
         c
     } else {
@@ -248,7 +248,7 @@ pub(crate) fn finish(mut child: Child) -> Option<std::process::ExitStatus> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        let _ = Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
+        let _ = Command::new(crate::pty::system_program("taskkill.exe")).args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
     }
     let _ = child.kill();
     let _ = child.wait();

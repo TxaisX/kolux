@@ -1272,7 +1272,8 @@ fn run_precheck(cmd: &str, dir: &Path, limit: std::time::Duration) -> Option<Val
         Ok(f) => f,
         Err(e) => return skipped(Value::Null, false, String::new(), format!("the precheck could not start: {e}")),
     };
-    let mut c = if cfg!(windows) { Command::new("powershell.exe") } else { Command::new("sh") };
+    // T-663: by full path, never a copy in the folder the precheck runs in.
+    let mut c = if cfg!(windows) { Command::new(crate::pty::system_program(crate::pty::WINDOWS_POWERSHELL)) } else { Command::new("/bin/sh") };
     if cfg!(windows) {
         c.args(["-NoProfile", "-NonInteractive", "-Command", cmd]);
     } else {
@@ -1304,7 +1305,7 @@ fn run_precheck(cmd: &str, dir: &Path, limit: std::time::Duration) -> Option<Val
             #[cfg(windows)]
             {
                 use std::os::windows::process::CommandExt;
-                let _ = Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
+                let _ = Command::new(crate::pty::system_program("taskkill.exe")).args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
             }
             let _ = child.kill();
             let _ = child.wait();

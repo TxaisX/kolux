@@ -189,14 +189,14 @@ fn line_of(program: &str, args: &[String], prompt: &str) -> String {
     parts.join(" ")
 }
 
-/// The program a composed command runs: an agent's installed program, else the template's, looked up on the PATH.
+/// The program a composed command runs: an agent's installed program, else the template's, by full path (T-663).
 pub fn resolve(c: &Composed) -> Result<PathBuf, String> {
     match &c.agent {
         Some(id) => {
             let spec = writers::spec(id).ok_or_else(|| format!("unknown agent {id}"))?;
             writers::program_of(spec).ok_or_else(|| format!("{} was not found on this computer", spec.name))
         }
-        None => Ok(crate::agents::find_program(&c.program).unwrap_or_else(|| PathBuf::from(&c.program))),
+        None => crate::pty::full_path_program(&c.program).ok_or_else(|| format!("{} was not found on this computer, so Kolux did not start it", c.program)),
     }
 }
 
@@ -294,6 +294,14 @@ mod tests {
     }
     fn agent(id: &str, args: &str) -> Recipe {
         Recipe { agent: Some(id.to_string()), args: args.to_string(), template: String::new() }
+    }
+
+    /// T-663: a template program that is not found by full path is refused, never run by its bare name.
+    #[test]
+    fn t663_an_unknown_template_program_is_refused() {
+        let c = Composed { program: "kolux-rs-t663-no-such-writer".into(), agent: None, args: vec![], input: None, line: String::new() };
+        let err = resolve(&c).unwrap_err();
+        assert!(err.contains("kolux-rs-t663-no-such-writer") && err.contains("did not start it"), "{err}");
     }
 
     #[test]
