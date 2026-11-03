@@ -25,6 +25,7 @@ TESTS (src/shell/checkboxHit.test.ts)
  ✓ src/shell/checkboxHit.test.ts > a box-first look-select row keeps its text beside the box 2ms
  ✓ src/shell/checkboxHit.test.ts > the hit-box label is at least 24px square 1ms
 TDD: with main d552a974 styles.css the new test fails (1 failed | 9 passed); with this change 10/10 pass.
+Review (Opus, read-only): A, no must-fix; the first-load wording and the 13px figure in DT-C143 corrected.
 
 RUNTIME (headless Chrome, the real styles.css, the row markup in a 600px wide page; text edges by a Range over the text)
 - main d552a974: box to text 382.2px, text flush with the row's right edge (0.0px)
@@ -34,6 +35,6 @@ TOTALS
 - VITEST_MAX_WORKERS=2 pnpm vitest run src/settings src/shell: Test Files 126 passed (126), Tests 667 passed (667).
 - pnpm tsc --noEmit: exit 0.
 - scripts/firewall-check.ps1 -Baseline: 0 new.
-- FIRST LOAD (node scripts/bundle-budget.mjs after vite build): main d552a974 styles.css 1,489,090 bytes; this branch
-  1,489,090 bytes, +0.
+- FIRST LOAD (node scripts/bundle-budget.mjs after vite build): first-load JS 1,489,090 bytes on main d552a974 and on
+  this branch, +0 (the budget counts the first-load scripts only; this change is CSS).
 - No Rust touched.
