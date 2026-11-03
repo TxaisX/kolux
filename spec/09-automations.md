@@ -144,12 +144,20 @@ Rules: workspace options are an existing worktree, or a brand-new worktree for e
   shuts the find bar before it shuts the dialog; Edit fetches the latest saved copy before the
   dialog appears, so nobody edits an outdated version; sending the same create twice leaves one
   automation; saving is refused, rather than guessed at, while Kolux cannot yet read the project's
-  setup.
+  setup; closing with any changed field (Escape, Cancel or the dark area) first asks "Discard your
+  changes?", the dark area closes the dialog only when the press and the release both landed on
+  it, and Escape still shuts the find bar before it asks; a worktree list that cannot be read shows
+  the real reason with Try again, and Save's hint says to use it.
 Acceptance:
   - [x] Create an automation → it is listed at once without a refresh. (cards; evidence/cards-AUTO-005.txt)
   - [x] Double-click the save button → only one automation exists. (cards; evidence/cards-AUTO-005.txt)
   - [x] Open find in the prompt editor and press Escape → find shuts and the dialog stays; press
         Escape again → the dialog shuts. (cards; evidence/cards-AUTO-005.txt)
+  - [ ] Change the agent or the timetable, then press Escape, Cancel or click the dark area → "Discard
+        your changes?" asks first; press on the dialog and release on the dark area → it stays open.
+        (unit tests: evidence/T-671.txt)
+  - [ ] The worktree list cannot be read → the reason shows with Try again and Save says to use it.
+        (unit tests: evidence/T-671.txt)
 Compat: on the command line, create and edit take `--name`, `--prompt`, `--provider` (codex, claude
   or gemini), `--repo` (an id:, name: or path: selector), `--workspace`, `--workspace-mode`
   (existing or new-per-run), `--base-branch`, and `--enabled` or `--disabled`.
@@ -186,7 +194,11 @@ Rules: names sort the way people count, so 2 comes before 10, and sorting by las
   queries; the search box has focus when the page opens and keeps its text across a refresh; opening
   a row's quick-actions menu does not select that row; nothing created yet, nothing matching, and a
   failed load each get their own empty state, and a failed load offers Retry and never claims the
-  list is empty; Hermes and OpenClaw jobs are sorted, searched and filtered in the same table;
+  list is empty; a refresh that fails keeps the rows already shown and says what failed in a note
+  on every view of the page, a failed Hermes and OpenClaw ask and a failed list read told together;
+  a row's quick-actions menu closes on Escape or a click outside it; with no project added, the
+  toolbar and the empty state offer Add a project, which opens the sidebar's Add Project dialog;
+  the toolbar has a Close button, and Refresh shows busy while it runs; Hermes and OpenClaw jobs are sorted, searched and filtered in the same table;
   opening the page selects the first automation and loads its overview and runs, and picking another
   loads that one's runs; run status and usage update in the open page as runs progress, with no
   refresh needed.
@@ -194,6 +206,11 @@ Acceptance:
   - [x] Search for a word that appears only inside a prompt → that automation shows. (cards; evidence/cards-AUTO-016.txt)
   - [x] Sort by last run → never-run automations are at the bottom. (cards; evidence/cards-AUTO-016.txt)
   - [x] Force a load failure → an error with Retry, not a nothing-created message. (cards; evidence/cards-AUTO-016.txt)
+  - [ ] A refresh fails while rows are showing → the rows stay and a note says what failed.
+        (unit tests: evidence/T-671.txt)
+  - [ ] Open a row's menu, then press Escape or click outside it → the menu closes. (unit tests: evidence/T-671.txt)
+  - [ ] No project added → Add a project is offered in the toolbar and the empty state and opens the
+        Add Project dialog. (unit tests: evidence/T-671.txt)
 Compat: —
 Source: D-09-016
 
@@ -203,14 +220,27 @@ User does: uses Run Now, the pause/resume switch, Edit or Delete on an automatio
 User sees: Run Now begins a run immediately and shows it as queued; pausing stops future runs until
   resumed; Delete asks to confirm, then removes the automation together with its run history; the
   list refreshes after every change.
-Rules: Run Now ignores the timetable and the precheck and is logged as a manual run; the delete
-  confirmation can be switched off, and out of the box it is on, so Kolux always asks; after a run
-  the upcoming time is shown again.
+Rules: Run Now ignores the timetable and the precheck and is logged as a manual run; it is refused
+  while the same automation still has a run pending, dispatching or dispatched, naming that run (a
+  dispatched run counts only while it has a terminal, or for two minutes after it was dispatched,
+  when it is "still starting"), so two clicks cannot start two runs, and the button is off and reads
+  Starting while the ask is on its way; the opened automation page shows the last action's note and
+  the delete confirmation and has Edit and Delete in its header; the delete confirmation for a
+  Hermes or OpenClaw job says it is removed from that tool and that Kolux keeps no history for it;
+  the delete confirmation can be switched off, and out of the box it is on, so Kolux always asks;
+  after a run the upcoming time is shown again.
 Acceptance:
   - [x] Click Run Now on a paused automation → a manual run appears in history. (cards; evidence/cards-AUTO-019.txt)
   - [x] Delete with confirmation on → a confirm step shows; switch confirmation off → the next
         delete happens at once. (cards; evidence/cards-AUTO-019.txt)
   - [x] Pause → nothing runs at the next due time. (cards; evidence/cards-AUTO-019.txt)
+  - [ ] Click Run Now twice while the automation is running → the second is refused naming the first
+        run and no second run is made. (unit tests: evidence/T-671.txt)
+  - [ ] Click Run Now → the button reads Starting and is off until the ask returns. (unit tests: evidence/T-671.txt)
+  - [ ] Open an automation and run it, then delete it → the note and the confirmation show on the
+        opened page, whose header has Edit and Delete. (unit tests: evidence/T-671.txt)
+  - [ ] Delete a Hermes job → the confirmation says it is removed from Hermes and Kolux keeps no
+        history for it. (unit tests: evidence/T-671.txt)
 Compat: —
 Source: D-09-019
 
@@ -242,12 +272,17 @@ User sees: one table of runs from all automations with the automation, how it st
 Rules: runs dated in the future are left out of the 24-hour and 7-day tiles; if loading more rows
   fails the user keeps their place; a history of 10,000 runs scrolls smoothly because only rows on
   screen are drawn; event-started runs carry a tooltip naming the event; with no runs at all the
-  table says so plainly; leaving after loading extra rows and coming back starts again from the
+  table says so plainly, while a runs read that fails says so with its reason and Retry and never
+  "No runs yet" with zero counts; each run row holds a button that opens the run, so the keyboard
+  reaches it; leaving after loading extra rows and coming back starts again from the
   newest runs.
 Acceptance:
   - [ ] Open the dashboard, open a run, click the breadcrumb → the dashboard; click again →
         Automations.
   - [ ] Filter to failed → only failed runs are listed.
+  - [ ] The runs read fails → the dashboard says the runs could not be read, with the reason and
+        Retry. (unit tests: evidence/T-671.txt)
+  - [ ] Tab to a run row's button and press Enter → the run opens. (unit tests: evidence/T-671.txt)
 Compat: —
 Source: D-09-015
 
@@ -357,9 +392,11 @@ User sees: four ready-made starting points (a weekday audit of the repo, a weekl
 Rules: the weekday audit goes Monday to Friday at 09:00 with 12 hours of grace; the release check
   goes on Thursdays at 14:00 with 24 hours of grace; the daily review goes at 16:30 with 3 hours of
   grace; the hourly upkeep goes at a quarter past each hour with 30 minutes of grace; choosing a
-  template only fills in the form, and nothing is stored until the user saves.
+  template only fills in the form, and nothing is stored until the user saves; the templates are
+  not offered when editing a saved automation, where picking one would overwrite it.
 Acceptance:
   - [ ] With no automations yet → four template cards and a blank choice appear.
+  - [ ] Edit a saved automation → no template cards are offered. (unit tests: evidence/T-671.txt)
   - [ ] Choose the hourly upkeep template → the form reads hourly at minute 15 with 30 minutes of
         grace, and nothing is saved.
 Compat: —
@@ -407,12 +444,14 @@ User sees: Up and Down move the selection, from the list or from the search box,
   detail back to the list and then closes the page.
 Rules: arrows and Escape do nothing while the user types in a field, while focus is inside a dialog,
   a menu or a list pop-up, or while a modifier is held; Escape closes the page only when no dialog
-  or overlay is on top of it; when the selected row vanishes, focus moves to a neighbouring row
+  or overlay is on top of it, and on the Runs dashboard it goes back to Automations and on a run
+  page back to Runs, under the same conditions; when the selected row vanishes, focus moves to a neighbouring row
   instead of getting lost; Enter or Space on a focused row opens it, a key pressed on a control
   within the row acts on that control alone, and clicks inside a row's pop-up menu never count as
   clicks on the row.
 Acceptance:
   - [ ] With a dialog open over the page, press Escape → only the dialog closes.
+  - [ ] On a run page press Escape → Runs; press Escape again → Automations. (unit tests: evidence/T-671.txt)
   - [ ] Delete the selected automation → focus moves to a row next to it.
 Compat: —
 Source: D-09-017
@@ -442,7 +481,7 @@ User does: runs `kolux automations` with list, show, create, edit, remove, run o
   terminal.
 User sees: human-readable output, or JSON when `--json` is passed; create and edit accept the same
   settings as the dialog; remove deletes the automation along with its history; run starts a run
-  immediately; runs prints history for every automation or for just one.
+  immediately unless that automation is still running, when it is refused as Run Now is; runs prints history for every automation or for just one.
 Rules: without `--repo` the repo is taken from the Kolux worktree that holds the current folder;
   with `--workspace` the automation uses that existing worktree, and without it every run gets a new
   worktree; session reuse is accepted only for existing-worktree automations; every subcommand
@@ -454,6 +493,8 @@ Acceptance:
   - [ ] `kolux automations create --name Nightly --prompt 'audit' --trigger daily --time 02:00 --json`
         → prints the new id with an upcoming run at 02:00.
   - [ ] `kolux automations remove <id>` → the automation and its history vanish from list and runs.
+  - [ ] `kolux automations run <id>` while that automation is still running → refused, naming the run
+        in progress, and no second run is made. (unit tests: evidence/T-671.txt)
 Compat: subcommands list, show (id), create, edit (id), remove (id), run (id), runs (optionally
   `--id`); flags `--json`, `--help`, `--id`, `--name`, `--prompt`, `--provider` (codex, claude or
   gemini), `--precheck`, `--precheck-timeout`, `--repo` (id:, name: or path: selector),

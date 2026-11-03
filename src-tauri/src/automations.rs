@@ -1187,6 +1187,40 @@ pub fn run(l: &Launch, id: &str, trigger: &str) -> Result<Value, String> {
 /// AUTO-004: an event-started run carries the happening's line (`eventDetail`, the marker's
 /// tooltip) and has it on the end of the agent's prompt.
 fn run_with(l: &Launch, id: &str, trigger: &str, event: Option<&str>) -> Result<Value, String> {
+    run_inner(l, id, trigger, event, false)
+}
+
+/// Run now from the window: like a manual `run`, but refused while a run of the same automation is
+/// still in progress, so a double click or a second Run now never starts the same job twice. The
+/// check and the new run happen under one store lock, so two clicks cannot both pass it.
+pub fn run_manual(l: &Launch, id: &str) -> Result<Value, String> {
+    run_inner(l, id, "manual", None, true)
+}
+
+/// Does this run still hold its automation for a manual run? Pending and dispatching always do.
+/// A dispatched run does while it has a terminal, or for SETTLE_MS after it was dispatched: a new
+/// pane gets its terminal only when the window starts it, and a window that never did would
+/// otherwise block Run now until the next restart.
+fn holds_manual_run(r: &Value, now: u64) -> bool {
+    match r["status"].as_str().unwrap_or_default() {
+        // After a restart a run waits for its pane until settleBy, however old its dispatch.
+        "dispatched" => !r["terminal"].is_null() || r["settleBy"].as_u64().is_some_and(|t| now <= t) || now.saturating_sub(r["dispatchedAt"].as_u64().unwrap_or(0)) < SETTLE_MS,
+        _ => in_progress(r),
+    }
+}
+
+/// The reason a manual run must wait: this automation already has a run queued, starting or running.
+fn already_running(auto: &Value, runs: &[Value], now: u64) -> Option<String> {
+    let busy = runs.iter().filter(|r| r["automationId"] == auto["id"] && holds_manual_run(r, now)).max_by_key(|r| r["number"].as_u64().unwrap_or(0))?;
+    let name = auto["name"].as_str().unwrap_or("This automation");
+    let number = busy["number"].as_u64().unwrap_or(0);
+    if busy["status"] == "dispatched" && busy["terminal"].is_null() {
+        return Some(format!("{name} is still starting (run #{number}); try again in a moment"));
+    }
+    Some(format!("{name} is already running (run #{number}); wait for it to finish, or close its terminal, before running it again"))
+}
+
+fn run_inner(l: &Launch, id: &str, trigger: &str, event: Option<&str>, exclusive: bool) -> Result<Value, String> {
     let marked = |store: &Store, run: Value| match event {
         Some(line) => patch_run(store, run["id"].as_str().unwrap_or_default(), json!({ "eventDetail": line })),
         None => Ok(run),
@@ -1204,6 +1238,23 @@ fn run_with(l: &Launch, id: &str, trigger: &str, event: Option<&str>) -> Result<
             drop(store);
             (l.notify)(EVENT, json!({ "runId": out["id"] }));
             return Ok(out);
+        }
+        if exclusive {
+            let now = now_ms();
+            let mut runs = load(&store, RUNS_KEY)?;
+            if let Some(why) = already_running(&auto, &runs, now) {
+                return Err(why);
+            }
+            // Close this automation's old runs whose pane never started, so the new run's pane is
+            // not claimed by one of them.
+            let mut closed = false;
+            for r in runs.iter_mut().filter(|r| r["automationId"] == auto["id"] && tracked(r) && r["terminal"].is_null()) {
+                finish(r, "failed", Some("This run's terminal never started"), now);
+                closed = true;
+            }
+            if closed {
+                save(&store, RUNS_KEY, &runs)?;
+            }
         }
         let run = marked(&store, new_run(&store, id, trigger)?)?;
         (auto, run)
@@ -1512,7 +1563,7 @@ pub fn automation_delete(app: tauri::AppHandle, store: StoreState<'_>, id: Strin
 #[tauri::command]
 pub async fn automation_run_now(app: tauri::AppHandle, id: String) -> Result<Value, String> {
     // Git may take a moment for a new-per-run worktree; off the window's thread.
-    tauri::async_runtime::spawn_blocking(move || launch_for(&app, |l| run(l, &id, "manual")))
+    tauri::async_runtime::spawn_blocking(move || launch_for(&app, |l| run_manual(l, &id)))
     .await
     .map_err(|e| e.to_string())?
 }
@@ -2252,6 +2303,111 @@ mod tests {
         let st: Vec<&str> = got.iter().map(|r| r["status"].as_str().unwrap()).collect();
         assert_eq!(st, ["failed", "failed", "dispatched"], "Kolux cannot tell a running agent was lost, so it stays dispatched");
         assert!(got[0]["detail"].as_str().unwrap().contains("closed before"), "{}", got[0]);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn already_running_names_the_newest_run_in_progress_and_ignores_finished_ones() {
+        let auto = json!({ "id": "auto-1", "name": "Nightly" });
+        let runs = vec![
+            json!({ "id": "run-1", "automationId": "auto-1", "number": 1, "status": "completed" }),
+            json!({ "id": "run-2", "automationId": "auto-2", "number": 2, "status": "dispatched" }),
+            json!({ "id": "run-3", "automationId": "auto-1", "number": 3, "status": "failed" }),
+        ];
+        assert_eq!(already_running(&auto, &runs, 1_000), None, "finished runs and other automations' runs do not hold it");
+        for st in ["pending", "dispatching", "dispatched"] {
+            let mut more = runs.clone();
+            more.push(json!({ "id": "run-4", "automationId": "auto-1", "number": 4, "status": st, "terminal": 7, "dispatchedAt": 1_000 }));
+            let why = already_running(&auto, &more, 1_000 + 10 * SETTLE_MS).expect(st);
+            assert!(why.contains("Nightly") && why.contains("already running") && why.contains("#4"), "{why}");
+        }
+    }
+
+    #[test]
+    fn a_dispatched_run_whose_pane_never_started_holds_run_now_only_while_it_is_young() {
+        let auto = json!({ "id": "auto-1", "name": "Nightly" });
+        let at = 5_000_000;
+        let no_pane = |dispatched: Value| vec![json!({ "id": "run-1", "automationId": "auto-1", "number": 1, "status": "dispatched", "dispatchedAt": dispatched })];
+        // Young: still starting, with the wait-a-moment message.
+        let why = already_running(&auto, &no_pane(json!(at)), at + SETTLE_MS - 1).expect("young");
+        assert!(why.contains("Nightly") && why.contains("still starting") && why.contains("#1") && why.contains("try again in a moment"), "{why}");
+        // Old: the window never started the pane, so it no longer blocks.
+        assert_eq!(already_running(&auto, &no_pane(json!(at)), at + SETTLE_MS), None);
+        assert_eq!(already_running(&auto, &no_pane(Value::Null), at), None, "no timestamp at all counts as old");
+        // A terminal means the agent really is running, however long ago it was dispatched.
+        let mut live = no_pane(json!(at));
+        live[0]["terminal"] = json!(3);
+        assert!(already_running(&auto, &live, at + 10 * SETTLE_MS).unwrap().contains("already running"));
+        // After a restart: an old dispatch still waiting for its pane holds until settleBy.
+        let mut resuming = no_pane(json!(at));
+        resuming[0]["settleBy"] = json!(at + 20 * SETTLE_MS);
+        assert!(already_running(&auto, &resuming, at + 10 * SETTLE_MS).unwrap().contains("still starting"));
+        assert_eq!(already_running(&auto, &resuming, at + 20 * SETTLE_MS + 1), None);
+    }
+
+    #[test]
+    fn run_now_is_not_blocked_by_an_old_dispatched_run_whose_pane_never_started() {
+        let dir = temp("stale");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Mutex::new(Store::open(&dir.join("db")).unwrap());
+        seed(&store.lock().unwrap(), &ws);
+        let git = Git::detect().unwrap();
+        let notify = |_: &str, _: Value| {};
+        let yes = |_: &str| true;
+        let l = Launch { git: &git, store: &store, claude_config: dir.join("claude.json"), installed: &yes, notify: &notify };
+
+        let first = run_manual(&l, "auto-1").unwrap();
+        assert_eq!(first["status"], json!("dispatched"));
+        let why = run_manual(&l, "auto-1").unwrap_err();
+        assert!(why.contains("still starting") && why.contains("try again in a moment"), "a young run with no pane yet: {why}");
+
+        // The same run, dispatched long ago and never given a pane, no longer blocks.
+        patch_run(&store.lock().unwrap(), first["id"].as_str().unwrap(), json!({ "dispatchedAt": now_ms() - SETTLE_MS - 1 })).unwrap();
+        let second = run_manual(&l, "auto-1").unwrap();
+        assert_eq!(second["number"], json!(2));
+        // The old run is closed, so the new pane is claimed by the new run, not the orphan.
+        let s = store.lock().unwrap();
+        let runs = load(&s, RUNS_KEY).unwrap();
+        let old = runs.iter().find(|r| r["id"] == first["id"]).unwrap();
+        assert_eq!(old["status"], json!("failed"));
+        assert_eq!(old["detail"], json!("This run's terminal never started"));
+        let picked = claim(&s, 9, Some(90), second["worktree"].as_str().unwrap(), Some("claude")).unwrap();
+        assert_eq!(picked.as_deref(), second["id"].as_str());
+        drop(s);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_now_is_refused_while_the_same_automation_is_still_running() {
+        let dir = temp("twice");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Mutex::new(Store::open(&dir.join("db")).unwrap());
+        seed(&store.lock().unwrap(), &ws);
+        let git = Git::detect().unwrap();
+        let said = RefCell::new(Vec::<(String, Value)>::new());
+        let notify = |e: &str, v: Value| said.borrow_mut().push((e.to_string(), v));
+        let yes = |_: &str| true;
+        let l = Launch { git: &git, store: &store, claude_config: dir.join("claude.json"), installed: &yes, notify: &notify };
+
+        let first = run_manual(&l, "auto-1").unwrap();
+        assert_eq!(first["status"], json!("dispatched"));
+        let starts = || said.borrow().iter().filter(|(e, v)| e == crate::cli::EVENT && v["kind"] == "start").count();
+        assert_eq!(starts(), 1);
+
+        // The first run's pane has started (the window gave it a terminal). A second Run now while
+        // it is still running is refused with the reason and starts nothing.
+        patch_run(&store.lock().unwrap(), first["id"].as_str().unwrap(), json!({ "terminal": 7 })).unwrap();
+        let why = run_manual(&l, "auto-1").unwrap_err();
+        assert!(why.contains("already running") && why.contains("#1"), "{why}");
+        assert_eq!((runs_of(&store, "auto-1").len(), starts()), (1, 1));
+
+        // Once that run is over, Run now works again.
+        patch_run(&store.lock().unwrap(), first["id"].as_str().unwrap(), json!({ "status": "completed" })).unwrap();
+        assert_eq!(run_manual(&l, "auto-1").unwrap()["number"], json!(2));
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }
