@@ -61,14 +61,36 @@ test("T-698: pane pops, the review tray and the plan sheet draw under the panel,
   expect(z(".table-ctx")).toBeLessThan(z(".search-pick-list"));
 });
 
-// T-704 (DT-C140): T-699's rule is that a sheet and its Start button are never covered, so the New-session sheet
-// draws over the floating panel and its button (and so over everything under them), and under every page overlay,
-// menu and dialog. The sheet's parents set no z-index, so its own z-index is the one that counts.
+// T-704 (DT-C140, revising DT-C130/C134): the live verify (W3 row L1d) found the floating panel hiding the New-session
+// sheet's Start button, so a sheet now draws over the floating panel and its button (and so over everything under
+// them), and under every page overlay, menu and dialog. The sheet's parents (.app > .body > .content) must not form
+// a stacking context, or the sheet's own z-index would stop counting against the panel (mounted outside them).
+const TRAPS = /(?:^|[;{\s])(z-index|transform|filter|backdrop-filter|opacity|isolation|contain|will-change|perspective|mix-blend-mode|clip-path|mask|translate|rotate|scale)\s*:/;
 test("T-704: sheets draw over the floating panel and its button, and under every page overlay, menu and dialog", () => {
   const sheet = z(".sheet-wrap");
   for (const sel of [".float-panel", ".float-btn", ".plan-sheet", ".review-tray", ".chat-browser-menu", ...PANE_POPS]) expect(sheet, sel).toBeGreaterThan(z(sel));
   for (const sel of [".settings", ".menu-backdrop", ".menu", ".diff-note-pop", ".review-pop", ".scrim", ".ask-backdrop", ".tip", ".tour"]) expect(z(sel), sel).toBeGreaterThan(sheet);
-  for (const sel of [".app", ".body", ".content"]) expect(rule(sel), sel).not.toMatch(/z-index/);
+});
+
+test("T-704: no rule in any stylesheet under src makes the sheet's parents a stacking context", () => {
+  const src = new URL("../", import.meta.url);
+  const hits: string[] = [];
+  let seen = 0;
+  for (const f of nodeFs.readdirSync(src, { recursive: true }).filter((p) => p.endsWith(".css"))) {
+    const text = nodeFs.readFileSync(new URL(f.replace(/\\/g, "/"), src), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      let sel = m[1];
+      while (/\([^()]*\)/.test(sel)) sel = sel.replace(/\([^()]*\)/g, "");
+      // The subject is the last compound of each selector; the floating panel has its own .body, outside the sheet's tree.
+      const parent = sel.split(",").some((s) => !/\.float-panel\b/.test(s) && /\.(app|body|content)(?![\w-])/.test(s.trim().split(/[\s>+~]+/).pop() ?? ""));
+      if (!parent) continue;
+      seen++;
+      const t = m[2].match(TRAPS);
+      if (t) hits.push(`${f}: ${m[1].trim()} sets ${t[1]}`);
+    }
+  }
+  expect(seen).toBeGreaterThanOrEqual(4);
+  expect(hits).toEqual([]);
 });
 
 test("T-698: no stylesheet in src sets a bare z-index of 20 or more; every layer over the page is on the scale", () => {
