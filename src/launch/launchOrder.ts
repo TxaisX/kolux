@@ -30,6 +30,12 @@ export function bulkRefusal(project: string, mode: SetupMode, makesWorkspaces: b
 
 export type NewPlace = { cwd: string; branch: string | null };
 
+/** The failure sentence, plus what happened to the workspaces made before it. */
+export function failureNote(err: unknown, made: number): string {
+  const text = String(err);
+  return made > 0 ? `${text} ${made} new ${made === 1 ? "workspace was" : "workspaces were"} already made; ${made === 1 ? "it is" : "they are"} in the sidebar.` : text;
+}
+
 export type SetupSteps = {
   /** The trust question (only for the repository's shared script) and the Setup terminal's line;
    *  null when there is no script or the user said Don't run. */
