@@ -1,0 +1,66 @@
+T-661 · a page's request to leave Kolux or drop a certificate's trust asks first (audit backlog row 57 / #91-m1; DT-C97)
+branch s-90/t661 · 2026-11-02 · worker 90, coordinator 57
+
+THE ISSUE
+The browser tab's right-click menu is drawn inside the page, so a pick reaches Kolux as the page's word plus a user
+gesture the page may have steered. "Open in default browser" ran straight away on such a pick, and so did a sized
+window a page opened before its first load finished (that route goes to the system browser). Leaving Kolux hands the
+address to another program with the user's real profile, so the user must see where it goes before it happens.
+
+WHAT CHANGED
+1. src/browser/leave.ts (new): the ask. Only an http(s) address is offered; the host and the address are the parsed
+   ones (punycode, any user name before an @ dropped); the shown address is capped at 300 characters; the confirm
+   counts only 600 ms after the ask appeared, on the ask's own clock, so a replacing ask waits again.
+2. src/browser/BrowserPane.tsx: "Open in default browser" picks and the browser-leave event raise Kolux's own bar
+   above the page (the place of the existing outbound-preview ask, which the page's view cannot cover):
+   "Open <host> in your default browser?", the address, a button "Open <host>" and Cancel. Only Open calls
+   open_external. "Stop trusting" from the menu gets the same ask, only for the site on show, one at a time, and only
+   when Kolux's own certificate state says it is trusted. A new page load or the tab going behind drops the ask, and an
+   ask whose state check returns after either is not raised. "Open in Kolux" is unchanged.
+3. src-tauri/src/browser.rs: the Route::System popup emits browser-leave and denies the window instead of opening the
+   system browser; pick_allowed's doc updated (open-default picks still count against the tab family's allowance).
+4. src-tauri/src/browser_certs.rs: the engine's remembered certificate allowances are cleared only when a revoke really
+   dropped a trust.
+5. src/browser/browser.css: the ask's buttons stay on one line.
+Certificate Trust gets no ask: a page cannot reach it. Tauri refuses an app command from a remote page unless a
+capability names it under remote, and none does; a unit test reads every capability file and the live proof has the
+page call the command itself.
+
+TESTS
+pnpm exec vitest run src/browser: 37 files, 268 passed. New (src/browser/leave.test.ts, leave.pane.test.ts):
+  t661 the ask names the real host, never a user name or a look-alike
+  t661 the bar keeps the parsed address, caps what it shows, and the confirm names the host
+  t661 nothing but an http(s) address is offered
+  t661 a gesture-only open-default pick asks first, naming the host, and opens only on Open
+  t661 the Open button names the host, a replacing ask starts the wait again, and a new page drops the ask
+  t661 Cancel opens nothing, and a sized window before the first load gets the same ask
+  t661 stop-trusting waits for the ask, is asked only for a trusted site, and no pick ever trusts a certificate
+The three pane tests fail on the BrowserPane before this change (it opened or revoked at once).
+cargo test --lib browser: 304 passed, 0 failed. New:
+  t661_the_system_browser_is_never_opened_on_a_pages_word_and_a_click
+  t661_no_capability_reaches_a_page_so_only_koluxs_own_ui_can_trust_a_certificate
+cargo clippy --all-targets -- -D warnings: clean
+node scripts/plan-check.mjs: OK · node scripts/invoke-contract.mjs: OK · pnpm exec tsc --noEmit -p .: OK
+
+LIVE PROOF (scripts/prove/live-T-661.mjs, hidden dev app, scratch profile): 9/9 PASS, RESULT: PASS, closed with 0
+survivors. A real click on a page that has not finished loading asks for a sized window: Kolux's bar names the host,
+its Open button names the host and is off at first, nothing is requested from the destination, Cancel clears it, and
+the page's own call to the certificate command (state and trust) is refused. Details in evidence/T-661-live.txt.
+
+REVIEW: first round code review (opus-high-review) B+, security audit (agent-skills:security-auditor) B+. After the
+fixes, fresh round: code review A-, security audit A-. Fixed from them: the ask's own clock, the disabled look reset
+before paint, the parsed address with the user name dropped, the shown address capped, the host on the button, the ask
+dropped on hide and on a new load (and not raised late), revoke only for the trusted site on show, allowances cleared
+only on a real revoke, and a live check that a page cannot call the certificate command.
+
+DEFERRED (outside this task's files)
+- The artifacts page turns a frame's postMessage into open_external with no click (ArtifactsPage.tsx); it should get
+  the same ask. Suggested as T-662 / DT-C98, reported to coordinator 57.
+- artifacts.rs open_external should re-serialise the address and refuse whitespace, quotes and control characters.
+- No Tauri app manifest: every local origin (main, tower, artifact frames) can call every app command.
+- Popup window positions from a page are not clamped to the screen (browser_popup.rs window_features).
+- Downloads a page starts have no confirm.
+- The ask is announced as an alertdialog but does not take focus.
+- "Stop trusting" picks are not counted against the tab allowance (one ask at a time and same-site only instead).
+- Not proven live: a real right-click menu pick (the menu needs the app window to hold the keyboard; a hidden window
+  cannot); the pane tests cover it. The live proof's scratch base folder is fixed.

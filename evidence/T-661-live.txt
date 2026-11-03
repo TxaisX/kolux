@@ -1,0 +1,17 @@
+site <loopback>; browser tab 5 on /page, its image held open so the first load does not finish
+the page's readyState before the click: interactive
+after a real click on the page's button: ask role=alertdialog "Open 127.0.0.1:<port> in your default browser?", button off at first: true
+/sized-user requested 0 time(s) while the ask waits (a system browser or a popup window would request it)
+the page calling browser_cert itself: state: refused (browser_cert not allowed. Plugin not found); trust: refused (browser_cert not allowed. Plugin not found)
+not proven live: a right-click menu pick (the menu needs the app window to hold the keyboard; a hidden window cannot); the pane test covers it
+all server requests: /page /hold.png
+screenshot: <scratch>
+PASS the page's first load is still open (the sized window would go to the system browser): interactive
+PASS no ask is showing before the click: 
+PASS Kolux shows its own ask, naming the page's host: {"role":"alertdialog","label":"Open 127.0.0.1:<port> in your default browser?","text":"Open 127.0.0.1:<port> in your default browser? http://127.0.0.1:<port>/sized-userOpen 127.0.0.1:<port>Cancel","off":true}
+PASS its Open button names the host too: Open 127.0.0.1:<port>
+PASS its Open button turns on only after a moment: off at first true, on later true
+PASS nothing was opened on the page's word and the click: count=0
+PASS Cancel clears the ask: 
+PASS still nothing opened after Cancel: 
+PASS a page cannot reach Kolux's certificate command: state: refused (browser_cert not allowed. Plugin not found); trust: refused (browser_cert not allowed. Plugin not found)

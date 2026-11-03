@@ -1,0 +1,74 @@
+T-681 - Terminals and floating windows never stop a program unasked (DT-C117; TERM-045; UX audit lane E3)
+Coordinator 57, branch s-57/ux-term, base e93a23ba (origin/main), code commit 4660abc5, 2026-11-02.
+
+WHAT CHANGED
+- closing.ts: a failed busy check (no answer, an error, a tab whose program restarted) now asks,
+  worded as unsure ("Kolux could not check whether a program is still running in it. Closing the
+  tab may stop one."), instead of closing at once. The TERM-045 setting that turns the question off
+  still turns this one off.
+- Floating windows: the tab x, Ctrl/Cmd+W and closing a pane ask before stopping a live or unsure
+  terminal, in the main close dialog's layout (Cancel first and focused). Ctrl/Cmd+W is held while a
+  floating dialog or menu is open. A failed floating start shows its error and keeps the tab.
+- The floating + offers terminal, agent, browser and note.
+- PaneMenu: reachable from the keyboard, arrows and Home/End move, Close is last and styled as danger.
+- Tooltips show the user's own keys; Find takes focus back when reopened.
+- spec/03-terminals-panes.md TERM-045: Rules say a failed check asks, worded as unsure; both
+  acceptance lines point here.
+
+WHY
+A failed check used to count as idle, so a dev server or agent could be stopped unseen exactly when
+Kolux knew least. Static UX audit rows: terminal.md 2-9, destructive.md 6/7/14, keyboard.md 5, palette.md.
+
+REVIEW
+Opus review B -> fix pass -> re-review A-.
+
+TESTS (named, the four changed files)
+ ✓ src/floating/panel.test.ts > TERM-059: the toggle opens then closes the panel, and opening an empty panel makes no terminal 2ms
+ ✓ src/floating/panel.test.ts > TERM-059: opening puts typing focus in the active tab straight away 1ms
+ ✓ src/floating/panel.test.ts > TERM-061: a new tab (an agent started from the panel too) is selected and focused, and opens a closed panel 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: tabs can be reordered, and cycling then follows the new order 1ms
+ ✓ src/floating/panel.test.ts > TERM-052: with 3 tabs the 2 shortcut selects the middle tab and the 5 shortcut does nothing 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: closing the last tab leaves the panel open on its empty state 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: closing the active tab selects the one that took its place, else the one before 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: closing an unsaved markdown tab asks first; discard closes it, keep leaves everything 2ms
+ ✓ src/floating/panel.test.ts > TERM-061: several unsaved markdown tabs are asked about one at a time; keep cancels the rest 1ms
+ ✓ src/floating/panel.test.ts > TERM-061: a program exiting on its own keeps its tab, apart from the user closing it 1ms
+ ✓ src/floating/panel.test.ts > TERM-061: Mod+W on an empty panel minimizes it; with tabs it closes the active one 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: floating terminals start in the home folder, and trusted folders are remembered 0ms
+ ✓ src/floating/panel.test.ts > T-093-a: Mod+S saves only the floating editor's file, only with focus in the open panel 0ms
+ ✓ src/floating/panel.test.ts > TERM-059/060: the panel commands work anywhere; tab commands only inside the open panel and never fall through 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: Save closes the asked tab once its buffer is clean, even while the panel's own flag still says unsaved 0ms
+ ✓ src/floating/panel.test.ts > TERM-061: Save never closes a different tab when the question moved on during the save 1ms
+ ✓ src/floating/panel.test.ts > UX audit destructive F4: only started, unexited terminals and agents are checked before a tab closes 0ms
+ ✓ src/floating/panel.test.ts > UX audit destructive: a tab that exited and then started again is still counted before it closes 0ms
+ ✓ src/floating/panel.test.ts > UX audit destructive F4: a terminal that fails to start stays as an exited tab, its error readable (TERM-061) 0ms
+ ✓ src/floating/panel.test.ts > UX audit destructive: while a layer dialog is up every chord but Escape is the dialog's, plain keys stay plain 0ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: the menu lists Copy, Select All, Paste; agent actions; splits, Equalize, Expand; title; ids; diagnostics; Clear Screen, Find; Close last, in that order 2ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: in an unsplit pane the menu has no Equalize item 1ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: items appear only when they apply (Copy needs a selection, Clear Title a title, Expand room, Close a way to close) 1ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-013: an expanded pane's menu offers Collapse; a lone classic pane has no Expand item 0ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: Close Pane is styled destructive and no other item is; shortcuts show only when assigned 10ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: an item's action is what the menu offers for it 0ms
+ ✓ src/terminal/PaneMenu.test.ts > FIX-1: chooseItem dismisses the menu first, then runs the item's action (Close Pane included); the menu renders one button per item 2ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: the click that opened the menu does not close it; a later click does 0ms
+ ✓ src/terminal/PaneMenu.test.ts > TERM-035: a tall menu opened near the bottom or right edge is moved back inside the window 0ms
+ ✓ src/terminal/PaneMenu.test.ts > UX audit terminal F5: Close Pane is the last item and takes the danger token, not a hard-coded colour 1ms
+ ✓ src/terminal/PaneMenu.test.ts > UX audit terminal F1: the menu names itself, a host can rename it, and its rows are menu items the arrows can walk 4ms
+ ✓ src/terminal/PaneMenu.test.ts > UX audit terminal F4: a header tooltip shows the chord the keymap has, and none when it has none 0ms
+ ✓ src/terminal/closing.test.ts > TERM-045 close confirmation > asks unless the setting is off 2ms
+ ✓ src/terminal/closing.test.ts > TERM-045 close confirmation > counts busy panes, and a failed check counts them all (it asks, never kills unseen) 1ms
+ ✓ src/terminal/closing.test.ts > TERM-045 close confirmation > busyCheck says when the check itself failed 1ms
+ ✓ src/terminal/closing.test.ts > TERM-045 close confirmation > an unsure question says it could not tell 0ms
+ ✓ src/terminal/closing.test.ts > TERM-045 close confirmation > names the tab, and a split tab gets one question for all its panes 0ms
+ ✓ src/terminal/__cards__/TERM-045.test.ts > box 1: a tab with a running program asks, naming the tab; an idle shell closes with no question 3ms
+ ✓ src/terminal/__cards__/TERM-045.test.ts > box 2: a split tab with two busy panes is one check and one question, not two 1ms
+ Test Files  4 passed (4)
+      Tests  39 passed (39)
+
+FULL RUN: pnpm vitest run src/terminal src/floating (VITEST_MAX_WORKERS=2)
+ Test Files  101 passed (101)
+      Tests  651 passed (651)
+vitest exit 0
+
+TYPE CHECK: pnpm tsc --noEmit
+tsc exit 0

@@ -53,3 +53,13 @@ test("VIEW 089: once Delete is chosen the row asks first, with Delete and Keep",
   expect(html).not.toContain("Show file");
   expect(invoke).not.toHaveBeenCalled();
 });
+
+test("UX: the delete question names the session, and falls back to the plain warning without a title", async () => {
+  const { deleteQuestion } = await import("./files");
+  expect(deleteQuestion("Fix the login bug")).toBe('Delete "Fix the login bug" and its files? This cannot be undone.');
+  expect(deleteQuestion("  ")).toBe(DELETE_WARNING);
+  expect(deleteQuestion()).toBe(DELETE_WARNING);
+  expect(deleteQuestion("x".repeat(100))).toContain("x".repeat(59) + "…");
+  const html = renderToString(createElement(SessionFiles, { session: { ...s, title: "Fix the login bug" }, onNote: () => {}, onDeleted: () => {}, asking: true }));
+  expect(html).toContain("Fix the login bug");
+});

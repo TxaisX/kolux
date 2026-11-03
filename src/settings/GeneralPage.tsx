@@ -3,16 +3,18 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { screens } from "../chrome/TopBar";
 import { useSettings } from "./useSettings";
+import { useDraft } from "./useDraft";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, savedFirst, stripOn, type Look } from "./general";
 import { REVIEW_FIELD, reviewOn } from "../editor/notes";
 import { CONFIRM_DELETE_KEY, confirmDelete } from "../automations/model";
 import { askAgainPatch, skippedOf, skippedSentence } from "./confirmations";
 import { OUTBOUND } from "./outbound";
 import { requestFeedback } from "../feedback/FeedbackDialog";
-import { DELAY, prefPatch, readEditorPrefs, type DiffView } from "./editorPrefs";
+import { DELAY, delayFromText, prefPatch, readEditorPrefs, type DiffView } from "./editorPrefs";
 import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, readOpenIn, removeApp, type OpenInApp } from "./openIn";
 import { editApp } from "../editor/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
+import { ResetButton } from "./SafetyRules";
 import CliCard from "./CliCard";
 import { LINKS_IN_KOLUX_FIELD, linksOpenInKolux } from "../chat/chatLinks";
 
@@ -131,7 +133,7 @@ function Confirmations({ settings, onSave }: { settings: Record<string, unknown>
 }
 
 /** SET-038: editor and diff preferences; the built-in editor and the diff views follow them. */
-function EditorCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => void }) {
+function EditorCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => Promise<boolean> }) {
   const p = readEditorPrefs(settings);
   const box = (key: "autoSave" | "minimap" | "wordWrap" | "spellcheck" | "diffWordWrap" | "diffWhitespace" | "diffTree", label: string) => (
     <label className="conn-switch">
@@ -146,7 +148,7 @@ function EditorCard({ settings, onSave }: { settings: Record<string, unknown>; o
       {p.autoSave && (
         <label className="look-select">
           <span>Wait before saving (ms)</span>
-          <input className="field" type="number" aria-label="Auto-save delay" min={DELAY.min} max={DELAY.max} step={100} value={p.autoSaveDelay} onChange={(e) => onSave(prefPatch("autoSaveDelay", Number(e.target.value)))} />
+          <DelayField value={p.autoSaveDelay} onSave={(v) => onSave(prefPatch("autoSaveDelay", v))} />
         </label>
       )}
       {box("minimap", "Minimap beside the editor")}
@@ -161,6 +163,26 @@ function EditorCard({ settings, onSave }: { settings: Record<string, unknown>; o
       {box("diffTree", "File tree beside the combined diff")}
     </section>
   );
+}
+
+/** The auto-save delay box: the typed text stays as typed (so 3000 can be entered digit by digit). A pause saves only a finished delay in range; leaving the box clamps and saves what is there (SET-036). */
+function DelayField({ value, onSave }: { value: number; onSave: (v: number) => Promise<boolean> }) {
+  // Resolves to the stored text, so on leaving a clamped value shows as stored (typed "5", box shows "200").
+  const { props, draft } = useDraft(
+    String(value),
+    async (text) => {
+      const v = delayFromText(text);
+      if (v === null) return false;
+      return v === value || (await onSave(v)) !== false ? String(v) : false;
+    },
+    (text) => String(delayFromText(text)) === text, // in range and in normal form: nothing for the box to rewrite
+  );
+  // An empty or unreadable box goes back to the saved delay when the user leaves it.
+  const onBlur = async () => {
+    await draft.leave();
+    if (delayFromText(draft.state().text) === null) draft.discard();
+  };
+  return <input className="field" type="number" aria-label="Auto-save delay" min={DELAY.min} max={DELAY.max} step={100} {...props} onBlur={onBlur} />;
 }
 
 /** SET-039: the apps every Open in menu lists, from presets or by name and command. */
@@ -187,9 +209,7 @@ function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; o
             <button type="button" className="btn" aria-label={`Edit ${a.name}`} onClick={() => (setEditing(a.id), setDraft({ name: a.name, command: a.command }))}>
               Edit
             </button>
-            <button type="button" className="btn" aria-label={`Remove ${a.name}`} onClick={() => put(removeApp(list, a.id))}>
-              Remove
-            </button>
+            <ResetButton label="Remove" ariaLabel={`Remove ${a.name}`} yes="Yes, remove" onReset={() => put(removeApp(list, a.id))} />
           </li>
         ))}
       </ul>

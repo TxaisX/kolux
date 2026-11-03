@@ -6,7 +6,13 @@ import { diskOf, textOf } from "./buffers";
 import { unusedNotes, type GuardPane } from "./closeGuard";
 import { isUntitled } from "./untitled";
 
-export function trashUnusedNotes(closing: GuardPane[], staying: GuardPane[]): void {
+/** `onFail` hears of a trash that did not go through (the empty file is then still on disk); without it the failure is logged. */
+export function trashUnusedNotes(closing: GuardPane[], staying: GuardPane[], onFail?: (message: string) => void): void {
   const paths = unusedNotes(closing, staying, isUntitled, (p) => ({ text: textOf(p), disk: diskOf(p) }));
-  if (paths.length) void invoke("fs_trash", { paths }).catch(() => undefined);
+  if (!paths.length) return;
+  void invoke("fs_trash", { paths }).catch((e) => {
+    const message = `Kolux could not remove the empty note${paths.length === 1 ? "" : "s"} it made: ${e instanceof Error ? e.message : String(e)}`;
+    if (onFail) onFail(message);
+    else console.warn(message);
+  });
 }

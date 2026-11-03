@@ -9,10 +9,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import Ask from "../chrome/Ask";
 import { noteUse } from "../onboarding/features";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { folderName, type Project, type Worktree } from "../projects/model";
-import { defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
+import { closesOnScrim, defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
 import { probeSetup } from "../settings/setupProbe";
 import SearchPick from "../editor/SearchPick";
 import { clampBox, cronWords, fieldNames, from12, nudge, templates, to12, toPreset, weekdayNames, type Template } from "./timetable";
@@ -92,6 +93,24 @@ export function setupChoice(mode: "existing" | "new-per-run", hasSetup: boolean 
   return mode === "new-per-run" && hasSetup === true ? chosen : null;
 }
 
+/** Whether any field the form submits differs from what the dialog opened with: closing then asks first. */
+export const unsaved = (first: Record<string, unknown>, now: Record<string, unknown>): boolean => [...new Set([...Object.keys(first), ...Object.keys(now)])].some((k) => JSON.stringify(first[k]) !== JSON.stringify(now[k]));
+
+/** Save's hint while it is held: the real reason when the worktrees could not be read, else that they are still being read. */
+export const saveHint = (ready: boolean, setupError: string | null): string | undefined => (ready ? undefined : setupError !== null ? "The project's worktrees could not be read; use Try again" : "Waiting for the project's worktrees");
+
+/** The worktrees could not be read: the reason, and a way to ask again. */
+export function WorktreeError({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return (
+    <div className="note error" role="alert">
+      Kolux cannot read this project's worktrees yet, so it will not save: {error}{" "}
+      <button className="btn" onClick={onRetry}>
+        Try again
+      </button>
+    </div>
+  );
+}
+
 /** What the page selects after a Hermes job is saved, until the next read brings the real row. */
 const hermesStub: Automation = { id: "", name: "", prompt: "", provider: "hermes", projectId: "", enabled: true, source: "hermes", local: true };
 
@@ -147,15 +166,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
     setSetupError(null);
     if (!projectId) return;
     let live = true;
-    invoke<Worktree[]>("workspace_list", { projectId })
-      .then((list) => {
-        if (!live) return;
-        setWorktrees(list);
-        setWorkspace((w) => (list.some((t) => t.path === w) ? w : preselect(list)));
-      })
-      .catch((e) => {
-        if (live) setSetupError(String(e));
-      });
+    readWorktrees(projectId, () => live);
     return () => {
       live = false;
     };
@@ -198,6 +209,36 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   // states sit after every older hook so the saved-card tests that address hooks by number still line up.
   const [where, setWhere] = useState<"kolux" | "hermes">(editing?.source === "hermes" ? "hermes" : "kolux");
   const [folder, setFolder] = useState(editing?.workspace ?? "");
+  // Closing with any changed field asks first; a press and release that do not both land on the scrim do not close it.
+  const [leaving, setLeaving] = useState(false);
+  const fields = () => ({ name, prompt, provider, projectId, mode, workspace, base, runSetup, reuse, grace, precheck, limit, form, zone, starts, where, folder });
+  const first = useRef(fields());
+  const seeded = useRef(false);
+  const workspaceNow = useRef(workspace);
+  workspaceNow.current = workspace;
+  const downOnScrim = useRef(false);
+  const upOnScrim = useRef(false);
+  const wanted = useRef(projectId);
+  wanted.current = projectId;
+  const close = () => (unsaved(first.current, fields()) ? setLeaving(true) : onClose());
+  // Reads the project's worktrees (also the Try again button): Save waits for them, and says why when they cannot be read.
+  const readWorktrees = (id: string, alive: () => boolean) => {
+    setWorktrees(null);
+    setSetupError(null);
+    invoke<Worktree[]>("workspace_list", { projectId: id })
+      .then((list) => {
+        if (!alive()) return;
+        setWorktrees(list);
+        const chosen = list.some((t) => t.path === workspaceNow.current) ? workspaceNow.current : preselect(list);
+        // The first read picks a worktree for the user; that is part of how the dialog opened, not a change they made.
+        if (!seeded.current && workspaceNow.current === first.current.workspace) first.current = { ...first.current, workspace: chosen };
+        seeded.current = true;
+        setWorkspace(chosen);
+      })
+      .catch((e) => {
+        if (alive()) setSetupError(String(e));
+      });
+  };
   const hermes = where === "hermes";
   const timed = hermes || starts === "schedule";
   // A Hermes job whose timetable is not a cron line (for example "every 120m") shows it as text and keeps it as it is.
@@ -221,7 +262,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
       if (findOpen) {
         setFindOpen(false);
         editor.current?.focus();
-      } else onClose();
+      } else close();
     } else if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       setFindOpen(true);
@@ -284,15 +325,31 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const choices = providers.map((p) => ({ ...p, name: agents.find((a) => a.id === p.id)?.name ?? p.name }));
 
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="scrim"
+      onMouseDown={(e) => {
+        downOnScrim.current = e.target === e.currentTarget;
+        upOnScrim.current = false;
+      }}
+      onMouseUp={(e) => {
+        upOnScrim.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && closesOnScrim(downOnScrim.current, upOnScrim.current)) close();
+        downOnScrim.current = false;
+        upOnScrim.current = false;
+      }}
+    >
       <div className="auto-dialog" role="dialog" aria-modal="true" aria-label={editing ? `Edit ${editing.name}` : "New Automation"} onKeyDown={keys}>
         <div className="auto-dialog-head">
           <h2>{editing ? "Edit automation" : "New Automation"}</h2>
-          <button className="btn" aria-expanded={chooser} onClick={() => setChooser(!chooser)}>
-            Templates
-          </button>
+          {!editing && (
+            <button className="btn" aria-expanded={chooser} onClick={() => setChooser(!chooser)}>
+              Templates
+            </button>
+          )}
         </div>
-        {chooser && <TemplateCards onPick={pick} />}
+        {chooser && !editing && <TemplateCards onPick={pick} />}
         <div className="auto-dialog-body">
           <div className="auto-dialog-main">
             <label className="auto-label">
@@ -540,7 +597,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             )}
           </div>
         </div>
-        {!hermes && setupError && <div className="note error">Kolux cannot read this project's worktrees yet, so it will not save: {setupError}</div>}
+        {!hermes && setupError && <WorktreeError error={setupError} onRetry={() => readWorktrees(projectId, () => wanted.current === projectId)} />}
         {saveError && (
           <div className="note error" role="alert">
             {saveError}
@@ -548,14 +605,27 @@ export default function AutomationDialog({ projects, agents, editing, template, 
         )}
         <div className="auto-dialog-foot">
           <span className="muted">{`Once saved, it keeps running ${timed ? "on this timetable" : "on each event"} until you pause it.`}</span>
-          <button className="btn" onClick={onClose}>
+          <button className="btn" onClick={close}>
             Cancel
           </button>
-          <button className="btn primary" disabled={saving || !ready || (showTimetable && previewError !== null) || (hermes && (!prompt.trim() || (needsCron && !cron)))} onClick={save} title={ready ? undefined : "Waiting for the project's worktrees"}>
+          <button className="btn primary" disabled={saving || !ready || (showTimetable && previewError !== null) || (hermes && (!prompt.trim() || (needsCron && !cron)))} onClick={save} title={saveHint(ready, setupError)}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
       </div>
+      {leaving && (
+        <Ask
+          title="Discard your changes?"
+          body="Some of what you changed in this form is not saved."
+          confirm="Discard"
+          cancel="Keep editing"
+          onConfirm={() => onClose()}
+          onCancel={() => {
+            setLeaving(false);
+            window.setTimeout(() => editor.current?.focus(), 0);
+          }}
+        />
+      )}
     </div>
   );
 }

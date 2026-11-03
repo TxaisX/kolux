@@ -46,7 +46,7 @@ async function page() {
   await settle();
   return c;
 }
-const rows = (c: FakeNode) => find(c, (n) => n.attrs.role === "option");
+const rows = (c: FakeNode) => find(c, (n) => n.attrs.role === "listitem" && String(n.attrs.className ?? n.attrs.class ?? "") === "art-item");
 const titles = (c: FakeNode) => rows(c).map((r) => find(r, (n) => String(n.attrs.className ?? n.attrs.class ?? "") === "name")[0]?.textContent);
 const addButton = (c: FakeNode) => find(c, (n) => n.localName === "button" && n.textContent.trim() === "Add artifact")[0];
 const frames = (c: FakeNode) => find(c, (n) => n.localName === "iframe");
@@ -76,11 +76,15 @@ test("box 2: two typed words where only one matches a title hides that item", as
 test("box 3: removing the selected item leaves the list and the preview closes", async () => {
   h.lib = [{ id: "a", title: "First", added: 2 }, { id: "b", title: "Second", added: 1 }];
   const c = await page();
-  await click(c, rows(c)[0]);
+  await click(c, find(rows(c)[0], (n) => n.localName === "button")[0]);
   await until(() => frames(c).length === 1);
   expect(c.textContent).not.toContain("Pick an artifact to view it here.");
-  const remove = find(rows(c)[0], (n) => n.localName === "button")[0];
+  const remove = find(rows(c)[0], (n) => n.attrs["aria-label"] === "Remove First")[0];
   await click(c, remove);
+  // The removal waits for a yes that names the artifact; nothing is gone before it.
+  expect(titles(c)).toEqual(["First", "Second"]);
+  expect(find(c, (n) => n.attrs.role === "alertdialog")[0].attrs["aria-label"]).toBe("Remove First?");
+  await click(c, find(c, (n) => n.localName === "button" && n.textContent.trim() === "Remove")[0]);
   await until(() => titles(c).length === 1);
   expect(titles(c)).toEqual(["Second"]);
   expect(frames(c)).toEqual([]);

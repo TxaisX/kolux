@@ -369,3 +369,45 @@ export function runStep(e: { key: string; mods: boolean; composing: boolean }, a
   if (e.key === "Enter") return at === null ? null : "open";
   return null;
 }
+
+/** What Escape does on the Runs dashboard (steps back to Automations) and on a run opened from it
+ *  (steps back to Runs). It does nothing while a dialog or menu is open, with a modifier held, or
+ *  while a text field has focus. */
+export type RunsKey = "run" | "runs";
+export function runsKey(e: { key: string; mods: boolean; field: boolean; overlay: boolean; run: boolean }): RunsKey | null {
+  if (e.key !== "Escape" || e.mods || e.field || e.overlay) return null;
+  return e.run ? "run" : "runs";
+}
+
+/** A list read that failed: rows already on screen stay and a note says so; with nothing shown yet
+ *  it is the page's error with Retry. */
+export function failedLoad(haveRows: boolean, message: string): { error: string | null; note: string | null } {
+  return haveRows ? { error: null, note: `Could not refresh the list: ${message}` } : { error: message, note: null };
+}
+
+/** The delete confirmation's words: a Hermes or OpenClaw job is removed in that tool, which keeps its own history. */
+export function deleteWords(a: { name: string; source?: string } | undefined): { title: string; body: string } {
+  const title = `Delete ${a?.name ?? "this automation"}?`;
+  if (a?.source) return { title, body: `This removes the job from ${a.source === "hermes" ? "Hermes" : "OpenClaw"} itself, not only from this list. Kolux keeps no run history for it.` };
+  return { title, body: "Its run history goes with it." };
+}
+
+/** A click on the dialog's scrim closes it only when the press and the release both landed on the scrim:
+ *  a press on the scrim released inside the dialog (or the other way round) is a drag, not a dismissal. */
+export const closesOnScrim = (pressedOnScrim: boolean, releasedOnScrim: boolean): boolean => pressedOnScrim && releasedOnScrim;
+
+/** Notes shown together on the page: the ones that are set, in order, as one line each separated by a space; null when none. */
+export function joinNotes(...notes: (string | null | undefined)[]): string | null {
+  const said = notes.filter((n): n is string => !!n);
+  return said.length ? said.join(" ") : null;
+}
+
+/** Run now's guard: `id` is held for as long as its ask is on its way, so a second click starts nothing, and it is
+ *  let go when the ask ends, whether it worked or failed. `set` is the list's state setter. */
+export const holdWhile = <T>(set: (change: (list: string[]) => string[]) => void, id: string, ask: () => Promise<T>): Promise<void> => {
+  set((list) => (list.includes(id) ? list : [...list, id]));
+  return ask().then(
+    () => set((list) => list.filter((x) => x !== id)),
+    () => set((list) => list.filter((x) => x !== id)),
+  );
+};

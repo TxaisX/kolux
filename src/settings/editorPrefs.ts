@@ -19,6 +19,8 @@ export type EditorPrefs = { autoSave: boolean; autoSaveDelay: number; minimap: b
 export const DELAY = { min: 200, max: 10000, base: 1000 } as const;
 
 const flag = (v: unknown, base: boolean) => (typeof v === "boolean" ? v : base);
+/** The auto-save delay as typed: a number once it reads as one, null for an empty or unreadable box (the box then goes back to the saved delay). */
+export const delayFromText = (text: string): number | null => (text.trim() !== "" && Number.isFinite(Number(text)) ? clampDelay(Number(text)) : null);
 export const clampDelay = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(Math.min(DELAY.max, Math.max(DELAY.min, v))) : DELAY.base);
 
 /** Defaults: auto-save off (1000 ms once on), minimap off, word wrap on, spellcheck on; diffs inline,

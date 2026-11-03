@@ -3,7 +3,7 @@
 // XMLHttpRequest made to throw.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { URL_CAP, type FeedbackFacts } from "../settings/privacy";
-import { block, closed, issue, MARK, reduce, tabTarget, typedText, withBlock } from "./model";
+import { block, closed, issue, MARK, NOTE_POS, reduce, restoreFocus, tabTarget, typedText, withBlock } from "./model";
 
 const facts: FeedbackFacts = { version: "0.1.0", platform: "Win32", release: "Windows 10.0.26200", arch: "x86_64", login: "octo-fake" };
 
@@ -178,4 +178,29 @@ test("tab order wraps inside the box and starts at an end when nothing inside ha
   expect([0, 1, 2, 3].map((at) => tabTarget(4, at, false))).toEqual([1, 2, 3, 0]);
   expect([0, 1, 2, 3].map((at) => tabTarget(4, at, true))).toEqual([3, 0, 1, 2]);
   expect([tabTarget(4, -1, false), tabTarget(4, -1, true), tabTarget(0, 0, false)]).toEqual([0, 3, -1]);
+});
+
+test("a send in flight blocks a second one until it fails or finishes", () => {
+  let s = reduce(closed, { t: "open", facts, text: "hello" });
+  expect(s.sending).toBe(false);
+  s = reduce(s, { t: "send" });
+  expect(s.sending).toBe(true);
+  expect(reduce(s, { t: "fail", error: "x" }).sending).toBe(false);
+  const sent = reduce(s, { t: "sent", trimmed: false });
+  expect(sent.sending).toBe(false);
+  expect(reduce(s, { t: "open", facts }).sending).toBe(false);
+});
+
+test("focus goes back to what opened the box, only if it is still on the page", () => {
+  let n = 0;
+  expect(restoreFocus({ isConnected: true, focus: () => void n++ })).toBe(true);
+  expect(n).toBe(1);
+  expect(restoreFocus({ isConnected: false, focus: () => void n++ })).toBe(false);
+  expect(restoreFocus(null)).toBe(false);
+  expect(n).toBe(1);
+});
+
+test("the sent note sits right of the update card and above the 24px status bar", () => {
+  expect(NOTE_POS.bottom).toBeGreaterThanOrEqual(40);
+  expect(NOTE_POS.right).toBe(16);
 });

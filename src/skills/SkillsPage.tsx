@@ -11,11 +11,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { Close, Dots, Funnel, Refresh } from "../chrome/icons";
 import { locale } from "../language";
 import Ask from "../chrome/Ask";
+import { overlayShowing } from "../chrome/fullPage";
 import SkillUpdate from "./SkillUpdate";
+import { focusFirst, focusLost, onMenuKey, returnFocus } from "./menuFocus";
+import { INSTALL_DETAIL, SKILLS_SHOW_EVENT } from "./skillBarStore";
 import SkillPill from "./SkillPill";
 import { pillFor, type Load } from "./skillBar";
 import type { Checked } from "./updateNotice";
-import { AGENT_FILTERS, COPIED, COPY_FAILED, MAX_DELETE, ROW_ACTIONS, actionBlocked, seenBy, NO_DESCRIPTION, NO_FILTERS, QUERY_LIMIT, SOURCES, dateText, eligible, escapeCloses, filtersOn, keepChosen, outcomeText, pickOf, rootState, shortPath, sourceCounts, sumUp, viewOf, visible, whyNot, type Done, type Filters, type Planned, type RowAction, type Scan, type Skill } from "./skills";
+import { AGENT_FILTERS, COPIED, COPY_FAILED, MAX_DELETE, ROW_ACTIONS, actionBlocked, INSTALL_ITEM, installBlocked, pageEscape, pageOverlay, seenBy, NO_DESCRIPTION, NO_FILTERS, QUERY_LIMIT, SOURCES, dateText, deleteBlocked, eligible, filtersOn, keepChosen, outcomeText, pickOf, rootState, shortPath, sourceCounts, sumUp, viewOf, visible, whyNot, type Done, type Filters, type Planned, type RowAction, type Scan, type Skill } from "./skills";
 
 type Asking = { kind: "confirm"; plan: Planned[] } | { kind: "done"; done: Done[] } | { kind: "error"; text: string };
 
@@ -31,6 +34,10 @@ export default function SkillsPage({ workspace, onClose }: Props) {
   const [tooLong, setTooLong] = useState(false);
   const [open, setOpen] = useState<"agent" | "folders" | "more" | null>(null);
   const run = useRef(0);
+  const page = useRef<HTMLElement>(null);
+  // UX audit skills-automations.md:19: a menu takes focus when it opens and gives it back to its button when it closes.
+  const opener = useRef<HTMLElement | null>(null);
+  const opens = (e: { currentTarget: HTMLElement }) => void (opener.current = e.currentTarget);
   /** SKILL-022: the chosen rows' paths while choosing skills to delete; null otherwise. */
   const [picking, setPicking] = useState<string[] | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
@@ -61,23 +68,16 @@ export default function SkillsPage({ workspace, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (open) {
-        setOpen(null);
-        return;
-      }
-      if (rowMenu) {
-        setRowMenu(null);
-        return;
-      }
-      if (picking) {
-        setPicking(null);
-        return;
-      }
-      if (escapeCloses(e.target)) onClose();
+      // A dialog showing on the page (the Update dialog) owns the key: the page never closes underneath it.
+      const step = pageEscape({ menu: open !== null, rowMenu: rowMenu !== null, picking: picking !== null, overlay: pageOverlay([asking, details], () => overlayShowing(page.current ?? document)) }, e.target);
+      if (step === "menu") setOpen(null);
+      else if (step === "row-menu") setRowMenu(null);
+      else if (step === "picking") setPicking(null);
+      else if (step === "close") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, rowMenu, picking, onClose]);
+  }, [open, rowMenu, picking, asking, details, onClose]);
 
   const skills = scan?.skills ?? [];
   const shown = useMemo(() => visible(skills, f), [skills, f]);
@@ -85,6 +85,22 @@ export default function SkillsPage({ workspace, onClose }: Props) {
   const view = viewOf(scan, failed, scanning, shown.length);
   const errors = scan?.roots.filter((r) => r.state === "error") ?? [];
   const agentLabel = AGENT_FILTERS.find((a) => a.id === f.agent)!.label;
+  const menuOn = open === "agent" || open === "more" || rowMenu !== null;
+  const heading = useRef<HTMLHeadingElement>(null);
+  const busyWas = useRef(false);
+  const busy = menuOn || asking !== null || details !== null;
+  useEffect(() => {
+    // A menu or dialog just closed. Focus lost with it goes back to the button that opened it, or, when that button is gone
+    // (its row was deleted), to the page heading, so the next Escape does not close the whole page. Focus a dialog or
+    // field already took stays where it is.
+    const ended = busyWas.current && !busy;
+    busyWas.current = busy;
+    if (ended && focusLost(document.activeElement, document.body)) returnFocus(opener.current, [() => heading.current]);
+  }, [busy]);
+  // A scan that failed shows no rows to choose, so a selection in progress ends.
+  useEffect(() => {
+    if (view === "failed") setPicking(null);
+  }, [view]);
   // A rescan drops choices that vanished or can no longer be chosen.
   useEffect(() => setPicking((p) => p && keepChosen(p, skills)), [scan]);
   const nameOf = (path: string) => skills.find((s) => s.path === path)?.name ?? shortPath(path, 40);
@@ -135,26 +151,52 @@ export default function SkillsPage({ workspace, onClose }: Props) {
   };
 
   return (
-    <section className="skills" aria-label="Skills">
+    <section ref={page} className="skills" aria-label="Skills">
       <header className="skills-head">
         <button className="ib" title="Close (Escape)" aria-label="Close Skills" onClick={onClose}>
           <Close size={14} />
         </button>
-        <h2>Skills</h2>
+        <h2 ref={heading} tabIndex={-1} style={{ outline: "none" }}>
+          Skills
+        </h2>
         <span className="skills-sub">{scan ? `${skills.length} skill${skills.length === 1 ? "" : "s"}` : ""}</span>
         <span className="spacer" />
-        <button className="ib" title="More actions" aria-haspopup="menu" aria-expanded={open === "more"} onClick={() => setOpen(open === "more" ? null : "more")}>
+        <button
+          className="ib"
+          title="More actions"
+          aria-label="More actions"
+          aria-haspopup="menu"
+          aria-expanded={open === "more"}
+          onClick={(e) => {
+            opens(e);
+            setOpen(open === "more" ? null : "more");
+          }}
+        >
           <Dots size={14} />
         </button>
         {open === "more" && (
           <>
             <div className="menu-backdrop" onClick={() => setOpen(null)} />
-            <div className="menu skills-pop right" role="menu">
+            <div className="menu skills-pop right" role="menu" aria-label="More actions" ref={focusFirst} onKeyDown={onMenuKey}>
               <button
                 className="menu-item"
                 role="menuitem"
-                disabled={!scan || eligible(skills).length === 0}
-                title={scan && eligible(skills).length === 0 ? "Only your own and project skills can be deleted" : undefined}
+                disabled={installBlocked(scan) !== null}
+                title={installBlocked(scan) ?? undefined}
+                onClick={() => {
+                  // Back to the button first, so the dialog gives focus back to it when it closes.
+                  opener.current?.focus();
+                  setOpen(null);
+                  window.dispatchEvent(new CustomEvent(SKILLS_SHOW_EVENT, { detail: INSTALL_DETAIL }));
+                }}
+              >
+                <span className="name">{INSTALL_ITEM}</span>
+              </button>
+              <button
+                className="menu-item"
+                role="menuitem"
+                disabled={deleteBlocked(scan, view) !== null}
+                title={deleteBlocked(scan, view) ?? undefined}
                 onClick={() => {
                   setPicking([]);
                   setOpen(null);
@@ -184,13 +226,13 @@ export default function SkillsPage({ workspace, onClose }: Props) {
           }}
         />
         <div className="skills-anchor">
-          <button className={`btn${f.agent !== "all" ? " on" : ""}`} aria-haspopup="menu" aria-expanded={open === "agent"} onClick={() => setOpen(open === "agent" ? null : "agent")}>
+          <button className={`btn${f.agent !== "all" ? " on" : ""}`} aria-haspopup="menu" aria-expanded={open === "agent"} onClick={(e) => (opens(e), setOpen(open === "agent" ? null : "agent"))}>
             <Funnel size={12} /> {f.agent === "all" ? "Filter by agent" : agentLabel}
           </button>
           {open === "agent" && (
             <>
               <div className="menu-backdrop" onClick={() => setOpen(null)} />
-              <div className="menu skills-pop" role="menu">
+              <div className="menu skills-pop" role="menu" aria-label="Filter by agent" ref={focusFirst} onKeyDown={onMenuKey}>
                 {AGENT_FILTERS.map((a) => (
                   <button
                     key={a.id}
@@ -340,13 +382,13 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                   {s.source === "bundled" && <SkillPill pill={pillFor(s.name, fresh.load, fresh.checked)} />}
                   <span className={`date${s.updated == null ? " none" : ""}`}>{s.source === "bundled" ? "Built into Kolux" : dateText(s.updated, locale())}</span>
                   <div className="skills-anchor">
-                    <button className="ib" title="Skill actions" aria-label={`Actions for ${s.name}`} aria-haspopup="menu" aria-expanded={rowMenu === s.path} onClick={() => setRowMenu(rowMenu === s.path ? null : s.path)}>
+                    <button className="ib" title="Skill actions" aria-label={`Actions for ${s.name}`} aria-haspopup="menu" aria-expanded={rowMenu === s.path} onClick={(e) => (opens(e), setRowMenu(rowMenu === s.path ? null : s.path))}>
                       <Dots size={12} />
                     </button>
                     {rowMenu === s.path && (
                       <>
                         <div className="menu-backdrop" onClick={() => setRowMenu(null)} />
-                        <div className="menu skills-pop right" role="menu" aria-label={`Actions for ${s.name}`}>
+                        <div className="menu skills-pop right" role="menu" aria-label={`Actions for ${s.name}`} ref={focusFirst} onKeyDown={onMenuKey}>
                           {ROW_ACTIONS.map((a) => (
                             <button key={a.id} className="menu-item" role="menuitem" disabled={actionBlocked(s, a.id) != null} title={actionBlocked(s, a.id) ?? undefined} onClick={() => act(s, a.id)}>
                               <span className="name">{a.label}</span>

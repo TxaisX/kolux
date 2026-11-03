@@ -33,13 +33,15 @@ export function treeRows(entries: readonly Entry[], root: string, filter: string
   return rows;
 }
 
+/** Why the Viewed box is greyed out: a file can only be marked once its diff has been drawn. */
+export const WAIT_VIEWED = "Available once this file’s diff has loaded";
 type RowProps = { row: number; e: Entry; i: number; rel: string; tag: string; ready: ReadyStore; viewedStamp: string | undefined; keyOf: string; onJump: (i: number) => void; onToggleViewed: (e: Entry) => void };
 
 const FileRow = memo(function FileRow({ row, e, i, rel, tag, ready, viewedStamp, keyOf, onJump, onToggleViewed }: RowProps) {
   const drawn = useReadyStamp(ready, keyOf);
   return (
     <div className="ac-row" data-row={row}>
-      <input type="checkbox" checked={drawn === e.stamp && viewedStamp === e.stamp} disabled={drawn !== e.stamp} onChange={() => onToggleViewed(e)} aria-label={`Viewed ${rel}`} />
+      <input type="checkbox" checked={drawn === e.stamp && viewedStamp === e.stamp} disabled={drawn !== e.stamp} title={drawn !== e.stamp ? WAIT_VIEWED : "Mark this file as viewed"} aria-description={drawn !== e.stamp ? WAIT_VIEWED : undefined} onChange={() => onToggleViewed(e)} aria-label={`Viewed ${rel}`} />
       <button className="ac-jump" onClick={() => onJump(i)} title={rel}>
         {baseName(e.path)}
       </button>

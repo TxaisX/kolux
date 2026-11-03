@@ -4,12 +4,13 @@
 // USAGE-014: the Claude and Codex panels add a range (7 / 30 / 90 days or all time) and a scope
 // (Kolux worktrees, or every local use), a chart by day, a breakdown by model and recent sessions.
 // ponytail: Grok's credits panel is T-137-b; the activity counts above the analytics are T-136-c.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Segmented } from "../settings/GeneralPage";
 import { locale } from "../language";
 import { estimate } from "./pricing";
 import ShareCard from "./ShareCard";
+import { loadFailedText, scanFailedNote, scopeFailedNote, trackFailedNote } from "./analyticsNotes";
 import { byModel, daily, filterRows, grid, NAMES, overview, panelState, recentSessions, rowsOf, shownProviders, type Filters, type Pick, type Provider, type Range, type Row, type Saved, type Scope, type Usage } from "./tokens";
 
 const PICKS: Array<{ id: Pick; label: string }> = [
@@ -35,6 +36,8 @@ const count = (n: number) => new Intl.NumberFormat(locale(), { notation: "compac
 const money = (usd: number, partial: boolean) => (partial && usd === 0 ? "n/a" : new Intl.NumberFormat(locale(), { style: "currency", currency: "USD" }).format(usd));
 const share = (x: number) => new Intl.NumberFormat(locale(), { style: "percent", maximumFractionDigits: 1 }).format(x);
 const dayText = (day: string) => new Date(day + "T12:00:00").toLocaleDateString(locale(), { dateStyle: "medium" });
+/** usage-status.md:17: the figure a heatmap cell or a chart bar shows on hover, said to a screen reader too. */
+export const figureLabel = (day: string, tokens: number) => `${dayText(day)}: ${count(tokens)} tokens`;
 
 type ViewProps = {
   usage: Usage;
@@ -46,6 +49,8 @@ type ViewProps = {
   onRefresh: () => void;
   filters: Filters;
   onFilters: (f: Partial<Filters>) => void;
+  /** usage-status.md:4/10: what went wrong behind the panel (a rescan, the tracking switch, the project list); one line each. */
+  notices?: string[];
 };
 
 export function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
@@ -117,11 +122,11 @@ function OverviewPanel({ usage, today, onTrack }: { usage: Usage; today: Date; o
         <Stat label="From cache" value={share(o.cacheShare)} />
       </div>
       <div className="ta-grid-wrap">
-        <div className="ta-grid" data-activity-grid role="img" aria-label={`Tokens per day for the last ${WEEKS} weeks`}>
+        <div className="ta-grid" data-activity-grid role="group" aria-label={`Tokens per day for the last ${WEEKS} weeks`}>
           {cols.map((col, i) => (
             <div key={i} className="ta-col">
               {col.map((c) => (
-                <span key={c.day} className={`ta-cell l${c.level}${c.best ? " best" : ""}${c.future ? " future" : ""}`} title={c.future ? undefined : `${dayText(c.day)}: ${count(c.tokens)} tokens`} />
+                <span key={c.day} className={`ta-cell l${c.level}${c.best ? " best" : ""}${c.future ? " future" : ""}`} title={c.future ? undefined : figureLabel(c.day, c.tokens)} {...(c.future ? { "aria-hidden": true } : { role: "img", "aria-label": figureLabel(c.day, c.tokens) })} />
               ))}
             </div>
           ))}
@@ -167,9 +172,9 @@ function Figures({ p, rows, filters, today }: { p: Provider; rows: Row[]; filter
         <Stat label="Cache writes" value={count(sum("cacheWrite"))} />
         <Stat label="Estimated cost" value={money(cost.usd, cost.unpriced.length > 0)} note={cost.unpriced.length ? "partial: some models have no known price" : undefined} />
       </div>
-      <div className="ta-chart" data-day-chart role="img" aria-label="Tokens by day">
+      <div className="ta-chart" data-day-chart role="group" aria-label="Tokens by day">
         {bars.map((b) => (
-          <span key={b.day} className={`ta-bar${b.tokens ? "" : " none"}`} style={{ height: `${(b.tokens / top) * 100}%` }} title={`${dayText(b.day)}: ${count(b.tokens)} tokens`} />
+          <span key={b.day} className={`ta-bar${b.tokens ? "" : " none"}`} style={{ height: `${(b.tokens / top) * 100}%` }} title={figureLabel(b.day, b.tokens)} role="img" aria-label={figureLabel(b.day, b.tokens)} />
         ))}
       </div>
       <h3 className="ta-sub">By model</h3>
@@ -202,7 +207,8 @@ function ProviderPanel({ usage, p, today, filters, onTrack, onFilters }: { usage
   const [sharing, setSharing] = useState(false);
   const on = usage.tracking[p];
   const state = panelState(usage, p);
-  const rows = filterRows(rowsOf(usage, p), { ...filters, today });
+  // usage-status.md:18: kept between renders, so the share card's picture is not redrawn by every unrelated render.
+  const rows = useMemo(() => filterRows(rowsOf(usage, p), { ...filters, today }), [usage, p, filters, today]);
   return (
     <section className="conn-card ta-card" data-panel={p}>
       <header className="conn-head">
@@ -214,7 +220,7 @@ function ProviderPanel({ usage, p, today, filters, onTrack, onFilters }: { usage
         )}
         <label className="conn-switch ta-switch">
           <input type="checkbox" role="switch" checked={on} onChange={(e) => onTrack(p, e.target.checked)} />
-          Track
+          {`Track ${NAMES[p]} tokens`}
         </label>
       </header>
       {sharing && <ShareCard provider={p} rows={rows} range={filters.range} today={today} onClose={() => setSharing(false)} />}
@@ -240,7 +246,7 @@ function ProviderPanel({ usage, p, today, filters, onTrack, onFilters }: { usage
   );
 }
 
-export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTrack, onRefresh, filters, onFilters }: ViewProps) {
+export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTrack, onRefresh, filters, onFilters, notices }: ViewProps) {
   const shown = shownProviders(usage, pick);
   const busy = shown.some((p) => scanning.includes(p));
   return (
@@ -251,13 +257,50 @@ export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTra
           {busy ? "Refreshing…" : "Refresh"}
         </button>
       </div>
+      {/* One live region that is always there, so a notice that appears in it is announced. */}
+      <div className="ta-notices" role="status">
+        {(notices ?? []).map((n) => (
+          <p key={n} className="conn-detail warn" data-ta-notice>
+            {n}
+          </p>
+        ))}
+      </div>
       {pick === "overview" ? <OverviewPanel usage={usage} today={today} onTrack={onTrack} /> : <ProviderPanel usage={usage} p={pick} today={today} filters={filters} onTrack={onTrack} onFilters={onFilters} />}
     </div>
   );
 }
 
+/** usage-status.md:3: the saved figures could not be read: the error and a way to try again, not a blank panel. */
+export function LoadFailed({ error, onRetry, busy = false }: { error: string; onRetry: () => void; busy?: boolean }) {
+  return (
+    <section className="conn-card" data-panel="load-failed">
+      <p className="conn-detail warn" role="alert">
+        {loadFailedText(error)}
+      </p>
+      <div className="btn-row">
+        {/* aria-disabled, not disabled: a focused button that becomes disabled loses focus, and the keyboard user with it. */}
+        <button type="button" className="btn" aria-disabled={busy} onClick={busy ? undefined : onRetry}>
+          {busy ? "Retrying…" : "Retry"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function TokenAnalytics() {
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  // One line per thing that failed behind the panel, keyed so the next try replaces or clears it.
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const note = useCallback((key: string, text: string | null) => {
+    setNotes((n) => {
+      const next = { ...n };
+      if (text) next[key] = text;
+      else delete next[key];
+      return next;
+    });
+  }, []);
   const [pick, setPick] = useState<Pick>("overview");
   const [scanning, setScanning] = useState<Provider[]>([]);
   const scanned = useRef(new Set<Provider>());
@@ -267,34 +310,51 @@ export default function TokenAnalytics() {
     for (const p of ps) {
       scanned.current.add(p);
       setScanning((s) => [...s, p]);
+      note(`scan:${p}`, null);
       invoke<Saved>("token_usage_scan", { provider: p })
         .then((saved) => setUsage((u) => (u ? { ...u, [p]: saved } : u)))
-        .catch(() => {})
+        .catch((e) => note(`scan:${p}`, scanFailedNote(p, e)))
         .finally(() => setScanning((s) => s.filter((x) => x !== p)));
     }
-  }, []);
+  }, [note]);
 
+  const load = useCallback(() => {
+    // The error stays until the read works, so Retry does not blank the panel while it runs; Retry shows
+    // "Retrying…" and ignores presses meanwhile, so a read that fails again the same way still shows it ran.
+    setLoading(true);
+    invoke<Usage>("token_usage")
+      .then((u) => { setUsage(u); setLoadError(""); }, (e) => setLoadError(String(e)))
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(load, [load]);
   useEffect(() => {
-    invoke<Usage>("token_usage").then(setUsage, () => {});
     // Kolux scope: the registered projects, their own workspaces folders and the global one.
+    // usage-status.md:10: when the list cannot be read the scope falls back to every local use and says so,
+    // instead of reading "No use inside Kolux" for good.
     Promise.all([invoke<Array<{ path: string; workspacesDir?: string | null }>>("project_list"), invoke<{ dir: string }>("workspaces_place_get")])
       .then(([projects, place]) => setFilters((f) => ({ ...f, roots: [...projects.flatMap((p) => [p.path, p.workspacesDir ?? ""]), place.dir].filter(Boolean) })))
-      .catch(() => {});
-  }, []);
+      .catch((e) => {
+        setFilters((f) => ({ ...f, scope: "all" }));
+        note("scope", scopeFailedNote(e));
+      });
+  }, [note]);
   // Saved figures are drawn first; each tracked provider the picked panel shows is rescanned once.
   useEffect(() => {
     if (usage) scan(shownProviders(usage, pick).filter((p) => !scanned.current.has(p)));
   }, [usage, pick, scan]);
 
   const track = (p: Provider, on: boolean) => {
+    note("track", null);
     invoke("token_tracking_set", { provider: p, on })
       .then(() => {
         setUsage((u) => (u ? { ...u, tracking: { ...u.tracking, [p]: on } } : u));
         if (on) scanned.current.delete(p);
       })
-      .catch(() => {});
+      .catch((e) => note("track", trackFailedNote(p, on, e)));
   };
 
-  if (!usage) return null;
-  return <TokenAnalyticsView usage={usage} pick={pick} scanning={scanning} today={new Date()} onPick={setPick} onTrack={track} onRefresh={() => scan(shownProviders(usage, pick).filter((p) => !scanning.includes(p)))} filters={filters} onFilters={(f) => setFilters((x) => ({ ...x, ...f }))} />;
+  // usage-status.md:18: one `today` per load of the figures, not a new Date on every render (it broke the card's memo).
+  const today = useMemo(() => new Date(), [usage, pick]);
+  if (!usage) return loadError ? <LoadFailed error={loadError} onRetry={load} busy={loading} /> : null;
+  return <TokenAnalyticsView usage={usage} pick={pick} scanning={scanning} today={today} notices={Object.values(notes)} onPick={setPick} onTrack={track} onRefresh={() => scan(shownProviders(usage, pick).filter((p) => !scanning.includes(p)))} filters={filters} onFilters={(f) => setFilters((x) => ({ ...x, ...f }))} />;
 }

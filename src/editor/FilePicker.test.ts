@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quickOpenList, rank } from "./FilePicker";
+import { quickOpenList, rank, scrollActive } from "./FilePicker";
 
 describe("Quick Open ranking (EDIT-036)", () => {
   const paths = ["src/panel/index.ts", "src/panel/util.ts", "docs/sidepanel.md", "src/panel.tsx", "src/pa-nel.ts", "readme.md"];
@@ -22,5 +22,18 @@ describe("Quick Open ranking (EDIT-036)", () => {
     expect(l.capped).toBe(true);
     expect(l.note).toMatch(/ripgrep is not installed, so these are git's files only/);
     expect(quickOpenList("/r", { files: ["x"], capped: false, source: "rg", rgMissing: false })).toEqual({ items: [{ path: "/r/x" }], capped: false, note: undefined });
+  });
+});
+
+describe("picker keyboard scrolling", () => {
+  it("scrolls the active option just into view", () => {
+    const seen: unknown[] = [];
+    const option = { scrollIntoView: (o: unknown) => seen.push(o) };
+    scrollActive({ querySelector: (sel: string) => (sel === '[aria-selected="true"]' ? option : null) } as never);
+    expect(seen).toEqual([{ block: "nearest" }]);
+  });
+  it("does nothing when there is no list or no active option", () => {
+    expect(() => scrollActive(null)).not.toThrow();
+    expect(() => scrollActive({ querySelector: () => null } as never)).not.toThrow();
   });
 });

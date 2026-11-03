@@ -98,6 +98,8 @@ pub const CHORD_EVENT: &str = "browser-chord";
 pub const LINK_EVENT: &str = "browser-link";
 /// T-159 (BROW-040): a document preview asked to leave its folder; the pane offers the address.
 pub const OUTBOUND_EVENT: &str = "browser-outbound";
+/// T-661 (DT-C97): a page asked for the system browser; the pane asks the user before it opens.
+pub const LEAVE_EVENT: &str = "browser-leave";
 pub const ICON_EVENT: &str = "browser-icon";
 /// T-272-c (BROW-016): a page on screen asked for another tab and its family's allowance was used
 /// up; the pane shows "popups blocked" in its toolbar.
@@ -587,8 +589,9 @@ fn with_id(id: u32, mut v: serde_json::Value) -> serde_json::Value {
     v
 }
 
-/// T-657 (DT-C93): whether a menu request may go to the pane. A pick that opens a Kolux tab or the
-/// system browser takes one from the tab family's allowance, so picks in a burst stop at it.
+/// T-657 (DT-C93): whether a menu request may go to the pane. A pick that opens a Kolux tab, or asks
+/// to open the system browser (T-661: the pane shows Kolux's own ask, never opens it straight away),
+/// takes one from the tab family's allowance, so picks in a burst stop at it and cannot flood asks.
 pub fn pick_allowed(v: &serde_json::Value, dev: Option<&Url>, tabs: &Mutex<Allowance>, now: Instant) -> bool {
     let field = |k: &str| v.get(k).and_then(|s| s.as_str());
     if field("kind") == Some("menu") || !matches!(field("what"), Some("open-kolux" | "open-default")) {
@@ -1319,8 +1322,10 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
                             }
                             return NewWindowResponse::Deny;
                         }
+                        // T-661 (DT-C97): the page's word and a click it may have steered are not
+                        // enough to leave Kolux; the pane asks, naming the host, and opens it on Open.
                         popup::Route::System => {
-                            let _ = crate::artifacts::open_external(link);
+                            let _ = window_app.emit(LEAVE_EVENT, LinkPayload { id, url: link, front: true });
                             return NewWindowResponse::Deny;
                         }
                         popup::Route::Tab => {}
@@ -3644,6 +3649,52 @@ mod t074_tests {
         assert!(!pick_allowed(&pick("open-kolux", "javascript%3Aalert(1)"), None, &fresh, now));
         assert!(!pick_allowed(&menu_of("kolux-chord:pick?what=open-default").unwrap(), None, &fresh, now));
         assert!(pick_allowed(&kolux, None, &fresh, now));
+    }
+
+    // T-661 (DT-C97): no browser module opens the system browser itself; a sized window from a page
+    // that has not finished loading is handed to the pane, which asks the user first.
+    #[test]
+    fn t661_the_system_browser_is_never_opened_on_a_pages_word_and_a_click() {
+        let src = include_str!("browser.rs");
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut seen = 0;
+        for e in std::fs::read_dir(&dir).unwrap().flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            if !(name.starts_with("browser") && name.ends_with(".rs")) {
+                continue;
+            }
+            let m = std::fs::read_to_string(e.path()).unwrap();
+            for call in [["open", "_external("].concat(), ["system", "_open("].concat()] {
+                assert!(!m.contains(&call), "{name} calls {call}");
+            }
+            seen += 1;
+        }
+        assert!(seen > 20, "only {seen} browser modules found");
+        let newwin = &src[src.find(".on_new_window(move |url, features|").unwrap()..src.find(".on_navigation(move |url|").unwrap()];
+        let system = &newwin[newwin.find("popup::Route::System =>").unwrap()..];
+        let system = &system[..system.find("popup::Route::Tab").unwrap()];
+        assert!(system.contains("emit(LEAVE_EVENT") && system.contains("NewWindowResponse::Deny"), "{system}");
+        assert_eq!(LEAVE_EVENT, "browser-leave");
+    }
+
+    // T-661: certificate Trust (and every other app command) is out of a page's reach. Tauri refuses an
+    // app command from a remote page unless a capability names it under `remote`, so none may.
+    #[test]
+    fn t661_no_capability_reaches_a_page_so_only_koluxs_own_ui_can_trust_a_certificate() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("capabilities");
+        let mut seen = 0;
+        for e in std::fs::read_dir(&dir).unwrap().flatten() {
+            let text = std::fs::read_to_string(e.path()).unwrap();
+            let cap: serde_json::Value = serde_json::from_str(&text).unwrap();
+            let name = e.file_name().to_string_lossy().into_owned();
+            assert!(cap.get("remote").is_none(), "{name} grants remote pages");
+            let labels = |k: &str| cap.get(k).and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|s| s.as_str()).collect::<Vec<_>>()).unwrap_or_default();
+            for l in labels("windows").into_iter().chain(labels("webviews")) {
+                assert!(["main", "tower"].contains(&l), "{name} names {l}");
+            }
+            seen += 1;
+        }
+        assert!(seen >= 2, "main and tower capabilities read: {seen}");
     }
 
     #[test]

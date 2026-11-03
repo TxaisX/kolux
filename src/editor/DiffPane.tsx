@@ -46,6 +46,7 @@ export const diffStart = (p: EditorPrefs) => ({ split: p.diffView === "split", w
 // Cycle 3 (first load): the change stepper the window's F7 calls lives in keys/handles.ts now, so the
 // shortcut router holds it without loading this pane; filled here while a diff tab is open.
 import { diffNav } from "../keys/handles";
+import { useMenuKeys } from "./menuNav";
 export { diffNav };
 
 type Sides = { original: string; modified: string };
@@ -156,9 +157,10 @@ const noteAtSelection = (view: EditorView, act: NoteActions, side: Side = "new")
 };
 /** The note gutter and the cards, for the new side of a diff. The Add Review Note chord is read
  * from the user's keymap by the pane (a rebinding is the one that works). */
-const noteTools = (act: NoteActions, side: Side = "new"): Extension => [
+export const noteTools = (act: NoteActions, side: Side = "new", canNote = true): Extension => [
   noteField(act, side),
-  gutter({
+  // The "+" is drawn only where a note can be saved (the embedded Changes view has no saver).
+  !canNote ? [] : gutter({
     class: "cm-note-gutter",
     lineMarker: () => plus,
     initialSpacer: () => plus,
@@ -212,6 +214,9 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
     setSpaces(s.spaces);
   }, [settings === null]);
   const [menu, setMenu] = useState(false);
+  const menuBox = useRef<HTMLDivElement>(null);
+  const menuBtn = useRef<HTMLButtonElement>(null);
+  useMenuKeys(menuBox, menu, () => setMenu(false), menuBtn);
   const [changes, setChanges] = useState(0);
   const [onDisk, setOnDisk] = useState(false); // EDIT-025: a preview is offered only while the file still exists
   useEffect(() => {
@@ -237,8 +242,15 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   const ready = sides !== null && !asking;
   const prefs = useRef(prefsReader(() => invoke<Record<string, unknown>>("get_settings"))).current;
   const [pop, setPop] = useState<Pop | null>(null);
-  const noteRef = useRef({ notes, onDeleteNote, canNote: !!onSaveNote });
-  noteRef.current = { notes, onDeleteNote, canNote: !!onSaveNote };
+  const noteRef = useRef({ notes, onDeleteNote, onSaveNote, canNote: !!onSaveNote });
+  noteRef.current = { notes, onDeleteNote, onSaveNote, canNote: !!onSaveNote };
+  // The bin on a note card deletes at once; the note is kept here for a few seconds so Undo can put it back.
+  const [undoNote, setUndoNote] = useState<LineNote | null>(null);
+  useEffect(() => {
+    if (!undoNote) return;
+    const t = window.setTimeout(() => setUndoNote(null), 8000);
+    return () => window.clearTimeout(t);
+  }, [undoNote]);
   const act = useRef<NoteActions>({
     add: (line, end, at, side = "new") => {
       if (!noteRef.current.canNote) return;
@@ -248,7 +260,10 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       setPop({ line: old?.line ?? line, end: old?.end ?? end, side, text: "", ...at });
     },
     edit: (note, at) => setPop({ line: note.line, end: note.end ?? note.line, side: sideOf(note), note, text: note.text, ...at }),
-    remove: (note) => noteRef.current.onDeleteNote?.(note),
+    remove: (note) => {
+      noteRef.current.onDeleteNote?.(note);
+      if (noteRef.current.onSaveNote) setUndoNote(note);
+    },
   });
   const notesKey = JSON.stringify(notes);
   const keys = useKeymap();
@@ -312,7 +327,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       ...common,
       lineEndsFor(modified),
       staged ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [],
-      noteTools(act.current, "new"),
+      noteTools(act.current, "new", !!onSaveNote),
       EditorView.updateListener.of((u) => {
         count(u.state);
         if (!staged) u.transactions.forEach((tr) => relay(path, u.view, tr));
@@ -325,7 +340,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
     let b: EditorView;
     let merge: MergeView | null = null;
     if (split) {
-      merge = new MergeView({ a: { doc: docText(s.original), extensions: [...common, lineEndsFor(s.original), EditorState.readOnly.of(true), EditorView.editable.of(false), noteTools(act.current, "old")] }, b: { doc: docText(modified), extensions: right }, parent: host.current, gutter: true, diffConfig });
+      merge = new MergeView({ a: { doc: docText(s.original), extensions: [...common, lineEndsFor(s.original), EditorState.readOnly.of(true), EditorView.editable.of(false), noteTools(act.current, "old", !!onSaveNote)] }, b: { doc: docText(modified), extensions: right }, parent: host.current, gutter: true, diffConfig });
       a = merge.a;
       b = merge.b;
     } else {
@@ -369,7 +384,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       if (merge) merge.destroy();
       else b.destroy();
     };
-  }, [ready, split, spaces, wrap, path, staged]);
+  }, [ready, split, spaces, wrap, path, staged, !!onSaveNote]);
 
   // New sides from git: the left side always follows; the right one does unless it has unsaved edits.
   useEffect(() => {
@@ -487,6 +502,28 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
 
   const name = baseName(path);
   const step = (dir: 1 | -1) => diffNav.get(id)?.(dir);
+  const actionsMenu = (
+    <span className="diff-actions">
+      <button ref={menuBtn} className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Diff actions" aria-label="Diff actions">
+        <Dots size={12} />
+      </button>
+      {menu && (
+        <>
+          <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
+          <div ref={menuBox} className="menu diff-menu" role="menu">
+            <button role="menuitemcheckbox" aria-checked={spaces} className="menu-item" onClick={() => ((touched.current = true), setSpaces((v) => !v))}>
+              <span className="check">{spaces ? "✓" : ""}</span>
+              <span className="name">Show whitespace changes</span>
+            </button>
+            <button role="menuitemcheckbox" aria-checked={wrap} className="menu-item" onClick={() => ((touched.current = true), setWrap((v) => !v))}>
+              <span className="check">{wrap ? "✓" : ""}</span>
+              <span className="name">Wrap lines</span>
+            </button>
+          </div>
+        </>
+      )}
+    </span>
+  );
   const layoutSwitch = (
     <span className="view-switch" role="group" aria-label="Layout">
       <button aria-pressed={!split} onClick={() => ((touched.current = true), setSplit(false))} title="Inline">
@@ -514,6 +551,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
           {layoutSwitch}
           <span className="right">
             {stepButtons}
+            {actionsMenu}
             <button className="btn" onClick={copyContext} title="Copy the selection with its path and line numbers">
               Copy context
             </button>
@@ -532,33 +570,14 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
           {path}
         </span>
         {isHtml(path) && onDisk && (
-          <button className="ib" title="Show this page rendered in a browser tab" aria-label="Preview in a browser tab" onClick={() => void previewHtml(path).then((err) => err && report.current.onToast?.(err))}>
+          <button className="btn small" title="Show this page rendered in a browser tab" aria-label="Preview in a browser tab" onClick={() => void previewHtml(path).then((err) => err && report.current.onToast?.(err))}>
             Preview
           </button>
         )}
         {layoutSwitch}
         <span className="right">
           {stepButtons}
-          <span className="diff-actions">
-            <button className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Diff actions" aria-label="Diff actions">
-              <Dots size={12} />
-            </button>
-            {menu && (
-              <>
-                <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
-                <div className="menu diff-menu" role="menu">
-                  <button role="menuitemcheckbox" aria-checked={spaces} className="menu-item" onClick={() => ((touched.current = true), setSpaces((v) => !v))}>
-                    <span className="check">{spaces ? "✓" : ""}</span>
-                    <span className="name">Show whitespace changes</span>
-                  </button>
-                  <button role="menuitemcheckbox" aria-checked={wrap} className="menu-item" onClick={() => ((touched.current = true), setWrap((v) => !v))}>
-                    <span className="check">{wrap ? "✓" : ""}</span>
-                    <span className="name">Wrap lines</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </span>
+          {actionsMenu}
           <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)">
             <Close size={12} />
           </button>
@@ -570,6 +589,14 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
           The diff of {name} did not load: {error}
           <button className="btn" onClick={() => setTries((n) => n + 1)}>
             Retry
+          </button>
+        </div>
+      )}
+      {undoNote && (
+        <div className="notice md-banner" role="status">
+          Review note deleted.
+          <button className="btn" onClick={() => (noteRef.current.onSaveNote?.(undoNote), setUndoNote(null))}>
+            Undo
           </button>
         </div>
       )}

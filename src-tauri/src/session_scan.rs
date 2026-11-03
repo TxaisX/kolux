@@ -266,7 +266,7 @@ pub fn running_distros() -> Option<Vec<String>> {
     use std::os::windows::process::CommandExt;
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
-        let out = std::process::Command::new("wsl.exe").args(["-l", "--running", "-q"]).creation_flags(0x0800_0000).output();
+        let out = std::process::Command::new(crate::pty::system_program("wsl.exe")).args(["-l", "--running", "-q"]).creation_flags(0x0800_0000).output();
         let _ = tx.send(out.ok().map(|o| parse_running(&o.stdout)));
     });
     rx.recv_timeout(Duration::from_secs(3)).ok().flatten()

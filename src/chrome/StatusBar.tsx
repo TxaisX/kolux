@@ -2,12 +2,13 @@
 // number of terminals and the agent count. Memory is asked of the Rust side every two seconds;
 // clicking it opens the Resource Manager (APP-054). VIEW-096: right-click the bar to choose its
 // items or hide it; Settings > Appearance brings it back.
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory } from "../status/memory";
 import ResourceManager from "../status/ResourceManager";
 import { Chip, Cup, Plug } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
+import { useMenuFocus } from "./dialogFocus";
 import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/UpdateCenter";
 import { KeepAwakeItem, useKeepAwake } from "../launch/KeepAwakeCard";
 import PortsItem from "../ports/PortsItem";
@@ -33,6 +34,9 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
   const [memory, setMemory] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState<{ left: number; bottom: number } | null>(null);
+  const menuBox = useRef<HTMLDivElement>(null);
+  // The right-click menu takes focus, answers the arrow keys and Escape, and gives focus back.
+  useMenuFocus(menuBox, menu !== null, () => setMenu(null));
   const shows = (id: string) => !hidden.includes(id);
   // TERM-122: shown only while the computer is being kept awake.
   const awake = useKeepAwake();
@@ -102,7 +106,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       {menu && (
         <>
           <div className="menu-backdrop" onClick={() => setMenu(null)} onContextMenu={(e) => (e.preventDefault(), setMenu(null))} aria-hidden="true" />
-          <div className="menu status-menu" role="menu" aria-label="Status bar items" style={menu}>
+          <div ref={menuBox} className="menu status-menu" role="menu" aria-label="Status bar items" style={menu}>
             <div className="menu-title">Status bar</div>
             {STATUS_ITEMS.map((i) => (
               <button key={i.id} role="menuitemcheckbox" aria-checked={shows(i.id)} className="menu-item" onClick={() => onToggle?.(i.id)}>

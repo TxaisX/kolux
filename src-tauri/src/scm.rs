@@ -1463,7 +1463,8 @@ pub async fn scm_commit_message(worktree: String, command: Option<String>, instr
         if let Some(line) = command.filter(|c| !c.trim().is_empty()) {
             let words = split_command(&line);
             let (args, input) = writer_args(&words[1..], &prompt);
-            let program = crate::agents::find_program(&words[0]).unwrap_or_else(|| std::path::PathBuf::from(&words[0]));
+            // T-663: by full path, or refused; never a copy in the worktree the writer runs from.
+            let program = crate::scm_recipe::program_by_full_path(&words[0])?;
             return write_message(&program, &args.iter().map(String::as_str).collect::<Vec<_>>(), dir, input.as_deref(), &worktree, limit);
         }
         let id = agent.as_deref().filter(|a| !a.is_empty()).unwrap_or("claude");
