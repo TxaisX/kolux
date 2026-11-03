@@ -462,6 +462,9 @@ Acceptance:
   - [ ] Sort the table by size → biggest first.
   - [ ] Search a branch name → only matching rows remain.
   - [ ] Select one deletable and one active worktree, delete → only the deletable one goes.
+  - [x] Tick three rows, search so one is hidden, Delete → the dialog lists the two still shown and says
+        branches stay; only those two go and their branches remain; a worktree that cannot be deleted has
+        its box off, with the reason on hover. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-05-014
 
@@ -1316,6 +1319,7 @@ Rules: blocked and waiting both show as needs-you; segments are clamped to the c
 Acceptance:
   - [ ] Range today at 09:00 → axis starts at local midnight.
   - [ ] An agent blocked on approval for 5 minutes → a needs-you segment of that length.
+  - [x] A re-read fails → the last lanes stay, dimmed, with a line saying so. (T-675; evidence/T-675.txt)
 Compat: keybinding id view.floor
 Source: D-05-013
 

@@ -125,10 +125,14 @@ Rules: the download starts by itself; the pop-up appears once per version per la
   the user acts on it or closes it; it stays silent if the update card is on screen for that same
   update; it goes away if the update stops being ready; the app never restarts itself to update,
   only on the user's click or quit.
+  Since T-675 (DT-C111): Restart to update on the pop-up and on the card, and Update now, first ask
+  "Restart to update?" (Restart now / Cancel), because a restart ends every open terminal and agent.
 Acceptance:
   - [x] Let an update download in the background → the pop-up appears once; close it → it does not
         come back this launch. (cards; evidence/cards-APP-025.txt)
   - [ ] Quit without clicking anything → the next launch runs the new version.
+  - [x] Click Restart to update on the pop-up → "Restart to update?" asks first; Cancel leaves everything
+        running, Restart now restarts and the button reads Restarting… until the app ends. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-025
 
@@ -147,10 +151,14 @@ Rules: only checks the user asked for, and download errors, bring up the card, n
   user that running terminal sessions carry on, and it is gone for good once dismissed or once a
   download starts; a check requested while a quiet background check is already running takes that
   check over, so its result shows in the card.
+  Since T-675 (DT-C111): the first-time tip says restarting to update closes open terminals and agents
+  and that Kolux RS asks first (it used to say sessions keep running); a check asked for before the status
+  has loaded waits and then runs, and a failed status load is shown; Escape on the ready pop-up is Later.
 Acceptance:
   - [x] On the newest version, click Check for Updates → the card reports up to date and closes itself. (cards; evidence/cards-APP-026.txt)
   - [x] With an update offered, dismiss the card → it stays away for that version; publish a newer
         one → it returns. (cards; evidence/cards-APP-026.txt)
+  - [x] Offer an update for the first time → the tip says a restart closes open terminals and agents. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-026
 
@@ -706,6 +714,8 @@ Acceptance:
   - [ ] Send feedback with some text → the browser opens a new-issue page whose title begins
         [Feedback] and whose body includes the version.
   - [ ] Tick Submit anonymously → the body has no GitHub login.
+  - [x] Double-click Send → one new-issue page opens (the button reads Opening…); close the box → focus
+        goes back where it was. (T-675; evidence/T-675.txt)
 Compat: issues go to the owner's public repository TxaisX/kolux, through GitHub's own new-issue page
   with the title and body passed in its address.
 Source: D-19-037
@@ -946,6 +956,8 @@ Rules: PNG, JPEG, WebP or GIF only, at most four images of at most 8 MB each; cr
 Acceptance:
   - [ ] Attach five images → the fifth is refused.
   - [ ] Attach one PNG and submit → pasting into the issue page inserts that image.
+  - [x] Tab to Add screenshot and press Enter → a screenshot is attached; its remove button names the
+        file. (T-675; evidence/T-675.txt)
 Compat: —
 Source: D-19-038
 

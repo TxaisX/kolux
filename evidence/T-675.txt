@@ -1,0 +1,141 @@
+T-675 - Small views: update restart, Space batch delete, feedback, Tower, Update Center, Floor, look, notify (DT-C111; APP-025, APP-026, APP-037, APP-038, VIEW-013, VIEW-014; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-3 (PR #111), 2026-11-02.
+
+WHAT CHANGED
+- Update restart (src/update/UpdateCenterView.tsx, card.ts): Restart to update and Update now open
+  "Restart to update?" (RESTART_ASK: Restart now / Cancel) first. The tip (RESTART_TIP) says restarting
+  closes open terminals and agents; it used to say they keep running. While restarting the button reads
+  Restarting… and is off; a failed restart turns it back on.
+- Update Center: a check asked for before the status loads waits and then runs (earlyCheck); a failed
+  status load is shown and a check after it fails with the reason; update_mark failures are caught;
+  Escape on the ready pop-up is Later, only for Escapes from the page or inside the pop-up (popupEscapes).
+- Space (src/space/view.ts, SpaceView.tsx): batch delete sends keepBranch: true, acts only on ticked rows
+  the table still shows and that can still be deleted, and its dialog lists them (8, then "and N more").
+  An undeletable worktree's box is off with the reason as a tooltip. A project change drops a stale scan.
+- Feedback (src/feedback/FeedbackDialog.tsx, model.ts): Add screenshot is a real button; Send cannot
+  fire twice (Opening…); a reopened box can send; focus goes back on close; the sent note no longer covers
+  the update card or the status bar; remove-screenshot names the file.
+- Tower (src/tower/TowerView.tsx, TowerWindow.tsx, tower.ts): scrolls to the selected row, shows Loading…
+  in its own window until the first reading and Refreshing… on Refresh.
+- Floor (src/floor/FloorView.tsx, timeline.ts): the shared segmented control for the range; a failed
+  re-read keeps the last lanes, dimmed, with a line saying so.
+- Look (src/look/HeaderBadge.tsx, headerColour.ts, CardDetailsChooser.tsx): the header colour swatches are
+  one Tab stop (arrows, Home, End); the locked Status box says Always shown.
+- Notify (src/notify/pace.ts): the pacer takes an optional kind, so a finish just before a needs-you stop
+  no longer hides it; live once callers pass kind (proof/ux-audit/requests/A.md and E1.md).
+- spec/19-app-lifecycle.md APP-025 and APP-026 Rules changed (DT-C111); acceptance lines on APP-025,
+  APP-026, APP-037, APP-038 and spec/05-views-navigation.md VIEW-013 and VIEW-014 point here.
+
+WHY
+UX audit small-views rows (proof/ux-audit/findings/small-views.md:2-25): one click restarted the app and
+ended every terminal and agent while the tip said they kept running; Space's batch delete removed branches
+its dialog said would stay and could delete rows the search had hidden; several buttons fired twice or gave
+no sign of work; parts were unreachable by keyboard. Row 4 (Space and Floor only from the palette) is fixed
+in #104 (View menu). L rows: none.
+
+REVIEW
+Opus review B -> fix pass (21fe7c64: plain-text pace key, update check after a failed status, Escape
+scope, Space tick filter, feedback reopen) -> re-review PENDING.
+
+TESTS (verbose, the 9 test files this PR changes or adds)
+pnpm vitest run --reporter=verbose src/feedback/model.test.ts src/floor/timeline.test.ts src/look/headerColour.test.ts src/notify/notify.test.ts src/space/view.test.ts src/tower/TowerView.test.ts src/update/UpdateCenter.keys.test.ts src/update/__cards__/APP-024-027.test.ts src/update/restart.test.ts
+ ✓ src/feedback/model.test.ts > a send in flight blocks a second one until it fails or finishes
+ ✓ src/feedback/model.test.ts > app037: Submit anonymously leaves the login out of the whole address
+ ✓ src/feedback/model.test.ts > app037: a refused send keeps the dialog open with the text and the error; a sent one closes it with a note
+ ✓ src/feedback/model.test.ts > app037: a very long report is trimmed to fit the address, says so, and keeps the facts
+ ✓ src/feedback/model.test.ts > app037: empty text is refused with an error, whether blank, only spaces or only the pre-filled block
+ ✓ src/feedback/model.test.ts > app037: paths and secrets never reach the address, not even in the title
+ ✓ src/feedback/model.test.ts > app037: the body names the version, platform, system release and architecture, plus the GitHub login
+ ✓ src/feedback/model.test.ts > app037: the title is [Feedback] plus the first line, never past 80 characters
+ ✓ src/feedback/model.test.ts > fix1: a report with an emoji at the 80-character title cut still opens
+ ✓ src/feedback/model.test.ts > fix1: a very long report of emoji opens, trimmed, with no half emoji in it
+ ✓ src/feedback/model.test.ts > fix1: building the address can never throw: any failure comes back as a refusal the dialog shows
+ ✓ src/feedback/model.test.ts > fix1: closing the box with a report typed keeps it for the next open, a sent report does not
+ ✓ src/feedback/model.test.ts > focus goes back to what opened the box, only if it is still on the page
+ ✓ src/feedback/model.test.ts > proj089: a block the user edited or deleted is rebuilt from the real facts, never trusted
+ ✓ src/feedback/model.test.ts > proj089: opening feedback already has the version and operating system in it
+ ✓ src/feedback/model.test.ts > proj089: text typed above the block is kept when the block is rewritten
+ ✓ src/feedback/model.test.ts > tab order wraps inside the box and starts at an end when nothing inside has focus
+ ✓ src/feedback/model.test.ts > the sent note sits right of the update card and above the 24px status bar
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > FIX-1: the name column widens with the deepest nesting, every lane and the axis share it, and a long name is cut with its full text as a tooltip
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > FIX-2: the name column stops growing at five levels, a deeper lane keeps the same indent and its true depth
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > T-035-b: a live lane is a button that jumps to its pane, a closed lane is not, and the page without a handler draws no button
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > T-260-b: a child session nests right under its parent, grandchildren one step further, and a child whose parent has no lane stays on top
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > T-260-b: lanes that name each other as parent still all show, once, on top
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > T-260-b: the page indents a child lane under its parent, parent first
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > a lane with no live terminal shows its quiet stretches as unverifiable, and stops where the pane closed
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > an agent blocked on approval for 5 minutes gives a needs-you segment of that length
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > blocked and waiting both read needs-you; segments are clamped to the range
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > lanes come in pane order and a lane with nothing in range is left off
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > range today at 09:00 starts the axis at local midnight, with six ticks
+ ✓ src/floor/timeline.test.ts > VIEW-013 Floor timeline > the page draws one lane per pane with its segments and six ticks
+ ✓ src/floor/timeline.test.ts > floor stale lanes > a failed re-read over lanes already shown says they are old; nothing to say without lanes or without an error
+ ✓ src/floor/timeline.test.ts > floor stale lanes > the range picker is the shared segmented control
+ ✓ src/look/headerColour.test.ts > PROJ-017: a project that was never coloured has a grey badge
+ ✓ src/look/headerColour.test.ts > PROJ-017: only palette colours are saved; grey removes the entry; junk in a profile is dropped
+ ✓ src/look/headerColour.test.ts > PROJ-017: picking blue is saved and still blue when the settings are read back
+ ✓ src/look/headerColour.test.ts > PROJ-017: the badge shows the colour and the swatch row marks the chosen one
+ ✓ src/look/headerColour.test.ts > swatch row: one Tab stop, arrows wrap, Home and End jump
+ ✓ src/notify/notify.test.ts > a finished session in view of a focused window is seen; a hand-marked one stays unread (STAT-049)
+ ✓ src/notify/notify.test.ts > a needs-you stop is not hidden by a task-complete just before it in the same worktree
+ ✓ src/notify/notify.test.ts > a pane with no status yet keeps being watched, a future turn is acknowledged once (STAT-049)
+ ✓ src/notify/notify.test.ts > the badge counts workspaces, not tabs, caps and clears (STAT-048)
+ ✓ src/notify/notify.test.ts > the memory stays bounded during a burst (STAT-044)
+ ✓ src/notify/notify.test.ts > the same event never shows twice, a test ignores the pace, focus can silence it (STAT-044)
+ ✓ src/notify/notify.test.ts > two completions from one worktree inside the cooldown are one notification (STAT-044)
+ ✓ src/space/view.test.ts > view-014 space page > a pane open anywhere in a worktree marks it active, slash and case blind
+ ✓ src/space/view.test.ts > view-014 space page > a ticked row that can no longer be deleted (now open, or the main checkout) is not chosen
+ ✓ src/space/view.test.ts > view-014 space page > afterBatch drops the removed rows and keeps the others with their messages
+ ✓ src/space/view.test.ts > view-014 space page > batch delete keeps branches, matching the dialog's promise
+ ✓ src/space/view.test.ts > view-014 space page > latest-wins: only the newest scan token is current
+ ✓ src/space/view.test.ts > view-014 space page > plan: clean rows become picks with the stamp; changes, locks, nested worktrees and failed checks are skipped
+ ✓ src/space/view.test.ts > view-014 space page > question: names one worktree, counts several, lists the skipped, null when nothing goes
+ ✓ src/space/view.test.ts > view-014 space page > states: main, in use, deletable, kept
+ ✓ src/space/view.test.ts > view-014 space page > the batch question lists worktrees by branch/folder and size, capped with 'and N more'
+ ✓ src/space/view.test.ts > view-014 space page > ticked rows the filter hides are not deleted
+ ✓ src/space/view.test.ts > view-014 space page > whyNotDeletable names the reason, null for a deletable row
+ ✓ src/tower/TowerView.test.ts > Refresh shows it is working
+ ✓ src/tower/TowerView.test.ts > T-546-c (council AFTER 2): the listbox is the list of rows, not the whole tower; each lane is a group
+ ✓ src/tower/TowerView.test.ts > T-546-c (look FIX-3 patch): the Tower's own window is wired, so the main window's Tower offers it by default; passing ownWindow false hides it
+ ✓ src/tower/TowerView.test.ts > T-546-c: once wired, the main window's Tower offers its own window; the Tower window itself does not
+ ✓ src/tower/TowerView.test.ts > T-548: a usage card says whose figures it shows and how many panes run on other accounts
+ ✓ src/tower/TowerView.test.ts > the own window says Loading… before its first snapshot, not 'Nothing is running'
+ ✓ src/tower/TowerView.test.ts > the selected row is scrolled into view at the nearest edge
+ ✓ src/update/UpdateCenter.keys.test.ts > Trigger A: after Check and a collapse, the half-hourly check neither reopens the card nor takes the keyboard
+ ✓ src/update/UpdateCenter.keys.test.ts > Trigger B and rule 5: a background download error brings the card up without the keyboard; Enter restarts only once the user opens it
+ ✓ src/update/UpdateCenter.keys.test.ts > rule 4: Check for updates gives the card the keyboard; a later change of phase never takes it back from the terminal
+ ✓ src/update/UpdateCenter.keys.test.ts > rule 4: a status-bar click with nothing to show leaves no claim on the keyboard for a card that comes up later
+ ✓ src/update/UpdateCenter.keys.test.ts > rule 5 positive: on a card the user opened with Check for updates, Enter runs Restart (APP-026)
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > a quiet check shows nothing while it checks or downloads; the notice comes only once the download is ready
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > box 1: a release published with the app open is downloaded by the next half-hour check, with no click
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > box 2 (connection flag up, requests failing): the failure is silent and the retry comes an hour later
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-024 > box 2: an hour with no connection shows nothing; the check runs within a minute of its return
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-025 > Escape on the notice is Later; Enter on its container starts nothing
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-025 > Later closes the notice for this launch only; a new launch offers it again, and nothing is remembered
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-025 > Update now is the restart-to-update action
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-025 > box 1: the ready pop-up appears once; closed, it does not come back this launch; nothing restarts by itself
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-025 > rule: the pop-up stays silent while the card shows that same update
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-026 > DT-APP-026: background checks keep the dismissed version hidden; an explicit Check for Updates shows it
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-026 > box 1 rule: a second click during a running check does not start a second one
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-026 > box 1: Check for Updates on the newest version says up to date, then the card closes itself
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-026 > box 2: a dismissed version stays away through quiet checks; a newer one brings the card back
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-027 > box 1: the five bullets of a release's notes are listed in the card, through ready, and cleared by a new check
+ ✓ src/update/__cards__/APP-024-027.test.ts > APP-027 > box 2: with no notes the card still appears and the update still installs
+ ✓ src/update/restart.test.ts > update restart honesty > Escape closes the pop-up unless a field has it or another handler took the key
+ ✓ src/update/restart.test.ts > update restart honesty > a Check click after update_status failed fails at once instead of spinning
+ ✓ src/update/restart.test.ts > update restart honesty > the button reads Restarting… while the restart runs
+ ✓ src/update/restart.test.ts > update restart honesty > the confirmation says terminals and agents end and offers a clear confirm word
+ ✓ src/update/restart.test.ts > update restart honesty > the tip no longer claims terminals keep running
+
+  Test Files  9 passed (9)
+  Tests  87 passed (87)
+
+FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
+  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+  Test Files  1 failed | 732 passed (733)
+  Tests  3 failed | 5433 passed (5436)
+  The 3 failures are src/editor/pdfjsCopy.test.ts: CRLF line endings in this local checkout, not part of
+  this change; they pass on CI.
+
+TYPES
+pnpm exec tsc --noEmit -p .: exit 0
