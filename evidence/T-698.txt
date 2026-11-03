@@ -1,0 +1,71 @@
+T-698 - One z-index scale for every layer drawn over the page (proof/ux-audit/requests/W3.md, last row; DT-C134)
+Worker 2f, branch s-2f/zscale off origin/main c82cedc5, 2026-11-03.
+
+THE PROBLEM (follow-up from T-694's review)
+- .settings is absolute with z-index 40 inside .body, so it is a stacking context: its Ask dialogs (60) stacked at 40,
+  under the floating panel (47). The pane menu (.menu 41), the diff note pop (41), the review pop (45) and the update
+  pop (45) also drew under the panel where they overlapped it.
+
+WHAT CHANGED
+- src/styles.css: one :root line defines the scale, low to high: --z-sheet 20, --z-pane 22, --z-float 30, --z-page 40,
+  --z-menu 41, --z-pop 45, --z-dialog 50, --z-notice 55, --z-top 60, --z-tour 70, --z-trust 200.
+- Every rule with a z-index of 20 or more in src takes its tier (or a step above or below it with calc):
+  - sheet: .sheet-wrap, .chat-browser-menu
+  - pane (pops drawn by panes, in main's order): .slash-menu, .rich-draw, .chat-composer .chat-full (+0), .table-ctl,
+    .code-label (+1), .table-ctx (+2), .search-pick-list (+3)
+  - just under the panel, as on main: .review-tray (float - 2), .plan-sheet (float - 1)
+  - float: .float-panel, .float-btn (+1)
+  - page: .settings, .menu-backdrop, .copy-hint; menu: .menu, .diff-note-pop; pop: .review-pop, the update pop
+  - dialog: .sb-menu-back (-1), .sb-menu, .scrim; notice: .star-card, .star-toast, .tour-notice, .skill-notice (+3)
+  - top: .ask-backdrop, .tip, .picker-tip, .tab-switcher, .tip-dock, .about-panel, .link-bubble
+  - tour: .tour-ring (-1), .tour, .onb-backdrop; trust: the trust prompt's backdrop
+- A pane is NOT a stacking context: container-type: inline-size contains size only, not paint, so a fixed pop inside a
+  pane competes with the floating panel at window level. That is why the pane pops are on the scale, under the panel.
+- Order changes against main, all intended:
+  - The floating panel (47/48 -> 30/31) is now under Settings, every menu and pop, so their dialogs are never covered.
+  - The same move puts Settings (40), the menu backdrop and copy hint (40) and menus (41) over the review tray (44 on
+    main) and the plan sheet (46 on main), and the review and update pops (45) over the plan sheet. Settings covering the
+    plan sheet follows from Settings > panel > plan sheet: a plan sheet that arrives while Settings is open stays under
+    it until Settings closes. The review pop opens at the selection and can reach the sheet; the update pop reaches it
+    only in a window under ~900px wide. The PR picker list (.search-pick-list) tied Settings, the menu backdrop and the
+    copy hint at 40 on main (DOM order decided); it is now strictly under them.
+  - Every other pair keeps main's order, including sheets < pane pops < review tray < plan sheet < panel.
+- Settings now covers the floating panel. That is the only way its dialogs are over the panel without moving them out
+  of the page (DT-C134 revises DT-C130 on this point); closing Settings brings the panel back.
+- Inline values in components (two notes at 50, the floating panel's own Ask and menus at 70) are already above the
+  panel. FloatingLayer mounts in Hosts.tsx as a sibling of .body inside .app, and no ancestor is a stacking context, so
+  the panel's number counts at window level.
+
+REVIEW
+- Opus review (opus-high-review) of 239f643b: B. MUST-FIX taken: (1) the "a pane is its own stacking context" claim was
+  wrong, so the editor and chat pops at 30-40 crossed the panel at 30 and the plan sheet at 21; they now take the pane
+  tier under both; (2) the review tray (44) covered the plan sheet's Approve and Request changes buttons; the tray and
+  the plan sheet now sit just under the panel in main's order. SHOULD-FIX taken: Settings over the plan sheet is listed
+  above; the bare-number guard now scans every stylesheet in src; the comment, DT-C134 and this file are corrected
+  (.settings is inside .body). NITs taken: the value parser rejects half-written calc(); .link-bubble is on the top tier
+  (same 60 as before, over the panel as on main). NIT left: rule() reads the first rule for a selector; no listed
+  selector sets z-index twice today.
+- Second Opus review (opus-high-review) of efc99e97: A-. No MUST-FIX. SHOULD-FIX taken: the review pop over the plan
+  sheet and the PR picker tie are listed above. NITs taken: the stylesheet scan must find styles.css and more than 20
+  files; the pane tier keeps main's order inside it; the styles.css comment says "stylesheet"; DT-C134 names the
+  sidebar menu's backdrop. The Settings-over-plan-sheet consequence is in the PR description.
+
+TESTS
+- src/floating/floatStack.test.ts (rewritten from T-694), 5 tests: the tiers are in order and distinct; every page
+  overlay, menu, pop and dialog resolves above the floating panel and its button; sheets, pane pops, the review tray and
+  the plan sheet resolve under it in main's order; no stylesheet in src sets a bare z-index of 20 or more; the chooser
+  footer still wraps.
+- With the reviewed commit's stylesheets (239f643b) 3 of the 5 fail; with this change all 5 pass. Main's stylesheets
+  fail as well (no scale, .settings 40 under the panel 47).
+- pnpm vitest run src/editor/ src/chat/ src/floating/ src/onboarding/ src/projects/ src/skills/ src/update/ src/setup/
+  src/shell/: 289 files, 2525 tests pass; 3 fail in src/editor/pdfjsCopy.test.ts (public/pdfjs vs this worktree's
+  installed pdfjs-dist; the branch touches neither public/ nor package files). pnpm tsc --noEmit: clean.
+
+FIRST LOAD
+- node scripts/bundle-budget.mjs after pnpm vite build: 1,488,312 bytes; main c82cedc5 1,488,312 (CI run
+  41689786036): +0.
+
+LANES
+- 57 handed this row to 2f. Files outside lane B, each change the z-index value only: src/styles.css and
+  src/shell/shell.css (A), src/floating (E3), src/projects/sidebar.css (C), src/editor/editor-extras.css,
+  src/chat/chat.css, src/onboarding, src/update, src/setup. src/skills/skillNotice.css is lane B.
