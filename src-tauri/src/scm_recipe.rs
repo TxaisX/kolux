@@ -196,8 +196,20 @@ pub fn resolve(c: &Composed) -> Result<PathBuf, String> {
             let spec = writers::spec(id).ok_or_else(|| format!("unknown agent {id}"))?;
             writers::program_of(spec).ok_or_else(|| format!("{} was not found on this computer", spec.name))
         }
-        None => crate::pty::full_path_program(&c.program).ok_or_else(|| format!("{} was not found on this computer, so Kolux did not start it", c.program)),
+        None => program_by_full_path(&c.program),
     }
+}
+
+/// T-663: a writer or template program Kolux starts itself (the commit-message writer's own command
+/// too): by full path or a lookup in full-path folders only, else refused, never run by its bare name.
+pub(crate) fn program_by_full_path(word: &str) -> Result<PathBuf, String> {
+    crate::pty::full_path_program(word).ok_or_else(|| {
+        if word.contains(['/', '\\']) && !std::path::Path::new(word).is_absolute() {
+            format!("{word} is not a full path, so Kolux did not start it; give its full path")
+        } else {
+            format!("{word} was not found as a full path or on the PATH, so Kolux did not start it")
+        }
+    })
 }
 
 fn git_lines(dir: &Path, args: &[&str]) -> String {
@@ -302,6 +314,10 @@ mod tests {
         let c = Composed { program: "kolux-rs-t663-no-such-writer".into(), agent: None, args: vec![], input: None, line: String::new() };
         let err = resolve(&c).unwrap_err();
         assert!(err.contains("kolux-rs-t663-no-such-writer") && err.contains("did not start it"), "{err}");
+        // The commit-message writer's own command goes through the same lookup; a relative path is named as one.
+        let err = program_by_full_path("./scripts/msg.sh").unwrap_err();
+        assert!(err.contains("is not a full path"), "{err}");
+        assert!(program_by_full_path(r"src\scm.rs").is_err());
     }
 
     #[test]

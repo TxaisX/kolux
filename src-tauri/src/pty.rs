@@ -495,9 +495,16 @@ fn resolve_bare(cmd: &CommandBuilder, name: &str) -> Option<PathBuf> {
 }
 
 /// T-663: what a start that failed says. On Windows the terminal library's message quotes the whole
-/// command line (an opening prompt included); only the program's name and the system's reason are kept.
+/// command line (an opening prompt included) and, for an argument it cannot pass, that argument;
+/// only the program's name and the system's reason are kept. Other text is kept as it is.
 fn spawn_error(name: &str, text: &str) -> String {
-    text.rsplit_once(" failed: ").map_or_else(|| text.to_string(), |(_, why)| format!("{name} could not be started: {why}"))
+    if let Some((_, why)) = text.strip_prefix("CreateProcessW ").and_then(|t| t.rsplit_once(" failed: ")) {
+        return format!("{name} could not be started: {why}");
+    }
+    if text.contains("command line argument") {
+        return format!("{name} could not be started: an argument holds a character Windows cannot pass");
+    }
+    text.to_string()
 }
 
 impl PtySession {
@@ -556,7 +563,7 @@ impl PtySession {
         let Some((mut child, program)) = started else {
             return Err(match failed.len() {
                 1 => failed.remove(0).1,
-                _ => format!("No shell would start. Kolux tried {}.", failed.iter().map(|(n, e)| format!("{n} ({e})")).collect::<Vec<_>>().join(", ")),
+                _ => format!("No shell would start. Kolux tried {}.", failed.iter().map(|(n, e)| if e.starts_with(n.as_str()) { e.clone() } else { format!("{n} ({e})") }).collect::<Vec<_>>().join(", ")),
             });
         };
         drop(pair.slave);
@@ -1261,23 +1268,37 @@ mod tests {
     }
 
     /// T-663: no program Kolux starts itself resolves through the current folder. A relative name
-    /// (even one naming a real file), a drive-relative one and a name only an off-PATH folder has
-    /// get no full path; Windows PowerShell is absolute; a failed start no longer quotes its command
-    /// line; and the swept files' own code names no program by a bare literal.
+    /// (even one naming a real file the plain lookup takes) and a drive-relative one get no full
+    /// path; Windows PowerShell is absolute; a failed start quotes neither its command line nor an
+    /// argument; and the swept files' production code has no `Command::new("<bare name>")` literal
+    /// (other start helpers and row 69's sites are not covered by that scan).
     #[test]
     fn t663_programs_kolux_starts_are_full_paths_or_refused() {
         #[cfg(windows)]
         assert!(crate::agents::find_program("./Cargo.toml").is_some(), "the lookup alone would take a relative file");
-        let dir = crate::test_dir::temp("t663 off path");
-        std::fs::write(dir.join("kolux-rs-t663-only-here.exe"), b"MZ").unwrap();
-        for name in ["./Cargo.toml", r"src\pty.rs", "src/pty.rs", "C:Cargo.toml", "kolux-rs-t663-only-here"] {
+        for name in ["./Cargo.toml", r"src\pty.rs", "src/pty.rs", "C:Cargo.toml"] {
             assert_eq!(full_path_program(name), None, "{name}");
         }
         assert!(system_program(WINDOWS_POWERSHELL).is_absolute() || !cfg!(windows));
-        let os = "CreateProcessW `x --prompt secret` in cwd `None` failed: The system cannot find the file specified. (os error 2)";
-        let said = spawn_error("x", os);
-        assert_eq!(said, "x could not be started: The system cannot find the file specified. (os error 2)");
-        assert_eq!(spawn_error("x", "some other error"), "some other error");
+        let reason = "The system cannot find the file specified. (os error 2)";
+        let said = spawn_error("x", &format!("CreateProcessW `x --prompt secret` in cwd `None` failed: {reason}"));
+        assert_eq!(said, format!("x could not be started: {reason}"));
+        // A " failed: " inside the quoted command line is dropped with it (the system's reason never holds one).
+        let said = spawn_error("x", &format!("CreateProcessW `x \"it failed: secret\"` in cwd `None` failed: {reason}"));
+        assert_eq!(said, format!("x could not be started: {reason}"));
+        let said = spawn_error("x", "invalid encoding for command line argument \"secret\\0\"");
+        assert!(!said.contains("secret") && said.starts_with("x could not be started"), "{said}");
+        assert_eq!(spawn_error("x", "UpdateProcThreadAttribute failed: denied"), "UpdateProcThreadAttribute failed: denied", "other steps keep their text");
+        // A real failed start, through the start path: the opening prompt never comes back in the error.
+        #[cfg(windows)]
+        {
+            let missing = crate::test_dir::temp("t663 missing").join("kolux-rs-t663-missing.exe");
+            let mut c = CommandBuilder::new(&missing);
+            c.arg("--prompt");
+            c.arg("t663 secret failed: prompt");
+            let err = PtySession::spawn(c, 80, 24, |_| {}, |_| {}).err().expect("a missing program does not start");
+            assert!(!err.contains("secret") && !err.contains("CreateProcessW"), "{err}");
+        }
         // Bare `Command::new("name")` literals left in production code: only editor_search's rg and git (out of T-663's list).
         let allowed = [("editor_search.rs", "rg"), ("editor_search.rs", "git")];
         for file in ["automations.rs", "codex_usage.rs", "editor_search.rs", "fonts.rs", "include.rs", "session_scan.rs", "scm.rs", "scm_recipe.rs", "pty.rs"] {

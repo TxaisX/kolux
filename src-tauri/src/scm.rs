@@ -1381,7 +1381,7 @@ pub async fn scm_commit_message(worktree: String, command: Option<String>, instr
             let words = split_command(&line);
             let (args, input) = writer_args(&words[1..], &prompt);
             // T-663: by full path, or refused; never a copy in the worktree the writer runs from.
-            let program = crate::pty::full_path_program(&words[0]).ok_or_else(|| format!("{} was not found on this computer, so Kolux did not start it", words[0]))?;
+            let program = crate::scm_recipe::program_by_full_path(&words[0])?;
             return write_message(&program, &args.iter().map(String::as_str).collect::<Vec<_>>(), dir, input.as_deref(), &worktree, limit);
         }
         let id = agent.as_deref().filter(|a| !a.is_empty()).unwrap_or("claude");

@@ -1,4 +1,4 @@
-T-663 - The rest of the programs Kolux starts by bare name are started by full path (DT-C99; audit backlog row 67)
+T-663 - Backlog row 67's programs Kolux started by bare name are started by full path (DT-C99; row 69 has the rest)
 Worker 2f, branch s-2f/spawn-sweep, base e93a23ba (#93), 2026-11-02.
 
 WHAT CHANGED
@@ -9,8 +9,12 @@ WHAT CHANGED
   - WINDOWS_POWERSHELL: Windows PowerShell's sub-path under the system folder, used with
     system_program by the menu fallback (T-660) and the sites below.
   - spawn_error(name, text): when a pane start fails, keeps "<name> could not be started: <the
-    system's reason>" instead of the terminal library's Windows text, which quotes the whole
-    command line (an agent's opening prompt included). Text without " failed: " is kept as is.
+    system's reason>" instead of the terminal library's Windows CreateProcessW text, which quotes
+    the whole command line (an agent's opening prompt included); the split is at the last
+    " failed: ", so one inside the prompt is dropped with it. The library's "invalid encoding for
+    command line argument <arg>" becomes "<name> could not be started: an argument holds a
+    character Windows cannot pass". Other text (another step that failed) is kept as is. When
+    several shells were tried, the list no longer repeats the name.
 - automations.rs (run_precheck): Windows PowerShell by full path (system folder), /bin/sh
   elsewhere; taskkill.exe by full path.
 - codex_usage.rs: cmd.exe and taskkill.exe by full path.
@@ -20,9 +24,11 @@ WHAT CHANGED
   was not found on this computer"), which the font list already reports.
 - include.rs (link_dir): cmd.exe by full path.
 - session_scan.rs (running_distros): wsl.exe by full path.
-- scm.rs:1383 (commit-message writer's own command) and scm_recipe.rs:199 (resolve, a recipe
-  template's program): full_path_program, else refused with "<name> was not found on this
-  computer, so Kolux did not start it". Both used to fall back to the bare name.
+- scm.rs:1384 (commit-message writer's own command) and scm_recipe.rs resolve (a recipe
+  template's program): one shared helper, scm_recipe::program_by_full_path, so one test covers
+  both. full_path_program, else refused: "<name> is not a full path, so Kolux did not start it;
+  give its full path" for a relative path (./x.sh), else "<name> was not found as a full path or
+  on the PATH, so Kolux did not start it". Both used to fall back to the bare name.
 
 CHECKED, NO CHANGE NEEDED
 - setup.rs:281 is unchanged: it compares the Setup terminal's program with "cmd.exe", and setup.rs
@@ -36,40 +42,60 @@ CHECKED, NO CHANGE NEEDED
 WHY
 A program started by bare name can resolve to a copy planted in a folder Kolux does not control.
 On Windows, Rust's std Command no longer searches the current folder (Rust 1.58+): it looks in the
-app's folder, System32 and then PATH, so the remaining Windows exposure is PATH order. On Unix a
+app's folder, System32, the Windows folder and then PATH, so the remaining Windows exposure is PATH order. On Unix a
 relative PATH entry resolves against the child's folder. Naming system programs by their full
 path in the system folder, and other programs by a full-path lookup or a refusal, closes both.
 
 REGRESSION TESTS
 - pty::tests::t663_programs_kolux_starts_are_full_paths_or_refused:
   - full_path_program is None for ./Cargo.toml (a real file the plain lookup does take on
-    Windows, asserted), src\pty.rs, src/pty.rs, C:Cargo.toml and a name only an off-PATH temp
-    folder holds;
+    Windows, asserted), src\pty.rs, src/pty.rs and C:Cargo.toml. On Unix these files are not
+    executable, so only the Windows run (the one CI runs Rust tests on) catches a regression;
   - system_program(WINDOWS_POWERSHELL) is absolute;
   - spawn_error turns "CreateProcessW `x --prompt secret` in cwd `None` failed: The system cannot
     find the file specified. (os error 2)" into "x could not be started: The system cannot find
-    the file specified. (os error 2)", and keeps other text unchanged;
+    the file specified. (os error 2)", also when the quoted command line holds " failed: ";
+    drops the argument from the encoding error; keeps another step's text unchanged;
+  - Windows: a real start of a missing full path through PtySession::spawn, with an argument
+    holding "secret failed: ...", returns an error with neither "secret" nor "CreateProcessW".
+    Mutation check: putting spawn_first back to e.to_string() makes this fail; restored;
   - a scan of the production code (before `mod tests`) of the nine files in this row finds no
-    Command::new("<bare name>") literal; the only allowed ones are editor_search.rs's rg and git,
+    Command::new("<bare name>") literal (only that pattern: other start helpers, such as scm.rs's
+    quiet("taskkill") at 1289, and its explorer.exe / open / xdg-open, are row 69's); the only allowed ones are editor_search.rs's rg and git,
     which are outside this row (row 69).
   - Mutation check: putting include.rs back to Command::new("cmd") makes the scan fail with
     "include.rs: bare cmd"; restored.
 - scm_recipe::tests::t663_an_unknown_template_program_is_refused: a template program not found by
-  full path is refused with the new message.
+  full path is refused; the shared helper the commit-message writer uses names a relative path
+  (./scripts/msg.sh) as not a full path and refuses src\scm.rs.
 - editor_search::tests::t663_the_wsl_search_starts_wsl_by_full_path: wsl_rg_command's program is
   absolute.
 
 GATES (local, Windows 11, CARGO_TARGET_DIR=target-2f)
 - cargo clippy -j 2 --all-targets -- -D warnings: clean
-- cargo test --lib t663: 3 passed
-- cargo test --lib (full): 2843 passed, 2 failed, 6 ignored. The failures: the known t606_the_claude_writer environment failure, and edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments, which pinned the bare "wsl.exe"; it now expects the system-folder path, and rerun with every edit044 and t663 test: 12 passed
+- cargo test --lib -- t663 edit044 t660 git019 (after the review fixes): 22 passed
+- cargo test --lib (full, round 1): 2843 passed, 2 failed, 6 ignored: the known t606_the_claude_writer
+  environment failure, and edit044_a_wsl_root_searches_inside_its_distribution_with_the_same_arguments,
+  which pinned the bare "wsl.exe" (it now expects the system-folder path)
+- cargo test --lib (full, after the review fixes): 2844 passed, 1 failed (t606, the same environment
+  failure), 6 ignored
+- cargo clippy -j 2 --all-targets -- -D warnings (after the review fixes): clean
 - node scripts/plan-check.mjs: OK
 - Windows CI: run on the PR head (see the PR checks)
 
 REVIEWS
-REVIEWS_PLACEHOLDER
+- opus-high-review (fresh): A-, nothing blocking; spawn_error belongs in this PR. Its nits were fixed:
+  spawn_error matches only the CreateProcessW text and a start-path test pins it; the writer and
+  templates share one helper with a test; the wording names row 67 only; the weak off-PATH case
+  was dropped; a relative path gets its own message.
+- agent-skills:security-auditor: A-, no CRITICAL/HIGH/MEDIUM. Its LOWs were fixed: the encoding
+  error no longer echoes the argument; the scan claim is narrowed; the refusal message is clearer.
+  Its INFO (refuse a writer resolved inside the worktree; row 69 rg/git first) goes to 57.
 
 KNOWN AND LEFT (follow-ups)
+- fonts.rs's non-Windows branch is not compiled on this PC or in CI (Rust jobs run on Windows).
+- resources/update_guard.rs repeats the PowerShell sub-path as its own string; it could use
+  WINDOWS_POWERSHELL (outside this row's files).
 - Bare-name spawns outside this row were reported to coordinator 57, who filed them as backlog
   row 69 (git, attrib, rg, taskkill, netstat, icacls, reg, explorer.exe / open / xdg-open, the
   CLI's claude, and Unix-only ps / pgrep / kill / osascript).
