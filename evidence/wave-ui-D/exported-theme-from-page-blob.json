@@ -1,0 +1,12 @@
+{
+  "format": "kolux-theme",
+  "version": 1,
+  "name": "Live Proof Theme",
+  "base": "classic",
+  "overrides": {
+    "fg": "#808080",
+    "fg-muted": "#808080",
+    "accent": "#ff3366"
+  },
+  "terminal": {}
+}

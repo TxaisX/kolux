@@ -89,7 +89,7 @@ test("SET-004 box 1 (pieces only): the window is created hidden and the page's f
   expect(conf.app.windows[0].visible).toBe(false);
 });
 
-const NAV = ["General", "Appearance", "Accounts & keys", "Agents", "Terminal & sessions", "Git & worktrees", "Safety", "Notifications", "Shortcuts", "Usage"];
+const NAV = ["General", "Appearance", "Accounts & keys", "Agents", "Terminal & sessions", "Git & worktrees", "Safety", "Notifications", "Shortcuts", "Usage", "Claude"];
 const links = (c: FakeNode) => find(c, (n) => n.localName === "button" && /settings-link/.test(n.attrs.class ?? ""));
 const current = (c: FakeNode) => links(c).filter((n) => n.attrs["aria-current"] === "page").map((n) => n.textContent.trim());
 const heading = (c: FakeNode) => find(c, (n) => n.localName === "h1")[0]?.textContent.trim();
@@ -101,7 +101,7 @@ async function openWithShortcut(platform: "win32" | "darwin" = "win32") {
   const { default: SettingsPage } = await import("../SettingsPage");
   const m = await mount(createElement(SettingsPage, { onClose: () => {}, target: null, n: 0 }), doc);
   unmount = m.unmount;
-  await until(() => links(m.container).length >= 10, "the side list");
+  await until(() => links(m.container).length >= 11, "the side list");
   await settle();
   return m;
 }
@@ -132,15 +132,15 @@ test("SET-006 box 1 (repository page): the repository page used last comes back 
   expect(store.get("kolux.settingsPage")).toBe("repo:p2"); // not overwritten by the placeholder General
 });
 
-test("SET-006 box 2: the side list has exactly the ten named pages, then one per repository", async () => {
+test("SET-006 box 2: the side list has exactly the eleven named pages, then one per repository", async () => {
   h.projects = [{ id: "p1", name: "alpha" }, { id: "p2", name: "beta" }, { id: "p3", name: "gamma" }];
   const m = await openWithShortcut();
-  await until(() => links(m.container).length === 13, "the repositories");
+  await until(() => links(m.container).length === 14, "the repositories");
   const all = links(m.container);
-  expect(all.slice(0, 10).map((n) => n.textContent.trim())).toEqual(NAV);
-  expect(all.slice(0, 10).some((n) => /\brepo\b/.test(n.attrs.class ?? ""))).toBe(false);
-  expect(all.slice(10).map((n) => n.textContent.trim())).toEqual(["alpha", "beta", "gamma"]);
-  expect(all.slice(10).every((n) => /\brepo\b/.test(n.attrs.class ?? ""))).toBe(true);
+  expect(all.slice(0, 11).map((n) => n.textContent.trim())).toEqual(NAV);
+  expect(all.slice(0, 11).some((n) => /\brepo\b/.test(n.attrs.class ?? ""))).toBe(false);
+  expect(all.slice(11).map((n) => n.textContent.trim())).toEqual(["alpha", "beta", "gamma"]);
+  expect(all.slice(11).every((n) => /\brepo\b/.test(n.attrs.class ?? ""))).toBe(true);
   expect(all).toHaveLength(NAV.length + h.projects.length);
   await unmount();
   h.projects = [];
