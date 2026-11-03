@@ -1,7 +1,7 @@
 // T-675 (DT-C111; APP-025, APP-026): UpdateCenterView's wiring on the APP-024..027 harness, where the helper tests
 // (restart.test.ts) cannot reach. A Check after update_status failed ends with the reason instead of spinning, both
-// when it was asked before the failure and after it; Escape from the page is Later on the ready pop-up, but not while
-// the "Restart to update?" question is open. Each test fails when its line in UpdateCenterView.tsx is reverted.
+// when it was asked before the failure and after it; Escape from the page is Later on the ready pop-up, but while
+// the "Restart to update?" question is open it closes only the question (the question's own Escape, T-667). Each test fails when its line in UpdateCenterView.tsx is reverted.
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { click, type FakeDocument, type FakeNode, withText } from "../tasks/fakeDom";
@@ -41,10 +41,12 @@ async function start() {
   root = m.container;
 }
 const check = () => sendWindow("kolux-check-updates");
-/** A key the page itself gets (nothing inside it has focus), sent to the window as the browser would. */
+/** A key the page itself gets (nothing inside it has focus), sent to the window as the browser would. A popup's
+ * Escape watcher stops and prevents the key, so the event has both. */
 async function pageKey(key: string) {
+  const e = { type: "keydown", key, defaultPrevented: false, target: doc.body, stopPropagation: () => {}, preventDefault: () => (e.defaultPrevented = true) };
   await act(async () => {
-    (globalThis as unknown as { window: Window }).window.dispatchEvent({ type: "keydown", key, defaultPrevented: false, target: doc.body } as unknown as Event);
+    (globalThis as unknown as { window: Window }).window.dispatchEvent(e as unknown as Event);
   });
 }
 
@@ -69,17 +71,16 @@ test("T-675 update: a Check after update_status failed fails at once with the re
   expect(sent("update_check")).toHaveLength(0);
 });
 
-test("T-675 update: Escape from the page is Later on the ready pop-up, and does nothing while Restart to update? is open", async () => {
+test("T-675 update: Escape from the page is Later on the ready pop-up, and while Restart to update? is open it closes only the question", async () => {
   feed.status.lastCheckAt = 0;
   feed.latest = info("0.2.0");
   await start();
   expect(popup(doc.body)).not.toBeNull();
   await click(root, popupButton(doc.body, "Update now"));
   expect(withText(doc.body, "h2", "Restart to update?")).toHaveLength(1);
-  await pageKey("Escape"); // the question is open: the pop-up stays
-  expect(popup(doc.body)).not.toBeNull();
-  await click(root, withText(doc.body, "button", "Cancel")[0]);
+  await pageKey("Escape"); // the question is open: Escape closes the question, the pop-up stays
   expect(withText(doc.body, "h2", "Restart to update?")).toHaveLength(0);
+  expect(popup(doc.body)).not.toBeNull();
   await pageKey("Escape"); // now it is Later
   expect(popup(doc.body)).toBeNull();
   expect(sent("update_restart")).toHaveLength(0);
