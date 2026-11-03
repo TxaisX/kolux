@@ -214,9 +214,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
     setSpaces(s.spaces);
   }, [settings === null]);
   const [menu, setMenu] = useState(false);
-  const menuBox = useRef<HTMLDivElement>(null);
-  const menuBtn = useRef<HTMLButtonElement>(null);
-  useMenuKeys(menuBox, menu, () => setMenu(false), menuBtn);
+  const { box: menuBox, remember } = useMenuKeys(menu, () => setMenu(false));
   const [changes, setChanges] = useState(0);
   const [onDisk, setOnDisk] = useState(false); // EDIT-025: a preview is offered only while the file still exists
   useEffect(() => {
@@ -504,7 +502,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   const step = (dir: 1 | -1) => diffNav.get(id)?.(dir);
   const actionsMenu = (
     <span className="diff-actions">
-      <button ref={menuBtn} className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Diff actions" aria-label="Diff actions">
+      <button className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={(e) => (remember(e.currentTarget), setMenu((m) => !m))} title="Diff actions" aria-label="Diff actions">
         <Dots size={12} />
       </button>
       {menu && (
