@@ -85,3 +85,7 @@ TOTALS
 - pnpm tsc --noEmit
 tsc exit 0
 - Known local-only failures (src/editor/pdfjsCopy.test.ts) are outside src/scm and did not run here.
+
+AFTER MERGING origin/main 4bd4d2de (merge 6b58f082)
+ pnpm vitest run src/scm -> Test Files 37 passed (37), Tests 336 passed (336)
+ pnpm tsc --noEmit -> exit 0
