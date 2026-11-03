@@ -8,7 +8,8 @@ WHAT CHANGED
   which a focused terminal passes through. New palette command Open Automations (unbound). A test
   fails if two default chords clash in a shared scope on any platform.
 - Window keys (src/keys/useWindowKeys.ts): an app chord (global, tab or terminal scope) waits while a
-  menu, popover or modal dialog is up. Docked tips, tours (aria-modal="false"), the floating
+  menu, popover, modal dialog or modal question (aria-modal="true") is up; a terminal pane's own questions
+  (.pane-ask) and the floating panel's Save question do not hold. Docked tips, tours (aria-modal="false"), the floating
   workspace, agent question cards, the plan sheet, the update card and inline sidebar forms hold
   nothing, and neither do the source-control and pull request inline forms or the browser's grab sheet.
   Only the browser chords the window runs itself (address bar, back, forward, reload, find) are held;
@@ -28,7 +29,7 @@ fired behind open dialogs, a Reload menu item one click from throwing away unsav
 Space view missing from the menu.
 
 REVIEW
-Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass (d70b712e) -> re-review B -> fix pass (87284a71) -> re-review B -> fix pass (652e00b9) -> re-review B -> fix pass -> re-review PENDING.
+Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass (d70b712e) -> re-review B -> fix pass (87284a71) -> re-review B -> fix pass (652e00b9) -> re-review B -> fix pass (dad9561b) -> re-review A- (dad9561b).
 Re-review B findings fixed: docked tips/tours/inline forms no longer hold keys (the key a tip names
 works); only global/tab/terminal chords are held (Ctrl+C in a browser pane copies under a dialog);
 real-selector tests for both; Move Focus to the Top Bar skips the disabled Kolux mark (macOS); the
