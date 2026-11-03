@@ -31,14 +31,17 @@ export function wireMenuKeys(
     close: () => void;
     /** Give focus back to the opener (runs after the close, deferred). */
     restore: () => void;
+    /** False while the menu sits in a hidden pane (panes stay mounted): then every key is left alone. */
+    shown?: () => boolean;
   },
 ): () => void {
+  const shown = menu.shown ?? (() => true);
   const stopEscape = watchEscape(win, () => {
     menu.close();
     queueMicrotask(menu.restore);
-  });
+  }, shown);
   const onKey = (e: Event) => {
-    if (!menu.inside()) return;
+    if (!shown() || !menu.inside()) return;
     const rows = menu.rows();
     const to = menuStep(rows.length, menu.at(), (e as KeyboardEvent).key);
     if (to === null) return;
@@ -80,6 +83,7 @@ export function useMenuKeys(open: boolean, close: () => void): { box: RefObject<
       inside: () => !!box.current?.contains(document.activeElement),
       close: () => closer.current(),
       restore,
+      shown: () => !box.current?.closest("[hidden]"),
     });
     return () => {
       stop();

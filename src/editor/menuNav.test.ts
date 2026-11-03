@@ -56,6 +56,18 @@ describe("wireMenuKeys", () => {
     m.win.dispatchEvent(key("a"));
     m.focus.forEach((f) => expect(f).not.toHaveBeenCalled());
   });
+  it("leaves every key alone while the menu sits in a hidden pane", () => {
+    const win = new EventTarget();
+    const close = vi.fn();
+    const row = vi.fn();
+    wireMenuKeys(win, { rows: () => [{ focus: row }], at: () => -1, inside: () => true, close, restore: () => {}, shown: () => false });
+    const esc = key("Escape");
+    win.dispatchEvent(esc);
+    win.dispatchEvent(key("ArrowDown"));
+    expect(close).not.toHaveBeenCalled();
+    expect(esc.defaultPrevented, "the Escape still reaches the terminal").toBe(false);
+    expect(row).not.toHaveBeenCalled();
+  });
   it("takes its listeners off when stopped", () => {
     const m = menu();
     m.stop();
@@ -89,5 +101,18 @@ describe("restoreIfLost", () => {
     restoreIfLost({ activeElement: {} }, body, restore);
     await Promise.resolve();
     expect(restore).not.toHaveBeenCalled();
+  });
+});
+
+const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+const src = (f: string) => nodeFs.readFileSync(new URL(f, import.meta.url), "utf8");
+
+describe("every editor popup menu uses the one hook", () => {
+  it("takes checkbox rows too (the diff menu's rows are menuitemcheckbox)", () => {
+    expect(src("./menuNav.ts")).toContain(`'[role^="menuitem"]'`);
+  });
+  it("the diff and Open-in menus remember their opener from the click that opens them", () => {
+    expect(src("./DiffPane.tsx")).toContain("onClick={(e) => (remember(e.currentTarget), setMenu((m) => !m))}");
+    expect(src("./Explorer.tsx")).toContain("onClick={(e) => { rememberOpener(e.currentTarget);");
   });
 });
