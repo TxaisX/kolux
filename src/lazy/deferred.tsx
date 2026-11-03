@@ -7,12 +7,15 @@ import { createElement, lazy, Suspense, type ComponentType, type ReactElement } 
 /** Every surface made here, in the order it was declared: `prefetch()` reads them after the first frame. */
 const loaders: Array<() => Promise<unknown>> = [];
 
-/** `load` names the module the surface lives in; its default export is the surface. */
-export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>) {
+/**
+ * `load` names the module the surface lives in; its default export is the surface. `fallback` is drawn
+ * while that code is read: only the full-page screens pass one (T-706), the rest draw nothing.
+ */
+export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>, fallback: ReactElement | null = null) {
   loaders.push(load);
   const Body = lazy(load);
   return function Deferred(props: P): ReactElement {
-    return createElement(Suspense, { fallback: null }, createElement(Body, props));
+    return createElement(Suspense, { fallback }, createElement(Body, props));
   };
 }
 

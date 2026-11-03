@@ -1,0 +1,34 @@
+T-706 / DT-C142: UX audit shell.md row 6, the loading half, lane A (90): a full-page screen that is still loading shows a blank page
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md, section "90: T-706 / DT-C142" (the sessions proof dir, not in this
+  repo). Parked in A.md:30. Built on main d552a974 (after train 9, #141).
+
+What was asked: src/lazy/deferred.tsx gave every deferred surface Suspense fallback: null, so the first open of a full-page
+  screen (before prefetch() has read its code, or on a slow disk) showed an empty window with no sign that anything was
+  happening. Add an optional fallback to deferred(), used only by the full-page screens in src/shell/window/Content.tsx: a
+  quiet "Loading…" with role="status". Pane bodies, sheets and dialogs stay at null. +150 B or less on first load.
+
+FIXED
+  - src/lazy/deferred.tsx: deferred(load, fallback = null); the fallback goes to Suspense.
+  - src/lazy/pages.tsx: one shared element, <div class="empty" role="status">Loading…</div>, inline (no new component file).
+    It reuses the muted, centred empty-state style (.empty in styles.css), so there is no new CSS.
+    Passed by the ten full-page screens Content.tsx draws: TasksPage, AutomationsPage, RoutingPage, SkillsPage,
+    ArtifactsPage, InboxView, AgentsChat, TowerView, FloorView, SpaceView.
+  - Everything else in pages.tsx keeps fallback null: the pane bodies (Explorer, ChecksPanel, InsightsPanel, ChooserPane...),
+    the sheets and dialogs (PlanSheet, HelpSheet, UpdateCenter, FeedbackDialog...), the notices (SignInNotice,
+    KeyLostNotice, SkillUpdateNotice, ToolNotices), and SettingsPage, which Content.tsx does not draw (out of the row).
+
+TESTS (src/lazy/pages.test.ts, 4, fakeDom)
+  - A full-page screen (TasksPage, through pages.tsx, its module mocked to never resolve) shows exactly one role=status
+    element, text "Loading…", class "empty".
+  - A pane body (Explorer, through pages.tsx, never resolving) draws nothing: the container has no children and no text.
+  - With deferred() directly: the fallback shows, then gives way to the screen once its code arrives.
+  - Source check: the set of pages.tsx exports that pass the fallback is exactly the ten screens above.
+  - With the fallback taken out of deferred() (Suspense back to fallback: null), tests 1 and 3 fail; with it, 4/4 pass.
+
+VERIFY
+  - VITEST_MAX_WORKERS=1 vitest run src/lazy: 4/4 passed.
+  - tsc --noEmit: 0 errors. plan-check: OK. firewall-check -Baseline: 0 new.
+  - First load (vite build + scripts/bundle-budget.mjs, both in one slot): main d552a974 1,489,090 bytes, this branch
+    1,489,201 bytes, so main +111 B (budget +150 B; ceiling 1,490,000).
+  - Not measured live. The placeholder shows only before prefetch() has read a screen (at the first idle moment after the window is up),
+    so a live check needs a throttled or cold start. The unit tests cover what is drawn.
