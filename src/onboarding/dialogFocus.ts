@@ -8,8 +8,11 @@ import { restoreFocus } from "../shell/paletteCaps";
 /** Escape belongs to the top dialog only: a confirmation opened over this one answers it first. */
 export const isTopDialog = (root: Element | null, dialogs: ArrayLike<Element>): boolean => root !== null && dialogs.length > 0 && dialogs[dialogs.length - 1] === root;
 
-/** A docked tip card says aria-modal="false": it never holds Escape back from the dialog the user opened. */
-export const isModal = (el: { getAttribute: (n: string) => string | null }): boolean => el.getAttribute("aria-modal") !== "false";
+/** Only a dialog that says aria-modal="true", or a confirmation (alertdialog), holds Escape back from the dialog the user
+ *  opened. A docked tip card (aria-modal="false") and a panel that stays on the page (the floating workspace, a review
+ *  pop) never do, even when they come later in the page. */
+export const isModal = (el: { getAttribute: (n: string) => string | null }): boolean =>
+  el.getAttribute("aria-modal") === "true" || el.getAttribute("role") === "alertdialog";
 
 /** Where Tab goes from the edge of the dialog: the other end, or null to let the browser move inside it. */
 export function wrapTab<T>(items: readonly T[], current: unknown, back: boolean): T | null {
@@ -61,7 +64,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, onClose: () =
   useEffect(() => {
     const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     return enterDialog(
-      { root: ref.current, active, win: window, dialogs: () => [...document.querySelectorAll("[role=dialog], [role=alertdialog]")].filter(isModal), find: (s) => document.querySelector<HTMLElement>(s), inTerminal: () => !!document.activeElement?.closest(".xterm") },
+      { root: ref.current, active, win: window, dialogs: () => [...document.querySelectorAll("[role=dialog], [role=alertdialog]")].filter((el) => isModal(el) && !el.closest("[hidden]")), find: (s) => document.querySelector<HTMLElement>(s), inTerminal: () => !!document.activeElement?.closest(".xterm") },
       () => onClose(),
     );
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

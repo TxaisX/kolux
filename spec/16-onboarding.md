@@ -89,12 +89,12 @@ Rules: only starter kits that come with sample data are offered as samples, and 
   launch-agents window that normally pops up for a new workspace, and pre-selects the matching kit
   on the fourth screen; 'Pick a folder' hands over to Add Project, and since T-674 (DT-C110) onboarding
   is recorded as completed only once a project is actually added; cancelling Add Project leaves it
-  unfinished and Help › Onboarding brings the wizard back.
+  unfinished: Help › Onboarding brings the wizard back, and it shows again at the next launch.
 Acceptance:
   - [ ] Reach the third screen → the spreadsheet sample is already selected.
   - [ ] Continue with a sample → the fourth screen opens with that sample's kit selected and no
         extra launch window.
-  - [ ] 'Pick a folder' → the wizard closes as completed and the Add Project dialog opens.
+  - [ ] 'Pick a folder' → the wizard steps aside and the Add Project dialog opens.
   - [x] 'Pick a folder', then cancel Add Project → setup is not recorded as completed and Help ›
         Onboarding reopens the wizard; add a project instead → it is recorded completed. (T-674; evidence/T-674.txt)
 Compat: —
@@ -112,7 +112,7 @@ Rules: the kit that matches the chosen sample is pre-selected, otherwise the fir
   other case (no workspace yet, a real folder, or no agent) the setup dialog opens; 'Just open a
   session' starts a single session with an empty prompt, using the first available agent, in the
   project's main copy rather than a separate worktree; with no workspace it leads to picking a folder
-  (T-612); since T-674 (DT-C110), with no agent installed the last button is 'Pick a folder' and
+  (T-612); since T-674 (DT-C110), with no agent installed and switched on the last button is 'Pick a folder' and
   says why, and a session request that finds no agent says that nothing started instead of doing
   nothing; the ping switch is the app-wide notifications setting, so flipping
   it here flips it everywhere; a successful launch by either route records onboarding as completed
@@ -120,8 +120,8 @@ Rules: the kit that matches the chosen sample is pre-selected, otherwise the fir
 Acceptance:
   - [ ] Sample workspace and an agent available → 'Start kit' launches with no dialog and the wizard
         closes.
-  - [ ] No agent installed → 'Start kit' opens the setup dialog and 'Just open a session' does
-        nothing.
+  - [ ] No agent installed and switched on → the last button reads 'Pick a folder'; a session request
+        says nothing started.
   - [ ] Turn the ping switch off → Settings shows notifications off.
   - [x] No agent installed → the last button reads 'Pick a folder' with a line saying why; installing
         an agent from the Connect screen counts at once. (T-674; evidence/T-674.txt)

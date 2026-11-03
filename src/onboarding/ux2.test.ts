@@ -62,10 +62,20 @@ describe("row 5: hooks consent only on an explicit move on", () => {
 
 describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere", () => {
   it("a docked tip card (aria-modal=false) after the dialog does not take its Escape", () => {
-    const modal = { getAttribute: () => null };
+    const modal = { getAttribute: (n: string) => (n === "aria-modal" ? "true" : null) };
     const tip = { getAttribute: (n: string) => (n === "aria-modal" ? "false" : null) };
     const list = [modal, tip].filter(isModal) as unknown as Element[];
     expect(isTopDialog(modal as unknown as Element, list)).toBe(true);
+  });
+  it("the floating workspace panel (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does", () => {
+    const attrs = (a: Record<string, string>) => ({ getAttribute: (n: string) => a[n] ?? null });
+    const explore = attrs({ role: "dialog", "aria-modal": "true" });
+    const floating = attrs({ role: "dialog" });
+    const review = attrs({ role: "dialog", "aria-label": "Add review note" });
+    const confirm = attrs({ role: "alertdialog" });
+    const top = (list: ReturnType<typeof attrs>[]) => isTopDialog(explore as unknown as Element, list.filter(isModal) as unknown as Element[]);
+    expect(top([explore, floating, review])).toBe(true);
+    expect(top([explore, floating, confirm])).toBe(false);
   });
   it("Tab wraps at both ends and stays inside", () => {
     const [a, b, c] = ["a", "b", "c"];

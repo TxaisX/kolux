@@ -10,10 +10,11 @@ WHAT CHANGED
   button is Pick a folder, with a line saying why, Check again and Open Agents settings; the agent list
   is read on every screen and on agents-changed, so an agent installed from Connect counts at once.
   Pick a folder steps aside for Add Project and records setup completed only once a project is added;
-  cancelling leaves it unfinished and Help > Onboarding brings it back. Open a session with no agent
+  cancelling leaves it unfinished: Help > Onboarding brings it back and it shows again at the next launch. Open a session with no agent
   says nothing started.
 - Dialog focus (src/onboarding/dialogFocus.ts): onboarding dialogs take focus, keep Tab and Shift+Tab
-  inside, close on Escape (a docked tip card never takes it; an Escape in the sign-in terminal stays
+  inside, close on Escape (only a dialog marked aria-modal="true" or a confirmation over it takes it, so a docked
+  tip card or the floating workspace panel never does; an Escape in the sign-in terminal stays
   with the terminal) and give focus back.
 - Notes: failed save, failed agent start (src/agentstart/host.ts, AgentStartHost.tsx), missing GitHub
   sign-in naming gh auth login (ConnectGithub.tsx); the Accounts step opens Settings > Accounts.
@@ -32,7 +33,10 @@ no agent and then did nothing, dialogs let focus escape, and several failures we
 
 REVIEW
 Opus review B -> fix pass (d329c1d3: agent list followed, no-agent last step picks a folder, Escape
-counts only modal dialogs, Tab trap, sign-in terminal keeps its Escape) -> re-review PENDING.
+counts only modal dialogs, Tab trap, sign-in terminal keeps its Escape) -> re-review B -> fix pass
+(modality opt-in: aria-modal="true" or alertdialog, hidden dialogs skipped, so the floating panel no
+longer takes Explore's Escape; T-612 test renamed for what it asserts; a cancelled Pick a folder then
+Help > Onboarding completes nothing; ONB-004/005 acceptance wording) -> re-review PENDING.
 Left as low follow-ups from the first review: a failed close toast after Pick a folder, the GitHub
 card not refreshed after sign-in, a load error worded as a save error, an unused once() message, a
 failure reported after the panel closed.
@@ -70,8 +74,9 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/sidebarStart.test.ts > a Setup Guide close or an added project makes SidebarStart read its steps again; the entry stays up meanwhile (VIEW-114, FIX-3)
  ✓ src/onboarding/sidebarStart.test.ts > a read caused by the guide switching on resets the focus floor, so a focus soon after does not read again (VIEW-114, FIX-4)
  ✓ src/onboarding/sidebarStart.test.ts > the first window focus after mount does not read the steps a second time; one past the floor does (VIEW-114, FIX-3)
+ ✓ src/onboarding/useWizard.test.ts > 49-ux2: Pick a folder cancelled, then Help > Onboarding: the wizard is back and a project added later does not complete setup
  ✓ src/onboarding/useWizard.test.ts > Help > Onboarding reopens on screen one and tells the sidebar; a second click inside half a second is ignored; a failed reopen only toasts (VIEW-114, FIX-4)
- ✓ src/onboarding/useWizard.test.ts > T-612: Open a session with no workspace yet closes setup as completed, opens Add Project, and starts the session in the folder picked, once
+ ✓ src/onboarding/useWizard.test.ts > T-612 / 49-ux2: Open a session with no workspace yet opens Add Project, stores setup as completed only when the folder is added, and starts the session there, once
  ✓ src/onboarding/useWizard.test.ts > T-612: with a workspace in front, Open a session starts the session there and closes setup as completed
  ✓ src/onboarding/useWizard.test.ts > a failed close keeps the wizard open with a toast and tells the sidebar nothing; the retry closes it and tells the sidebar (VIEW-114, FIX-4)
  ✓ src/onboarding/useWizard.test.ts > a plain terminal as the saved default starts nothing in the first folder (VIEW-114, FIX-4)
@@ -87,6 +92,7 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > a docked tip card (aria-modal=false) after the dialog does not take its Escape
  ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > focuses the dialog on open, closes on a window-level Escape, and gives the focus back
  ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > only the top dialog answers Escape
+ ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > the floating workspace panel (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does
  ✓ src/setup/TrustPrompt.test.ts > 49-ux2 the trust prompt says what is remembered > shows the memory line beside Run hooks and Don't run
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > Don't run skips the setup script: no trust saved, workspace_setup never asked
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > Run hooks saves trust for exactly the text shown, then runs; always-trust saves the whole repository
@@ -100,12 +106,12 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > with no prompt mounted, nothing is approved and nothing waits
 
   Test Files  7 passed (7)
-  Tests  57 passed (57)
+  Tests  59 passed (59)
 
 FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
   ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
   Test Files  1 failed | 733 passed (734)
-  Tests  3 failed | 5429 passed (5432)
+  Tests  3 failed | 5431 passed (5434)
   The 3 failures are src/editor/pdfjsCopy.test.ts (openjpeg_nowasm_fallback.js, LICENSE_OPENJPEG,
   LICENSE_PDFJS_OPENJPEG): CRLF line endings in this local checkout, not part of this change; they pass on CI.
 
