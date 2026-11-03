@@ -1,0 +1,77 @@
+T-699 - UX audit Wave 3, narrow window: the side panels crush the workspace (DT-C135; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-7, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md under "49: T-699 / DT-C135" (N1). Shot: G:/Temp/live-verify-t5/shots/F17-sheet-640px.png.
+
+WHAT WAS WRONG
+- In a 640 px window with the left sidebar and the right sidebar (Explorer) both open, the workspace got about 100 px.
+  - The left sidebar is 289 px plus an 8 px gutter.
+  - The right sidebar clamps to its 240 px minimum (chrome/RightSidebar.tsx clampWidth: it reserves 400 px for the
+    workspace, but never goes under RIGHT_MIN).
+  - So the New session sheet (absolute, inside .content) spilled under the right sidebar, and the tab strip text overlapped.
+- The main window's minimum is 900 px (src-tauri/tauri.conf.json minWidth). 640 CSS px is reached by zooming the
+  interface in (SET-019), or by the harness. A media query in CSS px covers both.
+
+THE RULE (DT-C135)
+- Under 900 CSS px the side panels take turns.
+  - While the right sidebar shows, the left sidebar and its drag edge are hidden. This is one stylesheet rule:
+    @media (max-width: 899px) { .body:has(> .rside:not([hidden])) > :is(.sidebar-wrap, .lside-grip) { display: none; } }
+  - The top bar's sidebar toggle shows the left sidebar as hidden while it is stepped aside (aria-pressed false,
+    "Show sidebar"). Pressing it brings the left sidebar back and closes the right one (shell/window/narrow.ts toggleLeft).
+  - Closing the right sidebar any other way brings the left back too: its own toggle, the Explorer's close, or
+    Ctrl+Shift+E.
+  - The palette's "create a workspace" path opens the left sidebar for its create row. In a narrow window it now
+    closes the right sidebar first (Dialogs.tsx), so the row is in view.
+- Nothing overlays, so sheets and their Start button are never covered.
+  - No z-index line was touched; T-698 / #134 owns those.
+- At 900 px and up nothing changes.
+- Known limit: at 900 px and up, a left sidebar dragged wide (up to 480 px) can still leave the workspace narrow,
+  because the right sidebar keeps its 240 px minimum. This is noted in DT-C135.
+
+PROOF IN A REAL BROWSER (Chromium 1248, the engine behind WebView2)
+- Setup:
+  - A static page with the app's real styles.css and the body's real structure:
+    .body > .sidebar-wrap > .sidebar, .lside-grip, .content, aside.rside (240 px, the clamp at these widths).
+  - Measured with getBoundingClientRect.
+  - Run with: chrome --headless=new --window-size=<w+16>,800 --dump-dom.
+  - Pages are in the session scratchpad (n-styles699-*.html, n-styles-main-*.html).
+- Results (W = innerWidth; content = the workspace width in px):
+  styles.css on main, right shown:       W=640 content=103  | W=800 content=263 | W=900 content=363 (left 297)
+  styles.css on main, right hidden:      W=640 content=343  | W=800 content=503 | W=900 content=603
+  this branch, right shown:              W=640 content=400 left=0 | W=800 content=560 left=0 | W=900 content=363 left=297
+  this branch, right hidden:             W=640 content=343  | W=800 content=503 | W=900 content=603
+- So at 640 and 800 the workspace keeps 343 px or more in every case, and at 900 the layout is as before.
+- The unit test's model gives the same numbers.
+- Not checked in the running app: the toggle's behaviour on a real click. 57's live probe can re-run F17 at 640 px.
+
+TESTS (named, verbose)
+VITEST_MAX_WORKERS=2 pnpm exec vitest run src/shell/window/narrow.test.ts --reporter=verbose
+ ✓ src/shell/window/narrow.test.ts > T-699: under 900 px the stylesheet hides the left sidebar and its grip while the right sidebar shows
+ ✓ src/shell/window/narrow.test.ts > T-699: at 640 and 800 px the workspace keeps at least 340 px whichever panels are open; at 640 it used to get about 100
+ ✓ src/shell/window/narrow.test.ts > T-699: the left toggle shows what is in view, and in a narrow window it brings the left sidebar back by closing the right one
+ ✓ src/shell/window/narrow.test.ts > T-699: isNarrow asks for the same 899 px query as the stylesheet
+      Tests  4 passed (4)
+Fail first: on main the first test fails, because styles.css has no such rule. The second test's own line for
+640 px with both panels and no rule gives about 100 px (103 in Chromium).
+
+FULL SUITE
+VITEST_MAX_WORKERS=2 pnpm exec vitest run (at c82cedc5 + this change)
+ Test Files  2 failed | 789 passed (791)
+      Tests  4 failed | 5874 passed (5878)
+- 3 failures are the known local-only CRLF checks in src/editor/pdfjsCopy.test.ts.
+- 1 is src/editor/editPlacement.test.ts "60 paragraphs", a timing test under full-suite load. Run alone after the
+  merge of main 1fa0e52f: src/editor/editPlacement.test.ts + src/shell/window -> 12 files, 80 tests passed.
+
+TYPES, PLAN AND FIREWALL
+pnpm exec tsc --noEmit -p .  -> exit 0
+node scripts/plan-check.mjs -> plan-check: OK
+scripts/firewall-check.ps1 -Baseline -> 53 hit(s) in 22 file(s), 0 new, 0 baseline entr(ies) no longer present
+
+FIRST-LOAD BUNDLE (at main 1fa0e52f, merged in)
+pnpm exec vite build && node scripts/bundle-budget.mjs
+  main (styles.css, TopBar.tsx, Dialogs.tsx as on main): first load 1488511 bytes in 47 chunks (ceiling 1490000)
+  this branch:                                          first load 1488982 bytes in 47 chunks (ceiling 1490000)
+  Difference: +471 bytes. These are the media query, narrow.ts (the media-query hook and the toggle rule), and the
+  TopBar and Dialogs wiring.
+
+REVIEW
+__REVIEW__
