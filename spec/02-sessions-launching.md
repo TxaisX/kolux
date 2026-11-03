@@ -97,10 +97,11 @@ User sees: quick-pick count buttons and a field for any number; the seat list gr
   match.
 Rules: the older dialog offers 1 through 12 plus "More…" for any number, never below 1; the New
   session page offers 1, 2, 3, 4, 6 and 8 (the rebuild should settle on one set); new seats arrive
-  empty and never copy another seat's agent; shrinking removes seats from the bottom.
+  empty and never copy another seat's agent; shrinking removes seats from the bottom; one launch holds
+  at most 24 seats (each may make a worktree), and growing the lineup past 8 asks first (DT-C116).
 Acceptance:
   - [x] Set the count to 3 → three empty seats; set it to 2 → the third seat goes and the first two are untouched. (cards; evidence/cards-SESS-013.txt)
-  - [x] Enter 15 in the free field → fifteen seats appear. (cards; evidence/cards-SESS-013.txt)
+  - [x] Enter 15 in the free field → Kolux asks once, then fifteen seats appear; 500 gives 24. (cards; evidence/T-680.txt)
 Compat: —
 Source: D-02-013
 
@@ -160,8 +161,8 @@ User does: launches several agent seats with separate copies chosen.
 User sees: each agent opens in a brand-new worktree carrying a generated, creature-style name; the
   worktrees are made in the background so the screen stays responsive.
 Rules: a generated name never repeats a current or retired worktree name; each seat brings its own
-  model, effort and options and always starts as a terminal session; the count picker is the only
-  limit on how many seats launch.
+  model, effort and options and always starts as a terminal session; the count picker, up to 24 seats
+  a launch, is the only limit on how many seats launch.
 Acceptance:
   - [x] Launch 3 Codex seats with separate copies → 3 new worktrees with different names, one agent in each. (cards; evidence/cards-SESS-023.txt)
   - [x] Launch again in the same project → none of the new names repeats an earlier one. (cards; evidence/cards-SESS-023.txt)
