@@ -567,7 +567,7 @@ export function HooksAskView({
 
 /** T-608: shows once no other dialog is open; Done records the switch. Until it is answered it asks again
  *  at the next launch, so nothing is installed for a profile that never saw the line. */
-function HooksAsk({ settings, onDone }: { settings: Record<string, unknown> | null; onDone: () => void }) {
+export function HooksAsk({ settings, onDone }: { settings: Record<string, unknown> | null; onDone: () => void }) {
   const [on, setOn] = useState(() => hooksDefault(settings)); // review of PR #16: the saved answer, else on
   const [shown, setShown] = useState(false);
   const dock = useTipDock();
@@ -594,6 +594,8 @@ function HooksAsk({ settings, onDone }: { settings: Record<string, unknown> | nu
 export default function Guides() {
   const [guide, setGuide] = useState<{ open: boolean; ask: StepId | null }>({ open: false, ask: null });
   const [explore, setExplore] = useState(false);
+  const guideOpen = useRef(false);
+  guideOpen.current = guide.open;
   // T-608: "ask" shows the hooks line once; that launch shows no startup tip (one card per launch).
   const [hooksAsk, setHooksAsk] = useState<"wait" | "ask" | "done" | "no">("wait");
   const hooksSettings = useRef<Record<string, unknown> | null>(null);
@@ -608,7 +610,12 @@ export default function Guides() {
     const x = () => setExplore(true);
     window.addEventListener(OPEN_GUIDE, g);
     window.addEventListener(OPEN_EXPLORE, x);
-    const off = closeOnSettings(() => (setExplore(false), setGuide((s) => ({ ...s, open: false }))));
+    const off = closeOnSettings(() => {
+      setExplore(false);
+      if (!guideOpen.current) return;
+      setGuide((s) => ({ ...s, open: false }));
+      guideClosed(); // the sidebar entry re-reads its steps, as after the guide's own close
+    });
     return () => {
       window.removeEventListener(OPEN_GUIDE, g);
       window.removeEventListener(OPEN_EXPLORE, x);

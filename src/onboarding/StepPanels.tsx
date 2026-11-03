@@ -56,6 +56,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
   const go = async () => {
     setBusy(true);
     setFailed(null);
+    setAsk(false);
     try {
       const projects = await invoke<Proj[]>("project_list");
       const lists = await Promise.all(projects.map((p) => invoke<Place[]>("workspace_list", { projectId: p.id }).catch(() => null)));

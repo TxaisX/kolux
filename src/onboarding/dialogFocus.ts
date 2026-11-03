@@ -6,11 +6,18 @@ import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
 import { OPEN_SETTINGS } from "../settings/pages";
 
-/** An onboarding dialog steps aside when Settings opens (its own Open Settings button, a palette command), so Settings
- *  is not left behind it. Returns the unsubscribe. */
+/** Settings opened without OPEN_SETTINGS (the Ctrl+, key; the native menu once lane E1 sends it too). */
+export const SETTINGS_SHOWN = "kolux-settings-shown";
+
+/** An onboarding dialog steps aside when Settings opens (its own Open Settings button, a palette page, Ctrl+,), so
+ *  Settings is not left behind it. Returns the unsubscribe. */
 export function closeOnSettings(close: () => void, w: EventTarget = window): () => void {
   w.addEventListener(OPEN_SETTINGS, close);
-  return () => w.removeEventListener(OPEN_SETTINGS, close);
+  w.addEventListener(SETTINGS_SHOWN, close);
+  return () => {
+    w.removeEventListener(OPEN_SETTINGS, close);
+    w.removeEventListener(SETTINGS_SHOWN, close);
+  };
 }
 
 /** Escape belongs to the top dialog only: a confirmation opened over this one answers it first. */

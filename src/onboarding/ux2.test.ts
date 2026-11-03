@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { checklistHidden, HIDE_PATCH, legacyProfile } from "./guide";
 import { followAgents, lastMain, NO_AGENT_WHY, sessionAgent } from "./sessionAgent";
-import { closeOnSettings, enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
+import { closeOnSettings, SETTINGS_SHOWN, enterDialog, isModal, isTopDialog, wrapTab } from "./dialogFocus";
 import { OPEN_SETTINGS } from "../settings/pages";
 import { submitKeys } from "./submitKeys";
 import { tourNotice, type Want } from "./tour";
@@ -14,7 +14,7 @@ import { GH_LOGIN } from "./integrations";
 
 const claude = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:/bin/claude" };
 
-describe("row 1: the checklist's hide flag", () => {
+describe("onboarding.md:3: the checklist's hide flag", () => {
   it("is its own key, not the legacy all-done one", () => {
     expect(HIDE_PATCH).toEqual({ setupChecklistHidden: true });
     expect(checklistHidden({ setupChecklistHidden: true })).toBe(true);
@@ -25,7 +25,7 @@ describe("row 1: the checklist's hide flag", () => {
   });
 });
 
-describe("row 3: Open a session needs an agent", () => {
+describe("onboarding.md:4, :15: Open a session needs an agent", () => {
   it("is null with no agent installed, and the wizard holds the button back with a reason", () => {
     expect(sessionAgent([], {})).toBeNull();
     expect(sessionAgent([{ ...claude, installed: false }], {})).toBeNull();
@@ -56,7 +56,7 @@ describe("row 3: Open a session needs an agent", () => {
   });
 });
 
-describe("row 5: hooks consent only on an explicit move on", () => {
+describe("onboarding.md:6: hooks consent only on an explicit move on", () => {
   it("a later skip records nothing", () => {
     const connect = [0, 1, 2, 3, 4].find((s) => recordsHooks(s, s + 1))!;
     expect(recordsHooks(connect, connect + 1)).toBe(true);
@@ -64,7 +64,7 @@ describe("row 5: hooks consent only on an explicit move on", () => {
   });
 });
 
-describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere", () => {
+describe("onboarding.md:8: the dialogs take the focus and Escape works from anywhere", () => {
   it("a docked tip card (aria-modal=false) after the dialog does not take its Escape", () => {
     const modal = { getAttribute: (n: string) => (n === "aria-modal" ? "true" : null) };
     const tip = { getAttribute: (n: string) => (n === "aria-modal" ? "false" : null) };
@@ -81,15 +81,18 @@ describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere",
     expect(top([explore, floating, review])).toBe(true);
     expect(top([explore, floating, confirm])).toBe(false);
   });
-  it("Open Settings from Explore or the Setup Guide closes them, so Settings is not left behind; the stop unsubscribes", () => {
+  it("Open Settings (a button, a palette page or Ctrl+,) closes Explore and the Setup Guide, so Settings is not left behind; the stop unsubscribes", () => {
     const w = new EventTarget();
     const close = vi.fn();
     const stop = closeOnSettings(close, w);
     w.dispatchEvent(new Event(OPEN_SETTINGS));
     expect(close).toHaveBeenCalledTimes(1);
+    w.dispatchEvent(new Event(SETTINGS_SHOWN)); // Ctrl+, opens Settings without OPEN_SETTINGS
+    expect(close).toHaveBeenCalledTimes(2);
     stop();
     w.dispatchEvent(new Event(OPEN_SETTINGS));
-    expect(close).toHaveBeenCalledTimes(1);
+    w.dispatchEvent(new Event(SETTINGS_SHOWN));
+    expect(close).toHaveBeenCalledTimes(2);
   });
   it("Tab wraps at both ends and stays inside", () => {
     const [a, b, c] = ["a", "b", "c"];
@@ -135,14 +138,14 @@ describe("rows 7, 8: the dialogs take the focus and Escape works from anywhere",
   });
 });
 
-describe("row 17: the shortcut label follows the platform", () => {
+describe("onboarding.md:19: the shortcut label follows the platform", () => {
   it("is Ctrl+Enter on Windows and Cmd+Enter on a Mac", () => {
     expect(submitKeys("win32")).toEqual(["Ctrl", "Enter"]);
     expect(submitKeys("darwin")).toEqual(["Cmd", "Enter"]);
   });
 });
 
-describe("row 9: a tour replay that cannot start says why", () => {
+describe("onboarding.md:10: a tour replay that cannot start says why", () => {
   const forced: Want = { id: "tasks", forced: true, tries: 9, page: "p" };
   it("speaks for a forced replay that gave up or whose feature is off, and not for the rest", () => {
     expect(tourNotice("Tasks", forced, "miss", true, false)).toMatch(/needs its screen showing/);
@@ -153,7 +156,7 @@ describe("row 9: a tour replay that cannot start says why", () => {
   });
 });
 
-describe("rows 12, 15: the error and connect words", () => {
+describe("onboarding.md:13, :17: the error and connect words", () => {
   it("names what failed", () => {
     expect(failedNote(new Error("boom"))).toBe("Could not start a workspace: boom. Try again.");
     expect(failedNote("x")).toContain("x");

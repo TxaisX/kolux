@@ -25,10 +25,11 @@ vi.mock("react", async (orig) => {
 });
 
 const calls: Array<[string, unknown]> = [];
+let agentList: unknown = null;
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: unknown) => {
     calls.push([cmd, args]);
-    return Promise.resolve(cmd === "get_settings" ? {} : null);
+    return Promise.resolve(cmd === "get_settings" ? {} : cmd === "agent_list" ? agentList : null);
   },
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
@@ -36,6 +37,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}
 beforeEach(() => {
   h.slots = [];
   calls.length = 0;
+  agentList = null;
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -44,7 +46,7 @@ const { createElement } = await import("react");
 const { HOOKS_FIELD, HOOKS_LINE, askHooks, hooksChosen, hooksDefault, recordHooks, recordsHooks } = await import("./hooksOn");
 const { SCREENS } = await import("./firstRun");
 const { default: Wizard, WizardView } = await import("./Wizard");
-const { HooksAskView } = await import("./Guides");
+const { HooksAsk, HooksAskView } = await import("./Guides");
 
 const writes = () => calls.filter(([c]) => c === "settings_patch" || c === "agent_hooks_sync");
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -151,4 +153,50 @@ test("T-608: the wizard writes no hooks until the user moves on from the line; t
     ["settings_patch", { set: { [HOOKS_FIELD]: false }, remove: [] }],
     ["agent_hooks_sync", { clear: true }],
   ]);
+});
+
+test("49-ux2 (onboarding.md:4, :15): with no agent the last button picks a folder; Check again reads the list, and an agent then opens a session", async () => {
+  vi.stubGlobal("navigator", { platform: "Win32" });
+  const picked = vi.fn();
+  const session = vi.fn();
+  const draw = () => {
+    h.i = 0;
+    return Wizard({ start: 3, ping: true, onPing() {}, onSession: session, onPickFolder: picked, onClose() {} }) as unknown as { props: Record<string, (...a: unknown[]) => void> & { noAgent: boolean } };
+  };
+  agentList = [];
+  draw().props.onRecheck(); // Check again
+  await flush();
+  let el = draw();
+  expect(el.props.noAgent).toBe(true);
+  el.props.onMain();
+  expect(picked).toHaveBeenCalledTimes(1);
+  expect(session).not.toHaveBeenCalled();
+  agentList = [{ id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:/bin/claude" }];
+  draw().props.onRecheck();
+  await flush();
+  el = draw();
+  expect(el.props.noAgent).toBe(false);
+  el.props.onMain();
+  expect(session).toHaveBeenCalledTimes(1);
+  expect(picked).toHaveBeenCalledTimes(1);
+});
+
+test("49-ux2 (onboarding.md:7): the one-time card's Turn off records off and closes; Not now records nothing", async () => {
+  const done = vi.fn();
+  const card = () => {
+    h.i = 0;
+    return HooksAsk({ settings: {}, onDone: done }) as unknown as { props: Record<string, () => void> } | null;
+  };
+  expect(card()).toBeNull(); // waits until no dialog is up (an effect, not run here)
+  h.slots[1] = true; // shown
+  card()!.props.onLater();
+  await flush();
+  expect(writes()).toEqual([]);
+  card()!.props.onOff();
+  await flush();
+  expect(writes()).toEqual([
+    ["settings_patch", { set: { [HOOKS_FIELD]: false }, remove: [] }],
+    ["agent_hooks_sync", { clear: true }],
+  ]);
+  expect(done).toHaveBeenCalledTimes(2);
 });

@@ -15,9 +15,12 @@ WHAT CHANGED
 - Dialog focus (src/onboarding/dialogFocus.ts): Explore and Continue in an agent take focus, keep Tab and Shift+Tab
   inside, close on Escape (only a dialog marked aria-modal="true" or a confirmation over it takes it, so a docked
   tip card or the floating workspace panel never does; an Escape in the sign-in terminal stays
-  with the terminal) and give focus back. Explore and the Setup Guide close when Settings opens, so
-  their Open Settings buttons no longer leave Settings behind them.
-- Notes: failed save, failed agent start (src/agentstart/host.ts, AgentStartHost.tsx), missing GitHub
+  with the terminal) and give focus back. Explore and the Setup Guide close when Settings opens from
+  their own Open Settings buttons, a palette Settings page or Ctrl+, (SETTINGS_SHOWN), so Settings is not left
+  behind them. The native menu's Settings item (src/settings/useSettingsPlumbing.ts, lane E1) is requested in
+  proof/ux-audit/requests/E1.md.
+- Notes: failed save, failed workspace start in the Multitask step (failedNote, src/onboarding/StepPanels.tsx),
+  no agent installed (NO_AGENT_NOTE, src/onboarding/useWizard.ts), missing GitHub
   sign-in naming gh auth login (ConnectGithub.tsx); the Accounts step opens Settings > Accounts.
 - Hooks card (Guides.tsx, hooksOn.ts): Not now and Turn off are separate; a later skip records nothing.
 - Tours (tour.ts, Tours.tsx): a replay that cannot start says why; the tours hint is visible.
@@ -39,7 +42,10 @@ counts only modal dialogs, Tab trap, sign-in terminal keeps its Escape) -> re-re
 longer takes Explore's Escape; T-612 test renamed for what it asserts; a cancelled Pick a folder then
 Help > Onboarding completes nothing; ONB-004/005 acceptance wording) -> re-review B -> fix pass
 (Open Settings closes Explore and the Setup Guide so Settings is not left behind them; a malformed
-agents-changed event reads the list again; wizard and PLAN wording) -> re-review PENDING.
+agents-changed event reads the list again; wizard and PLAN wording) -> re-review B+ -> fix pass
+(Ctrl+, closes Explore and the Setup Guide too (SETTINGS_SHOWN); closing the guide that way tells the
+sidebar; wiring tests for the no-agent button, Check again and the card's Turn off; a Multitask retry clears
+the git-project answer; notes and labels name the findings lines) -> re-review PENDING.
 Left as low follow-ups from the first review: a failed close toast after Pick a folder, the GitHub
 card not refreshed after sign-in, a load error worded as a save error, an unused once() message, a
 failure reported after the panel closed.
@@ -63,6 +69,8 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > Settings, Keyboard Shortcuts, Send Feedback, Check for Updates and Onboarding reach their own actions
  ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > drops Milestones once the core steps are done and keeps the rest
  ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > has every named entry, in the card's order, Settings first
+ ✓ src/onboarding/hooksConsent.test.ts > 49-ux2 (onboarding.md:4, :15): with no agent the last button picks a folder; Check again reads the list, and an agent then opens a session
+ ✓ src/onboarding/hooksConsent.test.ts > 49-ux2 (onboarding.md:7): the one-time card's Turn off records off and closes; Not now records nothing
  ✓ src/onboarding/hooksConsent.test.ts > 49-ux2: the card also offers Not now and Turn off
  ✓ src/onboarding/hooksConsent.test.ts > T-608: a saved true or false is a choice; nothing saved (or something unreadable) is not, and the switch then starts on
  ✓ src/onboarding/hooksConsent.test.ts > T-608: only moving on from the Connect screen records the choice; Back and the other screens record nothing
@@ -84,19 +92,19 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/onboarding/useWizard.test.ts > a failed close keeps the wizard open with a toast and tells the sidebar nothing; the retry closes it and tells the sidebar (VIEW-114, FIX-4)
  ✓ src/onboarding/useWizard.test.ts > a plain terminal as the saved default starts nothing in the first folder (VIEW-114, FIX-4)
  ✓ src/onboarding/useWizard.test.ts > every added project tells the sidebar before the first-folder check; the armed first folder starts the saved default agent once (VIEW-114, FIX-4)
- ✓ src/onboarding/ux2.test.ts > row 17: the shortcut label follows the platform > is Ctrl+Enter on Windows and Cmd+Enter on a Mac
- ✓ src/onboarding/ux2.test.ts > row 1: the checklist's hide flag > is its own key, not the legacy all-done one
- ✓ src/onboarding/ux2.test.ts > row 3: Open a session needs an agent > follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes
- ✓ src/onboarding/ux2.test.ts > row 3: Open a session needs an agent > is null with no agent installed, and the wizard holds the button back with a reason
- ✓ src/onboarding/ux2.test.ts > row 5: hooks consent only on an explicit move on > a later skip records nothing
- ✓ src/onboarding/ux2.test.ts > row 9: a tour replay that cannot start says why > speaks for a forced replay that gave up or whose feature is off, and not for the rest
- ✓ src/onboarding/ux2.test.ts > rows 12, 15: the error and connect words > names what failed
- ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > Open Settings from Explore or the Setup Guide closes them, so Settings is not left behind; the stop unsubscribes
- ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > Tab wraps at both ends and stays inside
- ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > a docked tip card (aria-modal=false) after the dialog does not take its Escape
- ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > focuses the dialog on open, closes on a window-level Escape, and gives the focus back
- ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > only the top dialog answers Escape
- ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > the floating workspace panel (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:10: a tour replay that cannot start says why > speaks for a forced replay that gave up or whose feature is off, and not for the rest
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:13, :17: the error and connect words > names what failed
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:19: the shortcut label follows the platform > is Ctrl+Enter on Windows and Cmd+Enter on a Mac
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:3: the checklist's hide flag > is its own key, not the legacy all-done one
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:4, :15: Open a session needs an agent > follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:4, :15: Open a session needs an agent > is null with no agent installed, and the wizard holds the button back with a reason
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:6: hooks consent only on an explicit move on > a later skip records nothing
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > Open Settings (a button, a palette page or Ctrl+,) closes Explore and the Setup Guide, so Settings is not left behind; the stop unsubscribes
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > Tab wraps at both ends and stays inside
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > a docked tip card (aria-modal=false) after the dialog does not take its Escape
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > focuses the dialog on open, closes on a window-level Escape, and gives the focus back
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > only the top dialog answers Escape
+ ✓ src/onboarding/ux2.test.ts > onboarding.md:8: the dialogs take the focus and Escape works from anywhere > the floating workspace panel (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does
  ✓ src/setup/TrustPrompt.test.ts > 49-ux2 the trust prompt says what is remembered > shows the memory line beside Run hooks and Don't run
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > Don't run skips the setup script: no trust saved, workspace_setup never asked
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > Run hooks saves trust for exactly the text shown, then runs; always-trust saves the whole repository
@@ -110,12 +118,12 @@ pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/he
  ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > with no prompt mounted, nothing is approved and nothing waits
 
   Test Files  7 passed (7)
-  Tests  60 passed (60)
+  Tests  62 passed (62)
 
 FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
   ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
   Test Files  1 failed | 733 passed (734)
-  Tests  3 failed | 5432 passed (5435)
+  Tests  3 failed | 5434 passed (5437)
   The 3 failures are src/editor/pdfjsCopy.test.ts (openjpeg_nowasm_fallback.js, LICENSE_OPENJPEG,
   LICENSE_PDFJS_OPENJPEG): CRLF line endings in this local checkout, not part of this change; they pass on CI.
 
