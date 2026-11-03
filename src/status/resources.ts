@@ -54,3 +54,23 @@ export const formatCpu = (cpu: number) => `${cpu < 10 ? cpu.toFixed(1) : Math.ro
 /** VIEW-099: End skips its question only when a fresh read no longer lists the session (it has
  * ended); a failed read asks, so nothing is ever ended unasked. */
 export const endNeedsAsk = (fresh: Resources | null, id: number) => fresh === null || fresh.sessions.some((s) => s.id === id);
+
+/** usage-status.md:11: wraps an async read so a call made while the last one is still running is skipped (resolves undefined). */
+export function singleFlight<T>(fn: () => Promise<T>): () => Promise<T | undefined> {
+  let busy = false;
+  return async () => {
+    if (busy) return undefined;
+    busy = true;
+    try {
+      return await fn();
+    } finally {
+      busy = false;
+    }
+  };
+}
+
+/** usage-status.md:8: what Escape closes in the Resource Manager: an open End question first (the Restart/End all one,
+ * then a single session's, then End N's), the whole panel only when none is open. */
+export function escapeStep(open: { bulk: boolean; ending: boolean; asking: boolean }): "bulk" | "ending" | "asking" | "close" {
+  return open.bulk ? "bulk" : open.ending ? "ending" : open.asking ? "asking" : "close";
+}

@@ -7,13 +7,15 @@
 // description and labels, a fork's parent, Start/Resume workspace, and recent editors as reviewer picks.
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Close } from "../chrome/icons";
+import { ArrowLeft, Close } from "../chrome/icons";
+import { inTextField, overlayShowing } from "../chrome/fullPage";
 import GhBanner, { classify } from "./GhBanner";
 import Markdown from "./MarkdownView";
 import { safeHref } from "./markdown";
 import MentionField from "./MentionField";
 import type { TaskLabel } from "./model";
 import { askForReview, editReviewers, failedChecks, fixBlocker, fixText, headLabel, heldWords, isEditor, labelsToAdd, lineageNote, NO_REVIEWER_EDIT, type ReviewerEdit, settleReviewers, undoReviewers, withReviewers, MERGE_METHODS, mergeBox, type PrCheck, type PrFiles, type PrPageData, type PrTab, type PrThreads, type PrViewed, REACTION_EMOJI, REVIEW_LABEL, rerunTargets, reviewerSuggestions, saveTab, savedTab, summarizeChecks, type Target, viewedLine, viewedOf, withViewed } from "./prModel";
+import { escapeStep, partialNote } from "./prPageState";
 import type { Person } from "./repoFacts";
 
 const NO_THREADS: PrThreads = { threads: [], truncated: false, limit: 0 };
@@ -35,6 +37,8 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
   const [method, setMethod] = useState<"merge" | "squash" | "rebase">("squash");
   const [sure, setSure] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // The checks or review threads that could not be read on the last load (the page still shows the rest).
+  const [partial, setPartial] = useState<string | null>(null);
   // GIT-039: diffs the user asked for after they were held back (by file name), and the ones being read.
   const [loaded, setLoaded] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<string | null>(null);
@@ -73,8 +77,10 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
       shown.current = p.headSha;
       setPage(p);
       setPending((r) => settleReviewers(p.reviewers, r));
-      setChecks(await invoke<PrCheck[]>("pr_checks", { host: args.host, repo: args.repo, sha: p.headSha }).catch(() => []));
-      setThreads(await invoke<PrThreads>("pr_threads", args).catch(() => NO_THREADS));
+      const failed: string[] = [];
+      setChecks(await invoke<PrCheck[]>("pr_checks", { host: args.host, repo: args.repo, sha: p.headSha }).catch((e) => (failed.push(`the checks (${say(e)})`), [])));
+      setThreads(await invoke<PrThreads>("pr_threads", args).catch((e) => (failed.push(`the review threads (${say(e)})`), NO_THREADS)));
+      setPartial(partialNote(failed));
     } catch (e) {
       setNote(say(e));
     }
@@ -120,6 +126,26 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, files, headEpoch]);
+
+  // Escape steps back to Tasks, unless it belongs to a text field, a menu or dialog above the page, an edit
+  // in progress (those have their own Cancel), or an open merge confirm, which it closes first.
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const step = escapeStep({ confirming: sure, typing: inTextField(e.target as HTMLElement | null), overlay: overlayShowing(), editing: draft !== null || replying !== null });
+      if (step === "stay") return;
+      e.preventDefault(); // the screen's own Escape (leave the page) must not also run
+      if (step === "cancel-merge") setSure(false);
+      else if (step === "back") onClose();
+    };
+    // Capture phase: the Tasks screen's "Escape leaves the page" listener sits on window in the bubble phase
+    // and was added first, so a bubble listener here would run after it and could not hold it back.
+    window.addEventListener("keydown", h, true);
+    return () => window.removeEventListener("keydown", h, true);
+  }, [sure, draft, replying, onClose]);
+
+  /** Read the page again from GitHub (a new head commit drops the files read for the old one). */
+  const refresh = () => void act(async () => {});
 
   /** GIT-039: reads one held-back file's diff when the user asks. */
   const loadPatch = (filename: string) => {
@@ -189,10 +215,15 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
     return (
       <div className="pr-page">
         <div className="pr-head">
-          <button className="ib" title="Back to Tasks" onClick={onClose}>
-            <Close />
+          <button className="btn" title="Back to Tasks" aria-label="Back to Tasks" onClick={onClose}>
+            <ArrowLeft /> Back
           </button>
-          <span>{note ?? `Reading ${target.repo}#${target.number}...`}</span>
+          <span role={note ? "alert" : undefined}>{note ?? `Reading ${target.repo}#${target.number}...`}</span>
+          {note && (
+            <button className="btn" onClick={() => void reload()}>
+              Retry
+            </button>
+          )}
         </div>
       </div>
     );
@@ -224,8 +255,8 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
   return (
     <div className="pr-page">
       <div className="pr-head">
-        <button className="ib" title="Back to Tasks" onClick={onClose}>
-          <Close />
+        <button className="btn" title="Back to Tasks (Esc)" aria-label="Back to Tasks" onClick={onClose}>
+          <ArrowLeft /> Back
         </button>
         <h2>
           <span className={`task-state pull ${page.state}`}>{page.draft ? "draft" : page.state}</span> {page.title} <span className="tasks-kind">#{page.number}</span>
@@ -239,6 +270,9 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
             {work.label}
           </button>
         )}
+        <button className="btn" disabled={busy} onClick={refresh} title="Read this pull request again from GitHub">
+          Refresh
+        </button>
         <button className="btn" onClick={copy}>
           Copy link
         </button>
@@ -261,6 +295,11 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
             {note}
           </div>
         )
+      )}
+      {partial && (
+        <div className="note warn" role="status">
+          {partial}
+        </div>
       )}
       <div className="pr-tabs" role="tablist">
         {(["conversation", "checks", "files"] as PrTab[]).map((t) => (
@@ -390,9 +429,6 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
             </select>
             <h3>Merge</h3>
             <p className="tasks-kind">{box.reason}</p>
-            <button className="btn" disabled={busy} onClick={() => void act(async () => {})}>
-              Reload
-            </button>
             {box.canMerge && (
               <>
                 <select value={method} onChange={(e) => { setMethod(e.target.value as typeof method); setSure(false); }} aria-label="How to merge">
@@ -411,7 +447,7 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
                     <p>
                       This {method}s #{page.number} into {page.baseRef} on GitHub. It cannot be undone from here.
                     </p>
-                    <button className="btn primary" disabled={busy} onClick={() => void act(async () => { try { await invoke("pr_merge", { ...args, method, confirmed: true, sha: page.headSha }); } finally { setSure(false); } }, "Merged.")}>
+                    <button className="btn danger" disabled={busy} onClick={() => void act(async () => { try { await invoke("pr_merge", { ...args, method, confirmed: true, sha: page.headSha }); } finally { setSure(false); } }, "Merged.")}>
                       Yes, merge it
                     </button>
                     <button className="btn" onClick={() => setSure(false)}>

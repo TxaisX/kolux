@@ -1,6 +1,6 @@
 // SET-038 (T-323): editor and diff preference defaults, auto-save timing and whitespace hiding.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { allChangesStart, autoSaver, EDITOR_FIELDS, hiddenWhitespace, prefPatch, readEditorPrefs } from "./editorPrefs";
+import { allChangesStart, autoSaver, delayFromText, EDITOR_FIELDS, hiddenWhitespace, prefPatch, readEditorPrefs } from "./editorPrefs";
 import { appearanceVars, readAppearance } from "../theme";
 
 afterEach(() => vi.useRealTimers());
@@ -47,5 +47,18 @@ describe("SET-038 editor and diff preferences", () => {
   it("SET-018: an empty editor font falls back to the terminal font", () => {
     const vars = appearanceVars(readAppearance({ terminalFont: "Cascadia Mono" })) as Record<string, string>;
     expect(vars["--editor-font"].startsWith('"Cascadia Mono"')).toBe(true);
+  });
+});
+
+describe("auto-save delay as typed (UX-audit)", () => {
+  it("3000 can be typed digit by digit: nothing is clamped until the box is left", () => {
+    expect(delayFromText("3000")).toBe(3000);
+    expect(delayFromText("30000")).toBe(10000);
+    expect(delayFromText("5")).toBe(200);
+  });
+  it("an empty or unreadable box saves nothing", () => {
+    expect(delayFromText("")).toBeNull();
+    expect(delayFromText("  ")).toBeNull();
+    expect(delayFromText("abc")).toBeNull();
   });
 });

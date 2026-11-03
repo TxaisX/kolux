@@ -125,10 +125,14 @@ Rules: messages from hooks, the transcript and the scraped terminal are combined
   shown as the short command the user typed; image markers inside text become an image turn with a
   thumbnail that opens at full size; copying a message gives a brief Copied confirmation, and
   timestamps follow the app's language.
+  a Copy the clipboard refuses says "Copy failed" and goes back to Copy; the per-message button that
+  scrolls the message to the top of the view is labelled Scroll to start.
 Acceptance:
   - [ ] Agent output that also came in through a hook → shown once.
   - [ ] A transcript containing a system reminder block → the block is not visible.
   - [ ] Press Copy on one reply → the clipboard holds that reply only.
+  - [ ] Copy a reply while the clipboard refuses it → the button says Copy failed, then Copy again.
+        (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -158,9 +162,13 @@ User sees: reasoning tucked behind a Thought button; a Context compacted divider
   formatted text; provider notices with a Details section that expands.
 Rules: reasoning starts folded; notice details are capped in length but never thrown away; these
   folded reasoning rows are the Thought rows of the Agents screen chat.
+  the two buttons that fold or unfold every Thought row are labelled Expand thoughts and Collapse
+  thoughts.
 Acceptance:
   - [ ] A turn with reasoning → a folded Thought button; click it → the reasoning appears.
   - [ ] After a compaction → a divider row in the conversation.
+  - [ ] A turn with reasoning → the buttons above the chat read Expand thoughts and Collapse
+        thoughts. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -178,9 +186,14 @@ Rules: each call is paired with its result as one step, and a call with no resul
   calls show the command instead of the tool's name; failed calls look neutral rather than alarm
   red; only safe links inside results can be clicked; prose and tool steps from the same message
   stay apart.
+  a web link in a tool result, a plan or a provider notice goes the way a link in a reply goes
+  (CHAT-025: the browser choice and the Open links in Kolux setting), and a failure to open it is
+  said under the box, instead of always opening the system browser.
 Acceptance:
   - [ ] The agent runs three commands → one live line while they run, one folded row afterwards.
   - [ ] Expand the row → every command and its output is visible.
+  - [ ] Click a web address inside a tool result → the same two-browser choice as for a link in a
+        reply appears. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -197,10 +210,13 @@ Rules: Claude's edit, write and multi-edit tools and the Codex patch tool all pr
   the start; an edit that was refused shows the agent's error in place of a diff, and notebook edits
   stay a plain tool row; text that looks like a diff is coloured only when it has hunk headers, and
   a row of dashes is a divider rather than a removed line.
+  Copy diff reverts to its label after a moment, and says Copy failed when the clipboard refuses.
 Acceptance:
   - [ ] A Codex patch touching two files → two cards.
   - [ ] A refused edit → the error text and no diff.
   - [ ] Copy a diff → every changed line starts with a plus or a minus.
+  - [ ] Copy a diff while the clipboard refuses it → the button says Copy failed, then Copy diff
+        again. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -256,10 +272,13 @@ Rules: Enter sends and Shift+Enter starts a new line; empty messages are ignored
   size limit and survive a terminal reconnect; when the session has no live terminal, the
   placeholder tells the user to switch back to reconnect; the Agents screen relies on this box now
   that the terminal-grid message bar is gone.
+  a note shown under the box clears itself after 10 seconds (the Stopping note clears when the turn
+  ends instead); the focused box has a visible outline in every theme.
 Acceptance:
   - [ ] Type 12 lines → the box stops growing at about 8 and scrolls.
   - [ ] Switch tabs and come back → the draft is still there.
   - [ ] Compose Japanese with an IME and press Enter to confirm a word → nothing is sent.
+  - [ ] A note appears under the box → it is gone after 10 seconds. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -411,11 +430,16 @@ Rules: paths relative to the repository, and paths followed by a line and column
   count; a modifier-click opens the main browser choice and Shift with the modifier opens the other
   one; email links behave as they normally would; page anchors, unknown link kinds, malformed file
   links and empty links cannot be clicked.
+  Space opens a focused link like Enter, which shows a focus ring; in the two-browser choice the
+  arrows, Home and End move between the choices, Escape or a click outside closes it, and focus goes
+  back to the link unless an in-app pane took it.
 Acceptance:
   - [ ] Click a file reference in a reply that names line 12, column 3 → the editor opens at line
         12.
   - [ ] Click a web address → a small popup offers the two browsers.
   - [ ] Click a path that only the user typed → nothing opens.
+  - [ ] Tab to a link, press Space → the choice opens; press Escape → it closes and the link is
+        focused again. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -498,9 +522,13 @@ User does: looks below a finished turn, then sends one of the listed files to an
 User sees: up to four files the agent wrote, newest first; sending one puts its path into the other
   agent's draft without sending it.
 Rules: nothing reaches the other agent until the user presses Enter there.
+  the Send result to list closes on Escape (focus back on its summary) and on a click outside, and
+  that Escape never reaches the agent.
 Acceptance:
   - [ ] A turn writes six files → the four newest are listed.
   - [ ] Send one to agent B → its path is in B's draft and B has not been prompted.
+  - [ ] Open Send result to, press Escape → the list closes and the agent is not interrupted.
+        (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -594,11 +622,15 @@ Rules: loading an older page keeps the reading position where it was; hiding and
   while a page loads never mixes in a page from the earlier read; structured chat brings back a
   recent stretch on open and fetches older history page by page on request, and an older page
   arriving late never pushes back newer live content.
+  a failed Load earlier messages call says so under the button ("Could not load earlier messages.
+  Press the button again to retry.") and the button can be pressed again.
 Acceptance:
   - [ ] A 1,000-message transcript → 300 shown; press twice → 700; keep pressing until the start →
         the control is gone.
   - [ ] Press the control while reading → the message that was at the top of the view stays in
         place.
+  - [ ] Make the earlier-messages call fail → a line under the button says it could not load and to
+        press again; pressing again retries. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -637,9 +669,12 @@ Rules: Send is disabled while any attachment is still being saved; a drop counts
   many attachments waiting at once are refused with a message; thumbnails try again after the image
   cache refreshes, and a broken one says the preview is unavailable; pasted images get a plain
   generic name, while picked or dropped files keep their own name.
+  the full-size preview takes focus when it opens, Escape closes it, and focus goes back to the chip
+  that opened it.
 Acceptance:
   - [ ] Paste a screenshot → a chip with a thumbnail, and Send stays disabled until it is saved.
   - [ ] Drop a file on a different pane → nothing is attached here.
+  - [ ] Open a preview, press Escape → it closes and focus is back on the chip. (evidence/T-678.txt)
 Compat: —
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.
@@ -675,9 +710,12 @@ User does: presses Cmd or Ctrl with plus, minus or zero while the chat has focus
 User sees: chat text gets bigger or smaller in steps of a tenth, between 0.8x and 1.6x; zero goes
   back to normal.
 Rules: the zoom lasts only for the current session.
+  the zoom level is shown for about a second after each change.
 Acceptance:
   - [ ] Press plus ten times → it stops at 1.6x; press zero → back to 1x.
   - [ ] Press minus five times → it stops at 0.8x.
+  - [ ] Press plus once → the level (for example 110%) shows briefly, then disappears.
+        (evidence/T-678.txt)
 Compat: The three chords are fixed inside chat rather than rebindable commands.
 Decision: H: default build: the Agents screen (area 05) already shows supported sessions as
   terminal-backed chat with the switch off, so its everyday path relies on this.

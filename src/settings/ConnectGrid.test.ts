@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import { CHECK_AGAIN } from "./Attention";
-import { CONNECT, InstallCardView, liveCheck, stageOf, type ConnectId, type InstallView } from "./ConnectGrid";
+import { claimInstall, CONNECT, InstallCardView, liveCheck, stageOf, type ConnectId, type InstallView } from "./ConnectGrid";
 import type { AgentInfo } from "../launch/PlusMenu";
 
 const mk = (id: string, installed: boolean): AgentInfo => ({ id, name: id, program: id, args: [], installed, path: installed ? `C:\bin\${id}.exe` : null });
@@ -107,4 +107,13 @@ test("an account card's check has no timer", () => {
   expect([n, timers]).toEqual([2, 0]);
   stop();
   expect(Object.keys(handlers)).toEqual([]);
+});
+
+test("UX-audit: a second press of Install is ignored until the first has settled", () => {
+  const held = new Set<string>();
+  expect(claimInstall(held, "codex")).toBe(true);
+  expect(claimInstall(held, "codex")).toBe(false);
+  expect(claimInstall(held, "grok")).toBe(true);
+  held.delete("codex");
+  expect(claimInstall(held, "codex")).toBe(true);
 });

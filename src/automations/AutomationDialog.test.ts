@@ -3,7 +3,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import AutomationDialog, { setupChoice } from "./AutomationDialog";
+import AutomationDialog, { saveHint, setupChoice, unsaved, WorktreeError } from "./AutomationDialog";
 import { canDo, EVENT_CHOICES, hermesSchedule, rowActions, type Automation } from "./model";
 import { templates } from "./timetable";
 
@@ -181,4 +181,34 @@ test("T-193-b hermesSchedule takes a five-field cron line and refuses an RRULE o
   expect(hermesSchedule("RRULE:FREQ=DAILY")).toBe(null);
   expect(hermesSchedule("0 9 * *")).toBe(null);
   expect(hermesSchedule("")).toBe(null);
+});
+
+test("UX2: Templates are offered for a new automation and hidden when editing a saved one", () => {
+  expect(render(null)).toContain(">Templates<");
+  const saved: Automation = { id: "auto-1", name: "Leap", prompt: "p", provider: "claude", projectId: "p1", enabled: true };
+  expect(render(saved)).not.toContain(">Templates<");
+});
+
+test("UX2: leaving asks when any field the form submits changed, not only the name or prompt", () => {
+  const first = { name: "a", prompt: "b", provider: "claude", grace: 0, precheck: "", form: { preset: "weekdays", time: "09:00" }, reuse: false };
+  const same = () => ({ ...first, form: { ...first.form } });
+  expect(unsaved(first, same())).toBe(false);
+  expect(unsaved(first, { ...same(), name: "a!" })).toBe(true);
+  expect(unsaved(first, { ...same(), prompt: "" })).toBe(true);
+  expect(unsaved(first, { ...same(), provider: "codex" })).toBe(true);
+  expect(unsaved(first, { ...same(), grace: 30 })).toBe(true);
+  expect(unsaved(first, { ...same(), precheck: "test -f x" })).toBe(true);
+  expect(unsaved(first, { ...same(), reuse: true })).toBe(true);
+  expect(unsaved(first, { ...same(), form: { preset: "weekdays", time: "10:00" } })).toBe(true);
+  expect(unsaved(first, { ...same(), extra: 1 })).toBe(true);
+});
+
+test("UX2: unreadable worktrees show the real reason with Try again, and Save's hint says to use it", () => {
+  const html = renderToString(createElement(WorktreeError, { error: "git is not installed", onRetry: () => {} }));
+  expect(html).toContain("git is not installed");
+  expect(html).toContain("Try again");
+  expect(html).toContain('role="alert"');
+  expect(saveHint(true, null)).toBeUndefined();
+  expect(saveHint(false, null)).toBe("Waiting for the project's worktrees");
+  expect(saveHint(false, "x")).toContain("Try again");
 });

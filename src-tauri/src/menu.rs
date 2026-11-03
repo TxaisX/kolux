@@ -3,7 +3,7 @@
 //! change, it sends `menu_sync` the state it shows and the menu is rebuilt from it, so the ticks and
 //! the accelerators always agree with Settings (SET-020, SET-009). On Windows and Linux the menu
 //! opens from the Kolux mark (`menu_popup`); on macOS it is the app menu bar. A click on an item either acts
-//! here (reload, developer tools, full screen, minimise, maximise, exit) or comes back
+//! here (developer tools, full screen, minimise, maximise, exit) or comes back
 //! to the page as a `menu-action` event carrying the item id, which is the keymap action id where
 //! one exists (`app.settings`, `sidebar.left.toggle`, ...), so the page runs the same code as the
 //! shortcut. T-248-b: the Help items, the native-accelerator list the Shortcuts page judges clashes
@@ -38,7 +38,7 @@ impl Os {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MenuState {
-    /// "agents", "board", "terminals", "tower" or "floor" (SCREENS); any other screen leaves every item unticked.
+    /// "agents", "board", "terminals", "tower", "floor" or "space" (SCREENS; UX lane C added Space so it is reachable outside the palette); any other screen leaves every item unticked.
     pub screen: String,
     pub status_bar_visible: bool,
     pub tasks_button: bool,
@@ -134,7 +134,7 @@ pub enum Node {
 /// The screens the View menu picks between (T-054): the switcher's four in its cycle order (VIEW-002), then Floor,
 /// which has no sidebar item and is reached from the palette and this menu (VIEW-013, DT-08; T-610). None of the five
 /// carries a chord (DT-C68): the page sends no accelerator under these ids (chromeItems.ts MENU_SHORTCUT_IDS).
-pub const SCREENS: [(&str, &str, &str); 5] = [("screen.agents", "Agents", "agents"), ("screen.board", "Board", "board"), ("screen.terminals", "Terminals", "terminals"), ("screen.tower", "Tower", "tower"), ("screen.floor", "Floor", "floor")];
+pub const SCREENS: [(&str, &str, &str); 6] = [("screen.agents", "Agents", "agents"), ("screen.board", "Board", "board"), ("screen.terminals", "Terminals", "terminals"), ("screen.tower", "Tower", "tower"), ("screen.floor", "Floor", "floor"), ("screen.space", "Space", "space")];
 
 /// The whole menu bar for one platform and one page state.
 pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
@@ -187,11 +187,11 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
                     check("set.titleBarAppName", "Show Titlebar App Name", s.title_bar_app_name),
                 ],
             }],
+            // One reload, carried out by the page so unsaved editor text is asked about first (keys/commands.ts
+            // forceReload); Developer Tools only where they open (a debug build).
+            vec![Node::Sep, item("app.forceReload", "Force Reload")],
+            if cfg!(debug_assertions) { vec![item("view.devtools", "Toggle Developer Tools")] } else { vec![] },
             vec![Node::Sep,
-            item("view.reload", "Reload"),
-            item("app.forceReload", "Force Reload"),
-            item("view.devtools", "Toggle Developer Tools"),
-            Node::Sep,
             item("zoom.reset", "Actual Size"),
             item("zoom.in", "Zoom In"),
             item("zoom.out", "Zoom Out"),
@@ -201,10 +201,9 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
         .concat(),
     });
     bar.push(Node::Sub { label: "Window", items: vec![Node::Stock(Stock::Minimize), Node::Stock(Stock::Maximize)] });
-    // APP-009: Help holds Explore Kolux and Getting Started everywhere (Report Crash waits for T-183); About and Check
-    // for Updates sit here on Windows and Linux, and in the app menu on macOS.
-    // Report Crash joins this list with the crash report card (T-183): until then it would open nothing.
-    let mut help = vec![item("help.explore", "Explore Kolux"), item("help.gettingStarted", "Getting Started")];
+    // APP-009: Help holds Explore Kolux, Getting Started and Report Crash (the crash report card, T-183) everywhere;
+    // About and Check for Updates sit here on Windows and Linux, and in the app menu on macOS.
+    let mut help = vec![item("help.explore", "Explore Kolux"), item("help.gettingStarted", "Getting Started"), item("help.reportCrash", "Report Crash")];
     if os != Os::Mac {
         // VIEW-106: About is the app's own panel (Safe Graphics Mode, GPU status), opened by the page; macOS keeps the stock About in its app menu.
         help.extend([Node::Sep, item("help.about", "About Kolux RS"), item("help.checkUpdates", "Check for Updates")]);
@@ -216,7 +215,6 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
 /// Where a click goes: carried out here, or handed to the page.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Route {
-    Reload,
     DevTools,
     FullScreen,
     Exit,
@@ -226,7 +224,6 @@ pub enum Route {
 /// zoom.* goes to the page, which keeps the one saved interface zoom (SET-019).
 pub fn route(id: &str) -> Route {
     match id {
-        "view.reload" | "app.forceReload" => Route::Reload,
         "view.devtools" => Route::DevTools,
         "view.fullscreen" => Route::FullScreen,
         "file.exit" => Route::Exit,
@@ -424,7 +421,6 @@ fn on_click<R: Runtime>(app: &tauri::AppHandle<R>, id: &str) {
     let label = popped().lock().unwrap_or_else(|e| e.into_inner()).clone();
     let Some(view) = app.get_webview_window(&label) else { return };
     match route(id) {
-        Route::Reload => drop(view.reload()),
         Route::DevTools => {
             #[cfg(debug_assertions)]
             if view.is_devtools_open() {
@@ -552,10 +548,10 @@ mod tests {
     #[test]
     fn t054_view_menu_ticks_exactly_the_current_screen_and_none_for_other_screens() {
         // T-610 / DT-08: the switcher's four and Floor; the Inbox (behind the bell) and the sidebar's screens tick nothing.
-        for (screen, want) in [("agents", vec!["screen.agents"]), ("board", vec!["screen.board"]), ("terminals", vec!["screen.terminals"]), ("tower", vec!["screen.tower"]), ("floor", vec!["screen.floor"]), ("inbox", vec![]), ("skills", vec![])] {
+        for (screen, want) in [("agents", vec!["screen.agents"]), ("board", vec!["screen.board"]), ("terminals", vec!["screen.terminals"]), ("tower", vec!["screen.tower"]), ("floor", vec!["screen.floor"]), ("space", vec!["screen.space"]), ("inbox", vec![]), ("skills", vec![])] {
             let bar = spec(Os::Windows, &state(screen));
             let views = sub(sub(&bar, "View"), "Workspace View");
-            assert_eq!(ids(views), ["screen.agents", "screen.board", "screen.terminals", "screen.tower", "screen.floor"]);
+            assert_eq!(ids(views), ["screen.agents", "screen.board", "screen.terminals", "screen.tower", "screen.floor", "screen.space"]);
             assert_eq!(ticked(views), want, "screen {screen}");
         }
     }
@@ -598,12 +594,10 @@ mod tests {
 
     #[test]
     fn app_009_native_items_act_here_and_the_rest_go_to_the_page_by_keymap_id() {
-        assert_eq!(route("view.reload"), Route::Reload);
-        assert_eq!(route("app.forceReload"), Route::Reload);
         assert_eq!(route("view.devtools"), Route::DevTools);
         assert_eq!(route("view.fullscreen"), Route::FullScreen);
         assert_eq!(route("file.exit"), Route::Exit);
-        for id in ["app.settings", "screen.board", "sidebar.left.toggle", "set.tasksButton", "help.checkUpdates", "help.reportCrash"] {
+        for id in ["app.settings", "app.forceReload", "screen.board", "sidebar.left.toggle", "set.tasksButton", "help.checkUpdates", "help.reportCrash"] {
             assert_eq!(route(id), Route::Page(id.into()));
         }
     }
@@ -619,12 +613,12 @@ mod tests {
         for os in [Os::Windows, Os::Linux] {
             let bar = spec(os, &state("terminals"));
             let help = sub(&bar, "Help");
-            assert_eq!(ids(help), ["help.explore", "help.gettingStarted", "help.about", "help.checkUpdates"], "{os:?}");
+            assert_eq!(ids(help), ["help.explore", "help.gettingStarted", "help.reportCrash", "help.about", "help.checkUpdates"], "{os:?}");
             assert!(!help.contains(&Node::Stock(Stock::About)), "VIEW-106: the page draws About, not the stock dialog");
         }
         // macOS: About and Check for Updates are in the app menu, Help keeps the two page items.
         let mac = spec(Os::Mac, &state("terminals"));
-        assert_eq!(ids(sub(&mac, "Help")), ["help.explore", "help.gettingStarted"]);
+        assert_eq!(ids(sub(&mac, "Help")), ["help.explore", "help.gettingStarted", "help.reportCrash"]);
         assert_eq!(sub(&mac, "Kolux")[0], Node::Stock(Stock::About));
     }
 
@@ -788,11 +782,16 @@ mod tests {
     }
 
     #[test]
-    fn app_009_report_crash_stays_out_of_the_menu_until_the_crash_card_lands() {
+    fn ux_c_one_reload_through_the_page_and_devtools_only_in_a_debug_build() {
         for os in [Os::Windows, Os::Mac, Os::Linux] {
             let bar = spec(os, &state("terminals"));
-            assert!(!ids(sub(&bar, "Help")).contains(&"help.reportCrash"), "{os:?}");
+            let view = ids(sub(&bar, "View"));
+            assert_eq!(view.iter().filter(|i| i.contains("eload")).collect::<Vec<_>>(), [&"app.forceReload"], "{os:?}");
+            assert_eq!(view.contains(&"view.devtools"), cfg!(debug_assertions), "{os:?}");
+            assert!(ids(sub(&bar, "Help")).contains(&"help.reportCrash"), "{os:?}");
         }
+        // The page asks about unsaved editor text before it reloads, so the click is never a native reload.
+        assert_eq!(route("app.forceReload"), Route::Page("app.forceReload".into()));
     }
 
     #[test]

@@ -1,0 +1,97 @@
+T-690 - An automation run's pane is credited to the run it was opened for (DT-C126)
+Worker 2f, branch s-2f/claim, stacked on s-2f/ux-2 (#115, T-671) at 7f4831d8, 2026-11-03.
+Merge after #115.
+
+WHAT CHANGED
+- The start notice already carried the run's id. The window now hands it to the pane it opens for
+  that run, as KOLUX_RUN_ID in the pane's environment (src/projects/startArgs.ts sessionEnv,
+  startTail, startFields; src/launch/launchActions.ts startIn and openIn). A KOLUX_RUN_ID the agent's
+  own settings hold is dropped on that path, and the window's own value goes last.
+- The runtime reads that value before the environment is handed to the new process
+  (automations::run_in, called in terminal.rs next to the dispatch id) and gives it to claim.
+- claim (src-tauri/src/automations.rs) now:
+  - pane that names a run Kolux knows: credited to that run only, while it is pending, dispatching
+    or dispatched with no pane yet, of the same agent and worktree. A run already followed, a
+    finished run, or one in another worktree takes nothing, and there is no fallback to another run.
+    A run still pending when its pane starts (the start notice goes out before the run is marked
+    dispatched) is credited too, and keeps its pane through the dispatched update.
+  - pane that names no run Kolux knows (one reopened after a restart, whose environment is not
+    saved, or one whose id came from the agent's settings): credited only to a dispatched run that
+    is inside its settling period after a restart, had a pane before it, and, when its old hook
+    pane is known, only on that same hook pane. The oldest such run wins.
+  - so a tab the user opens is never credited to a run, and a run whose pane never started (a
+    scheduled or event run, or another automation's run in the same worktree) never takes anyone's
+    pane, before or after a restart.
+- Existing tests now claim a fresh run's pane the way the window does, with the run's id; the two
+  restart tests reopen on the run's own hook pane. tests/cards_09.rs gets the same change.
+
+WHY
+The T-671 re-review (#115) left one SHOULD-FIX older than that PR: claim credited a new agent pane
+to the oldest pane-less dispatched run of that agent in that worktree. An older run whose pane never
+started, from a schedule, an event or another automation in the same worktree, took the new run's
+pane, so the new run was never followed and never finished, and the old one was credited with work
+it never asked for. #115 closed only Run now's own orphans. 57's brief: fix the root cause in the
+claim itself, match the claim to the run it belongs to, and keep the orphan from winning.
+
+TESTS
+- New: automations::tests::t690_a_pane_is_followed_by_the_run_it_names_and_an_orphan_never_takes_it
+  (orphan of another automation, two live runs, a pending run, a finished run, an unknown id, a
+  user tab, then a restart with restored panes on their own hook panes, a settings id, and the
+  orphan closed by settling).
+- Fails before the fix: with claim's old oldest-run body put back (test unchanged), it fails on its
+  first assertion: left Some("orphan"), right Some("mine"). Passes with the fix.
+- New: src/projects/startArgs.test.ts "T-690: an automation run's start notice hands its run id to
+  the pane's environment, once, last".
+- Timing: a pane reopened after a restart that starts after its run's settling deadline but before
+  the next 30-second settle step is now refused (claim checks the deadline itself), where before it
+  could still be credited. Such a run is closed by that settle step.
+- Updated: the 23 claim calls in automations.rs tests and 5 in tests/cards_09.rs (run id passed).
+
+GATES (2026-11-03, after the review fixes)
+- cargo test -j 2 --lib automations: 85 passed, 0 failed, 1 ignored
+- cargo test -j 2 --lib terminal: 109 passed, 0 failed
+- cargo test -j 2 --test cards_09: 19 passed, 0 failed
+- cargo clippy -j 2 --all-targets -- -D warnings: exit 0
+- pnpm vitest run src/projects src/launch src/automations src/cli: 93 files, 562 tests pass
+- pnpm tsc --noEmit: exit 0
+- node scripts/plan-check.mjs: OK
+- scripts/firewall-check.ps1 -Baseline: 0 new
+
+REVIEW
+- Opus review (opus-high-review) of the first version: B+. SHOULD-FIX 1: after a restart a restored
+  pane (its environment is not saved) went through the oldest-run fallback, so an orphan given a
+  settling deadline by the restart could still take it. SHOULD-FIX 2: spec, decision and doc comment
+  said the opposite of the test for that case. SHOULD-FIX 3: this file was missing. NITs: a run id
+  from the agent's settings on a restored pane blocked its reclaim; a user tab opened within 120
+  seconds of a dispatch could take the run; the id path skipped the agent and worktree checks; the
+  window wiring of the id is tested through helpers only.
+- Fixed: the fallback now takes only a settling run that had a pane, on its own hook pane (SF1, and
+  the user-tab NIT); an id no run has falls back to that rule (settings NIT); the id path checks
+  agent and worktree (NIT); spec, decision and comment rewritten (SF2); this file (SF3).
+- Opus re-review (opus-high-review) of the fixed version: A-. Its SHOULD-FIX: the PLAN.md row still
+  stated the old fallback rule. NITs: the spec sentence should say the hook pane is matched when
+  Kolux knows it; two test claims passed no id where the window would pass one; no test for an id
+  claim from another folder or another agent; a Run now test comment overstated what it checked;
+  this line was unfilled; run ids are reused and pane keys can collide after a restart (follow-ups).
+- Fixed after it: the PLAN.md row reworded; the spec sentence gains "when Kolux knows it"; the
+  claims of the wrong agent and of a second pane now name run-1 and still take nothing; a claim
+  naming run-1 from another folder takes nothing; the Run now test checks a pane naming no run
+  takes nothing before the new run's own pane is credited. Only tests and wording changed.
+
+SPEC
+- DECISIONS.md DT-C126: no spec rule is reversed. AUTO-012 (spec/09-automations.md) gains a
+  sentence in its Rules on which pane a run is followed through.
+- Acceptance line added, unticked, ending "(unit tests: evidence/T-690.txt)": AUTO-012 box 4.
+
+FOLLOW-UPS (not in this PR)
+- A scheduled or event run whose pane never started now harms nothing, but it still reads
+  dispatched until the next restart, when settling closes it. Closing it in the 30-second settle
+  step is a separate change.
+- The window wiring of the run id (useCliBridge to startIn to openIn) is tested through
+  startTail/startFields only; a swap of the dispatch and run arguments would still type-check.
+- Run ids are numbered one past the highest kept run, so an id can be given again after old runs
+  are pruned; a pane still naming the old id then names the new run. Ids that are never reused
+  would close this.
+- Pane keys handed out after a restart can repeat a key a run remembers from before it, so a
+  different pane could be taken as that run's hook pane while it settles. Keys that never repeat
+  across restarts would close this.

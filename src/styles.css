@@ -63,6 +63,7 @@ input { font: inherit; }
 .ib { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: var(--fg-muted); flex: none; }
 .ib:hover:not(:disabled) { background: var(--row-selected); color: var(--fg); }
 .ib:disabled { color: var(--fg-disabled); }
+.ib[hidden] { display: none !important; } /* the display above would otherwise beat the hidden attribute */
 .ib.dim { color: var(--fg-icon-dim); }
 
 /* ---- 4. top bar: 35 px fill + 1 px border = 36 px ---- */
@@ -193,7 +194,7 @@ input { font: inherit; }
 .proj { display: flex; align-items: center; height: 32px; padding: 0 4px 0 8px; font-size: 14px; font-weight: 500; color: var(--fg-row); white-space: nowrap; }
 .proj .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .proj .ib { opacity: 0; }
-.proj:hover .ib, .proj .ib.on { opacity: 1; }
+.proj:hover .ib, .proj .ib.on, .proj .ib:focus-visible { opacity: 1; } /* a keyboard user lands on the hidden buttons too */
 .branch { display: flex; align-items: center; height: 32px; padding: 0 12px 0 8px; gap: 8px; border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 .branch .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .branch .count, .sess .count { font-size: 11px; color: var(--fg); }
@@ -261,7 +262,7 @@ input { font: inherit; }
 .field:focus { border-color: var(--line-focus); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--button-border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg); }
 .btn:hover:not(:disabled) { background: var(--row-selected); }
-.btn:disabled { color: var(--fg-icon-dim); }
+.btn:disabled, .btn[aria-disabled="true"] { color: var(--fg-icon-dim); }
 .btn.danger { border-color: #7a3b1e; color: #f0a07a; }
 .btn.danger:hover:not(:disabled) { background: #2a1911; }
 .btn-row { display: flex; gap: 6px; }
@@ -280,7 +281,7 @@ input { font: inherit; }
 .sb-new:hover { background: var(--row-selected); }
 /* plus menu: a fixed popover over everything, with a click-away backdrop (SESS-004) */
 .menu-backdrop { position: fixed; inset: 0; z-index: 40; }
-.menu { position: fixed; z-index: 41; min-width: 230px; padding: 6px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 13px; }
+.menu { position: fixed; z-index: 41; min-width: 230px; padding: 6px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 13px; max-height: calc(100vh - 16px); overflow-y: auto; }
 .menu-title { padding: 4px 8px 6px; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .menu-hint { padding: 4px 8px; font-size: 12px; color: var(--fg-faint); }
 .menu-search { display: block; box-sizing: border-box; margin: 0 0 6px; }
@@ -294,7 +295,7 @@ input { font: inherit; }
 .menu-row { display: flex; align-items: center; gap: 4px; }
 .menu-row .menu-item { min-width: 0; }
 .menu-chip { flex: none; padding: 0 6px; border-radius: 4px; font-size: 10.5px; color: var(--fg-faint); border: 1px solid var(--line-strong); }
-.menu-hint.warn { color: #fdc030; }
+.menu-hint.warn { color: var(--warn); }
 [data-mode="light"] .menu-hint.warn { color: var(--warn); }
 .menu-default { flex: none; height: 22px; padding: 0 6px; border-radius: 5px; font-size: 11px; color: var(--fg-faint); opacity: 0.6; }
 .menu-row:hover .menu-default, .menu-default:focus-visible { opacity: 1; }
@@ -352,14 +353,14 @@ input { font: inherit; }
 .needs-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--pane-bg); color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
 .needs-chip svg { color: var(--working-icon); }
 .needs-chip .why { color: var(--fg-muted); }
-.needs-chip:hover, .needs-chip:focus-visible { border-color: var(--line-focus); }
+.needs-chip:hover, .needs-chip:focus-visible { border-color: var(--line-focus); outline: none; }
 .name-field { min-width: 0; width: 14em; max-width: 100%; padding: 1px 5px; border: 1px solid var(--line-focus); border-radius: 4px; background: var(--input-bg); color: var(--fg); font: inherit; font-size: 12px; }
 .tab .name-field { width: 10em; }
 .review-tray { position: fixed; z-index: 44; right: 16px; bottom: 36px; width: 340px; max-height: 50vh; overflow: auto; padding: 8px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); font-size: 12.5px; }
 .review-head { display: flex; align-items: center; gap: 8px; }
 .review-send { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; }
 .review-send-item { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; border: none; border-radius: 6px; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
-.review-send-item:hover, .review-send-item:focus-visible { background: var(--row-selected); }
+.review-send-item:hover, .review-send-item:focus-visible { background: var(--row-selected); outline: none; }
 .review-send-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .copy-hint { position: fixed; z-index: 40; padding: 2px 7px; border: 1px solid var(--line); border-radius: 5px; background: var(--pane-bg); color: var(--fg-faint); font-size: 11px; pointer-events: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
 .copy-hint.done { color: var(--fg); border-color: var(--line-focus); }
@@ -876,7 +877,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 
 /* TERM-045: the question before a tab with a live program closes */
 .ask-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
-.ask { width: min(380px, calc(100vw - 32px)); padding: 16px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.ask { width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; padding: 16px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
 .ask-title { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
 .ask-body { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
 .ask .btn-row { justify-content: flex-end; }
@@ -897,9 +898,9 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .add-project { outline: none; width: min(420px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 10px; }
 .add-project .ask-title, .add-project .ask-body { margin: 0; }
 .add-choice { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--button-border); border-radius: 8px; font-size: 12px; color: var(--fg); text-align: left; }
-.add-choice:hover, .add-choice:focus-visible { background: var(--row-selected); }
+.add-choice:hover, .add-choice:focus-visible { background: var(--row-selected); outline: none; }
 .add-choice.primary { flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 14px; background: var(--fg); color: var(--pane-bg); border-color: var(--fg); }
-.add-choice.primary:hover, .add-choice.primary:focus-visible { background: var(--fg); opacity: 0.9; }
+.add-choice.primary:hover, .add-choice.primary:focus-visible { background: var(--fg); opacity: 0.9; outline: none; }
 .add-choice.primary .add-choice-name { font-size: 13px; font-weight: 600; }
 .add-choice-hint { font-size: 11px; opacity: 0.75; }
 .add-more { display: flex; gap: 8px; }
@@ -1205,6 +1206,9 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .rside[hidden], .rside-body > .explorer[hidden] { display: none; }
 /* USAGE-012: usage analytics. Green squares = days with use, deeper green = more tokens. */
 .ta { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
+/* The notices' live region is always drawn (so a notice is announced); empty, it takes no room in the column. */
+.ta-notices { display: flex; flex-direction: column; gap: 6px; }
+.ta-notices:empty { position: absolute; }
 .ta-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .ta .conn-card { max-width: none; }
 .ta-switch { margin-left: auto; }
@@ -1549,6 +1553,7 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 .app-icon-picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .app-icon-pick { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .app-icon-pick.on { border-color: var(--accent); }
+.app-icon-pick:has(input:focus-visible) { outline: 2px solid var(--line-focus); outline-offset: 1px; } /* the radio itself is invisible, so the label shows the keyboard focus */
 .app-icon-pick input { position: absolute; opacity: 0; pointer-events: none; }
 .app-icon-swatch { width: 18px; height: 18px; border-radius: 5px; }
 .app-icon-swatch.classic { background: linear-gradient(135deg, #2b2b33, #8a8a96); }
@@ -1594,3 +1599,11 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 .ct-dots { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
 .ct-dots i { width: 14px; height: 10px; border-radius: 2px; }
 .look-swatch.custom { border-radius: 6px; }
+
+/* ---- keyboard focus ring ----
+   One fallback for every control that has no focus style of its own: :where() keeps its specificity at zero, so any
+   rule above that sets an outline (or outline: none) wins. :focus-visible, not :focus, so a mouse click shows no ring.
+   The terminal's own input (xterm) and containers that are only focused by script never show one. */
+:where(:focus-visible) { outline: 2px solid var(--line-focus); outline-offset: 1px; }
+:where([tabindex="-1"]:focus-visible) { outline: none; }
+.xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible { outline: none; }

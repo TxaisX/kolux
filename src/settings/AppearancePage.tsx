@@ -99,7 +99,7 @@ function ZoomControl() {
           </button>
         </div>
       </div>
-      <p className="conn-detail">Text and controls grow or shrink together. The zoom shortcuts do the same from anywhere.</p>
+      <p className="conn-detail">Text and controls grow or shrink together. Ctrl+Alt+=, Ctrl+Alt+- and Ctrl+Alt+0 (Cmd+Option on macOS) do the same from anywhere.</p>
     </section>
   );
 }

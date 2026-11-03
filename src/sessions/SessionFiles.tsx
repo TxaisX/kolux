@@ -1,11 +1,11 @@
 // VIEW 089 (T-153-d): Show file, Open file and Delete on a past session's row. Delete asks first, in
 // the row itself (the window never shows a browser dialog).
-import { useState } from "react";
-import { DELETE_WARNING, runFileAction, type FileAction } from "./files";
+import { useEffect, useRef, useState } from "react";
+import { deleteQuestion, runFileAction, type FileAction } from "./files";
 import type { Session } from "./model";
 
 type Props = {
-  session: Pick<Session, "agent" | "id">;
+  session: Pick<Session, "agent" | "id"> & { title?: string };
   onNote: (text: string) => void;
   onDeleted: () => void;
   /** Starts with the question showing (tests). */
@@ -14,6 +14,15 @@ type Props = {
 
 export default function SessionFiles({ session, onNote, onDeleted, asking = false }: Props) {
   const [ask, setAsk] = useState(asking);
+  // Swapping Delete… for Keep must not drop the keyboard: Keep takes focus when asked, Delete… gets it back after Keep.
+  const del = useRef<HTMLButtonElement>(null);
+  const backToDelete = useRef(false);
+  useEffect(() => {
+    if (!ask && backToDelete.current) {
+      backToDelete.current = false;
+      del.current?.focus();
+    }
+  }, [ask]);
   const run = (action: FileAction) => {
     setAsk(false);
     runFileAction(action, session).then(
@@ -28,12 +37,20 @@ export default function SessionFiles({ session, onNote, onDeleted, asking = fals
     return (
       <>
         <span className="sb-hint warn" role="alert">
-          {DELETE_WARNING}
+          {deleteQuestion(session.title)}
         </span>
         <button type="button" className="btn danger" onClick={() => run("delete")}>
           Delete
         </button>
-        <button type="button" className="btn" onClick={() => setAsk(false)}>
+        <button
+          type="button"
+          className="btn"
+          autoFocus
+          onClick={() => {
+            backToDelete.current = true;
+            setAsk(false);
+          }}
+        >
           Keep
         </button>
       </>
@@ -47,7 +64,7 @@ export default function SessionFiles({ session, onNote, onDeleted, asking = fals
       <button type="button" className="btn" title="Open this session's file in the program your system uses for it" onClick={() => run("open")}>
         Open file
       </button>
-      <button type="button" className="btn" title="Delete this session's files from this computer" onClick={() => setAsk(true)}>
+      <button ref={del} type="button" className="btn" title="Delete this session's files from this computer" onClick={() => setAsk(true)}>
         Delete…
       </button>
     </>

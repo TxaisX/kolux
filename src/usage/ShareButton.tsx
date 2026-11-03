@@ -5,7 +5,7 @@ export const SHARE_X_LABEL = "Share on X";
 
 export default function ShareButton({ onShare, busy = false }: { onShare: () => void; busy?: boolean }) {
   return (
-    <button type="button" className="usage-share" onClick={onShare} disabled={busy} title="Opens the post in your browser">
+    <button type="button" className="btn" onClick={onShare} disabled={busy} title="Opens the post in your browser">
       {SHARE_X_LABEL}
     </button>
   );

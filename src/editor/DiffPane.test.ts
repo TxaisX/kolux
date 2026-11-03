@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Text } from "@codemirror/state";
 import { Chunk } from "@codemirror/merge";
 import { EditorState } from "@codemirror/state";
-import { noteField, setNotes, withoutWhitespace, type NoteActions } from "./DiffPane";
+import { noteField, noteTools, setNotes, withoutWhitespace, type NoteActions } from "./DiffPane";
 import type { LineNote } from "./diffNotes";
 
 const chunks = (a: string, b: string, override?: typeof withoutWhitespace) => Chunk.build(Text.of(a.split("\n")), Text.of(b.split("\n")), override && { override });
@@ -88,5 +88,17 @@ describe("the embedded Changes view has its own slim bar (row 277)", () => {
     const h = html(false);
     expect(h.match(/Side by side/g)?.length).toBe(2); // the button text and its title
     expect(h.match(/aria-label="Next change"/g)?.length).toBe(1);
+  });
+});
+
+describe("note gutter (the + beside a line)", () => {
+  const act: NoteActions = { add: () => {}, edit: () => {}, remove: () => {} };
+  it("is drawn where a note can be saved", () => {
+    expect((noteTools(act, "new", true) as unknown[])[1]).not.toEqual([]);
+  });
+  it("is left out where notes cannot be saved (the embedded Changes view), but the cards stay", () => {
+    const ext = noteTools(act, "new", false) as unknown[];
+    expect(ext[1]).toEqual([]);
+    expect(ext[0]).toBeTruthy();
   });
 });

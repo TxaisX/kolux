@@ -1,0 +1,152 @@
+T-673 - Keys and the native menu (DT-C109; SET-013, VIEW-002, APP-009; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-1 (PR #104), 2026-11-02.
+
+WHAT CHANGED
+- Default chords (src/keys/actions.ts): Rename active tab Ctrl+Shift+G, Maximize floating workspace
+  panel Ctrl+Shift+Backslash, Minimize it Ctrl+Shift+H on Windows and Linux (macOS keeps its chords;
+  Minimize gets Cmd+Shift+H). New command Move Focus to the Top Bar, Ctrl+Shift+P (Cmd+Shift+P),
+  which a focused terminal passes through. New palette command Open Automations (unbound). A test
+  fails if two default chords clash in a shared scope on any platform.
+- Window keys (src/keys/useWindowKeys.ts): an app chord (global, tab or terminal scope) waits while a
+  menu, popover, modal dialog or modal question (aria-modal="true") is up; a terminal pane's own questions
+  (.pane-ask) and the floating panel's Save question do not hold. Docked tips, tours (aria-modal="false"), the floating
+  workspace, agent question cards, the plan sheet, the update card and inline sidebar forms hold
+  nothing, and neither do the source-control and pull request inline forms or the browser's grab sheet.
+  Only the browser chords the window runs itself (address bar, back, forward, reload, find) are held;
+  a page's own chords, editor and explorer chords never are, so Ctrl+C still copies in a page.
+  Ctrl+W asks the focused pane first (kolux:pane-close), so a pane with its own warning can claim it (no pane listens yet: a hook for lane D).
+  Back/Forward say why nothing happened (Settings open, wrong screen, no earlier/later workspace).
+- Native menu (src-tauri/src/menu.rs): View > Workspace View lists Space; View has no plain Reload
+  (Force Reload stays); Developer Tools only in debug builds; Help > Report Crash on every platform.
+- Worktree palette: worktree lists load in parallel; unnamed sections sort after named ones.
+- spec: SET-013 Rules/Compat (138 commands, 82 with a chord, 56 without; the chords above), VIEW-002
+  (Space in the submenu), APP-009 (View menu); each has an acceptance line pointing here.
+
+WHY
+UX audit keyboard/palette rows (proof/ux-audit/findings/keyboard.md, palette.md): Windows and Linux
+users had no chord for several commands, no way out of a focused terminal by keyboard, shortcuts that
+fired behind open dialogs, a Reload menu item one click from throwing away unsaved edits, and a
+Space view missing from the menu.
+
+REVIEW
+Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass (d70b712e) -> re-review B -> fix pass (87284a71) -> re-review B -> fix pass (652e00b9) -> re-review B -> fix pass (dad9561b) -> re-review A- (dad9561b).
+Re-review B findings fixed: docked tips/tours/inline forms no longer hold keys (the key a tip names
+works); only global/tab/terminal chords are held (Ctrl+C in a browser pane copies under a dialog);
+real-selector tests for both; Move Focus to the Top Bar skips the disabled Kolux mark (macOS); the
+Back/Forward note says "Close Settings" when Settings is open. Force Reload trade-off recorded in
+DT-C109.
+Second re-review B findings fixed: terminal chords the window does not run itself (copy, paste,
+select all, find, clear) are never held, so Ctrl+V pastes into the worktree palette on the Terminals
+screen (test: "Terminals screen under the worktree palette"); command count corrected to 138/82/56;
+Move Focus to the Top Bar targets the top bar header only; the Ctrl+Shift+Backslash editor cost is
+recorded in DT-C109; the PLAN row calls the Ctrl+W pane claim a hook for lane D.
+Third re-review B findings fixed: the floating panel's chords (Ctrl+Alt+A, maximize, minimize) are
+held under a menu or modal like the rest (src/floating/FloatingLayer.tsx); the explorer's own
+Ctrl+Shift+F listener skips a press the window already held (src/editor/Explorer.tsx); the five
+browser chords the window runs itself (address bar, back, forward, reload, find) wait under a dialog,
+so Ctrl+L no longer pulls focus out of it (tests: "under a dialog the browser chords the window runs
+itself wait", "the floating panel's own chords ... wait under a modal"). Left as low: the editor chords
+the window runs itself (save, copy context, review note, next/previous change, preview) are not held.
+Fourth re-review B findings fixed: Show Search (Mod+Shift+F) opens again from a focused terminal (the
+explorer's listener no longer skips a press the terminal cancelled; it waits only under a menu or modal
+dialog: explorerSearchKey in src/keys/useWindowKeys.ts, test "Show Search (Mod+Shift+F) opens from a
+terminal that already cancelled the press"); the source-control and pull request inline forms (.scm-ask)
+and the browser's grab sheet hold no app chords ("real markup" test); focus.chrome ends like every other
+case. Bundle then: 1,460,892 bytes. Left as low: the floating panel's hold is
+tested through heldByOverlay, not by rendering FloatingLayer.
+Fifth re-review B findings fixed: the app's modal questions (chrome/Ask such as the reload question and delete
+confirmations, Save changes before closing?; aria-modal="true") now hold app chords,
+so Ctrl+T never opens a tab behind them, while inline non-modal alertdialogs still hold nothing ("real markup"
+test). A browser pane's drawing canvas and the create-worktree form's found-issues list hold nothing. Move
+Focus to the Top Bar and the menu's Force Reload / View > Space go through focusChrome and menuAction, each
+tested ("Move Focus to the Top Bar focuses the top bar's first enabled control", "the menu's Force Reload asks
+over unsaved text..."); View > Space opens Terminals in the classic layout. The Space acceptance line moved to
+VIEW-002 with its Rules updated; DT-C109 records the overlay-hold rule and the Ctrl+Shift+H/Backslash cost; a
+spec/17 acceptance line points at overlayKeys.test.ts. Bundle: 1,460,997 bytes first load (ceiling 1,485,000).
+Sixth re-review B findings fixed: a terminal pane's own questions (a dead shell's exit code, Paste N lines?,
+an account notice) are aria-modal but sit inside .pane-ask and cover one pane only, so they hold no app chords
+(PANE_LOCAL in src/keys/useWindowKeys.ts): with a dead shell on screen Ctrl+T, Ctrl+Tab and Ctrl+W (also on
+that pane) keep working ("real markup" test, now with a working closest). The floating panel's Save changes
+question is panel-local (no aria-modal) and holds nothing, as the floating panel itself; the earlier claim
+that it holds is withdrawn. menu.rs's module note no longer lists reload.
+Left as low: the new toasts (Back/Forward, classic view cycle, account switch, Nothing needs you) are text on
+paths that did nothing before and are checked by reading; SHOW_PROJECTS_EVENT has no sender until lane D lands.
+
+TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
+ ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > T-240 BROW-035: Mod+C is forwarded only for a grab (marked n), follows a rebinding, and Mac uses the command key
+ ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > T-240 BROW-035: a forwarded press starts a grab only when it is the chord bound to Grab Page Element
+ ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > a customised binding is forwarded in place of the default, and a Mac chord uses the command key
+ ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > a forwarded press replays as the key event the app's own matcher understands
+ ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > the page forwards the tab, browser and global chords, never the page's editing chords or unmodified keys
+ ✓ src/keys/keymap.test.ts > FIX-1 AltGr: Ctrl+Alt with a typed character that is not the chord's own key is a typed symbol, never a command (Windows and Linux)
+ ✓ src/keys/keymap.test.ts > FIX-1 AltGr: a real Ctrl+Alt chord still fires, and so does Option on a Mac (it types characters by design)
+ ✓ src/keys/keymap.test.ts > FIX-2 AltGr: Ctrl+Alt+letter still fires on a non-Latin layout (no AltGr layer), and darwin never reads AltGraph
+ ✓ src/keys/keymap.test.ts > SET-010: a clash names every command on the chord, scope by scope; agents switched off never count
+ ✓ src/keys/keymap.test.ts > TERM-053: Search open tabs is a tab command with its own chord, bound where a terminal has focus, shared with no other command
+ ✓ src/keys/keymap.test.ts > TERM-067: select all in a terminal is Cmd+A on macOS and Ctrl+Shift+A elsewhere, so a bare Ctrl+A stays with the shell
+ ✓ src/keys/keymap.test.ts > UX lane C: no two default chords clash in a shared scope on any platform
+ ✓ src/keys/keymap.test.ts > a bad chord, an unknown id or an unknown platform is reported for that entry only
+ ✓ src/keys/keymap.test.ts > a file that is not an object keeps the defaults and says so
+ ✓ src/keys/keymap.test.ts > chords parse, normalise their spelling and refuse Mod mixed with Ctrl
+ ✓ src/keys/keymap.test.ts > fresh Windows profile: Ctrl+Shift+J opens the palette, Alt+1 selects tab 1, Ctrl+Shift+D splits right, Ctrl+J is next-needs-you
+ ✓ src/keys/keymap.test.ts > labels read as the keys on the keyboard
+ ✓ src/keys/keymap.test.ts > macOS differs where SET-013 says so, and Mod means Cmd there
+ ✓ src/keys/keymap.test.ts > null unbinds, a win32 section beats the shared map, and the older top-level form still loads
+ ✓ src/keys/keymap.test.ts > the table registers the 138 carried commands (UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 56 ship unbound (UX lane C: view.automations added unbound, floatingWorkspace.minimize now bound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound) and only New agent tab (TERM-041) and workspace rename have a macOS chord only (UX lane C gave three Ctrl+Shift chords)
+ ✓ src/keys/keymap.test.ts > two custom chords that clash inside their scope are dropped and the defaults stay; defaults may overlap
+ ✓ src/keys/overlayKeys.test.ts > Automations has a command, so the palette lists it
+ ✓ src/keys/overlayKeys.test.ts > Move Focus to the Top Bar focuses the top bar's first enabled control
+ ✓ src/keys/overlayKeys.test.ts > Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog
+ ✓ src/keys/overlayKeys.test.ts > Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the palette's field; a split still waits
+ ✓ src/keys/overlayKeys.test.ts > UX lane C (request from D): Ctrl+W closes directly unless the pane claims the close for its own warning
+ ✓ src/keys/overlayKeys.test.ts > a page's own browser chord, an editor or an explorer chord is not held: Ctrl+C in a browser pane still copies under a dialog
+ ✓ src/keys/overlayKeys.test.ts > a panel that stays open (floating workspace, agent question card, plan sheet) holds nothing
+ ✓ src/keys/overlayKeys.test.ts > a showing dialog or menu holds global shortcuts; none showing lets them run
+ ✓ src/keys/overlayKeys.test.ts > real markup: a docked tip, the hooks card, a tour and the floating panel hold nothing; a modal dialog does
+ ✓ src/keys/overlayKeys.test.ts > the Ctrl+Tab list (itself a menu) still steps while it is open
+ ✓ src/keys/overlayKeys.test.ts > the floating panel's own chords (Ctrl+Alt+A, maximize, minimize) wait under a modal, not under the panel itself
+ ✓ src/keys/overlayKeys.test.ts > the menu's Force Reload asks over unsaved text and reloads without; View > Space opens Space (Terminals in classic)
+ ✓ src/keys/overlayKeys.test.ts > the open Settings page alone holds nothing; a dialog inside it does
+ ✓ src/keys/overlayKeys.test.ts > under a dialog the browser chords the window runs itself wait (Ctrl+L stays in the dialog); a page's own Ctrl+C does not
+ ✓ src/projects/nav.test.ts > EDIT-047: the palette finds a worktree by number, link, shortcode, comment, and recent ones lead an empty box
+ ✓ src/projects/nav.test.ts > PROJ-056 back and forward work only in the terminal view and not under settings
+ ✓ src/projects/nav.test.ts > VIEW-038: a number matches only that exact number, with or without #
+ ✓ src/projects/nav.test.ts > VIEW-038: exact before prefix before inner or forgiven matches; filler words are dropped
+ ✓ src/projects/nav.test.ts > VIEW-038: on a tie the one used last comes first, and open tabs lead
+ ✓ src/projects/nav.test.ts > VIEW-041: repository chips keep either repository; different fields must all match
+ ✓ src/projects/nav.test.ts > VIEW-042: worktree-only actions are not runnable without a worktree
+ ✓ src/projects/nav.test.ts > a workspace whose agents only watch background work shows the radio mark, not the spinner (VIEW-040, STAT-024)
+ ✓ src/projects/nav.test.ts > ages read in minutes for the first hour, hours until two days, then days (VIEW-040)
+ ✓ src/projects/nav.test.ts > back and forward skip places that are gone
+ ✓ src/projects/nav.test.ts > every word has to match, and matches merge
+ ✓ src/projects/nav.test.ts > hidden worktrees show only once something is typed; pull requests get their own rows
+ ✓ src/projects/nav.test.ts > history keeps a place once at its newest visit and drops what was ahead
+ ✓ src/projects/nav.test.ts > next and previous wrap, a number picks a row
+ ✓ src/projects/nav.test.ts > palette rows carry the agent's mark, permission over unread over a fresh finish (VIEW-040)
+ ✓ src/projects/nav.test.ts > rows come out in section order
+ ✓ src/projects/nav.test.ts > with no query, unnamed sections (Commands, Accounts) come after the named ones, so Enter never runs Go to File
+ ✓ src/settings/shortcutRows.test.ts > SET-010 (T-248-b): a global command on a chord the macOS menu owns conflicts with that menu item
+ ✓ src/settings/shortcutRows.test.ts > SET-010 box 1: a custom chord on a default's chord flags both rows Conflicts and lists them under Conflicting
+ ✓ src/settings/shortcutRows.test.ts > SET-010 box 1: a custom chord that shares nothing with a default raises no Conflicts
+ ✓ src/settings/shortcutRows.test.ts > SET-011 box 1: a null entry shows Unassigned, not Disabled
+ ✓ src/settings/shortcutRows.test.ts > SET-019 (T-246-c): the interface zoom has its own keys, apart from the terminal zoom ones
+ ✓ src/settings/shortcutRows.test.ts > commands with no handler yet are not listed, wired ones still are
+ ✓ src/settings/shortcutRows.test.ts > every command is listed under its area with its chords and badges
+ ✓ src/settings/shortcutRows.test.ts > filters: all, modified, unassigned, conflicting
+ ✓ src/settings/shortcutRows.test.ts > groups the commands by area under the four filters and a capped search box
+ ✓ src/settings/shortcutRows.test.ts > search: titles, areas, ids and chords for every platform, as written or as drawn
+ Test Files  5 passed (5)
+      Tests  62 passed (62)
+
+cargo test --lib menu (src-tauri):
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; finished in 0.00s
+
+FULL SUITE (pnpm vitest run)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 732 passed (733)
+      Tests  3 failed | 5428 passed (5431)
+The 3 failures are src/editor/pdfjsCopy.test.ts on this machine only (CRLF checkout of public/pdfjs
+files vs the LF package copy); they pass on CI and are not touched by this PR.
+
+TYPECHECK
+tsc --noEmit -p . : exit 0

@@ -2,8 +2,10 @@
 // crash reports open GitHub's new-issue page in the user's own browser: the app submits nothing
 // (APP-037: the message box in src/feedback builds the address with feedbackUrl).
 
+import { GITHUB_URL } from "../onboarding/helpItems";
+
 /** GitHub's new-issue page of the project (APP-037 Compat). */
-export const FEEDBACK_REPO = "https://github.com/TxaisX/kolux/issues/new";
+export const FEEDBACK_REPO = `${GITHUB_URL}/issues/new`;
 /** Browsers and GitHub take addresses this long; a longer report is trimmed with a note. */
 export const URL_CAP = 8000;
 

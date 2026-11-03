@@ -60,3 +60,9 @@ test("T-547: Check now is off and reads Checking while that provider's check is 
   expect(mm).toMatch(/>Check now</);
   expect(mm).not.toMatch(/<button[^>]*disabled[^>]*>Check now/);
 });
+
+test("UX-audit: removing a kept key asks first; a missing key has only a disabled Remove", () => {
+  const out = html(rows);
+  const mm = out.slice(out.indexOf('data-provider="minimax"'));
+  expect(mm).toMatch(/data-reset[^>]*aria-label="Remove MiniMax API key"[^>]*>Remove/);
+});

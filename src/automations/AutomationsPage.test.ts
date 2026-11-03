@@ -6,8 +6,9 @@ import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import AutomationsPage, { type Data } from "./AutomationsPage";
 
-const render = (initial: { data?: Data; error?: string; runs?: boolean; open?: string }) =>
-  renderToString(createElement(AutomationsPage, { projects: [{ id: "p1", name: "shop", path: "C:\\src\\shop" }], agents: [], settings: {}, onSettings: () => {}, initial }));
+type Initial = NonNullable<Parameters<typeof AutomationsPage>[0]["initial"]>;
+const render = (initial: Initial, o: { projects?: { id: string; name: string; path: string }[]; onClose?: () => void } = {}) =>
+  renderToString(createElement(AutomationsPage, { projects: o.projects ?? [{ id: "p1", name: "shop", path: "C:\\src\\shop" }], agents: [], settings: {}, onSettings: () => {}, onClose: o.onClose, initial }));
 
 test("a failed load is an error with Retry, not a nothing-created message", () => {
   const html = render({ error: "the saved automations could not be read" });
@@ -160,4 +161,71 @@ test("T-193-b the agent filter lists Kolux agents only", () => {
   expect(group).toContain(">claude<");
   expect(group).toContain(">codex<");
   expect(group).not.toMatch(/hermes|openclaw/i);
+});
+
+// UX audit 2: the opened page, menus, runs, errors, Close and Refresh.
+test("UX2: the opened page shows the last action's note and the delete confirmation, and Edit and Delete in its header", () => {
+  const html = render({ data: many, open: "auto-1", note: { text: "Run now: Nightly checks is queued" }, asking: "auto-1" });
+  expect(html).toContain("Run now: Nightly checks is queued");
+  expect(html).toContain("Delete Nightly checks?");
+  expect(html).toContain("Its run history goes with it.");
+  expect(html).toMatch(/<button class="btn"[^>]*>Edit<\/button>/);
+  expect(html).toMatch(/<button class="btn"[^>]*>Delete<\/button>/);
+});
+
+test("UX2: a failing action reads as an alert, a good one as a status", () => {
+  expect(render({ data: many, note: { text: "boom", bad: true } })).toMatch(/class="note warn" role="alert">boom/);
+  expect(render({ data: many, note: { text: "fine" } })).toMatch(/class="note ok" role="status">fine/);
+});
+
+test("UX2: an open row menu has a backdrop to click outside of, and the dots say it is expanded", () => {
+  const html = render({ data: many, menu: "auto-1" });
+  expect(html).toContain('class="menu-backdrop"');
+  expect(html).toContain('aria-expanded="true"');
+  const shut = render({ data: many });
+  expect(shut).not.toContain("menu-backdrop");
+  expect(shut).not.toContain('aria-expanded="true"');
+});
+
+test("UX2: while Run now is being asked for, the button is disabled and says Starting, in the menu and in the page", () => {
+  const html = render({ data: many, running: ["auto-1"], menu: "auto-1" });
+  expect(html).toContain("Starting…");
+  expect(html.split("disabled=\"\" title=\"Run now is already being started\"").length - 1).toBe(2); // the menu item and the page header
+  const idle = render({ data: many });
+  expect(idle).not.toContain("Starting…");
+});
+
+test("UX2: a failed runs read says so with Retry, and never No runs yet", () => {
+  const html = render({ data: { automations: many.automations, runs: [], runsError: "the run history is unreadable" }, runs: true });
+  expect(html).toContain("The runs could not be read");
+  expect(html).toContain("the run history is unreadable");
+  expect(html).toContain("Retry");
+  expect(html).not.toContain("No runs yet");
+});
+
+test("UX2: every run row has a button that opens it, so the keyboard can reach it", () => {
+  const html = render({ data: many, runs: true });
+  expect(html).toContain('aria-label="Open run #1 of Nightly checks"');
+  expect(html).toContain('aria-label="Open run #1 of On new PR"');
+});
+
+test("UX2: the bar has a Close button when the page can be closed, and Refresh shows busy", () => {
+  expect(render({ data: many }, { onClose: () => {} })).toContain('aria-label="Close Automations"');
+  expect(render({ data: many })).not.toContain('aria-label="Close Automations"');
+  const busy = render({ data: many, refreshing: true });
+  expect(busy).toMatch(/aria-label="Refresh" aria-busy="true" disabled=""/);
+  expect(render({ data: many })).not.toContain('aria-busy="true"');
+});
+
+test("UX2: with no projects the bar and the empty state offer Add a project", () => {
+  const html = render({ data: { automations: [], runs: [] } }, { projects: [] });
+  expect(html.split(">Add a project</button>").length - 1).toBe(2);
+  expect(html).toContain("none is added yet");
+  expect(render({ data: many })).not.toContain("Add a project");
+});
+
+test("UX2: deleting a Hermes job says it is removed from Hermes itself", () => {
+  const html = render({ data: { automations: [hermesRow], runs: [] }, open: "hermes:j1", asking: "hermes:j1" });
+  expect(html).toContain("This removes the job from Hermes itself");
+  expect(html).not.toContain("Its run history goes with it.");
 });

@@ -15,6 +15,7 @@ import { hideFrontFor, splitFront } from "./frontMatter";
 import { FrontMatterBlock } from "../shell/MdViewControls";
 import { frontControl } from "../shell/mdView";
 import { mdPrefs, setMdPrefs } from "../shell/mdPrefs";
+import { useMenuKeys } from "./menuKeys";
 import { followClick, inertClick, type LinkHandler } from "./linkClicks";
 import { drawDiagrams, esc, loadRenderers, renderNote, watchRenderers } from "./diagrams";
 import { filterDataPictures } from "./notePictures";
@@ -84,6 +85,8 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
   const [toc, setToc] = useState(false);
   // EDIT-018: the actions menu and the line saying how the PDF export went.
   const [menu, setMenu] = useState(false);
+  const { box: menuBox, remember } = useMenuKeys(menu, () => setMenu(false));
+  const exporting = useRef(false); // a second Export while one runs would print the note twice
   const [pdfLine, setPdfLine] = useState<string | null>(null);
   const page = useRef<HTMLDivElement>(null);
   const section = useRef<HTMLElement>(null);
@@ -162,7 +165,8 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
   const exportPdf = async () => {
     setMenu(false);
     const shown = page.current;
-    if (!shown) return;
+    if (!shown || exporting.current) return;
+    exporting.current = true;
     setPdfLine("Exporting to PDF...");
     try {
       const copy = shown.cloneNode(true) as HTMLElement;
@@ -178,6 +182,8 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
       setPdfLine(done.kind === "saved" ? `Saved ${done.path}` : null);
     } catch (err) {
       setPdfLine(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      exporting.current = false;
     }
   };
 
@@ -205,13 +211,18 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
         )}
         <span className="right">
           <span className="diff-actions">
-            <button className="ib" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)} title="Note actions" aria-label="Note actions">
+            <button className="ib" aria-haspopup="menu" aria-expanded={menu}
+              onClick={(e) => {
+                remember(e.currentTarget); // before the menu opens: its first row takes focus at once
+                setMenu((m) => !m);
+              }}
+              title="Note actions" aria-label="Note actions">
               <Dots size={12} />
             </button>
             {menu && (
               <>
                 <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
-                <div className="menu diff-menu" role="menu">
+                <div ref={menuBox} className="menu diff-menu" role="menu" aria-label="Note actions">
                   <button role="menuitem" className="menu-item" onClick={() => void exportPdf()}>
                     <span className="name">Export to PDF...</span>
                   </button>
@@ -219,7 +230,7 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
               </>
             )}
           </span>
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)" aria-label="Close tab">
             <Close size={12} />
           </button>
         </span>

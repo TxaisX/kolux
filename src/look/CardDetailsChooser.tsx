@@ -12,7 +12,7 @@ export function CardDetailsChooser({ settings, onSetting }: { settings: Record<s
       </h3>
       {CARD_DETAILS.map((d) => (
         <label key={d.id} className="check">
-          <input type="checkbox" aria-label={`card shows ${d.label.toLowerCase()}`} checked={shown.includes(d.id)} disabled={d.locked} onChange={(e) => onSetting(CARD_DETAILS_FIELD, detailsAfter(settings, d.id, e.target.checked))} />
+          <input type="checkbox" aria-label={`card shows ${d.label.toLowerCase()}`} checked={shown.includes(d.id)} disabled={d.locked} title={d.locked ? "Always shown" : undefined} onChange={(e) => onSetting(CARD_DETAILS_FIELD, detailsAfter(settings, d.id, e.target.checked))} />
           {d.label}
         </label>
       ))}

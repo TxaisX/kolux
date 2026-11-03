@@ -1,0 +1,101 @@
+T-679 - Settings ask before removing, show errors, keep typed values (DT-C115; SET-036; UX audit lane E1)
+Coordinator 57, branch s-57/ux-settings, base e93a23ba (origin/main), code commit 1154c030, 2026-11-02.
+
+WHAT CHANGED
+- Every Remove or Clear in Settings asks first, inline (Yes / Keep): accounts, provider usage,
+  safety rules, custom terminal schemes, shortcut chords, AI recipes Clear, Open-in apps, clear
+  attempts. The confirm keeps each control's own look (ResetButton className/title).
+- Errors show where they happen: a failed save keeps the typed safety rule, a sign-in error shows on
+  its row and clears when the row changes, the clear-attempts error is shown.
+- Number boxes (auto-save delay, quiet minutes) save after the pause only when the text is a
+  finished number in range (draft.ts `ready`); anything else waits and is saved, clamped, on leaving
+  the field, changing page or closing the window. Typing again after a leave goes back to pause rules.
+- The notification volume saves on release, not on every move.
+- The feedback link points at the real repository; the settings search index covers every drawn
+  section (a test checks each one) and opens the right fold.
+- spec/17-settings-appearance.md SET-036: Rules gain the number-box pause line.
+
+WHY
+Static UX audit rows settings-b.md 2-10, backend-wiring.md 9, destructive.md 19: one stray click
+removed an account or rule, errors vanished, and clamping on the pause turned "1" into 200 while typing.
+
+REVIEW
+Opus review B+ -> fix pass -> B+ -> second fix pass -> re-review A- -> leave-then-type race fixed
+(test "typing again after a leave while its save runs goes back to pause rules").
+
+TESTS (named, the changed draft/rules/search/sign-in/notification/editor files)
+ ✓ src/settings/draft.test.ts > SET-036: the text saves after a short pause, and typing again restarts the pause 11ms
+ ✓ src/settings/draft.test.ts > SET-036: leaving the field saves at once, no waiting for the pause 1ms
+ ✓ src/settings/draft.test.ts > SET-036: a keystroke made while the previous save runs is kept, and saves queue in order 2ms
+ ✓ src/settings/draft.test.ts > SET-036: a failed save keeps the typed text for another try 0ms
+ ✓ src/settings/draft.test.ts > SET-036: input-method composition is never saved half-way 12ms
+ ✓ src/settings/draft.test.ts > SET-036: leaving the field mid-composition saves what the field then holds 0ms
+ ✓ src/settings/draft.test.ts > SET-036: an update from outside does not overwrite what is being typed, but does reach an idle field 0ms
+ ✓ src/settings/draft.test.ts > SET-036: an outside update during a save is ignored too, then the saved text stands 15ms
+ ✓ src/settings/draft.test.ts > SET-036: closing the window flushes the pending text; Escape puts the stored text back 0ms
+ ✓ src/settings/draft.test.ts > SET-036: a save that resolves to the stored text puts that text in the box (typed 5, stored 200) 0ms
+ ✓ src/settings/draft.test.ts > SET-036: a keystroke made while a clamped save runs is kept, not overwritten by the stored text 15ms
+ ✓ src/settings/draft.test.ts > SET-036: an empty or unreadable delay fails to save and discard puts the saved delay back 0ms
+ ✓ src/settings/notifications.test.ts > APP-007: close to tray is off by default and on only when saved as true 2ms
+ ✓ src/settings/notifications.test.ts > SET-034: with nothing saved, every kind is on except the bell, focused worktrees stay quiet, full volume, system sound 1ms
+ ✓ src/settings/notifications.test.ts > SET-034: saved choices are read back; a broken volume or sound falls back to the default 1ms
+ ✓ src/settings/notifications.test.ts > SET-034: the test plays one sound: Kolux's tone with a silent toast, or the system sound; volume 0 is silent 0ms
+ ✓ src/settings/draft.test.ts > SET-036: a pause mid-typing leaves the box alone: 1, pause, then 500 gives 1500, and 5, pause, 00 gives 500 48ms
+ ✓ src/settings/draft.test.ts > SET-036: only leaving clamps: 5 shows 200, 20000 shows 10000, and the same text left by closing the window is stored too 15ms
+ ✓ src/settings/draft.test.ts > SET-036: an emptied box is not saved by the pause, so retyping never passes through a stored value 16ms
+ ✓ src/settings/draft.test.ts > SET-036: leaving while a pause save runs still saves the text that is not ready (and clamps it) 15ms
+ ✓ src/settings/draft.test.ts > SET-036: a pause save that is running does not go on to save a text that is not ready 31ms
+ ✓ src/settings/draft.test.ts > SET-036: typing again after a leave while its save runs goes back to pause rules 15ms
+ ✓ src/settings/notifications.test.ts > SET-034: the page lists the kinds, the sound and volume, the test button and the system link 357ms
+ ✓ src/settings/notifications.test.ts > STAT-043: there are nine built-in tones, the system default and a custom file to choose from 1ms
+ ✓ src/settings/notifications.test.ts > STAT-043: a custom sound must be an allowed audio type; a saved file of another type is not read back 1ms
+ ✓ src/settings/notifications.test.ts > STAT-043: a real notification plays the chosen tone once and its toast is silent 0ms
+ ✓ src/settings/notifications.test.ts > STAT-043: the system sound plays through the toast and Kolux plays nothing; volume 0 is silent 0ms
+ ✓ src/settings/notifications.test.ts > STAT-044: an event goes through notify_event with its id and pane, and the same event never shows twice 0ms
+ ✓ src/settings/notifications.test.ts > STAT-043: a custom file plays and not the system sound; a file that cannot load falls back to the system sound 0ms
+ ✓ src/settings/notifications.test.ts > STAT-044: with Kolux focused and 'Stay quiet' on (the default), nothing is shown; a gone-quiet warning still is 0ms
+ ✓ src/settings/notifications.test.ts > UX-audit: a slider saves on release only when the value moved, and the quiet minutes read whole numbers from 0 0ms
+ ✓ src/settings/SignInNotice.test.ts > a stale active Claude account is flagged with its label and Sign in again 9ms
+ ✓ src/settings/SignInNotice.test.ts > the notice stays away while Claude Code handles its own sign-in, the key is connected, or the account is not active 0ms
+ ✓ src/settings/SignInNotice.test.ts > hidden until both lists have loaded, so it never flickers at startup 0ms
+ ✓ src/settings/SignInNotice.test.ts > a managed Codex account with a sign-in error is flagged; the system default never is 0ms
+ ✓ src/settings/SignInNotice.test.ts > every reason has its one fix, or none (ACCT-013) 26ms
+ ✓ src/settings/SignInNotice.test.ts > UX-audit: a sign-in that could not start says so next to the button 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > indexes only sections that are still drawn on their page 5ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > every Appearance entry names the Fold its section is drawn in, or a search hit shows nothing (UX-audit) 2ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > finds font in Appearance, inside the fold that holds it, and the terminal font (SET 022) 2ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > finds Ask Before Closing Running Terminals by confirm, close or agent (SET 043) 2ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > ranks the page whose title matches first, then the rest in page order 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > finds agents by name or id, and languages by their own names 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > refuses an over-long search before trimming, even a run of spaces 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > finds repositories by name or folder and hides the sections without a match 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > ACCT-030: a provider word leaves only that provider's card and accounts on the accounts page 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > ACCT-030: a word of the wrapper keeps everything inside it; clearing the search or naming the page shows it all 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > finds the Protected actions section on the Safety page by its everyday words (SAFE-015) 1ms
+ ✓ src/settings/search.test.ts > search all settings (SET-007) > every section a page draws is indexed, so a search can find it and never hides it (UX-audit) 4ms
+ ✓ src/settings/editorPrefs.test.ts > SET-038 editor and diff preferences > defaults match the card 3ms
+ ✓ src/settings/editorPrefs.test.ts > SET-038 editor and diff preferences > auto-save on with 1000 ms writes a second after typing stops 3ms
+ ✓ src/settings/editorPrefs.test.ts > SET-038 editor and diff preferences > whitespace-only changes show only with whitespace display on 0ms
+ ✓ src/settings/editorPrefs.test.ts > SET-038 editor and diff preferences > editor and diff word wrap are separate, and the delay is clamped 1ms
+ ✓ src/settings/editorPrefs.test.ts > SET-038 editor and diff preferences > T-323-b: All Changes starts from the diff preferences unless a layout was saved from a tab 0ms
+ ✓ src/settings/editorPrefs.test.ts > SET-038 editor and diff preferences > SET-018: an empty editor font falls back to the terminal font 1ms
+ ✓ src/settings/editorPrefs.test.ts > auto-save delay as typed (UX-audit) > 3000 can be typed digit by digit: nothing is clamped until the box is left 0ms
+ ✓ src/settings/editorPrefs.test.ts > auto-save delay as typed (UX-audit) > an empty or unreadable box saves nothing 0ms
+ ✓ src/settings/SafetyRules.test.ts > rules and scopes read what is saved and ignore what is malformed 2ms
+ ✓ src/settings/SafetyRules.test.ts > adding and removing a rule patches the global list or the project's own and keeps the rest 1ms
+ ✓ src/settings/SafetyRules.test.ts > a rule switched off for one project is off there only, and off everywhere wins 0ms
+ ✓ src/settings/SafetyRules.test.ts > reset for all projects keeps the per-project scopes; reset for a project drops only its own 0ms
+ ✓ src/settings/SafetyRules.test.ts > the rules view lists the scope's own rules, and the project scope shows what is off there 8ms
+ ✓ src/settings/SafetyRules.test.ts > the attempts view shows the masked command as given, newest first, and a disabled Clear when empty 17ms
+ ✓ src/settings/SafetyRules.test.ts > UX-audit: a rule whose save was refused gives a sentence (the form keeps its text); a stored one gives none 0ms
+ ✓ src/settings/SafetyRules.test.ts > UX-audit: Remove on a rule and Clear on the attempts ask first (the answer row replaces the button on the page itself) 2ms
+ Test Files  6 passed (6)
+      Tests  65 passed (65)
+
+FULL RUN: pnpm vitest run src/settings (VITEST_MAX_WORKERS=2)
+ Test Files  85 passed (85)
+      Tests  474 passed (474)
+vitest exit 0
+
+TYPE CHECK: pnpm tsc --noEmit
+tsc exit 0

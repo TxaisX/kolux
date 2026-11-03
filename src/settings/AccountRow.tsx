@@ -85,3 +85,18 @@ export function AccountRow({ title, detail, active, busy, onPick, trouble, manag
     </div>
   );
 }
+
+/** The accounts list could not be read at all: say so and offer Retry, instead of drawing nothing. */
+export function AccountsReadError({ name, error, onRetry }: { name: string; error: string; onRetry: () => void }) {
+  return (
+    <section className="conn-card" aria-label={`${name} accounts`}>
+      <span className="conn-name">{name} accounts</span>
+      <p className="conn-detail warn" role="alert">
+        The list could not be read: {error}
+      </p>
+      <button type="button" className="btn" onClick={onRetry}>
+        Retry
+      </button>
+    </section>
+  );
+}

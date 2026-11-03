@@ -139,3 +139,13 @@ FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
 
 TYPES
 pnpm exec tsc --noEmit -p .: exit 0
+
+MERGE OF MAIN (5177a5f2, 2026-11-03 07:15)
+main (with #104) was merged into this branch. Conflicts: the import block of the window keys hook (main's
+new imports kept, this branch's Setup Guide import added back; the Settings key still makes Explore and the
+Setup Guide step aside), and the PLAN and DECISIONS rows (both sides kept). No code of this PR changed.
+  keys + onboarding tests: Test Files 48 passed (48), Tests 439 passed (439)
+  full suite: Test Files 1 failed | 770 passed (771), Tests 3 failed | 5752 passed (5755)
+    (the 3 are the known local-only CRLF checks in the pdfjs copy test, green on Windows CI)
+  pnpm exec tsc --noEmit -p .: exit 0
+  firewall-check -Baseline: 0 new

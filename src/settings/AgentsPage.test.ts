@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import { hooksDefault } from "../onboarding/hooksOn";
-import { AgentsPageView, HooksSwitch, hookProblems, hooksOn } from "./AgentsPage";
+import { AgentsPageView, HooksSwitch, hookProblems, hooksOn, syncIfSaved } from "./AgentsPage";
 
 test("the Agents page carries the 200k cap switch, on by default (USAGE-006)", () => {
   const html = renderToString(createElement(AgentsPageView, { cap: true, onCap: () => {} }));
@@ -45,4 +45,12 @@ test("a failed hook install or removal is shown beside the switch instead of bei
   expect(html).toContain("claude: install refused");
   expect(html).toContain('role="alert"');
   expect(renderToString(createElement(HooksSwitch, { on: true, onSwitch: () => {} }))).not.toContain('role="alert"');
+});
+
+test("UX-audit: the hooks sync runs after a saved switch and never after a refused save", async () => {
+  let runs = 0;
+  const sync = () => Promise.resolve(++runs);
+  expect(await syncIfSaved(false, sync)).toBeUndefined();
+  expect(runs).toBe(0);
+  expect(await syncIfSaved(true, sync)).toBe(1);
 });

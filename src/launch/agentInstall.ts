@@ -2,15 +2,14 @@
 // `agents_install` (runs the agent's official installer and gives back the refreshed AgentInfo, or
 // rejects with one plain sentence). The rest is pure so it can be tested without a browser.
 import { invoke } from "@tauri-apps/api/core";
-import { FEATURED } from "./agents";
 import type { AgentInfo } from "./PlusMenu";
 
 export const installAgent = (id: string): Promise<AgentInfo> => invoke<AgentInfo>("agents_install", { id });
 
-/** Every catalogue agent for the dropdown: Claude, Codex and Grok first, the rest as given. Nothing while detection runs. */
+/** Every catalogue agent for the dropdown, A to Z by shown name (T-664, Txais 2026-11-02; replaces the featured three first). Nothing while detection runs. */
 export function pickList(agents: AgentInfo[], detecting: boolean): AgentInfo[] {
   if (detecting) return [];
-  return [...FEATURED.flatMap((id) => agents.filter((a) => a.id === id)), ...agents.filter((a) => !FEATURED.includes(a.id))];
+  return [...agents].sort((x, y) => x.name.localeCompare(y.name, undefined, { sensitivity: "base" }));
 }
 
 export const optionLabel = (a: AgentInfo): string => (a.installed ? a.name : `${a.name} (not installed)`);

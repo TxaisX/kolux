@@ -746,8 +746,10 @@ Tier: P1 · Pushed: 11 · State at 0.15.0: live-unverified
 User does: creates or edits a scheduled agent run with a name, schedule, prompt, provider and
   target; removes one; or starts one right away.
 User sees: the automation appears or changes in Kolux and fires on its schedule; run starts it at
-  once.
-Rules: a schedule is hourly, daily, weekdays, weekly, a five-field cron line or an RRULE;
+  once, unless that automation is still running, when it is refused naming the run in progress.
+Rules: run goes through the same check as Run Now in the window: an automation with a run pending,
+  dispatching or dispatched is refused, and the refusal creates no second run; a schedule is
+  hourly, daily, weekdays, weekly, a five-field cron line or an RRULE;
   `--schedule` is another name for `--trigger`; `--time` takes HH:MM, `--day` takes 0 to 6 with
   Sunday as 0, and `--timezone` takes an IANA zone name; on edit, schedule modifiers need a schedule
   flag alongside them, and invalid days are refused before the app is contacted; the target is the
@@ -767,6 +769,8 @@ Acceptance:
         makes a daily 9:00 automation in the current repo.
   - [ ] A precheck that exits 1 → a skipped run is recorded.
   - [ ] `kolux automations edit <id> --day 7` is refused without contacting the app.
+  - [ ] `kolux automations run <id>` while that automation is still running → refused, naming the
+        run in progress; no second run is made. (unit tests: evidence/T-671.txt)
 Compat: automations create, edit, remove and run; `--name`, `--trigger` (or `--schedule`), `--time`,
   `--day`, `--timezone`, `--prompt`, `--provider`, `--repo`, `--workspace`, `--workspace-mode`,
   `--reuse-session`, `--fresh-session`, `--precheck`, `--precheck-timeout`, `--enabled`,
