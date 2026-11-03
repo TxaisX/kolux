@@ -26,3 +26,5 @@ Review 2 (Sonnet, read-only) of the nit diff 56db8443: A, no should-fix.
 Main c82cedc5 merged in (c486e138; the PLAN and DECISIONS rows keep main's first, nothing else conflicted). After the merge:
   vitest on src/shell, the five files, src/skills, src/space, src/tasks: 453/453. npx tsc --noEmit: 0. plan-check OK.
   firewall-check -Baseline: 0 new. First load 1,488,312 vs main c82cedc5 1,488,312: main +0.
+Main 1fa0e52f merged in (181f392d; src/styles.css kept both sides: T-695's .auto-radio line, then the .hit-box rules). On 181f392d: full vitest 5891/5894 (the 3 known local CRLF pdfjsCopy failures), tsc 0, plan-check OK, firewall 0 new, first load 1,488,511 vs main 1,488,511 (+0).
+Main 33ee0efa merged in with no conflict. This PC's memory guard blocked the local re-run, so Windows CI on the merged head is the gate for that merge.
