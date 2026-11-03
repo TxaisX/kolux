@@ -127,6 +127,9 @@ test("usage-status.md:8: escapeStep picks the open question first, in the order 
   expect(escapeStep({ bulk: false, ending: true, asking: false })).toBe("ending");
   expect(escapeStep({ bulk: false, ending: false, asking: true })).toBe("asking");
   expect(escapeStep({ bulk: true, ending: true, asking: true })).toBe("bulk");
+  // T-692 (E3): the background sessions' End question closes after those, before the panel itself
+  expect(escapeStep({ bulk: false, ending: false, asking: false, background: true })).toBe("background");
+  expect(escapeStep({ bulk: false, ending: false, asking: true, background: true })).toBe("asking");
 });
 
 test("usage-status.md:11: a read that is still running makes the next tick do nothing", async () => {

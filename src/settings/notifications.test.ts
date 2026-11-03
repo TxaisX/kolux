@@ -173,3 +173,12 @@ test("UX-audit: a slider saves on release only when the value moved, and the qui
   expect(quietFromText("")).toBe(0);
   expect(quietFromText("abc")).toBe(0);
 });
+
+test("T-692 (E1): a stop right after a finish in the same worktree still shows; it keeps its own cooldown", async () => {
+  resetPacer();
+  const finish = { id: "p1:s:done:x:1", worktree: "C:/w/a", pane: "1", kind: "finish" as const };
+  await raiseNotification({ notifySuppressFocused: false }, "t", "b", finish);
+  await raiseNotification({ notifySuppressFocused: false }, "t", "b", { ...finish, id: "p1:s:stop:x:2", kind: "stop" as const });
+  expect(calls.map(([c, a]) => [c, a.kind])).toEqual([["notify_event", "finish"], ["notify_event", "stop"]]);
+  resetPacer();
+});
