@@ -1,0 +1,113 @@
+T-674 - First-run wizard, Setup Guide and agent start (DT-C110; ONB-004, ONB-005, ONB-015, ONB-020; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-2 (PR #106), 2026-11-02.
+
+WHAT CHANGED
+- Setup checklist (src/onboarding/guide.ts, Guides.tsx, SidebarStart.tsx): Hide from sidebar and the
+  Setup Guide's crossed-out eye save their own setting, setupChecklistHidden (registered in
+  src/carry/settingsRegistry.json as one the import leaves off). Hiding no longer counts every step
+  as done; only the legacy setupChecklist false from older profiles still does.
+- Wizard (src/onboarding/useWizard.ts, Wizard.tsx, sessionAgent.ts): with no agent installed the last
+  button is Pick a folder, with a line saying why, Check again and Open Agents settings; the agent list
+  is read on every screen and on agents-changed, so an agent installed from Connect counts at once.
+  Pick a folder steps aside for Add Project and records setup completed only once a project is added;
+  cancelling leaves it unfinished and Help > Onboarding brings it back. Open a session with no agent
+  says nothing started.
+- Dialog focus (src/onboarding/dialogFocus.ts): onboarding dialogs take focus, keep Tab and Shift+Tab
+  inside, close on Escape (a docked tip card never takes it; an Escape in the sign-in terminal stays
+  with the terminal) and give focus back.
+- Notes: failed save, failed agent start (src/agentstart/host.ts, AgentStartHost.tsx), missing GitHub
+  sign-in naming gh auth login (ConnectGithub.tsx); the Accounts step opens Settings > Accounts.
+- Hooks card (Guides.tsx, hooksOn.ts): Not now and Turn off are separate; a later skip records nothing.
+- Tours (tour.ts, Tours.tsx): a replay that cannot start says why; the tours hint is visible.
+- Help sheet (helpItems.ts, HelpSheet.tsx): Report Crash after Send Feedback, like the native Help menu.
+- Trust prompt (src/setup/TrustPrompt.tsx): says what is remembered. Keyboard hints follow the
+  platform (submitKeys.ts). A double click starts nothing twice (once() in agentstart/host.ts).
+- spec/16-onboarding.md: ONB-004, ONB-005, ONB-015 and ONB-020 Rules changed (DT-C110), each with an
+  acceptance line pointing here.
+
+WHY
+UX audit onboarding rows (proof/ux-audit/findings/onboarding.md:3-20, palette.md:4): setup was marked
+done when the folder picker was cancelled or the checklist hidden, the wizard offered a session with
+no agent and then did nothing, dialogs let focus escape, and several failures were silent.
+
+REVIEW
+Opus review B -> fix pass (d329c1d3: agent list followed, no-agent last step picks a folder, Escape
+counts only modal dialogs, Tab trap, sign-in terminal keeps its Escape) -> re-review PENDING.
+Left as low follow-ups from the first review: a failed close toast after Pick a folder, the GitHub
+card not refreshed after sign-in, a load error worded as a save error, an unused once() message, a
+failure reported after the panel closed.
+
+TESTS (verbose, the 7 test files this PR changes or adds)
+pnpm vitest run --reporter=verbose src/agentstart/once.test.ts src/onboarding/helpItems.test.ts
+  src/onboarding/hooksConsent.test.ts src/onboarding/sidebarStart.test.ts src/onboarding/useWizard.test.ts
+  src/onboarding/ux2.test.ts src/setup/TrustPrompt.test.ts
+ ✓ src/agentstart/once.test.ts > host once() > frees the key when the run throws
+ ✓ src/agentstart/once.test.ts > host once() > runs the first call, answers a second with the same key at once, and frees the key when the first settles
+ ✓ src/onboarding/helpItems.test.ts > 49-ux2 the help menu says what each entry is > has a Report Crash row after Send Feedback that runs reportCrash
+ ✓ src/onboarding/helpItems.test.ts > 49-ux2 the help menu says what each entry is > tells the checklist from the wizard in visible text, and the tours' wait is no hover title
+ ✓ src/onboarding/helpItems.test.ts > APP-010 Copy terminal diagnostics > puts the back end's summary on the clipboard and says so
+ ✓ src/onboarding/helpItems.test.ts > APP-010 Copy terminal diagnostics > reports a failure instead of claiming a copy
+ ✓ src/onboarding/helpItems.test.ts > APP-010 Restart Kolux > fires the back end once however many times it is clicked, and shows the restarting state
+ ✓ src/onboarding/helpItems.test.ts > APP-010 Restart Kolux > goes back to idle with the reason when the save point cancels it, and can be tried again
+ ✓ src/onboarding/helpItems.test.ts > APP-010 Restart Kolux > shows Restarting… and is disabled, so a click cannot reach it again
+ ✓ src/onboarding/helpItems.test.ts > APP-010 Restart Kolux > the sheet asks for app_restart, diag_summary and open_external by those names
+ ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > Copy terminal diagnostics and Restart keep the sheet open for their status line
+ ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > Docs, Changelog and GitHub hand a fixed https address to open_external
+ ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > Settings, Keyboard Shortcuts, Send Feedback, Check for Updates and Onboarding reach their own actions
+ ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > drops Milestones once the core steps are done and keeps the rest
+ ✓ src/onboarding/helpItems.test.ts > APP-010 the help menu list > has every named entry, in the card's order, Settings first
+ ✓ src/onboarding/hooksConsent.test.ts > 49-ux2: the card also offers Not now and Turn off
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: a saved true or false is a choice; nothing saved (or something unreadable) is not, and the switch then starts on
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: only moving on from the Connect screen records the choice; Back and the other screens record nothing
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: recording saves the switch first, then brings every agent in line (off takes Kolux's entries out)
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: the Connect screen shows the one line with its switch on by default, and off when the user turned it off
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: the card carries the same line, its switch on by default, and Done
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: the one-time card asks only a profile with no saved choice, and never while the first-run wizard is open
+ ✓ src/onboarding/hooksConsent.test.ts > T-608: the wizard writes no hooks until the user moves on from the line; then it records what the switch shows
+ ✓ src/onboarding/sidebarStart.test.ts > Hide from sidebar saves the choice and the entry goes (ONB-020)
+ ✓ src/onboarding/sidebarStart.test.ts > Hide goes through the settings save in turn: it reads what is saved, then writes only the changed key (FIX-1)
+ ✓ src/onboarding/sidebarStart.test.ts > a Hide that could not be saved brings the entry back with a short message (FIX-1)
+ ✓ src/onboarding/sidebarStart.test.ts > a Setup Guide close or an added project makes SidebarStart read its steps again; the entry stays up meanwhile (VIEW-114, FIX-3)
+ ✓ src/onboarding/sidebarStart.test.ts > a read caused by the guide switching on resets the focus floor, so a focus soon after does not read again (VIEW-114, FIX-4)
+ ✓ src/onboarding/sidebarStart.test.ts > the first window focus after mount does not read the steps a second time; one past the floor does (VIEW-114, FIX-3)
+ ✓ src/onboarding/useWizard.test.ts > Help > Onboarding reopens on screen one and tells the sidebar; a second click inside half a second is ignored; a failed reopen only toasts (VIEW-114, FIX-4)
+ ✓ src/onboarding/useWizard.test.ts > T-612: Open a session with no workspace yet closes setup as completed, opens Add Project, and starts the session in the folder picked, once
+ ✓ src/onboarding/useWizard.test.ts > T-612: with a workspace in front, Open a session starts the session there and closes setup as completed
+ ✓ src/onboarding/useWizard.test.ts > a failed close keeps the wizard open with a toast and tells the sidebar nothing; the retry closes it and tells the sidebar (VIEW-114, FIX-4)
+ ✓ src/onboarding/useWizard.test.ts > a plain terminal as the saved default starts nothing in the first folder (VIEW-114, FIX-4)
+ ✓ src/onboarding/useWizard.test.ts > every added project tells the sidebar before the first-folder check; the armed first folder starts the saved default agent once (VIEW-114, FIX-4)
+ ✓ src/onboarding/ux2.test.ts > row 17: the shortcut label follows the platform > is Ctrl+Enter on Windows and Cmd+Enter on a Mac
+ ✓ src/onboarding/ux2.test.ts > row 1: the checklist's hide flag > is its own key, not the legacy all-done one
+ ✓ src/onboarding/ux2.test.ts > row 3: Open a session needs an agent > follows the agent list: an agent installed after the wizard opened counts, and the stop unsubscribes
+ ✓ src/onboarding/ux2.test.ts > row 3: Open a session needs an agent > is null with no agent installed, and the wizard holds the button back with a reason
+ ✓ src/onboarding/ux2.test.ts > row 5: hooks consent only on an explicit move on > a later skip records nothing
+ ✓ src/onboarding/ux2.test.ts > row 9: a tour replay that cannot start says why > speaks for a forced replay that gave up or whose feature is off, and not for the rest
+ ✓ src/onboarding/ux2.test.ts > rows 12, 15: the error and connect words > names what failed
+ ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > Tab wraps at both ends and stays inside
+ ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > a docked tip card (aria-modal=false) after the dialog does not take its Escape
+ ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > focuses the dialog on open, closes on a window-level Escape, and gives the focus back
+ ✓ src/onboarding/ux2.test.ts > rows 7, 8: the dialogs take the focus and Escape works from anywhere > only the top dialog answers Escape
+ ✓ src/setup/TrustPrompt.test.ts > 49-ux2 the trust prompt says what is remembered > shows the memory line beside Run hooks and Don't run
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > Don't run skips the setup script: no trust saved, workspace_setup never asked
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > Run hooks saves trust for exactly the text shown, then runs; always-trust saves the whole repository
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > a trusted or the user's own script never asks
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > closing the last prompt host counts as Don't run for every waiting prompt
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > is worded for a changed script when one approved earlier changed
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > only a dialog opened over the prompt counts as replacing it, not the prompt's own or a non-element
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > prompts wait in line and show one at a time; a later prompt still shows after a Don't run
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > shows exactly the script that would run, the always-trust box, and Don't run / Run hooks
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > the issue command asks with the repository's main folder and is skipped on Don't run
+ ✓ src/setup/TrustPrompt.test.ts > SAFE-025 / STAT-056 the trust prompt > with no prompt mounted, nothing is approved and nothing waits
+
+  Test Files  7 passed (7)
+  Tests  57 passed (57)
+
+FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
+  ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+  Test Files  1 failed | 733 passed (734)
+  Tests  3 failed | 5429 passed (5432)
+  The 3 failures are src/editor/pdfjsCopy.test.ts (openjpeg_nowasm_fallback.js, LICENSE_OPENJPEG,
+  LICENSE_PDFJS_OPENJPEG): CRLF line endings in this local checkout, not part of this change; they pass on CI.
+
+TYPES
+pnpm tsc --noEmit: exit 0
