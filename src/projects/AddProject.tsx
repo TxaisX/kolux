@@ -21,6 +21,13 @@ export function nextChoice(key: string, at: number): number | null {
   return null;
 }
 
+/** Escape or a click outside: a clone under way asks first; Escape again keeps the copy going;
+ *  anything else just closes. */
+export function closeAction(busy: boolean, ticket: string, asking: boolean): "close" | "ask" | "keep" {
+  if (!busy || ticket === "create" || ticket === "") return "close";
+  return asking ? "keep" : "ask";
+}
+
 /** What the dialog asks the app to do; the default export wires it to the backend. */
 export type Api = {
   suggest: (url: string) => Promise<{ url: string; dest: string }>;
@@ -38,13 +45,15 @@ type ViewProps = {
   step: Step;
   onStep: (s: Step) => void;
   onBrowse: () => void;
+  /** Type a path instead of using the picker, or change the workspaces folder (the sidebar's form). */
+  onByPath?: () => void;
   onClose: () => void;
   api?: Api;
   onAdded?: (p: Project) => void;
   start?: Partial<Form>;
 };
 
-export function AddProjectView({ step, onStep, onBrowse, onClose, api, onAdded, start }: ViewProps) {
+export function AddProjectView({ step, onStep, onBrowse, onByPath, onClose, api, onAdded, start }: ViewProps) {
   const box = useRef<HTMLDivElement>(null);
   const choices = useRef<(HTMLButtonElement | null)[]>([]);
   const [f, setF] = useState<Form>({ ...EMPTY, ...start });
@@ -52,6 +61,7 @@ export function AddProjectView({ step, onStep, onBrowse, onClose, api, onAdded, 
   const ticket = useRef(f.ticket);
   ticket.current = f.ticket;
   const busy = f.ticket !== "";
+  const [asking, setAsking] = useState(false);
   useEffect(() => {
     // Focus stays inside the dialog on every step, so Escape always reaches it.
     if (step === "choose") choices.current[0]?.focus();
@@ -90,9 +100,15 @@ export function AddProjectView({ step, onStep, onBrowse, onClose, api, onAdded, 
     run(api.create(f.name, f.parent));
   };
   // Closing the dialog part-way through a clone cancels it, so nothing is left half copied.
-  const close = () => {
+  const leave = () => {
     if (busy && f.ticket !== "create") api?.cancel(f.ticket);
     onClose();
+  };
+  const close = () => {
+    const what = closeAction(busy, f.ticket, asking);
+    if (what === "ask") setAsking(true);
+    else if (what === "keep") setAsking(false);
+    else leave();
   };
   return (
     <div className="ask-backdrop" onMouseDown={close}>
@@ -137,6 +153,16 @@ export function AddProjectView({ step, onStep, onBrowse, onClose, api, onAdded, 
                 <span className="add-choice-name">New project</span>
               </button>
             </div>
+            {onByPath && (
+              <button className="link" data-add-by-path onClick={onByPath}>
+                Type a path, or change the workspaces folder…
+              </button>
+            )}
+            <div className="btn-row">
+              <button className="btn" data-add-close onClick={close}>
+                Close
+              </button>
+            </div>
           </>
         )}
         {step === "clone" && (
@@ -168,6 +194,19 @@ export function AddProjectView({ step, onStep, onBrowse, onClose, api, onAdded, 
         )}
         {busy && <p className="ask-body add-progress" aria-live="polite">{f.progress}</p>}
         {f.error && <p className="add-error" role="alert">{f.error}</p>}
+        {asking && busy && (
+          <div role="alertdialog" aria-label="Stop copying?" data-add-stop-ask>
+            <p className="ask-body">The copy is not finished. Stop it and close? Nothing half copied is kept.</p>
+            <div className="btn-row">
+              <button className="btn" autoFocus onClick={() => setAsking(false)}>
+                Keep copying
+              </button>
+              <button className="btn danger" onClick={leave}>
+                Stop and close
+              </button>
+            </div>
+          </div>
+        )}
         {step !== "choose" && (
           <div className="btn-row">
             <button className="btn" onClick={() => onStep("choose")} disabled={busy}>
@@ -212,7 +251,7 @@ const BACKEND: Api = {
 
 /** The dialog with its own step; `onBrowse` runs the folder picker after the dialog closes, and
  *  `onAdded` gets a project cloned or created here. */
-export default function AddProject({ onBrowse, onClose, onAdded }: { onBrowse: () => void; onClose: () => void; onAdded: (p: Project) => void }) {
+export default function AddProject({ onBrowse, onByPath, onClose, onAdded }: { onBrowse: () => void; onByPath?: () => void; onClose: () => void; onAdded: (p: Project) => void }) {
   const [step, setStep] = useState<Step>("choose");
   return (
     <AddProjectView
@@ -222,6 +261,7 @@ export default function AddProject({ onBrowse, onClose, onAdded }: { onBrowse: (
         onClose();
         onBrowse();
       }}
+      onByPath={onByPath}
       onClose={onClose}
       api={BACKEND}
       onAdded={onAdded}

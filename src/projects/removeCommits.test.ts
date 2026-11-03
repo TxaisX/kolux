@@ -22,6 +22,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     if (cmd === "scm_prs_poll") return Promise.resolve({ prs: [], limitedUntil: null });
     if (cmd === "setup_suggestion") return Promise.resolve({ kind: "none" });
     if (cmd === "groups_get" || cmd === "activity_get" || cmd === "project_icons_list") return Promise.resolve({});
+    if (cmd === "skills_scan") return Promise.resolve({ skills: [] }); // the sidebar checklist reads it
     return Promise.resolve(null);
   },
 }));

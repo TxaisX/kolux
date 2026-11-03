@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState } from "react";
-import { begin, importLine, setAll, stopNow, summary, take, toggle, type ScanEvent, type ScanState } from "./scanView";
+import { begin, importLine, scanToStop, setAll, stopNow, summary, take, toggle, type ScanEvent, type ScanState } from "./scanView";
 import type { Project } from "./model";
 
 type Props = { root: string; onClose: () => void; onDone: (message: string, project?: Project) => void; onProblem: (err: unknown) => void };
@@ -25,7 +25,12 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
 
   useEffect(() => {
     const off = listen<ScanEvent>("repo-scan", (e) => setScan((s) => (s ? take(s, e.payload) : s)));
-    return () => void off.then((f) => f());
+    return () => {
+      void off.then((f) => f());
+      // Closing mid-scan must not leave the walk running in the background.
+      const running = scanToStop(live.current);
+      if (running !== null) void invoke("repo_scan_stop", { scanId: running });
+    };
   }, []);
   // Steady labels follow the list; they depend on the paths only.
   const paths = scan?.found.map((f) => f.path).join("\n") ?? "";

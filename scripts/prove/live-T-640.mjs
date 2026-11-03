@@ -68,13 +68,13 @@ try {
     check(`right-click ${label} opens a menu with a remove item, and Escape closes it`, r === "ok" && items.some((t) => want[label].test(t)) && !still, { items, stillOpenAfterEscape: still });
     if (still) { await app.evalJs(`document.querySelector("[role=menu]").previousElementSibling.click()`); await sleep(400); }
   }
-  const hoverX = await app.evalJs(`["data-proj-x", "data-main-x"].map((a) => !!document.querySelector("aside.sidebar button[" + a + "]"))`);
-  check("the project header and the main checkout row each have a hover X", hoverX.every(Boolean), hoverX);
+  const hoverX = await app.evalJs(`["data-proj-x"].map((a) => !!document.querySelector("aside.sidebar button[" + a + "]"))`);
+  check("the project header has its Remove project button (since T-687 it replaces the main checkout row's X)", hoverX.every(Boolean), hoverX);
 
   // Remove B through its own row control.
   const bKey = norm(B_DIR);
   const clicked = await app.evalJs(`(() => { const row = [...document.querySelectorAll("aside.sidebar [data-path]")].find((e) => e.getAttribute("data-path").replace(/\\\\/g, "/").toLowerCase() === ${JSON.stringify(bKey)});
-    if (!row) return "no B row"; const b = [...row.querySelectorAll("button")].find((x) => /^Remove this workspace/.test(x.title)); if (!b) return "no remove button on B"; b.click(); return "clicked"; })()`);
+    if (!row) return "no B row"; const b = [...row.querySelectorAll("button")].find((x) => /^Delete this workspace/.test(x.title)); if (!b) return "no remove button on B"; b.click(); return "clicked"; })()`);
   await sleep(1500);
   const asked = await app.evalJs(`[...document.querySelectorAll("aside.sidebar .sb-form.warn")].filter((e) => e.getClientRects().length).map((e) => e.innerText.replace(/\\s+/g, " ").slice(0, 200))`);
   log(`remove B: ${clicked}; asked ${JSON.stringify(asked)}; ${await ctx.shot(`T-640-${look}-after-ask`)}`);
@@ -83,15 +83,15 @@ try {
   let after = await app.evalJs(ROWS);
   check("B removed through its X: the question showed, the row is gone, its folder deleted", asked.length === 1 && confirmed === "confirmed" && !after.some((r) => norm(r.path) === bKey) && !existsSync(B_DIR), { rows: after.map((r) => r.text), folder: existsSync(B_DIR) });
 
-  // Remove the project through the main checkout row's X: the question says the folder stays, the project leaves the pane.
-  await app.click("aside.sidebar button[data-main-x]");
+  // Remove the project through the project header's Remove project button (T-687 replaced the main row's X): the question says the folder stays, the project leaves the pane.
+  await app.click("aside.sidebar button[data-proj-x]");
   await sleep(1000);
   const q = await app.evalJs(`document.querySelector('aside.sidebar [role=alertdialog][aria-label="Remove project"]')?.innerText.replace(/\\s+/g, " ") ?? "no question"`);
   log(`project question: ${q}; ${await ctx.shot(`T-640-${look}-after-project-ask`)}`);
   await app.click("aside.sidebar button[data-remove-project-yes]");
   await sleep(3000);
   after = await app.evalJs(ROWS);
-  check("the project removed through the main row's X: the question says the folder stays, the pane is empty, the folder is still on disk",
+  check("the project removed through its Remove project button: the question says the folder stays, the pane is empty, the folder is still on disk",
     /stay on disk/.test(q) && !after.some((r) => /proj/.test(r.cls)) && existsSync(REPO(look)), { q, rows: after.map((r) => r.text), folder: existsSync(REPO(look)) });
   log(`pane after: ${await ctx.shot(`T-640-${look}-after`)}`);
   ok = Object.keys(results).length === 6 && Object.values(results).every(Boolean);

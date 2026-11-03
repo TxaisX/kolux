@@ -98,3 +98,35 @@ export function edgeScroll(pointerY: number, top: number, bottom: number, zone =
   if (pointerY > bottom - zone) return step;
   return 0;
 }
+
+/**
+ * The order after `id` swaps places with its next sibling (up = earlier). `siblings` lists the rows it may
+ * step among (same project, same parent, in screen order); rows outside it are never swapped with, so the move
+ * is always visible. At either end of the siblings, or for a row not among them, nothing changes.
+ */
+export function stepRow(order: string[], id: string, dir: -1 | 1, siblings: string[] = order): string[] {
+  const among = order.filter((k) => siblings.includes(k));
+  const to = among.indexOf(id) + dir;
+  if (!among.includes(id) || to < 0 || to >= among.length) return order;
+  const a = order.indexOf(id);
+  const b = order.indexOf(among[to]);
+  const next = [...order];
+  [next[a], next[b]] = [next[b], next[a]];
+  return next;
+}
+
+/**
+ * The rows `w` can step among with Move up and Move down: workspaces of the same project under the same
+ * parent (the main checkout excluded), in the order they are on screen. `key` spells a path one way.
+ */
+export function stepSiblings(
+  all: { path: string; parent?: string | null; isMain: boolean }[],
+  w: { path: string; parent?: string | null; isMain: boolean },
+  onScreen: string[],
+  key: (path: string) => string,
+): string[] {
+  if (w.isMain) return [];
+  const parent = w.parent ? key(w.parent) : "";
+  const kin = new Set(all.filter((x) => !x.isMain && (x.parent ? key(x.parent) : "") === parent).map((x) => key(x.path)));
+  return onScreen.filter((k) => kin.has(k));
+}

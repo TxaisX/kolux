@@ -1,11 +1,12 @@
 // PROJ-019: the project's icon chooser, shown in the project's settings. An emoji typed or pasted,
 // one of the built-in icons, or a small picture from disk; Reset brings the automatic icon back.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BUILT_IN_GLYPHS, ProjectIcon } from "./IconView";
 import { builtInIcon, emojiIcon, ICON_NAMES, pictureIcon, pictureProblem } from "./projectIcon";
 
 export function IconPicker({ value, name, onSet, onProblem }: { value: string | undefined; name: string; onSet: (icon: string) => void; onProblem: (text: string) => void }) {
   const [emoji, setEmoji] = useState("");
+  const file = useRef<HTMLInputElement>(null);
   const pick = (file: File | undefined) => {
     if (!file) return;
     const problem = pictureProblem(file.type, file.size);
@@ -37,10 +38,11 @@ export function IconPicker({ value, name, onSet, onProblem }: { value: string | 
         </button>
       </div>
       <div className="btn-row">
-        <label className="btn" style={{ cursor: "pointer" }}>
+        {/* A real button, so the keyboard can reach the picture chooser; the file input stays hidden. */}
+        <button className="btn" type="button" data-icon-picture onClick={() => file.current?.click()}>
           Picture...
-          <input type="file" aria-label="project icon picture" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-        </label>
+        </button>
+        <input ref={file} type="file" aria-label="project icon picture" tabIndex={-1} accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
         <button className="btn" disabled={!value} onClick={() => onSet("")}>
           Reset
         </button>
