@@ -21,7 +21,7 @@ import { sameDir } from "../../workspaces";
 import Pane from "./Pane";
 import { gridFrame } from "./gridFrame";
 import { tabKeyAction, tabStop } from "./tabKeys";
-import { menuAnchor } from "./tabMenu";
+import { menuAnchor } from "./tabMenuStart";
 import { useWindow } from "./store";
 
 export default function Grid() {

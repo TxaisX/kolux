@@ -23,10 +23,11 @@ import { capOn, claudeOf, codexOf, contextFill, meterOf, readsLeft } from "../..
 import { nameOf, sameDir } from "../../workspaces";
 import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
-import LostPane from "./LostPane";
+import { deferred } from "../../lazy/deferred";
 import SeatChooser from "./SeatChooser";
 import TerminalPane from "../../terminal/TerminalPane";
 import { useWindow } from "./store";
+
 import { EditorPane } from "../../lazy/panes";
 import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
@@ -34,6 +35,9 @@ import { PreviewPane } from "../../lazy/panes";
 import { CheckPane } from "../../lazy/panes";
 import { BrowserPane } from "../../lazy/panes";
 import { openInBrowser } from "../../browser/openIn";
+
+/** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
+const LostPane = deferred(() => import("./LostPane"));
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {

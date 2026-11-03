@@ -16,3 +16,8 @@ test("a pane with a kind never reaches the terminal, even when its data is missi
   const before = pane.slice(0, pane.indexOf("<TerminalPane"));
   expect(before).toMatch(/if \(p\.kind\) \{?\s*return <LostPane/);
 });
+
+test("the placeholder loads when one is drawn, not at start", () => {
+  expect(pane).toContain('deferred(() => import("./LostPane"))');
+  expect(pane).not.toMatch(/import LostPane from/);
+});

@@ -7,6 +7,7 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) })
 
 import { focusIsLost, openTabMenu } from "./tabMenuKeys";
 import dialogs from "./Dialogs.tsx?raw";
+import menu from "./TabMenuView.tsx?raw";
 import store from "../windowStore.ts?raw";
 
 type Handler = (e: Event) => void;
@@ -100,10 +101,12 @@ test("focusIsLost is true only for nothing or the page body", () => {
   expect(focusIsLost({}, body)).toBe(false);
 });
 
-test("Dialogs wires the hook to the menu element; the old bubble-phase Escape listener is gone", () => {
-  expect(dialogs).toContain("useTabMenuKeys(tabMenu !== null, tabBox");
-  expect(dialogs).toContain("ref={tabBox}");
-  expect(dialogs).toContain("title={why}");
+test("the tab menu wires the hook to its element and loads on first use; the old bubble-phase Escape listener is gone", () => {
+  expect(menu).toContain("useTabMenuKeys(tabMenu !== null, tabBox");
+  expect(menu).toContain("ref={tabBox}");
+  expect(menu).toContain("title={why}");
+  expect(dialogs).toContain("deferred(() => import(\"./TabMenuView\"))");
+  expect(dialogs).not.toMatch(/from "\.\/(TabMenuView|tabMenuKeys)"/);
   expect(dialogs).toContain("closeConfirmLabel(asking.keys.length)");
   expect(store).not.toMatch(/Escape" && setTabMenu/);
 });

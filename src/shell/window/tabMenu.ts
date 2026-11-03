@@ -35,16 +35,5 @@ const NOTHING_TO_CLOSE: Record<Exclude<Which, "one">, string> = {
   all: "There is nothing to close. Pinned tabs are never closed in bulk.",
 };
 
-/** UX lane A (destructive.md row 21): the confirm button of the close question says how many tabs go. */
-export const closeConfirmLabel = (count: number): string => (count === 1 ? "Close tab" : `Close ${count} tabs`);
-
-/** The tab menu is about 240 px wide and 330 px tall; `menuAnchor` keeps its top-left corner where the whole menu
- *  still fits in the window, and never off the top or left edge, even in a very small window. */
-export const MENU_SIZE = { width: 240, height: 330, margin: 8 } as const;
-export function menuAnchor(x: number, y: number, viewW: number, viewH: number): { top: number; left: number } {
-  const { width, height, margin } = MENU_SIZE;
-  return { top: Math.max(margin, Math.min(y, viewH - height - margin)), left: Math.max(margin, Math.min(x, viewW - width - margin)) };
-}
-
 /** The keys a confirmed close-all would take, pinned tabs included (the question says so). */
 export const allKeys = (order: number[], key: number): number[] => closeSet(order, key, "all");

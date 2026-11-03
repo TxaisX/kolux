@@ -1,7 +1,8 @@
 // TERM-044 / TERM-046 / TERM-049: the tab menu's close rows. What each row closes and when it is
-// disabled is decided here; the menu only draws it (shell/window/Dialogs.tsx).
+// disabled is decided here; the menu only draws it (shell/window/TabMenuView.tsx).
 import { expect, test } from "vitest";
-import { closeConfirmLabel, closeRows, menuAnchor } from "./tabMenu";
+import { closeRows } from "./tabMenu";
+import { closeConfirmLabel, menuAnchor } from "./tabMenuStart";
 
 const rows = (order: number[], key: number, pinned: number[] = []) => closeRows(order, key, new Set(pinned));
 

@@ -115,9 +115,19 @@ REVIEW (opus-high-review, read-only, each covering exactly its diff)
 - Fixes after review 1 (bd1e4302, 345a2568): vitest src/shell src/chrome src/browser src/terminal
   src/keys src/lazy src/skills: 207 files, 1251 tests passed; src/shell src/chrome after 345a2568:
   55 files, 246 passed; tsc exit 0. Only this evidence file changed after review 3.
-- Follow-ups not fixed: the tab menu height in MENU_SIZE (tabMenu.ts menuAnchor, 330 px) is an
+- Follow-ups not fixed: the tab menu height in MENU_SIZE (tabMenuStart.ts menuAnchor, 330 px) is an
   estimate, fitIn on the real size corrects it; tab search matches a browser page by title only, not
   its address; the windowSource scan only reaches files directly under src/shell.
+
+FIRST LOAD (train 2 hand-back)
+57 took #120 off train 2: on main 5177a5f2 it added 4,079 bytes to first load (vite build +
+scripts/bundle-budget.mjs: main 1,485,561, branch 1,489,640). The tab menu moved to TabMenuView.tsx (with
+tabMenuKeys.ts and the close rows of tabMenu.ts), loaded through lazy/deferred on its first right-click;
+menuAnchor and closeConfirmLabel moved to tabMenuStart.ts, the two parts Grid and Dialogs need at start;
+LostPane loads when a lost tab is drawn. deferred() prefetches both after the first frame, so a right-click
+finds the menu loaded. After: branch 1,485,799 bytes, main +238 (target main +500). The rest of the +238 is
+tabKeys, Notices, browserOpen and the ScreenBoundary import in Content, which moved the crash report code
+from index into a shared chunk (index -14,391, FeedbackDialog + privacy +14,765).
 
 SPEC
 spec/03-terminals-panes.md: TERM-135 Rules + acceptance (dismiss is not an answer), TERM-049
