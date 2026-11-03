@@ -40,3 +40,6 @@ BUNDLE: first load 1,489,484 bytes vs main ec26a0da 1,489,509 (-25 B); ceiling 1
 PENDING: unit-proven; a live check in the app has not been run.
 REVIEW: opus-high-review B+, no must-fix; should-fix 1 (the header tooltip) applied, 2 (custom tab.close files)
 logged as the limit above; nit: COMPAT.md's TERM-014 row now names tab.close too.
+AFTER MERGING MAIN 74dc239b (train 14): first load 1,489,450 bytes vs main 74dc239b 1,489,475 (-25 B).
+VITEST_MAX_WORKERS=2 pnpm vitest run src/keys src/floating src/shell src/terminal src/browser src/chrome src/editmenu
+src/editor/closeGuard.test.ts: 228 files, 1398 tests, all passed. tsc 0. firewall-check -Baseline: 0 new. plan-check OK.
