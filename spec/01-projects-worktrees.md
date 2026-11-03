@@ -538,10 +538,13 @@ User sees: a lane for each status holding its workspaces; dragging changes the s
 Rules: the command that opens the board has no default shortcut; a row dragged from the sidebar can
   be dropped on a lane; a drop in a gap goes to the nearest lane, and column widths are kept within
   limits; Escape does not close the board while a popover is open; the board's search is cleared
-  when the board closes.
+  when the board closes; a board that fails to load shows the error with a Retry, projects whose
+  workspaces could not be listed are named, a board with no workspaces says so, and a failed
+  move says the cards were put back.
 Acceptance:
   - [ ] Drag a card from Todo to Review → the sidebar shows Review too.
   - [ ] Close and reopen the board → its search is empty.
+  - [ ] A move is refused → the cards go back and the board says so. (unit tests: evidence/T-670.txt)
 Compat: The open-board command is a keybinding command with no default key; its command id is an
   allowlist candidate.
 Source: D-01-085

@@ -1,0 +1,113 @@
+T-670 - Tasks, Board and Inbox say when something failed, offer Retry, and keep what you typed (DT-C106; UX audit findings tasks.md and empty-error.md)
+Worker 2f, branch s-2f/ux-1, base e93a23ba, code commit 9036d975 (PR #110), 2026-11-02.
+
+WHAT CHANGED
+- Task dialog: a failed load now says "This could not be read from GitHub" with a Retry button, not
+  "Loading…" forever. An unsaved description is kept while Kolux runs and comes back in the editor when
+  the same item is opened again. Closing the dialog gives focus back to what had it; a button that goes
+  away (a label x, Close issue) hands focus back to the dialog. The close button and the label and
+  assignee x buttons have names and a 20 pixel hit area.
+- Pull request page: Escape goes back to Tasks, unless a text field, menu, dialog or an edit is open
+  (an open merge confirm closes first). The button is "Back" with an arrow, not an X. A Refresh button
+  replaces Reload. A failed checks or review-threads read puts a note above the tabs instead of showing
+  an empty list. "Yes, merge it" is the red danger button.
+- Workspace board: a failed load shows the error with Retry; projects whose workspaces could not be
+  listed are named with a Retry; a board with no workspaces says so; a failed move says the cards were
+  put back.
+- Inbox: Enter and Space on the detail pane's buttons work again (the list no longer takes them); a
+  failed status read says "Could not read the changes" instead of "No files changed"; the selected row
+  scrolls into view.
+- Tasks list: the pager stays on an empty page after the first, so you can go back.
+- Projects view: failures have a Retry. "Chosen repositories" starts with the project's repositories
+  that are open in Kolux ticked, else all of the project's repositories (never an empty table).
+- Issue actions: a read-back that fails after a good change says so and no longer puts the change back.
+- tasks.css: the GitHub green and red, the code and border greys use the theme colours (done, danger,
+  line). styles.css is untouched.
+
+WHY
+Static UX audit lane B (findings/tasks.md, empty-error.md, destructive.md 16, visual.md 8): reads that
+failed were shown as "Loading…" for ever, an empty list or "No files changed"; the Inbox list took
+Enter and Space from the detail buttons; an unsaved description was lost on close; the PR page had
+no Escape and an X meaning back. One rule (say it, offer Retry, keep what the user typed) replaces
+per-screen handling. DT-C106 records it; it reverses GIT-050's draft-only-while-open rule.
+
+REVIEW
+Opus review found one BLOCKING item (on the pull request page, Escape also closed the whole Tasks
+page) and four nits (the focus effect stole focus, the escape-step order, a read-back error was
+swallowed, contradicting board notes). The coordinator fixed all five. Graded A- after fixes.
+
+ROWS
+findings/tasks.md:2 fixed
+findings/tasks.md:3 fixed
+findings/tasks.md:4 fixed
+findings/tasks.md:5 fixed
+findings/tasks.md:6 fixed
+findings/tasks.md:7 fixed
+findings/tasks.md:8 fixed
+findings/tasks.md:9 fixed
+findings/tasks.md:10 fixed
+findings/tasks.md:11 fixed
+findings/tasks.md:12 fixed
+findings/tasks.md:13 not-ours
+findings/tasks.md:14 fixed
+findings/tasks.md:15 fixed
+findings/tasks.md:16 fixed
+findings/tasks.md:17 fixed
+findings/tasks.md:18 skipped(M)
+findings/tasks.md:19 skipped(M)
+findings/tasks.md:20 skipped(M)
+findings/tasks.md:21 fixed
+findings/tasks.md:22 skipped(M)
+findings/tasks.md:23 fixed
+findings/empty-error.md:9 fixed
+findings/empty-error.md:21 fixed
+findings/destructive.md:16 partial (the PR page merge confirm is danger-styled; scm/CommentsPanel is lane D)
+findings/visual.md:8 fixed
+findings/onboarding.md:12 not-ours
+
+TESTS (named, the new and changed test lines of the batch)
+ src/tasks/dialogState.test.ts > UX audit: the task dialog > a failed read is not 'Loading…' for ever
+ src/tasks/dialogState.test.ts > UX audit: the task dialog > an unsaved description survives closing the dialog and is dropped once saved or put back
+ src/tasks/dialogState.test.ts > UX audit: the task dialog > focus is lost only when it fell to nothing, not when something else took it
+ src/tasks/TaskDialog.test.ts > TaskDialog > a failed load says so and offers Retry, which reads again
+ src/tasks/TaskDialog.test.ts > TaskDialog > an unsaved description comes back when the dialog is opened again
+ src/tasks/TaskDialog.test.ts > TaskDialog > the close and remove buttons carry names
+ src/tasks/PullRequestPage.test.ts > UX audit: errors shown, Refresh, Escape and Back > says so when the checks could not be read, instead of showing an empty list
+ src/tasks/PullRequestPage.test.ts > UX audit: errors shown, Refresh, Escape and Back > names both when the checks and the review threads fail
+ src/tasks/PullRequestPage.test.ts > UX audit: errors shown, Refresh, Escape and Back > Refresh reads the pull request again and writes nothing
+ src/tasks/PullRequestPage.test.ts > UX audit: errors shown, Refresh, Escape and Back > the way out is labelled Back, not an X
+ src/tasks/PullRequestPage.test.ts > UX audit: errors shown, Refresh, Escape and Back > Escape goes back to Tasks, but first closes an open merge confirm
+ src/tasks/PullRequestPage.test.ts > UX audit: pure steps > partialNote is empty when nothing failed
+ src/tasks/PullRequestPage.test.ts > UX audit: pure steps > escapeStep: merge confirm first, then stay for a field, menu or edit, else back
+ src/tasks/issueActions.test.ts > a refresh that fails after a good write is told, and does not put the change back
+ src/tasks/model.test.ts > the pager stays on an empty page past the first, so the user can go back
+ src/tasks/projects.test.ts > UX audit: Chosen repositories does not start empty > ticks the project's repositories that are open in Kolux
+ src/tasks/projects.test.ts > UX audit: Chosen repositories does not start empty > ticks them all when none is open in Kolux, so the table is not empty
+ src/board/boardModel.test.ts > a refused move says the cards went back
+ src/board/boardModel.test.ts > names the projects whose workspaces could not be listed
+ src/inbox/inbox.test.ts > a key pressed on the detail pane's button is not the list's (so Enter on Review changes still works)
+ src/inbox/inbox.test.ts > a failed status read is told, not shown as 'No files changed'
+- Reverted on purpose, test failed, restored: Inbox detail guard (inbox.test.ts fails), task dialog
+  load state (Retry test fails), draft restore (draft test fails), Escape listener (Escape test fails).
+- Not covered by a test: the Inbox list wiring itself (the guard is one line; its rule is tested), the
+  Projects Retry button, the board Retry button, focus return on close.
+
+GATES
+- pnpm vitest run src/tasks src/board src/inbox: Test Files 35 passed (35), Tests 258 passed (258).
+- pnpm tsc --noEmit: tsc exit 0.
+- node scripts/plan-check.mjs: plan-check: OK
+
+SPEC
+- DECISIONS.md DT-C106 names the one reversal: GIT-050's draft rule (spec/11-git-review.md GIT-050
+  Rules: the unsaved draft lasts while Kolux runs, not only while the dialog is open; a failed load
+  says so with a Retry; closing returns focus).
+- Rules lines that gained clauses, none contradicted: GIT-043 (pager on an empty page), GIT-048
+  (a failed read-back after a good write is told, not rolled back), GIT-051 (Back and Escape,
+  Refresh, checks note, danger merge confirm), GIT-056 (Chosen repositories default, Retry) in
+  spec/11-git-review.md; PROJ-085 (board errors, empty board, put-back note) in
+  spec/01-projects-worktrees.md; STAT-050 (detail buttons keep their keys, changes-read error) in
+  spec/04-agent-status-hooks.md.
+- Acceptance lines now pointing here (new, unticked, "unit tests: evidence/T-670.txt"): GIT-043 box 3,
+  GIT-048 box 3, GIT-050 boxes 3 and 4, GIT-051 box 3, GIT-056 box 3 (spec/11-git-review.md);
+  PROJ-085 box 3 (spec/01-projects-worktrees.md). STAT-050 is P0 with every box ticked, so it
+  got a Rules clause only and no new box.

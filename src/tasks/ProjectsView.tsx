@@ -10,7 +10,7 @@ import AddRepo from "./AddRepo";
 import { Refresh } from "../chrome/icons";
 import type { Project as KoluxProject } from "../projects/model";
 import Timeline from "./RoadmapTimeline";
-import { applyAssignees, applyCellEdit, assigneeChange, cellEditable, cloneAddress, cellKey, cellText, endSave, isSaving, newBook, readBackFresh, readBackLost, readBackStart, sendEdit, settleEdit, type Saving, startSave, GROUPABLE, groupItems, labelChange, openingView, parseProjectRef, type Project, projectHostRefused, type ProjectField, type ProjectItem, projectKey, type ProjectRef, pushRecent, refsFrom, type Scope, scopeItems, sortItems, togglePin, viewLabel, viewSupport, viewUrl } from "./projects";
+import { chosenDefault, applyAssignees, applyCellEdit, assigneeChange, cellEditable, cloneAddress, cellKey, cellText, endSave, isSaving, newBook, readBackFresh, readBackLost, readBackStart, sendEdit, settleEdit, type Saving, startSave, GROUPABLE, groupItems, labelChange, openingView, parseProjectRef, type Project, projectHostRefused, type ProjectField, type ProjectItem, projectKey, type ProjectRef, pushRecent, refsFrom, type Scope, scopeItems, sortItems, togglePin, viewLabel, viewSupport, viewUrl } from "./projects";
 
 type Settings = Record<string, unknown> | null;
 type Save = (patch: Record<string, unknown>) => Promise<unknown> | void;
@@ -103,6 +103,8 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
   const [project, setProject] = useState<Project | null>(null);
   const [view, setView] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // What the error banner's Retry sends again: the project read, the owner's list, or nothing (a pasted address that cannot be opened).
+  const [retryOp, setRetryOp] = useState<"load" | "browse" | null>(null);
   const [typed, setTyped] = useState("");
   const [browseOwner, setBrowseOwner] = useState(owner);
   const [browsed, setBrowsed] = useState<{ projects: { owner: string; number: number; title: string; closed: boolean }[]; more: boolean } | null>(null);
@@ -134,6 +136,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
   const load = (r: ProjectRef | null = ref, wantView: number | null = null) => {
     setProject(null);
     setError(null);
+    setRetryOp(null);
     setEditing(null);
     if (!r) return () => {};
     let live = true;
@@ -146,7 +149,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
         const named = { ...r, title: p.title };
         void save({ tasksProjectsRecent: pushRecent(recent, named) });
       })
-      .catch((e) => live && setError(String(e)));
+      .catch((e) => live && (setError(String(e)), setRetryOp("load")));
     return () => {
       live = false;
     };
@@ -154,6 +157,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
   useEffect(() => load(), [ref ? projectKey(ref) : ""]);
 
   const open = (text: string) => {
+    setRetryOp(null);
     const away = projectHostRefused(text, host);
     if (away) return setError(`Kolux opens projects on github.com or on this workspace's host (${host}), not on ${away}.`);
     const p = parseProjectRef(text, host);
@@ -172,9 +176,10 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
   const browse = () => {
     setBrowsed(null);
     setError(null);
+    setRetryOp(null);
     invoke<{ projects: { owner: string; number: number; title: string; closed: boolean }[]; more: boolean }>("github_projects", { host, owner: browseOwner.trim() || "@me" })
       .then(setBrowsed)
-      .catch((e) => setError(String(e)));
+      .catch((e) => (setError(String(e)), setRetryOp("browse")));
   };
 
   const edit = (item: ProjectItem, field: ProjectField, value: string | null) => {
@@ -374,8 +379,16 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
         </ul>
       )}
       {error && (
-        <div className="note warn" role="status">
+        <div className="note warn" role="alert">
           {error}
+          {retryOp && (
+            <>
+              {" "}
+              <button className="btn" onClick={() => (retryOp === "load" ? void load() : browse())}>
+                Retry
+              </button>
+            </>
+          )}
         </div>
       )}
       {cellError && (
@@ -414,7 +427,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
                   className="field"
                   aria-label="Repositories"
                   value={scope.mode}
-                  onChange={(e) => setScope(e.target.value === "chosen" ? { mode: "chosen", repos: [] } : { mode: e.target.value as "all" | "kolux" })}
+                  onChange={(e) => setScope(e.target.value === "chosen" ? { mode: "chosen", repos: chosenDefault(repos, inKolux) } : { mode: e.target.value as "all" | "kolux" })}
                 >
                   <option value="all">All repositories</option>
                   <option value="kolux">Repositories open in Kolux</option>
