@@ -1,0 +1,118 @@
+T-687 - Projects sidebar (DT-C123; PROJ-001, PROJ-002, PROJ-012, PROJ-014, PROJ-020, PROJ-053, PROJ-059, PROJ-065, PROJ-081; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-4 (PR #113, stacked on #95 s-57/launch-first), 2026-11-03.
+
+WHAT CHANGED (src/projects only; lane C commits 9d677875 and cf05a307)
+- Notes (MessageNote.tsx, ProjectsPanel.tsx): status and error notes sit above the list with a close
+  button; good-news notes fade after 8 s; Hide shows Undo.
+- Create (ProjectsPanel.tsx, rows.ts restoreField): a failed create puts the typed name, branch, prompt
+  and base back, only into an empty field and only when the same project's composer (or none) is open.
+- Rows (rows.ts rowKey): Enter, Space and F2 act only when the row itself has focus; keys on the icon
+  buttons no longer also open the row.
+- Sleep (rows.ts sleepPlan): asks first, naming the count, when running terminals in the workspace or its
+  children would close; the plan lists only the folders that change.
+- One Remove project button with its own icon (no longer the workspace-delete ×).
+- Row menu (menu.ts, ProjectsPanel.tsx): focuses its first item once, arrows wrap, Home/End jump, it is
+  clamped on screen on both axes, and a note says when statuses or editors failed to load (menuGaps).
+  Move up / Move down step among siblings only (order.ts stepRow, stepSiblings), are off at the ends and
+  absent on the main checkout.
+- Several plain folders added at once: asks about the first, one note counts the rest and the failures
+  (addReport, singular and plural).
+- Closing the scan dialog mid-scan stops the scan (scanView.ts scanToStop); the icon Picture… chooser is
+  a real button (IconPicker.tsx).
+- Footer gear opens Settings; Group and sort and Model routing have distinct icons; "Add a project by
+  path" is labelled, has Close and Escape.
+- One verb and one noun in menu.ts and the row titles (Delete workspace, Set parent, workspace).
+- Cleanup dialog (cleanup.ts, CleanupDialog.tsx): sort direction named per key, Tick all / Untick all
+  on the listed rows, Escape.
+- Inline confirms (batch delete, move, forget, remove project, remove group): Escape = keep, the safe
+  button takes focus, focus goes back to the row on close.
+- Add project (AddProject.tsx): Close on the first step; asks before stopping a clone (closeAction).
+- Rename saves on click-away inside the window (not on window blur) and returns focus to the row.
+- A group made from New group and closed before Save is deleted again, once; the disabled New group
+  button says why.
+- The sidebar's Getting Started entry (SidebarStart) is mounted, loaded with deferred() after the first
+  frame; first load 1,465,855 bytes (ceiling 1,485,000).
+
+WHY
+UX audit projects rows (proof/ux-audit/findings/projects.md:2-21) and palette.md:8: notes lost at the
+bottom of a long list, a failed create threw the typed words away, Sleep ended running terminals without
+asking while Remove asked, the row menu and several dialogs were mouse-only, and labels mixed verbs.
+
+ROWS LEFT OR PART-DONE (recorded in the PR body)
+- projects.md:8 skipped(L) (poll, virtualised list, fold).
+- projects.md:13 the by-path form is not merged into Add project, only labelled and closable.
+- projects.md:14 and :18 WorktreePalette.tsx wording and failure flag: #104 owns that file (it made the
+  loads parallel there); left as follow-ups so the two PRs do not collide.
+- projects.md:17 "Open a folder…" still closes the dialog before the native picker opens.
+- projects.md:19 the row menu shows nothing while statuses load (failures are shown).
+- projects.md:21 Tasks/Artifacts right-click hide and the hard-coded colours (styles.css, sidebar.css)
+  requested from lane A.
+- palette.md:7 the sidebar's commands and event exist (commands.ts); the palette has no consumer yet,
+  requested from E3.
+
+REVIEW
+Opus review B (9d677875) -> fix pass (cf05a307: by-path form closes, fresh group deleted once, Move
+up/down among siblings, no save on window blur, menu focuses once, draft restore only into the same
+composer, singular/plural report, confirms give focus back) -> re-review PENDING.
+
+TESTS (verbose, the lane C test files this PR changes or adds)
+pnpm vitest run --reporter=verbose src/projects/__cards__/SET-032.test.ts src/projects/__cards__/VIEW-051.test.ts src/projects/forgetAsk.test.ts src/projects/removeCommits.test.ts src/projects/removeOnce.test.ts src/projects/removePaths.test.ts src/projects/uxRows4.test.ts
+ ✓ src/projects/__cards__/SET-032.test.ts > box 1: Browse to a folder saves it with the nested layout and the field shows it
+ ✓ src/projects/__cards__/SET-032.test.ts > box 2: with KOLUX_WORKSPACES_DIR supplying the folder the field shows it and says where it came from
+ ✓ src/projects/__cards__/VIEW-051.test.ts > box 1: running Cursor and Gemini panes are counted but not listed as rows in the left pane
+ ✓ src/projects/__cards__/VIEW-051.test.ts > box 2: closing a tab (its pane stops running) drops the worktree's count, and none shows no count
+ ✓ src/projects/forgetAsk.test.ts > a forget the backend allows still asks as before, and so does a check that cannot be asked
+ ✓ src/projects/forgetAsk.test.ts > a forget the backend would refuse says why straight away, with no Take out, and never calls workspace_forget
+ ✓ src/projects/forgetAsk.test.ts > answering Keep (or never answering) invokes nothing
+ ✓ src/projects/forgetAsk.test.ts > the shortcut on a folder workspace asks first and takes nothing out until the answer is yes
+ ✓ src/projects/removeCommits.test.ts > Delete all on a parent with a child sends no branch choice, so the record and the backend decide
+ ✓ src/projects/removeCommits.test.ts > a workspace with nothing to lose still skips the question when it is switched off
+ ✓ src/projects/removeCommits.test.ts > the delete question names the commits, starts with Keep the branch ticked, and is asked even with the question switched off
+ ✓ src/projects/removeCommits.test.ts > the multi-select bar sends no branch choice either, and a branch the backend kept joins the kept list
+ ✓ src/projects/removeCommits.test.ts > unticking Keep the branch is the user's own choice to delete it
+ ✓ src/projects/removeOnce.test.ts > Delete all on a parent with a child tells the window once, children first
+ ✓ src/projects/removeOnce.test.ts > the cleanup dialog's removal tells the window once
+ ✓ src/projects/removeOnce.test.ts > the multi-select bar tells the window once
+ ✓ src/projects/removePaths.test.ts > Remove project from the header X goes to project_remove, never to workspace_remove
+ ✓ src/projects/removePaths.test.ts > a clean workspace with quick delete on still asks while a terminal runs below its folder
+ ✓ src/projects/removePaths.test.ts > a group row has a menu and a hover X, both asking Delete group
+ ✓ src/projects/removePaths.test.ts > a workspace menu opens from the wrapper outside the row too, and Hide is in it
+ ✓ src/projects/removePaths.test.ts > right-click on the project header lists Remove project last; Escape closes the menu
+ ✓ src/projects/removePaths.test.ts > the footer has no Check for updates button and the pane lists no terminal rows
+ ✓ src/projects/removePaths.test.ts > the main checkout row has a menu with Remove project and the header X asks the same question
+ ✓ src/projects/removePaths.test.ts > the project header's hover X asks under the header, names the running terminals, and removes
+ ✓ src/projects/removePaths.test.ts > the running-terminal line is left out when the ask is switched off or nothing runs
+ ✓ src/projects/uxRows4.test.ts > Escape on the Add project form > closes it, but not while composing or while an edited folder field reverts itself
+ ✓ src/projects/uxRows4.test.ts > a failed create and the composer now open > puts the words back only when no composer is open or it is the same project's
+ ✓ src/projects/uxRows4.test.ts > a failed create keeps what was typed > restores only into an empty field
+ ✓ src/projects/uxRows4.test.ts > a group made and deleted from its own form > is dropped on close only while it still exists and the form is no longer open on it
+ ✓ src/projects/uxRows4.test.ts > adding several folders at once > asks about the first plain folder and counts the rest and the failures in one note
+ ✓ src/projects/uxRows4.test.ts > adding several folders at once > says nothing extra for a single plain folder
+ ✓ src/projects/uxRows4.test.ts > adding several folders at once > uses the plural for several more folders
+ ✓ src/projects/uxRows4.test.ts > cleanup dialog words and ticking > names the direction for the key being sorted
+ ✓ src/projects/uxRows4.test.ts > cleanup dialog words and ticking > tick all and untick all touch the listed rows only
+ ✓ src/projects/uxRows4.test.ts > closing the Add project dialog > closes at once unless a clone is under way, then asks, then keeps copying
+ ✓ src/projects/uxRows4.test.ts > leaving the scan dialog stops a scan still running > names the scan to stop only while it runs
+ ✓ src/projects/uxRows4.test.ts > menu keyboard and gaps > arrows wrap, Home and End jump, other keys are left alone
+ ✓ src/projects/uxRows4.test.ts > menu keyboard and gaps > says what the menu is missing, and nothing when all loaded
+ ✓ src/projects/uxRows4.test.ts > move up and down > lists the siblings: same project and parent, never the main checkout, in screen order
+ ✓ src/projects/uxRows4.test.ts > move up and down > steps only among the siblings, jumping over the main checkout and other rows
+ ✓ src/projects/uxRows4.test.ts > move up and down > swaps with the neighbour and stops at the ends
+ ✓ src/projects/uxRows4.test.ts > move up and down > the menu offers Move up and Move down on a workspace only, disabled at the ends, never on the main row
+ ✓ src/projects/uxRows4.test.ts > palette rows for the sidebar > lists Add project, New group and Scan for repos, and tells the panel through one event
+ ✓ src/projects/uxRows4.test.ts > row keys: only the row answers > Enter, Space and F2 on the row; the same keys inside a button on it do nothing
+ ✓ src/projects/uxRows4.test.ts > sleeping and the running terminals it closes > a parent puts its children to sleep and the plan lists only the folders that change
+ ✓ src/projects/uxRows4.test.ts > sleeping and the running terminals it closes > counts terminals in or under the folders, case and slash blind
+ ✓ src/projects/uxRows4.test.ts > sleeping and the running terminals it closes > words the note by count and is empty for none
+
+  Test Files  7 passed (7)
+  Tests  47 passed (47)
+
+FULL SUITE (pnpm vitest run, VITEST_MAX_WORKERS=2)
+  Test Files  1 failed | 732 passed (733)
+  Tests  3 failed | 5440 passed (5443)
+  Any failures are src/editor/pdfjsCopy.test.ts: CRLF line endings in this local checkout, not part of
+  this change; they pass on CI.
+
+TYPES
+pnpm exec tsc --noEmit -p .: exit 0

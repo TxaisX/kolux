@@ -42,6 +42,8 @@ Rules: several folders can be chosen in one go and each becomes a separate proje
 Acceptance:
   - [x] Choose two sibling repositories together → exactly two new projects appear and nothing else. (cards; evidence/cards-PROJ-001.txt)
   - [x] Choose a folder that is registered already → no second row appears. (cards; evidence/cards-PROJ-001.txt)
+  - [x] Add three plain folders (no Git) at once → it asks about the first and one note counts the
+        other two and any that failed. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-001
 
@@ -77,6 +79,8 @@ Acceptance:
         that folder, and going back to the main checkout keeps the two terminals apart. (cards live; evidence/cards-PROJ-020.txt)
   - [x] Start a create and move to another workspace → the create finishes in the background without
         taking focus. (cards live; evidence/cards-PROJ-020.txt)
+  - [x] Make creating a workspace fail → the form opens again with the typed name, branch, prompt and
+        base; if another project's form is open by then, the words are not put into it. (T-687; evidence/T-687.txt)
 Compat: Keybinding id workspace.create.
   (Kolux RS, T-013-fix-a: with no project, Mod+N and the New workspace button open the add-project
   form; T-013-c built the overtaken-create and stand-in tab rules: a create made with Create more
@@ -519,6 +523,8 @@ Acceptance:
   - [ ] With several projects present, open Add Project → the same first step appears.
   - [ ] Press the arrow keys, then Enter → focus moves between the choices and Enter activates the
         focused one.
+  - [x] Close the dialog while a clone is copying → it asks first, and Keep copying carries on;
+        with no clone running it closes at once. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-002
 
@@ -830,6 +836,8 @@ Acceptance:
   - [ ] Scan a folder holding three repositories and a large package-dependency folder → three
         repositories are listed and the dependency folder is never opened.
   - [ ] Stop the scan early → the repositories found so far can still be selected.
+  - [x] Close the scan dialog while it is scanning → that scan is stopped; closing after it ends stops
+        nothing. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-012
 
@@ -861,6 +869,8 @@ Rules: groups are kept across restarts; an empty name is replaced by a default n
 Acceptance:
   - [ ] Create a group and restart → it is still there, empty.
   - [ ] Create a group while the sidebar is refreshing → the group survives the refresh.
+  - [x] Make a new group, then close its form before Save → the group is removed again, once, and only
+        while it still exists. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-014
 
@@ -953,10 +963,14 @@ User sees: its browser tabs and terminals close, it goes into a sleeping state a
   children, and it can be woken later.
 Rules: if it was the active workspace, another one is selected first; the toggle for the
   sleeping-workspaces panel has no default shortcut.
+  Since T-687 (DT-C123): when running terminals in the workspace or its children would close, Sleep
+  first asks, naming how many, as Remove does.
 Acceptance:
   - [ ] Put a workspace with two terminals to sleep → both processes end and the row shows it is
         sleeping.
   - [ ] Put the active workspace to sleep → another workspace is selected first.
+  - [x] Sleep a workspace whose child has a running terminal → it asks first, counting that terminal;
+        a parent's sleep plan lists only the folders that change. (T-687; evidence/T-687.txt)
 Compat: The sleeping-workspaces panel toggle is a keybinding command with no default key; its
   command id is an allowlist candidate.
 Source: D-01-053
@@ -979,6 +993,8 @@ Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: starts an inline rename on a row (Mod+Alt+R on Mac) and types.
 User sees: pressing Enter updates the shown name; a blank or unchanged name cancels.
 Rules: surrounding spaces are trimmed; emoji shortcodes turn into emoji as the user types.
+  Since T-687 (DT-C123): clicking elsewhere in the window saves the rename too and puts the focus
+  back on the row; switching to another window does not.
 Acceptance:
   - [ ] Rename to x with spaces before and after it → saved as x.
   - [ ] Rename to an empty name → the rename is cancelled.
@@ -1010,6 +1026,10 @@ Rules: the file manager's name follows the platform; Open in is disabled while t
 Acceptance:
   - [ ] Right-click on Windows → Open in lists Explorer.
   - [ ] Hold Alt while right-clicking two selected rows → no developer submenu.
+  - [x] Open the menu and press the arrows, Home and End → the focus wraps and jumps; when statuses or
+        editors fail to load, a note says which. (T-687; evidence/T-687.txt)
+  - [x] Open the menu on a workspace → Move up and Move down step among its siblings only and are off
+        at either end; the main checkout's menu has neither. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-065
 
@@ -1310,6 +1330,8 @@ Rules: Git details are read only when a filter or sort needs them; before a row 
 Acceptance:
   - [ ] Sort by size, largest first → rows without a size are last.
   - [ ] Filter by Git state → only matching rows stay.
+  - [x] Sort by name → the direction button names the order for that key (A–Z); Tick all and Untick
+        all change only the rows the filters show. (T-687; evidence/T-687.txt)
 Compat: —
 Source: D-01-081
 
