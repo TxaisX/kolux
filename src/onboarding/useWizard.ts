@@ -8,7 +8,8 @@ import { projectAddedNote } from "./sidebar";
 import { startGridTour } from "./tour";
 import { starAfterClose } from "./star";
 import type { AgentInfo } from "../launch/PlusMenu";
-import { defaultAgentId, menuAgents, offeredAgents } from "../launch/agents";
+import { defaultAgentId, offeredAgents } from "../launch/agents";
+import { sessionAgent } from "./sessionAgent";
 
 type WizardDeps = {
   setToast: (text: string) => void;
@@ -17,6 +18,11 @@ type WizardDeps = {
   activeDir: string | null;
   startIn: (agent: AgentInfo, dir: string, branch: string | null, prompt: string, show: boolean, extra?: string[], title?: string) => Promise<number | null>;
 };
+
+/** 49-ux2: what Pick a folder says while Add Project is up and the wizard is out of its way. */
+export const PICK_FOLDER_NOTE = "Add a project to finish setup. If you cancel, Help > Onboarding brings the setup back.";
+/** 49-ux2: Open a session with no AI agent installed used to do nothing. */
+export const NO_AGENT_NOTE = "No agent is installed yet, so no session was started. Install one in Settings > Agents, then open a session.";
 
 export function useWizard({ setToast, agents, settings, activeDir, startIn }: WizardDeps) {
   // ONB-001..005: the first-run wizard floats over the app while its record says it is open.
@@ -43,6 +49,8 @@ export function useWizard({ setToast, agents, settings, activeDir, startIn }: Wi
     const counts = oneClick();
     const reopen = () => {
       if (!counts()) return;
+      // 49-ux2: a Pick a folder that was cancelled is over once the wizard is reopened.
+      if (finishOnAdd.current) (finishOnAdd.current = false), (firstFolder.current = false);
       void reopenWizard(
         () => invoke("onboarding_reopen"),
         () => setWizard(0),
@@ -55,6 +63,8 @@ export function useWizard({ setToast, agents, settings, activeDir, startIn }: Wi
   // ONB-010: armed by Pick a folder, or by Skip while no project exists; the next project added
   // starts the saved default agent in it, once.
   const firstFolder = useRef(false);
+  // 49-ux2: Pick a folder hides the wizard but stores nothing; the close is stored once a project was really added.
+  const finishOnAdd = useRef(false);
   // T-612: the AI agent Open a session would have started, for the folder picked after it (else ONB-010's saved default).
   const firstAgent = useRef<AgentInfo | null>(null);
   // VIEW-114 (FIX-2): every added project tells the sidebar entry to read its steps again.
@@ -64,23 +74,32 @@ export function useWizard({ setToast, agents, settings, activeDir, startIn }: Wi
     firstFolder.current = false;
     const agent = firstAgent.current ?? firstFolderAgent(offeredAgents(agents, settings), defaultAgentId(settings));
     firstAgent.current = null;
+    if (finishOnAdd.current) {
+      finishOnAdd.current = false;
+      void wizardClose.end("completed");
+    }
     if (agent) void startIn(agent, dir, branch, "", true);
   };
-  // ONB-004: Pick a folder closes setup as completed and hands over to Add Project; the folder added next starts `agent`.
-  const pickFolder = (agent: AgentInfo | null = null) =>
-    endWizard("completed", () => {
-      firstFolder.current = true;
-      firstAgent.current = agent;
-      window.dispatchEvent(new CustomEvent(ADD_PROJECT));
-    });
+  // ONB-004: Pick a folder hands over to Add Project and starts `agent` in the folder added next. 49-ux2: setup is
+  // marked completed only once a folder was added (projectAdded), so cancelling the dialog does not finish it;
+  // the wizard stays out of the dialog's way and Help > Onboarding brings it back.
+  const pickFolder = (agent: AgentInfo | null = null) => {
+    if (wizardClose.retry()) return;
+    firstFolder.current = true;
+    finishOnAdd.current = true;
+    firstAgent.current = agent;
+    setWizard(null);
+    setToast(PICK_FOLDER_NOTE);
+    window.dispatchEvent(new CustomEvent(ADD_PROJECT));
+  };
   // ONB-005: one plain session on the first available agent (the default first), empty prompt.
   // T-612 (audit F08-onboarding-look-misc.2): with no workspace yet (Continue on "Your work" makes none since kits went,
   // T-568), it leads to picking a folder, and the session opens there; a plain terminal opens with the folder anyway.
   const wizardSession = async () => {
     if (wizardClose.retry()) return;
-    const agent = menuAgents(offeredAgents(agents, settings), defaultAgentId(settings))[0];
+    const agent = sessionAgent(agents, settings);
     if (!activeDir) return pickFolder(agent && isAiAgent(agent.id) ? agent : null);
-    if (!agent) return;
+    if (!agent) return setToast(NO_AGENT_NOTE);
     if ((await startIn(agent, activeDir, null, "", true)) !== null) endWizard("completed", startGridTour);
   };
   return { wizard, setWizard, wizardClose, endWizard, firstFolder, projectAdded, wizardSession, pickFolder };

@@ -33,6 +33,7 @@ import { matchEvent, type KeyLike, type Keymap } from "./keymap";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
+import { settingsShown } from "../onboarding/settingsShown";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
@@ -162,6 +163,7 @@ export function useWindowKeys(w: WindowBag) {
         case "app.settings":
           if (!settingsOpen) setSettingsAt((a) => ({ target: null, n: a.n }));
           setSettingsOpen(true);
+          settingsShown(); // 49-ux2: Explore and the Setup Guide step aside
           break;
         case "editor.save": {
           const save = editors.get(focused);

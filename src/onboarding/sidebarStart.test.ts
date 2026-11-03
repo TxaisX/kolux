@@ -184,7 +184,7 @@ test("Hide goes through the settings save in turn: it reads what is saved, then 
   const app = await mount();
   hideButton(app.out()).props!.onClick!();
   await app.settle();
-  expect(patches).toEqual([{ set: { setupChecklist: false }, remove: [] }]);
+  expect(patches).toEqual([{ set: { setupChecklistHidden: true }, remove: [] }]);
   expect(calls[calls.indexOf("settings_patch") - 1]).toBe("get_settings");
 });
 
