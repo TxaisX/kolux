@@ -78,7 +78,7 @@ try {
   await sleep(1500);
   const asked = await app.evalJs(`[...document.querySelectorAll("aside.sidebar .sb-form.warn")].filter((e) => e.getClientRects().length).map((e) => e.innerText.replace(/\\s+/g, " ").slice(0, 200))`);
   log(`remove B: ${clicked}; asked ${JSON.stringify(asked)}; ${await ctx.shot(`T-640-${look}-after-ask`)}`);
-  const confirmed = await app.evalJs(`(() => { const d = [...document.querySelectorAll("aside.sidebar .sb-form.warn")].find((e) => e.getClientRects().length); const b = d && [...d.querySelectorAll("button")].find((x) => /^Remove/.test(x.textContent.trim())); if (!b) return "no Remove button"; b.click(); return "confirmed"; })()`);
+  const confirmed = await app.evalJs(`(() => { const d = [...document.querySelectorAll("aside.sidebar .sb-form.warn")].find((e) => e.getClientRects().length); const b = d && [...d.querySelectorAll("button")].find((x) => /^Delete/.test(x.textContent.trim())); if (!b) return "no Delete button"; b.click(); return "confirmed"; })()`);
   await sleep(5000);
   let after = await app.evalJs(ROWS);
   check("B removed through its X: the question showed, the row is gone, its folder deleted", asked.length === 1 && confirmed === "confirmed" && !after.some((r) => norm(r.path) === bKey) && !existsSync(B_DIR), { rows: after.map((r) => r.text), folder: existsSync(B_DIR) });
