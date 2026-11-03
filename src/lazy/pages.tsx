@@ -4,29 +4,32 @@
 // own export, so a caller swaps its import line and nothing else changes: `deferred` keeps the place the
 // element sits in, and `prefetch()` reads the code in the background once the window is up, so opening one
 // stays instant.
-import type { ComponentProps, ComponentType } from "react";
+import { createElement, type ComponentProps, type ComponentType } from "react";
 import { deferred } from "./deferred";
+
+// T-706: what a full-page screen shows while its code is read the first time; everything else draws nothing.
+const loading = createElement("div", { className: "empty", role: "status" }, "Loading…");
 
 /** ORCH-020 / SESS-025: the plan sheet a finished agent's plan is reviewed in. */
 export const PlanSheet = deferred(() => import("../terminal/PlanSheet"));
 
 // Settings, and the two notices that sit on it.
 export const SettingsPage = deferred(() => import("../settings/SettingsPage"));
-export const RoutingPage = deferred(() => import("../settings/RoutingPage"));
+export const RoutingPage = deferred(() => import("../settings/RoutingPage"), loading);
 export const SignInNotice = deferred(() => import("../settings/SignInNotice"));
 export const KeyLostNotice = deferred(() => import("../settings/KeyLostNotice"));
 
 // The full-page screens: Tasks, Automations, Skills, Artifacts, Space and Floor.
-export const TasksPage = deferred(() => import("../tasks/TasksPage"));
-export const AutomationsPage = deferred(() => import("../automations/AutomationsPage"));
-export const SkillsPage = deferred(() => import("../skills/SkillsPage"));
+export const TasksPage = deferred(() => import("../tasks/TasksPage"), loading);
+export const AutomationsPage = deferred(() => import("../automations/AutomationsPage"), loading);
+export const SkillsPage = deferred(() => import("../skills/SkillsPage"), loading);
 export const SkillUpdateNotice = deferred(() => import("../skills/SkillUpdateNotice"));
-export const ArtifactsPage = deferred(() => import("../artifacts/ArtifactsPage"));
-export const SpaceView = deferred(() => import("../space/SpaceView"));
-export const FloorView = deferred(() => import("../floor/FloorView"));
+export const ArtifactsPage = deferred(() => import("../artifacts/ArtifactsPage"), loading);
+export const SpaceView = deferred(() => import("../space/SpaceView"), loading);
+export const FloorView = deferred(() => import("../floor/FloorView"), loading);
 
 // The Inbox, the Board and the Agents list.
-export const InboxView = deferred(() => import("../inbox/InboxView"));
+export const InboxView = deferred(() => import("../inbox/InboxView"), loading);
 export const WorkspaceBoard = deferred(() => import("../board/WorkspaceBoard"));
 export const AgentsPanel = deferred(() => import("../sessions/AgentsPanel"));
 
@@ -63,4 +66,4 @@ export const AgentStartHost = deferred(() => import("../agentstart/AgentStartHos
 // A chooser pane (SESS-007), a page's Preview button and the Tower's own drawing.
 export const ChooserPane = deferred(() => import("../launch/ChooserPane"));
 export const PreviewButton = deferred(() => import("../browser/PreviewButton"));
-export const TowerView = deferred(() => import("../tower/TowerView"));
+export const TowerView = deferred(() => import("../tower/TowerView"), loading);
