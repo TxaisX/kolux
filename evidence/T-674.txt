@@ -178,3 +178,19 @@ Tests after the split (VITEST_MAX_WORKERS=2):
     (the 3 are the known local-only CRLF checks in the pdfjs copy test, green on Windows CI)
   pnpm exec tsc --noEmit -p .: exit 0
   firewall-check -Baseline: 0 new
+
+MERGE OF MAIN (4bd4d2de, train 2) AND RE-MEASURE (2026-11-03)
+Conflicts: only the PLAN and DECISIONS rows (main's new rows kept, then this branch's). No code changed.
+Re-review of the split (93fd9a52): opus-high, read-only, fresh: A, no must-fix. One optional note: links.ts
+also carries the Changelog and Docs addresses into the first load (about 100 bytes), left as is.
+First load, pnpm exec vite build && node scripts/bundle-budget.mjs:
+  main 4bd4d2de:     1,486,939 bytes (46 chunks)
+  this branch merged: 1,486,028 bytes (46 chunks), 911 under main
+Tests (VITEST_MAX_WORKERS=2):
+  onboarding + setup + keys + settings: Test Files 136 passed (136), Tests 936 passed (936)
+  full suite: Test Files 2 failed | 775 passed (777), Tests 10 failed | 5769 passed (5779)
+    3 are the known local-only CRLF checks in the pdfjs copy test (green on Windows CI).
+    7 are scripts/release.test.mjs timing out at 5000ms while main was building in another checkout;
+    run alone that file passes here (Test Files 1 passed (1), Tests 27 passed (27)) and on main 4bd4d2de (same).
+  pnpm exec tsc --noEmit -p .: exit 0
+  firewall-check -Baseline: 0 new
