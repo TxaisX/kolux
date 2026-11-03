@@ -18,6 +18,8 @@ describe("the Changes tab's stage buttons", () => {
     expect(bulkPaths(s, true)).toEqual(["."]);
     expect(bulkPaths(s, false)).toEqual(["."]);
     expect(bulkPaths(st({ staged: [ch("a.ts")], cut: 0 }), false)).toEqual(["a.ts"]);
+    // "." would mark conflicted files resolved: with conflicts, stage all keeps to the listed rows.
+    expect(bulkPaths(st({ changed: [ch("b.ts")], conflicts: [ch("d.ts")], cut: 4 }), true)).toEqual(["b.ts"]);
   });
 
   it("unstaging a staged rename names the old path too, so no half of it stays staged", () => {

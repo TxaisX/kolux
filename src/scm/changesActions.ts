@@ -30,11 +30,12 @@ export function oneAtATime() {
 /** The paths "Stage all" takes (everything changed or new; conflicts are resolved by hand) or
  * "Unstage all" takes (everything staged), worktree-relative as scm_stage wants them. A list the
  * back end cut short (`cut` > 0) shows only some of the rows, so the whole worktree (".") is sent
- * instead. A staged rename also names its old path: unstaging only the new one would leave the
- * delete of the old one staged. */
+ * instead, except that staging "." while there are conflicts would mark them resolved, so then only
+ * the listed rows go. A staged rename also names its old path: unstaging only the new one would
+ * leave the delete of the old one staged. */
 export const bulkPaths = (s: Status | null, on: boolean): string[] => {
   if (!s) return [];
-  if ((s.cut ?? 0) > 0) return ["."];
+  if ((s.cut ?? 0) > 0 && !(on && s.conflicts.length > 0)) return ["."];
   const rows = on ? [...s.changed, ...s.untracked] : s.staged;
   return [...new Set(on ? rows.map((r) => r.path) : rows.flatMap(unstagePaths))];
 };

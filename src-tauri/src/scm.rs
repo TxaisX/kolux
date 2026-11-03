@@ -2613,7 +2613,7 @@ pub fn stage(worktree: &Path, paths: &[String], on: bool) -> Result<(), String> 
     let args: &[&str] = if on {
         &["--literal-pathspecs", "add", "--pathspec-from-file=-", "--pathspec-file-nul"]
     } else if no_commits {
-        &["--literal-pathspecs", "rm", "--cached", "-r", "-q", "--ignore-unmatch", "--pathspec-from-file=-", "--pathspec-file-nul"]
+        &["--literal-pathspecs", "rm", "--cached", "-f", "-r", "-q", "--ignore-unmatch", "--pathspec-from-file=-", "--pathspec-file-nul"]
     } else {
         &["--literal-pathspecs", "restore", "--staged", "--pathspec-from-file=-", "--pathspec-file-nul"]
     };
@@ -3885,11 +3885,13 @@ and more
         let _ = fs::remove_dir_all(&fresh);
         fs::create_dir_all(&fresh).unwrap();
         run(&["init", "-q", "-b", "main"], Some(&fresh)).unwrap();
-        fs::write(fresh.join("a.txt"), "a
-").unwrap();
+        fs::write(fresh.join("a.txt"), "a\n").unwrap();
         stage(&fresh, &[".".into()], true).unwrap();
         assert_eq!(status(&fresh).unwrap().staged.len(), 1);
+        // Edited again after staging: unstaging must still work and keep the file on disk.
+        fs::write(fresh.join("a.txt"), "a\nb\n").unwrap();
         stage(&fresh, &[".".into()], false).unwrap();
+        assert_eq!(fs::read_to_string(fresh.join("a.txt")).unwrap(), "a\nb\n");
         let st = status(&fresh).unwrap();
         assert!(st.staged.is_empty() && st.untracked.len() == 1, "{:?}", st.staged);
         let _ = fs::remove_dir_all(&fresh);
