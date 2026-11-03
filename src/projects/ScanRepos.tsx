@@ -100,7 +100,7 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
       <div className="ask scan-repos" role="dialog" aria-modal="true" aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => (e.stopPropagation(), e.key === "Escape" && onClose())}>
         <h2 className="ask-title">Look for repositories</h2>
         <div className="btn-row">
-          <input className="field" aria-label="folder to scan" value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />
+          <input className="field" aria-label="folder to scan" autoFocus value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />
           <button className="btn" onClick={() => void browse()} disabled={scan?.running}>
             Browse
           </button>

@@ -1,0 +1,35 @@
+T-709 - All Changes can abort a merge or rebase, behind a confirm (DT-C145; UX audit W3 scm.md:3; GIT-015)
+Worker 2f, branch s-2f/scm-abort off origin/main d552a974 (main 32695d1e merged in), 2026-11-03.
+
+FOUND BY
+- W3 scm.md:3: mid-merge or mid-rebase nothing in the app called scm_abort; its only caller was the unmounted
+  Source Control panel, so a user stuck in a conflict had to leave for a terminal.
+
+FIX (src/editor/AllChangesPane.tsx)
+- While the status names an operation (merge, rebase, cherry-pick or revert), a notice above the commit box says
+  "A merge is in progress, with N files in conflict." and holds one button named by the existing abortLabel():
+  "Abort merge" / "Abort rebase". It is off while another git action runs.
+- The button opens the shared confirm dialog (chrome/Ask). Its text (abortLoss) names what is lost: the branch and
+  files go back to before the operation began and the conflicts resolved (staged or not) are lost; a merge may not
+  bring back changes uncommitted when it began; a rebase throws away the commits already replayed (the branch keeps
+  its own); a cherry-pick or revert removes the commits it already made.
+- Only Confirm calls scm_abort { worktree }. It runs through the pane's act() guard, which then reads the status
+  and the change list again, so the notice and the conflict sections clear. The result shows in the commit row
+  ("Abort merge: the workspace is back where it was", or the failure in the warning colour).
+- No back-end change.
+
+TEST (src/editor/AllChangesPane.abort.test.ts, the real pane on the small DOM, invoke mocked)
+- No operation: no Abort button.
+- Mid-merge: one "Abort merge" button and the in-progress line; a click opens the dialog with the loss text and no
+  scm_abort call; Cancel closes it with no call; Confirm calls scm_abort once with { worktree: "C:/repo" }, the
+  success line shows, the notice clears, and scm_status and change_entries are read again after the abort.
+- Mid-rebase: the dialog names the replayed commits it drops; no call before Confirm.
+- Mid-cherry-pick: the dialog says the commits it already made are removed, with no merge-only caveat.
+- A failed abort: the failure shows as an alert (warning colour) and the notice stays up.
+- Review follow-up: no-operation test also checks the commit box is there and no in-progress text.
+- 3/3 pass (5/5 after the review follow-up). Trap: the button wired straight to the abort (no dialog) fails 2 of 3 (no dialog found). Restored: 3/3.
+- VITEST_MAX_WORKERS=1 pnpm vitest run src/editor src/scm: 145 files, 1512 tests pass. pnpm tsc --noEmit: clean.
+
+GATES
+- plan-check: OK. firewall-check -Baseline: 0 new.
+- First load: AllChangesPane is a lazy pane; CI figure in the PR.

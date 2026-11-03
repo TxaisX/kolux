@@ -4,9 +4,8 @@
 import { latestOnly, searchTabs } from "./inputExtras";
 
 export const TAB_SEARCH_EVENT = "kolux:tab-search";
-/** The command's id in the shortcut table (src/keys/actions.ts) and the title the palette shows. */
+/** The command's id in the shortcut table (src/keys/actions.ts); its Commands row in the palette shows its keys (T-708). */
 export const TAB_SEARCH_ACTION = "tab.search";
-export const TAB_SEARCH_TITLE = "Search open tabs";
 
 /** What opens the box: the shortcut and the palette command both call this. */
 export function openTabSearch(target: EventTarget = window): void {
@@ -17,11 +16,6 @@ export function openTabSearch(target: EventTarget = window): void {
 export function onTabSearch(open: () => void, target: EventTarget = window): () => void {
   target.addEventListener(TAB_SEARCH_EVENT, open);
   return () => target.removeEventListener(TAB_SEARCH_EVENT, open);
-}
-
-/** The row the palette shows for the command (section "Quick actions", beside New terminal tab). */
-export function tabSearchCommand(open: () => void): { section: string; label: string; hint: string; run: () => void } {
-  return { section: "Quick actions", label: TAB_SEARCH_TITLE, hint: "Find a tab by its name", run: open };
 }
 
 /** A tab the box can list: its own name, and the worktree folder it sits in (shown, never searched). */
