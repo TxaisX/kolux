@@ -1210,7 +1210,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .rside-grip { position: absolute; left: -4px; top: 8px; bottom: 8px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
 /* VIEW-050: the left sidebar's drag edge sits over the gap between it and the workspace, taking no room. */
 .lside-grip { flex: none; width: 8px; margin: 8px -4px; cursor: col-resize; z-index: 2; touch-action: none; }
-.rside-grip:hover, .lside-grip:hover { background: linear-gradient(to right, transparent 3px, var(--line-focus) 3px, var(--line-focus) 5px, transparent 5px); }
+:is(.rside-grip, .lside-grip):is(:hover, :focus-visible) { outline: none; background: linear-gradient(to right, transparent 3px, var(--line-focus) 3px, var(--line-focus) 5px, transparent 5px); }
 .rside-tabs { flex: none; display: flex; gap: 2px; padding: 0 2px 6px; overflow: hidden; }
 .rside-tab { flex: none; height: 26px; padding: 0 10px; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--fg-muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .rside-tab:hover { color: var(--fg); }
