@@ -47,3 +47,12 @@ test("T-675 Floor: a re-read that fails after a good one keeps the last lanes, m
   expect(note?.textContent).toBe(staleNote("x", true));
   expect(root.textContent).toContain("the activity log is locked");
 });
+
+test("T-694 (F12): an empty Floor says how an agent gets a lane", async () => {
+  const { doc } = installDom();
+  const { default: FloorView } = await import("./FloorView");
+  const m = await mount(createElement(FloorView, { load: () => Promise.resolve([]) }), doc);
+  unmount = m.unmount;
+  await pump(0);
+  expect(m.container.textContent).toContain("No agent reported any activity in this range. An agent gets a lane here once it runs in a Kolux pane");
+});
