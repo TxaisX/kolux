@@ -146,6 +146,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const wakeSearch = useRef(false);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return; // UX lane C: held under a dialog by the window's key handler
       if (matchEvent(keymap, e, ["global"])?.id !== "sidebar.search.toggle") return;
       if (hidden && !onWake) return;
       e.preventDefault();

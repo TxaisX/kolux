@@ -56,9 +56,12 @@ export function paneCloseClaimed(paneId: number): boolean {
 // form) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
 export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], .pick-list, .font-list, .popover, .palette';
 export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form';
-// Only the app's own chords wait. A browser, editor or explorer chord (Ctrl+C in a page is browser.grabElement) is the
-// focused pane's or the overlay's own, so it falls through to the webview as before.
+// Only the app's own chords wait. An editor or explorer chord, and a browser chord the window does not run itself
+// (Ctrl+C in a page is browser.grabElement), is the focused pane's or the overlay's own and falls through as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
+// The browser chords this window runs itself: under a dialog Ctrl+L would pull focus out of it into the address bar
+// behind, and Ctrl+R, Alt+Left/Right and Ctrl+F would reload, navigate or search the page behind it.
+export const WINDOW_BROWSER = new Set(["browser.focusAddressBar", "browser.back", "browser.forward", "browser.reload", "browser.find"]);
 // Of the terminal chords, only the ones this window runs itself wait. The rest (copy, paste, select all, find, clear)
 // go to whatever has focus, so Ctrl+V still pastes a link into the worktree palette on the Terminals screen.
 export const WINDOW_TERMINAL = new Set([
@@ -70,7 +73,7 @@ export const WINDOW_TERMINAL = new Set([
 export function heldByOverlay(id: string, switcherOpen: boolean, doc: Root = document): boolean {
   if (switcherOpen && (id === "tab.previousRecent" || id === "tab.nextRecent")) return false;
   const scope = actionById.get(id)?.scope;
-  if (scope && !HELD_SCOPES.has(scope)) return false;
+  if (scope && !HELD_SCOPES.has(scope) && !WINDOW_BROWSER.has(id)) return false;
   if (scope === "terminal" && !WINDOW_TERMINAL.has(id)) return false;
   const root = doc.querySelector(".settings[role='dialog']") ?? doc;
   return [...root.querySelectorAll(OVERLAYS)].some((el) => {

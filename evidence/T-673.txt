@@ -26,7 +26,7 @@ fired behind open dialogs, a Reload menu item one click from throwing away unsav
 Space view missing from the menu.
 
 REVIEW
-Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass -> re-review PENDING.
+Opus review C -> fix pass (650ab09d) -> re-review B -> fix pass (7fb3ae6b) -> re-review B -> fix pass (fad8001c) -> re-review B -> fix pass -> re-review PENDING.
 Re-review B findings fixed: docked tips/tours/inline forms no longer hold keys (the key a tip names
 works); only global/tab/terminal chords are held (Ctrl+C in a browser pane copies under a dialog);
 real-selector tests for both; Move Focus to the Top Bar skips the disabled Kolux mark (macOS); the
@@ -37,6 +37,13 @@ select all, find, clear) are never held, so Ctrl+V pastes into the worktree pale
 screen (test: "Terminals screen under the worktree palette"); command count corrected to 138/82/56;
 Move Focus to the Top Bar targets the top bar header only; the Ctrl+Shift+Backslash editor cost is
 recorded in DT-C109; the PLAN row calls the Ctrl+W pane claim a hook for lane D.
+Third re-review B findings fixed: the floating panel's chords (Ctrl+Alt+A, maximize, minimize) are
+held under a menu or modal like the rest (src/floating/FloatingLayer.tsx); the explorer's own
+Ctrl+Shift+F listener skips a press the window already held (src/editor/Explorer.tsx); the five
+browser chords the window runs itself (address bar, back, forward, reload, find) wait under a dialog,
+so Ctrl+L no longer pulls focus out of it (tests: "under a dialog the browser chords the window runs
+itself wait", "the floating panel's own chords ... wait under a modal"). Left as low: the editor chords
+the window runs itself (save, copy context, review note, next/previous change, preview) are not held.
 
 TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/browser/keys.test.ts > BROW-018 app shortcuts forwarded from a page > T-240 BROW-035: Mod+C is forwarded only for a grab (marked n), follows a rebinding, and Mac uses the command key
@@ -63,12 +70,14 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/keys/overlayKeys.test.ts > Automations has a command, so the palette lists it
  ✓ src/keys/overlayKeys.test.ts > Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the palette's field; a split still waits
  ✓ src/keys/overlayKeys.test.ts > UX lane C (request from D): Ctrl+W closes directly unless the pane claims the close for its own warning
- ✓ src/keys/overlayKeys.test.ts > a browser, editor or explorer chord is never held: Ctrl+C in a browser pane still copies under a dialog
+ ✓ src/keys/overlayKeys.test.ts > a page's own browser chord, an editor or an explorer chord is not held: Ctrl+C in a browser pane still copies under a dialog
  ✓ src/keys/overlayKeys.test.ts > a panel that stays open (floating workspace, agent question card, plan sheet) holds nothing
  ✓ src/keys/overlayKeys.test.ts > a showing dialog or menu holds global shortcuts; none showing lets them run
  ✓ src/keys/overlayKeys.test.ts > real markup: a docked tip, the hooks card, a tour and the floating panel hold nothing; a modal dialog does
  ✓ src/keys/overlayKeys.test.ts > the Ctrl+Tab list (itself a menu) still steps while it is open
+ ✓ src/keys/overlayKeys.test.ts > the floating panel's own chords (Ctrl+Alt+A, maximize, minimize) wait under a modal, not under the panel itself
  ✓ src/keys/overlayKeys.test.ts > the open Settings page alone holds nothing; a dialog inside it does
+ ✓ src/keys/overlayKeys.test.ts > under a dialog the browser chords the window runs itself wait (Ctrl+L stays in the dialog); a page's own Ctrl+C does not
  ✓ src/projects/nav.test.ts > EDIT-047: the palette finds a worktree by number, link, shortcode, comment, and recent ones lead an empty box
  ✓ src/projects/nav.test.ts > PROJ-056 back and forward work only in the terminal view and not under settings
  ✓ src/projects/nav.test.ts > VIEW-038: a number matches only that exact number, with or without #
@@ -97,7 +106,7 @@ TESTS (named: pnpm vitest run --reporter=verbose on the changed test files)
  ✓ src/settings/shortcutRows.test.ts > groups the commands by area under the four filters and a capped search box
  ✓ src/settings/shortcutRows.test.ts > search: titles, areas, ids and chords for every platform, as written or as drawn
  Test Files  5 passed (5)
-      Tests  57 passed (57)
+      Tests  59 passed (59)
 
 cargo test --lib menu (src-tauri):
 test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; finished in 0.00s
@@ -105,7 +114,7 @@ test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 2805 filtered out; 
 FULL SUITE (pnpm vitest run)
 ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
  Test Files  1 failed | 732 passed (733)
-      Tests  3 failed | 5423 passed (5426)
+      Tests  3 failed | 5425 passed (5428)
 The 3 failures are src/editor/pdfjsCopy.test.ts on this machine only (CRLF checkout of public/pdfjs
 files vs the LF package copy); they pass on CI and are not touched by this PR.
 

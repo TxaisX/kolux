@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { actionById } from "./actions";
-import { heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_TERMINAL } from "./useWindowKeys";
+import { heldByOverlay, OVERLAYS, PANE_CLOSE_EVENT, paneCloseClaimed, STAYS_OPEN, WINDOW_BROWSER, WINDOW_TERMINAL } from "./useWindowKeys";
 
 // UX lane C: global shortcuts wait while a menu, popover or dialog is up; the Settings page is a page.
 const box = (shown: boolean, staysOpen = false) => ({ getClientRects: () => ({ length: shown ? 1 : 0 }), closest: () => null, matches: () => staysOpen });
@@ -61,7 +61,7 @@ test("real markup: a docked tip, the hooks card, a tour and the floating panel h
   expect(heldByOverlay("tab.newTerminal", false, dom([real("menu", {})]) as never)).toBe(true);
 });
 
-test("a browser, editor or explorer chord is never held: Ctrl+C in a browser pane still copies under a dialog", () => {
+test("a page's own browser chord, an editor or an explorer chord is not held: Ctrl+C in a browser pane still copies under a dialog", () => {
   expect(actionById.get("browser.grabElement")?.scope).toBe("browser");
   const modal = real("crash-report", { role: "dialog" });
   expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
@@ -76,6 +76,25 @@ test("Terminals screen under the worktree palette: Ctrl+V and Ctrl+C reach the p
   }
   expect(heldByOverlay("terminal.splitRight", false, dom([palette]) as never)).toBe(true);
   for (const id of WINDOW_TERMINAL) expect(actionById.get(id)?.scope, id).toBe("terminal");
+});
+
+test("under a dialog the browser chords the window runs itself wait (Ctrl+L stays in the dialog); a page's own Ctrl+C does not", () => {
+  const modal = real("crash-report", { role: "dialog" });
+  for (const id of WINDOW_BROWSER) {
+    expect(actionById.get(id)?.scope, id).toBe("browser");
+    expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
+    expect(heldByOverlay(id, false, dom([real("float-panel", { role: "dialog" })]) as never), id).toBe(false);
+  }
+  expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
+});
+
+test("the floating panel's own chords (Ctrl+Alt+A, maximize, minimize) wait under a modal, not under the panel itself", () => {
+  const modal = real("crash-report", { role: "dialog" });
+  const float = real("float-panel", { role: "dialog" });
+  for (const id of ["floatingTerminal.toggle", "floatingWorkspace.maximize", "floatingWorkspace.minimize"]) {
+    expect(heldByOverlay(id, false, dom([float, modal]) as never), id).toBe(true);
+    expect(heldByOverlay(id, false, dom([float]) as never), id).toBe(false);
+  }
 });
 
 test("the Ctrl+Tab list (itself a menu) still steps while it is open", () => {
