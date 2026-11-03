@@ -291,7 +291,7 @@ fn remote_link(p: &Path) -> bool {
 
 /// A path on another computer: its text names a share, or one of its folders (or itself) is a
 /// link whose target is. The text is judged before any disk call, so a share is never touched.
-fn remote_path(p: &Path) -> bool {
+pub(crate) fn remote_path(p: &Path) -> bool {
     let mut hops = HOPS;
     remote_path_in(p, &mut hops)
 }
@@ -339,10 +339,15 @@ fn canon(p: &Path) -> Option<PathBuf> {
 /// ponytail: resolving a drive or link that leads to a stopped distribution can stall with no time
 /// limit; run it under the scan's 8-second limit if that ever shows up.
 pub(crate) fn in_wsl(p: &Path) -> bool {
+    wsl_text(p) || canon(p).is_some_and(|c| crate::fsops::is_wsl(&c))
+}
+
+/// T-666: a WSL share by its text alone, in any UNC spelling; nothing is opened.
+pub(crate) fn wsl_text(p: &Path) -> bool {
     let s = p.to_string_lossy().replace('/', "\\");
     let low = s.to_lowercase();
     let text = [r"\\.\unc\", r"\??\unc\"].iter().find(|pre| low.starts_with(**pre)).map_or(s.clone(), |pre| format!(r"\\{}", &s[pre.len()..]));
-    crate::fsops::is_wsl(Path::new(&text)) || canon(p).is_some_and(|c| crate::fsops::is_wsl(&c))
+    crate::fsops::is_wsl(Path::new(&text))
 }
 
 /// Skill folders under `dir`, following links without looping and only `depth` folders down.
@@ -672,13 +677,16 @@ pub fn places(env: &Env, workspace: Option<&Path>) -> Places {
     let deletable = all
         .iter()
         .filter(|s| s.kind == Kind::Skills && s.skip.is_none() && matches!(s.source, "home" | "workspace"))
+        // T-666: a folder on another computer, or on a WSL share by its text, is dropped before
+        // anything below opens it.
+        .filter(|s| !wsl_text(&s.path) && !remote_path(&s.path))
         // DT-C94: a project stored in WSL is listed but never deleted from: its share may be slow or
         // stopped (a delete holds the shared lock) and its names are case-sensitive.
         .filter(|s| !in_wsl(&s.path))
         .map(|s| s.path.clone())
         .filter(|p| seen.insert(key(p)))
         .collect();
-    let plugin = all.iter().filter(|s| s.source == "plugin").map(|s| s.path.clone()).collect();
+    let plugin = all.iter().filter(|s| s.source == "plugin" && !remote_path(&s.path)).map(|s| s.path.clone()).collect();
     Places { deletable, plugin }
 }
 
