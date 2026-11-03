@@ -166,7 +166,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
                     return (
                       <tr key={r.path} style={{ opacity: can ? 1 : 0.7 }}>
                         <td style={cell}>
-                          <input type="checkbox" aria-label={`Select ${labelOf(r)}`} disabled={!can} title={whyNotDeletable(r, active) ?? undefined} checked={can && chosen.includes(r.path)} onChange={() => toggle(r.path)} />
+                          <label className="hit-box"><input type="checkbox" aria-label={`Select ${labelOf(r)}`} disabled={!can} title={whyNotDeletable(r, active) ?? undefined} checked={can && chosen.includes(r.path)} onChange={() => toggle(r.path)} /></label>
                         </td>
                         <td style={cell}>{r.branch ?? <i>detached</i>}</td>
                         <td style={{ ...cell, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 320 }} title={r.path}>

@@ -367,14 +367,16 @@ export default function SkillsPage({ workspace, onClose }: Props) {
               <div key={s.path} className="skills-row" role="listitem">
                 <div className="top">
                   {picking && (
-                    <input
-                      type="checkbox"
-                      aria-label={`Choose ${s.name}`}
-                      checked={picking.includes(s.path)}
-                      disabled={whyNot(s) != null}
-                      title={whyNot(s) ?? undefined}
-                      onChange={() => toggle(s.path)}
-                    />
+                    <label className="hit-box">
+                      <input
+                        type="checkbox"
+                        aria-label={`Choose ${s.name}`}
+                        checked={picking.includes(s.path)}
+                        disabled={whyNot(s) != null}
+                        title={whyNot(s) ?? undefined}
+                        onChange={() => toggle(s.path)}
+                      />
+                    </label>
                   )}
                   <span className="name">{s.name}</span>
                   <span className={`skills-tag ${s.source}`}>{s.plugin ? `Plugin: ${s.plugin}` : SOURCES.find((x) => x.id === s.source)!.label}</span>

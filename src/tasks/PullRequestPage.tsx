@@ -502,7 +502,7 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
             {files?.files.map((f) => (
               <details key={f.filename} className="pr-file">
                 <summary>
-                  <input type="checkbox" aria-label={`Viewed ${f.filename}`} disabled={!viewed} checked={viewedOf(viewed, f.filename) === "viewed"} onChange={(e) => mark(f.filename, e.target.checked)} />{" "}
+                  <label className="hit-box"><input type="checkbox" aria-label={`Viewed ${f.filename}`} disabled={!viewed} checked={viewedOf(viewed, f.filename) === "viewed"} onChange={(e) => mark(f.filename, e.target.checked)} /></label>{" "}
                   {f.filename}{viewedOf(viewed, f.filename) === "dismissed" ? <span className="tasks-kind"> changed since viewed</span> : null} <span className="tasks-kind">{f.status} +{f.additions} -{f.deletions}</span>
                 </summary>
                 {f.held && loaded[f.filename] === undefined ? (

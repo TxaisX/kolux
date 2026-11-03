@@ -1,0 +1,18 @@
+T-697 / DT-C133: UX live audit W3 G9b, lane A (90): five lone checkboxes, their names and hit areas
+Row: proof/ux-audit/requests/W3.md section "90: T-697". Built on main 00fd7ddc.
+
+Name part: NOT REPRODUCED. On main 00fd7ddc each of the five boxes already carries an aria-label naming what it
+  ticks: AllChangesPane "Viewed <file>", ChangeTree "Viewed <path>", SkillsPage "Choose <skill>", SpaceView
+  "Select <worktree>", PullRequestPage "Viewed <file>". The live part B harness's "unlabeled" list was empty on
+  every screen it measured (findings/live-wave3-b.md, the "layout: fits the window" rows). The names are kept.
+Hit area part: FIXED. Each box was a bare native checkbox (about 13px) with nothing around it to catch a near
+  miss. Each now sits in a label (class hit-box) at least 24px square, centred on the box. The box keeps its size,
+  and a click anywhere in the label ticks it, as .auto-radio's wrapping label does for its radios. A disabled box
+  shows the default cursor.
+
+Test: src/shell/checkboxHit.test.ts (6 tests). For each file it finds the one checkbox input with that name, checks
+  it is the only thing in a hit-box label, and checks the .hit-box rule's 24px minimums.
+  On main's five sources and styles.css: 6 failed. With this change: 6 passed.
+  npx vitest run (full): 5867/5870 (the 3 are the known local CRLF pdfjsCopy failures). npx tsc --noEmit: 0.
+  First load (npx vite build && node scripts/bundle-budget.mjs, on this branch and on a detached origin/main):
+  1,487,806 vs 1,487,806, main +0 (the five screens load lazily).
