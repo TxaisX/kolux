@@ -35,7 +35,7 @@ export const AgentsPanel = deferred(() => import("../sessions/AgentsPanel"));
 
 /** chat/ChatView exports its head, its row and its hand-off menu too, so the chat body is named out of it. */
 type ChatProps = ComponentProps<(typeof import("../chat/ChatView"))["AgentsChat"]>;
-export const AgentsChat = deferred<ChatProps>(() => import("../chat/ChatView").then((m) => ({ default: m.AgentsChat as unknown as ComponentType<ChatProps> })), loading);
+export const AgentsChat = deferred<ChatProps>(() => import("../chat/ChatView").then((m) => ({ default: m.AgentsChat as unknown as ComponentType<ChatProps> })));
 
 // The first-run guide and its wizard, and the help menu's sheet.
 export const Guides = deferred(() => import("../onboarding/Guides"));

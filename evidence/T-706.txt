@@ -8,27 +8,38 @@ What was asked: src/lazy/deferred.tsx gave every deferred surface Suspense fallb
   quiet "Loading…" with role="status". Pane bodies, sheets and dialogs stay at null. +150 B or less on first load.
 
 FIXED
-  - src/lazy/deferred.tsx: deferred(load, fallback = null); the fallback goes to Suspense.
+  - src/lazy/deferred.tsx: deferred(load, fallback?); the fallback goes to Suspense (none draws nothing). Once a surface's module has
+    loaded (prefetch() or a first open), deferred() keeps it and hands it to React's lazy() as a thenable that answers at
+    once, so a screen prefetch has already read draws on its first open without suspending (no fallback frame).
+    Before this, prefetch() called the raw import, which warmed the module cache but not lazy(), so the first open
+    still suspended once (found by the review).
   - src/lazy/pages.tsx: one shared element, <div class="empty" role="status">Loading…</div>, inline (no new component file).
     It reuses the muted, centred empty-state style (.empty in styles.css), so there is no new CSS.
-    Passed by the ten full-page screens Content.tsx draws: TasksPage, AutomationsPage, RoutingPage, SkillsPage,
-    ArtifactsPage, InboxView, AgentsChat, TowerView, FloorView, SpaceView.
+    Passed by the nine full-page screens Content.tsx draws: TasksPage, AutomationsPage, RoutingPage, SkillsPage,
+    ArtifactsPage, InboxView, TowerView, FloorView, SpaceView.
+  - AgentsChat keeps null: it shares the content column with the Agents grid and the Agents empty state, and chat.css
+    hides those by what sits next to .chat (.chat + .empty, .chat.cover ~ .grid.agents), so a flex:1 placeholder there
+    would split the column or squash the terminal grid (found by the review).
   - Everything else in pages.tsx keeps fallback null: the pane bodies (Explorer, ChecksPanel, InsightsPanel, ChooserPane...),
     the sheets and dialogs (PlanSheet, HelpSheet, UpdateCenter, FeedbackDialog...), the notices (SignInNotice,
     KeyLostNotice, SkillUpdateNotice, ToolNotices), and SettingsPage, which Content.tsx does not draw (out of the row).
 
-TESTS (src/lazy/pages.test.ts, 4, fakeDom)
+TESTS (src/lazy/pages.test.ts 4 + src/lazy/deferred.test.ts 1, fakeDom)
   - A full-page screen (TasksPage, through pages.tsx, its module mocked to never resolve) shows exactly one role=status
     element, text "Loading…", class "empty".
   - A pane body (Explorer, through pages.tsx, never resolving) draws nothing: the container has no children and no text.
   - With deferred() directly: the fallback shows, then gives way to the screen once its code arrives.
-  - Source check: the set of pages.tsx exports that pass the fallback is exactly the ten screens above.
-  - With the fallback taken out of deferred() (Suspense back to fallback: null), tests 1 and 3 fail; with it, 4/4 pass.
+  - Source check (a guard, not the proof; it reads one-line declarations): the pages.tsx exports that pass the fallback
+    are exactly the nine screens above.
+  - deferred.test.ts: after prefetch() has read a screen, its first mount shows the screen and never renders the fallback.
+    It fails on the first commit's deferred.tsx (raw import in prefetch) and passes now.
+  - With the fallback taken out of deferred() (Suspense back to fallback: null), pages tests 1 and 3 fail.
 
 VERIFY
-  - VITEST_MAX_WORKERS=1 vitest run src/lazy: 4/4 passed.
+  - VITEST_MAX_WORKERS=1 vitest run src/lazy: 5/5 passed.
   - tsc --noEmit: 0 errors. plan-check: OK. firewall-check -Baseline: 0 new.
   - First load (vite build + scripts/bundle-budget.mjs, both in one slot): main d552a974 1,489,090 bytes, this branch
-    1,489,201 bytes, so main +111 B (budget +150 B; ceiling 1,490,000).
-  - Not measured live. The placeholder shows only before prefetch() has read a screen (at the first idle moment after the window is up),
-    so a live check needs a throttled or cold start. The unit tests cover what is drawn.
+    1,489,239 bytes, so main +149 B (budget +150 B; ceiling 1,490,000).
+  - Not measured live. The placeholder shows only before prefetch() has read a screen (at the first idle moment after
+    the window is up), so a live check needs a throttled or cold start. The unit tests cover what is drawn.
+  - role="status" is not counted on to be announced: a region that arrives with its text in it is often not read out.

@@ -60,5 +60,5 @@ test("only the full-page screens Content.tsx draws carry the fallback", () => {
   const fs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
   const src = fs.readFileSync(new URL("./pages.tsx", import.meta.url), "utf8");
   const withFallback = [...src.matchAll(/export const (\w+) = deferred\b[^\n]*, loading\);/g)].map((m) => m[1]).sort();
-  expect(withFallback).toEqual(["AgentsChat", "ArtifactsPage", "AutomationsPage", "FloorView", "InboxView", "RoutingPage", "SkillsPage", "SpaceView", "TasksPage", "TowerView"]);
+  expect(withFallback).toEqual(["ArtifactsPage", "AutomationsPage", "FloorView", "InboxView", "RoutingPage", "SkillsPage", "SpaceView", "TasksPage", "TowerView"]);
 });

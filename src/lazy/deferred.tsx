@@ -10,10 +10,14 @@ const loaders: Array<() => Promise<unknown>> = [];
 /**
  * `load` names the module the surface lives in; its default export is the surface. `fallback` is drawn
  * while that code is read: only the full-page screens pass one (T-706), the rest draw nothing.
+ * Once `prefetch()` has read the module, `get` hands it over as a thenable that answers at once, so
+ * React draws the surface on its first open without suspending (no fallback frame at all).
  */
-export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>, fallback: ReactElement | null = null) {
-  loaders.push(load);
-  const Body = lazy(load);
+export function deferred<P extends object>(load: () => Promise<{ default: ComponentType<P> }>, fallback?: ReactElement) {
+  let mod: { default: ComponentType<P> } | undefined;
+  const get = () => (mod ? ({ then: (ok: (m: typeof mod) => void) => ok(mod) } as Promise<typeof mod & object>) : load().then((m) => (mod = m)));
+  loaders.push(get);
+  const Body = lazy(get);
   return function Deferred(props: P): ReactElement {
     return createElement(Suspense, { fallback }, createElement(Body, props));
   };
