@@ -380,8 +380,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
       {q === null && <div className="note warn">That search is too long; shorten it.</div>}
       {warnings.map((w) => (
         <div key={w} className="note warn" role="status">
-          {w.replace(/\.$/, "")}. Its automations show here once that is fixed in the tool itself; then{" "}
-          <button className="btn link" disabled={refreshing} onClick={() => void refresh()}>
+          {w.replace(/[.!?…]+$/, "")}. Its automations show here once that is fixed (install the tool, sign it in, or check its setup); then{" "}
+          <button className="btn link" aria-label="Refresh automations" disabled={refreshing} onClick={() => void refresh()}>
             refresh
           </button>
           .

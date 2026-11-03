@@ -18,7 +18,8 @@ FIXED
 - F10 [polish] the bare yellow "OpenClaw could not list its automations: gateway cron.list requires
   credentials ..." line. REPRODUCED: shots S19-automations.png and S19-new-dialog.png. Fix:
   src/automations/AutomationsPage.tsx: each tool warning keeps the tool's own words and adds "Its automations show
-  here once that is fixed in the tool itself; then refresh", the last word a button that re-reads the list.
+  here once that is fixed (install the tool, sign it in, or check its setup); then refresh", the last word a button
+  (aria-label "Refresh automations") that re-reads the list. The tool's trailing . ! ? or … is dropped first.
 - F5 [polish] Artifacts has no Close/Back. REPRODUCED: run 1 and run 2 tables, "Page has a Close/Back control:
   none". Fix: src/artifacts/ArtifactsPage.tsx takes onClose and shows a Close (Escape) button before the title, as
   Automations does; src/shell/window/Content.tsx passes the same step Escape already took (back to Terminals).
@@ -48,6 +49,15 @@ TESTS (only the touched ones)
   src/chrome/topBarLayout.test.ts: 33 files, 215 tests pass.
 - The new floatStack tests fail with the two stylesheets put back as on main (2 failed) and pass with the fix.
 - pnpm tsc --noEmit: clean. node scripts/plan-check.mjs: OK. firewall-check -Baseline: 0 new.
+
+REVIEW
+- Opus review (opus-high-review) of c9b0ace0: A-. No MUST-FIX. SHOULD-FIX taken: the warning's next step now fits
+  "not found on the PATH" and "did not answer in time" too; the "always on top" claim is narrowed to dialogs mounted at
+  the window root. FOLLOW-UP (predates this PR, not changed): Settings dialogs sit inside .settings (z 40, its own
+  stacking context) and .menu (41), .review-pop and the update pop (45) still draw under the floating panel where they
+  overlap. NITs taken: trailing ! ? … dropped; the button has a label. NITs left: Content.tsx passes
+  setScreen("terminals"), which is what Escape's leavePage does on this screen; the stylesheet test compares with .scrim
+  only.
 
 LANES
 - 57 handed these rows to 2f (W3.md). Files outside lane B: src/floating (E3), src/styles.css and
