@@ -746,6 +746,7 @@ pub fn run() {
             browser::browser_open,
             browser::preview::browser_preview_grant,
             browser::preview::browser_preview_revoke,
+            browser::downloads::browser_download_cancel, browser::downloads::browser_download_reveal,
             browser::browser_bounds,
             browser::browser_navigate,
             browser::browser_go,
