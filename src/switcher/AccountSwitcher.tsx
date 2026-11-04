@@ -2,12 +2,13 @@
 // names the account new Claude and Codex panes use; clicking it opens a menu with every managed
 // account of each provider, and a click makes that one the account for NEW panes. Panes already
 // running keep their account (ACCT-017) until the person accepts the prompt that offers to move a Codex
-// pane (ACCT-023). It hides itself until a provider has a managed account,
-// and the accounts themselves are still added, signed in again and removed in Settings.
+// pane (ACCT-023). With no managed account yet it is the top bar's "Connect an AI" route into
+// Settings > Accounts & keys, where accounts are still added, signed in again and removed.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { activeOf, buttonText, groupsOf, pickAccount, watchEscape, type ClaudeSwitchView, type CodexSwitchView, type Group, type Provider } from "./accounts";
+import { openSettings } from "../settings/pages";
 import "./switcher.css";
 
 /** Both views, re-read when either provider's accounts change; the same events Settings listens to. */
@@ -61,10 +62,20 @@ export function useAccountSwitcher(): { groups: Group[]; active: { claude: strin
   return { groups, active, stale, pick };
 }
 
-type ViewProps = { groups: Group[]; open: { top: number; left: number } | null; error?: string | null; onOpen: (at: { top: number; left: number }) => void; onClose: () => void; onPick: (provider: Provider, id: string | null) => void };
+type ViewProps = { groups: Group[]; open: { top: number; left: number } | null; error?: string | null; onOpen: (at: { top: number; left: number }) => void; onClose: () => void; onPick: (provider: Provider, id: string | null) => void; onAccounts?: () => void };
 
-export function AccountSwitcherView({ groups, open, error = null, onOpen, onClose, onPick }: ViewProps) {
-  if (groups.length === 0) return null;
+/** C17-R5-01: the one top-bar route to Accounts & keys, present before any account exists. */
+const openAccounts = () => openSettings("accounts", "connections");
+
+export function AccountSwitcherView({ groups, open, error = null, onOpen, onClose, onPick, onAccounts = openAccounts }: ViewProps) {
+  // C17-R5-01: with no managed account the pill still draws, as the way to sign one in; it opens
+  // Accounts & keys instead of a menu of accounts that does not exist yet.
+  if (groups.length === 0)
+    return (
+      <button type="button" className="acct-switch" title="Connect an AI: open Settings › Accounts & keys" onClick={onAccounts}>
+        <span className="acct-switch-text">Connect an AI</span>
+      </button>
+    );
   return (
     <>
       <button
