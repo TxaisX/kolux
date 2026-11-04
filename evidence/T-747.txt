@@ -25,3 +25,4 @@ REVIEW: sonnet-medium-review, B+, no must-fix. Applied: a focused element that a
   expressions (kept for bytes).
 GATES: tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
 PENDING: unit-proven; not checked live in the app.
+MERGE 0d882444 (train 22, #184 landed): DECISIONS.md rows kept from both sides; first load 1,487,809 B vs main 0d882444 1,487,824 B (-15). tsc 0, plan-check OK.
