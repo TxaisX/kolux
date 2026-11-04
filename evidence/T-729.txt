@@ -1,0 +1,53 @@
+T-729 / DT-C165: lane D (72): one confirm style
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md "Queue refill" (T-729), sweep #27, finding
+destructive.md:10 F5 (the sessions proof dir, not in this repo). Built on origin/main 3e067ebf, merged with main
+73008fe1, branch s-72/ask, 2026-11-03.
+
+FOUND: besides chrome/Ask, six places asked "are you sure?" their own way: inline sidebar forms in the projects panel
+(sleep, delete all, take out, delete workspace, remove project), the Explorer's own alertdialog, the notes' Clear (shell/ConfirmClear),
+the account row's inline Remove, the Settings reset buttons, and Confirm merge on the pull request page. Some focused
+the destructive button, some let Tab and Escape do nothing, none restored focus the same way.
+
+FIXED: all of them open chrome/Ask, so Cancel is focused on open, Tab stays inside, Escape cancels from anywhere and
+focus goes back where it was. Ask itself is unchanged.
+  src/settings/SafetyRules.tsx: the reset button (also used by the scheme picker and the shortcuts page) asks
+    "<label>?" with the confirm word without "Yes, " (default Reset) and its keep word as Cancel.
+  src/shell/ConfirmClear.tsx: Clear asks the clear question, Clear / Keep.
+  src/settings/AccountRow.tsx: Remove <account>? Remove / Keep; a Remove while the row is busy is ignored.
+  src/projects/ProjectsPanel.tsx: Put to sleep (Sleep / Keep awake); Delete workspace and children (child list and
+    error in the body; Delete all, "Deleting..." while busy, a click while busy does nothing); Take out of Kolux (Take
+    out / Keep; a refusal shows only the reason with one OK); Delete workspace (both tick boxes, the change and commit
+    lists and the refusal text in the body; Delete / Keep; blocked shows one OK); Remove <project> / Keep it.
+  src/editor/Explorer.tsx: Delete asks Move to trash (blue: trash loses nothing) or Delete (red: WSL deletes for
+    good) / Cancel; Cancel now has focus instead of the destructive button.
+  src/tasks/PullRequestPage.tsx: Confirm merge, Yes, merge it (red) / Cancel; busy click does nothing. The page's own
+    Escape handler steps aside when Ask already cancelled.
+  Styles removed (no longer used): .acct-confirm (styles.css), .confirm-clear and .confirm-clear .confirm-q
+    (shell/shell.css), the .notice.ex-ask selector (styles.css; .ex-note stays).
+  BEHAVIOUR CHANGES: the inline prompts are now modal, so a click on the backdrop cancels them; the blocked delete
+    shows one OK instead of a disabled Delete; reset confirm words lose "Yes, ".
+  NOT CHANGED (not a plain confirm or cancel): the terminal close prompts, the resource manager's ask, the graphics
+    recovery prompt, the chat permission card, CloseDialog, the floating layer, browser pane and stack map asks.
+
+TEST
+  src/settings/askConfirms.test.ts (new): a reset button opens Ask titled with its question, the confirm word loses
+    "Yes, ", Keep backs out, the confirm resets once and closes; clearing several notes asks in Ask, Clear drops them,
+    Keep does not, one note clears at once.
+  src/settings/menus.t712.test.ts: the account Remove is Ask (titled for the account, Keep / Remove), Escape inside it
+    is Keep and goes no further, Remove does nothing while a sign-in runs and removes when idle.
+  Focus on Cancel, the Tab trap, Escape and focus return are Ask's own, already covered by its tests; Ask is unchanged.
+  src/projects/forgetAsk.test.ts, removeCommits.test.ts, removePaths.test.ts: find the dialog by role alertdialog and
+    its buttons by text.
+  src/tasks/PullRequestPage.test.ts: the fake window knows capture listeners, so the page's Escape test runs with Ask.
+  src/chrome/reach.test.ts: the five rows for the old inline confirms are gone (they are Ask now).
+  VITEST_MAX_WORKERS=1 npx vitest run src/settings src/shell src/projects src/editor src/tasks src/chrome src/scm
+    (after the merge of 73008fe1): Test Files 381 passed (381), Tests 2853 passed (2853).
+  One-worker runs only (a live verify was using the RAM). An earlier run saw editPlacement.test.ts "60 paragraphs"
+    time out (5.2 s on a 5 s limit); it imports nothing touched here and passed in the run above.
+  pnpm tsc --noEmit: 0.
+
+BUNDLE: first load 1,487,586 B in 46 chunks vs main 73008fe1 1,489,604 B in 47 chunks (both built here with
+  npx vite build + node scripts/bundle-budget.mjs): 2,018 B smaller. Cap was net smaller; the bytes go back to the
+  held rows.
+
+PENDING: unit-proven; a live check in the app has not been run.
