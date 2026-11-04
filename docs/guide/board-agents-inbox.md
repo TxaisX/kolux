@@ -33,6 +33,8 @@ Lanes run left to right. A lane is drawn only when it holds a card.
 | Quiet for a while | Working | "No recent update", and how long since its last status (for example "no status for 12m"). Shown when a working agent prints nothing for a while, or sends no status for 30 minutes |
 | Working | Working | Time running and the current tool step |
 
+On the Board and the Tower a blocked session reads Stopped, and the line under the word gives the cause. The pane header keeps the word Blocked.
+
 A meter bar on the card shows how full the AI's memory is (tokens used out of its window) and its plan allowance.
 
 ### Approve and Deny
@@ -111,11 +113,11 @@ In the plan review sheet (the "Review plan" button on a pane), **Request changes
 
 ## The Inbox
 
-Use it to see everything that wants your attention. Press the bell in the top bar. Press it again, or press Escape, to leave.
+Use it to see everything that wants your attention. Press the bell in the top bar. Press it again, or press Escape, to leave. The Inbox has four groups: Needs you, Waiting on agent, Done today and Stopped.
 
 | Group | Contents |
 |---|---|
-| Needs you | Rows labelled Permission, Question or Blocked. A blocked session — a limit, a sign-in or an error — stays here, though the Board and the Tower show it as Stopped |
+| Needs you | Rows labelled Permission, Question or Blocked. A blocked session (a limit, a sign-in or an error) stays here, labelled Blocked, though the Board and the Tower show it as Stopped |
 | Waiting on agent | Rows labelled Running or Queued |
 | Done today | The 20 newest sessions that finished their turn in the last 30 minutes and whose program is still running. Interrupted ones are left out |
 | Stopped | The 20 newest sessions whose program exited in the last 30 minutes. A program that has exited cannot say its work finished, so its session is never listed under Done today |
@@ -150,7 +152,7 @@ A finished run's page keeps **Saved output**: the last text the agent's terminal
 
 ## Status words
 
-The same words appear in pane headers, tabs, the sidebar, the Board and the Inbox.
+The same words appear in pane headers, tabs, the sidebar, the Board, the Tower and the Inbox, with one exception: a blocked session reads Stopped on the Board and the Tower, with the cause on its line. Its pane header and its Inbox row keep Blocked.
 
 | Word | Meaning |
 |---|---|
@@ -166,7 +168,7 @@ The same words appear in pane headers, tabs, the sidebar, the Board and the Inbo
 | No recent update | No status has arrived from this agent for a while: it printed nothing for some minutes, or, while working, sent no status for 30 minutes. It clears with the next status |
 | Starting | The program is starting up |
 | Cannot reach | Kolux cannot talk to this agent |
-| Stopped | The program has stopped |
+| Stopped | The program has stopped. A session held by a limit or a sign-in reads Stopped too, with the cause on its line |
 
 A plain shell reads "Ready" while it runs and "Ended (code)" after it exits. A session not yet started reads "Not started" on the Agents page.
 
