@@ -229,8 +229,8 @@ pub fn make_room(all: &mut Vec<Download>) {
     }
 }
 
-/// T-734 (DT-C170): the strip's Cancel. The engine stops the download and removes its partial
-/// file; the row says cancelled. A download that already ended is left as it is.
+/// T-734 (DT-C170): the strip's Cancel. The engine stops the download;
+/// the row says cancelled. A download that already ended is left as it is.
 #[tauri::command]
 pub async fn browser_download_cancel(app: AppHandle, key: u64) -> Result<(), String> {
     let (id, path) = DOWNLOADS.lock().map_err(|e| e.to_string())?.iter().find(|x| x.key == key && x.state == State::Running).map(|x| (x.id, x.path.clone())).ok_or("the download is not running")?;
