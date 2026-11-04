@@ -16,7 +16,7 @@ test("SET-023: the list narrows as the user types and marks the pick", () => {
   const html = renderToString(createElement(SchemeList, { label: "Dark mode", options: schemeOptions(look, true), query: "dra", value: "dracula", onPick: () => {} }));
   expect(html).toContain("Dracula");
   expect(html).not.toContain("Nord");
-  expect(html).toMatch(/aria-selected="true"[^>]*>.*Dracula/);
+  expect(html).toMatch(/aria-pressed="true"[^>]*>.*Dracula/);
   const none = renderToString(createElement(SchemeList, { label: "Light mode", options: schemeOptions(look, false), query: "zzz", value: "x", onPick: () => {} }));
   expect(none).toContain("No scheme matches");
 });

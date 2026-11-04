@@ -222,7 +222,8 @@ User sees: when a coordinator gives a task a tier, the worker runs on the same p
   model picked for that tier.
 Rules: a tier left empty means the provider's default; effort choices depend on the model, so a new
   model keeps the effort if it is still offered and resets it otherwise; only providers that can route
-  by tier are listed.
+  by tier are listed. (Kolux RS, T-757: the provider tabs are one tab stop, Left, Right, Home and End move
+  along them and open the tab reached, and the open tab labels the panel below.)
 Acceptance:
   - [x] Give the fast tier a small model and run an orchestrated task on that tier → the worker's header
         names the small model. (cards; evidence/cards-SET-028.txt)
@@ -492,7 +493,9 @@ User sees: terminals change scheme along with the app's mode; pane dividers and 
 Rules: the dark default is the app's own dark scheme; the separate light scheme is on by default and
   uses a Tango-style light palette; divider colour is set per mode and divider width starts at 3 px;
   unfocused panes dim to an adjustable opacity over a 140 ms fade; the catalogue narrows as the user
-  types; custom schemes are kept in settings and tidied when loaded.
+  types; custom schemes are kept in settings and tidied when loaded. (Kolux RS, T-757: each list is a plain
+  list of toggle buttons, the picked one pressed, so a custom scheme's Remove sits beside its button; both
+  Bring in cards say "Bring in from Ghostty or Warp" and "Bring in 2 schemes" once some are ticked.)
 Acceptance:
   - [ ] Pick different dark and light schemes, then flip the app's mode → terminals swap schemes.
   - [ ] Focus another pane → the one left behind dims over about 140 ms.

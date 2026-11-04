@@ -418,7 +418,11 @@ export function planImport(saved: CustomScheme[], ticked: CustomScheme[], cap = 
   return plan;
 }
 
+/** T-757: the one wording for the import cards' button: Bring in, or Bring in 2 schemes once some are ticked. */
+export const bringIn = (n: number) => (n ? `Bring in ${n} scheme${n === 1 ? "" : "s"}` : "Bring in");
+
 /** What the result line says after applying. */
+
 export function planSummary(p: ImportPlan, cap = MAX_CUSTOM): string {
   const parts = [p.added.length && `Added ${p.added.join(", ")}.`, p.replaced.length && `Replaced ${p.replaced.join(", ")}.`, p.refused.length && `Not added: ${p.refused.join(", ")}, because you already have ${cap} custom schemes. Remove one first.`];
   return parts.filter(Boolean).join(" ") || "Nothing was ticked, so nothing changed.";

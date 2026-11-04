@@ -1,0 +1,44 @@
+T-757 - Settings polish: roles, keys and wording (DT-C193; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t757 from main 5e481cf2, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 15", T-757 (0.1.8). Source: unsure-triage-49.md rows 14, 17, 18.
+
+CHECKED FIRST (all open on main 5e481cf2)
+- SchemePicker.tsx:27-31: role="listbox" with div children, each holding a role="option" button and a Remove
+  button beside it.
+- RoutingPage.tsx:41-43: role="tablist"/"tab" with no tabpanel, no aria-controls, every tab a tab stop, no
+  arrow keys.
+- SafetyRules.tsx:209,216: "Nothing was paused yet." and the raw outcome (waiting/allowed/denied) in bold.
+- TerminalImport.tsx:172 and AppearancePage.tsx:442: "Bring in {n}" with a bare number (and a trailing space
+  at 0); Appearance's card said "Warp or Ghostty", Terminal's "Ghostty or Warp".
+- NotificationsPage.tsx:182: the bare {error}. #206 (T-752) already rewrote that line into SettingsError, so
+  the save context went there instead ("The change could not be saved: <reason>" on every page), avoiding a
+  conflict between the two drafts.
+
+WHAT CHANGED (DT-C193)
+1. SchemePicker.tsx: <ul aria-label> of <li> rows; the pick is a toggle button with aria-pressed; Remove sits
+   beside it in the row. The "No scheme matches" line sits above the list. styles.css: .scheme-rows keeps the
+   scroll box and drops the list bullets.
+2. RoutingPage.tsx: roving tabIndex (the open tab is the one stop), ids routing-tab-<id>, aria-controls on each
+   tab, the body is role="tabpanel" id="routing-panel" labelled by the open tab; Left, Right (wrapping), Home and
+   End move and open via tabStep from chrome/RightSidebar.
+3. SafetyRules.tsx: OUTCOME map - Waiting for you, Allowed once, Denied, not run (SAFE-018); data-outcome keeps
+   the stored value. Empty line: "Claude has not asked about a command yet."
+4. importSchemes.ts bringIn(n), used by both import buttons; Appearance's heading reads "Bring in from Ghostty
+   or Warp".
+5. spec/17: notes on SET-028 (tabs) and SET-023 (list and import wording).
+6. Row 21 (--kx tokens) left alone: moved to T-758 (2f).
+
+TESTS
+- New RoutingPage.keys.test.ts: tab stops, aria-controls, the panel's label, ArrowRight, End, wrap, ArrowLeft.
+- Updated: SafetyRules.test.ts (empty line, "Denied, not run", no raw <b>denied</b>), SchemePicker.test.ts
+  (aria-pressed), terminalImportRender.test.ts ("Bring in 1 scheme"), __cards__/SET-001-005.test.ts (finds the
+  scheme buttons by aria-pressed).
+- Red-checked: the 4 changed or new assertions fail on main's sources.
+- pnpm exec tsc --noEmit -p . : clean. vitest src/settings src/chrome src/insights src/terminal: 215 files, 1251
+  passed. Full suite: 821 files, 6056 passed. After the review fixes: src/settings 88 files, 493 passed. plan-check OK; firewall-check -Baseline 0 new.
+
+REVIEW
+- Grade A- (sonnet-medium-review, read-only), no blockers, no mediums. Fixed from its lows: the empty list no longer renders when nothing matches (the line shows alone), the user guide says Ghostty or Warp and the new button wording, and the bringIn comment no longer splits planSummary from its own. Left to the after list: tabStep moving out of RightSidebar into a small shared module, and finding the tab by id instead of by child index.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- First load +9 B (main 5e481cf2 1,487,946 B, branch 1,487,955 B, cap +100).
