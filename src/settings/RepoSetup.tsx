@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
-import { choiceOptions, choiceSave, runsNote, scriptSave, trustNote, type RepoSetup } from "./setupChoice";
+import { choiceOptions, choiceSave, runsNote, scriptSave, trustedWords, trustNote, type RepoSetup } from "./setupChoice";
 
 export interface SetupActions {
   onSave: (script: string) => void;
@@ -11,9 +11,10 @@ export interface SetupActions {
   onChoice: (value: string) => void;
   onWait: (wait: boolean) => void;
   onMode?: (mode: string) => void;
+  onUntrust?: () => void;
 }
 
-export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; notice?: string | null; actions: SetupActions }) {
+export function RepoSetupView({ setup, notice, status, actions }: { setup: RepoSetup; notice?: string | null; status?: string | null; actions: SetupActions }) {
   const [draft, setDraft] = useState(setup.local ?? "");
   const [composing, setComposing] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -28,6 +29,7 @@ export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; no
   };
   useLeaveSave(() => draft !== (setup.local ?? "") && commit()); // SET-036: changing page or closing keeps what was typed
   const trust = trustNote(setup);
+  const trusted = trustedWords(setup);
   return (
     <section className="conn-card" data-section="repo-setup">
       <h2 className="conn-name">Setup script</h2>
@@ -103,6 +105,24 @@ export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; no
       <p className="conn-detail">
         {runsNote(setup)} {trust}
       </p>
+      {trusted && (
+        // T-721: what Always trust or an approval allowed can be seen here and taken back; kolux.yaml asks again after
+        <div className="look-select" data-row="trust">
+          <span>Trusted</span>
+          <span>
+            {trusted}{" "}
+            <button className="btn" onClick={actions.onUntrust}>
+              Stop trusting
+            </button>
+          </span>
+        </div>
+      )}
+      {status && (
+        // the button that had focus is gone with its row: focus and announce what changed instead
+        <p className="conn-detail" role="status" tabIndex={-1} autoFocus data-status="trust">
+          {status}
+        </p>
+      )}
       <label className="check">
         <input type="checkbox" aria-label="Wait for setup" checked={setup.wait} onChange={(e) => actions.onWait(e.target.checked)} />
         The agent waits for setup to finish before it starts
@@ -130,6 +150,7 @@ export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; no
 export default function RepoSetupSection({ path }: { path: string }) {
   const [setup, setSetup] = useState<RepoSetup | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const load = useCallback(() => {
     invoke<RepoSetup>("repo_setup_get", { path })
       .then((s) => (setSetup(s), setNotice(null)))
@@ -145,6 +166,7 @@ export default function RepoSetupSection({ path }: { path: string }) {
     <RepoSetupView
       setup={setup}
       notice={notice}
+      status={status}
       actions={{
         onSave: (script) => void write("repo_setup_save", { script }),
         onRemove: () => void write("repo_setup_remove", {}),
@@ -154,6 +176,10 @@ export default function RepoSetupSection({ path }: { path: string }) {
         },
         onWait: (wait) => void write("repo_setup_wait_set", { wait }),
         onMode: (mode) => void write("repo_setup_mode_set", { mode }),
+        onUntrust: () =>
+          void invoke("repo_trust_clear", { path })
+            .then(() => (setStatus("Kolux no longer trusts this repository's kolux.yaml: each script asks before it runs."), load()))
+            .catch((e) => setNotice(String(e))),
       }}
     />
   );

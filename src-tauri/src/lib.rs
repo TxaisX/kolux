@@ -625,6 +625,7 @@ pub fn run() {
             setup::repo_setup_policy_set,
             setup::repo_setup_wait_set,
             setup::repo_setup_mode_set,
+            setup::repo_trust_clear,
             projects::handoff_note_prepare,
             projects::workspace_remove,
             cleanup::cleanup_remove,
