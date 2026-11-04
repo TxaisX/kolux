@@ -1,4 +1,4 @@
-T-730 - Agents rail presets, link bubble keyboard path, "Past sessions" tab (DT-C166; UX audit W3 queue refill 2)
+T-730 - Agents rail presets, link bubble keyboard path, "History" tab (DT-C166; UX audit W3 queue refill 2)
 Worker 2f, coordinator 57, branch s-2f/t730 from main 73008fe1, 2026-11-03.
 Row: proof/ux-audit/requests/W3.md "T-730 / DT-C166". Sweep #30 (a), #31 (b), #28 (c). First load cap +10 B.
 
@@ -6,7 +6,8 @@ Row: proof/ux-audit/requests/W3.md "T-730 / DT-C166". Sweep #30 (a), #31 (b), #2
 - Before: + under an agent on the Agents rail added a "New session" row (a pane with a seat, not started).
   Nothing on the rail took it away again.
 - After: the not-started row has "Remove" under it, in the place a session's status line sits. It calls the
-  window's dropPane with that pane's key (the same call that closes a pane), so only that preset goes.
+  window's closePane with that pane's key, the same path as closing its tab (pinned, busy and guard checks
+  still run), so only that preset goes.
   Started sessions never show it.
 - It is a sibling of the row, not a button inside it: the row is a role=button div, and nested buttons were
   taken out in T-712. Its look (indent, size, muted colour, brighter on hover and keyboard focus) is in
@@ -18,9 +19,9 @@ Row: proof/ux-audit/requests/W3.md "T-730 / DT-C166". Sweep #30 (a), #31 (b), #2
   the bubble is in use. It landed with the editor UX pass (be6f4dfc, review fixes 5d026570, 2026-11-02),
   after the sweep was taken. The rich view is always editable, so the caret path covers every link in it.
 
-(c) "PAST SESSIONS" TAB
+(c) "HISTORY" TAB
 - The right-sidebar tab that lists past agent sessions was labelled "Agents", the name of the Agents screen in
-  the top bar. It is now "Past sessions", with the tooltip "Search, resume or copy the resume command".
+  the top bar. It is now "History", with the tooltip "Search, resume or copy past sessions".
   Its stored id stays "agents", so a saved tab choice still opens it.
 - The panel's generic div carried aria-label="Agents"; a div without a role is not announced, so it is removed
   rather than renamed (the panel is loaded later and is not in the first load).
@@ -28,17 +29,27 @@ Row: proof/ux-audit/requests/W3.md "T-730 / DT-C166". Sweep #30 (a), #31 (b), #2
 FIRST LOAD
 - Each changed file was minified on its own (rolldown 1.2.12, imports external). The first load holds
   AgentsRail, Sidebar and RightSidebar (AgentsPanel is deferred).
-  Before 2344 + 2391 + 5607 = 10342 bytes. After 2380 + 2413 + 5555 = 10348 bytes: +6.
+  Before 2344 + 2391 + 5607 = 10342 bytes. After 2380 + 2414 + 5544 = 10338 bytes: -4.
 - To fit, the 49px rail-line indent moved from an inline style to styles.css, and three tooltips are shorter:
   rail footer "The picked session's 5-hour window", Insights "Every session's tokens, estimated cost and work",
   PR Checks "PR checks of the attached worktrees (folder workspaces)". The CI first-load line is in the ready note.
 
 TESTS
 - src/agents/t730.test.ts: only the not-started row has Remove; it sits right after the row's div closes (no
-  button inside the row); clicking it calls onDrop with that key. RIGHT_TABS has "Past sessions" and no tab
-  labelled "Agents".
+  button inside the row); clicking it calls onDrop with that key. RIGHT_TABS has "History" and no tab
+  labelled "Agents", and a plain workspace's four tabs all fit the strip at 300 px (splitTabs gives no More).
 - Trap (on the committed change): with main's AgentsRail.tsx and RightSidebar.tsx put back, both t730 tests
   FAIL. Restored, 2/2 pass.
 - VITEST_MAX_WORKERS=1 pnpm vitest run src/agents src/chrome src/sessions src/shell src/launch/uxAudit.test.ts:
   90 files, 453/453 pass (VIEW-015, VIEW-018, VIEW-021, USAGE-004 and RightSidebar.test.ts among them).
 - pnpm tsc --noEmit -p .: clean. node scripts/plan-check.mjs: OK. firewall-check -Baseline: 0 new.
+
+REVIEW (opus-high-review: A-, no must-fix; fixes taken)
+- Remove used dropPane, which skips the close checks; it now uses closePane (the tab-close path).
+- The Remove button was full width, so the whole strip under the row clicked; it is now as wide as its word.
+- "Past sessions" (101 px) pushed the tab into More at the default 300 px width (74+74+63+101 = 312 > 292).
+  The label is "History" (68 px, 279 total); the t730 test checks the fit with splitTabs.
+  Trap: with the previous commit's RightSidebar.tsx put back, that test FAILS; restored, 2/2 pass.
+- DT-C166 notes spec/05 VIEW-080's heading still says "Agents tab".
+- Kept for later: onDrop optional (tests build the rail without it), focus after Remove, per-preset aria-label.
+- After the fixes: 453/453 (same targets, normal workers), tsc clean.

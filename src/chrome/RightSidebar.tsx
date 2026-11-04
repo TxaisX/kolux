@@ -21,7 +21,7 @@ export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
   { id: "checks", label: "Checks", hint: "Checks on this workspace's pull request" },
   { id: "attached", label: "Attached", hint: "Worktrees attached to this folder (folder workspaces)" },
   { id: "prchecks", label: "PR Checks", hint: "PR checks of the attached worktrees (folder workspaces)" },
-  { id: "agents", label: "Past sessions", hint: "Search, resume or copy the resume command" },
+  { id: "agents", label: "History", hint: "Search, resume or copy past sessions" },
 ];
 export const RIGHT_KEYS = { open: "rightSidebarOpen", tab: "rightSidebarTab", width: "rightSidebarWidth" } as const;
 export const RIGHT_MIN = 240;
