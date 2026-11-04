@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-label="Kolux RS runtime architecture">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f1e2c2"/></marker>
+  <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f5c451"/></marker>
+  <marker id="arrow-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8b7ae8"/></marker>
+  <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6ee7a8"/></marker>
+  <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff7a6b"/></marker>
+</defs>
+<rect width="1600" height="1120" fill="#0b0820"/>
+<text x="48" y="58" font-family="Iowan Old Style, Palatino Linotype, Georgia, serif" font-size="34" font-weight="600" fill="#fffaea" text-anchor="start">Kolux RS architecture</text>
+<text x="48" y="88" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="15" font-weight="400" fill="#a99fc4" text-anchor="start">One desktop app, one background terminal service, four local doors, and ordinary Git worktrees.</text>
+<text x="1552" y="58" font-family="Cascadia Mono, Consolas, monospace" font-size="11" font-weight="400" fill="#a99fc4" text-anchor="end">0.1.7 · 4 November 2026</text>
+<rect x="48" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="151.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">35 agent CLIs</text>
+<rect x="265" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="368.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">12 panes / workspace</text>
+<rect x="482" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="585.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">4 local doors</text>
+<rect x="699" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="802.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">1 SQLite store</text>
+<rect x="916" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="1019.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">0 telemetry</text>
+<rect x="1133" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="1236.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">1.49 MB budget</text>
+<rect x="1350" y="112" width="207" height="34" rx="17" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="1453.5" y="134" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#f1e2c2" text-anchor="middle">Windows 11 x64</text>
+<rect x="40" y="184" width="1150" height="880" rx="14" fill="#0e0a24" stroke="#241d45" stroke-width="1"/>
+<text x="60" y="212" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#a99fc4" text-anchor="start" letter-spacing="1.6">YOUR WINDOWS MACHINE</text>
+<rect x="64" y="230" width="610" height="150" rx="10" fill="#130e2c" stroke="#4a3f76" stroke-width="1"/>
+<text x="84" y="254" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#f1e2c2" text-anchor="start" letter-spacing="1.6">WEBVIEW2 + REACT WINDOW</text>
+<rect x="84" y="268" width="180" height="46" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="174" y="287" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Top bar + screens</text>
+<text x="174" y="303" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">Agents · Board · Terminals · Tower</text>
+<rect x="274" y="268" width="190" height="46" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="369" y="287" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Terminal grid</text>
+<text x="369" y="303" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">xterm.js · tabs · splits</text>
+<rect x="474" y="268" width="180" height="46" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="564" y="287" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Board / Tower / Inbox</text>
+<text x="564" y="303" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">one status vocabulary</text>
+<rect x="84" y="322" width="180" height="46" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="174" y="341" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Editor + diffs</text>
+<text x="174" y="357" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">CodeMirror · Lexical</text>
+<rect x="274" y="322" width="190" height="46" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="369" y="341" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Browser child webview</text>
+<text x="369" y="357" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">untrusted page content</text>
+<rect x="474" y="322" width="180" height="46" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="564" y="341" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Settings / onboarding</text>
+<text x="564" y="357" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">saved before first frame</text>
+<rect x="64" y="420" width="610" height="190" rx="10" fill="#130e2c" stroke="#4a3f76" stroke-width="1"/>
+<text x="84" y="444" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#f1e2c2" text-anchor="start" letter-spacing="1.6">KOLUX CORE · TAURI 2 · RUST</text>
+<rect x="84" y="458" width="180" height="48" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="174" y="477" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">IPC commands + events</text>
+<text x="174" y="493" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">~400 commands</text>
+<rect x="274" y="458" width="190" height="48" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="369" y="477" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Store + file fence</text>
+<text x="369" y="493" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">one SQLite store</text>
+<rect x="474" y="458" width="180" height="48" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="564" y="477" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Protected rules</text>
+<text x="564" y="493" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">Claude only · 7 rules</text>
+<rect x="84" y="514" width="180" height="48" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="174" y="533" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Updater + release verify</text>
+<text x="174" y="549" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">signed manifest · publisher check</text>
+<rect x="274" y="514" width="190" height="48" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="369" y="533" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Hook / CLI listeners</text>
+<text x="369" y="549" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">loopback + bearer token</text>
+<rect x="474" y="514" width="180" height="48" rx="7" fill="#1a1438" stroke="#3a3168" stroke-width="1"/>
+<text x="564" y="533" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Preview server</text>
+<text x="564" y="549" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">per-folder path token</text>
+<text x="84" y="590" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">One process per profile · SQLite WAL · DPAPI vault · no Kolux server</text>
+<rect x="64" y="650" width="300" height="190" rx="10" fill="#130e2c" stroke="#6b5528" stroke-width="1"/>
+<text x="84" y="674" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#f5c451" text-anchor="start" letter-spacing="1.6">LOCAL DOORS</text>
+<rect x="84" y="690" width="260" height="40" rx="7" fill="#1a1438" stroke="#5a4a2a" stroke-width="1"/>
+<text x="214" y="709" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Agent hooks</text>
+<text x="214" y="725" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">127.0.0.1:random · x-kolux-token</text>
+<rect x="84" y="738" width="260" height="40" rx="7" fill="#1a1438" stroke="#5a4a2a" stroke-width="1"/>
+<text x="214" y="757" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">CLI loopback</text>
+<text x="214" y="773" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">127.0.0.1:random · JSON token</text>
+<rect x="84" y="786" width="260" height="40" rx="7" fill="#1a1438" stroke="#5a4a2a" stroke-width="1"/>
+<text x="214" y="805" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="12" font-weight="600" fill="#fffaea" text-anchor="middle">Preview server</text>
+<text x="214" y="821" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="middle">127.0.0.1:random · path token</text>
+<rect x="374" y="650" width="300" height="190" rx="10" fill="#130e2c" stroke="#4b3f8a" stroke-width="1"/>
+<text x="394" y="674" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#8b7ae8" text-anchor="start" letter-spacing="1.6">BACKGROUND TERMINAL SERVICE</text>
+<text x="394" y="700" font-family="Cascadia Mono, Consolas, monospace" font-size="11" font-weight="400" fill="#f1e2c2" text-anchor="start">kolux-rs --terminal-service</text>
+<text x="394" y="726" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">TCP 127.0.0.1:random + hello token</text>
+<text x="394" y="750" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">JSON lines · protocol 1 · generation</text>
+<text x="394" y="774" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">PTY sessions · ConPTY · job objects</text>
+<text x="394" y="798" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">survives window close; 600s idle exit</text>
+<rect x="64" y="880" width="300" height="140" rx="10" fill="#130e2c" stroke="#2f6b55" stroke-width="1"/>
+<text x="84" y="904" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#6ee7a8" text-anchor="start" letter-spacing="1.6">AGENT CLIs + SHELLS</text>
+<text x="84" y="930" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#fffaea" text-anchor="start">Claude Code · Codex · Gemini CLI</text>
+<text x="84" y="954" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#fffaea" text-anchor="start">30+ other agent CLIs</text>
+<text x="84" y="978" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">third-party · user permissions</text>
+<rect x="374" y="880" width="300" height="140" rx="10" fill="#130e2c" stroke="#4a3f76" stroke-width="1"/>
+<text x="394" y="904" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#f1e2c2" text-anchor="start" letter-spacing="1.6">GIT PROJECTS + WORKTREES</text>
+<text x="394" y="930" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#fffaea" text-anchor="start">main checkout</text>
+<text x="394" y="954" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#fffaea" text-anchor="start">worktree A · branch</text>
+<text x="394" y="978" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#fffaea" text-anchor="start">worktree B · branch</text>
+<path d="M369,380 L369,420" fill="none" stroke="#f1e2c2" stroke-width="1.6" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text x="380" y="405" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">Tauri IPC / events</text>
+<path d="M214,610 L214,650" fill="none" stroke="#f5c451" stroke-width="1.6" marker-end="url(#arrow-amber)"/>
+<text x="224" y="635" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">loopback HTTP</text>
+<path d="M524,610 L524,650" fill="none" stroke="#8b7ae8" stroke-width="1.6" marker-end="url(#arrow-violet)"/>
+<text x="534" y="635" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">TCP JSON lines</text>
+<path d="M524,840 L524,880" fill="none" stroke="#8b7ae8" stroke-width="1.6" marker-end="url(#arrow-violet)"/>
+<text x="534" y="865" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">ConPTY</text>
+<path d="M364,950 L374,950" fill="none" stroke="#f1e2c2" stroke-width="1.6" marker-end="url(#arrow)"/>
+<text x="369" y="940" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="middle">read/write</text>
+<path d="M214,880 L214,840" fill="none" stroke="#f5c451" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#arrow-amber)"/>
+<text x="224" y="865" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">hooks POST</text>
+<path d="M674,470 C900,470 960,330 1210,330" fill="none" stroke="#6ee7a8" stroke-width="1.6" marker-end="url(#arrow-teal)"/>
+<text x="930" y="390" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">read / write</text>
+<path d="M674,560 C900,560 960,540 1210,540" fill="none" stroke="#ff7a6b" stroke-width="1.6" marker-end="url(#arrow-red)"/>
+<text x="930" y="535" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">HTTPS · update check</text>
+<rect x="1210" y="230" width="350" height="210" rx="10" fill="#130e2c" stroke="#2f6b55" stroke-width="1"/>
+<text x="1230" y="254" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#6ee7a8" text-anchor="start" letter-spacing="1.6">PROFILE · %APPDATA%</text>
+<text x="1230" y="274" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#a99fc4" text-anchor="start">com.txaisxiong.kolux-rs</text>
+<text x="1230" y="298" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">settings.json</text>
+<text x="1400" y="298" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">+ .bak, written atomically</text>
+<text x="1230" y="318" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">state.db</text>
+<text x="1400" y="318" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">SQLite WAL · key/value store</text>
+<text x="1230" y="338" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">vault/</text>
+<text x="1400" y="338" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">DPAPI-sealed sign-ins</text>
+<text x="1230" y="358" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">logs/kolux.log</text>
+<text x="1400" y="358" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">rotated · scrubbed on export</text>
+<text x="1230" y="378" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">terminals.json · cli.json</text>
+<text x="1400" y="378" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">loopback ports + tokens</text>
+<text x="1230" y="398" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">agent-hooks-endpoint.txt</text>
+<text x="1400" y="398" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">port + token for hooks</text>
+<text x="1230" y="418" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#f1e2c2" text-anchor="start">artifacts/ · profiles/</text>
+<text x="1400" y="418" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">local only</text>
+<rect x="1210" y="470" width="350" height="210" rx="10" fill="#130e2c" stroke="#7a3f3a" stroke-width="1"/>
+<text x="1230" y="494" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#ff7a6b" text-anchor="start" letter-spacing="1.6">OUTSIDE THIS MACHINE</text>
+<text x="1230" y="522" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#fffaea" text-anchor="start">GitHub</text>
+<text x="1230" y="538" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="start">Releases · API · issues · PRs</text>
+<text x="1230" y="558" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#fffaea" text-anchor="start">Git remotes</text>
+<text x="1230" y="574" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="start">push · pull · pull requests</text>
+<text x="1230" y="594" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#fffaea" text-anchor="start">AI providers</text>
+<text x="1230" y="610" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="start">agent CLIs + usage calls</text>
+<text x="1230" y="630" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#fffaea" text-anchor="start">Optional proxy</text>
+<text x="1230" y="646" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10" font-weight="400" fill="#a99fc4" text-anchor="start">saved in settings</text>
+<rect x="1210" y="710" width="350" height="250" rx="10" fill="#130e2c" stroke="#4a3f76" stroke-width="1"/>
+<text x="1230" y="734" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#f1e2c2" text-anchor="start" letter-spacing="1.6">SIX PATHS</text>
+<circle cx="1240" cy="760" r="9" fill="#251c52" stroke="#8b7ae8" stroke-width="1"/>
+<text x="1240" y="763.5" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#fffaea" text-anchor="middle">1</text>
+<text x="1260" y="764" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#fffaea" text-anchor="start">Typing → pane → service → agent</text>
+<circle cx="1240" cy="791" r="9" fill="#251c52" stroke="#8b7ae8" stroke-width="1"/>
+<text x="1240" y="794.5" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#fffaea" text-anchor="middle">2</text>
+<text x="1260" y="795" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#fffaea" text-anchor="start">Agent hook → local door → status</text>
+<circle cx="1240" cy="822" r="9" fill="#251c52" stroke="#8b7ae8" stroke-width="1"/>
+<text x="1240" y="825.5" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#fffaea" text-anchor="middle">3</text>
+<text x="1260" y="826" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#fffaea" text-anchor="start">kolux CLI → local door → app</text>
+<circle cx="1240" cy="853" r="9" fill="#251c52" stroke="#8b7ae8" stroke-width="1"/>
+<text x="1240" y="856.5" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#fffaea" text-anchor="middle">4</text>
+<text x="1260" y="857" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#fffaea" text-anchor="start">Update → GitHub → signed installer</text>
+<circle cx="1240" cy="884" r="9" fill="#251c52" stroke="#8b7ae8" stroke-width="1"/>
+<text x="1240" y="887.5" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#fffaea" text-anchor="middle">5</text>
+<text x="1260" y="888" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#fffaea" text-anchor="start">Browser tab → preview server</text>
+<circle cx="1240" cy="915" r="9" fill="#251c52" stroke="#8b7ae8" stroke-width="1"/>
+<text x="1240" y="918.5" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#fffaea" text-anchor="middle">6</text>
+<text x="1260" y="919" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#fffaea" text-anchor="start">App state → profile → next launch</text>
+<text x="1230" y="948" font-family="Cascadia Mono, Consolas, monospace" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">solid: request · dashed: report</text>
+<rect x="1210" y="980" width="350" height="120" rx="10" fill="#130e2c" stroke="#7a3f3a" stroke-width="1"/>
+<text x="1230" y="1004" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#ff7a6b" text-anchor="start" letter-spacing="1.6">TRUST BOUNDARIES</text>
+<text x="1230" y="1024" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.8" font-weight="400" fill="#fffaea" text-anchor="start">App code is trusted; browser pages are not.</text>
+<text x="1230" y="1042" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.8" font-weight="400" fill="#fffaea" text-anchor="start">Loopback only, bearer tokens in user files.</text>
+<text x="1230" y="1060" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.8" font-weight="400" fill="#fffaea" text-anchor="start">Agents run with your permissions; not a sandbox.</text>
+<text x="1230" y="1078" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.8" font-weight="400" fill="#fffaea" text-anchor="start">Update trust is one minisign key.</text>
+<text x="48" y="1090" font-family="Cascadia Mono, Consolas, monospace" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">Source: src-tauri/ and src/ · architecture.svg · 0.1.7</text>
+<text x="48" y="1106" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#a99fc4" text-anchor="start">Solid lines are requests or control. Dashed lines are reports or events.</text>
+</svg>

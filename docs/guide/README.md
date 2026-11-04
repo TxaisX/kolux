@@ -1,3 +1,5 @@
+[Kolux RS documentation](../README.md)
+
 # Kolux RS user guide
 
 Use this guide to run several AI coding agents and shells side by side, keep each on its own branch, and see at a glance which one needs you.

@@ -11,6 +11,8 @@ src/editor/__fixtures__/* -text
 # Docs builder: scripts/docs/build.mjs writes LF, and `--check` compares bytes, so an autocrlf
 # checkout with CRLF would report every generated page as stale forever.
 docs/**/*.html text eol=lf
+# The architecture diagram is embedded in the HTML infographic; keep its line ends stable too.
+docs/**/*.svg text eol=lf
 # T-700 (DT-C136): the PDF viewer files copied from pdfjs-dist keep their exact bytes, so the copy check
 # compares like with like on an autocrlf checkout.
 public/pdfjs/** -text
