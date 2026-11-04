@@ -470,7 +470,7 @@ Source: D-05-108
 
 ### VIEW-014 · Space view: disk use per worktree and bulk delete
 Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: opens the Space page, sorts or searches the table, ticks rows and deletes.
+User does: opens the Space page (Mod+Alt+S, T-746), sorts or searches the table, ticks rows and deletes.
 User sees: a treemap of the biggest items plus a sortable, searchable table of worktrees with size,
   file count and age; only the deletable selected worktrees are removed.
 Rules: the treemap keeps a fixed square layout and folds the tail into one omitted-items block;
@@ -949,10 +949,12 @@ Source: D-05-081
 Tier: P1 · Pushed: 9 · State at 0.15.0: live-unverified
 User does: changes sort, grouping, agents shown or history depth, or resets them.
 User sees: choices stay after restart; a counter shows how many options differ from defaults.
-Rules: empty sessions are shown by default; history depth can be set to Unlimited.
+Rules: empty sessions are shown by default; history depth can be set to Unlimited; the list draws 200
+  rows at a time and Show more adds the next 200, with group headers counting every session (T-746).
 Acceptance:
   - [ ] Change grouping, restart → same grouping; reset → counter clears.
   - [ ] Set history depth to Unlimited → every session in scope is listed.
+  - [x] Unlimited with 250 sessions → 200 rows and Show more (50 not shown); headers say 150 and 100. (unit; evidence/T-746.txt)
 Compat: —
 Source: D-05-082
 

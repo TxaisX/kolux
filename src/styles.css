@@ -1544,7 +1544,8 @@ html[data-divider="row"], html[data-divider="row"] * { cursor: row-resize !impor
 /* GIT-040 / GIT-041: review notes on diff lines and their Source Control section. */
 .cm-note-gutter .cm-gutterElement { width: 14px; text-align: center; cursor: pointer; }
 .cm-note-gutter .note-plus { opacity: 0; display: inline-block; width: 14px; border-radius: 3px; color: var(--fg); background: var(--line-focus); font-weight: 600; line-height: 1.2; }
-.cm-note-gutter .cm-gutterElement:hover .note-plus { opacity: 1; }
+.cm-note-gutter .cm-gutterElement:hover .note-plus,
+.cm-focused .cm-note-gutter .cm-activeLineGutter .note-plus { opacity: 1; }
 .diff-note { margin: 4px 12px 6px 8px; padding: 6px 10px; border: 1px solid var(--line-focus); border-left: 3px solid #4f8fd8; border-radius: 6px; background: var(--pane-bg); font-family: var(--ui-font, system-ui, sans-serif); font-size: 12.5px; white-space: pre-wrap; }
 .diff-note-head { display: flex; align-items: center; gap: 6px; color: var(--fg-label); font-size: 11.5px; }
 .diff-note-head .what { flex: 1; }
