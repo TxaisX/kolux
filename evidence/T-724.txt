@@ -1,0 +1,42 @@
+T-724 / DT-C160: lane D (72): the graphics prompt closes only when the choice went through
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md "Queue refill" (T-724), findings backend-wiring.md:6 and
+chat-sessions.md:3 (the sessions proof dir, not in this repo). Built on origin/main 74dc239b, branch s-72/gfx, 2026-11-03.
+
+FOUND
+  src/recovery/RecoveryMount.tsx:82 (Keep Running) and :89 (Stay in safe graphics) ran .catch(() => {}).then(close),
+  so a failed save closed the prompt anyway. Restart in safe graphics and Try hardware again already told a failure.
+
+FIXED
+  src/recovery/RecoveryMount.tsx: one helper for the four choices. It clears the old line, runs the command, closes the
+  prompt on success for Keep Running and Stay, and on failure keeps it open with "Could not ...: <error>" in the
+  existing line (role=status). Restart and Try hardware again restart the app on success, so they never close it.
+  src-tauri/src/resources/recovery.rs (review): removing the safe-graphics flag ignored its own failure, so Keep
+  Running and Try hardware again reported success when the file could not be removed (locked, no permission). It now
+  returns the error (a flag already gone counts as cleared); Keep Running and Try hardware again pass it to the
+  prompt. The launch-time clear of an old version's flag still ignores it, as before.
+
+TEST
+  src/recovery/RecoveryMount.test.ts: the real RecoveryMount on the small DOM, commands stubbed.
+    Stay: a failed save keeps the prompt and says "Could not save Stay in safe graphics: disk full"; the next save
+      closes it.
+    Keep Running (after a burst): the same, "Could not save Keep Running: <error>".
+    Restart in safe graphics (review): a failure is told and the prompt stays.
+    Try hardware again: a failure is told; a later choice clears the old line and the prompt stays; Stay after a
+      failure still closes it.
+  recovery.rs t183 test (review): clearing a flag that is already gone is Ok; one that cannot be removed (a folder in
+    its place) is an error. cargo test --lib t183_the_safe_graphics_flag: 1 passed. cargo clippy --lib: no warnings in
+    recovery.rs.
+  BEFORE THE FIX (old RecoveryMount.tsx, same test): the Stay and Keep Running tests failed ("gave up waiting for the
+    failure line"); the Try hardware test passed (that path already told).
+  vitest src/recovery: 6 files, 23 tests passed.
+
+TOTALS: see the PR body.
+pnpm tsc --noEmit: exit 0. BUNDLE: first load 1,489,475 bytes, the same as main 74dc239b (+0; the prompt is its own
+chunk, RecoveryMount-*.js). Cap +100.
+PENDING: unit-proven; a live check in the app has not been run.
+REVIEW: opus-high-review A-, no must-fix. Should-fix 1 (the flag removal swallowed its failure, so the spec's "only
+  once saved" was partly true): fixed in recovery.rs, above. Should-fix 2 (Restart was moved onto the helper but not
+  tested): tested. Nits applied: the helper takes "close" before the arguments (Keep Running sends none again); the
+  Try hardware test now goes on to Stay. Nits logged: the Try hardware test passes on the old code too (that path
+  already told); a late failure from a double-click can set the line after the prompt closed, cleared by the next
+  prompt's first render (cosmetic, as before on Restart and Try hardware); the spec note uses "unit:" with a colon.

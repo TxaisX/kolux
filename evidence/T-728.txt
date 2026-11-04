@@ -26,4 +26,6 @@ BUNDLE: first load 1,489,689 B vs main 73008fe1 1,489,604 B, and 1,489,666 B vs 
 FULL RUN: npx vitest run: 805 files, 6001 tests passed.
 REVIEW: sonnet-medium-review, A-, no must-fix or should-fix; the bundle wording nit is applied above.
 
+MERGE main 99b4a9d2 (train 18): commands.test.ts conflicted with T-727 (its Model Routing palette test); kept both tests and both import sets. Full vitest: 6015 tests passed; tsc 0; firewall 0 new; plan-check OK. Re-measured: 1,489,685 B vs main 99b4a9d2 1,489,600 B, still +85 B.
+
 PENDING: unit-proven; not checked live in the app.

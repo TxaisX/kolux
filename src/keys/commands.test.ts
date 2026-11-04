@@ -11,6 +11,9 @@ import { runCommand } from "./runCommand";
 import { heldByTerminal } from "./terminalPolicy";
 import { SCREEN_OF } from "../chrome/reach";
 import { paletteRows } from "../projects/WorktreePalette";
+import keysSrc from "./useWindowKeys.ts?raw";
+import panelSrc from "../projects/ProjectsPanel.tsx?raw";
+import type { Page } from "../projects/ProjectsPanel";
 
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -68,7 +71,7 @@ test("T-611: the palette's Commands section lists every command, the unbound one
   for (const r of rows) r.run();
   const ids = new Set(ran.map((x) => x.replace(/#\d$/, "")));
   expect(actions.filter((a) => !ids.has(a.id)).map((a) => a.id)).toEqual([]);
-  // Each of the 56 unbound commands has its row; a bound one shows its keys.
+  // Each of the 58 unbound commands has its row; a bound one shows its keys.
   expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).every((a) => ids.has(a.id))).toBe(true);
   expect(rows.find((r) => r.label === "Show Floor")).toMatchObject({ hint: undefined });
   expect(rows.find((r) => r.label === "Open Settings")).toMatchObject({ hint: "Ctrl+," });
@@ -179,4 +182,21 @@ test("T-728: a command's keywords find it in the palette, after rows that match 
   const ranked = paletteRows([{ section: "Commands", label: "Run cron now", run: () => {} }, ...rows], "cron").map((r) => r.label);
   expect(ranked.indexOf("Run cron now")).toBeLessThan(ranked.indexOf("Open Automations"));
   expect(paletteRows(rows, "cron zzzz")).toEqual([]);
+});
+
+test("T-727: the palette finds Model Routing by routing, model or route, and running it opens the routing page", () => {
+  const ran: string[] = [];
+  const rows = commandRows(resolve(null, "win32"), [], undefined, (id) => void ran.push(id));
+  for (const q of ["routing", "model", "route", "Model routing"]) {
+    const hit = paletteRows(rows, q).find((r) => r.label === "Model Routing");
+    expect(hit, `"${q}" shows it`).toBeTruthy();
+    hit!.run();
+  }
+  expect(ran).toEqual(["view.routing", "view.routing", "view.routing", "view.routing"]);
+  // every case of the window's page switch is a page: the id after "view." must be one of ProjectsPanel's pages
+  const PAGES = { automations: 1, routing: 1, tasks: 1 } satisfies Record<Page, 1>;
+  const group = keysSrc.match(/((?:case "view\.\w+":\s*)+)\{[^]*?hit\.id\.slice\(5\)/)?.[1] ?? "";
+  const ids = [...group.matchAll(/"view\.(\w+)"/g)].map((m) => m[1]);
+  expect(ids.sort()).toEqual(Object.keys(PAGES).sort());
+  expect(panelSrc).toContain('onPage("routing")');
 });
