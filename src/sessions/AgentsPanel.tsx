@@ -86,6 +86,9 @@ function AgentsPanel(props: PanelProps) {
 }
 
 const AgentsView = memo(AgentsPanelBody, (a, b) => sameShown(a, b));
+/** T-746: how many past sessions are drawn before Show more. */
+const ROWS = 200;
+
 export default AgentsPanel;
 
 function AgentsPanelBody(props: PanelProps) {
@@ -95,8 +98,12 @@ function AgentsPanelBody(props: PanelProps) {
   const view = readView(settings[VIEW_KEY]);
   const scopePref = readScope(settings[SCOPE_KEY]);
   const [query, setQuery] = useState("");
+  // T-746: rows are drawn ROWS at a time, so Unlimited (VIEW-082) does not draw thousands at once.
+  const [rows, setRows] = useState(ROWS);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const key = scopeKey({ dirs, all, depth });
+  // A new search, scope or view starts from the first ROWS again.
+  useEffect(() => setRows(ROWS), [key, query, settings[VIEW_KEY]]);
   const [list, setList] = useState<Session[] | null>(() => cached(key)?.sessions ?? null);
   const [report, setReport] = useState<ScanReport>(() => cached(key)?.report ?? NO_REPORT);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +194,12 @@ function AgentsPanelBody(props: PanelProps) {
   const parsed = useMemo(() => parseQuery(query), [query]);
   const shown = useMemo(() => sortSessions(filterSessions(list ?? [], { query, hiddenAgents: view.hiddenAgents, hideEmpty: view.hideEmpty }, projects), view.sort), [list, query, settings[VIEW_KEY], projects]);
   const groups = useMemo(() => groupSessions(shown, view.group, projects), [shown, view.group, projects]);
+  let room = rows;
+  const drawn = groups.map((g) => {
+    const d = g.sessions.slice(0, Math.max(0, room));
+    room -= d.length;
+    return d;
+  });
   const agentsSeen = [...new Set([...(list ?? []).map((s) => s.agent), ...view.hiddenAgents])].sort();
   const changed = differing(view);
   const total = list?.length ?? 0;
@@ -295,13 +308,13 @@ function AgentsPanelBody(props: PanelProps) {
       {list !== null && total === 0 && error === null && <div className="sb-hint">No past sessions here yet. Sessions of Claude and Codex show up once they have run.</div>}
       {list !== null && total > 0 && shown.length === 0 && !parsed.tooLong && <div className="sb-hint">No session matches the search and options.</div>}
       <ul className="agents-list">
-        {groups.map((g) => [
+        {groups.map((g, i) => drawn[i].length > 0 && [
           view.group !== "none" && (
             <li key={`g:${g.key}`} className="agents-group" role="presentation" title={g.key}>
               {g.label === "" ? shortLabel(null) : g.label} ({g.sessions.length})
             </li>
           ),
-          ...g.sessions.map((s) => {
+          ...drawn[i].map((s) => {
           const block = resumeBlock(s);
           const chatBlock = onResumeChat ? (block ?? chatResumeBlock(s, activeDir)) : null;
           // Why a disabled button is disabled, in view and not only in its tooltip.
@@ -338,6 +351,11 @@ function AgentsPanelBody(props: PanelProps) {
           }),
         ])}
       </ul>
+      {shown.length > rows && (
+        <button type="button" className="btn" onClick={() => setRows(rows + ROWS)}>
+          Show more ({shown.length - rows} not shown)
+        </button>
+      )}
     </div>
   );
 }

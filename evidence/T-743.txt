@@ -1,0 +1,31 @@
+T-743 - The New session menu names the program; SET-019 zoom keys (DT-C179; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t743 from main 0033ca09, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 5", T-743. Checked against main 0033ca09 first.
+
+CHECKED FIRST
+- live-wave3-a F9: open. launch/PlusMenu.tsx drew each agent row as mark, name, Default chip and shortcut; the
+  program's path was only in the tooltip, so a stand-in on the PATH looked the same as the real agent.
+- SET-019 (spec/17): open. "User does" and two Acceptance lines named Mod+= / Mod+- / Mod+0. keys/actions.ts
+  binds those to zoom.in / zoom.out / zoom.reset (the focused terminal); the interface zoom is ui.zoomIn /
+  ui.zoomOut / ui.zoomReset on Mod+Alt+Equal / Mod+Alt+Minus / Mod+Alt+0.
+- docs/guide/settings.md has the same mix-up; #186 (T-741) already rewrites those lines, so T-743 leaves the
+  guide alone to stay out of its way.
+
+WHAT CHANGED (DT-C179)
+1. launch/PlusMenu.tsx: after the name, each agent row shows the program's file name (the last part of its
+   path) in the existing .menu-item .muted style (small, faint). The tooltip keeps the full path.
+2. spec/17 SET-019: User does says Mod+Alt+= / Mod+Alt+- / Mod+Alt+0 (and that the plain keys zoom the focused
+   terminal); the two Acceptance lines use Mod+Alt+= and Mod+Alt+0. No rule or behaviour changes.
+
+TESTS
+- src/launch/PlusMenu.test.ts, new test: the Claude Code row shows claude.exe and the Codex row codex.cmd in
+  the muted span, and the Claude row's tooltip still carries the full path. Red-checked: fails on main's
+  PlusMenu.tsx.
+- vitest src/launch: 23 files, 152 passed. pnpm exec tsc --noEmit -p . : clean. plan-check OK;
+  firewall-check -Baseline 0 new.
+
+REVIEW
+- fresh sonnet-medium-review: A-, no high or medium. Lows left: an empty span on rows with no path adds a small gap (those rows are rare), and long file names are not truncated (cosmetic).
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- First load +76 B (main b2b6cd7f 1,488,823 B, branch 1,488,899 B, cap +80 raised from +60 by coordinator 57). A first version with its own class measured +94 B; the shared .muted class brought it to +76.

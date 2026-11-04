@@ -50,7 +50,7 @@ test("making Codex the default moves it to the top with the shortcut, and the ot
 });
 
 test("an unbound shortcut draws no chip, a launch in flight greys the rows, an empty catalogue says it is looking", () => {
-  const unbound = render({ defaultId: "claude" });
+  const unbound = render({ defaultId: "claude" }, { "tab.newAgent": [] }); // T-746 bound it by default; the user unbinds it here
   expect(unbound).not.toContain('class="kbd"');
   expect(unbound).not.toContain("Unassigned");
   const busy = render({ busy: true });
@@ -151,4 +151,13 @@ test("after776 TERM-042: the entry box is in the menu only when the window can r
 test("T-692 (E2): the menu names the project a new session starts in, and says nothing when none is given", () => {
   expect(render({ target: "kolux-rs" })).toContain("Starting in <b>kolux-rs</b>");
   expect(render({})).not.toContain("Starting in");
+});
+
+test("T-743 (DT-C179): each agent row shows the program file it starts, with the full path in its tooltip", () => {
+  const rows = items(render({}));
+  const claudeRow = rows.find((r) => r.includes("Claude Code")) ?? "";
+  const codexRow = rows.find((r) => r.includes("Codex")) ?? "";
+  expect(claudeRow).toContain('class="muted">claude.exe</span>');
+  expect(codexRow).toContain('class="muted">codex.cmd</span>');
+  expect(claudeRow).toContain(`title="Start Claude Code (${claude.path})`);
 });

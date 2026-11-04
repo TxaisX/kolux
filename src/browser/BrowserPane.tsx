@@ -1098,6 +1098,8 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
         <ul className="downloads" role="status" aria-label="Downloads">
           {downloads.map((d) => {
             const f = fraction(d);
+            // T-734 (DT-C170): Cancel while it runs, Show in folder once it is done
+            const act = d.state === "running" ? "Cancel" : d.state === "done" && d.path ? "Show in folder" : "";
             return (
               <li key={d.key} className={d.state} title={d.path}>
                 <span className="name">{d.name}</span>
@@ -1106,6 +1108,11 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
                 {d.state === "done" && d.path && (
                   <button type="button" className="ib txt" data-go="open-download" onClick={() => sayIf(openWithSystemApp(d.path, invoke))} title="Open the file (a program is shown in its folder instead)" aria-label={`Open ${d.name}`}>
                     Open
+                  </button>
+                )}
+                {act && (
+                  <button type="button" className="ib txt" onClick={() => (act === "Cancel" ? invoke("browser_download_cancel", { key: d.key }) : invoke("browser_download_reveal", { key: d.key })).catch((e) => setNote(String(e)))} aria-label={`${act}: ${d.name}`}>
+                    {act}
                   </button>
                 )}
                 {d.state !== "running" && (

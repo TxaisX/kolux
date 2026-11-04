@@ -19,7 +19,6 @@ test("the user can assign a key to one agent's command, and only that one gets i
   expect(chordsOf(map, "tab.newAgent.claude")).toEqual([]);
 });
 
-test("new default agent: Cmd+Alt+T on macOS, unbound elsewhere", () => {
-  expect(chordsOf(resolve(null, "darwin"), "tab.newAgent")).toEqual(["Mod+Alt+T"]);
-  expect(chordsOf(resolve(null, "win32"), "tab.newAgent")).toEqual([]);
+test("new default agent: Cmd+Alt+T on macOS, Ctrl+Alt+T on Windows and Linux (T-746)", () => {
+  for (const p of platforms) expect(chordsOf(resolve(null, p), "tab.newAgent")).toEqual(["Mod+Alt+T"]);
 });
