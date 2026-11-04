@@ -11,7 +11,10 @@ THE FIX (DT-C151)
 - setup.rs: run_archive takes a `trusted` check that is asked about the exact script text it read, so what was checked
   is what runs. workspace_archive is replaced by archive_on_remove(store, root, wt): SAFE-025's trust_ask with kind
   "archive"; an untrusted script, or one whose trust record cannot be read, is skipped and the removal goes on. The
-  store lock is held only for the trust check, never while the script runs.
+  store lock is held only for the trust check, never while the script runs. A script this PC cannot start (a #! shell
+  it lacks, a line cmd would misread) is skipped before the question, as FIX-2 does for setup: it runs nothing, so it
+  neither asks about trust nor keeps the workspace from being deleted (the cleanup dialog, Space and a parent with
+  its children have no force box).
 - projects.rs: the shared remove_one (the single delete, the batch PROJ-071 and the cleanup dialog all route through it)
   stops the folder's terminals, then runs the archive script in the folder, before anything of it goes. A script that
   fails or runs past its time stops the delete with its error ("... It was not deleted."); a forced delete goes on.
@@ -31,8 +34,12 @@ TESTS
   goes; a granted script that exits 3 -> "The archive script failed with exit code 3: boom ... It was not deleted.",
   the folder stays, and force removes it; a granted script that writes left.txt inside the workspace -> it ran and the
   folder goes without force; the CLI's remove_with(.., false) with a trusted script -> the folder goes, the script
-  did not run. setup:: stat055 tests 5 passed (six run_archive calls gained `&|_| Ok(true)`).
-  Revert check: with the archive call switched off (`if archive && false`) the test fails at projects.rs:4878
+  did not run. setup::tests::stat055_removing_a_worktree_runs_its_archive_script_inside_it also covers a #! shell that
+  does not exist: no trust question (shared_script_on) and, on Windows, run_archive skips it without asking. Revert
+  checks: with run_archive erroring on it again the test fails at setup.rs:1718; without the shared_script_on filter it
+  fails at setup.rs:1715. setup:: plus the T-715 test after this fix: 63 passed, 0 failed; clippy clean.
+  setup:: stat055 tests 5 passed (six run_archive calls gained `&|_| Ok(true)`).
+  Revert check: with the archive call switched off (`if archive && false`) the test fails at projects.rs:4880
   ("the archive script ran": archived.txt not found); restored, it passes.
 - cargo test --lib -- projects:: bulk:: cleanup:: setup:: cli:: : 369 passed, 0 failed (before the main merge);
   after merging main ec26a0da: 369 passed, 0 failed.

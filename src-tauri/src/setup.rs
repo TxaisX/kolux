@@ -334,13 +334,15 @@ fn setup_for_on(path: &str, local: Option<String>, policy: Option<String>, trust
 /// and waits up to `limit`, then ends it and every process it started. Ok(false) when there is
 /// none, Ok(true) when it ran and exited 0; otherwise the failure, ending with the last of what
 /// the script wrote to its error output, for the UI to show. `trusted` is asked about the exact text
-/// read here (so what was checked is what runs); false skips it, Ok(false).
+/// read here (so what was checked is what runs); false skips it, Ok(false). One this PC cannot start
+/// (a #! shell it lacks, a line cmd would misread) is skipped too, before the question (as FIX-2 does
+/// for setup): it would run nothing, so it must not keep the workspace from being deleted.
 pub fn run_archive(root: &Path, worktree: &Path, limit: std::time::Duration, trusted: &dyn Fn(&str) -> Result<bool, String>) -> Result<bool, String> {
     let Some(script) = std::fs::read_to_string(worktree.join(crate::include::CONFIG_FILE)).ok().and_then(|y| scripts_entry(&y, "archive")) else { return Ok(false) };
+    let Ok(line) = setup_line(&script, cfg!(windows), configured_shell().as_deref(), find_posix) else { return Ok(false) };
     if !trusted(&script)? {
         return Ok(false);
     }
-    let line = setup_line(&script, cfg!(windows), configured_shell().as_deref(), find_posix).map_err(|e| e.replacen("The setup script", "The archive script", 1))?;
     let mut cmd = std::process::Command::new(&line.program);
     cmd.args(&line.args).current_dir(worktree).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped());
     cmd.envs(script_vars(root, worktree));
@@ -532,7 +534,8 @@ fn shared_script_on(kind: &str, root: &Path, wt: &Path, local: Option<&str>, pol
         // FIX-2: the question is asked only over a script that would run here; a refused join, a join
         // cmd would misread or a #! shell this PC lacks runs nothing, so nothing is asked (setup_for_on agrees)
         "setup" => pick_parts(local, yaml().and_then(|t| setup_script(&t)), policy).filter(|p| p.refused.is_none() && setup_line(&p.script, windows, configured, find).is_ok()).and_then(|p| p.shared),
-        "archive" => yaml().and_then(|y| scripts_entry(&y, "archive")),
+        // T-715: likewise an archive script this PC cannot start is skipped by run_archive, so not asked about
+        "archive" => yaml().and_then(|y| scripts_entry(&y, "archive")).filter(|s| setup_line(s, windows, configured, find).is_ok()),
         "issue" => issue_command(root, wt).filter(|(_, s)| *s).map(|(c, _)| c),
         // PROJ-034: the default tabs' commands, asked as one text (see `shared_tabs`)
         "tabs" => shared_tabs(root, wt).ok().and_then(|tabs| tabs_trust_text(&tabs)),
@@ -1706,6 +1709,15 @@ mod tests {
         let slow = if cfg!(windows) { "ping -n 6 127.0.0.1>nul" } else { "sleep 5" };
         std::fs::write(wt.join("kolux.yaml"), format!("scripts:\n  archive: {slow}\n")).unwrap();
         assert!(run_archive(&wt, &wt, std::time::Duration::from_millis(300), &|_| Ok(true)).unwrap_err().contains("stopped after"));
+        // T-715: one this PC cannot start runs nothing, so it is neither asked about nor a reason to keep the workspace
+        std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: |\n    #!/usr/bin/t715-no-such-shell\n    echo x>never.txt\n").unwrap();
+        let none = |_: &str| None::<PathBuf>;
+        assert_eq!(shared_script_on("archive", &wt, &wt, None, None, true, None, none), None, "no trust question for it");
+        assert!(shared_script_on("archive", &wt, &wt, None, None, false, None, none).is_some(), "where it can start, it is asked about");
+        if cfg!(windows) {
+            assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| panic!("asked about a script that cannot start")).unwrap());
+            assert!(!wt.join("never.txt").exists());
+        }
         // with a POSIX shell the variables reach the script
         if cfg!(not(windows)) || find_posix("sh").is_some() {
             std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: |\n    #!/bin/sh\n    printf '%s|%s' \"$KOLUX_WORKSPACE_NAME\" \"$KOLUX_ROOT_PATH\" > vars.txt\n").unwrap();
