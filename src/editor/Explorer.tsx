@@ -728,7 +728,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     if (!r) return;
     const at = document.getElementById(`ex-row-${index}`)?.getBoundingClientRect();
     const list = e.currentTarget.getBoundingClientRect();
-    const seen = at && at.bottom > list.top && at.top < list.bottom;
+    const seen = at && at.top >= list.top && at.bottom <= list.bottom; // wholly in view: a clipped row would put the menu past the tree
     rowContext(e, r.node.path, dirRow(r.node), seen ? at.left + 16 : e.clientX, seen ? at.bottom : e.clientY);
   };
   // T-720: the row menu takes focus, moves with the arrows, closes on Escape or Tab and gives focus back to the list.

@@ -3,7 +3,7 @@
 // PaneMenu.test.ts); the component only draws them, keeps them on screen and dismisses on Escape or
 // an outside click, never on the click that opened it.
 import { Fragment, useLayoutEffect, useRef, type CSSProperties } from "react";
-import { useMenuFocus } from "../chrome/dialogFocus";
+import { menuRoom, useMenuFocus } from "../chrome/dialogFocus";
 import { useLabel } from "../keys/KeymapContext";
 
 export type MenuItem = {
@@ -147,9 +147,13 @@ export default function PaneMenu({ style, items, onDismiss, label = "Pane menu",
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
+    // The cap trapMenu set at open would hide rows added since; measure the whole menu, then cap it again.
+    el.style.maxHeight = "";
     const r = el.getBoundingClientRect();
-    el.style.top = `${fitIn(r.top, r.height, window.innerHeight)}px`;
+    const top = fitIn(r.top, r.height, window.innerHeight);
+    el.style.top = `${top}px`;
     el.style.left = `${fitIn(r.left, r.width, window.innerWidth)}px`;
+    el.style.maxHeight = `${menuRoom({ top, bottom: 0 }, window.innerHeight, false)}px`;
   }, [items.length]);
   const outside = (e: { preventDefault: () => void }) => {
     e.preventDefault();

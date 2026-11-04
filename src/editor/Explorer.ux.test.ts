@@ -288,8 +288,11 @@ describe("T-710 Explorer row menu from the keyboard", () => {
     expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["56px", "120px"]);
   });
 
-  it("T-720: an active row scrolled out of the list puts the menu at the event's point, not outside the tree", async () => {
-    const { container, tree, menus } = await rowMenu({ left: 40, top: 900, bottom: 924 });
+  it.each([
+    ["scrolled out of", { left: 40, top: 900, bottom: 924 }],
+    ["clipped at the bottom of", { left: 40, top: 590, bottom: 614 }],
+  ])("T-720: an active row %s the list puts the menu at the event's point, not outside the tree", async (_, row) => {
+    const { container, tree, menus } = await rowMenu(row);
     await fire(container, "contextmenu", tree, { button: -1, clientX: 100, clientY: 30 });
     await until(() => menus().length === 1, "the row menu");
     expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["100px", "30px"]);

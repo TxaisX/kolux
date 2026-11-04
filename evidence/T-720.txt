@@ -20,7 +20,7 @@ FIXED
   - Explorer row menu: it uses useMenuFocus too, so focus goes to its first row, Up/Down/Home/End move, and Escape or Tab
     closes it with focus back on the list. Test (under StrictMode): Explorer.ux.test.ts "Escape closes the row menu and
     gives focus back to the list".
-  - Explorer row menu placement: it opens under the active row. When that row is drawn but scrolled out of the list's
+  - Explorer row menu placement: it opens under the active row. When that row is drawn but not wholly in the list's
     view, the menu opens at the event's point instead of outside the tree. A layout effect measures the menu and moves it
     up or left only as far as needed (fitIn), where the old fixed 240 x 340 px clamp pushed it off its row in the right
     sidebar. Its height is capped to the room below. Tests: "Shift+F10 ... opens the active row's menu under that row"
@@ -33,7 +33,10 @@ FIXED
   - Terminal tests checked the source text only. The decisions (menuKey, fromKeys) now have behaviour tests. The wiring
     check that is left (mounting TerminalPane needs xterm and the backend) is marked as such.
   - Nits: menuKey ignores Ctrl/Alt/Meta (test). The edit menu's Tab now closes it with focus back on the field (trapMenu
-    prevents the default Tab; dialogFocus.test.ts). The EditMenuHost test stub's splice guards a missing listener.
+    prevents the default Tab; dialogFocus.test.ts). This holds for every menu on trapMenu: status bar, layout strip, right
+    sidebar More, edit menu, pane menu and the floating panel's new tab menu; before, Tab moved on to the next control.
+  - Side effect of the WebKit window: a right-click within 500 ms of a menu key counts as keyboard. In a terminal that opens
+    the pane menu where a right-click would paste, go to a mouse-tracking program (TERM-035) or open a link (TERM-094). The EditMenuHost test stub's splice guards a missing listener.
 
 NOT REPRODUCED / KNOWN LIMIT
   - WebKit raising no contextmenu at all for a menu key: not handled (nothing opens). Windows (WebView2) is the shipped
