@@ -1,0 +1,31 @@
+T-733 - Stop allowing an allowed preview folder (DT-C169; UX audit W3 queue refill 3, backlog-sweep-49 #14)
+Worker 2f, coordinator 57, branch s-2f/t733 from main 5a69c684, 2026-11-03. Cap +250 B.
+
+BEFORE
+- A document previewed in a browser tab reads only itself until the user presses Allow folder on the chip
+  (BROW-040). After that the button was gone, and only rebuilding the window (APP-015) took the allowance back.
+
+AFTER
+- While the folder is allowed, the same button reads "Stop allowing" (tooltip: stop this preview reading the
+  other files in <folder>; aria-pressed shows the state). Pressing it calls browser_preview_revoke with the tab's address and
+  reloads the page, so styles, scripts and images beside the document are refused again (403, as before the
+  grant). The button then reads "Allow folder" again, and allowing works as before (with its open-folder check).
+- browser_preview_revoke (src-tauri/src/browser_preview.rs revoke): finds the tab's preview by its token and
+  clears its allowance; the page the tab shows is added to the documents opened, so a page reached by a
+  link while allowed still loads after the reload. A tab not on a preview gets "the tab is not showing a preview". Registered in lib.rs;
+  both names are literal invoke calls, so scripts/invoke-contract.mjs checks them: OK.
+- Responses carry Cache-Control: no-store, so the reload asks again and cannot reuse a file read while allowed.
+
+FIRST LOAD
+- BrowserPane.tsx is a deferred chunk (src/lazy/panes.tsx), so first load should be +0; the CI line goes in
+  the ready note. The chunk, minified alone (rolldown 1.2.12, imports external): 30053 -> 30240 bytes, +187.
+
+TESTS
+- browser::preview::tests::t733_an_allowed_folder_can_be_taken_back_and_allowed_again: allow, take back
+  (granted false), open the document again (still not allowed), allow again (granted true); a non-preview
+  address is refused. After a revoke from a page reached by a link (a b.html), that page serves 200 and
+  css/a.css 403.
+- Trap: with revoke's clearing line removed, the test FAILS at "taken back"; with the line that adds the
+  tab's page removed, it FAILS at "the page the tab shows"; restored, it passes.
+- cargo test --lib preview:: 15/15 (BROW-040, APP-015 among them). clippy --lib: no warnings in the change.
+- pnpm vitest run src/browser: 40 files, 278/278. pnpm tsc --noEmit -p .: clean. invoke-contract: OK.
