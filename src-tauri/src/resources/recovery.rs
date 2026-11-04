@@ -817,8 +817,12 @@ pub fn flag_write(dir: &Path, flag: &SafeFlag) -> Result<(), String> {
     fs::write(dir.join(SAFE_FLAG), serde_json::to_vec_pretty(flag).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
-pub fn flag_clear(dir: &Path) {
-    let _ = fs::remove_file(dir.join(SAFE_FLAG));
+/// T-724: a flag that is already gone counts as cleared; one that cannot be removed is an error the prompt tells.
+pub fn flag_clear(dir: &Path) -> Result<(), String> {
+    match fs::remove_file(dir.join(SAFE_FLAG)) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
+        _ => Ok(()),
+    }
 }
 
 /// The flag this launch runs under: none off Windows; one from another version is cleared.
@@ -828,7 +832,7 @@ pub fn launch_flag(dir: &Path, version: &str, windows: bool) -> Option<SafeFlag>
         return None;
     }
     if f.version != version {
-        flag_clear(dir);
+        let _ = flag_clear(dir); // ignored here as before: the launch goes on with hardware graphics either way
         return None;
     }
     Some(f)
@@ -881,7 +885,7 @@ pub fn graphics_crash_noted(app: tauri::AppHandle, g: tauri::State<Graphics>, pe
 #[tauri::command]
 pub fn graphics_keep_running(app: tauri::AppHandle) -> Result<(), String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    flag_clear(&dir);
+    flag_clear(&dir)?;
     crate::diag::write(&dir, "safe graphics declined: flag removed (APP-043)");
     Ok(())
 }
@@ -916,7 +920,7 @@ pub fn graphics_choose(app: tauri::AppHandle, stay: bool) -> Result<(), String> 
         crate::diag::write(&dir, "staying in safe graphics (APP-043)");
         return Ok(());
     }
-    flag_clear(&dir);
+    flag_clear(&dir)?;
     crate::diag::write(&dir, "trying hardware acceleration again: flag removed, restarting (APP-043)");
     note_self_end(&app, "restart with hardware graphics (APP-043)");
     crate::procs::hand_off(true);
@@ -1824,8 +1828,12 @@ mod tests {
         assert!(!dir.join(SAFE_FLAG).exists(), "and the flag is gone");
         flag_write(&dir, &SafeFlag { version: "0.2.0".into(), chosen: true }).unwrap();
         assert_eq!(launch_flag(&dir, "0.2.0", true).map(|f| f.chosen), Some(true), "the choice is remembered");
-        flag_clear(&dir);
+        flag_clear(&dir).unwrap();
         assert_eq!(flag_read(&dir), None);
+        assert_eq!(flag_clear(&dir), Ok(()), "T-724: a flag already gone counts as cleared");
+        fs::create_dir_all(dir.join(SAFE_FLAG)).unwrap(); // a path that cannot be removed as a file
+        assert!(flag_clear(&dir).is_err(), "T-724: a flag that cannot be removed is told, not swallowed");
+        fs::remove_dir(dir.join(SAFE_FLAG)).unwrap();
         assert_eq!(safe_args(None), format!("{BASE_ARGS} --disable-gpu"), "the base string stays");
         assert_eq!(safe_args(Some("--foo")), "--foo --disable-gpu");
         assert_eq!(safe_args(Some("--foo --disable-gpu")), "--foo --disable-gpu", "never twice");

@@ -69,7 +69,7 @@ export default function RecoveryMount() {
   const stay = g.kind === "launch" && g.stay;
   // T-724 (DT-C160): a choice closes the prompt only once it went through; a failure stays in the prompt, told.
   // Restart and Try hardware again restart the app when they work, so they never close it themselves.
-  const choose = (cmd: string, fail: string, args?: Record<string, boolean>, close?: boolean) =>
+  const choose = (cmd: string, fail: string, close?: boolean, args?: Record<string, boolean>) =>
     (setGerr(""), void invoke(cmd, args).then(() => close && setG(null), (e) => setGerr(`${fail}: ${String(e)}`)));
   return (
     <>
@@ -83,17 +83,17 @@ export default function RecoveryMount() {
             <button className="btn" autoFocus onClick={() => choose("graphics_restart_safe", "Could not restart in safe graphics")}>
               Restart in safe graphics
             </button>
-            <button className="btn" onClick={() => choose("graphics_keep_running", "Could not save Keep Running", {}, true)}>
+            <button className="btn" onClick={() => choose("graphics_keep_running", "Could not save Keep Running", true)}>
               Keep Running
             </button>
           </>
         ) : (
           <>
             <span>Kolux is running in safe graphics after repeated graphics crashes. Stay in safe graphics?</span>
-            <button className="btn" autoFocus={stay} onClick={() => choose("graphics_choose", "Could not save Stay in safe graphics", { stay: true }, true)}>
+            <button className="btn" autoFocus={stay} onClick={() => choose("graphics_choose", "Could not save Stay in safe graphics", true, { stay: true })}>
               Stay in safe graphics
             </button>
-            <button className="btn" autoFocus={!stay} onClick={() => choose("graphics_choose", "Could not switch back to hardware graphics", { stay: false })}>
+            <button className="btn" autoFocus={!stay} onClick={() => choose("graphics_choose", "Could not switch back to hardware graphics", false, { stay: false })}>
               Try hardware again
             </button>
           </>
