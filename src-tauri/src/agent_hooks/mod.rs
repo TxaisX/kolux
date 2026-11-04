@@ -616,7 +616,7 @@ fn install_claude_account_with(home: &Path, settings: &Value, profile: &Path, di
         return Err(format!("{} is not one of Kolux's Claude account folders; hooks not installed", dir.display()));
     }
     let _lock = Lock::take(&home.join(SCRIPT_DIR))?;
-    // Checked under the lock `claude_accounts::remove` also takes, so a folder removed meanwhile does not come back.
+    // Checked under the lock `claude_accounts::discard` also takes, so a folder removed meanwhile does not come back.
     if !dir.is_dir() {
         return Ok("left as it was");
     }

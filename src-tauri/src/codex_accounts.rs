@@ -10,8 +10,9 @@
 //! deleted. The newly connected account becomes the active one: new Codex panes and the usage pill
 //! run on it. Without a managed account, Codex's own system-default login is reported as it is.
 //! T-138 (ACCT-019, ACCT-020): the list shows the system default first, then each account; any
-//! row can be made active, an account can be removed (its home deleted, retried while Windows still
-//! holds it), and the user's own Codex folder is only ever read, never mirrored or written.
+//! row can be made active, an account can be removed (its sign-in goes, retried while Windows still
+//! holds it, and its home with the settings and sessions stays), and the user's own Codex folder is
+//! only ever read, never mirrored or written.
 
 use crate::claude_key::{run_hidden, Attention, Ended};
 use crate::codex_usage::{sign_in_kind, SignIn};
@@ -303,7 +304,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     // Row 929: `existing` at an id that is not listed (a stale screen) is a new account too, so it claims a free id.
     // Row 932: a list that cannot be read fails here, before the login; it never routes a listed account to a new id.
     let listed_ids: Vec<String> = crate::orchestration::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
-    // Row 940: an unlisted id whose home is there (a list set aside as corrupt leaves the homes) is still that sign-in; a removed account's home is gone, so a stale screen claims a new id.
+    // Row 940: an unlisted id whose home is there (a list set aside as corrupt leaves the homes) is still that sign-in; a removed account keeps its home too (only its sign-in goes), so a stale screen lands in that home again.
     let (id, home) = if existing && (listed_ids.iter().any(|l| l == id) || profile.join(FOLDER).join(id).is_dir()) {
         let home = profile.join(FOLDER).join(id);
         fs::create_dir_all(&home).map_err(|e| e.to_string())?;
@@ -832,6 +833,22 @@ pub fn remove_dir_patiently(dir: &Path) -> std::io::Result<()> {
     }
 }
 
+/// Deletes a file, retrying for about two seconds while Windows or a running pane still holds it.
+pub fn remove_file_patiently(path: &Path) -> std::io::Result<()> {
+    let mut tries = 0;
+    loop {
+        match fs::remove_file(path) {
+            Ok(()) => return Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(e) if tries >= 10 => return Err(e),
+            Err(_) => {
+                tries += 1;
+                std::thread::sleep(Duration::from_millis(200));
+            }
+        }
+    }
+}
+
 /// None makes Codex's own login the one new Codex panes use.
 pub fn activate(store: &Store, id: Option<&str>) -> Result<(), String> {
     if let Some(id) = id {
@@ -849,9 +866,39 @@ pub fn codex_account_activate(app: AppHandle, store: tauri::State<'_, Mutex<Stor
     Ok(())
 }
 
-/// Takes the account off the list, deletes its home (only one inside Kolux's own folder) and
-/// sealed copy, and hands new panes back to the system default when it was the active one.
+/// Takes the account off the list and deletes its sign-in: the live `auth.json` in its private
+/// home and the sealed copy in the vault. The home itself stays, so the settings, project trust,
+/// hooks state and rollout transcripts it had are kept, and a pane still running on the account
+/// keeps writing into a folder that is still there. New panes go back to the system default when
+/// it was the active one. Only an `auth.json` directly inside Kolux's own accounts folder is ever
+/// deleted.
 pub fn remove(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
+    let (gone, cleared) = unlist(store, id)?;
+    // Row 944: the sealed copy goes first, so a sign-in file that will not delete never leaves a copy a stale sign-in could unseal.
+    crate::claude_accounts::remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("codex-{id}.json")));
+    let home = PathBuf::from(&gone.home);
+    // Row 944: only the sign-in file of the account's own home directly under the accounts folder is deleted (a ".." or a nested path is not).
+    if home.parent() == Some(profile.join(FOLDER).as_path()) && home.file_name().is_some_and(|n| n == id) {
+        remove_file_patiently(&home.join("auth.json")).map_err(|e| format!("The account was removed from Kolux, but its sign-in file could not be deleted: {e}"))?;
+    }
+    cleared
+}
+
+/// The command line's rollback (row 921): a sign-in whose temporary copy could not be deleted was
+/// not kept as an account, so its whole home goes; nothing runs on it yet.
+pub(crate) fn discard(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
+    let (gone, cleared) = unlist(store, id)?;
+    crate::claude_accounts::remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("codex-{id}.json")));
+    let home = PathBuf::from(&gone.home);
+    if home.parent() == Some(profile.join(FOLDER).as_path()) && home.file_name().is_some_and(|n| n == id) {
+        remove_dir_patiently(&home).map_err(|e| format!("The account was not kept, but its home could not be deleted: {e}"))?;
+    }
+    cleared
+}
+
+/// Takes the account off the saved list, and clears the active marker when it named this account.
+/// The list is saved first, so a sign-in file that will not delete is reported after the account is gone.
+fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), String> {
     if !crate::cli_accounts::safe_id(id) {
         return Err("That Codex account id is not valid.".into());
     }
@@ -861,19 +908,12 @@ pub fn remove(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
     };
     let gone = list.remove(at);
     store.set(LIST_KEY, &serde_json::to_string(&list).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    // Row 947: the list is already saved, so a marker that will not clear is logged and reported at the end, after the sealed copy and home are gone.
+    // Row 947: the list is already saved, so a marker that will not clear is logged and reported at the end, after the sign-in files are gone.
     let cleared = if store.get(ACTIVE_KEY).ok().flatten().as_deref() == Some(id) { store.set(ACTIVE_KEY, "").map_err(|e| e.to_string()) } else { Ok(()) };
     if let Err(e) = &cleared {
         eprintln!("kolux-rs: could not clear the active Codex account ({e})");
     }
-    // Row 944: the sealed copy goes first, so a home that will not delete never leaves a copy a stale sign-in could unseal.
-    crate::claude_accounts::remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("codex-{id}.json")));
-    let home = PathBuf::from(&gone.home);
-    // Row 944: only the account's own home directly under the accounts folder is deleted (a ".." or a nested path is not).
-    if home.parent() == Some(profile.join(FOLDER).as_path()) && home.file_name().is_some_and(|n| n == id) {
-        remove_dir_patiently(&home).map_err(|e| format!("The account was removed, but its Codex home could not be deleted: {e}"))?;
-    }
-    cleared
+    Ok((gone, cleared))
 }
 
 #[tauri::command]
@@ -1121,7 +1161,8 @@ mod tests {
         assert_eq!(active_account(&s).unwrap().id, "c2");
         remove(&s, &profile, "c2").unwrap();
         assert!(active_account(&s).is_none() && active_home(&s).is_none(), "the system default takes over");
-        assert!(!profile.join(FOLDER).join("c2").exists() && !profile.join("vault").join("codex-c2.json").exists());
+        assert!(!profile.join(FOLDER).join("c2").join("auth.json").exists() && !profile.join("vault").join("codex-c2.json").exists(), "the sign-in and its sealed copy go");
+        assert!(profile.join(FOLDER).join("c2").is_dir(), "the home itself stays");
         activate(&s, Some("c1")).unwrap();
         assert!(activate(&s, Some("c2")).is_err());
         assert_eq!(active_account(&s).unwrap().id, "c1", "a failed change keeps the earlier choice");
@@ -1201,9 +1242,9 @@ mod tests {
         s.set(LIST_KEY, &serde_json::to_string(&list).unwrap()).unwrap();
         assert_eq!(active_account(&s).map(|a| a.id), Some("c2".into()));
         remove(&s, &profile, "c2").unwrap();
-        assert!(!profile.join(FOLDER).join("c2").exists() && !profile.join("vault").join("codex-c2.json").exists());
+        assert!(!profile.join(FOLDER).join("c2").join("auth.json").exists() && !profile.join("vault").join("codex-c2.json").exists());
         assert_eq!(active_account(&s), None, "the removed account is no longer active");
-        assert!(profile.join(FOLDER).join("c1").is_dir() && profile.join("vault").join("codex-c1.json").is_file());
+        assert!(profile.join(FOLDER).join("c1").is_dir() && profile.join(FOLDER).join("c1").join("auth.json").is_file() && profile.join("vault").join("codex-c1.json").is_file());
         remove(&s, &profile, "mine").unwrap();
         assert_eq!(load(&s).iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), ["c1"]);
         assert_eq!(fs::read(own.join("auth.json")).unwrap(), before, "the user's own Codex login is untouched");
@@ -1369,9 +1410,9 @@ mod tests {
         assert_eq!(homes, ["c1"], "no second account home");
     }
 
-    // Row 944: the sealed copy goes before the home, so a home that will not delete never leaves an orphan copy that a stale sign-in could unseal.
+    // Row 944: the sealed copy goes before the sign-in file, so a file that will not delete never leaves an orphan copy that a stale sign-in could unseal.
     #[test]
-    fn row944_a_failed_home_delete_still_removes_the_sealed_copy() {
+    fn row944_a_sign_in_file_that_will_not_delete_still_removes_the_sealed_copy() {
         let profile = temp("row944-order");
         let store = Mutex::new(Store::open(&profile).unwrap());
         sign_in(&store, &profile, "c1", false, 1, |home: &Path| {
@@ -1380,15 +1421,17 @@ mod tests {
         })
         .unwrap();
         let home = profile.join(FOLDER).join("c1");
-        fs::remove_dir_all(&home).unwrap();
-        fs::write(&home, "not a folder").unwrap();
+        // A folder where the sign-in file should be: `remove_file` fails, so the delete is reported.
+        fs::remove_file(home.join("auth.json")).unwrap();
+        fs::create_dir_all(home.join("auth.json").join("held")).unwrap();
         let vault = profile.join(secrets::VAULT).join("codex-c1.json");
         assert!(vault.is_file());
-        assert!(remove(&store.lock().unwrap(), &profile, "c1").is_err(), "the home delete still reports its failure");
+        assert!(remove(&store.lock().unwrap(), &profile, "c1").is_err(), "the sign-in file delete still reports its failure");
         assert!(!vault.exists(), "the sealed copy is gone");
+        assert!(home.is_dir(), "the home stays");
     }
 
-    // Row 947: the guard's false side: a listed safe id whose stored home is outside the accounts folder is unlisted but that home is never deleted.
+    // Row 947: the guard's false side: a listed safe id whose stored home is outside the accounts folder is unlisted but nothing in that home is deleted.
     #[test]
     fn row947_removing_a_listed_id_whose_home_is_elsewhere_deletes_that_home_never() {
         let profile = temp("row947-elsewhere");
@@ -1397,12 +1440,15 @@ mod tests {
         fs::create_dir_all(&elsewhere).unwrap();
         let marker = elsewhere.join("marker.txt");
         fs::write(&marker, "keep").unwrap();
+        let sign_in_outside = elsewhere.join("auth.json");
+        fs::write(&sign_in_outside, token("me@example.com")).unwrap();
         let s = store.lock().unwrap();
         let odd = Account { id: "c1".into(), email: None, home: elsewhere.to_string_lossy().into_owned(), last_sign_in: 0, sign_in_error: false, label: None };
         s.set(LIST_KEY, &serde_json::to_string(&[odd]).unwrap()).unwrap();
         remove(&s, &profile, "c1").unwrap();
         assert!(crate::orchestration::kept::load::<Vec<Account>>(&s, LIST_KEY).unwrap().is_empty(), "the account is unlisted");
         assert!(marker.exists(), "the home outside the accounts folder is untouched");
+        assert!(sign_in_outside.is_file(), "and so is the sign-in in it");
     }
 
     // Row 947: removing an account whose listed id is ".." must not delete the profile folder (the same guard as the Claude side).
@@ -1419,9 +1465,9 @@ mod tests {
         assert!(marker.exists(), "the profile folder is still there");
     }
 
-    // Row 947: an active marker that will not clear is reported at the end, after the list is saved and the sealed copy and home are gone.
+    // Row 947: an active marker that will not clear is reported at the end, after the list is saved and the sealed copy and sign-in are gone.
     #[test]
-    fn row947_a_marker_that_will_not_clear_still_removes_the_vault_and_home() {
+    fn row947_a_marker_that_will_not_clear_still_removes_the_vault_and_sign_in() {
         let profile = temp("row947-marker");
         let store = Mutex::new(Store::open(&profile).unwrap());
         sign_in(&store, &profile, "c1", false, 1, |home: &Path| {
@@ -1435,7 +1481,34 @@ mod tests {
         assert!(remove(&s, &profile, "c1").is_err(), "the failure to clear the marker is still reported");
         assert!(crate::orchestration::kept::load::<Vec<Account>>(&s, LIST_KEY).unwrap().is_empty(), "the list was saved");
         assert!(!profile.join(secrets::VAULT).join("codex-c1.json").exists(), "the sealed copy is gone");
-        assert!(!profile.join(FOLDER).join("c1").exists(), "and so is the home");
+        assert!(!profile.join(FOLDER).join("c1").join("auth.json").exists(), "and the sign-in file");
+        assert!(profile.join(FOLDER).join("c1").is_dir(), "the home stays");
+    }
+
+    // C25-R5-01: Remove deletes the sign-in only. The home keeps its settings, project trust, hook
+    // state and rollout transcripts, so a pane still running on the account keeps writing into a
+    // folder that is still there.
+    #[test]
+    fn c25_removing_a_codex_account_keeps_its_home_settings_and_sessions() {
+        let profile = temp("c25-keep");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        sign_in(&store, &profile, "c1", false, 1, |home: &Path| {
+            fs::write(home.join("auth.json"), token("kim@example.com")).unwrap();
+            (String::new(), Ended::Exited(Some(0)), None)
+        })
+        .unwrap();
+        let home = profile.join(FOLDER).join("c1");
+        let settings = "model = \"o3\"\n[projects.'C:\\work']\ntrust_level = \"trusted\"\n[hooks.state]\nk = 1\n";
+        fs::write(home.join("config.toml"), settings).unwrap();
+        fs::create_dir_all(home.join("sessions").join("2026")).unwrap();
+        fs::write(home.join("sessions").join("2026").join("rollout.jsonl"), "a turn\n").unwrap();
+        remove(&store.lock().unwrap(), &profile, "c1").unwrap();
+        assert!(home.is_dir(), "the account's home is not deleted");
+        assert_eq!(fs::read_to_string(home.join("config.toml")).unwrap(), settings, "its settings, project trust and hook state stay");
+        assert_eq!(fs::read_to_string(home.join("sessions").join("2026").join("rollout.jsonl")).unwrap(), "a turn\n", "its rollout transcript stays");
+        assert!(!home.join("auth.json").exists(), "only the sign-in file is deleted");
+        assert!(!profile.join(secrets::VAULT).join("codex-c1.json").exists(), "and its sealed copy");
+        assert!(load(&store.lock().unwrap()).is_empty());
     }
 
     // Row 944: an id like ".." is never an account home; a cancelled login must not roll back (delete) the profile folder.
