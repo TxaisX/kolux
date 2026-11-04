@@ -1,40 +1,51 @@
-T-763 / DT-C199 - one IPC guard for every live harness (worker 49, coordinator 57), s-49/t763 from main e5358347, 2026-11-03
+T-763 / DT-C199 - one IPC guard for every live harness (worker 49, coordinator 57), s-49/t763 from main e5358347, main 918b9991 merged in, 2026-11-03
 
 BEFORE
 - Each live script that wanted a guard copied its own fetch wrapper (49's uncommitted t13 verify script, 72's own copy).
-  scripts/prove harnesses launched through live-common had none: a row could open a browser or an editor, restart
-  the app, or write the real ~/.kolux/keybindings.json (the dev app reads the real home, T-761).
+  scripts/prove harnesses launched through live-common had none: a row could open a browser, an editor or a folder,
+  restart or update the app, install or register CLIs, or write the real ~/.kolux/keybindings.json (the dev app reads
+  the real home, T-761).
 - Tauri v2 sends backend calls by fetch to ipc.localhost; after one failed fetch it switches to postMessage for good.
   From then on a fetch wrapper sees nothing: blocked commands run for real and stand-ins report 0 calls. In the t13
   run this turned rows into false PASSes until the guard was probed.
 
 AFTER
-- scripts/evidence/app-launch.mjs exports IPC_BLOCK and IPC_GUARD_JS (the page script). createApp takes
-  ipcGuard (default false) and afterReload. With ipcGuard on, launch() and relaunch() arm the guard and throw
-  "the IPC guard is not effective; refusing to drive an app ..." when neither arming nor a reload-and-rearm works.
-- app.guardOk(): invokes v8_probe (no command behind it) and checks it reached the log; takes the probe back out.
-- app.rearm(): reloads the page (fetch IPC comes back), runs afterReload, arms again.
+- scripts/evidence/app-launch.mjs exports IPC_BLOCK, IPC_GUARD_JS (the page script) and guardProbeJs (the check's
+  page side). createApp takes ipcGuard (default false) and afterReload. With ipcGuard on, launch() and relaunch() arm
+  the guard; when neither arming nor a reload-and-rearm works they close the app and throw "the IPC guard is not
+  effective; refusing to drive an app ...".
+- Block list, exact names only (checked against the commands the backend defines): open_external, open_install_page, open_notification_settings, open_in, open_path, editor_open, scm_open_pr, scm_open_with, the four reveal commands (scm, skills, session, browser download), app_restart, update_restart, update_download, graphics_restart_safe, graphics_choose, keybindings_show/write/reload, cli_register/unregister, agents_install(_many) and agent_install.
+  The app registers no opener, shell or process plugin, so no plugin prefix is listed. Blocked calls get a "null"
+  body with Content-Type application/json and Tauri-Response: ok, and are logged with " [BLOCKED]". plugin:event and
+  plugin:log are not logged. Log capped at 400. Only http://ipc.localhost/ and ipc://localhost/ count as IPC.
+- appEnv sets KOLUX_KEYBINDINGS_HOME to the scratch home: the app's own calls while it boots (keymap seeding) run
+  before the guard is armed, and now reach a scratch keymap.
+- app.guardOk(): one call with a unique name (v8_probe_N, no command behind it) must reach the log and no backend
+  fetch may have failed since arming (window.__v10blind); the probe gives up after 3 s and takes itself out of the log.
+- app.rearm(): reload (fetch IPC comes back), arm first, then afterReload (live-common: close first-run dialogs unless
+  opts.keepFirstRun), then the check. Arming again on the same page reuses the page's own fetch (window.__v10orig).
 - app.guarded(fn): checks before and after one row; { blind: "before" } = fn not run, { blind: "after" } = the guard
   went blind during fn. Either way the row counts NOT-TESTED.
-- Block list, exact names: open_external, app_restart, keybindings_show, keybindings_write, keybindings_reload;
-  prefixes: plugin:opener|, plugin:shell|, plugin:process|. Blocked calls get a "null" body with Tauri-Response: ok
-  and are logged with " [BLOCKED]". plugin:event and plugin:log are not logged. Log capped at 400.
-- scripts/prove/live-common.mjs: startProve and startPlain pass ipcGuard: true and afterReload = dismissFirstRun,
-  so all 79 harnesses that start through them get the guard. Smoke and stress (no ipcGuard) are unchanged;
+- scripts/prove/live-common.mjs: startProve and startPlain pass ipcGuard: true and afterReload, so every harness that
+  starts through them (directly or through live-claude-common) gets the guard; ctx.stop() logs "WARN the IPC guard was
+  blind at the end of this run" before closing when the check fails. Smoke and stress (no ipcGuard) are unchanged;
   live-T-544.mjs (attach mode) is unchanged.
 
 TESTS
-- New scripts/evidence/app-launch.test.mjs (runs IPC_GUARD_JS in a vm context on a fake fetch): 11/11.
-  Blocked commands never reach the fake backend and answer ok; v8_probe and settings_read pass and are logged;
-  event/log plugins pass unlogged; a non-IPC URL passes; look-alikes (keybindings_read, open_externally_hint,
-  settings_write) are not blocked.
-  Trap: keybindings_write dropped from IPC_BLOCK -> 1 failed (keybindings_write ... never reaches the backend).
-  The look-alike case first caught a prefix match (open_external... matched anything starting with it); the plain
-  names are now anchored.
-- npx vitest run scripts (2 workers): 10 files, 78/78.
-- node --check on every scripts/prove, scripts/evidence and scripts/stress .mjs: all parse. Importing
-  live-common.mjs and app-launch.mjs resolves.
+- scripts/evidence/app-launch.test.mjs (page script and probe in a vm context on a fake page): 32/32.
+  All 25 blocked commands never reach the fake backend and get the exact reply; ordinary commands pass and are logged;
+  event/log plugins and a look-alike host pass unlogged; look-alikes (keybindings_read, open_externally_hint,
+  settings_write, agent_installs, agent_install_cancel, agent_can_install, scm_open, session_open) are not blocked;
+  the probe passes on fetch IPC and fails after the postMessage switch; a failed fetch marks the guard blind and the
+  probe then fails; arming twice wraps fetch once.
+  Traps, each put back after: no blind flag -> 1 failed; wrapping twice -> 2 failed; keybindings_write unblocked ->
+  1 failed; probe ignoring blind -> 1 failed; host not anchored -> 1 failed.
+- npx vitest run scripts (2 workers), after merging main 918b9991: 10 files, 99/99 on three runs. One earlier run
+  had 1 failure that did not come back in the next three; its name was not captured.
+- node --check on every scripts/prove, scripts/evidence and scripts/stress .mjs: all parse. Importing live-common.mjs
+  resolves.
 - plan-check OK; firewall-check -Baseline 0 new.
+- Review: opus-high-review C+ on the first cut; M1-M3, S1, S2, S4, S5 fixed as above, S3 and S6 as above.
 
 FIRST LOAD
 - No src/ change: +0 B.
@@ -42,8 +53,8 @@ FIRST LOAD
 NOT DONE
 - No live app run on this branch: 72's live run held the machine. The same page script, probe and rearm ran live in
   the t13 verify (findings/live-verify-t13.md), where they caught the fetch->postMessage switch.
-- Harnesses still call the backend directly; none wraps its rows in app.guarded() yet. Each owner can adopt it per
-  row. A rearm reloads the page and drops page-side state (startProve's window.__proveEvents listener): a harness
-  that rearms mid-run must set it up again (noted on app.rearm).
+- Harnesses still call the backend directly; none wraps its rows in app.guarded() yet, and stop() only warns. Each
+  owner can adopt guarded() per row. A rearm reloads the page and drops page-side state (startProve's
+  window.__proveEvents listener): a harness that rearms mid-run must set it up again (noted on app.rearm).
 - 49's t13 verify script (wt/49-verify, uncommitted) still has its own copy; it can switch to the shared one if it
   is ever committed.

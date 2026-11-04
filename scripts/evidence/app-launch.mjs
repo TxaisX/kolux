@@ -56,39 +56,58 @@ export const moveScript = (pid, offscreen) => {
      if ($h -eq [IntPtr]::Zero) { 'no window handle' } else { [U.W]::SetWindowPos($h,[IntPtr]::Zero,${x},${y},0,0,${flags}) | Out-Null; '${offscreen ? "moved off-screen" : "moved"}' }`;
 };
 
+/** T-763 (DT-C199): backend commands the IPC guard answers with a stand-in "ok" instead of running. Each one reaches
+ *  outside the scratch profile: opens a browser, an editor, a folder or a system page; restarts or updates the
+ *  app or switches its graphics; installs CLIs or registers them with the system; or reads or writes the user's
+ *  keymap (a dev run reaches the real home, T-761; appEnv also points KOLUX_KEYBINDINGS_HOME at the scratch home).
+ *  Exact names only: the app registers no opener, shell or process plugin. */
+export const IPC_BLOCK = new RegExp(
+  "^(?:" +
+    ["open_external", "open_install_page", "open_notification_settings", "open_in", "open_path", "editor_open", "scm_open_pr", "scm_open_with",
+     "scm_reveal", "skills_reveal", "session_reveal", "browser_download_reveal", "app_restart", "update_restart", "update_download",
+     "graphics_restart_safe", "graphics_choose", "keybindings_(?:show|write|reload)", "cli_(?:un)?register", "agents_install(?:_many)?", "agent_install"].join("|") +
+    ")$",
+);
+/** The guard's page side: wraps window.fetch (once per page; arming again reuses the original), logs backend calls in
+ *  window.__v10calls, answers IPC_BLOCK commands with a stand-in "ok", and sets window.__v10blind when a backend
+ *  fetch fails (Tauri then switches to postMessage and the wrapper sees nothing). Evaluates to true.
+ *  Tested in app-launch.test.mjs. */
+export const IPC_GUARD_JS = `(() => {
+  window.__v10calls = [];
+  window.__v10blind = false;
+  const BLOCK = new RegExp(${JSON.stringify(IPC_BLOCK.source)});
+  const orig = (window.__v10orig ??= window.fetch.bind(window));
+  window.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input?.url ?? String(input);
+    const m = /^(?:https?:\\/\\/ipc\\.localhost|ipc:\\/\\/localhost)\\/([^?#]+)/.exec(url);
+    if (!m) return orig(input, init);
+    const cmd = decodeURIComponent(m[1]);
+    if (!/^plugin:(event|log)\\|/.test(cmd)) {
+      const blocked = BLOCK.test(cmd);
+      window.__v10calls.push(cmd + (blocked ? " " + String(init?.body ?? "").slice(0, 120) + " [BLOCKED]" : ""));
+      if (window.__v10calls.length > 400) window.__v10calls.shift();
+      if (blocked) return Promise.resolve(new Response("null", { status: 200, headers: { "Content-Type": "application/json", "Tauri-Response": "ok" } }));
+    }
+    return orig(input, init).catch((e) => { window.__v10blind = true; throw e; });
+  };
+  return true;
+})()`;
+/** The guard check's page side: sends one call with no command behind it (name) and is true only when the guard
+ *  logged it and no backend fetch has failed. Takes the probe back out of the log; gives up after 3 s. */
+export const guardProbeJs = (name) => `(async () => {
+  const p = Promise.resolve().then(() => window.__TAURI_INTERNALS__.invoke(${JSON.stringify(name)})).catch(() => null);
+  await Promise.race([p, new Promise((r) => setTimeout(r, 3000))]);
+  const l = window.__v10calls, i = l ? l.indexOf(${JSON.stringify(name)}) : -1;
+  if (i >= 0) l.splice(i, 1);
+  return i >= 0 && window.__v10blind === false;
+})()`;
+
 /**
  * opts: root (checkout), port (vite), cdp (debugging port), identifier, temp (scratch root), suffix (the identifier must
  * end with it before a launch wipes the profile), offscreen, attach, keep, buildMinutes, log, ipcGuard (arm the IPC
  * guard below after every launch and relaunch, and refuse to go on without it), afterReload (async (app) => …, run
  * after the guard's own page reload, e.g. to close first-run dialogs).
  */
-/** T-763 (DT-C199): backend commands the IPC guard answers with a stand-in "ok" instead of running: they open a
- *  browser or an editor, restart the app, or read or write the user's keymap (which a dev run still reaches
- *  through the real home, T-761). */
-export const IPC_BLOCK = /^(?:(?:open_external|app_restart|keybindings_(?:show|write|reload))$|plugin:(?:opener|shell|process)\|)/;
-/** The guard's page side: wraps window.fetch, logs backend calls in window.__v10calls, answers IPC_BLOCK commands
- *  with a stand-in "ok". Evaluates to true. Tested in app-launch.test.mjs. */
-export const IPC_GUARD_JS = `(() => {
-  window.__v10calls = [];
-  const BLOCK = new RegExp(${JSON.stringify(IPC_BLOCK.source)});
-  const orig = window.fetch.bind(window);
-  window.fetch = (input, init) => {
-    const url = typeof input === "string" ? input : input?.url ?? String(input);
-    const m = /^(?:https?|ipc):\\/\\/(?:ipc\\.)?(?:localhost|tauri\\.localhost)\\/([^?#]+)/.exec(url);
-    if (m && /ipc\\.localhost|^ipc:/.test(url)) {
-      const cmd = decodeURIComponent(m[1]);
-      if (!/^plugin:(event|log)/.test(cmd)) {
-        const blocked = BLOCK.test(cmd);
-        window.__v10calls.push(cmd + (blocked ? " " + String(init?.body ?? "").slice(0, 120) + " [BLOCKED]" : ""));
-        if (window.__v10calls.length > 400) window.__v10calls.shift();
-        if (blocked) return Promise.resolve(new Response("null", { status: 200, headers: { "Content-Type": "application/json", "Tauri-Response": "ok" } }));
-      }
-    }
-    return orig(input, init);
-  };
-  return true;
-})()`;
-
 export function createApp(opts) {
   const { root, port: PORT, cdp: CDP, identifier: IDENTIFIER, temp: TEMP, suffix = ".smoke", offscreen: OFFSCREEN = false, attach: ATTACH = false, keep: KEEP = false, buildMinutes = 20, log = console.log, ipcGuard: IPC_GUARD = false, afterReload } = opts;
   const cdpScript = join(root, "scripts", "evidence", "cdp.mjs");
@@ -237,7 +256,7 @@ export function createApp(opts) {
     await waitFor("the sidebar", () => exists("aside.sidebar"), 60000, 1000);
   }
   const moveWindow = (pid) => ps(moveScript(pid, OFFSCREEN));
-  const appEnv = () => ({ ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${CDP}`, CLAUDE_CONFIG_DIR: claudeConfig, CODEX_HOME: codexHome, TEMP: appTemp, TMP: appTemp, USERPROFILE: userHome, HOME: userHome, APPDATA: roaming, LOCALAPPDATA: local, CARGO_HOME: process.env.CARGO_HOME ?? join(realHome, ".cargo"), RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(realHome, ".rustup") });
+  const appEnv = () => ({ ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${CDP}`, CLAUDE_CONFIG_DIR: claudeConfig, CODEX_HOME: codexHome, TEMP: appTemp, TMP: appTemp, USERPROFILE: userHome, HOME: userHome, KOLUX_KEYBINDINGS_HOME: userHome, APPDATA: roaming, LOCALAPPDATA: local, CARGO_HOME: process.env.CARGO_HOME ?? join(realHome, ".cargo"), RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(realHome, ".rustup") });
 
   // T-560: the config the app is started with. It never carries window entries, because tauri dev compiles this
   // config into the debug exe; --offscreen moves the window at run time.
@@ -249,22 +268,24 @@ export function createApp(opts) {
   // A fetch wrapper logs every backend call in window.__v10calls and answers IPC_BLOCK commands itself. Tauri sends
   // calls by fetch to ipc.localhost, but after one failed fetch it switches to postMessage for good, and from then
   // on the wrapper sees nothing: blocked commands run for real and stand-ins see no calls. So the guard is probed
-  // with a call that has no command behind it (v8_probe): seen in the log = still armed. A reload puts fetch back.
-  /** True while backend calls still pass through the guard. Takes its own probe out of the log again. */
-  app.guardOk = async () => {
-    await evalJs(`window.__TAURI_INTERNALS__.invoke("v8_probe").then(() => null, () => null)`).catch(() => {});
-    await sleep(250);
-    return evalJs(`(() => { const l = window.__v10calls; const i = l ? l.findIndex((c) => /^v8_probe/.test(c)) : -1; if (i >= 0) l.splice(i, 1); return i >= 0; })()`).catch(() => false);
-  };
-  app.armGuard = async () => (await evalJs(IPC_GUARD_JS).catch(() => false)) === true && app.guardOk();
-  /** Reload the page so Tauri's IPC goes back to fetch, run opts.afterReload (e.g. close first-run dialogs), arm again.
-   *  A reload drops page-side state (startProve's window.__proveEvents listener included): set it up again after. */
+  // with a call that has no command behind it (v8_probe_N): seen in the log and no failed fetch = still armed.
+  // A reload puts fetch back. The app's own calls before the first arm (boot) are not guarded: the keymap they
+  // could write is the scratch one (KOLUX_KEYBINDINGS_HOME in appEnv).
+  let probes = 0;
+  /** True while backend calls still pass through the guard. */
+  app.guardOk = async () => (await evalJs(guardProbeJs(`v8_probe_${++probes}`)).catch(() => false)) === true;
+  const wrap = async () => (await evalJs(IPC_GUARD_JS).catch(() => false)) === true;
+  app.armGuard = async () => (await wrap()) && app.guardOk();
+  /** Reload the page so Tauri's IPC goes back to fetch, arm again before anything else, then run opts.afterReload
+   *  (e.g. close first-run dialogs) under the guard. A reload drops page-side state (startProve's
+   *  window.__proveEvents listener included): a harness that rearms mid-run sets it up again. */
   app.rearm = async () => {
     await evalJs(`setTimeout(() => location.reload(), 0), null`).catch(() => {});
     await sleep(1500);
     await pageUp(90_000);
+    if (!(await wrap())) return false;
     await afterReload?.(app);
-    return app.armGuard();
+    return app.guardOk();
   };
   /** Runs fn(), one row of a harness, between two guard checks. blind "before": the guard was lost and a rearm
    *  failed, so fn did not run (count the row NOT-TESTED). blind "after": the guard went blind during fn, so
@@ -276,7 +297,11 @@ export function createApp(opts) {
   };
   const armOrThrow = async () => {
     if (!IPC_GUARD) return;
-    if (!(await app.armGuard()) && !(await app.rearm())) throw new Error("the IPC guard is not effective; refusing to drive an app that could open a browser, an editor, restart, or write the real keymap");
+    if (!(await app.armGuard()) && !(await app.rearm())) {
+      // The caller has no app handle yet when this throws (startProve's catch only stops a ctx), so close it here.
+      await app.closeApp().catch(() => {});
+      throw new Error("the IPC guard is not effective; refusing to drive an app that could open a browser, an editor, restart, or write the real keymap");
+    }
     log(`ipc guard armed (blocks ${IPC_BLOCK.source})`);
   };
 
