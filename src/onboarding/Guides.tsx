@@ -2,6 +2,7 @@
 // the window; the help menu and the tips open the guides through openGuide / openExplore.
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Rect } from "./tour";
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { Close, EyeOff } from "../chrome/icons";
 import { useKeymap } from "../keys/KeymapContext";
@@ -153,7 +154,7 @@ function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean;
   );
   return (
     <div className={`ask-backdrop${open ? "" : " closing"}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="guide" role="dialog" aria-modal="true" aria-label="Getting Started with Kolux" onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <div className="guide" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Getting Started with Kolux" onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onClose())}>
         <aside className="guide-side">
           <header className="guide-head">
             <Ring done={r.done} total={r.total} />

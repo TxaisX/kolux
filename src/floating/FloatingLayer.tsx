@@ -3,6 +3,7 @@
 // mounts it and asks `floatingKeys.handle` first for each key. The geometry and the tab rules are in
 // geometry.ts and panel.ts (tested there). Tabs stay mounted while the panel is hidden, so a program
 // keeps running when the panel is minimized. Live proof pending (batched): evidence/T-220.txt.
+import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import TerminalPane from "../terminal/TerminalPane";
@@ -75,10 +76,12 @@ function Question({ label, title, body, choices, onCancel, busy = false }: { lab
         className="ask"
         role="alertdialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label={label}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
+          trapTab(e);
           if (e.key === "Escape") (e.preventDefault(), onCancel());
         }}
       >

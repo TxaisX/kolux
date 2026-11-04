@@ -1,6 +1,7 @@
 // ONB-001..005: the first-run wizard, a four-screen card floating over the dimmed app. WizardView is
 // pure; Wizard holds the screen, the Ctrl+Enter chord and the stored progress (onboarding.rs), and
 // hands every real action (a session, Add Project) to App through its props.
+import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -82,7 +83,7 @@ export function WizardView(p: ViewProps) {
   return (
     <div className="ask-backdrop onb-backdrop" onMouseDown={(e) => e.button === 0 && e.target === e.currentTarget && p.onOutside?.()}>
       <div className="onb-drag" data-tauri-drag-region />
-      <div className="onb" role="dialog" aria-modal="true" aria-label="Get started with Kolux" tabIndex={-1}>
+      <div className="onb" role="dialog" aria-modal="true" aria-label="Get started with Kolux" tabIndex={-1} onKeyDown={trapTab}>
         <div className="onb-head">
           <Mark size={22} />
           <div className="onb-progress">
