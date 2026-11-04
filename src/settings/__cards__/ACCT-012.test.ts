@@ -95,6 +95,13 @@ test("rule: nothing shows before the Claude list has loaded, so it cannot flicke
   expect(words(el)).toBe("");
 });
 
+test("rule: a Codex sign-in file that is gone raises the notice too", async () => {
+  claudeView = claudeOf([], null);
+  codexView = { ...codexEmpty, accounts: [{ id: "c1", email: "kim@example.com", home: "<codex-home>", lastSignIn: 1, signInError: false }], active: "c1", missing: ["c1"] };
+  const el = await draw();
+  expect(el.props.lapsed).toEqual({ agent: "codex", id: "c1", label: "Codex account kim@example.com", busy: false });
+});
+
 test("rule: Codex's system-default login never raises it, even signed out or on an API key", async () => {
   claudeView = claudeOf([], null);
   for (const systemDefault of ["signed-out", "api-key", "chatgpt"]) {

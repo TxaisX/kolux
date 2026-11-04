@@ -739,7 +739,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .conn-name { font-size: 14px; font-weight: 600; color: var(--fg); }
 .conn-chip { margin-left: auto; padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--fg-muted); background: var(--chip-bg); }
 .conn-chip.connected, .conn-chip.warning { color: var(--done); }
-.conn-chip.expired, .conn-chip.attention { color: var(--warn); }
+.conn-chip.expired, .conn-chip.attention, .conn-chip.needs-signin { color: var(--warn); }
 .conn-chip.connecting { color: var(--working); }
 .conn-headline { font-size: 13px; color: var(--fg-row); }
 .conn-detail { margin: 0; font-size: 12px; color: var(--fg-muted); }
