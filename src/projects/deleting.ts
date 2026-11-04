@@ -40,6 +40,12 @@ export function commitsNote(c: RemoveCheck): string | null {
   return n === 1 ? "1 commit is on no other branch and was never pushed; deleting the branch loses it:" : `${n} commits are on no other branch and were never pushed; deleting the branch loses them:`;
 }
 
+/** C05-R1-01: what the multi-select remove takes that its question used to leave out. The batch
+ *  question has no per-row branch record, so the branch line is conditional for the whole selection
+ *  rather than per row; it is still true of every row. */
+export const BATCH_FOLDER_NOTE = "Removing these workspaces deletes their folders for good, with the files Git does not track or ignores (installed packages, local settings, build output).";
+export const BATCH_BRANCH_NOTE = "Each branch is deleted too, unless the workspace was opened on a branch that already existed, or its branch holds commits no other branch and no remote has; those branches are kept and listed, so you can delete them later.";
+
 /** T-613: Keep the branch starts ticked when deleting it would lose such commits; otherwise the
  *  workspace's own record decides (PROJ-030: opened on a branch that already existed). */
 export const keepsAtFirst = (c: RemoveCheck): true | undefined => ((c.commits ?? []).length > 0 ? true : undefined);

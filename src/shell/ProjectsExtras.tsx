@@ -6,6 +6,7 @@ import { askText } from "../editor/closeGuard";
 import { askArchive } from "../setup/TrustPrompt";
 import type { KeptBranch, KeptItem } from "../projects/cleanup";
 import type { RemoveCheck } from "../projects/deleting";
+import { BATCH_BRANCH_NOTE, BATCH_FOLDER_NOTE } from "../projects/deleting";
 import { outsideLines, outsideTitle } from "../projects/outsideCard";
 import type { Worktree } from "../projects/model";
 import type { BatchQuestion, Checked } from "../projects/selection";
@@ -173,6 +174,12 @@ export function PickedBar({
                 {d.name} has changes that will be lost{d.lines.length ? `: ${d.lines.slice(0, 3).join(", ")}${d.more + Math.max(0, d.lines.length - 3) > 0 ? ", …" : ""}` : ""}
               </div>
             ))}
+            {q.removable.length > 0 && (
+              <>
+                <div className="sb-hint">{BATCH_FOLDER_NOTE}</div>
+                <div className="sb-hint">{BATCH_BRANCH_NOTE}</div>
+              </>
+            )}
             {dirtyNames.length > 0 && (
               <>
                 <span>{askText(dirtyNames)} Deleting these workspaces closes their tabs.</span>

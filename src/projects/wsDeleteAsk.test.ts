@@ -164,6 +164,34 @@ test("the multi-select Remove names the dirty file and Cancel keeps the workspac
   expect(removed).toEqual([]); // the workspace stays
 });
 
+// C05-R1-01: the batch question names what the click takes: the folders, the files Git ignores, the branch.
+function BatchHarness() {
+  return createElement(PickedBar, {
+    picked: [ws.path, "C:/w/ws/two"],
+    find: (p: string) => ({ projectId: "p1", name: p.endsWith("fix") ? "fix" : "two" }),
+    onRemoved: () => {},
+    onLeft: () => {},
+    onReload: () => {},
+    say: () => {},
+    unsavedIn: () => [],
+    onAskUnsaved: async () => true,
+  } as never);
+}
+
+test("the multi-select question names the folders, the Git-ignored files and the branch outcome", async () => {
+  const m = await mount(createElement(BatchHarness), doc);
+  unmount = m.unmount;
+  const c = m.container as FakeNode;
+  await settle(40);
+  await click(c, byText(c, "button", "Remove…")[0]);
+  await settle(80);
+  expect(byText(c, "h2", "Remove 2 workspaces?")[0], "the batch question is shown").toBeDefined();
+  const text = (c.textContent ?? "").replace(/\s+/g, " ");
+  expect(text, "says the folders go").toMatch(/folder/i);
+  expect(text, "says files Git ignores go").toMatch(/ignor/i);
+  expect(text, "says what happens to the branch").toMatch(/branch/i);
+});
+
 // EDIT-031: Cleanup's Remove for good is the same delete path.
 function CleanupHarness() {
   const guard = useCloseGuard({ panes, dirty, close: () => {}, toast: () => {} });
