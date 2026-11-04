@@ -157,6 +157,12 @@ A tab opened by a page comes to the front only if the page's own tab is on scree
 
 Kolux itself fetches a page's icon, so it keeps this narrow. An icon is accepted only if it is an image of modest size (up to 256 KB), and a fetch takes at most 5 redirects and 8 seconds. A redirect is refused if it goes from https down to http, or to somewhere the tab itself may not go. A page on the public web cannot point its icon at your own machine or home network: addresses such as `localhost`, `127.0.0.1`, `192.168...`, `10...`, names ending `.local` or `.lan`, or a plain name with no dot are refused for icons unless the page is on that same host. A page you open on `localhost` can still show its own icon. Your tab can still go to `localhost`; the rule only guards what Kolux fetches for a page.
 
+## Artifacts
+
+The Artifacts library holds only what its viewer can show in the app: **HTML pages, images and videos**. A text or markdown file, a CSV or JSON file, a Word or Excel document, a PDF and an audio file are not artifacts. The `artifacts/` folder of an open workspace is imported automatically (and watched every 3 seconds) for those three kinds only, and **Add artifact** refuses anything else with a sentence naming the file. A page counts as one entry with the files it points to beside it, so it still loads its own pictures, fonts, audio or data offline.
+
+**A link in a page asks first.** A page runs its own script, so a click that leaves the page never opens your browser by itself: Kolux shows a strip above the viewer, `Open example.com?`, naming the address's host (for a mail address, the address without any `?body=`), and the browser opens only when you click **Open** there, once, for exactly that address. Open is disabled for the first second, so a click meant for the page cannot land on it; **Cancel** closes the question, and after three Cancels in a row that page stops asking until you pick it again.
+
 ## Not available
 
 "Grab page element" and hard reload have keys listed on the Shortcuts page, but they do nothing yet in this version. Use Ctrl+R to reload.

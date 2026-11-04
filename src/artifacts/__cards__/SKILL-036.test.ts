@@ -47,11 +47,7 @@ beforeEach(() => {
   h.addError = "";
   h.openError = "";
 });
-const nav = globalThis.navigator as unknown as { userActivation?: { isActive: boolean } };
-const hadActivation = Object.getOwnPropertyDescriptor(nav, "userActivation");
 afterEach(async () => {
-  if (hadActivation) Object.defineProperty(nav, "userActivation", hadActivation);
-  else delete nav.userActivation;
   await unmount();
   unmount = async () => {};
 });
@@ -106,7 +102,7 @@ function viewedPage() {
   };
 }
 
-test("box 2: a clicked link leaves the viewer as a message, and the page hands it to the system opener, not to Kolux", async () => {
+test("box 2: a clicked link leaves the viewer as a message, and the page asks first: one Kolux question naming the host, Open after a second, and only the shown address", async () => {
   // Inside the viewer (the product's own appended script).
   const v = viewedPage();
   expect(v.click("https://example.invalid/x?q=1")).toBe(true);
@@ -121,7 +117,8 @@ test("box 2: a clicked link leaves the viewer as a message, and the page hands i
   expect(v.click(null)).toBe(false);
   expect(v.posted).toHaveLength(2);
 
-  // In the library page: the message from its own frame becomes open_external; Kolux itself navigates nowhere.
+  // In the library page (DT-C77): a message from its own frame never opens the browser. It raises one
+  // Kolux question naming the host, and the browser opens only when the user clicks Open there.
   h.lib = [{ id: replay.id, title: "Viewed", added: 1 }];
   const c = await page();
   await click(c, find(rows(c)[0], (n) => n.localName === "button")[0]);
@@ -134,29 +131,40 @@ test("box 2: a clicked link leaves the viewer as a message, and the page hands i
     messageHandlers[0]({ source, data });
     await settle();
   };
-  // A click inside the frame both activates this window and puts focus on the frame.
-  const activation = { isActive: true };
-  Object.defineProperty(nav, "userActivation", { value: activation, configurable: true });
-  doc.activeElement = frame;
   await deliver({}, { koluxOpen: "https://elsewhere.invalid/" }); // not our frame
   await deliver(own, { somethingElse: 1 });
-  expect(h.calls.filter((x) => x.cmd === "open_external")).toEqual([]);
-  // T-682: a page script that posts with no click (on load, say) opens nothing, nor does one that posts while the
-  // row click that opened it is still active, since that click left focus outside the frame.
-  activation.isActive = false;
+  // A page script that posts with no click at all (on load, in a loop) opens nothing: the question is all it gets.
   await deliver(own, { koluxOpen: "https://example.invalid/no-click" });
-  activation.isActive = true;
-  doc.activeElement = doc.body;
-  await deliver(own, { koluxOpen: "https://example.invalid/row-click" });
   expect(h.calls.filter((x) => x.cmd === "open_external")).toEqual([]);
-  doc.activeElement = frame;
-  for (const m of v.posted) await deliver(own, m.msg);
-  expect(h.calls.filter((x) => x.cmd === "open_external").map((x) => x.args)).toEqual([{ url: "https://example.invalid/x?q=1" }, { url: "mailto:someone@example.invalid" }]);
-  expect(toasts).toEqual([]);
-  // A refusal from the opener surfaces as a toast.
-  h.openError = "file:///x is not a web or mail link";
+  const strip = () => find(c, (n) => n.attrs.role === "status" && String(n.attrs.className ?? n.attrs.class ?? "") === "art-ask")[0];
+  const button = (label: string) => find(strip(), (n) => n.localName === "button" && n.textContent.trim() === label)[0];
+  // The question names the host the user is being asked about, and nothing else changes under it.
+  expect(strip().textContent).toContain("example.invalid");
+  // It is a bar inside the viewer column, above the frame: the frame is pushed down, never covered, and
+  // a page-chosen host cannot widen the row layout (review 062).
+  const viewer = find(c, (n) => String(n.attrs.className ?? n.attrs.class ?? "") === "art-view")[0];
+  expect(viewer).toBeTruthy();
+  expect(strip().parentNode).toBe(viewer);
+  expect(viewer.childNodes.indexOf(strip())).toBeLessThan(viewer.childNodes.indexOf(frame));
+  await deliver(own, { koluxOpen: "https://swapped.invalid/" }); // first ask wins
+  expect(strip().textContent).toContain("example.invalid");
+  // Open inside the 1 s input-protection delay opens nothing and leaves the question up.
+  await click(c, button("Open"));
+  expect(h.calls.filter((x) => x.cmd === "open_external")).toEqual([]);
+  await settle(1250);
+  await click(c, button("Open"));
+  await until(() => h.calls.some((x) => x.cmd === "open_external"));
+  expect(h.calls.filter((x) => x.cmd === "open_external").map((x) => x.args)).toEqual([{ url: "https://example.invalid/no-click" }]);
+  // Cancel opens nothing, and the question goes away.
+  await deliver(own, { koluxOpen: "mailto:someone@example.invalid" });
+  await click(c, button("Cancel"));
+  await settle();
+  expect(h.calls.filter((x) => x.cmd === "open_external")).toHaveLength(1);
+  expect(strip()).toBeFalsy();
+  // A scheme that is not a web or mail link asks nothing at all.
   await deliver(own, { koluxOpen: "file:///x" });
-  expect(toasts).toEqual(["file:///x is not a web or mail link"]);
+  expect(strip()).toBeFalsy();
+  expect(toasts).toEqual([]);
   // The frame is sandboxed without top navigation or popups.
   expect(String(frame.attrs.sandbox)).toBe("allow-scripts allow-forms");
 });

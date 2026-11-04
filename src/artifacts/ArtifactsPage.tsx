@@ -53,11 +53,36 @@ export function group(list: Artifact[]): { project: string; items: Artifact[] }[
   return [...by].map(([project, items]) => ({ project, items })).sort((x, y) => y.items[0].added - x.items[0].added);
 }
 
-/** How the viewer shows an entry: in the frame, as a picture, or not at all. */
-export function view(kind: string | undefined): "frame" | "image" | "app" {
+/** How the viewer shows an entry: in the frame, as a picture or a video, or not at all. Only these
+ *  three kinds are ever listed, so "app" is reached by nothing but an older stored entry. */
+export function view(kind: string | undefined): "frame" | "image" | "video" | "app" {
   if (kind === "image") return "image";
+  if (kind === "video") return "video";
   if (kind === undefined || kind === "page" || kind === "text") return "frame";
   return "app";
+}
+
+/** What one workspace scan did, as the Rust command reports it. */
+export type Scanned = { changed: number; skipped: string[] };
+
+/** One run at a time: a tick that finds the last run still going does nothing, so a slow import never
+ *  piles up calls behind it. */
+export function ticker(run: () => Promise<unknown>): () => void {
+  let busy = false;
+  return () => {
+    if (busy) return;
+    busy = true;
+    void run().finally(() => {
+      busy = false;
+    });
+  };
+}
+
+/** The skipped reasons not told yet; `told` remembers them so a file over the cap is mentioned once. */
+export function newlySkipped(skipped: string[], told: Set<string>): string[] {
+  const fresh = skipped.filter((s) => !told.has(s));
+  for (const s of fresh) told.add(s);
+  return fresh;
 }
 
 /** The file's own type, for the small tag beside its title. */
@@ -86,22 +111,134 @@ export function focusAfterRemove(order: string[], removed: string): string | nul
   return order[at + 1] ?? order[at - 1] ?? null;
 }
 
-/** The address a viewer message asks to open, or null when it must be ignored: it has to come from the viewer's own
- *  frame, while a click is still active and focus is inside the frame. A click or key in the frame does both; a script
- *  that posts on its own (on load, say) has neither, and the click that selected the row leaves focus on the row, so
- *  its activation does not count for the page it opens. An engine that cannot say whether a click happened opens nothing. */
-export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown, activation: { isActive: boolean } | undefined, frameFocused: boolean): string | null {
-  const url = (e.data as { koluxOpen?: unknown } | null)?.koluxOpen;
-  if (!frame || e.source !== frame || typeof url !== "string") return null;
-  return activation?.isActive && frameFocused ? url : null;
+/** A link a viewer page asked for: the address and the host the user is shown. */
+export type LinkAsk = { url: string; host: string };
+
+/** Control, zero-width and bidirectional-override characters: they can reorder or hide what a person
+ * reads (U+202E turns "gpj.exe" around), so none is ever shown in the question. */
+const INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+
+/** What is shown of a page-supplied string: no control or bidi characters, at most `max` long. */
+export function displayText(text: string, max = 80): string {
+  const t = text.replace(INVISIBLE, "").trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+/** The link a message from the viewer asks for, or null. Only our own frame may ask, and only for a
+ * web or mail address. The page's script posts the message, so it says nothing about the user
+ * (DT-C77): it is never a reason to open anything, only to ask. */
+export function linkAsk(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined): LinkAsk | null {
+  if (!frameWindow || e.source !== frameWindow) return null;
+  const data = e.data as { koluxOpen?: unknown } | null | undefined;
+  if (typeof data?.koluxOpen !== "string") return null;
+  let u: URL;
+  try {
+    u = new URL(data.koluxOpen);
+  } catch {
+    return null;
+  }
+  if (u.protocol === "http:" || u.protocol === "https:") return u.host ? { url: data.koluxOpen, host: u.host } : null;
+  if (u.protocol === "mailto:") {
+    try {
+      // The whole address list is shown; the query (?body=, ?attach=) is not part of it and the opener drops it.
+      const host = displayText(decodeURIComponent(u.pathname.split("?")[0]));
+      return host ? { url: data.koluxOpen, host } : null;
+    } catch {
+      return null; // a malformed percent-escape: nothing worth asking about
+    }
+  }
+  return null;
+}
+
+/** How long Open stays disabled after the question appears: input protection, so a click or key the user
+ * meant for the page cannot land on Open (worker decision, 2f, 2026-11-01; Txais may veto). */
+export const LINK_OPEN_DELAY_MS = 1000;
+
+/** How many Cancels in a row from one entry silence its further questions. */
+export const LINK_BACKOFF = 3;
+
+/** DT-C77: a message from the viewer never opens the browser. It raises one Kolux-owned question
+ * ("Open example.com?") and the browser opens only when the user clicks Open in Kolux. First ask wins:
+ * while a question is pending, new asks are ignored (a page cannot swap the address under the user's
+ * click); after Open or Cancel a new one may come. Open does nothing for LINK_OPEN_DELAY_MS after the
+ * question appears, and it opens exactly the address that was shown, once. */
+export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: LinkAsk | null) => void, now: () => number = Date.now) {
+  let pending: LinkAsk | null = null;
+  let since = 0;
+  let cancels = 0;
+  const set = (ask: LinkAsk | null) => {
+    pending = ask;
+    since = now();
+    show(ask);
+  };
+  const ready = () => pending !== null && now() - since >= LINK_OPEN_DELAY_MS;
+  return {
+    ask(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined) {
+      if (pending || cancels >= LINK_BACKOFF) return;
+      const ask = linkAsk(e, frameWindow);
+      if (ask) set(ask);
+    },
+    ready,
+    async accept(): Promise<unknown> {
+      const ask = pending;
+      if (!ask || !ready()) return null;
+      cancels = 0;
+      set(null);
+      return open(ask.url);
+    },
+    /** The user said no. After LINK_BACKOFF in a row from the same entry the page is not asked again
+     * (a page cannot nag until a click lands) until `reset`, when the entry is chosen again. */
+    cancel() {
+      if (!pending) return;
+      cancels += 1;
+      set(null);
+    },
+    /** A key, a click or a focus change while Open is still disabled: the delay starts over, so input
+     * meant for the page cannot add up to a click on Open. */
+    touch() {
+      if (pending && !ready()) since = now();
+    },
+    /** A different entry (or the same one chosen again) is a new conversation: the question and the
+     * count of refusals are dropped. */
+    reset() {
+      cancels = 0;
+      if (pending) set(null);
+    },
+  };
+}
+
+/** The question strip. It is a bar in normal layout above the viewer (the viewer is pushed down,
+ * never covered), so a page cannot draw anything under the buttons. Open has no autofocus and is
+ * disabled until `ready`. */
+export function LinkAskBar({ ask, ready, onOpen, onCancel }: { ask: LinkAsk; ready: boolean; onOpen: () => void; onCancel: () => void }) {
+  return (
+    <div className="art-ask" role="status" aria-label="Open link">
+      <span className="art-ask-text" title={displayText(ask.url, 200)}>
+        Open <strong>{ask.host}</strong>?
+      </span>
+      <button className="btn" disabled={!ready} onClick={onOpen}>
+        Open
+      </button>
+      <button className="btn" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
 }
 
 /** How long a page may take to load before the viewer says so. */
 export const SLOW_MS = 10_000;
 
-type Props = { onToast: (text: string) => void; onClose?: () => void };
+type Props = {
+  onToast: (text: string) => void;
+  onClose?: () => void;
+  /** The workspace whose `artifacts/` folder is imported automatically; none when no folder is open. */
+  workspace?: string | null;
+  /** The project the workspace belongs to, so imports sit under that heading rather than the folder name. */
+  project?: string | null;
+};
 
-export default function ArtifactsPage({ onToast, onClose }: Props) {
+export default function ArtifactsPage({ onToast, onClose, workspace, project }: Props) {
   const [list, setList] = useState<Artifact[] | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -115,8 +252,22 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const search = useRef<HTMLInputElement>(null);
   const refocus = useRef<{ id: string | null } | null>(null);
+  const told = useRef(new Set<string>());
 
-  const refresh = () => invoke<Artifact[]>("artifacts_list").then(setList, (e) => onToast(`Could not read the library: ${e}`));
+  // A library index that cannot be read is shown in the panel, not as an empty library: "No artifacts
+  // yet" over a damaged index is how a user comes to believe their entries are gone (C14-R4-01).
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () =>
+    invoke<Artifact[]>("artifacts_list").then(
+      (l) => {
+        setError(null);
+        setList(l);
+      },
+      (e) => {
+        setError(String(e));
+        setList(null);
+      },
+    );
   useEffect(() => {
     void refresh();
     // A Claude session published a page (SKILL-035).
@@ -124,16 +275,75 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
     return () => void off.then((f) => f());
   }, []);
 
-  // A link clicked inside the viewer: only a message from our own frame, sent during a click, opens anything.
+  // SKILL-036: a workspace keeps its finished files in `artifacts/`. Import that folder when the
+  // page opens and watch it while it is up, so an agent's page is already in the tab without Add
+  // artifact. The Rust scan remembers unchanged files and only re-imports a changed one, and it keeps
+  // only a page, an image or a video; a file it cannot keep (over the cap, unreadable) is named once.
+  // One scan at a time: a tick that finds the last one still running is dropped.
   useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      const url = viewerLink(e, frame.current?.contentWindow, (navigator as { userActivation?: { isActive: boolean } }).userActivation, !!frame.current && document.activeElement === frame.current);
-      if (url === null) return;
-      invoke("open_external", { url }).catch((err) => onToast(String(err)));
+    if (!workspace) return;
+    let live = true;
+    const scan = ticker(() =>
+      invoke<Scanned>("artifacts_scan", { path: workspace, project })
+        .then((r) => {
+          if (!live) return;
+          if (r.changed > 0) void refresh();
+          const fresh = newlySkipped(r.skipped, told.current);
+          if (fresh.length) onToast(`Not kept in Artifacts: ${fresh.join("; ")}`);
+        })
+        .catch(() => {}),
+    );
+    scan();
+    const timer = window.setInterval(scan, 3000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
     };
+  }, [workspace, project]);
+
+  // A link a viewer page asks for (DT-C77): the message only raises Kolux's own question below; the
+  // browser opens when the user clicks Open there, never from the message itself.
+  const [asked, setAsked] = useState<LinkAsk | null>(null);
+  const [askReady, setAskReady] = useState(false);
+  const [nudge, setNudge] = useState(0);
+  const prompt = useRef<ReturnType<typeof linkPrompt> | null>(null);
+  prompt.current ??= linkPrompt((url) => invoke("open_external", { url }), setAsked);
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => prompt.current?.ask(e, frame.current?.contentWindow);
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+  // Open is disabled for the first second of each question (the same clock as linkPrompt.accept), and
+  // the second starts over at any click, key or focus change while it is still disabled.
+  useEffect(() => {
+    setAskReady(false);
+    if (!asked) return;
+    const t = window.setTimeout(() => setAskReady(true), LINK_OPEN_DELAY_MS + 50);
+    return () => window.clearTimeout(t);
+  }, [asked, nudge]);
+  useEffect(() => {
+    if (!asked || askReady) return;
+    const again = () => {
+      prompt.current?.touch();
+      setNudge((n) => n + 1);
+    };
+    // Input inside the sandboxed frame never reaches this window; the focus leaving it for the frame does.
+    const events = ["pointerdown", "keydown", "blur"] as const;
+    for (const ev of events) window.addEventListener(ev, again, true);
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, again, true);
+    };
+  }, [asked, askReady]);
+  // Another page, or none, is a different conversation: the old question and the refusals are dropped.
+  useEffect(() => {
+    prompt.current?.reset();
+  }, [selected]);
+  // Choosing the entry again counts as choosing it: its refusals start over.
+  const choose = (id: string) => {
+    prompt.current?.reset();
+    setSelected(id);
+    setLoaded(null);
+  };
 
   // A page that never reports it loaded is called out instead of leaving "Loading…" up for good.
   useEffect(() => {
@@ -171,9 +381,7 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
       directory: false,
       title: "Add artifact",
       filters: [
-        { name: "Pages and pictures", extensions: ["html", "htm", "png", "jpg", "jpeg", "gif", "webp", "svg", "pdf"] },
-        { name: "Documents", extensions: ["md", "txt", "csv", "docx", "xlsx", "pptx"] },
-        { name: "All files", extensions: ["*"] },
+        { name: "Pages, pictures and video", extensions: ["html", "htm", "png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp", "ico", "mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi"] },
       ],
     }).catch((e) => {
       onToast(`Could not open the file picker: ${e}`);
@@ -204,7 +412,6 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
       queueMicrotask(() => restoreFocus(from, (sel) => document.querySelector<HTMLElement>(sel)));
     }
   };
-  const pick = (id: string) => (setSelected(id), setLoaded(null));
   const arrows = (e: KeyboardEvent<HTMLDivElement>) => {
     const rows = [...e.currentTarget.querySelectorAll<HTMLElement>("button.art-row")];
     const to = menuStep(rows.length, rows.indexOf(e.target as HTMLElement), e.key);
@@ -214,7 +421,9 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
   };
   const framed = current?.state === "ok" && current.stored && view(current.kind) === "frame";
   const loadingText = !current || !framed || loaded === current.id ? "" : slow === current.id ? "This page is taking a long time to load. It may be empty or broken." : "Loading…";
-  const openFile = (a: Artifact) => invoke("open_path", { path: a.origin }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
+  // The library's own stored copy, never the workspace file it came from (T-624 round 5): the origin
+  // may have changed or gone since it was kept.
+  const openFile = (a: Artifact) => invoke("artifact_open", { id: a.id }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
 
   return (
     <div className="artifacts">
@@ -245,6 +454,11 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
         </div>
         <input ref={search} className="picker-input" placeholder="Search titles" aria-label="Search artifacts" value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="art-list" role="group" aria-label="Saved artifacts" onKeyDown={arrows}>
+          {error && (
+            <div className="menu-hint art-error" role="alert">
+              {error}
+            </div>
+          )}
           {list && list.length === 0 && <div className="menu-hint">No artifacts yet. Pages and files your agents make land here, or add one yourself.</div>}
           {list && list.length > 0 && shown.length === 0 && <div className="menu-hint">No titles hold every word of “{query.trim()}”.</div>}
           {shown.map((s) => (
@@ -253,7 +467,7 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
               <div role="list" aria-label={s.project} className="art-items">
                 {s.items.map((a) => (
                   <div key={a.id} role="listitem" className="art-item">
-                    <button type="button" ref={(el) => void (el ? rowButtons.current.set(a.id, el) : rowButtons.current.delete(a.id))} aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => pick(a.id)}>
+                    <button type="button" ref={(el) => void (el ? rowButtons.current.set(a.id, el) : rowButtons.current.delete(a.id))} aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => choose(a.id)}>
                       <span className="art-title">
                         <span className="name">{a.title}</span>
                         {a.kind !== "page" && <span className="preview-tag">{extText(a.page)}</span>}
@@ -275,6 +489,9 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
         </div>
       </div>
       <div className="art-view">
+        {/* The link question (DT-C77) is a bar in this column, above the frame: the frame is pushed
+            down, never covered, and a page-chosen host cannot widen the row layout. */}
+        {asked && <LinkAskBar ask={asked} ready={askReady} onOpen={() => void prompt.current?.accept().catch((err) => onToast(String(err)))} onCancel={() => prompt.current?.cancel()} />}
         {/* Mounted before its text appears (a live region added with its text may go unannounced); empty, it takes no room. */}
         <div role="status" className={loadingText ? `art-loading menu-hint${slow === current?.id ? " art-slow" : ""}` : undefined}>{loadingText}</div>
         {!current && <div className="empty"><p>Pick an artifact to view it here.</p></div>}
@@ -282,6 +499,11 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
         {current?.state === "unavailable" && <div className="empty"><h2>{current.title}</h2><p>This page is on a network share, which Kolux never opens.</p></div>}
         {current?.state === "ok" && !current.stored && <div className="empty"><h2>{current.title}</h2><p>Could not show this file: its stored copy is missing. Add it again to restore it.</p></div>}
         {current?.state === "ok" && current.stored && view(current.kind) === "image" && <img className="art-image" src={viewerUrl(current)} alt={current.title} />}
+        {current?.state === "ok" && current.stored && view(current.kind) === "video" && (
+          // Straight from the same scheme, which answers byte ranges, so a long clip seeks without
+          // loading whole. It is the stored copy, so a change to the workspace file cannot break it.
+          <video key={`${current.id}-${current.added}`} className="art-video" src={viewerUrl(current)} controls preload="metadata" title={current.title} />
+        )}
         {current?.state === "ok" && current.stored && view(current.kind) === "app" && (
           <div className="empty">
             <h2>{current.title}</h2>
