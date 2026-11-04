@@ -2,7 +2,7 @@
 // and add them as one group or as separate projects. With nothing ticked the folder itself can be
 // opened as a folder project. The scan and the import run in Rust (repo_scan.rs); the shape of
 // the list lives in scanView.ts.
-import { trapTab } from "../chrome/dialogFocus";
+import { useDialogFocus } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -22,6 +22,10 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const live = useRef<ScanState | null>(null);
+  // T-738: focus on the folder field, Escape from anywhere, Tab kept inside, focus back to the opener on close.
+  const box = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
+  useDialogFocus(box, onClose, () => field.current);
   live.current = scan;
 
   useEffect(() => {
@@ -98,10 +102,10 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
   const nothing = scan !== null && scan.ticked.length === 0;
   return (
     <div className="ask-backdrop" onMouseDown={onClose}>
-      <div className="ask scan-repos" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => (e.stopPropagation(), trapTab(e), e.key === "Escape" && onClose())}>
+      <div className="ask scan-repos" role="dialog" aria-modal="true" ref={box} tabIndex={-1} aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <h2 className="ask-title">Look for repositories</h2>
         <div className="btn-row">
-          <input className="field" aria-label="folder to scan" autoFocus value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />
+          <input className="field" aria-label="folder to scan" ref={field} value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />
           <button className="btn" onClick={() => void browse()} disabled={scan?.running}>
             Browse
           </button>

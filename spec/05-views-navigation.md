@@ -500,10 +500,14 @@ Rules: Open tabs lead on a tie; unmatched rows sort after matched ones; filler w
   PR or issue numbers, match exactly (with or without #), never fuzzily; small typos are forgiven
   only in long words made of letters; a single Latin letter matches only the start of a word or a
   whole word; matches on a row's own fields rank ahead of matches found only on its parent project;
-  matching stays inside a fixed time budget on very large lists.
+  matching stays inside a fixed time budget on very large lists; a command is also found by its
+  keywords (cron finds Open Automations), which rank after matches on the row's own words and are
+  not shown.
 Acceptance:
   - [ ] Two worktrees match equally, one used a minute ago → it is first.
   - [ ] Type a PR number with or without # → only that exact number matches.
+  - [x] Type cron → Open Automations is listed; a row with cron in its own name lists ahead of it. (unit;
+    evidence/T-728.txt)
 Compat: —
 Source: D-05-038
 
@@ -764,11 +768,19 @@ User sees: a small dialog with Cancel focused; Escape backs out; some prompts of
 Rules: Cancel holds focus when the dialog opens, so a stray Enter does not confirm; Enter confirms
   only on prompts that opt in, and only while the confirm button has focus; Escape always cancels;
   the don't-ask-again choice is saved only when the user confirms; backing out saves nothing, and
-  the tick does not carry into the next prompt.
+  the tick does not carry into the next prompt. Every plain confirm-or-cancel prompt is this one dialog: the
+  Settings reset buttons, the notes' Clear, an account's Remove, the sidebar's sleep, delete, remove and delete
+  group prompts, the picked-workspaces Remove, the Explorer's Delete and Confirm merge; none asks inline in its own
+  style.
 Acceptance:
   - [ ] Open a delete prompt and press Enter: nothing is deleted.
   - [ ] Tick don't ask again, press Escape: the next prompt still appears, unticked.
   - [ ] Tick don't ask again and confirm: that prompt no longer appears.
+  - [x] A reset button, the notes' Clear and an account's Remove open the dialog; Keep backs out, the confirm acts
+    once, Escape on the account Remove is Keep. (unit; evidence/T-729.txt)
+  - [x] The sidebar's take out and delete workspace prompts are the dialog, found by its role; remove project and
+    Confirm merge confirm by their button words; a pinned workspace shown twice opens one dialog. (unit;
+    evidence/T-729.txt)
 Compat: —
 Source: D-05-116
 

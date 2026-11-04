@@ -56,7 +56,7 @@ export default function CrashReportDialog() {
   const copyDetails = () => copy(details).then(() => setNote("Details copied."), () => setNote("The clipboard could not be written; select the text and copy it instead."));
   const attachLogs = () =>
     invoke<string>("diag_bundle").then(
-      (b) => copy(b).then(() => setNote("Recent diagnostic logs copied (scrubbed). Paste them into the issue."), () => setNote("The clipboard could not be written; use Settings > Diagnostics to review the logs instead.")),
+      (b) => copy(b).then(() => setNote("Recent diagnostic logs copied (scrubbed). Paste them into the issue."), () => setNote("The clipboard could not be written; use Settings > General > Diagnostics to review the logs instead.")),
       (e) => setNote(`Could not gather the logs: ${String(e)}`),
     );
   const openIssue = () =>

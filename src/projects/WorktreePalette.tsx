@@ -17,8 +17,9 @@ import { capRows, moreLabel, moreTitle, restoreFocus } from "../shell/paletteCap
 
 /** A row the window supplies: its section, what it shows, and what Enter does. `parent` is the
  * project a row belongs to (matched after the row's own text), `dir` the folder it stands for
- * (for recency and its repository), `needs` what must be open for it to run. */
-export type PaletteItem = { section: string; label: string; hint?: string; parent?: string; dir?: string; repo?: string; number?: number; needs?: "worktree"; run: () => void; mark?: Badge; since?: number };
+ * (for recency and its repository), `needs` what must be open for it to run, `keywords` other words
+ * that find it (matched last, never shown; T-728). */
+export type PaletteItem = { section: string; label: string; hint?: string; keywords?: string; parent?: string; dir?: string; repo?: string; number?: number; needs?: "worktree"; run: () => void; mark?: Badge; since?: number };
 
 /** VIEW-041: one filter chip. Values of one field mean any of them; different fields must all match. */
 export type Chip = { field: "repo" | "section"; value: string };
@@ -182,7 +183,8 @@ export function paletteRows(items: PaletteItem[], query: string, recent: string[
     if (i % 64 === 63 && performance.now() - start > BUDGET_MS) break;
     const it = items[i];
     const own = it.hint ? `${it.label} ${it.hint}` : it.label;
-    const hit = scoreText(it.parent ? `${own} · ${it.parent}` : own, own.length, words);
+    const hay = it.parent ? `${own} · ${it.parent}` : own;
+    const hit = scoreText(it.keywords ? `${hay} · ${it.keywords}` : hay, own.length, words);
     if (!hit) continue;
     const intent = words.length === 1 && it.number !== undefined && words[0] === String(it.number) ? 5 : words.length > 0 && fold(it.label).trim() === words.join(" ") ? 4 : hit.tier;
     const used = it.dir ? recent.findIndex((d) => sameDir(d, it.dir!)) : -1;

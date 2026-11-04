@@ -14,10 +14,12 @@ export function useChrome() {
   // A toast is a passing note (SESS-024 "starting 3 sessions"); it clears itself.
   const [toast, setToastText] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
+  // T-740: a toast under the pointer is still being read, so it waits another 4 s (it holds no control to focus).
+  const arm = (): number => (toastTimer.current = window.setTimeout(() => (document.querySelector(".toast:hover") ? arm() : setToastText(null)), 4000));
   const setToast = (text: string) => {
     setToastText(text);
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToastText(null), 4000);
+    arm();
   };
   return { palette, setPalette, notice, setNotice, toast, setToast };
 }

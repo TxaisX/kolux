@@ -192,9 +192,11 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
             vec![Node::Sep, item("app.forceReload", "Force Reload")],
             if cfg!(debug_assertions) { vec![item("view.devtools", "Toggle Developer Tools")] } else { vec![] },
             vec![Node::Sep,
-            item("zoom.reset", "Actual Size"),
-            item("zoom.in", "Zoom In"),
-            item("zoom.out", "Zoom Out"),
+            // T-741: these zoom the whole interface (SET-019), so they carry the interface names; plain
+            // Zoom In / Zoom Out / Reset Size are the focused terminal's (TERM-078, the top bar's zoom button).
+            item("zoom.reset", "Reset Interface Zoom"),
+            item("zoom.in", "Zoom Interface In"),
+            item("zoom.out", "Zoom Interface Out"),
             Node::Sep,
             item("view.fullscreen", "Toggle Full Screen")],
         ]

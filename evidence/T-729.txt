@@ -1,0 +1,71 @@
+T-729 / DT-C165: lane D (72): one confirm style
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md "Queue refill" (T-729), sweep #27, finding
+destructive.md:10 F5 (the sessions proof dir, not in this repo). Built on origin/main 3e067ebf, merged with main
+73008fe1, branch s-72/ask, 2026-11-03.
+
+FOUND: besides chrome/Ask, several places asked "are you sure?" their own way: inline sidebar forms in the projects panel
+(sleep, delete all, take out, delete workspace, remove project, delete group), the picked-workspaces Remove, the Explorer's own alertdialog, the notes' Clear (shell/ConfirmClear),
+the account row's inline Remove, the Settings reset buttons, and Confirm merge on the pull request page. Some focused
+the destructive button, some let Tab and Escape do nothing, none restored focus the same way.
+
+FIXED: all of them open chrome/Ask, so Cancel is focused on open, Tab stays inside, Escape cancels from anywhere and
+focus goes back where it was. Ask itself is unchanged.
+  src/settings/SafetyRules.tsx: the reset button (also used by the scheme picker and the shortcuts page) asks
+    "<label>?" with the confirm word without "Yes, " (default Reset) and its keep word as Cancel.
+  src/shell/ConfirmClear.tsx: Clear asks the clear question, Clear / Keep.
+  src/settings/AccountRow.tsx: Remove <account>? Remove / Keep; a Remove while the row is busy is ignored.
+  src/projects/ProjectsPanel.tsx: Put to sleep (Sleep / Keep awake); Delete workspace and children (child list and
+    error in the body; Delete all, "Deleting..." while busy, a click while busy does nothing); Take out of Kolux (Take
+    out / Keep; a refusal shows only the reason with one OK); Delete workspace (both tick boxes, the change and commit
+    lists and the refusal text in the body; Delete / Keep; blocked shows one OK); Remove <project> / Keep it.
+  src/projects/ProjectsPanel.tsx (review): Delete group (the also-remove box and run note in the body; Delete group /
+    Keep it; Cancel returns focus to the group's delete button as before). A pinned workspace shown twice (the
+    pinned-copies setting) mounts its prompts once, so there are never two dialogs and two Tab traps. A right-click
+    inside a row's dialog no longer opens the row's menu under it.
+  src/shell/ProjectsExtras.tsx (review): the picked-workspaces Remove (blocked and lost-changes lines in the body;
+    Remove it / Remove N, "Removing..." while busy; nothing removable shows one OK; Cancel and Escape wait while the
+    removal runs, as the old Cancel was disabled).
+  src/editor/Explorer.tsx: Delete asks Move to trash (blue: trash loses nothing) or Delete (red: WSL deletes for
+    good) / Cancel; Cancel now has focus instead of the destructive button.
+  src/tasks/PullRequestPage.tsx: Confirm merge, Yes, merge it (red) / Cancel; busy click does nothing. The page's own
+    Escape handler steps aside when Ask already cancelled.
+  Styles removed (no longer used): .acct-confirm (styles.css), .confirm-clear and .confirm-clear .confirm-q
+    (shell/shell.css, with its comment), the .notice.ex-ask selector (styles.css; .ex-note stays), .sb-form.warn and
+    its light-mode selector (styles.css).
+  src/settings/SafetyRules.tsx: the reset line is a div, not a p, since the dialog's div and heading cannot sit in a p.
+  scripts/prove/live-T-640.mjs (review): the live proof finds the delete and remove project questions as the dialog.
+  BEHAVIOUR CHANGES: the inline prompts are now modal, so a click on the backdrop cancels them; the blocked delete
+    shows one OK instead of a disabled Delete; reset confirm words lose "Yes, "; a confirm clicked while its action
+    runs does nothing (it looks enabled; Ask has no disabled confirm); on an account row while a sign-in runs, Keep and
+    Escape now back out (DT-C148 had them disabled).
+  NOT CHANGED (not a plain confirm or cancel): the terminal close prompts, the resource manager's ask, the graphics
+    recovery prompt, the chat permission card, CloseDialog, the floating layer, browser pane and stack map asks.
+
+TEST
+  src/settings/askConfirms.test.ts (new): a reset button opens Ask titled with its question, the confirm word loses
+    "Yes, ", Keep backs out, the confirm resets once and closes; clearing several notes asks in Ask, Clear drops them,
+    Keep does not, one note clears at once.
+  src/settings/menus.t712.test.ts: the account Remove is Ask (titled for the account, Keep / Remove), Escape in it is
+    Keep and goes no further (the old "outside it" half is dropped: Ask cancels on Escape from anywhere), Remove does nothing while a sign-in runs and removes when idle.
+  Focus on Cancel, the Tab trap, Escape and focus return are Ask's own, already covered by its tests; Ask is unchanged.
+  src/projects/forgetAsk.test.ts, removeCommits.test.ts, removePaths.test.ts: find the dialog by role alertdialog and
+    its buttons by text.
+  src/projects/removeCommits.test.ts (review): a pinned workspace shown twice opens one delete dialog. It failed
+    without the fix ("expected 2 to be 1") and passes with it.
+  src/tasks/PullRequestPage.test.ts: the fake window knows capture listeners, so the page's Escape test runs with Ask.
+  src/chrome/reach.test.ts: the five rows for the old inline confirms are gone (they are Ask now).
+  VITEST_MAX_WORKERS=1 npx vitest run src/settings src/shell src/projects src/editor src/tasks src/chrome src/scm
+    (after the merge of 73008fe1): Test Files 381 passed (381), Tests 2853 passed (2853).
+  One-worker runs only (a live verify was using the RAM). An earlier run saw editPlacement.test.ts "60 paragraphs"
+    time out (5.2 s on a 5 s limit); it imports nothing touched here and passed in the run above.
+  pnpm tsc --noEmit: 0.
+
+BUNDLE: first load 1,487,178 B in 46 chunks vs main 73008fe1 1,489,604 B in 47 chunks (both built here with
+  npx vite build + node scripts/bundle-budget.mjs): 2,426 B smaller. Cap was net smaller; the bytes go back to the
+  held rows.
+
+FULL RUN: npx vitest run: 806 files, 6005 tests passed; pnpm tsc --noEmit 0; firewall-check -Baseline 0 new; plan-check OK.
+REVIEW: opus-high, B+, no must-fix. Should-fixes 1-6 applied (row menu under the dialog, one dialog for a pinned row shown twice, live proof selectors, group delete and picked-workspaces Remove converted, DECISIONS row format, test name). Nits accepted: busy guards are silent no-ops (Ask has no disabled confirm); the PR page cancel-merge state is unreachable; the notes button row spacing; the sidebar dialog placement is not yet seen live.
+MERGE main 5a69c684 (train 17): the Explorer delete conflicted with T-722 (Cancel autofocus on the old inline question); kept the Ask, which already opens on Cancel. src/editor/explorerAsk.t722.test.ts now checks the question is Ask with no autofocus or Enter opt-in on Delete (Ask.test.ts proves the focus). Re-measured: 1,487,155 B vs main 5a69c684 1,489,581 B, still 2,426 B smaller.
+MERGE main 99b4a9d2 (train 18): the folder-workspace question conflicted with T-725 (one Remove verb); kept the Ask and took its wording: title Remove from Kolux, body Remove <label> from Kolux?, confirm Remove; forgetAsk.test.ts keeps the alertdialog finder. Full vitest: 808 files, 6019 tests passed; tsc 0; firewall 0 new; plan-check OK. Re-measured: 1,487,174 B vs main 99b4a9d2 1,489,600 B, still 2,426 B smaller.
+PENDING: unit-proven; a live check in the app has not been run.

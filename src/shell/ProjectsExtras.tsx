@@ -1,6 +1,7 @@
 // T-302-b: the small pieces ProjectsPanel mounts (see projectsGlue.ts for the rules, and the patch for where they sit).
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
+import Ask from "../chrome/Ask";
 import { askArchive } from "../setup/TrustPrompt";
 import type { KeptBranch, KeptItem } from "../projects/cleanup";
 import type { RemoveCheck } from "../projects/deleting";
@@ -147,27 +148,26 @@ export function PickedBar({
   if (asked) {
     const { q } = asked;
     return (
-      <div className="sb-form warn" data-delete-picked role="group" aria-label={q.title}>
-        <label>{q.title}</label>
-        {q.blocked.map((b) => (
-          <div className="sb-hint" key={b.path}>
-            {b.name} stays: {b.why}
-          </div>
-        ))}
-        {q.dirty.map((d) => (
-          <div className="sb-hint" key={d.path} title={d.lines.join("\n")}>
-            {d.name} has changes that will be lost{d.lines.length ? `: ${d.lines.slice(0, 3).join(", ")}${d.more + Math.max(0, d.lines.length - 3) > 0 ? ", …" : ""}` : ""}
-          </div>
-        ))}
-        <div className="btn-row">
-          <button className="btn danger" disabled={busy || q.removable.length === 0} onClick={() => void remove()}>
-            {busy ? "Removing…" : q.removable.length === 1 ? "Remove it" : `Remove ${q.removable.length}`}
-          </button>
-          <button className="btn" disabled={busy} onClick={() => setAsked(null)}>
-            Cancel
-          </button>
-        </div>
-      </div>
+      <Ask
+        title={q.title}
+        body={
+          <>
+            {q.blocked.map((b) => (
+              <div className="sb-hint" key={b.path}>
+                {b.name} stays: {b.why}
+              </div>
+            ))}
+            {q.dirty.map((d) => (
+              <div className="sb-hint" key={d.path} title={d.lines.join("\n")}>
+                {d.name} has changes that will be lost{d.lines.length ? `: ${d.lines.slice(0, 3).join(", ")}${d.more + Math.max(0, d.lines.length - 3) > 0 ? ", …" : ""}` : ""}
+              </div>
+            ))}
+          </>
+        }
+        confirm={q.removable.length === 0 ? null : busy ? "Removing…" : q.removable.length === 1 ? "Remove it" : `Remove ${q.removable.length}`}
+        onConfirm={() => !busy && void remove()}
+        onCancel={() => !busy && setAsked(null)}
+      />
     );
   }
   return (
