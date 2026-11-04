@@ -44,7 +44,10 @@ NOT REPRODUCED / KNOWN LIMIT
   - The Explorer menu does not flip above its row when there is no room below: fitIn moves it up, which can cover the row.
 
 VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t720)
-  - npx vitest run: 806 files, 6006 tests passed.
+  - npx vitest run (merged with main 99b4a9d2): 808 files, 6021 tests passed.
   - npx tsc --noEmit -p .: clean.
-  - Bundle: first load 1,488,679 B on the branch vs 1,489,604 B on main 73008fe1 (the branch with main's four sources
-    swapped in): -925 B against a +0 cap.
+  - Bundle: first load 1,488,768 B on the branch vs 1,489,600 B on main 99b4a9d2: -832 B against a +0 cap.
+  - Review: opus-high-review A-. Its should-fix rows (the terminal side of the 500 ms window; every menu the Tab change
+    reaches) are written into this file and DT-C156. Nits taken: the pane menu re-measures with its height cap cleared, and
+    a row clipped by the list counts as out of view (test). Left: arrows and Tab when focus is outside the pane menu go to
+    the shell (Escape still closes it from anywhere), and the menu-key listener is never removed (one per dev reload).
