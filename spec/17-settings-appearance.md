@@ -454,7 +454,8 @@ User sees: suggestions taken from the fonts on the machine while typing; the cho
 Rules: the installed fonts are read from the system (on Windows by asking PowerShell) only once a font
   picker is opened, with a built-in list as a fallback if that fails; names that begin with the typed
   text rank above names that merely contain it; entering a picker that already holds a font shows the
-  full list, not just matches for the current value; a safe fallback list always follows the chosen
+  full list, not just matches for the current value; Up and Down move through the suggestions and
+  Enter picks the one reached (DT-C178); a safe fallback list always follows the chosen
   family so text never disappears; an empty field means the default font, and an empty editor font
   means the editor uses the terminal font.
 Acceptance:
