@@ -84,7 +84,7 @@ import { asksBeforeClose } from "../terminal/closing";
 import "./sidebar.css";
 import ImportSetup, { refusedLine, type SetupImport } from "./ImportSetup";
 import { issueCommand } from "../setup/IssueCommand";
-import { trustedSetup } from "../setup/TrustPrompt";
+import { askArchive, trustedSetup } from "../setup/TrustPrompt";
 import { NO_GROUPS, groupChoices, groupTree, keepNewer, type Group, type Groups, type Node } from "./groups";
 import { dropBand, parentDropTarget } from "./parentDrop";
 import { HEADER_ORDER_SETTING, MANUAL_ORDER_SETTING, dragStart, dropBefore, dropOutcome, edgeScroll, idsFrom, manualOrder, moveHeader, moveRows, siblingIds, stepRow, stepSiblings } from "./order";
@@ -1272,6 +1272,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (!c) return;
     setBusy("removing");
     try {
+      await askArchive(c.path);
       const kept = await invoke<KeptBranch | null>("workspace_remove", { projectId: c.projectId, path: c.path, force: c.force, stamp: c.check.stamp, keepBranch: c.keep });
       if (kept) setKept((old) => addKept(old, [{ ...kept, projectId: c.projectId }]));
       void invoke("editor_drafts_drop", { worktree: c.path }).catch(() => undefined); // EDIT-004: removing a worktree discards its drafts
@@ -1341,6 +1342,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         }
         // After-list row 112: a branch Git kept because another workspace has it checked out joins the kept list too.
         // T-613: no branch choice (null), so the workspace's own record decides and a branch holding commits found nowhere else stays.
+        await askArchive(path);
         const kept = await invoke<KeptBranch | null>("workspace_remove", { projectId: p.id, path, force: false, stamp: check.stamp, keepBranch: null });
         if (kept) setKept((old) => addKept(old, [{ ...kept, projectId: p.id }]));
         gone.push(path);
