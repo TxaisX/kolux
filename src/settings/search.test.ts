@@ -58,7 +58,7 @@ describe("search all settings (SET-007)", () => {
     ]);
     expect([...h.folds]).toEqual(["interface", "terminal"]);
   });
-  it("finds Ask Before Closing Running Terminals by confirm, close or agent (SET 043)", () => {
+  it("finds Ask before closing running terminals by confirm, close or agent (SET 043)", () => {
     for (const q of ["confirm", "close", "agent"]) expect(searchSettings(q)!.pages.find((p) => p.page === "terminal")?.sections, q).toContain("closing");
   });
   it("ranks the page whose title matches first, then the rest in page order", () => {

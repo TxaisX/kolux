@@ -562,12 +562,12 @@ Source: D-17-007
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: opens the file menu on the Shortcuts page.
 User sees: options to edit the file inside Kolux, open it in an installed editor or the default app,
-  show it in the file manager, or Reload from Disk.
+  show it in the file manager, or Reload from disk.
 Rules: the editor options are the apps set up in the Open in list (SET-039); a missing file is created
   before it is opened; reload reads the file again and sends the result to every window; no automatic
   watching of the file was found, so hand edits wait for a reload.
 Acceptance:
-  - [ ] Change the file outside Kolux and pick Reload from Disk → the new chord shows in the list and
+  - [ ] Change the file outside Kolux and pick Reload from disk → the new chord shows in the list and
         in the menu.
   - [ ] Pick reveal → the file manager opens at ~/.kolux with the file selected.
 Compat: —
@@ -704,11 +704,11 @@ User sees: deleting a worktree, or closing a terminal with a program still runni
   more.
 Rules: each skipped confirmation is remembered separately; closing a pinned tab asks by default;
   General also has a direct switch for asking before an automation is deleted; Terminal & sessions also
-  has a direct switch, Ask Before Closing Running Terminals, on every platform, and searching for
+  has a direct switch, Ask before closing running terminals, on every platform, and searching for
   confirm, close or agent finds it.
 Acceptance:
   - [ ] Skip the delete-worktree prompt, then turn it back on in Settings → the next delete asks.
-  - [ ] Turn Ask Before Closing Running Terminals off and close a terminal with a program running → it
+  - [ ] Turn Ask before closing running terminals off and close a terminal with a program running → it
         closes without asking; turn it on → the same close asks first.
 Compat: —
 Source: D-17-043

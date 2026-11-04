@@ -5,7 +5,7 @@
 // tab beside the focused pane; "Choose agent…" (an empty chooser pane, nothing started); the
 // browser; a new or an existing markdown file; or a file from disk in an editor tab (EDIT-001).
 import { useRef, useState, type ReactNode } from "react";
-import { FileCode, Globe, Plus } from "./icons";
+import { Book, FileCode, Globe, List, Plus, SplitRight } from "./icons";
 import VendorMark from "./VendorMark";
 import { useMenuFocus } from "./dialogFocus";
 import { Kbd } from "../keys/KeymapContext";
@@ -100,14 +100,14 @@ export default function LayoutStrip({ count, onLayout, agents = [], shells = [],
             </button>
             <button role="menuitem" className="menu-item" onClick={() => pick("markdown-new")}>
               <span className="agent-mark">
-                <FileCode size={14} />
+                <Plus size={14} />
               </span>
               <span className="name">New markdown file</span>
               <Kbd id="tab.newMarkdown" />
             </button>
             <button role="menuitem" className="menu-item" onClick={() => pick("markdown-open")}>
               <span className="agent-mark">
-                <FileCode size={14} />
+                <Book size={14} />
               </span>
               <span className="name">Open markdown file…</span>
               <Kbd id="tab.openMarkdown" />
@@ -120,13 +120,13 @@ export default function LayoutStrip({ count, onLayout, agents = [], shells = [],
             </button>
             <button role="menuitem" className="menu-item" onClick={() => pick("diff")}>
               <span className="agent-mark">
-                <FileCode size={14} />
+                <SplitRight size={14} />
               </span>
               <span className="name">Changed file diff…</span>
             </button>
             <button role="menuitem" className="menu-item" onClick={() => pick("changes")}>
               <span className="agent-mark">
-                <FileCode size={14} />
+                <List size={14} />
               </span>
               <span className="name">All Changes</span>
             </button>

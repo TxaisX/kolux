@@ -112,7 +112,7 @@ export default function ShortcutsPage() {
             ))}
           </select>
           <button className="btn" onClick={() => void invoke("keybindings_reload").catch((e) => setFileNote(String(e)))}>
-            Reload from Disk
+            Reload from disk
           </button>
         </div>
       </section>

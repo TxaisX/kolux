@@ -7,7 +7,7 @@
    only contains size), so the pops inside panes take the pane tier, under the floating panel. The panel sits over pane pops,
    the review tray and the plan sheet, and under sheets (T-704, DT-C140) and every page overlay, menu, pop, dialog, notice and tip.
    A bare z-index of 20 or more in any stylesheet under src fails floatStack.test.ts. */
-:root { --z-pane: 22; --z-float: 30; --z-sheet: 35; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
+:root { --z-pane: 22; --z-float: 30; --z-sheet: 35; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; --scrim: rgba(0, 0, 0, 0.5); }
 
 /* ---- --kx-* foundation (Claude-design port, phase 0) ----
    The vocabulary later surfaces build on. The dark and light sets are the same ramp: the ink flips
@@ -116,7 +116,7 @@ input { font: inherit; }
 .topbar-right .bell[aria-pressed="true"] { background: var(--seg-active); color: var(--fg); }
 /* the Codex half of the pill (USAGE-022); warn yellow from DESIGN.md section 3 */
 .usage-part { display: inline-flex; align-items: center; gap: 6px; }
-.usage-part.warn { color: #fdc030; }
+.usage-part.warn { color: var(--warn); }
 .usage-part.danger { color: var(--meter-danger); }
 .usage[hidden] { display: none; }
 .usage { display: inline-flex; align-items: center; gap: 6px; height: 23px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--fg-muted); font-size: 12px; margin-right: 14px; white-space: nowrap; }
@@ -601,7 +601,7 @@ input { font: inherit; }
 .seat-prompt { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid var(--button-border); border-radius: 6px; background: transparent; color: var(--fg); font: inherit; resize: vertical; }
 .seat-job { flex: 1; min-width: 160px; max-width: 320px; height: 24px; padding: 0 6px; border: 1px solid var(--button-border); border-radius: 6px; background: transparent; color: var(--fg); font: inherit; }
 .caption { margin: 0; color: var(--fg-muted); }
-.caption.warn { color: #fdc030; }
+.caption.warn { color: var(--warn); }
 [data-mode="light"] .caption.warn { color: var(--warn); }
 .toast { flex: none; margin: 8px 8px 0; padding: 4px 10px; border: 1px solid var(--line-subtle); border-radius: 8px; font-size: 12px; color: var(--fg-muted); }
 .choices { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; }
@@ -699,7 +699,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .run-facts dt { color: var(--fg-label); }
 .run-facts dd { margin: 0; min-width: 0; color: var(--fg); overflow-wrap: anywhere; }
 /* AUTO-005: the create / edit dialog. */
-.scrim { position: fixed; inset: 0; z-index: var(--z-dialog); display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); }
+.scrim { position: fixed; inset: 0; z-index: var(--z-dialog); display: flex; align-items: center; justify-content: center; background: var(--scrim); }
 .auto-dialog { width: min(920px, calc(100vw - 48px)); height: min(620px, calc(100vh - 48px)); display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); color: var(--fg); }
 .auto-dialog h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .auto-dialog-body { flex: 1; min-height: 0; display: flex; gap: 16px; }
@@ -768,11 +768,11 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .conn-name { font-size: 14px; font-weight: 600; color: var(--fg); }
 .conn-chip { margin-left: auto; padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--fg-muted); background: var(--chip-bg); }
 .conn-chip.connected, .conn-chip.warning { color: var(--done); }
-.conn-chip.expired, .conn-chip.attention { color: #fdc030; }
+.conn-chip.expired, .conn-chip.attention { color: var(--warn); }
 .conn-chip.connecting { color: var(--working); }
 .conn-headline { font-size: 13px; color: var(--fg-row); }
 .conn-detail { margin: 0; font-size: 12px; color: var(--fg-muted); }
-.conn-detail.warn, .conn-switch small.warn { color: #fdc030; }
+.conn-detail.warn, .conn-switch small.warn { color: var(--warn); }
 /* ACCT-001 Connect grid, ACCT-003 install progress */
 .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: stretch; max-width: 1100px; }
 .conn-grid .conn-card { max-width: none; height: 100%; box-sizing: border-box; }
@@ -893,11 +893,11 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .keys-table tr:hover .keys-act, .keys-table tr.recording .keys-act, .keys-act:focus-visible { opacity: 1; }
 .keys-hint { margin: 2px 0 0; font-size: 11px; color: var(--fg-muted); white-space: normal; }
 .keys-badge + .keys-badge { margin-left: 4px; }
-.keys-badge.conflicts { color: #fdc030; }
+.keys-badge.conflicts { color: var(--warn); }
 [data-mode="light"] .keys-badge.conflicts { color: #9a6200; }
 
 /* TERM-045: the question before a tab with a live program closes */
-.ask-backdrop { position: fixed; inset: 0; z-index: var(--z-top); display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
+.ask-backdrop { position: fixed; inset: 0; z-index: var(--z-top); display: flex; align-items: center; justify-content: center; background: var(--scrim); }
 .ask { width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; padding: 16px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
 .ask-title { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
 .ask-body { margin: 0 0 14px; font-size: 12px; color: var(--fg-muted); }
