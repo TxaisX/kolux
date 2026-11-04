@@ -1,0 +1,17 @@
+T-735 / DT-C171: a setup-step setting that fails to save must not look saved (backlog-sweep-49 #18, from findings/onboarding.md
+"onboarding/StepPanels.tsx (void save(...)) | setting saves fire-and-forget | revert + error"), lane A (90). Built on main 5a69c684.
+
+NOT REPRODUCED (already fixed on main)
+  - T-674 (c85cc5b0, 2026-11-02, before the sweep's base d552a974) added SaveFailed to every setup panel that saves
+    (notifications, default agent, keep-awake and commit-writer stop cards). The "void save(...)" calls are not
+    fire-and-forget in effect: useSettings().save sets the change at once, and when the host refuses the write it
+    sets the error and takes back the stored value of the keys it tried to change (T-598). SaveFailed then shows
+    "That change could not be saved, so it was put back." with the reason, as an alert.
+  - What was missing was a test of that path. Added: src/onboarding/saveFailed.test.ts. It mounts the real
+    NotificationsPanel with the real useSettings, the host refuses settings_patch, the switch is turned on, and the
+    test expects the alert with the reason and the switch back off.
+  - The test fails when useSettings stops taking back the stored value (mutation run: "the switch shows what is
+    stored, not the refused change: expected true to be false"), and passes on main's code.
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t735)
+  - Bundle: no source change, 0 B against a +250 cap.

@@ -52,9 +52,11 @@ export function useSettings() {
       .then((stored) => (setSettings((s) => s && adoptStored(s, stored, patch)), true))
       .catch((e) => {
         setError(String(e));
-        // A failed save puts back only its own keys; what other saves stored stays.
+        // A failed save puts back only its own keys; what other saves stored stays. T-735: when the stored copy
+        // cannot be read either, its keys go back to what the page showed before the change.
+        const back = (stored: Record<string, unknown>) => setSettings((s) => s && adoptStored(s, stored, patch));
         return invoke<Record<string, unknown>>("get_settings")
-          .then((stored) => setSettings((s) => s && adoptStored(s, stored, patch)), () => {})
+          .then(back, () => settings && back(settings))
           .then(() => false);
       });
   };
