@@ -37,7 +37,7 @@ function hasSelection(el: Element): boolean {
 }
 
 /** Runs one row on the field; focus goes back first so the browser's edit commands act on it. */
-export function runEdit(el: HTMLElement, action: EditAction): void {
+export function runEdit(el: HTMLElement, action: EditAction, onToast?: (m: string) => void): void {
   el.focus();
   switch (action.kind) {
     case "suggest":
@@ -57,14 +57,14 @@ export function runEdit(el: HTMLElement, action: EditAction): void {
         .then((t) => {
           if (t) document.execCommand("insertText", false, t);
         })
-        .catch(() => {});
+        .catch(() => onToast?.("The clipboard could not be read; paste with the keyboard instead"));
       break;
   }
 }
 
 type Open = { x: number; y: number; items: EditItem[]; target: HTMLElement };
 
-export default function EditMenuHost() {
+export default function EditMenuHost({ onToast }: { onToast?: (m: string) => void }) {
   const [menu, setMenu] = useState<Open | null>(null);
   useEffect(() => {
     const platform = detectPlatform();
@@ -116,10 +116,10 @@ export default function EditMenuHost() {
       void un.then((f) => f());
     };
   }, []);
-  return menu && <Menu menu={menu} onDismiss={() => setMenu(null)} />;
+  return menu && <Menu menu={menu} onDismiss={() => setMenu(null)} onToast={onToast} />;
 }
 
-function Menu({ menu, onDismiss }: { menu: Open; onDismiss: () => void }) {
+function Menu({ menu, onDismiss, onToast }: { menu: Open; onDismiss: () => void; onToast?: (m: string) => void }) {
   const box = useRef<HTMLDivElement>(null);
   const openedAt = useRef(performance.now());
   // T-710: focus goes to the first row, Up/Down move, Enter picks, Escape closes and focus goes back to the field.
@@ -149,7 +149,7 @@ function Menu({ menu, onDismiss }: { menu: Open; onDismiss: () => void }) {
               disabled={it.disabled}
               // Pressing a row moves no focus: runEdit puts it back on the field, whose selection is kept.
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => (onDismiss(), runEdit(menu.target, it.action))}
+              onClick={() => (onDismiss(), runEdit(menu.target, it.action, onToast))}
             >
               <span className="name">{it.name}</span>
               {it.shortcut && <span className="muted">{it.shortcut}</span>}

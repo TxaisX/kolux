@@ -272,7 +272,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
       setHandler(null);
       setCert(null);
     }
-    if (action === "reload") invoke("browser_go", { id, what: "reload" }).catch(() => {});
+    if (action === "reload") invoke("browser_go", { id, what: "reload" }).catch((err) => setNote(String(err)));
     if (action === "rebuild") reopen(h.url, undefined, e.t === "retry" ? "retry" : "auto");
     if (action === "overlay") {
       setBusy(false);

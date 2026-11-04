@@ -89,7 +89,7 @@ export default function WindowHosts() {
       />
       )}
       <FloatingLayer agents={agents} defaultId={defaultId} home={activeDir ?? undefined} onToast={(m) => setToast(m)} />
-      <EditMenuHost />
+      <EditMenuHost onToast={setToast} />
     </>
   );
 }
