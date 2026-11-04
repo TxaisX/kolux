@@ -753,8 +753,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // PROJ-008: the question, then the removal; its folders and files stay on disk.
   // EDIT-031 (B1): the removal closes every pane under the project's folder, so its unsaved editor
   // tabs are asked about first, the same question a closing tab gets; on Cancel nothing is removed.
+  // The folders asked about are the open panes' own, not the sidebar's rows: a worktree hidden by hand
+  // or made by an automation is not listed, but its panes close all the same.
   const removeProject = async (p: Project) => {
-    const closed = [p.path, ...(worktrees[p.id] ?? []).map((w) => w.path).filter((d) => underDir(d, p.path))];
+    const closed = openDirs.filter((d) => underDir(d, p.path));
     if (!(await onAskUnsaved(closed))) return;
     try {
       const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });

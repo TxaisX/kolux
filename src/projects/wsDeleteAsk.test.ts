@@ -205,12 +205,15 @@ test("the Cleanup dialog names the dirty file and Cancel leaves every workspace 
 
 // B1: "Remove project" closes every pane under the project's folder, so its editor tabs are asked about too.
 const nested = { ...base, path: "C:/w/app/ws/nested", branch: "nested", head: "d4d4d4d", isMain: false };
+// A worktree hidden by hand is not in the sidebar's list, but the removal closes its panes all the same.
+const hiddenWt = { ...base, path: "C:/w/app/ws/hidden", branch: "hidden", head: "e5e5e5e", isMain: false, hidden: true };
 const projectPanes: GuardPane[] = [
   { key: 11, kind: "editor", path: "C:/w/app/README.md", cwd: "C:/w/app" }, // the project's own folder
   { key: 12, kind: "editor", path: "C:/w/app/ws/nested/c.ts", cwd: "C:/w/app/ws/nested" }, // a workspace inside it
   { key: 13, kind: "editor", path: "C:/w/ws/fix/d.ts", cwd: "C:/w/ws/fix" }, // outside it: stays open
+  { key: 14, kind: "editor", path: "C:/w/app/ws/hidden/e.ts", cwd: "C:/w/app/ws/hidden" }, // a hidden workspace inside it
 ];
-const projectDirty = { 11: true, 12: true, 13: true };
+const projectDirty = { 11: true, 12: true, 13: true, 14: true };
 
 function ProjectHarness() {
   const guard = useCloseGuard({ panes: projectPanes, dirty: projectDirty, close: () => {}, toast: () => {} });
@@ -220,6 +223,7 @@ function ProjectHarness() {
     guard.dialog,
     createElement(ProjectsPanel, {
       ...props,
+      openDirs: projectPanes.flatMap((p) => (p.cwd ? [p.cwd] : [])), // every pane's folder, as App passes it
       onRemoved: (path: string) => void removed.push(path),
       unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(projectPanes, projectDirty, paths, sameDir)),
       onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(projectPanes, paths, sameDir)),
@@ -230,8 +234,8 @@ function ProjectHarness() {
 const projAsk = (c: FakeNode) => byLabel(c, "div", "Remove project")[0];
 const projX = (c: FakeNode) => find(c, (n) => n.localName === "button" && n.attrs["data-proj-x"] !== undefined)[0];
 
-test("Remove project asks about the editor tabs it closes and Cancel removes nothing", async () => {
-  h.list = [main, ws, nested];
+test("Remove project asks about every editor tab it closes, hidden workspaces included, and Cancel removes nothing", async () => {
+  h.list = [main, ws, nested, hiddenWt];
   const m = await mount(createElement(ProjectHarness), doc);
   unmount = m.unmount;
   const c = m.container as FakeNode;
@@ -243,6 +247,7 @@ test("Remove project asks about the editor tabs it closes and Cancel removes not
   expect(guardAsk(c)).toBeDefined(); // the unsaved question comes before anything is removed
   expect(guardAsk(c).textContent).toContain("README.md"); // the project's own folder is asked about
   expect(guardAsk(c).textContent).toContain("c.ts"); // and the workspaces inside it, which close too
+  expect(guardAsk(c).textContent).toContain("e.ts"); // a hidden workspace is not listed, but its tabs close too
   expect(guardAsk(c).textContent).not.toContain("d.ts"); // one outside it stays open, so it is not asked about
   expect(projAsk(c).textContent).toContain("editor tabs close"); // and the question says the tabs close too
   expect(h.calls).not.toContain("project_remove");
