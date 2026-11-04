@@ -37,6 +37,19 @@ export function afterRefresh(prev: Status | null, got: Status | { error: string 
   return { status: auto ? prev : null, error: got.error };
 }
 
+// ---- C10-R4-01: an action's failure outlives the reload that always follows it ------------------
+
+/** The panel's two error slots, written in different places on purpose: `action` is what the last
+ * stage, discard or abort threw, `read` is what a status read reported. One slot was cleared in the
+ * same call that set it, because the reload runs in `finally` after every action. */
+export type PanelErrors = { action: string | null; read: string | null };
+export const noErrors: PanelErrors = { action: null, read: null };
+
+/** A reload's own outcome, written beside an action's failure and never over it. */
+export function afterReload(prev: PanelErrors, reloaded: Status | { error: string }): PanelErrors {
+  return { ...prev, read: "error" in reloaded ? reloaded.error : null };
+}
+
 // ---- VIEW-064: the commit box ----------------------------------------------------------------
 
 export type FailureSummary = { summary: string; lint: boolean; details: boolean };

@@ -29,7 +29,7 @@ import FileOpenWith from "./FileOpenWith";
 import FailureNotice, { type Failure } from "./FailureNotice";
 import { forkNotice, loadPushTarget, type PushTarget } from "./forkPush";
 import { watchStatus } from "./watch";
-import { afterRefresh, commitBox, mainStep, statusGuard } from "./rules";
+import { afterRefresh, commitBox, mainStep, noErrors, statusGuard, afterReload, type PanelErrors } from "./rules";
 import { DIFF_SPLITS, type DiffSplit } from "./split";
 import { openInBrowser } from "../browser/openIn";
 import { HistoryLoads, acceptHistory, historyFor, type LoadedHistory } from "./history";
@@ -199,7 +199,9 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
   const statusRef = useRef<Status | null>(null);
   statusRef.current = status;
   const cut = cutBanner(status);
-  const [error, setError] = useState<string | null>(null);
+  // C10-R4-01: an action's failure and a status read's are separate slots, because the reload that
+  // always follows an action used to clear the message the catch had just set.
+  const [errs, setErrs] = useState<PanelErrors>(noErrors);
   const [failure, setFailure] = useState<Failure | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -227,7 +229,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     if (!guard.current.accept(ticket)) return;
     const shown = afterRefresh(statusRef.current, got, auto);
     setStatus(shown.status);
-    setError(shown.error);
+    setErrs((e) => afterReload(e, got));
   }, [dir]);
   useEffect(() => {
     setFailure(null);
@@ -237,13 +239,14 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     setAnchor(null);
     setDiscarding(null);
     setDiscardingRows(null); // T-615: a question asked in another workspace goes with it
+    setErrs(noErrors);
     statusRef.current = null;
     void load();
     if (dir === null) return;
     return watchStatus(dir, (s) => {
       if (!guard.current.accept(guard.current.begin())) return;
       setStatus(s);
-      setError(null);
+      setErrs((e) => ({ ...e, read: null }));
     });
   }, [load, dir]);
 
@@ -281,11 +284,13 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     if (dir === null || busy) return;
     setBusy(true);
     setInfo(null);
+    setErrs((e) => ({ ...e, action: null }));
     try {
       await work();
-      setError(null);
+      setErrs((e) => ({ ...e, read: null }));
     } catch (err) {
-      setError(String(err));
+      // C10-R4-01: its own slot, so the reload in `finally` cannot clear it in the same call.
+      setErrs((e) => ({ ...e, action: String(err) }));
     } finally {
       setBusy(false);
       await load(true);
@@ -439,7 +444,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
       document.removeEventListener("visibilitychange", back);
     };
   }, [lookKey, looked, lookUp]);
-  const openPr = (pr: Pr) => void invoke("scm_open_pr", { url: pr.url }).catch((err) => setError(String(err)));
+  const openPr = (pr: Pr) => void invoke("scm_open_pr", { url: pr.url }).catch((err) => setErrs((e) => ({ ...e, read: String(err) })));
   const startPr = () => {
     if (look.pr?.state === "OPEN") return openPr(look.pr);
     setComposer({ title: "", body: "", base: (status?.base ?? "").replace(/^origin\//, ""), draft: false, error: null, busy: false });
@@ -514,7 +519,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     const seq = histLoads.current.begin();
     invoke<Commit[]>("scm_history", { worktree: dir })
       .then((commits) => setLoadedHist((shown) => acceptHistory(histLoads.current, seq, dir, commits, shown)))
-      .catch((err) => setError(String(err)));
+      .catch((err) => setErrs((e) => ({ ...e, read: String(err) })));
   }, [histOpen, dir, head, histTick]);
   const rows = history ? graph(history) : [];
   const pickCommit = (c: Commit) => {
@@ -522,13 +527,13 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     setPicked({ hash: c.hash, files: null });
     invoke<Change[]>("scm_commit_files", { worktree: dir, hash: c.hash })
       .then((files) => setPicked((p) => (p?.hash === c.hash ? { hash: c.hash, files } : p)))
-      .catch((err) => setError(String(err)));
+      .catch((err) => setErrs((e) => ({ ...e, read: String(err) })));
   };
   const copy = (text: string, what: string) =>
     navigator.clipboard
       .writeText(text)
       .then(() => setInfo(`Copied the ${what}`))
-      .catch(() => setError(`Could not copy the ${what}`));
+      .catch(() => setErrs((e) => ({ ...e, read: `Could not copy the ${what}` })));
   const mainAction = () => {
     if (!status) return;
     switch (step.action) {
@@ -1076,7 +1081,12 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </div>
             )}
             {failure && <FailureNotice failure={failure} busy={busy} aiOn={aiShown && aiOn} onRemote={remote} onCopy={copy} onFix={(o) => void fix(o)} onDismiss={() => setFailure(null)} />}
-            {error && <div className="note error">{error}</div>}
+            {errs.action && (
+              <div className="note error" role="alert" data-action-error>
+                {errs.action}
+              </div>
+            )}
+            {errs.read && <div className="note error">{errs.read}</div>}
             {status && status.conflicts.length > 0 && (
               <div className="btn-row" data-agent-action="resolve-conflicts">
                 <button className="btn" disabled={busyAgent || agents.length === 0} title={agents.length === 0 ? "No agent was found on this computer" : undefined} onClick={() => resolveConflicts(status.conflicts)}>
@@ -1273,8 +1283,8 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                   {[
                     { id: "full", label: "Copy path", run: () => copy(fullPath(dir, fileCtx.path), "path") },
                     { id: "relative", label: "Copy relative path", run: () => copy(fileCtx.path, "relative path") },
-                    { id: "open", label: "Open in its app", run: () => invoke("open_path", { path: fullPath(dir, fileCtx.path) }).catch((err) => setError(String(err))) },
-                    { id: "reveal", label: "Show in file manager", run: () => invoke("scm_reveal", { worktree: dir, path: fileCtx.path }).catch((err) => setError(String(err))) },
+                    { id: "open", label: "Open in its app", run: () => invoke("open_path", { path: fullPath(dir, fileCtx.path) }).catch((err) => setErrs((e) => ({ ...e, read: String(err) }))) },
+                    { id: "reveal", label: "Show in file manager", run: () => invoke("scm_reveal", { worktree: dir, path: fileCtx.path }).catch((err) => setErrs((e) => ({ ...e, read: String(err) }))) },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -1289,7 +1299,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                       <span className="name">{item.label}</span>
                     </button>
                   ))}
-                  <FileOpenWith dir={dir} path={fileCtx.path} done={() => setFileCtx(null)} onError={(m) => setError(m)} />
+                  <FileOpenWith dir={dir} path={fileCtx.path} done={() => setFileCtx(null)} onError={(m) => setErrs((e) => ({ ...e, read: m }))} />
                 </div>
               </>
             )}
