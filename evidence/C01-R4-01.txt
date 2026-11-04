@@ -1,0 +1,55 @@
+C01-R4-01 - "Close all editor tabs" closed terminals and browsers too (session nautilus, 2026-11-04)
+Register: proof/wave-200/REGISTER.md, C01-R4-01, P2, evidence `keys/actions.ts:124`, `keys/useWindowKeys.ts:415-418`.
+Found at main 5050c4e2; fixed on s-nautilus/c01r401. Code only; no app launched (see the last section).
+
+WHAT WAS WRONG:
+  - The command action `tab.closeAll` is labelled "Close all editor tabs" and holds Mod+Alt+W in
+    COMPAT.md (row `tab.closeAll`), and spec/12 EDIT-027's acceptance says the chord closes every
+    editor tab. The window's handler ran
+    `bulkCloseSet(orderOf(focused), focused, "all", pinned)`, which is the tab menu's Close all: every
+    tab of the focused strip, terminals and browser tabs included. Pressing the chord with an editor
+    tab in front therefore stopped live agent panes and closed browser tabs, not just files.
+
+FIXED:
+  - src/terminal/pin.ts: `editorCloseSet(order, panes, pinned)` - the strip's editor tabs in drawn
+    order: a pane counts as an editor tab when it carries a kind other than "browser" or "terminal"
+    (file "editor", "preview", "diff", "changes", "check"); a terminal has no kind, so it never
+    counts. Pinned tabs are spared, the same rule `bulkCloseSet` applies, because the keyboard path
+    has no confirm step. A key with no pane behind it is ignored.
+  - src/keys/useWindowKeys.ts: the `tab.closeAll` case now runs `editorCloseSet(orderOf(focused),
+    panes, pinned)` through the same `closeTab`, so the unsaved-text guard (EDIT-031) and the
+    running-process question (TERM-045) still see exactly the tabs that would close. An empty set
+    closes nothing instead of calling closeTab with [].
+  - src/shell/window/TabMenuView.tsx: the tab menu's own "Close all" row no longer draws the
+    `tab.closeAll` chord hint. That row still closes the whole strip (TERM-044) - it is a different
+    command now - so showing Mod+Alt+W beside it would be the same lie in the other direction.
+
+  The tab menu's Close all is unchanged: src/shell/window/tabMenu.ts still builds its five rows from
+  `bulkCloseSet`, and src/shell/wave3b.test.ts still proves "Close all" closes [1, 2, 3].
+  - docs/guide/terminals.md: the tab-menu row for Close all no longer claims the chord, and the
+    shortcut table says Ctrl+Alt+W closes editor tabs and leaves terminal and browser tabs open.
+
+TESTS:
+  - src/terminal/pin.test.ts "C01-R4-01 Close all editor tabs": a strip of terminal + editor +
+    browser + diff + preview + changes + check gives [12, 14, 15, 16, 17]; a strip of terminals and
+    browsers gives []; a key with no pane gives []; the drawn order is kept; a pinned editor tab is
+    spared. Plus a wiring check that the `tab.closeAll` case calls editorCloseSet and no longer calls
+    `bulkCloseSet(orderOf(focused), focused, "all", pinned)`.
+  - Mutation check: restoring the old handler line fails the wiring test; the pure test fails against
+    main's absent helper (run before the helper existed: "editorCloseSet is not a function").
+
+GATES (this branch, 2026-11-04):
+  - npx tsc --noEmit -p .: exit 0 (also part of pnpm build: OK).
+  - pnpm test: 868 files / 6,418 tests passed (2 workers, slot held for the run).
+  - pnpm check: license 256 packages OK, plan-check OK, workflow-check OK, invoke-contract OK,
+    kolux-memory 5/5. plan-check head unchanged: 851/914 tasks, 206/228 P0, merge gate still the
+    old lane/artifacts-auto row that is not this branch.
+  - node scripts/bundle-budget.mjs after pnpm build: first load 1,489,586 bytes in 47 chunks
+    (ceiling 1,490,000). Main's own build on the same machine, same command: 1,489,398 bytes, so
+    this adds 188 B and no chunk. 414 bytes of headroom remain.
+
+NOT PROVEN:
+  - The live press: no app was launched this pass. A live check is a terminal tab plus an editor tab
+    in one cell, press Ctrl+Alt+W, confirm the editor tab closes and the terminal keeps running;
+    then the tab menu's Close all, confirm it still takes both. The unit and wiring proofs above do
+    not stand in for that run.
