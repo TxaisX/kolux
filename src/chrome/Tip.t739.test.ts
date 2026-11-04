@@ -12,6 +12,7 @@ const target = (tip: string | null, visible: boolean) => {
     dataset: tip ? { tip } : {},
     matches: (q: string) => q == ":focus-visible" && visible,
     closest: (q: string) => (q == "[data-tip]" && tip ? el : null),
+    hasAttribute: (k: string) => k in attrs,
     setAttribute: (k: string, v: string) => void (attrs[k] = v),
     getBoundingClientRect: () => ({ left: 10, width: 20, bottom: 30 }),
   };
