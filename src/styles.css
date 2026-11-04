@@ -294,7 +294,17 @@ input { font: inherit; }
 .sidebar-wrap.right { padding: 8px 8px 8px 0; }
 .sidebar.scm { width: 320px; }
 /* VIEW-052 / SET-021: only the left sidebar takes the tint or the terminal's ground (--sidebar-bg is set by theme.ts). */
-.sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--sidebar-bg, var(--surface)); }
+/* C23-R3-02: the ink follows that ground, so a terminal or tinted ground keeps readable text. */
+.sidebar-wrap:not(.right) > .sidebar:not(.scm) {
+  background: var(--sidebar-bg, var(--surface));
+  --fg: var(--sidebar-fg);
+  --fg-row: var(--sidebar-fg-row);
+  --fg-muted: var(--sidebar-fg-muted);
+  --fg-nav: var(--sidebar-fg-nav);
+  --fg-label: var(--sidebar-fg-label);
+  --fg-faint: var(--sidebar-fg-faint);
+  --focus-ring: var(--sidebar-fg-muted);
+}
 .scm-head { margin-top: 8px; }
 .scm-head .count { margin-left: 8px; font-size: 11px; color: var(--fg); }
 .scm-commit { display: flex; flex-direction: column; gap: 6px; margin: 8px 8px 0; }

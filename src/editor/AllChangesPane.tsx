@@ -20,9 +20,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
-import { syntaxHighlighting } from "@codemirror/language";
+import { currentDark } from "../theme";
 import { languageFor } from "./languages";
-import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { codeHighlighting, editorMode } from "./syntax";
 import { MergeView, unifiedMergeView } from "@codemirror/merge";
 import { ChevronDown, Close, FileCode, List } from "../chrome/icons";
 import { baseName } from "./buffers";
@@ -562,7 +562,8 @@ export const Section = memo(function Section({ anchor, e, name, root, base, draw
     const common = (old: boolean): Extension[] => [
       basicSetup,
       look,
-      syntaxHighlighting(oneDarkHighlightStyle),
+      codeHighlighting,
+      editorMode(currentDark()),
       lang.of([]),
       EditorState.readOnly.of(true),
       EditorView.editable.of(false),

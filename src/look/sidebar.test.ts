@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
-import { appearanceVars, FIELD, readAppearance, terminalFor, writeAppearance } from "../theme";
-import { DEFAULT_TINT, MAX_WASH, sidebarBackground, sidebarLookOf } from "./sidebar";
+import { appearanceVars, buildTheme, contrast, FIELD, readAppearance, terminalFor, THEMES, writeAppearance } from "../theme";
+import { paletteIsDark } from "../terminal/queries";
+import { DEAD_BAND, DEFAULT_TINT, inDeadBand, luminance, MAX_WASH, sidebarBackground, sidebarLookOf } from "./sidebar";
 
 const vars = (s: Record<string, unknown>, dark = true) => appearanceVars(readAppearance(s), dark)["--sidebar-bg"];
 
@@ -43,4 +44,94 @@ test("the sidebar look round-trips through the saved settings and keeps other se
   const a = readAppearance({ [FIELD.sidebarLook]: "tinted", [FIELD.sidebarTint]: "#AA3300", [FIELD.sidebarStrength]: 33.6 });
   expect(a).toMatchObject({ sidebarLook: "tinted", sidebarTint: "#aa3300", sidebarStrength: 34 });
   expect(writeAppearance({ other: 1 }, a)).toMatchObject({ other: 1, sidebarLook: "tinted", sidebarTint: "#aa3300", sidebarTintStrength: 34 });
+});
+
+// ---- C23-R3-02: the sidebar's ink follows the ground it is painted on ----
+
+/** The tokens the sidebar's own rules paint text with (styles.css: body inherit, .proj/.branch/.sess,
+ *  .sess .hint/.sb-notice, .sb-tabs button, .sb-section/.sb-group). */
+const INK = ["--sidebar-fg", "--sidebar-fg-row", "--sidebar-fg-muted", "--sidebar-fg-nav", "--sidebar-fg-label"] as const;
+/** The ones this finding guarantees at 4.5:1. `--fg-label` and `--fg-faint` are the C23-R3-06 token
+ *  defect (4.03 and 2.23 on the light surface) and are not folded into this fix. */
+const READABLE = ["--sidebar-fg", "--sidebar-fg-row", "--sidebar-fg-muted", "--sidebar-fg-nav"] as const;
+const LOOKS = ["standard", "terminal", "tinted"] as const;
+const STRENGTHS = [0, 20, 40, 50, 60, 80, 100] as const;
+const TINTS = ["#000000", "#ffffff", DEFAULT_TINT] as const;
+
+/** Every ground the sidebar can be given: 17 themes, both modes, every look, strength and tint. */
+const grounds = THEMES.flatMap((theme) =>
+  [true, false].flatMap((dark) =>
+    LOOKS.flatMap((look) =>
+      (look === "tinted" ? TINTS.flatMap((tint) => STRENGTHS.map((strength) => ({ tint, strength }))) : [{ tint: DEFAULT_TINT, strength: 20 }]).map(({ tint, strength }) => {
+        const a = readAppearance({ [FIELD.theme]: theme, [FIELD.sidebarLook]: look, [FIELD.sidebarTint]: tint, [FIELD.sidebarStrength]: strength });
+        return { label: `${theme} ${dark ? "dark" : "light"} ${look} ${tint} ${strength}%`, dark, a, vars: appearanceVars(a, dark) };
+      }),
+    ),
+  ),
+);
+
+test("C23-R3-02: no computed sidebar ground sits where neither palette's ink can read", () => {
+  const bad = grounds.filter((g) => g.vars["--sidebar-bg"].startsWith("#") && inDeadBand(g.vars["--sidebar-bg"]));
+  expect(bad.map((g) => `${g.label} -> ${g.vars["--sidebar-bg"]}`)).toEqual([]);
+  expect(DEAD_BAND[0]).toBeLessThan(DEAD_BAND[1]);
+});
+
+test("C23-R3-02: the sidebar's ink is the palette its ground supports, not the app's mode", () => {
+  const bad: string[] = [];
+  for (const g of grounds) {
+    const ground = g.vars["--sidebar-bg"];
+    const want = buildTheme(g.a, paletteIsDark(ground) ?? g.dark);
+    for (const key of INK) {
+      const token = key.replace("--sidebar-", "");
+      if (g.vars[key] !== want[token as keyof typeof want]) bad.push(`${g.label}: ${key} is ${g.vars[key]}, the ground wants ${want[token as keyof typeof want]}`);
+    }
+  }
+  expect(bad).toEqual([]);
+});
+
+test("C23-R3-02: the sidebar's primary ink reaches 4.5:1 on every ground it can be given", () => {
+  const bad: string[] = [];
+  for (const g of grounds) {
+    const ground = g.vars["--sidebar-bg"];
+    const hex = ground.startsWith("#") ? ground : buildTheme(g.a, g.dark).surface;
+    for (const key of ["--sidebar-fg", "--sidebar-fg-row"] as const) {
+      const r = contrast(g.vars[key], hex);
+      if (r < 4.5) bad.push(`${g.label}: ${key} ${g.vars[key]} on ${hex} = ${r.toFixed(2)}`);
+    }
+  }
+  expect(bad).toEqual([]);
+});
+
+test("C23-R3-02: light mode with a dark terminal ground keeps every sidebar ink readable", () => {
+  // The finding's worst pair: light mode, Match terminal, the light scheme switched off.
+  const a = readAppearance({ [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "default", [FIELD.lightTerminal]: false });
+  const v = appearanceVars(a, false);
+  expect(v["--sidebar-bg"]).toBe("#0d0d0d");
+  for (const key of READABLE) expect(contrast(v[key], "#0d0d0d"), key).toBeGreaterThanOrEqual(4.5);
+});
+
+test("C23-R3-02: dark mode with a light terminal ground keeps every sidebar ink readable", () => {
+  // The mirrored case: dark mode, Match terminal, a light scheme picked.
+  const a = readAppearance({ [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "tango-light" });
+  const v = appearanceVars(a, true);
+  expect(v["--sidebar-bg"]).toBe("#ffffff");
+  for (const key of READABLE) expect(contrast(v[key], "#ffffff"), key).toBeGreaterThanOrEqual(4.5);
+});
+
+test("C23-R3-02: a custom theme keeps its own surface when the tint would cross it", () => {
+  // One palette only, so a ground on the other side of it has no ink to inherit.
+  const a = readAppearance({ [FIELD.userThemes]: [{ name: "mine", base: "classic", dark: false, vars: { "--surface": "#f4f4f4" } }], [FIELD.userTheme]: "mine", [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "default", [FIELD.lightTerminal]: false });
+  expect(appearanceVars(a, false)["--sidebar-bg"]).toBe("var(--surface)");
+});
+
+test("C23-R3-02: a tint that would land in the dead band is moved to the nearer edge", () => {
+  // Classic light surface #efefef, 100 % black: the raw mix is #303030, already past the dark edge.
+  expect(sidebarBackground("tinted", "#000000", 100, "#efefef", undefined)).toBe("#303030");
+  // 60 % black lands inside the band, so it is walked out to whichever edge is nearer.
+  const mid = sidebarBackground("tinted", "#000000", 60, "#efefef", undefined);
+  expect(inDeadBand(mid)).toBe(false);
+  const l = luminance(mid);
+  expect([DEAD_BAND[0], DEAD_BAND[1]].some((edge) => Math.abs(edge - l) < 0.02), `${mid} is not at a band edge`).toBe(true);
+  // A terminal ground inside the band cannot carry either palette, so it falls back to the surface.
+  expect(sidebarBackground("terminal", DEFAULT_TINT, 20, "#efefef", "#808080")).toBe("var(--surface)");
 });
