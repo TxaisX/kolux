@@ -22,6 +22,19 @@ export interface RepoSetup {
   suggestBoth: boolean;
   /** Why the choice in force would not run on this PC (two interpreters, or `both` through cmd); null when it would. */
   runError: string | null;
+  /** T-721: Always trust is on for this repository's whole kolux.yaml. */
+  trustedAll?: boolean;
+  /** T-721: the kolux.yaml scripts approved one by one (setup, archive, issue, tabs). */
+  trusted?: string[];
+}
+
+const KIND: Record<string, string> = { setup: "the setup script", archive: "the archive script", issue: "the issue command", tabs: "the default tabs" };
+
+/** T-721: what this repository trusts in its kolux.yaml, in one sentence; empty when nothing. */
+export function trustedWords(s: RepoSetup): string {
+  if (s.trustedAll) return "Always trust is on: every script in kolux.yaml runs without asking, even after it changes.";
+  const k = (s.trusted ?? []).map((x) => KIND[x] ?? x);
+  return k[0] ? `Runs without asking while unchanged: ${k.join(", ")}.` : "";
 }
 
 export type Choice = "local" | "shared" | "both";
@@ -104,7 +117,7 @@ export function runsNote(s: RepoSetup): string {
 export function trustNote(s: RepoSetup): string {
   if (s.runError) return "";
   const { own, theirs } = running(s);
-  const asks = "The script in kolux.yaml asks first, once, and again if it changes.";
+  const asks = s.trustedAll ? "The script in kolux.yaml runs without asking (Always trust)." : "The script in kolux.yaml asks first, once, and again if it changes.";
   if (own && theirs) return `Your own setup runs without asking. ${asks}`;
   if (own) return "Your own setup runs without asking.";
   return theirs ? asks : "";

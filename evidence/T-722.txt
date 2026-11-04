@@ -1,0 +1,51 @@
+T-722 - A running session is not deleted; the Explorer delete question opens on Cancel (DT-C158; UX audit W3)
+Worker 2f, coordinator 57, branch s-2f/delete-guards from main 74dc239b, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "Queue refill" T-722 / DT-C158. Findings: chat-sessions.md:11 (F4, UNSURE), destructive.md:13.
+
+PART 1 - CONFIRMED FIRST (chat-sessions.md:11 was marked UNSURE)
+- Real. session_delete (src-tauri/src/session_files.rs) located the transcript and removed it with nothing asking
+  whether a pane was running that session. The window side (sessions/SessionFiles.tsx -> files.ts -> invoke
+  "session_delete") asks "are you sure" and names the session (that half of F4 was already done), but checks no pane.
+  The resume block (resume.ts) only looks at turns. So the files of a session an agent was still writing could go.
+
+THE FIX
+- status.rs: transcript_live(file, folder) - true when an open pane's hooks last reported `file` as their transcript,
+  or a file inside `folder` (the session's own folder: a sub-agent's hook names its own transcript there). The
+  records it reads are the ones terminal_ended removes, so only open panes count; a pane that starts a new chat names
+  its new transcript, so its old one becomes deletable. Both paths are resolved by the filesystem (canonicalize), so
+  case and / against \ never hide a match; they are resolved after the sessions lock is let go.
+- session_files.rs delete(): after locate, a live transcript is refused with "This session is still open in a pane. Close
+  that pane, then delete the session." and nothing is removed. The window shows a refused delete's reason in its note
+  line; sessions/SessionFiles.tsx now also hands focus back to Delete… after a refusal.
+- Refuse, not warn: the delete is permanent and the agent would keep writing to the file it lost.
+- Fails safe: a shell pane where the agent was quit (/exit) keeps its last transcript until the pane closes, so the
+  delete is refused until then (the message says to close the pane).
+- Not seen: a pane whose agent has no hooks or has not reported yet. Its session can still be deleted behind the
+  window's own question (after-list).
+
+PART 2 - destructive.md:13
+- editor/Explorer.tsx: the delete question's autoFocus moves from Delete / Move to trash onto Cancel, so Enter or Space
+  straight after picking Delete removes nothing. Escape still cancels (unchanged; chrome/reach.test.ts still passes).
+
+TESTS
+- src-tauri session_files::tests::t722_a_session_an_open_pane_is_running_is_not_deleted_until_its_terminal_ends:
+  a pane's hook reports the transcript with forward slashes (and upper case on Windows); delete is refused, the
+  transcript and its folder stay; a neighbour no pane runs still deletes; a sub-agent hook naming run/subagents/agent-1.jsonl is refused too; after terminal_ended the session deletes (2).
+- t722_a_codex_rollout_an_open_pane_is_running_is_not_deleted: the same for a Codex rollout under sessions/.
+- src/editor/explorerAsk.t722.test.ts: the delete question has two buttons; the deleting one has no autoFocus, Cancel has it.
+- Trap (on the committed fix): with the guard taken out of delete() (test kept) the Rust test FAILS (0 passed, 1 failed);
+  with main's Explorer.tsx put back the focus test FAILS ("expected ... autoFocus ... not to match"). Restored, both pass. After the review: with the folder check taken out (None passed) the sub-agent case FAILS.
+- cargo test --lib -- view089 t722: 14 passed (all session-files and session-list tests, the two new ones included).
+- cargo test --lib -- session_files status:: : 62 passed.
+- cargo test (full, after 57 lifted the low-RAM window): 2860 passed, 6 ignored, 1 failed. The one is
+  scm_writers t606 (stand-in writer, "did not finish within 20 seconds"): the suite's known local environment failure,
+  skipped on CI by its own guard, untouched here; it fails the same way alone.
+- VITEST_MAX_WORKERS=1 pnpm vitest run src/editor src/chrome/reach.test.ts: 108 files, 1173 tests pass (a first run
+  had one timing flake in another editor test; the rerun passed 1173/1173).
+- pnpm tsc --noEmit -p .: clean. node scripts/plan-check.mjs: OK. firewall-check -Baseline: 0 new.
+
+AFTER-LIST
+- Panes without hooks: match by the session id in the pane's launch command as well, if that ever matters.
+- Explorer delete goes through fs_trash, which does not check panes either; a transcript deleted from the Explorer
+  is not guarded (separate surface, lane D).
+- A runtime focus test for the Explorer question (the fake DOM's focus() is a no-op today).

@@ -2,7 +2,10 @@
 // component is drawn by calling it with a small hook store and each button's own onClick is called.
 import { beforeEach, expect, test, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0 }));
+const h = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0, calls: [] as [string, unknown][], reply: {} as Record<string, unknown> }));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (cmd: string, args: unknown) => (h.calls.push([cmd, args]), Promise.resolve(h.reply[cmd])),
+}));
 vi.mock("react", async (orig) => {
   const actual = await orig<typeof import("react")>();
   return {
@@ -19,7 +22,7 @@ vi.mock("react", async (orig) => {
   };
 });
 
-import { RepoSetupView } from "./RepoSetup";
+import RepoSetupSection, { RepoSetupView } from "./RepoSetup";
 import type { RepoSetup } from "./setupChoice";
 
 type El = { type: unknown; props: Record<string, unknown> };
@@ -42,6 +45,7 @@ const actions = {
   onRemove: () => void calls.push("remove"),
   onChoice: (v: string) => void calls.push(`choice:${v}`),
   onWait: (w: boolean) => void calls.push(`wait:${w}`),
+  onUntrust: () => void calls.push("untrust"),
 };
 const draw = (setup: RepoSetup = saved) => {
   h.cursor = 0;
@@ -93,4 +97,41 @@ test("AFTER: a changed draft saves on blur", () => {
   (box().props.onChange as (e: unknown) => void)({ target: { value: "pnpm ci" } });
   (box().props.onBlur as () => void)();
   expect(calls).toEqual(["save:pnpm ci"]);
+});
+
+test("T-721: what is trusted shows with Stop trusting; once stopped the row goes and kolux.yaml asks first again", () => {
+  const yaml: RepoSetup = { ...saved, local: null, shared: "pnpm i", inherited: "shared" };
+  const page = (s: RepoSetup) => draw(s).map((e) => text(e)).join("\n");
+  expect(button(draw(yaml), "Stop trusting"), "nothing trusted: no row").toBeUndefined();
+  expect(page(yaml)).toContain("asks first, once, and again if it changes");
+  const always = draw({ ...yaml, trustedAll: true, trusted: ["setup"] });
+  expect(always.map((e) => text(e)).join("\n")).toContain("Always trust is on: every script in kolux.yaml runs without asking");
+  (button(always, "Stop trusting")!.props.onClick as () => void)();
+  expect(calls).toEqual(["untrust"]);
+  expect(page({ ...yaml, trusted: ["setup", "issue"] })).toContain("Runs without asking while unchanged: the setup script, the issue command.");
+  // the page reads back after the write; Rust's t721 test shows the record is gone and each script asks again
+  expect(button(draw({ ...yaml, trustedAll: false, trusted: [] }), "Stop trusting")).toBeUndefined();
+});
+
+test("T-721: Stop trusting clears through Rust, reads the page back, and says what changed where focus lands", async () => {
+  const yaml: RepoSetup = { ...saved, local: null, shared: "pnpm i", inherited: "shared" };
+  h.calls = [];
+  h.reply = { repo_setup_get: { ...yaml, trusted: [] } };
+  h.slots = [{ ...yaml, trustedAll: true }, null, null]; // the section's setup, notice and status
+  const section = () => {
+    h.cursor = 0;
+    const el = RepoSetupSection({ path: "C:/r" }) as unknown as El;
+    return all(RepoSetupView(el.props as Parameters<typeof RepoSetupView>[0]));
+  };
+  (button(section(), "Stop trusting")!.props.onClick as () => void)();
+  await new Promise((r) => setTimeout(r, 0));
+  expect(h.calls).toEqual([
+    ["repo_trust_clear", { path: "C:/r" }],
+    ["repo_setup_get", { path: "C:/r" }],
+  ]);
+  const after = section();
+  expect(button(after, "Stop trusting"), "read back with nothing trusted: the row is gone").toBeUndefined();
+  const status = after.find((e) => e.props.role === "status");
+  expect(status && text(status)).toContain("each script asks before it runs");
+  expect(status!.props.autoFocus && status!.props.tabIndex, "focus moves to the status line").toBe(-1);
 });
