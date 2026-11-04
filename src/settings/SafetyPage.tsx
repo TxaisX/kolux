@@ -56,7 +56,7 @@ export function SafetyView({ settings, rules, error = null, save }: ViewProps) {
         <input type="checkbox" role="switch" aria-label="Ask before protected actions" checked={master} onChange={(e) => void save(switchAll(e.target.checked))} />
         <span>
           Ask before protected actions
-          <small>{master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
+          <small id="safety-master-note">{master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
         </span>
       </label>
       {error && (
@@ -66,10 +66,10 @@ export function SafetyView({ settings, rules, error = null, save }: ViewProps) {
       )}
       {rules === null && !error && <p className="conn-detail">Reading the rules...</p>}
       {rules && (
-        <div data-rules data-master-off={master ? undefined : ""}>
+        <div data-rules data-master-off={master ? undefined : ""} style={master ? undefined : { opacity: 0.65 }}>
           {rules.map((r) => (
             <label className="conn-switch" key={r.id} data-rule={r.id}>
-              <input type="checkbox" role="switch" aria-label={r.name} checked={ruleOn(settings, r.id)} onChange={(e) => void save(switchRule(settings, r.id, e.target.checked))} />
+              <input type="checkbox" role="switch" aria-label={r.name} aria-describedby={master ? undefined : "safety-master-note"} checked={ruleOn(settings, r.id)} onChange={(e) => void save(switchRule(settings, r.id, e.target.checked))} />
               <span>
                 {r.name}
                 <small>

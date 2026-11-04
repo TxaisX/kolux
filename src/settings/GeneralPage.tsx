@@ -12,7 +12,7 @@ import { OUTBOUND } from "./outbound";
 import { requestFeedback } from "../feedback/FeedbackDialog";
 import { DELAY, delayFromText, prefPatch, readEditorPrefs, type DiffView } from "./editorPrefs";
 import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, readOpenIn, removeApp, type OpenInApp } from "./openIn";
-import { editApp } from "../editor/openInEdit";
+import { alreadyListed, editApp } from "../editor/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
 import { ResetButton } from "./SafetyRules";
 import CliCard from "./CliCard";
@@ -186,12 +186,13 @@ function DelayField({ value, onSave }: { value: number; onSave: (v: number) => P
 }
 
 /** SET-039: the apps every Open in menu lists, from presets or by name and command. */
-function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => void }) {
+export function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => void }) {
   const list = readOpenIn(settings);
   const [draft, setDraft] = useState({ name: "", command: "" });
   const [editing, setEditing] = useState<string | null>(null); // the row being edited in the fields below
   const put = (next: OpenInApp[]) => onSave({ [OPEN_IN_FIELD]: next });
   const left = presetsLeft(list);
+  const dup = alreadyListed(list, draft, editing); // T-753: Add would drop it and clear the fields
   return (
     <section className="conn-card" data-section="open-in">
       <h2 className="conn-name">Open in</h2>
@@ -228,11 +229,11 @@ function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; o
       )}
       <div className="btn-row">
         <input className="field" aria-label="App name" placeholder="Name" maxLength={60} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <input className="field" aria-label="App command" placeholder="Command, e.g. gvim --remote" maxLength={300} value={draft.command} onChange={(e) => setDraft({ ...draft, command: e.target.value })} />
+        <input className="field" aria-label="App command" aria-describedby={dup ? "open-in-dup" : undefined} placeholder="Command, e.g. gvim --remote" maxLength={300} value={draft.command} onChange={(e) => setDraft({ ...draft, command: e.target.value })} />
         <button
           type="button"
           className="btn"
-          disabled={!draftReady(draft)}
+          disabled={!draftReady(draft) || !!dup}
           onClick={() => {
             put(editing ? editApp(list, editing, draft) : addCustom(list, draft));
             setEditing(null);
@@ -247,6 +248,10 @@ function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; o
           </button>
         )}
       </div>
+      {/* Always drawn so the live region announces; while empty it is out of the flow, so the card gap stays. */}
+      <p className={dup ? "conn-detail warn" : "conn-detail"} role="status" id="open-in-dup" style={dup ? undefined : { position: "absolute" }}>
+        {dup && `That command is already listed as ${dup.name}.`}
+      </p>
     </section>
   );
 }
