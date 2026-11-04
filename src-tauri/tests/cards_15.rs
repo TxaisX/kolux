@@ -1,4 +1,4 @@
-//! spec/15 P0 boxes SKILL-035 and SKILL-036 (Rust halves): the real artifacts::Library on real files under the
+﻿//! spec/15 P0 boxes SKILL-035 and SKILL-036 (Rust halves): the real artifacts::Library on real files under the
 //! scratch root, folder skill15. No network: the CDN fetch closure is always a stand-in.
 
 mod scratch_root;
@@ -21,7 +21,7 @@ fn no_fetch(_: &str) -> Option<Vec<u8>> {
 }
 
 fn rows(lib: &Library) -> Vec<Value> {
-    lib.list().into_iter().map(|l| serde_json::to_value(l).unwrap()).collect()
+    lib.list().unwrap().into_iter().map(|l| serde_json::to_value(l).unwrap()).collect()
 }
 
 fn claude(url: &str, at: u64) -> Origin {
@@ -181,3 +181,4 @@ fn save_replay(key: &str, value: Value) {
     doc[key] = value;
     std::fs::write(&path, serde_json::to_string_pretty(&doc).unwrap() + "\n").unwrap();
 }
+

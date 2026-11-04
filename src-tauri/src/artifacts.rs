@@ -3,24 +3,44 @@
 //! to by relative path, plus one line in `library.json`. The viewer loads entries through the
 //! `kolux-artifact` scheme, which serves only that entry's files.
 
+use std::collections::HashMap;
 use std::fs;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Component, Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
+use std::time::UNIX_EPOCH;
 
 pub const SCHEME: &str = "kolux-artifact";
 /// Where the web view puts the scheme: Windows' web view reaches custom schemes over http.
 const ORIGIN: &str = if cfg!(windows) { "http://kolux-artifact.localhost" } else { "kolux-artifact://localhost" };
 const MAX_PAGE: u64 = 10 * 1024 * 1024;
-/// A single file that is not a page (an image, a document, a PDF) is kept whole, so it gets a
-/// larger cap than one page; the viewer shows the kinds it can and hands the rest to the system.
-const MAX_FILE: u64 = 25 * 1024 * 1024;
+/// A single file that is not a page (an image or a video) is kept whole, so it gets a larger cap than
+/// one page; the viewer shows or plays the three kinds it can and keeps nothing else.
+const MAX_FILE: u64 = 100 * 1024 * 1024;
 const MAX_ASSETS: usize = 100;
+/// The most distinct references a page's scan looks at, and how many in a row may fail before the
+/// scan gives up on the rest. A hostile page can name thousands of files that are not there; each
+/// look is a file-system call on the worker that holds the scan lock (T-624 round 5).
+const MAX_REFS: usize = 400;
+const MAX_MISSES: usize = 32;
 const MAX_ASSET: u64 = 10 * 1024 * 1024;
 const MAX_TOTAL: u64 = 50 * 1024 * 1024;
-/// Script hosts whose files are fetched into an entry so it still runs offline (SKILL-035).
-const CDNS: [&str; 5] = ["https://cdnjs.cloudflare.com/", "https://cdn.jsdelivr.net/npm/", "https://unpkg.com/", "https://cdn.tailwindcss.com", "https://code.jquery.com/"];
+/// Script hosts whose files are fetched into an entry so it still runs offline (SKILL-035). Each
+/// ends in '/'; `cdn_url` judges a parsed address against them, never a string prefix.
+const CDNS: [&str; 5] = ["https://cdnjs.cloudflare.com/", "https://cdn.jsdelivr.net/npm/", "https://unpkg.com/", "https://cdn.tailwindcss.com/", "https://code.jquery.com/"];
 const MAX_SCRIPTS: usize = 16;
 const MAX_SCRIPT: usize = 5 * 1024 * 1024;
+/// The most one ranged answer carries. A browser asks `bytes=0-` for every media load and after each
+/// seek, then often drops the connection once it has the header, so a 100 MB clip is not read into
+/// memory on the web view's thread for each; Content-Range tells it the real length and it asks
+/// again from where the answer ended.
+const CHUNK: u64 = 8 * 1024 * 1024;
+/// The most `serve` reads into memory whole for a file that is not video or audio. Bigger is a 413: the
+/// gate bounds how many reads run at once, not how big each is, so this is the size bound (4 x 20 MB at
+/// most in flight; pages are capped at 10 MB when they are stored).
+const WHOLE_MAX: u64 = 20 * 1024 * 1024;
+/// How many requests may wait for a read slot (each parks one blocking thread); the next one is a 503.
+const MAX_WAITING: usize = 64;
 
 /// Where a page came from: a file added by hand, or a Claude publish (one entry per URL).
 pub struct Origin {
@@ -46,8 +66,9 @@ pub struct Entry {
     pub title: String,
     /// "hand" for Add artifact, "claude" for a page a Claude session published or a file it wrote.
     pub source: String,
-    /// "page", "image", "text", "pdf" or "other": what the stored file is, so the viewer knows
-    /// whether it can show it itself. An entry written before this field existed is a page.
+    /// "page", "image" or "video": what the stored file is, so the viewer knows how to project it.
+    /// An entry written before this field existed is a page, and an entry of any other kind is not
+    /// listed (DT-C78).
     #[serde(default = "kind_page")]
     pub kind: String,
     /// The file path (or, for a publish, the URL) the page came from: one entry per origin.
@@ -61,7 +82,17 @@ pub struct Entry {
     pub page: String,
     /// "ok", "unavailable" (on a network share, never read) or "remote" (a machine this one cannot read).
     pub state: String,
+    /// The origin file's own (modified ms, length) when it was stored, so the workspace scan can tell
+    /// the exact file it holds from a changed one; `size` holds a page's assets and scripts too. None
+    /// for an entry stored before this field existed, or one whose file was never read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stamp: Option<(u64, u64)>,
 }
+
+/// The removed entries the workspace scan must not bring back: origin -> the file's (modified ms,
+/// length) at removal. A later rewrite has a new stamp and is imported again. Kept beside
+/// library.json in its own file, so the index keeps its shape for an older build.
+const REMOVED: &str = "removed.json";
 
 /// An entry as the library page gets it: whether its stored page is still on disk.
 #[derive(serde::Serialize)]
@@ -77,8 +108,22 @@ pub struct Library {
     lock: Mutex<()>,
 }
 
+/// An origin that is a Windows path is written one way before it is hashed, so the same file reached as
+/// `c:/Users/me/a.html`, `C:\Users\me\a.html` or `\\?\C:\Users\me\a.html` is one entry, not two. The
+/// usual form (upper-case drive letter, backslashes) is the one kept, so ids already stored do not
+/// change. A URL or a Unix path is left alone.
+fn normalized_origin(origin: &str) -> std::borrow::Cow<'_, str> {
+    let o = origin.strip_prefix(r"\\?\").unwrap_or(origin);
+    let b = o.as_bytes();
+    if b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'/' || b[2] == b'\\') {
+        return format!("{}{}", (b[0] as char).to_ascii_uppercase(), o[1..].replace('/', "\\")).into();
+    }
+    origin.into()
+}
+
 /// FNV-1a: a short id that stays the same for the same origin on every run and every build.
 fn id_of(origin: &str) -> String {
+    let origin = normalized_origin(origin);
     let mut h: u64 = 0xcbf2_9ce4_8422_2325;
     for b in origin.bytes() {
         h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
@@ -126,21 +171,44 @@ fn kind_page() -> String {
     "page".into()
 }
 
-/// What a stored file is, from its extension. Only a page is copied with the files it points to
-/// and made offline; the rest are kept whole and shown by the viewer when it can render them.
+/// What a stored file is, from its extension. An artifact is only something the viewer projects in
+/// the app: an HTML page, an image, a video. Only a page is copied with the files it points to and
+/// made offline; an image or a video is kept whole. Everything else is "other" and is not an
+/// artifact at all (DT-C78).
 pub fn kind_of(path: &Path) -> &'static str {
     match path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default().as_str() {
         "html" | "htm" => "page",
         "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "avif" | "bmp" | "ico" => "image",
-        "md" | "txt" | "csv" | "log" | "json" => "text",
-        "pdf" => "pdf",
+        "mp4" | "webm" | "mov" | "m4v" | "ogv" | "mkv" | "avi" => "video",
         _ => "other",
     }
 }
 
-/// The file types an agent's new file is kept from. Anything else it writes is source, not an
-/// artifact, and stays out of the library.
-pub const KEPT: [&str; 16] = ["html", "htm", "png", "jpg", "jpeg", "gif", "webp", "svg", "pdf", "md", "txt", "csv", "docx", "xlsx", "pptx", "zip"];
+/// Whether the viewer can project a stored file of this kind in the app. `kind_of` is the only judge
+/// of a kind, so this cannot drift from it.
+pub fn viewable(kind: &str) -> bool {
+    matches!(kind, "page" | "image" | "video")
+}
+
+/// The file types an agent's new file is kept from. Anything else it writes is source, a document or
+/// data, not an artifact, and stays out of the library.
+pub const KEPT: &[&str] = &[
+    "html", "htm", "png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp", "ico",
+    "mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi",
+];
+
+/// A file in a workspace's explicit `artifacts/` folder is a deliverable by definition, so every
+/// top-level file of a viewable kind counts there even when the same extension would be source
+/// elsewhere. A dotfile, a half-written download, and anything the viewer cannot project (a
+/// document, a PDF, an audio track, CSV or JSON) is not a deliverable of this library.
+fn is_workspace_file(path: &Path) -> bool {
+    let name = path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
+    if name.starts_with('.') {
+        return false;
+    }
+    let ext = path.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    !matches!(ext.as_str(), "tmp" | "part" | "crdownload" | "lock") && viewable(kind_of(path))
+}
 
 fn unescape(s: &str) -> String {
     s.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&nbsp;", " ").replace("&amp;", "&")
@@ -200,21 +268,45 @@ pub fn relative_refs(html: &str) -> Vec<String> {
                 i += 1;
             }
             let v = unescape(html[start..i].trim());
-            let v = v.split(['?', '#']).next().unwrap_or("").to_string();
-            let scheme = v.find(':').is_some_and(|c| !v[..c].contains('/'));
-            if v.is_empty() || scheme || v.starts_with('/') || v.starts_with('\\') {
-                continue;
+            let v = v.split(['?', '#']).next().unwrap_or("");
+            // Decode first, then judge what the file system would see: `%2F%2Fhost%2Fs%2Fa.png` is a
+            // UNC path and `C%3A/x` a drive path once decoded (T-624 round 5).
+            let v = pct(v);
+            if safe_ref(&v) {
+                out.push(v);
             }
-            out.push(pct(&v));
         }
     }
     out
 }
 
-/// A path inside an entry's folder from forward-slash parts; None if a part would climb out.
+/// Whether a decoded reference is a plain path under the page's own folder: not empty, no scheme,
+/// drive or stream colon, no leading separator (a root path or a `//host/share` UNC path), no `..`,
+/// no control character, no Windows device name, and nothing a platform would call absolute or
+/// prefixed.
+fn safe_ref(rel: &str) -> bool {
+    let device = |part: &str| {
+        let stem = part.split('.').next().unwrap_or("").trim_end().to_ascii_lowercase();
+        matches!(stem.as_str(), "con" | "prn" | "aux" | "nul" | "conin$" | "conout$")
+            || ((stem.starts_with("com") || stem.starts_with("lpt")) && stem.len() == 4 && stem.as_bytes()[3].is_ascii_digit())
+    };
+    !rel.is_empty()
+        && !rel.starts_with(['/', '\\'])
+        && !rel.chars().any(|c| c == ':' || c.is_control())
+        && !rel.split(['/', '\\']).any(|p| p == ".." || device(p))
+        && Path::new(rel).is_relative()
+        && !Path::new(rel).has_root()
+        && !matches!(Path::new(rel).components().next(), Some(Component::Prefix(_) | Component::RootDir | Component::ParentDir))
+}
+
+/// A path inside an entry's folder from forward-slash parts; None if a part would climb out. On
+/// Windows a part with a colon (a drive, or an alternate data stream `a.png:s`) is refused too.
 fn inside(base: &Path, rel: &str) -> Option<PathBuf> {
     let mut p = base.to_path_buf();
     for part in rel.split(['/', '\\']).filter(|s| !s.is_empty() && *s != ".") {
+        if cfg!(windows) && part.contains(':') {
+            return None;
+        }
         if matches!(Path::new(part).components().next(), Some(Component::Normal(_))) && Path::new(part).components().count() == 1 {
             p.push(part);
         } else {
@@ -224,7 +316,20 @@ fn inside(base: &Path, rel: &str) -> Option<PathBuf> {
     Some(p)
 }
 
-/// The spans of script src values that point at an allow-listed CDN.
+/// Whether `url` is a script on one of CDNS: https, no user name before the host, exactly that
+/// host, and a path under the listed one. A look-alike host (cdn.tailwindcss.com.evil.example), a
+/// user name that makes the real host another (cdn.tailwindcss.com@evil.example), plain http and
+/// a jsdelivr path outside /npm/ are not, so the scan never fetches from a host outside the list.
+pub fn cdn_url(url: &str) -> bool {
+    let Ok(u) = tauri::Url::parse(url.trim()) else { return false };
+    if u.scheme() != "https" || !u.username().is_empty() || u.password().is_some() || u.port().is_some() {
+        return false;
+    }
+    let Some(host) = u.host_str() else { return false };
+    CDNS.iter().filter_map(|c| tauri::Url::parse(c).ok()).any(|c| c.host_str() == Some(host) && u.path().starts_with(c.path()))
+}
+
+/// The spans of script src values that point at an allow-listed CDN (`cdn_url`).
 pub fn cdn_scripts(html: &str) -> Vec<(usize, usize)> {
     let low = html.to_ascii_lowercase();
     let b = html.as_bytes();
@@ -244,7 +349,7 @@ pub fn cdn_scripts(html: &str) -> Vec<(usize, usize)> {
         while i < close && (if let Some(q) = q { b[i] != q } else { !b[i].is_ascii_whitespace() }) {
             i += 1;
         }
-        if CDNS.iter().any(|c| low[start..i].starts_with(c)) {
+        if cdn_url(&unescape(&html[start..i])) {
             out.push((start, i));
         }
     }
@@ -279,36 +384,375 @@ fn proxied(plan: &crate::resources::app_http::Plan, b: reqwest::ClientBuilder) -
     Ok(if plan.http1 { b.http1_only() } else { b })
 }
 
-/// Fetches one CDN script for an entry, within the size cap; None on any failure.
+/// The most redirects one script fetch follows (`follow_cdn_redirect`).
+const MAX_REDIRECTS: usize = 5;
+
+/// Whether a script fetch that began at `first` follows a redirect to `next`, `hops` requests in:
+/// only to an address `cdn_url` accepts (https, no user name, a listed path) on the very host the
+/// fetch began on, and only for a few hops. The CDNs answer their own documented tags this way
+/// (cdn.tailwindcss.com sends 302 to /3.4.17, unpkg a version range to the exact version), so
+/// refusing every redirect would leave those pages needing the network; a redirect to another
+/// host, even a listed one, off the list, or down to plain http, is never followed.
+fn follow_cdn_redirect(first: &str, next: &str, hops: usize) -> bool {
+    let host = |u: &str| tauri::Url::parse(u).ok().and_then(|u| u.host_str().map(str::to_owned));
+    hops <= MAX_REDIRECTS && cdn_url(next) && host(first).is_some() && host(first) == host(next)
+}
+
+/// Fetches one CDN script for an entry, within the size cap; None on any failure. Only an address
+/// `cdn_url` accepts is asked for, a redirect is followed only to another such address
+/// (`follow_cdn_redirect`; a stopped one answers 3xx, which is not a success), and the body is read a chunk at a time and dropped the moment it passes the cap, so a reply without
+/// a Content-Length cannot fill memory for the whole 20 s timeout first.
 pub fn fetch_script(app: &tauri::AppHandle, url: &str) -> Option<Vec<u8>> {
-    if !CDNS.iter().any(|c| url.starts_with(c)) {
+    if !cdn_url(url) {
         return None;
     }
     // T-323-b (APP-032): through the saved proxy; a setting that cannot be used fetches nothing.
     let plan = crate::resources::app_http::plan_for(app, &url.parse().ok()?).ok()?;
-    let builder = proxied(&plan, reqwest::Client::builder()).ok()?;
+    let builder = proxied(&plan, reqwest::Client::builder().redirect(reqwest::redirect::Policy::custom(|a| {
+        let first = a.previous().first().map_or("", |u| u.as_str());
+        if follow_cdn_redirect(first, a.url().as_str(), a.previous().len()) {
+            a.follow()
+        } else {
+            a.stop()
+        }
+    }))).ok()?;
     tauri::async_runtime::block_on(async {
         let client = builder.timeout(std::time::Duration::from_secs(20)).build().ok()?;
-        let r = client.get(url).send().await.ok()?;
+        let mut r = client.get(url).send().await.ok()?;
         if !r.status().is_success() || r.content_length().is_some_and(|n| n > MAX_SCRIPT as u64) {
             return None;
         }
-        let body = r.bytes().await.ok()?;
-        (body.len() <= MAX_SCRIPT).then(|| body.to_vec())
+        let mut body = Vec::new();
+        while let Some(chunk) = r.chunk().await.ok()? {
+            if body.len() + chunk.len() > MAX_SCRIPT {
+                return None;
+            }
+            body.extend_from_slice(&chunk);
+        }
+        Some(body)
     })
+}
+
+/// Whether a Windows reparse tag is a cloud-files placeholder: IO_REPARSE_TAG_CLOUD (0x9000001A) and
+/// CLOUD_1 to CLOUD_F (0x9000_x01A), the tags OneDrive Files On-Demand puts on a file, fully on the
+/// disk or not. Only these are kept as the file itself. A symlink (0xA000000C) or a junction
+/// (0xA0000003) names another file; any other tag (deduplication, WOF, app-exec links, a tag this
+/// code has never seen) is refused too, because it is unknown what opening it reaches. Pure, so it
+/// is tested everywhere.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn reparse_is_cloud_file(tag: u32) -> bool {
+    tag & 0xFFFF_0FFF == 0x9000_001A
+}
+
+/// Whether the real path of an opened file is acceptable: not on a network share, and (when the caller
+/// names a root) under it.
+fn real_path_ok(real: &Path, root: Option<&Path>) -> bool {
+    !on_network_share(real) && root.is_none_or(|r| path_under(real, r))
+}
+
+/// `real` is `root` or inside it. Windows paths differ by case only, so they are compared in lower case.
+fn path_under(real: &Path, root: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        let lower = |p: &Path| PathBuf::from(p.to_string_lossy().to_lowercase());
+        lower(real).starts_with(lower(root))
+    }
+    #[cfg(not(windows))]
+    {
+        real.starts_with(root)
+    }
+}
+
+/// A small counting gate: at most `max` holders at once. Holders are counted, not sized: what bounds
+/// the memory is the size cap on each read (`CHUNK`, `WHOLE_MAX`) times `max`. A caller that finds the
+/// gate full waits (parking the thread it runs on), but only while fewer than `max_waiting` others
+/// already wait; past that it is told to give up, so a flood cannot park every blocking thread.
+/// (std only; tokio is not a direct dependency.)
+pub struct Gate {
+    state: std::sync::Mutex<GateState>,
+    freed: std::sync::Condvar,
+    max: usize,
+}
+
+struct GateState {
+    held: usize,
+    waiting: usize,
+}
+
+pub struct GateGuard<'a>(&'a Gate);
+
+impl Gate {
+    pub const fn new(max: usize) -> Self {
+        Gate { state: std::sync::Mutex::new(GateState { held: 0, waiting: 0 }), freed: std::sync::Condvar::new(), max }
+    }
+
+    /// Takes a free slot; when none is free, waits for one unless `max_waiting` callers already wait,
+    /// then None. The slot is given back when the guard drops.
+    pub fn enter_bounded(&self, max_waiting: usize) -> Option<GateGuard<'_>> {
+        let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if s.held >= self.max {
+            if s.waiting >= max_waiting {
+                return None;
+            }
+            s.waiting += 1;
+            while s.held >= self.max {
+                s = self.freed.wait(s).unwrap_or_else(|e| e.into_inner());
+            }
+            s.waiting -= 1;
+        }
+        s.held += 1;
+        Some(GateGuard(self))
+    }
+}
+
+impl Drop for GateGuard<'_> {
+    fn drop(&mut self) {
+        let mut s = self.0.state.lock().unwrap_or_else(|e| e.into_inner());
+        s.held -= 1;
+        self.0.freed.notify_one();
+    }
+}
+
+/// The scheme's reads in flight. This bounds how many run at once (4), not how big each is: a ranged
+/// or first-chunk read is at most `CHUNK` (8 MB), a whole read at most `WHOLE_MAX` (20 MB), so at most
+/// about 80 MB of file data is in memory at once. Up to `MAX_WAITING` (64) more requests wait, one
+/// blocking thread each; past that `serve` answers 503.
+static READS: Gate = Gate::new(4);
+
+/// The folder a page's assets are copied from: the parent of the page's own real path (read from the
+/// handle that was opened, not re-derived from the path), and only when that folder is local and under
+/// the workspace `root` (T-624 round 4).
+fn asset_folder(real_page: &Path, root: Option<&Path>) -> Option<PathBuf> {
+    let folder = real_page.parent()?;
+    real_path_ok(folder, root).then(|| folder.to_path_buf())
+}
+
+/// The real path of an opened page: from its handle on Windows; elsewhere the path resolved now (the
+/// O_NOFOLLOW open already refused a link in the last place).
+fn page_real_path(file: &fs::File, src: &Path) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        let _ = src;
+        windows_file::final_path(file)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = file;
+        fs::canonicalize(src).ok()
+    }
+}
+
+/// One source file, opened once and judged by its handle, so what is checked is what is copied. Its
+/// real path is read from the handle too (GetFinalPathNameByHandleW), after every link on the way has
+/// been followed or swapped, and has to be local and, when `root` is given, under it: a junction in
+/// the middle of the path, or one swapped in after the path was checked, cannot reach a network share
+/// or a file outside the workspace (T-624 round 3). The open itself can still follow an intermediate
+/// junction to a share before this check runs, so the guarantee is that a share is never kept, not that
+/// it is never touched. A link where the file should be is refused at open (O_NOFOLLOW; on Windows the reparse point is
+/// opened itself and refused unless its tag is a cloud placeholder), a folder or device is not a file,
+/// and a hard link to a file elsewhere (a second name for the same data, which no path check can
+/// see) is refused by its link count. The metadata is the handle's (fstat), never a second look at
+/// the path. On Windows a cloud placeholder (a OneDrive file) is opened again without
+/// the reparse flag so the cloud filter can bring it down, and read only if that second handle is
+/// the same file as the first (same volume and file index), so a link swapped in between is refused.
+fn open_source(path: &Path, name: &str, root: Option<&Path>) -> Result<(fs::File, fs::Metadata), String> {
+    let mut opts = fs::File::options();
+    opts.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.custom_flags(libc::O_NOFOLLOW);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        opts.custom_flags(windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    let file = opts.open(path).map_err(|e| format!("could not read {name}: {e}"))?;
+    #[cfg(windows)]
+    let file = {
+        let tag = windows_file::reparse_tag(&file).map_err(|e| format!("could not read {name}: {e}"))?;
+        match tag {
+            None => file,
+            Some(tag) if !reparse_is_cloud_file(tag) => return Err(format!("{name} is a link, not a file")),
+            Some(_) => {
+                let again = fs::File::open(path).map_err(|e| format!("could not read {name}: {e}"))?;
+                if windows_file::identity(&file).is_none() || windows_file::identity(&file) != windows_file::identity(&again) {
+                    return Err(format!("{name} changed while it was being read"));
+                }
+                again
+            }
+        }
+    };
+    #[cfg(windows)]
+    {
+        let real = windows_file::final_path(&file).ok_or_else(|| format!("could not read {name}: its real path is unknown"))?;
+        if !real_path_ok(&real, root) {
+            return Err(format!("{name} is on a network share or outside the folder it has to stay in, so it is not kept"));
+        }
+    }
+    // The handle's real path is a Windows call; the other platforms keep the O_NOFOLLOW check above.
+    #[cfg(not(windows))]
+    let _ = root;
+    let md = file.metadata().map_err(|e| format!("could not read {name}: {e}"))?;
+    if !md.is_file() {
+        return Err(format!("could not read {name}: it is not a file"));
+    }
+    if links_of(&file, &md) > 1 {
+        return Err(format!("{name} is a hard link to another file, so it is not kept"));
+    }
+    Ok((file, md))
+}
+
+/// How many names a file has; a count that could not be read is treated as more than one.
+fn link_count(n: Option<u64>) -> u64 {
+    n.unwrap_or(u64::MAX)
+}
+
+#[cfg(unix)]
+fn links_of(_file: &fs::File, md: &fs::Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt;
+    link_count(Some(md.nlink()))
+}
+
+#[cfg(windows)]
+fn links_of(file: &fs::File, _md: &fs::Metadata) -> u64 {
+    link_count(windows_file::info(file).map(|i| i.nNumberOfLinks as u64))
+}
+
+/// What a Windows file handle says about itself.
+#[cfg(windows)]
+mod windows_file {
+    use std::fs;
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::{FileAttributeTagInfo, GetFileInformationByHandle, GetFinalPathNameByHandleW, GetFileInformationByHandleEx, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_REPARSE_POINT, FILE_ATTRIBUTE_TAG_INFO};
+
+    pub fn info(file: &fs::File) -> Option<BY_HANDLE_FILE_INFORMATION> {
+        // SAFETY: an open handle and a zeroed struct of the documented size, which the call fills.
+        unsafe {
+            let mut info: BY_HANDLE_FILE_INFORMATION = std::mem::zeroed();
+            (GetFileInformationByHandle(file.as_raw_handle() as _, &mut info) != 0).then_some(info)
+        }
+    }
+
+    /// The handle's real path (`\\?\C:\...`, or `\\?\UNC\...` on a share), with every link resolved.
+    pub fn final_path(file: &fs::File) -> Option<std::path::PathBuf> {
+        use std::os::windows::ffi::OsStringExt;
+        let mut buf = vec![0u16; 1024];
+        loop {
+            // SAFETY: an open handle and a buffer of the length passed; flags 0 are VOLUME_NAME_DOS | FILE_NAME_NORMALIZED.
+            let n = unsafe { GetFinalPathNameByHandleW(file.as_raw_handle() as _, buf.as_mut_ptr(), buf.len() as u32, 0) } as usize;
+            if n == 0 {
+                return None;
+            }
+            if n < buf.len() {
+                buf.truncate(n);
+                return Some(std::ffi::OsString::from_wide(&buf).into());
+            }
+            buf.resize(n + 1, 0);
+        }
+    }
+
+    /// The volume and file index: the same pair is the same file, whatever path reached it.
+    pub fn identity(file: &fs::File) -> Option<(u32, u32, u32)> {
+        info(file).map(|i| (i.dwVolumeSerialNumber, i.nFileIndexHigh, i.nFileIndexLow))
+    }
+
+    /// The handle's reparse tag, or None when it is not a reparse point.
+    pub fn reparse_tag(file: &fs::File) -> std::io::Result<Option<u32>> {
+        // SAFETY: an open handle and a zeroed FILE_ATTRIBUTE_TAG_INFO, with its size passed, for the
+        // FileAttributeTagInfo class, which fills exactly that struct.
+        unsafe {
+            let mut tag: FILE_ATTRIBUTE_TAG_INFO = std::mem::zeroed();
+            if GetFileInformationByHandleEx(file.as_raw_handle() as _, FileAttributeTagInfo, &mut tag as *mut _ as *mut core::ffi::c_void, std::mem::size_of::<FILE_ATTRIBUTE_TAG_INFO>() as u32) == 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok((tag.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0).then_some(tag.ReparseTag))
+        }
+    }
+}
+
+/// Copies at most `cap` bytes of `file` into `to` and returns how many; a file that grew past the
+/// cap after its length was read is an error, never a cut-short copy.
+fn copy_capped(file: &mut fs::File, to: &Path, cap: u64, name: &str) -> Result<u64, String> {
+    let mut dest = fs::File::create(to).map_err(|e| e.to_string())?;
+    let n = std::io::copy(&mut file.by_ref().take(cap + 1), &mut dest).map_err(|e| format!("could not read {name}: {e}"))?;
+    if n > cap {
+        drop(dest);
+        let _ = fs::remove_file(to);
+        return Err(format!("{name} is larger than {} MB", cap / (1024 * 1024)));
+    }
+    Ok(n)
 }
 
 impl Library {
     pub fn new(dir: PathBuf) -> Library {
-        Library { dir, lock: Mutex::new(()) }
+        let lib = Library { dir, lock: Mutex::new(()) };
+        lib.prune_unviewable();
+        lib
+    }
+
+    /// Drops the entries this build cannot list, with their stored folders: a document, a PDF, an
+    /// audio track or an office file kept by an older build or by PR #37's head (DT-C78). Without
+    /// this, such a row would sit in `library.json` forever, unlisted and unremovable, because the
+    /// viewer can never learn its id. Runs once, when the library is opened. The index is saved
+    /// first: a folder is only deleted once the row that named it is gone from a written index.
+    fn prune_unviewable(&self) {
+        let _g = self.lock.lock();
+        let Ok(list) = self.read() else { return };
+        let keep: Vec<Entry> = list.iter().filter(|e| viewable(&e.kind)).cloned().collect();
+        if keep.len() == list.len() {
+            return;
+        }
+        if self.write(&keep).is_err() {
+            return; // nothing is deleted while the index still names it
+        }
+        for e in list.iter().filter(|e| !viewable(&e.kind)) {
+            if !e.id.is_empty() && e.id.bytes().all(|c| c.is_ascii_hexdigit()) {
+                let _ = fs::remove_dir_all(self.dir.join(&e.id));
+            }
+        }
     }
 
     fn index(&self) -> PathBuf {
         self.dir.join("library.json")
     }
 
-    fn read(&self) -> Vec<Entry> {
-        fs::read(self.index()).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    /// Reads the index. A file that is not there is an empty library, which is the normal first run.
+    /// A file that is there but cannot be read or parsed is an **Err** naming why, never an empty
+    /// list: reading a damaged index as empty makes the next write (a remove, or a Claude publish
+    /// through `add`) replace every entry with one row (C14-R4-01). Its bytes are copied beside it
+    /// once per run, so the damaged index is still there to look at after anything else goes wrong.
+    fn read(&self) -> Result<Vec<Entry>, String> {
+        let path = self.index();
+        let bytes = match fs::read(&path) {
+            Ok(b) => b,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(e) => return Err(self.unreadable(&path, &format!("could not be read ({e})"))),
+        };
+        serde_json::from_slice(&bytes).map_err(|e| self.unreadable(&path, &format!("could not be read ({e})")))
+    }
+
+    /// The sentence the library page shows for an index it cannot use; `why` says what failed.
+    fn unreadable(&self, path: &Path, why: &str) -> String {
+        match self.keep_aside(path) {
+            Some(aside) => format!("the artifacts library index {why}; its bytes are kept at {} and nothing was saved over it", aside.display()),
+            None => format!("the artifacts library index {why}, and a copy of it could not be kept aside, so nothing was saved over it"),
+        }
+    }
+
+    /// A copy of an index that could not be parsed, `library.json.corrupt-<ms>`, made once per path
+    /// per run so a page that refreshes every few seconds does not fill the folder with copies.
+    fn keep_aside(&self, path: &Path) -> Option<PathBuf> {
+        static ASIDES: OnceLock<Mutex<HashMap<PathBuf, PathBuf>>> = OnceLock::new();
+        let mut made = ASIDES.get_or_init(Default::default).lock().ok()?;
+        if let Some(aside) = made.get(path) {
+            return Some(aside.clone());
+        }
+        let aside = path.with_extension(format!("json.corrupt-{}", now_ms()));
+        fs::copy(path, &aside).ok()?;
+        made.insert(path.to_path_buf(), aside.clone());
+        Some(aside)
     }
 
     fn write(&self, list: &[Entry]) -> Result<(), String> {
@@ -317,51 +761,105 @@ impl Library {
         crate::files::write_text(&self.index(), &String::from_utf8_lossy(&text))
     }
 
-    /// Newest first.
-    pub fn list(&self) -> Vec<Listed> {
+    /// The removed origins the scan must leave alone (see REMOVED). Callers hold `lock`.
+    pub fn removed(&self) -> HashMap<String, (u64, u64)> {
+        fs::read(self.dir.join(REMOVED)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    }
+
+    fn write_removed(&self, map: &HashMap<String, (u64, u64)>) {
+        if map.is_empty() {
+            let _ = fs::remove_file(self.dir.join(REMOVED));
+            return;
+        }
+        if let Ok(text) = serde_json::to_vec_pretty(map) {
+            let _ = fs::create_dir_all(&self.dir);
+            let _ = crate::files::write_text(&self.dir.join(REMOVED), &String::from_utf8_lossy(&text));
+        }
+    }
+
+    /// Forgets the tombstones of `origins` (a file stored again, or one that is gone).
+    fn forget_removed(&self, origins: &[String]) {
+        let mut map = self.removed();
+        let before = map.len();
+        map.retain(|k, _| !origins.contains(k));
+        if map.len() != before {
+            self.write_removed(&map);
+        }
+    }
+
+    /// Newest first, and only the kinds the viewer projects in the app: an entry of a kind an older
+    /// build kept (a document, a PDF, an audio track) is left on disk but never listed (DT-C78).
+    pub fn list(&self) -> Result<Vec<Listed>, String> {
         let _g = self.lock.lock();
-        let mut list = self.read();
+        let mut list = self.read()?;
+        list.retain(|e| viewable(&e.kind));
         list.sort_by_key(|a| std::cmp::Reverse(a.added));
-        list.into_iter().map(|e| Listed { stored: e.state == "ok" && self.dir.join(&e.id).join(&e.page).is_file(), entry: e }).collect()
+        Ok(list.into_iter().map(|e| Listed { stored: e.state == "ok" && self.dir.join(&e.id).join(&e.page).is_file(), entry: e }).collect())
     }
 
     /// Stores a page and the files it points to by relative path inside its own folder, under the
     /// caps, plus copies of the scripts it loads from the allow-listed CDNs (`fetch` gets one).
-    /// A file that is not a page (an image, a document, a PDF) is stored whole, on its own.
+    /// A file that is not a page (an image or a video) is stored whole, on its own. A file the
+    /// viewer cannot project is refused, whatever the caller (Add artifact, the workspace scan, a
+    /// published file): it is not an artifact (DT-C78).
     /// A page on a network share gets an "unavailable" entry without being read, and a path this
     /// machine cannot read (a WSL or SSH machine's) a "remote" one. The newest store of an origin
-    /// replaces the old one; an older one is ignored.
+    /// replaces the old one; an older one is ignored, except that a store naming the Claude session
+    /// that wrote the file replaces a newer workspace-scan one (the 3 s scan can reach the file before
+    /// the Write capture does). A scan's refresh of an entry someone else made keeps who made it: its
+    /// source, session and project.
     pub fn add(&self, src: &Path, from: Origin, fetch: &dyn Fn(&str) -> Option<Vec<u8>>) -> Result<Entry, String> {
+        self.add_in(src, from, fetch, None)
+    }
+
+    pub fn add_in(&self, src: &Path, mut from: Origin, fetch: &dyn Fn(&str) -> Option<Vec<u8>>, root: Option<&Path>) -> Result<Entry, String> {
         let id = id_of(&from.origin);
-        if let Some(newer) = self.read().into_iter().find(|e| e.id == id && e.added > from.at) {
-            return Ok(newer);
+        if let Some(old) = self.read()?.into_iter().find(|e| e.id == id) {
+            if old.added > from.at && !(old.source == "workspace" && from.session.is_some()) {
+                return Ok(old);
+            }
+            if from.source == "workspace" && old.source != "workspace" {
+                from.source = if old.source == "claude" { "claude" } else { "hand" };
+                from.session = old.session;
+                from.project = old.project;
+            }
         }
         let name = file_name(src);
         let kind = kind_of(src);
-        let mut entry = Entry { id: id.clone(), title: name.clone(), source: from.source.into(), kind: kind.into(), origin: from.origin, project: from.project, session: from.session, added: from.at, size: 0, page: name.clone(), state: "unavailable".into() };
+        if !viewable(kind) {
+            return Err(format!("{name} is not an artifact: the viewer shows HTML pages, images and video, and opens nothing else, so it is not kept"));
+        }
+        let mut entry = Entry { id: id.clone(), title: name.clone(), source: from.source.into(), kind: kind.into(), origin: from.origin, project: from.project, session: from.session, added: from.at, size: 0, page: name.clone(), state: "unavailable".into(), stamp: None };
         if !src.is_absolute() {
             entry.state = "remote".into();
         } else if !on_network_share(src) {
-            let len = fs::metadata(src).map_err(|e| format!("could not read {name}: {e}"))?.len();
+            let (mut file, md) = open_source(src, &name, root)?;
+            let len = md.len();
             let cap = if kind == "page" { MAX_PAGE } else { MAX_FILE };
             if len > cap {
                 return Err(format!("{name} is larger than {} MB", cap / (1024 * 1024)));
             }
+            entry.stamp = Some((modified_of(&md), len));
             let tmp = self.dir.join(format!(".new-{id}"));
             let _ = fs::remove_dir_all(&tmp);
             fs::create_dir_all(&tmp).map_err(|e| e.to_string())?;
             let mut size = len;
             if kind == "page" {
-                let html = fs::read(src).map_err(|e| format!("could not read {name}: {e}"))?;
+                let mut html = Vec::with_capacity(len as usize);
+                file.by_ref().take(MAX_PAGE + 1).read_to_end(&mut html).map_err(|e| format!("could not read {name}: {e}"))?;
+                if html.len() as u64 > MAX_PAGE {
+                    return Err(format!("{name} is larger than {} MB", MAX_PAGE / (1024 * 1024)));
+                }
                 let text = String::from_utf8_lossy(&html);
                 if let Some(t) = title_of(&text) {
                     entry.title = t;
                 }
-                size = self.copy_assets(src, &text, &name, &tmp, html.len() as u64);
+                let folder = page_real_path(&file, src).and_then(|real| asset_folder(&real, root));
+                size = self.copy_assets(folder.as_deref(), &text, &name, &tmp, html.len() as u64);
                 let page = vendor_scripts(&text, &tmp, fetch, &mut size);
                 fs::write(tmp.join(&name), page.as_ref().map_or(&html[..], |p| p.as_bytes())).map_err(|e| e.to_string())?;
             } else {
-                fs::copy(src, tmp.join(&name)).map_err(|e| format!("could not read {name}: {e}"))?;
+                copy_capped(&mut file, &tmp.join(&name), MAX_FILE, &name)?;
             }
             entry.size = size;
             let dest = self.dir.join(&id);
@@ -370,58 +868,294 @@ impl Library {
             entry.state = "ok".into();
         }
         let _g = self.lock.lock();
-        let mut list = self.read();
+        // Read again under the lock, and never write over an index that could not be parsed: the
+        // publish path (a Claude Write) lands here with no user action (C14-R4-01).
+        let mut list = self.read()?;
         list.retain(|e| e.id != id);
         list.push(entry.clone());
         self.write(&list)?;
+        // Stored again by hand, by a Claude Write or by the scan: an earlier remove no longer applies.
+        self.forget_removed(std::slice::from_ref(&entry.origin));
         Ok(entry)
     }
 
-    /// Copies what the page points to; returns the stored size. Nothing outside the page's folder.
-    fn copy_assets(&self, src: &Path, html: &str, page: &str, tmp: &Path, mut total: u64) -> u64 {
-        let Some(folder) = src.parent().and_then(|p| fs::canonicalize(p).ok()) else { return total };
+    /// Copies what the page points to; returns the stored size. `folder` is the opened page's own real
+    /// folder, already checked to be local and under the workspace (`asset_folder`); none means no assets.
+    /// Nothing outside the page's folder,
+    /// and each asset is opened once and copied from that handle (`open_source`), so a link put in
+    /// its place after the path was checked is not followed.
+    fn copy_assets(&self, folder: Option<&Path>, html: &str, page: &str, tmp: &Path, mut total: u64) -> u64 {
+        let Some(folder) = folder else { return total };
         let mut seen = std::collections::HashSet::from([page.to_string()]);
+        let mut asked = std::collections::HashSet::new();
+        let mut misses = 0;
         for r in relative_refs(html) {
-            if seen.len() > MAX_ASSETS {
+            if seen.len() > MAX_ASSETS || asked.len() >= MAX_REFS || misses >= MAX_MISSES {
                 break;
             }
-            let Ok(real) = fs::canonicalize(folder.join(&r)) else { continue };
-            let Ok(rel) = real.strip_prefix(&folder) else { continue }; // outside the page's own folder
+            if !asked.insert(r.clone()) {
+                continue;
+            }
+            // The path is built from the folder and the plain parts of the reference only (`inside`), and
+            // nothing is canonicalised before it is opened: a path that is not under the folder is never
+            // handed to the file system. The opened handle then says where the file really is.
+            let src = inside(folder, &r);
+            let opened = src.as_deref().and_then(|src| open_source(src, &r, Some(folder)).ok().map(|o| (src, o)));
+            let Some((src, (mut file, md))) = opened else {
+                misses += 1;
+                continue;
+            };
+            let Some(real) = page_real_path(&file, src) else {
+                misses += 1;
+                continue;
+            };
+            let Ok(rel) = real.strip_prefix(folder) else {
+                misses += 1; // the handle is outside the page's own folder
+                continue;
+            };
             let rel = rel.to_string_lossy().replace('\\', "/");
-            let Ok(md) = fs::metadata(&real) else { continue };
-            if !md.is_file() || md.len() > MAX_ASSET || total + md.len() > MAX_TOTAL || !seen.insert(rel.clone()) {
+            misses = 0;
+            if md.len() > MAX_ASSET || total + md.len() > MAX_TOTAL || !seen.insert(rel.clone()) {
                 continue;
             }
             let Some(to) = inside(tmp, &rel) else { continue };
-            if to.parent().is_some_and(|p| fs::create_dir_all(p).is_ok()) && fs::copy(&real, &to).is_ok() {
-                total += md.len();
+            if to.parent().is_some_and(|p| fs::create_dir_all(p).is_ok()) {
+                if let Ok(n) = copy_capped(&mut file, &to, MAX_ASSET, &rel) {
+                    total += n;
+                }
             }
         }
         total
     }
 
+    /// Drops the entry and its stored copy. When its origin is a file that is still there, the scan
+    /// is told not to bring that exact file back (REMOVED); a URL origin leaves no such note. Only
+    /// an entry the library read ("ok") is looked at again: an "unavailable" one sits on a network
+    /// share, which the library never touches (DT-R21; a stat there can block for the share's
+    /// timeout), and a "remote" one is on a machine this one cannot read; neither has a stamp to
+    /// note, and the scan never imports from either.
     pub fn remove(&self, id: &str) -> Result<(), String> {
         let _g = self.lock.lock();
-        let mut list = self.read();
+        let mut list = self.read()?;
+        let gone: Vec<Entry> = list.iter().filter(|e| e.id == id).cloned().collect();
         list.retain(|e| e.id != id);
         self.write(&list)?;
         if id.bytes().all(|c| c.is_ascii_hexdigit()) && !id.is_empty() {
             let _ = fs::remove_dir_all(self.dir.join(id));
         }
+        let mut removed = self.removed();
+        let mut noted = false;
+        for e in gone.into_iter().filter(|e| e.state == "ok") {
+            let path = Path::new(&e.origin);
+            if path.is_absolute() && !on_network_share(path) {
+                if let Some(meta) = fs::metadata(path).ok().filter(|m| m.is_file()) {
+                    removed.insert(e.origin.clone(), (modified_ms(path), meta.len()));
+                    noted = true;
+                }
+            }
+        }
+        if noted {
+            self.write_removed(&removed);
+        }
         Ok(())
     }
 
     /// A stored file for the viewer: `/<id>/<path>`, never outside that entry's folder.
-    pub fn file(&self, url_path: &str) -> Option<(Vec<u8>, &'static str)> {
+    pub fn open(&self, url_path: &str) -> Option<(PathBuf, &'static str)> {
         let path = pct(url_path);
         let (id, rest) = path.trim_start_matches('/').split_once('/')?;
         if id.len() != 16 || !id.bytes().all(|c| c.is_ascii_hexdigit()) {
             return None;
         }
         let file = inside(&self.dir.join(id), rest)?;
-        let body = fs::read(&file).ok()?;
-        Some((body, mime(rest)))
+        file.is_file().then(|| (file, mime(rest)))
     }
+
+    /// The whole stored file, for a page or a small one-shot read.
+    pub fn file(&self, url_path: &str) -> Option<(Vec<u8>, &'static str)> {
+        let (file, kind) = self.open(url_path)?;
+        Some((fs::read(file).ok()?, kind))
+    }
+
+    /// The library's own copy of an entry's page (never the workspace file it came from), when the
+    /// entry was read and the copy is still there.
+    pub fn stored_file(&self, id: &str) -> Option<PathBuf> {
+        let _g = self.lock.lock();
+        let e = self.read().ok()?.into_iter().find(|e| e.id == id && e.state == "ok")?;
+        let file = inside(&self.dir.join(&e.id), &e.page)?;
+        file.is_file().then_some(file)
+    }
+}
+
+/// The folder a workspace keeps its finished artifacts in: `<workspace>/artifacts`.
+pub const WORKSPACE_DIR: &str = "artifacts";
+
+/// The most files one workspace's `artifacts/` folder brings into the library, and the most bytes
+/// of them it keeps there. A cloned repository can hold thousands of small files, or many large
+/// copies of one blob, there; past these the rest is left out and the page says so once.
+pub const MAX_WORKSPACE_FILES: usize = 200;
+pub const MAX_WORKSPACE_BYTES: u64 = 1024 * 1024 * 1024;
+
+/// Every file directly in `<workspace>/artifacts`, in a stable order, whatever its extension, and
+/// whether there were more than MAX_WORKSPACE_FILES (only the first that many by name are listed).
+/// Subfolders are not entries: they hold a page's own assets (copied with the page) or a test run's
+/// screenshots, not a second deliverable. The scan never leaves the folder: a link or junction where
+/// the folder should be is not followed (read_dir would follow it; symlink_metadata's is_dir is false
+/// for one, the idiom files::list_templates uses), a linked file inside it is not a file, and each
+/// file's real path has to sit under the workspace's. A dotfile or a half-written download is not an
+/// artifact.
+pub fn workspace_files(workspace: &Path) -> (Vec<PathBuf>, bool) {
+    let dir = workspace.join(WORKSPACE_DIR);
+    if !fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir()) {
+        return (Vec::new(), false);
+    }
+    let Ok(real_ws) = fs::canonicalize(workspace) else { return (Vec::new(), false) };
+    let mut out: Vec<PathBuf> = fs::read_dir(&dir).into_iter().flatten().flatten().filter(|e| e.file_type().is_ok_and(|kind| kind.is_file())).map(|e| e.path()).filter(|p| is_workspace_file(p)).collect();
+    out.sort();
+    let over = out.len() > MAX_WORKSPACE_FILES;
+    out.truncate(MAX_WORKSPACE_FILES);
+    // Real paths last, so a folder of thousands of names costs one stat each only for those kept.
+    out.retain(|path| fs::canonicalize(path).is_ok_and(|real| real.starts_with(&real_ws)));
+    (out, over)
+}
+
+fn modified_of(md: &fs::Metadata) -> u64 {
+    md.modified().ok().and_then(|t| t.duration_since(UNIX_EPOCH).ok()).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+fn modified_ms(path: &Path) -> u64 {
+    fs::metadata(path).map(|m| modified_of(&m)).unwrap_or(0)
+}
+
+/// Last (modified, size) seen for each workspace file, so the page's 3 s scan does not re-add a file
+/// that has not changed. One map for the app's life; the library is the durable record.
+static SCANNED: OnceLock<Mutex<HashMap<String, (u64, u64)>>> = OnceLock::new();
+
+/// What one scan did: how many entries it stored or refreshed, and one reason per file it could
+/// not keep (over the cap, unreadable), so the page can tell the user once.
+#[derive(Debug, Default, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Scanned {
+    pub changed: usize,
+    pub skipped: Vec<String>,
+}
+
+/// Imports every kept file under `<workspace>/artifacts`, one entry per file. A changed file
+/// (a new modified time or length, even an older time: a restore from a backup) refreshes its
+/// origin instead of adding a second entry; the exact file the library holds, or one the user
+/// removed since, is left alone. `seen` is the caller's memory of files it has judged, so a file
+/// that cannot be kept is reported once and tried again only when it changes.
+pub fn scan_workspace(lib: &Library, workspace: &Path, project: Option<String>, fetch: &dyn Fn(&str) -> Option<Vec<u8>>, seen: &mut HashMap<String, (u64, u64)>) -> Scanned {
+    scan_capped(lib, workspace, project, fetch, seen, MAX_WORKSPACE_BYTES)
+}
+
+/// `scan_workspace` with the byte cap passed in, so a test can reach it without a gigabyte of files.
+/// The cap counts the folder's files the library already holds as well as the ones stored now, so a
+/// later tick does not top the library up past it.
+fn scan_capped(lib: &Library, workspace: &Path, project: Option<String>, fetch: &dyn Fn(&str) -> Option<Vec<u8>>, seen: &mut HashMap<String, (u64, u64)>, max_bytes: u64) -> Scanned {
+    // The real folder, judged as a path on disk: an ancestor junction to a share is a share, whatever the typed path says.
+    let Ok(real_ws) = fs::canonicalize(workspace) else { return Scanned::default() };
+    if on_network_share(&real_ws) {
+        return Scanned::default();
+    }
+    let project = project.filter(|p| !p.trim().is_empty()).or_else(|| workspace.file_name().map(|n| n.to_string_lossy().into_owned()));
+    let mut out = Scanned::default();
+    // An index this build cannot read is not imported into: the file list that would come back is a
+    // guess, and storing into it would replace whatever the damaged index held (C14-R4-01).
+    let known: HashMap<String, (Option<(u64, u64)>, u64)> = match lib.list() {
+        Ok(list) => list.into_iter().map(|e| (e.entry.origin, (e.entry.stamp, e.entry.size))).collect(),
+        Err(e) => {
+            out.skipped.push(e);
+            return out;
+        }
+    };
+    let removed = {
+        let _g = lib.lock.lock();
+        lib.removed()
+    };
+    let (files, over) = workspace_files(workspace);
+    if over {
+        out.skipped.push(format!("the artifacts folder holds more than {MAX_WORKSPACE_FILES} files; only the first {MAX_WORKSPACE_FILES} by name are kept"));
+    }
+    // Everything this folder already has in the library counts first, whatever order the files come in.
+    let mut kept: u64 = files.iter().filter_map(|f| known.get(f.to_string_lossy().as_ref())).map(|k| k.1).sum();
+    let mut full = false;
+    for file in files {
+        let Ok(meta) = fs::metadata(&file) else { continue };
+        let stamp = (modified_ms(&file), meta.len());
+        let key = file.to_string_lossy().into_owned();
+        if seen.get(&key) == Some(&stamp) {
+            continue;
+        }
+        // The library already holds this exact file, or the user removed this exact file: move on.
+        if known.get(&key).map(|k| k.0) == Some(Some(stamp)) || removed.get(&key) == Some(&stamp) {
+            seen.insert(key, stamp);
+            continue;
+        }
+        // Over the folder's byte cap: left out, not remembered in `seen`, so it is stored once room is made.
+        let held = kept - known.get(&key).map_or(0, |k| k.1);
+        if held + stamp.1 > max_bytes {
+            if !full {
+                full = true;
+                out.skipped.push(format!("the artifacts folder holds more than {} MB; the files past that are not kept", max_bytes / (1024 * 1024)));
+            }
+            continue;
+        }
+        // Added now: `added` is when the entry was stored, the file's own time lives in its stamp.
+        let from = Origin { origin: key.clone(), source: "workspace", project: project.clone(), session: None, at: now_ms() };
+        match lib.add_in(&file, from, fetch, Some(&real_ws)) {
+            Ok(entry) => {
+                out.changed += 1;
+                kept = held + entry.size;
+            }
+            Err(e) => {
+                eprintln!("artifacts: could not keep {}: {e}", file.display());
+                out.skipped.push(e);
+            }
+        }
+        seen.insert(key, stamp);
+    }
+    // A removed file that is gone from the folder needs no note any more. A note never names a share
+    // (remove skips them), and one that somehow does is left alone rather than stat'ed every tick.
+    let gone: Vec<String> = removed.keys().filter(|k| !on_network_share(Path::new(k)) && !Path::new(k).is_file()).cloned().collect();
+    if !gone.is_empty() {
+        let _g = lib.lock.lock();
+        lib.forget_removed(&gone);
+    }
+    out
+}
+
+/// Scans the active workspace's `artifacts/` folder. The Artifacts page calls this when it opens and
+/// every few seconds, so a page an agent writes lands in the tab without Add artifact. A network
+/// share is left alone (DT-R21); the library never reads one. Async and on a blocking worker, like
+/// `artifact_add`: the scan copies files of up to MAX_FILE and fetches a page's CDN scripts with a
+/// 20 s timeout each, none of which may hold the window's thread (and the path checks stat a drive
+/// that may be gone). A tick that finds the last scan still running does nothing; the next retries.
+#[tauri::command]
+pub async fn artifacts_scan(app: tauri::AppHandle, path: String, project: Option<String>) -> Result<Scanned, String> {
+    use tauri::{Emitter, Manager};
+    tauri::async_runtime::spawn_blocking(move || {
+        let workspace = PathBuf::from(path);
+        // The share check is a string test, so it comes first: a UNC path is never stat'ed here.
+        if !workspace.is_absolute() || on_network_share(&workspace) || !workspace.is_dir() {
+            return Ok(Scanned::default());
+        }
+        let lib = app.state::<Library>();
+        let scanned = {
+            let mut seen = match SCANNED.get_or_init(Default::default).try_lock() {
+                Ok(seen) => seen,
+                Err(std::sync::TryLockError::WouldBlock) => return Ok(Scanned::default()),
+                Err(std::sync::TryLockError::Poisoned(e)) => e.into_inner(),
+            };
+            scan_workspace(lib.inner(), &workspace, project, &|u| fetch_script(&app, u), &mut seen)
+        };
+        if scanned.changed > 0 {
+            let _ = app.emit(crate::capture::EVENT, ());
+        }
+        Ok(scanned)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn mime(path: &str) -> &'static str {
@@ -444,6 +1178,23 @@ fn mime(path: &str) -> &'static str {
         "txt" | "md" | "log" => "text/plain; charset=utf-8",
         "csv" => "text/csv; charset=utf-8",
         "pdf" => "application/pdf",
+        "mp4" | "m4v" => "video/mp4",
+        "webm" => "video/webm",
+        "mov" => "video/quicktime",
+        "ogv" => "video/ogg",
+        "mkv" => "video/x-matroska",
+        "avi" => "video/x-msvideo",
+        "mp3" => "audio/mpeg",
+        "wav" => "audio/wav",
+        "m4a" => "audio/mp4",
+        "ogg" | "oga" => "audio/ogg",
+        "flac" => "audio/flac",
+        "aac" => "audio/aac",
+        "opus" => "audio/opus",
+        "zip" => "application/zip",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         _ => "application/octet-stream",
     }
 }
@@ -457,28 +1208,139 @@ fn link_script(base: &str) -> String {
     )
 }
 
+/// What a `Range` header asks for.
+#[derive(Debug, PartialEq)]
+enum RangeAsk {
+    /// No usable range: the whole file.
+    Whole,
+    /// These bytes, both ends inclusive and clamped to the file.
+    Part(u64, u64),
+    /// A start at or past the end of the file: 416.
+    Past,
+}
+
+/// A `Range: bytes=start-end` request against a file of `total` bytes, clamped to the file. A
+/// suffix (`bytes=-N`) asks for the last N bytes; malformed, reversed and multi-part ranges get the
+/// whole file instead of an error, which every browser can still play; a start past the end is a 416.
+fn parse_range(header: &str, total: u64) -> RangeAsk {
+    let Some(spec) = header.trim().strip_prefix("bytes=") else { return RangeAsk::Whole };
+    if spec.contains(',') || total == 0 {
+        return RangeAsk::Whole;
+    }
+    let Some((a, b)) = spec.split_once('-') else { return RangeAsk::Whole };
+    if a.trim().is_empty() {
+        return match b.trim().parse::<u64>() {
+            Ok(n) if n > 0 => RangeAsk::Part(total.saturating_sub(n), total - 1),
+            _ => RangeAsk::Whole,
+        };
+    }
+    let Ok(start) = a.trim().parse::<u64>() else { return RangeAsk::Whole };
+    let end = if b.trim().is_empty() {
+        None
+    } else {
+        match b.trim().parse::<u64>() {
+            Ok(end) => Some(end),
+            Err(_) => return RangeAsk::Whole,
+        }
+    };
+    if end.is_some_and(|end| end < start) {
+        return RangeAsk::Whole;
+    }
+    if start >= total {
+        return RangeAsk::Past;
+    }
+    RangeAsk::Part(start, end.map_or(total - 1, |end| end.min(total - 1)))
+}
+
+fn read_range(file: &Path, start: u64, end: u64) -> Option<Vec<u8>> {
+    let mut f = fs::File::open(file).ok()?;
+    f.seek(SeekFrom::Start(start)).ok()?;
+    let mut body = vec![0; (end - start + 1) as usize];
+    f.read_exact(&mut body).ok()?;
+    Some(body)
+}
+
 /// The `kolux-artifact` scheme: the entry's files with a policy that lets the page load only them.
+/// Media answers byte ranges, so a video or an audio track can seek without loading the whole file.
+/// A ranged answer is at most a chunk. Video or audio bigger than a chunk answers its first chunk as a
+/// 206 even when no range was asked, and the media element asks for the rest; any other file asked for
+/// whole is answered whole (an <img> or a font does not re-ask, so a 206 would truncate it) up to
+/// `WHOLE_MAX` (20 MB); a bigger one is a 413 with a text reason. A page (HTML) is answered whole
+/// because the link script is appended to it; it is stored at 10 MB at most, so it is always under that cap.
+/// The 206 to an un-ranged video or audio request is a deliberate trade-off: RFC 9110 lets a server
+/// ignore a Range header but gives no way to answer a request that has none with a part, and the other
+/// choices (read 100 MB at once, or refuse the clip) are worse; every media element re-asks with a
+/// range from where the answer ended.
+/// Reads take a slot (`READS`, 4 at once): that bounds how many are in memory together (each at most a
+/// chunk or `WHOLE_MAX`), not their size. Up to `MAX_WAITING` (64) more requests wait, one blocking
+/// thread each; the next gets a 503 with `Retry-After`. Only the app-owned library folder is read:
+/// `Library::open` resolves the URL inside `<library>/<id>/` and nowhere else. A file that cannot be
+/// measured or read is a 500, never an empty 200.
 pub fn serve(lib: &Library, req: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
+    serve_with(lib, req, &READS, MAX_WAITING)
+}
+
+/// `serve` against a given gate, so a test can fill a small one.
+fn serve_with(lib: &Library, req: &tauri::http::Request<Vec<u8>>, gate: &Gate, max_waiting: usize) -> tauri::http::Response<Vec<u8>> {
     use tauri::http::Response;
+    let plain = |status: u16, text: &str| Response::builder().status(status).header("Content-Type", "text/plain").header("X-Content-Type-Options", "nosniff").body(text.as_bytes().to_vec()).unwrap();
     let uri = req.uri();
     let path = uri.path();
-    let Some((mut body, kind)) = lib.file(path) else {
+    let Some((file, kind)) = lib.open(path) else {
         return Response::builder().status(404).header("Content-Type", "text/plain").body(b"not in this artifact".to_vec()).unwrap();
+    };
+    let Some(_slot) = gate.enter_bounded(max_waiting) else {
+        return Response::builder().status(503).header("Content-Type", "text/plain").header("Retry-After", "1").header("X-Content-Type-Options", "nosniff").body(b"too many files are being read at once".to_vec()).unwrap();
+    };
+    let Ok(total) = fs::metadata(&file).map(|m| m.len()) else { return plain(500, "could not read this file") };
+    let is_page = kind.starts_with("text/html");
+    let ask = if is_page { RangeAsk::Whole } else { req.headers().get("range").and_then(|v| v.to_str().ok()).map_or(RangeAsk::Whole, |v| parse_range(v, total)) };
+    if ask == RangeAsk::Past {
+        return Response::builder().status(416).header("Content-Type", "text/plain").header("Content-Range", format!("bytes */{total}")).header("X-Content-Type-Options", "nosniff").body(Vec::new()).unwrap();
+    }
+    let range = match ask {
+        RangeAsk::Part(start, end) => Some((start, end.min(start + CHUNK - 1))),
+        _ if (kind.starts_with("video/") || kind.starts_with("audio/")) && total > CHUNK => Some((0, CHUNK - 1)),
+        _ => None,
+    };
+    let (mut body, status, content_range) = match range {
+        Some((start, end)) => match read_range(&file, start, end) {
+            Some(b) => (b, 206, Some(format!("bytes {start}-{end}/{total}"))),
+            None => return plain(500, "could not read this file"),
+        },
+        None if total > WHOLE_MAX => return plain(413, "this file is too big to show whole; open it with the system instead"),
+        None => match fs::read(&file) {
+            Ok(b) => (b, 200, None),
+            Err(_) => return plain(500, "could not read this file"),
+        },
     };
     let id = path.trim_start_matches('/').split('/').next().unwrap_or("");
     let base = format!("/{id}/");
-    if kind.starts_with("text/html") {
+    if is_page {
         // After the page, so a doctype stays first and the page keeps standards mode.
         body.extend_from_slice(link_script(&base).as_bytes());
     }
     let only = format!("{ORIGIN}{base}");
     let cdns = CDNS.map(|c| c.trim_end_matches('/')).join(" ");
     let csp = format!("default-src {only} 'unsafe-inline' 'unsafe-eval' data: blob:; script-src {only} 'unsafe-inline' 'unsafe-eval' data: blob: {cdns}; form-action 'none'");
-    Response::builder().header("Content-Type", kind).header("Content-Security-Policy", csp).header("Access-Control-Allow-Origin", "*").body(body).unwrap()
+    let mut out = Response::builder()
+        .status(status)
+        .header("Content-Type", kind)
+        .header("Content-Length", body.len().to_string())
+        .header("Accept-Ranges", "bytes")
+        .header("Content-Security-Policy", csp)
+        .header("X-Content-Type-Options", "nosniff");
+    if let Some(cr) = content_range {
+        out = out.header("Content-Range", cr);
+    }
+    out.body(body).unwrap()
 }
 
+/// The library page's list. A library index that cannot be read is a rejected promise carrying the
+/// reason, so the page shows it instead of an empty library that reads as "No artifacts yet"
+/// (C14-R4-01); the index is never rewritten from that state.
 #[tauri::command]
-pub fn artifacts_list(lib: tauri::State<'_, Library>) -> Vec<Listed> {
+pub fn artifacts_list(lib: tauri::State<'_, Library>) -> Result<Vec<Listed>, String> {
     lib.list()
 }
 
@@ -488,19 +1350,60 @@ pub async fn artifact_add(app: tauri::AppHandle, path: String) -> Result<Entry, 
     tauri::async_runtime::spawn_blocking(move || app.state::<Library>().add(Path::new(&path), Origin::hand(Path::new(&path)), &|u| fetch_script(&app, u))).await.map_err(|e| e.to_string())?
 }
 
+/// Hands an entry's stored copy to the system, the way `open_path` hands a file over: a program-like
+/// file is revealed in its folder, anything else is opened in its own app. It is the library's copy,
+/// not the workspace file the entry came from (T-624 round 5): the workspace file may have changed or
+/// gone since it was kept. Answers "revealed" or "opened".
 #[tauri::command]
-pub fn artifact_remove(lib: tauri::State<'_, Library>, id: String) -> Result<(), String> {
-    lib.remove(&id)
+pub async fn artifact_open(app: tauri::AppHandle, id: String) -> Result<&'static str, String> {
+    use tauri::Manager;
+    tauri::async_runtime::spawn_blocking(move || {
+        let file = app.state::<Library>().stored_file(&id).ok_or("its stored copy is missing")?;
+        let path = file.to_string_lossy().into_owned();
+        match crate::links::open_choice(&path)? {
+            crate::links::OpenChoice::Reveal => crate::links::reveal(&file).map(|_| "revealed"),
+            crate::links::OpenChoice::Open => system_open(&path).map(|_| "opened"),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Off the window's thread like `artifact_add`: the remove stats the file it leaves a note for and
+/// deletes the stored folder, which on a slow disk is not the window's wait.
+#[tauri::command]
+pub async fn artifact_remove(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    use tauri::Manager;
+    tauri::async_runtime::spawn_blocking(move || app.state::<Library>().remove(&id)).await.map_err(|e| e.to_string())?
+}
+
+/// The address `open_external` opens: a clean http, https or mailto link, in its parsed form. A control
+/// character (the parser would quietly drop a tab or newline) or a double quote is refused before parsing.
+fn external_url(url: &str) -> Result<String, String> {
+    if url.chars().any(|c| c.is_control() || c == '"') {
+        return Err("That link holds a character Kolux never opens".into());
+    }
+    let not_a_link = || format!("{url} is not a web or mail link");
+    let parsed = tauri::Url::parse(url).map_err(|_| not_a_link())?;
+    match parsed.scheme() {
+        "http" | "https" if parsed.host_str().is_some() => {}
+        "mailto" => {}
+        _ => return Err(not_a_link()),
+    }
+    let mut parsed = parsed;
+    if parsed.scheme() == "mailto" {
+        // The address list only: a ?body=, ?cc= or ?attach= is the page's text, not what the user was shown.
+        parsed.set_query(None);
+        parsed.set_fragment(None);
+    }
+    Ok(parsed.as_str().to_string())
 }
 
 /// Opens a web or mail link in the system's own handler; nothing else is let through, and no more than a
 /// handful in a row (links::admit_browser_open). The command runs on a worker, never the window's thread.
 #[tauri::command(async)]
 pub fn open_external(url: String) -> Result<(), String> {
-    let low = url.to_ascii_lowercase();
-    if !(low.starts_with("http://") || low.starts_with("https://") || low.starts_with("mailto:")) {
-        return Err(format!("{url} is not a web or mail link"));
-    }
+    let url = external_url(&url)?;
     crate::links::admit_browser_open()?;
     system_open(&url)
 }
@@ -545,6 +1448,81 @@ pub(crate) fn system_open(url: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    /// `Library::list` with the library assumed readable: the tests that check the error path call
+    /// `list` itself.
+    trait ListedOk {
+        fn listed(&self) -> Vec<Listed>;
+    }
+    impl ListedOk for Library {
+        fn listed(&self) -> Vec<Listed> {
+            self.list().expect("the library index reads")
+        }
+    }
+
+    #[test]
+    fn a_damaged_index_is_an_error_and_is_never_saved_over() {
+        // C14-R4-01: `read` used to answer an empty list for a file it could not parse, so the next
+        // write (a remove, or a Claude publish through `add`) replaced every entry with one row.
+        let root = temp_dir("corrupt");
+        let dir = root.join("lib");
+        fs::create_dir_all(&dir).unwrap();
+        let damaged = b"{ not json";
+        fs::write(dir.join("library.json"), damaged).unwrap();
+        let lib = Library::new(dir.clone());
+
+        // A missing file is still an empty library: the first run is not an error.
+        assert!(Library::new(root.join("none")).list().expect("no index reads as empty").is_empty());
+
+        // The list says so instead of reading as empty.
+        let said = match lib.list() {
+            Err(e) => e,
+            Ok(_) => panic!("a damaged index must not read as a list"),
+        };
+        assert!(said.contains("could not be read") && said.contains(".corrupt-"), "{said}");
+
+        // A remove does not write over it, and leaves its own row alone.
+        assert!(lib.remove(&id_of("C:/x/a.html")).is_err());
+        assert_eq!(fs::read(dir.join("library.json")).unwrap(), damaged, "a damaged index is never saved over");
+
+        // The Claude publish path (capture.rs calls `add`) is refused the same way, before it stores.
+        let page = root.join("p.html");
+        fs::write(&page, "<title>P</title>").unwrap();
+        let err = lib.add(&page, Origin::hand(&page), &|_| None).unwrap_err();
+        assert!(err.contains("could not be read"), "{err}");
+        assert_eq!(fs::read(dir.join("library.json")).unwrap(), damaged);
+        // Nothing was stored for it either, so the folder cannot be mistaken for a kept entry.
+        assert!(!dir.join(id_of(&Origin::hand(&page).origin)).exists());
+
+        // The bytes were kept aside once, so the damaged index can still be looked at.
+        let aside: Vec<PathBuf> = fs::read_dir(&dir).unwrap().flatten().map(|e| e.path()).filter(|p| p.to_string_lossy().contains(".corrupt-")).collect();
+        assert_eq!(aside.len(), 1, "{aside:?}");
+        assert_eq!(fs::read(&aside[0]).unwrap(), damaged);
+        let _ = lib.list();
+        assert_eq!(fs::read_dir(&dir).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains(".corrupt-")).count(), 1, "a refresh does not make another copy");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_scan_into_a_damaged_index_stores_nothing_and_says_why() {
+        // The workspace scan runs on a 3 s tick with no user action: it must not turn a damaged index
+        // into a one-entry library either (C14-R4-01).
+        let root = temp_dir("corrupt-scan");
+        let dir = root.join("lib");
+        let ws = root.join("Project");
+        fs::create_dir_all(dir.clone()).unwrap();
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::write(ws.join("artifacts").join("a.html"), "<title>A</title>").unwrap();
+        let damaged = b"[]]";
+        fs::write(dir.join("library.json"), damaged).unwrap();
+        let lib = Library::new(dir.clone());
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert_eq!(got.changed, 0, "{:?}", got.skipped);
+        assert_eq!(got.skipped.len(), 1);
+        assert!(got.skipped[0].contains("could not be read"), "{:?}", got.skipped);
+        assert_eq!(fs::read(dir.join("library.json")).unwrap(), damaged);
+        let _ = fs::remove_dir_all(&root);
+    }
+
     #[test]
     fn app_032_each_route_reaches_the_client() {
         use crate::resources::{app_http::Plan, app_proxy::Route};
@@ -572,7 +1550,153 @@ mod tests {
         assert_eq!(title_of("<title> </title>"), None);
         assert_eq!(title_of(&format!("<title>{}</title>", "x".repeat(300))).unwrap().len(), 200);
         let refs = relative_refs("<img src=\"img/a%20b.png?v=1\"><link href='s.css'><a href=\"#top\"> <a href=\"https://x.io\"> <script src=/abs.js></script> <img data-src=\"no.png\"> <video poster=p.jpg> <a href=\"mailto:a@b\"> <img src=\"../out.png\">");
-        assert_eq!(refs, ["img/a b.png", "../out.png", "s.css", "p.jpg"]);
+        assert_eq!(refs, ["img/a b.png", "s.css", "p.jpg"], "a climbing reference is not followed");
+    }
+
+    #[test]
+    fn a_reference_is_judged_after_it_is_decoded() {
+        // Each of these is a UNC, drive, stream, root or climbing path once percent-decoded; none may
+        // reach the file system (T-624 round 5, S2).
+        let hostile = [
+            "%2F%2Fhost%2Fs%2Fa.png",
+            "%5C%5Chost%5Cs%5Ca.png",
+            "%2f%2fhost/s/a.png",
+            "C%3A/Windows/win.ini",
+            "C%3a%5Cx.png",
+            "x.png%3Astream",
+            "x.png%3A%3A%24DATA",
+            "%2E%2E/out.png",
+            "a/%2e%2e%2f%2e%2e/out.png",
+            "a%5C..%5Cout.png",
+            "%2Fabs.png",
+            "..%5Cout.png",
+            "NUL",
+            "con.txt",
+            "sub/COM1",
+            "a%00b.png",
+            "https%3A%2F%2Fx.io%2Fa.png",
+        ];
+        for h in hostile {
+            let html = format!("<img src=\"{h}\"><link href='{h}'><video poster={h}>");
+            assert!(relative_refs(&html).is_empty(), "{h} must not be a reference, got {:?}", relative_refs(&html));
+        }
+        // Plain references, including ones that only look odd, still come through.
+        let ok = relative_refs("<img src=\"a%20b/c%2Ed.png\"><img src=\"./x/../y.png\"> <img src=\"CONSOLE.png\"> <img src=\"sub/dir/f.svg?x=1#h\">");
+        assert_eq!(ok, ["a b/c.d.png", "CONSOLE.png", "sub/dir/f.svg"], "got {ok:?}");
+        for r in ["//h/s/a.png", "C:/x.png", "a/../../b.png", "x.png:s", ""] {
+            assert!(!safe_ref(r), "{r:?}");
+        }
+        assert!(safe_ref("a/b.png") && safe_ref("a b/c.d.png"));
+        #[cfg(windows)]
+        {
+            assert!(inside(Path::new(r"C:\f"), "x.png:stream").is_none(), "a stream name is refused in a part");
+            assert!(inside(Path::new(r"C:\f"), "C:/x.png").is_none());
+        }
+    }
+
+    #[test]
+    fn a_decoded_unc_reference_is_never_opened_or_copied() {
+        let root = temp_dir("unc-ref");
+        let lib = Library::new(root.join("lib"));
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("sub")).unwrap();
+        fs::write(ws.join("artifacts").join("sub").join("ok.png"), "OK").unwrap();
+        fs::write(ws.join("artifacts").join("ok2.png"), "OK2").unwrap();
+        // The hostile references come first: if one were followed, a Windows build would try the share.
+        let html = "<title>P</title><img src=\"%2F%2F192.0.2.1%2Fs%2Fa.png\"><img src=\"%5C%5C192.0.2.1%5Cs%5Ca.png\"><img src=\"C%3A/x.png\"><img src=\"ok2.png%3Astream\"><img src=\"sub%2Fok.png\"><img src=\"ok2.png\">";
+        fs::write(ws.join("artifacts").join("p.html"), html).unwrap();
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert!(got.changed >= 1, "{:?}", got.skipped);
+        let id = lib.listed().into_iter().find(|l| l.entry.page == "p.html").expect("the page was kept").entry.id;
+        assert!(lib.open(&format!("/{id}/sub/ok.png")).is_some(), "a decoded plain reference is still copied");
+        assert!(lib.open(&format!("/{id}/ok2.png")).is_some());
+        let stored: Vec<_> = fs::read_dir(lib.dir.join(&id)).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        assert!(stored.iter().all(|n| !n.contains(':') && !n.contains("192.0.2.1")), "{stored:?}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_asset_reached_through_a_linked_subfolder_is_not_copied() {
+        let root = temp_dir("link-sub");
+        let lib = Library::new(root.join("lib"));
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("secret.png"), "SECRET").unwrap();
+        fs::write(ws.join("artifacts").join("own.png"), "OWN").unwrap();
+        fs::write(ws.join("artifacts").join("p.html"), "<title>P</title><img src=\"sub/secret.png\"><img src=\"own.png\">").unwrap();
+        let link = ws.join("artifacts").join("sub");
+        #[cfg(windows)]
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&link).arg(&outside).output().map(|o| o.status.success()).unwrap_or(false);
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(&outside, &link).is_ok();
+        assert!(made, "could not make the link");
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert!(got.changed >= 1, "{:?}", got.skipped);
+        let id = lib.listed().into_iter().find(|l| l.entry.page == "p.html").expect("the page was kept").entry.id;
+        assert!(lib.open(&format!("/{id}/own.png")).is_some(), "the page's own plain asset is copied");
+        assert!(lib.open(&format!("/{id}/sub/secret.png")).is_none(), "a file behind a linked subfolder is not copied");
+        #[cfg(windows)]
+        fs::remove_dir(&link).unwrap();
+        #[cfg(unix)]
+        fs::remove_file(&link).unwrap();
+        assert!(outside.join("secret.png").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_page_naming_thousands_of_missing_files_stops_the_scan_early() {
+        let root = temp_dir("many-refs");
+        let lib = Library::new(root.join("lib"));
+        let folder = root.join("f");
+        fs::create_dir_all(&folder).unwrap();
+        fs::write(folder.join("late.png"), "LATE").unwrap();
+        fs::write(folder.join("early.png"), "EARLY").unwrap();
+        let folder = fs::canonicalize(&folder).unwrap();
+        let run = |name: &str, html: &str| {
+            let tmp = root.join(name);
+            fs::create_dir_all(&tmp).unwrap();
+            lib.copy_assets(Some(&folder), html, "p.html", &tmp, 0);
+            tmp
+        };
+        // Failures in a row: early.png is read, then MAX_MISSES missing names, then late.png is never looked at.
+        let mut html = String::from("<img src=\"early.png\">");
+        for i in 0..(MAX_MISSES + 5) {
+            html.push_str(&format!("<img src=\"missing-{i}.png\">"));
+        }
+        html.push_str("<img src=\"late.png\">");
+        let tmp = run("t1", &html);
+        assert!(tmp.join("early.png").is_file());
+        assert!(!tmp.join("late.png").exists(), "the scan gives up after {MAX_MISSES} failures in a row");
+        // A hit in between resets the count.
+        let mut html = String::new();
+        for i in 0..(MAX_MISSES - 1) {
+            html.push_str(&format!("<img src=\"gone-a{i}.png\">"));
+        }
+        html.push_str("<img src=\"early.png\">");
+        for i in 0..(MAX_MISSES - 1) {
+            html.push_str(&format!("<img src=\"gone-b{i}.png\">"));
+        }
+        html.push_str("<img src=\"late.png\">");
+        assert!(run("t2", &html).join("late.png").is_file(), "a hit resets the run of failures");
+        // Distinct spellings of one file are not failures, but only MAX_REFS distinct references are looked at.
+        let mut html = String::new();
+        for i in 0..MAX_REFS {
+            html.push_str(&format!("<img src=\"{}early.png\">", "./".repeat(i + 1)));
+        }
+        html.push_str("<img src=\"late.png\">");
+        let tmp = run("t3", &html);
+        assert!(tmp.join("early.png").is_file());
+        assert!(!tmp.join("late.png").exists(), "no more than {MAX_REFS} distinct references are examined");
+        // The same reference twice counts once.
+        let mut html = String::new();
+        for _ in 0..(MAX_REFS * 2) {
+            html.push_str("<img src=\"early.png\">");
+        }
+        html.push_str("<img src=\"late.png\">");
+        assert!(run("t4", &html).join("late.png").is_file(), "repeats are not counted against the cap");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -602,14 +1726,14 @@ mod tests {
         fs::write(site.join("page.html"), "<title>Two</title>").unwrap();
         let again = lib.add(&site.join("page.html"), Origin::hand(&site.join("page.html")), &|_| None).unwrap();
         assert_eq!(again.id, e.id);
-        let list = lib.list();
+        let list = lib.listed();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].entry.title, "Two");
         assert!(!root.join("lib").join(&e.id).join("img").exists());
         assert!(lib.add(&site.join("missing.html"), Origin::hand(&site.join("missing.html")), &|_| None).is_err());
-        assert_eq!(lib.list().len(), 1);
+        assert_eq!(lib.listed().len(), 1);
         lib.remove(&e.id).unwrap();
-        assert!(lib.list().is_empty() && !root.join("lib").join(&e.id).exists());
+        assert!(lib.listed().is_empty() && !root.join("lib").join(&e.id).exists());
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -624,13 +1748,51 @@ mod tests {
         assert_eq!(e.title, "shot.png");
         let (body, kind) = lib.file(&format!("/{}/shot.png", e.id)).unwrap();
         assert_eq!((body.as_slice(), kind), (&b"\x89PNG\r\n"[..], "image/png"));
-        // A document is kept the same way and reads as text.
+        // A document is not an artifact: the viewer cannot project it, so it is refused (DT-C78).
         let doc = root.join("notes.md");
         fs::write(&doc, "# Plan").unwrap();
-        assert_eq!(lib.add(&doc, Origin::hand(&doc), &|_| None).unwrap().kind, "text");
+        let said = lib.add(&doc, Origin::hand(&doc), &|_| None).unwrap_err();
+        assert!(said.contains("notes.md") && said.contains("not an artifact"), "{said}");
+        assert_eq!(lib.listed().len(), 1, "nothing was stored for the document");
         // An entry written before kinds existed is still a page.
         let old: Entry = serde_json::from_str(r#"{"id":"a","title":"t","source":"hand","origin":"x","project":null,"session":null,"added":1,"size":1,"page":"a.html","state":"ok"}"#).unwrap();
         assert_eq!(old.kind, "page");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn an_entry_of_a_kind_an_older_build_kept_is_never_listed() {
+        // A document, a PDF or an audio track stored by a build before DT-C78: its files stay where
+        // they are, but the library never lists it again.
+        let root = temp_dir("oldkinds");
+        let lib = Library::new(root.join("lib"));
+        let row = |id: &str, kind: &str, page: &str| Entry { id: id.into(), title: page.into(), source: "hand".into(), kind: kind.into(), origin: format!("C:{page}"), project: None, session: None, added: 1, size: 1, page: page.into(), state: "ok".into(), stamp: None };
+        lib.write(&[row("a", "page", "a.html"), row("b", "text", "n.md"), row("c", "pdf", "p.pdf"), row("d", "audio", "t.mp3"), row("e", "image", "i.png"), row("f", "video", "v.mp4")]).unwrap();
+        let listed: Vec<String> = lib.listed().into_iter().map(|l| l.entry.page).collect();
+        assert_eq!(listed, ["a.html", "i.png", "v.mp4"], "only the kinds the viewer projects: {listed:?}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn opening_the_library_drops_entries_of_a_kind_it_cannot_list() {
+        // The rows and their stored folders go once, at the next start: a viewer that can neither list
+        // nor name such an entry would otherwise leave it on disk for good (C14-R4-01 review, S2).
+        let root = temp_dir("prune");
+        let dir = root.join("lib");
+        fs::create_dir_all(dir.join("b")).unwrap();
+        fs::write(dir.join("b").join("n.md"), "# Notes").unwrap();
+        let row = |id: &str, kind: &str, page: &str| Entry { id: id.into(), title: page.into(), source: "hand".into(), kind: kind.into(), origin: format!("C:{page}"), project: None, session: None, added: 1, size: 1, page: page.into(), state: "ok".into(), stamp: None };
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("library.json"), serde_json::to_vec(&[row("a", "page", "a.html"), row("b", "text", "n.md")]).unwrap()).unwrap();
+        let lib = Library::new(dir.clone());
+        assert_eq!(lib.listed().len(), 1, "the page stays, the document is gone");
+        assert!(!dir.join("b").exists(), "its stored copy goes with it");
+        let kept: Vec<Entry> = serde_json::from_slice(&fs::read(dir.join("library.json")).unwrap()).unwrap();
+        assert_eq!(kept.len(), 1, "the index holds only what the viewer projects");
+        // A fresh open finds nothing to prune and changes nothing.
+        let bytes = fs::read(dir.join("library.json")).unwrap();
+        let _ = Library::new(dir.clone());
+        assert_eq!(fs::read(dir.join("library.json")).unwrap(), bytes);
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -651,6 +1813,233 @@ mod tests {
     }
 
     #[test]
+    fn only_pages_images_and_video_are_artifacts() {
+        for (name, kind) in [("a.html", "page"), ("shot.png", "image"), ("shot.svg", "image"), ("clip.mp4", "video"), ("clip.webm", "video"), ("clip.mkv", "video")] {
+            assert_eq!(kind_of(Path::new(name)), kind, "{name}");
+            assert!(viewable(kind), "{name}");
+            assert!(KEPT.contains(&name.rsplit('.').next().unwrap()), "{name} is kept from a Write");
+        }
+        // Text, data, a PDF, an audio track and an office document are not: the viewer projects none of them.
+        for name in ["notes.md", "a.txt", "data.csv", "data.json", "paper.pdf", "track.mp3", "track.m4a", "deck.pptx", "bundle.zip", "model.psd"] {
+            let kind = kind_of(Path::new(name));
+            assert_eq!(kind, "other", "{name}");
+            assert!(!viewable(kind), "{name}");
+            assert!(!KEPT.contains(&name.rsplit('.').next().unwrap()), "{name} is not kept from a Write");
+            assert!(!is_workspace_file(Path::new(name)), "{name} is not imported from the folder");
+        }
+        assert_eq!(mime("clip.mp4"), "video/mp4");
+        assert_eq!(mime("track.mp3"), "audio/mpeg", "a page's own audio asset is still served as audio");
+        assert_eq!(parse_range("bytes=0-99", 1000), RangeAsk::Part(0, 99));
+        assert_eq!(parse_range("bytes=100-", 1000), RangeAsk::Part(100, 999));
+        assert_eq!(parse_range("bytes=-100", 1000), RangeAsk::Part(900, 999));
+        assert_eq!(parse_range("bytes=0-2000", 1000), RangeAsk::Part(0, 999));
+        assert_eq!(parse_range("bytes=1000-", 1000), RangeAsk::Past);
+        assert_eq!(parse_range("bytes=10-5", 1000), RangeAsk::Whole);
+        assert_eq!(parse_range("items=0-5", 1000), RangeAsk::Whole);
+        assert_eq!(parse_range("bytes=0-5,10-15", 1000), RangeAsk::Whole);
+        let root = temp_dir("range");
+        let file = root.join("clip.mp4");
+        fs::write(&file, (0..=255).collect::<Vec<u8>>()).unwrap();
+        assert_eq!(read_range(&file, 10, 12), Some(vec![10, 11, 12]));
+        assert_eq!(read_range(&file, 254, 300), None, "a range past the end is refused, never short");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn media_is_served_in_byte_ranges_from_the_artifact_scheme() {
+        let root = temp_dir("serve");
+        let lib = Library::new(root.join("lib"));
+        let file = root.join("clip.mp4");
+        fs::write(&file, (0..=255).collect::<Vec<u8>>()).unwrap();
+        let e = lib.add(&file, Origin::hand(&file), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/clip.mp4", e.id);
+        let ranged = tauri::http::Request::builder().uri(&uri).header("range", "bytes=10-12").body(Vec::new()).unwrap();
+        let r = serve(&lib, &ranged);
+        assert_eq!(r.status(), 206);
+        assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some("bytes 10-12/256"));
+        assert_eq!(r.headers().get("accept-ranges").and_then(|v| v.to_str().ok()), Some("bytes"));
+        assert_eq!(r.body().as_slice(), &[10, 11, 12]);
+        let full = tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap();
+        let r = serve(&lib, &full);
+        assert_eq!(r.status(), 200);
+        assert_eq!(r.body().len(), 256);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn workspace_artifacts_are_found_imported_once_and_refreshed_on_change() {
+        let root = temp_dir("workspace");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("nested")).unwrap();
+        fs::create_dir_all(ws.join("artifacts").join("node_modules")).unwrap();
+        fs::write(ws.join("artifacts").join("a.html"), "<title>A</title>").unwrap();
+        fs::write(ws.join("artifacts").join("nested").join("b.png"), b"png").unwrap();
+        fs::write(ws.join("artifacts").join("shot.png"), b"png").unwrap();
+        fs::write(ws.join("artifacts").join("notes.md"), "# Notes").unwrap();
+        fs::write(ws.join("artifacts").join("data.json"), "{}").unwrap();
+        fs::write(ws.join("artifacts").join("skip.exe"), "no").unwrap();
+        fs::write(ws.join("artifacts").join("page.html.tmp"), "partial").unwrap();
+        fs::write(ws.join("artifacts").join(".DS_Store"), "noise").unwrap();
+        fs::write(ws.join("artifacts").join("node_modules").join("c.html"), "<title>C</title>").unwrap();
+
+        let (files, over) = workspace_files(&ws);
+        assert!(!over);
+        assert_eq!(files.len(), 2, "a page and an image; a document, data, an installer and a partial file are not artifacts: {files:?}");
+        assert!(workspace_files(&root.join("missing")).0.is_empty());
+
+        let lib = Library::new(root.join("lib"));
+        let mut seen = std::collections::HashMap::new();
+        let scan = |seen: &mut HashMap<String, (u64, u64)>| scan_workspace(&lib, &ws, Some("Project".into()), &|_| None, seen);
+        assert_eq!(scan(&mut seen), Scanned { changed: 2, skipped: vec![] });
+        let first = lib.listed();
+        assert_eq!(first.len(), 2);
+        assert!(first.iter().all(|e| e.entry.source == "workspace" && e.entry.project.as_deref() == Some("Project")));
+        assert!(first.iter().all(|e| e.entry.page != "notes.md" && e.entry.page != "data.json" && e.entry.page != "skip.exe"), "a document, data and an installer are left out");
+        assert_eq!(scan(&mut seen).changed, 0, "an unchanged folder adds nothing");
+
+        fs::write(ws.join("artifacts").join("a.html"), "<title>A2</title>").unwrap();
+        assert_eq!(scan(&mut seen).changed, 1, "only the changed page is refreshed");
+        let again = lib.listed();
+        assert_eq!(again.len(), 2);
+        assert!(again.iter().any(|e| e.entry.title == "A2"));
+        let mut fresh = std::collections::HashMap::new();
+        assert_eq!(scan(&mut fresh).changed, 0, "a new app run does not re-add entries the library already holds");
+
+        // A page with its own assets: the stored size counts the assets too, which must not read as a change.
+        fs::write(ws.join("artifacts").join("nested").join("c.png"), b"pngpngpng").unwrap();
+        fs::write(ws.join("artifacts").join("site.html"), "<title>Site</title><img src=\"nested/c.png\">").unwrap();
+        assert_eq!(scan(&mut fresh).changed, 1);
+        let site = lib.listed().into_iter().find(|e| e.entry.title == "Site").unwrap();
+        assert!(site.entry.size > fs::metadata(ws.join("artifacts").join("site.html")).unwrap().len(), "the stored size holds the page and its asset");
+        let mut fresh = std::collections::HashMap::new();
+        assert_eq!(scan(&mut fresh).changed, 0, "a new app run does not re-add a page whose stored size includes its assets");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_artifacts_folder_is_not_followed() {
+        let root = temp_dir("linked");
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(&ws).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("id_rsa"), "SECRET").unwrap();
+        std::os::unix::fs::symlink(&outside, ws.join("artifacts")).unwrap();
+        assert!(workspace_files(&ws).0.is_empty(), "a linked artifacts/ folder is never followed");
+        let lib = Library::new(root.join("lib"));
+        let mut seen = HashMap::new();
+        assert_eq!(scan_workspace(&lib, &ws, Some("Project".into()), &|_| None, &mut seen).changed, 0);
+        assert!(lib.listed().is_empty());
+        // A real folder still yields its file, and a linked file inside it is not followed either.
+        fs::remove_file(ws.join("artifacts")).unwrap();
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::write(ws.join("artifacts").join("a.png"), b"png").unwrap();
+        std::os::unix::fs::symlink(outside.join("id_rsa"), ws.join("artifacts").join("key.png")).unwrap();
+        assert_eq!(workspace_files(&ws).0, vec![ws.join("artifacts").join("a.png")]);
+        assert!(open_source(&ws.join("artifacts").join("key.png"), "key.png", None).is_err(), "a link is refused at open, not only by its path");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_removed_workspace_file_stays_removed_until_it_changes() {
+        let root = temp_dir("removed");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("img")).unwrap();
+        let a = ws.join("artifacts").join("a.html");
+        fs::write(&a, "<title>A</title>").unwrap();
+        let lib = Library::new(root.join("lib"));
+        let scan = |seen: &mut HashMap<String, (u64, u64)>| scan_workspace(&lib, &ws, Some("Project".into()), &|_| None, seen).changed;
+        let mut seen = HashMap::new();
+        assert_eq!(scan(&mut seen), 1);
+        let id = lib.listed()[0].entry.id.clone();
+        lib.remove(&id).unwrap();
+        assert_eq!(scan(&mut seen), 0, "the same run keeps it removed");
+        assert!(lib.listed().is_empty());
+        let mut fresh = HashMap::new();
+        assert_eq!(scan(&mut fresh), 0, "the next app run must keep it removed too");
+        assert!(lib.listed().is_empty(), "a removed entry does not come back on the next launch");
+        // A real rewrite is a new deliverable and is imported again.
+        fs::write(&a, "<title>A rewritten</title>").unwrap();
+        let mut fresh = HashMap::new();
+        assert_eq!(scan(&mut fresh), 1, "a rewritten file is imported again");
+        assert_eq!(lib.listed()[0].entry.title, "A rewritten");
+        // Removed again: a page with assets is kept removed by the file's own stamp, not the stored size.
+        fs::write(ws.join("artifacts").join("img").join("p.png"), b"png").unwrap();
+        fs::write(&a, "<title>With asset</title><img src=\"img/p.png\">").unwrap();
+        let mut fresh = HashMap::new();
+        assert_eq!(scan(&mut fresh), 1);
+        lib.remove(&id).unwrap();
+        let mut fresh = HashMap::new();
+        assert_eq!(scan(&mut fresh), 0, "a removed page with assets stays removed");
+        assert!(lib.listed().is_empty());
+        // Adding the same file by hand after a remove keeps it: the remove is forgotten.
+        let hand = lib.add(&a, Origin::hand(&a), &|_| None).unwrap();
+        assert_eq!(hand.id, id);
+        let mut fresh = HashMap::new();
+        assert_eq!(scan(&mut fresh), 0);
+        assert_eq!(lib.listed().len(), 1, "a hand-added file is kept after an earlier remove");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_restored_file_with_an_older_mtime_is_refreshed() {
+        let root = temp_dir("restored");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        let a = ws.join("artifacts").join("a.html");
+        fs::write(&a, "<title>A</title>").unwrap();
+        let lib = Library::new(root.join("lib"));
+        let mut seen = HashMap::new();
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut seen).changed, 1);
+        // Restored from a backup that kept the old time (cp -p, robocopy /COPY:DAT): older mtime, new content.
+        fs::write(&a, "<title>Restored</title>").unwrap();
+        let older = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        fs::File::options().write(true).open(&a).unwrap().set_modified(older).unwrap();
+        let mut fresh = HashMap::new();
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut fresh).changed, 1);
+        let list = lib.listed();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].entry.title, "Restored", "a restored file counted as changed must also be refreshed");
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new()).changed, 0, "and it is then known");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_file_that_cannot_be_kept_is_reported_once_and_not_retried() {
+        let root = temp_dir("toobig");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        // A sparse file over the cap: nothing is written, only its length.
+        fs::File::create(ws.join("artifacts").join("clip.mkv")).unwrap().set_len(MAX_FILE + 1).unwrap();
+        fs::write(ws.join("artifacts").join("ok.png"), b"fine").unwrap();
+        let lib = Library::new(root.join("lib"));
+        let mut seen = HashMap::new();
+        let first = scan_workspace(&lib, &ws, None, &|_| None, &mut seen);
+        assert_eq!(first, Scanned { changed: 1, skipped: vec!["clip.mkv is larger than 100 MB".into()] });
+        assert_eq!(lib.listed().len(), 1);
+        let second = scan_workspace(&lib, &ws, None, &|_| None, &mut seen);
+        assert_eq!(second, Scanned::default(), "the same unchanged file is neither retried nor reported again");
+        // A change to the file is tried again.
+        fs::File::options().write(true).open(ws.join("artifacts").join("clip.mkv")).unwrap().set_len(10).unwrap();
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut seen).changed, 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_scan_command_runs_off_the_window_thread() {
+        // An AppHandle is not to be had in a unit test, so the shape is checked in the source: like
+        // artifact_add, the scan is async and does its copies and fetches on a blocking worker, and a
+        // tick that finds one running does nothing instead of queueing behind it.
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()]; // the code, not this test's own words
+        let at = src.find("pub async fn artifacts_scan(").expect("artifacts_scan must be an async command: it copies files and fetches scripts");
+        let body = &src[at..at + 1200];
+        assert!(body.contains("spawn_blocking"), "the scan runs on a blocking worker");
+        assert!(body.contains("try_lock()"), "an overlapping tick does not wait");
+    }
+
+    #[test]
     fn one_entry_per_publish_url_newest_wins_and_remote_paths_are_not_read() {
         let root = temp_dir("publish");
         let page = root.join("p.html");
@@ -662,7 +2051,7 @@ mod tests {
         lib.add(&page, from(2000), &|_| None).unwrap();
         fs::write(&page, "<title>Replayed</title>").unwrap();
         lib.add(&page, from(1500), &|_| None).unwrap();
-        let list = lib.list();
+        let list = lib.listed();
         assert_eq!(list.len(), 1);
         assert_eq!((list[0].entry.title.as_str(), list[0].entry.source.as_str(), list[0].entry.added), ("Second", "claude", 2000));
         let remote = if cfg!(windows) { "/home/me/site/page.html" } else { "C:\\site\\page.html" };
@@ -671,5 +2060,649 @@ mod tests {
         let e = lib.add(Path::new(remote), o, &|_| panic!("a remote page is never read")).unwrap();
         assert_eq!((e.state.as_str(), e.size), ("remote", 0));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn removing_an_entry_the_library_never_read_leaves_its_origin_alone() {
+        // An "unavailable" entry sits on a network share the library never reads (DT-R21). An existing
+        // local file stands in for the share here, so a stat of it would succeed and leave a note.
+        let root = temp_dir("unavail");
+        let origin = root.join("share.html");
+        fs::write(&origin, "<title>S</title>").unwrap();
+        let lib = Library::new(root.join("lib"));
+        let o = origin.to_string_lossy().into_owned();
+        let e = Entry { id: id_of(&o), title: "S".into(), source: "hand".into(), kind: "page".into(), origin: o, project: None, session: None, added: 1, size: 0, page: "share.html".into(), state: "unavailable".into(), stamp: None };
+        lib.write(std::slice::from_ref(&e)).unwrap();
+        lib.remove(&e.id).unwrap();
+        assert!(lib.listed().is_empty());
+        assert!(lib.removed().is_empty(), "an entry never read has no stamp to note, and its origin is not stat'ed");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn cdn_addresses_are_judged_by_host_not_by_prefix() {
+        for ok in ["https://cdn.tailwindcss.com/3.4.1", "https://cdn.tailwindcss.com", "https://CDN.jsdelivr.net/npm/a@1/a.js", "https://unpkg.com/b@2", "https://cdnjs.cloudflare.com/ajax/libs/x/1/x.js", "https://code.jquery.com/jquery-3.7.1.min.js"] {
+            assert!(cdn_url(ok), "{ok}");
+        }
+        for bad in ["https://cdn.tailwindcss.com.evil.example/x.js", "https://cdn.tailwindcss.com@evil.example/x.js", "https://user:pw@cdn.tailwindcss.com/x.js", "http://unpkg.com/x", "https://cdn.jsdelivr.net/gh/x", "https://unpkg.com:8443/x", "https://evil.example/https://unpkg.com/x", "//unpkg.com/x", "unpkg.com/x"] {
+            assert!(!cdn_url(bad), "{bad}");
+        }
+        let html = "<script src=\"https://cdn.tailwindcss.com.evil.example/x.js\"></script><script src=\"https://cdn.tailwindcss.com@evil.example/x.js\"></script><script src=\"http://unpkg.com/x\"></script><script src=\"https://cdn.jsdelivr.net/gh/x\"></script><script src=\"https://cdn.tailwindcss.com/3.4\"></script>";
+        let spans: Vec<&str> = cdn_scripts(html).into_iter().map(|(a, b)| &html[a..b]).collect();
+        assert_eq!(spans, ["https://cdn.tailwindcss.com/3.4"], "a look-alike host, a user name before the host, plain http and a jsdelivr path outside /npm/ are not CDN scripts");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_hard_linked_file_is_not_kept_as_an_artifact_or_an_asset() {
+        let root = temp_dir("hardlink");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("img")).unwrap();
+        fs::write(root.join("id_rsa"), "SECRET").unwrap();
+        fs::hard_link(root.join("id_rsa"), ws.join("artifacts").join("key.png")).unwrap();
+        fs::hard_link(root.join("id_rsa"), ws.join("artifacts").join("img").join("k.png")).unwrap();
+        fs::write(ws.join("artifacts").join("site.html"), "<title>Site</title><img src=\"img/k.png\">").unwrap();
+        let lib = Library::new(root.join("lib"));
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert_eq!(got, Scanned { changed: 1, skipped: vec!["key.png is a hard link to another file, so it is not kept".into()] });
+        let list = lib.listed();
+        assert_eq!(list.len(), 1);
+        let stored = root.join("lib").join(&list[0].entry.id);
+        assert!(!stored.join("img").join("k.png").exists(), "a page's hard-linked asset is left out");
+        assert_eq!(fs::read_dir(&stored).unwrap().count(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_cdn_redirect_is_followed_only_to_the_same_listed_cdn_host() {
+        // cdn.tailwindcss.com answers 302 to /3.4.17 and unpkg answers 302 from a version range to the exact version.
+        assert!(follow_cdn_redirect("https://cdn.tailwindcss.com/", "https://cdn.tailwindcss.com/3.4.17", 1));
+        assert!(follow_cdn_redirect("https://cdn.tailwindcss.com/3.4.17", "https://cdn.tailwindcss.com/3.4.17?plugins=forms", 1));
+        assert!(follow_cdn_redirect("https://unpkg.com/react@^18/umd/react.production.min.js", "https://unpkg.com/react@18.3.1/umd/react.production.min.js", 1));
+        assert!(follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com/a@1.2.3/x.js", 5), "the fifth redirect is the last");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com/a@1.2.3/x.js", 6), "a sixth is not followed");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com/a@1.2.3/x.js", 100));
+        // Off the list, or to a different listed host: refused.
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://evil.example/x.js", 1), "a host off the list");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com.evil.example/x.js", 1), "a look-alike host");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com@evil.example/x.js", 1), "a user name that changes the host");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://cdn.jsdelivr.net/npm/a@1/x.js", 1), "a different listed host");
+        assert!(!follow_cdn_redirect("https://cdn.jsdelivr.net/npm/a", "https://cdn.jsdelivr.net/gh/user/repo/x.js", 1), "a path outside the listed one");
+        // Plain http, another port, no first address, or an unparsable one: refused.
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "http://unpkg.com/a@1.2.3/x.js", 1), "down to plain http");
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "https://unpkg.com:8443/a@1.2.3/x.js", 1), "another port");
+        assert!(!follow_cdn_redirect("", "https://unpkg.com/a@1.2.3/x.js", 1));
+        assert!(!follow_cdn_redirect("https://unpkg.com/a@1", "not a url", 1));
+    }
+
+    #[test]
+    fn only_a_cloud_placeholder_reparse_tag_is_kept_as_a_file() {
+        // OneDrive Files On-Demand (Known Folder Move): IO_REPARSE_TAG_CLOUD and CLOUD_1 .. CLOUD_F.
+        for tag in [0x9000_001A_u32, 0x9000_101A, 0x9000_601A, 0x9000_F01A] {
+            assert!(reparse_is_cloud_file(tag), "{tag:#x} is a cloud placeholder");
+        }
+        // Real links name another file: IO_REPARSE_TAG_SYMLINK and IO_REPARSE_TAG_MOUNT_POINT (a junction).
+        assert!(!reparse_is_cloud_file(0xA000_000C), "a symlink is a link");
+        assert!(!reparse_is_cloud_file(0xA000_0003), "a junction is a link");
+        // Anything else is refused as well: deduplication, WOF, app-exec link, OneDrive's old tag, HSM, a tag never seen.
+        for tag in [0x8000_0013_u32, 0x8000_0017, 0x8000_001B, 0x8000_0021, 0xC000_0004, 0x9000_001B, 0x9001_001A, 0xA000_001A, 0x1234_5678, 0] {
+            assert!(!reparse_is_cloud_file(tag), "{tag:#x} is not kept");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_or_symlink_on_windows_never_takes_the_scan_out_of_the_workspace() {
+        let root = temp_dir("winlinks");
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(&ws).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("id_rsa"), "SECRET").unwrap();
+        // A junction where artifacts/ should be (mklink /J needs no privilege).
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(ws.join("artifacts")).arg(&outside).output().unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        assert!(workspace_files(&ws).0.is_empty(), "a junction artifacts/ folder is never followed");
+        let lib = Library::new(root.join("lib"));
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new()).changed, 0);
+        assert!(lib.listed().is_empty());
+        // `rmdir` removes the junction itself, not the folder it points at.
+        fs::remove_dir(ws.join("artifacts")).unwrap();
+        assert!(outside.join("id_rsa").exists());
+
+        // A real folder holding a file symlink to a file outside (needs the symlink privilege; skipped without it).
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::write(ws.join("artifacts").join("a.png"), b"png").unwrap();
+        let link = ws.join("artifacts").join("key.png");
+        if std::os::windows::fs::symlink_file(outside.join("id_rsa"), &link).is_ok() {
+            assert_eq!(workspace_files(&ws).0, vec![ws.join("artifacts").join("a.png")], "a linked file is not a file");
+            assert!(open_source(&link, "key.png", None).is_err(), "a symlink is refused at open, not only by its path");
+        }
+        // A plain file still opens (its handle has no reparse tag).
+        assert!(open_source(&ws.join("artifacts").join("a.png"), "a.png", None).is_ok());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_scan_that_stores_a_file_first_does_not_lose_the_claude_session_that_wrote_it() {
+        let root = temp_dir("scanfirst");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        let page = ws.join("artifacts").join("a.html");
+        fs::write(&page, "<title>A</title>").unwrap();
+        let lib = Library::new(root.join("lib"));
+        let mut seen = HashMap::new();
+        assert_eq!(scan_workspace(&lib, &ws, Some("Project".into()), &|_| None, &mut seen).changed, 1);
+        // The Write capture comes in after, with the transcript's earlier time.
+        let key = page.to_string_lossy().into_owned();
+        let from = Origin { origin: key.clone(), source: "claude", project: Some("repo".into()), session: Some("s1".into()), at: 1000 };
+        let e = lib.add(&page, from, &|_| None).unwrap();
+        assert_eq!((e.source.as_str(), e.session.as_deref()), ("claude", Some("s1")));
+        let list = lib.listed();
+        assert_eq!(list.len(), 1);
+        assert_eq!((list[0].entry.source.as_str(), list[0].entry.session.as_deref(), list[0].entry.project.as_deref()), ("claude", Some("s1"), Some("repo")));
+        // A later change picked up by the scan keeps who made the entry.
+        fs::write(&page, "<title>A2</title>").unwrap();
+        assert_eq!(scan_workspace(&lib, &ws, Some("Project".into()), &|_| None, &mut seen).changed, 1);
+        let list = lib.listed();
+        assert_eq!((list[0].entry.title.as_str(), list[0].entry.source.as_str(), list[0].entry.session.as_deref(), list[0].entry.project.as_deref()), ("A2", "claude", Some("s1"), Some("repo")));
+        // An entry stored before stamps existed is refreshed by the first scan, keeping its source.
+        let hand = ws.join("artifacts").join("b.html");
+        fs::write(&hand, "<title>B</title>").unwrap();
+        let mut old = lib.add(&hand, Origin::hand(&hand), &|_| None).unwrap();
+        old.stamp = None;
+        let mut all: Vec<Entry> = lib.listed().into_iter().map(|l| l.entry).collect();
+        all.retain(|x| x.id != old.id);
+        all.push(old);
+        lib.write(&all).unwrap();
+        scan_workspace(&lib, &ws, Some("Project".into()), &|_| None, &mut HashMap::new());
+        let b = lib.listed().into_iter().find(|l| l.entry.title == "B").unwrap();
+        assert_eq!(b.entry.source, "hand");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn one_scan_keeps_at_most_the_file_and_byte_caps() {
+        let root = temp_dir("caps");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        for i in 0..MAX_WORKSPACE_FILES + 5 {
+            fs::write(ws.join("artifacts").join(format!("f{i:04}.png")), "x").unwrap();
+        }
+        let lib = Library::new(root.join("lib"));
+        let mut seen = HashMap::new();
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut seen);
+        assert_eq!(got.changed, MAX_WORKSPACE_FILES);
+        assert_eq!(lib.listed().len(), MAX_WORKSPACE_FILES);
+        assert_eq!(got.skipped.len(), 1, "one reason for the whole folder: {:?}", got.skipped);
+        assert!(got.skipped[0].contains(&format!("more than {MAX_WORKSPACE_FILES} files")), "{:?}", got.skipped);
+        assert_eq!(scan_workspace(&lib, &ws, None, &|_| None, &mut seen).changed, 0, "the next tick adds nothing more");
+
+        // The byte cap counts what the library already holds from this folder, so later ticks do not top it up.
+        let root2 = temp_dir("bytecap");
+        let ws2 = root2.join("Project");
+        fs::create_dir_all(ws2.join("artifacts")).unwrap();
+        for n in ["a", "b", "c", "d"] {
+            fs::write(ws2.join("artifacts").join(format!("{n}.png")), "0123456789").unwrap();
+        }
+        let lib2 = Library::new(root2.join("lib"));
+        let mut seen2 = HashMap::new();
+        let got = scan_capped(&lib2, &ws2, None, &|_| None, &mut seen2, 25);
+        assert_eq!(got.changed, 2);
+        assert_eq!(got.skipped.len(), 1, "{:?}", got.skipped);
+        let again = scan_capped(&lib2, &ws2, None, &|_| None, &mut seen2, 25);
+        assert_eq!(again.changed, 0, "the folder is still over the cap");
+        assert_eq!(lib2.listed().len(), 2);
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&root2);
+    }
+
+    #[test]
+    fn one_ranged_answer_is_never_more_than_a_chunk() {
+        let root = temp_dir("chunk");
+        let lib = Library::new(root.join("lib"));
+        let big = root.join("big.mp4");
+        fs::File::create(&big).unwrap().set_len(CHUNK + 1).unwrap();
+        let e = lib.add(&big, Origin::hand(&big), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/big.mp4", e.id);
+        // A browser's first ask for a clip, and its ask after every seek, is open-ended.
+        let open = tauri::http::Request::builder().uri(&uri).header("range", "bytes=0-").body(Vec::new()).unwrap();
+        let r = serve(&lib, &open);
+        assert_eq!(r.status(), 206);
+        assert_eq!(r.body().len() as u64, CHUNK, "one ranged answer carries at most a chunk; the browser asks again from there");
+        assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some(format!("bytes 0-{}/{}", CHUNK - 1, CHUNK + 1).as_str()));
+        let rest = tauri::http::Request::builder().uri(&uri).header("range", format!("bytes={CHUNK}-")).body(Vec::new()).unwrap();
+        let r = serve(&lib, &rest);
+        assert_eq!((r.status().as_u16(), r.body().len()), (206, 1));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_remove_command_runs_off_the_window_thread() {
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = src.find("pub async fn artifact_remove(").expect("artifact_remove must be an async command: it stats the removed file and deletes its stored folder");
+        assert!(src[at..at + 400].contains("spawn_blocking"), "the remove runs on a blocking worker");
+    }
+
+    #[test]
+    fn open_hands_over_the_stored_copy_never_the_workspace_file() {
+        // T-624 round 5, S5: the entry's origin may have changed or gone since it was kept; "Open" uses
+        // the library's own copy. An unknown id, or an entry the library never read, has none.
+        let root = temp_dir("open-stored");
+        let lib = Library::new(root.join("lib"));
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::write(ws.join("artifacts").join("data.png"), "a,b;1,2").unwrap();
+        let got = scan_workspace(&lib, &ws, None, &|_| None, &mut HashMap::new());
+        assert!(got.changed >= 1, "{:?}", got.skipped);
+        let kept = lib.listed().into_iter().find(|l| l.entry.page == "data.png").expect("the file was kept").entry;
+        let stored = lib.stored_file(&kept.id).expect("a kept entry has a stored copy");
+        assert!(stored.starts_with(&lib.dir), "{stored:?} must sit in the library folder");
+        assert_ne!(stored, PathBuf::from(&kept.origin), "not the workspace file");
+        assert_eq!(fs::read_to_string(&stored).unwrap(), "a,b;1,2");
+        // The workspace file is edited, then removed; the stored copy is what Open would hand over.
+        fs::write(ws.join("artifacts").join("data.png"), "changed").unwrap();
+        fs::remove_file(ws.join("artifacts").join("data.png")).unwrap();
+        assert_eq!(fs::read_to_string(lib.stored_file(&kept.id).unwrap()).unwrap(), "a,b;1,2");
+        assert!(lib.stored_file("nope").is_none() && lib.stored_file("../x").is_none());
+        let o = ws.join("share.html").to_string_lossy().into_owned();
+        let e = Entry { id: id_of(&o), title: "S".into(), source: "hand".into(), kind: "page".into(), origin: o, project: None, session: None, added: 1, size: 0, page: "share.html".into(), state: "unavailable".into(), stamp: None };
+        lib.write(&[kept.clone(), e.clone()]).unwrap();
+        assert!(lib.stored_file(&e.id).is_none(), "an unavailable entry has no stored copy to open");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_open_command_runs_off_the_window_thread_and_never_reads_the_origin() {
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = src.find("pub async fn artifact_open(").expect("artifact_open must be an async command: it opens a file");
+        let body = &src[at..at + 900];
+        assert!(body.contains("spawn_blocking") && body.contains("stored_file("), "the open runs on a blocking worker and takes the stored copy");
+        assert!(!body.contains("origin"), "the open never goes to the workspace file");
+    }
+
+    // ---- T-624 round 3 (PR #37 review) ----
+
+    #[cfg(windows)]
+    #[test]
+    fn a_real_path_must_be_local_and_under_the_root() {
+        let ok = |real: &str, root: Option<&str>| real_path_ok(Path::new(real), root.map(Path::new));
+        assert!(ok(r"\\?\C:\ws\artifacts\a.txt", Some(r"\\?\C:\ws")));
+        assert!(ok(r"\\?\c:\WS\artifacts\a.txt", Some(r"\\?\C:\ws")), "Windows paths differ by case only");
+        assert!(ok(r"\\?\C:\anywhere\a.txt", None), "no root: only the share check applies");
+        assert!(!ok(r"\\?\C:\other\a.txt", Some(r"\\?\C:\ws")));
+        assert!(!ok(r"\\?\C:\ws2\a.txt", Some(r"\\?\C:\ws")), "a sibling that shares a name prefix is outside");
+        assert!(!ok(r"\\?\UNC\server\share\a.txt", None), "a network share is never read");
+        assert!(!ok(r"\\?\UNC\server\share\ws\a.txt", Some(r"\\?\UNC\server\share\ws")), "even when the root itself is on the share");
+        assert!(ok(r"\\?\UNC\wsl.localhost\Ubuntu\home\a.txt", None), "WSL's own shares count as this machine");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_junction_in_the_path_never_takes_a_stored_file_out_of_the_workspace() {
+        let root = temp_dir("junction-anc");
+        let ws = root.join("Project");
+        let outside = root.join("outside");
+        fs::create_dir_all(ws.join("artifacts")).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("secret.txt"), "SECRET").unwrap();
+        fs::write(ws.join("artifacts").join("a.png"), b"png").unwrap();
+        let real_ws = fs::canonicalize(&ws).unwrap();
+        // A folder junction on the path (mklink /J needs no privilege): the last component is a plain file, so
+        // the open itself follows the junction.
+        let jn = root.join("jn");
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&jn).arg(&outside).output().unwrap();
+        assert!(made.status.success(), "mklink /J: {}", String::from_utf8_lossy(&made.stdout));
+        let through = jn.join("secret.txt");
+        assert!(open_source(&through, "secret.txt", Some(&real_ws)).is_err(), "a file reached through a junction outside the workspace is refused at open");
+        assert!(open_source(&through, "secret.txt", None).is_ok(), "a hand add of a file elsewhere on this PC is still allowed");
+        assert!(open_source(&ws.join("artifacts").join("a.png"), "a.png", Some(&real_ws)).is_ok());
+
+        // The same swap seen by the library: `artifacts` becomes a junction after the scan listed the file.
+        let lib = Library::new(root.join("lib"));
+        let swapped = root.join("Swapped");
+        fs::create_dir_all(&swapped).unwrap();
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(swapped.join("artifacts")).arg(&outside).output().unwrap();
+        assert!(made.status.success());
+        let via = swapped.join("artifacts").join("secret.txt");
+        let from = Origin { origin: via.to_string_lossy().into_owned(), source: "workspace", project: None, session: None, at: now_ms() };
+        let real_swapped = fs::canonicalize(&swapped).unwrap();
+        let err = lib.add_in(&via, from, &|_| None, Some(&real_swapped)).unwrap_err();
+        assert!(err.contains("secret.txt"), "{err}");
+        assert!(lib.listed().is_empty(), "nothing from outside the workspace is stored");
+
+        // A page's asset folder that is a junction to outside: the page is kept, the outside file is not copied.
+        let ws2 = root.join("Project2");
+        fs::create_dir_all(ws2.join("artifacts")).unwrap();
+        fs::write(outside.join("x.js"), "SECRET()").unwrap();
+        fs::write(ws2.join("artifacts").join("p.html"), "<title>P</title><script src=\"assets/x.js\"></script>").unwrap();
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(ws2.join("artifacts").join("assets")).arg(&outside).output().unwrap();
+        assert!(made.status.success());
+        let got = scan_workspace(&lib, &ws2, None, &|_| None, &mut HashMap::new());
+        assert_eq!(got.changed, 1, "{:?}", got.skipped);
+        let id = lib.listed()[0].entry.id.clone();
+        assert!(lib.open(&format!("/{id}/p.html")).is_some());
+        assert!(lib.open(&format!("/{id}/assets/x.js")).is_none(), "an asset reached through a junction is not copied");
+        // Unlink the junctions (rmdir removes the link, not the folder it points at).
+        for j in [&jn, &swapped.join("artifacts"), &ws2.join("artifacts").join("assets")] {
+            fs::remove_dir(j).unwrap();
+        }
+        assert!(outside.join("secret.txt").exists());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_scan_counts_every_stored_byte_toward_the_folder_cap() {
+        let root = temp_dir("fullsize");
+        let ws = root.join("Project");
+        fs::create_dir_all(ws.join("artifacts").join("assets")).unwrap();
+        fs::write(ws.join("artifacts").join("assets").join("s.bin"), vec![b'x'; 50]).unwrap();
+        for n in ["p1", "p2", "p3", "p4"] {
+            fs::write(ws.join("artifacts").join(format!("{n}.html")), "<script src=\"assets/s.bin\"></script>").unwrap();
+        }
+        // Each page is 36 bytes on its own and 86 with the asset copied beside it.
+        let lib = Library::new(root.join("lib"));
+        let got = scan_capped(&lib, &ws, None, &|_| None, &mut HashMap::new(), 200);
+        let stored: u64 = lib.listed().iter().map(|l| l.entry.size).sum();
+        assert_eq!(got.changed, 2, "two pages (172 bytes) fit under 200, a third would be 258: {:?}", got.skipped);
+        assert!(stored <= 200, "the library holds {stored} bytes from this folder");
+
+        // Files stored on an earlier tick count before the scan reaches them in name order.
+        let ws2 = root.join("Project2");
+        fs::create_dir_all(ws2.join("artifacts")).unwrap();
+        fs::write(ws2.join("artifacts").join("z.png"), vec![b'z'; 90]).unwrap();
+        let lib2 = Library::new(root.join("lib2"));
+        let mut seen = HashMap::new();
+        assert_eq!(scan_capped(&lib2, &ws2, None, &|_| None, &mut seen, 100).changed, 1);
+        fs::write(ws2.join("artifacts").join("a.png"), vec![b'a'; 20]).unwrap();
+        let again = scan_capped(&lib2, &ws2, None, &|_| None, &mut seen, 100);
+        assert_eq!(again.changed, 0, "z.png already holds 90 of the 100 bytes, even though a.png sorts first: {:?}", again.skipped);
+        assert_eq!(lib2.listed().len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_same_file_named_two_ways_is_one_entry() {
+        // The id of a path that is already written the usual Windows way does not change.
+        let old = |origin: &str| {
+            let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+            for b in origin.bytes() {
+                h = (h ^ b as u64).wrapping_mul(0x0100_0000_01b3);
+            }
+            format!("{h:016x}")
+        };
+        let usual = r"C:\Users\me\Project\artifacts\a.html";
+        assert_eq!(id_of(usual), old(usual));
+        assert_eq!(id_of("c:/Users/me/Project/artifacts/a.html"), id_of(usual));
+        assert_eq!(id_of(r"c:\Users\me\Project\artifacts\a.html"), id_of(usual));
+        assert_eq!(id_of(r"\\?\C:\Users\me\Project\artifacts\a.html"), id_of(usual));
+        assert_ne!(id_of(r"C:\Users\me\Project\artifacts\b.html"), id_of(usual));
+        // A publish URL or a Unix path is left exactly as it is.
+        assert_eq!(id_of("https://example.com/a/b.html"), old("https://example.com/a/b.html"));
+        assert_eq!(id_of("/home/me/a.html"), old("/home/me/a.html"));
+    }
+
+    #[test]
+    fn a_range_that_starts_past_the_end_is_416() {
+        let root = temp_dir("range416");
+        let lib = Library::new(root.join("lib"));
+        let file = root.join("clip.mp4");
+        fs::write(&file, (0..=255).collect::<Vec<u8>>()).unwrap();
+        let e = lib.add(&file, Origin::hand(&file), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/clip.mp4", e.id);
+        for start in ["256-", "256-300", "9999-"] {
+            let req = tauri::http::Request::builder().uri(&uri).header("range", format!("bytes={start}")).body(Vec::new()).unwrap();
+            let r = serve(&lib, &req);
+            assert_eq!(r.status(), 416, "bytes={start}");
+            assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some("bytes */256"));
+            assert!(r.body().is_empty());
+        }
+        // Malformed and reversed asks still get the whole file, as before.
+        for odd in ["bytes=10-5", "items=0-5", "bytes=0-5,10-15", "bytes=x-"] {
+            let req = tauri::http::Request::builder().uri(&uri).header("range", odd).body(Vec::new()).unwrap();
+            assert_eq!(serve(&lib, &req).status(), 200, "{odd}");
+        }
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_failed_link_count_is_treated_as_a_hard_link() {
+        assert!(link_count(None) > 1, "when the query fails the file is refused, not trusted");
+        assert_eq!(link_count(Some(1)), 1);
+        assert_eq!(link_count(Some(3)), 3);
+    }
+
+    #[test]
+    fn the_scheme_answers_with_nosniff_and_without_a_wildcard_origin() {
+        let root = temp_dir("headers");
+        let lib = Library::new(root.join("lib"));
+        let file = root.join("a.html");
+        fs::write(&file, "<title>A</title>").unwrap();
+        let e = lib.add(&file, Origin::hand(&file), &|_| None).unwrap();
+        let req = tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/a.html", e.id)).body(Vec::new()).unwrap();
+        let r = serve(&lib, &req);
+        assert_eq!(r.status(), 200);
+        assert_eq!(r.headers().get("x-content-type-options").and_then(|v| v.to_str().ok()), Some("nosniff"));
+        assert!(r.headers().get("access-control-allow-origin").is_none(), "no page needs to read the scheme cross-origin");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn open_external_lets_through_only_clean_web_and_mail_links() {
+        assert_eq!(external_url("https://example.com/a?b=1").unwrap(), "https://example.com/a?b=1");
+        assert_eq!(external_url("HTTP://Example.com").unwrap(), "http://example.com/", "the parsed form is what is opened");
+        assert_eq!(external_url("mailto:me@example.com").unwrap(), "mailto:me@example.com");
+        for bad in ["file:///C:/Windows/notepad.exe", "javascript:alert(1)", "ms-msdt:/id", "https://example.com/\"quoted", "https://exa\tmple.com/", "https://example.com/\nx", "https://example.com/\0", "not a url", "", "https://"] {
+            assert!(external_url(bad).is_err(), "{bad:?} must be refused");
+        }
+    }
+
+    #[test]
+    fn the_artifact_scheme_is_answered_off_the_window_thread() {
+        // The threading is proven by reading the code, not by running a window: the handler is the
+        // asynchronous one, and the file read happens on a blocking worker before the responder is used.
+        let lib = include_str!("lib.rs");
+        let at = lib.find("register_asynchronous_uri_scheme_protocol(artifacts::SCHEME").expect("the scheme handler must be the asynchronous one");
+        let body = lib.get(at..at + 1200).expect("the handler block is at least 1200 bytes long");
+        assert!(body.contains("spawn_blocking") && body.contains("responder.respond"), "the read runs on a blocking worker and answers through the responder");
+        assert!(!lib.contains(".register_uri_scheme_protocol(artifacts::SCHEME"));
+    }
+
+    // ---- T-624 round 4 (PR #37 review) ----
+
+    #[test]
+    fn a_whole_file_request_over_a_chunk_gets_the_first_chunk_as_a_206() {
+        let root = temp_dir("whole-chunk");
+        let lib = Library::new(root.join("lib"));
+        let big = root.join("big.mp4");
+        fs::File::create(&big).unwrap().set_len(CHUNK + 1).unwrap();
+        let e = lib.add(&big, Origin::hand(&big), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/big.mp4", e.id);
+        let whole = tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap();
+        let r = serve(&lib, &whole);
+        assert_eq!(r.status(), 206, "no read is ever longer than a chunk, so a whole-file ask gets the first chunk");
+        assert_eq!(r.body().len() as u64, CHUNK);
+        assert_eq!(r.headers().get("content-range").and_then(|v| v.to_str().ok()), Some(format!("bytes 0-{}/{}", CHUNK - 1, CHUNK + 1).as_str()));
+        // An image over a chunk asked for whole stays whole: an <img> never asks for the rest.
+        let pic = root.join("big.png");
+        fs::File::create(&pic).unwrap().set_len(CHUNK + 1).unwrap();
+        let e2 = lib.add(&pic, Origin::hand(&pic), &|_| None).unwrap();
+        let r = serve(&lib, &tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/big.png", e2.id)).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().len() as u64), (200, CHUNK + 1), "a non-media file asked for whole is never cut to a chunk");
+        // A file that fits in a chunk is still one plain 200.
+        let small = root.join("small.mp4");
+        fs::write(&small, b"tiny").unwrap();
+        let e = lib.add(&small, Origin::hand(&small), &|_| None).unwrap();
+        let r = serve(&lib, &tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/small.mp4", e.id)).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().len()), (200, 4));
+        assert!(r.headers().get("content-range").is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_stored_file_that_cannot_be_read_answers_500_not_an_empty_200() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let root = temp_dir("read-fail");
+        let lib = Library::new(root.join("lib"));
+        let f = root.join("note.png");
+        fs::write(&f, b"hello").unwrap();
+        let e = lib.add(&f, Origin::hand(&f), &|_| None).unwrap();
+        let stored = lib.dir.join(&e.id).join("note.png");
+        // Held with no sharing: the file is still there (is_file and its length can be read) but cannot be opened.
+        let _held = fs::OpenOptions::new().read(true).share_mode(0).open(&stored).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/note.png", e.id);
+        let r = serve(&lib, &tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap());
+        assert_eq!(r.status(), 500, "a failed read is an error, never an empty 200");
+        let r = serve(&lib, &tauri::http::Request::builder().uri(&uri).header("range", "bytes=0-1").body(Vec::new()).unwrap());
+        assert_eq!(r.status(), 500, "a failed ranged read is an error too");
+        drop(_held);
+        let r = serve(&lib, &tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().as_slice()), (200, &b"hello"[..]));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_mail_link_loses_its_query_when_it_is_opened() {
+        assert_eq!(external_url("mailto:a@example.com?body=hi&attach=C:/secrets.txt").unwrap(), "mailto:a@example.com");
+        assert_eq!(external_url("mailto:a@example.com,b@example.com?cc=c@example.com#frag").unwrap(), "mailto:a@example.com,b@example.com");
+        assert_eq!(external_url("https://example.com/a?b=1#c").unwrap(), "https://example.com/a?b=1#c", "web links keep their query");
+    }
+
+    #[test]
+    fn the_scan_checks_for_a_network_share_before_it_touches_the_folder() {
+        let src = include_str!("artifacts.rs");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        let at = src.find("pub async fn artifacts_scan(").expect("artifacts_scan exists");
+        let body = src.get(at..at + 1500).unwrap();
+        let share = body.find("on_network_share(&workspace)").expect("the scan checks the share");
+        let stat = body.find("workspace.is_dir()").expect("the scan checks the folder");
+        assert!(share < stat, "a UNC path is never stat'ed: the share check comes first");
+    }
+
+    #[test]
+    fn the_scheme_reads_go_through_the_four_wide_gate() {
+        let src = include_str!("artifacts.rs").replace("\r\n", "\n");
+        let src = &src[..src.find("#[cfg(test)]").unwrap()];
+        assert!(src.contains("static READS: Gate = Gate::new(4)"), "at most 4 reads in flight");
+        let at = src.find("pub fn serve(").expect("serve exists");
+        let end = src[at..].find("\n}\n").map_or(src.len(), |e| at + e);
+        assert!(src[at..end].contains("serve_with(lib, req, &READS, MAX_WAITING)"), "serve runs against the shared 4-wide gate with a bounded queue");
+        let at = src.find("fn serve_with(").expect("serve_with exists");
+        let end = src[at..].find("\n}\n").map_or(src.len(), |e| at + e);
+        let body = &src[at..end];
+        let slot = body.find("gate.enter_bounded(").expect("serve_with takes a slot");
+        // Every way the body reads a file or its size comes after the slot is taken.
+        for read in ["fs::metadata(", "read_range(", "fs::read("] {
+            let first = body.find(read).unwrap_or_else(|| panic!("{read} is in serve_with"));
+            assert!(slot < first, "the slot is taken before {read}");
+        }
+        assert!(body.contains("503") && body.contains("Retry-After"), "a full queue is answered 503");
+    }
+
+    #[test]
+    fn the_gate_never_lets_more_than_its_width_in_at_once_and_does_let_that_many_in() {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+        static GATE: Gate = Gate::new(4);
+        static NOW: AtomicUsize = AtomicUsize::new(0);
+        static PEAK: AtomicUsize = AtomicUsize::new(0);
+        static STARVED: AtomicBool = AtomicBool::new(false);
+        let mut threads = Vec::new();
+        for _ in 0..16 {
+            threads.push(std::thread::spawn(|| {
+                let _slot = GATE.enter_bounded(usize::MAX).unwrap();
+                let n = NOW.fetch_add(1, Ordering::SeqCst) + 1;
+                PEAK.fetch_max(n, Ordering::SeqCst);
+                // Hold the slot until the gate has had `width` holders at once (it never will if it admits fewer).
+                let until = std::time::Instant::now() + std::time::Duration::from_secs(10);
+                while PEAK.load(Ordering::SeqCst) < 4 {
+                    if std::time::Instant::now() > until {
+                        STARVED.store(true, Ordering::SeqCst);
+                        break;
+                    }
+                    std::thread::yield_now();
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                NOW.fetch_sub(1, Ordering::SeqCst);
+            }));
+        }
+        for t in threads {
+            t.join().unwrap();
+        }
+        assert!(!STARVED.load(Ordering::SeqCst), "four holders were never in at once");
+        assert_eq!(PEAK.load(Ordering::SeqCst), 4, "the peak in flight is exactly the width");
+        assert_eq!(NOW.load(Ordering::SeqCst), 0, "every slot is given back");
+    }
+
+    #[test]
+    fn a_full_gate_queues_only_so_many_and_then_says_no() {
+        static GATE: Gate = Gate::new(1);
+        let held = GATE.enter_bounded(2).unwrap();
+        let waiters: Vec<_> = (0..2)
+            .map(|_| std::thread::spawn(|| drop(GATE.enter_bounded(2).expect("a waiter within the bound gets its turn"))))
+            .collect();
+        // Two are parked; the third is refused at once instead of parking a thread.
+        let until = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while GATE.state.lock().unwrap().waiting < 2 {
+            assert!(std::time::Instant::now() < until, "the waiters never parked");
+            std::thread::yield_now();
+        }
+        assert!(GATE.enter_bounded(2).is_none(), "past the bound the caller is refused");
+        assert!(GATE.enter_bounded(0).is_none(), "a zero bound never waits");
+        drop(held);
+        for w in waiters {
+            w.join().unwrap();
+        }
+        let s = GATE.state.lock().unwrap();
+        assert_eq!((s.held, s.waiting), (0, 0), "slots and queue are given back");
+    }
+
+    #[test]
+    fn serve_answers_503_when_its_queue_is_full_and_413_for_a_file_too_big_to_read_whole() {
+        let root = temp_dir("serve-bounds");
+        let lib = Library::new(root.join("lib"));
+        let pic = root.join("huge.png");
+        fs::File::create(&pic).unwrap().set_len(WHOLE_MAX + 1).unwrap();
+        let e = lib.add(&pic, Origin::hand(&pic), &|_| None).unwrap();
+        let uri = format!("http://kolux-artifact.localhost/{}/huge.png", e.id);
+        let whole = tauri::http::Request::builder().uri(&uri).body(Vec::new()).unwrap();
+        let r = serve(&lib, &whole);
+        assert_eq!(r.status(), 413, "a non-media file over the whole-read cap is not read into memory");
+        assert!(!r.body().is_empty() && r.body().len() < 200, "the reason is text, not the file");
+        let ranged = tauri::http::Request::builder().uri(&uri).header("range", "bytes=0-9").body(Vec::new()).unwrap();
+        let r = serve(&lib, &ranged);
+        assert_eq!((r.status().as_u16(), r.body().len()), (206, 10), "a ranged ask of the same file is still answered");
+        // A video over the cap is chunked, not refused.
+        let clip = root.join("huge.mp4");
+        fs::File::create(&clip).unwrap().set_len(WHOLE_MAX + 1).unwrap();
+        let e2 = lib.add(&clip, Origin::hand(&clip), &|_| None).unwrap();
+        let r = serve(&lib, &tauri::http::Request::builder().uri(format!("http://kolux-artifact.localhost/{}/huge.mp4", e2.id)).body(Vec::new()).unwrap());
+        assert_eq!((r.status().as_u16(), r.body().len() as u64), (206, CHUNK));
+        // A full gate with no room to wait: 503 and a retry hint, without touching the file.
+        let gate = Gate::new(1);
+        let _busy = gate.enter_bounded(0).unwrap();
+        let r = serve_with(&lib, &whole, &gate, 0);
+        assert_eq!(r.status(), 503);
+        assert_eq!(r.headers().get("retry-after").and_then(|v| v.to_str().ok()), Some("1"));
+        drop(_busy);
+        assert_eq!(serve_with(&lib, &whole, &gate, 0).status(), 413, "once the gate is free the request is judged on its merits");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_page_s_asset_folder_is_the_opened_page_s_own_folder_and_stays_in_the_workspace() {
+        let p = |s: &str| PathBuf::from(s);
+        let root = p(if cfg!(windows) { r"C:\ws" } else { "/ws" });
+        let page_in = |rel: &str| root.join(rel);
+        assert_eq!(asset_folder(&page_in("artifacts/p.html"), Some(&root)), Some(root.join("artifacts")));
+        assert_eq!(asset_folder(&page_in("artifacts/p.html"), None), Some(root.join("artifacts")), "a hand add has no workspace to stay in");
+        let elsewhere = p(if cfg!(windows) { r"C:\other\artifacts\p.html" } else { "/other/artifacts/p.html" });
+        assert_eq!(asset_folder(&elsewhere, Some(&root)), None, "a page folder outside the workspace gets no assets");
+        let sibling = p(if cfg!(windows) { r"C:\ws2\p.html" } else { "/ws2/p.html" });
+        assert_eq!(asset_folder(&sibling, Some(&root)), None, "a folder sharing only a name prefix is outside");
+        #[cfg(windows)]
+        assert_eq!(asset_folder(Path::new(r"\\?\UNC\server\share\ws\p.html"), None), None, "a share is never kept");
     }
 }

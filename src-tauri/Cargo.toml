@@ -60,6 +60,10 @@ sha2 = "0.10"
 # T-156-b (SAFE-016): the user's own regular-expression rules, built with a size limit (already in the tree).
 regex = "1"
 
+[target.'cfg(unix)'.dependencies]
+# T-624: O_NOFOLLOW when the artifact scan opens a source file (already in the tree through std's own dependencies).
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Wdk_System_Threading", "Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Registry", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Diagnostics_ToolHelp", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 # T-158 / T-251 / T-272-d: WebView2's own events and calls (certificate errors, page capture, PDF
