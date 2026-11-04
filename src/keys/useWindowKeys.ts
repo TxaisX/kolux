@@ -17,7 +17,7 @@ import { reviewOn, selections } from "../editor/notes";
 import { floatingKeys } from "../floating/keys";
 import { navTarget, stepAllowed } from "../projects/nav";
 import { SHOW_SLEEPING_SETTING, showSleepingFrom } from "../projects/rows";
-import { stepZoom } from "../settings/zoom";
+import { stepZoom, type ZoomStep } from "../settings/zoom";
 import { openTabSearch } from "../shell/findTab";
 import { cycleTarget } from "../switcher/accounts";
 import { cellsOf, groupOf } from "../terminal/grid";
@@ -282,7 +282,7 @@ export function useWindowKeys(w: WindowBag) {
         case "ui.zoomOut":
         case "ui.zoomReset":
           // SET-019 (T-246-c): the saved interface zoom, which has keys of its own apart from the pane zoom above.
-          void stepZoom(hit.id === "ui.zoomIn" ? "in" : hit.id === "ui.zoomOut" ? "out" : "reset").catch(() => {});
+          stepZoom(hit.id.slice(7).toLowerCase() as ZoomStep, setToast); // ui.zoomIn / ui.zoomOut / ui.zoomReset
           break;
         case "tab.newTerminal":
           void newTab(null);
