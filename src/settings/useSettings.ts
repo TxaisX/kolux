@@ -30,12 +30,19 @@ export function useSettings() {
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const race = useRef(createLoadRace());
+  // T-735: the last copy known to be on disk (load, broadcasts, read-backs), never an optimistic change.
+  const disk = useRef<Record<string, unknown> | null>(null);
   useEffect(() => {
     let gone = false;
-    const read = () => invoke<Record<string, unknown>>("get_settings").then((s) => !gone && setSettings(race.current.loaded(s)), (e) => !gone && setError(String(e)));
+    const read = () =>
+      invoke<Record<string, unknown>>("get_settings").then(
+        (s) => !gone && ((disk.current = s), setSettings(race.current.loaded(s))),
+        (e) => !gone && setError(String(e)),
+      );
     void read();
     const off = listen("settings-saved", (e) => {
       const b = readBroadcast(e.payload);
+      if (b && disk.current) disk.current = applyBroadcast(disk.current, b);
       if (b) setSettings((s) => s && applyBroadcast(s, b));
       else void read();
     }).catch(() => () => {}); // no event bridge (a plain page): the page still works, it just misses other windows
@@ -49,14 +56,18 @@ export function useSettings() {
     race.current.change(patch);
     setSettings((s) => s && { ...s, ...patch });
     return saveInTurn(patch)
-      .then((stored) => (setSettings((s) => s && adoptStored(s, stored, patch)), true))
+      .then((stored) => ((disk.current = stored), setSettings((s) => s && adoptStored(s, stored, patch)), true))
       .catch((e) => {
         setError(String(e));
         // A failed save puts back only its own keys; what other saves stored stays. T-735: when the stored copy
-        // cannot be read either, its keys go back to what the page showed before the change.
+        // cannot be read either, its keys go back to the last copy known to be on disk, not to an earlier
+        // save's change still waiting its turn.
         const back = (stored: Record<string, unknown>) => setSettings((s) => s && adoptStored(s, stored, patch));
         return invoke<Record<string, unknown>>("get_settings")
-          .then(back, () => settings && back(settings))
+          .then(
+            (s) => back((disk.current = s)),
+            () => disk.current && back(disk.current),
+          )
           .then(() => false);
       });
   };

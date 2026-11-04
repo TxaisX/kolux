@@ -11,7 +11,8 @@ WHAT MAIN ALREADY DID
 
 FIXED (two gaps the review and the new tests found)
   - The read-back can fail too (a locked or unreadable settings file). Then nothing went back while the alert said "put
-    back". useSettings.ts: the keys now go back to what the page showed before the change.
+    back". useSettings.ts: the keys now go back to the last copy known to be on disk (load, broadcast, read-back), never an
+    earlier save's change still waiting its turn (review should-fix: two refused saves in a row).
   - The commit writer's instructions box (an uncontrolled textarea, key={stored}) kept the refused text on screen when the
     save failed fast: React drew the change and the take-back in one pass, so the key never changed and the box never
     remounted. StepPanels.tsx: the box sets its own text back to the stored one when its save settles false.

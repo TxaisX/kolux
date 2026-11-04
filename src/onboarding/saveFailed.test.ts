@@ -5,10 +5,11 @@ import { createElement, type ReactElement } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { FakeNode, find, installDom, mount, settle, typeInto, until, withText } from "../tasks/fakeDom";
 
-const host = { stored: {} as Record<string, unknown>, reads: 0, readsOk: Infinity };
+const host = { stored: {} as Record<string, unknown>, reads: 0, readsOk: Infinity, hold: null as Promise<void> | null };
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string) => {
     if (cmd === "get_settings") {
+      if (host.hold) await host.hold;
       if (++host.reads > host.readsOk) throw new Error("settings file is locked");
       return { ...host.stored };
     }
@@ -19,7 +20,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));
 
-beforeEach(() => Object.assign(host, { stored: { notifyOnFinish: false }, reads: 0, readsOk: Infinity }));
+beforeEach(() => Object.assign(host, { stored: { notifyOnFinish: false }, reads: 0, readsOk: Infinity, hold: null }));
 
 const props = (n: FakeNode) => (n as unknown as Record<string, Record<string, unknown>>)[Object.keys(n).find((k) => k.startsWith("__reactProps$"))!];
 
@@ -52,6 +53,21 @@ test("T-735: when the stored settings cannot be read back either, the switch sti
   (props(switchIn(c)).onChange as (e: unknown) => void)({ target: { checked: true } });
   await failed(c);
   expect(props(switchIn(c)).checked, "back to what the page showed before").toBe(false);
+});
+
+test("T-735: two refused saves in a row, the file unreadable, end on what is on disk, not on the first change", async () => {
+  const c = await draw(async () => createElement((await import("./StepPanels")).NotificationsPanel), switchIn);
+  let open = () => {};
+  host.hold = new Promise((r) => (open = r));
+  const start = (host.readsOk = host.reads); // every read from here on fails
+  (props(switchIn(c)).onChange as (e: unknown) => void)({ target: { checked: true } });
+  await until(() => props(switchIn(c)).checked === true, "the first change drawn");
+  (props(switchIn(c)).onChange as (e: unknown) => void)({ target: { checked: false } }); // made from the page showing the first
+  open();
+  await until(() => host.reads >= start + 4, "both saves and both read-backs"); // each save: one read before, one after
+  await settle();
+  expect(c.textContent).toContain("settings file is locked");
+  expect(props(switchIn(c)).checked, "the stored value, which the page never left on disk").toBe(false);
 });
 
 test("T-735: the commit writer's instructions box shows the stored text again after a refused save", async () => {
