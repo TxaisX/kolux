@@ -1,0 +1,41 @@
+T-755 - Search and screen-reader reach (DT-C191; UX audit W3 queue refill 13, unsure-triage-49.md rows 10, 12, 13, 15, 16)
+Worker 2f, coordinator 57, branch s-2f/t755 from main 5e481cf2, 2026-11-03. Cap +120 B. For 0.1.8.
+
+CHECKED AGAINST MAIN 5e481cf2
+- Row 10: search.ts had no auto-pr or precedence entry; search.test.ts read neither autoPr.tsx nor the Claude page.
+  Widening the test also showed Git's Workspace setup card (SetupPolicyRow.tsx, setup-policy) unindexed.
+- Row 12: ShortcutsPage.tsx Add / Disable / Reset had no command name; the recording hint was a plain paragraph.
+- Row 13: TabSearch.tsx input had only a placeholder and no aria-activedescendant.
+- Row 15: TopBar.tsx zoom menu closed with setMenuAt(null) only; focus fell to the page body.
+  Peer 72 confirmed T-754 does not touch TopBar.tsx (its #202 changes one title near line 167 only).
+- Row 16: Content.tsx needs-strip was role="list" with <button role="listitem">.
+
+AFTER
+- Search: "auto pr", "pull request", "which file wins", "precedence", "workspace setup" find their cards; a Git
+  search no longer hides Automatic pull requests or Workspace setup.
+- Shortcuts: "Add a shortcut for <command>", "Disable <command>", "Reset <command>"; the recording hint is an
+  alert, read as it appears.
+- Tab search: field named "Search open tabs"; aria-activedescendant names the highlighted option (ids ts-<n>).
+- Zoom menu: Escape, a click outside and a pick each give focus back to the zoom button; after a pick the zoom
+  acts on the focused pane by its key and focus stays on the zoom button.
+- Needs strip: role="group" named "Sessions that need you"; the chips are plain buttons.
+
+FIRST LOAD
+- Local vite build + scripts/bundle-budget.mjs budget(): main 5e481cf2 1,487,946, this branch 1,488,062, +116.
+  TopBar, TabSearch and Content are first-load; ShortcutsPage and search.ts are deferred chunks.
+  The CI line goes in the ready note.
+
+TESTS
+- src/settings/search.test.ts: SOURCES and the drawn list read SetupPolicyRow.tsx, autoPr.tsx and
+  ClaudeSetupPage.tsx; a Settings page missing from the list fails, and so does any settings .tsx that draws a
+  data-section="..." no list reads (review nit; RepoPage.tsx and RepoSetup.tsx are exempt, they draw the repo pages). Trap: auto-pr entry removed -> FAIL
+  ("git/auto-pr is drawn but not in the search index"); restored -> pass.
+- src/chrome/topBarDrag.test.ts, "closing the Terminal zoom menu gives focus back to its button": Escape, the
+  backdrop and a pick. Trap: TopBar.tsx put back to main -> FAIL ("Escape: focus is back on the button").
+- src/shell/screenReaderNames.test.ts (source checks): Shortcuts names and alert, tab search label and
+  active descendant, needs-strip group. Trap: each of the three files put back to main -> 1 failed each.
+- pnpm vitest run src/settings src/shell src/chrome: 157 files, 815/815. pnpm tsc --noEmit -p .: clean.
+- Review (opus, read-only): A-, no must-fix; PLAN wording and the zoom line above fixed, the unread-file guard
+  added. Left: tab search could use role="combobox" + aria-controls for the strict ARIA form (about +60 B first
+  load, over the cap); Chromium/WebView2 resolves aria-activedescendant anywhere in the document today.
+- Not run: a live screen reader. The announcements follow from the roles and names above.

@@ -171,9 +171,9 @@ export default function WindowContent() {
         </div>
       )}
       {terminals && page === null && waiting.length > 0 && (
-        <div className="needs-strip" role="list" aria-label="Sessions that need you">
+        <div className="needs-strip" role="group" aria-label="Sessions that need you">
           {waiting.map((p) => (
-            <button key={p.key} role="listitem" className="needs-chip" onClick={() => openPane(p.key)} title={VOCAB[statusOf(p)!].explain}>
+            <button key={p.key} className="needs-chip" onClick={() => openPane(p.key)} title={VOCAB[statusOf(p)!].explain}>
               <StatusGlyph glyph="attention" size={11} />
               <span className="name">{tabName(p, titles)}</span>
               <span className="why">{statusOf(p) === "permission" ? "needs permission" : "asked a question"}</span>

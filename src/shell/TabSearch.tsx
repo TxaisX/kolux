@@ -46,6 +46,8 @@ export default function TabSearch({ tabs }: Props) {
           autoFocus
           className="picker-input"
           placeholder="Search open tabs by name"
+          aria-label="Search open tabs"
+          aria-activedescendant={rows[at] ? `ts-${at}` : undefined}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -63,7 +65,7 @@ export default function TabSearch({ tabs }: Props) {
         />
         <div className="picker-list" role="listbox">
           {rows.map((r, i) => (
-            <button key={`${r.label}|${r.hint ?? ""}|${i}`} role="option" aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
+            <button key={`${r.label}|${r.hint ?? ""}|${i}`} id={`ts-${i}`} role="option" aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
               <span className="name">{r.label}</span>
               {r.hint && <span className="hint">{r.hint}</span>}
             </button>
