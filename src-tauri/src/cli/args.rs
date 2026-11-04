@@ -459,7 +459,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
             if text("issue").map(str::trim).is_some_and(|v| v != "null" && v.parse::<u64>().map_or(true, |n| n == 0)) {
                 return Err(Fail::args("--issue takes a GitHub issue number, or null to remove the link"));
             }
-            if !SET_FIELDS.iter().any(|k| switched_on(&flags, *k)) {
+            if !SET_FIELDS.iter().any(|k| switched_on(&flags, k)) {
                 return Err(Fail::args("nothing to set; pass --display-name, --issue, --comment, --workspace-status, --parent-worktree or --no-parent"));
             }
             for (k, v) in &flags {
@@ -529,7 +529,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                     need("id", "")?;
                     need("body", "")?
                 }
-                RESET if SCOPES.iter().filter(|k| switched_on(&flags, **k)).count() != 1 => return Err(Fail::args("reset needs exactly one scope: --all, --tasks or --messages")),
+                RESET if SCOPES.iter().filter(|k| switched_on(&flags, k)).count() != 1 => return Err(Fail::args("reset needs exactly one scope: --all, --tasks or --messages")),
                 ASK => match (text("question").is_some(), text("resume").is_some()) {
                     (true, true) => return Err(Fail::args("give --question or --resume, not both")),
                     (false, false) => return Err(Fail::args("--question is required (or --resume <message> to wait on one already asked)")),
@@ -574,7 +574,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                     return Err(Fail::args(format!("--{k} takes the UUID a lost change printed, like 1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633a; it is only for exact recovery")));
                 }
             }
-            if command != RESET && ["unread", "peek", "all"].iter().filter(|k| switched_on(&flags, **k)).count() > 1 {
+            if command != RESET && ["unread", "peek", "all"].iter().filter(|k| switched_on(&flags, k)).count() > 1 {
                 return Err(Fail::args("give one of --unread, --peek or --all"));
             }
             for k in ["limit", "timeout-ms"] {
