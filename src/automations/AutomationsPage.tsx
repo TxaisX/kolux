@@ -330,7 +330,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
     <div className="autos" ref={root}>
       <div className="autos-bar">
         {onClose && (
-          <button className="ib" title="Close (Escape)" aria-label="Close Automations" onClick={onClose}>
+          <button className="ib" title="Close (Esc)" aria-label="Close Automations" onClick={onClose}>
             <Close size={14} />
           </button>
         )}
@@ -602,7 +602,7 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
       </div>
       {a.source && (
         <div className="note" role="status">
-          {whereItRuns(a)}. Kolux lists it and can start, pause or remove it; its schedule and its history stay in {a.source === "hermes" ? "Hermes" : "OpenClaw"}.
+          {whereItRuns(a)}. Kolux lists it and can start, pause or remove it; its schedule and its history stay in {a.source === "hermes" ? "Hermes, and Runs shows its last ten saved runs" : "OpenClaw"}.
         </div>
       )}
       {a.problem && (
@@ -666,7 +666,9 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
         )}
       </div>
       <div role="tabpanel" aria-label="Runs" hidden={tab !== "runs"}>
-      {runsError ? (
+      {a.source === "hermes" && a.jobId ? (
+        <HermesRuns jobId={a.jobId} show={tab === "runs"} />
+      ) : runsError ? (
         <div className="note warn" role="alert">
           The run history could not be read: {runsError}{" "}
           <button className="btn" onClick={onRetry}>
@@ -703,5 +705,51 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
       )}
       </div>
     </section>
+  );
+}
+
+type HermesRun = { file: string; sections: { title: string; body: string }[] };
+/** null while loading; `error` when Hermes' run files could not be read. */
+export type HermesState = { runs: HermesRun[] } | { error: string } | null;
+
+/** T-749 (DT-C185): a Hermes job's saved runs, newest first, read from Hermes' own output folder when Runs is shown. Hermes owns the files, so there is no clear here. */
+export function HermesRuns({ jobId, show, initial = null }: { jobId: string; show: boolean; initial?: HermesState }) {
+  const [state, setState] = useState<HermesState>(initial);
+  const load = () => {
+    setState(null);
+    invoke<{ runs: HermesRun[] }>("automation_external_history", { id: jobId }).then(
+      (h) => setState({ runs: h.runs }),
+      (e) => setState({ error: String(e) }),
+    );
+  };
+  // Detail is keyed by the automation, so a new job remounts this; the first showing of Runs reads once.
+  useEffect(() => {
+    if (show && !state) load();
+  }, [show, jobId]);
+  if (!state) return <p className="autos-none">Reading Hermes' runs…</p>;
+  if ("error" in state)
+    return (
+      <div className="note warn" role="alert">
+        Hermes' runs could not be read: {state.error}{" "}
+        <button className="btn" onClick={load}>
+          Try again
+        </button>
+      </div>
+    );
+  if (!state.runs.length) return <p className="autos-none">Hermes has no saved runs for this job yet.</p>;
+  return (
+    <div className="autos-snapshot">
+      {state.runs.map((r) => (
+        <details key={r.file}>
+          <summary>{r.file}</summary>
+          {r.sections.map((s, i) => (
+            <div key={i}>
+              {s.title && <strong>{s.title}</strong>}
+              <pre className="auto-output">{s.body}</pre>
+            </div>
+          ))}
+        </details>
+      ))}
+    </div>
   );
 }

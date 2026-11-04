@@ -12,7 +12,9 @@ describe("PROJ-065 workspace context menu", () => {
   });
   it("a sleeping workspace offers Wake; the main checkout is never deleted or slept", () => {
     expect(ids({ asleep: true })).toContain("wake");
-    expect(ids({ isMain: true })).toEqual(["status", "details", "open-in", "proj:remove"]);
+    // T-749 (DT-C185): the main row also offers New workspace, as its project header does; a selection does not.
+    expect(ids({ isMain: true })).toEqual(["proj:new", "status", "details", "open-in", "proj:remove"]);
+    expect(ids({ isMain: true, count: 3 })).not.toContain("proj:new");
   });
   it("the file manager is named for the platform and Open in has the editors and a terminal", () => {
     expect(fileManagerName("MacIntel")).toBe("Finder");

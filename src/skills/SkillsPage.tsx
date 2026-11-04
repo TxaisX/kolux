@@ -153,7 +153,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
   return (
     <section ref={page} className="skills" aria-label="Skills">
       <header className="skills-head">
-        <button className="ib" title="Close (Escape)" aria-label="Close Skills" onClick={onClose}>
+        <button className="ib" title="Close (Esc)" aria-label="Close Skills" onClick={onClose}>
           <Close size={14} />
         </button>
         <h2 ref={heading} tabIndex={-1} style={{ outline: "none" }}>

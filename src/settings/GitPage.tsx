@@ -7,6 +7,7 @@ import { CONFIRM_DELETE_FIELD, asksBeforeDelete } from "../projects/deleting";
 import { prefixSample, type PrefixCheck } from "../projects/model";
 import { budgetLine, budgetLow, type Budget, SUMMARY_UPSTREAM_KEY } from "../scm/model";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { WRITER_INSTRUCTIONS_KEY } from "../scm/generate";
 import WriterPicker from "../scm/WriterPicker";
 import { autoBranchOn, autoBranchPatch } from "../scm/autoBranch";
@@ -166,7 +167,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
 }
 
 export default function GitPage() {
-  const { settings, error, save } = useSettings();
+  const { settings, error, save, retry } = useSettings();
   const [draft, setDraft] = useState<string | null>(null);
   const [check, setCheck] = useState<PrefixCheck | null>(null);
   const typed = draft ?? String(settings?.branchPrefixCustom ?? "");
@@ -192,7 +193,7 @@ export default function GitPage() {
   useEffect(() => void readBudget(), []);
   return (
     <>
-      {error && <p className="conn-detail warn">{error}</p>}
+      <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
       {settings && <GitView settings={settings} save={save} draft={typed} setDraft={setDraft} check={check} budget={budget} onBudget={() => void readBudget()} />}
     </>
   );

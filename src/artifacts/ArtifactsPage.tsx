@@ -234,7 +234,7 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
       <div className="art-side">
         <div className="art-head">
           {onClose && (
-            <button className="ib" title="Close (Escape)" aria-label="Close Artifacts" onClick={onClose}>
+            <button className="ib" title="Close (Esc)" aria-label="Close Artifacts" onClick={onClose}>
               <Close size={14} />
             </button>
           )}

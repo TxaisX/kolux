@@ -266,15 +266,19 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
   const [projects, setProjects] = useState<Project[]>([]);
   const saved = (u: Project) => setProjects((ps) => ps.map((x) => (x.id === u.id ? u : x)));
   const [page, setPage] = useState<Page>(() => pageOf(target?.page ?? lastPage(), []));
+  // T-752 (DT-C188): a list that could not be read keeps the Repositories group, says why and offers Try again.
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  const [tries, setTries] = useState(0);
   useEffect(() => {
+    setProjectsError(null);
     invoke<Project[]>("project_list")
       .then((list) => {
         setProjects(list);
         // A remembered repository page waits for the list before it can be shown.
         if (!target) setPage(pageOf(lastPage(), list.map((p) => p.id)));
       })
-      .catch(() => setProjects([]));
-  }, [target]);
+      .catch((e: unknown) => setProjectsError(String(e)));
+  }, [target, tries]);
   useEffect(() => {
     if (target) {
       setPage(target.page);
@@ -362,12 +366,20 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
             {PAGES[p]}
           </button>
         ))}
-        {(hits ? repoHits : projects).length > 0 && <div className="settings-group">Repositories</div>}
+        {((hits ? repoHits : projects).length > 0 || (!hits && projectsError)) && <div className="settings-group">Repositories</div>}
         {(hits ? repoHits : projects).map((p) => (
           <button key={p.id} className="settings-link repo" aria-current={!hits && page === `repo:${p.id}` ? "page" : undefined} onClick={() => go(`repo:${p.id}`)}>
             {p.name}
           </button>
         ))}
+        {!hits && projectsError && (
+          <p className="conn-detail warn" role="alert" style={{ padding: "0 9px" }}>
+            The repositories could not be listed: {projectsError}{" "}
+            <button className="btn" onClick={() => setTries((n) => n + 1)}>
+              Try again
+            </button>
+          </p>
+        )}
       </nav>
       <main className="settings-main">
         <header className="settings-head">

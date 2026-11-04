@@ -17,11 +17,11 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-async function page() {
+async function page(apps: Record<string, string>[] = [{ id: "custom:gvim", name: "Vim", command: "gvim" }]) {
   const { OpenInCard } = await import("./GeneralPage");
   const saved: Record<string, unknown>[] = [];
   const Page = () => {
-    const [settings, setSettings] = useState<Record<string, unknown>>({ openInApps: [{ id: "custom:gvim", name: "Vim", command: "gvim" }] });
+    const [settings, setSettings] = useState<Record<string, unknown>>({ openInApps: apps });
     return createElement(OpenInCard, { settings, onSave: (p: Record<string, unknown>) => (saved.push(p), setSettings((s) => ({ ...s, ...p }))) });
   };
   const m = await mount(createElement(Page), doc);
@@ -62,4 +62,37 @@ test("a new command leaves Add on, with no note, and Add saves it and clears the
   await settle();
   expect(saved).toEqual([{ openInApps: [{ id: "custom:gvim", name: "Vim", command: "gvim" }, { id: "custom:nvim-qt", name: "Neovim", command: "nvim-qt" }] }]);
   expect([field(c, "App name").value, field(c, "App command").value]).toEqual(["", ""]);
+});
+
+test("T-759 (DT-C195): removing the row being edited leaves edit mode, so Save cannot clear the fields", async () => {
+  const { c, saved } = await page();
+  await click(c, byLabel(c, "button", "Edit Vim")[0]);
+  await settle();
+  expect(byText(c, "button", "Save changes")).toHaveLength(1);
+  await click(c, byLabel(c, "button", "Remove Vim")[0]);
+  await settle();
+  const dialog = find(c, (n) => n.attrs.role === "alertdialog")[0];
+  await click(c, byText(dialog, "button", "Remove")[0]);
+  await settle();
+  expect(saved).toEqual([{ openInApps: [] }]);
+  expect(byText(c, "button", "Save changes")).toHaveLength(0); // out of edit mode
+  expect(off(add(c))).toBe(true); // nothing to add until a name and command are typed
+  expect([field(c, "App name").value, field(c, "App command").value]).toEqual(["", ""]);
+});
+
+test("T-759: removing another row while editing keeps the edit", async () => {
+  const nvim = { id: "custom:nvim-qt", name: "Neovim", command: "nvim-qt" };
+  const { c, saved } = await page([{ id: "custom:gvim", name: "Vim", command: "gvim" }, nvim]);
+  await click(c, byLabel(c, "button", "Edit Vim")[0]);
+  await settle();
+  await typeInto(c, field(c, "App name"), "Vim 9");
+  await click(c, byLabel(c, "button", "Remove Neovim")[0]);
+  await settle();
+  await click(c, byText(find(c, (n) => n.attrs.role === "alertdialog")[0], "button", "Remove")[0]);
+  await settle();
+  expect(byText(c, "button", "Save changes")).toHaveLength(1);
+  expect(field(c, "App name").value).toBe("Vim 9");
+  await click(c, byText(c, "button", "Save changes")[0]);
+  await settle();
+  expect(saved[saved.length - 1]).toEqual({ openInApps: [{ id: "custom:gvim", name: "Vim 9", command: "gvim" }] });
 });
