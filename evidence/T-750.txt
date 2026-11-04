@@ -28,3 +28,4 @@ BUNDLE: first load 1,486,977 B vs main 8f3f8295 1,486,970 B (both built here, 47
 SPEC: spec/01 PROJ-057 (palette name and section), with an [x] acceptance line.
 GATES: tsc 0; plan-check OK; firewall-check -Baseline 0 new.
 REVIEW: sonnet-medium-review, B+, no must-fix; 165 tests it re-ran passed. Applied: a counted confirm ("Delete N workspaces") read "Delete 1 workspaces" after a partial failure; the singular form cost +20 B (+53, cap +40), so the confirm keeps main's "Delete all", which is right for any count. Not applied: other surfaces that still say worktree (automations, settings, editor, Space, the attached-tabs and right-sidebar hints) are outside sweep #29 and the cap; they are a follow-up row.
+MERGE 0d882444 (train 22): PLAN.md and DECISIONS.md rows kept from both sides; first load 1,487,831 B vs main 0d882444 1,487,824 B (+7). tsc 0, plan-check OK, firewall 0 new.
