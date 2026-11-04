@@ -48,6 +48,7 @@ export const TemplatePicker = deferred(() => import("../editor/TemplatePicker"))
 export const AddProjectRow = deferred(() => import("../editor/AddProjectRow"));
 export const ReviewNotes = deferred(() => import("../editor/ReviewNotes"));
 export const FolderRenameAsk = deferred(() => import("../projects/FolderRenameAsk"));
+export const CleanupDialog = deferred(() => import("../projects/CleanupDialog"));
 
 // The right sidebar's panels: the pull request checks, and Insights (tokens / cost / live sessions, app-wide).
 export const ChecksPanel = deferred(() => import("../scm/ChecksPanel"));
