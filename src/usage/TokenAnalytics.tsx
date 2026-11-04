@@ -253,7 +253,7 @@ export function TokenAnalyticsView({ usage, pick, scanning, today, onPick, onTra
     <div className="ta">
       <div className="ta-head">
         <Segmented label="Usage analytics" options={PICKS} value={pick} onPick={onPick} />
-        <button className="btn" disabled={busy || shown.length === 0} onClick={onRefresh}>
+        <button className="btn" disabled={busy || shown.length === 0} title={shown.length ? undefined : "Nothing to refresh: token tracking is off"} onClick={onRefresh}>
           {busy ? "Refreshing…" : "Refresh"}
         </button>
       </div>

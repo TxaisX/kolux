@@ -18,6 +18,9 @@ pub const EVENT: &str = "browser-download";
 pub const FALLBACK: &str = "download";
 /// How many numbered names are tried before the download fails (BROW-013: bounded).
 pub const MAX_CLASHES: u32 = 100;
+/// How many downloads the registry keeps; past it, the oldest ended ones go (T-734: Show in folder
+/// finds a row the strip still shows).
+pub const KEEP: usize = 64;
 /// How often the pane hears the bytes written so far.
 pub const POLL: Duration = Duration::from_millis(300);
 /// The engine writes a running download next to its final name under this ending.
@@ -207,14 +210,53 @@ pub fn requested(app: &AppHandle, id: u32, url: &str, dir: &Path, suggested: &st
     let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
     let d = Download { id, key, url: url.to_string(), name, path: path.display().to_string(), received: 0, total: None, state: State::Running };
     if let Ok(mut all) = DOWNLOADS.lock() {
-        // finished rows of this tab make way, so the strip never grows without bound
-        all.retain(|x| x.state == State::Running || x.id != id);
+        make_room(&mut all);
         all.push(d.clone());
     }
     tell(app, &d);
     ask_total(app.clone(), key, url.to_string());
     start_poller(app.clone());
     Ok(path)
+}
+
+/// Past KEEP, the oldest ended downloads make way, so the registry never grows without bound.
+pub fn make_room(all: &mut Vec<Download>) {
+    while all.len() >= KEEP {
+        match all.iter().position(|x| x.state != State::Running) {
+            Some(i) => drop(all.remove(i)),
+            None => break,
+        }
+    }
+}
+
+/// T-734 (DT-C170): the strip's Cancel. The engine stops the download;
+/// the row says cancelled. A download that already ended is left as it is.
+#[tauri::command]
+pub async fn browser_download_cancel(app: AppHandle, key: u64) -> Result<(), String> {
+    let (id, path) = DOWNLOADS.lock().map_err(|e| e.to_string())?.iter().find(|x| x.key == key && x.state == State::Running).map(|x| (x.id, x.path.clone())).ok_or("the download is not running")?;
+    let view = super::view(&app, id)?;
+    let found = tauri::async_runtime::spawn_blocking(move || super::engine::cancel_download(&view, id, path, Duration::from_secs(5))).await.map_err(|e| e.to_string())??;
+    if !found {
+        return Err("the download already ended".into());
+    }
+    // the engine may have said "failed" for the cancel already; the row says what the user did
+    let d = DOWNLOADS.lock().ok().and_then(|mut all| {
+        let d = all.iter_mut().find(|x| x.key == key && matches!(x.state, State::Running | State::Failed))?;
+        d.state = State::Cancelled;
+        Some(d.clone())
+    });
+    if let Some(d) = d {
+        tell(&app, &d);
+    }
+    Ok(())
+}
+
+/// T-734 (DT-C170): the strip's Show in folder. The file manager opens on a finished download,
+/// chosen by its key, so the pane reaches no other path.
+#[tauri::command]
+pub fn browser_download_reveal(key: u64) -> Result<(), String> {
+    let path = DOWNLOADS.lock().map_err(|e| e.to_string())?.iter().find(|x| x.key == key && x.state == State::Done).map(|x| x.path.clone()).ok_or("that download is no longer known; open the Downloads folder")?;
+    crate::links::reveal(Path::new(&path))
 }
 
 /// A tab's download changed: told to its pane, or held for it while the pane is being built (after-list 719).
@@ -293,10 +335,21 @@ fn start_poller(app: AppHandle) {
     });
 }
 
+/// Which running row of tab `id` the engine's end report is about: the one with its file when the
+/// engine names one, else the newest with its address. The engine names no file when a download fails
+/// or is cancelled, so T-734: such a report never lands on a row of another address.
+// ponytail: with no file named, two running downloads of one address in one tab are told apart by age
+// only; recording the key Cancel stops would close that if it shows up.
+pub fn ended(all: &[Download], id: u32, url: &str, path: Option<&Path>) -> Option<usize> {
+    let newest = |m: &dyn Fn(&Download) -> bool| all.iter().rposition(|x| x.id == id && x.state == State::Running && m(x));
+    path.and_then(|p| newest(&|x| p.display().to_string() == x.path)).or_else(|| newest(&|x| x.url == url))
+}
+
 /// The engine says a download ended (BROW-013: the notice that it has finished).
 pub fn finished(app: &AppHandle, id: u32, url: &str, path: Option<&Path>, success: bool) {
     let done = DOWNLOADS.lock().ok().and_then(|mut all| {
-        let d = all.iter_mut().rev().find(|x| x.id == id && x.state == State::Running && (path.is_none_or(|p| p.display().to_string() == x.path) || x.url == url))?;
+        let i = ended(&all, id, url, path)?;
+        let d = &mut all[i];
         d.state = if success { State::Done } else { State::Failed };
         if success {
             d.received = written(Path::new(&d.path)).max(d.received);
@@ -430,6 +483,34 @@ mod tests {
         std::fs::write(&p, [0u8; 25]).unwrap();
         assert_eq!(written(&p), 25);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t734_the_registry_keeps_recent_ended_downloads_and_never_drops_a_running_one() {
+        let row = |key: u64, state: State| Download { id: 1, key, url: "u".into(), name: "n".into(), path: "p".into(), received: 0, total: None, state };
+        let mut all: Vec<Download> = (0..KEEP as u64).map(|k| row(k, if k == 0 { State::Running } else { State::Done })).collect();
+        make_room(&mut all);
+        assert_eq!(all.len(), KEEP - 1, "one ended row made way");
+        assert_eq!(all[0].key, 0, "the running one stays");
+        assert_eq!(all[1].key, 2, "the oldest ended one went");
+        let mut busy: Vec<Download> = (0..KEEP as u64).map(|k| row(k, State::Running)).collect();
+        make_room(&mut busy);
+        assert_eq!(busy.len(), KEEP, "running downloads are never dropped");
+        let mut few = vec![row(1, State::Done), row(2, State::Done)];
+        make_room(&mut few);
+        assert_eq!(few.len(), 2, "a finished row stays while there is room, so Show in folder finds it");
+    }
+
+    #[test]
+    fn t734_an_end_with_no_file_lands_on_its_own_address_not_the_newest_download() {
+        let row = |key: u64, url: &str, path: &str| Download { id: 1, key, url: url.into(), name: "n".into(), path: path.into(), received: 0, total: None, state: State::Running };
+        let all = vec![row(1, "https://x/a", "C:\\D\\a"), row(2, "https://x/b", "C:\\D\\b")];
+        assert_eq!(ended(&all, 1, "https://x/a", None), Some(0), "a cancelled A is A, not the newer B");
+        assert_eq!(ended(&all, 1, "https://x/c", None), None, "an unknown address with no file touches nothing");
+        assert_eq!(ended(&all, 1, "https://x/moved", Some(Path::new("C:\\D\\b"))), Some(1), "a finished file is found by its path");
+        assert_eq!(ended(&all, 2, "https://x/a", None), None, "another tab's report never lands here");
+        let twice = vec![row(1, "https://x/a", "C:\\D\\a"), row(2, "https://x/a", "C:\\D\\a (2)")];
+        assert_eq!(ended(&twice, 1, "https://x/a", Some(Path::new("C:\\D\\a"))), Some(0), "a named file wins over a newer row of its address");
     }
 
     #[test]

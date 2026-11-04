@@ -1,0 +1,36 @@
+T-740 - Polish A (DT-C176; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t740 from main 5a69c684, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 4", T-740. Each item was checked against main 5a69c684 first;
+all five were still open.
+
+WHAT CHANGED (DT-C176)
+1. palette.md F5: src/feedback/crashBundle.ts (2 notes) and src/recovery/CrashReportDialog.tsx (1 note) said
+   "Settings > Diagnostics"; the Diagnostics card is on Settings > General (settings/GeneralPage.tsx DiagnosticsCard).
+   They now say "Settings > General > Diagnostics".
+2. usage-status.md F6: src/usage/TokenAnalytics.tsx Refresh, disabled when no provider is tracked, gets the title
+   "Nothing to refresh: token tracking is off" in that state (no title otherwise, as before).
+3. shell.md F7: src/chrome/useChrome.ts. The toast's 4 s timer, on firing while ".toast:hover" matches, arms
+   another 4 s instead of clearing, so the toast stays while read and goes at most 4 s after the pointer leaves.
+   The toast (shell/window/Notices.tsx) holds no focusable control, so there is no focus case.
+4. destructive.md F4: src/scm/CommentsPanel.tsx the "Delete this comment from GitHub?" confirm button is "btn danger".
+   (The row named only the delete-comment confirm; PullRequestPage's label x is not a confirm.)
+5. chrome.md F5: src/chrome/LayoutStrip.tsx New tab and src/editor/Explorer.tsx Hide the explorer read their chord
+   from the keymap through the existing withChord (terminal/PaneMenu.tsx) with useLabel / labelOf, so an unbound
+   action shows no chord and a rebound one shows its new chord. src/chrome/RightSidebar.tsx's Explorer tab hint
+   dropped "(Ctrl+Shift+E)" and reads "Files in this workspace": reading the keymap there measured about +90 B,
+   which the cap could not hold; the Explorer's own Hide button names the live chord.
+
+TESTS
+- src/chrome/toastHold.test.ts (new): fake timers; a toast hovered through 12 s is still shown, and is gone 4 s
+  after the pointer leaves; an unhovered toast is still there at 3,999 ms and gone at 4,000 ms. Red-checked: main's
+  useChrome.ts fails it ("still shown while the pointer is on it": expected null to be 'Copied').
+- vitest src/chrome src/editor src/scm src/usage src/recovery src/feedback src/shell src/board src/plainWords.test.ts:
+  247 files, 2077 passed. pnpm exec tsc --noEmit -p . : clean.
+
+REVIEW
+- Fresh sonnet-medium-review: B+, no high. Mediums logged, not fixed (the cap has 3 B left): the toast timer has no unmount cleanup, which was already so before (useChrome lives for the window's lifetime, so it never unmounts in practice); the hover check is global, so any .toast under the pointer holds it. Low fixed: the test now also covers a new toast set while hovered. Lows kept: the New-tab title reads 'New tab beside the focused pane; shell (Ctrl+T)', worded to fit the cap.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 5a69c684: 1,489,581 B first load, branch 1,489,698 B (+117). After merging main 99b4a9d2: main 1,489,600 B, branch 1,489,717 B (+117). Cap +120 B. First cut +237 (keymap
+  chord on the sidebar tab, a separate toast callback with a focus selector, a template New-tab title); trimmed to
+  the shape above.

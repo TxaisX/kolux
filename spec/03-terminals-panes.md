@@ -106,12 +106,13 @@ Source: D-03-040
 Tier: P0 · Pushed: 1 · State at 0.15.0: live
 User does: uses the new-agent shortcut or picks an agent from the new tab menu.
 User sees: a tab opens with the chosen agent already launching.
-Rules: new default agent: Cmd+Alt+T on macOS; each installed agent also gets its own new tab action,
+Rules: new default agent: Cmd+Alt+T on macOS, Ctrl+Alt+T on Windows and Linux (T-746); each installed agent also gets its own new tab action,
   unbound by default.
 Acceptance:
   - [x] Choosing Claude from the menu opens a tab whose header shows Claude starting. (cards live; evidence/cards-TERM-041.txt)
   - [x] Each installed agent has its own command for a new tab, with no key until the user assigns
       one. (cards; evidence/cards-TERM-041.txt)
+  - [x] Fresh profile on Windows → Ctrl+Alt+T opens a new tab with the default agent. (unit; evidence/T-746.txt)
 Compat: keybinding command for a new tab with the default agent, plus one command per installed
   agent formed from that command and the agent's own id (exact ids held back until allowlisted).
 Source: D-03-041
@@ -726,14 +727,14 @@ Source: D-03-035
 
 ### TERM-078 · Zoom the terminal font
 Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
-User does: uses zoom in, zoom out or reset (shortcut or View menu).
+User does: uses zoom in, zoom out or reset (shortcut or the top bar's Terminal zoom menu).
 User sees: the terminal text gets bigger or smaller.
-Rules: only the pane that owns keyboard focus reacts; View menu holds Zoom In, Zoom Out and Reset
-  Size, and so does the top bar's dots menu, named Terminal zoom (DT-C103); from the menu they change the
-  focused terminal's text size.
+Rules: only the pane that owns keyboard focus reacts; the top bar's Terminal zoom menu (a magnifier
+  with a plus, DT-C103, DT-C177) holds Zoom In, Zoom Out and Reset Size; from the menu they change the
+  focused terminal's text size. The View menu's zoom items zoom the whole interface instead (SET-019).
 Acceptance:
   - [ ] Zooming in twice then reset returns to the configured font size.
-  - [ ] Zoom In from the View menu enlarges only the focused terminal.
+  - [ ] Zoom In from the Terminal zoom menu enlarges only the focused terminal.
 Compat: keybinding ids zoom.in, zoom.out, zoom.reset.
 Source: D-03-078
 

@@ -1,0 +1,37 @@
+T-746 / DT-C182 - Polish C (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 7" (57): review "+" gutter on keyboard focus (visual F6), New
+agent tab Windows chord (terminal F2), Space/Floor default chords (small-views F2), past-session "Unlimited" or
+windowing (chat-sessions F7), parallel auto-PR list load (settings-a F7). Cap +150 B. Each checked on main 0033ca09
+first: T-708 did not add any of the chords.
+
+FIXED:
+  - src/keys/actions.ts: tab.newAgent has Mod+Alt+T on every platform (was macOS only); view.space has Mod+Alt+S.
+    view.floor stays unbound: HID-002/HID-003 cut Floor off on purpose, so the Floor half is not done (DT-C182).
+  - src/styles.css: the review "+" shows on the cursor line's gutter cell while the diff editor is focused
+    (.cm-focused .cm-note-gutter .cm-activeLineGutter), not only on hover.
+  - src/sessions/AgentsPanel.tsx: the past-session list draws 200 rows, and Show more adds 200; Unlimited stays
+    (VIEW-082 asks for it); group headers still count every session in the group.
+  - src/settings/autoPr.tsx: loadEntries asks for every project's workspaces at once (Promise.all) and keeps
+    project order; exported for the test.
+
+TEST: src/sessions/t746.test.ts, 4 tests: the chords on win32/linux/darwin with no clash and Floor unbound; the
+  focus selector in styles.css; 250 sessions under Unlimited draw 200 rows with "Show more (50 not shown)" and
+  headers "claude (150)" / "codex (100)"; all three workspace_list calls are made before any answers, and the
+  entries come back in project order. All 4 failed with the four source files at main and pass with the fix.
+  src/keys/keymap.test.ts: the unbound count 58 -> 57 and the macOS-only list is now workspace rename alone.
+  src/terminal/__cards__/TERM-041.test.ts: tab.newAgent is Mod+Alt+T on all three platforms; src/launch/PlusMenu.test.ts:
+  the no-chip case now unbinds tab.newAgent in its keybindings, since it is bound by default.
+
+BUNDLE: first load 1,489,654 B vs main 0033ca09 1,489,655 B (both built here, 47 chunks): -1 B (cap +150).
+
+REVIEW: sonnet-medium-review, B+, no must-fix. Applied: the row window resets to 200 when the search, scope or view
+  changes (AgentsPanel useEffect on key, query and the saved view). Not applied: focus handling on Show more (focus
+  stays on the button, which then sits after the new rows, so Tab reaches them next); moving ROWS (nit).
+  Checked by the reviewer: the AltGr guard (keymap.ts typesCharacter) keeps AltGr+S/T typing on layouts such as
+  Polish; both chords are held in a terminal under the default policy like Mod+T; Promise.all keeps each call's catch.
+FULL RUN: npx vitest run: 809 files, 6020 passed, 2 failed (TERM-041 and PlusMenu pinned the old macOS-only chord);
+  both updated as above and re-run: passed. src/sessions re-run after the review fix: 15 files, 77 tests passed.
+  tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
+
+PENDING: unit-proven; not checked live in the app.
+MERGE b2b6cd7f (train 20): PLAN.md and DECISIONS.md rows kept from both sides; first load 1,488,822 B vs main b2b6cd7f 1,488,823 B (-1). tsc 0, plan-check OK.

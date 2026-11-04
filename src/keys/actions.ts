@@ -103,7 +103,7 @@ export const actions: Action[] = [
   a("view.floor", "Show Floor", "global", []),
   // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there.
   a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+Shift+P"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
-  a("view.space", "Show Space", "global", [], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
+  a("view.space", "Show Space", "global", ["Mod+Alt+S"], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   a("floatingWorkspace.minimize", "Minimize Floating Workspace Panel", "global", ["Mod+Shift+H"]),
   a("zoom.in", "Zoom In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),
@@ -116,7 +116,7 @@ export const actions: Action[] = [
   a("worktree.history.back", "Worktree History Back", "global", ["Mod+Alt+ArrowLeft"]),
   a("worktree.history.forward", "Worktree History Forward", "global", ["Mod+Alt+ArrowRight"]),
   a("tab.newTerminal", "New terminal tab", "tabs", ["Mod+T"]),
-  a("tab.newAgent", "New agent tab (default agent)", "tabs", [], { darwin: ["Mod+Alt+T"] }),
+  a("tab.newAgent", "New agent tab (default agent)", "tabs", ["Mod+Alt+T"]),
   a("tab.newBrowser", "New browser tab", "tabs", ["Mod+Shift+B"]),
   a("tab.newMarkdown", "New markdown tab", "tabs", ["Mod+Shift+M"]),
   a("tab.openMarkdown", "Open markdown tab", "tabs", ["Mod+Shift+O"]),

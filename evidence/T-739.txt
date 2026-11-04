@@ -1,0 +1,29 @@
+T-739 / DT-C175 - hover tips show on keyboard focus too (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 3" (57), backlog-sweep-49 #24: "chrome/Tip.tsx hints show
+on keyboard focus too (focusin plus aria-describedby)", cap +100 B, raised by 57 to +230 B (keep aria-describedby).
+
+FOUND: the one window-wide tip (src/chrome/Tip.tsx, STAT-052) listened for mouseover only, so tabbing onto a
+status dot or any element with data-tip showed nothing, and screen readers never heard the explanation.
+
+FIXED: src/chrome/Tip.tsx
+  - the same handler now serves focusin; a focus that is focus-visible (keyboard, not a click) on an element
+    with data-tip shows the tip at once instead of after 200 ms and sets the focused element's
+    aria-describedby to the tip's id (kolux-tip, now on the tip's div);
+  - focus on an element without a tip hides it; pressing and scrolling hide it as before;
+  - the attribute is left in place: no element in src has both data-tip and its own aria-describedby
+    (grep), and a describedby naming a tip that is not shown is skipped by screen readers.
+
+TEST: src/chrome/Tip.t739.test.ts "T-739: a keyboard focus shows the tip and describes the element by it; a
+  click focus does not" (fakeDom): a click focus shows nothing and sets no attribute; a keyboard focus shows
+  the text and sets aria-describedby=kolux-tip; focus on an element without a tip hides it. It failed on the
+  old Tip ("expected '' to be 'Close the tab'") and passes with the fix.
+
+BUNDLE: first load 1,489,803 B vs main 5a69c684 1,489,581 B, and 1,489,822 B vs main 99b4a9d2 1,489,600 B after
+  the merge (47 chunks, built here): +222 B (cap +230). It fits only with T-729 (#175, -2,426 B) landed first,
+  so fa merges it after #175.
+
+REVIEW: sonnet-medium-review, B+, no must-fix. Applied: a second test proves the mouse path unchanged (no tip at 20 ms, the tip after the 200 ms delay, no attribute). Not applied, logged in DT-C175 as known limits (each costs bytes over the +230 cap): Escape to dismiss a keyboard-opened tip (WCAG 1.4.13), and clearing the describedby when focus leaves.
+FULL RUN: npx vitest run: 808 files, 6015 tests passed (before the second test; src/chrome re-run after: passed). tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
+
+PENDING: unit-proven; not checked live in the app.
+MERGE b2b6cd7f (train 20): PLAN.md and DECISIONS.md rows kept from both sides; first load 1,489,045 B vs main b2b6cd7f 1,488,823 B (+222). tsc 0, plan-check OK.
