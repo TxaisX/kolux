@@ -15,8 +15,9 @@ import { layoutWriter } from "../terminal/layoutSave";
 import { losable, runningAgents, type Losable } from "./closeAsk";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { WindowState } from "./windowStore";
+import { floatingUnsaved } from "../floating/unsaved";
 import type { Plumbing } from "../settings/useSettingsPlumbing";
 
 /** T-066-e: a pane whose sessions list gave nothing is not asked again for this long; a layout write comes with
@@ -61,8 +62,20 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
   // T-182 (APP-006): agents still running are asked about too (while TERM-045's switch is on).
   const [quitAsk, setQuitAsk] = useState<Losable | null>(null);
   const [reloadAsking, setReloadAsk] = useState<string[] | null>(null); // Review of PR #16 (a): Force Reload's question
-  const unsaved = useRef<string[]>([]);
-  unsaved.current = panes.filter((p) => dirty[p.key]).map((p) => baseName(p.path ?? p.title ?? "Untitled"));
+  // VIEW-107: a floating note holds unsaved text of its own and the window counts it too, so quitting
+  // or Force Reloading never drops it unmentioned. The layer keeps its names (floating/unsaved.ts);
+  // both lists are read when the question is built (the getter), so a note typed into since this
+  // render still counts, and Force Reload's question, which reads the same list, names it as well.
+  const paneFiles = useRef<string[]>([]);
+  paneFiles.current = panes.filter((p) => dirty[p.key]).map((p) => baseName(p.path ?? p.title ?? "Untitled"));
+  const unsaved = useMemo(
+    () => ({
+      get current(): string[] {
+        return [...paneFiles.current, ...floatingUnsaved.titles];
+      },
+    }),
+    [],
+  );
   const busyAgents = useRef<string[]>([]);
   busyAgents.current = runningAgents(panes, running, asksBeforeClose(settings));
   const quitting = useRef(false);
