@@ -19,6 +19,30 @@ export type Attempt = { time: number; worktree: string; command: string; rule: s
 type Settings = Record<string, unknown>;
 type ProjectRow = { path: string; name: string; displayName?: string; workspacesDir?: string };
 
+/** Where a project's workspaces go and how they are laid out, as `workspaces_place_get` gives it. */
+export type Place = { dir: string; flat: boolean };
+
+/** A folder and a name joined the way the backend joins them, with `/` separators. */
+const join = (dir: string, name: string) => `${dir.replace(/\\/g, "/").replace(/\/+$/, "")}/${name}`;
+
+/**
+ * C19-R1-01: the one folder a project's panes run in, `<workspaces root>/<project folder>`, which is
+ * the folder the backend's `workspace_path` makes and the hook reports as `cwd`. Empty when the
+ * layout is flat (the folder carries no project at all), when the place is unknown, or when two
+ * projects share a folder name (nothing can tell them apart, so neither claims it).
+ */
+export function paneFolders(project: ProjectRow, place: Place | null, others: ProjectRow[]): string[] {
+  if (!place?.dir || place.flat) return [];
+  const own = project.workspacesDir?.trim();
+  const abs = !!own && /^([a-zA-Z]:[\\/]|[\\/]{2}|\/)/.test(own);
+  const root = own ? (abs ? own : join(project.path, own)) : place.dir;
+  // The folder name as `workspace_path` makes it: the project name without a `.git` ending.
+  const folder = (p: ProjectRow) => p.name.replace(/(?:\.git)+$/, "");
+  const name = folder(project);
+  if (!name || others.some((p) => p.path !== project.path && folder(p) === name)) return [];
+  return [join(root, name)];
+}
+
 export const KINDS: { kind: Kind; label: string; hint: string }[] = [
   { kind: "starts-with", label: "Starts with", hint: "the program and its first words, any case" },
   { kind: "contains", label: "Contains", hint: "these words anywhere, any case" },
@@ -42,8 +66,13 @@ export const scopeOf = (s: Settings, root: string): Scope => scopes(s)[root] ?? 
 const withScope = (s: Settings, root: string, scope: Scope): Settings => ({ [PROJECTS_FIELD]: { ...scopes(s), [root]: scope } });
 
 /** The patch that adds `rule` to the global list (`root` null) or a project's own. */
-export const addRule = (s: Settings, root: string | null, rule: Custom, dirs: string[] = []): Settings =>
-  root === null ? { [RULES_FIELD]: [...globalRules(s).filter((r) => r.id !== rule.id), rule] } : withScope(s, root, { ...scopeOf(s, root), dirs: scopeOf(s, root).dirs?.length ? scopeOf(s, root).dirs : dirs, rules: [...scopeOf(s, root).rules.filter((r) => r.id !== rule.id), rule] });
+export const addRule = (s: Settings, root: string | null, rule: Custom, dirs: string[] = []): Settings => {
+  if (root === null) return { [RULES_FIELD]: [...globalRules(s).filter((r) => r.id !== rule.id), rule] };
+  const scope = scopeOf(s, root);
+  // C19-R1-01: a save writes the pane folder it was given, so a moved Workspaces folder is
+  // re-claimed; an unknown place (no `dirs`) never drops the claim already saved.
+  return withScope(s, root, { ...scope, dirs: dirs.length ? dirs : scope.dirs ?? [], rules: [...scope.rules.filter((r) => r.id !== rule.id), rule] });
+};
 
 /** The patch that removes rule `id` from the global list or a project's own. */
 export const removeRule = (s: Settings, root: string | null, id: string): Settings =>
@@ -55,7 +84,7 @@ export const onIn = (s: Settings, root: string, id: string) => !offIds(s).includ
 export const switchIn = (s: Settings, root: string, id: string, on: boolean, dirs: string[] = []): Settings => {
   const scope = scopeOf(s, root);
   const off = scope.off.filter((x) => x !== id);
-  return withScope(s, root, { ...scope, dirs: scope.dirs?.length ? scope.dirs : dirs, off: on ? off : [...off, id] });
+  return withScope(s, root, { ...scope, dirs: dirs.length ? dirs : scope.dirs ?? [], off: on ? off : [...off, id] });
 };
 
 /** Reset for all projects: the built-ins back on, the global custom rules gone, per-project scopes kept. */
@@ -99,15 +128,15 @@ type RulesProps = {
   save: (patch: Settings) => unknown;
   /** Whether a pattern can be saved: null, or the sentence saying why not. */
   check: (kind: Kind, pattern: string) => Promise<string | null>;
+  /** C19-R1-01: the folders this project's panes run in (`paneFolders`); empty when none can be named. */
+  dirs?: string[];
 };
 
-export function SafetyRulesView({ settings, rules, projects, scope, setScope, save, check }: RulesProps) {
+export function SafetyRulesView({ settings, rules, projects, scope, setScope, save, check, dirs = [] }: RulesProps) {
   const [kind, setKind] = useState<Kind>("starts-with");
   const [pattern, setPattern] = useState("");
   const [name, setName] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
-  const project = scope === null ? null : projects.find((p) => p.path === scope);
-  const dirs = project?.workspacesDir ? [project.workspacesDir] : [];
   const own = scope === null ? globalRules(settings) : scopeOf(settings, scope).rules;
   const add = async () => {
     const why = await check(kind, pattern);
@@ -189,12 +218,18 @@ export function SafetyRulesView({ settings, rules, projects, scope, setScope, sa
 
 export function SafetyRules({ settings, rules, save }: { settings: Settings; rules: RuleInfo[] | null; save: (patch: Settings) => unknown }) {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [place, setPlace] = useState<Place | null>(null);
   const [scope, setScope] = useState<string | null>(null);
   useEffect(() => {
     invoke<ProjectRow[]>("project_list").then(setProjects, () => setProjects([]));
+    // C19-R1-01: the workspaces root and layout, so a project's scope can name the folder its panes
+    // actually run in; an unreadable place leaves the saved claim alone rather than guessing.
+    invoke<Place>("workspaces_place_get").then(setPlace, () => setPlace(null));
   }, []);
   const check = (kind: Kind, pattern: string) => invoke<void>("protected_rule_check", { kind, pattern }).then(() => null, (e) => String(e));
-  return <SafetyRulesView settings={settings} rules={rules} projects={projects} scope={scope} setScope={setScope} save={save} check={check} />;
+  const project = scope === null ? null : projects.find((p) => p.path === scope);
+  const dirs = project ? paneFolders(project, place, projects) : [];
+  return <SafetyRulesView settings={settings} rules={rules} projects={projects} scope={scope} setScope={setScope} save={save} check={check} dirs={dirs} />;
 }
 
 const when = (ms: number) => new Date(ms).toLocaleString();

@@ -157,7 +157,7 @@ test("AUTO-008 the precheck's limits and its skip read in words", () => {
 test("AUTO-013: a run offers View run while its terminal is live, Resume workspace after, its snapshot once the worktree is gone, and Rerun only when it failed", () => {
   const r = (o: Partial<Run>): Run => ({ ...run("a", 1), ...o });
   const wt = { worktree: "C:/w", worktreeName: "w" };
-  expect(runActions(r({ ...wt, status: "dispatched" }), { live: true, exists: true })).toEqual(["view"]);
+  expect(runActions(r({ ...wt, status: "dispatched" }), { live: true, exists: true })).toEqual(["view", "cancel"]);
   expect(runActions(r({ ...wt, status: "completed" }), { live: false, exists: true })).toEqual(["resume"]);
   expect(runActions(r({ ...wt, worktreeGone: true }), { live: false, exists: true })).toEqual(["snapshot"]);
   expect(runActions(r({ ...wt, status: "failed" }), { live: false, exists: true })).toEqual(["resume", "rerun"]);
@@ -165,6 +165,17 @@ test("AUTO-013: a run offers View run while its terminal is live, Resume workspa
   // Skipped runs, and runs that never got a workspace, show their details only.
   expect(runActions(r({ status: "skipped", cause: "precheck" }), { live: false, exists: true })).toEqual([]);
   expect(runActions(r({ status: "failed" }), { live: false, exists: true })).toEqual(["rerun"]);
+});
+
+// C25-R2-01: a run whose agent stopped working without its process ending used to read Running
+// for ever, with no action that could end it. Cancel is offered on a live run, and a cancelled run
+// says so instead of reading as a plain failure.
+test("c25r201_a_live_run_can_be_cancelled_and_a_cancelled_run_says_so", () => {
+  const r = (o: Partial<Run>): Run => ({ ...run("a", 1), ...o });
+  expect(runActions(r({ status: "dispatched" }), { live: true, exists: true })).toEqual(["cancel"]);
+  expect(runActions(r({ status: "dispatched" }), { live: false, exists: true })).toEqual([]);
+  expect(statusWord(r({ status: "failed", cancelled: true, dispatchedAt: 1 }))).toBe("Cancelled");
+  expect(statusWord(r({ status: "failed", dispatchedAt: 1 }))).toBe("Failed");
 });
 
 test("AUTO-013: Up and Down step through runs, Down with none selected picks the first, Enter opens; modifiers and composition do nothing", () => {

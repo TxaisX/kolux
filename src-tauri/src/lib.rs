@@ -430,6 +430,9 @@ pub fn run() {
                 foreground::poll(&handle);
                 // STAT-028: a cancelled turn that never sends its Stop reads interrupted.
                 for status in status::settle_cancels() {
+                    // C25-R2-01: a settled cancel never passes through the hook line, so the run
+                    // following that pane is told here, as `hooks.rs:814` tells it a hook status.
+                    automations::settled(&handle, &status);
                     let _ = tauri::Emitter::emit(&handle, hooks::EVENT, status);
                 }
                 // STAT-032: a working reading with no signal for 30 minutes is marked unverified.
@@ -778,6 +781,7 @@ pub fn run() {
             automations::automation_set_enabled,
             automations::automation_delete,
             automations::automation_run_now,
+            automations::automation_run_cancel,
             automations::automation_preview,
             automations::automation_save,
             automations::carry::session_carry_context,

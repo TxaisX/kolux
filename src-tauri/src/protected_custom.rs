@@ -741,6 +741,53 @@ mod tests {
         assert_eq!(check("kubectl delete pod", &base, &off, Some("G:/Dev/other")), None, "the master switch covers custom rules too");
     }
 
+    /// C19-R1-01: a project's panes run in `<workspaces root>/<project>`, not under the repo root,
+    /// so the scope must name that folder too. The page writes it (`paneFolders` in
+    /// SafetyRules.tsx); this pins that the read side then applies the project's off list and its
+    /// own rules, and that a sibling folder is not the project.
+    #[test]
+    fn c19r101_a_pane_in_its_projects_workspace_folder_gets_that_projects_scope() {
+        let s = json!({
+            "protectedProjects": {
+                "G:/Dev/shop": {
+                    "off": ["force-push"],
+                    "dirs": ["C:/Users/x/kolux-rs/workspaces/shop"],
+                    "rules": [{ "id": "p1", "name": "Migrations", "kind": "regex", "pattern": "^prisma migrate" }]
+                }
+            }
+        });
+        let base = crate::protected::Base::default();
+        let pane = "C:/Users/x/kolux-rs/workspaces/shop/fix-login/src";
+        assert_eq!(scope_of(&s, Some(pane)).map(|(r, _)| r).as_deref(), Some("G:/Dev/shop"));
+        assert!(working(&s, Some(pane)).off.contains(&"force-push".to_string()));
+        assert_eq!(check("git push --force origin main", &base, &s, Some(pane)), None, "the switch the user turned off here holds");
+        assert_eq!(check("prisma migrate reset", &base, &s, Some(pane)).as_deref(), Some("Migrations"), "the project's own rule asks");
+        assert_eq!(check("prisma migrate reset", &base, &s, Some("C:/Users/x/kolux-rs/workspaces/shop2/x")), None, "a sibling folder is not shop");
+        assert_eq!(check("prisma migrate reset", &base, &s, Some("C:/Users/x/kolux-rs/workspaces/shop")).as_deref(), Some("Migrations"), "the folder itself counts");
+    }
+
+    /// C19-R1-01, the gap the fix does not close: with the flat layout a pane's folder is
+    /// `<root>/<branch>` and carries no project at all, so no scope can be named for it. Stated as a
+    /// test so the gap is a fact, not a claim: the project's own rule does not ask and its off list
+    /// does not hold there.
+    #[test]
+    fn c19r101_a_flat_layout_pane_has_no_project_in_its_folder_so_no_scope_applies() {
+        let s = json!({
+            "protectedProjects": {
+                "G:/Dev/shop": {
+                    "off": ["force-push"],
+                    "dirs": [],
+                    "rules": [{ "id": "p1", "name": "Migrations", "kind": "regex", "pattern": "^prisma migrate" }]
+                }
+            }
+        });
+        let base = crate::protected::Base::default();
+        let pane = "C:/Users/x/kolux-rs/workspaces/fix-login";
+        assert_eq!(scope_of(&s, Some(pane)), None);
+        assert_eq!(check("prisma migrate reset", &base, &s, Some(pane)), None, "the flat layout's gap: the project's rule cannot be found");
+        assert_eq!(check("git push --force origin main", &base, &s, Some(pane)).as_deref(), Some("Force-push to main"), "and its off list cannot be found either");
+    }
+
     #[test]
     fn t156b_attempts_are_masked_newest_first_capped_and_settled_by_what_follows() {
         let mut a = Attempts::default();
