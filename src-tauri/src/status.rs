@@ -24,14 +24,16 @@ const UNVERIFIED_MS: u64 = 30 * 60 * 1000;
 const INBAND_STATES: [&str; 5] = ["working", "done", "permission", "waiting", "idle"];
 
 /// The unverified window; a debug build takes `KOLUX_UNVERIFIED_MS` so a live proof need not wait
-/// half an hour.
-fn unverified_ms() -> u64 {
+/// half an hour. `pub(crate)`: the automations clock borrows the same window for a run whose pane
+/// still reads working but has gone silent (C25-R2-01).
+pub(crate) fn unverified_ms() -> u64 {
     #[cfg(debug_assertions)]
     if let Some(ms) = std::env::var("KOLUX_UNVERIFIED_MS").ok().and_then(|v| v.parse().ok()) {
         return ms;
     }
     UNVERIFIED_MS
 }
+
 /// STAT-029: how Claude Code opens the message it submits itself after a compaction.
 const CONTINUATION: &str = "This session is being continued from a previous conversation";
 

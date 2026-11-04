@@ -248,6 +248,9 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
     say(`Run now: ${a.name} is queued`);
     void holdWhile(setRunning, a.id, () => (a.source ? external(a, "run") : act(invoke("automation_run_now", { id: a.id }))));
   };
+  // C25-R2-01: ends a run whose agent stopped working without its process ending. Its terminal is
+  // the user's, so the pane keeps working; only the run stops holding its automation.
+  const cancelRun = (r: Run) => act(invoke("automation_run_cancel", { id: r.id }));
   const toggle = (a: Automation) => {
     setMenu(null);
     void (a.source ? external(a, a.enabled ? "pause" : "resume") : act(invoke("automation_set_enabled", { id: a.id, enabled: !a.enabled })));
@@ -320,7 +323,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
         </div>
         {noteEl}
         {askEl}
-        <Detail key={openedA.id} a={openedA} running={running.includes(openedA.id)} onEdit={() => edit(openedA)} onDelete={() => remove(openedA)} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(openedA.provider)} tab={tab} onTab={setTab} onRun={() => runNow(openedA)} onToggle={() => toggle(openedA)} live={liveRun} onView={onViewRun} onResume={onResume} onRetry={() => void load()} />
+        <Detail key={openedA.id} a={openedA} running={running.includes(openedA.id)} onEdit={() => edit(openedA)} onDelete={() => remove(openedA)} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(openedA.provider)} tab={tab} onTab={setTab} onRun={() => runNow(openedA)} onToggle={() => toggle(openedA)} live={liveRun} onView={onViewRun} onResume={onResume} onCancel={cancelRun} onRetry={() => void load()} />
         {dialog !== undefined && <AutomationDialog projects={projects} agents={agents} editing={dialog} template={template} onClose={() => setDialog(undefined)} onSaved={saved} />}
       </div>
     );
@@ -516,7 +519,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
               </tbody>
             </table>
           </div>
-          {current && <Detail key={current.id} a={current} running={running.includes(current.id)} onEdit={() => edit(current)} onDelete={() => remove(current)} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(current.provider)} tab={tab} onTab={setTab} onRun={() => runNow(current)} onToggle={() => toggle(current)} live={liveRun} onView={onViewRun} onResume={onResume} onRetry={() => void load()} />}
+          {current && <Detail key={current.id} a={current} running={running.includes(current.id)} onEdit={() => edit(current)} onDelete={() => remove(current)} runs={runs} runsError={data?.runsError} now={now} usage={usage} agent={names.agent(current.provider)} tab={tab} onTab={setTab} onRun={() => runNow(current)} onToggle={() => toggle(current)} live={liveRun} onView={onViewRun} onResume={onResume} onCancel={cancelRun} onRetry={() => void load()} />}
         </>
       )}
       {dialog !== undefined && <AutomationDialog projects={projects} agents={agents} editing={dialog} template={template} onClose={() => setDialog(undefined)} onSaved={saved} />}
@@ -524,8 +527,8 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
   );
 }
 
-type DetailProps = { a: Automation; running?: boolean; onEdit?: () => void; onDelete?: () => void; runs: Run[]; runsError?: string; now: number; usage: Usage | null; agent: string; tab: "overview" | "runs"; onTab: (t: "overview" | "runs") => void; onRun: () => void; onToggle: () => void; live?: (r: Run) => boolean; onView?: (r: Run) => void; onResume?: (r: Run) => void; onRetry: () => void };
-function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, usage, agent, tab, onTab, onRun, onToggle, live, onView, onResume, onRetry }: DetailProps) {
+type DetailProps = { a: Automation; running?: boolean; onEdit?: () => void; onDelete?: () => void; runs: Run[]; runsError?: string; now: number; usage: Usage | null; agent: string; tab: "overview" | "runs"; onTab: (t: "overview" | "runs") => void; onRun: () => void; onToggle: () => void; live?: (r: Run) => boolean; onView?: (r: Run) => void; onResume?: (r: Run) => void; onCancel?: (r: Run) => void; onRetry: () => void };
+function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, usage, agent, tab, onTab, onRun, onToggle, live, onView, onResume, onCancel, onRetry }: DetailProps) {
   const mine = runs.filter((r) => r.automationId === a.id).sort((x, y) => y.number - x.number);
   // AUTO-018: a prompt that does not fit is folded; the guess holds until the box is measured, and
   // a narrower window brings the control up. The control stays put when used, so focus stays on it.
@@ -542,6 +545,7 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
   const doAction = (r: Run, what: RunAction) => {
     if (what === "view") onView?.(r);
     else if (what === "resume") onResume?.(r);
+    else if (what === "cancel") onCancel?.(r);
     else if (what === "snapshot") setShown((x) => (x === r.id ? null : r.id));
     else {
       setPending(r.id);
@@ -689,7 +693,7 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
               {r.detail && <span className="muted">{r.detail}</span>}
               {actionsOf(r).map((what) => (
                 <button key={what} className="btn" disabled={what === "rerun" && pending === r.id} aria-expanded={what === "snapshot" ? shown === r.id : undefined} onClick={() => doAction(r, what)}>
-                  {what === "view" ? "View run" : what === "resume" ? "Resume workspace" : what === "snapshot" ? "Saved output" : pending === r.id ? "Rerun pending" : "Rerun"}
+                  {what === "view" ? "View run" : what === "resume" ? "Resume workspace" : what === "snapshot" ? "Saved output" : what === "cancel" ? "Cancel run" : pending === r.id ? "Rerun pending" : "Rerun"}
                 </button>
               ))}
               {r.worktreeGone && shown === r.id && (
