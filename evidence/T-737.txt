@@ -23,7 +23,7 @@ AFTER
   when there is one, shows first.
 
 FIRST LOAD
-- Local vite build + scripts/bundle-budget.mjs budget(): main 5e481cf2 1,487,946, this branch 1,488,075, +129.
+- Local vite build + scripts/bundle-budget.mjs budget(): main 5e481cf2 1,487,946, this branch 1,488,106, +160 (+129 before the review nit).
   The CI line goes in the ready note.
 
 TESTS
@@ -32,6 +32,6 @@ TESTS
 - src/editmenu/EditMenuHost.test.ts, "T-737: right-click Paste says so when the clipboard is refused".
 - Traps: with ScanRepos.tsx put back to main and the paste catch put back to the old empty one, both tests
   FAIL; restored, both pass.
-- pnpm vitest run src/projects/ScanRepos src/editmenu: 23/23. pnpm tsc --noEmit -p .: clean.
+- pnpm vitest run src/projects src/editmenu: 379/379; src/browser src/chrome src/shell src/settings: 1089/1089. pnpm tsc --noEmit -p .: clean.
 - Not unit-tested: the browser pane's automatic reload and the look card (one catch each, no harness drives
   the engine's health steps or the window look); live check still to do.
