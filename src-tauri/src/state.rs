@@ -274,6 +274,12 @@ impl Store {
         })
     }
 
+    /// C22-R2-01: whether the settings file on disk can be read at all, for the window's Repair
+    /// action. No save, no defaults: the answer alone.
+    pub fn settings_unreadable(&self) -> bool {
+        self.read_file().is_err()
+    }
+
     /// Writes settings whole or not at all. Refuses while the file on disk cannot be read, and
     /// after a read that fell back to defaults (T-441-b: a read that failed once and worked on the
     /// retry would otherwise save the defaults over the real file). The bytes just read and checked
@@ -470,6 +476,22 @@ mod tests {
 
         s.save_settings(&serde_json::json!({ "theme": "light" })).unwrap();
         assert_eq!(s.settings()["theme"], "light", "saving works again");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// C22-R2-01: whether the file can be read at all is asked by the window before offering Repair.
+    #[test]
+    fn c22r2_01_settings_state_reports_a_file_that_cannot_be_read() {
+        let dir = temp_dir("c22r2-01-state");
+        let s = Store::open(&dir).unwrap();
+        assert!(!s.settings_unreadable(), "a fresh profile has nothing to repair");
+        s.save_settings(&serde_json::json!({ "theme": "classic" })).unwrap();
+        assert!(!s.settings_unreadable());
+        fs::write(dir.join("settings.json"), b"{ half").unwrap();
+        assert!(s.settings_unreadable(), "a corrupt file is reported");
+        s.repair_settings().unwrap();
+        assert!(!s.settings_unreadable(), "the repair clears it");
         drop(s);
         fs::remove_dir_all(&dir).unwrap();
     }

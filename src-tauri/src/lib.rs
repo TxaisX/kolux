@@ -150,6 +150,13 @@ fn settings_patch(app: tauri::AppHandle, store: tauri::State<'_, Mutex<Store>>, 
     write_settings(&app, &store, |old| state::patched(old, &set, &remove), payload)
 }
 
+/// C22-R2-01: whether settings.json can be read, so the startup notice can offer Repair.
+#[tauri::command]
+fn settings_state(store: tauri::State<'_, Mutex<Store>>) -> Result<serde_json::Value, String> {
+    let failed = store.lock().map_err(|e| e.to_string())?.settings_unreadable();
+    Ok(serde_json::json!({ "failed": failed }))
+}
+
 /// C22-R2-01: the one explicit repair for a settings file that cannot be read. Every unreadable
 /// file (settings.json and an unreadable settings.json.bak) is set aside, never deleted, and saving
 /// works again on fresh defaults. Returns the names kept.
@@ -533,6 +540,7 @@ pub fn run() {
             edit_menu::edit_menu_ready,
             get_settings,
             settings_patch,
+            settings_state,
             settings_repair,
             notify,
             notifications::notification_test,
