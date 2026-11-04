@@ -173,7 +173,7 @@ describe("T-702 Explorer header", () => {
     await undo();
     await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
     // The undo carried the identity fs_create returned, not just the path.
-    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/notes.md"], expect: ["v1"] });
+    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/notes.md"], expect: ["v1"], mustBeEmpty: [false] });
     expect(container.textContent).toContain("notes.md changed since that action, so it was not undone");
     // The refused step is dropped rather than retried, so the rest of the history still undoes.
     await undo();

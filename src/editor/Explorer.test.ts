@@ -37,7 +37,7 @@ describe("explorer file operations", () => {
     expect(tops(["/r/b", "/r/b/y.ts", "/r/c.ts", "/r/bb"])).toEqual(["/r/b", "/r/c.ts", "/r/bb"]);
   });
   it("undoes and redoes each action with its opposite", () => {
-    expect(undoOf({ kind: "create", path: "/r/n.ts" })).toEqual(["fs_trash", { paths: ["/r/n.ts"], expect: [null] }]);
+    expect(undoOf({ kind: "create", path: "/r/n.ts" })).toEqual(["fs_trash", { paths: ["/r/n.ts"], expect: [null], mustBeEmpty: [false] }]);
     expect(redoOf({ kind: "create", path: "/r/n.ts" })).toEqual(["fs_restore", { paths: ["/r/n.ts"] }]);
     expect(undoOf({ kind: "rename", from: "C:\\r\\a.ts", to: "C:\\r\\b.ts" })).toEqual(["fs_rename", { path: "C:\\r\\b.ts", name: "a.ts", expect: null }]);
     expect(redoOf({ kind: "rename", from: "/r/a.ts", to: "/r/b.ts" })).toEqual(["fs_rename", { path: "/r/a.ts", name: "b.ts", expect: null }]);
@@ -46,7 +46,12 @@ describe("explorer file operations", () => {
   });
   it("hands back the identity it recorded, so an undo never acts on a later file at the same path", () => {
     // C24-R3-01: a New file undone after an agent wrote its own file at that path.
-    expect(undoOf({ kind: "create", path: "/r/notes.md", id: "7c:1f" })).toEqual(["fs_trash", { paths: ["/r/notes.md"], expect: ["7c:1f"] }]);
+    expect(undoOf({ kind: "create", path: "/r/notes.md", id: "7c:1f" })).toEqual(["fs_trash", { paths: ["/r/notes.md"], expect: ["7c:1f"], mustBeEmpty: [false] }]);
+    // A New folder is only removed while it is still empty: anything dropped in since is not binned.
+    expect(undoOf({ kind: "create", path: "/r/notes", id: "7c:1e", folder: true })).toEqual([
+      "fs_trash",
+      { paths: ["/r/notes"], expect: ["7c:1e"], mustBeEmpty: [true] },
+    ]);
     // A rename undone after `b.ts` was replaced: the entry that was renamed is no longer there.
     expect(undoOf({ kind: "rename", from: "C:\\r\\a.ts", to: "C:\\r\\b.ts", id: "7c:20" })).toEqual([
       "fs_rename",

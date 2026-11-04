@@ -41,7 +41,7 @@ export type Draft = { dir: string; folder: boolean };
 /** One explorer action, as the undo history keeps it. `id` is the entry the action touched, so an
  *  undo refuses when that path now holds a different file (C24-R3-01). */
 export type Op =
-  | { kind: "create"; path: string; id?: string | null }
+  | { kind: "create"; path: string; id?: string | null; folder?: boolean }
   | { kind: "rename"; from: string; to: string; id?: string | null }
   | { kind: "trash"; paths: string[] }
   | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[] }
@@ -84,7 +84,9 @@ export const tops = (paths: string[]) => paths.filter((p) => p !== DRAFT && !pat
 export function undoOf(op: Op): [string, Record<string, unknown>] {
   switch (op.kind) {
     case "create":
-      return ["fs_trash", { paths: [op.path], expect: [op.id ?? null] }];
+      // A folder the action made is only removed while it is still empty: anything dropped in since
+      // belongs to someone else (C24-R3-01).
+      return ["fs_trash", { paths: [op.path], expect: [op.id ?? null], mustBeEmpty: [op.folder === true] }];
     case "rename":
       return ["fs_rename", { path: op.to, name: baseName(op.from), expect: op.id ?? null }];
     case "trash":
@@ -434,7 +436,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     back();
     if (!d || !name.trim()) return;
     invoke<Made>("fs_create", { dir: d.dir, name, folder: d.folder }).then((made) => {
-      record({ kind: "create", path: made.path, id: made.id });
+      record({ kind: "create", path: made.path, id: made.id, folder: d.folder });
       void load(d.dir).then(() => pick(made.path));
     }, fail);
   };

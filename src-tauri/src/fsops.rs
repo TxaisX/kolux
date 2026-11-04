@@ -156,10 +156,24 @@ pub struct Gone {
     pub error: Option<String>,
 }
 
+/// C24-R3-01: the refusal for a folder the action created that has gained something since. A folder
+/// that cannot be read is refused too: it cannot be shown to be the empty one the action made.
+fn not_empty(p: &Path) -> Option<String> {
+    let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| shown(p));
+    if !fs::symlink_metadata(p).map(|m| m.is_dir()).unwrap_or(false) {
+        return None; // a file: nothing can have been dropped inside it
+    }
+    match fs::read_dir(p) {
+        Ok(mut it) => it.next().is_some().then(|| format!("{name} has something in it now, so it was not undone")),
+        Err(_) => Some(format!("{name} could not be read, so it was not undone")),
+    }
+}
+
 /// Deletes each path on its own, so one failure leaves the rest going. C24-R3-01: each path may
-/// carry the identity its action recorded; when the path now holds another entry, nothing is
-/// deleted and the refusal is reported for that path alone.
-pub fn trash_each(paths: &[String], expect: &[Option<String>]) -> Vec<Gone> {
+/// carry the identity its action recorded, and `must_be_empty` marks a folder the action created,
+/// which is only removed while it is still empty; when either check fails nothing is deleted and
+/// the refusal is reported for that path alone.
+pub fn trash_each(paths: &[String], expect: &[Option<String>], must_be_empty: &[bool]) -> Vec<Gone> {
     paths
         .iter()
         .enumerate()
@@ -167,6 +181,11 @@ pub fn trash_each(paths: &[String], expect: &[Option<String>]) -> Vec<Gone> {
             let path = Path::new(p);
             if let Some(reason) = changed(path, expect.get(i).and_then(|e| e.as_deref())) {
                 return Gone { path: p.clone(), permanent: false, error: Some(reason) };
+            }
+            if must_be_empty.get(i).copied().unwrap_or(false) {
+                if let Some(reason) = not_empty(path) {
+                    return Gone { path: p.clone(), permanent: false, error: Some(reason) };
+                }
             }
             let permanent = is_wsl(path);
             let done = if permanent {
@@ -283,9 +302,10 @@ pub fn fs_rename(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: Gi
 }
 
 #[tauri::command]
-pub async fn fs_trash(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, paths: Vec<String>, expect: Option<Vec<Option<String>>>) -> Result<Vec<Gone>, String> {
+pub async fn fs_trash(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, paths: Vec<String>, expect: Option<Vec<Option<String>>>, must_be_empty: Option<Vec<bool>>) -> Result<Vec<Gone>, String> {
     let f = fence_of(&store, &grants);
     let expect = expect.unwrap_or_default();
+    let must_be_empty = must_be_empty.unwrap_or_default();
     let refused = paths.iter().map(|p| guard.allow(p, &store, &git, false).err()).collect::<Vec<_>>();
     tauri::async_runtime::spawn_blocking(move || {
         paths
@@ -293,7 +313,7 @@ pub async fn fs_trash(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, gi
             .zip(refused)
             .enumerate()
             .map(|(i, (p, refused))| match refused.map_or_else(|| fenced(&f, &p, false), Err) {
-                Ok(_) => trash_each(std::slice::from_ref(&p), &[expect.get(i).cloned().flatten()]).remove(0),
+                Ok(_) => trash_each(std::slice::from_ref(&p), &[expect.get(i).cloned().flatten()], &[must_be_empty.get(i).copied().unwrap_or(false)]).remove(0),
                 Err(e) => Gone { path: p, permanent: false, error: Some(e) },
             })
             .collect()
@@ -705,7 +725,7 @@ mod tests {
         // The agent writes its own notes.md: a new entry at the same path.
         fs::remove_file(&file).unwrap();
         fs::write(&file, "the agent's work").unwrap();
-        let gone = trash_each(&[shown(&file)], &[Some(recorded)]);
+        let gone = trash_each(&[shown(&file)], &[Some(recorded)], &[false]);
         assert_eq!(gone.len(), 1);
         assert_eq!(gone[0].error.as_deref().unwrap_or_default(), "notes.md changed since that action, so it was not undone");
         assert!(!gone[0].permanent, "a refusal is not a delete");
@@ -729,6 +749,34 @@ mod tests {
         assert_eq!(why, "b.ts changed since that action, so it was not undone");
         assert_eq!(fs::read_to_string(&b).unwrap(), "the agent's file", "the agent's file keeps its name");
         assert!(!d.join("a.ts").exists(), "nothing was renamed back");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn c24_undo_refuses_to_trash_a_created_folder_that_has_gained_files() {
+        let d = temp_dir("c24-folder");
+        let folder = create(&d, "notes", true).unwrap();
+        let recorded = ident(&folder).expect("the id the create records");
+        // The agent writes its own files inside the folder the user made.
+        fs::write(folder.join("agent.md"), "the agent's work").unwrap();
+        let gone = trash_each(&[shown(&folder)], &[Some(recorded)], &[true]);
+        assert_eq!(gone.len(), 1);
+        assert_eq!(gone[0].error.as_deref().unwrap_or_default(), "notes has something in it now, so it was not undone");
+        assert!(!gone[0].permanent, "a refusal is not a delete");
+        assert_eq!(fs::read_to_string(folder.join("agent.md")).unwrap(), "the agent's work", "the agent's file is still there");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn c24_an_empty_created_folder_is_still_removable() {
+        let d = temp_dir("c24-folder-empty");
+        let folder = create(&d, "notes", true).unwrap();
+        assert_eq!(not_empty(&folder), None, "an empty folder the action made is not refused");
+        fs::write(folder.join("agent.md"), "x").unwrap();
+        assert_eq!(not_empty(&folder).as_deref(), Some("notes has something in it now, so it was not undone"));
+        // A file is never refused for being "not empty": only a folder can gain something inside.
+        let file = create(&d, "a.md", false).unwrap();
+        assert_eq!(not_empty(&file), None);
         let _ = fs::remove_dir_all(&d);
     }
 
