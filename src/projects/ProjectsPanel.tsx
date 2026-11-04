@@ -1823,6 +1823,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
 
   // One workspace row: its state dot, name, unread mark, and the Remove and Mark unread buttons;
   // under a project, a child sits `depth` steps in and a parent with `kids` folds them (PROJ-047).
+  const asked = new Set<string>(); // T-729: a pinned row can render twice (the copies setting); its prompts mount once
   const row = ({ p, w }: Entry, depth = 0, kids = false) => {
     const asking = confirm?.path === w.path;
     const info = infoOf(w);
@@ -1832,8 +1833,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const un = isUnread(w);
     const shut = shutKids.has(w.path);
     const up = w.parent ? (worktrees[p.id] ?? []).find((x) => !x.isMain && same(x.path, w.parent as string)) : undefined;
+    const first = !asked.has(pathKey(w.path)) && !!asked.add(pathKey(w.path));
     return (
-      <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, input, textarea") && void openMenu(e, p, w)}>
+      <div key={w.path} data-worktree={worktreeLabel(w)} data-depth={depth} data-path={w.path} onContextMenu={(e) => !(e.target as Element).closest?.(".sb-form, .ask-backdrop, input, textarea") && void openMenu(e, p, w)}>
         <div {...rowDrag(w)} className={`sess${isSelected(w) ? " sel" : ""}${un ? " unread" : ""}${picked.some((x) => same(x, w.path)) ? " picked" : ""}`} role="button" tabIndex={0} onClick={(e) => (isToggleClick(e, /mac/i.test(navigator.platform)) ? setPicked(toggleRow(picked, w.path, activeDir, same)) : (setPicked([]), show(w)))} onPointerEnter={() => (cardPorts.load(w.path, pollPaths), cardChanges.load(w.path))} onKeyDown={(e) => {
           const what = rowKey(e.key, e.target === e.currentTarget);
           if (what) e.preventDefault();
@@ -1977,7 +1979,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           )}
         </div>
         <CardLine shown={cardDetails.shown} facts={facts} depth={depth} />
-        {sleepAsk?.path === w.path && (
+        {first && sleepAsk?.path === w.path && (
           <Ask
             title="Put to sleep"
             body={<>Put <b>{worktreeLabel(w)}</b> to sleep? Its tabs and terminals close, and so do those of the workspaces made from it.{sleepAsk.note}</>}
@@ -2040,7 +2042,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </div>
           </div>
         )}
-        {batch?.root === w.path && (
+        {first && batch?.root === w.path && (
           <Ask
             title="Delete workspace and children"
             body={
@@ -2076,7 +2078,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </div>
           </div>
         )}
-        {forgetAsk && same(forgetAsk.path, w.path) && (
+        {first && forgetAsk && same(forgetAsk.path, w.path) && (
           <Ask
             title="Take out of Kolux"
             body={
@@ -2092,7 +2094,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             onCancel={() => closeForget(w.path)}
           />
         )}
-        {asking && (
+        {first && asking && (
           <Ask
             title="Delete workspace"
             body={
@@ -2317,24 +2319,23 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       <label>Header colour</label>
       <HeaderColourPicker settings={settings} kind="g" id={g.id} onSetting={onSetting} />
       {dropGroup ? (
-        <div style={{ display: "contents" }} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setDropGroup(null), focusGroupX(g.id))}>
-          <div className="sb-hint">
-            Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
-            {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
-          </div>
-          <label className="check">
-            <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
-            Also remove its projects from Kolux (their folders stay on disk)
-          </label>
-          <div className="btn-row">
-            <button className="btn danger" onClick={() => deleteGroup(g, dropGroup.remove)}>
-              Delete group
-            </button>
-            <button className="btn" autoFocus onClick={() => (setDropGroup(null), focusGroupX(g.id))}>
-              Keep it
-            </button>
-          </div>
-        </div>
+        <Ask
+          title="Delete group"
+          body={
+            <>
+              Delete {g.name}? {count === 0 ? "It holds no projects." : `It holds ${count} project${count === 1 ? "" : "s"}.`}
+              {dropGroup.remove && runNote(Object.entries(groups.members).filter(([, gid]) => gid === g.id).flatMap(([pid]) => (worktrees[pid] ?? []).map((x) => x.path)))}
+              <label className="check">
+                <input type="checkbox" aria-label="also remove the projects" checked={dropGroup.remove} onChange={(e) => setDropGroup({ remove: e.target.checked })} />
+                Also remove its projects from Kolux (their folders stay on disk)
+              </label>
+            </>
+          }
+          confirm="Delete group"
+          cancel="Keep it"
+          onConfirm={() => deleteGroup(g, dropGroup.remove)}
+          onCancel={() => (setDropGroup(null), focusGroupX(g.id))}
+        />
       ) : (
         <div className="btn-row">
           <button className="btn" onClick={() => saveGroup(g)}>

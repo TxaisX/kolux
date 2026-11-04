@@ -57,11 +57,11 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-async function panel() {
+async function panel(settings: Record<string, unknown> = {}) {
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const { act } = await import("react");
   const props = {
-    openDirs: ["C:/w/app"], sessions: [], states: {}, unread: new Set<string>(), onUnread: () => {}, settings: {}, onSetting: () => {},
+    openDirs: ["C:/w/app"], sessions: [], states: {}, unread: new Set<string>(), onUnread: () => {}, settings, onSetting: () => {},
     activeDir: "C:/w/app", onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
@@ -154,4 +154,11 @@ test("the multi-select bar sends no branch choice either, and a branch the backe
     { projectId: "p1", path: child.path, force: false, stamp: "s-child", keepBranch: null },
   ]);
   expect(kept).toEqual([{ branch: "fix-login", commit: "c3c3c3c", projectId: "p1" }]);
+});
+
+test("T-729: a pinned workspace shown twice (pinned rows also in their group) asks in one dialog, not two", async () => {
+  const c = await panel({ pinnedWorkspaces: [fix.path], pinnedCopies: true });
+  expect(find(c, (n) => n.attrs["data-path"] === fix.path).length, "the row shows twice").toBe(2);
+  await pressDelete();
+  expect(question(c).length).toBe(1);
 });

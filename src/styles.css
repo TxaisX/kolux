@@ -259,7 +259,6 @@ input { font: inherit; }
 .hint.push.good { color: var(--done); }
 .hint.push.warn { color: var(--warn); }
 .sb-form { margin: 4px 4px 6px; padding: 8px; border: 1px solid var(--line-focus); border-radius: 8px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }
-.sb-form.warn { border-color: #7a3b1e; }
 .del-changes { margin: 0; padding-left: 16px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
 .del-force { display: flex; align-items: center; gap: 6px; font-weight: 400; }
 .sb-form .note { padding: 0; word-break: normal; overflow-wrap: anywhere; }
@@ -857,7 +856,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 [data-mode="light"] .usage-part.warn, [data-mode="light"] .conn-chip.expired, [data-mode="light"] .conn-chip.attention,
 [data-mode="light"] .conn-detail.warn, [data-mode="light"] .conn-switch small.warn, [data-mode="light"] .note.warn, [data-mode="light"] .signin-notice span { color: var(--warn); }
 [data-mode="light"] .note.error, [data-mode="light"] .btn.danger, [data-mode="light"] .notice { color: var(--danger); }
-[data-mode="light"] .btn.danger, [data-mode="light"] .notice, [data-mode="light"] .sb-form.warn, [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
+[data-mode="light"] .btn.danger, [data-mode="light"] .notice, [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
 [data-mode="light"] .btn.danger:hover:not(:disabled), [data-mode="light"] .branch:hover, [data-mode="light"] .sess:hover { background: var(--kbd-bg); }
 [data-mode="light"] .sb-tabs button, [data-mode="light"] .sb-next { color: var(--fg-nav); }
 [data-mode="light"] .branch .chev { color: var(--fg-label); }

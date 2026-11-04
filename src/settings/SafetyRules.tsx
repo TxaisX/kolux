@@ -179,10 +179,10 @@ export function SafetyRulesView({ settings, rules, projects, scope, setScope, sa
           </p>
         )}
       </form>
-      <p className="conn-detail">
+      <div className="conn-detail">
         {scope === null ? <ResetButton label="Reset rules for all projects" onReset={() => void save(resetAll())} /> : <ResetButton label="Reset this project's rules" onReset={() => void save(resetProject(settings, scope))} />}
         <small> {scope === null ? "Built-in rules back on and your rules for all projects removed; each project's own stay." : "This project's own rules and its switched-off list removed."}</small>
-      </p>
+      </div>
     </section>
   );
 }

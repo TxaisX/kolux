@@ -15,7 +15,6 @@ html[data-pane-density="compact"] .pane-head .title { font-weight: 500; }
   html .sess .ib { display: inline-flex; }
 }
 
-/* VIEW-072: the confirm step beside the clear buttons of review notes. */
 
 /* VIEW-106: the About panel. */
 .about-panel { top: 20%; left: 50%; transform: translateX(-50%); z-index: var(--z-top); min-width: 320px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }

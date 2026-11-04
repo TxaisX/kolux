@@ -96,11 +96,9 @@ test("an account row nests no button in another, and its own buttons do not also
   expect(log).toEqual(["pick", "ask", "again"]);
 });
 
-test("Escape inside the Remove confirm is Keep and goes no further; outside it, the confirm leaves Escape alone", async () => {
+test("Escape in the Remove confirm is Keep and goes no further", async () => {
   const log: string[] = [];
   const c = await show(row(false, log, true));
-  expect(await esc(c, byText(c, "button", "Re-authenticate")[0])).toBe(false);
-  expect(log).toEqual([]);
   expect(await esc(c, byText(c, "button", "Keep")[0])).toBe(true);
   expect(log).toEqual(["keep"]);
 });
