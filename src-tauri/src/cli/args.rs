@@ -306,7 +306,7 @@ fn switch_value(name: &str, inline: Option<&str>) -> Result<bool, Fail> {
 
 /// C26-R4-01: a switch counts as given only when it is on, so `--all=false` is not `--all` at the
 /// guards that ask whether a switch is present. Value flags are untouched.
-fn switched_on(flags: &Map<String, Value>, k: &str) -> bool {
+pub(super) fn switched_on(flags: &Map<String, Value>, k: &str) -> bool {
     flags.get(k).is_some_and(|v| v != &Value::Bool(false))
 }
 

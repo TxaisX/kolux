@@ -9,6 +9,7 @@
 //! run, and says how to recover (CLI-004, CLI-028, CLI-029).
 
 use super::{pick_project, pick_worktree, Ctx, Fail, Request};
+use super::args::switched_on;
 use crate::automations;
 use serde_json::{json, Map, Value};
 
@@ -68,15 +69,15 @@ pub(super) fn check(command: &str, flags: &Map<String, Value>) -> Result<Map<Str
     if flags.contains_key("repo") && flags.contains_key("workspace") {
         return Err(Fail::args("give --repo or --workspace, not both"));
     }
-    if flags.contains_key("enabled") && flags.contains_key("disabled") {
+    if switched_on(flags, "enabled") && switched_on(flags, "disabled") {
         return Err(Fail::args("give --enabled or --disabled, not both"));
     }
     // AUTO-009: one session across runs is for an existing worktree only; asking for both ways is
     // refused here, and a reuse that cannot apply is told before the app is contacted.
-    if flags.contains_key("reuse-session") && flags.contains_key("fresh-session") {
+    if switched_on(flags, "reuse-session") && switched_on(flags, "fresh-session") {
         return Err(Fail::args("give --reuse-session or --fresh-session, not both"));
     }
-    if flags.contains_key("reuse-session") {
+    if switched_on(flags, "reuse-session") {
         let existing = text("workspace-mode") == Some("existing") || (text("workspace-mode").is_none() && flags.contains_key("workspace"));
         if text("workspace-mode") == Some("new-per-run") || (command == "automations.create" && !existing) {
             return Err(Fail::args("--reuse-session keeps one session in an existing worktree: give --workspace <selector> or --workspace-mode existing, not a new worktree for every run"));
@@ -110,6 +111,10 @@ pub(super) fn check(command: &str, flags: &Map<String, Value>) -> Result<Map<Str
             "missed-run-grace-minutes" => "missedRunGraceMinutes",
             "precheck-timeout" => "precheckTimeoutSeconds",
             "reuse-session" | "fresh-session" => {
+                // C26-R4-01: `=false` is off, so it says nothing about the choice at all.
+                if v == &Value::Bool(false) {
+                    continue;
+                }
                 args.insert("reuseSession".into(), json!(k == "reuse-session"));
                 continue;
             }
@@ -290,8 +295,12 @@ pub(super) fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
                 // Unchanged: the timetable it had, read back as the page reads it.
                 json!({ "preset": form["preset"], "time": form["time"], "day": form["day"], "custom": if form["preset"] == "custom" { old.as_ref().map(|o| o["trigger"]["cron"].clone()).unwrap_or_default() } else { json!("") }, "timezone": zone })
             };
-            if a["enabled"] == true || a["disabled"] == true {
-                input["enabled"] = json!(a["enabled"] == true);
+            // C26-R4-01: an explicit value is a choice either way: `--enabled=false` disables and
+            // `--disabled=false` enables; a switch left out changes nothing.
+            if let Some(on) = a["enabled"].as_bool() {
+                input["enabled"] = json!(on);
+            } else if let Some(off) = a["disabled"].as_bool() {
+                input["enabled"] = json!(!off);
             }
             let saved = {
                 let store = ctx.store.lock().map_err(|e| e.to_string())?;
@@ -415,6 +424,40 @@ mod tests {
         for (name, _, _) in super::COMMANDS {
             assert!(super::super::HELP.contains(&format!("kolux-dev {name} ")), "{name} has no help line");
         }
+    }
+
+    /// C26-R4-01: an automation switch written `=false` is off. `--reuse-session=false` must not save
+    /// a reuse, `--enabled=false` must really disable, `--disabled=false` must enable, and a false
+    /// switch must not clash with its pair.
+    #[test]
+    fn c26r4_01_automation_switches_written_false_are_off() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-autocli-c26r401-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let repo = dir.join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        let git = |args: &[&str]| assert!(Command::new("git").args(args).current_dir(&repo).output().unwrap().status.success(), "{args:?}");
+        git(&["init", "-q", "-b", "main"]);
+        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "one"]);
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        crate::projects::add_project(&git_, &store.lock().unwrap(), &repo).unwrap();
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        let call = |line: &str| {
+            let p = parse(&words(line)).1.unwrap().unwrap();
+            app(&ctx, &Request { id: format!("r-{line}"), token: String::new(), command: p.command, cwd: repo.display().to_string(), args: Value::Object(p.args), pane: None, cli: crate::cli::VERSION.into(), arrived: None })
+        };
+        let made = call("automations create --name r --trigger daily --prompt p --provider claude --workspace-mode existing --reuse-session=false").unwrap();
+        assert_eq!(made["reuseSession"], json!(false), "a false reuse-session never saves a reuse");
+        let id = made["id"].as_str().unwrap().to_string();
+        assert_eq!(call(&format!("automations edit {id} --enabled=false")).unwrap()["enabled"], json!(false), "a false enabled disables");
+        assert_eq!(call(&format!("automations edit {id} --disabled=false")).unwrap()["enabled"], json!(true), "a false disabled enables");
+        // a false switch is off for the clash guard too, so its pair may be given
+        assert_eq!(call(&format!("automations edit {id} --enabled=false --disabled")).unwrap()["enabled"], json!(false));
+        assert_eq!(call(&format!("automations edit {id} --reuse-session=false --fresh-session")).unwrap()["reuseSession"], json!(false));
+        drop(ctx);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// T-197-c: a store with one project (a throwaway repo) and the command line over it.
