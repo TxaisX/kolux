@@ -745,6 +745,7 @@ pub fn run() {
             keybindings::keybindings_show,
             browser::browser_open,
             browser::preview::browser_preview_grant,
+            browser::downloads::browser_download_cancel, browser::downloads::browser_download_reveal,
             browser::browser_bounds,
             browser::browser_navigate,
             browser::browser_go,

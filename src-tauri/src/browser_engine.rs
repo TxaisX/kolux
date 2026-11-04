@@ -38,7 +38,7 @@ mod imp {
     use cookies::Entry;
     use tauri::webview::cookie::SameSite;
     use std::path::PathBuf;
-    use webview2_com::{AcceleratorKeyPressedEventHandler, CallDevToolsProtocolMethodCompletedHandler, ClearServerCertificateErrorActionsCompletedHandler, GetCookiesCompletedHandler, NavigationStartingEventHandler, PermissionRequestedEventHandler, PrintToPdfCompletedHandler, ProcessFailedEventHandler, ServerCertificateErrorDetectedEventHandler, WebResourceRequestedEventHandler};
+    use webview2_com::{AcceleratorKeyPressedEventHandler, CallDevToolsProtocolMethodCompletedHandler, ClearServerCertificateErrorActionsCompletedHandler, DownloadStartingEventHandler, GetCookiesCompletedHandler, NavigationStartingEventHandler, PermissionRequestedEventHandler, PrintToPdfCompletedHandler, ProcessFailedEventHandler, ServerCertificateErrorDetectedEventHandler, WebResourceRequestedEventHandler};
     use webview2_com::WindowCloseRequestedEventHandler;
     use crate::browser::selfclose::Engine;
     use std::sync::Arc;
@@ -327,6 +327,48 @@ mod imp {
         let _ = unsafe { core.add_PermissionRequested(&handler, &mut token) };
     }
 
+    thread_local! {
+        /// T-734 (DT-C170): the engine's handle on each download a page started, so Cancel can reach
+        /// it. Main thread only: the engine's objects live there.
+        static DOWNLOAD_OPS: std::cell::RefCell<Vec<(u32, ICoreWebView2DownloadOperation)>> = const { std::cell::RefCell::new(Vec::new()) };
+    }
+
+    fn in_progress(op: &ICoreWebView2DownloadOperation) -> bool {
+        let mut s = COREWEBVIEW2_DOWNLOAD_STATE::default();
+        // SAFETY: State only writes a plain value.
+        unsafe { op.State(&mut s) }.is_ok() && s == COREWEBVIEW2_DOWNLOAD_STATE_IN_PROGRESS
+    }
+
+    /// T-734 (DT-C170): keeps the engine's handle on each download the page starts; ended ones go.
+    pub fn downloads(id: u32, controller: &ICoreWebView2Controller) {
+        // SAFETY: CoreWebView2 hands back the page's engine object.
+        let Ok(core) = (unsafe { controller.CoreWebView2() }).and_then(|c| c.cast::<ICoreWebView2_4>()) else { return };
+        let handler = DownloadStartingEventHandler::create(Box::new(move |_sender, args| {
+            let Some(args) = args else { return Ok(()) };
+            // SAFETY: DownloadOperation hands back the engine's object for this download.
+            let op = unsafe { args.DownloadOperation() }?;
+            DOWNLOAD_OPS.with_borrow_mut(|ops| {
+                ops.retain(|(_, o)| in_progress(o));
+                ops.push((id, op));
+            });
+            Ok(())
+        }));
+        let mut token = 0i64;
+        // SAFETY: the handler lives as long as the engine holds it; the token is written once.
+        let _ = unsafe { core.add_DownloadStarting(&handler, &mut token) };
+    }
+
+    /// T-734 (DT-C170): cancels tab `id`'s running download written to `path`; whether one was found.
+    pub fn cancel_download(id: u32, path: &str, tx: Sender<Result<bool, String>>) {
+        // SAFETY: ResultFilePath writes a CoTaskMem string, which `take` frees.
+        let op = DOWNLOAD_OPS.with_borrow(|ops| ops.iter().find(|(t, o)| *t == id && in_progress(o) && unsafe { take(|p| o.ResultFilePath(p)) }.eq_ignore_ascii_case(path)).map(|(_, o)| o.clone()));
+        let _ = tx.send(match op {
+            // SAFETY: Cancel stops the download; the engine removes its partial file.
+            Some(op) => unsafe { op.Cancel() }.map(|_| true).map_err(|e| e.message()),
+            None => Ok(false),
+        });
+    }
+
     /// One DevTools call on the page's engine; its JSON answer (or why not) goes to `tx`.
     pub fn devtools(controller: &ICoreWebView2Controller, method: &str, params: &str, tx: Sender<Result<String, String>>) {
         let fail = tx.clone();
@@ -562,6 +604,27 @@ fn on_engine<T: Send + 'static>(v: &Webview, wait: Duration, job: impl FnOnce(&w
     let (tx, rx) = std::sync::mpsc::channel();
     v.with_webview(move |pw| job(&pw.controller(), tx)).map_err(|e| e.to_string())?;
     rx.recv_timeout(wait).map_err(|_| format!("the page's engine did not answer within {} s", wait.as_secs()))?
+}
+
+/// T-734 (DT-C170): the engine's handle on each download the page starts is kept for Cancel
+/// (main thread, from `browser_open`'s web view callback).
+#[cfg(windows)]
+pub fn downloads(id: u32, pw: &tauri::webview::PlatformWebview) {
+    imp::downloads(id, &pw.controller());
+}
+
+/// T-734 (DT-C170): cancels tab `id`'s running download written to `path`, waited for; whether
+/// the engine still had it running.
+pub fn cancel_download(v: &Webview, id: u32, path: String, wait: Duration) -> Result<bool, String> {
+    #[cfg(windows)]
+    {
+        on_engine(v, wait, move |_, tx| imp::cancel_download(id, &path, tx))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (v, id, path, wait);
+        Err("cancelling a download needs WebView2 (Windows)".into())
+    }
 }
 
 /// T-251 (CLI-047): one DevTools call on a page's engine, waited for; the answer's JSON text.
