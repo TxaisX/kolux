@@ -254,7 +254,20 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
   const refocus = useRef<{ id: string | null } | null>(null);
   const told = useRef(new Set<string>());
 
-  const refresh = () => invoke<Artifact[]>("artifacts_list").then(setList, (e) => onToast(`Could not read the library: ${e}`));
+  // A library index that cannot be read is shown in the panel, not as an empty library: "No artifacts
+  // yet" over a damaged index is how a user comes to believe their entries are gone (C14-R4-01).
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () =>
+    invoke<Artifact[]>("artifacts_list").then(
+      (l) => {
+        setError(null);
+        setList(l);
+      },
+      (e) => {
+        setError(String(e));
+        setList(null);
+      },
+    );
   useEffect(() => {
     void refresh();
     // A Claude session published a page (SKILL-035).
@@ -441,6 +454,11 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
         </div>
         <input ref={search} className="picker-input" placeholder="Search titles" aria-label="Search artifacts" value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="art-list" role="group" aria-label="Saved artifacts" onKeyDown={arrows}>
+          {error && (
+            <div className="menu-hint art-error" role="alert">
+              {error}
+            </div>
+          )}
           {list && list.length === 0 && <div className="menu-hint">No artifacts yet. Pages and files your agents make land here, or add one yourself.</div>}
           {list && list.length > 0 && shown.length === 0 && <div className="menu-hint">No titles hold every word of “{query.trim()}”.</div>}
           {shown.map((s) => (
