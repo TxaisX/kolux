@@ -63,8 +63,10 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
   };
   const stop = () => {
     if (!scan) return;
-    void invoke("repo_scan_stop", { scanId: scan.scanId });
-    setScan(stopNow(scan));
+    // T-737: the row says stopped only once the scan has (and only that scan, not a newer one); a failed stop
+    // says why and the scan runs on.
+    const id = scan.scanId;
+    invoke("repo_scan_stop", { scanId: id }).then(() => setScan((s) => (s?.scanId === id ? stopNow(s) : s)), onProblem);
   };
   const browse = async () => {
     try {

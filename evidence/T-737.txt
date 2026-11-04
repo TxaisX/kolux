@@ -1,0 +1,37 @@
+T-737 - Silent failures say so, one clause each (DT-C173; UX audit W3 queue refill 3, backlog-sweep-49 #22)
+Worker 2f, coordinator 57, branch s-2f/t737 from main 5e481cf2, 2026-11-03. Cap +240 B (+60 each). For 0.1.8.
+
+CHECKED AGAINST MAIN 5e481cf2
+- Scan a folder, Stop: still silent. The row was marked stopped before the back end answered, and a failed
+  stop was dropped.
+- Browser pane, automatic reload (the reload the pane starts after a page stops answering): still silent.
+- Reload shortcut: when the tab's pane is there it clicks the pane's reload, which already reports a failure.
+  With no pane there is nowhere to show a notice, so that path is left as it is.
+- Right-click Paste: still silent when the clipboard is refused.
+- App icon / window blur card: the save error showed, but a failure to apply the look to the window did not.
+- Artifacts, Open file: already reports its failure on main (a toast naming the artifact). Left as it is.
+
+AFTER
+- Stop marks the scan stopped only once the back end has stopped it. A failed stop goes to the dialog's
+  problem handler, the same one a failed Scan uses, and the Stop button stays. The back-end stop itself
+  cannot fail (it only records the scan id), so in practice only the app's message channel can make it
+  fail; the real gain is the order. A late answer marks only its own scan, never a newer one (review nit).
+- The pane's automatic reload shows its failure in the pane's notice line.
+- Right-click Paste with the clipboard refused shows the toast "The clipboard could not be read; paste with
+  the keyboard instead". The edit menu takes the window's toast (Hosts.tsx passes it in).
+- The look card shows "The window could not take the new look: <error>" under its controls. A save error,
+  when there is one, shows first.
+
+FIRST LOAD
+- Local vite build + scripts/bundle-budget.mjs budget(): main 5e481cf2 1,487,946, this branch 1,488,075, +129.
+  The CI line goes in the ready note.
+
+TESTS
+- src/projects/ScanRepos.stop.test.ts, "T-737: a Stop that fails is reported and the scan still shows Stop":
+  starts a scan, the stop is refused, the error reaches onProblem and Stop is still shown.
+- src/editmenu/EditMenuHost.test.ts, "T-737: right-click Paste says so when the clipboard is refused".
+- Traps: with ScanRepos.tsx put back to main and the paste catch put back to the old empty one, both tests
+  FAIL; restored, both pass.
+- pnpm vitest run src/projects/ScanRepos src/editmenu: 23/23. pnpm tsc --noEmit -p .: clean.
+- Not unit-tested: the browser pane's automatic reload and the look card (one catch each, no harness drives
+  the engine's health steps or the window look); live check still to do.
