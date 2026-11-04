@@ -184,6 +184,7 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
                 <VendorMark agent={markFor(a.id)} size={13} />
               </span>
               <span className="name">{a.name}</span>
+              <span className="muted">{a.path?.split(/[\\/]/).pop()}</span>
               {a.id === defaultId && <span className="menu-chip">Default</span>}
               {a === opens && bound && <Kbd id="tab.newAgent" />}
             </button>

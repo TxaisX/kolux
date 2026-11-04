@@ -152,3 +152,12 @@ test("T-692 (E2): the menu names the project a new session starts in, and says n
   expect(render({ target: "kolux-rs" })).toContain("Starting in <b>kolux-rs</b>");
   expect(render({})).not.toContain("Starting in");
 });
+
+test("T-743 (DT-C179): each agent row shows the program file it starts, with the full path in its tooltip", () => {
+  const rows = items(render({}));
+  const claudeRow = rows.find((r) => r.includes("Claude Code")) ?? "";
+  const codexRow = rows.find((r) => r.includes("Codex")) ?? "";
+  expect(claudeRow).toContain('class="muted">claude.exe</span>');
+  expect(codexRow).toContain('class="muted">codex.cmd</span>');
+  expect(claudeRow).toContain(`title="Start Claude Code (${claude.path})`);
+});
