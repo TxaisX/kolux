@@ -52,7 +52,7 @@ export function OutsideCard({ outside, onDismiss }: { outside: Worktree[]; onDis
   const { lines, more } = outsideLines(outside);
   return (
     <div className="sb-notice sb-outside" data-outside-card>
-      <button className="link" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Worktrees made with plain Git or another tool">
+      <button className="link" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Workspaces made with plain Git or another tool">
         {outsideTitle(outside.length)}
       </button>
       <button className="ib" aria-label="dismiss" title="Hide this card for this project" onClick={onDismiss}>

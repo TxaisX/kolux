@@ -21,7 +21,7 @@ const log = [];
 const say = (s) => { log.push(s); console.log(s); };
 const expect = (label, ok, detail = '') => { say(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`); return ok; };
 
-const PALETTE = '.palette[role="dialog"][aria-label="Switch worktree"]';
+const PALETTE = '.palette[role="dialog"][aria-label="Switch workspace"]';
 const rows = (page) => page.eval(`[...document.querySelectorAll('${PALETTE} [role=option]')].map(o=>({ label:(o.innerText||'').trim().split('\\n')[0], sel:o.getAttribute('aria-selected') }))`);
 
 async function openPalette(page) {

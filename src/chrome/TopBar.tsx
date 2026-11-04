@@ -164,7 +164,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         <button className="ib panel" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onClick={onToggleRight}>
           <PanelRight />
         </button>
-        <button className="searchbox" title="Jump to a worktree, tab, project or setting" onClick={onSearch}>
+        <button className="searchbox" title="Jump to a workspace, tab, project or setting" onClick={onSearch}>
           <Search />
           <span className="ph">Search</span>
           <Kbd id="worktree.palette" />

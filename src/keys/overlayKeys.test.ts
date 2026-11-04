@@ -62,7 +62,7 @@ test("real markup: a docked tip, the hooks card, a tour and the floating panel h
   const found = real("pick-list found-list", {}); // the create-worktree form's found issues, inside .sb-form
   const permission = real("chat-permission", { role: "alertdialog" }); // an inline permission card, not modal
   const modal = real("crash-report", { role: "dialog" });
-  // The palette tip names the Switch worktree key: that key works while the tip shows.
+  // The palette tip names the Switch workspace key: that key works while the tip shows.
   expect(heldByOverlay("worktree.palette", false, dom([tip, tour, float, cleanup]) as never)).toBe(false);
   for (const form of [prDraft, resolve, grab, draw, found, permission]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
   expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);

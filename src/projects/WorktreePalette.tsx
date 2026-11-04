@@ -71,7 +71,7 @@ export function RowMark({ mark, since, now }: { mark: Badge; since: number; now:
   );
 }
 
-export const SECTIONS = ["Open tabs", "Worktrees", "Projects", "Settings", "Quick actions", "Pull requests"] as const;
+export const SECTIONS = ["Open tabs", "Workspaces", "Projects", "Settings", "Quick actions", "Pull requests"] as const;
 
 type Props = {
   projects: Project[];
@@ -111,7 +111,7 @@ export function worktreeItems(projects: Project[], lists: Record<string, Worktre
     const num = (w: Worktree) => (w.number ? ` · #${w.number}` : "");
     const number = (w: Worktree) => w.number ?? undefined;
     // EDIT-047: the comment it was made with is shown, and found, after the branch
-    for (const w of ws) out.push({ section: "Worktrees", label: worktreeLabel(w), hint: (w.branch ?? "detached") + num(w) + (w.comment ? ` · ${w.comment}` : ""), parent: p.name, dir: w.path, repo: p.id, number: number(w), run: () => go(w), ...atOf(w.path) });
+    for (const w of ws) out.push({ section: "Workspaces", label: worktreeLabel(w), hint: (w.branch ?? "detached") + num(w) + (w.comment ? ` · ${w.comment}` : ""), parent: p.name, dir: w.path, repo: p.id, number: number(w), run: () => go(w), ...atOf(w.path) });
     const main = ws.find((w) => w.isMain) ?? ws[0];
     if (main) out.push({ section: "Projects", label: p.name, hint: p.path, dir: main.path, repo: p.id, run: () => go(main) });
     for (const w of ws) {
@@ -156,7 +156,7 @@ export function pastedItems(text: string, linked: Record<string, string>, hosts:
   const name = `${owner}/${repo}#${num}`;
   const dir = workspaceFor(url, linked, hosts);
   const w = dir ? find(dir) : undefined;
-  if (w) return [{ section: "Worktrees", label: `Open the workspace for ${name}`, hint: w.branch ?? worktreeLabel(w), dir: w.path, run: () => go(w) }];
+  if (w) return [{ section: "Workspaces", label: `Open the workspace for ${name}`, hint: w.branch ?? worktreeLabel(w), dir: w.path, run: () => go(w) }];
   return [{ section: "Pull requests", label: `Open ${kind === "pull" ? "pull request" : "issue"} ${name}`, hint: url, run: () => openItem(url) }];
 }
 
@@ -291,11 +291,11 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
   return (
     <>
       <div className="menu-backdrop" onMouseDown={onClose} />
-      <div className="menu note-picker palette" role="dialog" aria-label="Switch worktree">
+      <div className="menu note-picker palette" role="dialog" aria-label="Switch workspace">
         <input
           autoFocus
           className="picker-input"
-          placeholder="Jump to a worktree, tab, project or setting"
+          placeholder="Jump to a workspace, tab, project or setting"
           value={query}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -341,7 +341,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
             return (
               <Fragment key={`${r.section}|${r.label}|${r.hint ?? ""}|${r.parent ?? ""}|${i}`}>
                 {(i === 0 || rows[i - 1].section !== r.section) && <div className="palette-section">{r.section}</div>}
-                <button role="option" aria-selected={i === cur} aria-disabled={r.off} className={`menu-item${i === cur ? " at" : ""}${r.off ? " off" : ""}`} title={r.off ? "Open a worktree first" : undefined} aria-keyshortcuts={i < 9 ? `Alt+${i + 1}` : undefined} onMouseEnter={() => setAt(i)} onClick={() => go(i)}>
+                <button role="option" aria-selected={i === cur} aria-disabled={r.off} className={`menu-item${i === cur ? " at" : ""}${r.off ? " off" : ""}`} title={r.off ? "Open a workspace first" : undefined} aria-keyshortcuts={i < 9 ? `Alt+${i + 1}` : undefined} onMouseEnter={() => setAt(i)} onClick={() => go(i)}>
                   {i < 9 && (
                     <span className="palette-num" aria-hidden="true">
                       {i + 1}
@@ -356,7 +356,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
                       <Marked text={folder} spans={r.spans} from={r.label.length + (r.hint ? 1 : 3)} />
                     </span>
                   )}
-                  {r.off && <span className="reason">needs an open worktree</span>}
+                  {r.off && <span className="reason">needs an open workspace</span>}
                 </button>
                 {(i === rows.length - 1 || rows[i + 1].section !== r.section) && (more[r.section] ?? 0) > 0 && (
                   <button className="menu-item palette-more" title={moreTitle(more[r.section])} onClick={() => setExtra({ ...extra, [r.section]: (extra[r.section] ?? 0) + 1 })}>
