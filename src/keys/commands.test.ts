@@ -71,7 +71,7 @@ test("T-611: the palette's Commands section lists every command, the unbound one
   for (const r of rows) r.run();
   const ids = new Set(ran.map((x) => x.replace(/#\d$/, "")));
   expect(actions.filter((a) => !ids.has(a.id)).map((a) => a.id)).toEqual([]);
-  // Each of the 57 unbound commands has its row; a bound one shows its keys.
+  // Each of the 58 unbound commands has its row; a bound one shows its keys.
   expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).every((a) => ids.has(a.id))).toBe(true);
   expect(rows.find((r) => r.label === "Show Floor")).toMatchObject({ hint: undefined });
   expect(rows.find((r) => r.label === "Open Settings")).toMatchObject({ hint: "Ctrl+," });

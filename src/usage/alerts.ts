@@ -52,22 +52,31 @@ export function useUsageAlerts(settings: Record<string, unknown> | null) {
     if (!on) return;
     let fired: Fired | null = null;
     let live = true;
-    const check = (all: Record<string, ProviderUsage | undefined>) => {
+    const check = () => {
       if (!fired) return;
-      for (const [p, u] of Object.entries(all)) {
-        if (!u) continue;
-        const r = dueAlerts(p, u, fired);
-        if (r.alerts.length === 0) continue;
-        fired = r.fired;
-        void invoke("usage_alert_send", { fired, alerts: r.alerts }).catch(() => {});
+      for (const [p, u] of Object.entries(onFigures.current())) {
+        const r = u && dueAlerts(p, u, fired);
+        if (!r?.alerts[0]) continue;
+        // T-716: kept as sent only once the send succeeds; a failure leaves it due for the next reading. One send at a
+        // time; after a success the figures are looked at again, for a reading that came in meanwhile or the next provider.
+        const was = fired;
+        fired = null;
+        void invoke("usage_alert_send", r).then(
+          () => {
+            fired = r.fired;
+            if (live) check();
+          },
+          () => (fired = was),
+        );
+        break;
       }
     };
     const off = onFigures(check);
     void invoke<Fired>("usage_alerts_fired")
       .then((f) => {
         if (!live) return;
-        fired = f ?? {};
-        check(onFigures.current());
+        fired = f;
+        check();
       })
       .catch(() => {});
     return () => {

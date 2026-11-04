@@ -1,5 +1,5 @@
 T-727 - The command palette has Model Routing, which opens the Model routing page (DT-C163; UX audit lane C)
-Worker 49, coordinator 57, branch s-49/ux-15 from main 74dc239b, main 3e067ebf merged in, 2026-11-03.
+Worker 49, coordinator 57, branch s-49/ux-15 from main 74dc239b, main 3e067ebf then 73008fe1 merged in, 2026-11-03.
 Row: proof/ux-audit/requests/W3.md, "T-727 / DT-C163", filed from live verify t10.
 
 WHAT WAS WRONG
@@ -16,11 +16,11 @@ TESTS
 - src/keys/commands.test.ts "T-727: ...": palette rows from commandRows; "routing", "model", "route" and "Model routing"
   each show Model Routing and running it sends view.routing; the window switch maps view.routing to its page and the
   projects panel button opens the same page. With main's actions.ts and useWindowKeys.ts: 1 failed.
-- Counts: keymap.test (139 actions, 57 unbound), shortcutRows.test (139 rows), commands.test comment.
+- Counts: keymap.test (139 actions, 58 unbound after main 73008fe1 left terminal.closePane unbound), shortcutRows.test (139 rows), commands.test comment.
 - src/keys + src/chrome + src/projects + src/settings + src/shell: 227 files, 1253 tests passed. pnpm exec tsc --noEmit -p . : clean.
 
 BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
-- main 3e067ebf (main merged in): 1,489,525 B first load. This branch: 1,489,562 B (+37), 7 B over the +30 B cap; reported to 57.
+- main 73008fe1 (main merged in): 1,489,604 B first load. This branch: 1,489,641 B (+37; also +37 against 3e067ebf), 7 B over the +30 B cap; reported to 57.
 - Making the palette read action keywords (so "route" could be a keyword) measured +198 B; not taken.
 
 REVIEW

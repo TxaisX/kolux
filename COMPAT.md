@@ -919,7 +919,7 @@ Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile e
 | `terminal.expandPane` | Expand / collapse pane | Mod+Shift+Enter | no |
 | `terminal.setTitle` | Set Title… | none | yes |
 | `terminal.clearPaneTitle` | Clear Pane Title | none | yes |
-| `terminal.closePane` | Close active pane | Mod+W | no |
+| `terminal.closePane` | Close active pane | none (Mod+W is `tab.close`'s, DT-C153) | yes |
 | `terminal.splitRight` | Split terminal right | Mod+Shift+D | no |
 | `terminal.splitDown` | Split terminal down | Alt+Shift+D | no |
 | `terminal.switchInputSource` | Switch input source / language (native) | none | yes |
@@ -992,7 +992,7 @@ Each card below keeps the action ids named here, with the defaults of 4.3, so a 
 | TERM-009 | `terminal.equalizePaneSizes`, shipped unbound. |
 | TERM-012 | `terminal.focusNextPane` and `terminal.focusPreviousPane`. |
 | TERM-013 | `terminal.expandPane`. |
-| TERM-014 | `terminal.closePane`. |
+| TERM-014 | `terminal.closePane` (ships unbound; Mod+W is `tab.close`'s, DT-C153). |
 | TERM-027 | `terminal.setTitle` and `terminal.clearPaneTitle`, both shipped unbound. |
 | TERM-030, STAT-051, VIEW-047 | `terminals.focusNextNeedsYou`. |
 | TERM-040 | `tab.newTerminal`, `tab.newBrowser`, `tab.newMarkdown` and `tab.openMarkdown`. |
