@@ -515,7 +515,9 @@ User does: has Hermes or OpenClaw installed on this computer and opens Automatio
 User sees: that tool's cron jobs appear in the list marked as running on this computer, each with a
   pause/resume switch; Hermes jobs can be run, edited, deleted and created from Kolux; OpenClaw jobs
   can be run and deleted but not edited; Hermes run history is read from its cron output and split
-  into titled sections.
+  into titled sections, and a Hermes job's Runs tab lists its last ten runs, newest first, each
+  opening to those sections, with Try again when the files cannot be read (T-749). Hermes owns
+  those files, so Kolux offers no way to clear them.
 Rules: Hermes jobs need a cron timetable and offer no agent, session reuse, event trigger or
   precheck choices; a warning shows when the tool's command cannot be found on the PATH; jobs from
   these tools are not part of the agent filter; Kolux reads log files only from inside the tool's
