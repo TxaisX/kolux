@@ -10,6 +10,7 @@ import { commandRows, forceReload, reloadAsk, renameTarget, windowCommand } from
 import { runCommand } from "./runCommand";
 import { heldByTerminal } from "./terminalPolicy";
 import { SCREEN_OF } from "../chrome/reach";
+import { paletteRows } from "../projects/WorktreePalette";
 
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -169,4 +170,13 @@ test("review of PR #16 (a): Force Reload's question is the app's own dialog (chr
   expect(app.includes("window.confirm("), "App.tsx asks nothing through window.confirm").toBe(false);
   expect(app).toMatch(/forceReload\(unsaved\.current, setReloadAsk,/);
   expect(app).toMatch(/<Ask \{\.\.\.reloadAsk\(reloadAsking\)\}/);
+});
+
+test("T-728: a command's keywords find it in the palette, after rows that match on their own words", () => {
+  const rows = commandRows(resolve(null, "win32"), []);
+  expect(paletteRows(rows, "cron").map((r) => r.label)).toContain("Open Automations");
+  expect(paletteRows(rows, "preferences").map((r) => r.label)).toContain("Open Settings");
+  const ranked = paletteRows([{ section: "Commands", label: "Run cron now", run: () => {} }, ...rows], "cron").map((r) => r.label);
+  expect(ranked.indexOf("Run cron now")).toBeLessThan(ranked.indexOf("Open Automations"));
+  expect(paletteRows(rows, "cron zzzz")).toEqual([]);
 });

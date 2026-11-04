@@ -1,0 +1,29 @@
+T-728 / DT-C164 - palette search matches command keywords (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 3" (57): "palette search matches action keywords
+("cron" finds Automations)", cap +198 B, reuse the existing search, no fuzzy library.
+
+FOUND: the action table (src/keys/actions.ts) already tags commands with keywords (Open Automations:
+schedule, cron, recurring; Open Settings: preferences, options; ...), but only the Shortcuts page read
+them. The palette's command rows (src/keys/commands.ts) carried label and keys only, so typing cron
+found nothing.
+
+FIXED:
+  src/keys/commands.ts: each command row carries its keywords (the 1-to-9 rows too).
+  src/projects/WorktreePalette.tsx: a palette item may have keywords; the existing scorer matches them
+    after the row's own text and its project, so they count as a match on another field (ranked after
+    own-word matches, never highlighted, never shown). Every typed word must still land on the row.
+
+TEST:
+  src/keys/commands.test.ts "T-728: a command's keywords find it in the palette, after rows that match on
+  their own words": cron lists Open Automations, preferences lists Open Settings, a row with cron in its
+  own name ranks ahead, and cron plus a word that matches nothing lists nothing. It failed without the
+  scorer change ("expected [] to include 'Open Automations'") and passes with it.
+  npx vitest run src/keys/commands.test.ts src/projects: all passed.
+  pnpm tsc --noEmit: 0. firewall-check -Baseline: 0 new. plan-check: OK.
+
+BUNDLE: first load 1,489,689 B in 47 chunks vs main 73008fe1 1,489,604 B (this branch alone, built here): +85 B (cap +198).
+  It fits only with T-729 (#175, -2,426 B) landed first, so fa merges it after #175.
+FULL RUN: npx vitest run: 805 files, 6001 tests passed.
+REVIEW: sonnet-medium-review, A-, no must-fix or should-fix; the bundle wording nit is applied above.
+
+PENDING: unit-proven; not checked live in the app.
