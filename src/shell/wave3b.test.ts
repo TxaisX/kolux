@@ -4,6 +4,7 @@ import { type FunctionComponent, act, createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
 import type { Project, Worktree } from "../projects/model";
+import { stripOrderOf } from "../terminal/pin";
 import { TAB_COLORS } from "../terminal/tabColor";
 
 const h = vi.hoisted(() => ({ lists: {} as Record<string, unknown[]>, win: {} as Record<string, unknown> }));
@@ -125,7 +126,7 @@ describe("S24: every item of the tab menu", () => {
       panes,
       pinned: new Set<number>(),
       tabColors: {},
-      orderOf: () => [1, 2, 3],
+      orderOf: (key: number) => stripOrderOf(panes, key, h.win.pinned as Set<number>), // the window's own: pinned first (C06-R1-01)
       setTabMenu: vi.fn(),
       setTabColors: vi.fn(),
       setPinned: vi.fn(),
@@ -185,5 +186,21 @@ describe("S24: every item of the tab menu", () => {
     fn("closeTab").mockClear();
     await click(again.c, again.item("Close to the right"));
     expect(fn("closeTab")).not.toHaveBeenCalled();
+  });
+  // C06-R1-01: a pinned tab is drawn first, whatever the pane array says; the rows follow the drawing, so
+  // "Close to the left" on the leftmost pinned tab closes nothing and "Close to the right" closes the
+  // tabs drawn on its right.
+  it("C06-R1-01: a pinned tab's side rows measure the drawn strip, not the pane array", async () => {
+    h.win.panes = [panes[1], panes[2], panes[0]]; // pane array: 2, 3, 1
+    h.win.pinned = new Set([1]); // tab 1 is pinned, so the strip draws 1, 2, 3
+    h.win.tabMenu = { key: 1, top: 10, left: 10 };
+    const { c, item } = await open();
+    expect(find(c, (n) => n.attrs.class === "name").map((n) => n.textContent)).toContain("Close to the right");
+    expect(item("Close to the left").attrs["aria-disabled"]).toBe("true"); // nothing is drawn to its left
+    fn("closeTab").mockClear();
+    await click(c, item("Close to the left"));
+    expect(fn("closeTab")).not.toHaveBeenCalled();
+    await click(c, item("Close to the right"));
+    expect(fn("closeTab")).toHaveBeenCalledWith([2, 3]); // the two drawn on its right
   });
 });

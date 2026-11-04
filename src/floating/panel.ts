@@ -249,7 +249,9 @@ export function route(id: string, index: number | undefined, open: boolean, inPa
     case "tab.close":
       return { op: "close" };
     case "tab.selectByIndex":
-      return { op: "select", n: (index ?? 0) + 1 };
+      // C01-R1-01: the digit is the 1-based position itself (Alt+1 is index 1); adding one picked the
+      // next tab and put Alt+9 past the strip.
+      return { op: "select", n: index ?? 1 };
     case "tab.nextSameType":
       return { op: "step", by: 1, mode: "same" };
     case "tab.previousSameType":
