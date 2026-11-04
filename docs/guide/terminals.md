@@ -81,7 +81,7 @@ A cell with more than one pane shows a tab strip. Each tab has an icon, a status
 | Close | Closes this tab (Ctrl+W). Greyed out for a pinned tab |
 | Close others | Closes every other tab except pinned ones |
 | Close to the right / Close to the left | Closes the tabs on that side except pinned ones |
-| Close all | Closes every tab (Ctrl+Alt+W). Close all, from the menu or the shortcut, leaves pinned tabs open |
+| Close all | Closes every tab in the strip, terminals and browsers included. It leaves pinned tabs open; the shortcut, Ctrl+Alt+W, closes editor tabs only |
 
 Closing the active tab returns you to the tab you used before it. If there is none, the one to its right, else the one to its left.
 
@@ -216,7 +216,7 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+Shift+B | New browser tab |
 | Ctrl+Shift+M / Ctrl+Shift+O | New / open markdown file |
 | Ctrl+W | Close the tab, or the pane |
-| Ctrl+Alt+W | Close all tabs |
+| Ctrl+Alt+W | Close all editor tabs (terminal and browser tabs stay open) |
 | Ctrl+] / Ctrl+[ | Focus next / previous pane |
 | Ctrl+Shift+D / Alt+Shift+D | Split right / split down |
 | Ctrl+Shift+Enter | Expand or restore the pane |

@@ -22,7 +22,7 @@ import { stepZoom, type ZoomStep } from "../settings/zoom";
 import { openTabSearch } from "../shell/findTab";
 import { cycleTarget } from "../switcher/accounts";
 import { cellsOf, groupOf } from "../terminal/grid";
-import { bulkCloseSet } from "../terminal/pin";
+import { editorCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
 import { zoomTerm } from "../theme";
@@ -413,11 +413,15 @@ export function useWindowKeys(w: WindowBag) {
           });
           break;
         }
-        case "tab.closeAll":
-          // TERM-044: every tab of the focused pane's strip, through one close question.
+        case "tab.closeAll": {
+          // C01-R4-01: COMPAT's `tab.closeAll` is "Close all editor tabs", so the chord takes the
+          // focused strip's editor tabs through one close question and leaves every terminal and
+          // browser tab alone. The tab menu's own "Close all" still takes the whole strip.
           if (!inFront) return;
-          void closeTab(bulkCloseSet(orderOf(focused), focused, "all", pinned));
+          const editors = editorCloseSet(orderOf(focused), panes, pinned);
+          if (editors.length > 0) void closeTab(editors);
           break;
+        }
         case "terminals.focusNextNeedsYou": {
           // TERM-030: cycle through the panes waiting on the user in grid order, across workspaces;
           // with none waiting, focus stays where it is. DT-C52: a permission or a question only (the one status).
