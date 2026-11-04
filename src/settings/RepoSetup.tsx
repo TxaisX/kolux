@@ -1,7 +1,7 @@
 // SET-033 / PROJ-035: the setup part of a repository's page: the setup script kept in Kolux (shown,
 // edited, removed), the repository's kolux.yaml script, which of them run, and whether the agent waits.
 import { useCallback, useEffect, useState } from "react";
-import { useLeaveSave } from "./leave";
+import { clearLeft, failLeft, keepLeft, takeLeft, useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
 import { choiceOptions, choiceSave, runsNote, scriptSave, trustedWords, trustNote, type RepoSetup } from "./setupChoice";
 
@@ -14,8 +14,8 @@ export interface SetupActions {
   onUntrust?: () => void;
 }
 
-export function RepoSetupView({ setup, notice, status, actions }: { setup: RepoSetup; notice?: string | null; status?: string | null; actions: SetupActions }) {
-  const [draft, setDraft] = useState(setup.local ?? "");
+export function RepoSetupView({ setup, notice, status, start, leftError, actions }: { setup: RepoSetup; notice?: string | null; status?: string | null; start?: string; leftError?: string | null; actions: SetupActions }) {
+  const [draft, setDraft] = useState(start ?? setup.local ?? "");
   const [composing, setComposing] = useState(false);
   const [asking, setAsking] = useState(false);
   const [hint, setHint] = useState("");
@@ -137,6 +137,11 @@ export function RepoSetupView({ setup, notice, status, actions }: { setup: RepoS
         </select>
       </label>
       <p className="conn-detail">The New workspace dialog can still send setup to a split instead of a tab.</p>
+      {leftError && (
+        <p className="conn-detail warn" role="alert" data-left-error="true">
+          The setup script could not be saved: {leftError}. What you typed is in the box.
+        </p>
+      )}
       {notice && (
         <p className="conn-detail warn" role="alert">
           {notice}
@@ -151,6 +156,8 @@ export default function RepoSetupSection({ path }: { path: string }) {
   const [setup, setSetup] = useState<RepoSetup | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  // C20-R4-01: the script a leave save typed and, if that write failed, why: taken once on mount.
+  const [left] = useState(() => takeLeft(`repo-setup:${path}`));
   const load = useCallback(() => {
     invoke<RepoSetup>("repo_setup_get", { path })
       .then((s) => (setSetup(s), setNotice(null)))
@@ -167,8 +174,24 @@ export default function RepoSetupSection({ path }: { path: string }) {
       setup={setup}
       notice={notice}
       status={status}
+      start={left?.value}
+      leftError={left?.error}
       actions={{
-        onSave: (script) => void write("repo_setup_save", { script }),
+        onSave: (script) => {
+          // C20-R4-01: the script goes aside before the write, so a leave save that outlives this
+          // section still has somewhere to come back to.
+          const key = `repo-setup:${path}`;
+          keepLeft(key, script);
+          void invoke("repo_setup_save", { path, script })
+            .then(() => {
+              clearLeft(key);
+              load();
+            })
+            .catch((e) => {
+              failLeft(key, String(e));
+              setNotice(String(e));
+            });
+        },
         onRemove: () => void write("repo_setup_remove", {}),
         onChoice: (value) => {
           const c = choiceSave(setup, value);

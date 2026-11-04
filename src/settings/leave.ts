@@ -23,3 +23,32 @@ export function useLeaveSave(save: () => void): void {
   latest.current = save;
   useEffect(() => bindLeave(window, () => latest.current()), []);
 }
+
+/** C20-R4-01: a save made while its page goes away outlives the page. The write cannot finish inside
+ *  a cleanup, so the text it was given and, when the write failed, why are kept here by key; the next
+ *  mount of that page takes them back so nothing typed is lost and the failure is shown. */
+export type Left = { value: string; error: string | null };
+const left = new Map<string, Left>();
+
+/** Puts the text aside before the write goes out. */
+export function keepLeft(key: string, value: string): void {
+  left.set(key, { value, error: null });
+}
+
+/** Records why the write failed, for the page's next mount. */
+export function failLeft(key: string, error: string): void {
+  const k = left.get(key);
+  if (k) left.set(key, { ...k, error });
+}
+
+/** The write landed: nothing is left to put back. */
+export function clearLeft(key: string): void {
+  left.delete(key);
+}
+
+/** Takes what the page left behind, and empties it: it is shown once. */
+export function takeLeft(key: string): Left | null {
+  const k = left.get(key) ?? null;
+  left.delete(key);
+  return k;
+}
