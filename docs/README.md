@@ -35,7 +35,7 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 | Page | What it covers |
 |---|---|
 | [Architecture overview](architecture/overview.md) | Processes, runtime topology, startup, terminal lifecycle, local doors, updates |
-| [Architecture infographic](architecture/infographic.html) | The one-page visual version |
+| [Architecture infographic](architecture/architecture.svg) | The one-page visual version |
 | [Data and storage](architecture/data.md) | The profile, the SQLite store, settings, the vault, recovery |
 | [Security model](architecture/security.md) | Trust boundaries, the file fence, protected commands, web isolation, update trust |
 | [Frontend](architecture/frontend.md) | The React shell, state flow, terminal grid, editor, styling |

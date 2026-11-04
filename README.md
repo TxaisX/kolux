@@ -77,7 +77,7 @@ The full list of outbound connections is in Settings, General, Privacy and in th
 | [Safety](docs/guide/safety.md) | What Kolux guards and what it leaves to you |
 | [Security policy](SECURITY.md) | How to report a vulnerability privately |
 | [Architecture](docs/architecture/overview.md) | Processes, local doors, data, trust boundaries |
-| [Architecture infographic](docs/architecture/infographic.html) | The one-page visual map |
+| [Architecture infographic](docs/architecture/architecture.svg) | The one-page visual map |
 | [Development](docs/development/README.md) | Building, testing, releasing, code map |
 | [Troubleshooting](docs/guide/troubleshooting.md) | Fix common problems and produce a safe report |
 | [Command line](docs/guide/command-line.md) | Drive Kolux from a shell |
