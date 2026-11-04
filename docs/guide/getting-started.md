@@ -77,7 +77,7 @@ The bar across the top is 36 pixels tall and replaces the Windows title bar. Dra
 | Control | What it does |
 |---|---|
 | Kolux mark | Opens the Kolux menu (File, Edit, View, Window, Help). See the next section |
-| Menu (dots) | Opens a "View" menu with Zoom In, Zoom Out and Reset Size. They act on the focused terminal |
+| Terminal zoom (magnifier with a plus) | Opens the Terminal zoom menu with Zoom In, Zoom Out and Reset Size (Ctrl+=, Ctrl+-, Ctrl+0). They act on the focused terminal |
 | Sidebar button | Hides or shows the project sidebar (Ctrl+B) |
 | Back / Forward | Return to the last workspace or page you were on, and go forward again (Ctrl+Alt+Left, Ctrl+Alt+Right) |
 | Screen switcher | Four buttons: Agents, Board, Terminals, Tower. See the next section |
@@ -101,11 +101,11 @@ Click the Kolux mark at the left end of the top bar (its tooltip says "Kolux men
 |---|---|
 | File | **Settings...** opens Settings (Ctrl+, by default). **Exit** closes the window the way its close button does, which stops every terminal |
 | Edit | Undo, Redo, Cut, Copy, Paste, Select All. In a text box they act on the text. In a terminal pane only **Copy** (the selected text; nothing is copied when nothing is selected) and **Select All** work; Undo, Redo and Cut do nothing there. **Paste** does nothing yet from this menu: use Ctrl+V |
-| View | **Workspace View** has Agents, Board, Terminals, Tower and Floor with the current screen ticked (absent in the Classic look); Floor has no sidebar button, so this menu and the palette's **Show Floor** are its two ways in. **Appearance** has Toggle Left Sidebar, Toggle Right Sidebar and four ticks: Show Status Bar, Show Tasks Button, Show Automations Button and Show Titlebar App Name. Each tick matches its switch in [Settings](settings.md) and changes it. Then come Reload, Force Reload (Ctrl+Shift+R), Toggle Developer Tools (does nothing in the released app), Actual Size, Zoom In, Zoom Out and Toggle Full Screen |
+| View | **Workspace View** has Agents, Board, Terminals, Tower and Floor with the current screen ticked (absent in the Classic look); Floor has no sidebar button, so this menu and the palette's **Show Floor** are its two ways in. **Appearance** has Toggle Left Sidebar, Toggle Right Sidebar and four ticks: Show Status Bar, Show Tasks Button, Show Automations Button and Show Titlebar App Name. Each tick matches its switch in [Settings](settings.md) and changes it. Then come Reload, Force Reload (Ctrl+Shift+R), Toggle Developer Tools (does nothing in the released app), Reset Interface Zoom, Zoom Interface In, Zoom Interface Out and Toggle Full Screen |
 | Window | Minimize, and Zoom (which maximizes the window) |
 | Help | **About Kolux** shows the version. The other Help items (Report Crash, Explore Kolux, Getting Started, Check for Updates) are not in the menu yet |
 
-The menu's Zoom In, Zoom Out and Actual Size change the whole interface size, the same one as "Zoom: Interface size" in Settings, Appearance. The dots menu described above, in contrast, acts on the focused terminal.
+The menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0) change the whole interface size, the same one as "Zoom: Interface size" in Settings, Appearance. The top bar's Terminal zoom button described above, in contrast, acts on the focused terminal.
 
 ## The views
 

@@ -295,7 +295,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
             </select>
           </label>
         ))}
-        <p className="conn-detail">Zoom In, Zoom Out and Reset Size (the View menu, Ctrl+= / Ctrl+- / Ctrl+0) change only the focused terminal.</p>
+        <p className="conn-detail">Zoom In, Zoom Out and Reset Size (the top bar's Terminal zoom menu, Ctrl+= / Ctrl+- / Ctrl+0) change only the focused terminal.</p>
       </section>
       <section className="conn-card" data-section="terminal-colours">
         <h2 className="conn-name">Terminal colours</h2>
