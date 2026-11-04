@@ -1,0 +1,41 @@
+T-745 / DT-C181: one New-session sheet in a grid of choosers (proof/ux-audit/requests/W3.md, live-wave3-a.md F15), lane A (90).
+Built on main 99b4a9d2, merged with main 8f3f8295. Release: 0.1.8 (opened after the 0.1.7 cutline).
+
+FIXED
+  F15. "The layout "6" pane button fills the grid with six New-session sheets at once, which are cramped at 1400 px:
+       Folders radios and Task box clipped in the 4 right-hand sheets." Seen in the live wave (shots/S17-skills.png); on
+       main every chooser cell draws the full sheet. Now, when this workspace's grid shows two or more choosers as front
+       tabs (not on Board, Agents or a zoomed cell), only one draws the sheet: the focused chooser, else the one
+       focused last, else the first. The others draw an empty slot with "Choose what to run here" and their close
+       button; a click moves the sheet there. The chooser stays mounted as a slot, so its seats, task and lineup
+       are kept. The New session page (the sheet prop) and a single chooser are unchanged.
+       src/launch/emptySlots.ts (new, gridSheet), src/launch/ChooserPane.tsx (reads the window store; the slot),
+       src/shell/window/store.tsx (WindowStore context exported).
+
+TESTS
+  - src/launch/emptySlots.test.ts (5 tests): one or no chooser has no slots; only this workspace's front tabs count,
+    and Board or a zoomed cell has no slots; the focused chooser has the sheet and keeps it when a terminal takes
+    the focus, and a closed one hands it back to the first; in the window the other chooser draws the slot (with
+    its close button, no Folders) while the New session page never does; a click on a slot does not let the
+    vanishing slot take the focus back from the sheet (mousedown preventDefault).
+  - Mutation checks: drawing the full sheet in every chooser fails the 4th test; dropping the preventDefault
+    fails the 5th.
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t745)
+  - After merging main 8f3f8295: npx vitest run 811 files, 6035 tests passed (with all 5 tests
+    above). npx tsc --noEmit -p .: clean.
+  - After merging main 0d882444 (train 22): npx vitest run 818 files, 6050 tests passed; tsc clean; first load
+    1,487,833 B vs 1,487,824 B on that main: +9 B.
+  - After merging main 5e481cf2 (train 23): npx vitest run 821 files, 6060 tests passed; tsc clean; first load
+    1,487,955 B vs 1,487,946 B for main 5e481cf2 built on its own: +9 B.
+  - Bundle: first load 1,486,979 B vs 1,486,970 B on main 8f3f8295: +9 B against a +150 cap. The first build was
+    about +500 B (logic in Grid/Pane, which are first-load); it was moved into the lazy ChooserPane chunk.
+  - Review of the first diff: opus-high-review B. Both should-fixes and the nits were taken in the rework.
+  - Review of the rework: opus-high-review A-, no blockers. Should-verify taken: the slot's mousedown calls
+    preventDefault so the browser does not focus the removed button after the sheet focuses itself.
+  - Review of that follow-up: opus-high-review A, no blockers or should-fixes. Nits taken: the test name says it
+    checks the handler, and a comment in ChooserPane.tsx says why preventDefault is there. NOT DONE: no live CDP check
+    that the sheet keeps the focus after a slot click; the fix is shown by reasoning plus the source test only.
+  - LEFT: a count typed in a slot's chooser but not committed is lost when it collapses to a slot; the remembered
+    chooser is one per window, not one per workspace (ponytail comment in emptySlots.ts); it is written during
+    render, which is idempotent for the same grid.
