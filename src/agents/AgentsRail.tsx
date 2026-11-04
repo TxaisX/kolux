@@ -1,5 +1,5 @@
 // The Agents screen's rail (VIEW-015, VIEW-021): sessions under each saved agent, + adds a
-// not-started preset, and an empty state when no agent is switched on.
+// not-started preset (T-730: Remove under it takes it away again), and an empty state when no agent is switched on.
 import { Fragment } from "react";
 import { Plus } from "../chrome/icons";
 import VendorMark from "../chrome/VendorMark";
@@ -7,9 +7,9 @@ import { markFor } from "../launch/PlusMenu";
 import Ring from "../usage/Ring";
 import { OTHER, sessionLabel, type Group, type RowStatus, type Session } from "./rail";
 
-type Props<S extends Session> = { groups: Group<S>[]; selected: number | null; classic: boolean; statusOf: (p: S) => RowStatus; ringOf: (p: S) => { percent: number; title: string } | null; footer: string; onSelect: (key: number) => void; onAdd: (agentId: string) => void; onSettings: () => void; taskOf?: (key: number) => string | undefined };
+type Props<S extends Session> = { groups: Group<S>[]; selected: number | null; classic: boolean; statusOf: (p: S) => RowStatus; ringOf: (p: S) => { percent: number; title: string } | null; footer: string; onSelect: (key: number) => void; onAdd: (agentId: string) => void; onSettings: () => void; taskOf?: (key: number) => string | undefined; onDrop?: (key: number) => void };
 
-export default function AgentsRail<S extends Session>({ groups, selected, classic, statusOf, ringOf, footer, onSelect, onAdd, onSettings, taskOf }: Props<S>) {
+export default function AgentsRail<S extends Session>({ groups, selected, classic, statusOf, ringOf, footer, onSelect, onAdd, onSettings, taskOf, onDrop }: Props<S>) {
   const look = classic ? " classic" : "";
   return (
     <div className={`sidebar-wrap rail-wrap${look}`}>
@@ -46,7 +46,7 @@ export default function AgentsRail<S extends Session>({ groups, selected, classi
                     {st.word}
                   </span>
                 </div>
-                {st.line && <div className="sess-line" style={{ paddingLeft: 49 }} title={st.line} data-session-line={p.key}>{st.line}</div>}
+                {p.seats ? <button onClick={() => onDrop?.(p.key)}>Remove</button> : st.line && <div className="sess-line" title={st.line} data-session-line={p.key}>{st.line}</div>}
                 </Fragment>
                 );
               })}
@@ -54,7 +54,7 @@ export default function AgentsRail<S extends Session>({ groups, selected, classi
           ))
         )}
         {footer && (
-          <div className="rail-foot" title="The picked session's plan: its 5-hour window and when it resets">
+          <div className="rail-foot" title="The picked session's 5-hour window">
             {footer}
           </div>
         )}

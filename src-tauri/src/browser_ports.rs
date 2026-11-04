@@ -1,5 +1,5 @@
 //! T-242 (BROW-067): the dev servers a workspace is running, for the Preview button. The system's
-//! listening TCP ports are read (`netstat -ano -p tcp` on Windows, `lsof` elsewhere) and matched
+//! listening TCP ports are read (the Ports popover's shared `netstat -ano` on Windows, `lsof` elsewhere) and matched
 //! against the addresses the workspace's terminals printed: on Windows the port scan carries no
 //! working folder, so a port counts as the workspace's when one of its terminals printed an address
 //! for it and the port is listening. Ranking: a printed address first, then a port speaking HTTP,
@@ -27,7 +27,7 @@ pub struct Candidate {
     pub web: bool,
 }
 
-/// `netstat -ano -p tcp`: `  TCP    0.0.0.0:5173    0.0.0.0:0    LISTENING    1234`.
+/// `netstat -ano`: `  TCP    0.0.0.0:5173    0.0.0.0:0    LISTENING    1234`; UDP lines are skipped.
 pub fn parse_netstat(text: &str) -> Vec<Listening> {
     let mut out = Vec::new();
     for line in text.lines() {
@@ -61,15 +61,11 @@ pub fn parse_lsof(text: &str) -> Vec<Listening> {
 
 /// The ports listening on this machine now.
 pub fn listening() -> Vec<Listening> {
+    // T-726: the same table the Ports popover reads (one netstat run serves both pollers).
     #[cfg(windows)]
-    let out = {
-        use std::os::windows::process::CommandExt;
-        // CREATE_NO_WINDOW: the Preview button asks every 3 s, so a console would flash up each time.
-        std::process::Command::new("netstat").args(["-ano", "-p", "tcp"]).creation_flags(0x0800_0000).output()
-    };
+    let text = crate::ports::netstat(false).unwrap_or_default();
     #[cfg(not(windows))]
-    let out = std::process::Command::new("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN"]).output();
-    let text = out.map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+    let text = std::process::Command::new("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN"]).output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
     if cfg!(windows) { parse_netstat(&text) } else { parse_lsof(&text) }
 }
 
@@ -153,6 +149,14 @@ mod tests {
         assert_eq!(parse_netstat(netstat), vec![Listening { port: 135, pid: 1200 }, Listening { port: 5173, pid: 4321 }]);
         let lsof = "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\nnode    4321 me  23u IPv4 0xabc 0t0 TCP *:5173 (LISTEN)\npostgres 88 me 7u IPv6 0xdef 0t0 TCP [::1]:5432 (LISTEN)\n";
         assert_eq!(parse_lsof(lsof), vec![Listening { port: 5173, pid: 4321 }, Listening { port: 5432, pid: 88 }]);
+    }
+
+    #[test]
+    fn t726_the_shared_table_shows_an_ipv6_only_dev_server_and_skips_udp() {
+        // The Ports popover's `netstat -ano` (no `-p tcp`) also lists IPv6 and UDP, so a dev server
+        // bound only to [::1] now shows on the Preview button; UDP never does.
+        let netstat = "  TCP    [::1]:5173             [::]:0                 LISTENING       4321\n  UDP    0.0.0.0:5353           *:*                                    900\n  UDP    [::]:3000              *:*                                    901\n";
+        assert_eq!(parse_netstat(netstat), vec![Listening { port: 5173, pid: 4321 }]);
     }
 
     #[test]
