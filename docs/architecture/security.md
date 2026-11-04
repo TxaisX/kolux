@@ -76,7 +76,7 @@ Every key and managed sign-in is sealed with Windows DPAPI at current-user scope
 
 The frontend never receives the seven secret settings. Rust strips them before the settings payload reaches the page, ignores them on the way back, and exposes only a boolean "is it set" (`src-tauri/src/secrets.rs:150-170`, `:537-541`). Managed sign-ins live in `vault/` as sealed files, written by temporary file and rename. An unreadable file is moved aside, never deleted (`src-tauri/src/secrets.rs:339-370`).
 
-The profile folder is restricted to the current user at launch (`src-tauri/src/secrets.rs:451-471`). The app deliberately never reads Claude's `.credentials.json`, its backups, project transcripts, `.jsonl` files, any `.env*`, or the target of `apiKeyHelper` (DECISIONS.md DT-C88). Hook installs must not touch an account's credentials file.
+The profile folder is restricted to the current user at launch (`src-tauri/src/secrets.rs:451-471`). The Settings, Claude tab never reads Claude's `.credentials.json`, its backups, the project transcripts, `.jsonl` files, any `.env*`, or the target of `apiKeyHelper` (DECISIONS.md DT-C88). Other features read agent transcripts on purpose: the artifact library and native chat. Hook installs must not touch an account's credentials file.
 
 On Windows the protection is real DPAPI. On macOS and Linux the current build only XOR-scrambles values and logs that fact. Those platforms are not supported yet.
 
