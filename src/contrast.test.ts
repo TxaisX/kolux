@@ -19,12 +19,12 @@ const sheets = nodeFs.readdirSync(new URL("./", import.meta.url), { recursive: t
   .map((f) => ({ file: slash(f), text: nodeFs.readFileSync(new URL("./" + slash(f), import.meta.url), "utf8") }));
 const css = sheets.find((s) => s.file === "styles.css")!.text;
 
-type Rule = { file: string; selector: string; body: string };
+type Rule = { file: string; selector: string; body: string; order: number };
 const rulesIn = (text: string, file: string): Rule[] =>
-  flatten(text).split("}").flatMap((chunk): Rule[] => {
+  flatten(text).split("}").flatMap((chunk, order): Rule[] => {
     const at = chunk.indexOf("{");
     const selector = at < 0 ? "" : strip(chunk.slice(0, at)).replace(/\s+/g, " ").trim();
-    return selector ? [{ file, selector, body: chunk.slice(at + 1) }] : [];
+    return selector ? [{ file, selector, body: chunk.slice(at + 1), order }] : [];
   });
 const rules = sheets.flatMap((s) => rulesIn(s.text, s.file));
 const focusRules = rules.filter((r) => /:focus(?:-visible|-within)?(?![\w-])/.test(r.selector));
@@ -130,7 +130,41 @@ test("the focus cues found in the C38-R3 review draw a 2 px --focus-ring outline
   expect(missing).toEqual([]);
 });
 
+/** Selector weight as classes + attributes + pseudo-classes. These sheets use no ids or element selectors;
+ *  :where() takes no weight and :not() takes the weight of its argument. */
+const weight = (selector: string): number => {
+  const s = selector.replace(/:where\([^)]*\)/g, "");
+  const count = (source: string, re: RegExp) => (source.match(re) ?? []).length;
+  return count(s, /\.[\w-]+/g) + count(s, /\[[^\]]*\]/g) + count(s.replace(/:not\(/g, "("), /(?<!:):[\w-]+/g);
+};
+const declares = (rule: Rule, prop: string) => new RegExp("(?:^|[;{\\s])" + prop + "\\s*:").test(rule.body);
+/** Whether `a` beats `b`: more weight, else later in the same sheet. */
+const wins = (a: Rule, b: Rule) => {
+  const [wa, wb] = [weight(a.selector), weight(b.selector)];
+  return wa !== wb ? wa > wb : a.file === b.file && a.order > b.order;
+};
+
+test("the light-mode danger rules keep an information notice's own colour (C38-R3)", () => {
+  const styles = rules.filter((r) => r.file === "styles.css");
+  const split = (r: Rule) => r.selector.split(",").map((s) => s.trim()).filter(Boolean).map((s) => ({ ...r, selector: s }));
+  const base = styles.find((r) => r.selector === ".notice")!;
+  const info = styles.flatMap(split).filter((r) => /\.notice\.[\w-]+/.test(r.selector) && !r.selector.includes("[data-mode"));
+  const light = styles.flatMap(split).filter((r) => r.selector.startsWith('[data-mode="light"]') && /(?:^|[^\w-])notice/.test(r.selector));
+  expect(info.length, "the ex-note and the markdown banner declare their own colour").toBeGreaterThan(1);
+  expect(light.length).toBeGreaterThan(0);
+  const overridden: string[] = [];
+  for (const prop of ["color", "border-color"]) {
+    for (const rule of light.filter((r) => declares(r, prop))) {
+      if (!wins(rule, base)) overridden.push(`${rule.selector} no longer sets the base .notice ${prop}`);
+      for (const v of info.filter((r) => declares(r, prop))) {
+        if (wins(rule, v)) overridden.push(`${rule.selector} overrides ${v.selector}'s ${prop}`);
+      }
+    }
+  }
+  expect(overridden).toEqual([]);
+});
+
 test.each(modes.filter(([m]) => m.endsWith("light")))("light-mode notice text reaches 4.5:1 on the sidebar (%s)", (_, t) => {
-  const fg = t[tokenOf('[data-mode="light"] .notice:not(.ex-note)', "color") as keyof Theme]!;
+  const fg = t[tokenOf('[data-mode="light"] :where(.notice)', "color") as keyof Theme]!;
   expect(ratio(hex(fg), hex(t.surface))).toBeGreaterThanOrEqual(4.5);
 });

@@ -831,8 +831,11 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
    values as they are). */
 [data-mode="light"] .usage-part.warn, [data-mode="light"] .conn-chip.expired, [data-mode="light"] .conn-chip.attention,
 [data-mode="light"] .conn-detail.warn, [data-mode="light"] .conn-switch small.warn, [data-mode="light"] .note.warn, [data-mode="light"] .signin-notice span { color: var(--warn); }
-[data-mode="light"] .note.error, [data-mode="light"] .btn.danger:not(:disabled), [data-mode="light"] .notice:not(.ex-note) { color: var(--danger-line); } /* T-762: light --danger is 2.9:1 on the light ground; --danger-line is 10:1 */
-[data-mode="light"] .btn.danger, [data-mode="light"] .notice, [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
+[data-mode="light"] .note.error, [data-mode="light"] .btn.danger:not(:disabled) { color: var(--danger-line); } /* T-762: light --danger is 2.9:1 on the light ground; --danger-line is 10:1 */
+/* C38-R3: :where() leaves the notice arm at one attribute of weight, so a notice with its own colour (the
+   Explorer's ex-note, the markdown banners) wins in light mode instead of being painted as an error. */
+[data-mode="light"] :where(.notice) { color: var(--danger-line); }
+[data-mode="light"] .btn.danger, [data-mode="light"] :where(.notice), [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
 [data-mode="light"] .btn.danger:hover:not(:disabled), [data-mode="light"] .branch:hover, [data-mode="light"] .sess:hover { background: var(--kbd-bg); }
 [data-mode="light"] .sb-tabs button, [data-mode="light"] .sb-next { color: var(--fg-nav); }
 [data-mode="light"] .branch .chev { color: var(--fg-label); }
