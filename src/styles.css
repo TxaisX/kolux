@@ -150,7 +150,7 @@ input { font: inherit; }
 .sb-section { display: flex; align-items: center; height: 32px; margin: 13px 4px 0; padding-left: 12px; padding-right: 4px; color: var(--fg-label); font-size: 12.5px; font-weight: 500; }
 .sb-section .icons { margin-left: auto; display: flex; gap: 4px; }
 .sb-tabs { display: flex; margin: 8px 8px 0; height: 30px; padding: 3px; gap: 2px; background: var(--tab-track); border: 1px solid var(--tab-track-border); border-radius: 8px; }
-.sb-tabs button { flex: 1; height: 22px; border-radius: 6px; font-size: 12px; font-weight: 500; color: #9a989a; }
+.sb-tabs button { flex: 1; height: 22px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg-nav); }
 .sb-tabs button[aria-pressed="true"] { background: var(--row-selected); color: var(--fg); font-weight: 600; }
 /* W3 F4 (T-693): the sidebar title while it has one view (the tabs come back with Status) */
 .sb-heading { margin: 10px 12px 2px; font-size: 12px; font-weight: 600; color: var(--fg); }
@@ -188,7 +188,7 @@ input { font: inherit; }
 .sess-line { margin-top: -6px; padding: 0 8px 6px 44px; font-size: 11px; line-height: 14px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .branch .dot { margin-right: 2px; }
 .branch .chev { color: #797979; display: inline-flex; }
-.branch:hover { background: #1f1f1f; }
+.branch:hover { background: var(--kbd-bg); }
 .branch.sel { background: var(--row-selected); color: var(--fg); font-weight: 600; }
 .sess { position: relative; display: flex; align-items: center; height: 32px; padding: 0 4px 0 26px; gap: 10px; border-radius: 6px; font-size: 13px; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 /* PROJ-063: the dot is the strongest live agent state; what needs you is amber, working green, done teal. */
@@ -207,7 +207,7 @@ input { font: inherit; }
 .sess input.rename { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-focus); background: var(--input-bg); color: var(--fg); font: inherit; }
 /* The row actions take no room until the row is hovered or focused, so names show in full at rest. */
 .sess .ib { display: none; width: 22px; height: 22px; }
-.sess:hover { background: #1f1f1f; }
+.sess:hover { background: var(--kbd-bg); }
 .sess:hover .ib, .sess:focus-within .ib { display: inline-flex; }
 .sess.sel { background: var(--row-selected); color: var(--fg); }
 .sess.pending { opacity: 0.6; }
@@ -254,7 +254,7 @@ input { font: inherit; }
 .field.multi { height: auto; min-height: 44px; padding: 4px 8px; resize: vertical; font: inherit; font-size: 12px; }
 .preview { color: var(--fg-label); word-break: break-all; line-height: 1.4; }
 .sb-divider { height: 1px; background: var(--line); margin: 0 4px; flex: none; }
-.sb-next { display: flex; align-items: center; height: 32px; margin: 7px 4px 0; padding: 0 12px; font-size: 12px; color: #9b9b9b; }
+.sb-next { display: flex; align-items: center; height: 32px; margin: 7px 4px 0; padding: 0 12px; font-size: 12px; color: var(--fg-nav); }
 .sb-next .hint { margin-left: auto; color: var(--fg-faint); }
 .sb-new { display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; margin: 4px 8px 8px; border: 1px solid var(--button-border); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--fg); }
 .sb-new:hover { background: var(--row-selected); }
@@ -294,7 +294,23 @@ input { font: inherit; }
 .sidebar-wrap.right { padding: 8px 8px 8px 0; }
 .sidebar.scm { width: 320px; }
 /* VIEW-052 / SET-021: only the left sidebar takes the tint or the terminal's ground (--sidebar-bg is set by theme.ts). */
-.sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--sidebar-bg, var(--surface)); }
+/* C23-R3-02: the ink and the surfaces it is painted on follow that ground, so a terminal or tinted
+   ground keeps readable text, selected rows, inputs and the tab control. */
+.sidebar-wrap:not(.right) > .sidebar:not(.scm) {
+  background: var(--sidebar-bg, var(--surface));
+  --fg: var(--sidebar-fg);
+  --fg-row: var(--sidebar-fg-row);
+  --fg-muted: var(--sidebar-fg-muted);
+  --fg-nav: var(--sidebar-fg-nav);
+  --fg-label: var(--sidebar-fg-label);
+  --fg-faint: var(--sidebar-fg-faint);
+  --focus-ring: var(--sidebar-fg-muted);
+  --row-selected: var(--sidebar-row-selected);
+  --input-bg: var(--sidebar-input-bg);
+  --tab-track: var(--sidebar-tab-track);
+  --tab-track-border: var(--sidebar-tab-track-border);
+  --kbd-bg: var(--sidebar-kbd-bg);
+}
 .scm-head { margin-top: 8px; }
 .scm-head .count { margin-left: 8px; font-size: 11px; color: var(--fg); }
 .scm-commit { display: flex; flex-direction: column; gap: 6px; margin: 8px 8px 0; }
@@ -836,8 +852,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
    Explorer's ex-note, the markdown banners) wins in light mode instead of being painted as an error. */
 [data-mode="light"] :where(.notice) { color: var(--danger-line); }
 [data-mode="light"] .btn.danger, [data-mode="light"] :where(.notice), [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
-[data-mode="light"] .btn.danger:hover:not(:disabled), [data-mode="light"] .branch:hover, [data-mode="light"] .sess:hover { background: var(--kbd-bg); }
-[data-mode="light"] .sb-tabs button, [data-mode="light"] .sb-next { color: var(--fg-nav); }
+[data-mode="light"] .btn.danger:hover:not(:disabled) { background: var(--kbd-bg); }
 [data-mode="light"] .branch .chev { color: var(--fg-label); }
 [data-mode="light"] .menu { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
 /* Settings: a row of buttons acting as one choice (General's look, Appearance's mode). */

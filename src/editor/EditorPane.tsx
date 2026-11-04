@@ -17,9 +17,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
 import { Compartment, EditorState } from "@codemirror/state";
-import { syntaxHighlighting } from "@codemirror/language";
+import { currentDark } from "../theme";
 import { languageFor } from "./languages";
-import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { codeHighlighting, editorMode } from "./syntax";
 import { ChevronDown, Close, List } from "../chrome/icons";
 import FileIcon from "./FileIcon";
 import CsvTable from "./CsvTable";
@@ -195,7 +195,6 @@ export const look = EditorView.theme(
     "&.cm-focused": { outline: "none" },
     ".cm-cursor": { borderLeftColor: "var(--fg)" },
   },
-  { dark: true },
 );
 
 /** `readOnly`: typing changes nothing (SKILL-012 previews a kit result this way). */
@@ -343,7 +342,7 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
           doc: docText(shown),
           parent: host.current!,
           // T-603 (DT-C57): a file with one kind of line end is saved with it; a mixed file draws every line and keeps each ending.
-          extensions: [lineEndsFor(text), EditorState.readOnly.of(readOnly), basicSetup, look, syntaxHighlighting(oneDarkHighlightStyle), lang.of([]), wrapping.of(wrapOn.current ? EditorView.lineWrapping : []), minimapping.of(miniOn.current ? minimap() : []), findSupport, conflictColours, isMarkdown(path) ? sourceLinks(() => ({ note: path, root, files: () => { if (!wikiAsked.current && root) { wikiAsked.current = true; void invoke<{ files: string[] }>("file_list", { root }).then((l) => void (wikiFiles.current = l.files), () => undefined); } return wikiFiles.current; }, onLink: (a, shift) => report.current.onLink?.(a, shift), onToast: (t) => report.current.onToast?.(t) })) : [], pasteGuard((t) => report.current.onToast?.(t)), EditorView.updateListener.of((u) => {
+          extensions: [lineEndsFor(text), EditorState.readOnly.of(readOnly), basicSetup, look, codeHighlighting, editorMode(currentDark()), lang.of([]), wrapping.of(wrapOn.current ? EditorView.lineWrapping : []), minimapping.of(miniOn.current ? minimap() : []), findSupport, conflictColours, isMarkdown(path) ? sourceLinks(() => ({ note: path, root, files: () => { if (!wikiAsked.current && root) { wikiAsked.current = true; void invoke<{ files: string[] }>("file_list", { root }).then((l) => void (wikiFiles.current = l.files), () => undefined); } return wikiFiles.current; }, onLink: (a, shift) => report.current.onLink?.(a, shift), onToast: (t) => report.current.onToast?.(t) })) : [], pasteGuard((t) => report.current.onToast?.(t)), EditorView.updateListener.of((u) => {
             u.transactions.forEach((tr) => relay(path, u.view, tr));
             if (u.docChanged) setConflicts(u.state.field(conflictField).list.length);
             if (u.docChanged && isMarkdown(path)) {
