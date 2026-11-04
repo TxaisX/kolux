@@ -80,7 +80,8 @@ function Fold({ id, title, summary, open, onToggle, children }: { id: string; ti
 function ZoomControl() {
   const [level, setLevel] = useState(zoomLevel);
   useEffect(() => onZoom(setLevel), []);
-  const step = (how: ZoomStep) => void stepZoom(how).catch(() => {});
+  const [failed, setFailed] = useState<string | null>(null);
+  const step = (how: ZoomStep) => (setFailed(null), stepZoom(how, setFailed));
   return (
     <section className="conn-card" data-section="zoom">
       <h2 className="conn-name">Zoom</h2>
@@ -100,6 +101,7 @@ function ZoomControl() {
         </div>
       </div>
       <p className="conn-detail">Text and controls grow or shrink together. Ctrl+Alt+=, Ctrl+Alt+- and Ctrl+Alt+0 (Cmd+Option on macOS) do the same from anywhere.</p>
+      {failed && <p className="conn-detail warn" role="alert">{failed}</p>}
     </section>
   );
 }

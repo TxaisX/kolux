@@ -91,7 +91,7 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
     else if (to) setScreen(classic ? "terminals" : to);
     else if (ed && "field" in ed) document.execCommand(ed.field);
     else if (ed) focusedTerminalEdit.current?.(ed.terminal);
-    else if (id === "zoom.in" || id === "zoom.out" || id === "zoom.reset") void stepZoom(id.slice(5) as ZoomStep).catch(() => {});
+    else if (id === "zoom.in" || id === "zoom.out" || id === "zoom.reset") stepZoom(id.slice(5) as ZoomStep, setToast);
     else if (id === ABOUT_MENU_ID) openAbout(); // VIEW-106
     else if (id === "app.settings") {
       setSettingsAt((a) => ({ target: null, n: a.n }));

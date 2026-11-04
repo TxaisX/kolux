@@ -36,6 +36,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     return Promise.reject("not stubbed");
   },
 }));
+vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ setZoom: () => Promise.resolve() }) }));
 vi.mock("@tauri-apps/api/event", () => ({
   listen: (name: string, f: (e: { payload: unknown }) => void) => ((h.heard[name] ??= []).push(f), Promise.resolve(() => {})),
   emit: () => Promise.resolve(),
@@ -192,4 +193,20 @@ test("Agents page: switching an agent off sends only that switch, so a hooks swi
   await settle(80);
   expect(h.patches.map((p) => p.set)).toEqual([{ disabledAgents: ["codex"] }]);
   expect(h.settings).toEqual({ agentStatusHooks: false, disabledAgents: ["codex"] });
+});
+
+// T-723 (DT-C159): the zoom control used to drop a failed save, so the size looked kept but reset at the next start.
+test("Appearance page: a zoom step that fails to save says so under the zoom control, and the next good step clears it", async () => {
+  const c = await show(import("./AppearancePage"));
+  const alerts = () => find(c, (n) => n.attrs.role === "alert" && (n.textContent ?? "").includes("Zoom not saved"));
+  await until(() => !!field(c, "button", "Zoom in"), "the zoom control");
+  h.refuse = REFUSED;
+  await click(c, field(c, "button", "Zoom in"));
+  await until(() => alerts().length === 1, "the zoom warning");
+  expect(alerts()[0].textContent).toContain(REFUSED);
+  h.refuse = null;
+  await click(c, field(c, "button", "Zoom out"));
+  await settle(50);
+  expect(alerts()).toEqual([]);
+  expect(h.patches[h.patches.length - 1]).toEqual({ set: { uiZoom: 0 }, remove: [] });
 });

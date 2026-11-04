@@ -21,7 +21,7 @@ TEST:
   npx vitest run src/keys/commands.test.ts src/projects: all passed.
   pnpm tsc --noEmit: 0. firewall-check -Baseline: 0 new. plan-check: OK.
 
-BUNDLE: first load 1,489,689 B in 47 chunks vs main 73008fe1 1,489,604 B (this branch alone, built here): +85 B (cap +198).
+BUNDLE: first load 1,489,689 B vs main 73008fe1 1,489,604 B, and 1,489,666 B vs main 5a69c684 1,489,581 B after the merge (47 chunks, built here): +85 B (cap +198).
   It fits only with T-729 (#175, -2,426 B) landed first, so fa merges it after #175.
 FULL RUN: npx vitest run: 805 files, 6001 tests passed.
 REVIEW: sonnet-medium-review, A-, no must-fix or should-fix; the bundle wording nit is applied above.
