@@ -192,11 +192,17 @@ pub fn grant(url: &str, open: &dyn Fn(&Path) -> bool) -> Result<(), String> {
 }
 
 /// T-733 (DT-C169): the user takes back the folder allowed for the preview a tab shows (`url`): it
-/// reads only the documents opened again, until the folder is allowed once more.
+/// reads only the documents opened again, until the folder is allowed once more. The page the tab
+/// shows counts as opened, so a page reached by a link while allowed still loads after the reload.
 pub fn revoke(url: &str) -> Result<(), String> {
-    let (token, _) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;
+    let (token, rest) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;
+    let file = decode(rest.split(['?', '#']).next().unwrap_or_default());
     let mut previews = PREVIEWS.lock().map_err(|e| e.to_string())?;
-    previews.iter_mut().find(|p| p.token == token).ok_or("no such preview")?.granted = false;
+    let p = previews.iter_mut().find(|p| p.token == token).ok_or("no such preview")?;
+    p.granted = false;
+    if !file.is_empty() && !p.files.contains(&file) {
+        p.files.push(file);
+    }
     Ok(())
 }
 
@@ -773,6 +779,12 @@ mod tests {
         assert_eq!(add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["granted"], false, "opening the document again does not allow it");
         grant(&url, &within(&[parent])).unwrap();
         assert_eq!(of(&url).unwrap()["granted"], true, "and it can be allowed again");
+        // a page reached by a link while allowed still loads after Stop allowing; its neighbours do not
+        let linked = url.replace("index.html", "a%20b.html");
+        revoke(&linked).unwrap();
+        let token = linked.split('/').nth(3).unwrap().to_string();
+        assert_eq!(respond(&PREVIEWS.lock().unwrap(), &format!("/{token}/a%20b.html")).0, 200, "the page the tab shows");
+        assert_eq!(respond(&PREVIEWS.lock().unwrap(), &format!("/{token}/css/a.css")).0, 403, "the files beside it");
         assert!(revoke("http://example.com/x").is_err(), "a tab not on a preview is refused");
         let _ = std::fs::remove_dir_all(&dir);
     }

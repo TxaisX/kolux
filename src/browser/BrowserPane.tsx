@@ -958,10 +958,11 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
               <button
                 type="button"
                 className="ib preview-copy"
-                title={preview.granted ? `Read only the opened document again, not the other files in ${preview.folder}` : `Let this preview read the other files in ${preview.folder} (styles, scripts, images); it reads only its own document until then`}
+                aria-pressed={preview.granted}
+                title={preview.granted ? `Stop this preview reading the other files in ${preview.folder}; it reads only the documents opened` : `Let this preview read the other files in ${preview.folder} (styles, scripts, images); it reads only its own document until then`}
                 onClick={() => {
                   const on = !preview.granted;
-                  invoke(on ? "browser_preview_grant" : "browser_preview_revoke", { url: at.current })
+                  (on ? invoke("browser_preview_grant", { url: at.current }) : invoke("browser_preview_revoke", { url: at.current }))
                     .then(() => {
                       setPreview((p) => (p ? { ...p, granted: on } : p));
                       return invoke("browser_go", { id, what: "reload" });
