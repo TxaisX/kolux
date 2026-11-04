@@ -294,7 +294,8 @@ input { font: inherit; }
 .sidebar-wrap.right { padding: 8px 8px 8px 0; }
 .sidebar.scm { width: 320px; }
 /* VIEW-052 / SET-021: only the left sidebar takes the tint or the terminal's ground (--sidebar-bg is set by theme.ts). */
-/* C23-R3-02: the ink follows that ground, so a terminal or tinted ground keeps readable text. */
+/* C23-R3-02: the ink and the surfaces it is painted on follow that ground, so a terminal or tinted
+   ground keeps readable text, selected rows, inputs and the tab control. */
 .sidebar-wrap:not(.right) > .sidebar:not(.scm) {
   background: var(--sidebar-bg, var(--surface));
   --fg: var(--sidebar-fg);
@@ -304,6 +305,11 @@ input { font: inherit; }
   --fg-label: var(--sidebar-fg-label);
   --fg-faint: var(--sidebar-fg-faint);
   --focus-ring: var(--sidebar-fg-muted);
+  --row-selected: var(--sidebar-row-selected);
+  --input-bg: var(--sidebar-input-bg);
+  --tab-track: var(--sidebar-tab-track);
+  --tab-track-border: var(--sidebar-tab-track-border);
+  --kbd-bg: var(--sidebar-kbd-bg);
 }
 .scm-head { margin-top: 8px; }
 .scm-head .count { margin-left: 8px; font-size: 11px; color: var(--fg); }

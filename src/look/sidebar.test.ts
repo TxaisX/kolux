@@ -110,34 +110,66 @@ test("C23-R3-02: the sidebar's four primary inks reach 4.5:1 on every ground it 
   expect(bad).toEqual([]);
 });
 
-test("C23-R3-02: light mode with a dark terminal ground keeps every sidebar ink readable", () => {
-  // The finding's worst pair: light mode, Match terminal, the light scheme switched off.
-  const a = readAppearance({ [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "default", [FIELD.lightTerminal]: false });
-  const v = appearanceVars(a, false);
-  expect(v["--sidebar-bg"]).toBe("#0d0d0d");
-  for (const key of READABLE) expect(contrast(v[key], "#0d0d0d"), key).toBeGreaterThanOrEqual(4.5);
+// CSS imports are stubbed under vitest, so the sheet is read from disk (as contrast.test.ts does).
+const readSheet = () => {
+  const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+  return nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+};
+const ruleIn = (css: string, selector: string) => css.split("}").find((r) => r.split("{")[0].trim() === selector);
+
+/** The two configs the finding names, with the ground each one actually paints. */
+const CONFIGS: [string, Record<string, unknown>, boolean, string][] = [
+  ["light + Match terminal, light scheme off", { [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "default", [FIELD.lightTerminal]: false }, false, "#0d0d0d"],
+  ["dark + tango-light", { [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "tango-light" }, true, "#ffffff"],
+];
+
+test.each(CONFIGS)("C23-R3-02: every sidebar ink reads on its own painted surface (%s)", (_, s, dark, ground) => {
+  const a = readAppearance(s);
+  const v = appearanceVars(a, dark);
+  expect(v["--sidebar-bg"]).toBe(ground);
+  for (const key of READABLE) expect(contrast(v[key], ground), key).toBeGreaterThanOrEqual(4.5);
+  // Selected rows, inputs and the tab control are painted on their own surfaces, not on the ground.
+  expect(contrast(v["--sidebar-fg"], v["--sidebar-row-selected"]), "selected row").toBeGreaterThanOrEqual(4.5);
+  expect(contrast(v["--sidebar-fg"], v["--sidebar-input-bg"]), "input text").toBeGreaterThanOrEqual(4.5);
+  expect(contrast(v["--sidebar-fg-nav"], v["--sidebar-tab-track"]), "tab text").toBeGreaterThanOrEqual(4.5);
+  // and those surfaces are the palette the ground supports, never the app mode's.
+  const want = buildTheme(a, paletteIsDark(ground) ?? dark);
+  expect(v["--sidebar-row-selected"]).toBe(want["row-selected"]);
+  expect(v["--sidebar-input-bg"]).toBe(want["input-bg"]);
+  expect(v["--sidebar-tab-track"]).toBe(want["tab-track"]);
 });
 
-test("C23-R3-02: dark mode with a light terminal ground keeps every sidebar ink readable", () => {
-  // The mirrored case: dark mode, Match terminal, a light scheme picked.
-  const a = readAppearance({ [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "tango-light" });
-  const v = appearanceVars(a, true);
-  expect(v["--sidebar-bg"]).toBe("#ffffff");
-  for (const key of READABLE) expect(contrast(v[key], "#ffffff"), key).toBeGreaterThanOrEqual(4.5);
+test("C23-R3-02: selected rows, inputs and tabs clear 4.5:1 on their own surface for every ground", () => {
+  const bad: string[] = [];
+  for (const g of grounds) {
+    for (const [what, ink, surface] of [["selected row", "--sidebar-fg", "--sidebar-row-selected"], ["input", "--sidebar-fg", "--sidebar-input-bg"], ["tab", "--sidebar-fg-nav", "--sidebar-tab-track"]] as const) {
+      const r = contrast(g.vars[ink], g.vars[surface]);
+      if (r < 4.5) bad.push(`${g.label}: ${what} ${g.vars[ink]} on ${surface} ${g.vars[surface]} = ${r.toFixed(2)}`);
+    }
+  }
+  expect(bad).toEqual([]);
+});
+
+test("C23-R3-02: the sidebar scope remaps the surfaces its own controls paint on", () => {
+  const rule = ruleIn(readSheet(), ".sidebar-wrap:not(.right) > .sidebar:not(.scm)");
+  expect(rule, "the sidebar ground rule").toBeDefined();
+  for (const [prop, token] of [["--row-selected", "--sidebar-row-selected"], ["--input-bg", "--sidebar-input-bg"], ["--tab-track", "--sidebar-tab-track"], ["--tab-track-border", "--sidebar-tab-track-border"], ["--kbd-bg", "--sidebar-kbd-bg"]] as const) {
+    expect(rule!.includes(`${prop}: var(${token})`), `${prop} reads ${token}`).toBe(true);
+  }
 });
 
 test("C23-R3-02: the sidebar's tab and next-row ink follows the ground, not a literal", () => {
   // The mirrored case (dark mode on a light terminal ground) never matches `[data-mode="light"]`, so a
   // literal here stayed at 2.83:1 on white. Both rules now read the remapped token.
-  const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
-  const css = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const css = readSheet();
   for (const selector of [".sb-tabs button", ".sb-next"]) {
-    const rule = css.split("}").find((r) => r.split("{")[0].trim() === selector);
+    const rule = ruleIn(css, selector);
     expect(rule, `${selector} rule`).toBeDefined();
     expect(rule!.match(/color:\s*([^;]+)/)?.[1].trim(), selector).toBe("var(--fg-nav)");
   }
-  const a = readAppearance({ [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "tango-light" });
-  expect(contrast(appearanceVars(a, true)["--sidebar-fg-nav"], "#ffffff")).toBeGreaterThanOrEqual(4.5);
+  // On the track it is really painted on, not on the raw terminal ground.
+  const v = appearanceVars(readAppearance(CONFIGS[1][1]), true);
+  expect(contrast(v["--sidebar-fg-nav"], v["--sidebar-tab-track"])).toBeGreaterThanOrEqual(4.5);
 });
 
 test("C23-R3-02: a custom theme keeps its own surface when the tint would cross it", () => {
