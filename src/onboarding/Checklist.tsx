@@ -9,8 +9,8 @@ import { CHECKLIST_CHANGED } from "./firstRun";
 import type { GuideRecord } from "./guide";
 import "./onboarding.css";
 
-/** What each item's button does; the checklist never ticks an item itself.
- *  C17-R5-01: Connect opens Accounts & keys, where the Claude / Codex / Grok sign-in cards are;
+/** What each item's button does; the checklist never ticks an item itself. Exported for its test.
+ *  C16-R4-01 / C17-R5-01: Connect opens Accounts & keys (the Claude / Codex / Grok sign-in cards);
  *  Settings > Agents only installs the coding agents and cannot sign in. */
 export const ACT: Record<ItemId, { label: string; run: () => void }> = {
   connect: { label: "Connect", run: () => openSettings("accounts", "connections") },

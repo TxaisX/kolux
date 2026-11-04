@@ -135,6 +135,15 @@ export default function FeedbackDialog() {
     }
   };
 
+  // C04-R4-01: a close during "Opening…" ends the send it was waiting on: it takes a new number, so the browser
+  // result can no longer clear the report the user is keeping or drop a "sent" note over a box they closed. It is
+  // done in the handler, not in the s.open effect, since a passive effect flush can land after a promise callback.
+  const dismiss = () => {
+    seq.current++;
+    sending.current = false;
+    dispatch({ t: "close" });
+  };
+
   if (!s.open) {
     return s.note ? (
       <div role="status" className="conn-detail" style={{ position: "fixed", right: NOTE_POS.right, bottom: NOTE_POS.bottom, maxWidth: 360, padding: "10px 12px", zIndex: 50, background: "var(--pane-bg)", border: "1px solid var(--line-subtle)", borderRadius: 8, color: "var(--fg-row)" }}>
@@ -143,14 +152,14 @@ export default function FeedbackDialog() {
     ) : null;
   }
   return (
-    <div className="scrim" onMouseDown={() => dispatch({ t: "close" })}>
+    <div className="scrim" onMouseDown={dismiss}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Send feedback"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
-          if (e.key === "Escape") dispatch({ t: "close" });
+          if (e.key === "Escape") dismiss();
           else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send();
           else if (e.key === "Tab") {
             // APP-037: the box is modal; Tab never leaves it.
@@ -210,7 +219,7 @@ export default function FeedbackDialog() {
         )}
         <div className="auto-dialog-foot">
           <span className="muted">Everything under the line is added for you.</span>
-          <button className="btn" onClick={() => dispatch({ t: "close" })}>
+          <button className="btn" onClick={dismiss}>
             Cancel
           </button>
           {/* aria-disabled, not disabled: the button keeps the keyboard while the page opens; send() ignores a second press */}

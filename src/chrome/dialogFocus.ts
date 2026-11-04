@@ -56,6 +56,16 @@ function openPopup(box: Box, onClose: () => void, first: () => HTMLElement | nul
   };
 }
 
+/** Where Tab (or Shift+Tab) goes from `at` among `items`, wrapping at both ends: the element to focus, or null when
+ *  there is nothing to land on. Unlike tabTarget this never leaves the step to the browser, which is what a dialog
+ *  needs when the focused element cancels Tab itself (the terminal's textarea does, in its own capture listener). */
+export function tabStep<T>(items: T[], at: unknown, shift: boolean): T | null {
+  if (items.length === 0) return null;
+  const i = items.indexOf(at as T);
+  if (i < 0) return shift ? items[items.length - 1] : items[0];
+  return items[(i + (shift ? -1 : 1) + items.length) % items.length];
+}
+
 /** Tab and Shift+Tab wrap inside `box`. */
 function wrapTab(box: Box, e: Pick<KeyboardEvent, "key" | "shiftKey" | "preventDefault">) {
   if (e.key !== "Tab") return;
