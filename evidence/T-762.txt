@@ -32,10 +32,27 @@ TESTS
 FIRST LOAD (local vite build + node scripts/bundle-budget.mjs)
 - main e5358347 1,488,419; this branch 1,488,475: +56 B JS (the two aria-labels). CSS 119,301 -> 119,333 (+32, incl. the review's :not(.ex-note) and :not(:disabled)).
 
+
+WIDENED (57, 22:40): every focus ring, not only the fallback
+- grep: --line-focus has about 110 uses; 20 are :focus rules, the rest draw borders, scrollbar thumbs, drop marks,
+  timeline bars and the editor selection fill (color-mix 90%). Raising its value would brighten all of those and
+  sink selected-text contrast, so the token is split instead of changed (57's fallback).
+- New :root alias --focus-ring: var(--fg-muted) (styles.css, next to the type-size tokens). The fallback ring and
+  all 20 :focus rules (styles.css 15 incl. .scm-commit-row from T-760 / train 25, insights.css 2, shell.css 1,
+  tower.css 1) point at it. chromeKeyboard.test.ts pins updated.
+- contrast.test.ts: --focus-ring resolved through the :root alias and measured in all 17 themes x 2 modes (34);
+  a scan of every src/**/*.css fails on any :focus rule that still draws with --line-focus.
+  Trap: the four sheets put back to main -> 52/52 failed. One ring put back (.ins-link) -> exactly that rule listed.
+- After merging main 918b9991 (train 25): tsc clean; npx vitest run src (2 workers): 823 files, 6074/6074.
+- First load: bundle-budget 1,488,637 (ceiling 1,490,000) on the merged branch. The only JS change is still the two
+  aria-labels (+56 B, measured against e5358347); main 918b9991 was not rebuilt here. index CSS 119,548.
+
 NOT DONE
 - A user's own sidebar tint (Tinted look) or the Match-terminal look can put any colour behind the sidebar; no single ring colour
   passes on all of them (e.g. tint #4f6bed at 100% dark: 2.33:1). Follow-up: two-tone ring, or a ring worked out against --sidebar-bg.
+- Selected-option highlights that are not :focus rules (.pick-item[aria-selected], .chat-complete-item.on, .sess.picked)
+  stay on --line-focus. The editor outline grip (shell.css .note-toc-grip) draws the ring colour at opacity 0.5.
 - Title-only buttons in the sidebar rows (Pin, Mark read, Sleep, Hide, Delete, ...) are outside this row.
-- Rules with their own 1px --line-focus outline (.art-row, tr[data-id], .tasks-list li, .autos-runs) were not
+- (Now done, see WIDENED.) Rules with their own 1px --line-focus outline (.art-row, tr[data-id], .tasks-list li, .autos-runs) were not
   in the row and still draw the low-contrast grey; a follow-up can move them to --fg-muted.
 - Not run: a live Tab-through on this branch (72's live run held the ports).
