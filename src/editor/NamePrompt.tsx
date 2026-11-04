@@ -42,9 +42,12 @@ type Props = {
   /** The name was accepted and the note saved under it (same: the suggested name, saved in place by the caller). */
   onSaved: (r: { path: string; same: boolean; note?: string }) => void;
   onCancel: () => void;
+  /** W201 B2: asked from a dialog that stays mounted under it (the unsaved guard), so it takes the same raised
+   *  backdrop as that dialog: one step over every other dialog, whatever order the page draws them in. */
+  raised?: boolean;
 };
 
-export default function NamePrompt({ path, root, text, onSaved, onCancel }: Props) {
+export default function NamePrompt({ path, root, text, onSaved, onCancel, raised = false }: Props) {
   const [name, setName] = useState(suggestedName(path));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,7 +73,7 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel }: Prop
     );
   };
   return (
-    <div className="ask-backdrop" onMouseDown={onCancel}>
+    <div className={raised ? "ask-backdrop guard" : "ask-backdrop"} onMouseDown={onCancel}>
       <div
         className="ask"
         role="dialog"

@@ -26,20 +26,31 @@ type Props = {
   cancel?: string;
   /** A confirm that loses nothing (ONB-006 Skip) is not drawn in the danger colour. */
   safe?: boolean;
+  /** The work the confirm started is already running and cannot be stopped: Keep, Escape and a click
+   * outside do nothing (they would only close the dialog). Confirm still works, so a prompt whose own
+   * operation can finish stays usable. */
+  locked?: boolean;
   onConfirm: (dontAskAgain: boolean) => void;
   onCancel: () => void;
 };
 
-export default function Ask({ title, body, confirm, enter = false, dontAsk = false, cancel: cancelText = "Cancel", safe = false, onConfirm, onCancel }: Props) {
+export default function Ask({ title, body, confirm, enter = false, dontAsk = false, cancel: cancelText = "Cancel", safe = false, locked = false, onConfirm, onCancel }: Props) {
   const [tick, setTick] = useState(false);
   const cancel = useRef<HTMLButtonElement>(null);
   const ok = useRef<HTMLButtonElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  // C28-R1-01: while locked the three back-outs (Keep, Escape, a click outside) all land here and go nowhere.
+  // The control is still focusable and named: focus starts on Keep (below) and a greyed button that cannot be
+  // reached would strand the keyboard outside the dialog.
+  const backOut = () => {
+    if (!locked) onCancel();
+  };
   // Cancel holds focus when it opens; Tab stays inside; Escape works from anywhere (not only from a focused control);
-  // focus goes back to what had it when the dialog closes.
-  useDialogFocus(box, onCancel, () => cancel.current);
+  // focus goes back to what had it when the dialog closes. useDialogFocus reads onClose fresh each render, so the
+  // lock is seen as soon as `locked` turns true.
+  useDialogFocus(box, backOut, () => cancel.current);
   return (
-    <div className="ask-backdrop" onMouseDown={onCancel}>
+    <div className="ask-backdrop" onMouseDown={backOut}>
       <div
         ref={box}
         className="ask"
@@ -51,7 +62,7 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
           e.stopPropagation();
           const what = askKey(e.key, e.target === ok.current, enter);
           if (what !== "pass") e.preventDefault();
-          if (what === "cancel") onCancel();
+          if (what === "cancel") backOut();
         }}
       >
         <h2 className="ask-title">{title}</h2>
@@ -63,12 +74,12 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
         )}
         <div className="btn-row">
           {confirm === null ? (
-            <button ref={cancel} className="btn primary" onClick={onCancel}>
+            <button ref={cancel} className="btn primary" onClick={backOut}>
               OK
             </button>
           ) : (
             <>
-              <button ref={cancel} className="btn" onClick={onCancel}>
+              <button ref={cancel} className="btn" aria-disabled={locked || undefined} onClick={backOut}>
                 {cancelText}
               </button>
               <button ref={ok} className={safe ? "btn primary" : "btn danger"} onClick={() => onConfirm(tick)}>

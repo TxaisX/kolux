@@ -587,6 +587,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const openPane = (key: number) => {
     const p = panes.find((x) => x.key === key);
     if (!p) return;
+    setPage(null); // C13-R1-01: Open in Code leaves a full page (Automations, Tasks, Routing) behind
     setScreen("terminals");
     if (!sameDir(p.cwd, activeDir)) setActiveDir(p.cwd);
     setFocused(key);
@@ -599,6 +600,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     if ("focus" in r) return openPane(r.focus);
     const k = nextKey.current++;
     setPanes((ps) => [...ps, { key: k, cwd: r.open.cwd, branch: r.open.branch, group: r.open.group, agent: "shell", program: null, args: [], kind: "changes" }]);
+    setPage(null); // C13-R1-01: the new All Changes tab is not drawn behind a full page
     setScreen("terminals");
     if (!sameDir(r.open.cwd, activeDir)) setActiveDir(r.open.cwd);
     setFocused(k);

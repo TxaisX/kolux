@@ -45,12 +45,13 @@ async function start() {
   const { default: App } = await loadApp;
   const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
   // VIEW-107 (T-069-b): App is told whether the saved tabs are back, so a slow start saves no layout over
-  // them; T-597: the key gives a late restore a new App, whose tabs start from the saved layout.
-  const draw = (s: Settled, read: boolean) =>
+  // them; C26-R3-01: the key is gone, so one App lives for the window's life and a late restore is handed to
+  // it (below). A key flip used to unmount that App and take every terminal it held with it.
+  const draw = (s: Settled, read: boolean, late: SavedLayout | null = null) =>
     root.render(
       <React.StrictMode>
         <ScreenBoundary>
-          <App key={String(read)} initial={s.initial} layout={s.layout} read={read} />
+          <App initial={s.initial} layout={s.layout} read={read} late={late} />
         </ScreenBoundary>
       </React.StrictMode>,
     );
@@ -63,15 +64,16 @@ async function start() {
       prefetch();
     }),
   );
-  // T-597 (F05-app-shell-launch.2): a start that timed out keeps waiting; when the settings answer, the
-  // same steps run on them and the window is drawn again with the saved tabs back. A tab opened in the
-  // meantime closes then: it was never saved.
+  // T-597 (F05-app-shell-launch.2): a start that timed out keeps waiting; when the settings answer, the same
+  // steps run on them and the saved tabs join the window already drawn (windowStore.ts). A tab opened in the
+  // meantime stays: it was live work, and nothing unmounts it now (C26-R3-01).
   if (saved === null)
     void reading
       .then(async (late) => {
         if (!late) return; // never read: the window stays as drawn, writing no layout
         applyText(late);
-        draw(await settle(late), true);
+        const settled = await settle(late);
+        draw(settled, true, settled.layout);
       })
       .catch(() => {});
 }

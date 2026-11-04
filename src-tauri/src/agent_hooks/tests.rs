@@ -591,6 +591,10 @@ mod script_runs {
         // the bound must hold in one of three readings, each taken after the PC calms down.
         let mut readings = Vec::new();
         for _ in 0..3 {
+            // The holding file is what the assertion below counts, and a round that missed its bound
+            // leaves its line in it: each round starts from an empty one, so a retry cannot add a
+            // third line (test-side only; the script's own behaviour is unchanged).
+            fs::remove_file(data.join(saved::SPOOL_FILE)).ok();
             wait_for_calm(&script_temp, Instant::now() + CALM_CEILING);
             let started = Instant::now();
             let (out, reference) = std::thread::scope(|s| {

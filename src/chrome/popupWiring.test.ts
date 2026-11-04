@@ -25,7 +25,8 @@ test("the confirmation dialog traps focus: Escape runs Cancel, and Cancel is the
   renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", onConfirm: () => {}, onCancel }));
   expect(useDialogFocus).toHaveBeenCalledTimes(1);
   const [, close, initial] = useDialogFocus.mock.calls[0] as [unknown, () => void, () => unknown];
-  expect(close).toBe(onCancel);
+  close();
+  expect(onCancel).toHaveBeenCalledTimes(1);
   expect(typeof initial).toBe("function");
 });
 

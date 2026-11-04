@@ -4,6 +4,7 @@
 // a file that does not save stays open with its text. Don't save drops the edits on purpose; Cancel closes nothing.
 import { useEffect, useRef, useState } from "react";
 import { trapTab } from "../chrome/dialogFocus";
+import { useModalSlot } from "../chrome/modalStack";
 import { baseName, diskOf, isDirty, textOf } from "./buffers";
 import { askText, closable, mayRemove, saveAll, unsavedTabs, type Choice, type GuardPane, type Unsaved } from "./closeGuard";
 import NamePrompt from "./NamePrompt";
@@ -78,6 +79,9 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
 
   const cancel = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
+  // W201 B2: while the question is up it is the top dialog, so the one it was asked from (an Ask that stays
+  // mounted under it) leaves Tab and Escape to it. It leaves the stack when it closes.
+  useModalSlot(card, ask !== null);
   useEffect(() => {
     if (ask) cancel.current?.focus();
   }, [ask]);
@@ -89,7 +93,7 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
   const dialog = (
     <>
       {ask && !naming && (
-        <div className="ask-backdrop" onMouseDown={() => void choose("cancel")}>
+        <div className="ask-backdrop guard" onMouseDown={() => void choose("cancel")}>
           <div
             ref={card}
             tabIndex={-1}
@@ -122,6 +126,7 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
       )}
       {naming && naming.t.root && (
         <NamePrompt
+          raised
           path={naming.t.path}
           root={naming.t.root}
           text={() => textOf(naming.t.path) ?? ""}
