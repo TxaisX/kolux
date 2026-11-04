@@ -1504,6 +1504,8 @@ pub async fn browser_open(app: AppHandle, window: tauri::Window, webview: Webvie
         engine::identity(&pw, spoof);
         // T-272-b (BROW-032): the page's permission requests are answered by the permission rules.
         engine::permissions(id, &pw, permission_app);
+        // T-734 (DT-C170): the strip's Cancel reaches the engine's running download.
+        engine::downloads(id, &pw);
         // T-286-b (APP-040): the engine's process failures become crash records when real.
         engine::watch_page_failures(id, &pw, crash_dir, engine_rec.clone());
         // Row 954 (b): a page that destroyed its own tab gets it built again.

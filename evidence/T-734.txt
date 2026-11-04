@@ -1,0 +1,47 @@
+T-734 - Cancel a running download, Show a finished one in its folder (DT-C170; UX audit W3 queue refill 3, backlog-sweep-49 #15)
+Worker 2f, coordinator 57, branch s-2f/t734 from main 99b4a9d2 (main b2b6cd7f merged), 2026-11-03. Cap +300 B.
+
+BEFORE
+- The download strip in a browser tab (BROW-013) showed progress for a running download, with no way to
+  stop it short of closing the tab. A finished row offered Open only, not the folder it landed in.
+- Each new download of a tab dropped that tab's ended rows from the registry, so a row the strip still
+  showed could be unknown to the app.
+
+AFTER
+- A running row has Cancel. It calls browser_download_cancel with the row's key: the app finds that tab's
+  running WebView2 download by its file (the engine's DownloadStarting event now keeps each running
+  operation for its tab) and calls its Cancel, which stops it. The row reads
+  cancelled. A download that ended in the meantime is refused with "the download already ended"; a row that
+  is not running gets "the download is not running". Errors show in the pane's note line.
+- A finished row has Show in folder beside Open. It calls browser_download_reveal with the row's key; the
+  file manager opens on it (the same reveal the app uses elsewhere: selected on Windows and Mac, its folder on Linux). An unknown key says
+  "that download is no longer known; open the Downloads folder".
+- Cancel and Show in folder share one button slot, so a row shows at most one of them. Failed and cancelled
+  rows show neither.
+- Past 64 rows across tabs, each new download drops the oldest ended row first and never a running one.
+- Both names are literal invoke calls registered in lib.rs, so scripts/invoke-contract.mjs checks them: OK.
+- Not on Windows, Cancel answers "cancelling a download needs WebView2 (Windows)".
+
+FIRST LOAD
+- BrowserPane.tsx is a deferred chunk (src/lazy/panes.tsx), so first load should be +0; the CI line goes in
+  the ready note. The chunk, minified alone (rolldown, imports external): 30053 -> 30352 bytes, +299.
+  Two separate buttons measured +469, so the two share one slot.
+
+TESTS
+- browser::downloads::tests::t734_the_registry_keeps_recent_ended_downloads_and_never_drops_a_running_one:
+  at 64 rows the oldest ended row makes way and the running one stays; 64 running rows are all kept; two
+  finished rows stay while there is room.
+- browser::downloads::tests::t734_an_end_with_no_file_lands_on_its_own_address_not_the_newest_download: the
+  engine reports a failed or cancelled download with no file; that report finds the running row of its own
+  address (A), not the tab's newer download (B), touches nothing for an unknown address or another tab, and a
+  finished file is still found by its path, before a newer row of the same address. Before, it landed on the
+  newest running row, so a Cancel on A marked B failed (found in review). With no file named, two running
+  downloads of one address in one tab are still told apart by age only (DT-C170).
+- Traps: with make_room put back to the old per-tab drop of ended rows, its test FAILS; with the end match put
+  back to the old rule, the new test FAILS at "a cancelled A is A"; with address and file matched in one pass
+  (the first review fix), it FAILS at "a named file wins"; restored, both pass.
+- cargo test --lib downloads:: 12/12, preview:: 14/14. clippy --all-targets -D warnings: clean.
+- Full cargo test --lib (before the review fix): 2863 passed, 3 failed. The two pty::service tests pass alone (load-sensitive under the
+  full run); scm::writers t606 (claude writer) fails locally only, as before this change, and passes on CI.
+- pnpm vitest run src/browser: 278/278. pnpm tsc --noEmit -p .: clean. invoke-contract: OK.
+- Not tested: the click in the pane (no harness drives engine downloads); live check still to do.

@@ -1,0 +1,46 @@
+T-744 / DT-C180: launch and actions correctness (Queue refill 6, from backlog-sweep-49 UNSURE), lane A (90). Built on main
+0033ca09. Each item was reproduced on main first.
+
+NOT REPRODUCED
+  1. "A failed seat leaves earlier workspaces behind and Start again makes more" (launch-agents.md:3). Main already does what
+     DT-C116 (T-680) decided: a Start that fails part-way says how many new workspaces it already made and that they are in
+     the sidebar (uxAudit.test.ts "F7: a failed Start says how many workspaces ..."), and the next Start does not reuse
+     them on purpose, because a spare folder could belong to another run. Not a defect; left as decided.
+  2. "Install on one seat leaves other seats stuck" (launch-agents.md:7). Fixed on main by T-680: ChooserPane.tsx's Install
+     gives the agent to every empty seat that was showing the same missing agent. No change.
+
+FIXED
+  3. "A poll warning overwrites an action error" (empty-error.md:5). The Projects panel's 5 s workspace poll, when a scan
+     failed, replaced the panel's message with its own warning, so an action's error (for example "git was not found")
+     vanished before it could be read. ProjectsPanel.tsx: the poll's warning never covers an error; the error stays until
+     it is closed or the next action replaces it.
+  4. "A pending delete survives a project switch" (destructive.md:8). Worse than reported: the Space page's delete question
+     asked in one project stayed open after switching, and its Delete sent the first project's folders under the second
+     project's id. SpaceView.tsx: the question remembers the project it was asked in; a switch closes it, and it is neither
+     shown nor run in any other project. A check or a delete still running at the switch drops its
+     answer there (review should-fix: before, p1's rows and note were drawn on p2 when the delete came back).
+
+TESTS
+  - src/projects/pollWarning.test.ts: an action fails with "git was not found", then the poll's scan fails; the note still
+    shows the error. Fails on main's ProjectsPanel ("expected 'Could not list the workspaces of app,...'").
+  - src/space/SpaceView.switch.test.ts (4 tests): tick a row, ask to delete, switch project: no Delete question, nor after
+    switching back, and no workspace_remove_many call (fails on main's SpaceView: "no question left from p1 ... got 1").
+    Checks held until after the switch open no question on p2 (fails without the pid and in-flight guards); a failed
+    check held until after the switch shows no p1 skip note on p2 (fails without the askDelete guard); a delete held
+    until after the switch went to p1 and leaves p2's rows alone (fails without the runDelete guard: "p1's rows not
+    drawn on p2 ... got 1").
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t744)
+  - npx vitest run on main 0033ca09 + this change: 810 files, 6022 tests passed (with 3 Space switch tests; the 4th, test-only,
+    added after the second review: that file alone 4 passed). npx tsc --noEmit -p .: clean.
+  - Bundle: first load 1,489,702 B vs 1,489,600 B on main 0033ca09: +102 B against a +120 cap.
+  - After merging main b2b6cd7f (train 20): first load 1,488,870 B vs 1,488,823 B on that main: +47 B. tsc clean. Full
+    vitest: 811 files, 1 failed: scripts/release.test.mjs, 4 tests timing out near 5 s with the builds just run (this
+    branch does not touch release scripts); that file alone 27 passed here and on main.
+  - Review of the first diff: opus-high-review A-. Should-fix taken: the in-flight cases above, plus their tests.
+    Nits taken: pollWarning test mock trimmed, header names the path it drives. Left: the poll can still replace an
+    action's warning (only errors are kept), recorded in DT-C180.
+  - Review of the follow-up: opus-high-review A. Should-fix taken: the skip-note test. Nit taken: the test checks the p1
+    check really ran before the switch. Left: p2's Delete button stays "Checking..." while p1's delete finishes (safe:
+    resetting busy on a switch would let p1's end clear p2's); a p1 -> p2 -> p1 switch during a p1 delete can redraw the
+    first visit's rows until the next scan.
