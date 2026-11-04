@@ -24,7 +24,7 @@ import { cycleTarget } from "../switcher/accounts";
 import { cellsOf, groupOf } from "../terminal/grid";
 import { bulkCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
-import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabByNumber, type CycleMode } from "../terminal/tabCycle";
+import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
 import { zoomTerm } from "../theme";
 import { panesIn, sameDir } from "../workspaces";
 import { actionById } from "./actions";
@@ -296,11 +296,12 @@ export function useWindowKeys(w: WindowBag) {
         case "tab.nextTerminal":
         case "tab.previousTerminal":
         case "tab.selectByIndex": {
-          // TERM-051 / TERM-052: the tabs of the front cell in strip order.
+          // TERM-051 / TERM-052: the tabs of the front cell in strip order. C01-R1-01: `hit.index` is
+          // already the 1-based position Alt+1..Alt+9 names; adding one selected the next tab (Alt+9, 10).
           const strip = orderOf(focused).map((k) => panes.find((x) => x.key === k)).filter((x): x is Pane => !!x);
           const to =
             hit.id === "tab.selectByIndex"
-              ? tabByNumber(strip, (hit.index ?? 0) + 1)
+              ? tabAtDigit(strip, hit.index)
               : cycleTab(strip, focused, hit.id.startsWith("tab.next") ? 1 : -1, (hit.id.endsWith("SameType") ? "same" : hit.id.endsWith("AllTypes") ? "all" : "terminals") as CycleMode);
           if (to === null) return;
           setFocused(to);
