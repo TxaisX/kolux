@@ -6,6 +6,7 @@
 // The clock time is an hour box, a minute box and AM or PM (AUTO-003); Custom shows the line, its
 // five field chips and a status line that reads it back in words (AUTO-002); the header and the
 // empty page offer the starter templates (AUTO-006).
+import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -255,6 +256,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
     box.setSelectionRange(at, at + findQuery.length);
   };
   const keys = (e: KeyboardEvent) => {
+    trapTab(e);
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -340,7 +342,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
         upOnScrim.current = false;
       }}
     >
-      <div className="auto-dialog" role="dialog" aria-modal="true" aria-label={editing ? `Edit ${editing.name}` : "New Automation"} onKeyDown={keys}>
+      <div className="auto-dialog" role="dialog" aria-modal="true" tabIndex={-1} aria-label={editing ? `Edit ${editing.name}` : "New Automation"} onKeyDown={keys}>
         <div className="auto-dialog-head">
           <h2>{editing ? "Edit automation" : "New Automation"}</h2>
           {!editing && (

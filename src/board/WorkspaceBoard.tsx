@@ -2,6 +2,7 @@
 // the sidebar) onto a lane to change its status. Only the lanes and cards near the visible area are
 // drawn, so hundreds of cards scroll smoothly. Opens from the "Show Workspace Statuses" command; T-610:
 // it is called Workspace statuses on screen, so the Board in the top bar is the only Board.
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Close, Search } from "../chrome/icons";
@@ -118,6 +119,7 @@ export default function WorkspaceBoard({ onClose }: { onClose: () => void }) {
   };
 
   const keys = (e: React.KeyboardEvent) => {
+    trapTab(e);
     if (e.key !== "Escape") return;
     e.stopPropagation();
     if (escapeAction(menu !== null) === "close-popover") setMenu(null);
