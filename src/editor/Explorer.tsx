@@ -868,10 +868,11 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
           <span>
             {wsl ? "Delete" : "Move"} {asking.length === 1 ? baseName(asking[0]) : `${asking.length} items`} {wsl ? "for good? A WSL share has no trash." : "to the trash?"}
           </span>
-          <button className="btn" autoFocus onClick={() => doDelete(asking)}>
+          <button className="btn" onClick={() => doDelete(asking)}>
             {wsl ? "Delete" : "Move to trash"}
           </button>
-          <button className="btn" onClick={() => (setAsking(null), back())}>
+          {/* T-722: the question opens on Cancel, so an Enter straight after Delete deletes nothing. */}
+          <button className="btn" autoFocus onClick={() => (setAsking(null), back())}>
             Cancel
           </button>
         </div>

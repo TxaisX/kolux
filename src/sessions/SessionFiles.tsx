@@ -30,7 +30,11 @@ export default function SessionFiles({ session, onNote, onDeleted, asking = fals
         onNote(text);
         if (action === "delete") onDeleted();
       },
-      (err) => onNote(String(err)),
+      (err) => {
+        onNote(String(err));
+        // T-722: a refused delete (the session is still open in a pane) hands the keyboard back to Delete….
+        if (action === "delete") del.current?.focus();
+      },
     );
   };
   if (ask) {
