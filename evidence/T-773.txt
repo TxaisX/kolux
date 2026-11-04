@@ -1,0 +1,40 @@
+T-773 last item / C01-R5-01: Edit > Paste does nothing (wave 200, 2026-11-04)
+Branch s-opencode/t773 from origin/main 5050c4e2 (train 28). T-773's other nine rows shipped in
+trains 26-28: C16-R4-01 e8a2c978, C16-R2-01 c4ca5469, C12-R5-01 55ecad0e, C09-R5-01 563dd603,
+C02-R5-01 e7d2bab4, C01-R1-01 5f442ad6, C06-R1-01 35dae30a, C04-R4-01 331cfaaa, C05-R1-01 c671eac8.
+
+BEFORE
+The custom Edit menu (menu.rs item("edit.paste", "Paste")) reached useSettingsPlumbing, where
+menuEdit returned null for paste in a field and in a terminal, so the click did nothing anywhere
+except the chat's message box (editChatBox, CHAT-017).
+
+AFTER
+- menuEdit("edit.paste") is {field:"paste"} for a focused input, textarea or contenteditable (a
+  field's normal edit path), and {terminal:"paste"} otherwise. Copy and Select All are unchanged;
+  undo, redo and cut still do nothing in a terminal.
+- The focused terminal takes the paste through the pane's own clipboard path (pasteRef ->
+  pasteFromClipboard -> attachPaste): the 8 MB limit, one bracketed paste, the multi-line ask on a
+  program without bracketed paste, and no typing into a pane that lost focus while the clipboard
+  was read.
+- A focused text field gets src/chrome/fieldPaste.ts: the clipboard is read, the selection is
+  replaced at the caret with the engine's own input event (setRangeText on input/textarea, which
+  the chat box already uses; execCommand("insertText") first on a contenteditable, with a Range
+  fallback), maxLength respected, read-only/disabled refused, and the paste is dropped if the field
+  lost focus during the read. A refused read says so in a toast instead of doing nothing.
+- The module loads on first use (import()): the static form measured 1,490,707 B, 707 over the
+  1,490,000 ceiling. Deferred, first load is 1,489,547 B (+149 over main 1,489,398, 453 under).
+
+PROOF (this pass, worktree G:/Dev/kolux-rs-sessions/wt/opencode-t773)
+- npx tsc --noEmit: clean.
+- npx vitest run src/chrome/fieldPaste.test.ts src/chrome/chromeItems.test.ts: 2 files, 18 tests pass
+  (selection replaced, caret after, textarea line breaks, read-only/disabled, maxLength stops,
+  focus moved during the read, refused clipboard, non-field refused).
+- pnpm test: 869 files, 6,421 tests pass.
+- pnpm check: tsc, license, plan-check, workflow, invoke-contract (754 calls / 473 commands), memory
+  tests all pass.
+- pnpm build + node scripts/bundle-budget.mjs: 1,489,547 B of 1,490,000, OK.
+
+NOT DONE
+- No live menu click: a native Tauri menu item cannot be fired by the page, and no dev app was
+  started for this row. The unit tests pin the id -> target mapping and the insertion; a later live
+  pass should click Edit > Paste in a Settings field and in a PowerShell pane.

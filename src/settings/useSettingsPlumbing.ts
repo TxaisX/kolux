@@ -89,7 +89,12 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
     const ed = menuEdit(id, inField);
     if (flip) saveSetting(flip[0], flip[1]);
     else if (to) setScreen(classic ? "terminals" : to);
-    else if (ed && "field" in ed) document.execCommand(ed.field);
+    else if (ed && "field" in ed) {
+      // C01-R5-01: Paste reads the clipboard and inserts it at the caret; the rest are the page's own commands.
+      // The paste code loads on first use: it is over 1 KB and the first-load budget has under 1 KB left.
+      if (ed.field === "paste") void import("../chrome/fieldPaste").then((m) => m.pasteFromMenu(el, setToast));
+      else document.execCommand(ed.field);
+    }
     else if (ed) focusedTerminalEdit.current?.(ed.terminal);
     else if (id === "zoom.in" || id === "zoom.out" || id === "zoom.reset") stepZoom(id.slice(5) as ZoomStep, setToast);
     else if (id === ABOUT_MENU_ID) openAbout(); // VIEW-106
@@ -101,7 +106,7 @@ export function useSettingsPlumbing({ activeDir, classic, dragLeft, keymap, owne
       if (screen === "terminals" && right.open) saveRight({ open: false });
       else showRight(right.tab);
     }
-    // edit.paste: the core lane's attachPaste paste(). help.*: T-248-b.
+    // help.* menu items: T-248-b.
   });
   // SESS-004: the default agent is a settings key; the plus menu lists it first.
   const setDefault = (id: string) => saveSetting(DEFAULT_AGENT_KEY, id);
