@@ -35,7 +35,8 @@
 .projects-table thead th { position: sticky; top: 0; background: var(--pane-bg); z-index: 1; }
 .projects-sort { all: unset; cursor: pointer; color: var(--fg-label); font-weight: 600; }
 .projects-table td.editable { cursor: text; }
-.projects-table td.editable:hover, .projects-table td.editable:focus { background: var(--row-selected); outline: none; }
+.projects-table td.editable:hover, .projects-table td.editable:focus { background: var(--row-selected); }
+.projects-table td.editable:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; } /* C38-R3: the fill alone was 1.3:1 */
 .projects-table td .field { height: 22px; font-size: 12px; min-width: 120px; }
 .projects-table tr.restricted td { color: var(--fg-label); }
 .projects-group th { background: var(--line-subtle); color: var(--fg-label); font-weight: 600; }
