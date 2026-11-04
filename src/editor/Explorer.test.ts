@@ -37,12 +37,28 @@ describe("explorer file operations", () => {
     expect(tops(["/r/b", "/r/b/y.ts", "/r/c.ts", "/r/bb"])).toEqual(["/r/b", "/r/c.ts", "/r/bb"]);
   });
   it("undoes and redoes each action with its opposite", () => {
-    expect(undoOf({ kind: "create", path: "/r/n.ts" })).toEqual(["fs_trash", { paths: ["/r/n.ts"] }]);
+    expect(undoOf({ kind: "create", path: "/r/n.ts" })).toEqual(["fs_trash", { paths: ["/r/n.ts"], expect: [null] }]);
     expect(redoOf({ kind: "create", path: "/r/n.ts" })).toEqual(["fs_restore", { paths: ["/r/n.ts"] }]);
-    expect(undoOf({ kind: "rename", from: "C:\\r\\a.ts", to: "C:\\r\\b.ts" })).toEqual(["fs_rename", { path: "C:\\r\\b.ts", name: "a.ts" }]);
-    expect(redoOf({ kind: "rename", from: "/r/a.ts", to: "/r/b.ts" })).toEqual(["fs_rename", { path: "/r/a.ts", name: "b.ts" }]);
+    expect(undoOf({ kind: "rename", from: "C:\\r\\a.ts", to: "C:\\r\\b.ts" })).toEqual(["fs_rename", { path: "C:\\r\\b.ts", name: "a.ts", expect: null }]);
+    expect(redoOf({ kind: "rename", from: "/r/a.ts", to: "/r/b.ts" })).toEqual(["fs_rename", { path: "/r/a.ts", name: "b.ts", expect: null }]);
     expect(undoOf({ kind: "trash", paths: ["/r/a", "/r/c.ts"] })).toEqual(["fs_restore", { paths: ["/r/a", "/r/c.ts"] }]);
     expect(redoOf({ kind: "trash", paths: ["/r/a"] })).toEqual(["fs_trash", { paths: ["/r/a"] }]);
+  });
+  it("hands back the identity it recorded, so an undo never acts on a later file at the same path", () => {
+    // C24-R3-01: a New file undone after an agent wrote its own file at that path.
+    expect(undoOf({ kind: "create", path: "/r/notes.md", id: "7c:1f" })).toEqual(["fs_trash", { paths: ["/r/notes.md"], expect: ["7c:1f"] }]);
+    // A rename undone after `b.ts` was replaced: the entry that was renamed is no longer there.
+    expect(undoOf({ kind: "rename", from: "C:\\r\\a.ts", to: "C:\\r\\b.ts", id: "7c:20" })).toEqual([
+      "fs_rename",
+      { path: "C:\\r\\b.ts", name: "a.ts", expect: "7c:20" },
+    ]);
+    // A rename keeps the entry, so a redo checks the same identity at the name it now holds.
+    expect(redoOf({ kind: "rename", from: "/r/a.ts", to: "/r/b.ts", id: "7c:20" })).toEqual(["fs_rename", { path: "/r/a.ts", name: "b.ts", expect: "7c:20" }]);
+    // A copy's undo names each copy's own entry.
+    const copy = { kind: "copy" as const, from: ["/r/a.ts", "/r/b.ts"], dir: "/r/d", made: ["/r/d/a.ts", "/r/d/b.ts"], ids: ["7c:30", "7c:31"] };
+    expect(undoOf(copy)).toEqual(["fs_trash", { paths: ["/r/d/a.ts", "/r/d/b.ts"], expect: ["7c:30", "7c:31"] }]);
+    // An action recorded before identities existed still undoes: it simply has nothing to check.
+    expect(undoOf({ kind: "copy", from: ["/r/a.ts"], dir: "/r/d", made: ["/r/d/a.ts"] })).toEqual(["fs_trash", { paths: ["/r/d/a.ts"], expect: [null] }]);
   });
   it("knows a WSL share, where a delete is for good", () => {
     expect(isWsl("\\\\wsl$\\Ubuntu\\home\\a")).toBe(true);
@@ -52,7 +68,7 @@ describe("explorer file operations", () => {
   });
   it("undoes a copy by binning the copies and a move by moving each item back", () => {
     const copy = { kind: "copy" as const, from: ["/r/a.ts"], dir: "/r/d", made: ["/r/d/a.ts"] };
-    expect(undoOf(copy)).toEqual(["fs_trash", { paths: ["/r/d/a.ts"] }]);
+    expect(undoOf(copy)).toEqual(["fs_trash", { paths: ["/r/d/a.ts"], expect: [null] }]);
     expect(redoOf(copy)).toEqual(["fs_copy", { paths: ["/r/a.ts"], dir: "/r/d" }]);
     const move = { kind: "move" as const, moves: [["/r/a.ts", "/r/d/a.ts"], ["/r/x/b", "/r/d/b"]] as [string, string][] };
     expect(undoOf(move)).toEqual(["fs_move", { moves: [["/r/d/a.ts", "/r"], ["/r/d/b", "/r/x"]] }]);

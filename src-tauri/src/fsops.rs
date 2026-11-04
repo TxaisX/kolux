@@ -71,14 +71,63 @@ fn same_entry(a: &Path, b: &Path) -> bool {
     identity(a).is_some_and(|i| identity(b) == Some(i))
 }
 
+/// C24-R3-01: the entry's identity as the explorer's undo history keeps it, so an undo can hand it
+/// back and the command can tell whether the path still holds the entry that action touched.
+fn ident(p: &Path) -> Option<String> {
+    identity(p).map(|(a, b)| format!("{a:x}:{b:x}"))
+}
+
+/// The sentence an undo gets when the path now holds a different entry than the one it recorded.
+fn changed_reason(p: &Path) -> String {
+    let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| shown(p));
+    format!("{name} changed since that action, so it was not undone")
+}
+
+/// C24-R3-01: the refusal for an undo whose path no longer holds the recorded entry. `expect` is
+/// None when the action recorded no identity (an older action, or one that never had a single path),
+/// and then nothing is checked.
+fn changed(p: &Path, expect: Option<&str>) -> Option<String> {
+    let want = expect?;
+    (ident(p).as_deref() != Some(want)).then(|| changed_reason(p))
+}
+
 /// Gives `from` a new name in the same folder. A symlink is renamed itself, never its target. A new
 /// spelling of the same name (letter case, Unicode normalisation) is allowed; another entry's name is
 /// not, in any spelling (T-616).
 pub fn rename(from: &Path, name: &str) -> Result<PathBuf, String> {
+    let _turn = RENAMES.lock().unwrap_or_else(|e| e.into_inner());
+    rename_at(from, name)
+}
+
+/// Why an undo's rename did not happen: `Changed` when the path holds another entry than the one
+/// recorded (nothing was done, and there is nothing to retry); `Failed` for anything else.
+#[derive(Debug)]
+enum RenameError {
+    Changed(String),
+    Failed(String),
+}
+
+/// C24-R3-01: a rename for an undo, which hands back the identity recorded when the action was made.
+/// The check runs under `RENAMES` with the rename itself, so the entry cannot be swapped in between.
+fn rename_checked(from: &Path, name: &str, expect: Option<&str>) -> Result<PathBuf, RenameError> {
+    let _turn = RENAMES.lock().unwrap_or_else(|e| e.into_inner());
+    // A recorded entry that is gone is the same refusal as one that was replaced: retrying an undo
+    // cannot bring it back, so the history must move on rather than sit on this step.
+    fs::symlink_metadata(from).map_err(|e| match expect {
+        Some(_) => RenameError::Changed(changed_reason(from)),
+        None => RenameError::Failed(format!("{}: {e}", from.display())),
+    })?;
+    if let Some(reason) = changed(from, expect) {
+        return Err(RenameError::Changed(reason));
+    }
+    rename_at(from, name).map_err(RenameError::Failed)
+}
+
+/// The rename itself; the caller holds `RENAMES`.
+fn rename_at(from: &Path, name: &str) -> Result<PathBuf, String> {
     let name = one_name(name)?;
     let dir = from.parent().ok_or_else(|| format!("{} has no folder", from.display()))?;
     let to = dir.join(name);
-    let _turn = RENAMES.lock().unwrap_or_else(|e| e.into_inner());
     fs::symlink_metadata(from).map_err(|e| format!("{}: {e}", from.display()))?;
     if to.as_os_str() == from.as_os_str() {
         return Ok(to);
@@ -107,12 +156,18 @@ pub struct Gone {
     pub error: Option<String>,
 }
 
-/// Deletes each path on its own, so one failure leaves the rest going.
-pub fn trash_each(paths: &[String]) -> Vec<Gone> {
+/// Deletes each path on its own, so one failure leaves the rest going. C24-R3-01: each path may
+/// carry the identity its action recorded; when the path now holds another entry, nothing is
+/// deleted and the refusal is reported for that path alone.
+pub fn trash_each(paths: &[String], expect: &[Option<String>]) -> Vec<Gone> {
     paths
         .iter()
-        .map(|p| {
+        .enumerate()
+        .map(|(i, p)| {
             let path = Path::new(p);
+            if let Some(reason) = changed(path, expect.get(i).and_then(|e| e.as_deref())) {
+                return Gone { path: p.clone(), permanent: false, error: Some(reason) };
+            }
             let permanent = is_wsl(path);
             let done = if permanent {
                 match fs::symlink_metadata(path) {
@@ -193,31 +248,52 @@ fn fenced(f: &Fence, path: &str, follow: bool) -> Result<PathBuf, String> {
     crate::links::fence(path, &f.0, &f.1, follow)
 }
 
+/// C24-R3-01: what a create or a rename left behind: where it is, and which entry it is. The
+/// explorer's undo history keeps the identity and hands it back, so an undo never acts on a later
+/// entry that happens to hold the same path.
+#[derive(serde::Serialize, Debug, Default)]
+pub struct Made {
+    pub path: String,
+    pub id: Option<String>,
+    /// Set when an undo was refused because the path holds a different entry: nothing was done.
+    pub error: Option<String>,
+}
+
 // ACCT-055: each command below works only on paths inside the user's projects and worktrees
 // (fence.rs) and, on top of that, never out through a link (EDIT-045's `links::fence`); a copy
 // may also take files the user just dropped in from outside.
 #[tauri::command]
-pub fn fs_create(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, dir: String, name: String, folder: bool) -> Result<String, String> {
+pub fn fs_create(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, dir: String, name: String, folder: bool) -> Result<Made, String> {
     guard.allow(&dir, &store, &git, false)?;
-    create(&fenced(&fence_of(&store, &grants), &dir, true)?, &name, folder).map(|p| shown(&p))
+    let p = create(&fenced(&fence_of(&store, &grants), &dir, true)?, &name, folder)?;
+    Ok(Made { path: shown(&p), id: ident(&p), error: None })
 }
 
 #[tauri::command]
-pub fn fs_rename(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, path: String, name: String) -> Result<String, String> {
+pub fn fs_rename(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, path: String, name: String, expect: Option<String>) -> Result<Made, String> {
     guard.allow(&path, &store, &git, false)?;
-    rename(&fenced(&fence_of(&store, &grants), &path, false)?, &name).map(|p| shown(&p))
+    let from = fenced(&fence_of(&store, &grants), &path, false)?;
+    Ok(match rename_checked(&from, &name, expect.as_deref()) {
+        Ok(to) => Made { path: shown(&to), id: ident(&to), error: None },
+        // A changed entry is a final answer, not a failure to retry: handing it back as an error
+        // would keep the undo stack on this step for good.
+        Err(RenameError::Changed(reason)) => Made { path: shown(&from), id: None, error: Some(reason) },
+        Err(RenameError::Failed(e)) => return Err(e),
+    })
 }
 
 #[tauri::command]
-pub async fn fs_trash(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, paths: Vec<String>) -> Result<Vec<Gone>, String> {
+pub async fn fs_trash(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, paths: Vec<String>, expect: Option<Vec<Option<String>>>) -> Result<Vec<Gone>, String> {
     let f = fence_of(&store, &grants);
+    let expect = expect.unwrap_or_default();
     let refused = paths.iter().map(|p| guard.allow(p, &store, &git, false).err()).collect::<Vec<_>>();
     tauri::async_runtime::spawn_blocking(move || {
         paths
             .into_iter()
             .zip(refused)
-            .map(|(p, refused)| match refused.map_or_else(|| fenced(&f, &p, false), Err) {
-                Ok(_) => trash_each(std::slice::from_ref(&p)).remove(0),
+            .enumerate()
+            .map(|(i, (p, refused))| match refused.map_or_else(|| fenced(&f, &p, false), Err) {
+                Ok(_) => trash_each(std::slice::from_ref(&p), &[expect.get(i).cloned().flatten()]).remove(0),
                 Err(e) => Gone { path: p, permanent: false, error: Some(e) },
             })
             .collect()
@@ -241,6 +317,8 @@ pub struct Placed {
     pub from: String,
     /// Where it landed; None when it failed.
     pub to: Option<String>,
+    /// C24-R3-01: which entry landed there, so its undo can refuse a later file at the same path.
+    pub id: Option<String>,
     pub error: Option<String>,
 }
 
@@ -382,9 +460,9 @@ pub async fn fs_copy(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git
             .into_iter()
             .zip(sources)
             .map(|(p, source)| match source.and_then(|dropped| if dropped { Ok(PathBuf::from(&p)) } else { fenced(&f, &p, false) }).and_then(|from| fenced(&f, &dir, true).and_then(|d| copy_into(&from, &d))) {
-                Ok((to, 0)) => Placed { from: p, to: Some(shown(&to)), error: None },
-                Ok((to, n)) => Placed { from: p, error: Some(format!("{}: {n} link(s) inside were left out", shown(&to))), to: Some(shown(&to)) },
-                Err(e) => Placed { from: p, to: None, error: Some(e) },
+                Ok((to, 0)) => Placed { from: p, to: Some(shown(&to)), id: ident(&to), error: None },
+                Ok((to, n)) => Placed { from: p, error: Some(format!("{}: {n} link(s) inside were left out", shown(&to))), to: Some(shown(&to)), id: ident(&to) },
+                Err(e) => Placed { from: p, to: None, id: None, error: Some(e) },
             })
             .collect()
     })
@@ -401,8 +479,8 @@ pub async fn fs_move(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git
         moves
             .into_iter()
             .map(|(p, dir)| match fenced(&f, &p, false).and_then(|from| fenced(&f, &dir, true).and_then(|d| move_into(&from, &d))) {
-                Ok(to) => Placed { from: p, to: Some(shown(&to)), error: None },
-                Err(e) => Placed { from: p, to: None, error: Some(e) },
+                Ok(to) => Placed { from: p, to: Some(shown(&to)), id: None, error: None },
+                Err(e) => Placed { from: p, to: None, id: None, error: Some(e) },
             })
             .collect()
     })
@@ -605,5 +683,85 @@ mod tests {
         assert!(is_wsl(Path::new(r"\\wsl$\Ubuntu\home\a")));
         assert!(is_wsl(Path::new(r"\\wsl.localhost\Ubuntu\x")));
         assert!(!is_wsl(Path::new(r"C:\wsl$\x")));
+    }
+
+    #[test]
+    fn c24_a_created_entry_carries_the_identity_its_undo_hands_back() {
+        let d = temp_dir("c24-id");
+        let file = create(&d, "notes.md", false).unwrap();
+        assert!(ident(&file).is_some(), "a file has an id the undo history can keep");
+        fs::create_dir(d.join("sub")).unwrap();
+        assert!(ident(&d.join("sub")).is_some(), "a folder too");
+        assert_ne!(ident(&file), ident(&d.join("sub")), "two entries do not share an id");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn c24_undo_refuses_to_trash_a_replaced_file_and_leaves_it_alone() {
+        let d = temp_dir("c24-trash");
+        let file = d.join("notes.md");
+        fs::write(&file, "the empty file New file made").unwrap();
+        let recorded = ident(&file).expect("the id the create records");
+        // The agent writes its own notes.md: a new entry at the same path.
+        fs::remove_file(&file).unwrap();
+        fs::write(&file, "the agent's work").unwrap();
+        let gone = trash_each(&[shown(&file)], &[Some(recorded)]);
+        assert_eq!(gone.len(), 1);
+        assert_eq!(gone[0].error.as_deref().unwrap_or_default(), "notes.md changed since that action, so it was not undone");
+        assert!(!gone[0].permanent, "a refusal is not a delete");
+        assert_eq!(fs::read_to_string(&file).unwrap(), "the agent's work", "the agent's file is still there");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn c24_undo_refuses_to_rename_a_replaced_file_and_leaves_both_names_alone() {
+        let d = temp_dir("c24-rename");
+        fs::write(d.join("a.ts"), "the user's file").unwrap();
+        let b = d.join("b.ts");
+        fs::rename(d.join("a.ts"), &b).unwrap();
+        let recorded = ident(&b).expect("the id the rename records");
+        fs::remove_file(&b).unwrap();
+        fs::write(&b, "the agent's file").unwrap();
+        let why = match rename_checked(&b, "a.ts", Some(&recorded)) {
+            Err(RenameError::Changed(why)) => why,
+            other => panic!("the undo must refuse a changed entry, got {other:?}"),
+        };
+        assert_eq!(why, "b.ts changed since that action, so it was not undone");
+        assert_eq!(fs::read_to_string(&b).unwrap(), "the agent's file", "the agent's file keeps its name");
+        assert!(!d.join("a.ts").exists(), "nothing was renamed back");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn c24_a_gone_entry_is_refused_with_the_same_reason() {
+        let d = temp_dir("c24-gone");
+        let b = d.join("b.ts");
+        fs::write(&b, "x").unwrap();
+        let recorded = ident(&b).unwrap();
+        fs::remove_file(&b).unwrap();
+        let why = match rename_checked(&b, "a.ts", Some(&recorded)) {
+            Err(RenameError::Changed(why)) => why,
+            other => panic!("a gone entry is a refusal too, got {other:?}"),
+        };
+        assert_eq!(why, "b.ts changed since that action, so it was not undone");
+        // Without a recorded entry the error stays an ordinary failure, as before.
+        assert!(matches!(rename_checked(&b, "a.ts", None), Err(RenameError::Failed(_))));
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn c24_an_unchanged_entry_still_undoes_in_both_directions() {
+        let d = temp_dir("c24-ok");
+        fs::write(d.join("a.ts"), "mine").unwrap();
+        let b = rename(&d.join("a.ts"), "b.ts").unwrap();
+        let recorded = ident(&b).unwrap();
+        let back = rename_checked(&b, "a.ts", Some(&recorded)).unwrap();
+        assert_eq!(back, d.join("a.ts"));
+        assert_eq!(fs::read_to_string(&back).unwrap(), "mine");
+        // A rename keeps the entry, so the same identity still matches on the way back (a redo).
+        assert_eq!(rename_checked(&back, "b.ts", Some(&recorded)).unwrap(), d.join("b.ts"));
+        // An action that recorded no identity keeps the old behaviour.
+        assert_eq!(rename_checked(&d.join("b.ts"), "c.ts", None).unwrap(), d.join("c.ts"));
+        let _ = fs::remove_dir_all(&d);
     }
 }
