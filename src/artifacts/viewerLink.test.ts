@@ -230,4 +230,16 @@ describe("the question strip (M1)", () => {
     expect(rule).not.toMatch(/position:\s*(absolute|fixed)/);
     expect(css).toMatch(/\.art-view\s*\{[^}]*flex-direction:\s*column/);
   });
+
+  it("a page-chosen host cannot widen the layout: the bar and its text shrink and clip", () => {
+    const rule = (name: string) => css.split(/\r?\n/).find((l) => l.startsWith(`${name} {`)) ?? "";
+    const bar = rule(".art-ask");
+    expect(bar).toMatch(/min-width:\s*0/);
+    expect(bar).toMatch(/max-width:\s*100%/);
+    expect(bar).toMatch(/overflow:\s*hidden/);
+    const text = rule(".art-ask-text");
+    expect(text).toMatch(/min-width:\s*0/);
+    expect(text).toMatch(/text-overflow:\s*ellipsis/);
+    expect(text).toMatch(/white-space:\s*nowrap/);
+  });
 });

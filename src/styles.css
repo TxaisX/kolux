@@ -148,9 +148,9 @@ input { font: inherit; }
 .art-image { flex: 1; min-width: 0; min-height: 0; object-fit: contain; background: var(--pane-bg); }
 /* A clip plays inside the viewer at the viewer's size, never at its own 1080p; the scheme answers ranges, so seeking does not load it whole. */
 .art-video { flex: 1; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; object-fit: contain; background: #000; }
-/* The link question (DT-C77): a bar in normal layout above the viewer, so a page cannot draw under its buttons. */
-.art-ask { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--row-selected); color: var(--fg); border-bottom: 1px solid var(--tab-track-border); }
-.art-ask-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The link question (DT-C77): a bar in the viewer column, above the frame, so a page cannot draw under its buttons and a long host cannot widen the layout. */
+.art-ask { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; overflow: hidden; padding: 8px 10px; background: var(--row-selected); color: var(--fg); border-bottom: 1px solid var(--tab-track-border); }
+.art-ask-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .art-loading { position: absolute; left: 12px; top: 10px; }
 .sb-section { display: flex; align-items: center; height: 32px; margin: 13px 4px 0; padding-left: 12px; padding-right: 4px; color: var(--fg-label); font-size: 12.5px; font-weight: 500; }
 .sb-section .icons { margin-left: auto; display: flex; gap: 4px; }

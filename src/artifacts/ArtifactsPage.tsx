@@ -488,8 +488,10 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
           ))}
         </div>
       </div>
-      {asked && <LinkAskBar ask={asked} ready={askReady} onOpen={() => void prompt.current?.accept().catch((err) => onToast(String(err)))} onCancel={() => prompt.current?.cancel()} />}
       <div className="art-view">
+        {/* The link question (DT-C77) is a bar in this column, above the frame: the frame is pushed
+            down, never covered, and a page-chosen host cannot widen the row layout. */}
+        {asked && <LinkAskBar ask={asked} ready={askReady} onOpen={() => void prompt.current?.accept().catch((err) => onToast(String(err)))} onCancel={() => prompt.current?.cancel()} />}
         {/* Mounted before its text appears (a live region added with its text may go unannounced); empty, it takes no room. */}
         <div role="status" className={loadingText ? `art-loading menu-hint${slow === current?.id ? " art-slow" : ""}` : undefined}>{loadingText}</div>
         {!current && <div className="empty"><p>Pick an artifact to view it here.</p></div>}

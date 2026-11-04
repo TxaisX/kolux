@@ -140,6 +140,12 @@ test("box 2: a clicked link leaves the viewer as a message, and the page asks fi
   const button = (label: string) => find(strip(), (n) => n.localName === "button" && n.textContent.trim() === label)[0];
   // The question names the host the user is being asked about, and nothing else changes under it.
   expect(strip().textContent).toContain("example.invalid");
+  // It is a bar inside the viewer column, above the frame: the frame is pushed down, never covered, and
+  // a page-chosen host cannot widen the row layout (review 062).
+  const viewer = find(c, (n) => String(n.attrs.className ?? n.attrs.class ?? "") === "art-view")[0];
+  expect(viewer).toBeTruthy();
+  expect(strip().parentNode).toBe(viewer);
+  expect(viewer.childNodes.indexOf(strip())).toBeLessThan(viewer.childNodes.indexOf(frame));
   await deliver(own, { koluxOpen: "https://swapped.invalid/" }); // first ask wins
   expect(strip().textContent).toContain("example.invalid");
   // Open inside the 1 s input-protection delay opens nothing and leaves the question up.
