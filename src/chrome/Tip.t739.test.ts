@@ -40,3 +40,17 @@ test("T-739: a keyboard focus shows the tip and describes the element by it; a c
   await settle();
   expect(container.textContent).toBe("");
 });
+
+test("T-739: the mouse path is unchanged: hovering shows the tip only after the delay and sets no attribute", async () => {
+  const { doc, win } = installDom();
+  win.setTimeout = setTimeout;
+  win.innerWidth = 800;
+  const { container } = await mount(createElement(Tip), doc);
+  const hover = target("Close the tab", false);
+  await fire(doc, "mouseover", hover.el as never);
+  await settle(20);
+  expect(container.textContent).toBe("");
+  await settle(260);
+  expect(container.textContent).toBe("Close the tab");
+  expect(hover.attrs["aria-describedby"]).toBeUndefined();
+});
