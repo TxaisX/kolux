@@ -1,7 +1,7 @@
 // SET-033: one repository's page in Settings: its display name, base branch and workspaces folder
 // (each showing the inherited value until the user overrides it), and whether workspaces made outside
 // Kolux show. Drafts save only when changed.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clearLeft, failLeft, keepLeft, takeLeft, useLeaveSave, type Left } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
 import { projectLabel, type Project } from "../projects/model";
@@ -48,7 +48,17 @@ function OutsideField({ outside, onChoose }: { outside: Outside; onChoose: (own:
 
 function DraftField({ label, saved, inherited, start, onSave }: { label: string; saved: string | null | undefined; inherited: string; start?: string; onSave: (v: string) => void }) {
   const [draft, setDraft] = useState(start ?? saved ?? "");
-  useEffect(() => setDraft(saved ?? ""), [saved]);
+  // C20-R4-01: a draft taken back from a failed leave save is what the box must show. The reset that
+  // follows `saved` runs on mount too, so it skips its first run when a draft was restored; otherwise
+  // it would put the stored value back over the text the alert says is in the box.
+  const restored = useRef(start !== undefined);
+  useEffect(() => {
+    if (restored.current) {
+      restored.current = false;
+      return;
+    }
+    setDraft(saved ?? "");
+  }, [saved]);
   const commit = () => {
     const v = draftSave(saved, draft);
     if (v !== null) onSave(v);

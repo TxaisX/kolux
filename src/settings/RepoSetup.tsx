@@ -1,6 +1,6 @@
 // SET-033 / PROJ-035: the setup part of a repository's page: the setup script kept in Kolux (shown,
 // edited, removed), the repository's kolux.yaml script, which of them run, and whether the agent waits.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { clearLeft, failLeft, keepLeft, takeLeft, useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
 import { choiceOptions, choiceSave, runsNote, scriptSave, trustedWords, trustNote, type RepoSetup } from "./setupChoice";
@@ -19,7 +19,16 @@ export function RepoSetupView({ setup, notice, status, start, leftError, actions
   const [composing, setComposing] = useState(false);
   const [asking, setAsking] = useState(false);
   const [hint, setHint] = useState("");
-  useEffect(() => setDraft(setup.local ?? ""), [setup.local]);
+  // C20-R4-01: a script taken back from a failed leave save is what the box must show; the reset that
+  // follows `setup.local` skips its first run when one was restored.
+  const restored = useRef(start !== undefined);
+  useEffect(() => {
+    if (restored.current) {
+      restored.current = false;
+      return;
+    }
+    setDraft(setup.local ?? "");
+  }, [setup.local]);
   const commit = () => {
     if (composing) return;
     const s = scriptSave(setup.local, draft);
