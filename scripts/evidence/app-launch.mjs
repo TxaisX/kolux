@@ -58,10 +58,39 @@ export const moveScript = (pid, offscreen) => {
 
 /**
  * opts: root (checkout), port (vite), cdp (debugging port), identifier, temp (scratch root), suffix (the identifier must
- * end with it before a launch wipes the profile), offscreen, attach, keep, buildMinutes, log.
+ * end with it before a launch wipes the profile), offscreen, attach, keep, buildMinutes, log, ipcGuard (arm the IPC
+ * guard below after every launch and relaunch, and refuse to go on without it), afterReload (async (app) => …, run
+ * after the guard's own page reload, e.g. to close first-run dialogs).
  */
+/** T-763 (DT-C199): backend commands the IPC guard answers with a stand-in "ok" instead of running: they open a
+ *  browser or an editor, restart the app, or read or write the user's keymap (which a dev run still reaches
+ *  through the real home, T-761). */
+export const IPC_BLOCK = /^(?:(?:open_external|app_restart|keybindings_(?:show|write|reload))$|plugin:(?:opener|shell|process)\|)/;
+/** The guard's page side: wraps window.fetch, logs backend calls in window.__v10calls, answers IPC_BLOCK commands
+ *  with a stand-in "ok". Evaluates to true. Tested in app-launch.test.mjs. */
+export const IPC_GUARD_JS = `(() => {
+  window.__v10calls = [];
+  const BLOCK = new RegExp(${JSON.stringify(IPC_BLOCK.source)});
+  const orig = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input?.url ?? String(input);
+    const m = /^(?:https?|ipc):\\/\\/(?:ipc\\.)?(?:localhost|tauri\\.localhost)\\/([^?#]+)/.exec(url);
+    if (m && /ipc\\.localhost|^ipc:/.test(url)) {
+      const cmd = decodeURIComponent(m[1]);
+      if (!/^plugin:(event|log)/.test(cmd)) {
+        const blocked = BLOCK.test(cmd);
+        window.__v10calls.push(cmd + (blocked ? " " + String(init?.body ?? "").slice(0, 120) + " [BLOCKED]" : ""));
+        if (window.__v10calls.length > 400) window.__v10calls.shift();
+        if (blocked) return Promise.resolve(new Response("null", { status: 200, headers: { "Content-Type": "application/json", "Tauri-Response": "ok" } }));
+      }
+    }
+    return orig(input, init);
+  };
+  return true;
+})()`;
+
 export function createApp(opts) {
-  const { root, port: PORT, cdp: CDP, identifier: IDENTIFIER, temp: TEMP, suffix = ".smoke", offscreen: OFFSCREEN = false, attach: ATTACH = false, keep: KEEP = false, buildMinutes = 20, log = console.log } = opts;
+  const { root, port: PORT, cdp: CDP, identifier: IDENTIFIER, temp: TEMP, suffix = ".smoke", offscreen: OFFSCREEN = false, attach: ATTACH = false, keep: KEEP = false, buildMinutes = 20, log = console.log, ipcGuard: IPC_GUARD = false, afterReload } = opts;
   const cdpScript = join(root, "scripts", "evidence", "cdp.mjs");
   // T-152-c (5): the app's own temp folder (TEMP/TMP) holds the scratch agent config folders but not
   // the scratch home below: a debug build refuses a temp folder that holds the home as scratch.
@@ -216,6 +245,41 @@ export function createApp(opts) {
   app.pageUp = pageUp;
   app.moveWindow = moveWindow;
 
+  // ---------- T-763 (DT-C199): the IPC guard ----------
+  // A fetch wrapper logs every backend call in window.__v10calls and answers IPC_BLOCK commands itself. Tauri sends
+  // calls by fetch to ipc.localhost, but after one failed fetch it switches to postMessage for good, and from then
+  // on the wrapper sees nothing: blocked commands run for real and stand-ins see no calls. So the guard is probed
+  // with a call that has no command behind it (v8_probe): seen in the log = still armed. A reload puts fetch back.
+  /** True while backend calls still pass through the guard. Takes its own probe out of the log again. */
+  app.guardOk = async () => {
+    await evalJs(`window.__TAURI_INTERNALS__.invoke("v8_probe").then(() => null, () => null)`).catch(() => {});
+    await sleep(250);
+    return evalJs(`(() => { const l = window.__v10calls; const i = l ? l.findIndex((c) => /^v8_probe/.test(c)) : -1; if (i >= 0) l.splice(i, 1); return i >= 0; })()`).catch(() => false);
+  };
+  app.armGuard = async () => (await evalJs(IPC_GUARD_JS).catch(() => false)) === true && app.guardOk();
+  /** Reload the page so Tauri's IPC goes back to fetch, run opts.afterReload (e.g. close first-run dialogs), arm again.
+   *  A reload drops page-side state (startProve's window.__proveEvents listener included): set it up again after. */
+  app.rearm = async () => {
+    await evalJs(`setTimeout(() => location.reload(), 0), null`).catch(() => {});
+    await sleep(1500);
+    await pageUp(90_000);
+    await afterReload?.(app);
+    return app.armGuard();
+  };
+  /** Runs fn(), one row of a harness, between two guard checks. blind "before": the guard was lost and a rearm
+   *  failed, so fn did not run (count the row NOT-TESTED). blind "after": the guard went blind during fn, so
+   *  what fn saw of the backend can't be trusted. Otherwise blind is null. */
+  app.guarded = async (fn) => {
+    if (!(await app.guardOk()) && !(await app.rearm())) return { blind: "before" };
+    const value = await fn();
+    return { value, blind: (await app.guardOk()) ? null : "after" };
+  };
+  const armOrThrow = async () => {
+    if (!IPC_GUARD) return;
+    if (!(await app.armGuard()) && !(await app.rearm())) throw new Error("the IPC guard is not effective; refusing to drive an app that could open a browser, an editor, restart, or write the real keymap");
+    log(`ipc guard armed (blocks ${IPC_BLOCK.source})`);
+  };
+
   // prepare() runs first (wipe and seed the profile); the scratch config folders are made after it.
   app.launch = async ({ prepare } = {}) => {
     if (!IDENTIFIER.endsWith(suffix)) throw new Error(`refusing to wipe the profile of ${IDENTIFIER}: use an identifier ending in "${suffix}" or --attach`);
@@ -253,6 +317,7 @@ export function createApp(opts) {
     app.pid = Number(found.split("|")[0]);
     app.exePath = found.split("|")[1];
     log(`app pid ${app.pid} (${app.exePath}); window: ${await moveWindow(app.pid)}`);
+    await armOrThrow();
   };
 
   const viteServing = async () => {
@@ -279,6 +344,7 @@ export function createApp(opts) {
     app.pid = child.pid;
     await pageUp(90_000);
     await moveWindow(app.pid);
+    await armOrThrow();
   };
 
   // The orphan scan: survivors of the tree captured before the close, never a taskkill first. The dev tree,

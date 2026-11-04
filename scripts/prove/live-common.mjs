@@ -71,7 +71,7 @@ export async function startProve(id, opts) {
   const TEMP = `${BASE}/run-${id}`;
   const repo = `${BASE}/work/${id}`;
   const settingsFile = `${TEMP}/tmp/claude-config/settings.json`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => dismissFirstRun(a, log) });
   const { profile } = app.paths;
   // A fresh run folder: only a folder this lane made (it carries the marker) is wiped.
   if (existsSync(TEMP)) {
@@ -278,7 +278,7 @@ export async function startPlain(id, opts) {
   const { log } = opts.report;
   const TEMP = `${LIVE_BASE}/run-${id}`;
   const repo = `${LIVE_BASE}/work/${id}`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => dismissFirstRun(a, log) });
   const { profile } = app.paths;
   if (existsSync(TEMP)) {
     if (!existsSync(join(TEMP, ".prove-run"))) throw new Error(`${TEMP} exists without the prove marker`);
