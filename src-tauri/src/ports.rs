@@ -345,17 +345,46 @@ fn store_workspaces(store: &crate::state::Store) -> (Vec<String>, Vec<String>) {
 // ---- the system side ---------------------------------------------------------------------------
 
 #[cfg(windows)]
-fn scan_listeners() -> Result<Vec<Listener>, String> {
+fn scan_listeners(fresh: bool) -> Result<Vec<Listener>, String> {
+    Ok(parse_netstat(&netstat(fresh)?))
+}
+
+/// T-726: the system's listening table, read by both pollers: the Ports popover (every 2 s while
+/// open) and the Preview button (browser_ports, every 3 s). A table read less than `SHARED_FOR` ago
+/// is reused, so the two share one `netstat` run; a Stop asks for a fresh one.
+#[cfg(windows)]
+pub fn netstat(fresh: bool) -> Result<String, String> {
     use std::os::windows::process::CommandExt;
-    let out = std::process::Command::new("netstat").args(["-ano"]).creation_flags(0x0800_0000).output().map_err(|e| format!("The port scan could not start: {e}"))?;
-    if !out.status.success() {
-        return Err("The port scan failed: netstat did not finish".into());
+    static LAST: std::sync::Mutex<Option<(std::time::Instant, String)>> = std::sync::Mutex::new(None);
+    shared(&LAST, fresh, || {
+        // CREATE_NO_WINDOW: a console would flash up on every poll.
+        let out = std::process::Command::new("netstat").args(["-ano"]).creation_flags(0x0800_0000).output().map_err(|e| format!("The port scan could not start: {e}"))?;
+        if !out.status.success() {
+            return Err("The port scan failed: netstat did not finish".into());
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    })
+}
+
+/// How old a shared table may be: the open Ports popover's own interval.
+#[cfg(any(windows, test))]
+const SHARED_FOR: Duration = Duration::from_secs(2);
+
+/// The last table when it is young enough and `fresh` is not asked, else a new one from `run`. The
+/// lock is held across the run, so a caller that waits behind it reuses its table; a failure is not kept.
+#[cfg(any(windows, test))]
+fn shared(last: &std::sync::Mutex<Option<(std::time::Instant, String)>>, fresh: bool, run: impl FnOnce() -> Result<String, String>) -> Result<String, String> {
+    let mut last = last.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((_, text)) = last.as_ref().filter(|(at, _)| !fresh && at.elapsed() < SHARED_FOR) {
+        return Ok(text.clone());
     }
-    Ok(parse_netstat(&String::from_utf8_lossy(&out.stdout)))
+    let text = run()?;
+    *last = Some((std::time::Instant::now(), text.clone()));
+    Ok(text)
 }
 
 #[cfg(not(windows))]
-fn scan_listeners() -> Result<Vec<Listener>, String> {
+fn scan_listeners(_fresh: bool) -> Result<Vec<Listener>, String> {
     // ponytail: macOS and Linux read `lsof -iTCP -sTCP:LISTEN` with T-285; until then the popover shows no ports, not an error banner.
     Ok(Vec::new())
 }
@@ -494,8 +523,9 @@ struct Scan {
     sessions: Vec<(u32, u32, String)>,
 }
 
-fn scan(terminals: &crate::terminal::Terminals, workspaces: &[String], active: &str) -> Result<Scan, String> {
-    let listeners = scan_listeners()?;
+/// `fresh`: a Stop reads the system again; the popover's poll may reuse the shared table (T-726).
+fn scan(terminals: &crate::terminal::Terminals, workspaces: &[String], active: &str, fresh: bool) -> Result<Scan, String> {
+    let listeners = scan_listeners(fresh)?;
     let sessions: Vec<(u32, u32, String)> = terminals.list().into_iter().filter_map(|(id, pid, dir)| Some((id, pid?, dir?))).collect();
     let parents = parent_table();
     let rows = rows_for(&listeners, &parents, &sessions, workspaces, active, &start_time);
@@ -507,7 +537,7 @@ fn scan(terminals: &crate::terminal::Terminals, workspaces: &[String], active: &
 #[tauri::command]
 pub async fn ports_list(terminals: tauri::State<'_, crate::terminal::Terminals>, workspaces: Vec<String>, active: String) -> Result<Vec<PortRow>, String> {
     let t = terminals.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || scan(&t, &workspaces, &active).map(|s| cap_external(s.rows))).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || scan(&t, &workspaces, &active, false).map(|s| cap_external(s.rows))).await.map_err(|e| e.to_string())?
 }
 
 fn stranger(port: u16, pid: u32) -> String {
@@ -598,7 +628,7 @@ pub async fn ports_stop(app: tauri::AppHandle, workspaces: Vec<String>, active: 
         store_workspaces(&s)
     };
     tauri::async_runtime::spawn_blocking(move || {
-        let Scan { rows, parents, sessions } = scan(&t, &workspaces, &active)?;
+        let Scan { rows, parents, sessions } = scan(&t, &workspaces, &active, true)?;
         let target = match stop_target(&rows, port, pid, &started, std::process::id())? {
             // The program may run on without any port: the same pid with the same start time is it.
             Target::Gone => return Ok(if same_start(&[&started, &start_time(pid)]) { Outcome::Moved } else { Outcome::Gone }),
@@ -860,6 +890,25 @@ mod tests {
     #[cfg(not(windows))]
     #[test]
     fn row75_a_system_without_a_scan_shows_no_ports_not_an_error() {
-        assert_eq!(scan_listeners(), Ok(Vec::new()));
+        assert_eq!(scan_listeners(false), Ok(Vec::new()));
+    }
+
+    #[test]
+    fn t726_the_pollers_share_one_table_and_a_stop_reads_a_fresh_one() {
+        let last = std::sync::Mutex::new(None);
+        let runs = std::cell::Cell::new(0);
+        let run = || -> Result<String, String> {
+            runs.set(runs.get() + 1);
+            Ok(format!("table {}", runs.get()))
+        };
+        assert_eq!(shared(&last, false, run), Ok("table 1".into()));
+        assert_eq!(shared(&last, false, run), Ok("table 1".into()), "the other poller reuses the same run");
+        assert_eq!(shared(&last, true, run), Ok("table 2".into()), "a Stop reads the system again");
+        assert_eq!(shared(&last, false, run), Ok("table 2".into()), "and the pollers then share that table");
+        // an old table is read again; a failed read is an error and is not kept
+        last.lock().unwrap().as_mut().unwrap().0 -= SHARED_FOR;
+        assert_eq!(shared(&last, false, || Err("netstat did not finish".into())), Err("netstat did not finish".into()));
+        assert_eq!(shared(&last, false, run), Ok("table 3".into()));
+        assert_eq!(runs.get(), 3);
     }
 }

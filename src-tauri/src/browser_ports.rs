@@ -1,5 +1,5 @@
 //! T-242 (BROW-067): the dev servers a workspace is running, for the Preview button. The system's
-//! listening TCP ports are read (`netstat -ano -p tcp` on Windows, `lsof` elsewhere) and matched
+//! listening TCP ports are read (the Ports popover's shared `netstat -ano` on Windows, `lsof` elsewhere) and matched
 //! against the addresses the workspace's terminals printed: on Windows the port scan carries no
 //! working folder, so a port counts as the workspace's when one of its terminals printed an address
 //! for it and the port is listening. Ranking: a printed address first, then a port speaking HTTP,
@@ -61,15 +61,11 @@ pub fn parse_lsof(text: &str) -> Vec<Listening> {
 
 /// The ports listening on this machine now.
 pub fn listening() -> Vec<Listening> {
+    // T-726: the same table the Ports popover reads (one netstat run serves both pollers).
     #[cfg(windows)]
-    let out = {
-        use std::os::windows::process::CommandExt;
-        // CREATE_NO_WINDOW: the Preview button asks every 3 s, so a console would flash up each time.
-        std::process::Command::new("netstat").args(["-ano", "-p", "tcp"]).creation_flags(0x0800_0000).output()
-    };
+    let text = crate::ports::netstat(false).unwrap_or_default();
     #[cfg(not(windows))]
-    let out = std::process::Command::new("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN"]).output();
-    let text = out.map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+    let text = std::process::Command::new("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN"]).output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
     if cfg!(windows) { parse_netstat(&text) } else { parse_lsof(&text) }
 }
 

@@ -1,4 +1,6 @@
 import { expect, test } from "vitest";
+import panelSrc from "./ProjectsPanel.tsx?raw";
+import { unlessSame } from "./ProjectsPanel";
 import { afterScan, prefixSample, folderName, matchLetters, middle, pathHints, rankProjects, shortcodes, openedWorktree, relPath, nestRows, orderWorktrees, parentChoices, placeFieldAction, previewSentence, worktreeLabel, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, splitGitSaid, type Linked, type PendingCreate, type PrHead } from "./model";
 
 const main: Worktree = { path: "C:\\src\\app", branch: "main", head: "aaaaaaa1", isMain: true };
@@ -234,4 +236,13 @@ test("PROJ-031: a failed create splits into Kolux's words and Git's full output"
   const raw = "The workspace could not be made: that name is in use. Choose another." + "\nGit said: fatal: 'x' already exists" + "\nsecond line";
   expect(splitGitSaid(raw)).toEqual({ summary: "The workspace could not be made: that name is in use. Choose another.", git: "fatal: 'x' already exists\nsecond line" });
   expect(splitGitSaid("plain")).toEqual({ summary: "plain", git: null });
+});
+
+test("T-726: an unchanged scan keeps the same state, so the sidebar does not repaint every 5 s", () => {
+  const prev = { p1: [{ path: "C:/w", branch: "main" }] };
+  expect(unlessSame({ p1: [{ path: "C:/w", branch: "main" }] })(prev), "same content: the old object, React skips the render").toBe(prev);
+  const moved = { p1: [{ path: "C:/w", branch: "dev" }] };
+  expect(unlessSame(moved)(prev), "changed: the new one").toBe(moved);
+  // every setter the 5 s poll calls goes through it
+  for (const set of ["setWorktrees", "setHiddenWts", "setFresh", "setPushedBy"]) expect(panelSrc, set).toMatch(new RegExp(set + "\\(unlessSame\\("));
 });
