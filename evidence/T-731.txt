@@ -12,8 +12,8 @@ CAUSE
 
 FIX
 - The test credits its own process id (std::process::id()) instead. That id is running for as long as the
-  test is, so pruning keeps it. front() only credits processes under the shell it is asked about, and the test
-  process is never under one, so no other test writes that id. The 900002 "claude.exe" line needs no command
+  test is, so pruning keeps it. front() only credits the shell it is asked about and the processes under it, and
+  the test process is neither, so no other test writes that id. The 900002 "claude.exe" line needs no command
   line and no cache, so it stays.
 - The cache and its pruning are unchanged and no tests are serialised (smallest fix, per the brief).
 
@@ -31,3 +31,10 @@ THE OTHER TWO TIMING FAILURES THAT DAY (checked for the same shared-state patter
 - #154 (scm.rs:5207, fix5 holder test): "the holder was left running". The test waits up to 30 s for the
   process tree to go, and that check runs a slow process query under load. Its temp folders are per test and
   per process id, so it doesn't collide with the other fix5 test. This is load, not shared state. No change.
+
+REVIEW (opus-high-review: A-)
+- SHOULD-FIX taken: the DT-C167 row had 4 cells for a 5-column table; it now has Default taken and Why.
+- NIT taken: front() also credits the asked shell itself (not only what is under it); wording fixed. The
+  conclusion holds: that shell is the spawned cmd.exe, not the test process.
+- Noted, not this row: scm.rs processes_under matches the per-process temp folder name as a substring, so
+  two cargo test runs at once on one PC could see each other's holder; one CI run cannot.
