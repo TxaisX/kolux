@@ -56,8 +56,13 @@ export default function WindowSidebar() {
           allOff={allSwitchedOff(allAgents, settings)}
           pass={agentPass}
           onRefresh={refreshAgents}
-          page={page}
-          onPage={(next) => setPage((p) => (p === next ? null : next))}
+          page={screen === "terminals" ? page : null}
+          onPage={(next) => {
+            // C02-R5-01: the page draws only on Terminals, so the row brings that screen up; the
+            // toggle is guarded by the screen so a stale page cannot close the one being opened.
+            setScreen("terminals");
+            setPage((p) => (screen === "terminals" && p === next ? null : next));
+          }}
           refresh={refresh}
           createRequest={createRequest}
           createName={createName}
