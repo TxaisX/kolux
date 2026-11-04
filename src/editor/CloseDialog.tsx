@@ -126,6 +126,7 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
       )}
       {naming && naming.t.root && (
         <NamePrompt
+          raised
           path={naming.t.path}
           root={naming.t.root}
           text={() => textOf(naming.t.path) ?? ""}
