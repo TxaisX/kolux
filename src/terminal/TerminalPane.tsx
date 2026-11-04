@@ -8,7 +8,7 @@ import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, typ
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
-import PaneMenu, { menuKey, paneMenuItems, withChord } from "./PaneMenu";
+import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
 import ShellMark from "./ShellMark";
@@ -603,9 +603,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     };
     el.addEventListener("mousedown", claim, true);
     // TERM-094: the right-click that opened the link menu opens neither the pane menu nor right-click paste
-    // (T-710: a keyboard contextmenu, button -1, opened no link menu, so it goes on to the pane menu)
+    // (T-710: a keyboard contextmenu opened no link menu, so it goes on to the pane menu)
     const menuClick = (e: MouseEvent) => {
-      if (e.button < 0 || !hot || !opensMenu({ button: 2, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey }, keys.current.platform === "darwin", currentText().linkMenu)) return;
+      if (fromKeys(e) || !hot || !opensMenu({ button: 2, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey }, keys.current.platform === "darwin", currentText().linkMenu)) return;
       e.preventDefault();
       e.stopPropagation();
     };
@@ -1113,8 +1113,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     pasteRef.current = pasteApi;
     const rightClick = (e: MouseEvent) => {
       e.preventDefault();
-      // T-710: from the keyboard (button -1) it is always the menu, at the cursor, whatever the right-click settings
-      if (e.button < 0) return menuRef.current(e.clientX, e.clientY);
+      // T-710: from the keyboard it is always the menu, at the cursor, whatever the right-click settings
+      if (fromKeys(e)) return menuRef.current(e.clientX, e.clientY);
       if (!currentText().rightClickPaste) {
         // TERM-035: a program that tracks the mouse keeps its right-click (Shift takes it back for the menu).
         if (term.modes.mouseTrackingMode !== "none" && !e.shiftKey) return;
