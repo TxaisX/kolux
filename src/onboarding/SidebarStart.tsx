@@ -26,7 +26,9 @@ export default function SidebarStart() {
   const c = checklistOf(first, rec?.tried ?? []);
   const g = useGuideState(guideWanted(c, first), again, floor.stamp);
   const slot = sidebarSlot(c, first, g.settled);
-  if (slot === "checklist") return <Checklist compact record={rec} />;
+  // C16-R4-01: the checklist branch reads the same hide flag the guide branch does, so "Remove the
+  // checklist from the sidebar" (Guides.tsx) actually removes it. A null settings read is not hidden.
+  if (slot === "checklist") return checklistHidden(settings) ? null : <Checklist compact record={rec} />;
   // ONB-020: Hide from sidebar is remembered under its own flag (49-ux2: hiding is not completing; the old
   // setupChecklist false still reads as the legacy rule for profiles that saved it).
   // FIX-1: it is saved through the settings save in turn (merged with what is on disk), and when the save fails the

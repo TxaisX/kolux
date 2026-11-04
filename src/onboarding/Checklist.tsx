@@ -9,9 +9,11 @@ import { CHECKLIST_CHANGED } from "./firstRun";
 import type { GuideRecord } from "./guide";
 import "./onboarding.css";
 
-/** What each item's button does; the checklist never ticks an item itself. */
-const ACT: Record<ItemId, { label: string; run: () => void }> = {
-  connect: { label: "Connect", run: () => openSettings("agents") },
+/** What each item's button does; the checklist never ticks an item itself. Exported for its test. */
+export const ACT: Record<ItemId, { label: string; run: () => void }> = {
+  // C16-R4-01: the connect cards live on Accounts & keys, not Agents (which only holds switches for
+  // agents that are not signed in yet); the section anchor flashes the grid.
+  connect: { label: "Connect", run: () => openSettings("accounts", "connections") },
 };
 
 /** Reads the record on mount, when the window gets focus and when a milestone is written. */

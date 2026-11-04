@@ -5,8 +5,9 @@
 // are never drawn (JSX only builds elements), so only SidebarStart's own hooks run.
 // Limit (FIX-4): only useState, useRef and useEffect are swapped. If SidebarStart or useGuideState later
 // uses useCallback or useMemo, the real hook throws outside a render and this file fails loudly (it
-// fails safe); add the hook to the runtime below then. The checklist branch of the slot is covered by
-// sidebar.test.ts (sidebarSlot), not here, since children are never drawn.
+// fails safe); add the hook to the runtime below then. The slot's choice of branch is covered by
+// sidebar.test.ts (sidebarSlot); the checklist branch's own hide read is covered here (C16-R4-01),
+// but the Checklist's render is not, since children are never drawn.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 type Effect = { deps: unknown[] | undefined; cleanup?: () => void };
@@ -44,6 +45,7 @@ vi.mock("react", async (orig) => {
 
 const calls: string[] = [];
 let record: unknown = null;
+let settings: Record<string, unknown> = {};
 let patchFails = false;
 const patches: unknown[] = [];
 vi.mock("@tauri-apps/api/core", () => ({
@@ -55,7 +57,7 @@ vi.mock("@tauri-apps/api/core", () => ({
     }
     const answers: Record<string, unknown> = {
       guide_get: record,
-      get_settings: { notifyOnFinish: false },
+      get_settings: settings,
       scm_gh_account: null,
       settings_patch: null,
       project_list: [],
@@ -75,6 +77,7 @@ beforeEach(() => {
   calls.length = 0;
   patches.length = 0;
   patchFails = false;
+  settings = { notifyOnFinish: false };
   record = { tipsSeen: [], visited: [], tried: [], toursSeen: [], toursAuto: null, firstRun: { closed: true, outcome: "dismissed", checklistDismissed: true, milestones: {} } };
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -175,6 +178,21 @@ test("Hide from sidebar saves the choice and the entry goes (ONB-020)", async ()
   await app.settle();
   expect(calls).toContain("settings_patch");
   expect(app.out()).toBeNull();
+});
+
+test("Remove the checklist from the sidebar removes the checklist (C16-R4-01)", async () => {
+  // A profile that finished the wizard and never dismissed the checklist: the slot is the checklist.
+  record = { tipsSeen: [], visited: [], tried: [], toursSeen: [], toursAuto: null, firstRun: { closed: true, outcome: "completed", checklistDismissed: false, milestones: {} } };
+  settings = { setupChecklistHidden: true };
+  const app = await mount();
+  expect(app.out()).toBeNull();
+});
+
+test("a checklist that was not hidden still shows (C16-R4-01)", async () => {
+  record = { tipsSeen: [], visited: [], tried: [], toursSeen: [], toursAuto: null, firstRun: { closed: true, outcome: "completed", checklistDismissed: false, milestones: {} } };
+  const app = await mount();
+  // Children are never drawn here, so the slot's answer is the Checklist element itself.
+  expect((app.out() as { props: { compact?: boolean } }).props.compact).toBe(true);
 });
 
 type Entry = { props: { className: string; children: { type?: string; props?: { title?: string; role?: string; children?: unknown; onClick?: () => void } }[] } };
