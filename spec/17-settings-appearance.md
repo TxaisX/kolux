@@ -325,7 +325,7 @@ User sees: core commands have chords from the start, different per platform wher
 Rules: there are 138 commands, 82 with a chord and 56 without (since T-673, DT-C109), among them one
   new-tab-with-this-agent command per supported agent, generated from the agent list; Mod stands for
   Cmd on a Mac and for Ctrl on the other two platforms; some commands have a default only on macOS
-  (rename workspace, new agent tab); since T-673 rename tab, maximise floating workspace and minimise
+  (rename workspace; new agent tab too until T-746 gave it Ctrl+Alt+T, which also gave Show Space Mod+Alt+S); since T-673 rename tab, maximise floating workspace and minimise
   floating workspace have Windows and Linux chords too, and Move Focus to the Top Bar (Mod+Shift+P)
   is a chord a focused terminal passes through; Add a Session and Remove a
   Session have no chord, and Ctrl+Shift+N stays with Create worktree; command ids face the user because they key the keybindings

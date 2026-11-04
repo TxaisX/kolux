@@ -50,7 +50,7 @@ test("making Codex the default moves it to the top with the shortcut, and the ot
 });
 
 test("an unbound shortcut draws no chip, a launch in flight greys the rows, an empty catalogue says it is looking", () => {
-  const unbound = render({ defaultId: "claude" });
+  const unbound = render({ defaultId: "claude" }, { "tab.newAgent": [] }); // T-746 bound it by default; the user unbinds it here
   expect(unbound).not.toContain('class="kbd"');
   expect(unbound).not.toContain("Unassigned");
   const busy = render({ busy: true });
