@@ -40,6 +40,7 @@ import { claimsClick } from "./linkClick";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
 import { fromThisService, orphanOf, reattach, type Attach, type Reattached, type ServiceInfo } from "./reattach";
+import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
@@ -162,6 +163,9 @@ type Props = {
   resumed?: boolean;
   /** The session failed to start (SESS-024: the window drops the pane rather than leaving it blank). */
   onFailed?: (error: string) => void;
+  /** C24-R1-01: a restored tab could not take its terminal back; the window keeps it and stops
+   *  treating it as a restore, so a later failure of the same tab drops it as usual. */
+  onRestoreFailed?: () => void;
   /** A job title from the seat (SESS-024) wins over the workspace name. */
   title?: string;
   /** SESS-006: the shell picked in the create menu names itself in the header. */
@@ -254,7 +258,7 @@ const stagger = () =>
     }, 150 + 60 * waiting++),
   );
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -338,6 +342,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // pane; restart() re-runs the start line, or opens a plain shell, keeping the buffer.
   const [died, setDied] = useState<number | null>(null);
   const restart = useRef<(shell: boolean) => void>(() => {});
+  // C24-R1-01: a tab that came back from the saved layout and could not take its terminal back keeps
+  // its place, with the reason and a Try again; the layout keeps its key, so its saved output survives.
+  const [restoreAsk, setRestoreAsk] = useState<string | null>(null);
+  const retryRestore = useRef<() => void>(() => {});
   /** TERM-031: types into the program through the pane's ordered write chain (set once the terminal is up).
    *  TERM-074: with `only`, the text goes in only while that program is still the pane's (nothing after a restart). */
   const typeIn = useRef<(data: string, only?: number) => void>(() => {});
@@ -427,6 +435,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const isFocused = useRef(focused);
   isFocused.current = focused;
   failed.current = onFailed;
+  const restoreFailed = useRef(onRestoreFailed);
+  restoreFailed.current = onRestoreFailed;
 
   useEffect(() => {
     report.current?.(runningOf(status.kind));
@@ -998,6 +1008,24 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         setStatus({ kind: "starting" });
         void start(shell ? null : program, shell ? [] : args, false);
       };
+      // C24-R1-01: Try again asks the service for the terminal once more and starts on the answer. The
+      // saved output is already on screen, so nothing is replayed a second time.
+      retryRestore.current = () => {
+        if (!alive || number === undefined) return;
+        setRestoreAsk(null);
+        setStatus({ kind: "starting" });
+        void (async () => {
+          const back = await reattach(tauriService, number, serviceRef.current);
+          if (!alive) return;
+          if (back.kind === "refused" || back.kind === "timeout") {
+            setStatus({ kind: "failed", error: back.reason });
+            setRestoreAsk(back.reason);
+            return;
+          }
+          serviceRef.current = back.service;
+          await start(program, args, false, back);
+        })();
+      };
       try {
         // TERM-106: a pane back from a restart shows what it printed before, then a fresh shell. The
         // saved file is a transcript of everything this pane's terminal processed, so replaying it
@@ -1034,7 +1062,17 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         if (!alive) return;
         if (back !== null) {
           if (back.kind === "refused" || back.kind === "timeout") {
-            fail(back.reason);
+            // C24-R1-01: a tab that came back from the saved layout keeps its place when the service
+            // cannot hand its terminal back: it says why and offers Try again, and the layout keeps its
+            // key, so the saved output is not pruned at the next start. A fresh tab with no terminal to
+            // take back is still a session that failed to start (SESS-024).
+            if (!keepsTab(back, restored)) {
+              fail(back.reason);
+              return;
+            }
+            setStatus({ kind: "failed", error: back.reason });
+            setRestoreAsk(back.reason);
+            restoreFailed.current?.();
             return;
           }
           serviceRef.current = back.service;
@@ -1901,6 +1939,33 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
               </button>
               <button className="btn primary" autoFocus onClick={() => restart.current(false)}>
                 Restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {restoreAsk !== null && died === null && !notice && !pasteAsk && (
+        <div className="pane-ask" onMouseDown={(e) => e.stopPropagation()}>
+          <div
+            className="ask"
+            role="alertdialog"
+            aria-modal="true"
+            tabIndex={-1}
+            aria-label="The terminal did not come back"
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              trapTab(e);
+              if (e.key === "Escape") closeRef.current?.();
+            }}
+          >
+            <h2 className="ask-title">This tab's terminal did not come back</h2>
+            <p className="ask-body">{restoreAsk}. The tab and its saved output are kept.</p>
+            <div className="btn-row">
+              <button className="btn" onClick={() => closeRef.current?.()}>
+                Close pane
+              </button>
+              <button className="btn primary" autoFocus onClick={() => retryRestore.current()}>
+                Try again
               </button>
             </div>
           </div>

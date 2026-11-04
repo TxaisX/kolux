@@ -54,6 +54,25 @@ test("VIEW 089: once Delete is chosen the row asks first, with Delete and Keep",
   expect(invoke).not.toHaveBeenCalled();
 });
 
+test("C28-R5-01: Delete on a session a pane holds says so, sends the open list, and is still not a second gate", async () => {
+  const open: [string, string][] = [["claude", "abc-123"], ["claude", "other-1"]];
+  const html = renderToString(createElement(SessionFiles, { session: s, onNote: () => {}, onDeleted: () => {}, asking: true, open }));
+  expect(html).toContain("open in a pane");
+  expect(html).toContain("Delete"); // the button still works: a retained pane holds no writer
+  invoke.mockResolvedValue(2);
+  expect(await runFileAction("delete", s, open)).toContain("2 items");
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("session_delete", { agent: "claude", id: "abc-123", open });
+});
+
+test("C28-R5-01: a row whose session no pane holds asks the plain question and sends no open list", async () => {
+  const open: [string, string][] = [["claude", "other-1"]];
+  const html = renderToString(createElement(SessionFiles, { session: s, onNote: () => {}, onDeleted: () => {}, asking: true, open }));
+  expect(html).not.toContain("open in a pane");
+  invoke.mockResolvedValue(1);
+  expect(await runFileAction("delete", s, open)).toContain("1 item");
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("session_delete", { agent: "claude", id: "abc-123", open });
+});
+
 test("UX: the delete question names the session, and falls back to the plain warning without a title", async () => {
   const { deleteQuestion } = await import("./files");
   expect(deleteQuestion("Fix the login bug")).toBe('Delete "Fix the login bug" and its files? This cannot be undone.');

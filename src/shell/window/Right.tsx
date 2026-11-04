@@ -10,6 +10,7 @@ import { type Created } from "../../projects/model";
 import { applySettings } from "../../projects/settingWrite";
 import { SCM_AGENT_KEY, SCM_LINKED_PR_KEY, linkedPrs } from "../../scm/model";
 import { FOLDER_TAB_KEY, rememberTab } from "../../sessions/folderTabs";
+import { openSessions } from "../../sessions/openPanes";
 import { saveChanged } from "../../settings/saveChanged";
 import { panesIn } from "../../workspaces";
 import { useWindow } from "./store";
@@ -47,7 +48,7 @@ export default function WindowRight() {
       {right.open && right.tab === "insights" && <InsightsPanel sessions={liveSessions(panes, agentOf, statusOf, turn, stamp, running, stale)} onJump={openPane} />}
       {/* VIEW-080 (T-168, T-169): the Agents tab lists past sessions of every agent in the saved scope. */}
       {right.open && right.tab === "agents" && (
-        <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals} shell={shells[0]?.program ?? null} onResume={(s, plan) => void resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan).then((ok) => ok && setScreen(classic ? "terminals" : "agents"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} />
+        <AgentsPanel settings={settings} onSave={saveSetting} activeDir={activeDir} projects={projects} projectDirs={Object.entries(owner).filter(([, p]) => p === projectOf(activeDir)).map(([d]) => d)} rescanKey={panes.length} visible={terminals} shell={shells[0]?.program ?? null} onResume={(s, plan) => void resumeOrFocus(s, plan)} onResumeChat={(s, plan) => void resumeIn(s.agent, plan, s.id).then((ok) => ok && setScreen(classic ? "terminals" : "agents"))} openDirs={[...new Set(panes.map((p) => p.cwd).filter((d): d is string => d !== null))]} onJump={(d) => setActiveDir(d)} openPanes={openSessions(panes)} />
       )}
       {right.open && right.tab === "attached" && activeDir !== null && <AttachedWorktreesTab folder={activeDir} worktrees={wsKind.worktrees} onOpen={(path) => { setScreen("terminals"); select(path, null); }} />}
       {right.open && right.tab === "prchecks" && activeDir !== null && <FolderChecksTab folder={activeDir} worktrees={wsKind.worktrees} />}

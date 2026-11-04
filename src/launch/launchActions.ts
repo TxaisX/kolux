@@ -16,7 +16,7 @@ import { applySetting } from "../projects/settingWrite";
 import { startFields } from "../projects/startArgs";
 import { livePane } from "../sessions/livePane";
 import type { Session } from "../sessions/model";
-import type { ResumePlan } from "../sessions/resume";
+import { resumedFields, type ResumePlan } from "../sessions/resume";
 import { saveChanged } from "../settings/saveChanged";
 import { openDefaultTabs } from "../setup/DefaultTabs";
 import { trustedSetup } from "../setup/TrustPrompt";
@@ -192,7 +192,8 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
   // VIEW-085 (T-169): a past session resumed in a new tab, in the folder the plan names (the session's
   // own worktree, else the one in front), on the agent's resume line from settings.
-  const resumeIn = async (agentId: string, plan: ResumePlan) => {
+  // C28-R5-01: the pane records the id it was resumed with, so the live guard sees the session at once.
+  const resumeIn = async (agentId: string, plan: ResumePlan, id?: string) => {
     const agent = agents.find((a) => a.id === agentId);
     const dir = plan.cwd ?? activeDir;
     if (!agent || dir === null) return setNotice(agent ? "Open a workspace first, then resume the session in it." : `${agentId} is not installed here, so its session cannot be resumed.`);
@@ -203,7 +204,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
     const key = nextKey.current++;
     const line = plan.line;
-    const pane: Pane = { key, cwd: dir, branch: panesIn(panes, dir)[0]?.branch ?? null, agent: paneMark(agent, line), agentId: agent.id, resumed: true, ...startFields(line, agent.program) };
+    const pane: Pane = { key, cwd: dir, branch: panesIn(panes, dir)[0]?.branch ?? null, agent: paneMark(agent, line), agentId: agent.id, ...resumedFields(id), ...startFields(line, agent.program) };
     setPanes((ps) => {
       const free = freeCell(cellsOf(panesIn(ps, dir)));
       return free ? ps.map((p) => (p === free ? pane : p)) : [...ps, pane];
@@ -220,7 +221,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       key = livePane(panes, s, d?.prompt ?? null);
     }
     const pane = key === null ? undefined : panes.find((p) => p.key === key);
-    if (!pane) return resumeIn(s.agent, plan);
+    if (!pane) return resumeIn(s.agent, plan, s.id);
     if (pane.cwd !== null) setActiveDir(pane.cwd);
     setFocused(pane.key);
   };

@@ -69,3 +69,11 @@ test("VIEW-115: the list's own settings, folders, shell, visibility and rescan k
   expect(sameShown(shown, { ...shown, visible: false })).toBe(false);
   expect(sameShown(shown, { ...shown, rescanKey: 2 })).toBe(false);
 });
+
+test("C28-R5-01: the memo redraws when a session becomes (or stops being) open in a pane", () => {
+  const open: [string, string][] = [["claude", "s-1"]];
+  expect(sameShown({ ...shown, openPanes: open }, { ...shown, openPanes: [["claude", "s-1"]] })).toBe(true); // an equal list is not a redraw
+  expect(sameShown({ ...shown, openPanes: [] }, { ...shown, openPanes: open })).toBe(false); // a row's warning can now show
+  expect(sameShown({ ...shown, openPanes: open }, { ...shown, openPanes: [] })).toBe(false); // and it goes when the pane does
+  expect(sameShown({ ...shown, openPanes: open }, { ...shown })).toBe(false);
+});

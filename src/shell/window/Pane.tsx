@@ -204,6 +204,9 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       onPty={(id, account) => {
         ptys.current[p.key] = id;
         startWatch.seen(p.key);
+        // C24-R1-01: the tab has its terminal, so it is no longer a restore in flight: a later failure
+        // of this tab drops it as usual instead of being kept as a restored one.
+        restoredKeys.current.delete(p.key);
         // SESS-032 (T-163): an agent's opening prompt is handed over by Rust exactly once; a
         // prompt that does not go in is said in a toast.
         if (p.typed && p.agent !== "shell") void deliverPrompt(invoke, id, p.typed, agents.find((a) => a.id === p.agentId)?.name ?? p.agent).then((lost) => lost && setToast(lost));
@@ -222,6 +225,12 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
         const then = afterSetup.current[p.key];
         delete afterSetup.current[p.key];
         then?.();
+      }}
+      // C24-R1-01: the tab could not take its terminal back; it stays, so it is no longer a restore in
+      // flight and the loaded latch does not wait on it, and the pane's own notice is the only warning.
+      onRestoreFailed={() => {
+        restoredKeys.current.delete(p.key);
+        startWatch.seen(p.key);
       }}
       onSplit={(dir) => splitPane(p.key, dir)}
       dragCell={!board && showsDragHandle(shown.length) ? { onStart: () => (dragging.current = { cell: groupOf(p) }), onEnd: () => (dragging.current = null, setDropHint(null)) } : undefined}

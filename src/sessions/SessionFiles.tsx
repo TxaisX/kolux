@@ -10,9 +10,14 @@ type Props = {
   onDeleted: () => void;
   /** Starts with the question showing (tests). */
   asking?: boolean;
+  /** C28-R5-01: the (agent, session) pairs the window has open in a pane; Delete warns about this row's
+   *  own and the back end refuses it. A warning, not a second gate: a retained pane holds no writer. */
+  open?: readonly [string, string][];
 };
 
-export default function SessionFiles({ session, onNote, onDeleted, asking = false }: Props) {
+export const heldByPane = (open: readonly [string, string][], s: Pick<Session, "agent" | "id">): boolean => open.some(([agent, id]) => agent === s.agent && id === s.id);
+
+export default function SessionFiles({ session, onNote, onDeleted, asking = false, open = [] }: Props) {
   const [ask, setAsk] = useState(asking);
   // Swapping Delete… for Keep must not drop the keyboard: Keep takes focus when asked, Delete… gets it back after Keep.
   const del = useRef<HTMLButtonElement>(null);
@@ -25,7 +30,7 @@ export default function SessionFiles({ session, onNote, onDeleted, asking = fals
   }, [ask]);
   const run = (action: FileAction) => {
     setAsk(false);
-    runFileAction(action, session).then(
+    runFileAction(action, session, open).then(
       (text) => {
         onNote(text);
         if (action === "delete") onDeleted();
@@ -42,6 +47,7 @@ export default function SessionFiles({ session, onNote, onDeleted, asking = fals
       <>
         <span className="sb-hint warn" role="alert">
           {deleteQuestion(session.title)}
+          {heldByPane(open, session) && " It is open in a pane, so Kolux refuses the delete while that pane runs it."}
         </span>
         <button type="button" className="btn danger" onClick={() => run("delete")}>
           Delete
