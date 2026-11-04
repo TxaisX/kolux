@@ -123,7 +123,7 @@ test("Warp: a save that did not reach the disk leaves the window unpainted and s
   const box = await open(WarpImportBox, "Look for my Warp themes", { settings, save: makeSave(settings) });
   const tick = find(box.draw(), (e) => e.props["aria-label"] === "Bring in night")!;
   tick.props.onChange!({ target: { checked: true } });
-  await box.click("Bring in 1");
+  await box.click("Bring in 1 scheme");
   expect(h.saves).toHaveLength(1);
   expect(h.painted).toBe(0);
   expect(text(box.draw())).toContain("The themes could not be saved, so nothing was changed. Try again.");

@@ -72,7 +72,8 @@ import { shortPath } from "./diffNotes";
 import { findSupport, openFind } from "./find";
 import { conflictColours, conflictField, goConflict } from "./conflicts";
 import { useKeymap, useLabel } from "../keys/KeymapContext";
-import { matchEvent } from "../keys/keymap";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf, matchEvent } from "../keys/keymap";
 import { Contents, FindBar, selectedIn, type FindOpen } from "./NoteTools";
 import { replaceInRich } from "./notefind";
 import { outline } from "./toc";
@@ -815,16 +816,16 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
         {conflicts > 0 && sourceShown && (
           <span className="conflict-nav" role="group" aria-label="Merge conflicts">
             <span className="count">{conflicts === 1 ? "1 conflict" : `${conflicts} conflicts`}</span>
-            <button className="ib up" title="Previous conflict (Shift+F7)" aria-label="Previous conflict" onClick={() => stepConflicts(-1)}>
+            <button className="ib up" title={withChord("Previous conflict", labelOf(keymap, "editor.previousChange"))} aria-label="Previous conflict" onClick={() => stepConflicts(-1)}>
               <ChevronDown size={12} />
             </button>
-            <button className="ib" title="Next conflict (F7)" aria-label="Next conflict" onClick={() => stepConflicts(1)}>
+            <button className="ib" title={withChord("Next conflict", labelOf(keymap, "editor.nextChange"))} aria-label="Next conflict" onClick={() => stepConflicts(1)}>
               <ChevronDown size={12} />
             </button>
           </span>
         )}
         <span className="right">
-          <button className="ib" onClick={() => onClose?.()} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={() => onClose?.()} title={withChord("Close tab", labelOf(keymap, "tab.close"))}>
             <Close size={12} />
           </button>
         </span>

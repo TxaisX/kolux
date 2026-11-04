@@ -4,7 +4,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import AutomationsPage, { type Data } from "./AutomationsPage";
+import AutomationsPage, { HermesRuns, type Data, type HermesState } from "./AutomationsPage";
 
 type Initial = NonNullable<Parameters<typeof AutomationsPage>[0]["initial"]>;
 const render = (initial: Initial, o: { projects?: { id: string; name: string; path: string }[]; onClose?: () => void } = {}) =>
@@ -229,4 +229,25 @@ test("UX2: deleting a Hermes job says it is removed from Hermes itself", () => {
   const html = render({ data: { automations: [hermesRow], runs: [] }, open: "hermes:j1", asking: "hermes:j1" });
   expect(html).toContain("This removes the job from Hermes itself");
   expect(html).not.toContain("Its run history goes with it.");
+});
+
+// T-749 (DT-C185): a Hermes job's Runs tab reads its saved runs from Hermes, with an error and an empty state of its own.
+const hermes = (initial: HermesState) => renderToString(createElement(HermesRuns, { jobId: "j1", show: true, initial }));
+
+test("T-749: a Hermes row's Runs tab reads Hermes' runs instead of saying there are none", () => {
+  const html = render({ data: { automations: [hermesRow], runs: [] }, open: "hermes:j1" });
+  expect(html).toContain("Reading Hermes&#x27; runs");
+  expect(html).toContain("Runs shows its last ten saved runs");
+  expect(render({ data: { automations: [clawRow], runs: [] }, open: "openclaw:c1" })).not.toContain("Reading Hermes");
+});
+
+test("T-749: each saved run opens to its sections; a failed read offers Try again; none has its own line", () => {
+  const html = hermes({ runs: [{ file: "2026-11-03_09-00.md", sections: [{ title: "Response", body: "inbox is clear" }] }] });
+  expect(html).toContain("<summary>2026-11-03_09-00.md</summary>");
+  expect(html).toContain("<strong>Response</strong>");
+  expect(html).toContain("inbox is clear");
+  const bad = hermes({ error: "the run folder could not be read" });
+  expect(bad).toContain("role=\"alert\"");
+  expect(bad).toContain("Try again");
+  expect(hermes({ runs: [] })).toContain("Hermes has no saved runs for this job yet.");
 });

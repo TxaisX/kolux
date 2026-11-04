@@ -1197,7 +1197,16 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                       className={`scm-commit-row${picked?.hash === c.hash ? " sel" : ""}`}
                       data-commit-row={c.short}
                       title={c.message}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={picked?.hash === c.hash}
                       onClick={() => pickCommit(c)}
+                      onKeyDown={(e) => {
+                        if ((e.key === "Enter" || e.key === " ") && !e.ctrlKey && !e.metaKey) {
+                          e.preventDefault();
+                          pickCommit(c);
+                        }
+                      }}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setCtx({ x: Math.min(e.clientX, window.innerWidth - 240), y: Math.min(e.clientY, window.innerHeight - 130), commit: c });

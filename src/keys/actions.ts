@@ -95,11 +95,11 @@ export const actions: Action[] = [
   a("floatingTerminal.toggle", "Toggle Floating Terminal", "global", ["Mod+Alt+A"], { terminalSafe: true }),
   a("floatingWorkspace.maximize", "Maximize Floating Workspace Panel", "global", ["Mod+Shift+Backslash"], { darwin: ["Mod+Alt+Shift+A"] }),
   a("view.inbox", "Show Inbox", "global", []),
-  a("view.tower", "Show Tower", "global", []),
+  a("view.tower", "Show Tower", "global", [], { keywords: ["agent", "dashboard"] }), // T-760: the old Agent Dashboard row's word
   // T-548 (OD-11): one key moves new panes to the provider's next account; unbound until Txais picks a chord.
   a("account.switchClaude", "Switch Claude account", "global", [], { keywords: ["account", "sign in", "login"] }),
   a("account.switchCodex", "Switch Codex account", "global", [], { keywords: ["account", "sign in", "login"] }),
-  a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake"] }),
+  a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake", "toggle"] }),
   a("view.floor", "Show Floor", "global", []),
   // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there.
   a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+Shift+P"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),

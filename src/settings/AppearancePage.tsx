@@ -8,9 +8,10 @@ import { SearchFolds } from "./search";
 import { saveChanged, settingsDiff } from "./saveChanged";
 import { applyAppearance, buildTheme, customOf, isDark, MODES, previewOf, readAppearance, SPAN, swatch, themeLabel, terminalFor, themeVars, THEMES, uiFont, monoFont, writeAppearance, WEIGHTS, THEMED_SCREENS, type Appearance, type FontWeight, type Mode } from "../theme";
 import { importScheme, type CustomScheme } from "../terminal/schemes";
-import { parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
+import { bringIn, parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
 import { schemeOptions, SchemeList } from "./SchemePicker";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { fontStack, loadFonts, rankFonts } from "./fonts";
 import { FIELDS as STATUS_FIELDS, readStatusBar, STATUS_ITEMS, toggleItem } from "../chrome/statusItems";
 import { CHROME, chromeShown, windowSummary } from "../chrome/chromeItems";
@@ -404,7 +405,7 @@ function SchemeImport({ look, onChange }: { look: Appearance; onChange: (a: Appe
   return (
     <div className="scheme-import">
       <label className="scheme-add">
-        <span>Bring in from Warp or Ghostty</span>
+        <span>Bring in from Ghostty or Warp</span>
         <input type="file" aria-label="Warp theme or Ghostty configuration files" multiple accept=".yaml,.yml,.conf,.config,text/plain,*" onChange={(e) => void read(e.target.files).finally(() => (e.target.value = ""))} />
       </label>
       <p className="conn-detail">Pick Warp theme files (.yaml) or your Ghostty configuration file. Nothing changes until you tick schemes and apply.</p>
@@ -439,7 +440,7 @@ function SchemeImport({ look, onChange }: { look: Appearance; onChange: (a: Appe
           )}
           <div className="btn-row">
             <button type="button" className="btn" disabled={ticked.size === 0} onClick={apply}>
-              Bring in {ticked.size || ""}
+              {bringIn(ticked.size)}
             </button>
             <button type="button" className="btn" onClick={() => setIncoming([])}>
               Cancel
@@ -607,10 +608,9 @@ export default function AppearancePage() {
     waiting.current = next;
     timer.current = window.setTimeout(flush, 250);
   };
-  const shown = error ?? (look ? null : status.error); // a first read that failed; later ones show in the Window card
   return (
     <>
-      {shown && <p className="conn-detail warn">{shown}</p>}
+      {error ? <p className="conn-detail warn">{error}</p> : <SettingsError error={look ? null : status.error} loaded={false} onRetry={status.retry} />}
       {look && <AppearanceView look={look} onChange={change} languagePart={status.settings && <LanguageView value={savedLanguage(status.settings[LANGUAGE_FIELD])} onPick={(v) => { applyLanguage(v); void status.save({ [LANGUAGE_FIELD]: v }); }} />} windowPart={<WindowSwitches {...status} />} windowSummary={status.settings ? windowSummary(status.settings) : ""} />}
       {look && <AppLookCard />}
     </>

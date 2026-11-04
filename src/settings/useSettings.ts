@@ -32,13 +32,16 @@ export function useSettings() {
   const race = useRef(createLoadRace());
   // T-735: the last copy known to be on disk (load, broadcasts, read-backs), never an optimistic change.
   const disk = useRef<Record<string, unknown> | null>(null);
+  // T-752 (DT-C188): a first read that failed can be asked again (the page's Try again).
+  const reread = useRef(() => {});
   useEffect(() => {
     let gone = false;
     const read = () =>
       invoke<Record<string, unknown>>("get_settings").then(
-        (s) => !gone && ((disk.current = s), setSettings(race.current.loaded(s))),
+        (s) => !gone && ((disk.current = s), setError(null), setSettings(race.current.loaded(s))),
         (e) => !gone && setError(String(e)),
       );
+    reread.current = () => (setError(null), void read());
     void read();
     const off = listen("settings-saved", (e) => {
       const b = readBroadcast(e.payload);
@@ -71,5 +74,5 @@ export function useSettings() {
           .then(() => false);
       });
   };
-  return { settings, error, save };
+  return { settings, error, save, retry: () => reread.current() };
 }
