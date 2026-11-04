@@ -22,6 +22,7 @@ import { MAX_DROP_BYTES, projectDrop, refuseDrop } from "./desktopDrops";
 import FileIcon from "./FileIcon";
 import { fileTargetsOf, loadTargets, openFileIn, openIn, type App, type Target } from "./openIn";
 import ContentSearch from "./ContentSearch";
+import Ask from "../chrome/Ask";
 import "./explorerBar.css";
 import { EXPAND_CAP, insideDir, menuLabel, nextWave, openRow, withExtraMenu, type AnyMenuId, type OpenFile } from "./explorerBar";
 import { isLog } from "./logFollow";
@@ -864,18 +865,14 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         </div>
       )}
       {asking && (
-        <div className="notice ex-ask" role="alertdialog" aria-label="Delete" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setAsking(null), back())}>
-          <span>
-            {wsl ? "Delete" : "Move"} {asking.length === 1 ? baseName(asking[0]) : `${asking.length} items`} {wsl ? "for good? A WSL share has no trash." : "to the trash?"}
-          </span>
-          <button className="btn" onClick={() => doDelete(asking)}>
-            {wsl ? "Delete" : "Move to trash"}
-          </button>
-          {/* T-722: the question opens on Cancel, so an Enter straight after Delete deletes nothing. */}
-          <button className="btn" autoFocus onClick={() => (setAsking(null), back())}>
-            Cancel
-          </button>
-        </div>
+        <Ask
+          title="Delete"
+          body={`${wsl ? "Delete" : "Move"} ${asking.length === 1 ? baseName(asking[0]) : `${asking.length} items`} ${wsl ? "for good? A WSL share has no trash." : "to the trash?"}`}
+          confirm={wsl ? "Delete" : "Move to trash"}
+          safe={!wsl}
+          onConfirm={() => doDelete(asking)}
+          onCancel={() => (setAsking(null), back())}
+        />
       )}
       {note && (
         <div className={`notice${note.bad ? "" : " ex-note"}`} role={note.bad ? "alert" : "status"}>

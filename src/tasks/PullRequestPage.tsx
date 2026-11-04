@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Close } from "../chrome/icons";
 import { inTextField, overlayShowing } from "../chrome/fullPage";
+import Ask from "../chrome/Ask";
 import GhBanner, { classify } from "./GhBanner";
 import Markdown from "./MarkdownView";
 import { safeHref } from "./markdown";
@@ -443,17 +444,13 @@ export default function PullRequestPage({ target, added, onClose, workspace = nu
                     Merge...
                   </button>
                 ) : (
-                  <div role="alertdialog" aria-label="Confirm merge">
-                    <p>
-                      This {method}s #{page.number} into {page.baseRef} on GitHub. It cannot be undone from here.
-                    </p>
-                    <button className="btn danger" disabled={busy} onClick={() => void act(async () => { try { await invoke("pr_merge", { ...args, method, confirmed: true, sha: page.headSha }); } finally { setSure(false); } }, "Merged.")}>
-                      Yes, merge it
-                    </button>
-                    <button className="btn" onClick={() => setSure(false)}>
-                      Cancel
-                    </button>
-                  </div>
+                  <Ask
+                    title="Confirm merge"
+                    body={`This ${method}s #${page.number} into ${page.baseRef} on GitHub. It cannot be undone from here.`}
+                    confirm="Yes, merge it"
+                    onConfirm={() => busy || void act(async () => { try { await invoke("pr_merge", { ...args, method, confirmed: true, sha: page.headSha }); } finally { setSure(false); } }, "Merged.")}
+                    onCancel={() => setSure(false)}
+                  />
                 )}
               </>
             )}
