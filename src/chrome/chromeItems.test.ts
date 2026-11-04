@@ -82,14 +82,14 @@ describe("T-248-a menu bar state (APP-009, SET-020, SET-009)", () => {
     expect(st.accelerators).not.toHaveProperty("screen.floor"); // the palette row "Show Floor" is where the chord is printed (reach.test.ts)
   });
 
-  it("Edit goes to a focused field, else only Copy and Select All reach the terminal, and Paste waits", () => {
+  it("Edit goes to a focused field, and Paste reaches the field or the terminal (C01-R5-01)", () => {
     expect(menuEdit("edit.undo", true)).toEqual({ field: "undo" });
     expect(menuEdit("edit.selectAll", true)).toEqual({ field: "selectAll" });
     expect(menuEdit("edit.copy", false)).toEqual({ terminal: "copy" });
     expect(menuEdit("edit.selectAll", false)).toEqual({ terminal: "selectAll" });
     for (const id of ["edit.undo", "edit.redo", "edit.cut"]) expect(menuEdit(id, false)).toBeNull();
-    expect(menuEdit("edit.paste", true)).toBeNull();
-    expect(menuEdit("edit.paste", false)).toBeNull();
+    expect(menuEdit("edit.paste", true)).toEqual({ field: "paste" });
+    expect(menuEdit("edit.paste", false)).toEqual({ terminal: "paste" });
     expect(menuEdit("zoom.in", true)).toBeNull();
   });
 });

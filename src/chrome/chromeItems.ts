@@ -71,16 +71,17 @@ export function menuBarState(s: Record<string, unknown>, screen: string, chords:
 
 /** A menu tick box was clicked: the settings field it flips and the value to save, or null. */
 /** APP-009 Edit on Windows and Linux: what an edit.* menu click does. A focused text field outside a
- * terminal takes the page's own command. Otherwise only Copy and Select All go to the focused
- * terminal, as calls and never as a key press, so a rebound chord or an empty selection can't reach the
- * agent; undo, redo and cut do nothing there. Paste waits for the core lane's attachPaste. */
-export type MenuEdit = { field: "undo" | "redo" | "cut" | "copy" | "selectAll" } | { terminal: "copy" | "selectAll" } | null;
-const EDIT_OPS = ["undo", "redo", "cut", "copy", "selectAll"] as const;
+ * terminal takes the page's own command, paste included (C01-R5-01: the menu reads the clipboard and
+ * inserts it where the caret is). Otherwise only Copy, Paste and Select All go to the focused
+ * terminal, as calls and never as a key press, so a rebound chord or an empty selection can't reach
+ * the agent; undo, redo and cut do nothing there. */
+export type MenuEdit = { field: "undo" | "redo" | "cut" | "copy" | "selectAll" | "paste" } | { terminal: "copy" | "selectAll" | "paste" } | null;
+const EDIT_OPS = ["undo", "redo", "cut", "copy", "paste", "selectAll"] as const;
 export function menuEdit(id: string, inField: boolean): MenuEdit {
   const op = EDIT_OPS.find((o) => id === "edit." + o);
   if (!op) return null;
   if (inField) return { field: op };
-  return op === "copy" || op === "selectAll" ? { terminal: op } : null;
+  return op === "copy" || op === "selectAll" || op === "paste" ? { terminal: op } : null;
 }
 
 export function menuSettingFlip(s: Record<string, unknown>, id: string): [string, boolean] | null {

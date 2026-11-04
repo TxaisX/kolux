@@ -92,9 +92,11 @@ type Status = { kind: "starting" } | { kind: "running"; id: number; account: str
 /** council D2 MERGE 31 (3): the host element of a dev build carries its terminal for the evidence probes. */
 type DevHost = HTMLDivElement & { __koluxTerm?: Terminal; __koluxLinks?: (y: number) => unknown[] };
 
-/** APP-009 / T-248-a: the menu's Edit > Copy and Select All reach the focused terminal through this.
- * They are calls, never key presses: an empty selection copies nothing, and a rebound chord can't break it. */
-export const focusedTerminalEdit: { current: ((op: "copy" | "selectAll") => void) | null } = { current: null };
+/** APP-009 / T-248-a: the menu's Edit > Copy, Paste and Select All reach the focused terminal through
+ * this. They are calls, never key presses: an empty selection copies nothing, and a rebound chord
+ * can't break it. Paste goes through the pane's own clipboard path (limit, bracket and the
+ * multi-line ask), the same one its right-click menu uses. */
+export const focusedTerminalEdit: { current: ((op: "copy" | "selectAll" | "paste") => void) | null } = { current: null };
 
 /** ACCT-064: a centred question over the terminal; Enter takes the first button, Escape the second. */
 export type PaneNotice = { title: string; body: string; primary: string; onPrimary: () => void; secondary?: string; onSecondary?: () => void };
@@ -311,7 +313,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!focused) return;
-    const fn = (op: "copy" | "selectAll") => {
+    const fn = (op: "copy" | "selectAll" | "paste") => {
+      if (op === "paste") return pasteRef.current();
       const term = termRef.current;
       if (!term) return;
       if (op === "selectAll") term.selectAll();
