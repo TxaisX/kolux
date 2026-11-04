@@ -39,7 +39,22 @@ impl Store {
             "PRAGMA journal_mode=WAL;
              CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
         )?;
-        Ok(Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default() })
+        let store = Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default() };
+        store.carry_setup_policy();
+        Ok(store)
+    }
+
+    /// C20-R1-01: the setup policy is one kv key, the one setup.rs reads. A profile that picked it
+    /// on the settings page before this change holds it in settings.json only, so it is carried
+    /// over once, when kv has no policy yet. Nothing reads the settings copy afterwards.
+    fn carry_setup_policy(&self) {
+        if self.get(crate::setup::POLICY_KEY).ok().flatten().is_some_and(|v| !v.trim().is_empty()) {
+            return;
+        }
+        let stored = self.try_settings().ok().and_then(|s| s.get(crate::setup::POLICY_KEY).and_then(|v| v.as_str()).map(str::trim).filter(|p| !p.is_empty()).map(str::to_string));
+        if let Some(p) = stored {
+            let _ = self.set(crate::setup::POLICY_KEY, &p);
+        }
     }
 
     /// Row 785: a settings file that lacks the look or the mode gets them, once, as the page

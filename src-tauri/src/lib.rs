@@ -633,6 +633,8 @@ pub fn run() {
             setup::repo_setup_save,
             setup::repo_setup_remove,
             setup::repo_setup_policy_set,
+            setup::setup_policy_get, // C20-R1-01: one source, the kv the runner reads
+            setup::setup_policy_set,
             setup::repo_setup_wait_set,
             setup::repo_setup_mode_set,
             setup::repo_trust_clear,
