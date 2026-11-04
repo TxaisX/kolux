@@ -25,7 +25,7 @@ TESTS
   firewall-check -Baseline 0 new.
 
 REVIEW
-- pending
+- fresh sonnet-medium-review: A-, no high or medium. Lows left: an empty span on rows with no path adds a small gap (those rows are rare), and long file names are not truncated (cosmetic).
 
 BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
-- First load +76 B (main 0033ca09 1,489,655 B, branch 1,489,731 B, cap +80 raised from +60 by coordinator 57). A first version with its own class measured +94 B; the shared .muted class brought it to +76.
+- First load +76 B (main b2b6cd7f 1,488,823 B, branch 1,488,899 B, cap +80 raised from +60 by coordinator 57). A first version with its own class measured +94 B; the shared .muted class brought it to +76.
