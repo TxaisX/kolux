@@ -152,7 +152,7 @@ input { font: inherit; }
 .ex-link { flex: none; font-size: 10.5px; color: var(--fg-faint); }
 .ex-input { flex: 1; min-width: 0; height: 20px; padding: 0 4px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line-focus); border-radius: 4px; font: inherit; outline: none; }
 .explorer .notice { flex-wrap: wrap; }
-.notice.ex-ask, .notice.ex-note { color: var(--fg-muted); border-color: var(--line); }
+.notice.ex-note { color: var(--fg-muted); border-color: var(--line); }
 .explorer .notice span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sb-nav { padding: 8px 4px 0; }
 .row { display: flex; align-items: center; height: 32px; padding: 0 8px 0 13px; gap: 13px; border-radius: 6px; color: var(--fg-nav); white-space: nowrap; width: 100%; text-align: left; }
@@ -263,7 +263,6 @@ input { font: inherit; }
 .hint.push.good { color: var(--done); }
 .hint.push.warn { color: var(--warn); }
 .sb-form { margin: 4px 4px 6px; padding: 8px; border: 1px solid var(--line-focus); border-radius: 8px; font-size: 12px; color: var(--fg-muted); display: flex; flex-direction: column; gap: 6px; }
-.sb-form.warn { border-color: #7a3b1e; }
 .del-changes { margin: 0; padding-left: 16px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
 .del-force { display: flex; align-items: center; gap: 6px; font-weight: 400; }
 .sb-form .note { padding: 0; word-break: normal; overflow-wrap: anywhere; }
@@ -803,7 +802,6 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .acct-pick:focus-visible { outline: 2px solid var(--line-focus); outline-offset: -2px; }
 .acct-pick[aria-pressed="true"] { cursor: default; }
 .acct-name { margin: 2px 6px 8px; width: calc(100% - 12px); }
-.acct-confirm { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 8px; font-size: 12px; color: var(--fg); }
 .device-code { display: flex; flex-direction: column; gap: 6px; }
 .device-link { color: var(--fg); user-select: all; word-break: break-all; }
 .device-value { align-self: flex-start; padding: 4px 12px; border-radius: 6px; background: var(--chip-bg); color: var(--fg); font-size: 18px; letter-spacing: 0.12em; user-select: all; }
@@ -862,7 +860,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 [data-mode="light"] .usage-part.warn, [data-mode="light"] .conn-chip.expired, [data-mode="light"] .conn-chip.attention,
 [data-mode="light"] .conn-detail.warn, [data-mode="light"] .conn-switch small.warn, [data-mode="light"] .note.warn, [data-mode="light"] .signin-notice span { color: var(--warn); }
 [data-mode="light"] .note.error, [data-mode="light"] .btn.danger, [data-mode="light"] .notice { color: var(--danger); }
-[data-mode="light"] .btn.danger, [data-mode="light"] .notice, [data-mode="light"] .sb-form.warn, [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
+[data-mode="light"] .btn.danger, [data-mode="light"] .notice, [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
 [data-mode="light"] .btn.danger:hover:not(:disabled), [data-mode="light"] .branch:hover, [data-mode="light"] .sess:hover { background: var(--kbd-bg); }
 [data-mode="light"] .sb-tabs button, [data-mode="light"] .sb-next { color: var(--fg-nav); }
 [data-mode="light"] .branch .chev { color: var(--fg-label); }

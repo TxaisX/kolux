@@ -344,9 +344,10 @@ describe("UX audit: errors shown, Refresh, Escape and Back", () => {
     // window keydown listeners as the browser runs them: capture ones first, then bubble ones in the order added.
     type L = { f: (e: unknown) => void; capture: boolean };
     let keys: L[] = [];
+    const isCapture = (o: unknown) => o === true || (o as { capture?: boolean } | undefined)?.capture === true;
     const w = window as unknown as { addEventListener: (t: string, f: (e: unknown) => void, o?: unknown) => void; removeEventListener: (t: string, f: (e: unknown) => void, o?: unknown) => void };
-    w.addEventListener = (t, f, o) => void (t === "keydown" && keys.push({ f, capture: o === true }));
-    w.removeEventListener = (_t, f, o) => void (keys = keys.filter((k) => !(k.f === f && k.capture === (o === true))));
+    w.addEventListener = (t, f, o) => void (t === "keydown" && keys.push({ f, capture: isCapture(o) }));
+    w.removeEventListener = (_t, f, o) => void (keys = keys.filter((k) => !(k.f === f && k.capture === isCapture(o))));
     (doc as unknown as { querySelectorAll: () => unknown[] }).querySelectorAll = () => [];
     // The Tasks screen's own "Escape leaves the page" listener, added before the PR page opens.
     const leftPage = vi.fn();
@@ -354,7 +355,7 @@ describe("UX audit: errors shown, Refresh, Escape and Back", () => {
     const onClose = vi.fn();
     const c = await open({ onClose });
     const esc = async () => {
-      const ev = { key: "Escape", target: null, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+      const ev = { key: "Escape", target: null, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() {} };
       await fire(c, "keydown", c, {}); // lets React settle between presses
       for (const k of [...keys.filter((k) => k.capture), ...keys.filter((k) => !k.capture)]) k.f(ev);
       return ev;

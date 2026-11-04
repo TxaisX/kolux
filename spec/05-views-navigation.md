@@ -764,11 +764,19 @@ User sees: a small dialog with Cancel focused; Escape backs out; some prompts of
 Rules: Cancel holds focus when the dialog opens, so a stray Enter does not confirm; Enter confirms
   only on prompts that opt in, and only while the confirm button has focus; Escape always cancels;
   the don't-ask-again choice is saved only when the user confirms; backing out saves nothing, and
-  the tick does not carry into the next prompt.
+  the tick does not carry into the next prompt. Every plain confirm-or-cancel prompt is this one dialog: the
+  Settings reset buttons, the notes' Clear, an account's Remove, the sidebar's sleep, delete, remove and delete
+  group prompts, the picked-workspaces Remove, the Explorer's Delete and Confirm merge; none asks inline in its own
+  style.
 Acceptance:
   - [ ] Open a delete prompt and press Enter: nothing is deleted.
   - [ ] Tick don't ask again, press Escape: the next prompt still appears, unticked.
   - [ ] Tick don't ask again and confirm: that prompt no longer appears.
+  - [x] A reset button, the notes' Clear and an account's Remove open the dialog; Keep backs out, the confirm acts
+    once, Escape on the account Remove is Keep. (unit; evidence/T-729.txt)
+  - [x] The sidebar's take out and delete workspace prompts are the dialog, found by its role; remove project and
+    Confirm merge confirm by their button words; a pinned workspace shown twice opens one dialog. (unit;
+    evidence/T-729.txt)
 Compat: —
 Source: D-05-116
 
