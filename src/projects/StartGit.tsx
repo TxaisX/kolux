@@ -1,5 +1,6 @@
 // GIT-061: a plain folder added as a project can start Git here. The dialog previews the first
 // commit; a file whose name looks like a secret starts unticked and is left out unless chosen.
+import { trapTab } from "../chrome/dialogFocus";
 import { useState } from "react";
 import { GLOSSARY } from "../glossary";
 
@@ -28,10 +29,12 @@ export default function StartGit({ folder, files, busy, onStart, onFolder, onSca
         className="ask start-git"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Start Git in this folder"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
+          trapTab(e);
           if (e.key === "Escape") onCancel();
         }}
       >
