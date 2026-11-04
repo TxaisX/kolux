@@ -38,7 +38,7 @@ export function useSettings() {
     let gone = false;
     const read = () =>
       invoke<Record<string, unknown>>("get_settings").then(
-        (s) => !gone && ((disk.current = s), setSettings(race.current.loaded(s))),
+        (s) => !gone && ((disk.current = s), setError(null), setSettings(race.current.loaded(s))),
         (e) => !gone && setError(String(e)),
       );
     reread.current = () => (setError(null), void read());

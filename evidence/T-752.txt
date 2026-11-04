@@ -12,22 +12,23 @@ WHAT CHANGED (DT-C188)
 1. settings/useSettings.ts: returns retry(), which clears the error and reads the settings again.
 2. settings/SettingsError.tsx (new): the shared error line. When nothing loaded it reads "The settings could
    not be read: <reason>" with Try again; when settings are loaded (a failed save) it is the plain reason.
-   role="alert" on every page. Used by General, Git, Notifications, Terminal, Agents, Safety, Shortcuts and
+   When settings are loaded it says "The change could not be saved: <reason>" (T-757 item c). role="alert" on every page.
+   A read that succeeds clears the error, so a first-read error does not linger as a save error. Used by General, Git, Notifications, Terminal, Agents, Safety, Shortcuts and
    Appearance (Appearance keeps its own Window-card error first).
 3. settings/SettingsPage.tsx: a failed project_list keeps the projects it had, keeps the Repositories header,
    and shows "The repositories could not be listed: <reason>" with Try again, which lists them again.
 4. spec/17 SET-006: a T-752 note in Rules.
 
 TESTS
-- SettingsPage.loadfail.test.ts, 2 new: a failed project list keeps Repositories with the error, and Try
+- SettingsPage.loadfail.test.ts, 3 new (third: a failed save line names the save and has no Try again): a failed project list keeps Repositories with the error, and Try
   again brings the repository; a failed settings read shows the error and no General controls, and Try again
   brings the controls and removes the error.
 - Red-checked: both fail on main's sources.
-- vitest src/settings src/chrome src/onboarding: 149 files, 952 passed. pnpm exec tsc --noEmit -p . : clean.
+- vitest src/settings src/chrome src/onboarding: 149 files, 952 passed (first commit); src/settings after the save wording: 88 files, 495 passed. pnpm exec tsc --noEmit -p . : clean.
   plan-check OK; firewall-check -Baseline 0 new.
 
 REVIEW
-- sonnet-medium-review read-only pass: A-, no blockers, no mediums. Lows (blank page while a retry is in flight, a stale first-read error after a broadcast-triggered read, tests only on General) go to the after list.
+- sonnet-medium-review read-only pass: A-, no blockers, no mediums. Taken from its lows: a successful read clears the error. Other lows (blank page while a retry is in flight, tests only on General) go to the after list.
 
 BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
-- First load +78 B (main 5e481cf2 1,487,946 B, branch 1,488,024 B, cap +120).
+- First load +86 B (main 5e481cf2 1,487,946 B, branch 1,488,032 B, cap +120).

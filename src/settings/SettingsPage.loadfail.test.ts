@@ -62,3 +62,11 @@ test("settings that cannot be read say so with Try again, which brings the page'
   await until(() => confirmations(m.container).length === 1, "the General page's controls");
   expect(withText(main(m.container), "p", "could not be read")).toHaveLength(0);
 });
+
+test("a failed save keeps a plain line that says the change was not saved, with no Try again", async () => {
+  const { renderToString } = await import("react-dom/server");
+  const { SettingsError } = await import("./SettingsError");
+  const html = renderToString(createElement(SettingsError, { error: "disk full", loaded: true, onRetry: () => {} }));
+  expect(html).toContain("The change could not be saved: disk full");
+  expect(html).not.toContain("Try again");
+});
