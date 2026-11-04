@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { SendTarget } from "../editor/notes";
+import { useKeymap } from "../keys/KeymapContext";
+import { labelParts } from "../keys/keymap";
 import { useArm } from "./arm";
 import { addText, canRedo, canUndo, clearUndoable, dismissHint, drawMessage, type Drawing, empty, finishDrag, fitScale, hintSeen, paint, redo, type Shape, strokeFor, type Tool, toolForKey, toPicture, TOOLS, undo } from "./draw";
 import { asDataUrl, type Picture, sendPicture } from "./picture";
@@ -31,6 +33,7 @@ const store = (): Storage | null => {
 };
 
 export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Props) {
+  const os = useKeymap().platform; // T-756: Cmd on macOS, as the handler below takes it
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [drawing, setDrawing] = useState<Drawing>(empty);
   const [tool, setTool] = useState<Tool>("rect");
@@ -173,10 +176,10 @@ export function DrawCanvas({ picture, title, url, targets, onSend, onClose }: Pr
           </button>
         ))}
         <span className="draw-gap" />
-        <button type="button" className="btn" data-go="undo" disabled={!canUndo(drawing)} onClick={() => setDrawing(undo(drawing))} title="Undo (Ctrl+Z)">
+        <button type="button" className="btn" data-go="undo" disabled={!canUndo(drawing)} onClick={() => setDrawing(undo(drawing))} title={`Undo (${labelParts("Mod+Z", os).join("+")})`}>
           Undo
         </button>
-        <button type="button" className="btn" data-go="redo" disabled={!canRedo(drawing)} onClick={() => setDrawing(redo(drawing))} title="Redo (Ctrl+Shift+Z)">
+        <button type="button" className="btn" data-go="redo" disabled={!canRedo(drawing)} onClick={() => setDrawing(redo(drawing))} title={`Redo (${labelParts("Mod+Shift+Z", os).join("+")})`}>
           Redo
         </button>
         <button type="button" className="btn" data-go="clear" disabled={!drawing.shapes.length} onClick={() => setDrawing(clearUndoable(drawing))} title="Clear every mark (Undo brings them back)">

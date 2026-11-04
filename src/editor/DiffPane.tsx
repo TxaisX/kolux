@@ -32,6 +32,8 @@ import { editedText, notesOn, shortPath, sideOf, where, type LineNote, type Side
 import { oldSideDoc, unifiedSpot, withOldSideNote } from "./oldSide";
 import { noteCommand } from "./noteCommands";
 import { useKeymap } from "../keys/KeymapContext";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf } from "../keys/keymap";
 import { watchStatus } from "../scm/watch";
 import { askText, needsAsk } from "./bigDiff";
 import { bannerUp } from "./diskChange";
@@ -536,10 +538,10 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
   );
   const stepButtons = (
     <>
-    <button className="ib" disabled={!changes} onClick={() => step(-1)} title="Previous change (Shift+F7)" aria-label="Previous change">
+    <button className="ib" disabled={!changes} onClick={() => step(-1)} title={withChord("Previous change", labelOf(keys, "editor.previousChange"))} aria-label="Previous change">
       <ChevronDown size={12} style={{ transform: "rotate(180deg)" }} />
     </button>
-    <button className="ib" disabled={!changes} onClick={() => step(1)} title="Next change (F7)" aria-label="Next change">
+    <button className="ib" disabled={!changes} onClick={() => step(1)} title={withChord("Next change", labelOf(keys, "editor.nextChange"))} aria-label="Next change">
       <ChevronDown size={12} />
     </button>
     </>
@@ -578,7 +580,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
         <span className="right">
           {stepButtons}
           {actionsMenu}
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keys, "tab.close"))}>
             <Close size={12} />
           </button>
         </span>

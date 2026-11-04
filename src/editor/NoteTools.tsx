@@ -123,7 +123,7 @@ export function FindBar({ pane, root, open, replace, onClose }: FindProps) {
         <button className="ib" title="Next match (Enter)" aria-label="Next match" onClick={() => go(1)}>
           <ChevronDown size={12} />
         </button>
-        <button className="ib" title="Close (Escape)" aria-label="Close find" onClick={close}>
+        <button className="ib" title="Close (Esc)" aria-label="Close find" onClick={close}>
           <Close size={12} />
         </button>
       </div>

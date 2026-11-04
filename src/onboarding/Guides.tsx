@@ -188,7 +188,7 @@ function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean;
         <section className="guide-panel">
           <header>
             <h3>{words(step).name}</h3>
-            <button className="ib" title="Close (Escape)" onClick={onClose} autoFocus>
+            <button className="ib" title="Close (Esc)" onClick={onClose} autoFocus>
               <Close />
             </button>
           </header>
@@ -282,7 +282,7 @@ function Explore({ onClose }: { onClose: () => void }) {
         <section className="explore-main" role="tabpanel">
           <header>
             <span className="spacer" />
-            <button className="ib" title="Close (Escape)" onClick={onClose}>
+            <button className="ib" title="Close (Esc)" onClick={onClose}>
               <Close />
             </button>
           </header>
