@@ -2329,20 +2329,38 @@ pub fn workspace_remove(git: State<'_, Git>, store: StoreState<'_>, terminals: S
     remove_one(&git, &store, &terminals, &project, &path, force, &stamp, keep_branch)
 }
 
-/// One delete, as the command and the batch (PROJ-071) both run it.
+/// One delete, as the command and the batch (PROJ-071) both run it, archive script included.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn remove_one(git: &Git, store: &Mutex<Store>, terminals: &crate::terminal::Terminals, project: &Project, path: &str, force: bool, stamp: &str, keep_branch: Option<bool>) -> Result<Option<Kept>, String> {
+    remove_with(git, store, terminals, project, path, force, stamp, keep_branch, true)
+}
+
+/// remove_one, with `archive` saying whether kolux.yaml's archive script runs (the CLI's rm passes
+/// false until --run-hooks is wired, CLI-020).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn remove_with(git: &Git, store: &Mutex<Store>, terminals: &crate::terminal::Terminals, project: &Project, path: &str, force: bool, stamp: &str, keep_branch: Option<bool>, archive: bool) -> Result<Option<Kept>, String> {
     let now = remove_check(git, project, path)?;
     if let Some(why) = removal_refused(&now, force, stamp) {
         return Err(why);
     }
     // ORCH-058: a shell still sitting in the folder would keep Windows from deleting it, so its
     // terminals end first; one that cannot be shown gone blocks unless the force box waives it.
+    // T-715: before the archive script, so nothing else writes there while it runs.
     let stopped = terminals.kill_under(Path::new(path));
     if !force && !stopped.stuck.is_empty() {
         let n = stopped.stuck.len();
         return Err(format!("{n} process{} in this workspace did not stop. Tick Delete my changes too to delete it anyway, leaving {} running.", if n == 1 { "" } else { "es" }, if n == 1 { "it" } else { "them" }));
     }
+    // STAT-055 (T-715): the archive script runs in the folder before anything of it goes; one that
+    // fails or runs past its time stops the delete unless forced. One that ran and exited 0 may leave
+    // files there (a log, a marker), so the dirty check below is waived: the stamp check above
+    // already guarded the user's own changes.
+    let archived = archive
+        && match crate::setup::archive_on_remove(store, Path::new(&project.path), Path::new(path)) {
+            Ok(ran) => ran,
+            Err(e) if !force => return Err(format!("{}. It was not deleted.", e.trim_end_matches('.'))),
+            Err(_) => false,
+        };
     // FIX-2 (T-033-e review): what to keep is decided first, so the one `?` that can return early
     // runs before the watch ends; an early return after it would drop the handle below without
     // telling the page.
@@ -2359,7 +2377,7 @@ pub(crate) fn remove_one(git: &Git, store: &Mutex<Store>, terminals: &crate::ter
     // T-033-e: the Source Control watch on this folder ends first and its folder handles are
     // closed (joined) before git deletes the folder, so nothing of ours stands in the way.
     let watch = crate::scm::watch::unwatch_root(Path::new(path));
-    let kept = match remove_worktree(git, project, path, force, true) {
+    let kept = match remove_worktree(git, project, path, force || archived, true) {
         Ok(k) => k,
         Err(e) => {
             // FIX-1: the folder stays after all, so its panel is told to watch it again.
@@ -4826,6 +4844,68 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         assert!(remove_check(&git, &project, &repo.to_string_lossy()).is_err());
         remove_workspace(&git, &project, &inner.to_string_lossy(), true).unwrap();
         remove_workspace(&git, &project, &ws, true).unwrap();
+        drop(store);
+        for d in [profile, repo, place.root] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    #[test]
+    fn t715_removing_a_workspace_runs_its_trusted_archive_script_first() {
+        let git = Git::detect().unwrap();
+        let profile = temp("profile715");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        let repo = temp_repo("repo715");
+        let ok = "cd .. && echo done>archived.txt";
+        fs::write(repo.join("kolux.yaml"), format!("scripts:\n  archive: {ok}\n")).unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "archive script"]);
+        let project = add_project(&git, &store.lock().unwrap(), &repo).unwrap();
+        let place = nested(&temp("ws715"));
+        let terminals = crate::terminal::Terminals::default();
+        let remove = |ws: &str, force: bool| {
+            let check = remove_check(&git, &project, ws).unwrap();
+            remove_one(&git, &store, &terminals, &project, ws, force, &check.stamp, Some(false))
+        };
+        // SAFE-025: not trusted (Don't run, or nobody asked): the delete goes on and the script does not run
+        let first = create_workspace(&git, &place, &project, "untrusted", None).unwrap().worktree;
+        let done = Path::new(&first.path).parent().unwrap().join("archived.txt");
+        remove(&first.path, false).unwrap();
+        assert!(!Path::new(&first.path).exists() && !done.exists(), "an untrusted archive script never runs");
+        // trusted: it runs inside the workspace before the folder goes
+        crate::setup::trust_grant(&store.lock().unwrap(), &repo, "archive", ok, false).unwrap();
+        let second = create_workspace(&git, &place, &project, "trusted", None).unwrap().worktree;
+        let done = Path::new(&second.path).parent().unwrap().join("archived.txt");
+        remove(&second.path, false).unwrap();
+        assert_eq!(fs::read_to_string(&done).unwrap().trim(), "done", "the archive script ran");
+        assert!(!Path::new(&second.path).exists(), "and the folder went");
+        // a trusted script that fails stops the delete and says why; the force box deletes it anyway
+        let third = create_workspace(&git, &place, &project, "failing", None).unwrap().worktree;
+        let bad = "echo boom 1>&2 && exit 3";
+        fs::write(Path::new(&third.path).join("kolux.yaml"), format!("scripts:\n  archive: {bad}\n")).unwrap();
+        git_in(Path::new(&third.path), &["commit", "-q", "-am", "failing archive"]);
+        crate::setup::trust_grant(&store.lock().unwrap(), &repo, "archive", bad, false).unwrap();
+        let err = remove(&third.path, false).unwrap_err();
+        assert!(err.starts_with("The archive script failed with exit code 3: boom") && err.contains("It was not deleted"), "{err}");
+        assert!(Path::new(&third.path).exists(), "the folder stays");
+        remove(&third.path, true).unwrap();
+        assert!(!Path::new(&third.path).exists(), "forced, it goes");
+        // a trusted script that leaves a file in the workspace (a log) does not make it "dirty"
+        let fourth = create_workspace(&git, &place, &project, "writer", None).unwrap().worktree;
+        let writes = "echo log>left.txt && cd .. && echo in>wrote.txt";
+        fs::write(Path::new(&fourth.path).join("kolux.yaml"), format!("scripts:\n  archive: {writes}\n")).unwrap();
+        git_in(Path::new(&fourth.path), &["commit", "-q", "-am", "writing archive"]);
+        crate::setup::trust_grant(&store.lock().unwrap(), &repo, "archive", writes, false).unwrap();
+        remove(&fourth.path, false).unwrap();
+        assert!(Path::new(&fourth.path).parent().unwrap().join("wrote.txt").exists(), "it ran");
+        assert!(!Path::new(&fourth.path).exists(), "and the folder went without the force box");
+        // the CLI's rm (remove_with, archive false) never runs it, trusted or not (CLI-020)
+        fs::remove_file(&done).unwrap();
+        crate::setup::trust_grant(&store.lock().unwrap(), &repo, "archive", ok, false).unwrap();
+        let fifth = create_workspace(&git, &place, &project, "cli", None).unwrap().worktree;
+        let check = remove_check(&git, &project, &fifth.path).unwrap();
+        remove_with(&git, &store, &terminals, &project, &fifth.path, false, &check.stamp, Some(false), false).unwrap();
+        assert!(!Path::new(&fifth.path).exists() && !done.exists(), "the CLI's rm removes without the archive script");
         drop(store);
         for d in [profile, repo, place.root] {
             let _ = fs::remove_dir_all(d);

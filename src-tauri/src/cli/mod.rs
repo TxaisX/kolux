@@ -1030,7 +1030,7 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             let force = a["force"].as_bool().unwrap_or(false);
             let check = projects::remove_check(ctx.git, &project, &w.path)?;
             let by_record = projects::keeps_branch(&*ctx.store.lock().map_err(|e| e.to_string())?, &w.path);
-            let kept = projects::remove_one(ctx.git, ctx.store, ctx.terminals, &project, &w.path, force, &check.stamp, force.then_some(true))?;
+            let kept = projects::remove_with(ctx.git, ctx.store, ctx.terminals, &project, &w.path, force, &check.stamp, force.then_some(true), false)?;
             (ctx.notify)(json!({ "kind": "removed", "path": w.path }));
             let mut warnings: Vec<String> = if a["runHooks"].as_bool().unwrap_or(false) { vec!["--run-hooks: teardown scripts do not run yet; the worktree was removed without them".into()] } else { vec![] };
             if let Some(k) = kept.as_ref().filter(|_| !check.commits.is_empty() && (w.branch.is_none() || (!force && !by_record))) {
