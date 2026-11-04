@@ -120,12 +120,20 @@ pub fn write(home: &Path, platform: &str, id: &str, value: serde_json::Value, re
     Ok(read(home))
 }
 
-/// The folder whose `.kolux` holds the file: the user's home, or `KOLUX_KEYBINDINGS_HOME` when a
-/// test profile sets it, so a trial run never touches the real file.
+/// The folder whose `.kolux` holds the file: `KOLUX_KEYBINDINGS_HOME` when a test profile sets it,
+/// else the home variable the other stores read (USERPROFILE on Windows, HOME elsewhere, as in
+/// hooks.rs and trust.rs; unlike them an empty value is skipped and the last step is Tauri's lookup,
+/// not the temp folder). T-761: Tauri's home_dir asks Windows for the profile folder and ignores
+/// USERPROFILE, so a run started with a scratch USERPROFILE read and wrote the real file.
+fn home_from(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<PathBuf> {
+    let set = |k: &str| var(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    set("KOLUX_KEYBINDINGS_HOME").or_else(|| set(if cfg!(windows) { "USERPROFILE" } else { "HOME" }))
+}
+
 fn home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     use tauri::Manager;
-    match std::env::var_os("KOLUX_KEYBINDINGS_HOME").filter(|v| !v.is_empty()) {
-        Some(h) => Ok(PathBuf::from(h)),
+    match home_from(|k| std::env::var_os(k)) {
+        Some(h) => Ok(h),
         None => app.path().home_dir().map_err(|e| e.to_string()),
     }
 }
@@ -200,6 +208,24 @@ fn show_command(path: &Path, reveal: bool) -> std::process::Command {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<std::ffi::OsString> {
+        let pairs: Vec<(String, String)> = pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        move |k| pairs.iter().find(|(n, _)| n == k).map(|(_, v)| v.into())
+    }
+
+    #[test]
+    fn t761_the_file_follows_the_profile_home_and_the_override() {
+        let user = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+        let scratch = home_from(env(&[(user, "/scratch/home")])).unwrap();
+        assert_eq!(path_under(&scratch), Path::new("/scratch/home").join(".kolux").join(FILE_NAME), "a scratch profile reads its own file, not the account one");
+        assert_eq!(home_from(env(&[(user, "/scratch/home"), ("KOLUX_KEYBINDINGS_HOME", "/proof/home")])), Some(PathBuf::from("/proof/home")), "the override still wins");
+        assert_eq!(home_from(env(&[(user, ""), ("KOLUX_KEYBINDINGS_HOME", "")])), None, "empty values fall back to the app lookup");
+        assert_eq!(home_from(env(&[(user, "/scratch/home"), ("KOLUX_KEYBINDINGS_HOME", "")])), Some(PathBuf::from("/scratch/home")), "an empty override is skipped");
+        if cfg!(windows) {
+            assert_eq!(home_from(env(&[("HOME", "/git/bash/home")])), None, "a shell's HOME is not the Windows profile");
+        }
+    }
 
     fn temp_home(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("kolux-rs-keys-{name}-{}", std::process::id()));
