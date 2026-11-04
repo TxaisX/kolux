@@ -65,6 +65,8 @@ BUNDLE (same slot, vite build + scripts/bundle-budget.mjs, the five changed file
   first load (trustedSetup), so it could only add bytes.
 
 KNOWN LIMITS (in DT-C151)
+- One this PC cannot start (e.g. a #!/bin/bash script with no Git Bash) is skipped without a notice. Off Windows a
+  missing #! interpreter still fails at spawn and stops the delete (Windows is the shipped target).
 - A retry after a failure runs the script again; a forced delete whose script failed says nothing about it.
 - Space asks about every pick before its one batch call, and trust keeps one approved archive text per repository, so
   picks on branches with different archive scripts: only the last one approved runs.
