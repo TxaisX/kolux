@@ -124,8 +124,10 @@ export async function startProve(id, opts) {
   // Hook events as the window hears them.
   await evalJs(`(async () => { window.__proveEvents = []; const cb = window.__TAURI_INTERNALS__.transformCallback((e) => window.__proveEvents.push({ t: Date.now(), ...e.payload })); await window.__TAURI_INTERNALS__.invoke("plugin:event|listen", { event: "agent-status", target: { kind: "Any" }, handler: cb }); return true; })()`);
   // The repo as a project: its first shell opens.
-  await waitFor("the sidebar add button", () => exists('.sb-foot button[title^="Add a project by path"]'), 30000);
-  await click('.sb-foot button[title^="Add a project by path"]');
+  await waitFor("the sidebar add button", () => exists('aside.sidebar button[aria-label="Add project"]'), 30000);
+  await click('aside.sidebar button[aria-label="Add project"]');
+  await waitFor("the add-by-path item", () => exists('button[data-add-by-path]'), 5000);
+  await click('button[data-add-by-path]');
   await waitFor("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
   await focusField('input[aria-label="project folder"]');
   await cdp("insert", repo, "enter");
@@ -340,9 +342,11 @@ export async function startPlain(id, opts) {
       },
     });
     delete process.env.GIT_TRACE2;
-    await wf("the sidebar add button", () => exists('.sb-foot button[title^="Add a project by path"]'), 30000);
+    await wf("the sidebar add button", () => exists('aside.sidebar button[aria-label="Add project"]'), 60000);
     if (!opts.noProject) {
-      await click('.sb-foot button[title^="Add a project by path"]');
+      await click('aside.sidebar button[aria-label="Add project"]');
+      await wf("the add-by-path item", () => exists('button[data-add-by-path]'), 5000);
+      await click('button[data-add-by-path]');
       await wf("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
       await focusField('input[aria-label="project folder"]');
       await cdp("insert", repo, "enter");
