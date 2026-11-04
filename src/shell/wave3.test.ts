@@ -45,12 +45,12 @@ test("F3: the top bar's Terminals switch closes a full page first", () => {
 
 test("F11 (not reproduced): Ctrl+Shift+J opens the palette, 'Show Skills' is its first row, and Enter opens Skills", () => {
   expect(windowKeys).toMatch(/case "worktree\.palette":\s*setPalette\(true\);/);
-  expect(actions).toContain('...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s)))');
+  expect(actions).toContain('...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)))');
   let screen: Screen = "terminals";
   const setScreen = (s: Screen) => void (screen = s);
   const items = [
     ...commandRows(resolve(null, "win32"), [], undefined, () => {}),
-    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s))),
+    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s))),
   ];
   const rows = paletteRows(items, "Show Skills");
   expect(rows[0].label).toBe("Show Skills");

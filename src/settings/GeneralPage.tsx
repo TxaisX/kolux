@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { screens } from "../chrome/TopBar";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { useDraft } from "./useDraft";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, savedFirst, stripOn, type Look } from "./general";
 import { REVIEW_FIELD, reviewOn } from "../editor/notes";
@@ -193,6 +194,7 @@ export function OpenInCard({ settings, onSave }: { settings: Record<string, unkn
   const put = (next: OpenInApp[]) => onSave({ [OPEN_IN_FIELD]: next });
   const left = presetsLeft(list);
   const dup = alreadyListed(list, draft, editing); // T-753: Add would drop it and clear the fields
+  const stopEditing = () => (setEditing(null), setDraft({ name: "", command: "" }));
   return (
     <section className="conn-card" data-section="open-in">
       <h2 className="conn-name">Open in</h2>
@@ -210,7 +212,7 @@ export function OpenInCard({ settings, onSave }: { settings: Record<string, unkn
             <button type="button" className="btn" aria-label={`Edit ${a.name}`} onClick={() => (setEditing(a.id), setDraft({ name: a.name, command: a.command }))}>
               Edit
             </button>
-            <ResetButton label="Remove" ariaLabel={`Remove ${a.name}`} yes="Yes, remove" onReset={() => put(removeApp(list, a.id))} />
+            <ResetButton label="Remove" ariaLabel={`Remove ${a.name}`} yes="Yes, remove" onReset={() => (put(removeApp(list, a.id)), a.id === editing && stopEditing())} />
           </li>
         ))}
       </ul>
@@ -236,14 +238,13 @@ export function OpenInCard({ settings, onSave }: { settings: Record<string, unkn
           disabled={!draftReady(draft) || !!dup}
           onClick={() => {
             put(editing ? editApp(list, editing, draft) : addCustom(list, draft));
-            setEditing(null);
-            setDraft({ name: "", command: "" });
+            stopEditing();
           }}
         >
           {editing ? "Save changes" : "Add custom app"}
         </button>
         {editing && (
-          <button type="button" className="btn" onClick={() => (setEditing(null), setDraft({ name: "", command: "" }))}>
+          <button type="button" className="btn" onClick={stopEditing}>
             Cancel
           </button>
         )}
@@ -339,10 +340,10 @@ function LinksCard({ settings, onSave }: { settings: Record<string, unknown>; on
 }
 
 export default function GeneralPage() {
-  const { settings, error, save } = useSettings();
+  const { settings, error, save, retry } = useSettings();
   return (
     <>
-      {error && <p className="conn-detail warn">{error}</p>}
+      <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
       {settings && <GeneralView settings={settings} onSave={save} />}
       {settings && <Confirmations settings={settings} onSave={save} />}
       {settings && <EditorCard settings={settings} onSave={save} />}

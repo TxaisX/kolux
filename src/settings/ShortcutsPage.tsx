@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { inTerminal, POLICIES, POLICY_FIELD, readPolicy } from "../keys/terminalPolicy";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { useKeymap } from "../keys/KeymapContext";
 import { useNativeChords } from "../chrome/useChrome";
 import { editChords, recordKey, recording, removeChord } from "../keys/record";
@@ -112,7 +113,7 @@ export default function ShortcutsPage() {
             ))}
           </select>
           <button className="btn" onClick={() => void invoke("keybindings_reload").catch((e) => setFileNote(String(e)))}>
-            Reload from Disk
+            Reload from disk
           </button>
         </div>
       </section>
@@ -130,7 +131,7 @@ export default function ShortcutsPage() {
           {policy === "kolux" ? "App shortcuts keep working while you type in a terminal." : "Only the commands marked safe for terminals fire; every other key goes to the program in the terminal."}
         </p>
         <Segmented label="Who gets shortcuts first" options={POLICIES} value={policy} onPick={(v) => void status.save({ [POLICY_FIELD]: v })} />
-        {status.error && <p className="conn-detail warn">{status.error}</p>}
+        <SettingsError error={status.error} loaded={status.settings !== null} onRetry={status.retry} />
       </section>
       <section className="conn-card" data-section="key-bindings">
         <h2 className="conn-name">Commands and keys</h2>

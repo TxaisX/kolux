@@ -2,7 +2,7 @@
 // Commands section lists every command in actions.ts, the 56 unbound ones included, and runs each through
 // the same code its shortcut runs (runCommand.ts). windowCommand is what the window's key switch does for
 // the commands it had no case for (evidence/product-ux-App.patch).
-import { actionById, actions } from "./actions";
+import { actionById, actions, sameAs } from "./actions";
 import { labelOf, type Keymap } from "./keymap";
 import { runCommand } from "./runCommand";
 import type { PaletteItem } from "../projects/WorktreePalette";
@@ -12,7 +12,7 @@ import type { PaletteItem } from "../projects/WorktreePalette";
 /** `note` shows the line the palette says when no open place takes a command (review of PR #16: never silent). */
 export function commandRows(map: Keymap, installed: readonly string[], note?: (text: string) => void, run: (id: string, index?: number) => void = (id, index) => runCommand(id, index, { scope: actionById.get(id)?.scope, unanswered: note })): PaletteItem[] {
   return actions.flatMap((a): PaletteItem[] => {
-    if (a.id.startsWith("tab.newAgent.") && !installed.includes(a.id.slice("tab.newAgent.".length))) return [];
+    if (sameAs[a.id] || (a.id.startsWith("tab.newAgent.") && !installed.includes(a.id.slice("tab.newAgent.".length)))) return []; // T-760: an old id is not a second row
     const keys = labelOf(map, a.id);
     const keywords = a.keywords?.join(" "); // T-728: "cron" finds Open Automations
     if (!a.index) return [{ section: "Commands", label: a.title, hint: keys.join("+") || undefined, keywords, run: () => run(a.id) }];

@@ -79,7 +79,7 @@ export default function FindBar({ focusTick = 0, count, current, slow = false, o
       <button type="button" style={step(!count)} disabled={!count} title="Next match (Enter)" aria-label="Next match" onClick={() => onStep(1)}>
         ↓
       </button>
-      <button type="button" className="ib" title="Close (Escape)" aria-label="Close find" onClick={onClose}>
+      <button type="button" className="ib" title="Close (Esc)" aria-label="Close find" onClick={onClose}>
         <Close size={11} />
       </button>
     </div>

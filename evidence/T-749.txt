@@ -1,0 +1,37 @@
+T-749 - Reach: Hermes run history and the main workspace menu (DT-C185; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t749 from main 8f3f8295, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 8", T-749 (0.1.8, after T-748). Checked against main 8f3f8295 first.
+
+CHECKED FIRST (both open on main)
+- backend-wiring F2 / skills-automations: automation_external_history (src-tauri/src/automations.rs) is
+  registered in lib.rs but no front-end code calls it. A Hermes job's Runs tab only lists Kolux runs, so it
+  always said "No runs yet."
+- live-verify-t12 note: the main workspace menu read Move to status | Details… | Open in | Remove project…
+  projects/menu.ts gives the main checkout no Delete, Sleep or Hide on purpose, and its comment says removing
+  the project is its way out. So the intent is confirmed, and the label is kept: "Remove" means out of Kolux
+  with the folder kept, the rule agreed with worker 72's T-750. What was missing was a workspace action.
+
+WHAT CHANGED (DT-C185)
+1. automations/AutomationsPage.tsx: new HermesRuns. When a Hermes job's Runs tab is shown, it calls
+   automation_external_history with the job id once, then lists up to ten runs, newest first, each a
+   <details> named by its file that opens to the titled sections (the existing .autos-snapshot and
+   .auto-output styles). States: reading, error with Try again, no saved runs, the list. The job's note says
+   "its schedule and its history stay in Hermes, and Runs shows its last ten saved runs". OpenClaw is unchanged
+   (it has no history command). No clear: Hermes owns the files.
+2. projects/menu.ts: the main row's menu (single row) starts with New workspace (proj:new), shared with
+   projectMenu. ProjectsPanel already routes proj:new to the new workspace form for that project.
+3. spec/09 AUTO-025: the Runs tab, its ten-run limit, Try again, and no clear.
+
+TESTS
+- AutomationsPage.test.ts, 2 new: a Hermes row's Runs tab reads Hermes' runs and the note names it, and an
+  OpenClaw row does not; HermesRuns draws a run's file and sections, an error with Try again, and the empty
+  line. menu.test.ts: the main row lists proj:new first, and a selection of several rows does not.
+- Red-checked: all 3 fail on main's AutomationsPage.tsx and menu.ts.
+- vitest src/automations src/projects: 73 files, 471 passed. pnpm exec tsc --noEmit -p . : clean.
+  plan-check OK; firewall-check -Baseline 0 new.
+
+REVIEW
+- sonnet-medium-review (read-only), grade A-, no blockers: the read happens once, on the first showing of Runs; the argument matches the Rust command; Detail's key keeps a reply on its own job; backend text is plain JSX text; proj:new resolves the row's project in runMenu. Lows: Try again twice would overlap two reads (in practice the first click swaps the button for the reading line); the effect's deps rely on the key (now a comment); no test pins the read-once trigger (renderToString runs no effects). The two open lows are on the after list. It ran tsc (clean) and src/automations src/projects: 73 files, 471 passed.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- First load +23 B (main 8f3f8295 1,486,970 B, branch 1,486,993 B, cap +150; the Runs view is in the lazy Automations chunk).

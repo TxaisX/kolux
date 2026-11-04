@@ -21,6 +21,7 @@ import { readLook } from "./general";
 import TerminalImport from "./TerminalImport";
 import { openSettings } from "./pages";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { DENSITIES, DENSITY_FIELD, readDensity } from "../shell/paneChrome";
 import { KOLUX_FIELD, switchPatch } from "../shell/linkAsk";
 
@@ -109,7 +110,7 @@ function WeightField({ label, value, onPick }: { label: string; value: string; o
 }
 
 export default function TerminalPage() {
-  const { settings, error, save } = useSettings();
+  const { settings, error, save, retry } = useSettings();
   const [shells, setShells] = useState<ShellInfo[] | null>(null);
   useEffect(() => {
     if (onWindows()) invoke<ShellInfo[]>("shell_list").then(setShells, () => setShells([]));
@@ -119,7 +120,7 @@ export default function TerminalPage() {
   const shellOptions = [{ id: "auto", name: "Automatic (PowerShell 7 when installed)" }, ...(shells ?? []).filter((s, i, all) => all.findIndex((o) => o.id === s.id) === i)];
   return (
     <>
-      {error && <p className="conn-detail warn">{error}</p>}
+      <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
       {settings && (
         <section className="conn-card" data-section="panes">
           <h2 className="conn-name">New workspaces start with</h2>
@@ -221,7 +222,7 @@ export default function TerminalPage() {
       {settings && (
         <section className="conn-card" data-section="closing">
           <h2 className="conn-name">Closing terminals</h2>
-          <Switch label="Ask Before Closing Running Terminals" checked={asksBeforeClose(settings)} onChange={(on) => save({ [CONFIRM_CLOSE_FIELD]: on })} />
+          <Switch label="Ask before closing running terminals" checked={asksBeforeClose(settings)} onChange={(on) => save({ [CONFIRM_CLOSE_FIELD]: on })} />
           <p className="conn-detail">An idle shell always closes straight away.</p>
           <label className="conn-switch">
             <input type="checkbox" role="switch" checked={pinAsks(settings)} onChange={(e) => save({ [PIN_ASK_FIELD]: e.target.checked })} />

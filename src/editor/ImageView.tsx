@@ -1,6 +1,9 @@
 // EDIT-029 (T-235-b): the tab a PNG, JPEG, GIF, WebP, BMP, ICO or AVIF file opens in. The bytes come through the
 // app's bounded file-bytes read (the same fence as a text read), are shown from a blob address that is let go when
 // the tab closes, and any failure is said in words (imageFiles.ts) instead of leaving an empty tab.
+import { useKeymap } from "../keys/KeymapContext";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf } from "../keys/keymap";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Close } from "../chrome/icons";
@@ -13,6 +16,7 @@ import { readPicture } from "./pictureBytes";
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onToast?: (text: string) => void };
 
 export default function ImageView({ id, path, hidden = false, focused = false, onFocus, onClose, onToast }: Props) {
+  const keymap = useKeymap();
   const [src, setSrc] = useState<string | null>(null);
   const [bytes, setBytes] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +70,7 @@ export default function ImageView({ id, path, hidden = false, focused = false, o
           </button>
         )}
         <span className="right">
-          <button className="ib" onClick={() => onClose?.()} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={() => onClose?.()} title={withChord("Close tab", labelOf(keymap, "tab.close"))}>
             <Close size={12} />
           </button>
         </span>

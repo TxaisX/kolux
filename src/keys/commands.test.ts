@@ -70,9 +70,14 @@ test("T-611: the palette's Commands section lists every command, the unbound one
   expect(new Set(rows.map((r) => r.section))).toEqual(new Set(["Commands"]));
   for (const r of rows) r.run();
   const ids = new Set(ran.map((x) => x.replace(/#\d$/, "")));
-  expect(actions.filter((a) => !ids.has(a.id)).map((a) => a.id)).toEqual([]);
-  // Each of the 58 unbound commands has its row; a bound one shows its keys.
-  expect(actions.filter((a) => a.win32.length === 0 && !a.darwin).every((a) => ids.has(a.id))).toBe(true);
+  // T-760: an old id kept for keybindings files (sameAs) is no second row; the command it runs has the row.
+  expect(actions.filter((a) => !sameAs[a.id] && !ids.has(a.id)).map((a) => a.id)).toEqual([]);
+  expect(Object.keys(sameAs).filter((id) => ids.has(id) || !ids.has(sameAs[id]))).toEqual([]);
+  expect(rows.map((r) => r.label)).not.toContain("Toggle Agent Dashboard");
+  expect(rows.find((r) => r.label === "Show Tower")?.keywords).toContain("agent dashboard");
+  expect(rows.find((r) => r.label === "Show or Hide Sleeping Workspaces")?.keywords).toContain("toggle");
+  // Each unbound command has its row; a bound one shows its keys.
+  expect(actions.filter((a) => a.win32.length === 0 && !a.darwin && !sameAs[a.id]).every((a) => ids.has(a.id))).toBe(true);
   expect(rows.find((r) => r.label === "Show Floor")).toMatchObject({ hint: undefined });
   expect(rows.find((r) => r.label === "Open Settings")).toMatchObject({ hint: "Ctrl+," });
   // The two 1 to 9 commands are nine rows each, each with its own digit.

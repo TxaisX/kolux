@@ -134,9 +134,9 @@ The page has three sections, all open at first: Interface, Terminal, and Window 
 | Divider colour | One for dark mode, one for light; empty by default | |
 | Panes not in focus | 30 to 100 percent, default 100 (no dimming) | |
 
-#### Bring in colours from Warp or Ghostty
+#### Bring in colours from Ghostty or Warp
 
-Under Terminal colours, "Bring in from Warp or Ghostty" lets you reuse colour schemes from those two terminals. Choose one or more files: Warp theme files (`.yaml`) or your Ghostty configuration file. Nothing changes yet. Each file is read and previewed as a row with a tick box, a small colour sample and a note saying either "Joins your custom schemes." or "Replaces your scheme <name>." (a scheme of the same name is swapped). With more than one usable file a "Select all" box appears. Tick the ones you want and press "Bring in" (it shows the count). "Cancel" drops the preview.
+Under Terminal colours, "Bring in from Ghostty or Warp" lets you reuse colour schemes from those two terminals. Choose one or more files: Warp theme files (`.yaml`) or your Ghostty configuration file. Nothing changes yet. Each file is read and previewed as a row with a tick box, a small colour sample and a note saying either "Joins your custom schemes." or "Replaces your scheme <name>." (a scheme of the same name is swapped). With more than one usable file a "Select all" box appears. Tick the ones you want and press "Bring in" (it reads "Bring in 2 schemes" once two are ticked). "Cancel" drops the preview.
 
 - A Warp theme needs a background, a foreground and its terminal colours (normal and bright). The scheme takes the theme's own name, or the file name when it has none. The theme's accent becomes the cursor colour.
 - From a Ghostty configuration Kolux reads the background, foreground, cursor, selection and the first 16 palette colours. A configuration that only names one of Ghostty's built-in themes sets no colours of its own, so it is refused with a note saying so.
@@ -217,7 +217,7 @@ The first table covers panes and closing. The cards after it cover the terminal'
 | Setting | Choices | Saved as |
 |---|---|---|
 | New workspaces start with | 1, 2, 4, 6, 9 or 12 panes. Default 1. Classic always uses 1 | `defaultPaneCount` |
-| Ask Before Closing Running Terminals | On. A tab with only an idle shell always closes at once | `confirmCloseRunning` |
+| Ask before closing running terminals | On. A tab with only an idle shell always closes at once | `confirmCloseRunning` |
 | Ask before closing a pinned tab | On. Pinned tabs sit first in the strip and stay out of Close others, Close all and middle-click | `pinnedTabsAsk` |
 | Removing a started session | "Ask first" (default) or "Stop without asking". Applies to Remove session on a running agent or a busy shell. A pane that has not started, or an idle shell, is removed straight away | `removeStartedSession` |
 
@@ -299,7 +299,7 @@ Every command in Kolux has a row here. Your changes are kept in `keybindings.jso
 |---|---|
 | Open file | Opens the file in the program Windows uses for it. A missing file is written first, with its starting contents |
 | Show in folder | Opens the folder with the file selected |
-| Reload from Disk | Reads the file again after you edit it by hand |
+| Reload from disk | Reads the file again after you edit it by hand |
 
 The "Shortcuts in terminals" card decides who gets a key while you type in a terminal. Pick "Kolux first" or "Terminal first". It is saved as `terminalShortcuts`. See [Terminals](terminals.md) for what each does. With "Terminal first", a row for a command that is held back shows a "Goes to the terminal" badge.
 

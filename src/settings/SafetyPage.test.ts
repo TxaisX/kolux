@@ -102,10 +102,14 @@ test("SAFE-015: what is saved decides what is drawn: a rule in the off list is u
   expect(html).toContain("no rule asks");
   expect(html).toContain("data-master-off");
   const rulesDiv = (h: string) => h.match(/<div data-rules[^>]*>/)?.[0] ?? "";
-  expect(rulesDiv(html), "T-753: the rules are dimmed while nothing asks").toContain("opacity:0.65");
+  expect(rulesDiv(html), "T-753: the rules are dimmed while nothing asks").toContain("data-master-off");
+  const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+  const css = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  expect(css, "T-759: by a rule that leaves the focused switch (and its focus ring) undimmed").toContain("[data-master-off] > .conn-switch:not(:has(:focus-visible)) { opacity: 0.65; }");
+  expect(rulesDiv(html), "not by an inline style on the whole block, which dims the ring too").not.toContain("opacity");
   expect(switchOf(html, "Stripe changes"), "and a screen reader hears why").toContain("aria-describedby=\"safety-master-note\"");
   expect(html).toMatch(/<small id="safety-master-note">Off: no rule asks/);
-  expect(rulesDiv(view({})), "not while the master switch is on").not.toContain("opacity");
+  expect(rulesDiv(view({})), "not while the master switch is on").not.toContain("data-master-off");
   expect(switchOf(view({}), "Stripe changes")).not.toContain("aria-describedby");
 });
 
