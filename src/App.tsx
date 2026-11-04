@@ -55,6 +55,7 @@ import { useSettingsPlumbing } from "./settings/useSettingsPlumbing";
 import { useWindowChrome } from "./chrome/useWindowChrome";
 import { useBrowserChords } from "./browser/useBrowserChords";
 import { useRestoredStatus } from "./status/useRestoredStatus";
+import { useNotificationClick } from "./status/notificationClick";
 import { useGone } from "./status/gone";
 import { useWorkspaceActions } from "./projects/useWorkspaces";
 import { useWizard } from "./onboarding/useWizard";
@@ -207,16 +208,13 @@ function Window({ initial, layout, read }: { initial: Record<string, unknown>; l
   const { noticed, panesRef } = useAgentEvents({ panes, setPanes, titles, settings, inView, setToast, tabName, setCrew, setTurn, setStale, hookRef, setHook, stamp, setStamp, setContext, unreadPanes, setUnreadPanes, winFocused, markDir, muted: muteRef });
   useRestoredStatus({ panes, hookRef, setHook, setStale, setCrew, setTurn });
   useGone({ panes, running, hook, setHook, setTurn, setCrew }); // STAT-031 / T-275: gone agents stop reporting
-  // STAT-044: a clicked notification focuses the pane that raised it (notification_clicked emits the pane).
-  useEffect(() => {
-    const off = listen<{ pane: string }>("notification-click", (e) => {
-      const key = Number(e.payload.pane);
-      if (panesRef.current.some((x) => x.key === key)) setFocused(key);
-    });
-    return () => {
-      void off.then((f) => f());
-    };
-  }, [panesRef]);
+  // STAT-044 / C26-R2-01: a clicked notification takes the same jump as the rail, the Inbox and the
+  // needs-you key: the pane's workspace, the Terminals screen, its tab, the sidebar row scrolled to it,
+  // and it leaves Settings or a full page first, or the window would come forward onto the page the
+  // user already had open. The jump lives in a ref because the listener's deps are the pane list.
+  const jumpToPane = useRef((key: number) => { leavePage(); openPane(key); });
+  jumpToPane.current = (key) => { leavePage(); openPane(key); };
+  useNotificationClick(panesRef, jumpToPane);
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
     ...state, ...plumb, ...chrome, ...start, ...chords, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
