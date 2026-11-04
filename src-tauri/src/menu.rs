@@ -43,6 +43,8 @@ pub struct MenuState {
     pub status_bar_visible: bool,
     pub tasks_button: bool,
     pub automations_button: bool,
+    /// T-766: SKILL-018's sidebar Skills button, off on a fresh install; this tick turns it on outside Settings.
+    pub skills_button: bool,
     pub title_bar_app_name: bool,
     /// The Classic look has no screen switcher, so View drops Workspace View (T-049-b).
     pub classic: bool,
@@ -184,6 +186,7 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
                     check("set.statusBarVisible", "Show Status Bar", s.status_bar_visible),
                     check("set.tasksButton", "Show Tasks Button", s.tasks_button),
                     check("set.automationsButton", "Show Automations Button", s.automations_button),
+                    check("set.skillsButton", "Show Skills Button", s.skills_button),
                     check("set.titleBarAppName", "Show Titlebar App Name", s.title_bar_app_name),
                 ],
             }],
@@ -498,7 +501,7 @@ mod tests {
         nodes.iter().filter_map(|n| match n { Node::Check { id, checked: true, .. } => Some(*id), _ => None }).collect()
     }
     fn state(screen: &str) -> MenuState {
-        MenuState { screen: screen.into(), status_bar_visible: true, tasks_button: true, automations_button: false, title_bar_app_name: false, classic: false, accelerators: HashMap::new() }
+        MenuState { screen: screen.into(), status_bar_visible: true, tasks_button: true, automations_button: false, skills_button: false, title_bar_app_name: false, classic: false, accelerators: HashMap::new() }
     }
 
     #[test]
@@ -563,7 +566,7 @@ mod tests {
         let mut s = state("terminals");
         let bar = spec(Os::Windows, &s);
         let look = sub(sub(&bar, "View"), "Appearance");
-        assert_eq!(ids(look), ["sidebar.left.toggle", "sidebar.right.toggle", "set.statusBarVisible", "set.tasksButton", "set.automationsButton", "set.titleBarAppName"]);
+        assert_eq!(ids(look), ["sidebar.left.toggle", "sidebar.right.toggle", "set.statusBarVisible", "set.tasksButton", "set.automationsButton", "set.skillsButton", "set.titleBarAppName"]);
         assert_eq!(ticked(look), ["set.statusBarVisible", "set.tasksButton"]);
         // Flipping the Automations button and hiding the status bar rebuild a different menu.
         s.automations_button = true;
@@ -571,6 +574,9 @@ mod tests {
         let again = spec(Os::Windows, &s);
         assert_ne!(again, bar);
         assert_eq!(ticked(sub(sub(&again, "View"), "Appearance")), ["set.tasksButton", "set.automationsButton"]);
+        // T-766: the Skills button tick follows its switch, so the Skills page is reachable without the palette.
+        s.skills_button = true;
+        assert_eq!(ticked(sub(sub(&spec(Os::Windows, &s), "View"), "Appearance")), ["set.tasksButton", "set.automationsButton", "set.skillsButton"]);
     }
 
     #[test]
@@ -599,7 +605,7 @@ mod tests {
         assert_eq!(route("view.devtools"), Route::DevTools);
         assert_eq!(route("view.fullscreen"), Route::FullScreen);
         assert_eq!(route("file.exit"), Route::Exit);
-        for id in ["app.settings", "app.forceReload", "screen.board", "sidebar.left.toggle", "set.tasksButton", "help.checkUpdates", "help.reportCrash"] {
+        for id in ["app.settings", "app.forceReload", "screen.board", "sidebar.left.toggle", "set.tasksButton", "set.skillsButton", "help.checkUpdates", "help.reportCrash"] {
             assert_eq!(route(id), Route::Page(id.into()));
         }
     }
