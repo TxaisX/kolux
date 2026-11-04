@@ -502,6 +502,20 @@ pub fn trust_grant(store: &crate::state::Store, root: &Path, kind: &str, script:
     store.set(&key, &serde_json::to_string(&trust).map_err(|e| e.to_string())?).map_err(|e| format!("Kolux could not save the trust ({e})"))
 }
 
+/// T-721: what the project at `root` trusts, for its page: Always trust, and the scripts approved one by one.
+/// Nothing when it is not a project or the record cannot be read (then nothing runs unasked either).
+fn trust_seen(store: &crate::state::Store, root: &Path) -> (bool, Vec<String>) {
+    let Ok(p) = trust_project(store, root) else { return (false, vec![]) };
+    let t: Trust = store.get(&format!("{TRUST_PREFIX}{}", p.id)).ok().flatten().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    (t.all, t.scripts.into_keys().collect())
+}
+
+/// T-721: Stop trusting forgets the project's whole record, so each kolux.yaml script asks again.
+pub fn trust_clear(store: &crate::state::Store, root: &Path) -> Result<(), String> {
+    let p = trust_project(store, root)?;
+    store.set(&format!("{TRUST_PREFIX}{}", p.id), "{}").map_err(|e| format!("Kolux could not stop trusting {} ({e})", p.name))
+}
+
 /// SAFE-025: Ok when the shared script may run; else why not, for the UI to show.
 fn require_trust(store: &std::sync::Mutex<crate::state::Store>, root: &Path, kind: &str, script: &str) -> Result<(), String> {
     let store = store.lock().map_err(|_| "Kolux could not check this repository's trust, so its kolux.yaml scripts do not run".to_string())?;
@@ -972,6 +986,10 @@ pub struct RepoSetup {
     /// Why the choice in force would not run on this PC (the two scripts cannot be joined, or cmd
     /// would misread the joined one); None when it runs or nothing is chosen to run.
     pub run_error: Option<String>,
+    /// T-721: the repository has Always trust for its whole kolux.yaml.
+    pub trusted_all: bool,
+    /// T-721: the kolux.yaml scripts approved one by one (they run unasked while unchanged).
+    pub trusted: Vec<String>,
 }
 
 /// kolux.yaml's setup script at `root`, or why it could not be read (a missing file is no error).
@@ -1003,7 +1021,8 @@ fn repo_setup_on(store: &crate::state::Store, root: &Path, shared: (Option<Strin
         ("both", Some(own), Some(theirs)) => both_trouble(own, theirs, windows, configured, find),
         _ => None,
     };
-    RepoSetup { local, shared: shared.0, shared_error: shared.1, policy, inherited: inherited.to_string(), wait: repo_wait(store, root), mode: repo_mode(store, root), suggest_both, run_error }
+    let (trusted_all, trusted) = trust_seen(store, root);
+    RepoSetup { local, shared: shared.0, shared_error: shared.1, policy, inherited: inherited.to_string(), wait: repo_wait(store, root), mode: repo_mode(store, root), suggest_both, run_error, trusted_all, trusted }
 }
 
 #[tauri::command(async)]
@@ -1039,6 +1058,12 @@ pub fn repo_setup_wait_set(store: StoreState<'_>, path: String, wait: bool) -> R
 #[tauri::command]
 pub fn repo_setup_mode_set(store: StoreState<'_>, path: String, mode: Option<String>) -> Result<(), String> {
     set_repo_mode(&*store.lock().map_err(|e| e.to_string())?, &main_folder(Path::new(&path)), mode.as_deref())
+}
+
+/// T-721: the repository page's Stop trusting.
+#[tauri::command]
+pub fn repo_trust_clear(store: StoreState<'_>, path: String) -> Result<(), String> {
+    trust_clear(&*store.lock().map_err(|e| e.to_string())?, &main_folder(Path::new(&path)))
 }
 
 fn dismissed_ids(store: &crate::state::Store) -> Vec<String> {
@@ -1880,6 +1905,31 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(5));
         crate::projects::register_project(&store, (root.clone(), root.clone())).unwrap();
         assert!(trust_ask(&store, &root, "setup", "echo shared").unwrap().is_some(), "added again, it asks again");
+        let _ = std::fs::remove_dir_all(dir);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn t721_stop_trusting_shows_on_the_page_and_asks_again() {
+        let (store, dir, root) = trust_store();
+        let page = |s: &crate::state::Store| {
+            let r = repo_setup(s, &root, (None, None));
+            (r.trusted_all, r.trusted)
+        };
+        assert_eq!(page(&store), (false, vec![]), "nothing trusted yet");
+        trust_grant(&store, &root, "archive", "echo bye", false).unwrap();
+        trust_grant(&store, &root, "setup", "echo shared", true).unwrap();
+        assert_eq!(page(&store), (true, vec!["archive".to_string(), "setup".to_string()]), "Always trust and each approved script show");
+        assert_eq!(trust_ask(&store, &root, "issue", "anything").unwrap(), None);
+        trust_clear(&store, &root).unwrap();
+        assert_eq!(page(&store), (false, vec![]), "Stop trusting forgets it all");
+        for (kind, script) in [("setup", "echo shared"), ("archive", "echo bye"), ("issue", "anything"), ("tabs", "pnpm dev")] {
+            assert_eq!(trust_ask(&store, &root, kind, script).unwrap().map(|a| a.changed), Some(false), "{kind} asks again, as new");
+        }
+        trust_grant(&store, &root, "setup", "echo shared", false).unwrap();
+        assert_eq!(trust_ask(&store, &root, "setup", "echo shared").unwrap(), None, "and can be trusted again");
+        store.set("projects", "[]").unwrap();
+        assert!(trust_clear(&store, &root).is_err(), "not a project: nothing to clear, and it says so");
         let _ = std::fs::remove_dir_all(dir);
         let _ = std::fs::remove_dir_all(root);
     }

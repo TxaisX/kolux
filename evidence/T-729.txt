@@ -66,4 +66,5 @@ BUNDLE: first load 1,487,178 B in 46 chunks vs main 73008fe1 1,489,604 B in 47 c
 
 FULL RUN: npx vitest run: 806 files, 6005 tests passed; pnpm tsc --noEmit 0; firewall-check -Baseline 0 new; plan-check OK.
 REVIEW: opus-high, B+, no must-fix. Should-fixes 1-6 applied (row menu under the dialog, one dialog for a pinned row shown twice, live proof selectors, group delete and picked-workspaces Remove converted, DECISIONS row format, test name). Nits accepted: busy guards are silent no-ops (Ask has no disabled confirm); the PR page cancel-merge state is unreachable; the notes button row spacing; the sidebar dialog placement is not yet seen live.
+MERGE main 5a69c684 (train 17): the Explorer delete conflicted with T-722 (Cancel autofocus on the old inline question); kept the Ask, which already opens on Cancel. src/editor/explorerAsk.t722.test.ts now checks the question is Ask with no autofocus or Enter opt-in on Delete (Ask.test.ts proves the focus). Re-measured: 1,487,155 B vs main 5a69c684 1,489,581 B, still 2,426 B smaller.
 PENDING: unit-proven; a live check in the app has not been run.
