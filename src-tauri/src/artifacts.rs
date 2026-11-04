@@ -687,7 +687,31 @@ fn copy_capped(file: &mut fs::File, to: &Path, cap: u64, name: &str) -> Result<u
 
 impl Library {
     pub fn new(dir: PathBuf) -> Library {
-        Library { dir, lock: Mutex::new(()) }
+        let lib = Library { dir, lock: Mutex::new(()) };
+        lib.prune_unviewable();
+        lib
+    }
+
+    /// Drops the entries this build cannot list, with their stored folders: a document, a PDF, an
+    /// audio track or an office file kept by an older build or by PR #37's head (DT-C78). Without
+    /// this, such a row would sit in `library.json` forever, unlisted and unremovable, because the
+    /// viewer can never learn its id. Runs once, when the library is opened. The index is saved
+    /// first: a folder is only deleted once the row that named it is gone from a written index.
+    fn prune_unviewable(&self) {
+        let _g = self.lock.lock();
+        let list = self.read();
+        let keep: Vec<Entry> = list.iter().filter(|e| viewable(&e.kind)).cloned().collect();
+        if keep.len() == list.len() {
+            return;
+        }
+        if self.write(&keep).is_err() {
+            return; // nothing is deleted while the index still names it
+        }
+        for e in list.iter().filter(|e| !viewable(&e.kind)) {
+            if !e.id.is_empty() && e.id.bytes().all(|c| c.is_ascii_hexdigit()) {
+                let _ = fs::remove_dir_all(self.dir.join(&e.id));
+            }
+        }
     }
 
     fn index(&self) -> PathBuf {
@@ -1626,6 +1650,29 @@ mod tests {
         lib.write(&[row("a", "page", "a.html"), row("b", "text", "n.md"), row("c", "pdf", "p.pdf"), row("d", "audio", "t.mp3"), row("e", "image", "i.png"), row("f", "video", "v.mp4")]).unwrap();
         let listed: Vec<String> = lib.list().into_iter().map(|l| l.entry.page).collect();
         assert_eq!(listed, ["a.html", "i.png", "v.mp4"], "only the kinds the viewer projects: {listed:?}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn opening_the_library_drops_entries_of_a_kind_it_cannot_list() {
+        // The rows and their stored folders go once, at the next start: a viewer that can neither list
+        // nor name such an entry would otherwise leave it on disk for good (C14-R4-01 review, S2).
+        let root = temp_dir("prune");
+        let dir = root.join("lib");
+        fs::create_dir_all(dir.join("b")).unwrap();
+        fs::write(dir.join("b").join("n.md"), "# Notes").unwrap();
+        let row = |id: &str, kind: &str, page: &str| Entry { id: id.into(), title: page.into(), source: "hand".into(), kind: kind.into(), origin: format!("C:{page}"), project: None, session: None, added: 1, size: 1, page: page.into(), state: "ok".into(), stamp: None };
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("library.json"), serde_json::to_vec(&[row("a", "page", "a.html"), row("b", "text", "n.md")]).unwrap()).unwrap();
+        let lib = Library::new(dir.clone());
+        assert_eq!(lib.list().len(), 1, "the page stays, the document is gone");
+        assert!(!dir.join("b").exists(), "its stored copy goes with it");
+        let kept: Vec<Entry> = serde_json::from_slice(&fs::read(dir.join("library.json")).unwrap()).unwrap();
+        assert_eq!(kept.len(), 1, "the index holds only what the viewer projects");
+        // A fresh open finds nothing to prune and changes nothing.
+        let bytes = fs::read(dir.join("library.json")).unwrap();
+        let _ = Library::new(dir.clone());
+        assert_eq!(fs::read(dir.join("library.json")).unwrap(), bytes);
         let _ = fs::remove_dir_all(&root);
     }
 

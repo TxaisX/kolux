@@ -111,14 +111,119 @@ export function focusAfterRemove(order: string[], removed: string): string | nul
   return order[at + 1] ?? order[at - 1] ?? null;
 }
 
-/** The address a viewer message asks to open, or null when it must be ignored: it has to come from the viewer's own
- *  frame, while a click is still active and focus is inside the frame. A click or key in the frame does both; a script
- *  that posts on its own (on load, say) has neither, and the click that selected the row leaves focus on the row, so
- *  its activation does not count for the page it opens. An engine that cannot say whether a click happened opens nothing. */
-export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown, activation: { isActive: boolean } | undefined, frameFocused: boolean): string | null {
-  const url = (e.data as { koluxOpen?: unknown } | null)?.koluxOpen;
-  if (!frame || e.source !== frame || typeof url !== "string") return null;
-  return activation?.isActive && frameFocused ? url : null;
+/** A link a viewer page asked for: the address and the host the user is shown. */
+export type LinkAsk = { url: string; host: string };
+
+/** Control, zero-width and bidirectional-override characters: they can reorder or hide what a person
+ * reads (U+202E turns "gpj.exe" around), so none is ever shown in the question. */
+const INVISIBLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+
+/** What is shown of a page-supplied string: no control or bidi characters, at most `max` long. */
+export function displayText(text: string, max = 80): string {
+  const t = text.replace(INVISIBLE, "").trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
+
+/** The link a message from the viewer asks for, or null. Only our own frame may ask, and only for a
+ * web or mail address. The page's script posts the message, so it says nothing about the user
+ * (DT-C77): it is never a reason to open anything, only to ask. */
+export function linkAsk(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined): LinkAsk | null {
+  if (!frameWindow || e.source !== frameWindow) return null;
+  const data = e.data as { koluxOpen?: unknown } | null | undefined;
+  if (typeof data?.koluxOpen !== "string") return null;
+  let u: URL;
+  try {
+    u = new URL(data.koluxOpen);
+  } catch {
+    return null;
+  }
+  if (u.protocol === "http:" || u.protocol === "https:") return u.host ? { url: data.koluxOpen, host: u.host } : null;
+  if (u.protocol === "mailto:") {
+    try {
+      // The whole address list is shown; the query (?body=, ?attach=) is not part of it and the opener drops it.
+      const host = displayText(decodeURIComponent(u.pathname.split("?")[0]));
+      return host ? { url: data.koluxOpen, host } : null;
+    } catch {
+      return null; // a malformed percent-escape: nothing worth asking about
+    }
+  }
+  return null;
+}
+
+/** How long Open stays disabled after the question appears: input protection, so a click or key the user
+ * meant for the page cannot land on Open (worker decision, 2f, 2026-11-01; Txais may veto). */
+export const LINK_OPEN_DELAY_MS = 1000;
+
+/** How many Cancels in a row from one entry silence its further questions. */
+export const LINK_BACKOFF = 3;
+
+/** DT-C77: a message from the viewer never opens the browser. It raises one Kolux-owned question
+ * ("Open example.com?") and the browser opens only when the user clicks Open in Kolux. First ask wins:
+ * while a question is pending, new asks are ignored (a page cannot swap the address under the user's
+ * click); after Open or Cancel a new one may come. Open does nothing for LINK_OPEN_DELAY_MS after the
+ * question appears, and it opens exactly the address that was shown, once. */
+export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: LinkAsk | null) => void, now: () => number = Date.now) {
+  let pending: LinkAsk | null = null;
+  let since = 0;
+  let cancels = 0;
+  const set = (ask: LinkAsk | null) => {
+    pending = ask;
+    since = now();
+    show(ask);
+  };
+  const ready = () => pending !== null && now() - since >= LINK_OPEN_DELAY_MS;
+  return {
+    ask(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined) {
+      if (pending || cancels >= LINK_BACKOFF) return;
+      const ask = linkAsk(e, frameWindow);
+      if (ask) set(ask);
+    },
+    ready,
+    async accept(): Promise<unknown> {
+      const ask = pending;
+      if (!ask || !ready()) return null;
+      cancels = 0;
+      set(null);
+      return open(ask.url);
+    },
+    /** The user said no. After LINK_BACKOFF in a row from the same entry the page is not asked again
+     * (a page cannot nag until a click lands) until `reset`, when the entry is chosen again. */
+    cancel() {
+      if (!pending) return;
+      cancels += 1;
+      set(null);
+    },
+    /** A key, a click or a focus change while Open is still disabled: the delay starts over, so input
+     * meant for the page cannot add up to a click on Open. */
+    touch() {
+      if (pending && !ready()) since = now();
+    },
+    /** A different entry (or the same one chosen again) is a new conversation: the question and the
+     * count of refusals are dropped. */
+    reset() {
+      cancels = 0;
+      if (pending) set(null);
+    },
+  };
+}
+
+/** The question strip. It is a bar in normal layout above the viewer (the viewer is pushed down,
+ * never covered), so a page cannot draw anything under the buttons. Open has no autofocus and is
+ * disabled until `ready`. */
+export function LinkAskBar({ ask, ready, onOpen, onCancel }: { ask: LinkAsk; ready: boolean; onOpen: () => void; onCancel: () => void }) {
+  return (
+    <div className="art-ask" role="status" aria-label="Open link">
+      <span className="art-ask-text" title={displayText(ask.url, 200)}>
+        Open <strong>{ask.host}</strong>?
+      </span>
+      <button className="btn" disabled={!ready} onClick={onOpen}>
+        Open
+      </button>
+      <button className="btn" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
 }
 
 /** How long a page may take to load before the viewer says so. */
@@ -183,16 +288,49 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
     };
   }, [workspace, project]);
 
-  // A link clicked inside the viewer: only a message from our own frame, sent during a click, opens anything.
+  // A link a viewer page asks for (DT-C77): the message only raises Kolux's own question below; the
+  // browser opens when the user clicks Open there, never from the message itself.
+  const [asked, setAsked] = useState<LinkAsk | null>(null);
+  const [askReady, setAskReady] = useState(false);
+  const [nudge, setNudge] = useState(0);
+  const prompt = useRef<ReturnType<typeof linkPrompt> | null>(null);
+  prompt.current ??= linkPrompt((url) => invoke("open_external", { url }), setAsked);
   useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      const url = viewerLink(e, frame.current?.contentWindow, (navigator as { userActivation?: { isActive: boolean } }).userActivation, !!frame.current && document.activeElement === frame.current);
-      if (url === null) return;
-      invoke("open_external", { url }).catch((err) => onToast(String(err)));
-    };
+    const onMessage = (e: MessageEvent) => prompt.current?.ask(e, frame.current?.contentWindow);
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
+  // Open is disabled for the first second of each question (the same clock as linkPrompt.accept), and
+  // the second starts over at any click, key or focus change while it is still disabled.
+  useEffect(() => {
+    setAskReady(false);
+    if (!asked) return;
+    const t = window.setTimeout(() => setAskReady(true), LINK_OPEN_DELAY_MS + 50);
+    return () => window.clearTimeout(t);
+  }, [asked, nudge]);
+  useEffect(() => {
+    if (!asked || askReady) return;
+    const again = () => {
+      prompt.current?.touch();
+      setNudge((n) => n + 1);
+    };
+    // Input inside the sandboxed frame never reaches this window; the focus leaving it for the frame does.
+    const events = ["pointerdown", "keydown", "blur"] as const;
+    for (const ev of events) window.addEventListener(ev, again, true);
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, again, true);
+    };
+  }, [asked, askReady]);
+  // Another page, or none, is a different conversation: the old question and the refusals are dropped.
+  useEffect(() => {
+    prompt.current?.reset();
+  }, [selected]);
+  // Choosing the entry again counts as choosing it: its refusals start over.
+  const choose = (id: string) => {
+    prompt.current?.reset();
+    setSelected(id);
+    setLoaded(null);
+  };
 
   // A page that never reports it loaded is called out instead of leaving "Loading…" up for good.
   useEffect(() => {
@@ -261,7 +399,6 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
       queueMicrotask(() => restoreFocus(from, (sel) => document.querySelector<HTMLElement>(sel)));
     }
   };
-  const pick = (id: string) => (setSelected(id), setLoaded(null));
   const arrows = (e: KeyboardEvent<HTMLDivElement>) => {
     const rows = [...e.currentTarget.querySelectorAll<HTMLElement>("button.art-row")];
     const to = menuStep(rows.length, rows.indexOf(e.target as HTMLElement), e.key);
@@ -312,7 +449,7 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
               <div role="list" aria-label={s.project} className="art-items">
                 {s.items.map((a) => (
                   <div key={a.id} role="listitem" className="art-item">
-                    <button type="button" ref={(el) => void (el ? rowButtons.current.set(a.id, el) : rowButtons.current.delete(a.id))} aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => pick(a.id)}>
+                    <button type="button" ref={(el) => void (el ? rowButtons.current.set(a.id, el) : rowButtons.current.delete(a.id))} aria-current={a.id === selected ? "true" : undefined} className={`art-row${a.id === selected ? " sel" : ""}`} onClick={() => choose(a.id)}>
                       <span className="art-title">
                         <span className="name">{a.title}</span>
                         {a.kind !== "page" && <span className="preview-tag">{extText(a.page)}</span>}
@@ -333,6 +470,7 @@ export default function ArtifactsPage({ onToast, onClose, workspace, project }: 
           ))}
         </div>
       </div>
+      {asked && <LinkAskBar ask={asked} ready={askReady} onOpen={() => void prompt.current?.accept().catch((err) => onToast(String(err)))} onCancel={() => prompt.current?.cancel()} />}
       <div className="art-view">
         {/* Mounted before its text appears (a live region added with its text may go unannounced); empty, it takes no room. */}
         <div role="status" className={loadingText ? `art-loading menu-hint${slow === current?.id ? " art-slow" : ""}` : undefined}>{loadingText}</div>
