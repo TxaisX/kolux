@@ -6,6 +6,7 @@ import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { byText, click, type FakeDocument, FakeNode, find, installDom, mount, settle, until, withText } from "../tasks/fakeDom";
 import type { SettingsTarget } from "./pages";
+import { FOCUSABLE } from "../chrome/dialogFocus";
 
 const h = vi.hoisted(() => ({ agents: [] as { id: string; installed: boolean }[] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -26,6 +27,9 @@ let unmount: () => Promise<void> = async () => {};
 const realFocus = FakeNode.prototype.focus;
 /** Just enough of Element.matches for attribute selectors such as '[role="dialog"],[hidden]'. */
 function matches(n: FakeNode, sel: string) {
+  // The Tab trap's list (T-732): enabled form controls, links, and anything with a tabindex other than -1.
+  if (sel === FOCUSABLE)
+    return n.nodeType === 1 && ((/^(button|input|select|textarea)$/.test(n.localName) && !("disabled" in n.attrs) && n.attrs.type !== "hidden") || (n.localName === "a" && "href" in n.attrs) || ("tabindex" in n.attrs && n.attrs.tabindex !== "-1"));
   return sel.split(",").some((one) => {
     const m = /^\[([\w-]+)(?:="([^"]*)")?\]$/.exec(one.trim());
     return !!m && n.nodeType === 1 && m[1] in n.attrs && (m[2] === undefined || n.attrs[m[1]] === m[2]);
@@ -69,7 +73,7 @@ afterEach(async () => {
 
 /** A key pressed where the keyboard is, sent as a browser sends it: capture listeners from the window
  *  down to the target, then bubble listeners back up; a listener that stops it ends the trip there. */
-async function press(key: string) {
+async function press(key: string, shiftKey = false) {
   const target = doc.activeElement;
   const nodes: { listeners: Record<string, Listener[]> }[] = [{ listeners: onWindow }, doc];
   const up: FakeNode[] = [];
@@ -93,7 +97,7 @@ async function press(key: string) {
     repeat: false,
     ctrlKey: false,
     altKey: false,
-    shiftKey: false,
+    shiftKey,
     metaKey: false,
     timeStamp: Date.now(),
     getModifierState: () => false,
@@ -235,6 +239,20 @@ test("Escape in a dialog outside Settings with the keyboard in it (Send feedback
   doc.activeElement = doc.body;
   await press("Escape");
   expect(closed).toHaveBeenCalledTimes(1);
+});
+
+test("T-732: Settings is a modal dialog that keeps Tab inside: Shift+Tab from its first control wraps to its last, Tab from the last to the first", async () => {
+  terminal();
+  const m = await open(vi.fn());
+  const root = find(m.container, (n) => n.attrs.role === "dialog" && n.attrs["aria-label"] === "Settings")[0];
+  expect(root.attrs["aria-modal"]).toBe("true");
+  const all = root.querySelectorAll(FOCUSABLE) as unknown as FakeNode[];
+  expect(all.length).toBeGreaterThan(10);
+  all[0].focus();
+  await press("Tab", true);
+  expect(doc.activeElement, "Shift+Tab from the first control stays in Settings, on its last").toBe(all[all.length - 1]);
+  await press("Tab");
+  expect(doc.activeElement, "Tab from the last control wraps to the first").toBe(all[0]);
 });
 
 test("a dialog of a pane under Settings (the shell ended) does not block Escape", async () => {

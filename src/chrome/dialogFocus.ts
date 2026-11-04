@@ -76,7 +76,8 @@ export const menuRoom = (r: { top: number; bottom: number }, windowHeight: numbe
 export const MENU_ROWS = '[role^="menuitem"]:not(:disabled):not([aria-disabled="true"])';
 
 /** A menu's keyboard: focus on the first row, arrows / Home / End move between the rows (wrapping), Tab closes it
- * (focus goes on to the next control). Keys pressed while focus is outside the menu are left alone. Returns the stop. */
+ * (T-720: focus goes back to where it was, as for Escape and the pane menu). Keys pressed while focus is outside the
+ * menu are left alone. Returns the stop. */
 export function trapMenu(box: Box, onClose: () => void): () => void {
   const rows = () => Array.from(box.querySelectorAll<HTMLElement>(MENU_ROWS));
   // A menu scrolls inside the space it has instead of running off a short window: below its top when it opens
@@ -85,7 +86,10 @@ export function trapMenu(box: Box, onClose: () => void): () => void {
   if (el.style && el.getBoundingClientRect) el.style.maxHeight = `${menuRoom(el.getBoundingClientRect(), window.innerHeight, !!el.style.bottom)}px`;
   const onArrow = (e: KeyboardEvent) => {
     if (!box.contains(document.activeElement)) return;
-    if (e.key === "Tab") return onClose();
+    if (e.key === "Tab") {
+      e.preventDefault();
+      return onClose();
+    }
     const all = rows();
     const to = menuStep(all.length, all.indexOf(document.activeElement as HTMLElement), e.key);
     if (to === null) return;

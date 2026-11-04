@@ -1,0 +1,45 @@
+T-726 - One netstat table serves the Ports popover and the Preview button; the 5 s sidebar scan sets no unchanged state (DT-C162; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/ux-16 from main 3e067ebf, main 73008fe1 merged in, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "T-726 / DT-C162" (W3 queue refill).
+
+WHAT WAS WRONG
+- Two pollers each ran netstat: the Ports popover (src-tauri/src/ports.rs scan, every 2 s while open, 10 s closed) and the
+  Preview button (src-tauri/src/browser_ports.rs listening, every 3 s). Two process launches for the same table.
+- The projects sidebar (src/projects/ProjectsPanel.tsx showScanned and the pushed-branch read) set new objects every 5 s,
+  so the whole panel re-rendered even when nothing had changed.
+
+THE FIX (DT-C162)
+- ports.rs: netstat(fresh) returns the system's table; shared() keeps the last one for 1.5 s (SHARED_FOR), dated when its
+  run starts. 1.5 s is under the open popover's 2 s poll, so the popover never gets its own last table back; a Preview
+  tick that lands within 1.5 s of a popover run reuses it. The lock is held across the run, so a caller waiting behind it
+  reuses that table; a failed run is an error and is not kept. ports_list reads with fresh = false; ports_stop reads with
+  fresh = true, so the Stop safety checks (lineage, start time) always see the system as it is now.
+- browser_ports.rs: on Windows, listening() reads crate::ports::netstat(false). Elsewhere lsof is unchanged.
+- USER-VISIBLE: the Preview button's read was "netstat -ano -p tcp" (IPv4 TCP only); it is now the popover's
+  "netstat -ano", which also lists IPv6 and UDP. parse_netstat keeps TCP LISTENING lines only and one row per port, so a
+  dev server listening only on IPv6 ([::1]) now shows on the Preview button; UDP never does.
+- ProjectsPanel.tsx: unlessSame(next) keeps the previous value when the new one reads the same (JSON compare), so React
+  skips the render. setWorktrees, setHiddenWts, setFresh and setPushedBy use it.
+
+TESTS
+- ports.rs t726_the_pollers_share_one_table_and_a_stop_reads_a_fresh_one: a second read within the window reuses the run,
+  a fresh read runs again, an old table is read again, a failure is returned and not kept; a 60 ms run is dated at its
+  start; ports_stop's scan passes fresh = true. Red-checked: stamping after the run fails ("dated at the start of the
+  run"); ports_stop with fresh = false fails.
+- browser_ports.rs t726_the_shared_table_shows_an_ipv6_only_dev_server_and_skips_udp: a [::1]-only listener is listed,
+  UDP lines are not.
+- cargo test --lib t726: 2 passed. Port tests (ports + browser::ports): 26 passed. cargo clippy --lib --tests -- -D warnings: clean.
+- src/projects/model.test.ts "T-726: ...": same content keeps the old object, changed content gives the new one, and each of
+  the four setters goes through unlessSame. src/projects + src/browser + src/ports: 103 files, 648 tests passed
+  (VITEST_MAX_WORKERS=1). pnpm exec tsc --noEmit -p . : clean.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 73008fe1: 1,489,604 B first load. This branch: 1,489,671 B (+67), over the +50 cap; accepted by 57 (no cut).
+- The helper exported from projects/model.ts measured +94 (a cross-chunk export); kept in ProjectsPanel.tsx: +67.
+- Dropping the setPushedBy wrap saves about 5 B but keeps a re-render the row exists to remove; not taken.
+
+REVIEW
+- Fresh opus-high-review: B, no high. M1 fixed: the table was dated after netstat ran (~90 ms), so the open popover's next
+  2 s tick found it 1.91 s old and replayed it; now dated at the run's start and kept 1.5 s. M2 fixed: the test now pins
+  the start dating and ports_stop's fresh read (both red-checked). Kept: unlessSame in ProjectsPanel.tsx (its export only
+  costs a full reload on edit in development; model.ts measured +27 B more). Lows logged to kolux-rs-after.md.
