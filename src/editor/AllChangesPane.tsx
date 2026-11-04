@@ -440,7 +440,11 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
       )}
       {aborting && status?.operation === aborting && <Ask title={`${abortLabel(aborting)}?`} body={abortLoss(aborting)} confirm={abortLabel(aborting)} onConfirm={() => abortOp(aborting)} onCancel={() => setAborting(null)} />}
       <div className="scm-commit ac-commit" aria-label="Commit">
-          <textarea className="field multi" aria-label="Commit message" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={(e) => isCommitShortcut(e) && (e.preventDefault(), commit())} />
+          {/* C10-R2-01: the commit shortcut is this box's message field alone, so a Ctrl+Enter
+              typed in any other textarea or input (a handoff note, a pull request description) stays
+              that field's own key. The native event is read because only it knows whether the
+              keystroke is still part of an input-method composition. */}
+          <textarea className="field multi" aria-label="Commit message" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={(e) => isCommitShortcut(e.nativeEvent) && (e.preventDefault(), commit())} />
           <div className="ac-commit-row">
             <button className="btn" disabled={pending !== null || !canCommit(status, message)} onClick={commit} title={status && status.staged.length === 0 ? "Nothing is staged: use Stage all above, or Stage on a file in the Working tree view" : status && status.conflicts.length ? "Conflicts remain" : undefined}>
               Commit{status?.staged.length ? ` ${status.staged.length} staged` : ""}

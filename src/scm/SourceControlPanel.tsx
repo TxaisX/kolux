@@ -3,7 +3,7 @@
 // untracked, each section with its count, a stage-all / unstage-all control and a discard-all
 // control, plus or minus and a discard arrow on every row (GIT-003: discarding asks first, worded
 // for what goes, with the untracked list scrolling inside the question),
-// a commit box (Ctrl+Enter commits while focus is in here), the main button that always proposes
+// a commit box (Ctrl+Enter in its message box commits, C10-R2-01), the main button that always proposes
 // the next step, a remote menu whose labels carry counts and whose disabled items say why, and a
 // notice when an action fails or a hook refuses a commit, with a Fix with AI action. The draft
 // message is the window's, keyed by worktree, so it survives closing the panel and switching
@@ -670,13 +670,10 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
     <aside
       className="sidebar-wrap right"
       onKeyDown={(e) => {
-        if (e.key === "Escape" && selected.length > 0) {
-          setSelected([]);
-          return;
-        }
-        if (!isCommitShortcut(e.nativeEvent)) return;
-        e.preventDefault();
-        void commit();
+        // Escape clears the selection. The commit shortcut is not the panel's: it belongs to the
+        // commit message box alone (C10-R2-01), so a Ctrl+Enter typed in the handoff note or a
+        // pull request description stays that field's own key.
+        if (e.key === "Escape" && selected.length > 0) setSelected([]);
       }}
     >
       {discarding && <Ask title={discarding.title} body={discarding.body} confirm={discarding.confirm} onConfirm={() => discard(discarding)} onCancel={() => setDiscarding(null)} />}
@@ -805,7 +802,23 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
             )}
             <div className="scm-commit">
               <div className="scm-msg">
-                <textarea className="field multi" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={draft} disabled={box.boxDisabled} title={box.why ?? undefined} onChange={(e) => onDraft(e.target.value)} />
+                <textarea
+                  className="field multi"
+                  aria-label="Commit message"
+                  placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"}
+                  value={draft}
+                  disabled={box.boxDisabled}
+                  title={box.why ?? undefined}
+                  onChange={(e) => onDraft(e.target.value)}
+                  // C10-R2-01: the shortcut is this field's own, so Ctrl+Enter here commits and the
+                  // same chord in any other box does what that box does; the native event is passed
+                  // so a key still part of an input-method composition never commits.
+                  onKeyDown={(e) => {
+                    if (!isCommitShortcut(e.nativeEvent)) return;
+                    e.preventDefault();
+                    void commit();
+                  }}
+                />
                 {gen === "running" ? (
                   <button className="ib scm-gen" title="Stop writing the message" aria-label="Stop writing the message" onClick={() => dir !== null && void stopGenerate(dir)}>
                     <Stop />
