@@ -26,6 +26,8 @@ VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t745)
     above). npx tsc --noEmit -p .: clean.
   - After merging main 0d882444 (train 22): npx vitest run 818 files, 6050 tests passed; tsc clean; first load
     1,487,833 B vs 1,487,824 B on that main: +9 B.
+  - After merging main 5e481cf2 (train 23): npx vitest run 821 files, 6060 tests passed; tsc clean; first load
+    1,487,955 B vs 1,487,946 B for main 5e481cf2 built on its own: +9 B.
   - Bundle: first load 1,486,979 B vs 1,486,970 B on main 8f3f8295: +9 B against a +150 cap. The first build was
     about +500 B (logic in Grid/Pane, which are first-load); it was moved into the lazy ChooserPane chunk.
   - Review of the first diff: opus-high-review B. Both should-fixes and the nits were taken in the rework.
