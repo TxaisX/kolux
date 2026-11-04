@@ -1,6 +1,6 @@
 T-735 / DT-C171: a setup-step setting that fails to save must not look saved (backlog-sweep-49 #18, from findings/onboarding.md
 "onboarding/StepPanels.tsx (void save(...)) | setting saves fire-and-forget | revert + error"), lane A (90). Built on main 5a69c684,
-merged with main 99b4a9d2.
+merged with main 99b4a9d2, then 0033ca09.
 
 WHAT MAIN ALREADY DID
   - T-674 (c85cc5b0, 2026-11-02, before the sweep's base d552a974) shows SaveFailed ("That change could not be saved, so it
@@ -28,6 +28,9 @@ TESTS: src/onboarding/saveFailed.test.ts mounts the real panels with the real us
 
 VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t735)
   - npx vitest run (merged with main 99b4a9d2, at bdbd62c3): 808 files, 6018 tests passed. npx tsc --noEmit -p .: clean.
+  - Again after merging main 0033ca09 (a5ce09c2): 809 files, 6021 passed, 1 failed: richSaveGuards.test.ts "an ordinary
+    keystroke is placed in well under 60 ms" took 670 ms with a second full run going (this branch does not touch the
+    editor); that file alone: 166 passed. tsc: clean.
   - Bundle: first load 1,489,740 B on the branch vs 1,489,600 B on main 99b4a9d2: +140 B against a +250 cap.
   - Review (test-only first draft): opus-high-review A-, "not reproduced" confirmed control by control; its two should-fix
     rows are the two fixes above.
