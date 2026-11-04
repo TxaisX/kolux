@@ -148,7 +148,7 @@ export default function ReviewNotes({ picked, notes, onAdd, onCancel, onRemove, 
           )}
           {menu && (
             <div ref={box} className="review-send" role="menu" aria-label="Send the notes to">
-              {targets.length === 0 && <div className="sb-hint">{starters.length > 0 && onStart ? "No agent is running in this worktree. Start one below, or copy the notes instead." : "No agent is running in this worktree. Start one, or copy the notes instead."}</div>}
+              {targets.length === 0 && <div className="sb-hint">{starters.length > 0 && onStart ? "No agent is running in this workspace. Start one below, or copy the notes instead." : "No agent is running in this workspace. Start one, or copy the notes instead."}</div>}
               {targets.map((t) => (
                 <button
                   key={t.key}

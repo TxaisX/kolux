@@ -164,7 +164,7 @@ export default function PrStart({ dir, provider, host, onCreated }: Props) {
       if (session.current === started) {
         if (result.state === "off") setWriteNote("Writing with AI is switched off or has no usable writer, so nothing was written.");
         if (result.state === "failed") setWriteNote(result.message);
-        if (result.state === "busy") setWriteNote("A draft is already being written for this worktree.");
+        if (result.state === "busy") setWriteNote("A draft is already being written for this workspace.");
       }
       // A composer closed (Escape keeps the draft) or reopened meanwhile keeps what it has: the finished write never touches the book then.
       if (writeMayTouchDraft(started, session.current)) {

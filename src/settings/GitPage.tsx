@@ -122,7 +122,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
           <input type="checkbox" role="switch" aria-label="Refresh the base first" checked={settings[REFRESH_FIELD] === true} onChange={(e) => void save({ [REFRESH_FIELD]: e.target.checked })} />
           Refresh the base first
         </label>
-        <p className="conn-detail">A new workspace brings its local base branch up to the remote first. It only fast-forwards: a base with commits of its own, or with uncommitted changes in its worktree, is left as it is. With this off, Kolux says when the base is behind.</p>
+        <p className="conn-detail">A new workspace brings its local base branch up to the remote first. It only fast-forwards: a base with commits of its own, or with uncommitted changes in its workspace, is left as it is. With this off, Kolux says when the base is behind.</p>
       </section>
       <section className="conn-card" data-section="commit-writer">
         <h2 className="conn-name">Commit messages</h2>

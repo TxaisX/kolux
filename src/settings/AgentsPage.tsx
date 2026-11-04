@@ -243,7 +243,7 @@ export function CachePick({ minutes, onPick }: { minutes: number | null; onPick:
         <input type="checkbox" role="switch" checked={minutes !== null} onChange={(e) => onPick(e.target.checked ? 5 : null)} />
         <span>
           Prompt-cache timer
-          <small>When a Claude agent goes idle, its worktree card counts down how long the conversation stays cached; after that the next message sends it all again without the cache.</small>
+          <small>When a Claude agent goes idle, its workspace card counts down how long the conversation stays cached; after that the next message sends it all again without the cache.</small>
         </span>
       </label>
       <div className="look-select">

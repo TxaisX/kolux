@@ -82,7 +82,7 @@ test("SET-034: the page lists the kinds, the sound and volume, the test button a
   const { renderToString } = await import("react-dom/server");
   const { NotificationsView } = await import("./NotificationsPage");
   const html = renderToString(createElement(NotificationsView, { settings: { notificationVolume: 0 }, onSave: () => {} }));
-  for (const t of ["An agent finishes its task", "A terminal rings its bell", "Usage alerts", "Stay quiet about the worktree you are looking at", "System default", "Silent", "Send a test notification", "System notification settings"]) expect(html).toContain(t);
+  for (const t of ["An agent finishes its task", "A terminal rings its bell", "Usage alerts", "Stay quiet about the workspace you are looking at", "System default", "Silent", "Send a test notification", "System notification settings"]) expect(html).toContain(t);
 });
 
 test("STAT-043: there are nine built-in tones, the system default and a custom file to choose from", () => {

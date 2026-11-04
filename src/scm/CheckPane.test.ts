@@ -67,7 +67,7 @@ test("an annotation inside the worktree opens that file at that line; one that c
   expect(out?.props.disabled).toBe(true);
   out?.props.onClick?.();
   expect(p.onOpenFile).toHaveBeenCalledTimes(1);
-  expect(renderToString(createElement(CheckCard, p))).toContain("Outside this worktree");
+  expect(renderToString(createElement(CheckCard, p))).toContain("Outside this workspace");
 });
 
 test("Copy card and Fix with AI do their jobs; Fix is off, with its reason, when the gate says so", () => {

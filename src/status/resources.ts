@@ -20,7 +20,7 @@ const base = (dir: string) => dir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ||
  * (T-153-e): false while the window is still loading, so no row claims a pane either way. */
 export function groupSessions(sessions: SessionUsage[], names: Record<number, string>, workspaces: string[], loaded = true): Group[] {
   const groups = new Map<string, Group>();
-  const none: Group = { label: "No worktree", dir: null, rows: [] };
+  const none: Group = { label: "No workspace", dir: null, rows: [] };
   for (const s of [...sessions].sort((a, b) => a.id - b.id)) {
     const row = { ...s, ...sessionLabel(s.id, names, loaded) };
     const home = workspaces.filter((w) => underDir(s.dir, w)).sort((a, b) => b.length - a.length)[0];

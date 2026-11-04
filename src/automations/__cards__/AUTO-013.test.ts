@@ -41,7 +41,7 @@ test("box 1: a run whose worktree is gone offers its saved output, and opening i
   findAll(tree, (e) => e.type === "button" && textOf(e) === "Saved output")[0].props.onClick();
   tree = detail.render();
   const shown = findAll(tree, (e) => e.props?.className === "autos-snapshot").map(textOf).join("");
-  expect(shown).toContain("A snapshot: the worktree nightly-1 is gone");
+  expect(shown).toContain("A snapshot: the workspace nightly-1 is gone");
   expect(shown).toContain("not a live terminal");
   expect(shown).toContain("all 12 checks passed");
 });

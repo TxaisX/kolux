@@ -651,7 +651,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   };
   const openSend = () => {
     const list = targets?.() ?? [];
-    if (!list.length) return setNote("No agent sessions in this worktree");
+    if (!list.length) return setNote("No agent sessions in this workspace");
     setSendMenu(list);
   };
   const sendTo = (key: number) => {
