@@ -13,6 +13,7 @@ import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/UpdateCenter";
 import { KeepAwakeItem, useKeepAwake } from "../launch/KeepAwakeCard";
 import PortsItem from "../ports/PortsItem";
 import SkillBarItem from "../skills/SkillBarItem";
+import { openSettings } from "../settings/pages";
 
 type Props = {
   terminals: number;
@@ -75,11 +76,11 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       {/* SKILL-027 / VIEW-100: a running skill update with its count, then a check that fades or a failure that stays until clicked. */}
       <SkillBarItem />
       {shows("hooks") && hooks !== null && (
-        <span className="item" title={`Agent status hooks are ${hooks ? "on" : "off"} (Settings > Agents)`}>
+        <button className="item" title={`Agent status hooks are ${hooks ? "on" : "off"}. Click to open Settings > Agents`} onClick={() => openSettings("agents", "hooks")}>
           <Cup size={12} />
           {hooks ? "On" : "Off"}
           {hooks && <span className="on" />}
-        </span>
+        </button>
       )}
       {shows("memory") && (
         <button className="item res-open" title="Memory this app holds right now. Click for every session's memory and CPU" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
