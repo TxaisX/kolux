@@ -99,6 +99,9 @@ import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { FILE_MANAGER, loadTargets, openIn } from "../editor/openIn";
 
+/** T-726: a state update that keeps the old value when the new one reads the same, so an unchanged 5 s scan repaints nothing. */
+export const unlessSame = <T,>(next: T) => (prev: T): T => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
+
 /** The pages that open over the content column from the sidebar footer. */
 export type Page = "automations" | "routing" | "tasks";
 
@@ -428,9 +431,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const scanGate = useRef(new ScanGate()); // T-442-c: a scan never overlaps itself
   const pushedBusy = useRef(false);
   const showScanned = (next: Record<string, Worktree[]>, unseen: Record<string, Worktree[]>) => {
-    setWorktrees(Object.fromEntries(Object.entries(next).map(([id, ws]) => [id, ws.filter((w) => !w.hidden)])));
-    setHiddenWts(Object.fromEntries(Object.entries(next).map(([id, ws]) => [id, ws.filter((w) => w.hidden)])));
-    setFresh(unseen);
+    setWorktrees(unlessSame(Object.fromEntries(Object.entries(next).map(([id, ws]) => [id, ws.filter((w) => !w.hidden)]))));
+    setHiddenWts(unlessSame(Object.fromEntries(Object.entries(next).map(([id, ws]) => [id, ws.filter((w) => w.hidden)]))));
+    setFresh(unlessSame(unseen));
   };
   // `tick`: the 5 s poll, skipped while a scan runs; any other caller waits its turn and runs once.
   const refreshWorktrees = useCallback((list: Project[], opts?: { tick?: boolean }) => scanGate.current.run(() => sweepWorktrees(list), { skipIfBusy: opts?.tick }), []);
@@ -468,7 +471,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (!pushedBusy.current) {
       pushedBusy.current = true;
       invoke<Pushed[]>("scm_pushed", { worktrees: shown })
-        .then((list) => setPushedBy(Object.fromEntries(list.map((p) => [p.path, p]))))
+        .then((list) => setPushedBy(unlessSame(Object.fromEntries(list.map((p) => [p.path, p])))))
         .catch(() => {})
         .finally(() => (pushedBusy.current = false));
     }

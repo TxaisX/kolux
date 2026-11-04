@@ -194,7 +194,7 @@ function AgentsPanelBody(props: PanelProps) {
   const count = list === null ? (error === null ? "Looking for past sessions…" : "") : shown.length === total ? `${total} past session${total === 1 ? "" : "s"}` : `${shown.length} of ${total} past sessions`;
 
   return (
-    <div className="agents-panel" aria-label="Agents">
+    <div className="agents-panel">
       <div className="agents-bar">
         <span className="agents-count">{count}</span>
         <button type="button" className="btn" title="Rescan every session folder" disabled={busy} onClick={() => load(true)}>
