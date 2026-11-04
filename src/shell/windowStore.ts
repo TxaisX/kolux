@@ -23,7 +23,7 @@ import { useAgentStatusState } from "../status/useAgentStatus";
 import { useAccountSwitcher } from "../switcher/AccountSwitcher";
 import type { CodexAccount } from "../terminal/accountChange";
 import { groupOf, type Zoom } from "../terminal/grid";
-import { marksOf, reviveSaved, type SavedLayout } from "../terminal/layout";
+import { joinSaved, marksOf, reviveSaved, type SavedLayout } from "../terminal/layout";
 import type { PendingSend, PlanDraft } from "../terminal/planReview";
 import type { Zone } from "../terminal/rearrange";
 import type { Identity } from "../terminal/shellMarks";
@@ -42,7 +42,7 @@ import type { Gap } from "../terminal/dividers";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
-export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null) {
+export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null, late: SavedLayout | null = null) {
   const keymap = useKeymap();
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [screen, setScreen] = useState<Screen>(() => startScreen(initial)); // SET-037
@@ -71,6 +71,8 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [dragLeft, setDragLeft] = useState<number | null>(null); // VIEW-050: the left sidebar mid-drag
   // PROJ-067: the saved tabs and layout (already checked against the disk by main.tsx) are the starting state.
   const [panes, setPanes] = useState<Pane[]>(() => layout?.panes.map(reviveSaved) ?? []); // T-543-b: no pane until a workspace is opened
+  const panesNow = useRef(panes); // C26-R3-01: the panes as they are when a late layout lands
+  panesNow.current = panes;
   useFileMoves(setPanes); // EDIT-032: editor tabs follow a renamed or moved file
   const [focused, setFocused] = useState(layout?.focused ?? 0);
   // TERM-040: which tab each cell shows; the focused pane's tab comes to the front, and a cell
@@ -156,6 +158,19 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [renameRequest, setRenameRequest] = useState(0); // T-611: workspace.rename (PROJ-059) asks the sidebar to rename the workspace in front
   const { projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh, deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist, setHist } = useWorkspaces(activeDir);
   const [stacked, setStacked] = useState<Record<string, boolean>>(layout?.stacked ?? {}); // TERM-006: a single pane split down makes a stacked pair
+  // C26-R3-01: a start whose settings answered after the 1.5 s race used to draw a second App (a changed key), and
+  // React unmounted the first, killing every terminal it held. The saved tabs now join the window already drawn,
+  // once, so a tab opened during the wait keeps its pane and its agent. A choice the user made meanwhile wins.
+  const adopted = useRef(false);
+  useEffect(() => {
+    if (!late || adopted.current) return;
+    adopted.current = true;
+    setPanes((ps) => joinSaved(ps, late));
+    setActiveTab((m) => ({ ...late.activeTab, ...m }));
+    setStacked((s) => ({ ...late.stacked, ...s }));
+    setFocused((f) => (panesNow.current.some((p) => p.key === f) ? f : late.focused));
+    setActiveDir((d) => d ?? late.activeDir);
+  }, [late]);
   const { palette, setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
@@ -191,7 +206,8 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   // TERM-048: the tab right-click menu, at the pointer.
   // T-597: a window drawn before the saved tabs are back (`read` false) hands out keys no saved tab holds:
   // panes attach to the terminal of their key, and the saved tabs' terminals outlive a quit (APP-052).
-  // Those tabs are never saved, and terminal_prune_history drops their history at the next start.
+  // C26-R3-01: those tabs now join the saved layout when it lands, so this range keeps the two sets apart
+  // instead of terminal_prune_history dropping the wait tabs at the next start.
   const nextKey = useRef(layout ? Math.max(1, ...layout.panes.map((p) => p.key)) + 1 : read ? 2 : 1_000_000);
   // TERM-106: the tabs that came back from the saved layout replay their saved output first.
   const restoredKeys = useRef(new Set((layout?.panes ?? []).filter((p) => !p.chooser).map((p) => p.key))); // a chooser has no terminal to wait for

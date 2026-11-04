@@ -31,6 +31,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { attachRenderer, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
+import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
 import { decodeOutput, endedLabel, forPane, type ExitEvent, type OutputEvent } from "./codec";
 import { notePrinted } from "../browser/preview";
@@ -616,6 +617,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     fit.fit();
 
     let alive = true;
+    // C26-R3-01: the drawing this pane belongs to, so an unmount that hands the terminals to the next drawing
+    // (a re-draw of the window, not a closed tab) leaves them running.
+    const gen = windowGeneration.current;
     // T-247-d: the input preferences. Wheel speed depends on the screen in use, so it is set again when the screen changes.
     const feel = () => Object.assign(term.options, inputOptions(currentInput(), keys.current.platform, navigator.language, term.buffer.active.type === "alternate", currentText().scroll));
     // SET-022: ligatures when the setting or the font asks for them and the addon is there; without it the text is drawn plain.
@@ -961,7 +965,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // (ACCT-046) prints no mark: neither is held.
           if (back !== null || !printsMarks(ran)) openGate();
           if (!alive) {
-            invoke("terminal_kill", { id }).catch(() => {});
+            if (killsOnUnmount(gen)) invoke("terminal_kill", { id }).catch(() => {});
             return;
           }
           idRef.current = id;
@@ -1226,7 +1230,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       observer.disconnect();
       unlisteners.forEach((u) => u());
       const id = idRef.current;
-      if (id !== null) invoke("terminal_kill", { id }).catch(() => {});
+      if (id !== null && killsOnUnmount(gen)) invoke("terminal_kill", { id }).catch(() => {});
       choice.dispose();
       pasting.detach();
       shots();

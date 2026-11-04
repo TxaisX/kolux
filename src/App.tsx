@@ -69,10 +69,10 @@ export type Pane = { /** EDIT-026: an editor tab that follows a growing log (rea
 
 /** Columns for a pane count: 1, side by side for 2, two rows for 3-4, then three across. */
 /** `initial`: the settings read before the first frame (main.tsx), so the first screen is right at once. */
-export default function App({ initial = {}, layout = null, read = true }: { initial?: Record<string, unknown>; layout?: SavedLayout | null; read?: boolean }) {
+export default function App({ initial = {}, layout = null, read = true, late = null }: { initial?: Record<string, unknown>; layout?: SavedLayout | null; read?: boolean; late?: SavedLayout | null }) {
   return (
     <KeymapProvider>
-      <Window initial={initial} layout={layout} read={read} />
+      <Window initial={initial} layout={layout} read={read} late={late} />
     </KeymapProvider>
   );
 }
@@ -80,11 +80,11 @@ export default function App({ initial = {}, layout = null, read = true }: { init
 /** The next screen in the Agents / Board / Terminals cycle (keys/useWindowKeys.ts). */
 export { nextScreen };
 
-function Window({ initial, layout, read }: { initial: Record<string, unknown>; layout: SavedLayout | null; read: boolean }) {
+function Window({ initial, layout, read, late }: { initial: Record<string, unknown>; layout: SavedLayout | null; read: boolean; late: SavedLayout | null }) {
   // Cycle 2: everything this render makes, filled at the end; the actions, the key handler and the drawing read it (shell/windowBag.ts).
   const w = {} as WindowBag;
   // The window's state and its first hooks, in their order (shell/windowStore.ts).
-  const store = useWindowStore(initial, layout);
+  const store = useWindowStore(initial, layout, late);
   const {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, setExplorerFocus, dragLeft,
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,

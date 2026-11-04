@@ -1,11 +1,11 @@
 // T-597 (F05-app-shell-launch.2, VIEW-107, PROJ-067): a start whose settings read loses the 1.5 s race draws
-// the window without the saved tabs and writes no layout; when the settings answer after all, the same
-// restore runs on them and the window is drawn again with the saved tabs back. main.tsx is booted for real
-// over mocked commands (as tower/entry.test.ts does), with the real layout restore; App itself cannot be
-// drawn here, so its save guard is read from its source (as skills/noticeMount.test.ts does).
+// the window without the saved tabs and writes no layout; when the settings answer after all, the same restore
+// runs on them and the saved tabs join the window already drawn (C26-R3-01: the same App, not a new one).
+// main.tsx is booted for real over mocked commands (as tower/entry.test.ts does), with the real layout restore;
+// App itself cannot be drawn here, so its save guard is read from its source (as skills/noticeMount.test.ts does).
 import { afterEach, expect, test, vi } from "vitest";
 import { LAYOUT_FIELD, layoutOf, type SavedLayout } from "./terminal/layout";
-import { windowSource } from "./shell/windowSource";
+import { windowFiles, windowSource } from "./shell/windowSource";
 
 const h = vi.hoisted(() => ({
   drawn: [] as unknown[],
@@ -39,7 +39,7 @@ vi.mock("./settings/menuWheel", () => ({ installMenuWheel: () => {} }));
 const tab = (key: number, agent: "claude" | "codex" | "shell", extra: Record<string, unknown> = {}) => ({ key, cwd: "C:/w/app", branch: "main", agent, program: null, args: [] as string[], ...extra });
 const SAVED = JSON.parse(JSON.stringify(layoutOf([tab(1, "claude", { agentId: "claude", session: "s-1" }), tab(2, "shell"), tab(3, "codex", { agentId: "codex", session: "thr_3" })], { 0: 3 }, 3, "C:/w/app", {})));
 
-type El = { key: string | null; props: { children?: El; initial?: Record<string, unknown>; layout?: SavedLayout | null; read?: boolean } };
+type El = { key: string | null; props: { children?: El; initial?: Record<string, unknown>; layout?: SavedLayout | null; read?: boolean; late?: SavedLayout | null } };
 /** The App element inside StrictMode and ScreenBoundary. */
 const appOf = (el: unknown) => (el as El).props.children!.props.children!;
 
@@ -55,7 +55,7 @@ async function boot() {
 }
 afterEach(() => vi.unstubAllGlobals());
 
-test("a slow start draws the window without the saved tabs, then draws it again with them once the settings answer", async () => {
+test("a slow start draws the window without the saved tabs, then hands them to the same App once the settings answer", async () => {
   await boot();
   await vi.waitFor(() => expect(h.drawn.length).toBe(1), { timeout: 4000 });
   const slow = appOf(h.drawn[0]);
@@ -66,17 +66,28 @@ test("a slow start draws the window without the saved tabs, then draws it again 
   await vi.waitFor(() => expect(h.drawn.length).toBe(2));
   const back = appOf(h.drawn[1]);
   expect(back.props.read).toBe(true);
-  expect(back.key).not.toBe(slow.key); // a new App, whose tabs start from the saved layout
-  expect(back.props.layout?.panes.map((p) => [p.key, p.agent, p.args])).toEqual([
+  // C26-R3-01: the same element, so React updates it where it stands: no unmount, no terminal killed, and a tab
+  // opened during the wait stays drawn.
+  expect(back.key).toBe(slow.key);
+  expect(back.props.late?.panes.map((p) => [p.key, p.agent, p.args])).toEqual([
     [1, "claude", ["--resume", "s-1"]],
     [2, "shell", []],
     [3, "codex", ["--resume", "thr_3"]],
   ]);
-  expect(back.props.layout?.focused).toBe(3);
+  expect(back.props.late?.focused).toBe(3);
   expect(back.props.initial).toMatchObject({ language: "fr" });
   // The rest of what a timely read sets up follows the late answer too: the language and the terminal text.
   expect(h.langs[h.langs.length - 1]).toBe("fr");
   expect(h.texts[h.texts.length - 1]).toMatchObject({ language: "fr" });
+});
+
+// C26-R3-01: the late layout joins the window already drawn; it does not replace it. The merge, the once-only
+// adoption and the write that follows are what keep a pane started during the wait alive.
+test("a late settings answer hands the saved tabs to the drawn window instead of replacing what it holds", () => {
+  const store = windowFiles["./shell/windowStore.ts"];
+  expect(store).toMatch(/setPanes\(\(ps\) => joinSaved\(ps, late\)\)/); // merge, never replace
+  expect(store).toMatch(/if \(!late \|\| adopted\.current\) return;/); // once, however often the prop arrives
+  expect(windowFiles["./shell/useWindowSave.ts"]).toContain("stacked, pinned, tabColors, read])"); // the wait tab is written down
 });
 
 test("a slow start whose settings never answer stays as it was drawn: no saved tabs, read false", async () => {
