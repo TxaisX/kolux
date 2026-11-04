@@ -19,8 +19,8 @@ export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
   { id: "explorer", label: "Explorer", hint: "Files in this workspace" },
   { id: "insights", label: "Insights", hint: "Every session's tokens, estimated cost and work" },
   { id: "checks", label: "Checks", hint: "Checks on this workspace's pull request" },
-  { id: "attached", label: "Attached", hint: "Worktrees attached to this folder (folder workspaces)" },
-  { id: "prchecks", label: "PR Checks", hint: "PR checks of the attached worktrees (folder workspaces)" },
+  { id: "attached", label: "Attached", hint: "Attached workspaces" },
+  { id: "prchecks", label: "PR Checks", hint: "PR checks of attached workspaces" },
   { id: "agents", label: "History", hint: "Search, resume or copy past sessions" },
 ];
 export const RIGHT_KEYS = { open: "rightSidebarOpen", tab: "rightSidebarTab", width: "rightSidebarWidth" } as const;

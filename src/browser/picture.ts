@@ -27,7 +27,7 @@ export async function capturePage(invoke: Invoke, id: number): Promise<Picture> 
 /** Saves a PNG data URL as `name` in the captures folder, then hands `text(path)` to the agent pane `key`.
  * Nothing is sent when the save fails, and the failure reaches the caller. */
 export async function sendPicture(invoke: Invoke, onSend: ((key: number, text: string) => Promise<void> | void) | undefined, key: number, a: { dataUrl: string; name: string; text: (path: string) => string }): Promise<string> {
-  if (!onSend) throw new Error("No agent sessions in this worktree");
+  if (!onSend) throw new Error("No agent sessions in this workspace");
   const path = await invoke<string>("browser_save_picture", { data: a.dataUrl, name: a.name });
   await onSend(key, a.text(path));
   return path;

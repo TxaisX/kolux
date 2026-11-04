@@ -194,7 +194,8 @@ Rules: blocked and waiting both use the permission look; the Agents view adds st
   cannot-reach labels, and stopped labels say what caused the stop; the working spinner moves 12
   frames a second with every spinner on screen in step, and holds still when the system asks for
   reduced motion; hovering a status indicator explains it after about 200 ms, and a keyboard focus on it
-  explains it at once and is described by it for screen readers (T-739) (Kolux RS, T-026-b:
+  explains it at once and is described by it for screen readers (T-739); Escape closes any tip,
+  and that description goes when focus leaves (T-747) (Kolux RS, T-026-b:
   the vocabulary, glyphs, spinner and hover are built; the background entry lights with T-123,
   no-recent-update with the Inbox or the Agents view, the Agents view's labels with that view).
 Acceptance:
@@ -202,6 +203,8 @@ Acceptance:
         time. (cards; evidence/cards-STAT-052.txt)
   - [x] Tab onto a status dot or any element with a hover tip → its tip shows at once and a screen
         reader reads it; clicking it shows nothing new. (unit; evidence/T-739.txt)
+  - [x] Tab onto an element with a tip, then press Escape → the tip closes, and the key is not used
+        up, so an open dialog still gets it; tab away → the element is no longer described by the tip. (unit; evidence/T-747.txt)
   - [x] Turn on reduced motion in the system → spinners stop moving but still read as working. (cards; evidence/cards-STAT-052.txt)
 Compat: —
 Source: D-04-052

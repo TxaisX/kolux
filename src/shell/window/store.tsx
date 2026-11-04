@@ -5,7 +5,8 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { WindowBag } from "../windowBag";
 
-const WindowStore = createContext<WindowBag | null>(null);
+/** T-745: read directly by the chooser, which also renders outside the window (tests, the sheet page). */
+export const WindowStore = createContext<WindowBag | null>(null);
 
 /** The window's one state container, held for the surfaces under it. Drawing only: it starts no work. */
 export function WindowStoreProvider({ store, children }: { store: WindowBag; children: ReactNode }) {

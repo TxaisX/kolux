@@ -165,8 +165,8 @@ export default function TerminalPage() {
           </div>
           {settings && (
             <>
-              <Switch label="Keep shell history separate for each worktree" checked={settings[SHELL_HISTORY_FIELD] !== false} onChange={(on) => save({ [SHELL_HISTORY_FIELD]: on })} />
-              <p className="conn-detail">The up arrow in bash, zsh and fish then shows the commands run in that worktree only. Command Prompt and PowerShell are left as they are, and a history file you set yourself is kept. Applies to terminals opened after the change.</p>
+              <Switch label="Keep shell history separate for each workspace" checked={settings[SHELL_HISTORY_FIELD] !== false} onChange={(on) => save({ [SHELL_HISTORY_FIELD]: on })} />
+              <p className="conn-detail">The up arrow in bash, zsh and fish then shows the commands run in that workspace only. Command Prompt and PowerShell are left as they are, and a history file you set yourself is kept. Applies to terminals opened after the change.</p>
             </>
           )}
         </section>

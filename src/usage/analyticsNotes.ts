@@ -14,4 +14,4 @@ export const scanFailedNote = (p: Provider, e: unknown) => `Could not rescan ${L
 export const trackFailedNote = (p: Provider, on: boolean, e: unknown) => `Could not turn ${NAMES[p]} token tracking ${on ? "on" : "off"} (${String(e)}); it is still ${on ? "off" : "on"}.`;
 
 /** The project list could not be read, so the Kolux scope has no folders to match. */
-export const scopeFailedNote = (e: unknown) => `Could not read your projects (${String(e)}), so every local use is shown instead of only Kolux worktrees.`;
+export const scopeFailedNote = (e: unknown) => `Could not read your projects (${String(e)}), so every local use is shown instead of only Kolux workspaces.`;

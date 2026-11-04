@@ -209,6 +209,6 @@ test("UX2: unreadable worktrees show the real reason with Try again, and Save's 
   expect(html).toContain("Try again");
   expect(html).toContain('role="alert"');
   expect(saveHint(true, null)).toBeUndefined();
-  expect(saveHint(false, null)).toBe("Waiting for the project's worktrees");
+  expect(saveHint(false, null)).toBe("Waiting for the project's workspaces");
   expect(saveHint(false, "x")).toContain("Try again");
 });

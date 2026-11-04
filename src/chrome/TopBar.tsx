@@ -54,6 +54,9 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
   if (screen !== "inbox") before.current = screen;
   const [maximized, setMaximized] = useState(false);
   const [menuAt, setMenuAt] = useState<{ top: number; left: number } | null>(null);
+  // T-755: closing the zoom menu (Escape, a click outside or a pick) gives focus back to its button.
+  const zoomButton = useRef<HTMLButtonElement>(null);
+  const shut = () => (setMenuAt(null), zoomButton.current?.focus());
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused
   // sign-in) and an installed CLI; with neither, nothing is drawn. T-550: the pill is one button
   // that opens Settings > Accounts & keys (Ctrl+, still opens Settings, app.settings).
@@ -108,6 +111,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         )}
         <button
           className="ib dots"
+          ref={zoomButton}
           title="Terminal zoom"
           aria-label="Terminal zoom"
           aria-haspopup="menu"
@@ -121,11 +125,11 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         </button>
         {menuAt && (
           <>
-            <div className="menu-backdrop" onClick={() => setMenuAt(null)} aria-hidden="true" data-tauri-drag-region="false" />
-            <div className="menu" role="menu" aria-label="Terminal zoom" style={menuAt} onKeyDown={(e) => e.key === "Escape" && setMenuAt(null)} data-tauri-drag-region="false">
+            <div className="menu-backdrop" onClick={shut} aria-hidden="true" data-tauri-drag-region="false" />
+            <div className="menu" role="menu" aria-label="Terminal zoom" style={menuAt} onKeyDown={(e) => e.key === "Escape" && shut()} data-tauri-drag-region="false">
               <div className="menu-title">Terminal zoom</div>
               {VIEW_ITEMS.map((i, n) => (
-                <button key={i.id} role="menuitem" className="menu-item" autoFocus={n === 0} disabled={!onZoom} title={`${i.label} the focused terminal`} onClick={() => (setMenuAt(null), onZoom?.(i.how))}>
+                <button key={i.id} role="menuitem" className="menu-item" autoFocus={n === 0} disabled={!onZoom} title={`${i.label} the focused terminal`} onClick={() => (shut(), onZoom?.(i.how))}>
                   <span className="name">{i.label}</span>
                   <Kbd id={i.id} />
                 </button>
@@ -164,7 +168,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         <button className="ib panel" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onClick={onToggleRight}>
           <PanelRight />
         </button>
-        <button className="searchbox" title="Jump to a worktree, tab, project or setting" onClick={onSearch}>
+        <button className="searchbox" title="Jump to a workspace, tab, project or setting" onClick={onSearch}>
           <Search />
           <span className="ph">Search</span>
           <Kbd id="worktree.palette" />

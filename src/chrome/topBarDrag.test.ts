@@ -6,7 +6,7 @@
 // here without this file changing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, type FakeNode, click, find, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
 import { publishClaude } from "../usage/plan";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -128,4 +128,33 @@ test("the View menu and the account menu drawn inside the bar never move the win
   const { usedThatDrag, bareThatDoNot } = audit(header);
   expect(usedThatDrag, "presses on these move the window, but a person uses them").toEqual([]);
   expect(bareThatDoNot, "presses on these should move the window").toEqual([]);
+});
+// T-755 (DT-C191): Escape, a click outside and a pick each close the zoom menu and give focus back to its button.
+test("closing the Terminal zoom menu gives focus back to its button", async () => {
+  const proto = FakeNode.prototype as unknown as { focus: () => void };
+  const was = proto.focus;
+  proto.focus = function (this: FakeNode) {
+    doc.activeElement = this;
+  };
+  try {
+    const { c } = await mountBar(false);
+    const button = find(c, (n) => n.localName === "button" && n.attrs.title === "Terminal zoom")[0];
+    const menu = () => find(c, (n) => n.attrs.role === "menu" && n.attrs["aria-label"] === "Terminal zoom")[0];
+    const ways: Array<[string, () => Promise<void>]> = [
+      ["Escape", () => fire(c, "keydown", menu(), { key: "Escape" })],
+      ["a click outside", () => click(c, find(c, (n) => n.attrs.class === "menu-backdrop")[0])],
+      ["a pick", () => click(c, find(menu(), (n) => n.attrs.role === "menuitem")[0])],
+    ];
+    for (const [how, close] of ways) {
+      await pressMenuButton(c, "Terminal zoom");
+      expect(menu(), how).toBeDefined();
+      doc.activeElement = doc.body;
+      await close();
+      await settle();
+      expect(menu(), `${how} closes the menu`).toBeUndefined();
+      expect(doc.activeElement, `${how}: focus is back on the button`).toBe(button);
+    }
+  } finally {
+    proto.focus = was;
+  }
 });

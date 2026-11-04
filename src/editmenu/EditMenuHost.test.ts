@@ -7,6 +7,16 @@ import { FakeNode, find, fire, installDom, mount, settle, until } from "../tasks
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => false }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));
 
+test("T-737: right-click Paste says so when the clipboard is refused", async () => {
+  vi.stubGlobal("navigator", { clipboard: { readText: () => Promise.reject(new Error("denied")) } });
+  const { runEdit } = await import("./EditMenuHost");
+  const said: string[] = [];
+  runEdit({ focus: () => {} } as unknown as HTMLElement, { kind: "paste" }, (m) => said.push(m));
+  await new Promise((r) => setTimeout(r, 0));
+  vi.unstubAllGlobals();
+  expect(said).toEqual(["The clipboard could not be read; paste with the keyboard instead"]);
+});
+
 test("T-710: the edit menu opens with focus on its first row, the arrows move it, Escape closes and refocuses the field", async () => {
   const { doc, win } = installDom();
   // The menu keys listen on the window in the capture phase.

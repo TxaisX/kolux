@@ -62,7 +62,7 @@ test("T-675 Space: batch delete keeps branches and acts only on ticked rows the 
   await click(root, box("feat-a"));
   await click(root, box("feat-b"));
   expect(button((t) => t.startsWith("Delete selected"))?.textContent).toBe("Delete selected (2)");
-  await typeInto(root, byLabel(root, "input", "Search worktrees")[0], "feat-a"); // feat-b is ticked but now hidden
+  await typeInto(root, byLabel(root, "input", "Search workspaces")[0], "feat-a"); // feat-b is ticked but now hidden
   const del = button((t) => t.startsWith("Delete selected"));
   expect(del.textContent).toBe("Delete selected (1)");
   await click(root, del);

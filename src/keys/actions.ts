@@ -73,7 +73,7 @@ export const actions: Action[] = [
   a("worktree.quickOpen", "Go to File", "global", ["Mod+P"]),
   a("app.settings", "Open Settings", "global", ["Mod+Comma"], { group: "menu", keywords: ["preferences", "options"], terminalSafe: true }),
   a("app.forceReload", "Force Reload", "global", ["Mod+Shift+R"], { group: "menu" }),
-  a("worktree.palette", "Switch worktree", "global", ["Mod+Shift+J"], { darwin: ["Mod+J"] }),
+  a("worktree.palette", "Switch workspace", "global", ["Mod+Shift+J"], { darwin: ["Mod+J"] }),
   a("worktree.navigateUp", "Previous worktree", "global", ["Mod+Shift+ArrowUp"]),
   a("worktree.navigateDown", "Next worktree", "global", ["Mod+Shift+ArrowDown"]),
   a("workspace.create", "Create worktree", "global", ["Mod+N", "Mod+Shift+N"], { darwin: ["Mod+N"] }),

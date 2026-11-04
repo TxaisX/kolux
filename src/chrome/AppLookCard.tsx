@@ -1,15 +1,18 @@
 // T-301 (APP-012, SET-041; SET-016: the app icon chooser sits at the bottom of Settings > Appearance,
 // after Window & Sidebar). A pick is saved, then the window takes it at once (app_look_apply).
+import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../settings/useSettings";
 import { APP_ICONS, appIcon, applyWindowBlur, BLUR_FIELD, blurOn, ICON_FIELD } from "./appLook";
 
 export default function AppLookCard() {
   const { settings, error, save } = useSettings();
+  const [failed, setFailed] = useState<string | null>(null);
   if (!settings) return null;
   const pick = (patch: Record<string, unknown>) => {
     applyWindowBlur({ ...settings, ...patch });
-    void save(patch).then(() => invoke("app_look_apply").catch(() => undefined));
+    setFailed(null);
+    void save(patch).then(() => invoke("app_look_apply").catch((e) => setFailed(`The window could not take the new look: ${e}`)));
   };
   const icon = appIcon(settings);
   return (
@@ -32,7 +35,7 @@ export default function AppLookCard() {
           <small>Shows a blurred view of what is behind the window where the page has no colour of its own. Windows 10 and 11.</small>
         </span>
       </label>
-      {error && <p className="conn-detail warn">{error}</p>}
+      {(error ?? failed) && <p className="conn-detail warn">{error ?? failed}</p>}
     </section>
   );
 }

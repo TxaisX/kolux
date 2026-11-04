@@ -114,7 +114,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
       <header style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
         <h2 style={{ margin: 0, fontSize: 15 }}>Space · {projectName}</h2>
         <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
-          {rows.length} worktrees · {formatBytes(rows.reduce((a, r) => a + r.size.bytes, 0))} · {formatBytes(reclaimableBytes(rows))} reclaimable
+          {rows.length} workspaces · {formatBytes(rows.reduce((a, r) => a + r.size.bytes, 0))} · {formatBytes(reclaimableBytes(rows))} reclaimable
         </span>
         <button className="btn" disabled={scanning || projectId === null} onClick={() => projectId !== null && void scan(projectId)}>
           {scanning ? "Scanning…" : "Rescan"}
@@ -123,11 +123,11 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
       {projectId === null ? (
         <div className="empty">
           <h2>No project</h2>
-          <p>Add a project to see what its worktrees take.</p>
+          <p>Add a project to see what its workspaces take.</p>
         </div>
       ) : (
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
-          <div aria-label="Biggest worktrees" style={{ position: "relative", width: "min(320px, 100%)", aspectRatio: "1 / 1", flex: "0 0 auto", border: "1px solid var(--line-subtle)", borderRadius: 6, overflow: "hidden" }}>
+          <div aria-label="Biggest workspaces" style={{ position: "relative", width: "min(320px, 100%)", aspectRatio: "1 / 1", flex: "0 0 auto", border: "1px solid var(--line-subtle)", borderRadius: 6, overflow: "hidden" }}>
             {map.blocks.map((b) => (
               <div key={`${b.x},${b.y}`} title={`${b.label} · ${formatBytes(b.bytes)}`} style={{ position: "absolute", left: `${b.x}%`, top: `${b.y}%`, width: `${b.w}%`, height: `${b.h}%`, boxSizing: "border-box", border: "1px solid var(--bg)", background: map.omitted > 0 && b.label === `${map.omitted} more` ? "var(--line-subtle)" : "var(--row-selected)", overflow: "hidden", fontSize: 11, padding: 3 }}>
                 {b.label}
@@ -137,7 +137,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
           </div>
           <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <input className="field" style={{ width: 200 }} placeholder="Search branch or folder" aria-label="Search worktrees" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <input className="field" style={{ width: 200 }} placeholder="Search branch or folder" aria-label="Search workspaces" value={query} onChange={(e) => setQuery(e.target.value)} />
               <select className="field" style={{ width: "auto" }} aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
                 <option value="size">Biggest first</option>
                 <option value="files">Most files first</option>
@@ -191,7 +191,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
                   {shown.length === 0 && (
                     <tr>
                       <td colSpan={7} style={{ ...cell, color: "var(--fg-muted)" }}>
-                        {rows.length === 0 ? (scanning ? "Scanning…" : "No worktrees measured") : "No row matches"}
+                        {rows.length === 0 ? (scanning ? "Scanning…" : "No workspaces measured") : "No row matches"}
                       </td>
                     </tr>
                   )}
@@ -212,7 +212,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
                 </p>
               ))}
               {q.list.length > 0 && (
-                <ul aria-label="Worktrees to delete" style={{ margin: "0 0 6px", paddingLeft: 18 }}>
+                <ul aria-label="Workspaces to delete" style={{ margin: "0 0 6px", paddingLeft: 18 }}>
                   {q.list.map((l, i) => (
                     <li key={i}>{l}</li>
                   ))}

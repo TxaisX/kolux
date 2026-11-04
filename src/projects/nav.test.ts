@@ -85,10 +85,10 @@ const ws: Worktree[] = [
 test("hidden worktrees show only once something is typed; pull requests get their own rows", () => {
   const pr = (d: string) => (d.endsWith("login") ? "open" : null);
   const quiet = worktreeItems([proj], { p1: ws }, false, pr, () => {});
-  expect(quiet.filter((i) => i.section === "Worktrees").map((i) => [i.hint, i.parent])).toEqual([["main", "app"], ["fix-login", "app"]]);
+  expect(quiet.filter((i) => i.section === "Workspaces").map((i) => [i.hint, i.parent])).toEqual([["main", "app"], ["fix-login", "app"]]);
   expect(quiet.filter((i) => i.section === "Pull requests").map((i) => i.label)).toEqual(["fix-login"]);
   const typed = worktreeItems([proj], { p1: ws }, true, pr, () => {});
-  expect(paletteRows(typed, "old").map((r) => r.section)).toEqual(["Worktrees"]);
+  expect(paletteRows(typed, "old").map((r) => r.section)).toEqual(["Workspaces"]);
 });
 
 test("rows come out in section order", () => {
@@ -117,7 +117,7 @@ test("palette rows carry the agent's mark, permission over unread over a fresh f
   expect(dirMark("blocked", true)).toBe("unread");
   const at = (d: string) => (d.endsWith("login") ? { mark: "permission" as const, since: 5 } : null);
   const items = worktreeItems([proj], { p1: ws }, false, () => null, () => {}, at);
-  expect(items.filter((i) => i.section === "Worktrees").map((i) => i.mark ?? null)).toEqual([null, "permission"]);
+  expect(items.filter((i) => i.section === "Workspaces").map((i) => i.mark ?? null)).toEqual([null, "permission"]);
   const html = renderToStaticMarkup(createElement(RowMark, { mark: "permission", since: 1, now: 1 + 50 * 60_000 }));
   expect(html).toContain('aria-label="needs permission"');
   expect(html).toContain(">50m<");
@@ -161,16 +161,16 @@ test("ages read in minutes for the first hour, hours until two days, then days (
 const it2 = (section: string, label: string, extra: Partial<PaletteItem> = {}): PaletteItem => ({ section, label, run: () => {}, ...extra });
 
 test("VIEW-038: on a tie the one used last comes first, and open tabs lead", () => {
-  const items = [it2("Worktrees", "fix-a", { dir: "C:/a" }), it2("Worktrees", "fix-b", { dir: "C:/b" })];
+  const items = [it2("Workspaces", "fix-a", { dir: "C:/a" }), it2("Workspaces", "fix-b", { dir: "C:/b" })];
   expect(paletteRows(items, "fix", ["C:/b", "C:/a"]).map((r) => r.label)).toEqual(["fix-b", "fix-a"]);
   expect(paletteRows(items, "fix", ["C:/a"]).map((r) => r.label)).toEqual(["fix-a", "fix-b"]);
-  const tie = [it2("Worktrees", "build"), it2("Open tabs", "build")];
-  expect(paletteRows(tie, "build").map((r) => r.section)).toEqual(["Open tabs", "Worktrees"]);
+  const tie = [it2("Workspaces", "build"), it2("Open tabs", "build")];
+  expect(paletteRows(tie, "build").map((r) => r.section)).toEqual(["Open tabs", "Workspaces"]);
   // the exact match leads, whatever its section
-  const mixed = [it2("Open tabs", "login page"), it2("Worktrees", "login")];
+  const mixed = [it2("Open tabs", "login page"), it2("Workspaces", "login")];
   expect(paletteRows(mixed, "login").map((r) => r.label)).toEqual(["login", "login page"]);
   // a match on the row itself beats one found only on its project
-  const own = [it2("Worktrees", "login", { parent: "app" }), it2("Worktrees", "app-docs", { parent: "web" })];
+  const own = [it2("Workspaces", "login", { parent: "app" }), it2("Workspaces", "app-docs", { parent: "web" })];
   expect(paletteRows(own, "app").map((r) => r.label)).toEqual(["app-docs", "login"]);
   // no query: section order, as listed
   expect(paletteRows([it2("Settings", "x"), it2("Open tabs", "y")], "").map((r) => r.label)).toEqual(["y", "x"]);
@@ -205,7 +205,7 @@ test("EDIT-047: the palette finds a worktree by number, link, shortcode, comment
     { path: "C:/ws/app/ship", branch: "ship", head: "4", isMain: false, name: "\u{1F680} launch" },
   ];
   const items = worktreeItems([p], { p1: list }, true, () => null, () => {});
-  const first = (q: string) => paletteRows(items, q).filter((r) => r.section === "Worktrees")[0]?.dir;
+  const first = (q: string) => paletteRows(items, q).filter((r) => r.section === "Workspaces")[0]?.dir;
   expect(first("12")).toBe("C:/ws/app/pay");
   expect(first("#12")).toBe("C:/ws/app/pay");
   expect(first("https://github.com/o/app/pull/12")).toBe("C:/ws/app/pay");
@@ -215,7 +215,7 @@ test("EDIT-047: the palette finds a worktree by number, link, shortcode, comment
   // every word has to land: "pay" fits one worktree, "zebra" none, so nothing is listed
   expect(paletteRows(items, "pay zebra")).toEqual([]);
   // an empty box: the worktree used last leads its section
-  const empty = paletteRows(items, "", ["C:/ws/app/ship", "C:/ws/app/typo"]).filter((r) => r.section === "Worktrees");
+  const empty = paletteRows(items, "", ["C:/ws/app/ship", "C:/ws/app/typo"]).filter((r) => r.section === "Workspaces");
   expect(empty.map((r) => r.dir)).toEqual(["C:/ws/app/ship", "C:/ws/app/typo", "C:/src/app", "C:/ws/app/pay"]);
 });
 

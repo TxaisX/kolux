@@ -33,7 +33,7 @@ const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i;
 export function checkName(typed: string, path: string, root: string, exists: (full: string) => boolean): NameCheck {
   let name = typed.trim().replace(/\\/g, "/").replace(/\/+/g, "/");
   if (!name || name.endsWith("/")) return { ok: false, error: "Type a file name." };
-  if (/^[a-z]:/i.test(name) || name.startsWith("/")) return { ok: false, error: "Type a name inside the worktree, not a full path." };
+  if (/^[a-z]:/i.test(name) || name.startsWith("/")) return { ok: false, error: "Type a name inside the workspace, not a full path." };
   const parts = name.split("/");
   if (parts.some((p) => p === ".." || p === "." || p === "")) return { ok: false, error: "A name cannot contain .. or empty folders." };
   if (parts.some((p) => BAD_CHARS.test(p) || RESERVED.test(p) || /[. ]$/.test(p))) return { ok: false, error: "That name has characters or words a file cannot have." };
