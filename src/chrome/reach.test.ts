@@ -257,6 +257,57 @@ function closes(d: Found, how: string, all: Found[]): boolean {
   }
 }
 
+// T-714 (tasks.md:17, visual.md:18): how each aria-modal dialog keeps Tab inside it: the shared trapTab in its
+// own onKeyDown, a focus hook (useDialogFocus / trapDialog) on its ref, or its own Tab code. A new aria-modal
+// dialog fails until it is listed with its trap.
+const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = [
+  ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
+  ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "trapTab"],
+  ["board/WorkspaceBoard.tsx", "Workspace statuses", "trapTab"],
+  ["chrome/Ask.tsx", "title", "hook"],
+  ["editor/CloseDialog.tsx", "Save changes before closing?", "trapTab"],
+  ["editor/NamePrompt.tsx", "Name this note", "trapTab"],
+  ["feedback/FeedbackDialog.tsx", "Send feedback", "own"],
+  ["floating/FloatingLayer.tsx", "label", "trapTab"],
+  ["onboarding/Guides.tsx", "Getting Started with Kolux", "trapTab"],
+  ["onboarding/Guides.tsx", "Explore Kolux", "hook"],
+  ["onboarding/Wizard.tsx", "Get started with Kolux", "trapTab"],
+  ["projects/AddProject.tsx", "Add project", "trapTab"],
+  ["projects/ImportSetup.tsx", "Import setup commands", "trapTab"],
+  ["projects/ScanRepos.tsx", "Scan a folder for repositories", "trapTab"],
+  ["projects/StartGit.tsx", "Start Git in this folder", "trapTab"],
+  ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
+  ["settings/GrokCard.tsx", "Use an xAI API key", "trapTab"],
+  ["shell/LinkAskDialog.tsx", "w.title", "trapTab"],
+  ["skills/SkillUpdate.tsx", "Update Kolux skills", "own"],
+  ["tasks/NewIssueDialog.tsx", "New issue", "trapTab"],
+  ["tasks/TaskDialog.tsx", "${taskKind(task)} ${task.title}", "trapTab"],
+  ["terminal/ForkDialog.tsx", "Fork Agent Session", "trapTab"],
+  ["terminal/TerminalPane.tsx", "notice.title", "trapTab"],
+  ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],
+  ["terminal/TerminalPane.tsx", "The shell ended", "trapTab"],
+  ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
+];
+function traps(d: Found, how: string): boolean {
+  const ref = /\bref=\{(\w+)\}/.exec(d.tag)?.[1];
+  if (how === "hook") return !!ref && new RegExp(`(useDialogFocus|trapDialog)\\(${ref}\\b`).test(d.src);
+  if (how === "own") return /key === "Tab"\) \{|dialogStep\(/.test(handler(d));
+  if (!/tabIndex=\{-1\}/.test(d.tag)) return false;
+  if (/onKeyDown=\{trapTab\}/.test(d.tag)) return true;
+  const h = handler(d);
+  const keys = h.slice(Math.max(0, h.indexOf("onKeyDown=")));
+  const at = keys.search(/\btrapTab\(e\)/);
+  return at >= 0 && !/\breturn\b/.test(keys.slice(0, at));
+}
+
+test("T-714: every aria-modal dialog is in the table and keeps Tab inside it the way it says", () => {
+  const modal = dialogs().filter((d) => /aria-modal="true"/.test(d.tag));
+  const key = (file: string, label: string) => `${file} | ${label}`;
+  expect(modal.map((d) => key(d.file, d.label)).sort()).toEqual(TRAPS.map(([f, l]) => key(f, l)).sort());
+  const wrong = TRAPS.filter(([f, l, how]) => !traps(modal.find((d) => key(d.file, d.label) === key(f, l))!, how)).map(([f, l, how]) => `${key(f, l)}: ${how}`);
+  expect(wrong).toEqual([]);
+});
+
 test("T-708: the browser's two asks take focus only in the focused pane (BROW-001)", () => {
   const browser = SRC["/src/browser/BrowserPane.tsx"];
   expect(browser.match(/onClick=\{\(\) => set(Outbound|Leave)\(null\)\}/g)).toHaveLength(2);

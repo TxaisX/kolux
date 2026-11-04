@@ -4,6 +4,7 @@
 // and a sign-in the user already made shows as connected. Once connected the card shows Manage and
 // Disconnect (ACCT-015): Disconnect erases only the xAI key Kolux saved; the Grok CLI's own
 // sign-in is left alone and the card says how to sign out of Grok itself.
+import { trapTab } from "../chrome/dialogFocus";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { clearReadFailure, connectFailed, readFailed } from "../onboarding/firstRun";
@@ -159,7 +160,9 @@ export function GrokKeyDialog({ open, onSubmit, onClose }: { open: boolean; onSu
         className="ask"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Use an xAI API key"
+        onKeyDown={trapTab}
         onSubmit={(e) => {
           e.preventDefault();
           const k = key.trim();
