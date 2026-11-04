@@ -20,13 +20,12 @@ export function RepoSetupView({ setup, notice, status, start, leftError, actions
   const [asking, setAsking] = useState(false);
   const [hint, setHint] = useState("");
   // C20-R4-01: a script taken back from a failed leave save is what the box must show; the reset that
-  // follows `setup.local` skips its first run when one was restored.
-  const restored = useRef(start !== undefined);
+  // follows `setup.local` acts only when that value really changes, not on mount (and not twice under
+  // StrictMode).
+  const lastLocal = useRef(setup.local);
   useEffect(() => {
-    if (restored.current) {
-      restored.current = false;
-      return;
-    }
+    if (lastLocal.current === setup.local) return;
+    lastLocal.current = setup.local;
     setDraft(setup.local ?? "");
   }, [setup.local]);
   const commit = () => {

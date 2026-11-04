@@ -3,7 +3,7 @@
 // the mount reset that put the stored value back over the restored draft was invisible to it. This
 // one mounts the real components on the small DOM in fakeDom.ts, where effects run and re-renders
 // happen, and reads the box the user would see.
-import { createElement } from "react";
+import { StrictMode, createElement, type ReactElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ calls: [] as string[], fail: {} as Record<string, string>, setup: null as unknown }));
@@ -42,9 +42,16 @@ afterEach(async () => {
   unmount = async () => {};
 });
 
-test("C20-R4-01: the typed value is in the box after a remount, with the reason its save failed", async () => {
+// The dev build runs the whole tree under React.StrictMode (main.tsx:51), which mounts, cleans up and
+// mounts every effect again. A one-shot "first run" flag is consumed by that first pass and the second
+// pass puts the stored value back under the alert, so each scene is run both ways.
+type Wrap = (el: ReactElement) => ReactElement;
+const plain: Wrap = (el) => el;
+const strict: Wrap = (el) => createElement(StrictMode, null, el);
+
+async function leaveAndReturnField(wrap: Wrap): Promise<FakeNode> {
   h.fail = { project_set: "disk full" };
-  const first = await mount(createElement(RepoPage, { project, onSaved: () => {} }), doc);
+  const first = await mount(wrap(createElement(RepoPage, { project, onSaved: () => {} })), doc);
   unmount = first.unmount;
   const c1 = first.container as FakeNode;
   await settle(20);
@@ -59,18 +66,16 @@ test("C20-R4-01: the typed value is in the box after a remount, with the reason 
   expect(h.calls, "the leave save was attempted").toContain("project_set");
 
   h.fail = {};
-  const second = await mount(createElement(RepoPage, { project, onSaved: () => {} }), doc);
+  const second = await mount(wrap(createElement(RepoPage, { project, onSaved: () => {} })), doc);
   unmount = second.unmount;
-  const c2 = second.container as FakeNode;
   await settle(20);
-  expect(byLabel(c2, "input", "New workspaces start from")[0].value, "the typed value is in the box").toBe("wip/base");
-  expect(c2.textContent, "the failure is shown").toContain("could not be saved");
-});
+  return second.container as FakeNode;
+}
 
-test("C20-R4-01: the typed setup script is in the box after a remount, with the reason its save failed", async () => {
+async function leaveAndReturnScript(wrap: Wrap): Promise<FakeNode> {
   h.setup = setup;
   h.fail = { repo_setup_save: "disk full" };
-  const first = await mount(createElement(RepoSetupSection, { path: "C:/src/app" }), doc);
+  const first = await mount(wrap(createElement(RepoSetupSection, { path: "C:/src/app" })), doc);
   unmount = first.unmount;
   const c1 = first.container as FakeNode;
   await until(() => byLabel(c1, "textarea", "Saved setup script").length > 0, "the setup box");
@@ -85,10 +90,32 @@ test("C20-R4-01: the typed setup script is in the box after a remount, with the 
   expect(h.calls, "the leave save was attempted").toContain("repo_setup_save");
 
   h.fail = {};
-  const second = await mount(createElement(RepoSetupSection, { path: "C:/src/app" }), doc);
+  const second = await mount(wrap(createElement(RepoSetupSection, { path: "C:/src/app" })), doc);
   unmount = second.unmount;
-  const c2 = second.container as FakeNode;
-  await until(() => byLabel(c2, "textarea", "Saved setup script").length > 0, "the setup box");
+  await until(() => byLabel(second.container as FakeNode, "textarea", "Saved setup script").length > 0, "the setup box");
+  return second.container as FakeNode;
+}
+
+test("C20-R4-01: the typed value is in the box after a remount, with the reason its save failed", async () => {
+  const c2 = await leaveAndReturnField(plain);
+  expect(byLabel(c2, "input", "New workspaces start from")[0].value, "the typed value is in the box").toBe("wip/base");
+  expect(c2.textContent, "the failure is shown").toContain("could not be saved");
+});
+
+test("C20-R4-01: StrictMode's double mount keeps the typed value in the box", async () => {
+  const c2 = await leaveAndReturnField(strict);
+  expect(byLabel(c2, "input", "New workspaces start from")[0].value, "the typed value is in the box").toBe("wip/base");
+  expect(c2.textContent, "the failure is shown").toContain("could not be saved");
+});
+
+test("C20-R4-01: the typed setup script is in the box after a remount, with the reason its save failed", async () => {
+  const c2 = await leaveAndReturnScript(plain);
+  expect(byLabel(c2, "textarea", "Saved setup script")[0].value, "the typed script is in the box").toBe("pnpm ci");
+  expect(c2.textContent, "the failure is shown").toContain("could not be saved");
+});
+
+test("C20-R4-01: StrictMode's double mount keeps the typed setup script in the box", async () => {
+  const c2 = await leaveAndReturnScript(strict);
   expect(byLabel(c2, "textarea", "Saved setup script")[0].value, "the typed script is in the box").toBe("pnpm ci");
   expect(c2.textContent, "the failure is shown").toContain("could not be saved");
 });
