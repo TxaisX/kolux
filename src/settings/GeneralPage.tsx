@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { screens } from "../chrome/TopBar";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { useDraft } from "./useDraft";
 import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook, savedFirst, stripOn, type Look } from "./general";
 import { REVIEW_FIELD, reviewOn } from "../editor/notes";
@@ -339,10 +340,10 @@ function LinksCard({ settings, onSave }: { settings: Record<string, unknown>; on
 }
 
 export default function GeneralPage() {
-  const { settings, error, save } = useSettings();
+  const { settings, error, save, retry } = useSettings();
   return (
     <>
-      {error && <p className="conn-detail warn">{error}</p>}
+      <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
       {settings && <GeneralView settings={settings} onSave={save} />}
       {settings && <Confirmations settings={settings} onSave={save} />}
       {settings && <EditorCard settings={settings} onSave={save} />}

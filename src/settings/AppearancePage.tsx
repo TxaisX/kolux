@@ -11,6 +11,7 @@ import { importScheme, type CustomScheme } from "../terminal/schemes";
 import { parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
 import { schemeOptions, SchemeList } from "./SchemePicker";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { fontStack, loadFonts, rankFonts } from "./fonts";
 import { FIELDS as STATUS_FIELDS, readStatusBar, STATUS_ITEMS, toggleItem } from "../chrome/statusItems";
 import { CHROME, chromeShown, windowSummary } from "../chrome/chromeItems";
@@ -607,10 +608,9 @@ export default function AppearancePage() {
     waiting.current = next;
     timer.current = window.setTimeout(flush, 250);
   };
-  const shown = error ?? (look ? null : status.error); // a first read that failed; later ones show in the Window card
   return (
     <>
-      {shown && <p className="conn-detail warn">{shown}</p>}
+      {error ? <p className="conn-detail warn">{error}</p> : <SettingsError error={look ? null : status.error} loaded={false} onRetry={status.retry} />}
       {look && <AppearanceView look={look} onChange={change} languagePart={status.settings && <LanguageView value={savedLanguage(status.settings[LANGUAGE_FIELD])} onPick={(v) => { applyLanguage(v); void status.save({ [LANGUAGE_FIELD]: v }); }} />} windowPart={<WindowSwitches {...status} />} windowSummary={status.settings ? windowSummary(status.settings) : ""} />}
       {look && <AppLookCard />}
     </>
