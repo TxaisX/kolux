@@ -231,6 +231,28 @@ test("the workspace delete question and its button say Delete, not Remove, and i
   expect(h.calls.some((x) => x.cmd === "workspace_remove")).toBe(true);
 }, 15000);
 
+// C28-R1-01: the Rust removal cannot be cancelled, so the question must not offer a back-out that only
+// closes the dialog while the folder still goes. Keep, Escape and a click outside go nowhere until it ends.
+test("Keep and Escape cannot back out of the delete question while the removal runs", async () => {
+  const c = await panel();
+  await click(c, find(c, (n) => String(n.attrs.title ?? "").startsWith("Delete this workspace"))[0]);
+  await settle(60);
+  h.hold = "workspace_remove";
+  await click(c, byText(c, "button", "Delete")[0]);
+  await settle(60);
+  expect(find(c, (n) => n.localName === "button" && n.textContent.trim().startsWith("Deleting")).length).toBe(1);
+  await click(c, byText(c, "button", "Keep")[0]);
+  await settle(20);
+  expect(hasText(c, "Delete fix and its folder?")).toBe(true);
+  await escape(c, find(c, (n) => n.attrs.role === "alertdialog")[0]);
+  await settle(20);
+  expect(hasText(c, "Delete fix and its folder?")).toBe(true);
+  expect(byText(c, "button", "Keep")[0].attrs["aria-disabled"]).toBe("true");
+  h.release();
+  await settle(60);
+  expect(h.calls.some((x) => x.cmd === "workspace_remove")).toBe(true);
+}, 15000);
+
 test("the project question keeps Remove project", async () => {
   const c = await panel();
   await click(c, find(c, (n) => n.attrs["data-proj-x"] !== undefined)[0]);

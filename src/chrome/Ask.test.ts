@@ -24,3 +24,13 @@ test("Cancel comes before Confirm and the don't-ask-again box starts unticked", 
   const plain = renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", onConfirm: noop, onCancel: noop }));
   expect(plain).not.toContain("checkbox");
 });
+
+// C28-R1-01: a removal in flight cannot be backed out of, so the question greys Keep and says so to a reader.
+test("a locked question greys its back-out and still offers the confirm", () => {
+  const noop = () => {};
+  const locked = renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Deleting…", cancel: "Keep", locked: true, onConfirm: noop, onCancel: noop }));
+  expect(locked).toContain('aria-disabled="true"');
+  expect(locked).toContain(">Deleting…</button>"); // a prompt whose own operation can finish keeps its confirm
+  const free = renderToString(createElement(Ask, { title: "Delete x?", body: "b", confirm: "Delete", cancel: "Keep", onConfirm: noop, onCancel: noop }));
+  expect(free).not.toContain("aria-disabled");
+});
