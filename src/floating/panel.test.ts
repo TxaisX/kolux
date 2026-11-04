@@ -1,6 +1,7 @@
 // TERM-059 / TERM-061 / TERM-052 / T-093-a: the floating panel's tabs, close rules and keys.
 import { expect, test } from "vitest";
-import { add, answer, asked, close, closeKey, empty, focused, isTrusted, KEY_BASE, liveTerminalTabs, modalHolds, programExited, reorder, route, saved, saveTarget, select, selectNumber, setDirty, show, hide, startFolder, step, toggle, trust, type Panel } from "./panel";
+import { losable, quitQuestion } from "../shell/closeAsk";
+import { add, answer, asked, close, closeKey, dirtyNoteNames, empty, focused, isTrusted, KEY_BASE, liveTerminalTabs, modalHolds, programExited, reorder, route, saved, saveTarget, select, selectNumber, setDirty, show, hide, startFolder, step, toggle, trust, type Panel } from "./panel";
 
 const three = (): Panel => {
   let p = empty();
@@ -230,4 +231,19 @@ test("UX audit destructive: while a layer dialog is up every chord but Escape is
   expect(modalHolds(true, k("Tab"))).toBe(false);
   expect(modalHolds(true, k("Enter"))).toBe(false);
   expect(modalHolds(false, k("w", { ctrlKey: true }))).toBe(false);
+});
+
+test("VIEW-107: a floating note with unsaved text is named in the window's close question", () => {
+  let p = empty();
+  p = add(p, { kind: "markdown", path: "C:\\notes\\todo.md" });
+  p = add(p, { kind: "terminal" });
+  p = add(p, { kind: "markdown", path: "C:\\notes\\done.md" });
+  const [note] = keys(p);
+  p = setDirty(p, note, true);
+  // the clean note and the terminal count for nothing; the unsaved note is named as its tab shows it
+  expect(dirtyNoteNames(p)).toEqual(["todo.md"]);
+  const l = losable(dirtyNoteNames(p), []);
+  expect(l).toEqual({ files: ["todo.md"], agents: [] });
+  expect(quitQuestion(l as NonNullable<typeof l>).body).toContain("1 file has unsaved changes: todo.md");
+  expect(dirtyNoteNames(setDirty(p, note, false))).toEqual([]);
 });

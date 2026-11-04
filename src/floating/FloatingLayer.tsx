@@ -23,9 +23,10 @@ import {
   clampButton, insetFor, moveBy, parseButton, parseSaved, resizeBy, SETTING_BUTTON, SETTING_PANEL, shown, startsPanelMove, toggleMaximize, toStored,
   type Edge, type Pos, type Rect, type Saved, type Win, BUTTON,
 } from "./geometry";
-import { add, answer, asked, close, closeKey, empty, hide, liveTerminalTabs, modalHolds, openLink, programExited, reorder, saved, saveTarget, select, selectNumber, setDirty, setTitle, step, toggle, type Kind, type Panel } from "./panel";
+import { add, answer, asked, close, closeKey, dirtyNoteNames, empty, hide, liveTerminalTabs, modalHolds, openLink, programExited, reorder, saved, saveTarget, select, selectNumber, setDirty, setTitle, step, toggle, type Kind, type Panel } from "./panel";
 import { isDirty } from "../editor/buffers";
 import { startFolderFor } from "./trusted";
+import { floatingUnsaved } from "./unsaved";
 import { liveTerminals, SCAN_EVERY_MS, waitingTabs } from "./waitingScan";
 import { routeFloating } from "../shell/inputExtras";
 import "./floating.css";
@@ -136,6 +137,18 @@ export default function FloatingLayer({ agents = [], defaultId, home, pending = 
   // Row 141 (TERM-063): the button's dot follows the tabs whose terminal shows an open prompt.
   const tabsRef = useRef(panel.tabs);
   tabsRef.current = panel.tabs;
+
+  // VIEW-107 (P0): a floating note's unsaved text is lost the same way a pane's is when the window
+  // quits or Force Reloads, and only the layer knows which notes hold it: the window names them in
+  // its question (floating/unsaved.ts). The names change only with the tabs' titles and marks.
+  const unsavedHere = dirtyNoteNames(panel);
+  useEffect(() => {
+    floatingUnsaved.titles = unsavedHere;
+    return () => {
+      floatingUnsaved.titles = [];
+    };
+  }, [unsavedHere.join("\n")]);
+
   useEffect(() => {
     let busy = false;
     const timer = window.setInterval(() => {
