@@ -1,7 +1,8 @@
 // STAT-052: hovering any element with `data-tip` explains it about 200 ms after the pointer
 // settles on it; one tooltip for the whole window, so no surface needs its own. The text is the
 // element's own `data-tip`; moving off, pressing or scrolling takes it away. T-739: a keyboard focus
-// on such an element shows it at once and points the element's aria-describedby at it.
+// on such an element shows it at once and points the element's aria-describedby at it. T-747: Escape
+// that no dialog or menu takes first closes any tip, and the attribute goes when that focus leaves.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const DELAY_MS = 200;
@@ -10,6 +11,7 @@ export default function Tip() {
   const [tip, setTip] = useState<{ text: string; x: number; y: number } | null>(null);
   useEffect(() => {
     let timer = 0;
+    let held: HTMLElement | null = null;
     const hide = () => {
       clearTimeout(timer);
       setTip(null);
@@ -27,21 +29,25 @@ export default function Tip() {
         setTip(null);
         return;
       }
-      if (key) f!.setAttribute("aria-describedby", "kolux-tip");
+      // T-747: never over an element's own description, which focus out would then delete.
+      if (key && !f!.hasAttribute("aria-describedby")) (held = f!).setAttribute("aria-describedby", "kolux-tip");
       const text = el.dataset.tip;
       const r = el.getBoundingClientRect();
       timer = window.setTimeout(() => setTip({ text, x: r.left + r.width / 2, y: r.bottom + 6 }), key ? 0 : DELAY_MS);
     };
-    document.addEventListener("mouseover", over);
-    document.addEventListener("focusin", over);
-    document.addEventListener("mousedown", hide, true);
-    document.addEventListener("scroll", hide, true);
+    // Escape is only watched, never consumed, so a dialog's own Escape still closes it.
+    const on: [string, (e: never) => void, boolean?][] = [
+      ["mouseover", over],
+      ["focusin", over],
+      ["focusout", () => (held?.removeAttribute("aria-describedby"), (held = null))],
+      ["keydown", (e: KeyboardEvent) => e.key == "Escape" && hide(), true],
+      ["mousedown", hide, true],
+      ["scroll", hide, true],
+    ];
+    for (const [t, f, c] of on) document.addEventListener(t, f as never, c);
     return () => {
       clearTimeout(timer);
-      document.removeEventListener("mouseover", over);
-      document.removeEventListener("focusin", over);
-      document.removeEventListener("mousedown", hide, true);
-      document.removeEventListener("scroll", hide, true);
+      for (const [t, f, c] of on) document.removeEventListener(t, f as never, c);
     };
   }, []);
   // Centred under the element, but kept inside the window (a sidebar dot sits 24 px from the edge).

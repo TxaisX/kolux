@@ -1,0 +1,27 @@
+T-747 / DT-C183 - Escape closes a tip; keyboard describedby cleared on focus out (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 7" (57): the T-739 follow-ups logged in DT-C175. Cap +60 B.
+Built on s-72/tip (T-739, PR #184), which is not on main yet; target 0.1.8 per 57.
+
+FIXED:
+  - src/chrome/Tip.tsx: a keydown listener (document capture) hides any shown tip on Escape that an open dialog
+    or menu has not already stopped at window capture, and only watches the key: no
+    preventDefault or stopPropagation, so a dialog or menu that closes on Escape still does. The element a keyboard
+    focus pointed at kolux-tip (kept as `held`) loses aria-describedby on focusout. The six document listeners are
+    added and removed from one list, which pays for the two new ones.
+
+TEST: src/chrome/Tip.t747.test.ts, 3 tests: a keyboard tip stays on another key, closes on Escape, and the Escape
+  event is neither prevented nor stopped; focus out removes aria-describedby; the attribute stays until focus leaves;
+  Escape closes a hover tip too, and unmount removes all six listeners; an element's own aria-describedby is kept.
+  All three fail with Tip.tsx at s-72/tip (bb89634e) and pass with the fix (all three run red here). Tip.t739.test.ts: its fake element gained hasAttribute.
+  src/chrome: 25 files, 123 tests passed.
+
+BUNDLE: first load 1,489,030 B vs s-72/tip bb89634e 1,489,045 B (both built here, 47 chunks): -15 B (cap +60).
+  Against main b2b6cd7f (1,488,823 B) the T-739 + T-747 stack is +207 B.
+
+REVIEW: sonnet-medium-review, B+, no must-fix. Applied: a focused element that already has aria-describedby is left
+  alone (so focus out cannot delete its own); the Escape claim narrowed, since dialog and menu Escape handlers stop the
+  key at window capture before the tip sees it (the tip then goes on the next focus change); tests for the attribute
+  staying after Escape, listener removal on unmount, and the own-describedby case. Not applied: dense comma/assignment
+  expressions (kept for bytes).
+GATES: tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
+PENDING: unit-proven; not checked live in the app.
