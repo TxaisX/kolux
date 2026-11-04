@@ -1,0 +1,43 @@
+T-761 / DT-C197 - The shortcuts file follows the profile's home (lane A, session 90, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 19" (57), retargeted by "Refill 19 amended" after 49's live
+evidence: Ctrl+Alt+T is not dropped; scratch live runs read the account's real ~/.kolux/keybindings.json, which unbinds
+tab.newAgent on purpose, because keybindings.rs used Tauri's home_dir, and on Windows that ignores USERPROFILE.
+Code only; no app launched; the real ~/.kolux files were never read or written.
+
+FIXED:
+  - src-tauri/src/keybindings.rs: home() goes through home_from(env): KOLUX_KEYBINDINGS_HOME, then USERPROFILE on
+    Windows (HOME elsewhere), the variable hooks.rs (home_dir, ~1482) and trust.rs (~14) already read, then Tauri's
+    home_dir only when both are empty. read, write and show all go through home(); nothing else builds this path.
+    A normal install has USERPROFILE = the profile folder Tauri asks Windows for, so the file does not move.
+    Unlike those two stores, an empty value is skipped and the last step is Tauri's lookup, not the temp folder.
+  - scripts/prove/live-SET-027.mjs: the comment on its KOLUX_KEYBINDINGS_HOME line no longer says the app ignores
+    USERPROFILE (the override is now redundant there but kept explicit).
+
+NOT REPRODUCED: New agent tab losing Ctrl+Alt+T. A fresh keymap gives it on Windows (test below).
+
+TESTS:
+  - keybindings.rs t761_the_file_follows_the_profile_home_and_the_override: the env lookup is a closure, so no process
+    env change and no real home touched. Scratch USERPROFILE (HOME off Windows) gives <scratch>/.kolux/keybindings.json;
+    the override wins; empty values give None (app lookup); an empty override is skipped; on Windows HOME alone is
+    ignored. home_from is new, so this test does not compile against main (no runtime fail-on-main claim).
+  - src/keys/keymap.test.ts T-761: with no file and with the empty-file template, resolve(..., "win32") gives
+    tab.newAgent ["Mod+Alt+T"], labelled Ctrl+Alt+T, and matchEvent on a Ctrl+Alt+T press in the tabs scope gives
+    tab.newAgent. Mutation check: with the default emptied in actions.ts it fails ("expected [] to deeply equal
+    [ 'Mod+Alt+T' ]"); actions.ts restored, no diff.
+
+VERIFY (branch at the merge of main e5358347):
+  - cargo test -j 2 --lib keybindings::: 8 passed (the new test among them); cargo clippy --lib --tests: no warning.
+  - npx tsc --noEmit -p .: exit 0.
+  - npx vitest run: 826 files / 6074 tests, 5 failed in src/editor/AllChangesPane.abort.test.ts and
+    src/editor/richSaveGuards.test.ts (a 60 ms keystroke timing test), files this branch does not touch; rerun alone:
+    2 files, 171 tests passed. Load flakes under the full run.
+  - Bundle: first load 1,488,419 B (ceiling 1,490,000). No shipped front-end file changed (Rust, a test, a script
+    comment and docs only), so it equals main: +0 B against the +40 cap.
+  - node scripts/plan-check.mjs OK; firewall-check -Baseline 0 new.
+
+REVIEW: opus-high-review A-, no blockers. Applied: a matchEvent assertion (the press goes through the AltGr guard),
+  the two extra home_from cases, the doc comment naming the empty-value/fallback difference, the stale SET-027
+  comment. Checked by the reviewer: the lookup order, every path use goes through home(), no dirs::home_dir use.
+
+LEFT: hooks.rs and trust.rs each read the variable themselves (three copies of one lookup); the live check that a
+  scratch run shows Ctrl+Alt+T for New agent tab is for the next live pass.
