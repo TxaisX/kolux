@@ -946,8 +946,8 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .agent-line { display: block; margin: 6px 0; padding: 4px 6px; border-radius: 4px; background: var(--input-bg); color: var(--fg); font-size: 11px; overflow-wrap: anywhere; }
 .agent-field { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 /* APP-054 Resource Manager */
-.statusbar .res-open { color: inherit; font: inherit; padding: 0 4px; border-radius: 4px; }
-.statusbar .res-open:hover, .statusbar .res-open[aria-expanded="true"] { background: var(--row-selected); color: var(--fg); }
+.statusbar .res-open, .statusbar .hooks-item { color: inherit; font: inherit; padding: 0 4px; border-radius: 4px; }
+.statusbar .res-open:hover, .statusbar .hooks-item:hover, .statusbar .res-open[aria-expanded="true"] { background: var(--row-selected); color: var(--fg); }
 /* VIEW-100: the app update item; green dot when ready, red when it failed. */
 .statusbar .upd-item { color: var(--fg); font: inherit; padding: 0 4px; border-radius: 4px; }
 .statusbar .upd-item:hover { background: var(--row-selected); }

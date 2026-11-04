@@ -133,7 +133,7 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
-        aria-controls={`${id}-list`}
+        aria-controls={open && shown.length > 0 ? `${id}-list` : undefined}
         aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
         maxLength={100}
         spellCheck={false}
@@ -158,7 +158,7 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
             e.preventDefault();
             const down = e.key === "ArrowDown";
             setOpen(true);
-            setHi((i) => (down ? i + 1 : (i < 0 ? n : i) - 1 + n) % n);
+            setHi((down ? active + 1 : (active < 0 ? n : active) - 1 + n) % n); // from what is shown: none once the list closed
           }
           if (e.key === "Enter") commit(active >= 0 ? shown[active] : text);
           if (e.key === "Escape" && open) {

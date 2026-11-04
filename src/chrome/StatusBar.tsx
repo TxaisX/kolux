@@ -76,7 +76,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       {/* SKILL-027 / VIEW-100: a running skill update with its count, then a check that fades or a failure that stays until clicked. */}
       <SkillBarItem />
       {shows("hooks") && hooks !== null && (
-        <button className="item" title={`Agent status hooks are ${hooks ? "on" : "off"}. Click to open Settings > Agents`} onClick={() => openSettings("agents", "hooks")}>
+        <button className="item hooks-item" aria-label={`Agent status hooks ${hooks ? "on" : "off"}, open Settings > Agents`} title={`Agent status hooks are ${hooks ? "on" : "off"}. Click to open Settings > Agents`} onClick={() => openSettings("agents", "hooks")}>
           <Cup size={12} />
           {hooks ? "On" : "Off"}
           {hooks && <span className="on" />}

@@ -62,4 +62,9 @@ test("font suggestions take Up and Down, show which is reached, and Enter picks 
   expect(state().active).toBe(state().ids[1]);
   key("Enter");
   expect(picked).toEqual([s.names[1]]);
+  key("ArrowDown"); // the pick closed the list: Down opens it again at the first suggestion, not after the old one
+  expect(state().active).toBe(state().ids[0]);
+  key("Escape");
+  key("ArrowUp"); // Escape closed it too: Up opens it at the last
+  expect(state().active).toBe(state().ids[2]);
 });
