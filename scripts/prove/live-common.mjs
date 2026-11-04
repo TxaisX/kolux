@@ -11,7 +11,7 @@ import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createApp, sleep, waitFor } from "../evidence/app-launch.mjs";
+import { createApp, guardReport, runWord, sleep, waitFor } from "../evidence/app-launch.mjs";
 
 export { sleep, waitFor };
 export const ROOT = fileURLToPath(new URL("../../", import.meta.url)).replace(/[\\/]+$/, "");
@@ -223,6 +223,8 @@ export async function startProve(id, opts) {
     },
     /** A CDP page screenshot (PNG) written to LOGS/<name>.png. */
     shot: async (name) => (await import("./live-claude-common.mjs")).shot(name),
+    /** The word a run's own evidence line gets: NOT-TESTED when the IPC guard went blind during it. */
+    verdict: (ok) => runWord(ok, app.guard.blind),
     stop: () => guardedStop(app, log),
   };
   return ctx;
@@ -253,13 +255,18 @@ export function writeStandinClaude(dir, body = []) {
   return file;
 }
 
-/** Closes the first-run guide (Close, then Skip in its "Skip setup?" question) and any other modal, so clicks and chords reach the grid. */
-/** T-763: ends a run, first saying so when the IPC guard went blind during it (backend results then count NOT-TESTED). */
+/** T-763: ends a run, first checking the guard while the app is still up. A guard that went blind is recorded in
+ *  app.guard, so the report (finish) ends NOT-TESTED instead of PASS. An app this run already closed by its own path
+ *  is not probed: the page is gone, not the guard. */
 async function guardedStop(app, log) {
-  if (app.pid && !(await app.guardOk())) log("WARN the IPC guard was blind at the end of this run: count rows that read backend calls NOT-TESTED");
+  if (app.pid && (await app.alive(app.pid)) && !(await app.guardOk())) {
+    app.guard.noteBlind("the end of the run");
+    log("the IPC guard was blind at the end of this run");
+  }
   return app.closeApp();
 }
 
+/** Closes the first-run guide (Close, then Skip in its "Skip setup?" question) and any other modal, so clicks and chords reach the grid. */
 export async function dismissFirstRun(app, log) {
   const any = '[role="dialog"], [role="alertdialog"]';
   for (let t = 0; t < 10; t++) {
@@ -425,16 +432,20 @@ export async function startPlain(id, opts) {
     realAgents: async () => (await app.treeOf(app.pid)).filter((p) => /^(claude|codex|grok)(\.exe)?$/i.test(p.name)).map((p) => `${p.name}:${p.pid}`),
     /** Pids of the shells (powershell/pwsh) under the app: a session restarted or started shows as a changed pid set. */
     shellPids: async () => (await app.treeOf(app.pid)).filter((p) => /^(powershell|pwsh).exe$/i.test(p.name)).map((p) => p.pid).sort((x, y) => x - y),
+    /** The word a run's own evidence line gets: NOT-TESTED when the IPC guard went blind during it. */
+    verdict: (ok) => runWord(ok, app.guard.blind),
     stop: () => guardedStop(app, log),
   };
   return ctx;
 }
 
-/** Runs body(ctx); always stops the app; prints and returns the exit code (0 = every assertion held). */
+/** Runs body(ctx); always stops the app; prints and returns the exit code (0 = every assertion held and the guard
+ *  never blind). A run whose IPC guard went blind writes NOT-TESTED, not PASS. */
 export async function finish(ctx, name, lines, ok) {
   const closed = await ctx.stop().catch((e) => [false, String(e.message)]);
-  const text = lines.join("\n");
-  writeFileSync(`${LIVE_LOGS}/${name}.out.txt`, `${text}\nclose: ${JSON.stringify(closed)}\nRESULT: ${ok ? "PASS" : "FAIL"}\n`);
-  console.log(`close: ${JSON.stringify(closed)}\nRESULT: ${ok ? "PASS" : "FAIL"}`);
-  return ok ? 0 : 1;
+  const rep = guardReport({ lines, ok, guard: ctx.app?.guard, close: closed });
+  lines.splice(0, lines.length, ...rep.lines); // callers that write their own evidence after this get the regraded rows
+  writeFileSync(`${LIVE_LOGS}/${name}.out.txt`, `${rep.text}\n`);
+  console.log(rep.text);
+  return rep.code;
 }

@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { ACCOUNT_A, CLAUDE, LOGS, NeedsLogin, ROOT, excerpt, reporter, sleep, startProve, waitFor } from "./live-common.mjs";
+import { guardReport } from "../evidence/app-launch.mjs";
 import { checker, pickScreen } from "./live-views-dom.mjs";
 
 export { CLAUDE, excerpt, sleep, waitFor, git, ACCOUNT_A, BASE } from "./live-common.mjs";
@@ -120,11 +121,11 @@ export async function scenario(id, opts, body) {
     log(e instanceof NeedsLogin ? `NEEDS LOGIN ${e.message}` : `ERROR ${e.stack ?? e}`);
   }
   if (ctx) closed = await ctx.stop().catch((e) => [false, String(e.message)]);
-  log(`close: ${JSON.stringify(closed)}`);
-  log(`RESULT: ${ok ? "PASS" : "FAIL"}`);
-  writeFileSync(`${LOGS}/${id}.out.txt`, lines.join("\n"));
-  for (const c of opts.cards ?? []) writeEvidence(c, id, lines, ok ? "PASS" : "FAIL");
-  process.exit(ok ? 0 : 1);
+  const report = guardReport({ lines, ok, guard: ctx?.app?.guard, close: closed });
+  for (const line of report.tail) console.log(line);
+  writeFileSync(`${LOGS}/${id}.out.txt`, `${report.text}\n`);
+  for (const c of opts.cards ?? []) writeEvidence(c, id, report.lines, report.verdict);
+  process.exit(report.code);
 }
 
 /** Types a fixed prompt as the user would (text then Enter) and returns the time of the Enter. */

@@ -102,6 +102,77 @@ export const guardProbeJs = (name) => `(async () => {
   return i >= 0 && window.__v10blind === false;
 })()`;
 
+/** T-763 (DT-C199): what a run's IPC guard can vouch for, row by row. Every row check records a row here (see
+ *  guardRow); a good check covers every row recorded before it, so a row that a check followed is trusted and a
+ *  row recorded before a failed check is NOT-TESTED. `blind` stays set once a failure covers a row, so a run that
+ *  lost the guard can never report PASS; a failure that touched no row (a launch-time check a reload put right) is
+ *  forgotten, because no evidence depended on it. */
+export function createGuardTrack() {
+  const t = { blind: false, where: null, rows: 0, verified: 0, blindFrom: Infinity };
+  /** A check passed: every row so far is covered, and a failure that touched no row is forgotten. */
+  t.good = () => {
+    t.verified = t.rows;
+    if (t.blind && t.blindFrom >= t.rows) {
+      t.blind = false;
+      t.where = null;
+      t.blindFrom = Infinity;
+    }
+  };
+  /** A check failed: rows from `atRow` on (default: the first row no good check covered) are not trusted. */
+  t.noteBlind = (where, atRow = t.verified) => {
+    if (t.blind) {
+      if (atRow < t.blindFrom) t.blindFrom = atRow;
+      return;
+    }
+    t.blind = true;
+    t.where = where ?? "unknown";
+    t.blindFrom = atRow;
+  };
+  t.row = () => t.rows++;
+  t.rowBlind = (i) => t.blind && i >= t.blindFrom;
+  return t;
+}
+
+/** The word a row or a whole run gets: a failing row keeps FAIL, a row the guard may have missed is NOT-TESTED. */
+export const rowWord = (ok, blind) => (!ok ? "FAIL" : blind ? "NOT-TESTED" : "PASS");
+export const runWord = (ok, blind) => (blind ? "NOT-TESTED" : ok ? "PASS" : "FAIL");
+
+// One live proof drives one app per process, so the shared checker finds its tracker without every script passing it.
+let oneGuard = null;
+export const currentGuard = () => oneGuard;
+
+/** One row check: records the row with the run's guard, so a row the guard went blind on is never counted as PASS. */
+export const guardRow = (pass, guard = oneGuard) => {
+  if (!guard) return { word: rowWord(!!pass, false), row: -1 };
+  const row = guard.row();
+  return { word: rowWord(!!pass, guard.rowBlind(row)), row };
+};
+
+/** T-763: the evidence body and the verdict a run ends with. When the guard went blind, PASS rows become NOT-TESTED
+ *  (per row when every row was recorded, all PASS rows otherwise, because the switch is not timestamped), FAIL rows
+ *  stay FAIL, the reason is named, and the exit code is not 0. */
+export function guardReport({ lines, ok, guard, close }) {
+  const blind = !!guard?.blind;
+  const rowLines = lines.filter((l) => /^(PASS|FAIL|NOT-TESTED) /.test(l)).length;
+  const perRow = !!guard && guard.rows === rowLines;
+  let i = 0;
+  const rows = lines.map((line) => {
+    const m = /^(PASS|FAIL|NOT-TESTED) ([\s\S]*)$/.exec(line);
+    if (!m) return line;
+    const word = m[1];
+    const blindHere = word !== "FAIL" && (word === "NOT-TESTED" || (blind && (perRow ? guard.rowBlind(i) : true)));
+    i++;
+    return `${word === "FAIL" ? "FAIL" : blindHere ? "NOT-TESTED" : "PASS"} ${m[2]}`;
+  });
+  const verdict = runWord(ok, blind);
+  const tail = [
+    ...(close === undefined ? [] : [`close: ${JSON.stringify(close)}`]),
+    ...(blind ? [`guard: ${verdict} — the IPC guard was blind (${guard.where}); rows that read backend calls are not tested`] : []),
+    `RESULT: ${verdict}`,
+  ];
+  return { lines: rows, verdict, code: verdict === "PASS" ? 0 : 1, text: [...rows, ...tail].join("\n"), tail };
+}
+
 /**
  * opts: root (checkout), port (vite), cdp (debugging port), identifier, temp (scratch root), suffix (the identifier must
  * end with it before a launch wipes the profile), offscreen, attach, keep, buildMinutes, log, ipcGuard (arm the IPC
@@ -272,10 +343,20 @@ export function createApp(opts) {
   // A reload puts fetch back. The app's own calls before the first arm (boot) are not guarded: the keymap they
   // could write is the scratch one (KOLUX_KEYBINDINGS_HOME in appEnv).
   let probes = 0;
-  /** True while backend calls still pass through the guard. */
+  app.guard = createGuardTrack();
+  oneGuard = app.guard;
+  /** A probe only: true while backend calls still pass through the guard. Its callers record the result in app.guard. */
   app.guardOk = async () => (await evalJs(guardProbeJs(`v8_probe_${++probes}`)).catch(() => false)) === true;
   const wrap = async () => (await evalJs(IPC_GUARD_JS).catch(() => false)) === true;
-  app.armGuard = async () => (await wrap()) && app.guardOk();
+  /** Arms the page and records the result with the run's guard track. */
+  app.armGuard = async () => {
+    if ((await wrap()) && (await app.guardOk())) {
+      app.guard.good();
+      return true;
+    }
+    app.guard.noteBlind("arming the guard");
+    return false;
+  };
   /** Reload the page so Tauri's IPC goes back to fetch, arm again before anything else, then run opts.afterReload
    *  (e.g. close first-run dialogs) under the guard. A reload drops page-side state (startProve's
    *  window.__proveEvents listener included): a harness that rearms mid-run sets it up again. */
@@ -283,21 +364,41 @@ export function createApp(opts) {
     await evalJs(`setTimeout(() => location.reload(), 0), null`).catch(() => {});
     await sleep(1500);
     await pageUp(90_000);
-    if (!(await wrap())) return false;
+    if (!(await wrap())) {
+      app.guard.noteBlind("rearming the guard");
+      return false;
+    }
     await afterReload?.(app);
-    return app.guardOk();
+    if (!(await app.guardOk())) {
+      app.guard.noteBlind("rearming the guard");
+      return false;
+    }
+    app.guard.good();
+    return true;
   };
   /** Runs fn(), one row of a harness, between two guard checks. blind "before": the guard was lost and a rearm
-   *  failed, so fn did not run (count the row NOT-TESTED). blind "after": the guard went blind during fn, so
-   *  what fn saw of the backend can't be trusted. Otherwise blind is null. */
+   *  failed, so fn did not run; blind "after": the guard went blind during fn, so what fn saw of the backend can't
+   *  be trusted. Either way the row is recorded with app.guard, which the report counts as NOT-TESTED. */
   app.guarded = async (fn) => {
-    if (!(await app.guardOk()) && !(await app.rearm())) return { blind: "before" };
+    const row = app.guard.row();
+    if (!(await app.guardOk()) && !(await app.rearm())) return { blind: "before", row };
     const value = await fn();
-    return { value, blind: (await app.guardOk()) ? null : "after" };
+    if (await app.guardOk()) {
+      app.guard.good();
+      return { value, blind: null, row };
+    }
+    app.guard.noteBlind("during a row", row);
+    return { value, blind: "after", row };
   };
   const armOrThrow = async () => {
     if (!IPC_GUARD) return;
-    if (!(await app.armGuard()) && !(await app.rearm())) {
+    let armed = false;
+    try {
+      armed = (await app.armGuard()) || (await app.rearm());
+    } catch {
+      armed = false; // a rearm that threw is a run without a guard, not a run to leave an app behind for
+    }
+    if (!armed) {
       // The caller has no app handle yet when this throws (startProve's catch only stops a ctx), so close it here.
       await app.closeApp().catch(() => {});
       throw new Error("the IPC guard is not effective; refusing to drive an app that could open a browser, an editor, restart, or write the real keymap");

@@ -32,4 +32,8 @@ export type WindowBag = WindowState & WindowLate & WindowSave & Plumbing & Windo
     reviewTargets: SendTarget[];
     /** SAFE-002: the pane whose plan the sheet shows. */
     reviewPane: Pane | null | undefined;
+    /** EDIT-031: the file names with unsaved text in these workspaces, for the delete question. */
+    wsUnsaved: (paths: string[]) => string[];
+    /** EDIT-031: asks about those tabs; true when the removal may go on. */
+    askWsUnsaved: (paths: string[]) => Promise<boolean>;
   };

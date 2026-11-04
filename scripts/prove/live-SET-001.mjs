@@ -76,6 +76,8 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   } catch (e) {
     log(`ERROR ${e.stack ?? e}`);
   }
-  if (ctx) evidence(ROOT, "SET-001", [...ev, `result: ${ok ? "PASS" : "FAIL"}`], "live-SET-001.mjs");
-  process.exit(ctx ? await finish(ctx, "SET-001", ev, ok) : 1);
+  if (!ctx) process.exit(1);
+  const code = await finish(ctx, "SET-001", ev, ok);
+  evidence(ROOT, "SET-001", [...ev, `result: ${ctx.verdict(ok)}`], "live-SET-001.mjs");
+  process.exit(code);
 }

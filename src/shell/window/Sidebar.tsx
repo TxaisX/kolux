@@ -20,7 +20,7 @@ export default function WindowSidebar() {
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest, startIn, projectAdded,
     setScreen, setStandIns, startSetup, setProjects, setOwner, setNames, leftWidth, setDragLeft,
     agentsScreen, groups, selected, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset, closePane,
-    workerNames, ptys,
+    workerNames, ptys, wsUnsaved, askWsUnsaved,
   } = useWindow();
   return (
     <>
@@ -42,6 +42,8 @@ export default function WindowSidebar() {
           onRemoved={removed}
           onRemovedAll={removedAll}
           onSleep={removedAll}
+          unsavedIn={wsUnsaved}
+          onAskUnsaved={askWsUnsaved}
           nest={settings[NESTING_KEY] !== false}
           onNest={(on) => saveSetting(NESTING_KEY, on)}
           agents={agents}

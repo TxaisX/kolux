@@ -152,7 +152,7 @@ try {
 const code = ctx ? await finish(ctx, `962-${RUN}`, ev, ok) : 1;
 const evidence = process.env.KOLUX_PROVE_EVIDENCE || join(fileURLToPath(new URL("../../", import.meta.url)), "evidence", "live-962-model-listing.txt");
 const stamp = new Date().toISOString().slice(0, 10);
-const section = `LIVE ${stamp} (batch 8) run ${RUN} of 3: cursor-agent stand-in ${VARIANT} (scripts/prove/live-962.mjs ${RUN})\n${ev.join("\n")}\nresult: ${ok ? "PASS" : "FAIL"}\n\n`;
+const section = `LIVE ${stamp} (batch 8) run ${RUN} of 3: cursor-agent stand-in ${VARIANT} (scripts/prove/live-962.mjs ${RUN})\n${ev.join("\n")}\nresult: ${ctx?.verdict(ok) ?? (ok ? "PASS" : "FAIL")}\n\n`;
 if (RUN === 1) writeFileSync(evidence, `After.md row 962: do grok models / cursor-agent --list-models (stdout piped, stdin null, 10 s limit) still fill the New session sheet?\nGrok answers from the real install (WinGet link; the app searches the registry PATH first); cursor-agent is a stand-in script.\n\n${section}`);
 else appendFileSync(evidence, section);
 process.exit(code);

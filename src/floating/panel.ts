@@ -154,6 +154,13 @@ export function close(p: Panel, keys: number[]): Panel {
 export const asked = (p: Panel): Tab | null => p.tabs.find((t) => t.key === p.asking[0]) ?? null;
 
 /**
+ * VIEW-107: the panel's notes that hold unsaved text, by the name their tab shows. The window's
+ * close and Force Reload questions name them beside its own unsaved files, so quitting or
+ * reloading never drops a note's text without the user saying so.
+ */
+export const dirtyNoteNames = (p: Panel): string[] => p.tabs.filter((t) => t.kind === "markdown" && t.dirty).map((t) => t.title);
+
+/**
  * The answer to the question on screen. `discard` closes that tab and moves on to the next waiting
  * one; `save` is the caller's job first (it calls `close` again once saved); `keep` cancels this
  * question and every one still waiting, so nothing else closes.

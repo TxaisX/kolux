@@ -38,6 +38,7 @@ export function routeOf(agent: string, what: What): Route {
 }
 export const LAUNCH_NOTE = "Set when a session starts. Saved for the next launch.";
 export const TERMINAL_NOTE = "Pick it in the agent's own picker in the terminal.";
+export const MODEL_NOT_SENT = "The model change was not sent.";
 
 /** The command that switches a Claude model from the box. */
 export const modelCommand = (model: string) => `/model ${model}`;
@@ -78,13 +79,21 @@ export function sentChange(changes: readonly Change[], what: What, value: string
   return [...changes.filter((c) => c.what !== what), { seq, what, value, status: "sent" }];
 }
 
-/** The agent now shows `model`: a sent model change for that value is confirmed. */
+/** The agent now shows `model`: a sent model change for that value is confirmed. A sent pick of the
+ * agent's own default is confirmed by whichever model the agent reports next. */
 export const confirmModel = (changes: readonly Change[], model: string | null): Change[] =>
-  changes.map((c) => (c.what === "model" && c.status === "sent" && c.value === model ? { ...c, status: "confirmed" as const } : c));
+  changes.map((c) => (c.what === "model" && c.status === "sent" && (c.value === model || (c.value === DEFAULT_MODEL && model !== null)) ? { ...c, status: "confirmed" as const } : c));
 
 /** A failure for change `seq`: ignored when a newer change of that kind has replaced it. */
 export const failChange = (changes: readonly Change[], seq: number, error: string): Change[] =>
   changes.map((c) => (c.seq === seq ? { ...c, status: "failed" as const, error } : c));
+
+/** A pick that did not reach the agent: it stays in the control marked failed, so the pick is not silently
+ * reverted and the note under the control says what happened. */
+export function failedChange(changes: readonly Change[], what: What, value: string, error: string): Change[] {
+  const next = sentChange(changes, what, value);
+  return failChange(next, next[next.length - 1].seq, error);
+}
 
 export const statusOf = (changes: readonly Change[], what: What) => changes.find((c) => c.what === what);
 
