@@ -114,7 +114,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["projects/ImportSetup.tsx", "Import setup commands", "tag"],
   ["projects/ScanRepos.tsx", "Scan a folder for repositories", "tag"],
   ["projects/StartGit.tsx", "Start Git in this folder", "tag"],
-  ["projects/WorktreePalette.tsx", "Switch worktree", "inner"],
+  ["projects/WorktreePalette.tsx", "Switch workspace", "inner"],
   ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
   ["recovery/RecoveryMount.tsx", "Graphics", "exempt: the graphics fallback needs one of its two answers"],
   ["scm/PrStart.tsx", "Create pull request", "tag"],

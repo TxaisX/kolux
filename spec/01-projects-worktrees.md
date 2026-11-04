@@ -302,11 +302,13 @@ User sees: workspaces where every typed word matches somewhere in the project, n
 Rules: every word has to match somewhere, and matches are highlighted; filters combine, and on
   opening they start from the sidebar's current scope; main checkouts stay listed even while
   sleeping rows are hidden; with an empty query the palette obeys the hide-sleeping filter, while a
-  typed query searches every workspace that is not archived.
+  typed query searches every workspace that is not archived; the palette, its shortcut and its
+  section are labelled workspace, not worktree (T-750).
 Acceptance:
   - [ ] Type api fix → only workspaces matching both words show.
   - [ ] Hide sleeping rows and type nothing → sleeping workspaces are not listed, but main checkouts
         are.
+  - [x] Open the palette → it is named Switch workspace and lists workspaces under Workspaces. (unit; evidence/T-750.txt)
 Compat: Keybinding id worktree.palette.
 Source: D-01-057
 

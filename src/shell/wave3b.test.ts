@@ -48,12 +48,12 @@ describe("G1 (not reproduced): the palette's filter selects add a chip, then go 
     expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
     expect(byLabel(c, "select", "Filter by repository")[0].options.map((o) => o.value)).toEqual([""]);
     const kind = byLabel(c, "select", "Filter by kind")[0];
-    kind.value = "Worktrees";
+    kind.value = "Workspaces";
     await fire(c, "change", kind);
     await until(() => chips(c).length === 2, "the kind chip");
-    expect(chips(c)[1]).toBe("Remove the filter Kind: Worktrees");
-    expect(byLabel(c, "select", "Filter by kind")[0].options.map((o) => o.value)).not.toContain("Worktrees");
-    await click(c, find(c, (n) => n.attrs["aria-label"] === "Remove the filter Kind: Worktrees")[0]);
+    expect(chips(c)[1]).toBe("Remove the filter Kind: Workspaces");
+    expect(byLabel(c, "select", "Filter by kind")[0].options.map((o) => o.value)).not.toContain("Workspaces");
+    await click(c, find(c, (n) => n.attrs["aria-label"] === "Remove the filter Kind: Workspaces")[0]);
     expect(chips(c)).toEqual(["Remove the filter Repository: app"]);
   });
 });

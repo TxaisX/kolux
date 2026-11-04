@@ -1,0 +1,30 @@
+T-750 / DT-C186 - One verb per action, one noun, in project and workspace labels (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 9" (57): sweep #29 = findings/projects.md:14 (Delete/Remove/
+Delete all; Set vs Change parent; hide wording; worktree vs workspace) and UNSURE findings/shell.md:8 (dialog menus
+and the arrows). Cap +40 B. Checked on main 8f3f8295 first. Wording agreed with 49 (T-749 keeps "Remove project…").
+
+CHECKED ON MAIN, ALREADY CONSISTENT (left alone): src/projects/menu.ts. "Remove project…" (out of Kolux, folder
+  stays), "Delete" / "Delete N workspaces" (folders go; the many-workspace confirm stays "Delete all"), "Delete group…", "Set parent…", "Hide from the sidebar".
+  "Change parent" no longer appears anywhere.
+FIXED:
+  - src/projects/WorktreePalette.tsx: section Worktrees -> Workspaces; dialog aria-label Switch worktree -> Switch
+    workspace; placeholder, the "Open a workspace first" title and the "needs an open workspace" reason.
+  - src/keys/actions.ts: the worktree.palette title (keyboard settings, command list) is Switch workspace; the id is
+    unchanged.
+  - src/chrome/TopBar.tsx: the search hint title says workspace.
+  - src/projects/ProjectsPanel.tsx, src/shell/ProjectsExtras.tsx: the plain-Git notice says Workspaces; the
+    move picker is "Parent" (was "Move under"), matching "Set parent…".
+  - Tests and live proof scripts that pinned the old labels were updated: nav, WorktreePalette.link, wave3b, reach,
+    overlayKeys (comment); scripts/prove/live-checks.mjs and live-VIEW-003.mjs select the
+    palette by its new aria-label.
+NOT REAL: shell.md:8. The tab menu takes the arrows, Home and End (src/shell/window/tabMenuKeys.ts); the Ctrl+Tab
+  list is a hold-the-modifier switcher that steps with Tab and Shift+Tab, like the system one. No change.
+LEFT OUT: a "worktree" keyword on the shortcut (+22 B would pass the cap); the glossary hover still names Git worktree.
+  Internal ids and the spec's own "worktree palette" wording are unchanged.
+
+TEST: the updated tests above prove the new labels (they fail on main's labels). src/projects, src/chrome, src/shell,
+  src/keys: 142 files, 786 tests passed.
+BUNDLE: first load 1,486,977 B vs main 8f3f8295 1,486,970 B (both built here, 47 chunks): +7 B (cap +40).
+SPEC: spec/01 PROJ-057 (palette name and section), with an [x] acceptance line.
+GATES: tsc 0; plan-check OK; firewall-check -Baseline 0 new.
+REVIEW: sonnet-medium-review, B+, no must-fix; 165 tests it re-ran passed. Applied: a counted confirm ("Delete N workspaces") read "Delete 1 workspaces" after a partial failure; the singular form cost +20 B (+53, cap +40), so the confirm keeps main's "Delete all", which is right for any count. Not applied: other surfaces that still say worktree (automations, settings, editor, Space, the attached-tabs and right-sidebar hints) are outside sweep #29 and the cap; they are a follow-up row.
