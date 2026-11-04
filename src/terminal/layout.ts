@@ -152,6 +152,13 @@ export function joinSaved<T extends { key: number }>(panes: T[], late: SavedLayo
   return [...panes, ...late.panes.filter((s) => !panes.some((p) => p.key === s.key)).map(reviveSaved)];
 }
 
+/** C26-R3-01: the saved pins and Tab Colours join a window that is already drawn, the same way its tabs do. A
+ *  mark the user set during the wait wins over the saved one; a saved mark on a tab the window already has stays. */
+export function joinMarks(live: Marks, late: SavedLayout): { pinned: Set<number>; colors: TabColors } {
+  const saved = marksOf(late.panes);
+  return { pinned: new Set([...live.pinned, ...saved.pinned]), colors: { ...saved.colors, ...live.colors } };
+}
+
 /** SESS-030 (T-066-c): whether the restore loop asks the Rust side for this tab's start line. Only
  * an agent tab does: a tab with no agent id, a non-terminal tab, and a plain shell (or an unstarted
  * chooser) with no program of its own keep the line they were saved with. A catalogue agent saved as

@@ -87,6 +87,8 @@ test("a late settings answer hands the saved tabs to the drawn window instead of
   const store = windowFiles["./shell/windowStore.ts"];
   expect(store).toMatch(/setPanes\(\(ps\) => joinSaved\(ps, late\)\)/); // merge, never replace
   expect(store).toMatch(/if \(!late \|\| adopted\.current\) return;/); // once, however often the prop arrives
+  expect(store).toMatch(/setPinned\(marks\.pinned\)/); // the saved pins come with the saved tabs
+  expect(store).toMatch(/setTabColors\(marks\.colors\)/); // and so do their Tab Colours
   expect(windowFiles["./shell/useWindowSave.ts"]).toContain("stacked, pinned, tabColors, read])"); // the wait tab is written down
 });
 

@@ -23,7 +23,7 @@ import { useAgentStatusState } from "../status/useAgentStatus";
 import { useAccountSwitcher } from "../switcher/AccountSwitcher";
 import type { CodexAccount } from "../terminal/accountChange";
 import { groupOf, type Zoom } from "../terminal/grid";
-import { joinSaved, marksOf, reviveSaved, type SavedLayout } from "../terminal/layout";
+import { joinMarks, joinSaved, marksOf, reviveSaved, type Marks, type SavedLayout } from "../terminal/layout";
 import type { PendingSend, PlanDraft } from "../terminal/planReview";
 import type { Zone } from "../terminal/rearrange";
 import type { Identity } from "../terminal/shellMarks";
@@ -123,6 +123,8 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   switcherRef.current = switcher;
   const [tabMenu, setTabMenu] = useState<{ key: number; top: number; left: number } | null>(null); // TERM-049: the right-clicked tab
   const [tabColors, setTabColors] = useState<TabColors>(() => marksOf(layout?.panes ?? []).colors); // TERM-049: Tab Color, window state like pinned (terminal/tabColor.ts)
+  const marksNow = useRef<Marks>({ pinned, colors: tabColors }); // C26-R3-01: the marks as they are when a late layout lands
+  marksNow.current = { pinned, colors: tabColors };
   // TERM-015 / TERM-054: what is being dragged (a tab, or a whole cell by its pane header) and where it would land.
   const dragging = useRef<{ tab: number } | { cell: number } | null>(null);
   const [dropHint, setDropHint] = useState<{ group: number; zone?: Zone; tab?: number; half?: "before" | "after" } | null>(null);
@@ -170,6 +172,10 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     setStacked((s) => ({ ...late.stacked, ...s }));
     setFocused((f) => (panesNow.current.some((p) => p.key === f) ? f : late.focused));
     setActiveDir((d) => d ?? late.activeDir);
+    // The saved pins and Tab Colours come with the saved tabs: without them the next layout write would drop both.
+    const marks = joinMarks(marksNow.current, late);
+    setPinned(marks.pinned);
+    setTabColors(marks.colors);
   }, [late]);
   const { palette, setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
