@@ -259,7 +259,7 @@ export default function CommentsPanel({ dir, url, visible, extra }: Props) {
           {deleting === c.id ? (
             <>
               <span className="sb-hint">Delete this comment from GitHub?</span>
-              <button className="btn" disabled={rowBusy(book, c.id)} onClick={() => void act(del.kind, del.id, undefined, c.id).then(() => setDeleting(null), () => {})}>
+              <button className="btn danger" disabled={rowBusy(book, c.id)} onClick={() => void act(del.kind, del.id, undefined, c.id).then(() => setDeleting(null), () => {})}>
                 {rowBusy(book, c.id) ? "Deleting…" : "Delete"}
               </button>
               <button className="btn" disabled={rowBusy(book, c.id)} onClick={() => setDeleting(null)}>
