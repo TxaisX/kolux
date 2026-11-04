@@ -48,6 +48,14 @@ test("T-694, T-698: every page overlay, menu, pop and dialog draws over the floa
   expect(z(".float-btn")).toBeGreaterThan(z(".float-panel"));
 });
 
+// W201 B2: the unsaved guard is asked from a dialog that stays mounted under it (the workspace delete question).
+// Both backdrops are fixed at --z-top, so the one the page drew later won; one step up keeps the guard over the
+// dialog that asked, whatever order the two are rendered in.
+test("W201 B2: the unsaved guard draws over the dialog that asked it", () => {
+  expect(z(".ask-backdrop.guard"), "one step over every other dialog's backdrop").toBe(z(".ask-backdrop") + 1);
+  expect(z(".ask-backdrop.guard")).toBeGreaterThan(z(".scrim"));
+});
+
 test("T-698: pane pops, the review tray and the plan sheet draw under the panel, in main's order", () => {
   const panel = Math.min(z(".float-panel"), z(".float-btn"));
   const pops = PANE_POPS.map(z);
