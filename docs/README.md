@@ -32,7 +32,19 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 
 ## How it is built
 
-A public architecture overview is being written. Until it lands, these are the reliable entry points:
+| Page | What it covers |
+|---|---|
+| [Architecture overview](architecture/overview.md) | Processes, runtime topology, startup, terminal lifecycle, local doors, updates |
+| [Architecture infographic](architecture/infographic.html) | The one-page visual version |
+| [Data and storage](architecture/data.md) | The profile, the SQLite store, settings, the vault, recovery |
+| [Security model](architecture/security.md) | Trust boundaries, the file fence, protected commands, web isolation, update trust |
+| [Frontend](architecture/frontend.md) | The React shell, state flow, terminal grid, editor, styling |
+| [Building](development/building.md) | Prerequisites, local development, build outputs |
+| [Testing](development/testing.md) | Vitest, Rust tests, scratch homes, gates, CI |
+| [Releasing](development/releasing.md) | Versioning, signing, the release script, the update feed |
+| [Code map](development/code-map.md) | The repository layout and where to change what |
+
+The source starting points are also stable:
 
 - `src-tauri/src/lib.rs` registers the Rust commands and starts the app.
 - `src-tauri/src/terminal.rs` and `src-tauri/src/pty_service.rs` hold the terminal service; `src-tauri/src/pty.rs` is the PTY layer.
@@ -53,4 +65,4 @@ Those are build records, not user documentation. They are published for transpar
 
 ## Documentation status
 
-The user guide covers the current build in detail. The developer documentation is the next piece: architecture, building, testing, and the release process. If a page is missing or wrong, open an issue on the repository.
+The user guide, architecture set, and development set are in place. The next pieces are a supported-agents matrix, fresh screenshots, and a user-facing changelog. If a page is missing or wrong, open an issue on the repository.

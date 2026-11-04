@@ -32,7 +32,7 @@ Kolux RS is a Windows desktop app for people who run several AI coding agents at
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
 - **Review and ship.** Stage, commit, push, open a pull request, and follow checks without leaving the app.
-- **Local first.** No telemetry. Keys are sealed with Windows DPAPI. The app talks to GitHub Releases, your Git remotes, and the AI providers you connect; the full list is in Settings, General, Privacy.
+- **Local first.** No telemetry. Keys are sealed with Windows DPAPI. The app talks to GitHub (Releases and API), your Git remotes, and the AI providers you connect; the full list is in Settings, General, Privacy.
 
 ## Install
 
@@ -76,6 +76,9 @@ The full list of outbound connections is in Settings, General, Privacy and in th
 | [Glossary](docs/GLOSSARY.md) | The words the app uses |
 | [Safety](docs/guide/safety.md) | What Kolux guards and what it leaves to you |
 | [Security policy](SECURITY.md) | How to report a vulnerability privately |
+| [Architecture](docs/architecture/overview.md) | Processes, local doors, data, trust boundaries |
+| [Architecture infographic](docs/architecture/infographic.html) | The one-page visual map |
+| [Development](docs/development/README.md) | Building, testing, releasing, code map |
 | [Troubleshooting](docs/guide/troubleshooting.md) | Fix common problems and produce a safe report |
 | [Command line](docs/guide/command-line.md) | Drive Kolux from a shell |
 | [Feature index](docs/guide/feature-index.md) | Find a feature by name |
@@ -86,7 +89,7 @@ The [documentation home](docs/README.md) has the full index.
 
 Kolux RS is in early alpha. The latest build is 0.1.7 (4 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
 
-Bug reports and feature requests go to [Issues](https://github.com/TxaisX/kolux-rs/issues). If you want to propose a code change, open an issue first so we can agree on scope.
+Bug reports and feature requests go to [Issues](https://github.com/TxaisX/kolux-rs/issues). If you want to propose a code change, open an issue first so we can agree on scope; read [CONTRIBUTING.md](CONTRIBUTING.md) before you start.
 
 ## Build from source
 
@@ -105,6 +108,8 @@ cargo test
 ```
 
 CI runs the full gate on every pull request and every push to `main`.
+
+The full development docs are in [docs/development](docs/development/README.md): [building](docs/development/building.md), [testing](docs/development/testing.md), [releasing](docs/development/releasing.md), and the [code map](docs/development/code-map.md).
 
 ## License
 
