@@ -55,6 +55,8 @@ Acceptance:
   - [x] Every element with role dialog or alertdialog closes on Escape, or is listed with the reason it does not (a chat
         card, a two-answer fallback, a panel whose parent closes it first); Escape never throws away typed text. (unit;
         evidence/T-708.txt)
+  - [x] Every aria-modal dialog keeps Tab and Shift+Tab inside it, wrapping at both ends; Escape stays the dialog's own.
+        (unit; evidence/T-714.txt)
 Compat: keybinding id worktree.palette
 Source: D-05-037
 
