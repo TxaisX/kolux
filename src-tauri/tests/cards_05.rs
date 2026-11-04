@@ -1,4 +1,4 @@
-//! spec/05 views and navigation: the status a Board card is built from (VIEW-016, VIEW-023, VIEW-025).
+﻿//! spec/05 views and navigation: the status a Board card is built from (VIEW-016, VIEW-023, VIEW-025).
 //! Needs `status` and `hooks` public in lib.rs. Hook events are crafted by hand from the public hook
 //! documentation; everything is in memory. The card's wording is proven on the TypeScript side
 //! (src/board/__cards__), fed the same payload shapes these tests assert.
@@ -151,7 +151,7 @@ fn view012_box1_add_two_files_and_the_newest_is_listed_first() {
     lib.add(&site.join("first.html"), Origin::hand(&site.join("first.html")), &|_| None).unwrap();
     std::thread::sleep(std::time::Duration::from_millis(5));
     lib.add(&site.join("second.html"), Origin::hand(&site.join("second.html")), &|_| None).unwrap();
-    let titles: Vec<String> = lib.list().into_iter().map(|l| serde_json::to_value(l).unwrap()["title"].as_str().unwrap().to_string()).collect();
+    let titles: Vec<String> = lib.list().unwrap().into_iter().map(|l| serde_json::to_value(l).unwrap()["title"].as_str().unwrap().to_string()).collect();
     assert_eq!(titles, ["Second page", "First page"]);
     std::fs::remove_dir_all(&root).unwrap();
 }
@@ -167,8 +167,9 @@ fn view012_box3_removing_an_entry_takes_it_out_of_the_list_and_deletes_its_store
     let a = lib.add(&site.join("a.html"), Origin::hand(&site.join("a.html")), &|_| None).unwrap();
     lib.add(&site.join("b.html"), Origin::hand(&site.join("b.html")), &|_| None).unwrap();
     lib.remove(&a.id).unwrap();
-    let titles: Vec<String> = lib.list().into_iter().map(|l| serde_json::to_value(l).unwrap()["title"].as_str().unwrap().to_string()).collect();
+    let titles: Vec<String> = lib.list().unwrap().into_iter().map(|l| serde_json::to_value(l).unwrap()["title"].as_str().unwrap().to_string()).collect();
     assert_eq!(titles, ["B"]);
     assert!(!root.join("lib").join(&a.id).exists());
     std::fs::remove_dir_all(&root).unwrap();
 }
+
