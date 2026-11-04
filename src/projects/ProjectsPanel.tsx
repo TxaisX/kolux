@@ -455,7 +455,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         } else {
           // ACCT-056: a failed scan removes nothing; the worktrees already known stay listed.
           next[p.id] = afterScan(next[p.id], null);
-          say("warn", `Could not list the workspaces of ${p.name}, so the last known list stays: ${answer.error}`);
+          // T-744: the 5 s poll's warning never covers an action's error, which stays until it is closed.
+          const text = `Could not list the workspaces of ${p.name}, so the last known list stays: ${answer.error}`;
+          setMessage((m) => (m?.kind === "error" ? m : { kind: "warn", text }));
         }
         scanned.current = next;
         unseenKnown.current = unseen;

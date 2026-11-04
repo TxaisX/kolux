@@ -106,12 +106,13 @@ Source: D-03-040
 Tier: P0 · Pushed: 1 · State at 0.15.0: live
 User does: uses the new-agent shortcut or picks an agent from the new tab menu.
 User sees: a tab opens with the chosen agent already launching.
-Rules: new default agent: Cmd+Alt+T on macOS; each installed agent also gets its own new tab action,
+Rules: new default agent: Cmd+Alt+T on macOS, Ctrl+Alt+T on Windows and Linux (T-746); each installed agent also gets its own new tab action,
   unbound by default.
 Acceptance:
   - [x] Choosing Claude from the menu opens a tab whose header shows Claude starting. (cards live; evidence/cards-TERM-041.txt)
   - [x] Each installed agent has its own command for a new tab, with no key until the user assigns
       one. (cards; evidence/cards-TERM-041.txt)
+  - [x] Fresh profile on Windows → Ctrl+Alt+T opens a new tab with the default agent. (unit; evidence/T-746.txt)
 Compat: keybinding command for a new tab with the default agent, plus one command per installed
   agent formed from that command and the agent's own id (exact ids held back until allowlisted).
 Source: D-03-041

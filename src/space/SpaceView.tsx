@@ -11,7 +11,8 @@ import { ageOf, deletable, formatBytes, formatCount, reclaimableBytes, selectedF
 import { activeOf, afterBatch, chosenVisible, labelOf, latest, plan, question, removeArgs, stateOf, treemapItems, whyNotDeletable, type Batch, type Pick, type Skipped } from "./view";
 
 type Props = { projectId: string | null; projectName: string; openDirs: string[] };
-type Pending = { go: SpaceRow[]; picks: Pick[]; skipped: Skipped[] };
+// T-744: `pid` is the project the question was asked in; after a project switch it is neither shown nor run.
+type Pending = { go: SpaceRow[]; picks: Pick[]; skipped: Skipped[]; pid: string };
 
 const cell: CSSProperties = { padding: "4px 8px", borderBottom: "1px solid var(--line-subtle)", whiteSpace: "nowrap" };
 const num: CSSProperties = { ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" };
@@ -26,6 +27,9 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
+  // T-744: the project on screen now, so a check or delete that ends after a switch drops its answer.
+  const shownId = useRef(projectId);
+  shownId.current = projectId;
 
   // Latest-wins: a scan that finishes after a newer one (or after the project changed) is dropped.
   const scans = useRef(latest());
@@ -48,6 +52,7 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
     setRows([]);
     setSelected([]);
     setNote(null);
+    setPending(null);
     scans.current.cancel();
     setScanning(false);
     if (projectId === null) return;
@@ -79,28 +84,30 @@ export default function SpaceView({ projectId, projectName, openDirs }: Props) {
     await Promise.all(go.map((r) => invoke<RemoveCheck>("workspace_remove_check", { projectId, path: r.path }).then((c) => (checks[r.path] = c), (e: unknown) => (checks[r.path] = String(e)))));
     const planned = plan(go, checks);
     setBusy(false);
+    if (shownId.current !== projectId) return;
     const all = [...skipped, ...planned.skipped];
     if (planned.picks.length === 0) setNote(all.length ? all.map((s) => `Skipped ${labelOf(rows.find((r) => r.path === s.path) ?? ({ path: s.path, branch: null } as SpaceRow))}: ${s.why}`).join(" · ") : "Nothing to delete");
-    else setPending({ go, picks: planned.picks, skipped: all });
+    else setPending({ go, picks: planned.picks, skipped: all, pid: projectId });
   };
   const runDelete = async () => {
-    if (projectId === null || pending === null) return;
+    if (projectId === null || pending?.pid !== projectId) return;
     setPending(null);
     setBusy(true);
     try {
       for (const p of pending.picks) await askArchive(p.path);
       const batch = await invoke<Batch>("workspace_remove_many", removeArgs(projectId, pending.picks));
+      if (shownId.current !== projectId) return;
       const out = afterBatch(rows, batch);
       setRows(out.rows);
       setSelected([]);
       setNote(out.note);
     } catch (e) {
-      setNote(`The delete failed: ${String(e)}`);
+      if (shownId.current === projectId) setNote(`The delete failed: ${String(e)}`);
     } finally {
       setBusy(false);
     }
   };
-  const q = pending ? question(pending.go, pending.picks, pending.skipped) : null;
+  const q = pending?.pid === projectId ? question(pending.go, pending.picks, pending.skipped) : null;
 
   return (
     <section className="space" aria-label="Space" style={{ padding: "16px 20px", color: "var(--fg)", overflow: "auto", height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
