@@ -96,15 +96,17 @@ fn view005_box1_the_open_page_and_the_screen_left_survive_a_restart_of_the_store
 }
 
 #[test]
-fn view005_box2_a_corrupt_settings_file_reads_as_defaults_and_raises_no_notice() {
+fn view005_box2_a_corrupt_settings_file_reads_as_defaults_and_raises_the_repair_notice() {
     let dir = store_dir("corrupt");
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("settings.json"), b"{ \"lastScreen\": \"tas").unwrap();
     let s = Store::open(&dir).unwrap();
-    // no good copy to fall back to: the read does not fail, it gives defaults (no openPage, no lastScreen)
+    // no good copy to fall back to: the read does not fail, it gives defaults (no openPage, no lastScreen),
+    // and C22-R2-01 announces it once so the user can repair instead of seeing a silently reset app.
     let read = s.settings();
     assert_eq!(read, json!({}));
-    assert_eq!(s.take_fallback_notice(), None, "no good copy: nothing to tell, no dialog");
+    assert!(s.take_fallback_notice().is_some(), "a corrupt file with no good copy is announced once");
+    assert_eq!(s.take_fallback_notice(), None, "the notice is one-shot");
     drop(s);
     std::fs::remove_dir_all(&dir).unwrap();
 }

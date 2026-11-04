@@ -377,9 +377,10 @@ Rules: quick successive switches are saved as one write; the final choice is wri
 Acceptance:
   - [x] Open Tasks, quit, relaunch → Tasks is shown. (cards live; evidence/cards-VIEW-005.txt)
   - [x] Corrupt the saved preference file, relaunch → no error dialog: with no good copy the app
-        opens on the terminal workspace; with the usual backup present it opens from that copy and
-        says once, on the page, that it used the last good copy. (Reworded per Txais 2026-10-28
-        decisions file, A: works as now.) (cards; evidence/cards-VIEW-005.txt)
+        opens on the terminal workspace and offers a one-shot Repair strip (C22-R2-01, no modal);
+        with the usual backup present it opens from that copy and says once, on the page, that it
+        used the last good copy. (Reworded per Txais 2026-10-28 decisions file, A: works as now;
+        C22-R2-01 amended the no-copy case to offer the repair.) (cards; evidence/cards-VIEW-005.txt)
 Compat: —
 Source: D-05-005
 
