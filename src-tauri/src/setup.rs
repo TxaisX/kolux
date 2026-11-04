@@ -1913,7 +1913,7 @@ mod tests {
         assert_eq!(trust_ask(&store, &root, "issue", "anything").unwrap(), None);
         trust_clear(&store, &root).unwrap();
         assert_eq!(page(&store), (false, vec![]), "Stop trusting forgets it all");
-        for (kind, script) in [("setup", "echo shared"), ("archive", "echo bye"), ("issue", "anything")] {
+        for (kind, script) in [("setup", "echo shared"), ("archive", "echo bye"), ("issue", "anything"), ("tabs", "pnpm dev")] {
             assert_eq!(trust_ask(&store, &root, kind, script).unwrap().map(|a| a.changed), Some(false), "{kind} asks again, as new");
         }
         trust_grant(&store, &root, "setup", "echo shared", false).unwrap();

@@ -2,7 +2,10 @@
 // component is drawn by calling it with a small hook store and each button's own onClick is called.
 import { beforeEach, expect, test, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0 }));
+const h = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0, calls: [] as [string, unknown][], reply: {} as Record<string, unknown> }));
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (cmd: string, args: unknown) => (h.calls.push([cmd, args]), Promise.resolve(h.reply[cmd])),
+}));
 vi.mock("react", async (orig) => {
   const actual = await orig<typeof import("react")>();
   return {
@@ -19,7 +22,7 @@ vi.mock("react", async (orig) => {
   };
 });
 
-import { RepoSetupView } from "./RepoSetup";
+import RepoSetupSection, { RepoSetupView } from "./RepoSetup";
 import type { RepoSetup } from "./setupChoice";
 
 type El = { type: unknown; props: Record<string, unknown> };
@@ -108,4 +111,27 @@ test("T-721: what is trusted shows with Stop trusting; once stopped the row goes
   expect(page({ ...yaml, trusted: ["setup", "issue"] })).toContain("Runs without asking while unchanged: the setup script, the issue command.");
   // the page reads back after the write; Rust's t721 test shows the record is gone and each script asks again
   expect(button(draw({ ...yaml, trustedAll: false, trusted: [] }), "Stop trusting")).toBeUndefined();
+});
+
+test("T-721: Stop trusting clears through Rust, reads the page back, and says what changed where focus lands", async () => {
+  const yaml: RepoSetup = { ...saved, local: null, shared: "pnpm i", inherited: "shared" };
+  h.calls = [];
+  h.reply = { repo_setup_get: { ...yaml, trusted: [] } };
+  h.slots = [{ ...yaml, trustedAll: true }, null, null]; // the section's setup, notice and status
+  const section = () => {
+    h.cursor = 0;
+    const el = RepoSetupSection({ path: "C:/r" }) as unknown as El;
+    return all(RepoSetupView(el.props as Parameters<typeof RepoSetupView>[0]));
+  };
+  (button(section(), "Stop trusting")!.props.onClick as () => void)();
+  await new Promise((r) => setTimeout(r, 0));
+  expect(h.calls).toEqual([
+    ["repo_trust_clear", { path: "C:/r" }],
+    ["repo_setup_get", { path: "C:/r" }],
+  ]);
+  const after = section();
+  expect(button(after, "Stop trusting"), "read back with nothing trusted: the row is gone").toBeUndefined();
+  const status = after.find((e) => e.props.role === "status");
+  expect(status && text(status)).toContain("each script asks before it runs");
+  expect(status!.props.autoFocus && status!.props.tabIndex, "focus moves to the status line").toBe(-1);
 });

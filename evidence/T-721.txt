@@ -12,7 +12,8 @@ THE FIX (DT-C157)
   trust_clear writes an empty record, so every kind asks again as new; command repo_trust_clear (lib.rs registers it).
 - src/settings/setupChoice.ts: trustedWords words it; trustNote no longer says "asks first" while Always trust is on.
 - src/settings/RepoSetup.tsx: a Trusted row with that sentence and a Stop trusting button (shown only when something is
-  trusted); the section reads back after the write, so the row goes.
+  trusted); the section reads back after the write, so the row goes, and a
+  status line (role=status, focused) says each kolux.yaml script asks before it runs.
 
 TESTS
 - Rust setup::tests::t721_stop_trusting_shows_on_the_page_and_asks_again: nothing trusted -> page shows nothing; one
@@ -29,4 +30,9 @@ BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
 - main 74dc239b (main's two settings files in this tree): 1,489,475 B first load. This branch: 1,489,475 B (+0).
 
 REVIEW
-- Fresh opus-high-review: see the PR conversation.
+- Fresh opus-high-review on 831165a2: A- (no blocking defect). Fixed in the next commit: M1 (after Stop trusting the
+  focused button left with its row: a role=status line now says each script asks again and takes focus), M2 (a test
+  drives RepoSetupSection with a fake invoke: repo_trust_clear then repo_setup_get, row gone, status focused; red with
+  831165a2 RepoSetup.tsx), L6 (the Rust test checks tabs too). Lows L3-L5, L7 logged to kolux-rs-after.md.
+- After the fix: RepoSetupClick 5 passed; src/settings 85 files, 477 tests; tsc and clippy clean; cargo t721 1 passed;
+  first load 1,489,475 B (+0).
