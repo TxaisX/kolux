@@ -40,6 +40,7 @@ import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
 import { fromThisService, orphanOf, reattach, type Attach, type Reattached, type ServiceInfo } from "./reattach";
 import { batchAcks, memoryProfile } from "./flow";
+import { frameOutputs, type FrameOutput } from "./frame";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
@@ -253,6 +254,9 @@ const stagger = () =>
     }, 150 + 60 * waiting++),
   );
 
+// T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
+const outputFrames = frameOutputs();
+
 export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
@@ -274,6 +278,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   launchedRef.current = launched;
   const [linkHint, setLinkHint] = useState<string | null>(null);
   const termRef = useRef<Terminal | null>(null);
+  // T-765: the pane's frame queue (a tab switch wakes it without waiting for the next chunk).
+  const outputRef = useRef<FrameOutput | null>(null);
   // STAT-033: the state the program's own terminal title last stood for; only read while no hook reports.
   const [guess, setGuess] = useState<AgentState | null>(null);
   const box = useRef<HTMLElement>(null);
@@ -389,6 +395,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const serviceRef = useRef<ServiceInfo | null>(null);
   const isHidden = useRef(hidden);
   isHidden.current = hidden;
+  // T-765: a tab that comes back catches up at once, without waiting for the next output chunk.
+  useEffect(() => {
+    outputRef.current?.wake();
+  }, [hidden]);
   // TERM-091: a tab switch hides the pane; it comes back at the row it showed (a marker follows the row as the
   // scrollback trims), or at the bottom if it was there. The return is read after the pane has its size again.
   const keptView = useRef<{ bottom: boolean; marker: { line: number; dispose(): void } | null } | null>(null);
@@ -662,10 +672,21 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           .then((snap) => {
             if (!snap || !alive || idRef.current !== id) return;
             resync.took(snap);
+            // T-765: what is still queued and the snapshot holds goes; what came after it still draws.
+            output.dropUpTo(snap.seq);
             applySnapshot(term, decodeOutput(snap.data));
           })
           .catch(() => {});
     });
+    // T-765: output goes to xterm through the frame queue, one write a frame with the window's
+    // others. The acknowledgement is still the write callback's: the reader's unacked window is
+    // what pauses a program that runs ahead, so nothing is dropped and the order is the arrival order.
+    const output = outputFrames.pane({
+      write: (bytes, done) => term.write(bytes, done),
+      ack: (bytes) => acks.drew(bytes),
+      hidden: () => isHidden.current || document.hidden,
+    });
+    outputRef.current = output;
     let ended = false;
     // Output can arrive before terminal_spawn hands back this pane's id (several panes starting at
     // once); it is held and replayed, else the console's opening cursor query goes unanswered and
@@ -761,6 +782,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     let readyWait: ReturnType<typeof setTimeout> | undefined;
     const openGate = () => {
       clearTimeout(readyWait);
+      // T-765: what the pane has already taken from the reader goes out first: the held banner, a
+      // reset or an exit note is written after it, never before.
+      output.flushNow();
       const heldOut = gate.release();
       if (heldOut) term.write(heldOut);
     };
@@ -888,7 +912,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             const ready = marks.some((m) => m.kind === "prompt");
             const out = gate.push(bytes, ready);
             // Held bytes are acknowledged at once: flow control counts what the pane took, not what it shows yet.
-            if (out) term.write(out, () => acks.drew(bytes.length));
+            // T-765: drawn bytes go through the frame queue, which acknowledges them when xterm has parsed them.
+            if (out) output.push(out, bytes.length, e.payload.seq);
             else acks.drew(bytes.length);
             if (ready) {
               clearTimeout(readyWait);
@@ -1231,6 +1256,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       pasting.detach();
       shots();
       clearTimeout(readyWait);
+      output.dispose();
+      outputRef.current = null;
       acks.stop();
       term.dispose();
       delete (el as DevHost).__koluxTerm;

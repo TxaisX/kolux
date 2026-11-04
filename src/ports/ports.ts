@@ -4,6 +4,8 @@
 // terminal that printed it), decides where Open goes, what a Stop sends back and what a failed scan
 // leaves on screen.
 
+import { decodeOutput as bytesOf } from "../terminal/codec";
+
 export type PortRow = {
   port: number;
   addr: string;
@@ -21,6 +23,8 @@ const URL_RE = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]|[A-Za-z
 
 /** Every web address with a port in a piece of terminal output, as [port, address]. */
 export function urlsIn(text: string): [number, string][] {
+  // T-765: a flood is mostly not addresses; a chunk without "://" is not stripped or matched.
+  if (!text.includes("://")) return [];
   const clean = text.replace(ANSI, "");
   const out: [number, string][] = [];
   for (const m of clean.matchAll(URL_RE)) {
@@ -84,12 +88,12 @@ export const afterScan = (prev: PortsView, got: { rows: PortRow[] } | { error: s
 /** The count the status bar item shows: only the workspace's own ports. */
 export const ownCount = (rows: readonly PortRow[]): number => rows.filter((r) => !r.external).length;
 
-/** Terminal output arrives base64 encoded; the text, or empty when it is not text. */
+const text = new TextDecoder();
+/** Terminal output arrives base64 encoded; the text, or empty when it is not text. T-765: every pane's output
+ * passes through here, so it uses the pane's own byte decode (a callback per byte cost ~30x and starved the window). */
 export function decodeOutput(data: string): string {
   try {
-    const bin = atob(data);
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
+    return text.decode(bytesOf(data));
   } catch {
     return "";
   }
