@@ -71,7 +71,7 @@ export async function startProve(id, opts) {
   const TEMP = `${BASE}/run-${id}`;
   const repo = `${BASE}/work/${id}`;
   const settingsFile = `${TEMP}/tmp/claude-config/settings.json`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
   const { profile } = app.paths;
   // A fresh run folder: only a folder this lane made (it carries the marker) is wiped.
   if (existsSync(TEMP)) {
@@ -223,7 +223,7 @@ export async function startProve(id, opts) {
     },
     /** A CDP page screenshot (PNG) written to LOGS/<name>.png. */
     shot: async (name) => (await import("./live-claude-common.mjs")).shot(name),
-    stop: () => app.closeApp(),
+    stop: () => guardedStop(app, log),
   };
   return ctx;
 }
@@ -254,6 +254,12 @@ export function writeStandinClaude(dir, body = []) {
 }
 
 /** Closes the first-run guide (Close, then Skip in its "Skip setup?" question) and any other modal, so clicks and chords reach the grid. */
+/** T-763: ends a run, first saying so when the IPC guard went blind during it (backend results then count NOT-TESTED). */
+async function guardedStop(app, log) {
+  if (app.pid && !(await app.guardOk())) log("WARN the IPC guard was blind at the end of this run: count rows that read backend calls NOT-TESTED");
+  return app.closeApp();
+}
+
 export async function dismissFirstRun(app, log) {
   const any = '[role="dialog"], [role="alertdialog"]';
   for (let t = 0; t < 10; t++) {
@@ -278,7 +284,7 @@ export async function startPlain(id, opts) {
   const { log } = opts.report;
   const TEMP = `${LIVE_BASE}/run-${id}`;
   const repo = `${LIVE_BASE}/work/${id}`;
-  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log });
+  const app = createApp({ root: ROOT, port: PORT, cdp: CDPP, identifier: "com.txaisxiong.kolux-rs.prove", temp: TEMP, suffix: ".prove", offscreen: true, buildMinutes: 30, log, ipcGuard: true, afterReload: (a) => (opts.keepFirstRun ? null : dismissFirstRun(a, log)) });
   const { profile } = app.paths;
   if (existsSync(TEMP)) {
     if (!existsSync(join(TEMP, ".prove-run"))) throw new Error(`${TEMP} exists without the prove marker`);
@@ -419,7 +425,7 @@ export async function startPlain(id, opts) {
     realAgents: async () => (await app.treeOf(app.pid)).filter((p) => /^(claude|codex|grok)(\.exe)?$/i.test(p.name)).map((p) => `${p.name}:${p.pid}`),
     /** Pids of the shells (powershell/pwsh) under the app: a session restarted or started shows as a changed pid set. */
     shellPids: async () => (await app.treeOf(app.pid)).filter((p) => /^(powershell|pwsh).exe$/i.test(p.name)).map((p) => p.pid).sort((x, y) => x - y),
-    stop: () => app.closeApp(),
+    stop: () => guardedStop(app, log),
   };
   return ctx;
 }
