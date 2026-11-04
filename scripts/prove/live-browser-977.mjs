@@ -162,8 +162,8 @@ try {
 } catch (e) {
   log(`ERROR ${e.stack ?? e}`);
 }
-const results = rep.lines.filter((l) => /^(PASS|FAIL) /.test(l));
-appendFileSync(`${ROOT}/evidence/browser-954b.txt`, `\n\nLIVE re-proof (MERGE 412) ${DATE} (scripts/prove/live-browser-977.mjs, hidden dev app, loopback page, scratch profile, no real agent) - steps 15-17, rows 977 + 978: ${ok ? "PASS" : "FAIL"}\n${[...lines, ...results].map((l) => `  ${l.replace(/[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"']+/gi, "<home>")}`).join("\n")}\n`);
 const code = ctx ? await finish(ctx, "BROW977", rep.lines, ok) : 1;
+const results = rep.lines.filter((l) => /^(PASS|FAIL|NOT-TESTED) /.test(l));
+appendFileSync(`${ROOT}/evidence/browser-954b.txt`, `\n\nLIVE re-proof (MERGE 412) ${DATE} (scripts/prove/live-browser-977.mjs, hidden dev app, loopback page, scratch profile, no real agent) - steps 15-17, rows 977 + 978: ${ctx?.verdict(ok) ?? (ok ? "PASS" : "FAIL")}\n${[...lines, ...results].map((l) => `  ${l.replace(/[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"']+/gi, "<home>")}`).join("\n")}\n`);
 srv.close();
 process.exit(code);

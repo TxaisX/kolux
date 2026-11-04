@@ -208,5 +208,5 @@ try {
   log(`ERROR ${e.stack ?? e}`);
 }
 const code = ctx ? await finish(ctx, "T-655", ev, ok) : 1;
-writeFileSync(join(EVID, "T-655.txt"), `${ev.join("\n")}\nRESULT: ${ok ? "PASS" : "FAIL"}\n`);
+writeFileSync(join(EVID, "T-655.txt"), `${ev.join("\n")}\nRESULT: ${ctx?.verdict(ok) ?? (ok ? "PASS" : "FAIL")}\n`);
 process.exit(code);
