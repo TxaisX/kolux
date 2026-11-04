@@ -13,6 +13,7 @@ import { SCREEN_OF } from "../chrome/reach";
 import { paletteRows } from "../projects/WorktreePalette";
 import keysSrc from "./useWindowKeys.ts?raw";
 import panelSrc from "../projects/ProjectsPanel.tsx?raw";
+import type { Page } from "../projects/ProjectsPanel";
 
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -183,7 +184,10 @@ test("T-727: the palette finds Model Routing by routing, model or route, and run
     hit!.run();
   }
   expect(ran).toEqual(["view.routing", "view.routing", "view.routing", "view.routing"]);
-  // the window switch opens the page named by the id after "view.", the page ProjectsPanel's button opens
-  expect(keysSrc).toMatch(/case "view\.routing": \{\s*(\/\/.*\s*)?const page = hit\.id\.slice\(5\) as Page;/);
+  // every case of the window's page switch is a page: the id after "view." must be one of ProjectsPanel's pages
+  const PAGES = { automations: 1, routing: 1, tasks: 1 } satisfies Record<Page, 1>;
+  const group = keysSrc.match(/((?:case "view\.\w+":\s*)+)\{[^]*?hit\.id\.slice\(5\)/)?.[1] ?? "";
+  const ids = [...group.matchAll(/"view\.(\w+)"/g)].map((m) => m[1]);
+  expect(ids.sort()).toEqual(Object.keys(PAGES).sort());
   expect(panelSrc).toContain('onPage("routing")');
 });

@@ -7,7 +7,7 @@ WHAT WAS WRONG
   panel (projects/ProjectsPanel.tsx onPage("routing")). No command, so the palette and Settings > Shortcuts had no way in.
 
 THE FIX (DT-C163)
-- src/keys/actions.ts: view.routing, "Model Routing", global, unbound (next to workspace.openBoard).
+- src/keys/actions.ts: view.routing, "Model Routing", global, unbound (after view.tasks and view.automations, the other page commands).
 - src/keys/useWindowKeys.ts: view.routing joins view.tasks and view.automations; the page is the id after "view."
   (typed as ProjectsPanel's Page), so running it shows Terminals with the routing page, or closes it when open.
 - "route" finds it through the palette's existing one-letter forgiveness on words of five letters or more.
@@ -24,4 +24,4 @@ BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
 - Making the palette read action keywords (so "route" could be a keyword) measured +198 B; not taken.
 
 REVIEW
-- Fresh opus-high-review: see the PR conversation.
+- Fresh opus-high-review: A-, no high. M1 fixed: the test no longer matches the switch line word for word; it reads every case id in the page switch and checks each is a ProjectsPanel Page (a typed list, so a renamed page or a non-page case fails; red-checked by adding case "view.space"). L4 fixed: view.routing moved next to view.tasks and view.automations (0 B). Kept: title "Model Routing" (coordinator 57), +37 B (accepted by 57). Lows logged to kolux-rs-after.md.
