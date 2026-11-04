@@ -1,0 +1,29 @@
+T-736 - The account switcher keeps its last list when the accounts fail to load (DT-C172; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t736 from main 73008fe1, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "T-736 / DT-C172", from backlog-sweep-49.md #21 (chrome.md:19).
+
+WHAT WAS WRONG
+- src/switcher/AccountSwitcher.tsx useAccountSwitcher read() set a provider's view to null when its invoke failed.
+  AccountSwitcherView draws nothing with no groups, so one failed read made the top-bar pill vanish, and the
+  palette rows and Board/Tower figures (src/shell/windowStore.ts, same hook) lost the accounts too.
+
+THE FIX (DT-C172)
+- read() runs both reads inside Promise.all: each success still sets its view; a failure leaves the last view alone.
+  The hook's new 'stale' flag is true after a read where either provider failed, false after one where both loaded.
+  The rejection is handled there, so none goes unhandled.
+- The top-bar switcher passes "Accounts didn't load; list may be old." as the menu's alert line while stale; a pick's
+  own error takes its place. If the first read ever fails there is no last list, so the pill stays hidden as before.
+
+TESTS
+- src/switcher/staleView.test.ts (new): mounts the hook in the fake DOM, loads both providers, then fails a read through
+  the accounts event: both providers stay listed and stale is true; a good read clears it. Red-checked: with the old
+  null-on-failure reads it fails ("both providers still listed after the failed read": 0, not 2). A last step fails
+  Codex only: Claude's new list still lands, Codex keeps its last one, and stale is true.
+- vitest src/switcher + src/shell: 46 files, 232 passed. pnpm exec tsc --noEmit -p . : clean.
+
+REVIEW
+- Fresh sonnet-medium-review: A-, no high. Its two mediums are logged to kolux-rs-after.md, not fixed, since 4 B of the cap are left: an older failed read that lands after a newer good one can leave the notice up until the next event (the views had no ordering guard before either), and the notice shows in the open menu only, not on the closed pill. Its low on tests was fixed: the Codex-only failure step.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 73008fe1: 1,489,604 B first load. This branch: 1,489,700 B (+96). Cap +100 B. The first cut measured +143; the
+  notice was shortened and allSettled + a scan became Promise.all with a failure branch.
