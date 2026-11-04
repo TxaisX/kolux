@@ -2305,6 +2305,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <CleanupDialog
               project={p}
               onClose={() => setCleanupFor(null)}
+              unsavedIn={unsavedIn}
+              onAskUnsaved={onAskUnsaved}
               onRemoved={(paths) => {
                 onRemovedAll(paths);
                 void reload();
@@ -2493,6 +2495,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             return p && w ? { projectId: p.id, name: worktreeLabel(w) } : undefined;
           }}
           onRemoved={onRemovedAll}
+          unsavedIn={unsavedIn}
+          onAskUnsaved={onAskUnsaved}
           onKept={(items) => setKept((old) => addKept(old, items))}
           onLeft={setPicked}
           onReload={reload}

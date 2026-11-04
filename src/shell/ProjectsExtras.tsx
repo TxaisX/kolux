@@ -2,6 +2,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
 import Ask from "../chrome/Ask";
+import { askText } from "../editor/closeGuard";
 import { askArchive } from "../setup/TrustPrompt";
 import type { KeptBranch, KeptItem } from "../projects/cleanup";
 import type { RemoveCheck } from "../projects/deleting";
@@ -84,6 +85,8 @@ export function PickedBar({
   onLeft,
   onReload,
   say,
+  unsavedIn = () => [],
+  onAskUnsaved = async () => true,
 }: {
   picked: string[];
   find: (path: string) => { projectId: string; name: string } | undefined;
@@ -94,6 +97,10 @@ export function PickedBar({
   onLeft: (left: string[]) => void;
   onReload: () => Promise<unknown> | void;
   say: Say;
+  /** EDIT-031: the file names with unsaved text in these workspaces, for the question. */
+  unsavedIn?: (paths: string[]) => string[];
+  /** EDIT-031: asks about those tabs (Save / Don't save / Cancel); true when the removal may go on. */
+  onAskUnsaved?: (paths: string[]) => Promise<boolean>;
 }) {
   const [asked, setAsked] = useState<Asked | null>(null);
   const [busy, setBusy] = useState(false);
@@ -118,6 +125,8 @@ export function PickedBar({
   };
   const remove = async () => {
     if (!asked) return;
+    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel nothing is removed and no draft drops.
+    if (!(await onAskUnsaved(planRemoval(asked.q, asked.items).map((s) => s.path)))) return;
     setBusy(true);
     const gone: string[] = [];
     const kept: KeptItem[] = [];
@@ -147,6 +156,8 @@ export function PickedBar({
 
   if (asked) {
     const { q } = asked;
+    // EDIT-031: the files whose unsaved text would go with these workspaces.
+    const dirtyNames = unsavedIn(planRemoval(q, asked.items).map((s) => s.path));
     return (
       <Ask
         title={q.title}
@@ -162,6 +173,16 @@ export function PickedBar({
                 {d.name} has changes that will be lost{d.lines.length ? `: ${d.lines.slice(0, 3).join(", ")}${d.more + Math.max(0, d.lines.length - 3) > 0 ? ", …" : ""}` : ""}
               </div>
             ))}
+            {dirtyNames.length > 0 && (
+              <>
+                <span>{askText(dirtyNames)} Deleting these workspaces closes their tabs.</span>
+                <ul className="del-changes" aria-label="files with unsaved changes">
+                  {dirtyNames.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              </>
+            )}
           </>
         }
         confirm={q.removable.length === 0 ? null : busy ? "Removing…" : q.removable.length === 1 ? "Remove it" : `Remove ${q.removable.length}`}

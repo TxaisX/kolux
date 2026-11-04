@@ -8,13 +8,16 @@ import type { GuardPane } from "../editor/closeGuard";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 import { sameDir } from "../workspaces";
 import ProjectsPanel from "./ProjectsPanel";
+import CleanupDialog from "./CleanupDialog";
+import { PickedBar } from "../shell/ProjectsExtras";
 import { namesOf, panesInDirs, unsavedInDirs } from "./wsUnsaved";
 
-const h = vi.hoisted(() => ({ calls: [] as string[], settings: {} as Record<string, unknown> }));
+const h = vi.hoisted(() => ({ calls: [] as string[], settings: {} as Record<string, unknown>, scan: null as unknown }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string) => {
     h.calls.push(cmd);
     if (cmd === "get_settings") return Promise.resolve(h.settings);
+    if (cmd === "cleanup_scan") return Promise.resolve(h.scan);
     if (cmd === "workspace_remove_check") return Promise.resolve({ changes: [], locked: null, nested: [], stamp: "s", commits: [] });
     if (cmd === "workspace_statuses") return Promise.resolve({ list: [] });
     if (cmd === "visibility_get") return Promise.resolve([]);
@@ -71,6 +74,7 @@ beforeEach(() => {
   Object.assign(doc, { querySelectorAll: () => [], querySelector: () => null, visibilityState: "visible", hidden: false });
   h.calls = [];
   h.settings = {};
+  h.scan = { projectId: "p1", rows: [{ path: ws.path, branch: "fix", name: null, idleDays: 30, changes: 0, merged: true, unmerged: false, active: false, locked: false, missing: false, quiet: true, preselect: true, keepsBranch: false, note: null }], error: null, timedOut: false, atMs: 1 };
   removed = [];
 });
 afterEach(async () => {
@@ -120,4 +124,79 @@ test("Cancel on the unsaved question removes nothing and drops no drafts; Don't 
   expect(h.calls).toContain("workspace_remove");
   expect(h.calls).toContain("editor_drafts_drop"); // only after the explicit choice
   expect(removed).toEqual([ws.path]);
+});
+
+// EDIT-031: the multi-select bar's Remove… is a delete path too: it drops drafts, so it asks first.
+function PickedHarness() {
+  const guard = useCloseGuard({ panes, dirty, close: () => {}, toast: () => {} });
+  return createElement(
+    "div",
+    null,
+    guard.dialog,
+    createElement(PickedBar, {
+      picked: [ws.path],
+      find: () => ({ projectId: "p1", name: "fix" }),
+      onRemoved: (paths: string[]) => void removed.push(...paths),
+      onLeft: () => {},
+      onReload: () => {},
+      say: () => {},
+      unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(panes, dirty, paths, sameDir)),
+      onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(panes, paths, sameDir)),
+    } as never),
+  );
+}
+
+test("the multi-select Remove names the dirty file and Cancel keeps the workspace and its drafts", async () => {
+  const m = await mount(createElement(PickedHarness), doc);
+  unmount = m.unmount;
+  const c = m.container as FakeNode;
+  await settle(40);
+  await click(c, byText(c, "button", "Remove…")[0]);
+  await settle(80);
+  expect(find(c, (n) => n.textContent.includes("a.ts")).length).toBeGreaterThan(0); // the question names the file
+  await click(c, byText(c, "button", "Remove it")[0]);
+  await settle(80);
+  expect(guardAsk(c)).toBeDefined();
+  await click(c, byText(guardAsk(c), "button", "Cancel")[0]);
+  await settle(80);
+  expect(h.calls).not.toContain("workspace_remove");
+  expect(h.calls).not.toContain("editor_drafts_drop"); // the drafts survive
+  expect(removed).toEqual([]); // the workspace stays
+});
+
+// EDIT-031: Cleanup's Remove for good is the same delete path.
+function CleanupHarness() {
+  const guard = useCloseGuard({ panes, dirty, close: () => {}, toast: () => {} });
+  return createElement(
+    "div",
+    null,
+    guard.dialog,
+    createElement(CleanupDialog, {
+      project: { id: "p1", name: "app" },
+      onClose: () => {},
+      onRemoved: (paths: string[]) => void removed.push(...paths),
+      onKept: () => {},
+      parentOf: () => null,
+      unsavedIn: (paths: string[]) => namesOf(unsavedInDirs(panes, dirty, paths, sameDir)),
+      onAskUnsaved: (paths: string[]) => guard.confirm(panesInDirs(panes, paths, sameDir)),
+    } as never),
+  );
+}
+
+test("the Cleanup dialog names the dirty file and Cancel leaves every workspace and draft", async () => {
+  const m = await mount(createElement(CleanupHarness), doc);
+  unmount = m.unmount;
+  const c = m.container as FakeNode;
+  await settle(120);
+  await click(c, byText(c, "button", "Remove 1 ticked")[0]);
+  await settle(40);
+  expect(find(c, (n) => n.textContent.includes("a.ts")).length).toBeGreaterThan(0); // the question names the file
+  await click(c, byText(c, "button", "Remove for good")[0]);
+  await settle(80);
+  expect(guardAsk(c)).toBeDefined();
+  await click(c, byText(guardAsk(c), "button", "Cancel")[0]);
+  await settle(80);
+  expect(h.calls).not.toContain("cleanup_remove");
+  expect(h.calls).not.toContain("workspace_remove");
+  expect(removed).toEqual([]); // nothing was removed
 });
