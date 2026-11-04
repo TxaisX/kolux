@@ -27,7 +27,8 @@ import { EXPAND_CAP, insideDir, menuLabel, nextWave, openRow, withExtraMenu, typ
 import { isLog } from "./logFollow";
 import { currentSeed } from "./searchSeed";
 import { useKeymap } from "../keys/KeymapContext";
-import { matchEvent } from "../keys/keymap";
+import { labelOf, matchEvent } from "../keys/keymap";
+import { withChord } from "../terminal/PaneMenu";
 import { explorerSearchKey } from "../keys/useWindowKeys";
 import { announceMoves } from "./fileMoved";
 
@@ -813,7 +814,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         <button className="ib" onClick={() => startNew(true)} title="New folder" aria-label="New folder">
           <FolderPlus size={12} />
         </button>
-        <button className="ib" onClick={onClose} title="Hide the explorer (Ctrl+Shift+E)" aria-label="Hide the explorer">
+        <button className="ib" onClick={onClose} title={withChord("Hide the explorer", labelOf(keymap, "sidebar.explorer.toggle"))} aria-label="Hide the explorer">
           <Close size={12} />
         </button>
       </header>

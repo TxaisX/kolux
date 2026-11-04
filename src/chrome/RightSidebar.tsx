@@ -16,7 +16,7 @@ import { NARROW_PX } from "../shell/window/narrow";
 
 export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
-  { id: "explorer", label: "Explorer", hint: "Explorer (Ctrl+Shift+E)" },
+  { id: "explorer", label: "Explorer", hint: "Files in this workspace" },
   { id: "insights", label: "Insights", hint: "Tokens, estimated cost and what every session is doing, across all workspaces" },
   { id: "checks", label: "Checks", hint: "Checks on this workspace's pull request" },
   { id: "attached", label: "Attached", hint: "Worktrees attached to this folder (folder workspaces)" },
