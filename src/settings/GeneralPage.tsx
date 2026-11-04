@@ -186,7 +186,7 @@ function DelayField({ value, onSave }: { value: number; onSave: (v: number) => P
 }
 
 /** SET-039: the apps every Open in menu lists, from presets or by name and command. */
-function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => void }) {
+export function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => void }) {
   const list = readOpenIn(settings);
   const [draft, setDraft] = useState({ name: "", command: "" });
   const [editing, setEditing] = useState<string | null>(null); // the row being edited in the fields below
