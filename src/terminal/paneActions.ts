@@ -50,7 +50,7 @@ import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
 import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
-import { closeOne, pinQuestion } from "./pin";
+import { closeOne, pinQuestion, stripOrderOf } from "./pin";
 import { dropCell, dropTab, type Zone } from "./rearrange";
 import { classify, shellInAgentPane } from "./remove";
 import { returnTab } from "./tabClose";
@@ -483,11 +483,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     };
   };
 
-  /** TERM-044: the tab strip's order for the cell holding pane `key`. */
-  const orderOf = (key: number) => {
-    const p = panes.find((x) => x.key === key);
-    return p ? panes.filter((x) => groupOf(x) === groupOf(p)).map((x) => x.key) : [];
-  };
+  /** TERM-044: the tab strip's order for the cell holding pane `key`, pinned tabs first as drawn
+   *  (C06-R1-01: the close rows and Select Tab measure the strip, not the pane array). */
+  const orderOf = (key: number) => stripOrderOf(panes, key, pinned);
   // TERM-044: the closed tabs leave together; focus returns to the tab used before the active one,
   // else its right neighbour (left if it was last), never to a tab that is closing.
   const dropPanes = (keys: number[]) => {

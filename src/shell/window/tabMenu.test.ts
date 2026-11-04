@@ -3,6 +3,8 @@
 import { expect, test } from "vitest";
 import { closeRows } from "./tabMenu";
 import { closeConfirmLabel, menuAnchor } from "./tabMenuStart";
+import { stripOrderOf } from "../../terminal/pin";
+import paneActions from "../../terminal/paneActions.ts?raw";
 
 const rows = (order: number[], key: number, pinned: number[] = []) => closeRows(order, key, new Set(pinned));
 
@@ -56,3 +58,29 @@ test("the tab menu's corner is clamped to the window on every side", () => {
   expect(menuAnchor(5, 5, 200, 250)).toEqual({ top: 8, left: 8 });
   expect(menuAnchor(-20, -20, 1200, 800)).toEqual({ top: 8, left: 8 });
 });
+
+// C06-R1-01: with a pinned tab the strip is not the pane array. The rows must measure the strip as drawn,
+// or the leftmost pinned tab's "Close to the left" closes a tab drawn on its right (and "Close to the
+// right" leaves one open).
+test("C06-R1-01: the close rows measure the drawn strip, pinned first, not the pane array", () => {
+  // the pane array holds tab 1 last; the strip draws it first because it is pinned
+  const panes = [
+    { key: 2, group: 1 },
+    { key: 3, group: 1 },
+    { key: 1, group: 1 },
+  ];
+  const pinned = new Set([1]);
+  const strip = stripOrderOf(panes, 1, pinned);
+  expect(strip).toEqual([1, 2, 3]); // the order Grid.tsx draws
+  const drawn = closeRows(strip, 1, pinned);
+  expect(drawn[2].keys).toEqual([2, 3]); // Close to the right: the two drawn right of it
+  expect(drawn[3]).toMatchObject({ keys: [], disabled: true }); // Close to the left: nothing is drawn there
+  // the pane array is the defect: "Close to the left" would have closed the tabs drawn on its right
+  expect(closeRows([2, 3, 1], 1, pinned)[3].keys).toEqual([2, 3]);
+  // a strip with no pinned tab keeps its order, and the first tab still has nothing to its left
+  expect(stripOrderOf(panes, 2, new Set())).toEqual([2, 3, 1]);
+  expect(closeRows(stripOrderOf(panes, 3, new Set()), 3, new Set())[3].keys).toEqual([2]);
+  // the window's own order (the one TabMenuView and Select Tab read) is the strip, not the pane array
+  expect(paneActions).toMatch(/const orderOf = \(key: number\) => stripOrderOf\(panes, key, pinned\)/);
+});
+
