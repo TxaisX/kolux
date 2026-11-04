@@ -333,10 +333,16 @@ fn setup_for_on(path: &str, local: Option<String>, policy: Option<String>, trust
 /// per-repository archive setting) in that worktree with the script variables, before it goes,
 /// and waits up to `limit`, then ends it and every process it started. Ok(false) when there is
 /// none, Ok(true) when it ran and exited 0; otherwise the failure, ending with the last of what
-/// the script wrote to its error output, for the UI to show.
-pub fn run_archive(root: &Path, worktree: &Path, limit: std::time::Duration) -> Result<bool, String> {
+/// the script wrote to its error output, for the UI to show. `trusted` is asked about the exact text
+/// read here (so what was checked is what runs); false skips it, Ok(false). One this PC cannot start
+/// (a #! shell it lacks, a line cmd would misread) is skipped too, before the question (as FIX-2 does
+/// for setup): it would run nothing, so it must not keep the workspace from being deleted.
+pub fn run_archive(root: &Path, worktree: &Path, limit: std::time::Duration, trusted: &dyn Fn(&str) -> Result<bool, String>) -> Result<bool, String> {
     let Some(script) = std::fs::read_to_string(worktree.join(crate::include::CONFIG_FILE)).ok().and_then(|y| scripts_entry(&y, "archive")) else { return Ok(false) };
-    let line = setup_line(&script, cfg!(windows), configured_shell().as_deref(), find_posix).map_err(|e| e.replacen("The setup script", "The archive script", 1))?;
+    let Ok(line) = setup_line(&script, cfg!(windows), configured_shell().as_deref(), find_posix) else { return Ok(false) };
+    if !trusted(&script)? {
+        return Ok(false);
+    }
     let mut cmd = std::process::Command::new(&line.program);
     cmd.args(&line.args).current_dir(worktree).stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped());
     cmd.envs(script_vars(root, worktree));
@@ -405,19 +411,13 @@ fn tail_of(r: &mut impl std::io::Read) -> String {
     String::from_utf8_lossy(&keep).into_owned()
 }
 
-/// STAT-055: the archive script for the worktree at `path`, run before it is removed.
-/// SAFE-025: it runs only once the repository trusts it; an untrusted one is refused with why.
-// ponytail: the trust prompt (T-156-a) is in; registration still waits for a removal that does not
-// wait on the window (council MERGE 53: after T-156 trust and an async workspace_remove); only the tests call it.
-#[allow(dead_code)]
-#[tauri::command(async)]
-pub fn workspace_archive(store: StoreState<'_>, path: String) -> Result<bool, String> {
-    let wt = Path::new(&path);
-    let root = main_folder(wt);
-    if let Some(script) = shared_script("archive", &root, wt, None, None) {
-        require_trust(&store, &root, "archive", &script)?;
-    }
-    run_archive(&root, wt, std::time::Duration::from_secs(120))
+/// STAT-055 (T-715): removal's archive step for the worktree at `wt` of the project at `root`.
+/// SAFE-025: the script runs only when the repository trusts that exact text (the page asks first,
+/// script_trust_needed with kind "archive"); one it does not trust (Don't run, or nobody asked) is
+/// skipped and the removal goes on, as is one whose trust cannot be read. Ok(true) when it ran and
+/// exited 0.
+pub fn archive_on_remove(store: &std::sync::Mutex<crate::state::Store>, root: &Path, wt: &Path) -> Result<bool, String> {
+    run_archive(root, wt, std::time::Duration::from_secs(120), &|script| Ok(store.lock().is_ok_and(|s| matches!(trust_ask(&s, root, "archive", script), Ok(None)))))
 }
 
 type StoreState<'a> = tauri::State<'a, std::sync::Mutex<crate::state::Store>>;
@@ -534,7 +534,8 @@ fn shared_script_on(kind: &str, root: &Path, wt: &Path, local: Option<&str>, pol
         // FIX-2: the question is asked only over a script that would run here; a refused join, a join
         // cmd would misread or a #! shell this PC lacks runs nothing, so nothing is asked (setup_for_on agrees)
         "setup" => pick_parts(local, yaml().and_then(|t| setup_script(&t)), policy).filter(|p| p.refused.is_none() && setup_line(&p.script, windows, configured, find).is_ok()).and_then(|p| p.shared),
-        "archive" => yaml().and_then(|y| scripts_entry(&y, "archive")),
+        // T-715: likewise an archive script this PC cannot start is skipped by run_archive, so not asked about
+        "archive" => yaml().and_then(|y| scripts_entry(&y, "archive")).filter(|s| setup_line(s, windows, configured, find).is_ok()),
         "issue" => issue_command(root, wt).filter(|(_, s)| *s).map(|(c, _)| c),
         // PROJ-034: the default tabs' commands, asked as one text (see `shared_tabs`)
         "tabs" => shared_tabs(root, wt).ok().and_then(|tabs| tabs_trust_text(&tabs)),
@@ -1701,17 +1702,26 @@ mod tests {
     #[test]
     fn stat055_removing_a_worktree_runs_its_archive_script_inside_it() {
         let wt = tree(&[("kolux.yaml", b"scripts:\n  archive: echo done>archived.txt\n")]);
-        assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60)).unwrap());
+        assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap());
         assert_eq!(std::fs::read_to_string(wt.join("archived.txt")).unwrap().trim(), "done");
         std::fs::write(wt.join("kolux.yaml"), "scripts:\n  setup: x\n").unwrap();
-        assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60)).unwrap(), "no archive script, nothing runs");
+        assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap(), "no archive script, nothing runs");
         let slow = if cfg!(windows) { "ping -n 6 127.0.0.1>nul" } else { "sleep 5" };
         std::fs::write(wt.join("kolux.yaml"), format!("scripts:\n  archive: {slow}\n")).unwrap();
-        assert!(run_archive(&wt, &wt, std::time::Duration::from_millis(300)).unwrap_err().contains("stopped after"));
+        assert!(run_archive(&wt, &wt, std::time::Duration::from_millis(300), &|_| Ok(true)).unwrap_err().contains("stopped after"));
+        // T-715: one this PC cannot start runs nothing, so it is neither asked about nor a reason to keep the workspace
+        std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: |\n    #!/usr/bin/t715-no-such-shell\n    echo x>never.txt\n").unwrap();
+        let none = |_: &str| None::<PathBuf>;
+        assert_eq!(shared_script_on("archive", &wt, &wt, None, None, true, None, none), None, "no trust question for it");
+        assert!(shared_script_on("archive", &wt, &wt, None, None, false, None, none).is_some(), "where it can start, it is asked about");
+        if cfg!(windows) {
+            assert!(!run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| panic!("asked about a script that cannot start")).unwrap());
+            assert!(!wt.join("never.txt").exists());
+        }
         // with a POSIX shell the variables reach the script
         if cfg!(not(windows)) || find_posix("sh").is_some() {
             std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: |\n    #!/bin/sh\n    printf '%s|%s' \"$KOLUX_WORKSPACE_NAME\" \"$KOLUX_ROOT_PATH\" > vars.txt\n").unwrap();
-            assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60)).unwrap());
+            assert!(run_archive(Path::new("C:/repos/app"), &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap());
             let name = wt.file_name().unwrap().to_string_lossy().into_owned();
             assert_eq!(std::fs::read_to_string(wt.join("vars.txt")).unwrap(), format!("{name}|C:/repos/app"));
         }
@@ -1721,7 +1731,7 @@ mod tests {
     #[test]
     fn stat055_a_failed_archive_script_says_why_and_a_stopped_one_takes_everything_it_started() {
         let wt = tree(&[("kolux.yaml", b"scripts:\n  archive: echo boom 1>&2 && exit 3\n")]);
-        let err = run_archive(&wt, &wt, std::time::Duration::from_secs(60)).unwrap_err();
+        let err = run_archive(&wt, &wt, std::time::Duration::from_secs(60), &|_| Ok(true)).unwrap_err();
         assert!(err.starts_with("The archive script failed with exit code 3"), "{err}");
         assert!(err.ends_with(": boom"), "what it wrote to its error output comes with the failure: {err}");
         if cfg!(windows) {
@@ -1729,7 +1739,7 @@ mod tests {
             std::fs::write(wt.join("inner.bat"), "@ping -n 6 127.0.0.1 >nul\r\n@echo late>late.txt\r\n").unwrap();
             std::fs::write(wt.join("slow.bat"), "@cmd /d /c .\\inner.bat\r\n").unwrap();
             std::fs::write(wt.join("kolux.yaml"), "scripts:\n  archive: .\\slow.bat\n").unwrap();
-            let err = run_archive(&wt, &wt, std::time::Duration::from_millis(1500)).unwrap_err();
+            let err = run_archive(&wt, &wt, std::time::Duration::from_millis(1500), &|_| Ok(true)).unwrap_err();
             assert!(err.starts_with("The archive script was stopped after 1 seconds"), "{err}");
             std::thread::sleep(std::time::Duration::from_secs(7));
             assert!(!wt.join("late.txt").exists(), "the process the script started was ended with it");

@@ -1483,7 +1483,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const canExpand = card ? true : !!expand?.can;
   const expandKey = labelOf(keymap, "terminal.expandPane").join("+") || "no shortcut";
   // UX audit terminal F4/F5: the header tooltips show the chords the keymap really has.
-  const closeTip = withChord("Close pane", labelOf(keymap, "terminal.closePane"));
+  // T-717 (DT-C153): tab.close owns Mod+W and closes the focused pane.
+  const closeTip = withChord("Close pane", labelOf(keymap, "tab.close"));
   const splitRightKey = labelOf(keymap, "terminal.splitRight").join("+");
   const splitDownKey = labelOf(keymap, "terminal.splitDown").join("+");
   const splitTip = `Split right: a shell in the same folder${splitRightKey ? ` (${splitRightKey}${splitDownKey ? `; ${splitDownKey} splits down` : ""})` : ""}`;

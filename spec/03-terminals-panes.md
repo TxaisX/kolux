@@ -81,6 +81,8 @@ Rules: close applies to the focused pane only, not its siblings; a pane running 
 Acceptance:
   - [x] Closing the middle of three panes leaves two panes filling the area. (cards; evidence/cards-TERM-014.txt)
   - [x] Closing the only pane in a tab closes that tab. (cards; evidence/cards-TERM-014.txt)
+  - [x] Cmd/Ctrl+W has one owner wherever it is live: the tab close, which closes the focused pane; the pane
+        close ships unbound for a user's own chord. (unit; evidence/T-717.txt)
 Compat: keybinding command for closing the focused pane (exact id held back until allowlisted).
 Source: D-03-014
 

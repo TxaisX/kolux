@@ -35,5 +35,6 @@ test("box 2: closing the only pane in a tab closes that tab, other workspaces ke
 });
 
 test("Mod+W closes the focused pane on every platform", () => {
-  for (const platform of ["win32", "linux", "darwin"] as const) expect(chordsOf(resolve(null, platform), "terminal.closePane")).toEqual(["Mod+W"]);
+  // T-717 (DT-C153): tab.close owns Mod+W and the window runs it as the focused pane's close (useWindowKeys).
+  for (const platform of ["win32", "linux", "darwin"] as const) expect(chordsOf(resolve(null, platform), "tab.close")).toEqual(["Mod+W"]);
 });

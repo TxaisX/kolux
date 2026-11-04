@@ -92,6 +92,10 @@ export async function trusted(path: string, kind: TrustAsk["kind"], extra: Recor
   return true;
 }
 
+/** STAT-055 (T-715): before the worktree at `path` is removed, asks about its archive script; Rust runs
+ *  it only when trusted, so Don't run, or a question that cannot be asked, just leaves it out. */
+export const askArchive = (path: string) => trusted(path, "archive").catch(() => false);
+
 /** PROJ-033 + SAFE-025: the Setup terminal's line for the new worktree at `path`, asked for first
  *  when its script is the repository's shared one; null when there is none or the user said Don't run. */
 export async function trustedSetup(path: string, opts: { local?: string | null; policy?: string | null } = {}, invoke: Invoke = tauriInvoke, ask: (a: TrustAsk) => Promise<TrustAnswer> = askTrust): Promise<SetupLine | null> {
