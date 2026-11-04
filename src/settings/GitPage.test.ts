@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { GitView } from "./GitPage";
+import { GitView, namingPatch } from "./GitPage";
 
 const view = (settings: Record<string, unknown>, draft = "", check: { prefix: string; refused: boolean } | null = null) =>
   renderToString(createElement(GitView, { settings, save: () => {}, draft, setDraft: () => {}, check }));
@@ -27,12 +27,22 @@ test("T-116-a-fix: a custom prefix shows its field, and a refused one warns", ()
 
 test("T-116-b: renaming branches after the work is on by default and switches off", () => {
   const on = view({});
-  expect(on).toMatch(/aria-label="Rename branches after the work"[^>]*checked=""/);
+  expect(on).toMatch(/aria-label="Name the branch after the work"[^>]*checked=""/);
   expect(on).toContain("is renamed to a short description");
   const off = view({ renameBranches: false });
-  expect(off).not.toMatch(/aria-label="Rename branches after the work"[^>]*checked=""/);
+  expect(off).not.toMatch(/aria-label="Name the branch after the work"[^>]*checked=""/);
   expect(off).toContain("keeps the branch name Kolux suggested");
   expect(view({ renameBranches: true })).toContain("is renamed to a short description");
+});
+
+test("T-725: one Branch names card with one naming switch, which reads and writes both stored keys", () => {
+  const html = view({});
+  expect(html.match(/>Branch names</g)).toHaveLength(1);
+  expect(html.match(/aria-label="Name the branch after the work"/g)).toHaveLength(1);
+  expect(html).not.toContain('data-section="auto-branch"');
+  expect(view({ autoBranchName: false, autoBranchChosen: true })).toContain("keeps the branch name Kolux suggested");
+  expect(namingPatch(true)).toEqual({ renameBranches: true, autoBranchName: true, autoBranchChosen: true });
+  expect(namingPatch(false)).toEqual({ renameBranches: false, autoBranchName: false, autoBranchChosen: true });
 });
 
 test("T-116-b: updating the local base first stays off by default", () => {
