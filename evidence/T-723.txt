@@ -22,10 +22,19 @@ TEST
   src/settings/zoom.test.ts: a failed save calls onFail with "Zoom not saved" and the error, the level stays 0.5 and
     the save carried uiZoom 0.5; a save that lands says nothing; the ui.zoom* ids map to in, out and reset.
     BEFORE THE FIX (old zoom.ts, same test): "passes the error to the caller ..." failed (nothing was told).
+  src/settings/settingsSaves.test.ts (review): the Appearance page rendered; a refused zoom save shows a role=alert
+    line with "Zoom not saved" and the error, and the next good step clears it. It fails with the line removed.
   src/editor/DiffPane.test.ts: the bin deletes at once and keeps the note; Undo puts back the same note (id, lines,
     side, text); with no save there is no Undo. (binNote did not exist before; the behaviour did.)
 
 TOTALS: see the PR body (vitest at VITEST_MAX_WORKERS=1 per 57's low-RAM window).
 pnpm tsc --noEmit: exit 0. BUNDLE: first load 1,489,452 bytes vs main 74dc239b 1,489,475 (-23 B); ceiling 1,490,000,
 cap +0.
-PENDING: unit-proven; a live check in the app has not been run.
+PENDING: unit-proven; a live check in the app has not been run. Not rendered in a test: the window's toast from
+  the zoom keys and the View menu, and DiffPane's Undo banner and its 8 s timer (no pane harness mounts CodeMirror);
+  the spec lines say so.
+REVIEW: opus-high-review A-, no must-fix. Should-fix 1 (the note test covers the helpers, not the banner) and 2 (the
+  GIT-040 line claimed the banner): the GIT-040 line now says what is proven and stays unticked. Should-fix 3 (the
+  zoom line claimed the toast and the warning): the warning line is now rendered in a test and the spec line names
+  what is not. Nits logged: the ui.zoom* id test checks actions.ts, not useWindowKeys; a late failure from an earlier
+  step can show after the next step cleared the line; the control's line stays until its own next step.
