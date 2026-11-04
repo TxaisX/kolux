@@ -209,3 +209,13 @@ test("TERM-053: Search open tabs is a tab command with its own chord, bound wher
 test("UX lane C: no two default chords clash in a shared scope on any platform", () => {
   for (const p of ["win32", "linux", "darwin"] as const) expect(resolve({}, p).clashes, p).toEqual([]);
 });
+
+test("T-761: a fresh profile's keymap gives New agent tab Ctrl+Alt+T on Windows (#192's default)", () => {
+  for (const file of [null, { version: 1, keybindings: {}, platforms: { darwin: {}, linux: {}, win32: {} } }]) {
+    const b = resolve(file, "win32").bindings.get("tab.newAgent");
+    expect(b?.chords).toEqual(["Mod+Alt+T"]);
+    expect(labelParts(b!.chords[0], "win32").join("+")).toBe("Ctrl+Alt+T");
+    const map = resolve(file, "win32");
+    expect(matchEvent(map, key({ key: "t", code: "KeyT", ctrlKey: true, altKey: true }), ["tabs"])).toEqual({ id: "tab.newAgent" });
+  }
+});
