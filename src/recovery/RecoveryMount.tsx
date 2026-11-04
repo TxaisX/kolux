@@ -67,6 +67,10 @@ export default function RecoveryMount() {
     </>
   );
   const stay = g.kind === "launch" && g.stay;
+  // T-724 (DT-C160): a choice closes the prompt only once it went through; a failure stays in the prompt, told.
+  // Restart and Try hardware again restart the app when they work, so they never close it themselves.
+  const choose = (cmd: string, fail: string, args?: Record<string, boolean>, close?: boolean) =>
+    (setGerr(""), void invoke(cmd, args).then(() => close && setG(null), (e) => setGerr(`${fail}: ${String(e)}`)));
   return (
     <>
       <CrashReportDialog />
@@ -76,20 +80,20 @@ export default function RecoveryMount() {
         {g.kind === "burst" ? (
           <>
             <span>Kolux's graphics crashed several times in a minute. Safe graphics (no hardware acceleration) usually stops that; your terminals keep running.</span>
-            <button className="btn" autoFocus onClick={() => void invoke("graphics_restart_safe").catch((e) => setGerr(`Could not restart in safe graphics: ${String(e)}`))}>
+            <button className="btn" autoFocus onClick={() => choose("graphics_restart_safe", "Could not restart in safe graphics")}>
               Restart in safe graphics
             </button>
-            <button className="btn" onClick={() => void invoke("graphics_keep_running").catch(() => {}).then(() => setG(null))}>
+            <button className="btn" onClick={() => choose("graphics_keep_running", "Could not save Keep Running", {}, true)}>
               Keep Running
             </button>
           </>
         ) : (
           <>
             <span>Kolux is running in safe graphics after repeated graphics crashes. Stay in safe graphics?</span>
-            <button className="btn" autoFocus={stay} onClick={() => void invoke("graphics_choose", { stay: true }).catch(() => {}).then(() => setG(null))}>
+            <button className="btn" autoFocus={stay} onClick={() => choose("graphics_choose", "Could not save Stay in safe graphics", { stay: true }, true)}>
               Stay in safe graphics
             </button>
-            <button className="btn" autoFocus={!stay} onClick={() => (setGerr(""), void invoke("graphics_choose", { stay: false }).catch((e) => setGerr(`Could not switch back to hardware graphics: ${String(e)}`)))}>
+            <button className="btn" autoFocus={!stay} onClick={() => choose("graphics_choose", "Could not switch back to hardware graphics", { stay: false })}>
               Try hardware again
             </button>
           </>
