@@ -17,7 +17,7 @@ test("T-710: the edit menu opens with focus on its first row, the arrows move it
     innerWidth: 1200,
     innerHeight: 800,
     addEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.push(fn),
-    removeEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.splice(keys.indexOf(fn), 1),
+    removeEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.includes(fn) && keys.splice(keys.indexOf(fn), 1),
   });
   const g = globalThis as unknown as Record<string, unknown>;
   g.HTMLElement = FakeNode;

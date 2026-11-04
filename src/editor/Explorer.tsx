@@ -12,11 +12,13 @@
 // path can be copied. Part 2: Mod+C then Mod+V copies the selection into the highlighted folder (a taken
 // name gets " copy"), dragging rows moves them into the folder under the pointer (the tree scrolls near its
 // edges), and files dropped in from the desktop are copied there; each of these undoes too.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { ChevronDown, Close, EyeOff, FolderPlus, Funnel, Plus, Refresh, Rocket, Search } from "../chrome/icons";
 import { clampMenu, useMenuKeys } from "./menuNav";
+import { menuRoom, useMenuFocus } from "../chrome/dialogFocus";
+import { fitIn, fromKeys } from "../terminal/PaneMenu";
 import { DOTFILES_KEY, IGNORED_KEY, filterRows, folderGlob, hidesDotfiles, rowMenu, sameNodes, withDotfiles, withoutDotfiles, withoutIgnored } from "./explorerView";
 import { MAX_DROP_BYTES, projectDrop, refuseDrop } from "./desktopDrops";
 import FileIcon from "./FileIcon";
@@ -719,14 +721,30 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     if (!sel.has(path)) pick(path);
     setMenu({ x, y, path, dir });
   };
-  // T-710: Shift+F10 and the Menu key raise contextmenu on the focused list itself (button -1): the menu is the
-  // active row's, opened under that row (or where the engine put it when the row is scrolled out of the drawn set).
+  // T-710: Shift+F10 and the Menu key raise contextmenu on the focused list itself: the menu is the active row's,
+  // opened under that row (or where the engine put it when the row is not in the list's view).
   const keyContext = (e: React.MouseEvent) => {
-    const r = e.target === e.currentTarget && e.button < 0 && rows[index];
+    const r = e.target === e.currentTarget && fromKeys(e) && rows[index];
     if (!r) return;
     const at = document.getElementById(`ex-row-${index}`)?.getBoundingClientRect();
-    rowContext(e, r.node.path, dirRow(r.node), at && at.left + 16, at?.bottom);
+    const list = e.currentTarget.getBoundingClientRect();
+    const seen = at && at.top >= list.top && at.bottom <= list.bottom; // wholly in view: a clipped row would put the menu past the tree
+    rowContext(e, r.node.path, dirRow(r.node), seen ? at.left + 16 : e.clientX, seen ? at.bottom : e.clientY);
   };
+  // T-720: the row menu takes focus, moves with the arrows, closes on Escape or Tab and gives focus back to the list.
+  // It opens at its row and moves up or left only as far as its measured size needs (the "Open in" rows arrive later).
+  const menuBox = useRef<HTMLDivElement>(null);
+  useMenuFocus(menuBox, !!menu, () => setMenu(null));
+  useLayoutEffect(() => {
+    const el = menuBox.current;
+    if (!el || !menu) return;
+    el.style.maxHeight = "";
+    const r = el.getBoundingClientRect();
+    const top = fitIn(menu.y, r.height, window.innerHeight);
+    el.style.top = `${top}px`;
+    el.style.left = `${fitIn(menu.x, r.width, window.innerWidth)}px`;
+    el.style.maxHeight = `${menuRoom({ top, bottom: 0 }, window.innerHeight, false)}px`;
+  }, [menu, fileApps.length]);
   useEffect(() => {
     if (!menu || menu.dir) return;
     let live = true;
@@ -832,9 +850,9 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
       {menu && (
         <>
           <div className="menu-backdrop" onClick={() => setMenu(null)} onContextMenu={(e) => (e.preventDefault(), setMenu(null))} />
-          <div className="menu row-menu" role="menu" aria-label={`Actions for ${baseName(menu.path)}`} style={{ left: Math.min(menu.x, window.innerWidth - 240), top: Math.min(menu.y, window.innerHeight - 340) }} onKeyDown={(e) => e.key === "Escape" && setMenu(null)}>
+          <div ref={menuBox} className="menu row-menu" role="menu" aria-label={`Actions for ${baseName(menu.path)}`} style={{ left: menu.x, top: menu.y }}>
             {withExtraMenu(rowMenu({ isDir: menu.dir, hasTerminal: !!onOpenTerminal, canProject: menu.dir && menu.path !== root && projectDrop.add !== null }), { isDir: menu.dir, isOpen: open.has(menu.path), single: sel.size <= 1, log: isLog(menu.path) }).map((id) => (
-              <button key={id} role="menuitem" className="menu-item" autoFocus={id === withExtraMenu(rowMenu({ isDir: menu.dir, hasTerminal: !!onOpenTerminal, canProject: false }), { isDir: menu.dir, isOpen: open.has(menu.path), single: sel.size <= 1, log: isLog(menu.path) })[0]} onClick={() => runMenu(id, menu.path, menu.dir)}>
+              <button key={id} role="menuitem" className="menu-item" onClick={() => runMenu(id, menu.path, menu.dir)}>
                 {menuLabel(id)}
               </button>
             ))}

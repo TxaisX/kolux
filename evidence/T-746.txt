@@ -34,3 +34,4 @@ FULL RUN: npx vitest run: 809 files, 6020 passed, 2 failed (TERM-041 and PlusMen
   tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
 
 PENDING: unit-proven; not checked live in the app.
+MERGE b2b6cd7f (train 20): PLAN.md and DECISIONS.md rows kept from both sides; first load 1,488,822 B vs main b2b6cd7f 1,488,823 B (-1). tsc 0, plan-check OK.
