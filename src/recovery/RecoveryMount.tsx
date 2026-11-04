@@ -21,11 +21,24 @@ export default function RecoveryMount() {
   const [upd, setUpd] = useState<ReturnType<typeof updateNotice>>(null);
   const [gerr, setGerr] = useState(""); // a graphics choice that did not go through, told in one line
   const [recovered, setRecovered] = useState<string[]>([]); // row 789: startup repairs, told once
+  const [settingsFailed, setSettingsFailed] = useState(false); // C22-R2-01: the file needs the one repair
 
   useEffect(() => {
     void loadRecoveryNotes(() => invoke<string[]>("startup_recovery_notes")).then(setRecovered);
+    // C22-R2-01: the notice offers Repair only while settings.json itself cannot be read.
+    invoke<{ failed: boolean } | null>("settings_state").then((s) => setSettingsFailed(s?.failed === true), () => {});
     invoke<LastAttempt>("update_last_attempt").then((a) => setUpd(updateNotice(a)), () => {});
   }, []);
+
+  const repairSettings = () => {
+    invoke<string[]>("settings_repair").then(
+      (kept) => {
+        setSettingsFailed(false);
+        setRecovered((n) => [...n, kept.length ? `Settings repaired. The unreadable file is kept at ${kept.join(", ")}.` : "Settings repaired."]);
+      },
+      (e) => setRecovered((n) => [...n, `Settings could not be repaired: ${String(e)}`]),
+    );
+  };
 
   useHeartbeat();
   useEffect(() => setGerr(""), [g]); // an old failure line does not outlive the prompt it was about
@@ -62,7 +75,7 @@ export default function RecoveryMount() {
   if (!g) return (
     <>
       <CrashReportDialog />
-      <RecoveryNotes notes={recovered} onDismiss={() => setRecovered([])} />
+      <RecoveryNotes notes={recovered} onDismiss={() => setRecovered([])} onRepair={settingsFailed ? repairSettings : undefined} />
       {updNotice}
     </>
   );
@@ -74,7 +87,7 @@ export default function RecoveryMount() {
   return (
     <>
       <CrashReportDialog />
-      <RecoveryNotes notes={recovered} onDismiss={() => setRecovered([])} />
+      <RecoveryNotes notes={recovered} onDismiss={() => setRecovered([])} onRepair={settingsFailed ? repairSettings : undefined} />
       {updNotice}
       <div className="notice" role="alertdialog" aria-label="Graphics" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         {g.kind === "burst" ? (

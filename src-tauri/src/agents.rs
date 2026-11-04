@@ -610,8 +610,33 @@ pub fn parse_env(typed: &str) -> Vec<(String, String)> {
     typed.lines().filter_map(|l| l.trim().split_once('=')).filter(|(k, _)| !k.trim().is_empty()).map(|(k, v)| (k.trim().to_string(), v.trim().to_string())).collect()
 }
 
-/// SESS-029: what Claude Code starts with when nothing was picked for it: its top model at high effort.
-const CLAUDE_UNPICKED: [&str; 4] = ["--model", "opus", "--effort", "high"];
+/// C11-R1-01: the default model and effort from Settings > Agents (`defaultModel`, `defaultEffort`,
+/// shipped as opus at high), as the flags the agent takes. An untouched profile keeps the old line;
+/// an empty string means "no default: pick a model for each seat" and adds nothing; a model this
+/// agent does not list belongs to another agent and adds nothing, as the launch chooser decides
+/// (`seatStart` in src/launch/defaultSeat.ts). An effort the model does not take is dropped.
+fn default_model_args(settings: &serde_json::Value, id: &str) -> Vec<String> {
+    let text = |k: &str| settings.get(k).and_then(|v| v.as_str()).map(str::trim);
+    let model = match text("defaultModel") {
+        None => "opus".to_string(),
+        Some("") => return Vec::new(),
+        Some(m) => m.to_string(),
+    };
+    let effort = match text("defaultEffort") {
+        None => Some("high"),
+        Some("") => None,
+        Some(e) => Some(e),
+    };
+    let Some(p) = crate::routing::providers().into_iter().find(|p| p.id == id) else { return Vec::new() };
+    let Some(m) = p.models.iter().find(|m| m.id == model) else { return Vec::new() };
+    let mut out = vec!["--model".to_string(), model];
+    if let Some(e) = effort {
+        if m.efforts.contains(&e) {
+            out.extend(["--effort".to_string(), e.to_string()]);
+        }
+    }
+    out
+}
 
 /// Whether a list of arguments already names a model or an effort.
 fn names_model(args: &[String]) -> bool {
@@ -620,8 +645,9 @@ fn names_model(args: &[String]) -> bool {
 
 /// The start line with the saved Agents page options applied: the permission mode (anything but
 /// `manual` is Yolo), and this agent's command, default arguments and environment. `picked` says
-/// the user chose the model in the lineup (even "Program default"); otherwise Claude Code gets
-/// its top model at high effort unless its own or the extra arguments already name one.
+/// the user chose the model in the lineup (even "Program default"); otherwise Claude Code gets the
+/// person's default model and effort from Settings > Agents unless its own or the extra arguments
+/// already name one (C11-R1-01).
 /// The command path goes through `start_line_as`; this plain form is the tests's shorthand.
 #[cfg(test)]
 pub fn start_line(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool) -> Result<StartLine, String> {
@@ -651,7 +677,8 @@ pub fn start_line_as(settings: &serde_json::Value, id: &str, extra: &[String], p
     let own = field("args").map(split_args);
     let mut extra = extra.to_vec();
     if !picked && id == "claude" && !names_model(own.as_deref().unwrap_or(&[])) && !names_model(&extra) {
-        extra.splice(0..0, CLAUDE_UNPICKED.iter().map(|a| a.to_string()));
+        // C11-R1-01: the person's Settings > Agents default, not a hardcoded opus at high.
+        extra.splice(0..0, default_model_args(settings, id));
     }
     let mut line = line_for(id, own.as_deref(), yolo, &extra, &resume, prompt)?;
     line.program = command_override(settings, id).map(str::to_string);
@@ -1124,6 +1151,28 @@ X=1" } } });
         // the edge: a switch at the very end with no value, and a value that looks like a switch
         assert_eq!(start_line(&none, "kilo", &s(&["--ask-for-approval"]), "", true).unwrap().args, Vec::<String>::new());
         assert_eq!(start_line(&none, "kilo", &s(&["--model", "--yolo-model"]), "", true).unwrap().args, s(&["--model", "--yolo-model"]));
+    }
+
+    #[test]
+    fn c11r101_unpicked_claude_takes_the_settings_default_model_and_effort() {
+        // an untouched profile keeps today's line exactly (opus at high)
+        let none = serde_json::json!({});
+        assert_eq!(start_line(&none, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto", "--model", "opus", "--effort", "high"]));
+        // Settings > Agents "Default model and effort" is what an unpicked start uses (Continue with,
+        // a restored tab, the Settings preview)
+        let set = serde_json::json!({ "defaultModel": "sonnet", "defaultEffort": "low" });
+        assert_eq!(start_line(&set, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto", "--model", "sonnet", "--effort", "low"]));
+        // an effort the model does not take is dropped
+        let haiku = serde_json::json!({ "defaultModel": "haiku", "defaultEffort": "high" });
+        assert_eq!(start_line(&haiku, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto", "--model", "haiku"]));
+        // "No default: pick a model for each seat" sends no model flag, so Claude uses its own
+        let opt_out = serde_json::json!({ "defaultModel": "", "defaultEffort": "" });
+        assert_eq!(start_line(&opt_out, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto"]));
+        // another agent's model never reaches Claude's line
+        let wrong = serde_json::json!({ "defaultModel": "gpt-6-sol", "defaultEffort": "high" });
+        assert_eq!(start_line(&wrong, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto"]));
+        // a pick in the lineup still wins over the default
+        assert_eq!(start_line(&set, "claude", &[], "", true).unwrap().args, s(&["--permission-mode", "auto"]));
     }
 
     #[test]

@@ -57,6 +57,18 @@ test("TERM-052: with 3 tabs the 2 shortcut selects the middle tab and the 5 shor
   expect(selectNumber(p, 0)).toBe(p);
 });
 
+// C01-R1-01: the panel's Select Tab 1-9 takes the digit as the position, so Alt+1 is the first tab.
+test("C01-R1-01: the panel's digit names the tab, not the one after it", () => {
+  const p = three();
+  const [a, b, c] = keys(p);
+  const op = route("tab.selectByIndex", 1, true, true);
+  expect(op).toEqual({ op: "select", n: 1 });
+  expect(selectNumber(p, (op as { n: number }).n).active).toBe(a);
+  expect(selectNumber(p, 3).active).toBe(c);
+  expect(selectNumber(p, 4)).toBe(p); // past the last tab: nothing
+  expect(selectNumber(p, 2).active).toBe(b);
+});
+
 test("TERM-061: closing the last tab leaves the panel open on its empty state", () => {
   let p = add(empty(), { kind: "terminal" });
   p = close(p, [p.active as number]);
@@ -151,7 +163,7 @@ test("TERM-059/060: the panel commands work anywhere; tab commands only inside t
   expect(route("floatingWorkspace.minimize", undefined, true, true)).toEqual({ op: "minimize" });
   expect(route("tab.close", undefined, true, false)).toBeNull();
   expect(route("tab.close", undefined, true, true)).toEqual({ op: "close" });
-  expect(route("tab.selectByIndex", 1, true, true)).toEqual({ op: "select", n: 2 });
+  expect(route("tab.selectByIndex", 1, true, true)).toEqual({ op: "select", n: 1 }); // C01-R1-01: the digit is the position
   expect(route("tab.reopenClosed", undefined, true, true)).toEqual({ op: "none" });
   expect(route("app.settings", undefined, true, true)).toBeNull();
   expect(route("tab.nextAllTypes", undefined, true, true)).toEqual({ op: "step", by: 1, mode: "all" });

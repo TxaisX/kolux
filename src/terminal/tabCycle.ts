@@ -36,6 +36,11 @@ export function tabByNumber(strip: TabInfo[], n: number, gone: ReadonlySet<numbe
   return Number.isInteger(n) && n >= 1 ? (live[n - 1]?.key ?? null) : null;
 }
 
+/** C01-R1-01: the tab a Select Tab chord or palette row names. `index` is the digit the keymap reports
+ *  (Alt+1 gives 1) and the palette's row number, so it is the 1-based position itself; a chord rebound
+ *  off the digits names the first tab, as normaliseIndexChord rewrites it to 1. */
+export const tabAtDigit = (strip: TabInfo[], index: number | undefined, gone: ReadonlySet<number> = new Set()): number | null => tabByNumber(strip, index ?? 1, gone);
+
 /** Settings field: "recent" (default, most recently used first) or "order" (left to right). */
 export const SWITCH_ORDER_FIELD = "tabSwitchOrder";
 export type SwitchOrder = "recent" | "order";

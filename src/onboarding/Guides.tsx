@@ -1,8 +1,8 @@
 // ONB-014 Setup Guide, ONB-022 Explore Kolux and ONB-027 / ONB-028 startup tips. Mounted once in
 // the window; the help menu and the tips open the guides through openGuide / openExplore.
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Rect } from "./tour";
-import { trapTab } from "../chrome/dialogFocus";
+import { FOCUSABLE, tabStep, trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { Close, EyeOff } from "../chrome/icons";
 import { useKeymap } from "../keys/KeymapContext";
@@ -129,6 +129,26 @@ function useClosing(open: boolean): boolean {
   return shown;
 }
 
+/** C16-R2-01: the CLI step's inline terminal swallows Tab and Escape. xterm's helper textarea is in the tab
+ *  order and its own keydown listener runs in the capture phase, where it cancels both keys and writes them to
+ *  the shell (HT for Tab, ESC[Z for Shift+Tab, ESC for Escape), so the guide's bubble onKeyDown never sees them:
+ *  the modal had no forward keyboard exit and its advertised "(Esc)" was dead. This answers those two keys on
+ *  the capture phase, before the event reaches the textarea, and stops it there so nothing is typed into the
+ *  shell: Escape closes the guide, Tab moves the focus itself (wrapping at both ends). Keys pressed anywhere
+ *  else in the guide are left to the bubble trap. Returns whether it took the key. */
+export function terminalKeys(e: ReactKeyboardEvent<HTMLElement>, onClose: () => void): boolean {
+  if (e.defaultPrevented || (e.key !== "Tab" && e.key !== "Escape")) return false;
+  if (!(e.target as Element | null)?.closest?.(".xterm")) return false;
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.key === "Escape") {
+    onClose();
+    return true;
+  }
+  tabStep(Array.from(e.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)), document.activeElement, e.shiftKey)?.focus();
+  return true;
+}
+
 function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean; onClose: () => void }) {
   const g = useGuideState(open);
   const { save, settings } = useSettings();
@@ -154,7 +174,7 @@ function SetupGuide({ ask, open, onClose }: { ask: StepId | null; open: boolean;
   );
   return (
     <div className={`ask-backdrop${open ? "" : " closing"}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="guide" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Getting Started with Kolux" onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onClose())}>
+      <div className="guide" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Getting Started with Kolux" onKeyDownCapture={(e) => terminalKeys(e, onClose)} onKeyDown={(e) => (trapTab(e), e.key === "Escape" && onClose())}>
         <aside className="guide-side">
           <header className="guide-head">
             <Ring done={r.done} total={r.total} />

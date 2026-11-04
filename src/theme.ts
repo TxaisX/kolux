@@ -7,6 +7,7 @@ import { fontStack } from "./settings/fonts";
 import { CATALOGUE, tidySchemes, type CustomScheme } from "./terminal/schemes";
 import type { CustomTheme } from "./settings/customTheme";
 import { DEFAULT_TINT, STRENGTH_SPAN, sidebarBackground, sidebarLookOf, type SidebarLook } from "./look/sidebar";
+import { paletteIsDark } from "./terminal/queries";
 
 export const classic = {
   // surfaces and lines
@@ -58,7 +59,28 @@ export const classic = {
   "meter-danger": "#e5484d",
   /** USAGE-034: the pane header's session-cost chip. A status colour, so light mode darkens it with the rest. */
   "cost-fg": "#1f9db0",
+  // C23-R3-01: the ten syntax inks. Dark mode keeps One Dark's own values; light mode floors each one
+  // against the pane ground it just worked out (see `floorInk`), because these are literals in the
+  // highlight style and the light transform below never reached them.
+  "syn-keyword": "#c678dd",
+  "syn-name": "#e06c75",
+  "syn-function": "#61afef",
+  "syn-type": "#e5c07b",
+  "syn-number": "#d19a66",
+  "syn-operator": "#56b6c2",
+  "syn-comment": "#7d8799",
+  "syn-string": "#98c379",
+  "syn-definition": "#abb2bf",
+  "syn-invalid": "#ffffff",
 } as const;
+
+/** The ten syntax tokens, in the order the highlight style declares them. */
+export const SYNTAX_KEYS = ["syn-keyword", "syn-name", "syn-function", "syn-type", "syn-number", "syn-operator", "syn-comment", "syn-string", "syn-definition", "syn-invalid"] as const;
+/** C23-R3-01: the ratio a light-mode syntax ink must reach on the ground under the caret line. A little
+ *  over 4.5 so 8-bit rounding in `hsl` cannot drop the measured pair back under the bar. */
+export const SYNTAX_FLOOR = 4.6;
+/** C23-R3-02: the ratio the sidebar's four primary inks must reach on the ground they are painted on. */
+export const SIDEBAR_FLOOR = 4.6;
 
 /** `accent` (T-648) is not part of any built-in theme: only a custom theme that sets it defines `--accent`, so
  *  the fallbacks written beside `var(--accent, ...)` keep deciding the look for everyone else. */
@@ -207,6 +229,29 @@ const DEPTH_STEP = 0.012;
 /** How strongly a hued theme colours the backgrounds at 100 % saturation (text gets a third). */
 const BASE_SAT = 0.3;
 
+/** WCAG 2 relative luminance of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+/** WCAG 2 contrast ratio between two #rrggbb colours. */
+export function contrast(a: string, b: string): number {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+/** C23-R3-01: the same hue and saturation, moved away from `ground` until it reads at `need`. Keeps
+ *  the colour recognisable instead of replacing it with a fixed hex, so it survives tint, saturation
+ *  and the depth slider (a fixed set drops to ~4.0:1 on the darkest light ground). */
+function floorInk(ink: string, ground: string, need: number): string {
+  const [h, s, l] = toHsl(ink);
+  const up = luminance(ink) > luminance(ground);
+  for (let step = 0; step <= 100; step++) {
+    const out = up ? hsl(h, s, l + (1 - l) * (step / 100)) : hsl(h, s, l * (1 - step / 100));
+    if (contrast(out, ground) >= need) return out;
+  }
+  return up ? "#ffffff" : "#000000";
+}
+
 /** The theme's hue after tint, or null for Classic (no hue). */
 export const themeHue = (a: Appearance) => (a.theme === "classic" ? null : (((HUE[a.theme] + a.tint) % 360) + 360) % 360);
 
@@ -250,6 +295,17 @@ function builtIn(a: Appearance, dark: boolean): Theme {
     const bg = l < 0.5;
     const lit = bg && hue !== null ? clamp01(l + a.depth * DEPTH_STEP) : l;
     out[k] = hsl(hue ?? 0, clamp01(bg ? sat : sat / 3), dark ? lit : bg ? 1 - lit * 0.7 : 1 - lit);
+  }
+  if (!dark) {
+    // C23-R3-01: the syntax inks are literals in the highlight style, so the transform above never
+    // reached them. White has no hue to keep, so `invalid` starts from the error colour instead.
+    out["syn-invalid"] = out["danger"];
+    // The darkest ground a code character sits on: the caret's line, or a selection over the pane
+    // (EditorPane paints that as `line-focus` at 90 % over `pane-bg`).
+    const caret = mix(out["pane-bg"], out["row-selected"], 0.45);
+    const selected = mix(out["pane-bg"], out["line-focus"], 0.9);
+    const ground = luminance(caret) <= luminance(selected) ? caret : selected;
+    for (const k of SYNTAX_KEYS) out[k] = floorInk(out[k], ground, SYNTAX_FLOOR);
   }
   return out;
 }
@@ -338,16 +394,46 @@ export function zoomTerm(key: number, how: "in" | "out" | "reset"): number {
 
 /** SET-018: the chosen fonts with a safe fallback after each; an empty editor font is the terminal font.
  *  SET-023: the gap between panes, its colour in this mode, and how far panes not in focus fade. */
-export const appearanceVars = (a: Appearance, dark = isDark(a)) => ({
+export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
+  const t = buildTheme(a, dark);
   // VIEW-052 / SET-021: the left sidebar's ground (T-268).
-  "--sidebar-bg": sidebarBackground(a.sidebarLook, a.sidebarTint, a.sidebarStrength, buildTheme(a, dark).surface, a.sidebarLook === "terminal" ? terminalFor(a, dark).background : undefined),
-  "--ui-font": fontStack(a.appFont, uiFont),
-  "--editor-font": fontStack(a.editorFont, fontStack(a.termFont, monoFont)),
-  "--term-font": fontStack(a.termFont, monoFont),
-  "--divider-width": a.dividerWidth + "px",
-  "--divider": (dark ? a.dividerDark : a.dividerLight) || "transparent",
-  "--pane-dim": String(a.paneDim / 100),
-});
+  const ground = sidebarBackground(a.sidebarLook, a.sidebarTint, a.sidebarStrength, t.surface, a.sidebarLook === "terminal" ? terminalFor(a, dark).background : undefined);
+  // C23-R3-02: the sidebar's ink follows the ground it is painted on, not the app's mode. A terminal
+  // ground or a tint can sit on the other side of the mode, and the mode's own ink then reads at 1.04:1.
+  // A custom theme has one palette only, so a ground on the other side of it keeps the standard surface.
+  const custom = customOf(a);
+  const groundDark = paletteIsDark(ground);
+  const bg = custom !== undefined && groundDark !== null && groundDark !== (custom.dark !== false) ? "var(--surface)" : ground;
+  const ink = buildTheme(a, paletteIsDark(bg) ?? dark);
+  // The four inks the sidebar's own rules paint text with are floored against the ground, so the
+  // guarantee holds on a tinted or terminal ground too. `--fg-label` and `--fg-faint` are the
+  // C23-R3-06 token defect and are left as they are.
+  const on = bg.startsWith("#") ? bg : t.surface;
+  const readable = (v: string) => floorInk(v, on, SIDEBAR_FLOOR);
+  return {
+    "--sidebar-bg": bg,
+    "--sidebar-fg": readable(ink.fg),
+    "--sidebar-fg-row": readable(ink["fg-row"]),
+    "--sidebar-fg-muted": readable(ink["fg-muted"]),
+    "--sidebar-fg-nav": readable(ink["fg-nav"]),
+    "--sidebar-fg-label": ink["fg-label"],
+    "--sidebar-fg-faint": ink["fg-faint"],
+    // C23-R3-02: the surfaces the sidebar paints its own controls on come from the same palette, or
+    // a floored ink would land on the other mode's row-selected / input / tab track (1.22:1).
+    // `--kbd-bg` is also the row hover ground (.branch:hover / .sess:hover).
+    "--sidebar-row-selected": ink["row-selected"],
+    "--sidebar-input-bg": ink["input-bg"],
+    "--sidebar-tab-track": ink["tab-track"],
+    "--sidebar-tab-track-border": ink["tab-track-border"],
+    "--sidebar-kbd-bg": ink["kbd-bg"],
+    "--ui-font": fontStack(a.appFont, uiFont),
+    "--editor-font": fontStack(a.editorFont, fontStack(a.termFont, monoFont)),
+    "--term-font": fontStack(a.termFont, monoFont),
+    "--divider-width": a.dividerWidth + "px",
+    "--divider": (dark ? a.dividerDark : a.dividerLight) || "transparent",
+    "--pane-dim": String(a.paneDim / 100),
+  };
+};
 
 export function themeVars(t: Theme): Record<string, string> {
   const vars: Record<string, string> = { "--ui-font": uiFont, "--mono-font": monoFont };

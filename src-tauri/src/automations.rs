@@ -643,6 +643,10 @@ pub const SETTLE_MS: u64 = 120_000;
 /// The agents that report their state through Kolux's hooks (STAT-001); any other agent's run
 /// ends with its process: a clean exit is its finish.
 const HOOKED: [&str; 2] = ["claude", "codex"];
+/// C25-R2-01: how long a run's pane may read interrupted before the run is closed. Two clock
+/// beats, well over STAT-028's 3 s cancel grace, so a turn the agent resumed is never mistaken
+/// for one that stopped.
+pub const INTERRUPT_GRACE_MS: u64 = 60_000;
 /// Set when Kolux ends every pane on its way out (quit, update restart): those panes did not stop
 /// by themselves, so their runs stay dispatched and reconnect after the restart.
 pub static QUITTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -738,9 +742,21 @@ pub fn on_status(store: &Store, terminal: Option<u32>, pane_key: u32, state: &st
         }
         _ => false,
     };
+    // C25-R2-01: when the agent was last heard from, and whether its turn is interrupted. A
+    // boundary is a starting point, not a sign of life; a late working/permission/waiting revives
+    // an interrupt (STAT-028 can settle a cancel that a resumed turn then undoes).
+    let mut dirty = noted;
+    let heard = !boundary && matches!(state, "working" | "permission" | "waiting" | "done");
+    if heard {
+        if let Some(row) = runs[i].as_object_mut() {
+            row.insert("heardAt".into(), json!(now));
+            row.remove("interruptedAt");
+        }
+        dirty = true;
+    }
     match state {
         _ if boundary => {
-            if noted {
+            if dirty {
                 save(store, RUNS_KEY, &runs)?;
             }
             Ok(None)
@@ -756,8 +772,14 @@ pub fn on_status(store: &Store, terminal: Option<u32>, pane_key: u32, state: &st
             save(store, RUNS_KEY, &runs)?;
             Ok(id)
         }
+        // Not a finish: the turn may still be resumed, so only the clock's `stalled` may close it.
+        "interrupted" => {
+            runs[i]["interruptedAt"] = json!(now);
+            save(store, RUNS_KEY, &runs)?;
+            Ok(None)
+        }
         _ => {
-            if noted {
+            if dirty {
                 save(store, RUNS_KEY, &runs)?;
             }
             Ok(None)
@@ -787,6 +809,33 @@ pub fn pane_ended(store: &Store, terminal: u32, code: Option<u32>, now: u64) -> 
     let id = runs[i]["id"].as_str().map(String::from);
     save(store, RUNS_KEY, &runs)?;
     Ok(id)
+}
+
+/// C25-R2-01: a status the app settled itself rather than one a hook reported (STAT-028's cancel,
+/// `status::settle_cancels`) is given to the run following that pane exactly as `hooks.rs:814`
+/// gives it a hook status. The status carries `interrupted`, which `on_status` records so `stalled`
+/// can close the run; without this the run of a cancelled turn never heard anything at all.
+pub fn on_settled(store: &Store, status: &crate::status::Status, now: u64) -> Result<Option<String>, String> {
+    on_status(store, status.terminal, status.pane_key, status.change.state, status.change.boundary, status.child.is_some(), status.change.session.as_deref(), now)
+}
+
+/// The same on the app's own thread and store; the app's clock calls it for each settled cancel.
+pub fn settled(app: &tauri::AppHandle, status: &crate::status::Status) {
+    follow(app, |s| on_settled(s, status, now_ms()));
+}
+
+/// C25-R2-01: ends a run at the user's ask, whatever it is doing. Its pane keeps working (its
+/// terminal is the user's, not the run's); the run stops holding its automation, so Run now works
+/// again. A run that already finished is returned as it is.
+pub fn cancel(store: &Store, id: &str, now: u64) -> Result<Value, String> {
+    let mut runs = load(store, RUNS_KEY)?;
+    let Some(i) = runs.iter().position(|r| r["id"] == id) else { return Err("That run is no longer here".into()) };
+    if in_progress(&runs[i]) {
+        finish(&mut runs[i], "failed", Some("Cancelled"), now);
+        runs[i]["cancelled"] = json!(true);
+        save(store, RUNS_KEY, &runs)?;
+    }
+    Ok(runs[i].clone())
 }
 
 /// T-085-h: what the terminal service knows about a terminal a run was following before the
@@ -863,6 +912,35 @@ pub fn settle(store: &Store, now: u64) -> Result<Vec<String>, String> {
         }
         finish(r, "failed", Some("Kolux restarted and this run's agent could not be found again"), now);
         closed.extend(r["id"].as_str().map(String::from));
+    }
+    if !closed.is_empty() {
+        save(store, RUNS_KEY, &runs)?;
+    }
+    Ok(closed)
+}
+
+/// C25-R2-01: runs whose agent stopped working without its process ending. A turn interrupted and
+/// never resumed, or a pane still reading working with no word from the agent for the whole
+/// unverified window, are closed as failed: the run would otherwise read Running for the life of
+/// the app and hold its automation against every Run now. Returns the runs closed.
+/// `reading` is `crate::status::state_of`, which reads the sessions directly, so a cancel STAT-028
+/// settled with nothing emitted to automations is seen here too.
+pub fn stalled(store: &Store, reading: &dyn Fn(u32) -> Option<&'static str>, now: u64) -> Result<Vec<String>, String> {
+    let mut runs = load(store, RUNS_KEY)?;
+    let mut closed = Vec::new();
+    for r in runs.iter_mut().filter(|r| tracked(r) && r["terminal"].is_u64()) {
+        let t = r["terminal"].as_u64().unwrap_or(0) as u32;
+        let heard = r["heardAt"].as_u64().or_else(|| r["dispatchedAt"].as_u64()).unwrap_or(0);
+        let quiet = now.saturating_sub(heard);
+        let why = match (reading(t), r["interruptedAt"].as_u64()) {
+            (Some("interrupted"), Some(at)) if now.saturating_sub(at) >= INTERRUPT_GRACE_MS => Some("Its agent's turn was interrupted and never resumed"),
+            (Some("working"), _) if quiet >= crate::status::unverified_ms() => Some("Its agent stopped responding"),
+            _ => None,
+        };
+        if let Some(why) = why {
+            finish(r, "failed", Some(why), now);
+            closed.extend(r["id"].as_str().map(String::from));
+        }
     }
     if !closed.is_empty() {
         save(store, RUNS_KEY, &runs)?;
@@ -1240,7 +1318,7 @@ fn already_running(auto: &Value, runs: &[Value], now: u64) -> Option<String> {
     if busy["status"] == "dispatched" && busy["terminal"].is_null() {
         return Some(format!("{name} is still starting (run #{number}); try again in a moment"));
     }
-    Some(format!("{name} is already running (run #{number}); wait for it to finish, or close its terminal, before running it again"))
+    Some(format!("{name} is already running (run #{number}); wait for it to finish, cancel it, or close its terminal, before running it again"))
 }
 
 fn run_inner(l: &Launch, id: &str, trigger: &str, event: Option<&str>, exclusive: bool) -> Result<Value, String> {
@@ -1572,6 +1650,12 @@ pub fn start_clock(app: tauri::AppHandle) {
                 Ok(closed) => closed.iter().for_each(|id| drop(tauri::Emitter::emit(&app, EVENT, json!({ "runId": id })))),
                 Err(e) => eprintln!("automations settle: {e}"),
             }
+            // C25-R2-01: a run whose agent stopped working without its process ending is closed,
+            // so it stops reading Running and stops holding its automation.
+            match launch_for(&app, |l| stalled(&*l.store.lock().map_err(|e| e.to_string())?, &|t| crate::status::state_of(t), now_ms())) {
+                Ok(closed) => closed.iter().for_each(|id| drop(tauri::Emitter::emit(&app, EVENT, json!({ "runId": id })))),
+                Err(e) => eprintln!("automations stalled: {e}"),
+            }
         }
     });
 }
@@ -1590,6 +1674,15 @@ pub async fn automation_run_now(app: tauri::AppHandle, id: String) -> Result<Val
     tauri::async_runtime::spawn_blocking(move || launch_for(&app, |l| run_manual(l, &id)))
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// C25-R2-01: Cancel ends a live run from the Runs page without closing its terminal.
+#[tauri::command]
+pub fn automation_run_cancel(app: tauri::AppHandle, store: StoreState<'_>, id: String) -> Result<Value, String> {
+    use tauri::Emitter;
+    let out = cancel(&*store.lock().map_err(|e| e.to_string())?, &id, now_ms())?;
+    let _ = app.emit(EVENT, json!({ "runId": id }));
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -2401,6 +2494,140 @@ mod tests {
         let picked = claim(&s, 9, Some(90), second["worktree"].as_str().unwrap(), Some("claude"), second["id"].as_str(), 1_001).unwrap();
         assert_eq!(picked.as_deref(), second["id"].as_str());
         drop(s);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// C25-R2-01: a run whose agent was Ctrl+C'd without its process ending used to read Running
+    /// for the life of the app, and `already_running` refused Run now for ever. Its turn is
+    /// interrupted, so the clock closes it after the grace.
+    #[test]
+    fn c25r201_an_interrupted_run_ends_and_frees_run_now() {
+        let dir = temp("r2-interrupted");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Store::open(&dir.join("db")).unwrap();
+        seed(&store, &ws);
+        dispatched(&store, &ws, 1, "claude");
+        patch_run(&store, "run-1", json!({ "terminal": 3, "paneKey": 30 })).unwrap();
+        on_status(&store, Some(3), 30, "working", false, false, None, 2_000).unwrap();
+        on_status(&store, Some(3), 30, "interrupted", false, false, None, 2_100).unwrap();
+        assert_eq!(load(&store, RUNS_KEY).unwrap()[0]["interruptedAt"], json!(2_100));
+        // Inside the grace the run holds: a turn can still be resumed.
+        assert_eq!(stalled(&store, &|_| Some("interrupted"), 2_100 + INTERRUPT_GRACE_MS - 1).unwrap(), Vec::<String>::new());
+        let closed = stalled(&store, &|_| Some("interrupted"), 2_100 + INTERRUPT_GRACE_MS).unwrap();
+        assert_eq!(closed, vec!["run-1".to_string()], "the interrupted run is closed");
+        let (status, detail) = status_of(&store, "run-1");
+        assert_eq!((status.as_str(), detail.as_str()), ("failed", "Its agent's turn was interrupted and never resumed"));
+        // And the gate opens: the closed run no longer holds the automation.
+        assert!(!holds_manual_run(&load(&store, RUNS_KEY).unwrap()[0], 2_100 + INTERRUPT_GRACE_MS));
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// C25-R2-01: STAT-028 can settle a cancel whose turn the agent then resumed; a later sign of
+    /// life clears the interrupt, so the clock must never close a run that came back.
+    #[test]
+    fn c25r201_an_interrupt_the_agent_came_back_from_is_not_closed() {
+        let dir = temp("r2-revive");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Store::open(&dir.join("db")).unwrap();
+        seed(&store, &ws);
+        dispatched(&store, &ws, 1, "claude");
+        patch_run(&store, "run-1", json!({ "terminal": 3, "paneKey": 30 })).unwrap();
+        on_status(&store, Some(3), 30, "working", false, false, None, 2_000).unwrap();
+        on_status(&store, Some(3), 30, "interrupted", false, false, None, 2_100).unwrap();
+        on_status(&store, Some(3), 30, "working", false, false, None, 2_300).unwrap();
+        assert!(load(&store, RUNS_KEY).unwrap()[0].get("interruptedAt").is_none(), "the late work clears the interrupt");
+        assert_eq!(stalled(&store, &|_| Some("working"), 400_000).unwrap(), Vec::<String>::new());
+        assert_eq!(status_of(&store, "run-1").0, "dispatched");
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// C25-R2-01, the path review 088 found missing: a cancel STAT-028 settles never sends its
+    /// Stop, so nothing reaches the hook line (`hooks.rs:814`) and the run used to hear nothing at
+    /// all — the "covered too" claim was false. `settled` is what the app's clock now calls for it;
+    /// the run must record the interrupt, close after the grace, and let Run now start again.
+    #[test]
+    fn c25r201_a_cancel_settled_without_a_hook_reaches_the_run() {
+        let dir = temp("r2-settled");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Mutex::new(Store::open(&dir.join("db")).unwrap());
+        seed(&store.lock().unwrap(), &ws);
+        dispatched(&store.lock().unwrap(), &ws, 1, "claude");
+        patch_run(&store.lock().unwrap(), "run-1", json!({ "terminal": 3, "paneKey": 30 })).unwrap();
+        on_status(&store.lock().unwrap(), Some(3), 30, "working", false, false, None, 1_000).unwrap();
+        // Exactly what `status::settle_cancels` hands the clock: the pane's resolved state with no
+        // boundary and no child.
+        let status = crate::status::Status {
+            pane_key: 30,
+            terminal: Some(3),
+            change: crate::hooks::Change { state: "interrupted", ..Default::default() },
+            children: Vec::new(),
+            stop: None,
+            reply: None,
+            child: None,
+            interrupted: true,
+            monitoring: false,
+        };
+        assert!(on_settled(&store.lock().unwrap(), &status, 2_000).unwrap().is_none(), "a settled cancel is not a finish");
+        assert_eq!(load(&store.lock().unwrap(), RUNS_KEY).unwrap()[0]["interruptedAt"], json!(2_000), "the run heard the settled cancel");
+        assert_eq!(stalled(&store.lock().unwrap(), &|_| Some("interrupted"), 2_000 + INTERRUPT_GRACE_MS - 1).unwrap(), Vec::<String>::new());
+        assert_eq!(stalled(&store.lock().unwrap(), &|_| Some("interrupted"), 2_000 + INTERRUPT_GRACE_MS).unwrap(), vec!["run-1".to_string()]);
+        assert_eq!(status_of(&store.lock().unwrap(), "run-1").0, "failed");
+        // Run now is available again: the same button, on the same harness the refusal is proved on.
+        let git = Git::detect().unwrap();
+        let said = RefCell::new(Vec::<(String, Value)>::new());
+        let notify = |e: &str, v: Value| said.borrow_mut().push((e.to_string(), v));
+        let yes = |_: &str| true;
+        let l = Launch { git: &git, store: &store, claude_config: dir.join("claude.json"), installed: &yes, notify: &notify };
+        assert_eq!(run_manual(&l, "auto-1").unwrap()["number"], json!(2));
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// C25-R2-01: a hung agent emits nothing at all, so its pane still reads working. The window is
+    /// the one status.rs already uses to distrust a working reading (STAT-032).
+    #[test]
+    fn c25r201_a_hung_agent_ends_its_run_after_the_unverified_window() {
+        let dir = temp("r2-hung");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Store::open(&dir.join("db")).unwrap();
+        seed(&store, &ws);
+        dispatched(&store, &ws, 1, "claude");
+        patch_run(&store, "run-1", json!({ "terminal": 3, "paneKey": 30 })).unwrap();
+        on_status(&store, Some(3), 30, "working", false, false, None, 1_000).unwrap();
+        let window = crate::status::unverified_ms();
+        assert_eq!(stalled(&store, &|_| Some("working"), 1_000 + window - 1).unwrap(), Vec::<String>::new());
+        assert_eq!(stalled(&store, &|_| Some("working"), 1_000 + window).unwrap(), vec!["run-1".to_string()]);
+        let (status, detail) = status_of(&store, "run-1");
+        assert_eq!((status.as_str(), detail.as_str()), ("failed", "Its agent stopped responding"));
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// C25-R2-01: Cancel is the action the product did not have. A finished run is left alone and an
+    /// unknown id is refused.
+    #[test]
+    fn c25r201_cancel_ends_a_live_run_and_a_cancelled_run_says_so() {
+        let dir = temp("r2-cancel");
+        let ws = dir.join("ws");
+        std::fs::create_dir_all(&ws).unwrap();
+        let store = Store::open(&dir.join("db")).unwrap();
+        seed(&store, &ws);
+        dispatched(&store, &ws, 1, "claude");
+        patch_run(&store, "run-1", json!({ "terminal": 3, "paneKey": 30 })).unwrap();
+        let out = cancel(&store, "run-1", 5_000).unwrap();
+        assert_eq!((out["status"].as_str(), out["cancelled"].as_bool()), (Some("failed"), Some(true)));
+        let (status, detail) = status_of(&store, "run-1");
+        assert_eq!((status.as_str(), detail.as_str()), ("failed", "Cancelled"));
+        assert!(!holds_manual_run(&load(&store, RUNS_KEY).unwrap()[0], 5_000), "the gate is open again");
+        assert_eq!(cancel(&store, "run-1", 6_000).unwrap()["finishedAt"], json!(5_000), "a finished run is returned as it is");
+        assert!(cancel(&store, "nope", 6_000).is_err());
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }

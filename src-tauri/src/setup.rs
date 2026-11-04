@@ -816,7 +816,7 @@ const DISMISSED_KEY: &str = "setupCardDismissed";
 const LOCAL_MAX: usize = 16 * 1024;
 /// The setup policy ("shared" and "shared-first" ignore a local setup) is one store setting, so the
 /// runner, the trust check and the sidebar card all work from the same answer.
-const POLICY_KEY: &str = "setupPolicy";
+pub(crate) const POLICY_KEY: &str = "setupPolicy";
 /// package.json and kolux.yaml are read only up to this size by the card.
 const READ_MAX: u64 = 1024 * 1024;
 /// A field name from another tool's file is shown at most this long.
@@ -1042,6 +1042,32 @@ pub fn repo_setup_save(store: StoreState<'_>, path: String, script: String) -> R
 #[tauri::command]
 pub fn repo_setup_remove(store: StoreState<'_>, path: String) -> Result<bool, String> {
     remove_local(&*store.lock().map_err(|e| e.to_string())?, &main_folder(Path::new(&path)))
+}
+
+/// C20-R1-01: the global policy in force, the one kv key the runner, the trust check and the card
+/// all read (`effective_policy` with no caller argument). None when nothing is set.
+pub fn global_policy(store: &crate::state::Store) -> Option<String> {
+    effective_policy(store, None)
+}
+
+/// C20-R1-01: sets the global policy; None or blank removes it. Anything but the three choices is
+/// refused, so a stray value can never change which script runs, exactly as `set_repo_policy`.
+pub fn set_global_policy(store: &crate::state::Store, policy: Option<&str>) -> Result<(), String> {
+    match policy.map(str::trim).filter(|p| !p.is_empty()) {
+        None => store.set(POLICY_KEY, "").map_err(|e| e.to_string()),
+        Some(p) if REPO_POLICIES.contains(&p) => store.set(POLICY_KEY, p).map_err(|e| e.to_string()),
+        Some(p) => Err(format!("{p} is not a setup choice: pick local, shared or both.")),
+    }
+}
+
+#[tauri::command]
+pub fn setup_policy_get(store: StoreState<'_>) -> Result<Option<String>, String> {
+    Ok(global_policy(&*store.lock().map_err(|e| e.to_string())?))
+}
+
+#[tauri::command]
+pub fn setup_policy_set(store: StoreState<'_>, policy: Option<String>) -> Result<(), String> {
+    set_global_policy(&*store.lock().map_err(|e| e.to_string())?, policy.as_deref())
 }
 
 #[tauri::command]
@@ -2224,6 +2250,55 @@ mod tests {
         assert!(matches!(suggest(&repo, None, Some("shared")), SetupSuggestion::Error { .. }));
         drop(store);
         for d in [profile, repo] {
+            let _ = std::fs::remove_dir_all(d);
+        }
+    }
+
+    #[test]
+    fn c20r101_the_global_choice_the_row_saves_is_what_the_runner_runs() {
+        let profile = tree(&[]);
+        let root = tree(&[("kolux.yaml", b"scripts:\n  setup: pnpm i\n")]);
+        let store = crate::state::Store::open(&profile).unwrap();
+        save_local(&store, &root, "make").unwrap();
+        let (shared, err) = read_shared(&root);
+        assert_eq!(err, None);
+        let picked = |store: &crate::state::Store| {
+            let policy = policy_for(store, None, &root);
+            (policy.clone(), pick_setup(local_setup(store, &root).as_deref(), shared.clone(), policy.as_deref()))
+        };
+        assert_eq!(picked(&store).0, None, "nothing set: the repository runs its own setup");
+        assert_eq!(picked(&store).1.unwrap().0, "make");
+
+        // the row's save, through the command's own setter, is what the runner picks
+        set_global_policy(&store, Some("shared")).unwrap();
+        assert_eq!(global_policy(&store).as_deref(), Some("shared"));
+        let (policy, run) = picked(&store);
+        assert_eq!(policy.as_deref(), Some("shared"));
+        assert_eq!(run.unwrap().0, "pnpm i", "the kolux.yaml script only");
+
+        // the repository's own choice still beats the global one
+        set_repo_policy(&store, &root, Some("both")).unwrap();
+        assert_eq!(picked(&store).0.as_deref(), Some("both"));
+        set_repo_policy(&store, &root, None).unwrap();
+
+        // a stray value is refused and changes nothing
+        assert!(set_global_policy(&store, Some("nonsense")).unwrap_err().contains("pick local, shared or both"));
+        assert_eq!(global_policy(&store).as_deref(), Some("shared"), "the refused value changed nothing");
+
+        // a setupPolicy left in settings.json is no second source: the runner reads kv only
+        let mut s = store.settings();
+        s[crate::setup::POLICY_KEY] = serde_json::json!("both");
+        store.save_settings(&s).unwrap();
+        assert_eq!(picked(&store).0.as_deref(), Some("shared"), "a settings.json copy is inert");
+        drop(store);
+
+        // a profile from before this change carries its settings.json value into kv once
+        let old = tree(&[]);
+        std::fs::write(old.join("settings.json"), br#"{"setupPolicy":"both"}"#).unwrap();
+        let carried = crate::state::Store::open(&old).unwrap();
+        assert_eq!(global_policy(&carried).as_deref(), Some("both"), "the old row's value is bridged into the key the runner reads");
+        drop(carried);
+        for d in [profile, root, old] {
             let _ = std::fs::remove_dir_all(d);
         }
     }

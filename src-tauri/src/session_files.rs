@@ -81,15 +81,24 @@ fn safe_delete_id(id: &str) -> bool {
     crate::agents::safe_session(id) && id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-')) && !id.ends_with('.')
 }
 
-/// Deletes session `id` of `agent`: its transcript and, for Claude, the folder of the same name.
+/// Deletes session `id` of `agent` with no pane holding it: the tests' entry point (the command always
+/// passes the window's open list, so this is not reachable from the app).
+#[cfg(test)]
 pub fn delete(roots: &Roots, agent: &str, id: &str) -> Result<usize, String> {
+    delete_with_open(roots, agent, id, &[])
+}
+
+/// C28-R5-01: `open` is the (agent, session) pairs the window has open in a pane. A pane resumed from
+/// History records its id at once, so the delete is refused before any hook has named the transcript
+/// (and forever for an agent whose hooks are not installed). `transcript_live` stays: this is additive.
+pub fn delete_with_open(roots: &Roots, agent: &str, id: &str, open: &[(String, String)]) -> Result<usize, String> {
     if !safe_delete_id(id) {
         return Err("That session's name cannot be used to delete its files.".into());
     }
     let at = locate(roots, agent, id)?;
     // T-722: the files of a session an open pane is still running are never deleted under it.
     // (A pane resuming it in the moment between this check and the delete is not caught.)
-    if crate::status::transcript_live(&at.file, at.extra.as_deref()) {
+    if open.iter().any(|(a, s)| a == agent && s == id) || crate::status::transcript_live(&at.file, at.extra.as_deref()) {
         return Err("This session is still open in a pane. Close that pane, then delete the session.".into());
     }
     let all: Vec<PathBuf> = at.extra.into_iter().chain([at.file]).collect();
@@ -107,10 +116,12 @@ async fn file_of(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: Str
 }
 
 /// The Delete button, after the window has asked "are you sure". Answers how many items went.
+/// C28-R5-01: `open` is the sessions the window's panes hold; a session among them is refused.
 #[tauri::command]
-pub async fn session_delete(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String) -> Result<usize, String> {
+pub async fn session_delete(store: tauri::State<'_, Mutex<crate::state::Store>>, agent: String, id: String, open: Option<Vec<(String, String)>>) -> Result<usize, String> {
     let roots = roots_now(&store)?;
-    tauri::async_runtime::spawn_blocking(move || delete(&roots, &agent, &id)).await.map_err(|e| e.to_string())?
+    let open = open.unwrap_or_default();
+    tauri::async_runtime::spawn_blocking(move || delete_with_open(&roots, &agent, &id, &open)).await.map_err(|e| e.to_string())?
 }
 
 /// Show the session's transcript in the file manager (the same door a file link uses).
@@ -147,6 +158,27 @@ mod tests {
 
     fn claude_roots(root: &Path) -> Roots {
         Roots { claude: vec![root.to_path_buf()], codex: vec![] }
+    }
+
+    #[test]
+    fn c28r501_a_resumed_pane_holds_a_session_before_any_hook_reports() {
+        let root = tmp("resumed");
+        let dir = root.join("projects").join("C--w");
+        put(&dir.join("run.jsonl"), USER);
+        put(&dir.join("run").join("subagents").join("agent-1.jsonl"), USER);
+        let roots = claude_roots(&root);
+        // No report() for any pane: the agent's first hook has not landed yet.
+        let open = [("claude".to_string(), "run".to_string())];
+        let err = delete_with_open(&roots, "claude", "run", &open).unwrap_err();
+        assert!(err.contains("still open in a pane"), "{err}");
+        assert!(dir.join("run.jsonl").exists() && dir.join("run").exists(), "nothing went");
+        // Another agent's pane holding the same id text does not block this one.
+        let other = [("codex".to_string(), "run".to_string())];
+        assert_eq!(delete_with_open(&roots, "claude", "run", &other), Ok(2), "a codex pane is not this session's");
+        // The guard is additive to transcript_live, never a replacement: with no pane and no report it goes.
+        put(&dir.join("idle.jsonl"), USER);
+        assert_eq!(delete_with_open(&roots, "claude", "idle", &[]), Ok(1), "no pane says it is open, so it goes");
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

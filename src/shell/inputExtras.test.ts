@@ -50,7 +50,7 @@ describe("term-062 shortcuts inside the floating panel", () => {
   it("new tab, markdown, switching and number act on the panel while focus is in it", () => {
     expect(routeFloating("tab.newTerminal", undefined, true, true)).toEqual({ op: "add", kind: "terminal" });
     expect(routeFloating("tab.newMarkdown", undefined, true, true)).toEqual({ op: "add", kind: "markdown" });
-    expect(routeFloating("tab.selectByIndex", 2, true, true)).toEqual({ op: "select", n: 3 });
+    expect(routeFloating("tab.selectByIndex", 2, true, true)).toEqual({ op: "select", n: 2 }); // C01-R1-01: the digit is the position
     expect(routeFloating("tab.nextAllTypes", undefined, true, true)).toEqual({ op: "step", by: 1, mode: "all" });
   });
   it("rename is the panel's inside it and the window's outside it", () => {

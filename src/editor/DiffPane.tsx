@@ -18,9 +18,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { basicSetup } from "codemirror";
 import { Decoration, EditorView, GutterMarker, WidgetType, gutter, type DecorationSet } from "@codemirror/view";
 import { ChangeSet, Compartment, EditorState, StateEffect, Text, StateField, type Extension } from "@codemirror/state";
-import { syntaxHighlighting } from "@codemirror/language";
+import { currentDark } from "../theme";
 import { languageFor } from "./languages";
-import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { codeHighlighting, editorMode } from "./syntax";
 import { diff, getChunks, getOriginalDoc, goToNextChunk, goToPreviousChunk, MergeView, originalDocChangeEffect, unifiedMergeView } from "@codemirror/merge";
 import { ChevronDown, Close, Dots, FileCode, TRASH_PATH } from "../chrome/icons";
 import { attach, baseName, detach, docText, fileTextOf, heldOf, isDirty, lineEndsFor, opening, relay, replaceAll, subscribe, type Held } from "./editors";
@@ -323,7 +323,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
     held.current = null;
     const modified = o ? o.text : s.modified;
     shown.current = { original: s.original, modified: s.modified };
-    const common: Extension[] = [basicSetup, look, syntaxHighlighting(oneDarkHighlightStyle), lang.current.of([]), wrap ? EditorView.lineWrapping : []];
+    const common: Extension[] = [basicSetup, look, codeHighlighting, editorMode(currentDark()), lang.current.of([]), wrap ? EditorView.lineWrapping : []];
     const count = (st: EditorState) => setChanges(getChunks(st)?.chunks.length ?? 0);
     const right: Extension[] = [
       ...common,

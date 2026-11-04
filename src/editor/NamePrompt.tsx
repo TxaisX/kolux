@@ -10,7 +10,7 @@ import { suggestedName } from "./untitled";
 const realIo: FirstSaveIo = {
   exists: (full) => invoke<(unknown | null)[]>("file_stamps", { paths: [full] }).then((r) => (r?.[0] ?? null) !== null),
   makeFolder: (parent, name) =>
-    invoke<string>("fs_create", { dir: parent, name, folder: true }).then(
+    invoke("fs_create", { dir: parent, name, folder: true }).then(
       () => undefined,
       (e) => {
         // A folder that is already there is what we wanted.

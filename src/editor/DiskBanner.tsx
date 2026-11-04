@@ -8,8 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { syntaxHighlighting } from "@codemirror/language";
-import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { currentDark } from "../theme";
+import { codeHighlighting, editorMode } from "./syntax";
 import { MergeView } from "@codemirror/merge";
 import { baseName } from "./buffers";
 import { goneText } from "./diskChange";
@@ -73,7 +73,7 @@ export function CompareView({ path, text, read, onReload, onKeep, onClose }: { p
   }, [path, read]);
   useEffect(() => {
     if (!disk || !host.current) return;
-    const ro = [basicSetup, look, syntaxHighlighting(oneDarkHighlightStyle), EditorState.readOnly.of(true), EditorView.editable.of(false)];
+    const ro = [basicSetup, look, codeHighlighting, editorMode(currentDark()), EditorState.readOnly.of(true), EditorView.editable.of(false)];
     if ("text" in disk) {
       const m = new MergeView({ a: { doc: disk.text, extensions: ro }, b: { doc: text, extensions: ro }, parent: host.current, gutter: true });
       return () => m.destroy();

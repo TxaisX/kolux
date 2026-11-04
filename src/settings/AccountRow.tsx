@@ -64,7 +64,7 @@ export function AccountRow({ title, detail, active, busy, onPick, trouble, manag
         // T-712 (DT-C148): the shared Ask opens on Keep, and Escape means Keep (not closing Settings).
         <Ask
           title={`Remove ${title}?`}
-          body={`Its sign-in is deleted from Kolux${manage.activeGoes ? "; the System default takes over for new panes" : ""}. Panes already running keep going.`}
+          body={`Its sign-in is deleted from Kolux${manage.activeGoes ? "; the System default takes over for new panes" : ""}. Its settings, project trust and transcripts stay on this PC. Panes already running keep going.`}
           confirm="Remove"
           cancel="Keep"
           onConfirm={() => !busy && manage.onRemove()}

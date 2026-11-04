@@ -25,9 +25,9 @@ async function koluxRepos(): Promise<string[]> {
   return repos.flatMap((r) => (r ? [`${r.owner}/${r.name}`.toLowerCase()] : []));
 }
 
-function CellEditor({ item, field, host, onDone }: { item: ProjectItem; field: ProjectField; host: string; onDone: (value: string | null) => void }) {
+function CellEditor({ item, field, host, start, onDone }: { item: ProjectItem; field: ProjectField; host: string; start?: string; onDone: (value: string | null) => void }) {
   const now = field.kind === "single_select" || field.kind === "iteration" ? (item.values[field.id]?.id ?? "") : field.kind === "assignees" ? item.assignees.join(", ") : field.kind === "issue_type" ? item.issueType : cellText(item, field);
-  const [text, setText] = useState(now);
+  const [text, setText] = useState(start ?? now);
   // T-314-d: what the repository offers for this cell (its issue types; the people who can be assigned).
   const [offered, setOffered] = useState<string[]>([]);
   useEffect(() => {
@@ -116,6 +116,9 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
   // T-314-d: the repository (owner/name) whose "add to Kolux" copy dialog is open.
   const [adding, setAdding] = useState<string | null>(null);
   const [cellError, setCellError] = useState<string | null>(null);
+  // C15-R4-01: the typed value of a write GitHub rejected, by cell, so the editor reopens on it with
+  // the reason on the cell instead of the draft dying with the editor that sent it.
+  const [rejected, setRejected] = useState<{ item: string; field: string; value: string; why: string } | null>(null);
   // FIX-1 (council FS 1): the cells whose edit is still on its way to GitHub (a call can take 30 s).
   // FIX-2 (council AFTER 3): one entry per edit, so a second edit of the same cell keeps its mark.
   const [saving, setSaving] = useState<Saving[]>([]);
@@ -138,6 +141,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
     setError(null);
     setRetryOp(null);
     setEditing(null);
+    setRejected(null);
     if (!r) return () => {};
     let live = true;
     invoke<Project>("github_project", { host: r.host, owner: r.owner, number: r.number })
@@ -192,6 +196,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
     const begin = () => {
       sendEdit(editIds.current.book, cell, id);
       setSaving((s) => startSave(s, id, cell));
+      setRejected(null);
     };
     const end = () => setSaving((s) => endSave(s, id));
     // FIX-4 (review AFTER 6): after a burst of edits to one cell GitHub may not have applied them in
@@ -214,16 +219,20 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
     const settle = (ok: boolean, apply: () => void) => {
       if (settleEdit(editIds.current.book, cell, id, ok, apply)) readBack();
     };
+    // C15-R4-01: a rejected write reopens the cell's editor on the typed value with the reason on the
+    // cell, so nothing typed is lost and the retry is in reach.
+    const reject = (e: unknown) => {
+      setRejected({ item: item.id, field: field.id, value, why: String(e) });
+      setEditing({ item: item.id, field: field.id });
+      settle(false, () => {});
+    };
     if (field.kind === "labels") {
       const { add, remove } = labelChange(item.labels, value);
       if (add.length + remove.length === 0) return;
       begin();
       invoke<{ name: string }[]>("scm_task_labels", { host: ref.host, repo: item.repo, number: item.number, add, remove })
         .then((l) => settle(true, () => put({ labels: l.map((x) => x.name) })))
-        .catch((e) => {
-          setCellError(`${item.title}: ${String(e)}`);
-          settle(false, () => {});
-        })
+        .catch(reject)
         .finally(end);
       return;
     }
@@ -234,10 +243,7 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
       begin();
       invoke("pr_assignees", { host: ref.host, repo: item.repo, number: item.number, add: change.add, remove: change.remove })
         .then(() => settle(true, () => put({ assignees: applyAssignees(item.assignees, change) })))
-        .catch((e) => {
-          setCellError(`${item.title}: ${String(e)}`);
-          settle(false, () => {});
-        })
+        .catch(reject)
         .finally(end);
       return;
     }
@@ -246,20 +252,14 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
       begin();
       invoke<string>("github_issue_type_set", { host: ref.host, repo: item.repo, number: item.number, name: value })
         .then((now) => settle(true, () => put({ issueType: now })))
-        .catch((e) => {
-          setCellError(`${item.title}: ${String(e)}`);
-          settle(false, () => {});
-        })
+        .catch(reject)
         .finally(end);
       return;
     }
     begin();
     invoke("github_project_set", { host: ref.host, project: project.id, item: item.id, field: field.id, kind: field.kind, value })
       .then(() => settle(true, () => setProject((p) => p && applyCellEdit(p, item.id, field, value))))
-      .catch((e) => {
-        setCellError(`${item.title}: ${String(e)}`);
-        settle(false, () => {});
-      })
+      .catch(reject)
       .finally(end);
   };
 
@@ -311,8 +311,13 @@ export default function ProjectsView({ host, owner, settings, save }: { host: st
         }
         return (
           <td key={f.id} data-kind={f.kind} className={can ? "editable" : undefined} tabIndex={can ? 0 : undefined} onClick={() => can && setEditing({ item: it.id, field: f.id })} onKeyDown={(e) => can && e.key === "Enter" && e.target === e.currentTarget && setEditing({ item: it.id, field: f.id })}>
-            {isEditing ? <CellEditor item={it} field={f} host={ref?.host ?? host} onDone={(v) => edit(it, f, v)} /> : cellText(it, f)}
+            {isEditing ? <CellEditor item={it} field={f} host={ref?.host ?? host} start={rejected?.item === it.id && rejected.field === f.id ? rejected.value : undefined} onDone={(v) => edit(it, f, v)} /> : cellText(it, f)}
             {isSaving(saving, cellKey(it.id, f.id)) &&<span className="tasks-kind" data-saving title="Saving to GitHub">{" "}saving…</span>}
+            {rejected?.item === it.id && rejected.field === f.id && (
+              <span className="tasks-kind" role="status" data-cell-error>
+                {" "}Not saved: {rejected.why}
+              </span>
+            )}
           </td>
         );
       })}

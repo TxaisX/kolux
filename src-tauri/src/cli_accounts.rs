@@ -124,7 +124,7 @@ pub fn finish(store: &Mutex<Store>, profile: &Path, agent: &str, id: &str, now: 
             let s = store.lock().map_err(|e| Fail::new("failed", e.to_string()))?;
             // Row 921: a taken id was moved on, so remove the account that was made, not the one asked for.
             let made = v["id"].as_str().unwrap_or(id);
-            let _ = if agent == "codex" { codex_accounts::remove(&s, profile, made) } else { claude_accounts::remove_in(&s, profile, made, home) };
+            let _ = if agent == "codex" { codex_accounts::discard(&s, profile, made) } else { claude_accounts::discard(&s, profile, made, home) };
             Err(Fail::new("sign_in_failed", format!("The sign-in worked, but its temporary copy at {} could not be removed ({e}), so the account was not kept. Delete that folder and try again.", temp.display())))
         }
         (Ok(v), Ok(())) => Ok(v),

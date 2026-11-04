@@ -28,6 +28,7 @@ export const ADVANCED: { title: string; keys: string[] }[] = [
   { title: "Backgrounds", keys: ["strip-bg", "pane-bg", "input-bg", "chip-bg", "kbd-bg", "tab-track", "row-selected", "seg-active", "gauge-track"] },
   { title: "Borders", keys: ["kbd-border", "line-subtle", "line-inner", "line", "line-strong", "line-focus", "tab-track-border", "button-border"] },
   { title: "Status", keys: ["working", "working-icon", "done", "done-icon", "dot-live", "dot-idle", "gauge", "gauge-text", "warn", "danger", "danger-line", "meter-danger", "cost-fg"] },
+  { title: "Code", keys: ["syn-comment", "syn-definition", "syn-function", "syn-invalid", "syn-keyword", "syn-name", "syn-number", "syn-operator", "syn-string", "syn-type"] },
 ];
 
 const TERMINAL_TOP = [["foreground", "Text"], ["background", "Background"], ["cursor", "Cursor"], ["selectionBackground", "Selection"]] as const;

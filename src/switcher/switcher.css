@@ -3,6 +3,9 @@
 .acct-switch:hover { color: var(--fg); border-color: var(--fg-muted); }
 .acct-switch:focus-visible { outline: 2px solid var(--accent, currentColor); outline-offset: 2px; }
 .acct-switch-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* C17-R5-01: the first accounts read failed; the pill says so and offers the retry. */
+.acct-switch-failed { border-color: var(--meter-danger); }
+.acct-switch-retry { color: var(--fg); text-decoration: underline; }
 .acct-menu { min-width: 260px; max-width: min(360px, calc(100vw - 16px)); }
 .acct-menu .menu-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acct-trouble { color: var(--working-icon); font-size: 11px; }

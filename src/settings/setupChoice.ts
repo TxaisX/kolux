@@ -123,7 +123,7 @@ export function trustNote(s: RepoSetup): string {
   return theirs ? asks : "";
 }
 
-/** The store key the runner reads (setup.rs POLICY_KEY). */
+/** The store key the runner reads (setup.rs POLICY_KEY). Not a settings.json key: C20-R1-01. */
 export const SETUP_POLICY_KEY = "setupPolicy";
 
 /** The global choice in force: "shared" and the older "shared-first" mean the shared script only; anything else, or nothing, is "local". */

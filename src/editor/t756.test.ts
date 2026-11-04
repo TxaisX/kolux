@@ -29,8 +29,9 @@ test("(a) no tooltip hard-codes the Close tab or change-step chords; each reads 
 });
 
 test("(b) Show Artifacts closes Artifacts when it is already up, as Show Skills closes Skills", () => {
-  // the palette's rule, as paneActions.ts wires it (the same source pin wave3.test.ts holds)
-  const rule = '...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s))),';
+  // the palette's rule, as paneActions.ts wires it (the same source pin wave3.test.ts holds); C12-R5-01
+  // passes the look, so the Classic layout keeps its one view
+  const rule = '...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)), classic),';
   expect(actions).toContain(rule);
   let screen: Screen = "agents";
   const setScreen = (s: Screen) => void (screen = s);

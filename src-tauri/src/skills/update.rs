@@ -5,7 +5,8 @@
 //! a copy changed by hand, one nobody recorded, a link, a read-only folder, a plugin cache and a
 //! project copy are all kept, each with a reason and a reinstall command. What is "newer" is the
 //! guide built into this Kolux until the Kolux skills repository is published (DT-C43); the lock
-//! file's folder hash is assumed to be this file's `folder_digest` (kolux-rs-after.md).
+//! file's folder hash is the git tree SHA-1 of the skill folder (`installer_digest`), which is what
+//! the installer writes for a GitHub source (C25-R3-01).
 #![allow(dead_code)] // reached from the commands that evidence/skills-T-196-b-lib.patch registers
 
 use super::installer::{self, Cmd, Installer};
@@ -49,6 +50,8 @@ pub fn text_digest(text: &str) -> String {
 
 /// A folder's content as one hash: file names and normalised bytes, in name order. A link or any
 /// other special file inside makes it unreadable (None), so it can never look unchanged.
+/// Kolux's own digest, for `text_digest`-style comparisons; the installer's lock uses
+/// `installer_digest` instead (C25-R3-01).
 pub fn folder_digest(dir: &Path) -> Option<String> {
     fn walk(dir: &Path, rel: &str, h: &mut Sha256) -> Option<()> {
         let mut names: Vec<(String, PathBuf)> = std::fs::read_dir(dir).ok()?.filter_map(Result::ok).map(|e| (e.file_name().to_string_lossy().into_owned(), e.path())).collect();
@@ -75,6 +78,95 @@ pub fn folder_digest(dir: &Path) -> Option<String> {
     let mut h = Sha256::new();
     walk(dir, "", &mut h)?;
     Some(hex(h.finalize()))
+}
+
+/// SHA-1, for the git tree hash the installer records. `sha1` is not a dependency and the build is
+/// offline, so the forty lines it takes live here.
+fn sha1(data: &[u8]) -> [u8; 20] {
+    let mut h: [u32; 5] = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476, 0xc3d2_e1f0];
+    let mut msg = data.to_vec();
+    let bits = (data.len() as u64).wrapping_mul(8);
+    msg.push(0x80);
+    while msg.len() % 64 != 56 {
+        msg.push(0);
+    }
+    msg.extend_from_slice(&bits.to_be_bytes());
+    for block in msg.as_chunks::<64>().0 {
+        let mut w = [0u32; 80];
+        for (i, word) in w.iter_mut().take(16).enumerate() {
+            *word = u32::from_be_bytes([block[4 * i], block[4 * i + 1], block[4 * i + 2], block[4 * i + 3]]);
+        }
+        for i in 16..80 {
+            w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]).rotate_left(1);
+        }
+        let (mut a, mut b, mut c, mut d, mut e) = (h[0], h[1], h[2], h[3], h[4]);
+        for (i, wi) in w.iter().enumerate() {
+            let (f, k) = match i {
+                0..=19 => ((b & c) | (!b & d), 0x5a82_7999),
+                20..=39 => (b ^ c ^ d, 0x6ed9_eba1),
+                40..=59 => ((b & c) | (b & d) | (c & d), 0x8f1b_bcdc),
+                _ => (b ^ c ^ d, 0xca62_c1d6),
+            };
+            let t = a.rotate_left(5).wrapping_add(f).wrapping_add(e).wrapping_add(k).wrapping_add(*wi);
+            e = d;
+            d = c;
+            c = b.rotate_left(30);
+            b = a;
+            a = t;
+        }
+        for (slot, v) in h.iter_mut().zip([a, b, c, d, e]) {
+            *slot = slot.wrapping_add(v);
+        }
+    }
+    let mut out = [0u8; 20];
+    for (i, v) in h.iter().enumerate() {
+        out[4 * i..4 * i + 4].copy_from_slice(&v.to_be_bytes());
+    }
+    out
+}
+
+/// C25-R3-01: the installer's folder hash, which is the git tree SHA-1 of the skill folder: the
+/// same 40 hex `git init && git add -A && git write-tree` gives for an untouched copy. Built over
+/// CRLF-normalised bytes, because a copy installed on Windows is text-converted while the record is
+/// the source tree. A link or any other special file inside makes it unreadable (None), so it can
+/// never look unchanged.
+pub fn installer_digest(dir: &Path) -> Option<String> {
+    fn tree(dir: &Path) -> Option<[u8; 20]> {
+        let mut names: Vec<(String, PathBuf)> = std::fs::read_dir(dir).ok()?.filter_map(Result::ok).map(|e| (e.file_name().to_string_lossy().into_owned(), e.path())).collect();
+        names.sort();
+        // Git orders a tree by name with a folder compared as if it ended in `/`.
+        let mut entries: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
+        for (n, p) in names {
+            if os_file(&n) {
+                continue;
+            }
+            let m = std::fs::symlink_metadata(&p).ok()?;
+            if m.is_dir() {
+                let oid = tree(&p)?;
+                let mut e = format!("40000 {n}\0").into_bytes();
+                e.extend_from_slice(&oid);
+                entries.push((format!("{n}/").into_bytes(), e));
+            } else if m.is_file() {
+                let body = normal(&std::fs::read(&p).ok()?);
+                let mut blob = format!("blob {}\0", body.len()).into_bytes();
+                blob.extend_from_slice(&body);
+                let mut e = format!("100644 {n}\0").into_bytes();
+                e.extend_from_slice(&sha1(&blob));
+                entries.push((n.into_bytes(), e));
+            } else {
+                return None;
+            }
+        }
+        entries.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut body = Vec::new();
+        for (_, e) in entries {
+            body.extend_from_slice(&e);
+        }
+        let mut hdr = format!("tree {}\0", body.len()).into_bytes();
+        hdr.extend_from_slice(&body);
+        Some(sha1(&hdr))
+    }
+    Some(hex(tree(dir)?))
 }
 
 fn version_of(text: &str) -> Option<Vec<u64>> {
@@ -194,7 +286,7 @@ fn judge(env: &Env, roots: &[PathBuf], file: &Path, source: &str, bundled: &str,
         }
     }
     let kept = |why: &str| Some(why.to_string());
-    let (eligible, why) = match (lock, folder_digest(&folder)) {
+    let (eligible, why) = match (lock, installer_digest(&folder)) {
         _ if reason.is_some() => (false, reason.clone()),
         (None, _) => {
             chips.push("unrecognised".into());
@@ -496,9 +588,11 @@ mod tests {
     }
 
     fn record(home: &Path, folder: &Path) {
-        let d = folder_digest(folder).unwrap();
+        // C25-R3-01: the lock carries the installer's own hash (the git tree SHA-1), not Kolux's
+        // `folder_digest`; a fixture that wrote the latter could never see the real defect.
+        let d = installer_digest(folder).unwrap();
         fs::create_dir_all(home.join(".agents")).unwrap();
-        fs::write(home.join(".agents").join(".skill-lock.json"), format!(r#"{{"version":3,"skills":{{"{NAME}":{{"source":"x","skillFolderHash":"{d}"}}}}}}"#)).unwrap();
+        fs::write(home.join(".agents").join(".skill-lock.json"), format!(r#"{{"version":3,"skills":{{"{NAME}":{{"source":"x","sourceType":"github","skillFolderHash":"{d}"}}}}}}"#)).unwrap();
     }
 
     /// A home with an old, recorded, unchanged copy in the Claude folder.
@@ -555,6 +649,59 @@ mod tests {
         fs::write(folder.join("._SKILL.md"), "x").unwrap();
         fs::write(folder.join(".DS_Store"), "x").unwrap();
         assert_eq!(report(&t, None).available, 1);
+    }
+
+    /// C25-R3-01: the installer records the git tree SHA-1 of the skill folder, so the on-disk
+    /// digest must be that same 40-hex value. The literal is `git init && git add -A &&
+    /// git write-tree` (core.autocrlf=false) on this exact fixture, computed once and pasted here.
+    #[test]
+    fn c25r301_the_installers_digest_is_the_git_tree_sha1_of_the_folder() {
+        let t = temp("upd-tree");
+        let folder = t.join("orchestration");
+        fs::create_dir_all(folder.join("notes")).unwrap();
+        fs::write(folder.join("SKILL.md"), "---\nname: orchestration\nversion: 1.0.0\n---\nbody\n").unwrap();
+        fs::write(folder.join("notes").join("a.txt"), "hi\n").unwrap();
+        let d = installer_digest(&folder).unwrap();
+        assert_eq!(d, "8852422a006c5047a1de9d2db6d43876171c909a");
+        assert_eq!(d.len(), 40);
+        assert!(d.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()), "{d}");
+        // A copy installed on Windows is text-converted while the record is the source tree, so the
+        // same folder written with CRLF hashes the same (its raw CRLF tree is df6c6ba0...).
+        fs::write(folder.join("SKILL.md"), "---\r\nname: orchestration\r\nversion: 1.0.0\r\n---\r\nbody\r\n").unwrap();
+        fs::write(folder.join("notes").join("a.txt"), "hi\r\n").unwrap();
+        assert_eq!(installer_digest(&folder).unwrap(), d);
+        // A file the system adds does not count, as with `folder_digest`; a hand edit does.
+        fs::write(folder.join("Thumbs.db"), "x").unwrap();
+        assert_eq!(installer_digest(&folder).unwrap(), d);
+        fs::write(folder.join("notes").join("a.txt"), "hi there\n").unwrap();
+        assert_ne!(installer_digest(&folder).unwrap(), d);
+    }
+
+    /// C25-R3-01, the reported symptom: a copy the installer recorded (40-hex tree SHA-1, the shape
+    /// every real lock has) and that nobody changed is available. Before the fix the 64-hex
+    /// `folder_digest` was compared against it, so every real copy read "changed since it was
+    /// installed" and Update was dead.
+    #[test]
+    fn c25r301_a_copy_recorded_by_the_installer_is_available() {
+        let t = temp("upd-installer");
+        let folder = t.join(".claude").join("skills").join(NAME);
+        fs::create_dir_all(folder.join("notes")).unwrap();
+        fs::write(folder.join("SKILL.md"), "---\nname: orchestration\nversion: 1.0.0\n---\nbody\n").unwrap();
+        fs::write(folder.join("notes").join("a.txt"), "hi\n").unwrap();
+        fs::create_dir_all(t.join(".agents")).unwrap();
+        fs::write(
+            t.join(".agents").join(".skill-lock.json"),
+            format!(r#"{{"version":3,"skills":{{"{NAME}":{{"source":"TxaisX/kolux","sourceType":"github","skillFolderHash":"8852422a006c5047a1de9d2db6d43876171c909a"}}}}}}"#),
+        )
+        .unwrap();
+        let bundled = [(NAME, "---\nname: orchestration\nversion: 9.0.0\n---\nbody\n")];
+        let e = env(&t);
+        let r = check(&e, &super::super::scan(&e, None), &bundled);
+        let w = row(&r);
+        assert_eq!((r.available, w.state.as_str()), (1, "available"));
+        assert!(w.copies[0].eligible && w.reinstall.is_none());
+        assert!(w.reason.is_none(), "{:?}", w.reason);
+        assert_eq!(r.notice.len(), 1);
     }
 
     #[test]

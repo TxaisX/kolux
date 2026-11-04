@@ -1,6 +1,7 @@
 // TERM-046: pinned tabs. Pure: the strip order, the tab menu, the bulk-close set and the close
 // question for a pinned tab; App.tsx keeps the pinned keys and asks. ponytail: pinned keys are a
 // Set in window state (not saved), like the strip order itself.
+import { groupOf } from "./grid";
 import { tabMenu } from "./tabs";
 import { closeSet, type Which } from "./tabClose";
 
@@ -11,6 +12,14 @@ export const pinAsks = (settings: Record<string, unknown>): boolean => settings[
 
 /** Pinned tabs sit first, each group keeping its own order. */
 export const orderPinnedFirst = (order: number[], pinned: Set<number>): number[] => [...order.filter((k) => pinned.has(k)), ...order.filter((k) => !pinned.has(k))];
+
+/** C06-R1-01: the strip as the user sees it for the cell holding pane `key`: that cell's tabs, pinned
+ *  first. Every row that measures a side of a tab (the close rows, Select Tab 1-9) measures this, never
+ *  the pane array, or a pinned tab's "Close to the left" closes a tab drawn on its right. */
+export const stripOrderOf = (panes: readonly { key: number; group?: number }[], key: number, pinned: Set<number>): number[] => {
+  const p = panes.find((x) => x.key === key);
+  return p ? orderPinnedFirst(panes.filter((x) => groupOf(x) === groupOf(p)).map((x) => x.key), pinned) : [];
+};
 
 export type PinMenuItem = { id: "rename" | "pin" | "close"; label: string; keys?: string; disabled?: boolean };
 

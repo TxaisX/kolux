@@ -38,6 +38,9 @@ export type PanelProps = {
   /** VIEW-084: every workspace folder open in Kolux, and the way to go to one (the row's worktree line). */
   openDirs?: string[];
   onJump?: (dir: string) => void;
+  /** C28-R5-01: the (agent, session) pairs the window has open in a pane, so a row whose session is
+   *  being written warns on Delete and the back end refuses it. */
+  openPanes?: readonly [string, string][];
 };
 
 /** What the back end is asked for under the saved scope and depth. */
@@ -48,6 +51,8 @@ export function request(settings: Record<string, unknown>, activeDir: string | n
 }
 
 const NO_PROJECTS: Project[] = [];
+// C28-R5-01: the empty open-pane list, stable so a row does not get a new array on every draw.
+const NO_OPEN: readonly [string, string][] = [];
 const SORT_LABELS: [SortBy, string][] = [["recent", "Newest first"], ["oldest", "Oldest first"], ["title", "By title"]];
 const GROUP_LABELS: [GroupBy, string][] = [["none", "No grouping"], ["folder", "By folder"], ["agent", "By agent"], ["project", "By project"]];
 const SCOPE_LABELS: [Scope, string][] = [["workspace", "This workspace"], ["project", "This project"], ["all", "All sessions"]];
@@ -343,7 +348,7 @@ function AgentsPanelBody(props: PanelProps) {
                 <button type="button" className="btn" title="Start a new session in the agent you pick, carrying this conversation" onClick={() => askCarry({ agent: s.agent, id: s.id, title: s.title })}>
                   Continue with…
                 </button>
-                <SessionFiles session={s} onNote={setNote} onDeleted={() => { setList((l) => l && l.filter((x) => x.agent !== s.agent || x.id !== s.id)); load(false); }} />
+                <SessionFiles session={s} open={props.openPanes ?? NO_OPEN} onNote={setNote} onDeleted={() => { setList((l) => l && l.filter((x) => x.agent !== s.agent || x.id !== s.id)); load(false); }} />
               </div>
               {why !== null && <div className="sb-hint agents-why">{block === null ? `Resume as chat is off: ${why}` : why}</div>}
             </li>

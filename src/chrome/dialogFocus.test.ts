@@ -3,7 +3,7 @@
 // There is no jsdom, so the page is a small stand-in: a window that keeps its listeners, a document with an active
 // element, and boxes that answer the two selector queries the helper makes.
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { FOCUSABLE, MENU_ROWS, menuRoom, tabTarget, trapDialog, trapMenu, trapTab } from "./dialogFocus";
+import { FOCUSABLE, MENU_ROWS, menuRoom, tabStep, tabTarget, trapDialog, trapMenu, trapTab } from "./dialogFocus";
 
 type Fake = { name: string; isConnected: boolean; focus: () => void };
 type Handler = (e: Record<string, unknown>) => void;
@@ -52,6 +52,13 @@ test("tabTarget wraps at both ends, pulls a stray focus in and leaves the middle
   expect(tabTarget(items, "outside", false)).toEqual({ to: "a", prevent: true });
   expect(tabTarget(items, "outside", true)).toEqual({ to: "c", prevent: true });
   expect(tabTarget([], "x", false)).toEqual({ to: null, prevent: true });
+});
+
+test("tabStep always lands on a neighbour, wrapping at both ends (C16-R2-01)", () => {
+  const items = ["a", "b", "c"];
+  expect([0, 1, 2].map((i) => tabStep(items, items[i], false))).toEqual(["b", "c", "a"]);
+  expect([0, 1, 2].map((i) => tabStep(items, items[i], true))).toEqual(["c", "a", "b"]);
+  expect([tabStep(items, "outside", false), tabStep(items, "outside", true), tabStep([], "x", false)]).toEqual(["a", "c", null]);
 });
 
 test("a dialog: focus moves in, Tab and Shift+Tab stay inside, Escape closes from anywhere and focus goes back", () => {

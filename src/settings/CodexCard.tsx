@@ -34,7 +34,16 @@ export type CodexView = {
   /** ACCT-021: why the user's Codex settings cannot be copied into the accounts, if they cannot. */
   settingsWarning: string | null;
 };
-export type CodexAction = { kind: "connect" } | { kind: "code" } | { kind: "cancel" } | { kind: "remove"; id: string } | { kind: "install" } | { kind: "disconnect" };
+export type CodexAction = { kind: "connect" } | { kind: "code" } | { kind: "cancel" } | { kind: "remove"; id: string } | { kind: "install" } | { kind: "disconnect" } | { kind: "again"; id: string };
+
+/** ACCT-019: the active account whose sign-in is gone or was rejected. */
+export function codexLapsed(v: CodexView): { account: CodexAccount; why: "missing" | "re-auth" } | null {
+  const a = v.accounts.find((x) => x.id === v.active);
+  if (!a) return null;
+  if (v.missing.includes(a.id)) return { account: a, why: "missing" };
+  if (a.signInError) return { account: a, why: "re-auth" };
+  return null;
+}
 
 const systemLabel: Record<CodexView["systemDefault"], string> = {
   chatgpt: "a ChatGPT sign-in",
@@ -45,6 +54,8 @@ const systemLabel: Record<CodexView["systemDefault"], string> = {
 export function codexHeadline(v: CodexView): string {
   if (v.signingIn === "device") return v.deviceCode ? "Enter the code on any device" : "Asking for a sign-in code…";
   if (v.signingIn) return v.inBrowser ? "Finish signing in in the browser" : "Starting Codex's sign-in…";
+  const lapsed = codexLapsed(v);
+  if (lapsed) return `Sign in again · ${lapsed.account.label ? `${lapsed.account.label} · ` : ""}${who(lapsed.account)}`;
   const active = v.accounts.find((a) => a.id === v.active);
   if (active) return `Connected · ${active.label ? `${active.label} · ` : ""}${who(active)}`;
   if (v.systemDefault !== "signed-out") return `Connected · Codex's own login (${systemLabel[v.systemDefault]})`;
@@ -57,19 +68,20 @@ export function codexDisconnect(v: CodexView): Question {
   if (active)
     return {
       title: `Disconnect ${active.email ?? "this ChatGPT account"}?`,
-      body: "Kolux removes this account and deletes the Codex home and saved sign-in it made for it. Your own Codex folder and its login stay as they are.",
+      body: "Kolux removes this account and deletes the sign-in it saved for it. The account's Codex home, with its settings and sessions, stays. Your own Codex folder and its login stay as they are.",
       confirm: "Disconnect",
     };
   return { title: "Codex's own login stays", body: "Kolux did not make this sign-in, so Disconnect deletes nothing. To sign out of Codex itself, run codex logout in a terminal.", confirm: null };
 }
 
-export type CodexState = "connecting" | "connected" | "attention" | "disconnected";
+export type CodexState = "connecting" | "connected" | "attention" | "needs-signin" | "disconnected";
 export function codexState(v: CodexView): CodexState {
   if (v.signingIn !== null) return "connecting";
+  if (codexLapsed(v)) return "needs-signin";
   if (v.active !== null || v.systemDefault !== "signed-out") return "connected";
   return v.attention ? "attention" : "disconnected";
 }
-const codexChip: Record<CodexState, string> = { connecting: "Connecting", connected: "Connected", attention: "Needs attention", disconnected: "Not connected" };
+const codexChip: Record<CodexState, string> = { connecting: "Connecting", connected: "Connected", attention: "Needs attention", "needs-signin": "Needs sign-in", disconnected: "Not connected" };
 
 export function CodexCardView({ view, error, pending = false, onAction }: { view: CodexView | null; error?: string | null; pending?: boolean; onAction: (a: CodexAction) => void }) {
   // ACCT-035 (FIX-3): a first read that failed still shows the card and says why, never a blank gap.
@@ -87,12 +99,14 @@ export function CodexCardView({ view, error, pending = false, onAction }: { view
     ) : null;
   const state = codexState(view);
   const busy = state === "connecting";
+  const lapsed = codexLapsed(view);
+  const chip = lapsed ? (lapsed.why === "missing" ? "Needs sign-in" : "Needs re-auth") : codexChip[state];
   return (
     <section className="conn-card" aria-label="Codex" data-state={state}>
       <header className="conn-head">
         <VendorMark agent="codex" size={18} />
         <span className="conn-name">Codex</span>
-        <span className={`conn-chip ${state}`}>{codexChip[state]}</span>
+        <span className={`conn-chip ${state}`}>{chip}</span>
       </header>
       <p className="conn-detail conn-tagline">{taglineOf("codex")}</p>
       <div className="conn-headline">{codexHeadline(view)}</div>
@@ -133,7 +147,24 @@ export function CodexCardView({ view, error, pending = false, onAction }: { view
             </button>
           </>
         )}
-        {!busy && state !== "connected" && (
+        {state === "needs-signin" && lapsed && (
+          <>
+            <button className="btn primary" disabled={pending} onClick={() => onAction({ kind: "again", id: lapsed.account.id })}>
+              Sign in again
+            </button>
+            <OtherWays
+              label="Manage"
+              ways={[
+                { label: "Add account", onPick: () => onAction({ kind: "connect" }), disabled: pending },
+                { label: "Sign in with a code", onPick: () => onAction({ kind: "code" }), disabled: pending },
+              ]}
+            />
+            <button className="btn danger" disabled={pending} onClick={() => onAction({ kind: "disconnect" })}>
+              Disconnect
+            </button>
+          </>
+        )}
+        {!busy && state !== "connected" && state !== "needs-signin" && (
           <>
             {/* a fix shown above takes Connect's place (ACCT-013: one button that fixes it) */}
             {!fixFor(view.attention, "codex") && (
@@ -185,9 +216,11 @@ export default function CodexCard({ onConnected = () => {} }: { onConnected?: (o
           ? invoke("codex_account_remove", { id: a.id })
           : a.kind === "install"
             ? openInstallPage("codex")
-            : invoke("codex_account_sign_in", { device: a.kind === "code", again: null });
+            : a.kind === "again"
+              ? invoke("codex_account_sign_in", { device: false, again: a.id })
+              : invoke("codex_account_sign_in", { device: a.kind === "code", again: null });
     if (a.kind !== "cancel") setPending(true);
-    call.catch((e) => setError(a.kind === "connect" || a.kind === "code" ? connectFailed("Codex", e) : String(e)));
+    call.catch((e) => setError(a.kind === "connect" || a.kind === "code" || a.kind === "again" ? connectFailed("Codex", e) : String(e)));
     // ACCT-002: a choice comes back after 30 seconds even if no answer arrives.
     void settleWithin(call).then(() => {
       setPending(false);

@@ -1,7 +1,8 @@
 // ACCT-012: a lapsed sign-in is flagged in the main window, outside Settings, with Sign in again.
 // Only for the active managed Claude account once it is stale (and only while Kolux, not Claude
 // Code, looks after sign-ins, ACCT-006; the 1-year key, when connected, is what panes use), or a
-// managed Codex account that hit a sign-in error. Codex's system-default login never raises it.
+// managed Codex account that hit a sign-in error or whose sign-in file is gone. Codex's system-default
+// login never raises it.
 // Nothing shows until both account lists have loaded, so it never flickers at startup.
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,7 +19,7 @@ export function lapsed(claude: AccountsView | null, codex: CodexView | null): La
     const a = claude.accounts.find((a) => a.id === claude.active && a.stale);
     if (a) return { agent: "claude", id: a.id, label: `Claude account ${a.email ?? a.id}`, busy: claude.signingIn !== null };
   }
-  const c = codex.accounts.find((a) => a.signInError);
+  const c = codex.accounts.find((a) => a.signInError || codex.missing.includes(a.id));
   if (c) return { agent: "codex", id: c.id, label: `Codex account ${c.email ?? c.id}`, busy: codex.signingIn !== null };
   return null;
 }

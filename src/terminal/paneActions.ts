@@ -50,7 +50,7 @@ import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
 import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
-import { closeOne, pinQuestion } from "./pin";
+import { closeOne, pinQuestion, stripOrderOf } from "./pin";
 import { dropCell, dropTab, type Zone } from "./rearrange";
 import { classify, shellInAgentPane } from "./remove";
 import { returnTab } from "./tabClose";
@@ -64,7 +64,7 @@ import { invoke } from "@tauri-apps/api/core";
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
   const {
     accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
-    owner, panes, pinned, ptys, recentDirs, recentTabs, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
+    owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
     setCreateRequest, setDeleteRequest, setDirty, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setPicking, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes
@@ -185,8 +185,13 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
 
   // EDIT-001: a file opens as a tab beside the focused pane; a file already open in that cell
   // comes to the front instead of opening twice.
+  // C09-R5-01: the tab is drawn in the grid, so a link in an agent reply leaves the Agents screen
+  // that covers it, and closes a full page (Tasks, Automations) that covers it too; both paths
+  // below do, or the click looks like nothing happened.
   // EDIT-026 (T-317): `follow` opens the file as a read-only log tab that keeps adding lines as the file grows (a caller such as an AI Vault "View Log" button passes true).
   const openFile = (path: string, line?: number, column?: number, follow?: boolean) => {
+    setScreen("terminals");
+    setPage(null);
     const here = panes.find((p) => p.key === focused && sameDir(p.cwd, activeDir));
     const same = here && panes.find((p) => p.kind === "editor" && groupOf(p) === groupOf(here) && keyOf(p.path ?? "") === keyOf(path) && !!p.follow === !!follow);
     // CHAT-025: a file link names a line; the pane keeps it as `jump` (the editor pane reads it once it takes that prop).
@@ -372,7 +377,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
     // T-708: New terminal tab and Search open tabs are their Commands rows (with their keys), no longer second hand-built rows
     ...commandRows(keymap, installedIds, setToast, (id, i) => (id === TAB_SEARCH_ACTION ? openTabSearch() : runCommand(id, i, { scope: actionById.get(id)?.scope, unanswered: setToast }))), // T-611: every command, the unbound ones included, run as its shortcut runs; T-708: Search open tabs from any screen (TERM-053)
-    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s))), // T-610 / T-708: every screen; T-756: a page already up closes, as Show Skills does
+    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)), classic), // T-610 / T-708: every screen; T-756: a page already up closes, as Show Skills does; C12-R5-01: Classic keeps its one view
     { section: "Quick actions", label: "New session", run: () => addChooser() },
     // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
     ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
@@ -439,6 +444,15 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // the workspace's empty placeholder.
   // SESS-024: a pane whose session failed to start goes away, with the reason in a toast.
   const failedPane = (key: number, error: string) => {
+    // C24-R1-01: a tab that came back from the saved layout and has not settled yet keeps its place
+    // when its session does not start; dropping it would rewrite the layout without its key and the
+    // next start would prune its saved output. The key leaves restoredKeys once the tab has its
+    // terminal (Pane.tsx onPty), so a later failure of the same tab still drops it.
+    if (restoredKeys.current.has(key)) {
+      restoredKeys.current.delete(key);
+      setToast(`A session did not start: ${error}`);
+      return;
+    }
     startWatch.seen(key); // SESS-005: its own toast says why; no five-second warning on top
     const ask = panes.find((p) => p.key === key)?.ask;
     if (ask) cliFailed.current[ask] = error;
@@ -483,11 +497,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     };
   };
 
-  /** TERM-044: the tab strip's order for the cell holding pane `key`. */
-  const orderOf = (key: number) => {
-    const p = panes.find((x) => x.key === key);
-    return p ? panes.filter((x) => groupOf(x) === groupOf(p)).map((x) => x.key) : [];
-  };
+  /** TERM-044: the tab strip's order for the cell holding pane `key`, pinned tabs first as drawn
+   *  (C06-R1-01: the close rows and Select Tab measure the strip, not the pane array). */
+  const orderOf = (key: number) => stripOrderOf(panes, key, pinned);
   // TERM-044: the closed tabs leave together; focus returns to the tab used before the active one,
   // else its right neighbour (left if it was last), never to a tab that is closing.
   const dropPanes = (keys: number[]) => {

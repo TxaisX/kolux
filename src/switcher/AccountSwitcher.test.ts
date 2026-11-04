@@ -7,14 +7,48 @@ vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) })
 
 import { AccountSwitcherView, EscapeWatch } from "./AccountSwitcher";
 import { groupsOf } from "./accounts";
+import { OPEN_SETTINGS } from "../settings/pages";
 
 const claude = { accounts: [{ id: "c1", email: "work@example.com", organization: null, stale: false }], active: "c1", signingIn: null, keyMode: false, upkeepLeftToClaude: true };
 const codex = { accounts: [{ id: "x1", email: "a@example.com", signInError: false }], active: null, signingIn: null, missing: [] };
 const noop = () => {};
-const view = (groups = groupsOf(claude, codex), open: { top: number; left: number } | null = null, error: string | null = null) => renderToString(createElement(AccountSwitcherView, { groups, open, error, onOpen: noop, onClose: noop, onPick: noop }));
+const view = (groups = groupsOf(claude, codex), open: { top: number; left: number } | null = null, error: string | null = null, extra: Record<string, unknown> = {}) => renderToString(createElement(AccountSwitcherView, { groups, open, error, onOpen: noop, onClose: noop, onPick: noop, ...extra }));
 
-test("T-548: the switcher draws nothing until a provider has a managed account", () => {
-  expect(view([])).toBe("");
+test("C17-R5-01: before the first accounts read answers, the pill draws nothing", () => {
+  expect(view([], null, null, { ready: false })).toBe("");
+});
+
+test("C17-R5-01: a failed first read says accounts are unavailable and offers Try again, never Connect an AI", () => {
+  const html = view([], null, null, { ready: false, failed: true });
+  expect(html).toContain("Accounts unavailable");
+  expect(html).toContain("Try again");
+  expect(html).not.toContain("Connect an AI");
+  expect(html).not.toContain('aria-haspopup="menu"');
+});
+
+test("C17-R5-01: the failed pill's click retries the read", () => {
+  const onRetry = vi.fn();
+  const el = AccountSwitcherView({ groups: [], open: null, ready: false, failed: true, onRetry, onOpen: noop, onClose: noop, onPick: noop }) as unknown as { props: { onClick: () => void } };
+  el.props.onClick();
+  expect(onRetry).toHaveBeenCalledTimes(1);
+});
+
+test("C17-R5-01: with no managed account the top bar still draws its route to Accounts & keys", () => {
+  const html = view([]);
+  expect(html).not.toBe("");
+  expect(html).toContain("Connect an AI");
+  expect(html).not.toContain('aria-haspopup="menu"');
+});
+
+test("C17-R5-01: that route opens Settings at Accounts & keys, AI connections", () => {
+  const target = new EventTarget();
+  vi.stubGlobal("window", target);
+  const seen: unknown[] = [];
+  target.addEventListener(OPEN_SETTINGS, (e) => seen.push((e as CustomEvent).detail));
+  const el = AccountSwitcherView({ groups: [], open: null, onOpen: noop, onClose: noop, onPick: noop }) as unknown as { props: { onClick: () => void } };
+  el.props.onClick();
+  expect(seen).toEqual([{ page: "accounts", section: "connections" }]);
+  vi.unstubAllGlobals();
 });
 
 test("T-548: the top-bar pill names the account new Claude and Codex panes use, and the menu stays shut until clicked", () => {

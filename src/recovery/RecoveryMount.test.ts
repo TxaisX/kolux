@@ -5,19 +5,26 @@ import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { byText, click, type FakeDocument, type FakeNode, find, installDom, mount, settle, until } from "../tasks/fakeDom";
 
-const h = vi.hoisted(() => ({ fail: null as string | null, calls: [] as [string, unknown][], lost: [] as (() => void)[] }));
+const h = vi.hoisted(() => ({ fail: null as string | null, calls: [] as [string, unknown][], lost: [] as (() => void)[], notes: null as { onRepair?: () => void } | null, settingsFailed: false }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args?: unknown) => {
     if (cmd === "graphics_launch_choice") return Promise.resolve({ version: "1", chosen: false });
     if (cmd === "graphics_crash_noted") return Promise.resolve(true);
     if (cmd === "ui_heartbeat" || cmd === "update_last_attempt" || cmd === "startup_recovery_notes") return Promise.resolve(null);
+    if (cmd === "settings_state") return Promise.resolve({ failed: h.settingsFailed });
     h.calls.push([cmd, args]);
+    if (cmd === "settings_repair") return Promise.resolve(["C:\\p\\settings.json.corrupt-1"]);
     return h.fail ? Promise.reject(h.fail) : Promise.resolve(null);
   },
 }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: () => Promise.resolve(() => {}) }));
 vi.mock("./CrashReportDialog", () => ({ default: () => null }));
-vi.mock("./RecoveryNotes", () => ({ default: () => null }));
+vi.mock("./RecoveryNotes", () => ({
+  default: (props: { onRepair?: () => void }) => {
+    h.notes = props;
+    return null;
+  },
+}));
 vi.mock("./startupNotes", () => ({ loadRecoveryNotes: () => Promise.resolve([]) }));
 vi.mock("../update/UpdateCenter", () => ({ requestUpdateCheck: () => {} }));
 
@@ -30,6 +37,8 @@ beforeEach(() => {
   h.fail = null;
   h.calls = [];
   h.lost = [];
+  h.notes = null;
+  h.settingsFailed = false;
 });
 afterEach(async () => {
   await unmount();
@@ -98,4 +107,19 @@ test("Try hardware again: a failure is told, the next choice clears the line, an
   h.fail = null;
   await click(c, byText(c, "button", "Stay in safe graphics")[0]); // another button after a failure: saved, so it closes
   await until(() => prompt(c).length === 0, "the prompt to close");
+});
+
+test("C22-R2-01: a settings file that cannot be read offers Repair, and it calls settings_repair", async () => {
+  h.settingsFailed = true;
+  await show();
+  await until(() => !!h.notes?.onRepair, "the repair action");
+  h.notes!.onRepair!();
+  await until(() => h.calls.some(([cmd]) => cmd === "settings_repair"), "the repair command");
+  expect(h.calls.filter(([cmd]) => cmd === "settings_repair")).toHaveLength(1);
+});
+
+test("C22-R2-01: a settings file that reads is offered no Repair", async () => {
+  await show();
+  await settle(30);
+  expect(h.notes?.onRepair).toBeUndefined();
 });

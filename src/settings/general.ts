@@ -30,7 +30,14 @@ export function stampLook(s: Record<string, unknown>): Record<string, unknown> |
 /** The saved first screen (VIEW-001 as amended for the trial, DT-C40: Terminals when never chosen or unknown). */
 export function savedFirst(s: Record<string, unknown>): Screen {
   const v = s[FIRST_FIELD];
-  return v === "agents" || v === "board" ? v : "terminals";
+  return v === "agents" || v === "board" || v === "tower" ? v : "terminals";
+}
+
+/** C17-R1-01: the first screen the General page shows and the start reads, so the radio can only
+ *  write a value the start honours. Agents and Board stay Terminals under Classic. */
+export function shownFirst(s: Record<string, unknown>, classic: boolean): Screen {
+  const v = savedFirst(s);
+  return classic && (v === "agents" || v === "board") ? "terminals" : v;
 }
 
 /** VIEW-005: the screen in front at quit. Picking a first screen in General writes it too, so the
@@ -42,9 +49,9 @@ export const LAST_SCREEN_FIELD = "lastScreen";
 export function startScreen(s: Record<string, unknown>): Screen {
   const classic = readLook(s) === "classic";
   const last = s[LAST_SCREEN_FIELD];
-  if (last === "terminals" || last === "artifacts" || last === "inbox" || last === "skills") return last; // VIEW-011 (T-189-b): the Skills page left open at quit is shown again
+  if (last === "terminals" || last === "artifacts" || last === "inbox" || last === "skills" || last === "tower") return last; // VIEW-011 (T-189-b): the Skills page left open at quit is shown again
   if (last === "agents" || last === "board") return classic ? "terminals" : last;
-  return classic ? "terminals" : savedFirst(s);
+  return shownFirst(s, classic);
 }
 
 /** VIEW-005: a burst of changes is written once, `ms` after the last; `flush` writes a pending one

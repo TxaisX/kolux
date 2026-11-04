@@ -60,6 +60,36 @@ test("T-708: every Screen id has a palette row of its own, the switcher's four t
   expect(SCREEN_IDS.filter((id) => !fromPalette.has(id))).toEqual([]);
 });
 
+// C12-R5-01: the Classic look draws no switcher, so a row that switched to Board left the user on a screen
+// with no visible way back (no Close, Back disabled off Terminals, Escape does not leave it). Classic has one
+// view, so its screen rows keep Terminals; the New look still shows the Board.
+test("C12-R5-01: in the Classic look the screen rows keep the one view, so Board cannot strand the user", () => {
+  const classic = new Map<string, string>();
+  let shown = "";
+  const rows = screenRows((s) => classic.set(shown, s), true);
+  for (const r of rows) {
+    shown = r.label;
+    r.run();
+  }
+  for (const s of screens) expect(classic.get(`Show ${s.label}`) ?? "terminals", s.id).toBe("terminals"); // every screen the switcher draws
+  expect(classic.get("Show Board")).toBe("terminals");
+  expect(classic.get("Show Agents")).toBe("terminals");
+  // no row switches to a screen whose only way back is the switcher Classic does not draw
+  expect([...classic.values()].filter((s) => s !== "terminals" && s !== "artifacts" && s !== "skills")).toEqual([]);
+  // Artifacts and Skills have a way back of their own, so they keep their destination
+  expect(classic.get("Show Artifacts")).toBe("artifacts");
+  expect(classic.get("Show Skills")).toBe("skills");
+  // the New look is unchanged: Show Board shows the Board
+  const fresh = new Map<string, string>();
+  let label = "";
+  for (const r of screenRows((s) => fresh.set(label, s))) {
+    label = r.label;
+    r.run();
+  }
+  expect(fresh.get("Show Board")).toBe("board");
+  expect(fresh.get("Show Agents")).toBe("agents");
+});
+
 test("T-708: no hand-built palette row repeats a command; its Commands row, with its keys, is the one", () => {
   const map = resolve(null, "win32");
   const bound = actions.filter((a) => labelOf(map, a.id).length > 0);
@@ -140,6 +170,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["terminal/TerminalPane.tsx", "notice.title", "tag"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "tag"],
   ["terminal/TerminalPane.tsx", "The shell ended", "tag"],
+  ["terminal/TerminalPane.tsx", "The terminal did not come back", "inner"],
   ["update/UpdateCenterView.tsx", "Updates", "tag"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
 ];
@@ -282,6 +313,7 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["terminal/TerminalPane.tsx", "notice.title", "trapTab"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],
   ["terminal/TerminalPane.tsx", "The shell ended", "trapTab"],
+  ["terminal/TerminalPane.tsx", "The terminal did not come back", "trapTab"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
 ];
 function traps(d: Found, how: string): boolean {

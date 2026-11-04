@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
 import { STATUSES_FAILED } from "../onboarding/firstRun";
-import { CodexCardView, codexHeadline, type CodexView } from "./CodexCard";
+import { CodexCardView, codexHeadline, codexState, type CodexView } from "./CodexCard";
 
 const off: CodexView = { accounts: [], active: null, systemDefault: "signed-out", signingIn: null, inBrowser: false, deviceLink: null, deviceCode: null, attention: null, drifted: [], missing: [], settingsWarning: null };
 const kim = { id: "c1", email: "kim@example.com", home: "h1", lastSignIn: 1, signInError: false };
@@ -58,4 +58,32 @@ test("ACCT-035 (FIX-3): when the first read fails the card still shows, named, w
   expect(h).toContain(STATUSES_FAILED);
   expect(h).not.toContain("Connect with your ChatGPT plan");
   expect(renderToString(createElement(CodexCardView, { view: null, error: null, onAction: () => {} }))).toBe("");
+});
+
+test("ACCT-019: an active account whose sign-in file is gone is not Connected", () => {
+  const gone: CodexView = { ...off, accounts: [kim], active: "c1", missing: ["c1"] };
+  expect(codexState(gone)).toBe("needs-signin");
+  expect(codexHeadline(gone)).toBe("Sign in again · kim@example.com");
+  const h = html(gone);
+  expect(h).not.toContain("Connected");
+  expect(h).toContain("Needs sign-in");
+  expect(h).toContain("Sign in again");
+  expect(h).toContain("Disconnect"); // a dead account stays removable
+});
+
+test("ACCT-019/SET-030: an account Codex rejected shows needs re-auth, not Connected", () => {
+  const bad: CodexView = { ...off, accounts: [{ ...kim, signInError: true }], active: "c1" };
+  expect(codexState(bad)).toBe("needs-signin");
+  expect(codexHeadline(bad)).not.toContain("Connected");
+  const h = html(bad);
+  expect(h).toContain("Needs re-auth");
+  expect(h).not.toContain("Connected");
+  expect(h).toContain("Sign in again");
+  expect(h).toContain("Disconnect");
+});
+
+test("ACCT-019: a listed account that is not the active one keeps the card Connected", () => {
+  const other: CodexView = { ...off, accounts: [kim, { ...kim, id: "c2", email: "sam@example.com" }], active: "c1", missing: ["c2"] };
+  expect(codexState(other)).toBe("connected");
+  expect(html(other)).toContain("Connected · kim@example.com");
 });

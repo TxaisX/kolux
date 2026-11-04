@@ -26,6 +26,11 @@ export const shellProgram = (tabShell: string | null | undefined, hostShell: str
 export const planFor = (s: Pick<Session, "agent" | "id">, workspace: string | null, shell: string | null) =>
   invoke<ResumePlan>("session_resume_plan", { agent: s.agent, id: s.id, workspace, shell });
 
+/** C28-R5-01: the pane fields of a resume. The id goes on the pane at once, so the live guard sees the
+ *  session before any hook has reported it (a resumed pane used to record no id at all, and History
+ *  could delete the transcript the agent was writing). A resume with no id is unchanged. */
+export const resumedFields = (id: string | undefined): { session?: string; resumed: true } => (id ? { session: id, resumed: true } : { resumed: true });
+
 /** What a drag of a session row carries (VIEW-085 drop onto a pane reads it). */
 export const SESSION_DRAG = "application/x-kolux-session";
 export const dragPayload = (s: Pick<Session, "agent" | "id">): string => JSON.stringify({ agent: s.agent, id: s.id });

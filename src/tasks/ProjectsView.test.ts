@@ -34,6 +34,7 @@ const project = (): Project => ({
     { id: "F_title", name: "Title", kind: "title", options: [] },
     { id: "F_assign", name: "Assignees", kind: "assignees", options: [] },
     { id: "F_type", name: "Type", kind: "issue_type", options: [] },
+    { id: "F_note", name: "Release note", kind: "text", options: [] },
   ],
   items: [
     { id: "PVTI_a", kind: "issue", title: "Fix login", number: 7, url: "https://github.com/acme/app/issues/7", repo: "acme/app", state: "open", labels: [], assignees: ["ana"], issueType: "Bug", values: { F_title: cell } },
@@ -134,6 +135,31 @@ describe("T-314-d Projects table: the issue's own fields", () => {
     await settle();
     expect(find(c, (n) => n.localName === "select" && n.attrs["aria-label"] === "Type")).toEqual([]);
     expect(sent("github_issue_types").length).toBe(1);
+  });
+});
+
+describe("C15-R4-01 a write GitHub rejects keeps the typed value", () => {
+  it("puts the typed text back in the cell with the reason, and the retry still works", async () => {
+    let fail: ((e: unknown) => void) | null = null;
+    h.on.github_project_set = () => new Promise((_, rej) => (fail = rej));
+    const c = await open();
+    await click(c, cellOf(c, "PVTI_a", "text"));
+    const box = () => find(c, (n) => n.localName === "input" && n.attrs["aria-label"] === "Release note")[0];
+    await typeInto(c, box(), "needs triage");
+    await enter(c, box());
+    await until(() => sent("github_project_set").length > 0, "the write");
+    fail!(new Error("HTTP 403: Resource not accessible by integration"));
+    await until(() => !!box(), "the editor back on the cell");
+    expect(box().value).toBe("needs triage");
+    expect(cellOf(c, "PVTI_a", "text").textContent).toContain("Resource not accessible");
+    h.on.github_project_set = (a) => {
+      held.items[0].values.F_note = { text: String(a.value), id: "", start: "", days: 0 };
+      return null;
+    };
+    await enter(c, box());
+    await until(() => sent("github_project_set").length === 2, "the retry");
+    await until(() => !box(), "the editor to close on success");
+    expect(cellOf(c, "PVTI_a", "text").textContent).toContain("needs triage");
   });
 });
 
