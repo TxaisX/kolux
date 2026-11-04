@@ -259,15 +259,18 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn acct_050_an_interpreter_is_credited_by_its_command_line_read_once_per_process() {
+        // T-731: this test's own process id, not a made-up one. front() in a parallel test drops the
+        // remembered answers of every id not running, so a made-up id could be dropped between the two reads.
+        let pid = std::process::id();
         let mut reads = 0;
         let mut line = || {
             reads += 1;
             Some(r#""C:\nodejs\node.exe" C:\npm\node_modules\@anthropic-ai\claude-code\cli.js"#.to_string())
         };
-        assert_eq!(credit(900_001, "node.exe", &mut line), Some("claude"));
-        assert_eq!(credit(900_001, "node.exe", &mut line), Some("claude"), "remembered");
+        assert_eq!(credit(pid, "node.exe", &mut line), Some("claude"));
+        assert_eq!(credit(pid, "node.exe", &mut line), Some("claude"), "remembered");
         assert_eq!(reads, 1, "the command line is read once");
-        assert_eq!(credit(900_001, "git.exe", || None), None, "a reused id with another name is asked again");
+        assert_eq!(credit(pid, "git.exe", || None), None, "a reused id with another name is asked again");
         assert_eq!(credit(900_002, "claude.exe", || panic!("a program named for its agent needs no command line")), Some("claude"));
     }
 
