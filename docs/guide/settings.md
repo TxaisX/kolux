@@ -143,9 +143,9 @@ Under Terminal colours, "Bring in from Warp or Ghostty" lets you reuse colour sc
 - A file that cannot be read says why next to its name, and a file whose colours already match your current terminal colours is listed as nothing to apply.
 - You can keep up to 40 custom schemes. When the list is full a new one is "Not added" with a note to remove one first; replacing a scheme with the same name still works.
 
-The View menu zooms text with Ctrl+= , Ctrl+- and Ctrl+0. Zoom affects only the focused terminal.
+Ctrl+= , Ctrl+- and Ctrl+0, and the top bar's Terminal zoom button, zoom the text of the focused terminal only.
 
-The Zoom control under Interface is the only way to change the size of the whole window. Text and controls grow or shrink together. The choice is saved and applied again at the next start. The Ctrl+= keys do not change it.
+The Zoom control under Interface changes the size of the whole window, and so do the View menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0). Text and controls grow or shrink together. The choice is saved and applied again at the next start. The Ctrl+= keys do not change it.
 
 ### Window & Sidebar
 

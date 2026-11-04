@@ -1,0 +1,41 @@
+T-741 - One name per zoom (DT-C177; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t741 from main 99b4a9d2, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 4", T-741. Both halves were checked against main 99b4a9d2 first.
+
+CHECKED FIRST
+- "Open in browser/Preview from another screen switches to Terminals" (shell.md:3, marked UNSURE): already on main.
+  src/shell/browserOpen.ts useShowTerminalsOnBrowserOpen (T-668) is called in shell/WindowView.tsx:29 and sets the
+  Terminals screen and closes any page on every open-in-browser request; shell/browserOpen.test.ts covers the
+  listener. Dropped, no change.
+- The top-bar zoom button: open. It drew the Dots glyph ("more"), titled Terminal zoom, holding only Zoom In,
+  Zoom Out, Reset Size for the focused terminal (TERM-078). The native View menu's "Actual Size", "Zoom In",
+  "Zoom Out" run the interface zoom (SET-019; chromeItems.ts HINT_FROM shows the Ctrl+Alt chords), so the same
+  words named two different zooms (palette.md:11 "TopBar zoom vs native zoom naming | one name").
+
+WHAT CHANGED (DT-C177)
+1. src/chrome/icons.tsx: Search takes an optional d that adds strokes inside the lens; src/chrome/TopBar.tsx draws
+   the zoom button as Search with a plus (the usual zoom glyph). Its name stays Terminal zoom. The palette's search
+   button keeps the plain magnifier. A separate Zoom icon measured +158 B; sharing Search's lens costs +23 B.
+2. src-tauri/src/menu.rs: the View menu's zoom items read "Reset Interface Zoom", "Zoom Interface In",
+   "Zoom Interface Out", the keymap's names for the ui.zoom* actions whose chords they show. Ids are unchanged, so
+   routing (useSettingsPlumbing stepZoom) and the accelerators are as before. 0 B of first-load JS.
+3. spec/03 TERM-078 rule and acceptance named the View menu for terminal zoom; they now name the Terminal zoom
+   menu and point the View menu to SET-019. spec/17 SET-019 names the new menu items. docs/guide getting-started
+   (top-bar table, View menu row, zoom note) and settings (zoom notes; settings.md said the View menu zooms the
+   terminal and that the Interface control was the only whole-window zoom) say the same, and so does
+   src/settings/AppearancePage.tsx's terminal zoom note (lazy Settings chunk), which also named the View menu.
+
+TESTS
+- src/chrome/zoomNames.test.ts (new): renders TopBar and checks the Terminal zoom button draws the magnifier with
+  a plus and not the dots; reads src-tauri/src/menu.rs and checks the View menu's zoom.in / zoom.out / zoom.reset
+  labels equal the keymap titles of ui.zoomIn / ui.zoomOut / ui.zoomReset and differ from the terminal zoom's.
+  Red-checked: with main's TopBar.tsx and menu.rs both tests fail.
+- Full vitest: 808 files, 6015 of 6016 passed; the one failure, src/editor/editPlacement.test.ts (60-paragraph
+  repro, untouched here), passes alone (43 of 43): a load-timing flake. pnpm exec tsc --noEmit -p . : clean.
+  plan-check OK; firewall-check -Baseline 0 new.
+
+REVIEW
+- Fresh sonnet-medium-review: B+, no high. Medium fixed: settings/AppearancePage.tsx's terminal zoom note still said the View menu zooms the terminal; it now names the top bar's Terminal zoom menu. Medium left: SET-019's User does line says 'uses the View menu' without naming the items (accurate as it stands). Lows kept: the button keeps its CSS class 'dots' (a styling hook only); the test's no-dots check matches the old glyph's shape.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- First load +23 B (main 99b4a9d2 1,489,600 B, branch 1,489,623 B, cap +40).
