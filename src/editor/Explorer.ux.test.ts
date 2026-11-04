@@ -1,7 +1,7 @@
 // T-702 (DT-C138): the audit's live harness skipped 20 controls on the right sidebar's Explorer tab
 // (findings/live-wave3-b.md, S21). Each one is driven here through its real handler in the mounted
 // Explorer and its content search, and the test asserts what the person sees change.
-import { createElement } from "react";
+import { createElement, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeNode, byLabel, click, find, fire, installDom, mount, settle, typeInto, until, type FakeDocument } from "../tasks/fakeDom";
 
@@ -69,10 +69,11 @@ const button = (root: FakeNode, label: string) => {
 };
 const input = (root: FakeNode, label: string) => byLabel(root, "input", label)[0];
 
-async function explorer(onClose = () => {}) {
+async function explorer(onClose = () => {}, strict = false) {
   const { default: Explorer } = await import("./Explorer");
   const onOpen = vi.fn();
-  const m = await mount(createElement(Explorer, { root: "/r", hidden: false, focusAsk: 0, onOpen, onClose }), doc);
+  const view = createElement(Explorer, { root: "/r", hidden: false, focusAsk: 0, onOpen, onClose });
+  const m = await mount(strict ? createElement(StrictMode, null, view) : view, doc);
   await until(() => names(m.container).includes("readme.md"), "the tree to load");
   return { ...m, onOpen };
 }
@@ -262,22 +263,76 @@ describe("T-702 content search", () => {
 });
 
 describe("T-710 Explorer row menu from the keyboard", () => {
-  it("Shift+F10 on the focused list opens the active row's menu under that row; a right-click on blank list opens none", async () => {
-    const { container } = await explorer();
-    const tree = find(container, (n) => n.attrs.role === "tree")[0];
-    const menus = () => find(container, (n) => n.attrs.role === "menu");
-    await fire(container, "focusin", tree); // the list takes focus: its first row is active
+  /** The tree, its menus, and the page laid out: the list spans 0-600 and row 0's box is `row` (null: not drawn). */
+  async function rowMenu(row: { left: number; top: number; bottom: number } | null, strict = false) {
+    const m = await explorer(undefined, strict);
+    const tree = find(m.container, (n) => n.attrs.role === "tree")[0];
+    Object.assign(tree, { getBoundingClientRect: () => ({ left: 0, top: 0, right: 300, bottom: 600 }) });
+    (doc as unknown as Record<string, unknown>).getElementById = (id: string) =>
+      id === "ex-row-0" && row ? { getBoundingClientRect: () => row } : null;
+    await fire(m.container, "focusin", tree); // the list takes focus: its first row is active
     await settle();
+    return { ...m, tree, menus: () => find(m.container, (n) => n.attrs.role === "menu") };
+  }
+
+  it("Shift+F10 on the focused list opens the active row's menu under that row; a right-click on blank list opens none", async () => {
+    const { container, tree, menus } = await rowMenu({ left: 40, top: 96, bottom: 120 });
     expect(tree.attrs["aria-activedescendant"]).toBe("ex-row-0");
     await fire(container, "contextmenu", tree, { button: 2, clientX: 300, clientY: 400 });
     await settle();
     expect(menus().length, "a mouse right-click on blank list").toBe(0);
     // The engine raises contextmenu for Shift+F10 / the Menu key on the focused element, with button -1.
-    (doc as unknown as Record<string, unknown>).getElementById = (id: string) =>
-      id === "ex-row-0" ? { getBoundingClientRect: () => ({ left: 40, bottom: 120 }) } : null;
     await fire(container, "contextmenu", tree, { button: -1, clientX: 100, clientY: 30 });
     await until(() => menus().length === 1, "the row menu");
     expect(menus()[0].attrs["aria-label"]).toBe("Actions for src");
+    expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["56px", "120px"]);
+  });
+
+  it.each([
+    ["scrolled out of", { left: 40, top: 900, bottom: 924 }],
+    ["clipped at the bottom of", { left: 40, top: 590, bottom: 614 }],
+  ])("T-720: an active row %s the list puts the menu at the event's point, not outside the tree", async (_, row) => {
+    const { container, tree, menus } = await rowMenu(row);
+    await fire(container, "contextmenu", tree, { button: -1, clientX: 100, clientY: 30 });
+    await until(() => menus().length === 1, "the row menu");
+    expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["100px", "30px"]);
+  });
+
+  it("T-720: Escape closes the row menu and gives focus back to the list (under StrictMode too); the arrows move between its rows", async () => {
+    const keys: Array<(e: unknown) => void> = [];
+    Object.assign(globalThis.window, {
+      addEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.push(fn),
+      removeEventListener: (t: string, fn: (e: unknown) => void) => t === "keydown" && keys.includes(fn) && keys.splice(keys.indexOf(fn), 1),
+    });
+    const proto = FakeNode.prototype as unknown as Record<string, unknown>;
+    proto.focus = function (this: FakeNode) {
+      doc.activeElement = this;
+    };
+    const { container, tree, menus } = await rowMenu({ left: 40, top: 96, bottom: 120 }, true); // StrictMode: the dev double mount too
+    Object.assign(tree, { isConnected: true });
+    doc.activeElement = tree;
+    await fire(container, "contextmenu", tree, { button: -1, clientX: 100, clientY: 30 });
+    await until(() => menus().length === 1, "the row menu");
+    const rows = find(menus()[0], (n) => (n.attrs.role ?? "").startsWith("menuitem"));
+    expect(doc.activeElement, "focus on the first row").toBe(rows[0]);
+    const press = async (key: string) => {
+      const e = { key, shiftKey: false, stopped: false, preventDefault() {}, stopPropagation() { this.stopped = true; } };
+      for (const fn of [...keys]) if (!e.stopped) fn(e);
+      await settle();
+    };
+    await press("ArrowDown");
+    expect(doc.activeElement, "Down: the next row").toBe(rows[1]);
+    await press("Escape");
+    expect(menus().length, "Escape closes").toBe(0);
+    expect(doc.activeElement, "focus back on the list, not the page").toBe(tree);
+  });
+
+  it("T-720: WebKit's contextmenu for Shift+F10 (button 2, right after the key) opens the row menu too", async () => {
+    const { noteMenuKey } = await import("../terminal/PaneMenu");
+    const { container, tree, menus } = await rowMenu({ left: 40, top: 96, bottom: 120 });
+    noteMenuKey({ key: "F10", shiftKey: true, timeStamp: Date.now() });
+    await fire(container, "contextmenu", tree, { button: 2, clientX: 300, clientY: 400 });
+    await until(() => menus().length === 1, "the row menu");
     expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["56px", "120px"]);
   });
 });

@@ -177,18 +177,22 @@ test("a popup in a hidden pane leaves Tab, Escape and the arrows alone", () => {
   stopMenu();
 });
 
-test("a menu leaves the arrows alone once focus is outside it, and Tab closes it", () => {
+test("a menu leaves the arrows alone once focus is outside it, and Tab closes it with focus back on the opener (T-720)", () => {
+  const field = el("field");
+  active = field;
   const rows = [el("one"), el("two")];
   const onClose = vi.fn();
   const stop = trapMenu(box([], rows), onClose);
-  const field = el("field");
-  active = field;
-  expect(press("ArrowDown").defaultPrevented, "the arrows belong to the field").toBe(false);
-  expect(active).toBe(field);
+  const other = el("other");
+  active = other;
+  expect(press("ArrowDown").defaultPrevented, "the arrows belong to the control outside").toBe(false);
+  expect(active).toBe(other);
   active = rows[0];
-  press("Tab");
+  const tab = press("Tab");
   expect(onClose).toHaveBeenCalledTimes(1);
+  expect(tab.defaultPrevented, "the browser does not move focus on to the next control").toBe(true);
   stop();
+  expect(active, "focus is back on the field the menu opened from").toBe(field);
 });
 
 test("a menu's height cap: the room below its top, or above its bottom when it opens upward", () => {

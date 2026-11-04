@@ -4,7 +4,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
-import PaneMenu, { chooseItem, fitIn, menuKey, menuStep, OPEN_GUARD_MS, outsideDismisses, paneMenuItems, withChord, type MenuContext } from "./PaneMenu";
+import PaneMenu, { chooseItem, fitIn, fromKeys, menuKey, menuStep, noteMenuKey, OPEN_GUARD_MS, outsideDismisses, paneMenuItems, withChord, type MenuContext } from "./PaneMenu";
 import pane from "./TerminalPane.tsx?raw";
 
 const noop = () => {};
@@ -139,12 +139,32 @@ test("UX audit terminal F4: a header tooltip shows the chord the keymap has, and
   expect(withChord("Close pane", [])).toBe("Close pane");
 });
 
-test("T-710: Shift+F10 and the Menu key open the pane menu: the terminal leaves them to the engine, and its contextmenu (button -1) opens the menu", () => {
+test("T-710: Shift+F10 and the Menu key are the menu keys; with Ctrl, Alt or Meta they stay the program's (T-720)", () => {
   expect([menuKey({ key: "F10", shiftKey: true }), menuKey({ key: "ContextMenu", shiftKey: false })]).toEqual([true, true]);
   expect([menuKey({ key: "F10", shiftKey: false }), menuKey({ key: "F9", shiftKey: true })]).toEqual([false, false]);
-  // The link-menu guard lets a keyboard contextmenu through (a hovered link opened no menu for it).
-  expect(pane).toContain("if (e.button < 0 || !hot || !opensMenu(");
-  // The key handler hands them back before any encoding; the right-click handler opens the menu for a keyboard contextmenu.
+  expect([
+    menuKey({ key: "F10", shiftKey: true, ctrlKey: true }),
+    menuKey({ key: "F10", shiftKey: true, altKey: true }),
+    menuKey({ key: "ContextMenu", shiftKey: false, metaKey: true }),
+  ]).toEqual([false, false, false]);
+});
+
+test("T-720: a contextmenu is from the keyboard with button -1 (Chromium) or right after a menu key (WebKit's button 2)", () => {
+  expect(fromKeys({ button: -1, timeStamp: 10 }), "Chromium marks it").toBe(true);
+  expect(fromKeys({ button: 2, timeStamp: 10 }), "a right-click with no menu key before it").toBe(false);
+  noteMenuKey({ key: "F9", shiftKey: true, timeStamp: 1000 });
+  expect(fromKeys({ button: 2, timeStamp: 1010 }), "another key is not a menu key").toBe(false);
+  noteMenuKey({ key: "F10", shiftKey: true, timeStamp: 2000 });
+  expect(fromKeys({ button: 2, timeStamp: 2005 }), "WebKit: button 2 right after Shift+F10").toBe(true);
+  expect(fromKeys({ button: 2, timeStamp: 2600 }), "a later right-click is the mouse again").toBe(false);
+  noteMenuKey({ key: "ContextMenu", shiftKey: false, ctrlKey: true, timeStamp: 3000 });
+  expect(fromKeys({ button: 2, timeStamp: 3005 }), "Ctrl+Menu is not a menu key").toBe(false);
+});
+
+test("T-710: the terminal hands the menu keys to the engine and opens the pane menu for a keyboard contextmenu", () => {
+  // ponytail: wiring only (mounting TerminalPane needs xterm and the backend); the decisions are tested above.
   expect(pane).toMatch(/attachCustomKeyEventHandler\(\(e\) => \{\s*if \(menuKey\(e\)\) return false;/);
-  expect(pane).toMatch(/e\.preventDefault\(\);\s*\/\/ T-710[^\n]*\s*if \(e\.button < 0\) return menuRef\.current\(e\.clientX, e\.clientY\);/);
+  expect(pane).toContain("if (fromKeys(e) || !hot || !opensMenu(");
+  expect(pane).toContain("if (fromKeys(e)) return menuRef.current(e.clientX, e.clientY);");
+  expect(pane).not.toContain("button < 0");
 });
