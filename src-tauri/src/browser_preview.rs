@@ -191,6 +191,15 @@ pub fn grant(url: &str, open: &dyn Fn(&Path) -> bool) -> Result<(), String> {
     Ok(())
 }
 
+/// T-733 (DT-C169): the user takes back the folder allowed for the preview a tab shows (`url`): it
+/// reads only the documents opened again, until the folder is allowed once more.
+pub fn revoke(url: &str) -> Result<(), String> {
+    let (token, _) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;
+    let mut previews = PREVIEWS.lock().map_err(|e| e.to_string())?;
+    previews.iter_mut().find(|p| p.token == token).ok_or("no such preview")?.granted = false;
+    Ok(())
+}
+
 /// APP-015: allowances last until the main page is rebuilt (a reload); a folder allowed before it asks again.
 pub fn clear_grants() {
     if let Ok(mut p) = PREVIEWS.lock() {
@@ -360,6 +369,12 @@ pub fn browser_preview_of(url: String) -> Option<Value> {
 #[tauri::command]
 pub async fn browser_preview_grant(app: tauri::AppHandle, url: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || grant(&url, &opened(&app))).await.map_err(|e| e.to_string())?
+}
+
+/// T-733 (DT-C169): the chip's Stop allowing button; the pane reloads the page afterwards.
+#[tauri::command]
+pub fn browser_preview_revoke(url: String) -> Result<(), String> {
+    revoke(&url)
 }
 
 // ---- The tab that shows a preview (T-159, BROW-040) ----
@@ -742,6 +757,23 @@ mod tests {
         };
         assert!(ask(format!("rebound.example:{port}")).starts_with("HTTP/1.1 403"), "a rebound name gets 403");
         assert!(ask(format!("127.0.0.1:{port}")).starts_with("HTTP/1.1 200"), "the loopback address gets the document");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t733_an_allowed_folder_can_be_taken_back_and_allowed_again() {
+        let dir = site("stop");
+        let doc = dir.join("index.html").to_string_lossy().to_string();
+        let parent = dir.parent().unwrap().to_string_lossy().to_string();
+        let url = add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["url"].as_str().unwrap().to_string();
+        grant(&url, &within(std::slice::from_ref(&parent))).unwrap();
+        assert_eq!(of(&url).unwrap()["granted"], true);
+        revoke(&url).unwrap();
+        assert_eq!(of(&url).unwrap()["granted"], false, "taken back");
+        assert_eq!(add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["granted"], false, "opening the document again does not allow it");
+        grant(&url, &within(&[parent])).unwrap();
+        assert_eq!(of(&url).unwrap()["granted"], true, "and it can be allowed again");
+        assert!(revoke("http://example.com/x").is_err(), "a tab not on a preview is refused");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

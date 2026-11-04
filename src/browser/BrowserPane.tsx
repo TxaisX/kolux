@@ -954,24 +954,23 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
               <button type="button" className="ib preview-copy" title="Open the file in the system's default app" aria-label="Open with the system app" onClick={() => sayIf(openWithSystemApp(preview.path, invoke))}>
                 open
               </button>
-              {!preview.granted && (
-                // T-159 (BROW-040): until allowed, the preview reads only its own document.
-                <button
-                  type="button"
-                  className="ib preview-copy"
-                  title={`Let this preview read the other files in ${preview.folder} (styles, scripts, images); it reads only its own document until then`}
-                  onClick={() => {
-                    invoke("browser_preview_grant", { url: at.current })
-                      .then(() => {
-                        setPreview((p) => (p ? { ...p, granted: true } : p));
-                        return invoke("browser_go", { id, what: "reload" });
-                      })
-                      .catch((err) => setNote(String(err)));
-                  }}
-                >
-                  Allow folder
-                </button>
-              )}
+              {/* T-159 (BROW-040): until allowed, the preview reads only its own document. T-733: and it can be taken back. */}
+              <button
+                type="button"
+                className="ib preview-copy"
+                title={preview.granted ? `Read only the opened document again, not the other files in ${preview.folder}` : `Let this preview read the other files in ${preview.folder} (styles, scripts, images); it reads only its own document until then`}
+                onClick={() => {
+                  const on = !preview.granted;
+                  invoke(on ? "browser_preview_grant" : "browser_preview_revoke", { url: at.current })
+                    .then(() => {
+                      setPreview((p) => (p ? { ...p, granted: on } : p));
+                      return invoke("browser_go", { id, what: "reload" });
+                    })
+                    .catch((err) => setNote(String(err)));
+                }}
+              >
+                {preview.granted ? "Stop allowing" : "Allow folder"}
+              </button>
             </span>
           ) : null}
           <input
