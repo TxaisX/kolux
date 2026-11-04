@@ -50,3 +50,15 @@ AFTER-LIST
 - The command palette (projects/WorktreePalette.tsx) says "worktree" where the sidebar says "workspace" (its
   aria-label "Switch worktree", the placeholder, "Open a worktree first"). The label is also used by the top bar,
   shortcuts, styles.css and live proofs in other lanes, so the noun change is its own row.
+
+REVIEW (Opus, read-only): B+. One must-fix, the first load.
+- ProjectsPanel.tsx sits in the first load, and its new wording was 3 bytes longer. The ok message after removing a
+  project now says "Its folder stays on disk" (as the other two do), which takes the 3 bytes back. The CI first-load
+  line is recorded in the PR's ready note.
+- docs/guide/settings.md: the Appearance GPU row is gone; GPU drawing (Automatic, On, Off) is listed under Terminal
+  text and cursor, and "Name the branch after the work" is listed under Git & worktrees.
+- The refusal shown in the Remove question said "forgetting is for ones that are gone"; it now says "removing".
+- The switch's note now says a pushed branch and one with a pull request keep their names, as the backend does.
+- Search words: a missing space between "graphics" and "middle".
+- Left as is (NITs): no click test that the switch writes namingPatch (the page is tested by server render), and
+  DT-C26 is not marked superseded in its own row (DT-C161 says SET-022 replaced it).

@@ -745,7 +745,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       onRemoved(gone.path);
       setDropProject(null);
       setSettingsFor(null);
-      say("ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder is still on disk`);
+      say("ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk`);
       await reload();
     } catch (err) {
       fail(err);

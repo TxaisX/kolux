@@ -90,7 +90,7 @@ test("answering Keep (or never answering) invokes nothing", async () => {
   expect(forgets()).toEqual([]);
 });
 
-const REASON = "This workspace's folder is still there. Delete the workspace instead; forgetting is for ones that are gone";
+const REASON = "This workspace's folder is still there. Delete the workspace instead; removing is for ones that are gone";
 const buttons = (c: FakeNode) => find(c, (n) => n.localName === "button").map((b) => b.textContent.trim());
 
 test("a forget the backend would refuse says why straight away, with no Remove, and never calls workspace_forget", async () => {

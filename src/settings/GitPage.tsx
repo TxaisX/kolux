@@ -94,7 +94,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         </label>
         <p className="conn-detail" data-rename-note>
           {renamesBranches(settings)
-            ? "When an agent is given its first task in a workspace that still has the name Kolux suggested, its branch (and the name shown for it) is renamed to a short description of that work, with your prefix. A name you typed or edited, or a branch that already tracks a remote branch, is never replaced."
+            ? "When an agent is given its first task in a workspace that still has the name Kolux suggested, its branch (and the name shown for it) is renamed to a short description of that work, with your prefix. A name you typed or edited, a branch that was pushed, and one with a pull request are never replaced."
             : "Off: a workspace keeps the branch name Kolux suggested, whatever work is done in it."}
         </p>
         {renamesBranches(settings) && (
