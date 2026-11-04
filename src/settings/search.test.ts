@@ -16,7 +16,7 @@ const SOURCES: Record<string, string[]> = {
   usage: ["SettingsPage.tsx"],
   claude: ["ClaudeSetupPage.tsx"],
 };
-const FILES = import.meta.glob(["./*Page.tsx", "./AiRecipesSection.tsx", "./InputCards.tsx", "./ConnectGrid.tsx", "./AgentCredentials.tsx", "./CliCard.tsx", "./CustomThemeEditor.tsx", "./TerminalImport.tsx", "./SafetyRules.tsx", "./SetupPolicyRow.tsx", "./autoPr.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const FILES = import.meta.glob("./*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 const read = (f: string) => FILES[`./${f}`] ?? "";
 
 describe("search all settings (SET-007)", () => {
@@ -116,7 +116,11 @@ describe("search all settings (SET-007)", () => {
       shortcuts: ["ShortcutsPage.tsx"],
       claude: ["ClaudeSetupPage.tsx"],
     };
-    // T-755: a page left out of this list fails (Usage is drawn by SettingsPage, checked below).
+    // T-755: a page left out of this list fails (Usage is drawn by SettingsPage, checked below), and so does a
+    // settings file that draws a section no list here reads (RepoPage and RepoSetup draw the repo pages, which are not searched).
+    const read = new Set(Object.values(drawn).flat());
+    const unread = Object.keys(FILES).map((f) => f.slice(2)).filter((f) => !f.startsWith("Repo") && !read.has(f) && /data-section="/.test(FILES[`./${f}`]));
+    expect(unread, "these draw sections no page list reads").toEqual([]);
     expect(Object.keys(PAGES).filter((p) => p !== "usage" && !(p in drawn))).toEqual([]);
     const src = (f: string) => FILES[`./${f}`] ?? "";
     for (const [page, files] of Object.entries(drawn)) {

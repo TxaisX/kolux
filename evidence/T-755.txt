@@ -16,8 +16,8 @@ AFTER
 - Shortcuts: "Add a shortcut for <command>", "Disable <command>", "Reset <command>"; the recording hint is an
   alert, read as it appears.
 - Tab search: field named "Search open tabs"; aria-activedescendant names the highlighted option (ids ts-<n>).
-- Zoom menu: Escape, a click outside and a pick each give focus back to the zoom button (a pick then zooms, so
-  the zoom may move focus on).
+- Zoom menu: Escape, a click outside and a pick each give focus back to the zoom button; after a pick the zoom
+  acts on the focused pane by its key and focus stays on the zoom button.
 - Needs strip: role="group" named "Sessions that need you"; the chips are plain buttons.
 
 FIRST LOAD
@@ -27,11 +27,15 @@ FIRST LOAD
 
 TESTS
 - src/settings/search.test.ts: SOURCES and the drawn list read SetupPolicyRow.tsx, autoPr.tsx and
-  ClaudeSetupPage.tsx; a Settings page missing from the list fails. Trap: auto-pr entry removed -> FAIL
+  ClaudeSetupPage.tsx; a Settings page missing from the list fails, and so does any settings .tsx that draws a
+  data-section="..." no list reads (review nit; RepoPage.tsx and RepoSetup.tsx are exempt, they draw the repo pages). Trap: auto-pr entry removed -> FAIL
   ("git/auto-pr is drawn but not in the search index"); restored -> pass.
 - src/chrome/topBarDrag.test.ts, "closing the Terminal zoom menu gives focus back to its button": Escape, the
   backdrop and a pick. Trap: TopBar.tsx put back to main -> FAIL ("Escape: focus is back on the button").
 - src/shell/screenReaderNames.test.ts (source checks): Shortcuts names and alert, tab search label and
   active descendant, needs-strip group. Trap: each of the three files put back to main -> 1 failed each.
 - pnpm vitest run src/settings src/shell src/chrome: 157 files, 815/815. pnpm tsc --noEmit -p .: clean.
+- Review (opus, read-only): A-, no must-fix; PLAN wording and the zoom line above fixed, the unread-file guard
+  added. Left: tab search could use role="combobox" + aria-controls for the strict ARIA form (about +60 B first
+  load, over the cap); Chromium/WebView2 resolves aria-activedescendant anywhere in the document today.
 - Not run: a live screen reader. The announcements follow from the roles and names above.
