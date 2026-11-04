@@ -2,6 +2,8 @@
 // setup and teardown commands, copied into kolux.yaml; a file too large or malformed is named and
 // offers nothing.
 
+import { trapTab } from "../chrome/dialogFocus";
+
 export type SetupImport = { file: string; setup: string | null; teardown: string | null; refused: string | null };
 
 /** The files that were refused, with why, or null when none was. */
@@ -19,10 +21,12 @@ export default function ImportSetup({ project, path, list, busy, onImport, onClo
         className="ask start-git"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
         aria-label="Import setup commands"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
+          trapTab(e);
           if (e.key === "Escape") onClose();
         }}
       >

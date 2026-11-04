@@ -23,68 +23,60 @@ export function AccountRow({ title, detail, active, busy, onPick, trouble, manag
   const pick = () => {
     if (!active && !busy) onPick();
   };
-  const stop = (f: () => void) => (e: { stopPropagation: () => void }) => {
-    e.stopPropagation();
-    f();
-  };
   return (
     <div className="acct-entry">
-      <div
-        className="acct-row"
-        data-active={active}
-        role="button"
-        tabIndex={0}
-        aria-pressed={active}
-        title={active ? "New panes use this account" : "Use this account for new panes"}
-        onClick={pick}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            pick();
-          }
-        }}
-      >
-        <div className="acct-who">
-          <span className="acct-email">{title}</span>
-          <span className="acct-org">{detail}</span>
-        </div>
-        {trouble && <span className="conn-chip attention">{trouble}</span>}
-        {active && <span className="conn-chip connected">Active</span>}
+      {/* T-712: the pick control and the row's own buttons sit side by side; none is nested in another. */}
+      <div className="acct-row" data-active={active}>
+        <button
+          type="button"
+          className="acct-pick"
+          aria-pressed={active}
+          title={active ? "New panes use this account" : "Use this account for new panes"}
+          onClick={pick}
+        >
+          <span className="acct-who">
+            <span className="acct-email">{title}</span>
+            <span className="acct-org">{detail}</span>
+          </span>
+          {trouble && <span className="conn-chip attention">{trouble}</span>}
+          {active && <span className="conn-chip connected">Active</span>}
+        </button>
         {manage && (
           <div className="btn-row">
             {manage.againLabel && (
-              <button className="btn" disabled={busy} onClick={stop(manage.onAgain)}>
+              <button className="btn" disabled={busy} onClick={manage.onAgain}>
                 {manage.againLabel}
               </button>
             )}
             {manage.onName && (
-              <button className="btn" disabled={busy} onClick={stop(manage.onName)}>
+              <button className="btn" disabled={busy} onClick={manage.onName}>
                 {manage.nameLabel}
               </button>
             )}
-            <button className="btn" disabled={busy} onClick={stop(manage.onAsk)}>
+            <button className="btn" disabled={busy} onClick={manage.onAsk}>
               Remove
             </button>
           </div>
         )}
       </div>
       {manage?.confirming && (
+        // T-712 (DT-C148): focus opens on Keep, and Escape inside the confirm means Keep (not closing Settings).
         <div
           className="acct-confirm"
           role="alertdialog"
           aria-label={`Remove ${title}?`}
           onKeyDown={(e) => {
-            if (e.key !== "Escape") return;
+            if (e.key !== "Escape" || busy) return;
             e.stopPropagation();
             manage.onKeep();
           }}
         >
           <span>{`Remove ${title}? Its sign-in is deleted from Kolux${manage.activeGoes ? "; the System default takes over for new panes" : ""}. Panes already running keep going.`}</span>
           <div className="btn-row">
-            <button className="btn danger" onClick={manage.onRemove}>
+            <button className="btn danger" disabled={busy} onClick={manage.onRemove}>
               Remove
             </button>
-            <button className="btn" autoFocus onClick={manage.onKeep}>
+            <button className="btn" disabled={busy} autoFocus onClick={manage.onKeep}>
               Keep
             </button>
           </div>

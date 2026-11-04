@@ -3,6 +3,7 @@
 // with only the keys that may go. Save writes each unsaved file (an untitled note asks for its name first);
 // a file that does not save stays open with its text. Don't save drops the edits on purpose; Cancel closes nothing.
 import { useEffect, useRef, useState } from "react";
+import { trapTab } from "../chrome/dialogFocus";
 import { baseName, diskOf, isDirty, textOf } from "./buffers";
 import { askText, closable, saveAll, unsavedTabs, type GuardPane, type Unsaved } from "./closeGuard";
 import NamePrompt from "./NamePrompt";
@@ -11,13 +12,6 @@ import { needsName } from "./untitled";
 /** EDIT-031: the editor's own save, loaded the first time the user picks Save. The prompt itself is
  *  drawn for any tab, so the window does not carry CodeMirror before a file is opened (cycle 3, first load). */
 const saveQuiet = async (path: string, onToast?: (text: string) => void) => (await import("./EditorPane")).saveQuiet(path, onToast);
-
-/** The stop Tab (or Shift+Tab) moves to among `count` enabled controls when `at` has focus (-1: none), wrapping at the ends. */
-export function tabStop(count: number, at: number, back: boolean): number {
-  if (count <= 0) return -1;
-  if (back) return at <= 0 ? count - 1 : at - 1;
-  return at < 0 || at >= count - 1 ? 0 : at + 1;
-}
 
 type Options = {
   panes: GuardPane[];
@@ -89,14 +83,8 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
             onMouseDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               e.stopPropagation();
+              trapTab(e); // aria-modal: Tab stays inside (no stop while a save runs: every button is off)
               if (e.key === "Escape") (e.preventDefault(), void choose("cancel")); // choose() ignores it while a save runs
-              else if (e.key === "Tab") {
-                // aria-modal: Tab stays among the dialog's own buttons.
-                e.preventDefault();
-                const stops = [...e.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)")];
-                const to = tabStop(stops.length, stops.indexOf(document.activeElement as HTMLElement), e.shiftKey);
-                (stops[to] ?? e.currentTarget).focus();
-              }
             }}
           >
             <h2 className="ask-title">Save changes before closing?</h2>

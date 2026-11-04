@@ -6,6 +6,7 @@
 // GIT-047 (T-231-c): an issue can be closed (completed, not planned, duplicate), reopened and commented on.
 // T-232-c: the description is drawn as markdown (MarkdownView.tsx, never HTML), assignees can be added and
 // removed, a workspace can be started or resumed from here, and a pull request opens its full page.
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Close } from "../chrome/icons";
@@ -139,7 +140,7 @@ export default function TaskDialog({ task, host, onClose, onLabels, onState, onA
   const assignees = withAssignees(detail?.assignees ?? task.assignees, edit);
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={box} tabIndex={-1} className="auto-dialog task-dialog" role="dialog" aria-modal="true" aria-label={`${taskKind(task)} ${task.title}`} onKeyDown={(e) => e.key === "Escape" && draft === null && onClose()}>
+      <div ref={box} tabIndex={-1} className="auto-dialog task-dialog" role="dialog" aria-modal="true" aria-label={`${taskKind(task)} ${task.title}`} onKeyDown={(e) => (trapTab(e), e.key === "Escape" && draft === null && onClose())}>
         <div className="auto-dialog-head">
           <h2>
             <span className={`task-state ${task.kind} ${state}`}>{task.draft ? "draft" : state}</span> {detail?.title || task.title}

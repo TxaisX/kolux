@@ -2,6 +2,7 @@
 // and add them as one group or as separate projects. With nothing ticked the folder itself can be
 // opened as a folder project. The scan and the import run in Rust (repo_scan.rs); the shape of
 // the list lives in scanView.ts.
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -97,7 +98,7 @@ export default function ScanRepos({ root: first, onClose, onDone, onProblem }: P
   const nothing = scan !== null && scan.ticked.length === 0;
   return (
     <div className="ask-backdrop" onMouseDown={onClose}>
-      <div className="ask scan-repos" role="dialog" aria-modal="true" aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => (e.stopPropagation(), e.key === "Escape" && onClose())}>
+      <div className="ask scan-repos" role="dialog" aria-modal="true" tabIndex={-1} aria-label="Scan a folder for repositories" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => (e.stopPropagation(), trapTab(e), e.key === "Escape" && onClose())}>
         <h2 className="ask-title">Look for repositories</h2>
         <div className="btn-row">
           <input className="field" aria-label="folder to scan" autoFocus value={root} onChange={(e) => setRoot(e.target.value)} disabled={scan?.running} />

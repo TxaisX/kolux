@@ -4,6 +4,7 @@
 // PROJ-003: the clone step fills in the target folder from the address, shows Git's progress,
 // can be cancelled, and shows Git's own words when it fails. PROJ-004: the new-project step
 // takes a name and a parent folder (the home folder to start with).
+import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -122,6 +123,7 @@ export function AddProjectView({ step, onStep, onBrowse, onByPath, onClose, api,
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
+          trapTab(e);
           if (e.key === "Escape") {
             e.preventDefault();
             close();
