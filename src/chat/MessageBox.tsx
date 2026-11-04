@@ -11,7 +11,7 @@ import { decide } from "../terminal/screenshotPaste";
 import { addHistory, draftOf, historyOf, keepDraft, keyAction, linesFor, stepHistory } from "./composer";
 import { applyPick, isDismissed, menuFor, needs, pathsOf, runsOnEnter, stepIndex, triggerAt, wordOf, type Dismissed, type Entry, type Load } from "./complete";
 import { MAX_ATTACHMENTS, dropHere, isImageName, nameOf, pastedName, refusal, sendable, update, withPaths, without, type Attachment } from "./attach";
-import { TERMINAL_NOTE, confirmModel, controlsOff, hasControls, loadSaved, modelCommand, opensPicker, routeOf, saveChoice, sentChange, type Change, type Choice } from "./controls";
+import { MODEL_NOT_SENT, TERMINAL_NOTE, confirmModel, controlsOff, failedChange, hasControls, loadSaved, modelCommand, opensPicker, routeOf, saveChoice, sentChange, type Change, type Choice } from "./controls";
 import { ModelControls } from "./ModelControls";
 import { buttonMode, stopArmed } from "./stop";
 import { useDismiss } from "./ux";
@@ -222,11 +222,10 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer({ pa
       onTerminal?.();
       return;
     }
-    if (id === "default") return setChanges((c) => c.filter((x) => x.what !== "model"));
     if (onSend(modelCommand(id))) {
       setLocal(null);
       setChanges((c) => sentChange(c, "model", id));
-    } else setLocal("The model change was not sent.");
+    } else setChanges((c) => failedChange(c, "model", id, MODEL_NOT_SENT));
   };
   const pickEffort = (level: string) => {
     if (!controls) return;
