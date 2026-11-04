@@ -217,7 +217,7 @@ The first table covers panes and closing. The cards after it cover the terminal'
 | Setting | Choices | Saved as |
 |---|---|---|
 | New workspaces start with | 1, 2, 4, 6, 9 or 12 panes. Default 1. Classic always uses 1 | `defaultPaneCount` |
-| Ask Before Closing Running Terminals | On. A tab with only an idle shell always closes at once | `confirmCloseRunning` |
+| Ask before closing running terminals | On. A tab with only an idle shell always closes at once | `confirmCloseRunning` |
 | Ask before closing a pinned tab | On. Pinned tabs sit first in the strip and stay out of Close others, Close all and middle-click | `pinnedTabsAsk` |
 | Removing a started session | "Ask first" (default) or "Stop without asking". Applies to Remove session on a running agent or a busy shell. A pane that has not started, or an idle shell, is removed straight away | `removeStartedSession` |
 
@@ -299,7 +299,7 @@ Every command in Kolux has a row here. Your changes are kept in `keybindings.jso
 |---|---|
 | Open file | Opens the file in the program Windows uses for it. A missing file is written first, with its starting contents |
 | Show in folder | Opens the folder with the file selected |
-| Reload from Disk | Reads the file again after you edit it by hand |
+| Reload from disk | Reads the file again after you edit it by hand |
 
 The "Shortcuts in terminals" card decides who gets a key while you type in a terminal. Pick "Kolux first" or "Terminal first". It is saved as `terminalShortcuts`. See [Terminals](terminals.md) for what each does. With "Terminal first", a row for a command that is held back shows a "Goes to the terminal" badge.
 

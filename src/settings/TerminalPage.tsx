@@ -221,7 +221,7 @@ export default function TerminalPage() {
       {settings && (
         <section className="conn-card" data-section="closing">
           <h2 className="conn-name">Closing terminals</h2>
-          <Switch label="Ask Before Closing Running Terminals" checked={asksBeforeClose(settings)} onChange={(on) => save({ [CONFIRM_CLOSE_FIELD]: on })} />
+          <Switch label="Ask before closing running terminals" checked={asksBeforeClose(settings)} onChange={(on) => save({ [CONFIRM_CLOSE_FIELD]: on })} />
           <p className="conn-detail">An idle shell always closes straight away.</p>
           <label className="conn-switch">
             <input type="checkbox" role="switch" checked={pinAsks(settings)} onChange={(e) => save({ [PIN_ASK_FIELD]: e.target.checked })} />
