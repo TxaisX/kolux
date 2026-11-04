@@ -29,3 +29,4 @@ REVIEW: sonnet-medium-review, A-, no must-fix or should-fix; the bundle wording 
 MERGE main 99b4a9d2 (train 18): commands.test.ts conflicted with T-727 (its Model Routing palette test); kept both tests and both import sets. Full vitest: 6015 tests passed; tsc 0; firewall 0 new; plan-check OK. Re-measured: 1,489,685 B vs main 99b4a9d2 1,489,600 B, still +85 B.
 
 PENDING: unit-proven; not checked live in the app.
+MERGE b2b6cd7f (train 20): PLAN.md and DECISIONS.md rows kept from both sides; first load 1,488,908 B vs main b2b6cd7f 1,488,823 B (+85). tsc 0, plan-check OK.

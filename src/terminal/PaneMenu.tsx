@@ -2,7 +2,8 @@
 // inside the pane open it. paneMenuItems() decides which items apply and in what order (tested in
 // PaneMenu.test.ts); the component only draws them, keeps them on screen and dismisses on Escape or
 // an outside click, never on the click that opened it.
-import { Fragment, useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { Fragment, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { menuRoom, useMenuFocus } from "../chrome/dialogFocus";
 import { useLabel } from "../keys/KeymapContext";
 
 export type MenuItem = {
@@ -90,9 +91,21 @@ export const outsideDismisses = (openedAt: number, now: number): boolean => now 
 /** Where a menu of `size` px starting at `at` sits so it stays inside a window of `limit` px. */
 export const fitIn = (at: number, size: number, limit: number, margin = 8): number => Math.max(margin, Math.min(at, limit - size - margin));
 
-/** T-710: the keys that open a context menu (Shift+F10 and the Menu key). The terminal leaves them to the engine,
- *  which raises contextmenu on the focused element with button -1; the program in the pane never sees them. */
-export const menuKey = (e: { key: string; shiftKey: boolean }): boolean => e.key === "ContextMenu" || (e.shiftKey && e.key === "F10");
+/** T-710: the keys that open a context menu (Shift+F10 and the Menu key, with no Ctrl, Alt or Meta: those chords stay
+ *  the program's). The terminal leaves them to the engine, which raises contextmenu on the focused element; the
+ *  program in the pane never sees them. */
+export const menuKey = (e: { key: string; shiftKey: boolean; ctrlKey?: boolean; altKey?: boolean; metaKey?: boolean }): boolean =>
+  !e.ctrlKey && !e.altKey && !e.metaKey && (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"));
+
+/** T-720: when a menu key last went down. Chromium marks the contextmenu a menu key raises with button -1; WebKit may
+ *  give it button 2 like a mouse right-click, so a contextmenu right after a menu key counts as keyboard too. */
+let menuKeyAt = -Infinity;
+export const noteMenuKey = (e: Parameters<typeof menuKey>[0] & { timeStamp: number }): void => {
+  if (menuKey(e)) menuKeyAt = e.timeStamp;
+};
+if (typeof window !== "undefined") window.addEventListener("keydown", noteMenuKey, true);
+/** A contextmenu from the keyboard (opened at the focused item), not from the mouse (opened at the pointer). */
+export const fromKeys = (e: { button: number; timeStamp: number }): boolean => e.button < 0 || e.timeStamp - menuKeyAt < 500;
 
 /** The row to focus after `key` when `at` of `count` rows has focus (-1: none), or null when the key is not a menu key. */
 export function menuStep(count: number, at: number, key: string): number | null {
@@ -126,51 +139,22 @@ type Props = {
 export default function PaneMenu({ style, items, onDismiss, label = "Pane menu", layer }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const openedAt = useRef(typeof performance === "undefined" ? 0 : performance.now());
-  // Escape closes the menu wherever the focus is (the terminal holds it after a right-click in the pane).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") {
-        // Tab leaves the menu: it closes and focus goes back to where it was. Other chords and Shift+arrow are not menu keys.
-        if (e.key === "Tab") {
-          e.preventDefault();
-          e.stopPropagation();
-          onDismiss();
-          return;
-        }
-        if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-        // UX audit terminal F1/F6: arrows move between the rows (wrapping), Home and End jump to the ends.
-        const rows = Array.from(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-        const to = menuStep(rows.length, rows.indexOf(document.activeElement as HTMLElement), e.key);
-        if (to === null) return;
-        e.preventDefault();
-        e.stopPropagation();
-        rows[to].focus();
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      onDismiss();
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [onDismiss]);
+  // T-720: the shared menu keyboard (chrome/dialogFocus): focus on the first row; the arrows, Home and End move
+  // (UX audit terminal F1/F6); Escape, wherever focus is, and Tab close it; focus goes back to where it was unless an
+  // item moved it. It holds the menu element itself, so StrictMode's dev double mount hands focus back too.
+  useMenuFocus(box, true, onDismiss);
   // The menu is taller than a small window; keep all of it on screen.
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
+    // The cap trapMenu set at open would hide rows added since; measure the whole menu, then cap it again.
+    el.style.maxHeight = "";
     const r = el.getBoundingClientRect();
-    el.style.top = `${fitIn(r.top, r.height, window.innerHeight)}px`;
+    const top = fitIn(r.top, r.height, window.innerHeight);
+    el.style.top = `${top}px`;
     el.style.left = `${fitIn(r.left, r.width, window.innerWidth)}px`;
+    el.style.maxHeight = `${menuRoom({ top, bottom: 0 }, window.innerHeight, false)}px`;
   }, [items.length]);
-  // The first row takes focus so the menu is reachable from the keyboard; focus goes back to where it was unless an item moved it.
-  useEffect(() => {
-    const from = document.activeElement as HTMLElement | null;
-    box.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-    return () => {
-      const now = document.activeElement;
-      if (from && from.isConnected && (!now || now === document.body || box.current?.contains(now))) from.focus();
-    };
-  }, []);
   const outside = (e: { preventDefault: () => void }) => {
     e.preventDefault();
     if (outsideDismisses(openedAt.current, performance.now())) onDismiss();
@@ -178,7 +162,7 @@ export default function PaneMenu({ style, items, onDismiss, label = "Pane menu",
   return (
     <>
       <div className="menu-backdrop" style={layer ? { zIndex: layer } : undefined} onClick={outside} onContextMenu={outside} aria-hidden="true" />
-      <div ref={box} className="menu pane-menu" role="menu" aria-label={label} style={{ ...style, ...(layer ? { zIndex: layer + 1 } : null), maxHeight: "calc(100vh - 16px)", overflowY: "auto" }}>
+      <div ref={box} className="menu pane-menu" role="menu" aria-label={label} style={{ ...style, ...(layer ? { zIndex: layer + 1 } : null), overflowY: "auto" }}>
         {items.map((it, i) => (
           <Fragment key={it.id}>
             {i > 0 && items[i - 1].group !== it.group && <div role="separator" style={{ height: 1, margin: "4px 6px", background: "var(--line-strong)" }} />}
