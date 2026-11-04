@@ -229,7 +229,7 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     // Row 932: `existing` at an id that is not listed (a stale screen) is a new account too, so it claims a free id; an unreadable list fails here, before the login.
     let (listed_ids, existing) = if existing {
         let ids: Vec<String> = crate::orchestration::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
-        // Row 940: an unlisted id whose account folder is there (a list set aside as corrupt leaves the folders) is still that sign-in; a removed account's folder is gone, so a stale screen claims a new id.
+        // Row 940: an unlisted id whose account folder is there (a list set aside as corrupt leaves the folders) is still that sign-in; a removed account keeps its folder too (only its sign-in goes), so a stale screen lands in that folder again.
         let listed = ids.iter().any(|l| l == id) || profile.join(FOLDER).join(id).is_dir();
         (ids, listed)
     } else {
@@ -594,15 +594,46 @@ pub fn claude_account_activate(app: AppHandle, store: tauri::State<'_, Mutex<Sto
     Ok(())
 }
 
-/// ACCT-016: takes the account off the list, deletes its private folder and sealed copy, and
-/// hands new panes back to the system default when it was the active one. Only a folder inside
-/// Kolux's own accounts folder is ever deleted.
+/// ACCT-016: takes the account off the list and deletes its sign-in: the live `.credentials.json`
+/// in its private folder and the sealed copy in the vault. The folder itself stays, so the
+/// settings, project trust, hooks state and transcripts the account had are kept, and a pane still
+/// running on the account keeps writing into a folder that is still there. New panes go back to
+/// the system default when it was the active one. Only a credentials file directly inside Kolux's
+/// own accounts folder is ever deleted.
 pub fn remove(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
-    remove_in(store, profile, id, &crate::hooks::agent_hooks::user_home())
+    remove_in(store, profile, id)
 }
 
-/// `remove` with the home folder whose hooks install lock it takes named, so a test never touches the real one.
-pub(crate) fn remove_in(store: &Store, profile: &Path, id: &str, home: &Path) -> Result<(), String> {
+/// `remove` (a test calls this directly).
+pub(crate) fn remove_in(store: &Store, profile: &Path, id: &str) -> Result<(), String> {
+    let (gone, cleared) = unlist(store, id)?;
+    // Row 944: the sealed copy goes first, so a sign-in file that will not delete never leaves a copy a stale sign-in could unseal.
+    remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("claude-{id}.json")));
+    let dir = PathBuf::from(&gone.config_dir);
+    // Row 944: only the sign-in file of the account's own folder directly under the accounts folder is deleted (a ".." or a nested path is not).
+    if dir.parent() == Some(profile.join(FOLDER).as_path()) && dir.file_name().is_some_and(|n| n == id) {
+        crate::codex_accounts::remove_file_patiently(&dir.join(CREDENTIALS)).map_err(|e| format!("The account was removed from Kolux, but its sign-in file could not be deleted: {e}"))?;
+    }
+    cleared
+}
+
+/// The command line's rollback (row 921): a sign-in whose temporary copy could not be deleted was
+/// not kept as an account, so its whole folder goes; nothing runs on it yet. `home` names the home
+/// folder whose hooks install lock it takes, so a test never touches the real one.
+pub(crate) fn discard(store: &Store, profile: &Path, id: &str, home: &Path) -> Result<(), String> {
+    let (gone, cleared) = unlist(store, id)?;
+    remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("claude-{id}.json")));
+    let dir = PathBuf::from(&gone.config_dir);
+    if dir.parent() == Some(profile.join(FOLDER).as_path()) && dir.file_name().is_some_and(|n| n == id) {
+        // Row 989: under the hooks install lock, so a sign-in's hook install cannot recreate the folder as it goes.
+        crate::hooks::agent_hooks::with_install_lock(home, || crate::codex_accounts::remove_dir_patiently(&dir)).map_err(|e| format!("The account was not kept, but its folder could not be deleted: {e}"))?;
+    }
+    cleared
+}
+
+/// Takes the account off the saved list, and clears the active marker when it named this account.
+/// The list is saved first, so a sign-in file that will not delete is reported after the account is gone.
+fn unlist(store: &Store, id: &str) -> Result<(Account, Result<(), String>), String> {
     if !crate::cli_accounts::safe_id(id) {
         return Err("That Claude account id is not valid.".into());
     }
@@ -612,23 +643,15 @@ pub(crate) fn remove_in(store: &Store, profile: &Path, id: &str, home: &Path) ->
     };
     let gone = list.remove(at);
     save(store, &list)?;
-    // Row 947: the list is already saved, so a marker that will not clear is logged and reported at the end, after the sealed copy and folder are gone.
+    // Row 947: the list is already saved, so a marker that will not clear is logged and reported at the end, after the sign-in files are gone.
     let cleared = if store.get(ACTIVE_KEY).ok().flatten().as_deref() == Some(id) { store.set(ACTIVE_KEY, "").map_err(|e| e.to_string()) } else { Ok(()) };
     if let Err(e) = &cleared {
         eprintln!("kolux-rs: could not clear the active Claude account ({e})");
     }
-    // Row 944: the sealed copy goes first, so a folder that will not delete never leaves a copy a stale sign-in could unseal.
-    remove_sealed_copy(&profile.join(secrets::VAULT).join(format!("claude-{id}.json")));
-    let dir = PathBuf::from(&gone.config_dir);
-    // Row 944: only the account's own folder directly under the accounts folder is deleted (a ".." or a nested path is not).
-    if dir.parent() == Some(profile.join(FOLDER).as_path()) && dir.file_name().is_some_and(|n| n == id) {
-        // Row 989: under the hooks install lock, so a sign-in's hook install cannot recreate the folder as it goes.
-        crate::hooks::agent_hooks::with_install_lock(home, || crate::codex_accounts::remove_dir_patiently(&dir)).map_err(|e| format!("The account was removed, but its folder could not be deleted: {e}"))?;
-    }
-    cleared
+    Ok((gone, cleared))
 }
 
-/// Off the window's thread: the folder delete can wait up to 5 s for the hooks install lock (row 989).
+/// Off the window's thread: the sign-in file delete can wait up to 2 s while a running pane still holds it.
 #[tauri::command]
 pub async fn claude_account_remove(app: AppHandle, sign_ins: tauri::State<'_, SignIns>, id: String) -> Result<(), String> {
     if sign_ins.running.lock().map_err(|e| e.to_string())?.is_some() {
@@ -935,10 +958,10 @@ mod tests {
         store.set(LIST_KEY, &serde_json::to_string(&vec![a]).unwrap()).unwrap();
         let side = crate::orchestration::kept::Unreadable::new(&dir);
         assert!(mark_stale(&store, "a1", true).is_err());
-        assert!(remove_in(&store, &dir, "a1", &dir.join("home")).is_err());
+        assert!(remove_in(&store, &dir, "a1").is_err());
         side.restore();
         assert_eq!(mark_stale(&store, "a1", true), Ok(true));
-        assert!(remove_in(&store, &dir, "a1", &dir.join("home")).is_ok());
+        assert!(remove_in(&store, &dir, "a1").is_ok());
         assert!(load(&store).is_empty());
     }
 
@@ -1206,18 +1229,20 @@ mod tests {
         assert!(marker.exists(), "nothing outside the accounts folder was touched");
     }
 
-    // Row 944: the sealed copy goes before the folder, so a folder that will not delete never leaves an orphan copy that a stale sign-in could unseal.
+    // Row 944: the sealed copy goes before the sign-in file, so a file that will not delete never leaves an orphan copy that a stale sign-in could unseal.
     #[test]
-    fn row944_a_failed_folder_delete_still_removes_the_sealed_copy() {
+    fn row944_a_sign_in_file_that_will_not_delete_still_removes_the_sealed_copy() {
         let (dir, store) = profile("row944-order");
         sign_in(&store, &dir, "a1", false, 7, writes(CREDS, Ended::Exited(Some(0))), |_| Some(SIGNED_IN.into())).unwrap();
         let folder = dir.join(FOLDER).join("a1");
-        fs::remove_dir_all(&folder).unwrap();
-        fs::write(&folder, "not a folder").unwrap();
+        // A folder where the sign-in file should be: `remove_file` fails, so the delete is reported.
+        fs::remove_file(folder.join(CREDENTIALS)).unwrap();
+        fs::create_dir_all(folder.join(CREDENTIALS).join("held")).unwrap();
         let vault = dir.join(secrets::VAULT).join("claude-a1.json");
         assert!(vault.is_file());
-        assert!(remove_in(&store.lock().unwrap(), &dir, "a1", &dir.join("home")).is_err(), "the folder delete still reports its failure");
+        assert!(remove_in(&store.lock().unwrap(), &dir, "a1").is_err(), "the sign-in file delete still reports its failure");
         assert!(!vault.exists(), "the sealed copy is gone");
+        assert!(folder.is_dir(), "the folder stays");
     }
 
     // Row 944: removing an account whose listed id is ".." must not delete the profile folder.
@@ -1229,11 +1254,11 @@ mod tests {
         let s = store.lock().unwrap();
         let odd = Account { id: "..".into(), email: None, organization: None, config_dir: dir.join(FOLDER).join("..").to_string_lossy().into_owned(), last_sign_in: 1, stale: false };
         save(&s, &[odd]).unwrap();
-        assert!(remove_in(&s, &dir, "..", &dir.join("home")).is_err(), "an unsafe id is refused");
+        assert!(remove_in(&s, &dir, "..").is_err(), "an unsafe id is refused");
         assert!(marker.exists(), "the profile folder is still there");
     }
 
-    // Row 947: the guard's false side: a listed safe id whose stored folder is outside the accounts folder is unlisted but that folder is never deleted.
+    // Row 947: the guard's false side: a listed safe id whose stored folder is outside the accounts folder is unlisted but nothing in that folder is deleted.
     #[test]
     fn row947_removing_a_listed_id_whose_folder_is_elsewhere_deletes_that_folder_never() {
         let (dir, store) = profile("row947-elsewhere");
@@ -1241,26 +1266,30 @@ mod tests {
         fs::create_dir_all(&elsewhere).unwrap();
         let marker = elsewhere.join("marker.txt");
         fs::write(&marker, "keep").unwrap();
+        let sign_in_outside = elsewhere.join(CREDENTIALS);
+        fs::write(&sign_in_outside, CREDS).unwrap();
         let s = store.lock().unwrap();
         let odd = Account { id: "a1".into(), email: None, organization: None, config_dir: elsewhere.to_string_lossy().into_owned(), last_sign_in: 1, stale: false };
         save(&s, &[odd]).unwrap();
-        remove_in(&s, &dir, "a1", &dir.join("home")).unwrap();
+        remove_in(&s, &dir, "a1").unwrap();
         assert!(load(&s).is_empty(), "the account is unlisted");
         assert!(marker.exists(), "the folder outside the accounts folder is untouched");
+        assert_eq!(fs::read_to_string(&sign_in_outside).unwrap(), CREDS, "and so is the sign-in in it");
     }
 
-    // Row 947: an active marker that will not clear is reported at the end, after the list is saved and the sealed copy and folder are gone.
+    // Row 947: an active marker that will not clear is reported at the end, after the list is saved and the sealed copy and sign-in are gone.
     #[test]
-    fn row947_a_marker_that_will_not_clear_still_removes_the_vault_and_folder() {
+    fn row947_a_marker_that_will_not_clear_still_removes_the_vault_and_sign_in() {
         let (dir, store) = profile("row947-marker");
         sign_in(&store, &dir, "a1", false, 7, writes(CREDS, Ended::Exited(Some(0))), |_| Some(SIGNED_IN.into())).unwrap();
         let s = store.lock().unwrap();
         activate(&s, Some("a1")).unwrap();
         s.poison(ACTIVE_KEY);
-        assert!(remove_in(&s, &dir, "a1", &dir.join("home")).is_err(), "the failure to clear the marker is still reported");
+        assert!(remove_in(&s, &dir, "a1").is_err(), "the failure to clear the marker is still reported");
         assert!(load(&s).is_empty(), "the list was saved");
         assert!(!dir.join(secrets::VAULT).join("claude-a1.json").exists(), "the sealed copy is gone");
-        assert!(!dir.join(FOLDER).join("a1").exists(), "and so is the folder");
+        assert!(!dir.join(FOLDER).join("a1").join(CREDENTIALS).exists(), "and the sign-in file");
+        assert!(dir.join(FOLDER).join("a1").is_dir(), "the account's folder stays");
     }
 
     // Row 940 (2): a non-empty list that lacks the id but a folder that is there is a still-existing sign-in (the list lost it), so it keeps its id.
@@ -1370,17 +1399,42 @@ mod tests {
         assert_eq!(active(&s).as_deref(), Some("a2"));
         assert!(activate(&s, Some("gone")).is_err());
         assert_eq!(active(&s).as_deref(), Some("a2"), "a failed change keeps the earlier choice");
-        let home = dir.join("scratch-home");
-        remove_in(&s, &dir, "a2", &home).unwrap();
-        assert!(home.join(".kolux-rs").join("agent-hooks").is_dir(), "the removal took the hooks install lock under the home it was given, not the real one");
+        remove_in(&s, &dir, "a2").unwrap();
         assert_eq!(active(&s), None, "the system default takes over");
-        assert!(!dir.join(FOLDER).join("a2").exists() && !dir.join("vault").join("claude-a2.json").exists());
+        let folder = dir.join(FOLDER).join("a2");
+        assert!(folder.is_dir() && !folder.join(CREDENTIALS).exists(), "the folder stays, its sign-in goes");
+        assert!(!dir.join("vault").join("claude-a2.json").exists(), "and the sealed copy");
         assert_eq!(load(&s).len(), 1);
         activate(&s, Some("a1")).unwrap();
         activate(&s, None).unwrap();
         assert_eq!(active(&s), None, "the system default can be picked again");
-        assert!(remove_in(&s, &dir, "a2", &home).is_err());
+        assert!(remove_in(&s, &dir, "a2").is_err());
         drop(s);
+    }
+
+    // C25-R5-01: Remove deletes the sign-in only. The account's folder keeps its settings, its
+    // project trust and its transcripts, so a pane still running on the account keeps writing into
+    // a folder that is still there, and a later sign-in finds its old settings.
+    #[test]
+    fn c25_removing_a_claude_account_keeps_its_folder_with_settings_trust_and_transcripts() {
+        let (dir, store) = profile("c25-keep");
+        let a = sign_in(&store, &dir, "a1", false, 7, writes(CREDS, Ended::Exited(Some(0))), |_| Some(SIGNED_IN.into())).unwrap();
+        let folder = Path::new(&a.config_dir);
+        let settings = r#"{"model":"opus","hooks":{"Stop":[{"hooks":[{"type":"command","command":"kolux-hook"}]}]}}"#;
+        let trust = r#"{"projects":{"C:\\work":{"hasTrustDialogAccepted":true,"allowedTools":[]}}}"#;
+        fs::write(folder.join("settings.json"), settings).unwrap();
+        fs::write(folder.join(".claude.json"), trust).unwrap();
+        let transcripts = folder.join("projects").join("C--work");
+        fs::create_dir_all(&transcripts).unwrap();
+        fs::write(transcripts.join("session.jsonl"), "a turn\n").unwrap();
+        remove_in(&store.lock().unwrap(), &dir, "a1").unwrap();
+        assert!(folder.is_dir(), "the account's folder is not deleted");
+        assert_eq!(fs::read_to_string(folder.join("settings.json")).unwrap(), settings, "its settings and hook state stay");
+        assert_eq!(fs::read_to_string(folder.join(".claude.json")).unwrap(), trust, "its project trust stays");
+        assert_eq!(fs::read_to_string(transcripts.join("session.jsonl")).unwrap(), "a turn\n", "its transcript stays");
+        assert!(!folder.join(CREDENTIALS).exists(), "only the sign-in file is deleted");
+        assert!(!dir.join(secrets::VAULT).join("claude-a1.json").exists(), "and its sealed copy");
+        assert!(load(&store.lock().unwrap()).is_empty());
     }
 
     #[test]

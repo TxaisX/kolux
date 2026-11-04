@@ -116,6 +116,11 @@ test("a connected Codex or Grok card shows Manage and Disconnect, and Disconnect
   for (const b of [">Manage<", ">Disconnect<", "Add account", "Sign in with a code"]) expect(codex(managed)).toContain(b);
   expect(codex(cxOff)).not.toContain(">Disconnect<");
   expect(codexDisconnect(managed)).toMatchObject({ title: "Disconnect kim@example.com?", confirm: "Disconnect" });
+  // C25-R5-01: Disconnect deletes the sign-in only; the account's Codex home stays.
+  const ask = codexDisconnect(managed);
+  expect(ask.body).toContain("deletes the sign-in it saved for it");
+  expect(ask.body).toContain("Codex home, with its settings and sessions, stays");
+  expect(ask.body).not.toContain("deletes the Codex home");
   const own = codexDisconnect({ ...cxOff, systemDefault: "chatgpt" });
   expect(own.confirm).toBeNull();
   expect(own.body).toContain("deletes nothing");

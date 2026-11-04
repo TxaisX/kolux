@@ -109,6 +109,9 @@ test("the Remove confirm is the shared Ask: titled for the account, Keep and Rem
   const confirm = find(c, (n) => n.attrs.role === "alertdialog")[0];
   expect(confirm.attrs["aria-label"]).toBe("Remove kim@example.com?");
   expect(confirm.textContent).toContain("Panes already running keep going.");
+  // C25-R5-01: the confirm says exactly what goes (the sign-in) and what stays (the account's folder).
+  expect(confirm.textContent).toContain("Its sign-in is deleted from Kolux");
+  expect(confirm.textContent).toContain("Its settings, project trust and transcripts stay on this PC.");
   await click(c, byText(confirm, "button", "Remove")[0]);
   expect(log).toEqual([]);
   await click(c, byText(confirm, "button", "Keep")[0]);
