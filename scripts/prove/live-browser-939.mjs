@@ -307,7 +307,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     log(`ERROR ${e.stack ?? e}`);
   }
   const code = ctx ? await finish(ctx, "BROW-939", ev, ok) : 1;
-  appendFileSync(`${ROOT}/evidence/live-browser-939.txt`, `\n\nLIVE BATCH 8 2026-10-27 browser proxy, after.md row 939 (scripts/prove/live-browser-939.mjs, hidden dev app, stub proxy on loopback, unroutable page host ${HOST})\nresult: ${ok ? "PASS" : "FAIL"}\n\n${ev.join("\n")}\n`);
+  appendFileSync(`${ROOT}/evidence/live-browser-939.txt`, `\n\nLIVE BATCH 8 2026-10-27 browser proxy, after.md row 939 (scripts/prove/live-browser-939.mjs, hidden dev app, stub proxy on loopback, unroutable page host ${HOST})\nresult: ${ctx?.verdict(ok) ?? (ok ? "PASS" : "FAIL")}\n\n${ev.join("\n")}\n`);
   A.server.close();
   B.server.close();
   process.exit(code);

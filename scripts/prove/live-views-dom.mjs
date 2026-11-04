@@ -1,5 +1,6 @@
 // DOM readings shared by the spec/05 live proofs (VIEW-*): which workspace screen is up and what chrome is visible.
 import { reporter, startPlain, finish, sleep, waitFor, TERM } from "./live-common.mjs";
+import { guardRow } from "../evidence/app-launch.mjs";
 
 export { reporter, startPlain, finish, sleep, waitFor, TERM };
 
@@ -27,12 +28,13 @@ export const snap = (app) => app.evalJs(SNAP_JS);
 /** Clicks the switch label with this exact text. */
 export const pickScreen = (app, label) => app.clickWhere(".switcher button", `/^\\s*${label}\\s*$/`);
 
-/** Sets up the shared pass/fail bookkeeping of a live script. */
+/** Sets up the shared pass/fail bookkeeping of a live script. Each check records a row with the run's IPC guard, so
+ *  a row the guard went blind on is logged (and reported) NOT-TESTED instead of PASS. */
 export function checker(log) {
   const asserts = [];
   const check = (name, pass, detail) => {
     asserts.push(!!pass);
-    log(`${pass ? "PASS" : "FAIL"} ${name}: ${detail}`);
+    log(`${guardRow(!!pass).word} ${name}: ${detail}`);
   };
   return { check, allPassed: () => asserts.length > 0 && asserts.every(Boolean) };
 }
