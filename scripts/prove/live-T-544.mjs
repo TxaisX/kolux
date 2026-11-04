@@ -365,16 +365,16 @@ try {
   await back("launch 1");
 
 
-  // Item 4: terminalGpu off through Settings > Appearance, a new shell pane, `dir`.
+  // Item 4: terminalGpu off through Settings > Terminal & sessions > GPU drawing (T-725: its one place), a new shell pane, `dir`.
   await key({ key: ",", code: "Comma", windowsVirtualKeyCode: 188, modifiers: 2 });
   await waitFor("the Settings page", () => app.exists('.settings[role=dialog][aria-label="Settings"]'), 10000);
-  await app.clickWhere(".settings-nav button", "/^\\s*Appearance\\s*$/");
-  const sw = 'section[data-section="terminal-drawing"] input[role="switch"]';
-  await waitFor("the GPU switch", () => app.exists(sw), 5000);
-  const wasOn = await app.evalJs(`document.querySelector(${JSON.stringify(sw)}).checked`);
+  await app.clickWhere(".settings-nav button", "/^\\s*Terminal & sessions\\s*$/");
+  const sw = 'section[data-section="input"] [role="radiogroup"][aria-label="GPU drawing"] button:nth-child(3)';
+  await waitFor("the GPU drawing Off choice", () => app.exists(sw), 5000);
+  const wasOn = await app.evalJs(`document.querySelector(${JSON.stringify(sw)}).getAttribute("aria-checked") !== "true"`);
   if (wasOn) await app.click(sw);
-  await waitFor("terminalGpu false in settings.json", async () => readSettings().terminalGpu === false || (!wasOn && readSettings().terminalGpu !== true), 10000, 500);
-  log(`item 4: terminalGpu set through the Settings UI (Appearance > Terminal drawing; it was ${wasOn ? "on" : "already off"}); settings.json terminalGpu ${JSON.stringify(readSettings().terminalGpu)}`);
+  await waitFor("terminalGpu off in settings.json", async () => ["off", false].includes(readSettings().terminalGpu), 10000, 500);
+  log(`item 4: terminalGpu set through the Settings UI (Terminal & sessions > GPU drawing > Off; it was ${wasOn ? "not off" : "already off"}); settings.json terminalGpu ${JSON.stringify(readSettings().terminalGpu)}`);
   // The page's own Close button (run 2: a CDP Escape after the switch click left Settings open).
   await app.click('.settings button[aria-label="Close Settings"]');
   await waitFor("Settings closed", async () => !(await app.exists('.settings[role=dialog][aria-label="Settings"]')), 5000);
