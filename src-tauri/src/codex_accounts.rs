@@ -7,7 +7,7 @@
 //! holds a `config.toml` that keeps the sign-in in the home's own `auth.json` (Codex's file
 //! store), and Kolux keeps a sealed copy in the vault (`<profile>\vault\codex-<id>.json`, ACCT-009).
 //! A login that fails is rolled back, but a home that already holds a working sign-in is never
-//! deleted. The newly connected account becomes the active one: new Codex panes and the usage pill
+//! deleted, and neither is an existing account's home. The newly connected account becomes the active one: new Codex panes and the usage pill
 //! run on it. Without a managed account, Codex's own system-default login is reported as it is.
 //! T-138 (ACCT-019, ACCT-020): the list shows the system default first, then each account; any
 //! row can be made active, an account can be removed (its sign-in goes, retried while Windows still
@@ -293,8 +293,9 @@ pub fn login_command(program: &Path, home: &Path, device: bool) -> CommandBuilde
 
 /// One sign-in, into a fresh private home or again into a listed account's own (ACCT-012). On
 /// success a new account is listed and made active, a listed one updated in place, and the
-/// sign-in sealed into the vault; only a sign-in the login changed counts. On failure the home is
-/// removed, unless it already holds a working sign-in.
+/// sign-in sealed into the vault; only a sign-in the login changed counts. On failure a home Kolux
+/// just made is removed, unless the login left a sign-in in it; an existing account's home is
+/// never removed.
 pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, now: i64, login: impl FnOnce(&Path) -> (String, Ended, Option<String>)) -> Result<Account, Attention> {
     // Row 944: the id comes from the renderer and is joined into paths, so an unsafe one is refused before anything touches the disk.
     if !crate::cli_accounts::safe_id(id) {
@@ -305,20 +306,22 @@ pub fn sign_in(store: &Mutex<Store>, profile: &Path, id: &str, existing: bool, n
     // Row 932: a list that cannot be read fails here, before the login; it never routes a listed account to a new id.
     let listed_ids: Vec<String> = crate::orchestration::kept::load::<Vec<Account>>(&*store.lock().map_err(|e| e.to_string())?, LIST_KEY)?.into_iter().map(|a| a.id).collect();
     // Row 940: an unlisted id whose home is there (a list set aside as corrupt leaves the homes) is still that sign-in; a removed account keeps its home too (only its sign-in goes), so a stale screen lands in that home again.
-    let (id, home) = if existing && (listed_ids.iter().any(|l| l == id) || profile.join(FOLDER).join(id).is_dir()) {
+    let (id, home, created) = if existing && (listed_ids.iter().any(|l| l == id) || profile.join(FOLDER).join(id).is_dir()) {
         let home = profile.join(FOLDER).join(id);
         fs::create_dir_all(&home).map_err(|e| e.to_string())?;
-        (id.to_string(), home)
+        (id.to_string(), home, false)
     } else {
-        crate::claude_accounts::claim_new_folder(profile, FOLDER, "codex", &listed_ids, id)?
+        let (id, home) = crate::claude_accounts::claim_new_folder(profile, FOLDER, "codex", &listed_ids, id)?;
+        (id, home, true)
     };
     let id = id.as_str();
     let auth = home.join("auth.json");
     fs::write(home.join("config.toml"), HOME_CONFIG).map_err(|e| e.to_string())?;
-    // ACCT-019: only a home with no sign-in file at all is removed; one that cannot be read (a
-    // locked file) may still hold a working sign-in.
+    // ACCT-019: only a home Kolux just made is removed, and only when the login left no sign-in file
+    // in it (one that cannot be read may still hold a working sign-in). An existing account's home
+    // keeps its settings, project trust and sessions even when the sign-in failed or was cancelled.
     let roll_back = || {
-        if matches!(auth.try_exists(), Ok(false)) {
+        if created && matches!(auth.try_exists(), Ok(false)) {
             let _ = fs::remove_dir_all(&home);
         }
     };
@@ -1299,6 +1302,30 @@ mod tests {
         mark_sign_in_error(&s, "c1", false).unwrap();
         fs::remove_file(Path::new(&load(&s)[0].home).join("auth.json")).unwrap();
         assert!(!flag_printed(&s, "c1").unwrap(), "no sign-in in the home: not flagged");
+    }
+
+    // C25-R5-01 (review 003): a failed or cancelled re-authentication of an existing account never
+    // deletes its home, even when the account had no auth.json: the settings, project trust and
+    // sessions in it are not the sign-in's to lose.
+    #[test]
+    fn c25_a_cancelled_re_sign_in_keeps_an_existing_home_that_has_no_sign_in_file() {
+        let profile = temp("c25-reauth-home");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        sign_in(&store, &profile, "c1", false, 1, |home: &Path| {
+            fs::write(home.join("auth.json"), token("kim@example.com")).unwrap();
+            (String::new(), Ended::Exited(Some(0)), None)
+        })
+        .unwrap();
+        let home = profile.join(FOLDER).join("c1");
+        fs::remove_file(home.join("auth.json")).unwrap();
+        fs::create_dir_all(home.join("sessions")).unwrap();
+        fs::write(home.join("sessions").join("rollout.jsonl"), "a turn\n").unwrap();
+        let e = sign_in(&store, &profile, "c1", true, 2, |_| (String::new(), Ended::Cancelled, None)).unwrap_err();
+        assert_eq!(e, "Sign-in cancelled.");
+        assert!(home.is_dir(), "the existing home is not deleted");
+        assert!(home.join("config.toml").is_file(), "its settings file is still there");
+        assert_eq!(fs::read_to_string(home.join("sessions").join("rollout.jsonl")).unwrap(), "a turn\n", "its sessions stay");
+        assert_eq!(load(&store.lock().unwrap()).len(), 1, "the account is still listed");
     }
 
     #[test]

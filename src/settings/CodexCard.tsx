@@ -57,7 +57,7 @@ export function codexDisconnect(v: CodexView): Question {
   if (active)
     return {
       title: `Disconnect ${active.email ?? "this ChatGPT account"}?`,
-      body: "Kolux removes this account and deletes the Codex home and saved sign-in it made for it. Your own Codex folder and its login stay as they are.",
+      body: "Kolux removes this account and deletes the sign-in it saved for it. The account's Codex home, with its settings and sessions, stays. Your own Codex folder and its login stay as they are.",
       confirm: "Disconnect",
     };
   return { title: "Codex's own login stays", body: "Kolux did not make this sign-in, so Disconnect deletes nothing. To sign out of Codex itself, run codex logout in a terminal.", confirm: null };
