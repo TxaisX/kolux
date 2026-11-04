@@ -130,7 +130,7 @@ pub fn forget_check(project: Option<&Project>, path: &str, folder_exists: bool) 
             return Err("A project's root cannot be forgotten this way; remove the project instead".into());
         }
         if folder_exists {
-            return Err("This workspace's folder is still there. Delete the workspace instead; forgetting is for ones that are gone".into());
+            return Err("This workspace's folder is still there. Delete the workspace instead; removing is for ones that are gone".into());
         }
     }
     Ok(())
@@ -151,7 +151,7 @@ fn forget_verdict(store: &Store, project_id: Option<&str>, path: &str) -> Result
     forget_check(project.as_ref(), path, Path::new(path).exists())
 }
 
-/// Why `workspace_forget` would refuse this workspace, or none; the panel asks before it offers "Take out".
+/// Why `workspace_forget` would refuse this workspace, or none; the panel asks before it offers "Remove".
 #[tauri::command(async)]
 pub fn workspace_forget_check(store: StoreState<'_>, project_id: Option<String>, path: String) -> Result<Option<String>, String> {
     let store = store.lock().map_err(|e| e.to_string())?;
