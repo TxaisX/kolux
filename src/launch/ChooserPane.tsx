@@ -228,10 +228,12 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   };
   const launchKeys = [mac ? "Cmd" : "Ctrl", "Enter"];
   // T-745: with several choosers in the grid, only one shows the sheet; this one is an empty slot until clicked.
+  // Mousedown moves the sheet here and removes the button under the pointer, so preventDefault stops the browser
+  // from then focusing that removed button and blurring the sheet; the button's onClick serves the keyboard.
   const sheetHere = !sheet && win ? gridSheet(win) : null;
   if (sheetHere !== null && sheetHere !== number)
     return (
-      <section className="pane chooser" hidden={hidden} aria-label={`Session ${number} chooser`} onMouseDown={onFocus} style={{ alignItems: "center", justifyContent: "center" }}>
+      <section className="pane chooser" hidden={hidden} aria-label={`Session ${number} chooser`} onMouseDown={(e) => (e.preventDefault(), onFocus?.())} style={{ alignItems: "center", justifyContent: "center" }}>
         {closable && (
           <button className="ib" style={{ position: "absolute", top: 6, right: 6 }} onMouseDown={(e) => e.stopPropagation()} onClick={onClose} disabled={busy} aria-label={`Close session ${number}`}>
             <Close size={12} />

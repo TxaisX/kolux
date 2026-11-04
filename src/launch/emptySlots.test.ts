@@ -54,3 +54,12 @@ test("in the window, the other chooser draws an empty slot with no sheet; the fu
   expect(slot, "no cramped sheet in the slot").not.toContain("Folders");
   expect(draw(22, { project: "app", path: "C:/p" }), "the New session page").toContain("Folders");
 });
+
+test("the slot's mousedown cancels the browser's focus default, so the removed button cannot blur the sheet", () => {
+  // The slot is redrawn as the sheet on mousedown; without preventDefault the browser would focus the removed
+  // button after the sheet focused itself, and the keys would go nowhere (review should-verify).
+  const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(n: string): { readFileSync(p: string, e: string): string } } }).process.getBuiltinModule("node:fs");
+  const src = nodeFs.readFileSync("src/launch/ChooserPane.tsx", "utf8");
+  const slot = src.slice(src.indexOf("sheetHere !== number"), src.indexOf("Choose what to run here"));
+  expect(slot).toContain("onMouseDown={(e) => (e.preventDefault(), onFocus?.())}");
+});
