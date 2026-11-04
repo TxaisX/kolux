@@ -353,6 +353,7 @@ input { font: inherit; }
 .scm-hist-list { max-height: 260px; min-height: 60px; overflow: auto; resize: vertical; }
 .scm-commit-row { display: flex; align-items: center; gap: 6px; height: 22px; padding-right: 4px; border-radius: 4px; cursor: default; white-space: nowrap; }
 .scm-commit-row:hover, .scm-commit-row.sel { background: var(--row-selected); }
+.scm-commit-row:focus-visible { outline: 1px solid var(--line-focus); }
 .scm-commit-row .subj { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--fg-row); }
 .scm-graph { flex: none; }
 .scm-graph line { stroke-width: 2; }
