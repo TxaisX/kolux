@@ -150,6 +150,15 @@ fn settings_patch(app: tauri::AppHandle, store: tauri::State<'_, Mutex<Store>>, 
     write_settings(&app, &store, |old| state::patched(old, &set, &remove), payload)
 }
 
+/// C22-R2-01: the one explicit repair for a settings file that cannot be read. Every unreadable
+/// file (settings.json and an unreadable settings.json.bak) is set aside, never deleted, and saving
+/// works again on fresh defaults. Returns the names kept.
+#[tauri::command(async)]
+fn settings_repair(store: tauri::State<'_, Mutex<Store>>) -> Result<Vec<String>, String> {
+    let kept = store.lock().map_err(|e| e.to_string())?.repair_settings().map_err(|e| e.to_string())?;
+    Ok(kept.iter().map(|p| p.display().to_string()).collect())
+}
+
 /// The settings `change` makes of what is on disk, written under one lock.
 fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl FnOnce(serde_json::Value) -> serde_json::Value, payload: serde_json::Value) -> Result<(), String> {
     let store = store.lock().map_err(|e| e.to_string())?;
@@ -524,6 +533,7 @@ pub fn run() {
             edit_menu::edit_menu_ready,
             get_settings,
             settings_patch,
+            settings_repair,
             notify,
             notifications::notification_test,
             badge::badge_set,
