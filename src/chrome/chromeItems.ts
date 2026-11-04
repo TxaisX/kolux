@@ -51,7 +51,7 @@ export function toAccelerator(chord: string | undefined): string {
   return [...parts.map((m) => MENU_MOD[m]), key].join("+");
 }
 
-export type MenuBarState = { screen: string; statusBarVisible: boolean; tasksButton: boolean; automationsButton: boolean; titleBarAppName: boolean; classic: boolean; accelerators: Record<string, string> };
+export type MenuBarState = { screen: string; statusBarVisible: boolean; tasksButton: boolean; automationsButton: boolean; skillsButton: boolean; titleBarAppName: boolean; classic: boolean; accelerators: Record<string, string> };
 
 /** `chords(id)`: the keymap's chords for an action, first one shown (empty when unbound). `classic`:
  * the Classic look, whose View menu has no Workspace View (T-049-b). Zoom shows the interface zoom keys
@@ -62,6 +62,7 @@ export function menuBarState(s: Record<string, unknown>, screen: string, chords:
     statusBarVisible: readStatusBar(s).visible,
     tasksButton: chromeShown(s, "tasksButton"),
     automationsButton: chromeShown(s, "automationsButton"),
+    skillsButton: chromeShown(s, "skillsButton"),
     titleBarAppName: chromeShown(s, "titleBarAppName"),
     classic,
     accelerators: Object.fromEntries(MENU_SHORTCUT_IDS.map((id) => [id, toAccelerator(chords(HINT_FROM[id] ?? id)?.[0])])),

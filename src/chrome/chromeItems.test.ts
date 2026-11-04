@@ -113,3 +113,17 @@ describe("T-248-b Help items and the native chord answer (APP-009, SET-010)", ()
     expect(readSynced({ native: [{ chord: 1 }, null, { chord: "Mod+H", name: "Hide Kolux" }] }).native).toEqual([{ chord: "Mod+H", name: "Hide Kolux" }]);
   });
 });
+
+// T-766 (flag 6): View > Appearance is a second way to SKILL-018's sidebar button, which is off on a
+// fresh install. Its tick reads the saved setting and its click flips that same setting, like every
+// chrome switch, so the menu route table and CHROME cannot drift apart.
+test("T-766: the View > Appearance switch routes to the saved Skills setting", () => {
+  const none = () => undefined;
+  expect(menuBarState({}, "terminals", none).skillsButton).toBe(false);
+  expect(menuBarState({ skillsButton: true }, "terminals", none).skillsButton).toBe(true);
+  expect(menuSettingFlip({}, "set.skillsButton")).toEqual(["skillsButton", true]);
+  expect(menuSettingFlip({ skillsButton: true }, "set.skillsButton")).toEqual(["skillsButton", false]);
+  for (const c of CHROME) {
+    expect(menuSettingFlip({ [c.id]: c.dflt }, `set.${c.id}`)).toEqual([c.id, !c.dflt]);
+  }
+});
