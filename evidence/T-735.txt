@@ -21,10 +21,19 @@ TESTS: src/onboarding/saveFailed.test.ts mounts the real panels with the real us
   - The notifications switch goes back with the reason shown. Fails when useSettings stops putting back (mutation run:
     "expected true to be false").
   - The same with the read-back failing too. Fails without the useSettings fix.
+  - Two refused saves in a row with the file unreadable end on the stored value, not on the first change. Fails with
+    the old fallback (restores from the render-time copy).
   - The instructions box shows the stored text again after typing and leaving it. Fails without the StepPanels fix
     (box value "Write a novel." instead of "Keep it short.").
 
 VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t735)
-  - Bundle: first load 1,489,620 B on the branch vs 1,489,600 B on main 99b4a9d2: +20 B against a +250 cap.
+  - npx vitest run (merged with main 99b4a9d2, at bdbd62c3): 808 files, 6018 tests passed. npx tsc --noEmit -p .: clean.
+  - Bundle: first load 1,489,740 B on the branch vs 1,489,600 B on main 99b4a9d2: +140 B against a +250 cap.
   - Review (test-only first draft): opus-high-review A-, "not reproduced" confirmed control by control; its two should-fix
     rows are the two fixes above.
+  - Review of the final code (git diff origin/main): opus-high-review A-; should-fix: two refused saves in a row, the file
+    unreadable, restored the first change (never stored). Fixed in bdbd62c3: a ref holds the last copy read from disk.
+    Test: "two refused saves in a row ..." fails with the old fallback (1 failed | 3 passed) and passes now.
+  - Review of bdbd62c3: opus-high-review A. Its should-fix (re-measure the bundle) and the DT-C171 wording nit are taken.
+    Left: an initial load that resolves after a save's read-back would put the older copy in the ref; it shows only if a
+    later save fails while the file is unreadable.
