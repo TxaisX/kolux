@@ -142,7 +142,7 @@ test("a group row has a menu and a hover X, both asking Delete group", async () 
 test("Remove project from the header X goes to project_remove, never to workspace_remove", async () => {
   const c = await panel();
   await click(c, attr(c, "data-proj-x"));
-  await click(c, attr(c, "data-remove-project-yes"));
+  await click(c, byText(c, "button", "Remove app")[0]);
   await settle(40);
   expect(h.calls).toContain("project_remove");
   expect(h.calls).not.toContain("workspace_remove");
