@@ -461,21 +461,23 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
   };
   const prItemReason = look.pr?.state === "OPEN" ? null : prReason(status, look);
   // GIT-033: the merge box reads the merge state when it is opened and again after each action.
-  const [merge, setMerge] = useState<{ info: MergeInfo | null; error: string | null; busy: boolean; armed: string | null } | null>(null);
-  useEffect(() => setMerge(null), [lookKey]);
+  // C10-R1-01: the box keeps the pull request it read, so its buttons and its target are one
+  // reading; another pull request on the same branch closes it instead of retargeting its click.
+  const [merge, setMerge] = useState<{ url: string; info: MergeInfo | null; error: string | null; busy: boolean; armed: string | null } | null>(null);
+  useEffect(() => setMerge(null), [lookKey, look.pr?.url]);
   const loadMerge = (url: string) => {
     if (dir === null) return;
-    setMerge((m) => ({ info: m?.info ?? null, error: null, busy: true, armed: null }));
+    setMerge((m) => ({ url, info: m?.url === url ? m.info : null, error: null, busy: true, armed: null }));
     invoke<MergeInfo>("scm_merge_info", { worktree: dir, url })
-      .then((info) => setMerge({ info, error: null, busy: false, armed: null }))
-      .catch((err) => setMerge((m) => ({ info: m?.info ?? null, error: String(err), busy: false, armed: null })));
+      .then((info) => setMerge((m) => (m && m.url === url ? { ...m, info, error: null, busy: false, armed: null } : m)))
+      .catch((err) => setMerge((m) => (m && m.url === url ? { ...m, error: String(err), busy: false, armed: null } : m)));
   };
   const actKey = (a: MergeAction) => `${a.action}:${a.method ?? ""}`;
   // A merge cannot be undone, so it asks once more in place.
   const runMerge = async (a: MergeAction) => {
-    if (!look.pr || dir === null || !merge || merge.busy) return;
+    if (dir === null || !merge || merge.busy) return;
     if (a.action === "merge" && merge.armed !== actKey(a)) return setMerge({ ...merge, armed: actKey(a) });
-    const url = look.pr.url;
+    const url = merge.url;
     setMerge({ ...merge, busy: true, error: null });
     try {
       await invoke("scm_merge", { worktree: dir, url, action: a.action, method: a.method });
@@ -977,7 +979,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </div>
             )}
             {mismatch && <div className="note warn">{mismatch}</div>}
-            {merge && look.pr && (
+            {merge && (
               <div className="scm-ask" data-merge>
                 <div className="scm-ask-title" data-merge-label>
                   {merge.info ? mergeLabel(merge.info) : "Checking the merge state…"}
