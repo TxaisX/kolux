@@ -619,6 +619,9 @@ Acceptance:
   - [ ] Press Mod+= twice → the interface is roughly 20 % larger (one whole level); restart → the
         same size.
   - [ ] Press Mod+0 → normal size.
+  - [x] A zoom step whose save fails says so (a toast, or a line under the zoom control in Interface);
+        the new size stays for the session. (unit: the zoom control's line rendered, and the zoom step's message;
+        the toast from the keys and the View menu is not rendered in a test; evidence/T-723.txt)
 Compat: the keybinding command ids zoom.in, zoom.out and zoom.reset stay.
 Source: D-17-019
 

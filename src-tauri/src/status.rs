@@ -913,6 +913,18 @@ pub fn transcript_of(pane_key: u32) -> Option<String> {
     with_sessions(|s| s.get(&pane_key).and_then(|x| x.transcript.clone()))
 }
 
+/// T-722: an open pane's hooks last reported `file` as their transcript, or a file inside `folder`
+/// (the session's own folder, where a sub-agent's transcript lives), so an agent is still running
+/// that session (a pane's sessions go when its terminal ends). Both sides are compared as the
+/// filesystem resolves them, so case and `/` against `\` never hide a match; the paths are
+/// resolved after the sessions lock is let go.
+pub fn transcript_live(file: &std::path::Path, folder: Option<&std::path::Path>) -> bool {
+    let Ok(want) = std::fs::canonicalize(file) else { return false };
+    let under = folder.and_then(|f| std::fs::canonicalize(f).ok());
+    let live: Vec<String> = with_sessions(|s| s.values().filter_map(|x| x.transcript.clone()).collect());
+    live.iter().filter_map(|p| std::fs::canonicalize(p).ok()).any(|p| p == want || under.as_ref().is_some_and(|u| p.starts_with(u)))
+}
+
 /// The pane's agent is mid-turn as its hooks tell it (CHAT-006 keeps loading rather than erroring).
 pub fn working(pane_key: u32) -> bool {
     with_sessions(|s| s.get(&pane_key).is_some_and(|x| x.own.is_some() && x.resolved() == "working"))
