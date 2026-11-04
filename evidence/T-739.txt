@@ -26,3 +26,4 @@ REVIEW: sonnet-medium-review, B+, no must-fix. Applied: a second test proves the
 FULL RUN: npx vitest run: 808 files, 6015 tests passed (before the second test; src/chrome re-run after: passed). tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
 
 PENDING: unit-proven; not checked live in the app.
+MERGE b2b6cd7f (train 20): PLAN.md and DECISIONS.md rows kept from both sides; first load 1,489,045 B vs main b2b6cd7f 1,488,823 B (+222). tsc 0, plan-check OK.
