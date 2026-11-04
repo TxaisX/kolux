@@ -39,7 +39,7 @@
 .tower .row { display: grid; grid-template-columns: 16px minmax(90px, 1.1fr) minmax(70px, 120px) minmax(80px, 1fr) minmax(120px, 2.4fr) minmax(90px, 150px) 56px; align-items: center; gap: 10px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: var(--fg-row); cursor: pointer; }
 .tower .row:hover { background: var(--row-selected); }
 .tower .row[aria-selected="true"] { background: var(--row-selected); color: var(--fg); }
-.tower .list:focus .row[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--line-focus); }
+.tower .list:focus .row[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--focus-ring); }
 .tower .row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tower .row .st { display: inline-flex; color: var(--dot-idle); }
 .tower .row.needs .st { color: var(--working-icon); }

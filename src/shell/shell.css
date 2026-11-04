@@ -43,5 +43,5 @@ html .pane.editor .note-toc { width: var(--toc-w, 230px); }
 html .pane.editor.toc-open .md-rich, html .pane.editor.toc-open .md-preview { padding-right: calc(var(--toc-w, 230px) + 22px); }
 html .pane.editor.rail-open.toc-open .md-rich { padding-right: calc(var(--toc-w, 230px) + 236px); }
 .pane.editor .note-toc-grip { position: absolute; z-index: 3; top: 28px; bottom: 0; right: calc(var(--toc-w, 230px) - 3px); width: 6px; cursor: col-resize; touch-action: none; }
-.pane.editor .note-toc-grip:hover, .pane.editor .note-toc-grip:focus-visible { background: var(--line-focus); opacity: 0.5; outline: none; }
+.pane.editor .note-toc-grip:hover, .pane.editor .note-toc-grip:focus-visible { background: var(--focus-ring); opacity: 0.5; outline: none; }
 .pane.editor .note-front { flex: none; margin: 0; max-height: 30%; overflow: auto; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--line-subtle); color: var(--fg-muted); font: 12px var(--mono-font); white-space: pre-wrap; }

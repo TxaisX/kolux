@@ -13,6 +13,8 @@
    T-758 (DT-C194): only the sizes something reads are kept; the unused ink, alphas, control heights,
    leading and motion tokens were removed. Add a token back with its first user. */
 :root { --kx-text-caption: 11px; --kx-text-footnote: 12px; }
+/* T-762: every keyboard-focus indicator draws in --focus-ring (3:1 or more on every ground, all themes); --line-focus stays the border grey (1.3:1) that dialogs, menus and selections use. */
+:root { --focus-ring: var(--fg-muted); }
 
 html, body, #root { margin: 0; height: 100%; overflow: hidden; }
 body {
@@ -109,7 +111,7 @@ input { font: inherit; }
 .explorer-head .title { font-weight: 500; color: var(--fg-label); }
 .explorer-head .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-muted); }
 .explorer-rows { flex: 1; min-height: 0; overflow: auto; outline: none; padding: 4px 0; }
-.explorer-rows:focus-visible .ex-row.at { box-shadow: inset 0 0 0 1px var(--line-focus); }
+.explorer-rows:focus-visible .ex-row.at { box-shadow: inset 0 0 0 1px var(--focus-ring); }
 .ex-row { position: absolute; left: 4px; right: 4px; height: 22px; display: flex; align-items: center; gap: 6px; padding-right: 8px; border-radius: 5px; font-size: 12.5px; color: var(--fg-row); white-space: nowrap; cursor: default; }
 .ex-row:hover { background: var(--row-selected); color: var(--fg); }
 .ex-row.sel { background: var(--row-selected); color: var(--fg); }
@@ -133,7 +135,7 @@ input { font: inherit; }
 .art-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .art-row { position: relative; padding: 6px 30px 6px 8px; border-radius: 6px; cursor: default; }
 .art-row:hover, .art-row.sel { background: var(--row-selected); }
-.art-row:focus-visible { outline: 1px solid var(--line-focus); }
+.art-row:focus-visible { outline: 1px solid var(--focus-ring); }
 .art-title { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); }
 .art-title .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .art-meta { margin-top: 2px; font-size: 11.5px; color: var(--fg-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -178,7 +180,7 @@ input { font: inherit; }
 .hdr-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .hdr-swatch { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
 .hdr-swatch.on { border-color: var(--fg); }
-.hdr-swatch:focus-visible { outline: 2px solid var(--line-focus); outline-offset: 2px; }
+.hdr-swatch:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .rail .sess-line { padding-left: 49px; }
 /* T-730: the Remove under a not-started preset looks like the line under a session. */
 .rail .pending + button { display: block; width: fit-content; margin: -6px 8px 6px 49px; padding: 0; font-size: 11px; line-height: 14px; color: var(--fg-muted); }
@@ -236,7 +238,7 @@ input { font: inherit; }
 .sb-form label { font-weight: 500; color: var(--fg-label); }
 .sb-form .sb-subhead { margin: 0; font-size: inherit; font-weight: 500; color: var(--fg-label); }
 .field { width: 100%; height: 26px; padding: 0 8px; background: var(--input-bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font-size: 12px; outline: none; }
-.field:focus { border-color: var(--line-focus); }
+.field:focus { border-color: var(--focus-ring); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--button-border); border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--fg); }
 .btn:hover:not(:disabled) { background: var(--row-selected); }
 .btn:disabled, .btn[aria-disabled="true"] { color: var(--fg-icon-dim); }
@@ -331,7 +333,7 @@ input { font: inherit; }
 .needs-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--pane-bg); color: var(--fg); font: inherit; font-size: 12px; cursor: pointer; }
 .needs-chip svg { color: var(--working-icon); }
 .needs-chip .why { color: var(--fg-muted); }
-.needs-chip:hover, .needs-chip:focus-visible { border-color: var(--line-focus); outline: none; }
+.needs-chip:hover, .needs-chip:focus-visible { border-color: var(--focus-ring); outline: none; }
 .name-field { min-width: 0; width: 14em; max-width: 100%; padding: 1px 5px; border: 1px solid var(--line-focus); border-radius: 4px; background: var(--input-bg); color: var(--fg); font: inherit; font-size: 12px; }
 .tab .name-field { width: 10em; }
 .review-tray { position: fixed; z-index: calc(var(--z-float) - 2); right: 16px; bottom: 36px; width: 340px; max-height: 50vh; overflow: auto; padding: 8px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); font-size: 12.5px; }
@@ -459,7 +461,7 @@ input { font: inherit; }
 .inbox .row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: var(--fg-row); cursor: default; }
 .inbox .row:hover { background: var(--row-selected); }
 .inbox .row[aria-selected="true"] { background: var(--row-selected); color: var(--fg); }
-.inbox:focus .row[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--line-focus); }
+.inbox:focus .row[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--focus-ring); }
 .inbox .row .st { display: inline-flex; flex: none; color: var(--dot-idle); }
 .inbox .row.working .st { color: var(--working-icon); }
 .inbox .row.attention .st { color: var(--working-icon); }
@@ -518,7 +520,7 @@ input { font: inherit; }
 .pane-head .right { margin-left: auto; display: flex; align-items: center; gap: 2px; }
 /* BROW-001: the address bar fills the browser tab's header; its page is a native web view laid over the body. */
 .pane-head .address { flex: 1; min-width: 0; height: 20px; padding: 0 8px; border: 1px solid var(--line-subtle); border-radius: 6px; background: var(--kbd-bg); color: var(--fg); font: inherit; font-size: 12px; }
-.pane-head .address:focus { outline: none; border-color: var(--line-focus); }
+.pane-head .address:focus { outline: none; border-color: var(--focus-ring); }
 /* The native view cannot be clipped by the pane's corners, so it stays inside the 1 px ring and above the 12 px bottom curve. */
 .pane.browser .pane-body { padding: 0; margin: 0 1px 12px; }
 /* BROW-005: while a page loads the reload button is Stop inside a spinner. */
@@ -634,13 +636,13 @@ input { font: inherit; }
 .autos-facts dt { color: var(--fg-label); }
 .autos-facts dd { margin: 0; color: var(--fg-row); }
 .autos-detail-head .chip { height: 18px; }
-tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset: -1px; }
+tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
 .autos-runs { list-style: none; margin: 0; padding: 0; font-size: 12px; color: var(--fg-row); }
 .autos-runs li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; min-height: 26px; border-bottom: 1px solid var(--line-inner); }
 .autos-runs .auto-output { flex-basis: 100%; min-width: 0; max-height: 120px; overflow: auto; margin: 0 0 6px 44px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--fg-faint); white-space: pre-wrap; overflow-wrap: anywhere; }
 .autos-runs .num { width: 34px; color: var(--fg-label); }
 .autos-runs .muted, .autos-none { color: var(--fg-faint); font-size: 12px; }
-.autos-runs:focus-visible { outline: 1px solid var(--line-focus); outline-offset: 2px; }
+.autos-runs:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: 2px; }
 .autos-runs li[aria-selected="true"] { background: var(--row-selected); color: var(--fg); }
 .autos-runs li .btn { height: 22px; padding: 0 8px; font-size: 11px; }
 .autos-snapshot { flex-basis: 100%; min-width: 0; margin: 0 0 6px 44px; }
@@ -766,7 +768,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--line-focus); outline-offset
 .acct-row .conn-chip { margin-left: 0; }
 .acct-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0 6px; border-radius: 4px; text-align: start; }
 .acct-pick:hover { background: var(--row-selected); }
-.acct-pick:focus-visible { outline: 2px solid var(--line-focus); outline-offset: -2px; }
+.acct-pick:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .acct-pick[aria-pressed="true"] { cursor: default; }
 .acct-name { margin: 2px 6px 8px; width: calc(100% - 12px); }
 .device-code { display: flex; flex-direction: column; gap: 6px; }
@@ -959,7 +961,7 @@ button.skills-pill { cursor: pointer; }
 .pick-item mark { background: none; color: var(--fg); font-weight: 700; text-decoration: underline; }
 /* SESS-036: the issues and pull requests the composer name field suggests. */
 button.pick-item { width: 100%; text-align: left; font: inherit; }
-button.pick-item:hover, button.pick-item:focus-visible { background: var(--input-bg); outline: 1px solid var(--line-focus); }
+button.pick-item:hover, button.pick-item:focus-visible { background: var(--input-bg); outline: 1px solid var(--focus-ring); }
 .composer-advanced { display: flex; flex-direction: column; gap: 6px; }
 .field.multi.grow { field-sizing: content; max-height: 160px; resize: none; }
 .composer .btn-row { flex-wrap: wrap; align-items: center; }
@@ -1048,7 +1050,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .preview-tag { flex: none; height: 16px; padding: 0 6px; border-radius: 999px; background: var(--chip-bg); color: var(--fg-muted); font-size: 11px; line-height: 16px; }
 .note-picker { left: 50%; top: 56px; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 4px; }
 .picker-input { height: 30px; padding: 0 10px; border: 1px solid var(--line-subtle); border-radius: 6px; background: var(--input-bg); color: var(--fg); font: inherit; }
-.picker-input:focus { outline: none; border-color: var(--line-focus); }
+.picker-input:focus { outline: none; border-color: var(--focus-ring); }
 .picker-list { max-height: min(420px, 60vh); overflow-y: auto; }
 .picker-list .menu-item.at { background: var(--row-selected); }
 .picker-list .menu-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; max-width: 60%; }
@@ -1181,7 +1183,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .rside-grip { position: absolute; left: -4px; top: 8px; bottom: 8px; width: 8px; cursor: col-resize; z-index: 2; touch-action: none; }
 /* VIEW-050: the left sidebar's drag edge sits over the gap between it and the workspace, taking no room. */
 .lside-grip { flex: none; width: 8px; margin: 8px -4px; cursor: col-resize; z-index: 2; touch-action: none; }
-:is(.rside-grip, .lside-grip):is(:hover, :focus-visible) { outline: none; background: linear-gradient(to right, transparent 3px, var(--line-focus) 3px, var(--line-focus) 5px, transparent 5px); }
+:is(.rside-grip, .lside-grip):is(:hover, :focus-visible) { outline: none; background: linear-gradient(to right, transparent 3px, var(--focus-ring) 3px, var(--focus-ring) 5px, transparent 5px); }
 .rside-tabs { flex: none; display: flex; gap: 2px; padding: 0 2px 6px; overflow: hidden; }
 .rside-tab { flex: none; height: 26px; padding: 0 10px; border: 1px solid transparent; border-radius: 7px; background: none; color: var(--fg-muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .rside-tab:hover { color: var(--fg); }
@@ -1308,7 +1310,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .tasks-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
 .tasks-kind, .tasks-when { flex: none; color: var(--fg-label); }
 .tasks-list li { cursor: pointer; }
-.tasks-list li:focus-visible { outline: 1px solid var(--line-focus); outline-offset: -1px; }
+.tasks-list li:focus-visible { outline: 1px solid var(--focus-ring); outline-offset: -1px; }
 .task-dialog { outline: none; }
 .task-dialog h2 { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-state { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--chip-bg); font-size: 11px; font-weight: 500; color: var(--fg-faint); vertical-align: 1px; }
@@ -1560,7 +1562,7 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 .app-icon-picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
 .app-icon-pick { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .app-icon-pick.on { border-color: var(--accent); }
-.app-icon-pick:has(input:focus-visible) { outline: 2px solid var(--line-focus); outline-offset: 1px; } /* the radio itself is invisible, so the label shows the keyboard focus */
+.app-icon-pick:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; } /* the radio itself is invisible, so the label shows the keyboard focus */
 .app-icon-pick input { position: absolute; opacity: 0; pointer-events: none; }
 .app-icon-swatch { width: 18px; height: 18px; border-radius: 5px; }
 .app-icon-swatch.classic { background: linear-gradient(135deg, #2b2b33, #8a8a96); }
@@ -1611,6 +1613,6 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
    One fallback for every control that has no focus style of its own: :where() keeps its specificity at zero, so any
    rule above that sets an outline (or outline: none) wins. :focus-visible, not :focus, so a mouse click shows no ring.
    The terminal's own input (xterm) and containers that are only focused by script never show one. */
-:where(:focus-visible) { outline: 2px solid var(--fg-muted); outline-offset: 1px; } /* T-762: --line-focus is a border grey (1.3:1); the ring needs 3:1 */
+:where(:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 :where([tabindex="-1"]:focus-visible) { outline: none; }
 .xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible { outline: none; }

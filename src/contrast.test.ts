@@ -28,9 +28,25 @@ const modes: [string, Theme][] = THEMES.flatMap((name) =>
   [true, false].map((dark): [string, Theme] => [`${name} ${dark ? "dark" : "light"}`, buildTheme(readAppearance({ theme: name }), dark)]),
 );
 
-test.each(modes)("the focus ring reaches 3:1 on the sidebar (%s)", (_, t) => {
-  const ring = t[tokenOf(":where(:focus-visible)", "outline") as keyof Theme]!;
+/** A theme token, following a CSS alias defined on :root (e.g. --focus-ring: var(--fg-muted)). */
+const resolve = (t: Theme, token: string): string => (token in t ? t[token as keyof Theme]! : resolve(t, tokenOf(":root", "--" + token)));
+
+test.each(modes)("--focus-ring reaches 3:1 on the sidebar (%s)", (_, t) => {
+  expect(tokenOf(":where(:focus-visible)", "outline")).toBe("focus-ring");
+  const ring = resolve(t, "focus-ring");
   for (const ground of [t.surface, t["app-bg"], t["row-selected"]]) expect(ratio(hex(ring), hex(ground))).toBeGreaterThanOrEqual(3);
+});
+
+test("no keyboard-focus rule draws with the border grey --line-focus (1.3:1)", () => {
+  const fs = nodeFs as unknown as { readdirSync(p: URL, o: { recursive: true }): string[]; readFileSync(p: URL, enc: string): string };
+  const sheets = fs.readdirSync(new URL("./", import.meta.url), { recursive: true }).filter((f) => f.endsWith(".css"));
+  const bad = sheets.flatMap((f) =>
+    fs.readFileSync(new URL("./" + f.split("\\").join("/"), import.meta.url), "utf8").split("}")
+      .filter((r) => /:focus/.test(r.split("{")[0].replace(/\/\*[\s\S]*?\*\//g, "")) && r.includes("var(--line-focus)"))
+      .map((r) => `${f}: ${r.split("{")[0].trim()}`),
+  );
+  expect(sheets.length).toBeGreaterThan(5);
+  expect(bad).toEqual([]);
 });
 
 test.each(modes.filter(([m]) => m.endsWith("light")))("light-mode notice text reaches 4.5:1 on the sidebar (%s)", (_, t) => {
