@@ -16,6 +16,7 @@ import CodexCard from "./CodexCard";
 import { ConnectGrid, liveCheck, OtherWays, taglineOf } from "./ConnectGrid";
 import { settleWithin } from "./pending";
 import Ask from "../chrome/Ask";
+import { trapTab } from "../chrome/dialogFocus";
 import GrokCard from "./GrokCard";
 import { AttentionNote, fixDoes, openInstallPage, type Fix } from "./Attention";
 import type { Project } from "../projects/model";
@@ -338,7 +339,7 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
   const repo = page.startsWith("repo:") ? projects.find((p) => `repo:${p.id}` === page) : undefined;
   const title = repo ? repo.name : page in PAGES ? PAGES[page as keyof typeof PAGES] : "";
   return (
-    <div ref={root} className="settings" role="dialog" aria-label="Settings" tabIndex={-1} style={{ outline: "none" }}>
+    <div ref={root} className="settings" role="dialog" aria-modal="true" aria-label="Settings" tabIndex={-1} onKeyDown={trapTab} style={{ outline: "none" }}>
       <nav className="settings-nav" aria-label="Settings pages">
         <div className="settings-title">Settings</div>
         <input

@@ -1,0 +1,38 @@
+T-732 - Settings is a modal dialog that keeps Tab inside it (DT-C168; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t732 from main 73008fe1, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md, "T-732 / DT-C168", from live verify t11 (T-714 note).
+
+WHAT WAS WRONG
+- Settings (src/settings/SettingsPage.tsx) was role=dialog with no aria-modal and no Tab trap. In live verify t11,
+  Shift+Tab step 15 left it and landed on the window's close button behind it. T-714's sweep (DT-C150) covered only
+  elements with aria-modal="true", so it never saw Settings.
+
+THE FIX (DT-C168)
+- The Settings root gets aria-modal="true" and onKeyDown={trapTab}, the shared trap from src/chrome/dialogFocus.ts that
+  the T-714 dialogs use (no new trap). Tab and Shift+Tab wrap at its ends; a Tab a dialog inside Settings already wrapped
+  (default prevented) is left alone. Settings already had tabIndex -1, which trapTab needs.
+- Escape is unchanged: Settings keeps its own rules (T-565); its check for a modal inside it reads only its descendants,
+  so marking the root itself does not block it.
+- Side effects of aria-modal, both checked:
+  - src/automations/AutomationsPage.tsx counts any aria-modal as covering the page, so it leaves keys alone under
+    Settings (it already did when focus was inside Settings).
+  - src/onboarding/Guides.tsx tipEscape lets a modal keep Escape: while a guide tip is shown with Settings open, Escape
+    now closes Settings first and the tip on the next Escape (before, one Escape closed both).
+  - useWindowKeys OVERLAYS and TrustPrompt already counted any role=dialog: no change.
+
+TESTS
+- src/settings/SettingsPage.escape.test.ts "T-732: ...": mounts the real Settings, checks aria-modal, then Shift+Tab from
+  its first focusable control lands on its last, and Tab from the last lands on the first. The test's fake DOM learned the
+  trap's focusable list and a Shift key. Red-checked: without onKeyDown={trapTab}, 1 failed ("Shift+Tab from the first
+  control stays in Settings, on its last").
+- src/chrome/reach.test.ts: the T-714 table of aria-modal dialogs and their traps lists Settings (trapTab); without it 1 failed
+  (27 dialogs found, 26 listed). 10 passed.
+- SettingsPage.escape.test.ts: 8 passed. Full vitest: 805 files, 5999 passed and 2 failed: reach.test (the table, fixed
+  above) and editor/editPlacement.test.ts "60 paragraphs" (a timing test under full-suite load; passes alone, untouched). pnpm exec tsc --noEmit -p . : clean.
+
+REVIEW
+- Fresh sonnet-medium-review: A-, no high or medium. Lows logged to kolux-rs-after.md (onboarding isModal now counts
+  Settings, unreachable since Settings closes onboarding; FOCUSABLE counts CSS-hidden controls, shared by every trap).
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 73008fe1: 1,489,604 B first load. This branch: 1,489,604 B (+0; Settings is a lazy chunk). Cap +20 B.

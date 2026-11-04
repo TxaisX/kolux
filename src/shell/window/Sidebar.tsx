@@ -19,7 +19,7 @@ export default function WindowSidebar() {
     launching, launch, addChooser, newTab, allAgents, agentPass, refreshAgents, page, setPage, refresh,
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest, startIn, projectAdded,
     setScreen, setStandIns, startSetup, setProjects, setOwner, setNames, leftWidth, setDragLeft,
-    agentsScreen, groups, selected, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset,
+    agentsScreen, groups, selected, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset, closePane,
     workerNames, ptys,
   } = useWindow();
   return (
@@ -96,6 +96,7 @@ export default function WindowSidebar() {
             setFocused(key);
           }}
           onAdd={addPreset}
+          onDrop={closePane}
           onSettings={() => openSettings("agents")}
           taskOf={(k) => workerNames[`term-${ptys.current[k]}`]}
         />
