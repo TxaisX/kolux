@@ -325,7 +325,7 @@ User sees: core commands have chords from the start, different per platform wher
 Rules: there are 138 commands, 82 with a chord and 56 without (since T-673, DT-C109), among them one
   new-tab-with-this-agent command per supported agent, generated from the agent list; Mod stands for
   Cmd on a Mac and for Ctrl on the other two platforms; some commands have a default only on macOS
-  (rename workspace, new agent tab); since T-673 rename tab, maximise floating workspace and minimise
+  (rename workspace; new agent tab too until T-746 gave it Ctrl+Alt+T, which also gave Show Space Mod+Alt+S); since T-673 rename tab, maximise floating workspace and minimise
   floating workspace have Windows and Linux chords too, and Move Focus to the Top Bar (Mod+Shift+P)
   is a chord a focused terminal passes through; Add a Session and Remove a
   Session have no chord, and Ctrl+Shift+N stays with Create worktree; command ids face the user because they key the keybindings
@@ -454,7 +454,8 @@ User sees: suggestions taken from the fonts on the machine while typing; the cho
 Rules: the installed fonts are read from the system (on Windows by asking PowerShell) only once a font
   picker is opened, with a built-in list as a fallback if that fails; names that begin with the typed
   text rank above names that merely contain it; entering a picker that already holds a font shows the
-  full list, not just matches for the current value; a safe fallback list always follows the chosen
+  full list, not just matches for the current value; Up and Down move through the suggestions and
+  Enter picks the one reached (DT-C178); a safe fallback list always follows the chosen
   family so text never disappears; an empty field means the default font, and an empty editor font
   means the editor uses the terminal font.
 Acceptance:
@@ -608,17 +609,17 @@ Source: D-17-015
 
 ### SET-019 · Zoom the whole interface
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: presses Mod+= or Mod+-, presses Mod+0 to reset, uses the View menu, or uses the zoom
-  control in Interface.
+User does: presses Mod+Alt+= or Mod+Alt+-, presses Mod+Alt+0 to reset, uses the View menu, or uses
+  the zoom control in Interface (Mod+= and Mod+- without Alt zoom the focused terminal, DT-C179).
 User sees: text and controls grow or shrink together; the level is remembered after a restart.
 Rules: each step is half a zoom level, roughly 9.5 %, where a whole level is a factor of 1.2; zoom is
   held between −3 levels (roughly 58 %) and +5 levels (roughly 249 %), and reset returns to 100 % from
-  anywhere; the zoom control has a reset button of its own; the View menu offers Zoom In, Zoom Out and
-  Reset Size; on macOS the window buttons move to line up with the zoomed title bar.
+  anywhere; the zoom control has a reset button of its own; the View menu offers Zoom Interface In, Zoom
+  Interface Out and Reset Interface Zoom (DT-C177); on macOS the window buttons move to line up with the zoomed title bar.
 Acceptance:
-  - [ ] Press Mod+= twice → the interface is roughly 20 % larger (one whole level); restart → the
+  - [ ] Press Mod+Alt+= twice → the interface is roughly 20 % larger (one whole level); restart → the
         same size.
-  - [ ] Press Mod+0 → normal size.
+  - [ ] Press Mod+Alt+0 → normal size.
   - [x] A zoom step whose save fails says so (a toast, or a line under the zoom control in Interface);
         the new size stays for the session. (unit: the zoom control's line rendered, and the zoom step's message;
         the toast from the keys and the View menu is not rendered in a test; evidence/T-723.txt)

@@ -58,10 +58,11 @@ export const ArrowRight = (p: P) => (
     <path d="m5.5 3.5 4.5 4.5-4.5 4.5" />
   </Glyph>
 );
-export const Search = (p: P) => (
+/** A magnifier; `d` adds strokes inside the lens (T-741: the plus of the top bar's Terminal zoom button). */
+export const Search = ({ d = "", ...p }: P) => (
   <Glyph {...p}>
     <circle cx="7" cy="7" r="4.5" />
-    <path d="m10.5 10.5 3.5 3.5" />
+    <path d={"m10.5 10.5 3.5 3.5" + d} />
   </Glyph>
 );
 export const Bell = (p: P) => (

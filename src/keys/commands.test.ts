@@ -175,6 +175,15 @@ test("review of PR #16 (a): Force Reload's question is the app's own dialog (chr
   expect(app).toMatch(/<Ask \{\.\.\.reloadAsk\(reloadAsking\)\}/);
 });
 
+test("T-728: a command's keywords find it in the palette, after rows that match on their own words", () => {
+  const rows = commandRows(resolve(null, "win32"), []);
+  expect(paletteRows(rows, "cron").map((r) => r.label)).toContain("Open Automations");
+  expect(paletteRows(rows, "preferences").map((r) => r.label)).toContain("Open Settings");
+  const ranked = paletteRows([{ section: "Commands", label: "Run cron now", run: () => {} }, ...rows], "cron").map((r) => r.label);
+  expect(ranked.indexOf("Run cron now")).toBeLessThan(ranked.indexOf("Open Automations"));
+  expect(paletteRows(rows, "cron zzzz")).toEqual([]);
+});
+
 test("T-727: the palette finds Model Routing by routing, model or route, and running it opens the routing page", () => {
   const ran: string[] = [];
   const rows = commandRows(resolve(null, "win32"), [], undefined, (id) => void ran.push(id));

@@ -218,10 +218,12 @@ User sees: a note card beneath that line in both inline and side-by-side layouts
   and removable with a trash button.
 Rules: notes attach only to lines present in the diff; edits are trimmed and an empty edit is
   refused; saved notes keep their height reserved so the lines below do not shift; the note popover
-  stays inside the window and closes on a click outside it.
+  stays inside the window and closes on a click outside it; while the diff has keyboard focus the plus
+  shows on the cursor line, not only under the mouse (T-746).
 Acceptance:
   - [x] Add a note on line 12 → the card sits under line 12; switch to side-by-side → still under
         line 12. (cards; evidence/cards-GIT-040.txt)
+  - [x] Tab into a diff and move the cursor → the plus shows on the cursor line. (unit; evidence/T-746.txt)
   - [x] Edit the note → the open card updates; click trash → it is gone. (cards live; evidence/cards-GIT-040.txt)
   - [ ] Click trash → a banner offers Undo for 8 s; Undo puts back the same note. (unit for the delete and
         restore only; the banner is not rendered in a test; evidence/T-723.txt)

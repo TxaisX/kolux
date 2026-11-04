@@ -470,7 +470,7 @@ Source: D-05-108
 
 ### VIEW-014 · Space view: disk use per worktree and bulk delete
 Tier: P1 · Pushed: 2 · State at 0.15.0: live-unverified
-User does: opens the Space page, sorts or searches the table, ticks rows and deletes.
+User does: opens the Space page (Mod+Alt+S, T-746), sorts or searches the table, ticks rows and deletes.
 User sees: a treemap of the biggest items plus a sortable, searchable table of worktrees with size,
   file count and age; only the deletable selected worktrees are removed.
 Rules: the treemap keeps a fixed square layout and folds the tail into one omitted-items block;
@@ -500,10 +500,14 @@ Rules: Open tabs lead on a tie; unmatched rows sort after matched ones; filler w
   PR or issue numbers, match exactly (with or without #), never fuzzily; small typos are forgiven
   only in long words made of letters; a single Latin letter matches only the start of a word or a
   whole word; matches on a row's own fields rank ahead of matches found only on its parent project;
-  matching stays inside a fixed time budget on very large lists.
+  matching stays inside a fixed time budget on very large lists; a command is also found by its
+  keywords (cron finds Open Automations), which rank after matches on the row's own words and are
+  not shown.
 Acceptance:
   - [ ] Two worktrees match equally, one used a minute ago → it is first.
   - [ ] Type a PR number with or without # → only that exact number matches.
+  - [x] Type cron → Open Automations is listed; a row with cron in its own name lists ahead of it. (unit;
+    evidence/T-728.txt)
 Compat: —
 Source: D-05-038
 
@@ -957,10 +961,12 @@ Source: D-05-081
 Tier: P1 · Pushed: 9 · State at 0.15.0: live-unverified
 User does: changes sort, grouping, agents shown or history depth, or resets them.
 User sees: choices stay after restart; a counter shows how many options differ from defaults.
-Rules: empty sessions are shown by default; history depth can be set to Unlimited.
+Rules: empty sessions are shown by default; history depth can be set to Unlimited; the list draws 200
+  rows at a time and Show more adds the next 200, with group headers counting every session (T-746).
 Acceptance:
   - [ ] Change grouping, restart → same grouping; reset → counter clears.
   - [ ] Set history depth to Unlimited → every session in scope is listed.
+  - [x] Unlimited with 250 sessions → 200 rows and Show more (50 not shown); headers say 150 and 100. (unit; evidence/T-746.txt)
 Compat: —
 Source: D-05-082
 

@@ -95,13 +95,13 @@ export function AutoPrView({ value, entries, save }: ViewProps) {
 }
 
 /** Every project's workspaces (its main folder included), by the name the sidebar gives them. */
-async function loadEntries(): Promise<Entry[]> {
+export async function loadEntries(): Promise<Entry[]> {
   const projects = await invoke<Project[]>("project_list");
   const out: Entry[] = [];
   const seen = new Set<string>();
-  for (const p of projects) {
-    const list = await invoke<Worktree[]>("workspace_list", { projectId: p.id }).catch(() => [] as Worktree[]);
-    for (const w of list) {
+  const lists = await Promise.all(projects.map((p) => invoke<Worktree[]>("workspace_list", { projectId: p.id }).catch(() => [] as Worktree[])));
+  for (const [i, p] of projects.entries()) {
+    for (const w of lists[i]) {
       if (seen.has(norm(w.path))) continue;
       seen.add(norm(w.path));
       out.push({ path: w.path, name: w.name?.trim() || (w.isMain ? p.displayName?.trim() || p.name : w.branch || baseName(w.path)) });

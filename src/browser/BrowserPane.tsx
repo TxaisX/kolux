@@ -954,24 +954,24 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
               <button type="button" className="ib preview-copy" title="Open the file in the system's default app" aria-label="Open with the system app" onClick={() => sayIf(openWithSystemApp(preview.path, invoke))}>
                 open
               </button>
-              {!preview.granted && (
-                // T-159 (BROW-040): until allowed, the preview reads only its own document.
-                <button
-                  type="button"
-                  className="ib preview-copy"
-                  title={`Let this preview read the other files in ${preview.folder} (styles, scripts, images); it reads only its own document until then`}
-                  onClick={() => {
-                    invoke("browser_preview_grant", { url: at.current })
-                      .then(() => {
-                        setPreview((p) => (p ? { ...p, granted: true } : p));
-                        return invoke("browser_go", { id, what: "reload" });
-                      })
-                      .catch((err) => setNote(String(err)));
-                  }}
-                >
-                  Allow folder
-                </button>
-              )}
+              {/* T-159 (BROW-040): until allowed, the preview reads only its own document. T-733: and it can be taken back. */}
+              <button
+                type="button"
+                className="ib preview-copy"
+                aria-pressed={preview.granted}
+                title={preview.granted ? `Stop this preview reading the other files in ${preview.folder}; it reads only the documents opened` : `Let this preview read the other files in ${preview.folder} (styles, scripts, images); it reads only its own document until then`}
+                onClick={() => {
+                  const on = !preview.granted;
+                  (on ? invoke("browser_preview_grant", { url: at.current }) : invoke("browser_preview_revoke", { url: at.current }))
+                    .then(() => {
+                      setPreview((p) => (p ? { ...p, granted: on } : p));
+                      return invoke("browser_go", { id, what: "reload" });
+                    })
+                    .catch((err) => setNote(String(err)));
+                }}
+              >
+                {preview.granted ? "Stop allowing" : "Allow folder"}
+              </button>
             </span>
           ) : null}
           <input
@@ -1098,6 +1098,8 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
         <ul className="downloads" role="status" aria-label="Downloads">
           {downloads.map((d) => {
             const f = fraction(d);
+            // T-734 (DT-C170): Cancel while it runs, Show in folder once it is done
+            const act = d.state === "running" ? "Cancel" : d.state === "done" && d.path ? "Show in folder" : "";
             return (
               <li key={d.key} className={d.state} title={d.path}>
                 <span className="name">{d.name}</span>
@@ -1106,6 +1108,11 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
                 {d.state === "done" && d.path && (
                   <button type="button" className="ib txt" data-go="open-download" onClick={() => sayIf(openWithSystemApp(d.path, invoke))} title="Open the file (a program is shown in its folder instead)" aria-label={`Open ${d.name}`}>
                     Open
+                  </button>
+                )}
+                {act && (
+                  <button type="button" className="ib txt" onClick={() => (act === "Cancel" ? invoke("browser_download_cancel", { key: d.key }) : invoke("browser_download_reveal", { key: d.key })).catch((e) => setNote(String(e)))} aria-label={`${act}: ${d.name}`}>
+                    {act}
                   </button>
                 )}
                 {d.state !== "running" && (

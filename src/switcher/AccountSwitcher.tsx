@@ -11,12 +11,17 @@ import { activeOf, buttonText, groupsOf, pickAccount, watchEscape, type ClaudeSw
 import "./switcher.css";
 
 /** Both views, re-read when either provider's accounts change; the same events Settings listens to. */
-export function useAccountSwitcher(): { groups: Group[]; active: { claude: string | null; codex: string | null }; pick: (provider: Provider, id: string | null) => Promise<string | null> } {
+export function useAccountSwitcher(): { groups: Group[]; active: { claude: string | null; codex: string | null }; stale: boolean; pick: (provider: Provider, id: string | null) => Promise<string | null> } {
   const [claude, setClaude] = useState<ClaudeSwitchView | null>(null);
   const [codex, setCodex] = useState<CodexSwitchView | null>(null);
+  // T-736: a failed read keeps the last view (the pill used to vanish) and marks it stale until a read succeeds.
+  const [stale, setStale] = useState(false);
   const read = useCallback(() => {
-    invoke<ClaudeSwitchView>("claude_accounts").then(setClaude).catch(() => setClaude(null));
-    invoke<CodexSwitchView>("codex_accounts").then(setCodex).catch(() => setCodex(null));
+    // A rejected one does not stop the other's setter: each `then` runs on its own.
+    Promise.all([invoke<ClaudeSwitchView>("claude_accounts").then(setClaude), invoke<CodexSwitchView>("codex_accounts").then(setCodex)]).then(
+      () => setStale(false),
+      () => setStale(true),
+    );
   }, []);
   useEffect(() => {
     read();
@@ -53,7 +58,7 @@ export function useAccountSwitcher(): { groups: Group[]; active: { claude: strin
   const { claude: claudeActive, codex: codexActive } = activeOf(claude, codex);
   // One object per change, so a memo or an effect keyed on it does not run on every render.
   const active = useMemo(() => ({ claude: claudeActive, codex: codexActive }), [claudeActive, codexActive]);
-  return { groups, active, pick };
+  return { groups, active, stale, pick };
 }
 
 type ViewProps = { groups: Group[]; open: { top: number; left: number } | null; error?: string | null; onOpen: (at: { top: number; left: number }) => void; onClose: () => void; onPick: (provider: Provider, id: string | null) => void };
@@ -111,7 +116,7 @@ export function AccountSwitcherView({ groups, open, error = null, onOpen, onClos
 
 /** The top-bar mount: `<AccountSwitcher />` in the right-hand group, before the usage pill. */
 export default function AccountSwitcher() {
-  const { groups, pick } = useAccountSwitcher();
+  const { groups, stale, pick } = useAccountSwitcher();
   const [open, setOpen] = useState<{ top: number; left: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const close = useCallback(() => setOpen(null), []);
@@ -119,7 +124,7 @@ export default function AccountSwitcher() {
     <AccountSwitcherView
       groups={groups}
       open={open}
-      error={error}
+      error={error ?? (stale ? "Accounts didn't load; list may be old." : null)}
       onOpen={(at) => (setError(null), setOpen(at))}
       onClose={close}
       onPick={(provider, id) =>
