@@ -544,13 +544,16 @@ Rules: a burst of crashes within a short window sets it off, at most once; the s
   before the user answers the prompt, and Keep Running removes it; on the recovered launch,
   staying in safe graphics is preselected and the choice is remembered; the flag is cleared when
   the app version changes and ignored outside Windows.
-  when Restart in safe graphics or Try hardware again fails, one line under the buttons says so.
+  when any of the four choices fails, one line under the buttons says so and the prompt stays open;
+  Keep Running and Stay in safe graphics close it only once their choice is saved.
 Acceptance:
   - [ ] Simulate three graphics crashes inside a minute → the restart prompt appears; accept → the app
         relaunches in safe graphics.
   - [ ] Update the app → hardware acceleration is tried again.
   - [ ] Make the safe-graphics restart fail → one line under the buttons says it could not restart.
         (evidence/T-678.txt)
+  - [x] Make Keep Running or Stay in safe graphics fail to save → the prompt stays open with one line
+        saying why; the next choice that saves closes it. (unit: the prompt rendered; evidence/T-724.txt)
 Compat: —
 Source: D-19-043
 

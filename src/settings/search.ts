@@ -31,7 +31,6 @@ export const INDEX: Entry[] = [
   { page: "appearance", section: "window-items", title: "Title bar and sidebar", words: "window sidebar title bar buttons hide show automations", fold: "window" },
   { page: "appearance", section: "sidebar-look", title: "Left sidebar look", words: "sidebar left tint tinted colour color match terminal background wash strength", fold: "window" },
   { page: "appearance", section: "card-density", title: "Workspace cards", words: "workspace card layout default compact detailed custom details density pinned pull request note", fold: "window" },
-  { page: "appearance", section: "terminal-drawing", title: "Terminal drawing", words: "terminal drawing gpu webgl renderer hardware acceleration", fold: "window" },
   { page: "appearance", section: "status-bar", title: "Status bar", words: "status bar bottom items", fold: "window" },
   // ACCT-030: each provider is its own section (parent = the section it is drawn inside), so a search for one
   // provider word leaves only that provider's card and accounts; a word of the wrapper itself keeps all of it.
@@ -56,7 +55,7 @@ export const INDEX: Entry[] = [
   { page: "terminal", section: "scrolling", title: "History and scrolling", words: "scrollback history rows lines buffer scroll sensitivity speed fast wheel" },
   { page: "terminal", section: "clipboard", title: "Clipboard", words: "copy paste select selection right click clipboard mouse" },
   { page: "terminal", section: "shell", title: "Default shell", words: "shell powershell pwsh cmd command prompt git bash wsl default" },
-  { page: "terminal", section: "input", title: "Drawing and input", words: "ligatures typeface gpu webgl drawing render middle click paste osc 52 osc52 clipboard programs hide pointer mouse cursor typing focus follows full-screen scroll speed option alt meta yen backslash japanese keyboard" },
+  { page: "terminal", section: "input", title: "Drawing and input", words: "ligatures typeface gpu webgl drawing render renderer terminal drawing hardware acceleration graphics middle click paste osc 52 osc52 clipboard programs hide pointer mouse cursor typing focus follows full-screen scroll speed option alt meta yen backslash japanese keyboard" },
   { page: "terminal", section: "powershell", title: "PowerShell version", words: "powershell pwsh 7 5 windows version" },
   { page: "terminal", section: "closing", title: "Ask Before Closing Running Terminals", words: "close closing quit ask confirm confirmation running busy agent program" },
   { page: "terminal", section: "links", title: "Links in terminals", words: "links web browser open ctrl click shift system menu" },
@@ -64,9 +63,8 @@ export const INDEX: Entry[] = [
   { page: "terminal", section: "terminal-import", title: "Import terminal settings", words: "import ghostty warp terminal settings colours colors scheme" },
   { page: "terminal", section: "ghostty-import", title: "Ghostty", words: "ghostty import config", parent: "terminal-import" },
   { page: "terminal", section: "warp-import", title: "Warp", words: "warp import theme", parent: "terminal-import" },
-  { page: "git", section: "branches", title: "Branch names", words: "branch prefix name worktree" },
+  { page: "git", section: "branches", title: "Branch names", words: "branch prefix name worktree auto automatic rename after the work new workspace ai folder" },
   { page: "git", section: "base", title: "Base branch", words: "base main master default branch" },
-  { page: "git", section: "auto-branch", title: "Automatic branch names", words: "auto automatic branch name rename new workspace ai" },
   { page: "git", section: "commit-writer", title: "Commit messages", words: "commit message write generate ai summary" },
   { page: "git", section: "ai-recipes", title: "Let AI write Git text", words: "ai write git text branch names pull request titles descriptions source control actions recipe generate fix" },
   { page: "git", section: "review-bots", title: "Review bots", words: "review bot bots comments author dependabot renovate marked pull request" },
