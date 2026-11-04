@@ -1215,6 +1215,13 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                       aria-expanded={picked?.hash === c.hash}
                       onClick={() => pickCommit(c)}
                       onKeyDown={(e) => {
+                        // DT-C196: Ctrl/Cmd+Enter on a focused row is still the commit key, and never
+                        // also opens or closes the row (the open below excludes the chord).
+                        if (isCommitShortcut(e.nativeEvent)) {
+                          e.preventDefault();
+                          void commit();
+                          return;
+                        }
                         if ((e.key === "Enter" || e.key === " ") && !e.ctrlKey && !e.metaKey) {
                           e.preventDefault();
                           pickCommit(c);

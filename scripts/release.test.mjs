@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -9,6 +9,10 @@ import { acquire, buildOnce, downloadUrl, installerName, isStale, manifest, mark
 import { decide, WAIT_MS } from "./ci-gate.mjs";
 import { checkPromises, checkWorkflow } from "./workflow-check.mjs";
 import { parseArgs } from "./ship.mjs";
+
+// This file drives real git repositories and the release script, so a loaded machine takes well over the
+// 5 s default (the gate caught "never asks GitHub…" at 5,344 ms); the same run passes inside 30 s.
+vi.setConfig({ testTimeout: 30_000 });
 
 describe("release version (APP-059)", () => {
   it("is one patch above the higher of the project version and the newest release", () => {
