@@ -1,0 +1,53 @@
+T-720 / DT-C156: the should-fix rows from the #154 T-710 review (A-), plus the live verify t11 addendum, lane A (90).
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md, "T-720 / DT-C156" and the "T-720 addendum" (the sessions proof dir, not in this repo).
+  Built on main 73008fe1 (train 16, #166).
+
+FOCUS TRACE (live verify t11, run by 57 on main 73008fe1, tauri dev; G:/Temp/live-verify-t11/table.md)
+  - Terminal pane menu, Shift+F10 then Escape: before, focus was on the terminal's text area. The menu's first row took
+    focus twice (two focus() calls from PaneMenu's focus effect). After Escape, focus was on the page body at +0, +50 and
+    +400 ms, and nothing called focus().
+  - Explorer row menu, Shift+F10 then Escape: before, focus was on the list. The first row took focus (autoFocus). After
+    Escape, focus was on the body. The menu's Escape handler only closed it.
+
+FIXED
+  - Terminal pane menu: focus goes back to the terminal after Escape or Tab. Cause: under StrictMode's dev double mount
+    (mount, cleanup, mount), the focus effect's cleanup read box.current, which React has already detached by then. So it
+    did not hand focus back, and the second mount saved the menu's own first row as "where focus was". The pane menu now
+    uses the shared menu keyboard (chrome/dialogFocus useMenuFocus, which holds the element, not the ref), and its own
+    key and focus effects went. A release build has no double mount, so the shipped app most likely did not lose focus;
+    that is an analysis, not a release-build run. Test: src/terminal/PaneMenu.focus.test.ts mounts the menu under
+    StrictMode. It fails on main's PaneMenu and passes now.
+  - Explorer row menu: it uses useMenuFocus too, so focus goes to its first row, Up/Down/Home/End move, and Escape or Tab
+    closes it with focus back on the list. Test (under StrictMode): Explorer.ux.test.ts "Escape closes the row menu and
+    gives focus back to the list".
+  - Explorer row menu placement: it opens under the active row. When that row is drawn but not wholly in the list's
+    view, the menu opens at the event's point instead of outside the tree. A layout effect measures the menu and moves it
+    up or left only as far as needed (fitIn), where the old fixed 240 x 340 px clamp pushed it off its row in the right
+    sidebar. Its height is capped to the room below. Tests: "Shift+F10 ... opens the active row's menu under that row"
+    and "an active row scrolled out of the list puts the menu at the event's point".
+  - WebKit: keyboard detection was "button < 0". WebKit may give the contextmenu for Shift+F10 button 2, like a mouse.
+    PaneMenu.tsx: noteMenuKey records when a menu key went down (window keydown, capture), and fromKeys(e) is button < 0
+    or within 500 ms of that key. The terminal (right-click handler and the TERM-094 link guard) and the Explorer use it.
+    Tests: PaneMenu.test.ts "a contextmenu is from the keyboard ..." and Explorer.ux.test.ts "WebKit's contextmenu for
+    Shift+F10 (button 2 ...)".
+  - Terminal tests checked the source text only. The decisions (menuKey, fromKeys) now have behaviour tests. The wiring
+    check that is left (mounting TerminalPane needs xterm and the backend) is marked as such.
+  - Nits: menuKey ignores Ctrl/Alt/Meta (test). The edit menu's Tab now closes it with focus back on the field (trapMenu
+    prevents the default Tab; dialogFocus.test.ts). This holds for every menu on trapMenu: status bar, layout strip, right
+    sidebar More, edit menu, pane menu and the floating panel's new tab menu; before, Tab moved on to the next control.
+  - Side effect of the WebKit window: a right-click within 500 ms of a menu key counts as keyboard. In a terminal that opens
+    the pane menu where a right-click would paste, go to a mouse-tracking program (TERM-035) or open a link (TERM-094). The EditMenuHost test stub's splice guards a missing listener.
+
+NOT REPRODUCED / KNOWN LIMIT
+  - WebKit raising no contextmenu at all for a menu key: not handled (nothing opens). Windows (WebView2) is the shipped
+    target, and the engine there raises it with button -1 (T-710 probe).
+  - The Explorer menu does not flip above its row when there is no room below: fitIn moves it up, which can cover the row.
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t720)
+  - npx vitest run (merged with main 99b4a9d2): 808 files, 6021 tests passed.
+  - npx tsc --noEmit -p .: clean.
+  - Bundle: first load 1,488,768 B on the branch vs 1,489,600 B on main 99b4a9d2: -832 B against a +0 cap.
+  - Review: opus-high-review A-. Its should-fix rows (the terminal side of the 500 ms window; every menu the Tab change
+    reaches) are written into this file and DT-C156. Nits taken: the pane menu re-measures with its height cap cleared, and
+    a row clipped by the list counts as out of view (test). Left: arrows and Tab when focus is outside the pane menu go to
+    the shell (Escape still closes it from anywhere), and the menu-key listener is never removed (one per dev reload).
