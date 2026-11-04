@@ -64,6 +64,6 @@
   gap: 6px;
 }
 .upd-pop-actions .btn:focus-visible {
-  outline: 2px solid var(--seg-active);
+  outline: 2px solid var(--focus-ring); /* C38-R3: --seg-active was 1.9:1 dark, 1.4:1 light */
   outline-offset: 1px;
 }
