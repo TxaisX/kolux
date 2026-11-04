@@ -25,6 +25,7 @@ import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
+import { underDir } from "../workspaces";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, runningUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
@@ -750,7 +751,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     }
   };
   // PROJ-008: the question, then the removal; its folders and files stay on disk.
+  // EDIT-031 (B1): the removal closes every pane under the project's folder, so its unsaved editor
+  // tabs are asked about first, the same question a closing tab gets; on Cancel nothing is removed.
   const removeProject = async (p: Project) => {
+    const closed = [p.path, ...(worktrees[p.id] ?? []).map((w) => w.path).filter((d) => underDir(d, p.path))];
+    if (!(await onAskUnsaved(closed))) return;
     try {
       const gone = await invoke<{ name: string; path: string; ended: number }>("project_remove", { projectId: p.id });
       onRemoved(gone.path);
@@ -2146,7 +2151,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                 )}
                 {dirtyNames.length > 0 && (
                   <>
-                    <span>{askText(dirtyNames)} Deleting the workspace closes their tabs.</span>
+                    <span>{askText(dirtyNames)} Deleting the workspace closes its tabs.</span>
                     <ul className="del-changes" aria-label="files with unsaved changes">
                       {dirtyNames.map((n) => (
                         <li key={n}>{n}</li>
@@ -2245,7 +2250,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {dropProject === p.id && (
             <Ask
               title="Remove project"
-              body={<>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</>}
+              body={<>Remove {p.name} from Kolux? Its terminals and editor tabs close, and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</>}
               confirm={`Remove ${p.name}`}
               cancel="Keep it"
               onConfirm={() => removeProject(p)}
