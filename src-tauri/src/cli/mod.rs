@@ -3806,6 +3806,46 @@ mod tests {
         assert_eq!(main(words("--jso worktree --json list")), 1);
     }
 
+    /// C26-R4-01: a switch written `=false` is off, in the args and at the guards that ask whether it
+    /// was given, so `--force=false` cannot force and `--all=false` cannot close everything.
+    #[test]
+    fn c26r4_01_a_switch_written_false_is_off() {
+        let ok = |s: &str| parse(&words(s)).1.unwrap().unwrap();
+        for (line, key) in [
+            ("worktree rm --worktree name:one --force=false", "force"),
+            ("terminal send --text hi --interrupt=false", "interrupt"),
+            ("terminal close --terminal term-1 --all=false", "all"),
+            ("viewport --width 390 --height 844 --mobile=false", "mobile"),
+        ] {
+            assert_eq!(ok(line).args[key], false, "{line}");
+        }
+        for word in ["0", "no", "off"] {
+            assert_eq!(ok(&format!("worktree rm --worktree name:one --force={word}")).args["force"], false, "--force={word}");
+        }
+        assert_eq!(ok("worktree rm --worktree name:one --force").args["force"], true, "bare stays on");
+        assert_eq!(ok("terminal send --text hi --interrupt").args["interrupt"], true);
+        assert_eq!(ok("viewport --width 390 --height 844 --mobile").args["mobile"], true);
+
+        // the two globals: --json=false is not JSON, and --help=false does not print help
+        let (json, p) = parse(&words("worktree list --json=false"));
+        assert!(!json);
+        assert_eq!(p.unwrap().unwrap().command, "worktree.list");
+        assert!(parse(&words("worktree list --json")).0, "bare --json still asks for it");
+        assert!(parse(&words("worktree list --help=false")).1.unwrap().is_some(), "--help=false does not print help");
+        assert!(parse(&words("worktree list --help")).1.unwrap().is_none(), "bare --help still prints it");
+
+        // a word that is neither is refused rather than guessed
+        let refused = |s: &str| parse(&words(s)).1.unwrap_err().message;
+        assert!(refused("worktree rm --worktree name:one --force=maybe").contains("takes true or false"));
+
+        // and the guards treat a false switch as not given
+        assert!(refused("terminal close --worktree name:one --all=false").contains("--worktree and --all go together"));
+        assert!(parse(&words("terminal close --terminal term-1 --tab=false")).1.unwrap().is_some(), "--tab=false closes the terminal alone");
+        assert!(refused("orchestration reset --tasks=false").contains("exactly one scope"));
+        assert!(refused("orchestration dispatch --task t --dry-run=false").contains("--to"));
+        assert!(parse(&words("worktree create --name x --run-hooks=false --setup skip")).1.unwrap().is_some(), "--run-hooks=false cannot disagree with --setup skip");
+    }
+
     #[test]
     fn the_command_line_is_checked_before_the_app_is_asked() {
         let (json, p) = parse(&words("worktree create --name one --agent claude --prompt=hi --json"));
@@ -5235,6 +5275,57 @@ mod tests {
         let out = dispatch(&ctx, &req("worktree.rm", json!({ "worktree": format!("path:{}", plain["path"].as_str().unwrap()) }))).unwrap();
         assert_eq!(out["branchKept"], false, "{out}");
         assert!(!has("refs/heads/plain"));
+        drop(ctx);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// C26-R4-01, end to end through the real parser: `--force=false` is the same as no --force, so
+    /// a dirty worktree is refused and a branch holding a commit found nowhere else is kept.
+    #[test]
+    fn c26r4_01_force_false_keeps_the_branch_the_way_no_force_does() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-cli-c26r401-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let repo = dir.join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        git(&["init", "-q", "-b", "main"], &repo);
+        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "one"], &repo);
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        projects::add_project(&git_, &store.lock().unwrap(), &repo).unwrap();
+        {
+            let s = store.lock().unwrap();
+            let mut settings = s.settings();
+            settings["workspacesDir"] = json!(dir.join("ws").display().to_string());
+            settings["branchPrefix"] = json!("none");
+            s.save_settings(&settings).unwrap();
+        }
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        let req = |command: &str, args: Value| Request { id: "r".into(), token: String::new(), command: command.into(), cwd: repo.display().to_string(), args, pane: None, cli: String::new(), arrived: None };
+        let parsed = |line: &str| parse(&words(line)).1.unwrap().unwrap();
+
+        let made = dispatch(&ctx, &req("worktree.create", json!({ "name": "kept", "setup": "skip" }))).unwrap();
+        let path = PathBuf::from(made["path"].as_str().unwrap());
+        std::fs::write(path.join("work.txt"), "only here").unwrap();
+        git(&["add", "."], &path);
+        git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "only here"], &path);
+
+        let p = parsed("worktree rm --worktree name:kept --force=false");
+        assert_eq!(p.args["force"], false);
+        let out = dispatch(&ctx, &req("worktree.rm", Value::Object(p.args))).unwrap();
+        assert!(!path.exists(), "the folder went");
+        assert_eq!(out["branchKept"], true, "a false force decides the branch as no force does: {out}");
+        assert!(out["warnings"].as_array().unwrap().iter().any(|w| w.as_str().unwrap().contains("kept")), "{out}");
+
+        // a dirty worktree is still refused: --force=false does not waive the dirty check
+        let dirty = dispatch(&ctx, &req("worktree.create", json!({ "name": "dirty", "setup": "skip" }))).unwrap();
+        let dirty_path = PathBuf::from(dirty["path"].as_str().unwrap());
+        std::fs::write(dirty_path.join("uncommitted.txt"), "half done").unwrap();
+        let p = parsed("worktree rm --worktree name:dirty --force=false");
+        let why = dispatch(&ctx, &req("worktree.rm", Value::Object(p.args))).unwrap_err();
+        assert!(why.message.contains("uncommitted changes"), "{why:?}");
+        assert!(dirty_path.exists(), "nothing was removed");
         drop(ctx);
         let _ = std::fs::remove_dir_all(&dir);
     }

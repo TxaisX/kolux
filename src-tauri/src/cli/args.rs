@@ -14,7 +14,7 @@ pub struct Parsed {
 }
 
 
-pub(super) const SWITCHES: &[&str] = &["force", "activate", "run-hooks", "no-parent", "takeover-legacy", "unread", "peek", "all", "format", "wait", "full", "ready", "brief", "inject", "dry-run", "return-preamble", "preamble", "tasks", "messages", "reuse-session", "fresh-session", "enabled", "disabled", "references", "focus", "include-visual-layouts", "tab", "screen", "enter", "interrupt", "usage", "staged", "secure", "http-only", "local", "show-profile", "no-ua-spoof", "httpOnly"];
+pub(super) const SWITCHES: &[&str] = &["force", "activate", "run-hooks", "no-parent", "takeover-legacy", "unread", "peek", "all", "format", "wait", "full", "ready", "brief", "inject", "dry-run", "return-preamble", "preamble", "tasks", "messages", "reuse-session", "fresh-session", "enabled", "disabled", "references", "focus", "include-visual-layouts", "tab", "screen", "enter", "interrupt", "usage", "staged", "secure", "http-only", "local", "show-profile", "no-ua-spoof", "httpOnly", "mobile"];
 /// switch; stop is the old word for close, kept out of the help.
 pub(super) const TERMINAL: &[(&str, &str, &[&str])] = &[
     ("terminal list", "terminal.list", &["worktree", "limit", "include-visual-layouts"]),
@@ -292,6 +292,24 @@ pub(super) fn flag_typo(words: &[String], spots: &[(String, usize)], command: &s
     f
 }
 
+/// C26-R4-01: a switch's value. Bare is on; `=true|1|yes|on` is on and `=false|0|no|off` is off, so
+/// `--force=false` can never force and `--all=false` can never close everything. Any other word is
+/// refused rather than guessed, so a value never silently inverts what was written.
+fn switch_value(name: &str, inline: Option<&str>) -> Result<bool, Fail> {
+    match inline.map(|v| v.trim().to_ascii_lowercase()).as_deref() {
+        None => Ok(true),
+        Some("true" | "1" | "yes" | "on") => Ok(true),
+        Some("false" | "0" | "no" | "off") => Ok(false),
+        Some(v) => Err(Fail::args(format!("--{name} takes true or false, not {v}"))),
+    }
+}
+
+/// C26-R4-01: a switch counts as given only when it is on, so `--all=false` is not `--all` at the
+/// guards that ask whether a switch is present. Value flags are untouched.
+pub(super) fn switched_on(flags: &Map<String, Value>, k: &str) -> bool {
+    flags.get(k).is_some_and(|v| v != &Value::Bool(false))
+}
+
 /// Parses the words after the program name. The `--json` flag is reported even when the rest is
 /// refused, so the refusal can be printed in the asked-for shape. `Ok(None)` means help was
 /// printed to stdout.
@@ -316,13 +334,16 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                     None => (flag.to_string(), None),
                 };
                 match name.as_str() {
-                    "json" => json = true,
-                    "help" => help = true,
+                    "json" => json = switch_value(&name, inline.as_deref())?,
+                    "help" => help = switch_value(&name, inline.as_deref())?,
                     _ => {
                         spots.push((name.clone(), i - 1));
                         // CLI-003: a flag no command takes has no value to take, so a typo ahead
                         // of the command words never swallows one of them.
-                        let value = if SWITCHES.contains(&name.as_str()) || (inline.is_none() && !known_flag(&name)) {
+                        let value = if SWITCHES.contains(&name.as_str()) {
+                            // C26-R4-01: the equals form carries an on/off word for a switch too.
+                            Value::Bool(switch_value(&name, inline.as_deref())?)
+                        } else if inline.is_none() && !known_flag(&name) {
                             Value::Bool(true)
                         } else if let Some(v) = inline {
                             Value::String(v)
@@ -405,10 +426,10 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
             if !["run", "skip", "inherit"].contains(&setup) {
                 return Err(Fail::args("--setup takes run, skip or inherit"));
             }
-            if flags.contains_key("run-hooks") && setup == "skip" {
+            if switched_on(&flags, "run-hooks") && setup == "skip" {
                 return Err(Fail::args("--run-hooks runs the setup scripts; it cannot go with --setup skip"));
             }
-            if flags.contains_key("no-parent") && flags.contains_key("parent-worktree") {
+            if switched_on(&flags, "no-parent") && flags.contains_key("parent-worktree") {
                 return Err(Fail::args("--no-parent and --parent-worktree disagree; pass one of them"));
             }
             for (k, v) in &flags {
@@ -422,12 +443,12 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                 args.insert(key.to_string(), v.clone());
             }
             args.insert("setup".into(), Value::String(setup.into()));
-            if flags.contains_key("run-hooks") {
+            if switched_on(&flags, "run-hooks") {
                 args.insert("activate".into(), Value::Bool(true));
             }
         } else if command == SET {
             // CLI-019: refused before any lookup.
-            if flags.contains_key("no-parent") && flags.contains_key("parent-worktree") {
+            if switched_on(&flags, "no-parent") && flags.contains_key("parent-worktree") {
                 return Err(Fail::args("--no-parent and --parent-worktree disagree; pass one of them"));
             }
             for k in ["worktree", "display-name", "parent-worktree", "workspace-status"] {
@@ -438,7 +459,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
             if text("issue").map(str::trim).is_some_and(|v| v != "null" && v.parse::<u64>().map_or(true, |n| n == 0)) {
                 return Err(Fail::args("--issue takes a GitHub issue number, or null to remove the link"));
             }
-            if !SET_FIELDS.iter().any(|k| flags.contains_key(*k)) {
+            if !SET_FIELDS.iter().any(|k| switched_on(&flags, *k)) {
                 return Err(Fail::args("nothing to set; pass --display-name, --issue, --comment, --workspace-status, --parent-worktree or --no-parent"));
             }
             for (k, v) in &flags {
@@ -508,7 +529,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                     need("id", "")?;
                     need("body", "")?
                 }
-                RESET if SCOPES.iter().filter(|k| flags.contains_key(**k)).count() != 1 => return Err(Fail::args("reset needs exactly one scope: --all, --tasks or --messages")),
+                RESET if SCOPES.iter().filter(|k| switched_on(&flags, **k)).count() != 1 => return Err(Fail::args("reset needs exactly one scope: --all, --tasks or --messages")),
                 ASK => match (text("question").is_some(), text("resume").is_some()) {
                     (true, true) => return Err(Fail::args("give --question or --resume, not both")),
                     (false, false) => return Err(Fail::args("--question is required (or --resume <message> to wait on one already asked)")),
@@ -525,7 +546,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                 "orchestration.task-create" => need("spec", ": say what the task is")?,
                 "orchestration.dispatch" => {
                     need("task", "")?;
-                    if !flags.contains_key("dry-run") {
+                    if !switched_on(&flags, "dry-run") {
                         need("to", ": name the agent terminal, like term-3")?
                     }
                 }
@@ -553,7 +574,7 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
                     return Err(Fail::args(format!("--{k} takes the UUID a lost change printed, like 1b4e28ba-2fa1-4d3b-a3f5-ef19b5a7633a; it is only for exact recovery")));
                 }
             }
-            if command != RESET && ["unread", "peek", "all"].iter().filter(|k| flags.contains_key(**k)).count() > 1 {
+            if command != RESET && ["unread", "peek", "all"].iter().filter(|k| switched_on(&flags, **k)).count() > 1 {
                 return Err(Fail::args("give one of --unread, --peek or --all"));
             }
             for k in ["limit", "timeout-ms"] {
@@ -625,7 +646,8 @@ pub fn parse(words: &[String]) -> (bool, Result<Option<Parsed>, Fail>) {
 
 /// CLI-023, CLI-026, CLI-027: what a terminal command needs, checked before the app is asked.
 pub(super) fn check_terminal(joined: &str, command: &str, flags: &Map<String, Value>) -> Result<(), Fail> {
-    let has = |k: &str| flags.contains_key(k);
+    // C26-R4-01: --all=false and --tab=false are off, so they do not satisfy a selector or a pair.
+    let has = |k: &str| switched_on(flags, k);
     let text = |k: &str| flags.get(k).and_then(Value::as_str).map(str::trim);
     if let Some(k) = flags.keys().find(|k| k.as_str() != "title" && text(k).is_some_and(str::is_empty)) {
         return Err(Fail::args(format!("--{k} cannot be empty")));

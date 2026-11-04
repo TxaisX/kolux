@@ -39,7 +39,22 @@ impl Store {
             "PRAGMA journal_mode=WAL;
              CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
         )?;
-        Ok(Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default() })
+        let store = Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default() };
+        store.carry_setup_policy();
+        Ok(store)
+    }
+
+    /// C20-R1-01: the setup policy is one kv key, the one setup.rs reads. A profile that picked it
+    /// on the settings page before this change holds it in settings.json only, so it is carried
+    /// over once, when kv has no policy yet. Nothing reads the settings copy afterwards.
+    fn carry_setup_policy(&self) {
+        if self.get(crate::setup::POLICY_KEY).ok().flatten().is_some_and(|v| !v.trim().is_empty()) {
+            return;
+        }
+        let stored = self.try_settings().ok().and_then(|s| s.get(crate::setup::POLICY_KEY).and_then(|v| v.as_str()).map(str::trim).filter(|p| !p.is_empty()).map(str::to_string));
+        if let Some(p) = stored {
+            let _ = self.set(crate::setup::POLICY_KEY, &p);
+        }
     }
 
     /// Row 785: a settings file that lacks the look or the mode gets them, once, as the page
@@ -183,8 +198,27 @@ impl Store {
                 Ok(Read::Backup(v))
             }
             // read_json never errs with NotFound, so that kind is the missing-file case above.
-            _ if e.kind() == std::io::ErrorKind::NotFound => Err(std::io::Error::new(std::io::ErrorKind::NotFound, "it is missing, and its last good copy could not be read")),
-            _ => Err(e),
+            _ => {
+                let e = if e.kind() == std::io::ErrorKind::NotFound {
+                    std::io::Error::new(std::io::ErrorKind::NotFound, "it is missing, and its last good copy could not be read")
+                } else {
+                    e
+                };
+                self.tell_settings_unreadable(&e);
+                Err(e)
+            }
+        }
+    }
+
+    /// C22-R2-01: the read failed and there is no readable last good copy, so the window is told
+    /// once, at start, that it is on defaults and that saving is refused. Without this the only
+    /// trace was stderr, and the first save blamed a change the user never made.
+    fn tell_settings_unreadable(&self, e: &std::io::Error) {
+        if !self.fallback_told.swap(true, Ordering::SeqCst) {
+            *self.fallback_notice.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(format!(
+                "Kolux could not read {} ({e}), so it is showing defaults and changes will not save. Nothing is written over the unreadable file.",
+                self.settings_path.display()
+            ));
         }
     }
 
@@ -203,8 +237,32 @@ impl Store {
     }
 
     fn refused(&self, why: impl std::fmt::Display, kind: std::io::ErrorKind) -> std::io::Error {
-        let bak = self.settings_path.with_extension("json.bak");
-        std::io::Error::new(kind, format!("Kolux could not read {} ({why}), so it left the file untouched and saved nothing. The last good copy is {}.", self.settings_path.display(), bak.display()))
+        let bak = self.bak_path();
+        // C22-R2-01: name a last good copy only when one actually reads; the old sentence promised
+        // a .bak that may not exist, or may itself be the unreadable file.
+        let copy = if Self::read_json(&bak).ok().flatten().is_some() {
+            format!("The last good copy is {}.", bak.display())
+        } else {
+            format!("There is no readable last good copy at {}.", bak.display())
+        };
+        std::io::Error::new(kind, format!("Kolux could not read {} ({why}), so it left the file untouched and saved nothing. {copy}", self.settings_path.display()))
+    }
+
+    /// C22-R2-01: the one explicit repair. Every file that cannot be read (settings.json and an
+    /// unreadable settings.json.bak) is renamed to settings.json.corrupt-<ms>[-n], never deleted,
+    /// and the refusal is cleared so the next save writes fresh defaults. Returns the names kept.
+    pub fn repair_settings(&self) -> std::io::Result<Vec<PathBuf>> {
+        let mut kept = Vec::new();
+        for path in [self.settings_path.clone(), self.bak_path()] {
+            if !path.exists() || Self::read_json(&path).ok().flatten().is_some() {
+                continue;
+            }
+            let to = self.corrupt_path();
+            fs::rename(&path, &to)?;
+            kept.push(to);
+        }
+        self.read_failed.store(false, Ordering::SeqCst);
+        Ok(kept)
     }
 
     /// User settings for reading. An unreadable file reads as empty here so the app still starts on
@@ -214,6 +272,12 @@ impl Store {
             eprintln!("kolux: settings.json could not be read, using defaults and saving nothing: {e}");
             serde_json::json!({})
         })
+    }
+
+    /// C22-R2-01: whether the settings file on disk can be read at all, for the window's Repair
+    /// action. No save, no defaults: the answer alone.
+    pub fn settings_unreadable(&self) -> bool {
+        self.read_file().is_err()
     }
 
     /// Writes settings whole or not at all. Refuses while the file on disk cannot be read, and
@@ -367,6 +431,82 @@ mod tests {
         assert!(notice.contains("settings.json.bak"), "{notice}");
         assert_eq!(s.settings()["theme"], "classic");
         assert_eq!(s.take_fallback_notice(), None, "told once");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// C22-R2-01: an unreadable settings file with no readable backup is told at start, once, and
+    /// the sentence says defaults and "will not save" instead of naming a copy that is not there.
+    #[test]
+    fn c22r2_01_an_unreadable_file_with_no_readable_backup_is_told_at_start_once() {
+        let dir = temp_dir("c22r2-01");
+        let s = Store::open(&dir).unwrap();
+        s.save_settings(&serde_json::json!({ "theme": "classic" })).unwrap();
+        fs::write(dir.join("settings.json.bak"), b"{ not json").unwrap();
+        fs::write(dir.join("settings.json"), b"{ half").unwrap();
+
+        assert_eq!(s.settings(), serde_json::json!({}), "reads still fall back to defaults");
+        let note = s.take_fallback_notice().expect("the window is told the file could not be read");
+        assert!(note.contains("settings.json") && note.contains("defaults") && note.contains("will not save"), "{note}");
+        assert!(!note.contains("last good copy is"), "it must not name a copy that cannot be read: {note}");
+        assert_eq!(s.take_fallback_notice(), None, "told once per run");
+
+        let set = serde_json::Map::from_iter([("uiLook".into(), serde_json::json!("new"))]);
+        assert!(s.patch_settings(&set, &[]).is_err(), "fail-closed stays");
+        assert_eq!(fs::read(dir.join("settings.json")).unwrap(), b"{ half", "the bytes are kept");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// C22-R2-01: the repair sets both unreadable files aside (never deletes them) and saving works
+    /// again on fresh defaults. Moving only settings.json would leave saving broken, because a
+    /// missing file beside a present .bak is a failure too (row 944).
+    #[test]
+    fn c22r2_01_repair_sets_both_unreadable_files_aside_and_saving_resumes() {
+        let dir = temp_dir("c22r2-01-repair");
+        let s = Store::open(&dir).unwrap();
+        fs::write(dir.join("settings.json.bak"), b"{ not json").unwrap();
+        fs::write(dir.join("settings.json"), b"{ half").unwrap();
+        assert_eq!(s.settings(), serde_json::json!({}));
+
+        let kept = s.repair_settings().unwrap();
+        assert_eq!(kept.len(), 2, "main file and the unreadable backup both kept: {kept:?}");
+        assert!(kept.iter().all(|p| p.to_string_lossy().contains("settings.json.corrupt-")), "{kept:?}");
+        assert!(kept.iter().any(|p| fs::read(p).unwrap() == b"{ half"), "the bad bytes are never deleted");
+
+        s.save_settings(&serde_json::json!({ "theme": "light" })).unwrap();
+        assert_eq!(s.settings()["theme"], "light", "saving works again");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// C22-R2-01: whether the file can be read at all is asked by the window before offering Repair.
+    #[test]
+    fn c22r2_01_settings_state_reports_a_file_that_cannot_be_read() {
+        let dir = temp_dir("c22r2-01-state");
+        let s = Store::open(&dir).unwrap();
+        assert!(!s.settings_unreadable(), "a fresh profile has nothing to repair");
+        s.save_settings(&serde_json::json!({ "theme": "classic" })).unwrap();
+        assert!(!s.settings_unreadable());
+        fs::write(dir.join("settings.json"), b"{ half").unwrap();
+        assert!(s.settings_unreadable(), "a corrupt file is reported");
+        s.repair_settings().unwrap();
+        assert!(!s.settings_unreadable(), "the repair clears it");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// C22-R2-01: a refusal names a last good copy only when one reads.
+    #[test]
+    fn c22r2_01_a_refusal_does_not_name_a_copy_that_cannot_be_read() {
+        let dir = temp_dir("c22r2-01-why");
+        let s = Store::open(&dir).unwrap();
+        fs::write(dir.join("settings.json.bak"), b"{ not json").unwrap();
+        fs::write(dir.join("settings.json"), b"{ half").unwrap();
+        assert_eq!(s.settings(), serde_json::json!({}));
+        let err = s.save_settings(&serde_json::json!({})).unwrap_err().to_string();
+        assert!(!err.contains("last good copy is"), "{err}");
+        assert!(err.contains("no readable last good copy"), "{err}");
         drop(s);
         fs::remove_dir_all(&dir).unwrap();
     }

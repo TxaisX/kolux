@@ -150,6 +150,22 @@ fn settings_patch(app: tauri::AppHandle, store: tauri::State<'_, Mutex<Store>>, 
     write_settings(&app, &store, |old| state::patched(old, &set, &remove), payload)
 }
 
+/// C22-R2-01: whether settings.json can be read, so the startup notice can offer Repair.
+#[tauri::command]
+fn settings_state(store: tauri::State<'_, Mutex<Store>>) -> Result<serde_json::Value, String> {
+    let failed = store.lock().map_err(|e| e.to_string())?.settings_unreadable();
+    Ok(serde_json::json!({ "failed": failed }))
+}
+
+/// C22-R2-01: the one explicit repair for a settings file that cannot be read. Every unreadable
+/// file (settings.json and an unreadable settings.json.bak) is set aside, never deleted, and saving
+/// works again on fresh defaults. Returns the names kept.
+#[tauri::command(async)]
+fn settings_repair(store: tauri::State<'_, Mutex<Store>>) -> Result<Vec<String>, String> {
+    let kept = store.lock().map_err(|e| e.to_string())?.repair_settings().map_err(|e| e.to_string())?;
+    Ok(kept.iter().map(|p| p.display().to_string()).collect())
+}
+
 /// The settings `change` makes of what is on disk, written under one lock.
 fn write_settings(app: &tauri::AppHandle, store: &Mutex<Store>, change: impl FnOnce(serde_json::Value) -> serde_json::Value, payload: serde_json::Value) -> Result<(), String> {
     let store = store.lock().map_err(|e| e.to_string())?;
@@ -527,6 +543,8 @@ pub fn run() {
             edit_menu::edit_menu_ready,
             get_settings,
             settings_patch,
+            settings_state,
+            settings_repair,
             notify,
             notifications::notification_test,
             badge::badge_set,
@@ -626,6 +644,8 @@ pub fn run() {
             setup::repo_setup_save,
             setup::repo_setup_remove,
             setup::repo_setup_policy_set,
+            setup::setup_policy_get, // C20-R1-01: one source, the kv the runner reads
+            setup::setup_policy_set,
             setup::repo_setup_wait_set,
             setup::repo_setup_mode_set,
             setup::repo_trust_clear,

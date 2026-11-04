@@ -159,7 +159,7 @@ export function GitView({ settings, save, draft, setDraft, check, budget = { row
         </label>
         <p className="conn-detail">With this off, a workspace with nothing uncommitted is deleted at once. One with changes, a lock or another workspace inside it always asks.</p>
       </section>
-      <SetupPolicyRow settings={settings} save={save} />
+      <SetupPolicyRow />
       <AiRecipesSection settings={settings} save={save} />
       <AutoPrSettings />
     </>
