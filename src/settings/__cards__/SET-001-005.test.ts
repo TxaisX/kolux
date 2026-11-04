@@ -190,7 +190,7 @@ test("SET-003 box 1: Match, then Sky -> Ember recolours the open terminal withou
   const c = await page({ appTheme: "sky" });
   const term = await openTerminal();
   expect(term.options.theme.background).toBe("#0d0d0d"); // Kolux's own scheme before Match
-  await click(c, find(c, (n) => n.attrs.role === "option" && n.textContent.includes("Match app theme"))[0]);
+  await click(c, find(c, (n) => n.attrs["aria-pressed"] !== undefined && n.textContent.includes("Match app theme"))[0]);
   const sky = term.options.theme;
   expect(sky).toEqual(theme.terminalFor(theme.readAppearance({ appTheme: "sky", terminalScheme: "match" })));
   expect(sky.background).not.toBe("#0d0d0d");
@@ -213,7 +213,7 @@ test("SET-003 box 2: a catalogue scheme again -> terminals stop following the ap
   theme.applyAppearance(theme.readAppearance({ appTheme: "sky", terminalScheme: "match" })); // the terminal opens already following
   await click(c, radio(c, "Ember"));
   const followed = term.options.theme.background;
-  const option = find(c, (n) => n.attrs.role === "option" && n.textContent.includes("Dracula"))[0];
+  const option = find(c, (n) => n.attrs["aria-pressed"] !== undefined && n.textContent.includes("Dracula"))[0];
   await click(c, option);
   const dracula = CATALOGUE.find((s) => s.id === "dracula")!.colours;
   expect(term.options.theme).toEqual(dracula);

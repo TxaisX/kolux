@@ -1,0 +1,48 @@
+T-760 - Keyboard commit rows and one palette row per command (DT-C196; UX audit W3 "Queue refill 18")
+Worker 2f, coordinator 57, branch s-2f/t760 from main 5e481cf2, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 18", from inventory-2f.md flags 1 and 3.
+
+WHAT WAS WRONG
+- (a) src/scm/SourceControlPanel.tsx: a commit row in the history list answered a click only. Tab skipped it, so
+  a keyboard user could not open a commit's file list.
+- (b) The palette showed near-duplicate rows: Toggle Agent Dashboard beside Show Tower, a second sleeping-workspaces
+  toggle, and "Reload Browser Page (second key)" beside the reload row. Checked on main 5e481cf2: all three old ids are entries in the sameAs map
+  in src/keys/actions.ts, kept so old keybindings files still work, and each runs the same action as its partner.
+  They are true duplicates, so none needed a label that says how it differs.
+
+THE FIX (DT-C196)
+- (a) The row has role="button", tabIndex={0} and aria-expanded (true while its file list shows). Enter or Space
+  calls the same pickCommit as a click, with the default prevented so Space does not scroll the list.
+  styles.css adds a focus-visible outline on .scm-commit-row.
+- (b) src/keys/commands.ts commandRows skips an id that is in sameAs; the command it runs keeps its row.
+  view.tower takes the keyword "dashboard". The alias ids still resolve for keybindings and stay in
+  Settings > Shortcuts (shortcutRows.test.ts still expects browser.hardReload there). Mod+Shift+R still reloads;
+  the palette's reload row shows the reload command's own keys. A user chord bound to an old id still runs its
+  command but is not shown on the palette row (Settings > Shortcuts lists it). Show Tower takes "agent" and
+  "dashboard", and the sleeping toggle takes "toggle", so the old rows' searches still find their command.
+- Ctrl/Cmd+Enter (the panel's commit key) on a focused commit row commits only; it does not also open the row.
+
+TESTS
+- src/scm/commitRowKeys.test.ts (new): the commit row source has role="button", tabIndex={0}, aria-expanded and an
+  Enter/Space onKeyDown that calls pickCommit. (The history loads after the first render, so this checks the source.)
+- src/keys/commands.test.ts (T-611 test updated): no alias id has a row, each alias target has one, "Toggle Agent
+  Dashboard" is absent, Show Tower's keywords contain "dashboard", every other command still has its row.
+- Traps (file put back to main 5e481cf2, then restored): SourceControlPanel.tsx -> 1 failed; commands.ts -> 1 failed;
+  actions.ts -> 1 failed. Restored -> pass.
+- VITEST_MAX_WORKERS=1 pnpm vitest run src/keys src/scm src/terminal/palette: 57 files, 474 passed (before the review fixes);
+  after them, src/keys src/scm src/shell/wave3.test.ts src/shell/reach.test.ts: 57 files, 478 passed.
+  VITEST_MAX_WORKERS=1 pnpm vitest run src/settings src/chrome: 114 files, 618 passed.
+  pnpm tsc --noEmit -p . : clean. plan-check: OK. firewall-check -Baseline: 0 new.
+  (The full suite was not run locally: the 0.1.7 release build held the RAM; CI runs it.)
+
+REVIEW
+- Opus read-only review: A-, no must-fix. Applied: the Ctrl/Cmd+Enter guard (should-fix), the two search words, a
+  looser handler regex in commitRowKeys.test.ts, and the wording above. Left for a follow-up: a roving Tab stop in
+  the history list (every commit row is a Tab stop now; about +120 B, over this cap).
+
+BUNDLE (pnpm vite build + scripts/bundle-budget.mjs)
+- main 5e481cf2: 1,487,946 B first load. This branch: 1,487,986 B (+40). Cap +80 B. (+23 before the review fixes.)
+
+NOT DONE HERE
+- Inventory flags 2, 4, 5 and 6 wait for the live pass.
+- Not run: a live screen reader or a live keyboard pass in the app.

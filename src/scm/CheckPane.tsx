@@ -2,6 +2,9 @@
 // its annotations (a click opens that file at that line, only inside the worktree), a button that copies the
 // whole card, and Fix with AI for a failed check whose pull request is open. The header carries the check's
 // name and no path. One tab per check per worktree (paneActions.openCheck).
+import { useKeymap } from "../keys/KeymapContext";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf } from "../keys/keymap";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Close, CheckCircle } from "../chrome/icons";
@@ -135,6 +138,7 @@ type Props = {
 };
 
 export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, onClose, onOpenFile, onToast }: Props) {
+  const keymap = useKeymap();
   const [detail, setDetail] = useState<CheckDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -179,7 +183,7 @@ export default function CheckPane({ id, check, cwd, hidden, focused, onFocus, on
         <span className="title">{check.name}</span>
         <span className="preview-tag">Check</span>
         <span className="right">
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)" aria-label={`Close the ${check.name} check tab`}>
+          <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keymap, "tab.close"))} aria-label={`Close the ${check.name} check tab`}>
             <Close size={12} />
           </button>
         </span>

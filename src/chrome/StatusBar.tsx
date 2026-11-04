@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory } from "../status/memory";
 import ResourceManager from "../status/ResourceManager";
-import { Chip, Cup, Plug } from "./icons";
+import { Chip, Cup, Plug, Shell } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
 import { useMenuFocus } from "./dialogFocus";
 import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/UpdateCenter";
@@ -92,7 +92,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       {shows("memory") && (shows("terminals") || shows("agents")) && <span className="sep">·</span>}
       {shows("terminals") && (
         <span className="item" title="Terminals running">
-          <span style={{ font: "11px var(--mono-font)" }}>&gt;_</span>
+          <Shell size={12} />
           {terminals}
         </span>
       )}

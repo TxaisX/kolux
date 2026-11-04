@@ -1145,7 +1145,7 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
           <button className="ib" onClick={() => findNext(false)} title="Next match (Enter)" aria-label="Next match">
             <ArrowRight size={12} />
           </button>
-          <button className="ib" onClick={() => setFind(null)} title="Close find (Escape)" aria-label="Close find">
+          <button className="ib" onClick={() => setFind(null)} title="Close find (Esc)" aria-label="Close find">
             <Close size={12} />
           </button>
         </div>
