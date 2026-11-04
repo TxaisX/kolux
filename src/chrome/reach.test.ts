@@ -170,6 +170,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["terminal/TerminalPane.tsx", "notice.title", "tag"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "tag"],
   ["terminal/TerminalPane.tsx", "The shell ended", "tag"],
+  ["terminal/TerminalPane.tsx", "The terminal did not come back", "inner"],
   ["update/UpdateCenterView.tsx", "Updates", "tag"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
 ];
@@ -312,6 +313,7 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["terminal/TerminalPane.tsx", "notice.title", "trapTab"],
   ["terminal/TerminalPane.tsx", "Paste ${pasteAsk.lines} lines?", "trapTab"],
   ["terminal/TerminalPane.tsx", "The shell ended", "trapTab"],
+  ["terminal/TerminalPane.tsx", "The terminal did not come back", "trapTab"],
   ["usage/ShareCard.tsx", "Share ${card.providerName} usage", "hook"],
 ];
 function traps(d: Found, how: string): boolean {
