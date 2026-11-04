@@ -2416,13 +2416,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className={`ib${filterOpen ? " on" : ""}`} title="Group and sort the list" aria-label="Group and sort the list" aria-pressed={filterOpen} onClick={() => setFilterOpen((o) => !o)}>
               <Funnel size={13} />
             </button>
-            <button className="ib" title="Add project: clone, open a folder or start a new one" aria-pressed={adding} onClick={() => setAdding(true)} disabled={busy !== ""}>
+            <button className="ib" title="Add project: clone, open a folder or start a new one" aria-label="Add project" aria-pressed={adding} onClick={() => setAdding(true)} disabled={busy !== ""}>
               <FolderPlus size={13} />
             </button>
             <button className="ib" title={groupBy === "project" ? "New group: sort projects into folders of their own" : "New group: only while the list is grouped by project (change it under Group and sort)"} aria-label="New group" onClick={newGroup} disabled={groupBy !== "project"}>
               <Box size={13} />
             </button>
-            <button className="ib" title="New workspace: a branch in its own folder" aria-pressed={creating !== null} onClick={() => (creating === null ? openCreate() : setCreating(null))}>
+            <button className="ib" title="New workspace: a branch in its own folder" aria-label="New workspace" aria-pressed={creating !== null} onClick={() => (creating === null ? openCreate() : setCreating(null))}>
               <Plus size={13} />
             </button>
             {NOT_BUILT && (

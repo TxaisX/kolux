@@ -53,7 +53,7 @@ test("keyboard.md:12 / visual.md:2: the project row's buttons show when the keyb
 
 test("one keyboard ring for every control without its own focus style; none for the mouse, the terminal or script focus", () => {
   const ring = rule(":where(:focus-visible)");
-  expect(ring).toContain("outline: 2px solid var(--line-focus)");
+  expect(ring).toContain("outline: 2px solid var(--focus-ring)");
   expect(css, "never :focus, which would show on a mouse click").not.toMatch(/:where\(:focus\)/);
   expect(rule(':where([tabindex="-1"]:focus-visible)')).toContain("outline: none");
   expect(rule(".xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible")).toContain("outline: none");
@@ -69,6 +69,6 @@ test("chrome.md:9 / destructive.md:18: menus and the dialog scroll inside the wi
 });
 
 test("chrome.md:17: the app icon choice shows keyboard focus on its label; chrome.md:25: the menu warning uses the warn token", () => {
-  expect(rule(".app-icon-pick:has(input:focus-visible)")).toContain("outline: 2px solid var(--line-focus)");
+  expect(rule(".app-icon-pick:has(input:focus-visible)")).toContain("outline: 2px solid var(--focus-ring)");
   expect(rule(".menu-hint.warn")).toContain("var(--warn)");
 });

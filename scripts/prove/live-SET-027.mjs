@@ -134,7 +134,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     const pathDir = `${LIVE_BASE}/pathdir-${ID}`;
     rmSync(pathDir, { recursive: true, force: true });
     mkdirSync(pathDir, { recursive: true });
-    process.env.KOLUX_KEYBINDINGS_HOME = join(TEMP, "home"); // the app's home_dir() ignores USERPROFILE on Windows; this points the shortcuts file at the scratch home
+    process.env.KOLUX_KEYBINDINGS_HOME = join(TEMP, "home"); // the scratch home; since T-761 the app follows USERPROFILE too, this keeps it explicit
     ctx = await startPlain(ID, {
       report: rep,
       settings: { agentOptions },
