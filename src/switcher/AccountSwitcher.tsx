@@ -12,15 +12,21 @@ import { openSettings } from "../settings/pages";
 import "./switcher.css";
 
 /** Both views, re-read when either provider's accounts change; the same events Settings listens to. */
-export function useAccountSwitcher(): { groups: Group[]; active: { claude: string | null; codex: string | null }; stale: boolean; pick: (provider: Provider, id: string | null) => Promise<string | null> } {
+export function useAccountSwitcher(): { groups: Group[]; active: { claude: string | null; codex: string | null }; stale: boolean; loaded: boolean; read: () => void; pick: (provider: Provider, id: string | null) => Promise<string | null> } {
   const [claude, setClaude] = useState<ClaudeSwitchView | null>(null);
   const [codex, setCodex] = useState<CodexSwitchView | null>(null);
   // T-736: a failed read keeps the last view (the pill used to vanish) and marks it stale until a read succeeds.
   const [stale, setStale] = useState(false);
+  // C17-R5-01: false until both lists have answered once, so the pill never claims "Connect an AI"
+  // for a user who has accounts while the first read is still in flight.
+  const [loaded, setLoaded] = useState(false);
   const read = useCallback(() => {
     // A rejected one does not stop the other's setter: each `then` runs on its own.
     Promise.all([invoke<ClaudeSwitchView>("claude_accounts").then(setClaude), invoke<CodexSwitchView>("codex_accounts").then(setCodex)]).then(
-      () => setStale(false),
+      () => {
+        setStale(false);
+        setLoaded(true);
+      },
       () => setStale(true),
     );
   }, []);
@@ -59,15 +65,40 @@ export function useAccountSwitcher(): { groups: Group[]; active: { claude: strin
   const { claude: claudeActive, codex: codexActive } = activeOf(claude, codex);
   // One object per change, so a memo or an effect keyed on it does not run on every render.
   const active = useMemo(() => ({ claude: claudeActive, codex: codexActive }), [claudeActive, codexActive]);
-  return { groups, active, stale, pick };
+  return { groups, active, stale, loaded, read, pick };
 }
 
-type ViewProps = { groups: Group[]; open: { top: number; left: number } | null; error?: string | null; onOpen: (at: { top: number; left: number }) => void; onClose: () => void; onPick: (provider: Provider, id: string | null) => void; onAccounts?: () => void };
+type ViewProps = {
+  groups: Group[];
+  open: { top: number; left: number } | null;
+  error?: string | null;
+  /** C17-R5-01: false until the first account read has answered; nothing is drawn before that. */
+  ready?: boolean;
+  /** C17-R5-01: the first read failed, so the pill offers a retry instead of claiming no account. */
+  failed?: boolean;
+  onRetry?: () => void;
+  onOpen: (at: { top: number; left: number }) => void;
+  onClose: () => void;
+  onPick: (provider: Provider, id: string | null) => void;
+  onAccounts?: () => void;
+};
 
 /** C17-R5-01: the one top-bar route to Accounts & keys, present before any account exists. */
 const openAccounts = () => openSettings("accounts", "connections");
 
-export function AccountSwitcherView({ groups, open, error = null, onOpen, onClose, onPick, onAccounts = openAccounts }: ViewProps) {
+export function AccountSwitcherView({ groups, open, error = null, ready = true, failed = false, onRetry = () => {}, onOpen, onClose, onPick, onAccounts = openAccounts }: ViewProps) {
+  // C17-R5-01: nothing is drawn until the first read answers, so a launch never flashes "Connect an AI"
+  // at a user who has accounts. A first read that failed says so and offers the retry, rather than
+  // claiming there is no account.
+  if (!ready) {
+    if (!failed) return null;
+    return (
+      <button type="button" className="acct-switch acct-switch-failed" title="Accounts unavailable. Try again" onClick={onRetry}>
+        <span className="acct-switch-text">Accounts unavailable</span>
+        <span className="acct-switch-retry">Try again</span>
+      </button>
+    );
+  }
   // C17-R5-01: with no managed account the pill still draws, as the way to sign one in; it opens
   // Accounts & keys instead of a menu of accounts that does not exist yet.
   if (groups.length === 0)
@@ -127,13 +158,16 @@ export function AccountSwitcherView({ groups, open, error = null, onOpen, onClos
 
 /** The top-bar mount: `<AccountSwitcher />` in the right-hand group, before the usage pill. */
 export default function AccountSwitcher() {
-  const { groups, stale, pick } = useAccountSwitcher();
+  const { groups, stale, loaded, read, pick } = useAccountSwitcher();
   const [open, setOpen] = useState<{ top: number; left: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const close = useCallback(() => setOpen(null), []);
   return (
     <AccountSwitcherView
       groups={groups}
+      ready={loaded}
+      failed={!loaded && stale}
+      onRetry={read}
       open={open}
       error={error ?? (stale ? "Accounts didn't load; list may be old." : null)}
       onOpen={(at) => (setError(null), setOpen(at))}
