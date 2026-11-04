@@ -372,7 +372,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
     // T-708: New terminal tab and Search open tabs are their Commands rows (with their keys), no longer second hand-built rows
     ...commandRows(keymap, installedIds, setToast, (id, i) => (id === TAB_SEARCH_ACTION ? openTabSearch() : runCommand(id, i, { scope: actionById.get(id)?.scope, unanswered: setToast }))), // T-611: every command, the unbound ones included, run as its shortcut runs; T-708: Search open tabs from any screen (TERM-053)
-    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s))), // T-610 / T-708: every screen; T-756: a page already up closes, as Show Skills does
+    ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)), classic), // T-610 / T-708: every screen; T-756: a page already up closes, as Show Skills does; C12-R5-01: Classic keeps its one view
     { section: "Quick actions", label: "New session", run: () => addChooser() },
     // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
     ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
