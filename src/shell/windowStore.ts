@@ -196,7 +196,11 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   // TERM-106: the tabs that came back from the saved layout replay their saved output first.
   const restoredKeys = useRef(new Set((layout?.panes ?? []).filter((p) => !p.chooser).map((p) => p.key))); // a chooser has no terminal to wait for
   // ORCH-056 (row 219): open prompts read off each pane's screen mark it waiting (src/status/promptScan.ts).
-  usePromptScan(ptys, restoredKeys);
+  // C24-R1-01: the scan needs the restored set for the whole run (it tells Rust once per terminal where
+  // the old output ends), so it keeps its own copy; restoredKeys is cleared as each tab settles, which is
+  // what the drop guard and the loaded latch read.
+  const restoredScan = useRef(new Set(restoredKeys.current));
+  usePromptScan(ptys, restoredScan);
   const runPanes = useRef<Record<string, number>>({});
   const runTabs = useRef<RunTabs>({}); // AUTO-011 (T-085-g): the agent tabs automation runs opened, and whether the user touched them
   return {

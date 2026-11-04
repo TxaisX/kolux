@@ -64,7 +64,7 @@ import { invoke } from "@tauri-apps/api/core";
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
   const {
     accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
-    owner, panes, pinned, ptys, recentDirs, recentTabs, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
+    owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
     setCreateRequest, setDeleteRequest, setDirty, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setPicking, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
     unreadPanes
@@ -439,6 +439,15 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // the workspace's empty placeholder.
   // SESS-024: a pane whose session failed to start goes away, with the reason in a toast.
   const failedPane = (key: number, error: string) => {
+    // C24-R1-01: a tab that came back from the saved layout and has not settled yet keeps its place
+    // when its session does not start; dropping it would rewrite the layout without its key and the
+    // next start would prune its saved output. The key leaves restoredKeys once the tab has its
+    // terminal (Pane.tsx onPty), so a later failure of the same tab still drops it.
+    if (restoredKeys.current.has(key)) {
+      restoredKeys.current.delete(key);
+      setToast(`A session did not start: ${error}`);
+      return;
+    }
     startWatch.seen(key); // SESS-005: its own toast says why; no five-second warning on top
     const ask = panes.find((p) => p.key === key)?.ask;
     if (ask) cliFailed.current[ask] = error;
