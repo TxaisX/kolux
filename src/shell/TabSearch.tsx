@@ -47,6 +47,9 @@ export default function TabSearch({ tabs }: Props) {
           className="picker-input"
           placeholder="Search open tabs by name"
           aria-label="Search open tabs"
+          role="combobox"
+          aria-expanded={rows.length > 0}
+          aria-controls="ts-l"
           aria-activedescendant={rows[at] ? `ts-${at}` : undefined}
           value={query}
           onChange={(e) => {
@@ -63,15 +66,15 @@ export default function TabSearch({ tabs }: Props) {
             e.stopPropagation();
           }}
         />
-        <div className="picker-list" role="listbox">
+        <div className="picker-list" id="ts-l" role="listbox" aria-label="Open tabs">
           {rows.map((r, i) => (
-            <button key={`${r.label}|${r.hint ?? ""}|${i}`} id={`ts-${i}`} role="option" aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
+            <button key={`${r.label}|${r.hint ?? ""}|${i}`} id={`ts-${i}`} role="option" tabIndex={-1} aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
               <span className="name">{r.label}</span>
               {r.hint && <span className="hint">{r.hint}</span>}
             </button>
           ))}
-          {query.trim() !== "" && rows.length === 0 && <div className="menu-hint">No open tab has that in its name</div>}
         </div>
+        {query.trim() !== "" && rows.length === 0 && <div className="menu-hint">No open tab has that in its name</div>}
       </div>
     </>
   );
