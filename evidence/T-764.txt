@@ -1,0 +1,45 @@
+T-764: unit proof for the t13 setup NOT-TESTED rows
+Branch s-2f/t764, based on 918b9991 (main after train 25). Tests only; no product code changed.
+
+Tests added or finished in this lane:
+  src/projects/t764-scan-dialog-keys.test.ts      #179 (b,c) on the real ScanRepos
+  src/terminal/t764-panemenu-keys.test.ts         #185 (a,b,c) on the real PaneMenu
+  src/settings/t764-font-keys.test.ts             #191 (c3) on the real FontField
+  src/browser/t764-download-actions.test.ts       #194 (b) on the real download strip
+  src/projects/t764-scan-warning-control.test.ts  #195 (b) on the real ProjectsPanel
+  src/chrome/t764-zoom-names.test.ts              palette.md:11 on VIEW_ITEMS, the palette actions and both zoom paths
+
+Where a named test already existed on main 918b9991 it is used instead of a duplicate:
+  #185 (h)  src/terminal/PaneMenu.test.ts       "T-710: Shift+F10 and the Menu key are the menu keys; with Ctrl, Alt or Meta they stay the program's (T-720)"
+  #191 (c1) src/chrome/polishB.test.ts          "font suggestions take Up and Down, show which is reached, and Enter picks it" (move, wrap, aria-activedescendant)
+  #191 (c2) src/chrome/polishB.test.ts          same test (Down, Down, Enter picks the second suggestion and closes the list)
+  #195 (a)  src/projects/pollWarning.test.ts    "T-744: a failed workspace scan leaves the panel's error in place"
+
+New test added to the pane-menu file this run: Escape closes the pane menu and gives focus back to the
+terminal (the file header promised (a) but only (b) and (c) were written). Mutation check: giving
+giveBack() in src/chrome/dialogFocus.ts an early return made the Tab and Escape focus assertions fail
+(2 failed); restored, the file is green. No product edit remains.
+
+Run:
+  npx vitest run src/browser/t764-download-actions.test.ts src/chrome/t764-zoom-names.test.ts src/projects/t764-scan-dialog-keys.test.ts src/projects/t764-scan-warning-control.test.ts src/settings/t764-font-keys.test.ts src/terminal/t764-panemenu-keys.test.ts
+  Test Files  6 passed (6) / Tests  11 passed (11)
+
+Rows not in this lane: #179 (d) focus give-back, #185 (i,j), #191 other letters, #194 (c), #195 (c).
+The six files prove the rows below, not the live-harness setup that blocked them.
+
+ROW TO TEST
+| Row | Test file | Named test |
+|---|---|---|
+| #179 T-738 (b) Tab wraps inside the Scan dialog | src/projects/t764-scan-dialog-keys.test.ts | "T-738: Tab from the last control wraps to the first and Shift+Tab from the first wraps to the last, never leaving the dialog" |
+| #179 T-738 (c) Escape closes the Scan dialog from a button | src/projects/t764-scan-dialog-keys.test.ts | "T-738: Escape closes the Scan dialog while focus is on a button inside it" |
+| #185 T-720 (a) Escape returns focus to the terminal | src/terminal/t764-panemenu-keys.test.ts | "T-720: Escape in the pane menu closes it and focus goes back into the pane, not the page" |
+| #185 T-720 (b) arrows, Home and End move between rows | src/terminal/t764-panemenu-keys.test.ts | "T-720: in the pane menu ArrowDown goes to row 2, End to the last row, Home to the first, ArrowUp wraps to the last" |
+| #185 T-720 (c) Tab closes it with focus back | src/terminal/t764-panemenu-keys.test.ts | "T-720: Tab in the pane menu closes it and focus goes back into the pane, not the page" |
+| #185 T-720 (h) Ctrl/Alt chords stay the program's | src/terminal/PaneMenu.test.ts | "T-710: Shift+F10 and the Menu key are the menu keys; with Ctrl, Alt or Meta they stay the program's (T-720)" |
+| #191 T-742 (c1) Down/Up move, wrap, aria-activedescendant | src/chrome/polishB.test.ts | "font suggestions take Up and Down, show which is reached, and Enter picks it" |
+| #191 T-742 (c2) Enter picks the reached row | src/chrome/polishB.test.ts | "font suggestions take Up and Down, show which is reached, and Enter picks it" |
+| #191 T-742 (c3) after a pick or Escape, Up/Down start from the ends; Escape closes only the list | src/settings/t764-font-keys.test.ts (Escape scope) + src/chrome/polishB.test.ts (restart from ends) | "T-742: Escape with the font list open is stopped and closes the list; with the list closed it is left to bubble" + "font suggestions take Up and Down, show which is reached, and Enter picks it" |
+| #194 T-734 (b) finished download has Open and Show in folder, which reveals that key | src/browser/t764-download-actions.test.ts | "T-734: a finished download shows Open and Show in folder, and Show in folder asks the backend to reveal that download" |
+| #195 T-744 (a) a scan warning never replaces an error | src/projects/pollWarning.test.ts | "T-744: a failed workspace scan leaves the panel's error in place" |
+| #195 T-744 (b) with no error showing, the scan warning shows | src/projects/t764-scan-warning-control.test.ts | "T-744: with no error showing, a failed workspace scan shows its warning" |
+| palette.md:11 zoom names differ and each acts | src/chrome/t764-zoom-names.test.ts | "the Terminal zoom menu names are the terminal actions' names and none equals an interface-zoom entry's name" + "the menu zoom changes the terminal's font size and not the interface zoom; the interface zoom steps its own level" |
