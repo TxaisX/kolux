@@ -4,6 +4,7 @@
 // `cleanup_remove` still decides what is safe to remove and never forces; this side calls it one
 // workspace at a time so progress can show and a slow one does not hold the rest.
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { askArchive } from "../setup/TrustPrompt";
 import { childrenFirst, rowLabel, type Cleaned, type KeptBranch, type ScanRow } from "./cleanup";
 
 /** The parent of each workspace by path (PROJ-047); a missing or null entry is a top-level one. */
@@ -113,6 +114,7 @@ type Invoke = <T>(cmd: string, args: Record<string, unknown>) => Promise<T>;
 /** The adapter the dialog uses: one workspace through `cleanup_remove`; branches it kept go to `onKept`. */
 export function removeOne(projectId: string, onKept: (kept: KeptBranch[]) => void = () => {}, invoke: Invoke = tauriInvoke): RemoveOne {
   return async (path) => {
+    await askArchive(path);
     const out = await invoke<Cleaned>("cleanup_remove", { projectId, paths: [path] });
     if (out.kept.length > 0) onKept(out.kept);
     const ok = out.removed.some((r) => key(r) === key(path));
