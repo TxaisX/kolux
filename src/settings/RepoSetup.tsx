@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
-import { choiceOptions, choiceSave, runsNote, scriptSave, trustNote, type RepoSetup } from "./setupChoice";
+import { choiceOptions, choiceSave, runsNote, scriptSave, trustedWords, trustNote, type RepoSetup } from "./setupChoice";
 
 export interface SetupActions {
   onSave: (script: string) => void;
@@ -11,6 +11,7 @@ export interface SetupActions {
   onChoice: (value: string) => void;
   onWait: (wait: boolean) => void;
   onMode?: (mode: string) => void;
+  onUntrust?: () => void;
 }
 
 export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; notice?: string | null; actions: SetupActions }) {
@@ -28,6 +29,7 @@ export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; no
   };
   useLeaveSave(() => draft !== (setup.local ?? "") && commit()); // SET-036: changing page or closing keeps what was typed
   const trust = trustNote(setup);
+  const trusted = trustedWords(setup);
   return (
     <section className="conn-card" data-section="repo-setup">
       <h2 className="conn-name">Setup script</h2>
@@ -103,6 +105,18 @@ export function RepoSetupView({ setup, notice, actions }: { setup: RepoSetup; no
       <p className="conn-detail">
         {runsNote(setup)} {trust}
       </p>
+      {trusted && (
+        // T-721: what Always trust or an approval allowed can be seen here and taken back; kolux.yaml asks again after
+        <div className="look-select" data-row="trust">
+          <span>Trusted</span>
+          <span>
+            {trusted}{" "}
+            <button className="btn" onClick={actions.onUntrust}>
+              Stop trusting
+            </button>
+          </span>
+        </div>
+      )}
       <label className="check">
         <input type="checkbox" aria-label="Wait for setup" checked={setup.wait} onChange={(e) => actions.onWait(e.target.checked)} />
         The agent waits for setup to finish before it starts
@@ -154,6 +168,7 @@ export default function RepoSetupSection({ path }: { path: string }) {
         },
         onWait: (wait) => void write("repo_setup_wait_set", { wait }),
         onMode: (mode) => void write("repo_setup_mode_set", { mode }),
+        onUntrust: () => void write("repo_trust_clear", {}),
       }}
     />
   );

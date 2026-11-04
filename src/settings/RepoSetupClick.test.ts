@@ -42,6 +42,7 @@ const actions = {
   onRemove: () => void calls.push("remove"),
   onChoice: (v: string) => void calls.push(`choice:${v}`),
   onWait: (w: boolean) => void calls.push(`wait:${w}`),
+  onUntrust: () => void calls.push("untrust"),
 };
 const draw = (setup: RepoSetup = saved) => {
   h.cursor = 0;
@@ -93,4 +94,18 @@ test("AFTER: a changed draft saves on blur", () => {
   (box().props.onChange as (e: unknown) => void)({ target: { value: "pnpm ci" } });
   (box().props.onBlur as () => void)();
   expect(calls).toEqual(["save:pnpm ci"]);
+});
+
+test("T-721: what is trusted shows with Stop trusting; once stopped the row goes and kolux.yaml asks first again", () => {
+  const yaml: RepoSetup = { ...saved, local: null, shared: "pnpm i", inherited: "shared" };
+  const page = (s: RepoSetup) => draw(s).map((e) => text(e)).join("\n");
+  expect(button(draw(yaml), "Stop trusting"), "nothing trusted: no row").toBeUndefined();
+  expect(page(yaml)).toContain("asks first, once, and again if it changes");
+  const always = draw({ ...yaml, trustedAll: true, trusted: ["setup"] });
+  expect(always.map((e) => text(e)).join("\n")).toContain("Always trust is on: every script in kolux.yaml runs without asking");
+  (button(always, "Stop trusting")!.props.onClick as () => void)();
+  expect(calls).toEqual(["untrust"]);
+  expect(page({ ...yaml, trusted: ["setup", "issue"] })).toContain("Runs without asking while unchanged: the setup script, the issue command.");
+  // the page reads back after the write; Rust's t721 test shows the record is gone and each script asks again
+  expect(button(draw({ ...yaml, trustedAll: false, trusted: [] }), "Stop trusting")).toBeUndefined();
 });
