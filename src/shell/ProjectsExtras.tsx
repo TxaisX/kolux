@@ -1,6 +1,7 @@
 // T-302-b: the small pieces ProjectsPanel mounts (see projectsGlue.ts for the rules, and the patch for where they sit).
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
+import { askArchive } from "../setup/TrustPrompt";
 import type { KeptBranch, KeptItem } from "../projects/cleanup";
 import type { RemoveCheck } from "../projects/deleting";
 import { outsideLines, outsideTitle } from "../projects/outsideCard";
@@ -122,6 +123,7 @@ export function PickedBar({
     try {
       for (const s of planRemoval(asked.q, asked.items)) {
         // T-613: no branch choice (null), so the workspace's own record decides and a branch holding commits found nowhere else stays.
+        await askArchive(s.path);
         const k = await invoke<KeptBranch | null>("workspace_remove", { projectId: s.projectId, path: s.path, force: s.force, stamp: s.stamp, keepBranch: null });
         if (k) kept.push({ ...k, projectId: s.projectId });
         void invoke("editor_drafts_drop", { worktree: s.path }).catch(() => undefined);
