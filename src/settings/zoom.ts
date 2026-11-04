@@ -38,8 +38,9 @@ export function onZoom(w: (level: number) => void): () => void {
   return () => void watchers.delete(w);
 }
 
-/** A zoom key, the View menu or the zoom control: applied at once, then saved. */
-export function stepZoom(how: ZoomStep): Promise<unknown> {
+/** A zoom key, the View menu or the zoom control: applied at once, then saved. A failed save is told to
+ * `onFail` (T-723, DT-C159): the window keeps the new size, but it would be lost at the next start. */
+export function stepZoom(how: ZoomStep, onFail: (text: string) => void) {
   applyZoom(nextLevel(level, how));
-  return invoke("settings_patch", { set: { [ZOOM_FIELD]: level }, remove: [] });
+  invoke("settings_patch", { set: { [ZOOM_FIELD]: level }, remove: [] }).catch((e) => onFail(`Zoom not saved: ${e}`));
 }

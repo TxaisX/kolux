@@ -61,6 +61,11 @@ export const withoutWhitespace = (a: string, b: string) => diff(a, b, DIFF_BOUND
 // document's layout and the lines below never jump when a card draws.
 export type NoteActions = { add: (line: number, end: number, at: { x: number; y: number }, side?: Side) => void; edit: (n: LineNote, at: { x: number; y: number }) => void; remove: (n: LineNote) => void };
 export const setNotes = StateEffect.define<LineNote[]>();
+type NoteSaves = { current: { onDeleteNote?: (n: LineNote) => void; onSaveNote?: (n: LineNote) => void } };
+/** T-723 (DT-C159): the bin deletes at once and returns the note to keep for Undo; none when nothing can save it back. */
+export const binNote = (note: LineNote, r: NoteSaves) => (r.current.onDeleteNote?.(note), r.current.onSaveNote ? note : null);
+/** Undo: the same note, saved back with its id, lines and text. */
+export const unbinNote = (note: LineNote, r: NoteSaves) => r.current.onSaveNote?.(note);
 const noteSpan = where;
 class NoteCard extends WidgetType {
   constructor(
@@ -258,10 +263,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       setPop({ line: old?.line ?? line, end: old?.end ?? end, side, text: "", ...at });
     },
     edit: (note, at) => setPop({ line: note.line, end: note.end ?? note.line, side: sideOf(note), note, text: note.text, ...at }),
-    remove: (note) => {
-      noteRef.current.onDeleteNote?.(note);
-      if (noteRef.current.onSaveNote) setUndoNote(note);
-    },
+    remove: (note) => setUndoNote(binNote(note, noteRef)),
   });
   const notesKey = JSON.stringify(notes);
   const keys = useKeymap();
@@ -593,7 +595,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       {undoNote && (
         <div className="notice md-banner" role="status">
           Review note deleted.
-          <button className="btn" onClick={() => (noteRef.current.onSaveNote?.(undoNote), setUndoNote(null))}>
+          <button className="btn" onClick={() => (unbinNote(undoNote, noteRef), setUndoNote(null))}>
             Undo
           </button>
         </div>
