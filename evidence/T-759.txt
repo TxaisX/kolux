@@ -1,0 +1,34 @@
+T-759 / DT-C195: removing the Open in row being edited leaves edit mode (proof/ux-audit/requests/W3.md queue refill 17,
+found during T-753), lane A (90). Stacked on #203 (s-90/t753 c0947118, which contains main 5e481cf2). Release: 0.1.8.
+
+FIXED
+  1. "Remove on the row being edited leaves Save changes on, and Save then clears the fields" (T-753 LEFT). In the
+     Open in card (src/settings/GeneralPage.tsx OpenInCard), Remove on the row that is in the fields now does what
+     Cancel does: edit mode ends and both fields clear, so Save changes is gone and Add custom app is off until
+     something is typed. Removing another row while editing keeps the edit.
+  2. "The dim on the Safety rules also dims each rule switch's focus ring" (T-753 LEFT). The inline opacity on the
+     whole rules block (SafetyPage.tsx) is gone; the block keeps data-master-off and one CSS rule in src/styles.css
+     dims each rule switch to 0.65 unless it holds keyboard focus (:has(:focus-visible)), so the ring shows at full
+     strength and a mouse click does not undim the row.
+
+TESTS
+  - src/settings/openInCard.test.ts "T-759 (DT-C195): removing the row being edited leaves edit mode, so Save cannot
+    clear the fields": Edit Vim, Remove Vim, confirm in the dialog; the list saves empty, Save changes is gone, Add is
+    off, both fields are empty. On the old code it fails with "expected [...] to have a length of +0 but got 1".
+  - same file, "T-759: removing another row while editing keeps the edit": with Vim and Neovim listed, Edit Vim, type
+    "Vim 9", Remove Neovim; Save changes is still there with "Vim 9", and Save writes only the edited Vim row.
+  - src/settings/SafetyPage.test.ts SAFE-015: master off marks the rules block with data-master-off and no inline
+    opacity, styles.css carries the :has(:focus-visible) rule, master on has no marker.
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t759)
+  - npx vitest run: 821 files, 6060 tests passed (the 3 card tests and SAFE-015 among them). npx tsc --noEmit -p .
+    then flagged two test-only type errors (Array.at and an untyped getBuiltinModule read); they now use the typed
+    read other tests use (VIEW-026) and saved[saved.length - 1]: tsc clean, the two files 12 tests passed.
+  - Bundle: first load 1,487,946 B, the same as main 5e481cf2 built on its own: +0 B against a +60 cap.
+  - node scripts/plan-check.mjs OK; firewall-check -Baseline 0 new.
+  - Review 1 (whole diff): opus-high-review A-, no blockers. Taken: a check that the inline opacity is gone,
+    :has(:focus-visible) instead of :focus-within so a click does not undim, the "another row keeps the edit" test.
+  - Review 2 (that delta): opus-high-review A, no blockers or should-fixes. Style nits left as they are.
+  - LEFT: a row that disappears some other way (settings changed elsewhere) while being edited is not handled; the
+    0.65 dim contrast is not measured; after the Remove dialog closes, focus goes back to a Remove button that is gone
+    and falls to the page (older than this PR, a follow-up).

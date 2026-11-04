@@ -67,7 +67,7 @@ export function SafetyView({ settings, rules, error = null, save }: ViewProps) {
       )}
       {rules === null && !error && <p className="conn-detail">Reading the rules...</p>}
       {rules && (
-        <div data-rules data-master-off={master ? undefined : ""} style={master ? undefined : { opacity: 0.65 }}>
+        <div data-rules data-master-off={master ? undefined : ""}>
           {rules.map((r) => (
             <label className="conn-switch" key={r.id} data-rule={r.id}>
               <input type="checkbox" role="switch" aria-label={r.name} aria-describedby={master ? undefined : "safety-master-note"} checked={ruleOn(settings, r.id)} onChange={(e) => void save(switchRule(settings, r.id, e.target.checked))} />
