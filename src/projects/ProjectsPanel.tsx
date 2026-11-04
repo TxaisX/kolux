@@ -746,7 +746,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       onRemoved(gone.path);
       setDropProject(null);
       setSettingsFor(null);
-      say("ok", `${gone.name} is out of Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder is still on disk`);
+      say("ok", `Removed ${gone.name} from Kolux${gone.ended ? `; ${gone.ended} terminal${gone.ended === 1 ? "" : "s"} closed` : ""}. Its folder stays on disk`);
       await reload();
     } catch (err) {
       fail(err);
@@ -899,7 +899,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setGroupFor(null);
       setDropGroup(null);
       focusNewGroup(); // the group's own buttons are gone with it
-      say("ok", remove ? `Deleted the group ${g.name} and took its projects out of Kolux; their folders are still on disk` : `Deleted the group ${g.name}; its projects are at the top level now`);
+      say("ok", remove ? `Deleted the group ${g.name} and removed its projects from Kolux; their folders are still on disk` : `Deleted the group ${g.name}; its projects are at the top level now`);
       if (remove) await reload();
     } catch (err) {
       fail(err);
@@ -1260,7 +1260,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     try {
       await invoke("workspace_forget", { projectId: f.projectId, path: f.path });
       onRemoved(f.path);
-      say("ok", `took ${f.label} out of Kolux; its folder stays on disk`);
+      say("ok", `removed ${f.label} from Kolux; its folder stays on disk`);
       await reload();
     } catch (err) {
       fail(err);
@@ -2080,15 +2080,15 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         )}
         {first && forgetAsk && same(forgetAsk.path, w.path) && (
           <Ask
-            title="Take out of Kolux"
+            title="Remove from Kolux"
             body={
               forgetAsk.refused ?? (
                 <>
-                  Take <b>{forgetAsk.label}</b> out of Kolux? Its folder stays on disk.
+                  Remove <b>{forgetAsk.label}</b> from Kolux? Its folder stays on disk.
                 </>
               )
             }
-            confirm={forgetAsk.refused ? null : "Take out"}
+            confirm={forgetAsk.refused ? null : "Remove"}
             cancel="Keep"
             onConfirm={() => void forget(forgetAsk)}
             onCancel={() => closeForget(w.path)}

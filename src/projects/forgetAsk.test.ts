@@ -76,7 +76,7 @@ test("the shortcut on a folder workspace asks first and takes nothing out until 
   expect(forgets()).toEqual([]);
   expect(question(c).length).toBe(1);
   expect(question(c)[0].textContent).toMatch(/folder stays on disk/i);
-  await click(c, byText(c, "button", "Take out")[0]);
+  await click(c, byText(c, "button", "Remove")[0]);
   await settle(60);
   expect(forgets()).toEqual([{ cmd: "workspace_forget", args: { projectId: "p1", path: folder.path } }]);
 });
@@ -90,10 +90,10 @@ test("answering Keep (or never answering) invokes nothing", async () => {
   expect(forgets()).toEqual([]);
 });
 
-const REASON = "This workspace's folder is still there. Delete the workspace instead; forgetting is for ones that are gone";
+const REASON = "This workspace's folder is still there. Delete the workspace instead; removing is for ones that are gone";
 const buttons = (c: FakeNode) => find(c, (n) => n.localName === "button").map((b) => b.textContent.trim());
 
-test("a forget the backend would refuse says why straight away, with no Take out, and never calls workspace_forget", async () => {
+test("a forget the backend would refuse says why straight away, with no Remove, and never calls workspace_forget", async () => {
   h.refusal = REASON;
   const c = await panel();
   await pressDelete();
@@ -101,7 +101,7 @@ test("a forget the backend would refuse says why straight away, with no Take out
   expect(box.length).toBe(1);
   expect(box[0].textContent).toContain(REASON);
   expect(question(c).length).toBe(0);
-  expect(buttons(c)).not.toContain("Take out");
+  expect(buttons(c)).not.toContain("Remove");
   expect(h.calls.filter((x) => x.cmd === "workspace_forget_check")).toEqual([{ cmd: "workspace_forget_check", args: { projectId: "p1", path: folder.path } }]);
   await click(c, byText(c, "button", "OK")[0]);
   await settle(60);
@@ -113,7 +113,7 @@ test("a forget the backend allows still asks as before, and so does a check that
   const c = await panel();
   await pressDelete();
   expect(question(c).length).toBe(1);
-  expect(buttons(c)).toContain("Take out");
+  expect(buttons(c)).toContain("Remove");
   await click(c, byText(c, "button", "Keep")[0]);
   await settle(60);
   h.checkBroken = true;

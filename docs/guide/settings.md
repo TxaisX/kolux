@@ -155,7 +155,6 @@ The Zoom control under Interface is the only way to change the size of the whole
 | Show Tasks button | On | |
 | Show Automations row in the sidebar | On | |
 | Show Skills button in the sidebar | Off | `skillsButton` |
-| Draw terminals with the GPU (up to six at a time; applies to new terminals) | On | `terminalGpu` |
 | Show status bar | On | `statusBarVisible` |
 | Status bar items: Agent status, Resource Manager, Terminals running, Agents running, Keep awake, Ports (see [Ports in the status bar](terminals.md#ports-in-the-status-bar)), Claude and Codex usage in the top pill (tick the ones you want) | All shown | `statusBarHidden` |
 | Usage percentages: Used or Remaining (changes only the Agents screen footer) | Used | `usagePercentages` |
@@ -235,6 +234,7 @@ A sample terminal at the top of the card shows each change as you make it. Open 
 | Cursor | Block (default), Bar or Underline | `terminalCursorStyle` |
 | Blinking cursor | On | `terminalCursorBlink` |
 | Minimum contrast: keep text readable on any colour scheme | Off. When on, text keeps at least a 4.5 to 1 contrast against its background | `terminalMinimumContrast` |
+| GPU drawing | Automatic (default: the GPU when the computer has one that works), On or Off. Up to six terminals use it at a time; the rest draw the plain way | `terminalGpu` |
 
 A number you type is corrected to the nearest allowed value when you press Enter or leave the box.
 
@@ -266,6 +266,7 @@ The shell you pick is tried first. If it will not start (it was uninstalled, or 
 | Setting | Choices | Saved as |
 |---|---|---|
 | Branch prefix | Your Git user name (or GitHub login), custom text, or none. Default is your Git user name | `branchPrefix`, `branchPrefixCustom` |
+| Name the branch after the work | On. An agent's first task in a workspace that still has the suggested name renames its branch to a short description of the work. A name you typed, a pushed branch and one with a pull request keep their names. Ask to rename the folder too (on) follows it | `renameBranches`, `autoBranchName` |
 | Default compare base | The repository default, or the branch's upstream | `scmSummaryUpstream` |
 | Refresh the base first | Off. When on, it fast-forwards the base branch only | `refreshBaseFirst` |
 | Source Control group order | Staged first (default) or Changes first. Conflicts always come first | |
