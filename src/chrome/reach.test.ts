@@ -278,6 +278,7 @@ const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = 
   ["projects/StartGit.tsx", "Start Git in this folder", "trapTab"],
   ["recovery/CrashReportDialog.tsx", "Report a crash", "hook"],
   ["settings/GrokCard.tsx", "Use an xAI API key", "trapTab"],
+  ["settings/SettingsPage.tsx", "Settings", "trapTab"], // T-732
   ["shell/LinkAskDialog.tsx", "w.title", "trapTab"],
   ["skills/SkillUpdate.tsx", "Update Kolux skills", "own"],
   ["tasks/NewIssueDialog.tsx", "New issue", "trapTab"],
