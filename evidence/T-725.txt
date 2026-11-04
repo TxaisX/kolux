@@ -1,0 +1,52 @@
+T-725 - One name and one place per setting and action (DT-C161; UX audit W3 queue refill)
+Worker 2f, coordinator 57, branch s-2f/one-name from main 3e067ebf, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "T-725 / DT-C161". Findings: settings-a.md:5 (GPU), settings-a.md:6 (Branch names),
+projects.md:14 (verbs). First load cap +0.
+
+GPU DRAWING
+- Before: Appearance had a "Terminal drawing" card with an on/off switch, and Terminal & sessions had the three-way
+  "GPU drawing" (Automatic, On, Off). Both wrote terminalGpu. The switch turned Automatic into a hard on or off.
+- After: only the three-way choice remains. The Appearance card is removed, and its one useful fact ("up to six
+  terminals use it at a time") now sits under the three-way. Settings search: the Appearance entry is gone, and
+  "terminal drawing", "renderer", "hardware acceleration" and "graphics" find the Terminal & sessions card.
+- scripts/prove/live-T-544.mjs item 4 clicked the removed switch. It now picks GPU drawing > Off on Terminal &
+  sessions and waits for terminalGpu to be "off" (or an older false).
+- spec/03 T-067 note: names the one control.
+
+BRANCH NAMES
+- Before: Git & worktrees had two cards titled "Branch names". The first held the prefix and "Rename branches after
+  the work" (renameBranches). The second held "Name the branch after the work" (the branch-naming key). The rename
+  runs only when both are on, so the first switch could look on while the rename did nothing.
+- After: one card. The single switch "Name the branch after the work" is on only when both keys are on. Changing it
+  writes both, so an older file with only one key off shows the switch off, and turning it on makes the rename work.
+  "Ask to rename the folder too" still appears under it only while it is on. Settings search: the "Automatic branch
+  names" entry is folded into Branch names.
+
+VERBS
+- Delete = it is gone (a workspace's folder and branch, or a group, which lives only in Kolux).
+- Remove = out of Kolux, its folder stays on disk.
+- Hide = off the sidebar only.
+- Already consistent: project Remove, workspace Delete / Delete all, group Delete, Hide from the sidebar,
+  Set parent (no "Change parent" exists any more).
+- Changed: the delete shortcut on a folder workspace (no commit) said "Take <name> out of Kolux?" / "Take out".
+  It now says "Remove <name> from Kolux? Its folder stays on disk." / "Remove". The ok messages after a removed
+  project, folder workspace or group's projects also say "removed ... from Kolux".
+
+TESTS
+- src/settings/GitPage.test.ts T-725: one "Branch names" heading, one naming switch, no auto-branch card. An older
+  file with the naming key off shows the switch off. namingPatch(true/false) writes both keys. The T-116-b test now
+  uses the single switch's label.
+- src/projects/forgetAsk.test.ts: the question and its button say Remove.
+- InputCards.test.ts still finds "GPU drawing"; renderer and TERM-103 tests are unchanged (the stored key is the same).
+- Trap (on the committed change): with main's GitPage.tsx put back, the T-725 test FAILS; with main's
+  ProjectsPanel.tsx put back, the forgetAsk tests FAIL. Restored, both pass.
+- VITEST_MAX_WORKERS=2 pnpm vitest run src/settings src/terminal src/projects src/shell src/chrome src/keys:
+  325 files, 1871 of 1872 pass. The one was src/terminal/outputFlood.test.ts (48 MB through the parser), a timing
+  test that passes alone (2/2) and is untouched here.
+- pnpm tsc --noEmit -p .: clean. node scripts/plan-check.mjs: OK. firewall-check -Baseline: 0 new.
+  node --check scripts/prove/live-T-544.mjs: OK (the live run itself needs the app; not run here).
+
+AFTER-LIST
+- The command palette (projects/WorktreePalette.tsx) says "worktree" where the sidebar says "workspace" (its
+  aria-label "Switch worktree", the placeholder, "Open a worktree first"). The label is also used by the top bar,
+  shortcuts, styles.css and live proofs in other lanes, so the noun change is its own row.

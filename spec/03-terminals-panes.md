@@ -335,8 +335,8 @@ Rules: Auto uses GPU rendering when supported, otherwise plain rendering; on/off
   failure does not make later terminals slow to open; glyph caches reset after paste bursts and
   system resume to clear garbled text; a program's synchronized frame is shown whole, including when
   a hidden pane is revealed.
-  (Kolux RS, T-067: the switch "Draw terminals with the GPU" is auto (on) or plain (off); there is no
-  separate force-on beyond auto, see DT-C26. Synchronized frames are handled by the terminal renderer itself. The cap counts
+  (Kolux RS, T-067: GPU drawing has one control, Settings > Terminal & sessions > GPU drawing
+  (Automatic, On, Off; SET-022). T-725 removed the second switch Appearance had, see DT-C26, DT-C161. Synchronized frames are handled by the terminal renderer itself. The cap counts
   live WebGL contexts; a lost context frees its slot. Glyph atlas reset after a paste over 2 KB and after a
   heartbeat gap over 30 s. Shells that stall at process start are a terminal-start problem, carried into T-166.)
 Acceptance:
