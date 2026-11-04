@@ -1,0 +1,31 @@
+T-723 / DT-C159: lane D (72): a failed zoom save is told; the review-note bin's Undo is tested
+Row: G:/Dev/kolux-rs-sessions/proof/ux-audit/requests/W3.md "Queue refill" (T-723), findings settings-b.md:22 and
+editor-a.md:12 (the sessions proof dir, not in this repo). Built on origin/main 74dc239b, branch s-72/quiet, 2026-11-03.
+
+FOUND
+  Zoom: stepZoom (src/settings/zoom.ts) applies the size, then saves it. All three callers swallowed a failed save
+    with .catch(() => {}): useSettingsPlumbing.ts:94 (the View menu), useWindowKeys.ts:285 (the zoom keys) and
+    AppearancePage.tsx:83 (the zoom control). The size looked kept but was lost at the next start.
+  Note bin: the audit row predates be6f4dfc (on main), which already deletes at once and shows "Review note deleted."
+    with Undo for 8 s (DiffPane.tsx). It had no test.
+
+FIXED
+  src/settings/zoom.ts: stepZoom(how, onFail) passes "Zoom not saved: <error>" to the caller. It no longer returns
+    the promise, so no caller can drop the error again.
+  src/settings/useSettingsPlumbing.ts, src/keys/useWindowKeys.ts: the message goes to the window's toast. The zoom
+    keys now read their step from the id (ui.zoomIn / ui.zoomOut / ui.zoomReset), as the View menu already did.
+  src/settings/AppearancePage.tsx: the zoom control shows the message as a warning line under it (role=alert),
+    cleared at the next step.
+  src/editor/DiffPane.tsx: the bin's delete and the banner's restore are binNote and unbinNote; behaviour unchanged.
+
+TEST
+  src/settings/zoom.test.ts: a failed save calls onFail with "Zoom not saved" and the error, the level stays 0.5 and
+    the save carried uiZoom 0.5; a save that lands says nothing; the ui.zoom* ids map to in, out and reset.
+    BEFORE THE FIX (old zoom.ts, same test): "passes the error to the caller ..." failed (nothing was told).
+  src/editor/DiffPane.test.ts: the bin deletes at once and keeps the note; Undo puts back the same note (id, lines,
+    side, text); with no save there is no Undo. (binNote did not exist before; the behaviour did.)
+
+TOTALS: see the PR body (vitest at VITEST_MAX_WORKERS=1 per 57's low-RAM window).
+pnpm tsc --noEmit: exit 0. BUNDLE: first load 1,489,452 bytes vs main 74dc239b 1,489,475 (-23 B); ceiling 1,490,000,
+cap +0.
+PENDING: unit-proven; a live check in the app has not been run.

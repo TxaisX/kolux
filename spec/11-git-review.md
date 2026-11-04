@@ -223,6 +223,7 @@ Acceptance:
   - [x] Add a note on line 12 → the card sits under line 12; switch to side-by-side → still under
         line 12. (cards; evidence/cards-GIT-040.txt)
   - [x] Edit the note → the open card updates; click trash → it is gone. (cards live; evidence/cards-GIT-040.txt)
+  - [x] Click trash → a banner offers Undo for 8 s; Undo puts back the same note. (unit; evidence/T-723.txt)
 Compat: Add Review Note defaults to Mod+Shift+A (its command id is an allowlist candidate).
 Source: D-11-040
 
