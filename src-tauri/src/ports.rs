@@ -366,20 +366,23 @@ pub fn netstat(fresh: bool) -> Result<String, String> {
     })
 }
 
-/// How old a shared table may be: the open Ports popover's own interval.
+/// How old a shared table may be: under the open Ports popover's 2 s poll, so the popover never gets its
+/// own last table back; the Preview button (3 s) reuses one whenever its tick lands within this of a popover run.
 #[cfg(any(windows, test))]
-const SHARED_FOR: Duration = Duration::from_secs(2);
+const SHARED_FOR: Duration = Duration::from_millis(1500);
 
-/// The last table when it is young enough and `fresh` is not asked, else a new one from `run`. The
-/// lock is held across the run, so a caller that waits behind it reuses its table; a failure is not kept.
+/// The last table when it is young enough and `fresh` is not asked, else a new one from `run`, dated when
+/// the run starts (so a slow netstat does not make it look younger). The lock is held across the run, so a
+/// caller that waits behind it reuses its table; a failure is not kept.
 #[cfg(any(windows, test))]
 fn shared(last: &std::sync::Mutex<Option<(std::time::Instant, String)>>, fresh: bool, run: impl FnOnce() -> Result<String, String>) -> Result<String, String> {
     let mut last = last.lock().unwrap_or_else(|e| e.into_inner());
     if let Some((_, text)) = last.as_ref().filter(|(at, _)| !fresh && at.elapsed() < SHARED_FOR) {
         return Ok(text.clone());
     }
+    let at = std::time::Instant::now();
     let text = run()?;
-    *last = Some((std::time::Instant::now(), text.clone()));
+    *last = Some((at, text.clone()));
     Ok(text)
 }
 
@@ -910,5 +913,15 @@ mod tests {
         assert_eq!(shared(&last, false, || Err("netstat did not finish".into())), Err("netstat did not finish".into()));
         assert_eq!(shared(&last, false, run), Ok("table 3".into()));
         assert_eq!(runs.get(), 3);
+        // the table is dated when its run starts: a netstat that takes ~90 ms must not push the next 2 s poll into reuse
+        let before = std::time::Instant::now();
+        let slow = shared(&last, true, || {
+            std::thread::sleep(std::time::Duration::from_millis(60));
+            Ok("slow".into())
+        });
+        assert_eq!(slow, Ok("slow".into()));
+        assert!(last.lock().unwrap().as_ref().unwrap().0.duration_since(before) < std::time::Duration::from_millis(60), "dated at the start of the run");
+        // a Stop's own scan always reads fresh, never the shared table (split so this line does not match itself)
+        assert!(include_str!("ports.rs").contains(concat!("sessions } = scan(&t, &workspaces, &active, ", "true)?;")));
     }
 }

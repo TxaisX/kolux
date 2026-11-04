@@ -27,7 +27,7 @@ pub struct Candidate {
     pub web: bool,
 }
 
-/// `netstat -ano -p tcp`: `  TCP    0.0.0.0:5173    0.0.0.0:0    LISTENING    1234`.
+/// `netstat -ano`: `  TCP    0.0.0.0:5173    0.0.0.0:0    LISTENING    1234`; UDP lines are skipped.
 pub fn parse_netstat(text: &str) -> Vec<Listening> {
     let mut out = Vec::new();
     for line in text.lines() {
@@ -149,6 +149,14 @@ mod tests {
         assert_eq!(parse_netstat(netstat), vec![Listening { port: 135, pid: 1200 }, Listening { port: 5173, pid: 4321 }]);
         let lsof = "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\nnode    4321 me  23u IPv4 0xabc 0t0 TCP *:5173 (LISTEN)\npostgres 88 me 7u IPv6 0xdef 0t0 TCP [::1]:5432 (LISTEN)\n";
         assert_eq!(parse_lsof(lsof), vec![Listening { port: 5173, pid: 4321 }, Listening { port: 5432, pid: 88 }]);
+    }
+
+    #[test]
+    fn t726_the_shared_table_shows_an_ipv6_only_dev_server_and_skips_udp() {
+        // The Ports popover's `netstat -ano` (no `-p tcp`) also lists IPv6 and UDP, so a dev server
+        // bound only to [::1] now shows on the Preview button; UDP never does.
+        let netstat = "  TCP    [::1]:5173             [::]:0                 LISTENING       4321\n  UDP    0.0.0.0:5353           *:*                                    900\n  UDP    [::]:3000              *:*                                    901\n";
+        assert_eq!(parse_netstat(netstat), vec![Listening { port: 5173, pid: 4321 }]);
     }
 
     #[test]
