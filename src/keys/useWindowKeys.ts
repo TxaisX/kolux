@@ -4,6 +4,7 @@
 // for its render from `w` (shell/windowBag.ts) when it runs, as its closure took them in App.tsx.
 import type { Pane } from "../App";
 import type { WindowBag } from "../shell/windowBag";
+import type { Page } from "../projects/ProjectsPanel";
 import { needsYou } from "../board/chip";
 import { openInBrowser } from "../browser/openIn";
 import { takeClosed } from "../browser/pages";
@@ -238,9 +239,10 @@ export function useWindowKeys(w: WindowBag) {
           else setScreen((s) => nextScreen(s));
           break;
         case "view.tasks":
-        case "view.automations": {
+        case "view.automations":
+        case "view.routing": {
           // UX lane C (palette F2): Automations gets a command (and so a palette row), as Tasks has.
-          const page = hit.id === "view.tasks" ? "tasks" : "automations";
+          const page = hit.id.slice(5) as Page; // the id after "view." names the page (T-727 adds routing)
           setScreen("terminals");
           setPage((p) => (terminals && p === page ? null : page));
           break;

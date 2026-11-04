@@ -80,6 +80,7 @@ export const actions: Action[] = [
   a("workspace.rename", "Rename worktree", "global", [], { darwin: ["Mod+Alt+R"], group: "workspace-shell" }),
   a("workspace.delete", "Delete Workspace", "global", ["Mod+Shift+Backspace"]),
   a("workspace.openBoard", "Show Workspace Statuses", "global", []), // T-610: not a second "Board" (VIEW-001's keeps the name)
+  a("view.routing", "Model Routing", "global", []), // T-727: was only the icon on the projects panel; "route" finds it as a near miss of "routing"
   a("dashboard.toggle", "Toggle Agent Dashboard", "global", []),
   a("workspace.selectByIndex", "Select Workspace 1–9", "global", ["Mod+1"], { index: true }),
   a("view.tasks", "Open Tasks", "global", []),
