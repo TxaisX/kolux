@@ -97,7 +97,7 @@ fn edit034_box2_two_files_go_to_the_trash_in_one_call_and_undo_brings_both_back(
     std::fs::write(&b, "beta body").unwrap();
     let paths = vec![a.to_string_lossy().into_owned(), b.to_string_lossy().into_owned()];
     // one fs_trash call carries both selected paths
-    let gone = trash_each(&paths);
+    let gone = trash_each(&paths, &[], &[]);
     assert_eq!(gone.len(), 2);
     for g in &gone {
         assert!(g.error.is_none(), "{:?}", g.error);

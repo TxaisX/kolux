@@ -16,6 +16,7 @@ const FOUND = { files: [{ path: "src/a.ts", hits: [{ line: 3, col: 2, before: "x
 
 const calls: Array<[string, Record<string, unknown>]> = [];
 let gate: Promise<void> | null = null; // while set, dir_list waits for it (to see the refresh in progress)
+let trashReply: unknown = null; // what fs_trash answers (a refusal, in the undo test)
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args: Record<string, unknown> = {}) => {
     calls.push([cmd, args]);
@@ -24,7 +25,12 @@ vi.mock("@tauri-apps/api/core", () => ({
       return TREE[args.path as string] ?? [];
     }
     if (cmd === "dir_ignored") return args.path === "/r" ? ["dist.js"] : [];
-    if (cmd === "fs_create") return `${args.dir}/${args.name}`;
+    if (cmd === "fs_create") return { path: `${args.dir}/${args.name}`, id: "v1", error: null };
+    if (cmd === "fs_rename") {
+      const from = String(args.path);
+      return { path: from.slice(0, Math.max(from.lastIndexOf("/"), from.lastIndexOf("\\")) + 1) + String(args.name), id: "v2", error: null };
+    }
+    if (cmd === "fs_trash") return trashReply ?? [];
     if (cmd === "editor_search") return FOUND;
     if (cmd === "get_settings") return {};
     return null;
@@ -37,6 +43,7 @@ let store: Map<string, string>;
 beforeEach(() => {
   calls.length = 0;
   gate = null;
+  trashReply = null;
   const dom = installDom();
   doc = dom.doc;
   store = dom.store;
@@ -149,6 +156,30 @@ describe("T-702 Explorer header", () => {
     await fire(container, "keydown", folder, { key: "Enter" });
     await until(() => calls.filter(([c]) => c === "fs_create").length === 2, "the folder to be created");
     expect(calls.filter(([c]) => c === "fs_create")[1][1]).toEqual({ dir: "/r", name: "lib", folder: true });
+  });
+
+  it("undo of a new file hands back the entry it made, and a changed file is refused with the reason shown", async () => {
+    const { container } = await explorer();
+    await click(container, button(container, "New file"));
+    const field = input(container, "New file name");
+    await typeInto(container, field, "notes.md");
+    await fire(container, "keydown", field, { key: "Enter" });
+    await until(() => calls.some(([c]) => c === "fs_create"), "the file to be created");
+    await settle(); // the create's answer is recorded before the undo is pressed
+    // The path now holds another entry (an agent wrote its own notes.md): the command refuses.
+    trashReply = [{ path: "/r/notes.md", permanent: false, error: "notes.md changed since that action, so it was not undone" }];
+    const tree = find(container, (n) => n.attrs.role === "tree")[0];
+    const undo = () => fire(container, "keydown", tree, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false });
+    await undo();
+    await until(() => container.textContent.includes("changed since that action"), "the refusal to show");
+    // The undo carried the identity fs_create returned, not just the path.
+    expect(calls.find(([c]) => c === "fs_trash")![1]).toEqual({ paths: ["/r/notes.md"], expect: ["v1"], mustBeEmpty: [false] });
+    expect(container.textContent).toContain("notes.md changed since that action, so it was not undone");
+    // The refused step is dropped rather than retried, so the rest of the history still undoes.
+    await undo();
+    await settle();
+    expect(calls.filter(([c]) => c === "fs_trash").length).toBe(1);
+    expect(calls.some(([c]) => c === "fs_restore")).toBe(false);
   });
 
   it("Open in opens its menu of apps (aria-expanded), and a second click closes it", async () => {

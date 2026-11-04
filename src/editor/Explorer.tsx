@@ -38,15 +38,18 @@ import { announceMoves } from "./fileMoved";
 export type Node = { name: string; path: string; kind: "dir" | "file" | "link" };
 export type Row = { node: Node; depth: number; parent: string | null };
 export type Draft = { dir: string; folder: boolean };
-/** One explorer action, as the undo history keeps it. */
+/** One explorer action, as the undo history keeps it. `id` is the entry the action touched, so an
+ *  undo refuses when that path now holds a different file (C24-R3-01). */
 export type Op =
-  | { kind: "create"; path: string }
-  | { kind: "rename"; from: string; to: string }
+  | { kind: "create"; path: string; id?: string | null; folder?: boolean }
+  | { kind: "rename"; from: string; to: string; id?: string | null }
   | { kind: "trash"; paths: string[] }
-  | { kind: "copy"; from: string[]; dir: string; made: string[] }
+  | { kind: "copy"; from: string[]; dir: string; made: string[]; ids?: (string | null)[] }
   | { kind: "move"; moves: [string, string][] }; // [from, to]
 type Gone = { path: string; permanent: boolean; error: string | null };
-type Placed = { from: string; to: string | null; error: string | null };
+type Placed = { from: string; to: string | null; id: string | null; error: string | null };
+/** What a create or a rename left behind (fsops::Made); `error` is a refusal to undo, not a failure. */
+type Made = { path: string; id: string | null; error: string | null };
 
 const ROW = 22; // px
 const SPARE = 10; // rows drawn beyond each edge
@@ -76,17 +79,20 @@ export const baseName = (path: string) => path.slice(Math.max(path.lastIndexOf("
 const inside = insideDir; // T-224-b: Windows paths compare without case, and only on whole folder names
 /** A selection to delete: a folder chosen along with things inside it goes once, as the folder. */
 export const tops = (paths: string[]) => paths.filter((p) => p !== DRAFT && !paths.some((q) => q !== p && inside(p, q)));
-/** The call that undoes an action, and the one that does it again. */
+/** The call that undoes an action, and the one that does it again. Each path whose entry was
+ *  recorded goes back with that identity, so the command refuses a later file at the same path. */
 export function undoOf(op: Op): [string, Record<string, unknown>] {
   switch (op.kind) {
     case "create":
-      return ["fs_trash", { paths: [op.path] }];
+      // A folder the action made is only removed while it is still empty: anything dropped in since
+      // belongs to someone else (C24-R3-01).
+      return ["fs_trash", { paths: [op.path], expect: [op.id ?? null], mustBeEmpty: [op.folder === true] }];
     case "rename":
-      return ["fs_rename", { path: op.to, name: baseName(op.from) }];
+      return ["fs_rename", { path: op.to, name: baseName(op.from), expect: op.id ?? null }];
     case "trash":
       return ["fs_restore", { paths: op.paths }];
     case "copy":
-      return ["fs_trash", { paths: op.made }];
+      return ["fs_trash", { paths: op.made, expect: op.made.map((_, i) => op.ids?.[i] ?? null) }];
     case "move":
       return ["fs_move", { moves: op.moves.map(([from, to]) => [to, parentOf(from)]) }];
   }
@@ -96,7 +102,7 @@ export function redoOf(op: Op): [string, Record<string, unknown>] {
     case "create":
       return ["fs_restore", { paths: [op.path] }];
     case "rename":
-      return ["fs_rename", { path: op.from, name: baseName(op.to) }];
+      return ["fs_rename", { path: op.from, name: baseName(op.to), expect: op.id ?? null }];
     case "trash":
       return ["fs_trash", { paths: op.paths }];
     case "copy":
@@ -429,9 +435,9 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     setDraft(null);
     back();
     if (!d || !name.trim()) return;
-    invoke<string>("fs_create", { dir: d.dir, name, folder: d.folder }).then((path) => {
-      record({ kind: "create", path });
-      void load(d.dir).then(() => pick(path));
+    invoke<Made>("fs_create", { dir: d.dir, name, folder: d.folder }).then((made) => {
+      record({ kind: "create", path: made.path, id: made.id, folder: d.folder });
+      void load(d.dir).then(() => pick(made.path));
     }, fail);
   };
   /** Open folders that moved or were renamed stay open at their new paths. */
@@ -449,10 +455,11 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     setRenaming(null);
     back();
     if (!name.trim() || name === baseName(from)) return;
-    invoke<string>("fs_rename", { path: from, name }).then((to) => {
-      record({ kind: "rename", from, to });
-      follow([[from, to]]);
-      void load(parentOf(from)).then(() => pick(to));
+    invoke<Made>("fs_rename", { path: from, name, expect: null }).then((made) => {
+      if (made.error) return fail(made.error);
+      record({ kind: "rename", from, to: made.path, id: made.id });
+      follow([[from, made.path]]);
+      void load(parentOf(from)).then(() => pick(made.path));
     }, fail);
   };
   const askDelete = () => {
@@ -462,7 +469,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
   const doDelete = (paths: string[]) => {
     setAsking(null);
     back();
-    invoke<Gone[]>("fs_trash", { paths }).then((gone) => {
+    invoke<Gone[]>("fs_trash", { paths, expect: [] }).then((gone) => {
       const binned = gone.filter((g) => !g.error && !g.permanent).map((g) => g.path);
       if (binned.length) record({ kind: "trash", paths: binned });
       const errors = gone.filter((g) => g.error).map((g) => g.error);
@@ -476,7 +483,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     invoke<Placed[]>("fs_copy", { paths, dir }).then((res) => {
       const landed = res.filter((p) => p.to);
       const made = landed.map((p) => p.to!);
-      if (made.length) record({ kind: "copy", from: landed.map((p) => p.from), dir, made });
+      if (made.length) record({ kind: "copy", from: landed.map((p) => p.from), dir, made, ids: landed.map((p) => p.id) });
       const errors = errorsOf(res);
       if (errors.length) setNote({ text: errors.join("; "), bad: true });
       if (dir !== root) setOpen((o) => new Set(o).add(dir));
@@ -501,15 +508,21 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
     const op = from.current.pop();
     if (!op) return;
     const [cmd, args] = call(op);
-    invoke<Gone[] | Placed[] | string | null>(cmd, args).then(
+    invoke<Gone[] | Placed[] | Made | null>(cmd, args).then(
       (res) => {
-        const err = Array.isArray(res) ? res.find((g) => g.error)?.error : null;
+        // A refusal (the path now holds a different entry) is final: the step is dropped, not put
+        // back to retry, so one changed file cannot jam the whole undo history (C24-R3-01).
+        const err = Array.isArray(res) ? res.find((g) => g.error)?.error : (res?.error ?? null);
         if (err) return fail(err);
-        if (op.kind === "copy" && cmd === "fs_copy") op.made = (res as Placed[]).flatMap((p) => (p.to ? [p.to] : [])); // the copies may get new names
+        if (op.kind === "copy" && cmd === "fs_copy") {
+          const made = res as Placed[];
+          op.made = made.flatMap((p) => (p.to ? [p.to] : [])); // the copies may get new names
+          op.ids = made.flatMap((p) => (p.to ? [p.id] : []));
+        }
         to.current.push(op);
         setNote(null);
         if (cmd === "fs_move") follow((res as Placed[]).flatMap((p): [string, string][] => (p.to ? [[p.from, p.to]] : [])));
-        if (cmd === "fs_rename") follow([[args.path as string, res as string]]);
+        if (cmd === "fs_rename") follow([[args.path as string, (res as Made).path]]);
         reloadAround(touched(op));
       },
       (err) => {
