@@ -32,7 +32,7 @@ The search knows the Editor and diffs, Open in and Network proxy cards by everyd
 | Setting | Choices | Saved as |
 |---|---|---|
 | Look | Classic or New. A fresh profile starts on New; an older profile that never chose stays on Classic | `uiLook` |
-| Opens first | Agents, Board or Terminals. Default is Terminals. Under Classic only Terminals is offered | `firstScreen` |
+| Opens first | Agents, Board, Terminals or Tower. Default is Terminals. Agents and Board need the New look; Terminals and Tower work in both | `firstScreen` |
 | Review notes | On by default. Select text in a file and press Ctrl+Shift+A to leave a note for an agent | `markdownReviewNotes` |
 | Needs you strip | On by default. Shows the strip of agents waiting for you above the panes | `needsStrip` |
 
