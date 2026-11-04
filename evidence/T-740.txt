@@ -31,6 +31,6 @@ REVIEW
 - Fresh sonnet-medium-review: B+, no high. Mediums logged, not fixed (the cap has 3 B left): the toast timer has no unmount cleanup, which was already so before (useChrome lives for the window's lifetime, so it never unmounts in practice); the hover check is global, so any .toast under the pointer holds it. Low fixed: the test now also covers a new toast set while hovered. Lows kept: the New-tab title reads 'New tab beside the focused pane; shell (Ctrl+T)', worded to fit the cap.
 
 BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
-- main 5a69c684: 1,489,581 B first load. This branch: 1,489,698 B (+117). Cap +120 B. First cut +237 (keymap
+- main 5a69c684: 1,489,581 B first load, branch 1,489,698 B (+117). After merging main 99b4a9d2: main 1,489,600 B, branch 1,489,717 B (+117). Cap +120 B. First cut +237 (keymap
   chord on the sidebar tab, a separate toast callback with a focus selector, a template New-tab title); trimmed to
   the shape above.
