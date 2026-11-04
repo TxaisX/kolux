@@ -2,7 +2,7 @@
 // the active workspace and tab come back while they still exist.
 import { expect, test } from "vitest";
 import { sessionOrder } from "../sessions/restoreOrder";
-import { layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
+import { joinMarks, joinSaved, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
 
 const shell = (key: number, cwd: string | null, extra: Record<string, unknown> = {}) => ({ key, cwd, branch: null, agent: "shell" as const, program: null, args: [], ...extra });
 
@@ -200,4 +200,42 @@ test("T-066-e (review): a listed id is a guess until the agent names its own: th
   expect(withHintedSession(hinted, 2, S1)[0].session).toBe(S3);
   // Another pane is never touched.
   expect(withHintedSession(guessed, 3, S3)[0]).toEqual(guessed[0]);
+});
+
+
+// C26-R3-01: a window drawn before the saved tabs came back takes them by the side. The tabs opened while it
+// waited stay exactly where they are, so their terminals are never unmounted; a key already drawn is not doubled.
+test("c26r301: the saved tabs join a drawn window without dropping the tab opened during the wait", () => {
+  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf([shell(1, "C:\\w\\a"), shell(2, "C:\\w\\a", { seats: [{}] })], { 0: 1 }, 1, "C:\\w\\a", {}))))!;
+  const waiting = { ...shell(1_000_000, "C:\\w\\b"), agent: "claude" as const };
+  const joined = joinSaved([waiting], late);
+  expect(joined.map((p) => p.key)).toEqual([1_000_000, 1, 2]);
+  expect(joined[0]).toBe(waiting); // the very same pane object: nothing remounts, so nothing kills its terminal
+  expect(joined[2]).toMatchObject({ key: 2, seats: [{ agent: null, model: null }] }); // a saved chooser comes back a chooser
+  expect(joinSaved(joined, late).map((p) => p.key)).toEqual([1_000_000, 1, 2]); // adopted twice is still adopted once
+});
+
+// C26-R3-01 (review 060): the saved pins and Tab Colours are part of what a late layout brings. Without them the
+// next layout write drops both, so the loss outlives the start.
+test("c26r301: a slow start keeps the saved pins and tab colours, and the layout it writes keeps them", () => {
+  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf(
+    [shell(1, "C:\\w\\a"), shell(2, "C:\\w\\a"), shell(3, "C:\\w\\a")],
+    { 0: 1 }, 1, "C:\\w\\a", {},
+    { pinned: new Set([1]), colors: { 2: "red" } },
+  ))))!;
+  // The window as a slow start drew it: one tab opened during the wait, no marks of its own.
+  const waiting = { ...shell(1_000_000, "C:\\w\\b"), agent: "claude" as const };
+  const marks = joinMarks({ pinned: new Set<number>(), colors: {} }, late);
+  expect([...marks.pinned]).toEqual([1]);
+  expect(marks.colors).toEqual({ 2: "red" });
+  // What useWindowSave writes once the answer lands: the saved marks on the saved tabs, the wait tab still there.
+  const written = layoutOf(joinSaved([waiting], late), { 0: 1_000_000 }, 1_000_000, "C:\\w\\b", {}, marks);
+  expect(written.panes.map((p) => [p.key, p.pinned ?? false, p.color ?? null])).toEqual([
+    [1_000_000, false, null],
+    [1, true, null],
+    [2, false, "red"],
+    [3, false, null],
+  ]);
+  // A mark the user set during the wait wins over the saved one for the same tab.
+  expect(joinMarks({ pinned: new Set([2]), colors: { 2: "blue" } }, late)).toEqual({ pinned: new Set([1, 2]), colors: { 2: "blue" } });
 });

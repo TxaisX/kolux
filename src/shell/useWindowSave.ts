@@ -157,7 +157,9 @@ export function useWindowSave({ activeDir, activeTab, classic, dirty, focused, p
     setSettings(next);
     layoutSaver.set(l);
     askListedSessions();
-  }, [panes, activeTab, focused, activeDir, stacked, pinned, tabColors]);
+    // C26-R3-01: `read` turns true on the late answer without a remount now, so this effect must run again for it:
+    // a tab opened during the wait is written down as soon as the saved tabs are back.
+  }, [panes, activeTab, focused, activeDir, stacked, pinned, tabColors, read]);
 
   // VIEW-046: every workspace and page shown is a stop for back and forward; a step back lands on
   // the place already current, which visit leaves alone.

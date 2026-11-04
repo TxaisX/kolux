@@ -2096,8 +2096,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             }
             confirm={busy === "removing" ? "Deleting…" : "Delete all"}
             cancel="Keep"
+            locked={busy === "removing"}
             onConfirm={() => busy === "" && void removeBatch()}
-            onCancel={() => closeBatch(w.path)}
+            onCancel={() => busy === "" && closeBatch(w.path)}
           />
         )}
         {moving === w.path && !asking && (
@@ -2186,8 +2187,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             }
             confirm={blocker(confirm.check) !== null ? null : busy === "removing" ? "Deleting…" : "Delete"}
             cancel="Keep"
+            locked={busy === "removing"}
             onConfirm={() => busy === "" && void remove()}
-            onCancel={() => closeConfirm(w.path)}
+            onCancel={() => busy === "" && closeConfirm(w.path)}
           />
         )}
       </div>
