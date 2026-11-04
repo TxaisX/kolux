@@ -1,13 +1,36 @@
 # STATE
 Status: RUNNING            (RUNNING | PAUSED | BLOCKED: reason)
 Phase: 3                   (Phase 1 was done by the dirty-room team on 2026-10-06; Phase 2, the plan, on 2026-10-07)
-Budget: 6 passes per day   (today: 25, date: 2026-10-09)
-Next task: T-152 · Hooks go only to agents that are installed and switched on, and installing them never damages the user's own settings (STAT-004, STAT-005; first open task on the cutline)
-Done: 723 / 779 tasks  ·  P0 cards passing: 217 / 228 cards  ·  cutline 0 / 18 left  ·  merge gate 1 waiting  (node scripts/plan-check.mjs --write-state)
+Budget: 6 passes per day   (today: 4, date: 2026-11-04)
+Next task: T-775 · the wave 201 live proof, remaining legs: Source Control from the app, real-key page chords, and the T-765 flood once it builds (the two P0 guards and the artifacts render/seek proof passed 2026-11-04)
+Done: 852 / 914 tasks  ·  P0 cards passing: 206 / 228 cards  ·  cutline 0 / 18 left  ·  merge gate 1 waiting  (node scripts/plan-check.mjs --write-state)
 
 How to read this: `PLAN.md` holds the 533 tasks in build order; each names the spec cards it must
 make pass. Progress is counted in tasks ticked there and in P0 cards whose acceptance boxes all pass.
 `node scripts/plan-check.mjs` proves the plan still covers every card exactly once.
+
+What works today (2026-11-04, after trains 26, 27 and 28 and the wave 201 fixes): 851 of 914 tasks
+are ticked and 206 of 228 P0 cards pass. Everything below still holds, and these landed since it was
+written. **Data safety:** Delete, Remove from Kolux, Sleep, multi-select Remove, Cleanup and Quit all
+ask about unsaved editor text first, name every dirty file, and Keep leaves every tab, folder and
+draft as it was. **Artifacts** now carries only what it promises: a workspace's `artifacts/` folder is
+scanned every 3 seconds and pages, pictures and videos appear in the viewer from the app's own
+scheme, a picture renders at its real size, a video reports its duration and seeks; an unreadable
+index is reported instead of being replaced by an empty one. **Light mode** stopped leaking: sidebar
+rows, hover, inputs, tabs, syntax colours and diff marks come from the theme's own palette and clear
+4.5:1, and the keyboard focus ring is one token everywhere. **Settings and accounts:** a damaged
+settings file says so and offers a repair, the setup policy is one value the runner and the row share,
+an unpicked Claude start takes the Settings model, a switch written `=false` is off, Remove deletes
+only the sign-in, a Codex account whose file is gone reads needs sign-in, Connect an AI reaches a real
+sign-in, and Opens first accepts only real screens. **Panes and history:** a restored tab that cannot
+reattach keeps its tab with a reason and Try again, and History refuses to delete a session a pane is
+writing. **Safety and agents:** per-project Safety rules apply to the folders agents really run in, a
+hung automation run ends as stopped and can be cancelled, and Skills update works again. **First run
+and chrome:** the checklist dismisses, the Setup Guide closes on Escape, the Classic Board has a way
+back, an agent-reply file link opens where you can see it, sidebar page rows go to their page, Alt+1-9
+picks the tab it names, close-left/right close the named side, Send feedback can be cancelled, and
+multi-select Remove says what it deletes. Proven live this week: the P0 guards (screenshots in
+`evidence/live-p0/`) and the artifacts picture/video render and seek.
 
 What works today (2026-10-11; the paragraphs below this one are the task-by-task record): a
 Windows desktop app (Tauri 2, Rust + React) with its own 36 px top bar: the Kolux mark, a sidebar
@@ -33,6 +56,13 @@ agent mark, name, branch (a detached checkout shows its short commit; a plain fo
 
 13 open decisions in `DECISIONS.md` section 2 are marked "confirm". The loop builds each one's
 recorded default until told otherwise; nothing here blocks a pass.
+
+- [coordinator] 2026-11-04 · **Wave 201 is closed.** Trains 26, 27 and 28 are on main (`5050c4e2`) and
+  the artifacts work is PR #223; the P0 guards and the artifacts render/seek proof passed live. What is
+  left of the wave: the rest of T-775 (Source Control from the app, real-key page chords, the T-765
+  flood, which needs the bundle ceiling) and the P1s still open in `proof/wave-200/REGISTER.md`. Your
+  calls: cut 0.1.8 from this main, and whether to install 0.1.7 then 0.1.8 for the update proof, which
+  closes every open pane.
 
 - [coordinator] 2026-11-02 · **Cycle 5 is merged.** One merger (fa) took, in order, #54 #53 #55 #56 #57 #58 #59 #61 #43 #38 (squash) #60 #62 #63 #64 #65 #66 #67 #68 #70 #71 #73 #72 #74 #75 #76 #69, each with main merged in first and Windows CI green on that exact commit. Conflicts in PLAN, DECISIONS and PROVENANCE kept both sides; DECISIONS rows DT-C60 onward are back in number order. #46 was closed in favour of #66.
 - [coordinator] 2026-11-02 · **#37 parked, see PR comment 6571248516.** It was not merged in cycle 5 and comes back in cycle 6.
@@ -262,13 +292,13 @@ recorded default until told otherwise; nothing here blocks a pass.
   the two richCodeColourTime timing tests, failing on main too), so it is not green yet (evidence/T-ENG-test-time.txt).
 
 ## Last 10 passes  (date · task · result · evidence)
+- 2026-11-04 · [wave-201] train 28 · merged #224: eleven P1 fixes (settings truth, accounts, panes and history, tabs, light mode, Source Control, Skills) · CI green, evidence in the PR
+- 2026-11-04 · [wave-201] artifacts · merged #223: a workspace's pictures and videos are imported and shown from the app's own scheme; an unreadable index is reported · CI green; live proof 12/12 with `scripts/prove/live-artifacts.mjs`
+- 2026-11-04 · [wave-201] T-768/T-769 · merged #219: Delete, Remove, Sleep, multi-select Remove and Cleanup ask about unsaved editor text, Quit and Force Reload ask about a floating note, and Keep keeps every tab and draft · CI green, evidence in the PR
+- 2026-11-04 · [wave-201] T-761/T-762/T-763 · merged #218: the shortcuts file follows `KOLUX_KEYBINDINGS_HOME`, one focus-ring token everywhere, and one IPC guard for every live prove harness · CI green, evidence in the PR
 - 2026-11-02 · [cycle5] T-235-b · merged #69: CI check details tab (steps, annotations, Fix with AI); check tab code loads on demand to stay under the bundle budget · Windows CI green, evidence in the PR
 - 2026-11-02 · [cycle5] T-316-b · merged #76: notebook cells run Python after you trust the notebook · Windows CI green, evidence in the PR
 - 2026-11-02 · [cycle5] T-547 · merged #75: Check now asks Kimi and MiniMax for the balance on a key you added · Windows CI green, evidence in the PR
 - 2026-11-02 · [cycle5] T-248-c-rest · merged #74: Help menu: Settings, docs links, diagnostics copy and Restart Kolux · Windows CI green, evidence in the PR
 - 2026-11-02 · [cycle5] T-193-b · merged #72: Hermes and OpenClaw automations in the list · Windows CI green, evidence in the PR
 - 2026-11-02 · [cycle5] artifact-ipc-isolation · merged #73: Artifacts viewer frame isolation, tested live · Windows CI green, evidence in the PR
-- 2026-11-02 · [cycle5] APP-048 · merged #71: a profile saved by v0.1.5 is opened by today's code in a test and reads back identical · Windows CI green, evidence in the PR
-- 2026-11-02 · [cycle5] T-548-b · merged #70: Claude plan figures per account · Windows CI green, evidence in the PR
-- 2026-11-02 · [cycle5] T-167-b · merged #68: a restored row after an upgrade says restart this terminal; a reused process id no longer keeps old child rows · Windows CI green, evidence in the PR
-- 2026-11-02 · [cycle5] T-300 · merged #67: tray icon follows the app icon pick; macOS menu bar switch · Windows CI green, evidence in the PR
