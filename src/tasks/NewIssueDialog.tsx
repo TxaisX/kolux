@@ -3,6 +3,7 @@
 // held in memory for the run. FIX-2 (council FS 1-2, AFTER 2): one create runs at a time even across
 // close and reopen, the dialog cannot be closed or edited while it runs, a draft belongs to its
 // GitHub host (shown beside Repository), and closing saves at once with typed label/assignee text.
+import { trapTab } from "../chrome/dialogFocus";
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { actionError } from "./issueActions";
@@ -133,7 +134,7 @@ export default function NewIssueDialog(p: {
   const other = start.elsewhere;
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div ref={box} tabIndex={-1} className="auto-dialog task-dialog" role="dialog" aria-modal="true" aria-label="New issue" aria-busy={busy} data-new-issue onKeyDown={(e) => e.key === "Escape" && close()}>
+      <div ref={box} tabIndex={-1} className="auto-dialog task-dialog" role="dialog" aria-modal="true" aria-label="New issue" aria-busy={busy} data-new-issue onKeyDown={(e) => (trapTab(e), e.key === "Escape" && close())}>
         <div className="auto-dialog-head">
           <h2>New issue</h2>
           <button className="task-x" title={busy ? "Wait until the issue is created" : "Close (the draft is kept)"} disabled={busy} onClick={close}>
