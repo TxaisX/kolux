@@ -2,11 +2,13 @@
 // Shift+Tab inside, closes on Escape from anywhere and hands focus back to where it came from. A menu
 // (useMenuFocus) does the same without the Tab trap and adds the arrow keys. Escape is caught on the window in the
 // capture phase and stopped there (switcher/accounts watchEscape), because Escape is also the key that interrupts
-// an agent's turn in the terminal underneath.
+// an agent's turn in the terminal underneath. A popup opened over another one takes those keys from it while it is
+// up (modalStack): only the top dialog wraps Tab and answers Escape.
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
+import { isTopModal, pushModal, type Modal } from "./modalStack";
 
 /** What a keyboard user can land on inside a popup. */
 export const FOCUSABLE = 'a[href],button:not(:disabled),input:not(:disabled):not([type="hidden"]),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
@@ -37,14 +39,19 @@ function giveBack(prev: Element | null, box: Box) {
 function openPopup(box: Box, onClose: () => void, first: () => HTMLElement | null, extra: (e: KeyboardEvent) => void): () => void {
   const prev = document.activeElement;
   (first() ?? Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE))[0])?.focus();
-  // A popup inside a hidden pane (panes stay mounted while another is shown) leaves every key alone.
+  // A popup inside a hidden pane (panes stay mounted while another is shown) leaves every key alone, and so
+  // does one that a newer dialog covers (modalStack): only the top dialog takes Tab and Escape.
   const shown = () => !(box as Partial<Element>).closest?.("[hidden]");
-  const stopEscape = watchEscape(window, onClose, shown);
-  const keys = (e: Event) => shown() && extra(e as KeyboardEvent);
+  const modal: Modal = { shown };
+  const top = () => isTopModal(modal);
+  const release = pushModal(modal);
+  const stopEscape = watchEscape(window, onClose, top);
+  const keys = (e: Event) => top() && extra(e as KeyboardEvent);
   window.addEventListener("keydown", keys, true);
   return () => {
     stopEscape();
     window.removeEventListener("keydown", keys, true);
+    release();
     giveBack(prev, box);
   };
 }
