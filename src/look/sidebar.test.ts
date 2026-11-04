@@ -130,6 +130,7 @@ test.each(CONFIGS)("C23-R3-02: every sidebar ink reads on its own painted surfac
   for (const key of READABLE) expect(contrast(v[key], ground), key).toBeGreaterThanOrEqual(4.5);
   // Selected rows, inputs and the tab control are painted on their own surfaces, not on the ground.
   expect(contrast(v["--sidebar-fg"], v["--sidebar-row-selected"]), "selected row").toBeGreaterThanOrEqual(4.5);
+  expect(contrast(v["--sidebar-fg-row"], v["--sidebar-kbd-bg"]), "hovered row").toBeGreaterThanOrEqual(4.5);
   expect(contrast(v["--sidebar-fg"], v["--sidebar-input-bg"]), "input text").toBeGreaterThanOrEqual(4.5);
   expect(contrast(v["--sidebar-fg-nav"], v["--sidebar-tab-track"]), "tab text").toBeGreaterThanOrEqual(4.5);
   // and those surfaces are the palette the ground supports, never the app mode's.
@@ -139,15 +140,28 @@ test.each(CONFIGS)("C23-R3-02: every sidebar ink reads on its own painted surfac
   expect(v["--sidebar-tab-track"]).toBe(want["tab-track"]);
 });
 
-test("C23-R3-02: selected rows, inputs and tabs clear 4.5:1 on their own surface for every ground", () => {
+test("C23-R3-02: selected rows, inputs, hovers and tabs clear 4.5:1 on their own surface for every ground", () => {
   const bad: string[] = [];
   for (const g of grounds) {
-    for (const [what, ink, surface] of [["selected row", "--sidebar-fg", "--sidebar-row-selected"], ["input", "--sidebar-fg", "--sidebar-input-bg"], ["tab", "--sidebar-fg-nav", "--sidebar-tab-track"]] as const) {
+    for (const [what, ink, surface] of [["selected row", "--sidebar-fg", "--sidebar-row-selected"], ["hovered row", "--sidebar-fg-row", "--sidebar-kbd-bg"], ["input", "--sidebar-fg", "--sidebar-input-bg"], ["tab", "--sidebar-fg-nav", "--sidebar-tab-track"]] as const) {
       const r = contrast(g.vars[ink], g.vars[surface]);
       if (r < 4.5) bad.push(`${g.label}: ${what} ${g.vars[ink]} on ${surface} ${g.vars[surface]} = ${r.toFixed(2)}`);
     }
   }
   expect(bad).toEqual([]);
+});
+
+test("C23-R3-02: the row hover ground is the token, not a dark-mode literal", () => {
+  // `#1f1f1f` is the dark palette's `--kbd-bg`. Hard-coded, it stayed dark on a light terminal ground
+  // and painted `#282828` on `#1f1f1f` (1.12:1) in dark mode with `tango-light`.
+  const css = readSheet();
+  for (const selector of [".branch:hover", ".sess:hover"]) {
+    const rule = ruleIn(css, selector);
+    expect(rule, `${selector} rule`).toBeDefined();
+    expect(rule!.match(/background:\s*([^;]+)/)?.[1].trim(), selector).toBe("var(--kbd-bg)");
+  }
+  const v = appearanceVars(readAppearance(CONFIGS[1][1]), true);
+  expect(contrast(v["--sidebar-fg-row"], v["--sidebar-kbd-bg"])).toBeGreaterThanOrEqual(4.5);
 });
 
 test("C23-R3-02: the sidebar scope remaps the surfaces its own controls paint on", () => {

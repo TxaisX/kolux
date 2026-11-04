@@ -188,7 +188,7 @@ input { font: inherit; }
 .sess-line { margin-top: -6px; padding: 0 8px 6px 44px; font-size: 11px; line-height: 14px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .branch .dot { margin-right: 2px; }
 .branch .chev { color: #797979; display: inline-flex; }
-.branch:hover { background: #1f1f1f; }
+.branch:hover { background: var(--kbd-bg); }
 .branch.sel { background: var(--row-selected); color: var(--fg); font-weight: 600; }
 .sess { position: relative; display: flex; align-items: center; height: 32px; padding: 0 4px 0 26px; gap: 10px; border-radius: 6px; font-size: 13px; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 /* PROJ-063: the dot is the strongest live agent state; what needs you is amber, working green, done teal. */
@@ -207,7 +207,7 @@ input { font: inherit; }
 .sess input.rename { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-focus); background: var(--input-bg); color: var(--fg); font: inherit; }
 /* The row actions take no room until the row is hovered or focused, so names show in full at rest. */
 .sess .ib { display: none; width: 22px; height: 22px; }
-.sess:hover { background: #1f1f1f; }
+.sess:hover { background: var(--kbd-bg); }
 .sess:hover .ib, .sess:focus-within .ib { display: inline-flex; }
 .sess.sel { background: var(--row-selected); color: var(--fg); }
 .sess.pending { opacity: 0.6; }
@@ -852,7 +852,7 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
    Explorer's ex-note, the markdown banners) wins in light mode instead of being painted as an error. */
 [data-mode="light"] :where(.notice) { color: var(--danger-line); }
 [data-mode="light"] .btn.danger, [data-mode="light"] :where(.notice), [data-mode="light"] .signin-notice { border-color: var(--danger-line); }
-[data-mode="light"] .btn.danger:hover:not(:disabled), [data-mode="light"] .branch:hover, [data-mode="light"] .sess:hover { background: var(--kbd-bg); }
+[data-mode="light"] .btn.danger:hover:not(:disabled) { background: var(--kbd-bg); }
 [data-mode="light"] .branch .chev { color: var(--fg-label); }
 [data-mode="light"] .menu { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
 /* Settings: a row of buttons acting as one choice (General's look, Appearance's mode). */

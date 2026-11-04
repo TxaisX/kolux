@@ -420,6 +420,7 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
     "--sidebar-fg-faint": ink["fg-faint"],
     // C23-R3-02: the surfaces the sidebar paints its own controls on come from the same palette, or
     // a floored ink would land on the other mode's row-selected / input / tab track (1.22:1).
+    // `--kbd-bg` is also the row hover ground (.branch:hover / .sess:hover).
     "--sidebar-row-selected": ink["row-selected"],
     "--sidebar-input-bg": ink["input-bg"],
     "--sidebar-tab-track": ink["tab-track"],
