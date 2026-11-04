@@ -53,7 +53,7 @@ test("keyboard.md:12 / visual.md:2: the project row's buttons show when the keyb
 
 test("one keyboard ring for every control without its own focus style; none for the mouse, the terminal or script focus", () => {
   const ring = rule(":where(:focus-visible)");
-  expect(ring).toContain("outline: 2px solid var(--line-focus)");
+  expect(ring).toContain("outline: 2px solid var(--fg-muted)");
   expect(css, "never :focus, which would show on a mouse click").not.toMatch(/:where\(:focus\)/);
   expect(rule(':where([tabindex="-1"]:focus-visible)')).toContain("outline: none");
   expect(rule(".xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible")).toContain("outline: none");
