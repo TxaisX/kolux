@@ -1,0 +1,33 @@
+T-731 - acct_050 foreground test flake (DT-C167; W3 queue)
+Worker 2f, coordinator 57, branch s-2f/t731 from main 73008fe1, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "T-731 / DT-C167". Rust test only, first load +0 B.
+
+CAUSE
+- foreground::tests::acct_050_an_interpreter_is_credited_by_its_command_line_read_once_per_process failed CI on
+  #167: the command line was read twice, expected once.
+- The cache of credited programs (CREDITS) is one per process, so all tests in a run share it. front() on
+  Windows prunes it to the ids that are running right now. The test used the made-up id 900001, which never
+  runs, so a front() in a parallel test (acct_050_a_real_agent_typed_into_a_shell_is_found_through_node)
+  could drop it between the test's two reads, and the second read missed.
+
+FIX
+- The test credits its own process id (std::process::id()) instead. That id is running for as long as the
+  test is, so pruning keeps it. front() only credits processes under the shell it is asked about, and the test
+  process is never under one, so no other test writes that id. The 900002 "claude.exe" line needs no command
+  line and no cache, so it stays.
+- The cache and its pruning are unchanged and no tests are serialised (smallest fix, per the brief).
+
+PROOF
+- Trap (deterministic): a temporary line put the pruning between the two reads, keeping only the test's own
+  id, as a parallel front() would. With the old id 900001 the test FAILS (left: 2, right: 1). With the fix it
+  passes. The temporary line was then removed (git diff: foreground.rs only, +6 -3).
+- cargo test -j 2 --lib foreground (src-tauri, all 8 foreground-matching tests including the real-agent one
+  that runs front()): 20 runs in a row, pass=20 fail=0.
+
+THE OTHER TWO TIMING FAILURES THAT DAY (checked for the same shared-state pattern)
+- #152 (CI shard 2): two unrelated vitest tests hit the 5000 ms timeout in the same shard
+  (src/automations/AutomationDialog.test.ts and src/tasks/prModel.test.ts). They share no state; two
+  unrelated tests timing out in one shard is a slow runner, not shared state. No change.
+- #154 (scm.rs:5207, fix5 holder test): "the holder was left running". The test waits up to 30 s for the
+  process tree to go, and that check runs a slow process query under load. Its temp folders are per test and
+  per process id, so it doesn't collide with the other fix5 test. This is load, not shared state. No change.
