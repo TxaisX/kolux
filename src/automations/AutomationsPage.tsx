@@ -330,7 +330,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
     <div className="autos" ref={root}>
       <div className="autos-bar">
         {onClose && (
-          <button className="ib" title="Close (Escape)" aria-label="Close Automations" onClick={onClose}>
+          <button className="ib" title="Close (Esc)" aria-label="Close Automations" onClick={onClose}>
             <Close size={14} />
           </button>
         )}

@@ -24,7 +24,8 @@ import { readPicture } from "./pictureBytes";
 import { mimeOf } from "./imageFiles";
 import { bytesToDataUri, exportNotePdf, noteTitle } from "../browser/notePdf";
 import { useKeymap } from "../keys/KeymapContext";
-import { matchEvent } from "../keys/keymap";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf, matchEvent } from "../keys/keymap";
 import "./editor-extras.css";
 
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; worktree?: string | null; onLink?: LinkHandler };
@@ -230,7 +231,7 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
               </>
             )}
           </span>
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)" aria-label="Close tab">
+          <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keymap, "tab.close"))} aria-label="Close tab">
             <Close size={12} />
           </button>
         </span>

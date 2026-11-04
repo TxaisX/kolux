@@ -37,6 +37,9 @@ import { useReadyStamp, useReadyVersion, useSectionWindow, type Meter } from "./
 import { useSettings } from "../settings/useSettings";
 import { allChangesStart } from "../settings/editorPrefs";
 import Ask from "../chrome/Ask";
+import { useKeymap } from "../keys/KeymapContext";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf } from "../keys/keymap";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, abortLabel, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
 import { bulkPaths, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
 
@@ -117,6 +120,7 @@ export const sidesCall = (base: Base | null, root: string, e: Entry): [string, R
 type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onOpenDiff?: (path: string, staged: boolean) => void; pinnedBase?: string | null };
 
 export default function AllChangesPane({ id, root, hidden = false, focused = false, onFocus, onClose, onOpenDiff, pinnedBase = null }: Props) {
+  const keymap = useKeymap();
   const [raw, setEntries] = useState<Entry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"tree" | "base">("tree");
@@ -393,7 +397,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           <button className="ib" aria-pressed={layout.tree} onClick={() => toggle("tree")} title={layout.tree ? "Hide the file tree" : "Show the file tree"} aria-label="File tree">
             <List size={12} />
           </button>
-          <button className="ib" onClick={onClose} title="Close tab (Ctrl+W)">
+          <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keymap, "tab.close"))}>
             <Close size={12} />
           </button>
         </span>

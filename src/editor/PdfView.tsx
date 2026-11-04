@@ -2,6 +2,9 @@
 // same fence as a text read) and go to pdf.js as data, so nothing is fetched (pdfFiles.ts LOCKED_OPTIONS). Pages are
 // drawn on canvases only when they are near the view. A new tab first fills the width; the zoom and the place in the
 // file are kept while the tab is open and dropped when it closes (pdfFiles.ts remember / forget).
+import { useKeymap } from "../keys/KeymapContext";
+import { withChord } from "../terminal/PaneMenu";
+import { labelOf } from "../keys/keymap";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -92,6 +95,7 @@ function PageCanvas({ doc, n, scale, root, size, onSize, links }: { doc: PDFDocu
 }
 
 export default function PdfView({ id, path, root = null, hidden = false, focused = false, onFocus, onClose, onToast, onLink }: Props) {
+  const keymap = useKeymap();
   const name = baseName(path);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -263,7 +267,7 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
           </button>
         )}
         <span className="right">
-          <button className="ib" onClick={() => onClose?.()} title="Close tab (Ctrl+W)" aria-label="Close tab">
+          <button className="ib" onClick={() => onClose?.()} title={withChord("Close tab", labelOf(keymap, "tab.close"))} aria-label="Close tab">
             <Close size={12} />
           </button>
         </span>

@@ -1,0 +1,39 @@
+T-756 / DT-C192 - Tooltip chords from the keymap, Show Artifacts toggles, one Escape hint (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 14" (57): unsure-triage rows 11, 19 and 20 (keyboard.md:17 =
+visual.md:13, palette.md:19, visual.md:14). Cap +60 B. Checked on main 5e481cf2 first: every cited line was still hard-coded.
+
+(a) TOOLTIP CHORDS FROM THE KEYMAP: the helper T-740 and Explorer use (terminal/PaneMenu withChord + keys/keymap labelOf),
+  so a rebound chord shows as it is and an unbound one shows no chord.
+  Close tab -> tab.close: EditorPane, DiffPane, ImageView, PdfView, PreviewPane, scm/CheckPane, and AllChangesPane (a
+    sibling the row did not list).
+  Previous/Next change -> editor.previousChange / editor.nextChange: DiffPane; Previous/Next conflict in EditorPane (the
+    same two actions, which step conflicts there; siblings the row did not list).
+  browser/DrawCanvas Undo/Redo: no keymap action exists (the canvas handles Ctrl/Cmd+Z itself), so the label is drawn
+    from Mod+Z / Mod+Shift+Z for the platform: Cmd on macOS, as the handler takes it.
+  BrowserPane:1135 is the find box; its "Close find" hint is part (c).
+  First try used browser/tips withChord; that moved tips.ts into the first-load chunk (+88 B in all), so PaneMenu's,
+    already there, is used instead.
+KEPT: Shift+Enter in the find boxes (handled by the input itself, not a keymap action); Explorer's "Search file contents
+  (Ctrl+Shift+F)" (its button opens the explorer's own search; whether sidebar.search.toggle is the same command is
+  not settled here); the ports row's Shift+Ctrl-click (a mouse gesture).
+(b) Show Artifacts now toggles, as Show Skills does: a palette Show row for the page already up goes back to Terminals,
+  where the Artifacts page's own x goes (Content.tsx). Skills keeps its own toggle, which returns to the view it came
+  from. The rule covers every Show row, not only Artifacts: an Artifacts-only check cost +68 B in all, over the cap.
+  Show Terminals on Terminals changes nothing.
+(c) ONE SPELLING: "Esc", the keycap the keymap draws (keymap.ts keyLabels Escape: "Esc") and the spelling already used by
+  GrabSheet, SourceControlPanel, SettingsPage and PullRequestPage. "(Escape)" became "(Esc)" in ArtifactsPage,
+  AutomationsPage, BrowserPane (Close find), NoteTools, Guides (x2), SkillsPage and terminal/FindBar.
+
+TEST: src/editor/t756.test.ts, 3 tests:
+  (a) no app .tsx carries a hard-coded Close tab / change / conflict / Undo / Redo chord title; each listed file uses
+    the keymap helper; a rebound tab.close shows Ctrl+Q, an unbound action shows none, and Undo/Redo say Cmd on macOS;
+  (b) the paneActions rule, run through the real screenRows and paletteRows: Show Artifacts opens it, the second press
+    closes it to Terminals, Show Skills still toggles, and Show Terminals stays put;
+  (c) no tooltip says "(Escape)", and the keymap draws Escape as Esc.
+  RED: with main's source for the changed files, (a) and (c) failed; (b) failed against the earlier rule without the
+    Artifacts close. src/shell/wave3.test.ts pins the palette line and was updated to the new rule.
+FULL RUN: npx vitest run: 821 files, 6058 passed. tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
+BUNDLE: first load 1,487,996 B vs main 5e481cf2 1,487,946 B (both built here, 47 chunks): +50 B (cap +60).
+SPEC: no card states these tooltips; the findings are UX audit keyboard.md:17, visual.md:13-14 and palette.md:19.
+  The palette rule extends T-610 / T-708 (the palette Show rows, DT-C144's reachability matrix).
+PENDING: unit-proven; not checked live in the app.
