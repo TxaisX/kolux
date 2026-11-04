@@ -101,6 +101,12 @@ test("SAFE-015: what is saved decides what is drawn: a rule in the off list is u
   expect(switchOf(html, "Ask before protected actions")).not.toContain("checked");
   expect(html).toContain("no rule asks");
   expect(html).toContain("data-master-off");
+  const rulesDiv = (h: string) => h.match(/<div data-rules[^>]*>/)?.[0] ?? "";
+  expect(rulesDiv(html), "T-753: the rules are dimmed while nothing asks").toContain("opacity:0.65");
+  expect(switchOf(html, "Stripe changes"), "and a screen reader hears why").toContain("aria-describedby=\"safety-master-note\"");
+  expect(html).toMatch(/<small id="safety-master-note">Off: no rule asks/);
+  expect(rulesDiv(view({})), "not while the master switch is on").not.toContain("opacity");
+  expect(switchOf(view({}), "Stripe changes")).not.toContain("aria-describedby");
 });
 
 test("SAFE-015: the rule list is waiting, or could not be read, without hiding the master switch", () => {

@@ -15,3 +15,8 @@ export function editApp(list: OpenInApp[], id: string, edit: { name: string; com
   if (list.some((a, j) => j !== i && a.id === next.id)) return list;
   return list.map((a, j) => (j === i ? next : a));
 }
+
+/** T-753: the row whose command the draft already is (a custom app is keyed by its command), other than the one
+ * being edited. Adding or saving it would do nothing, so the card says so and keeps the fields. */
+export const alreadyListed = (list: OpenInApp[], d: { name: string; command: string }, editing: string | null) =>
+  draftReady(d) ? list.find((a) => a.id !== editing && a.id === "custom:" + squash(d.command)) : undefined;
