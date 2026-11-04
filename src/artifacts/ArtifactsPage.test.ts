@@ -40,12 +40,15 @@ describe("Artifacts library (SKILL-036)", () => {
     expect(section(art({ project: "minecraft" }))).toBe("minecraft");
   });
 
-  it("shows a page or text in the frame, an image as a picture, and the rest in its own app", () => {
+  it("shows a page in the frame, an image as a picture, a video in the player, and nothing else", () => {
     expect(view(undefined)).toBe("frame");
     expect(view("page")).toBe("frame");
     expect(view("text")).toBe("frame");
     expect(view("image")).toBe("image");
+    expect(view("video")).toBe("video");
+    // Not artifacts (DT-C78): the library never lists them, so this is only an older stored entry.
     expect(view("pdf")).toBe("app");
+    expect(view("audio")).toBe("app");
     expect(view("other")).toBe("app");
     expect(extText("shot.png")).toBe("PNG");
     expect(extText("no-extension")).toBe("");

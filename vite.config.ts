@@ -7,7 +7,7 @@ const host = process.env.TAURI_DEV_HOST;
 // app) sent by the dev server too, with what the dev server itself needs: its inline client
 // script and its reload socket. csp.test.ts keeps the two in step. T-590: frame-ancestors 'none' keeps
 // any web page from framing Kolux; it only works as a header, which is how both policies are sent.
-const DEV_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://github.com https://avatars.githubusercontent.com; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420; frame-src http://kolux-artifact.localhost kolux-artifact:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'";
+const DEV_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://github.com https://avatars.githubusercontent.com http://kolux-artifact.localhost kolux-artifact:; media-src http://kolux-artifact.localhost kolux-artifact:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420; frame-src http://kolux-artifact.localhost kolux-artifact:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'";
 
 export default defineConfig(() => ({
   plugins: [react()],

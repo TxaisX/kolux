@@ -38,3 +38,15 @@ test("T-500: the dev server sends the same policy, so the policy is proven while
     for (const src of rule.split(" ").slice(1)) expect(devRule, `${name} keeps ${src}`).toContain(src);
   }
 });
+
+// T-624: an image or a video artifact is shown straight in the main page from the artifact scheme, which
+// is another origin than 'self' (http://tauri.localhost), so img-src and media-src name that origin and
+// nothing else widens: default-src, connect-src and script-src stay as they were.
+test("T-624: the main page may show an artifact's picture and play its video from the artifact scheme, and nothing else widens", () => {
+  const rules = Object.fromEntries(release.split(";").map((r) => r.trim()).filter(Boolean).map((r) => { const [name, ...src] = r.split(" "); return [name, src]; }));
+  expect(rules["img-src"]).toEqual(expect.arrayContaining(["http://kolux-artifact.localhost", "kolux-artifact:"]));
+  expect(rules["media-src"]).toEqual(["http://kolux-artifact.localhost", "kolux-artifact:"]);
+  expect(rules["default-src"]).toEqual(["'self'"]);
+  expect(rules["script-src"]).toEqual(["'self'"]);
+  expect(rules["connect-src"]).not.toContain("http://kolux-artifact.localhost");
+});

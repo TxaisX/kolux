@@ -53,11 +53,36 @@ export function group(list: Artifact[]): { project: string; items: Artifact[] }[
   return [...by].map(([project, items]) => ({ project, items })).sort((x, y) => y.items[0].added - x.items[0].added);
 }
 
-/** How the viewer shows an entry: in the frame, as a picture, or not at all. */
-export function view(kind: string | undefined): "frame" | "image" | "app" {
+/** How the viewer shows an entry: in the frame, as a picture or a video, or not at all. Only these
+ *  three kinds are ever listed, so "app" is reached by nothing but an older stored entry. */
+export function view(kind: string | undefined): "frame" | "image" | "video" | "app" {
   if (kind === "image") return "image";
+  if (kind === "video") return "video";
   if (kind === undefined || kind === "page" || kind === "text") return "frame";
   return "app";
+}
+
+/** What one workspace scan did, as the Rust command reports it. */
+export type Scanned = { changed: number; skipped: string[] };
+
+/** One run at a time: a tick that finds the last run still going does nothing, so a slow import never
+ *  piles up calls behind it. */
+export function ticker(run: () => Promise<unknown>): () => void {
+  let busy = false;
+  return () => {
+    if (busy) return;
+    busy = true;
+    void run().finally(() => {
+      busy = false;
+    });
+  };
+}
+
+/** The skipped reasons not told yet; `told` remembers them so a file over the cap is mentioned once. */
+export function newlySkipped(skipped: string[], told: Set<string>): string[] {
+  const fresh = skipped.filter((s) => !told.has(s));
+  for (const s of fresh) told.add(s);
+  return fresh;
 }
 
 /** The file's own type, for the small tag beside its title. */
@@ -99,9 +124,16 @@ export function viewerLink(e: { source: unknown; data: unknown }, frame: unknown
 /** How long a page may take to load before the viewer says so. */
 export const SLOW_MS = 10_000;
 
-type Props = { onToast: (text: string) => void; onClose?: () => void };
+type Props = {
+  onToast: (text: string) => void;
+  onClose?: () => void;
+  /** The workspace whose `artifacts/` folder is imported automatically; none when no folder is open. */
+  workspace?: string | null;
+  /** The project the workspace belongs to, so imports sit under that heading rather than the folder name. */
+  project?: string | null;
+};
 
-export default function ArtifactsPage({ onToast, onClose }: Props) {
+export default function ArtifactsPage({ onToast, onClose, workspace, project }: Props) {
   const [list, setList] = useState<Artifact[] | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -115,6 +147,7 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const search = useRef<HTMLInputElement>(null);
   const refocus = useRef<{ id: string | null } | null>(null);
+  const told = useRef(new Set<string>());
 
   const refresh = () => invoke<Artifact[]>("artifacts_list").then(setList, (e) => onToast(`Could not read the library: ${e}`));
   useEffect(() => {
@@ -123,6 +156,32 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
     const off = listen("artifacts-changed", () => void refresh());
     return () => void off.then((f) => f());
   }, []);
+
+  // SKILL-036: a workspace keeps its finished files in `artifacts/`. Import that folder when the
+  // page opens and watch it while it is up, so an agent's page is already in the tab without Add
+  // artifact. The Rust scan remembers unchanged files and only re-imports a changed one, and it keeps
+  // only a page, an image or a video; a file it cannot keep (over the cap, unreadable) is named once.
+  // One scan at a time: a tick that finds the last one still running is dropped.
+  useEffect(() => {
+    if (!workspace) return;
+    let live = true;
+    const scan = ticker(() =>
+      invoke<Scanned>("artifacts_scan", { path: workspace, project })
+        .then((r) => {
+          if (!live) return;
+          if (r.changed > 0) void refresh();
+          const fresh = newlySkipped(r.skipped, told.current);
+          if (fresh.length) onToast(`Not kept in Artifacts: ${fresh.join("; ")}`);
+        })
+        .catch(() => {}),
+    );
+    scan();
+    const timer = window.setInterval(scan, 3000);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, [workspace, project]);
 
   // A link clicked inside the viewer: only a message from our own frame, sent during a click, opens anything.
   useEffect(() => {
@@ -171,9 +230,7 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
       directory: false,
       title: "Add artifact",
       filters: [
-        { name: "Pages and pictures", extensions: ["html", "htm", "png", "jpg", "jpeg", "gif", "webp", "svg", "pdf"] },
-        { name: "Documents", extensions: ["md", "txt", "csv", "docx", "xlsx", "pptx"] },
-        { name: "All files", extensions: ["*"] },
+        { name: "Pages, pictures and video", extensions: ["html", "htm", "png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp", "ico", "mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi"] },
       ],
     }).catch((e) => {
       onToast(`Could not open the file picker: ${e}`);
@@ -214,7 +271,9 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
   };
   const framed = current?.state === "ok" && current.stored && view(current.kind) === "frame";
   const loadingText = !current || !framed || loaded === current.id ? "" : slow === current.id ? "This page is taking a long time to load. It may be empty or broken." : "Loading…";
-  const openFile = (a: Artifact) => invoke("open_path", { path: a.origin }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
+  // The library's own stored copy, never the workspace file it came from (T-624 round 5): the origin
+  // may have changed or gone since it was kept.
+  const openFile = (a: Artifact) => invoke("artifact_open", { id: a.id }).catch((e) => onToast(`Could not open ${a.title}: ${e}`));
 
   return (
     <div className="artifacts">
@@ -282,6 +341,11 @@ export default function ArtifactsPage({ onToast, onClose }: Props) {
         {current?.state === "unavailable" && <div className="empty"><h2>{current.title}</h2><p>This page is on a network share, which Kolux never opens.</p></div>}
         {current?.state === "ok" && !current.stored && <div className="empty"><h2>{current.title}</h2><p>Could not show this file: its stored copy is missing. Add it again to restore it.</p></div>}
         {current?.state === "ok" && current.stored && view(current.kind) === "image" && <img className="art-image" src={viewerUrl(current)} alt={current.title} />}
+        {current?.state === "ok" && current.stored && view(current.kind) === "video" && (
+          // Straight from the same scheme, which answers byte ranges, so a long clip seeks without
+          // loading whole. It is the stored copy, so a change to the workspace file cannot break it.
+          <video key={`${current.id}-${current.added}`} className="art-video" src={viewerUrl(current)} controls preload="metadata" title={current.title} />
+        )}
         {current?.state === "ok" && current.stored && view(current.kind) === "app" && (
           <div className="empty">
             <h2>{current.title}</h2>
