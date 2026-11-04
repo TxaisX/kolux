@@ -87,6 +87,11 @@ pub fn delete(roots: &Roots, agent: &str, id: &str) -> Result<usize, String> {
         return Err("That session's name cannot be used to delete its files.".into());
     }
     let at = locate(roots, agent, id)?;
+    // T-722: the files of a session an open pane is still running are never deleted under it.
+    // (A pane resuming it in the moment between this check and the delete is not caught.)
+    if crate::status::transcript_live(&at.file, at.extra.as_deref()) {
+        return Err("This session is still open in a pane. Close that pane, then delete the session.".into());
+    }
     let all: Vec<PathBuf> = at.extra.into_iter().chain([at.file]).collect();
     delete_all(&at.root, &all)
 }
@@ -161,6 +166,54 @@ mod tests {
         }
         assert!(delete(&roots, "claude", "aaa").unwrap_err().contains("no longer"), "a second delete finds nothing");
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn t722_a_session_an_open_pane_is_running_is_not_deleted_until_its_terminal_ends() {
+        use crate::status::{report, terminal_ended, Agent};
+        const PANE: u32 = 722_001;
+        const TERM: u32 = 722_002;
+        let root = tmp("live");
+        let dir = root.join("projects").join("C--w");
+        put(&dir.join("run.jsonl"), USER);
+        put(&dir.join("run").join("subagents").join("agent-1.jsonl"), USER);
+        put(&dir.join("idle.jsonl"), USER);
+        let roots = claude_roots(&root);
+        // The hooks name the transcript with forward slashes and, on Windows, in another case.
+        let mut said = dir.join("run.jsonl").to_string_lossy().replace('\\', "/");
+        if cfg!(windows) {
+            said = said.to_uppercase();
+        }
+        report(PANE, Some(TERM), Agent::Claude, &serde_json::json!({ "hook_event_name": "SessionStart", "transcript_path": said }));
+        let err = delete(&roots, "claude", "run").unwrap_err();
+        assert!(err.contains("still open in a pane"), "{err}");
+        assert!(dir.join("run.jsonl").exists() && dir.join("run").exists(), "nothing went");
+        assert_eq!(delete(&roots, "claude", "idle"), Ok(1), "a session no pane runs still goes");
+        // A sub-agent's hook names its own transcript, inside the session's folder: still refused.
+        let sub = dir.join("run").join("subagents").join("agent-1.jsonl").to_string_lossy().replace('\\', "/");
+        report(PANE, Some(TERM), Agent::Claude, &serde_json::json!({ "hook_event_name": "PreToolUse", "agent_id": "x", "transcript_path": sub }));
+        assert!(delete(&roots, "claude", "run").unwrap_err().contains("still open in a pane"), "a sub-agent of it runs");
+        assert!(dir.join("run.jsonl").exists());
+        terminal_ended(TERM);
+        assert_eq!(delete(&roots, "claude", "run"), Ok(2), "the pane closed: now it goes");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn t722_a_codex_rollout_an_open_pane_is_running_is_not_deleted() {
+        use crate::status::{report, terminal_ended, Agent};
+        const PANE: u32 = 722_011;
+        const TERM: u32 = 722_012;
+        let home = tmp("livecodex");
+        let f = home.join("sessions").join("2026").join("11").join("03").join("rollout-2026-11-03T10-00-00-c722.jsonl");
+        put(&f, "{}\n");
+        let roots = codex_roots(&home);
+        report(PANE, Some(TERM), Agent::Codex, &serde_json::json!({ "hook_event_name": "SessionStart", "transcript_path": f.to_string_lossy() }));
+        assert!(delete(&roots, "codex", "c722").unwrap_err().contains("still open in a pane"));
+        assert!(f.exists());
+        terminal_ended(TERM);
+        assert_eq!(delete(&roots, "codex", "c722"), Ok(1));
+        let _ = fs::remove_dir_all(&home);
     }
 
     #[test]

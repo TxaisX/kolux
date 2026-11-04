@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Text } from "@codemirror/state";
 import { Chunk } from "@codemirror/merge";
 import { EditorState } from "@codemirror/state";
-import { noteField, noteTools, setNotes, withoutWhitespace, type NoteActions } from "./DiffPane";
+import { binNote, noteField, noteTools, setNotes, unbinNote, withoutWhitespace, type NoteActions } from "./DiffPane";
 import type { LineNote } from "./diffNotes";
 
 const chunks = (a: string, b: string, override?: typeof withoutWhitespace) => Chunk.build(Text.of(a.split("\n")), Text.of(b.split("\n")), override && { override });
@@ -100,5 +100,24 @@ describe("note gutter (the + beside a line)", () => {
     const ext = noteTools(act, "new", false) as unknown[];
     expect(ext[1]).toEqual([]);
     expect(ext[0]).toBeTruthy();
+  });
+});
+
+// T-723 (DT-C159): the bin on a review note deletes at once, and the banner's Undo saves the same note back.
+describe("a binned review note can be undone (T-723)", () => {
+  const note: LineNote = { id: "n1", path: "a.ts", line: 4, end: 6, text: "rename this", staged: false, side: "old" };
+  it("deletes at once, keeps the note for Undo, and Undo puts back the same note", () => {
+    let list: LineNote[] = [note, { ...note, id: "n2", line: 9 }];
+    const r = { current: { onDeleteNote: (n: LineNote) => (list = list.filter((x) => x.id !== n.id)), onSaveNote: (n: LineNote) => (list = [...list, n]) } };
+    const kept = binNote(note, r);
+    expect(list.map((n) => n.id)).toEqual(["n2"]);
+    expect(kept).toBe(note);
+    unbinNote(kept!, r);
+    expect(list.find((n) => n.id === "n1")).toEqual(note);
+  });
+  it("offers no Undo when nothing can save the note back", () => {
+    const gone: string[] = [];
+    expect(binNote(note, { current: { onDeleteNote: (n) => gone.push(n.id) } })).toBeNull();
+    expect(gone).toEqual(["n1"]);
   });
 });
