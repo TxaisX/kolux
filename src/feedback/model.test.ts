@@ -191,6 +191,15 @@ test("a send in flight blocks a second one until it fails or finishes", () => {
   expect(reduce(s, { t: "open", facts }).sending).toBe(false);
 });
 
+test("C04-R4-01: a close ends the send it was waiting on and still keeps the draft", () => {
+  let s = reduce(closed, { t: "open", facts, text: "hello" });
+  s = reduce(s, { t: "send" });
+  const closing = reduce(s, { t: "close" });
+  expect(closing.sending).toBe(false); // the box never claims a send is running once it is shut
+  expect(closing.open).toBe(false);
+  expect(typedText(closing.draft)).toBe("hello"); // the half that was already right
+});
+
 test("focus goes back to what opened the box, only if it is still on the page", () => {
   let n = 0;
   expect(restoreFocus({ isConnected: true, focus: () => void n++ })).toBe(true);

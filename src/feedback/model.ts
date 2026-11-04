@@ -86,7 +86,8 @@ export function reduce(s: State, a: Act): State {
     case "fail":
       return { ...s, sending: false, error: a.error };
     case "close":
-      return { ...s, open: false };
+      // C04-R4-01: a close ends the send it was waiting on, so the state never claims one is running.
+      return { ...s, open: false, sending: false };
   }
 }
 

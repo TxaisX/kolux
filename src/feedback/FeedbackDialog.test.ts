@@ -5,7 +5,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { MARK } from "./model";
-import { byLabel, byText, click, type FakeDocument, FakeNode, find, fire, installDom, mount, typeInto, until } from "../tasks/fakeDom";
+import { byLabel, byText, click, type FakeDocument, FakeNode, find, fire, installDom, mount, settle, typeInto, until } from "../tasks/fakeDom";
 
 const back = vi.hoisted(() => ({ opened: [] as string[], hold: false, pending: [] as (() => void)[] }));
 vi.mock("@tauri-apps/api/core", () => ({
@@ -139,6 +139,45 @@ test("T-675 feedback: a send still running when the box is closed and opened aga
   expect(dialog()).not.toBeNull();
   expect(textarea().value).toContain("Second report, still being written");
   expect(sendButton().textContent).toBe("Open on GitHub");
+});
+
+test("C04-R4-01: closing the box while it says Opening… ends the send and keeps the typed report", async () => {
+  back.hold = true;
+  await open("The tab bar flickers");
+  await click(root, sendButton());
+  expect(sendButton().textContent).toBe("Opening…");
+  await click(root, byText(root, "button", "Cancel")[0]);
+  expect(dialog()).toBeNull();
+  await act(async () => back.pending.shift()?.()); // the browser opens now, after the close
+  await settle(20);
+  // no "sent" note over a box the user closed, and the report is still there at the next open
+  expect(find(root, (n) => n.attrs.role === "status")).toHaveLength(0);
+  await open("");
+  expect(textarea().value).toContain("The tab bar flickers");
+});
+
+test("C04-R4-01: Escape while Opening… ends the send; the text is kept", async () => {
+  back.hold = true;
+  await open("Escape path");
+  await click(root, sendButton());
+  await escape();
+  await act(async () => back.pending.shift()?.());
+  await settle(20);
+  expect(find(root, (n) => n.attrs.role === "status")).toHaveLength(0);
+  await open("");
+  expect(textarea().value).toContain("Escape path");
+});
+
+test("C04-R4-01: a backdrop click while Opening… ends the send; the text is kept", async () => {
+  back.hold = true;
+  await open("Backdrop path");
+  await click(root, sendButton());
+  await fire(root, "mousedown", find(root, (n) => n.attrs.class === "scrim")[0]);
+  await act(async () => back.pending.shift()?.());
+  await settle(20);
+  expect(find(root, (n) => n.attrs.role === "status")).toHaveLength(0);
+  await open("");
+  expect(textarea().value).toContain("Backdrop path");
 });
 
 test("T-695 feedback (G3): opened with no text, the box holds the details block, has the keyboard and takes typing", async () => {
