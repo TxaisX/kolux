@@ -68,7 +68,7 @@ async function panel() {
   return m.container as FakeNode;
 }
 const forgets = () => h.calls.filter((c) => c.cmd === "workspace_forget");
-const question = (c: FakeNode) => find(c, (n) => n.localName === "div" && String(n.attrs.className ?? n.attrs.class ?? "").includes("sb-form") && n.textContent.includes("out of Kolux"));
+const question = (c: FakeNode) => find(c, (n) => n.attrs.role === "alertdialog" && n.textContent.includes("Its folder stays on disk"));
 
 test("the shortcut on a folder workspace asks first and takes nothing out until the answer is yes", async () => {
   const c = await panel();
@@ -97,7 +97,7 @@ test("a forget the backend would refuse says why straight away, with no Take out
   h.refusal = REASON;
   const c = await panel();
   await pressDelete();
-  const box = find(c, (n) => n.localName === "div" && String(n.attrs.className ?? n.attrs.class ?? "").includes("sb-form") && n.textContent.includes("still there"));
+  const box = find(c, (n) => n.attrs.role === "alertdialog" && n.textContent.includes("still there"));
   expect(box.length).toBe(1);
   expect(box[0].textContent).toContain(REASON);
   expect(question(c).length).toBe(0);
@@ -105,7 +105,7 @@ test("a forget the backend would refuse says why straight away, with no Take out
   expect(h.calls.filter((x) => x.cmd === "workspace_forget_check")).toEqual([{ cmd: "workspace_forget_check", args: { projectId: "p1", path: folder.path } }]);
   await click(c, byText(c, "button", "OK")[0]);
   await settle(60);
-  expect(find(c, (n) => n.textContent.includes("still there") && n.localName === "div" && String(n.attrs.className ?? n.attrs.class ?? "").includes("sb-form")).length).toBe(0);
+  expect(find(c, (n) => n.textContent.includes("still there") && n.attrs.role === "alertdialog").length).toBe(0);
   expect(forgets()).toEqual([]);
 });
 

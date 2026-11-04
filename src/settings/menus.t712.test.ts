@@ -1,6 +1,6 @@
 // T-712 (DT-C148): the "Other ways to connect" menu closes on a pick, on Escape and on a click outside it;
-// an account row nests no button inside another, and its Remove confirm reads Escape as Keep and is
-// disabled while the row is busy.
+// an account row nests no button inside another, and its Remove confirm (the shared Ask) reads Escape as Keep and
+// does not remove while the row is busy.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { type FakeDocument, type FakeNode, byText, click, find, fire, installDom, mount } from "../tasks/fakeDom";
@@ -105,11 +105,21 @@ test("Escape inside the Remove confirm is Keep and goes no further; outside it, 
   expect(log).toEqual(["keep"]);
 });
 
-test("while a sign-in runs (busy), the confirm's Remove and Keep are disabled and Escape is left to Settings", async () => {
+test("the Remove confirm is the shared Ask: titled for the account, Keep and Remove, and Remove does nothing while a sign-in runs (busy)", async () => {
   const log: string[] = [];
   const c = await show(row(true, log, true));
   const confirm = find(c, (n) => n.attrs.role === "alertdialog")[0];
-  for (const b of find(confirm, (n) => n.localName === "button")) expect(b.attrs.disabled).toBeDefined();
-  expect(await esc(c, confirm)).toBe(false);
+  expect(confirm.attrs["aria-label"]).toBe("Remove kim@example.com?");
+  expect(confirm.textContent).toContain("Panes already running keep going.");
+  await click(c, byText(confirm, "button", "Remove")[0]);
   expect(log).toEqual([]);
+  await click(c, byText(confirm, "button", "Keep")[0]);
+  expect(log).toEqual(["keep"]);
+});
+
+test("when nothing is busy the confirm's Remove removes", async () => {
+  const log: string[] = [];
+  const c = await show(row(false, log, true));
+  await click(c, byText(find(c, (n) => n.attrs.role === "alertdialog")[0], "button", "Remove")[0]);
+  expect(log).toEqual(["remove"]);
 });

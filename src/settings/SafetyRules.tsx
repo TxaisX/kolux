@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import Ask from "../chrome/Ask";
 import { offIds, type RuleInfo } from "./SafetyPage";
 
 export const RULES_FIELD = "protectedRules";
@@ -73,25 +74,17 @@ export async function saveRule(save: (patch: Settings) => unknown, patch: Settin
   return (await save(patch)) === false ? "The rule was not saved. What you typed is kept: press Add rule to try again." : null;
 }
 
-/** A reset button that asks on the page itself (no dialog can open here). */
+/** A reset button that asks first in the shared Ask dialog; `yes` loses its "Yes, " and becomes the confirm word. */
 export function ResetButton({ label, onReset, yes = "Yes, reset", keep = "Keep", ariaLabel, className = "btn", title }: { label: string; onReset: () => unknown; yes?: string; keep?: string; ariaLabel?: string; className?: string; title?: string }) {
   const [asking, setAsking] = useState(false);
-  if (!asking)
-    return (
+  const word = yes.replace(/^Yes, (.)/, (_, c: string) => c.toUpperCase());
+  return (
+    <>
       <button type="button" className={className} title={title} data-reset aria-label={ariaLabel} onClick={() => setAsking(true)}>
         {label}
       </button>
-    );
-  return (
-    <span data-reset-confirm role="group" aria-label={ariaLabel ?? label}>
-      Sure?{" "}
-      <button type="button" className="btn danger" onClick={() => (setAsking(false), onReset())}>
-        {yes}
-      </button>{" "}
-      <button type="button" className="btn" onClick={() => setAsking(false)}>
-        {keep}
-      </button>
-    </span>
+      {asking && <Ask title={`${ariaLabel ?? label}?`} body={null} confirm={word} cancel={keep} onConfirm={() => (setAsking(false), onReset())} onCancel={() => setAsking(false)} />}
+    </>
   );
 }
 

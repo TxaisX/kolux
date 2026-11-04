@@ -49,6 +49,7 @@ import { ProjectIcon } from "./IconView";
 import { SetupCard } from "./SetupCard";
 import { cardView, saveArgs, type SetupSuggestion } from "./setupSuggestion";
 import { cardProjectOf, newestOnly } from "./cardAsk";
+import Ask from "../chrome/Ask";
 import Picker, { type PickItem } from "./Picker";
 import StartGit, { type FirstFile } from "./StartGit";
 import ScanRepos from "./ScanRepos";
@@ -1975,17 +1976,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         </div>
         <CardLine shown={cardDetails.shown} facts={facts} depth={depth} />
         {sleepAsk?.path === w.path && (
-          <div className="note sb-form warn" role="alertdialog" aria-label="Put to sleep" data-sleep-ask={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeSleepAsk(w.path))}>
-            <div>Put <b>{worktreeLabel(w)}</b> to sleep? Its tabs and terminals close, and so do those of the workspaces made from it.{sleepAsk.note}</div>
-            <div className="btn-row">
-              <button className="btn" autoFocus onClick={() => closeSleepAsk(w.path)}>
-                Keep awake
-              </button>
-              <button className="btn danger" onClick={() => (sleep(w), focusRow(w.path))}>
-                Sleep
-              </button>
-            </div>
-          </div>
+          <Ask
+            title="Put to sleep"
+            body={<>Put <b>{worktreeLabel(w)}</b> to sleep? Its tabs and terminals close, and so do those of the workspaces made from it.{sleepAsk.note}</>}
+            confirm="Sleep"
+            cancel="Keep awake"
+            onConfirm={() => (sleep(w), focusRow(w.path))}
+            onCancel={() => closeSleepAsk(w.path)}
+          />
         )}
         {statusesOf?.path === w.path && !asking && (
           <StatusEditor
@@ -2041,29 +2039,30 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {batch?.root === w.path && (
-          <div className="sb-form warn" data-delete-all={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeBatch(w.path))}>
-            <div>
-              Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
-            </div>
-            <ul style={{ margin: 0, paddingLeft: 16 }}>
-              {batch.order.map((d) => (
-                <li key={d}>{labelOf(d)}</li>
-              ))}
-            </ul>
-            {batch.error && (
-              <span className="note error" role="alert">
-                {batch.error}
-              </span>
-            )}
-            <div className="btn-row">
-              <button className="btn danger" onClick={() => void removeBatch()} disabled={busy !== ""}>
-                {busy === "removing" ? "Deleting…" : "Delete all"}
-              </button>
-              <button className="btn" autoFocus onClick={() => closeBatch(w.path)}>
-                Keep
-              </button>
-            </div>
-          </div>
+          <Ask
+            title="Delete workspace and children"
+            body={
+              <>
+                <div>
+                  Delete <b>{worktreeLabel(w)}</b> and the {batch.order.length - 1} workspace{batch.order.length === 2 ? "" : "s"} made from it? They go children first, the parent last, each with its folder and branch. Anything with uncommitted changes stops the rest.{runNote(batch.order)}
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 16 }}>
+                  {batch.order.map((d) => (
+                    <li key={d}>{labelOf(d)}</li>
+                  ))}
+                </ul>
+                {batch.error && (
+                  <span className="note error" role="alert">
+                    {batch.error}
+                  </span>
+                )}
+              </>
+            }
+            confirm={busy === "removing" ? "Deleting…" : "Delete all"}
+            cancel="Keep"
+            onConfirm={() => busy === "" && void removeBatch()}
+            onCancel={() => closeBatch(w.path)}
+          />
         )}
         {moving === w.path && !asking && (
           <div className="sb-form" data-moving={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeMove(w.path))}>
@@ -2076,85 +2075,74 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           </div>
         )}
         {forgetAsk && same(forgetAsk.path, w.path) && (
-          <div className="sb-form warn" data-forget={forgetAsk.label} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeForget(w.path))}>
-            {forgetAsk.refused ? (
-              <>
-                <span>{forgetAsk.refused}</span>
-                <div className="btn-row">
-                  <button className="btn" autoFocus onClick={() => closeForget(w.path)}>
-                    OK
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <span>
+          <Ask
+            title="Take out of Kolux"
+            body={
+              forgetAsk.refused ?? (
+                <>
                   Take <b>{forgetAsk.label}</b> out of Kolux? Its folder stays on disk.
-                </span>
-                <div className="btn-row">
-                  <button className="btn danger" onClick={() => void forget(forgetAsk)}>
-                    Take out
-                  </button>
-                  <button className="btn" autoFocus onClick={() => closeForget(w.path)}>
-                    Keep
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )
+            }
+            confirm={forgetAsk.refused ? null : "Take out"}
+            cancel="Keep"
+            onConfirm={() => void forget(forgetAsk)}
+            onCancel={() => closeForget(w.path)}
+          />
         )}
         {asking && (
-          <div className="sb-form warn" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeConfirm(w.path))}>
-            <span>
-              Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
-              {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
-              {runNote([confirm.path])}
-            </span>
-            {confirm.check.changes.length > 0 && (
-              <ul className="del-changes" aria-label="changes that would be lost">
-                {shownChanges(confirm.check).lines.map((l) => (
-                  <li key={l}>{l}</li>
-                ))}
-                {shownChanges(confirm.check).more > 0 && <li>and {shownChanges(confirm.check).more} more</li>}
-              </ul>
-            )}
-            {commitsNote(confirm.check) && (
+          <Ask
+            title="Delete workspace"
+            body={
               <>
-                <span>{commitsNote(confirm.check)}</span>
-                <ul className="del-changes" aria-label="commits that would be lost">
-                  {shownCommits(confirm.check).lines.map((l) => (
-                    <li key={l}>{l}</li>
-                  ))}
-                  {shownCommits(confirm.check).more > 0 && <li>and {shownCommits(confirm.check).more} more</li>}
-                </ul>
+                <span>
+                  Delete <b>{confirm.branch}</b> and its folder? Its branch is deleted too, unless the workspace was opened on a branch that already existed.{" "}
+                  {blocker(confirm.check) ?? (confirm.check.changes.length > 0 ? `${confirm.check.changes.length} uncommitted or untracked change${confirm.check.changes.length === 1 ? "" : "s"} would be lost:` : "Nothing uncommitted is there.")}
+                  {runNote([confirm.path])}
+                </span>
+                {confirm.check.changes.length > 0 && (
+                  <ul className="del-changes" aria-label="changes that would be lost">
+                    {shownChanges(confirm.check).lines.map((l) => (
+                      <li key={l}>{l}</li>
+                    ))}
+                    {shownChanges(confirm.check).more > 0 && <li>and {shownChanges(confirm.check).more} more</li>}
+                  </ul>
+                )}
+                {commitsNote(confirm.check) && (
+                  <>
+                    <span>{commitsNote(confirm.check)}</span>
+                    <ul className="del-changes" aria-label="commits that would be lost">
+                      {shownCommits(confirm.check).lines.map((l) => (
+                        <li key={l}>{l}</li>
+                      ))}
+                      {shownCommits(confirm.check).more > 0 && <li>and {shownCommits(confirm.check).more} more</li>}
+                    </ul>
+                  </>
+                )}
+                {confirm.refusal && (
+                  <span className="note error" role="alert">
+                    {confirm.refusal}
+                  </span>
+                )}
+                {confirm.check.changes.length > 0 && !blocker(confirm.check) && (
+                  <label className="del-force">
+                    <input type="checkbox" checked={confirm.force} onChange={(e) => setConfirm({ ...confirm, force: e.target.checked })} />
+                    Delete my changes too
+                  </label>
+                )}
+                {!blocker(confirm.check) && (
+                  <label className="del-force">
+                    <input type="checkbox" checked={confirm.keep === true} onChange={(e) => setConfirm({ ...confirm, keep: e.target.checked })} />
+                    Keep the branch
+                  </label>
+                )}
               </>
-            )}
-            {confirm.refusal && (
-              <span className="note error" role="alert">
-                {confirm.refusal}
-              </span>
-            )}
-            {confirm.check.changes.length > 0 && !blocker(confirm.check) && (
-              <label className="del-force">
-                <input type="checkbox" checked={confirm.force} onChange={(e) => setConfirm({ ...confirm, force: e.target.checked })} />
-                Delete my changes too
-              </label>
-            )}
-            {!blocker(confirm.check) && (
-              <label className="del-force">
-                <input type="checkbox" checked={confirm.keep === true} onChange={(e) => setConfirm({ ...confirm, keep: e.target.checked })} />
-                Keep the branch
-              </label>
-            )}
-            <div className="btn-row">
-              <button className="btn danger" onClick={() => remove()} disabled={busy !== "" || blocker(confirm.check) !== null}>
-                {busy === "removing" ? "Deleting…" : "Delete"}
-              </button>
-              <button className="btn" autoFocus onClick={() => closeConfirm(w.path)}>
-                Keep
-              </button>
-            </div>
-          </div>
+            }
+            confirm={blocker(confirm.check) !== null ? null : busy === "removing" ? "Deleting…" : "Delete"}
+            cancel="Keep"
+            onConfirm={() => busy === "" && void remove()}
+            onCancel={() => closeConfirm(w.path)}
+          />
         )}
       </div>
     );
@@ -2209,17 +2197,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             </button>
           </div>
           {dropProject === p.id && (
-            <div className="note sb-form warn" role="alertdialog" aria-label="Remove project" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeDrop(p))}>
-              <div>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</div>
-              <div className="btn-row">
-                <button className="btn danger" data-remove-project-yes onClick={() => removeProject(p)}>
-                  Remove {p.name}
-                </button>
-                <button className="btn" autoFocus onClick={() => closeDrop(p)}>
-                  Keep it
-                </button>
-              </div>
-            </div>
+            <Ask
+              title="Remove project"
+              body={<>Remove {p.name} from Kolux? Its terminals close and its list entries, saved setup and remembered names are cleared. The folder and its files stay on disk.{runNote(list.map((x) => x.path))}</>}
+              confirm={`Remove ${p.name}`}
+              cancel="Keep it"
+              onConfirm={() => removeProject(p)}
+              onCancel={() => closeDrop(p)}
+            />
           )}
           {main && (
             <div className="sb-main" onContextMenu={(e) => void openMenu(e, p, main)}>

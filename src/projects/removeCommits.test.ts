@@ -81,7 +81,7 @@ async function panel() {
   return m.container as FakeNode;
 }
 const removes = () => h.calls.filter((c) => c.cmd === "workspace_remove").map((c) => c.args);
-const question = (c: FakeNode) => find(c, (n) => n.localName === "div" && String(n.attrs.className ?? n.attrs.class ?? "").includes("sb-form") && n.textContent.includes("and its folder?"));
+const question = (c: FakeNode) => find(c, (n) => n.attrs.role === "alertdialog" && n.textContent.includes("and its folder?"));
 const keepBox = (c: FakeNode) => withText(c, "label", "Keep the branch")[0]?.childNodes.find((n) => n.localName === "input");
 
 test("the delete question names the commits, starts with Keep the branch ticked, and is asked even with the question switched off", async () => {
