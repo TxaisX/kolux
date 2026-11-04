@@ -34,6 +34,9 @@ VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t744)
   - npx vitest run on main 0033ca09 + this change: 810 files, 6022 tests passed (with 3 Space switch tests; the 4th, test-only,
     added after the second review: that file alone 4 passed). npx tsc --noEmit -p .: clean.
   - Bundle: first load 1,489,702 B vs 1,489,600 B on main 0033ca09: +102 B against a +120 cap.
+  - After merging main b2b6cd7f (train 20): first load 1,488,870 B vs 1,488,823 B on that main: +47 B. tsc clean. Full
+    vitest: 811 files, 1 failed: scripts/release.test.mjs, 4 tests timing out near 5 s with the builds just run (this
+    branch does not touch release scripts); that file alone 27 passed here and on main.
   - Review of the first diff: opus-high-review A-. Should-fix taken: the in-flight cases above, plus their tests.
     Nits taken: pollWarning test mock trimmed, header names the path it drives. Left: the poll can still replace an
     action's warning (only errors are kept), recorded in DT-C180.
