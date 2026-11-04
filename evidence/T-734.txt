@@ -14,12 +14,11 @@ AFTER
   cancelled. A download that ended in the meantime is refused with "the download already ended"; a row that
   is not running gets "the download is not running". Errors show in the pane's note line.
 - A finished row has Show in folder beside Open. It calls browser_download_reveal with the row's key; the
-  file manager opens with that file selected (the same reveal the app uses elsewhere). An unknown key says
+  file manager opens on it (the same reveal the app uses elsewhere: selected on Windows and Mac, its folder on Linux). An unknown key says
   "that download is no longer known; open the Downloads folder".
 - Cancel and Show in folder share one button slot, so a row shows at most one of them. Failed and cancelled
   rows show neither.
-- The registry keeps up to 64 rows across tabs; past that the oldest ended rows go first and a running one
-  never does.
+- Past 64 rows across tabs, each new download drops the oldest ended row first and never a running one.
 - Both names are literal invoke calls registered in lib.rs, so scripts/invoke-contract.mjs checks them: OK.
 - Not on Windows, Cancel answers "cancelling a download needs WebView2 (Windows)".
 
@@ -32,9 +31,15 @@ TESTS
 - browser::downloads::tests::t734_the_registry_keeps_recent_ended_downloads_and_never_drops_a_running_one:
   at 64 rows the oldest ended row makes way and the running one stays; 64 running rows are all kept; two
   finished rows stay while there is room.
-- Trap: with make_room put back to the old per-tab drop of ended rows, the test FAILS; restored, it passes.
-- cargo test --lib downloads:: 11/11, preview:: 14/14. clippy --all-targets -D warnings: clean.
-- Full cargo test --lib: 2863 passed, 3 failed. The two pty::service tests pass alone (load-sensitive under the
+- browser::downloads::tests::t734_an_end_with_no_file_lands_on_its_own_address_not_the_newest_download: the
+  engine reports a failed or cancelled download with no file; that report finds the running row of its own
+  address (A), not the tab's newer download (B), touches nothing for an unknown address or another tab, and a
+  finished file is still found by its path. Before, it landed on the newest running row, so a Cancel on A
+  marked B failed (found in review).
+- Traps: with make_room put back to the old per-tab drop of ended rows, its test FAILS; with the end match put
+  back to the old rule, the new test FAILS at "a cancelled A is A"; restored, both pass.
+- cargo test --lib downloads:: 12/12, preview:: 14/14. clippy --all-targets -D warnings: clean.
+- Full cargo test --lib (before the review fix): 2863 passed, 3 failed. The two pty::service tests pass alone (load-sensitive under the
   full run); scm::writers t606 (claude writer) fails locally only, as before this change, and passes on CI.
 - pnpm vitest run src/browser: 278/278. pnpm tsc --noEmit -p .: clean. invoke-contract: OK.
 - Not tested: the click in the pane (no harness drives engine downloads); live check still to do.

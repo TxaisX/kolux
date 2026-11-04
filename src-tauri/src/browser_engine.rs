@@ -339,7 +339,7 @@ mod imp {
         unsafe { op.State(&mut s) }.is_ok() && s == COREWEBVIEW2_DOWNLOAD_STATE_IN_PROGRESS
     }
 
-    /// T-734 (DT-C170): keeps the engine's handle on each download the page starts; ended ones go.
+    /// T-734 (DT-C170): keeps the engine's handle on each download the page starts; ended ones go when the next one starts.
     pub fn downloads(id: u32, controller: &ICoreWebView2Controller) {
         // SAFETY: CoreWebView2 hands back the page's engine object.
         let Ok(core) = (unsafe { controller.CoreWebView2() }).and_then(|c| c.cast::<ICoreWebView2_4>()) else { return };
@@ -361,9 +361,9 @@ mod imp {
     /// T-734 (DT-C170): cancels tab `id`'s running download written to `path`; whether one was found.
     pub fn cancel_download(id: u32, path: &str, tx: Sender<Result<bool, String>>) {
         // SAFETY: ResultFilePath writes a CoTaskMem string, which `take` frees.
-        let op = DOWNLOAD_OPS.with_borrow(|ops| ops.iter().find(|(t, o)| *t == id && in_progress(o) && unsafe { take(|p| o.ResultFilePath(p)) }.eq_ignore_ascii_case(path)).map(|(_, o)| o.clone()));
+        let op = DOWNLOAD_OPS.with_borrow(|ops| ops.iter().find(|(t, o)| *t == id && in_progress(o) && unsafe { take(|p| o.ResultFilePath(p)) }.replace('/', "\\").eq_ignore_ascii_case(&path.replace('/', "\\"))).map(|(_, o)| o.clone()));
         let _ = tx.send(match op {
-            // SAFETY: Cancel stops the download; the engine removes its partial file.
+            // SAFETY: Cancel stops the download.
             Some(op) => unsafe { op.Cancel() }.map(|_| true).map_err(|e| e.message()),
             None => Ok(false),
         });

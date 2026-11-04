@@ -335,10 +335,21 @@ fn start_poller(app: AppHandle) {
     });
 }
 
+/// Which running row of tab `id` the engine's end report is about: the newest with its address, or
+/// with its file when the engine names one. The engine names no file when a download fails or is
+/// cancelled, so T-734: such a report never lands on a row of another address, and a Cancel cannot
+/// fail its neighbour.
+// ponytail: two running downloads of one address in one tab are told apart by age only; the engine's
+// report carries no handle to do better.
+pub fn ended(all: &[Download], id: u32, url: &str, path: Option<&Path>) -> Option<usize> {
+    all.iter().rposition(|x| x.id == id && x.state == State::Running && (x.url == url || path.is_some_and(|p| p.display().to_string() == x.path)))
+}
+
 /// The engine says a download ended (BROW-013: the notice that it has finished).
 pub fn finished(app: &AppHandle, id: u32, url: &str, path: Option<&Path>, success: bool) {
     let done = DOWNLOADS.lock().ok().and_then(|mut all| {
-        let d = all.iter_mut().rev().find(|x| x.id == id && x.state == State::Running && (path.is_none_or(|p| p.display().to_string() == x.path) || x.url == url))?;
+        let i = ended(&all, id, url, path)?;
+        let d = &mut all[i];
         d.state = if success { State::Done } else { State::Failed };
         if success {
             d.received = written(Path::new(&d.path)).max(d.received);
@@ -488,6 +499,16 @@ mod tests {
         let mut few = vec![row(1, State::Done), row(2, State::Done)];
         make_room(&mut few);
         assert_eq!(few.len(), 2, "a finished row stays while there is room, so Show in folder finds it");
+    }
+
+    #[test]
+    fn t734_an_end_with_no_file_lands_on_its_own_address_not_the_newest_download() {
+        let row = |key: u64, url: &str, path: &str| Download { id: 1, key, url: url.into(), name: "n".into(), path: path.into(), received: 0, total: None, state: State::Running };
+        let all = vec![row(1, "https://x/a", "C:\\D\\a"), row(2, "https://x/b", "C:\\D\\b")];
+        assert_eq!(ended(&all, 1, "https://x/a", None), Some(0), "a cancelled A is A, not the newer B");
+        assert_eq!(ended(&all, 1, "https://x/c", None), None, "an unknown address with no file touches nothing");
+        assert_eq!(ended(&all, 1, "https://x/moved", Some(Path::new("C:\\D\\b"))), Some(1), "a finished file is found by its path");
+        assert_eq!(ended(&all, 2, "https://x/a", None), None, "another tab's report never lands here");
     }
 
     #[test]
