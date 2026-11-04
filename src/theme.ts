@@ -79,6 +79,8 @@ export const SYNTAX_KEYS = ["syn-keyword", "syn-name", "syn-function", "syn-type
 /** C23-R3-01: the ratio a light-mode syntax ink must reach on the ground under the caret line. A little
  *  over 4.5 so 8-bit rounding in `hsl` cannot drop the measured pair back under the bar. */
 export const SYNTAX_FLOOR = 4.6;
+/** C23-R3-02: the ratio the sidebar's four primary inks must reach on the ground they are painted on. */
+export const SIDEBAR_FLOOR = 4.6;
 
 /** `accent` (T-648) is not part of any built-in theme: only a custom theme that sets it defines `--accent`, so
  *  the fallbacks written beside `var(--accent, ...)` keep deciding the look for everyone else. */
@@ -237,16 +239,17 @@ export function contrast(a: string, b: string): number {
   const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 }
-/** C23-R3-01: the same hue and saturation, darkened until it reads on `ground` at `need`. Keeps the
- *  colour recognisable instead of replacing it with a fixed hex, so it survives tint, saturation and
- *  the depth slider (a fixed set drops to ~4.0:1 on the darkest light ground). */
+/** C23-R3-01: the same hue and saturation, moved away from `ground` until it reads at `need`. Keeps
+ *  the colour recognisable instead of replacing it with a fixed hex, so it survives tint, saturation
+ *  and the depth slider (a fixed set drops to ~4.0:1 on the darkest light ground). */
 function floorInk(ink: string, ground: string, need: number): string {
   const [h, s, l] = toHsl(ink);
+  const up = luminance(ink) > luminance(ground);
   for (let step = 0; step <= 100; step++) {
-    const out = hsl(h, s, l * (1 - step / 100));
+    const out = up ? hsl(h, s, l + (1 - l) * (step / 100)) : hsl(h, s, l * (1 - step / 100));
     if (contrast(out, ground) >= need) return out;
   }
-  return "#000000";
+  return up ? "#ffffff" : "#000000";
 }
 
 /** The theme's hue after tint, or null for Classic (no hue). */
@@ -297,8 +300,11 @@ function builtIn(a: Appearance, dark: boolean): Theme {
     // C23-R3-01: the syntax inks are literals in the highlight style, so the transform above never
     // reached them. White has no hue to keep, so `invalid` starts from the error colour instead.
     out["syn-invalid"] = out["danger"];
-    // The darkest ground a code character sits on is the caret's line, not the pane.
-    const ground = mix(out["pane-bg"], out["row-selected"], 0.45);
+    // The darkest ground a code character sits on: the caret's line, or a selection over the pane
+    // (EditorPane paints that as `line-focus` at 90 % over `pane-bg`).
+    const caret = mix(out["pane-bg"], out["row-selected"], 0.45);
+    const selected = mix(out["pane-bg"], out["line-focus"], 0.9);
+    const ground = luminance(caret) <= luminance(selected) ? caret : selected;
     for (const k of SYNTAX_KEYS) out[k] = floorInk(out[k], ground, SYNTAX_FLOOR);
   }
   return out;
@@ -399,12 +405,17 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
   const groundDark = paletteIsDark(ground);
   const bg = custom !== undefined && groundDark !== null && groundDark !== (custom.dark !== false) ? "var(--surface)" : ground;
   const ink = buildTheme(a, paletteIsDark(bg) ?? dark);
+  // The four inks the sidebar's own rules paint text with are floored against the ground, so the
+  // guarantee holds on a tinted or terminal ground too. `--fg-label` and `--fg-faint` are the
+  // C23-R3-06 token defect and are left as they are.
+  const on = bg.startsWith("#") ? bg : t.surface;
+  const readable = (v: string) => floorInk(v, on, SIDEBAR_FLOOR);
   return {
     "--sidebar-bg": bg,
-    "--sidebar-fg": ink.fg,
-    "--sidebar-fg-row": ink["fg-row"],
-    "--sidebar-fg-muted": ink["fg-muted"],
-    "--sidebar-fg-nav": ink["fg-nav"],
+    "--sidebar-fg": readable(ink.fg),
+    "--sidebar-fg-row": readable(ink["fg-row"]),
+    "--sidebar-fg-muted": readable(ink["fg-muted"]),
+    "--sidebar-fg-nav": readable(ink["fg-nav"]),
     "--sidebar-fg-label": ink["fg-label"],
     "--sidebar-fg-faint": ink["fg-faint"],
     "--ui-font": fontStack(a.appFont, uiFont),

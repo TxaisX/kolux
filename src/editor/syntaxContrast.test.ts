@@ -17,6 +17,9 @@ const nameOf = (key: string) => key.slice("syn-".length);
 
 /** The ground under the caret line: `look` paints `row-selected` at 45 % over the pane. */
 const caretLine = (t: Theme) => mix(t["pane-bg"], t["row-selected"], 0.45);
+/** The ground under a selection: `look` paints `line-focus` at 90 % over the pane, which is darker
+ *  than the caret line, so it is the ground the floor has to clear. */
+const selection = (t: Theme) => mix(t["pane-bg"], t["line-focus"], 0.9);
 
 const DEPTHS = [-3, 0, 6] as const;
 const lightThemes = THEMES.flatMap((theme) => DEPTHS.map((depth) => [`${theme} depth ${depth}`, buildTheme(readAppearance({ [FIELD.theme]: theme, [FIELD.depth]: depth }), false)] as const));
@@ -26,11 +29,12 @@ test.each(THEMES)("dark mode keeps One Dark's own syntax inks (%s)", (theme) => 
   for (const key of SYNTAX_KEYS) expect(t[key], key).toBe(ONE_DARK[nameOf(key)]);
 });
 
-test.each(lightThemes)("every light syntax ink reaches 4.5:1 on the pane and the caret line (%s)", (_, t) => {
-  const ground = caretLine(t);
+test.each(lightThemes)("every light syntax ink reaches 4.5:1 on the pane, the caret line and a selection (%s)", (_, t) => {
+  const grounds: [string, string][] = [["--pane-bg", t["pane-bg"]], ["the caret line", caretLine(t)], ["a selection", selection(t)]];
   for (const key of SYNTAX_KEYS) {
-    expect(contrast(t[key], t["pane-bg"]), `${key} on --pane-bg ${t["pane-bg"]}`).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(t[key], ground), `${key} on the caret line ${ground}`).toBeGreaterThanOrEqual(4.5);
+    for (const [what, ground] of grounds) {
+      expect(contrast(t[key], ground), `${key} on ${what} ${ground}`).toBeGreaterThanOrEqual(4.5);
+    }
   }
 });
 

@@ -48,12 +48,11 @@ test("the sidebar look round-trips through the saved settings and keeps other se
 
 // ---- C23-R3-02: the sidebar's ink follows the ground it is painted on ----
 
-/** The tokens the sidebar's own rules paint text with (styles.css: body inherit, .proj/.branch/.sess,
- *  .sess .hint/.sb-notice, .sb-tabs button, .sb-section/.sb-group). */
-const INK = ["--sidebar-fg", "--sidebar-fg-row", "--sidebar-fg-muted", "--sidebar-fg-nav", "--sidebar-fg-label"] as const;
-/** The ones this finding guarantees at 4.5:1. `--fg-label` and `--fg-faint` are the C23-R3-06 token
- *  defect (4.03 and 2.23 on the light surface) and are not folded into this fix. */
+/** The four inks this finding guarantees at 4.5:1 on the ground, floored in `appearanceVars`. */
 const READABLE = ["--sidebar-fg", "--sidebar-fg-row", "--sidebar-fg-muted", "--sidebar-fg-nav"] as const;
+/** The two the sidebar also paints, left at the palette's own value: `--fg-label` (4.03:1) and
+ *  `--fg-faint` (2.23:1) on the light surface are the C23-R3-06 token defect, not this one. */
+const NOT_FLOORED = ["--sidebar-fg-label", "--sidebar-fg-faint"] as const;
 const LOOKS = ["standard", "terminal", "tinted"] as const;
 const STRENGTHS = [0, 20, 40, 50, 60, 80, 100] as const;
 const TINTS = ["#000000", "#ffffff", DEFAULT_TINT] as const;
@@ -78,23 +77,32 @@ test("C23-R3-02: no computed sidebar ground sits where neither palette's ink can
 
 test("C23-R3-02: the sidebar's ink is the palette its ground supports, not the app's mode", () => {
   const bad: string[] = [];
+  const side = (v: string, ground: string) => luminance(v) > luminance(ground);
   for (const g of grounds) {
     const ground = g.vars["--sidebar-bg"];
+    const hex = ground.startsWith("#") ? ground : buildTheme(g.a, g.dark).surface;
     const want = buildTheme(g.a, paletteIsDark(ground) ?? g.dark);
-    for (const key of INK) {
+    // label and faint are not floored, so they must be the palette's own value.
+    for (const key of NOT_FLOORED) {
       const token = key.replace("--sidebar-", "");
       if (g.vars[key] !== want[token as keyof typeof want]) bad.push(`${g.label}: ${key} is ${g.vars[key]}, the ground wants ${want[token as keyof typeof want]}`);
+    }
+    // the four primary inks start from that palette and are only ever moved away from the ground.
+    for (const key of READABLE) {
+      const base = want[key.replace("--sidebar-", "") as keyof typeof want] as string;
+      if (side(g.vars[key], hex) !== side(base, hex)) bad.push(`${g.label}: ${key} ${g.vars[key]} is on the wrong side of ${hex} (palette ${base})`);
+      if (contrast(g.vars[key], hex) < contrast(base, hex)) bad.push(`${g.label}: ${key} ${g.vars[key]} is closer to ${hex} than the palette's ${base}`);
     }
   }
   expect(bad).toEqual([]);
 });
 
-test("C23-R3-02: the sidebar's primary ink reaches 4.5:1 on every ground it can be given", () => {
+test("C23-R3-02: the sidebar's four primary inks reach 4.5:1 on every ground it can be given", () => {
   const bad: string[] = [];
   for (const g of grounds) {
     const ground = g.vars["--sidebar-bg"];
     const hex = ground.startsWith("#") ? ground : buildTheme(g.a, g.dark).surface;
-    for (const key of ["--sidebar-fg", "--sidebar-fg-row"] as const) {
+    for (const key of READABLE) {
       const r = contrast(g.vars[key], hex);
       if (r < 4.5) bad.push(`${g.label}: ${key} ${g.vars[key]} on ${hex} = ${r.toFixed(2)}`);
     }
@@ -116,6 +124,20 @@ test("C23-R3-02: dark mode with a light terminal ground keeps every sidebar ink 
   const v = appearanceVars(a, true);
   expect(v["--sidebar-bg"]).toBe("#ffffff");
   for (const key of READABLE) expect(contrast(v[key], "#ffffff"), key).toBeGreaterThanOrEqual(4.5);
+});
+
+test("C23-R3-02: the sidebar's tab and next-row ink follows the ground, not a literal", () => {
+  // The mirrored case (dark mode on a light terminal ground) never matches `[data-mode="light"]`, so a
+  // literal here stayed at 2.83:1 on white. Both rules now read the remapped token.
+  const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+  const css = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const selector of [".sb-tabs button", ".sb-next"]) {
+    const rule = css.split("}").find((r) => r.split("{")[0].trim() === selector);
+    expect(rule, `${selector} rule`).toBeDefined();
+    expect(rule!.match(/color:\s*([^;]+)/)?.[1].trim(), selector).toBe("var(--fg-nav)");
+  }
+  const a = readAppearance({ [FIELD.sidebarLook]: "terminal", [FIELD.terminal]: "tango-light" });
+  expect(contrast(appearanceVars(a, true)["--sidebar-fg-nav"], "#ffffff")).toBeGreaterThanOrEqual(4.5);
 });
 
 test("C23-R3-02: a custom theme keeps its own surface when the tint would cross it", () => {
