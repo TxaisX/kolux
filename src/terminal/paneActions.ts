@@ -186,10 +186,12 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // EDIT-001: a file opens as a tab beside the focused pane; a file already open in that cell
   // comes to the front instead of opening twice.
   // C09-R5-01: the tab is drawn in the grid, so a link in an agent reply leaves the Agents screen
-  // that covers it; both paths below do, or the click looks like nothing happened.
+  // that covers it, and closes a full page (Tasks, Automations) that covers it too; both paths
+  // below do, or the click looks like nothing happened.
   // EDIT-026 (T-317): `follow` opens the file as a read-only log tab that keeps adding lines as the file grows (a caller such as an AI Vault "View Log" button passes true).
   const openFile = (path: string, line?: number, column?: number, follow?: boolean) => {
     setScreen("terminals");
+    setPage(null);
     const here = panes.find((p) => p.key === focused && sameDir(p.cwd, activeDir));
     const same = here && panes.find((p) => p.kind === "editor" && groupOf(p) === groupOf(here) && keyOf(p.path ?? "") === keyOf(path) && !!p.follow === !!follow);
     // CHAT-025: a file link names a line; the pane keeps it as `jump` (the editor pane reads it once it takes that prop).
