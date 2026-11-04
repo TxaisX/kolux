@@ -28,7 +28,7 @@ type CardProps = {
   onRefresh?: () => void;
 };
 
-const OUTSIDE = "Outside this worktree, so it is not opened.";
+const OUTSIDE = "Outside this workspace, so it is not opened.";
 
 /** The card itself: no state of its own, so it can be drawn from any data. */
 export function CheckCard({ check, cwd, detail, error, loading, fixBlocker, busy, note, onCopy, onFix, onOpenFile, onRefresh }: CardProps) {

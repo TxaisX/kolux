@@ -58,7 +58,7 @@ export function SendButton({ targets, busy, onPick }: Props) {
       </button>
       {none && (
         <small className="send-none" role="status">
-          No agent sessions in this worktree
+          No agent sessions in this workspace
         </small>
       )}
       {list && (

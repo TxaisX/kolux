@@ -84,8 +84,8 @@ export function question(go: SpaceRow[], picks: Pick[], skipped: Skipped[]): { t
   const bytes = rows.reduce((a, r) => a + r.size.bytes, 0);
   const n = rows.length;
   return {
-    title: n === 1 ? `Delete the worktree ${labelOf(rows[0])}?` : `Delete ${n} worktrees?`,
-    lines: [`${formatBytes(bytes)} comes back. The folders are removed and Git forgets the worktrees; the branches stay.`, ...skipped.map((s) => `Skipped ${folderName(s.path)}: ${s.why}`)],
+    title: n === 1 ? `Delete the workspace ${labelOf(rows[0])}?` : `Delete ${n} workspaces?`,
+    lines: [`${formatBytes(bytes)} comes back. The folders are removed and Git forgets the workspaces; the branches stay.`, ...skipped.map((s) => `Skipped ${folderName(s.path)}: ${s.why}`)],
     list: n === 1 ? [] : listLines(rows),
     confirm: n === 1 ? "Delete" : `Delete ${n}`,
   };

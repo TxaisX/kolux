@@ -95,7 +95,7 @@ export async function sendGrab(invoke: Invoke, onSend: OnSend, key: number, g: G
   if (g.picture) {
     await sendPicture(invoke, onSend, key, { dataUrl: g.picture, name, text: (path) => grabMessage(g.pick, title, url, path) });
   } else {
-    if (!onSend) throw new Error("No agent sessions in this worktree");
+    if (!onSend) throw new Error("No agent sessions in this workspace");
     await onSend(key, grabMessage(g.pick, title, url, null));
   }
   return `Element sent (${g.pick.selector || g.pick.tag || "element"})`;

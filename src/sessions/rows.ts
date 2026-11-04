@@ -16,7 +16,7 @@ const last = (p: string) => p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p;
 export function worktreeLine(dir: string | null, exists: boolean | null, activeDir: string | null, openDirs: string[]): WorktreeLine {
   if (dir === null || dir.trim() === "") return { state: "unknown", label: "Folder not recorded", tip: "This session's transcript does not say which folder it ran in.", jump: false };
   const name = last(dir);
-  if (exists === false) return { state: "unavailable", label: `Unavailable: ${name}`, tip: `${dir} no longer exists. The worktree may have been deleted or moved, so this session cannot be opened there.`, jump: false };
+  if (exists === false) return { state: "unavailable", label: `Unavailable: ${name}`, tip: `${dir} no longer exists. The workspace may have been deleted or moved, so this session cannot be opened there.`, jump: false };
   if (activeDir !== null && key(activeDir) === key(dir)) return { state: "current", label: `Current workspace: ${name}`, tip: dir, jump: true };
   if (openDirs.some((d) => key(d) === key(dir))) return { state: "active", label: `Active workspace: ${name}`, tip: `${dir}\nClick to go there.`, jump: true };
   return { state: "available", label: `Folder: ${name}`, tip: `${dir}\nIt exists but is not open in Kolux.`, jump: false };

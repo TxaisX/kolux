@@ -22,7 +22,7 @@ describe("T-315-b pastedItems", () => {
     const go = vi.fn();
     const open = vi.fn();
     const own = pastedItems(` ${link}?x=1#c `, { "C:/w/fix": link }, ["github.com"], find1, open, go);
-    expect(own.map((r) => [r.section, r.label])).toEqual([["Worktrees", "Open the workspace for acme/app#7"]]);
+    expect(own.map((r) => [r.section, r.label])).toEqual([["Workspaces", "Open the workspace for acme/app#7"]]);
     own[0].run();
     expect(go).toHaveBeenCalledWith(fix);
     const bare = pastedItems("https://github.com/acme/app/issues/9", { "C:/w/fix": link }, ["github.com"], find1, open, go);

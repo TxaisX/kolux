@@ -298,7 +298,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     }
     const shown = cellsOf(panesIn(panes, src.cwd));
     if (shown.length >= MAX_PANES) {
-      if (cli) cliFailed.current[cli.ask] = `its worktree already holds ${MAX_PANES} panes; open a tab with terminal create instead`;
+      if (cli) cliFailed.current[cli.ask] = `its workspace already holds ${MAX_PANES} panes; open a tab with terminal create instead`;
       else setToast(`A workspace holds up to ${MAX_PANES} panes.`);
       return;
     }

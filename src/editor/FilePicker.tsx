@@ -138,7 +138,7 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
             </div>
           )}
           {!error && !list && <div className="menu-hint">Listing…</div>}
-          {list && hits.length === 0 && <div className="menu-hint">{list.items.length ? "Nothing matches." : `This worktree has no ${what}s.`}</div>}
+          {list && hits.length === 0 && <div className="menu-hint">{list.items.length ? "Nothing matches." : `This workspace has no ${what}s.`}</div>}
           {hits.map((f, i) => {
             const { name, folder } = split(f);
             return (
@@ -159,7 +159,7 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
             );
           })}
           {list && hits.length === SHOWN && <div className="menu-hint">Showing the {filter.trim() ? "best" : "first"} {SHOWN}; type more to narrow them down.</div>}
-          {list?.capped && <div className="menu-hint">The list is incomplete: only the first {list.items.length} are listed, and this worktree has more.</div>}
+          {list?.capped && <div className="menu-hint">The list is incomplete: only the first {list.items.length} are listed, and this workspace has more.</div>}
         </div>
       </div>
       {tip && tipParts && (

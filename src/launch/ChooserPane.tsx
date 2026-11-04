@@ -10,7 +10,7 @@
 // be undone from the note it leaves. A model with
 // effort levels or fast mode shows those options on its seat only (SESS-016); "Use last lineup"
 // (SESS-021) appears when this project has one whose agents are still here.
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useContext, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Close, Dots } from "../chrome/icons";
 import { openSettings } from "../settings/pages";
@@ -21,6 +21,8 @@ import { canLaunch, type AgentPass } from "./agents";
 import { seatStart, type SeatDefault } from "./defaultSeat";
 import { canInstall, installTip, optionLabel, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
+import { WindowStore } from "../shell/window/store";
+import { gridSheet } from "./emptySlots";
 import { allReady, countPlan, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
@@ -130,6 +132,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const nameOf = (id: string) => agents.find((a) => a.id === id)?.name ?? id;
   // TERM-012: a chooser Kolux focuses takes the keyboard, so typing no longer lands in the last pane.
   const box = useRef<HTMLElement>(null);
+  const win = useContext(WindowStore);
   // An install finishes later: what it writes is worked out from the seats as they are then, not as they were at the click.
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
@@ -224,6 +227,23 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     }
   };
   const launchKeys = [mac ? "Cmd" : "Ctrl", "Enter"];
+  // T-745: with several choosers in the grid, only one shows the sheet; this one is an empty slot until clicked.
+  // Mousedown moves the sheet here and removes the button under the pointer, so preventDefault stops the browser
+  // from then focusing that removed button and blurring the sheet; the button's onClick serves the keyboard.
+  const sheetHere = !sheet && win ? gridSheet(win) : null;
+  if (sheetHere !== null && sheetHere !== number)
+    return (
+      <section className="pane chooser" hidden={hidden} aria-label={`Session ${number} chooser`} onMouseDown={(e) => (e.preventDefault(), onFocus?.())} style={{ alignItems: "center", justifyContent: "center" }}>
+        {closable && (
+          <button className="ib" style={{ position: "absolute", top: 6, right: 6 }} onMouseDown={(e) => e.stopPropagation()} onClick={onClose} disabled={busy} aria-label={`Close session ${number}`}>
+            <Close size={12} />
+          </button>
+        )}
+        <button className="btn" onClick={onFocus} aria-label={`Choose what to run in session ${number}`}>
+          Choose what to run here
+        </button>
+      </section>
+    );
   return (
     <section ref={box} tabIndex={-1} className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "New session" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
       {sheet ? (
@@ -368,7 +388,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         )}
         <div className="count-row" role="radiogroup" aria-label="Where the AIs work">
           <span className="label">Folders</span>
-          <label className="choice" title={inGit ? "Each AI seat gets a fresh worktree of its own" : NOT_GIT}>
+          <label className="choice" title={inGit ? "Each AI seat gets a fresh workspace of its own" : NOT_GIT}>
             <input type="radio" name={`copies-${number}`} checked={copies === "separate"} disabled={!inGit} onChange={() => onCopies("separate")} />
             Separate copy for each AI
           </label>

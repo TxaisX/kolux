@@ -37,12 +37,12 @@ describe("view-014 space page", () => {
   it("question: names one worktree, counts several, lists the skipped, null when nothing goes", () => {
     const rows = [row("C:/w/feat", { branch: "feat", size: { bytes: 2 * 1024 * 1024, files: 1, incomplete: false } }), row("C:/w/b")];
     const one = question(rows, [{ path: "C:/w/feat", stamp: "s" }], [{ path: "C:/w/b", why: "It is in use" }]);
-    expect(one?.title).toBe("Delete the worktree feat?");
+    expect(one?.title).toBe("Delete the workspace feat?");
     expect(one?.confirm).toBe("Delete");
     expect(one?.lines[0]).toMatch(/^2 MB comes back/);
     expect(one?.lines[1]).toBe("Skipped b: It is in use");
     const two = question(rows, [{ path: "C:/w/feat", stamp: "s" }, { path: "C:/w/b", stamp: "t" }], []);
-    expect(two?.title).toBe("Delete 2 worktrees?");
+    expect(two?.title).toBe("Delete 2 workspaces?");
     expect(two?.confirm).toBe("Delete 2");
     expect(question(rows, [], [{ path: "C:/w/b", why: "x" }])).toBeNull();
   });

@@ -52,7 +52,7 @@ export default function WindowContent() {
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
     screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
     focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf,
-    standIns, saved, board, agentsScreen, openDirs, workerNames,
+    standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser,
   } = useWindow();
   return (
     <div className="content">
@@ -165,12 +165,15 @@ export default function WindowContent() {
         <div className="empty">
           <h2>Board</h2>
           <p>No session yet.</p>
+          <div className="btn-row">
+            <button className="btn" onClick={addChooser}>New session</button>
+          </div>
         </div>
       )}
       {terminals && page === null && waiting.length > 0 && (
-        <div className="needs-strip" role="list" aria-label="Sessions that need you">
+        <div className="needs-strip" role="group" aria-label="Sessions that need you">
           {waiting.map((p) => (
-            <button key={p.key} role="listitem" className="needs-chip" onClick={() => openPane(p.key)} title={VOCAB[statusOf(p)!].explain}>
+            <button key={p.key} className="needs-chip" onClick={() => openPane(p.key)} title={VOCAB[statusOf(p)!].explain}>
               <StatusGlyph glyph="attention" size={11} />
               <span className="name">{tabName(p, titles)}</span>
               <span className="why">{statusOf(p) === "permission" ? "needs permission" : "asked a question"}</span>

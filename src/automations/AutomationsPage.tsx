@@ -636,7 +636,7 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
             </>
           ) : (
             <>
-              <dt>Worktree</dt>
+              <dt>Workspace</dt>
               <dd>{a.workspaceMode === "new-per-run" ? "A new one for every run" : a.workspace ? folderName(a.workspace) : "Not chosen"}</dd>
               <dt>If Kolux was away</dt>
               <dd>{graceWord(a.missedRunGraceMinutes)}</dd>
@@ -692,7 +692,7 @@ function Detail({ a, running = false, onEdit, onDelete, runs, runsError, now, us
               ))}
               {r.worktreeGone && shown === r.id && (
                 <div className="autos-snapshot">
-                  <p className="note">A snapshot: the worktree {r.worktreeName ?? ""} is gone, so this is what was saved when the run ended, not a live terminal.</p>
+                  <p className="note">A snapshot: the workspace {r.worktreeName ?? ""} is gone, so this is what was saved when the run ended, not a live terminal.</p>
                   {r.output ? <pre className="auto-output">{r.output}</pre> : <p className="muted">No terminal output was saved for this run.</p>}
                 </div>
               )}

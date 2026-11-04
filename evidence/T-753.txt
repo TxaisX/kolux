@@ -1,0 +1,54 @@
+T-753 / DT-C189: small settings fixes (proof/ux-audit/requests/W3.md queue refill 11, from unsure-triage-49 / settings-b.md),
+lane A (90). Built on main 0d882444 (train 22). Release: 0.1.8. Each item read on that main first.
+
+FIXED
+  1. "With the Safety master switch off, the per-rule switches still look live" (settings-b.md:13). data-master-off was set
+     on the rules (SafetyPage.tsx) but nothing read it. Now, while the master switch is off, the rules are dimmed
+     (opacity 0.65) and each rule switch is described by the master's note "Off: no rule asks, whatever its own switch
+     says", so a screen reader hears it too. The switches stay usable on purpose, so rules can be set before the
+     master is turned back on.
+  2. "The privacy note names Settings > AI connections" (settings-b.md:15). The page is "Accounts & keys" (pages.ts).
+     outbound.ts now says "Check now in Settings > Accounts & keys".
+  3. "A duplicate Open in app clears the fields silently" (settings-b.md:21). A custom app is keyed by its command, so
+     Add with a command already listed did nothing and emptied both fields. Now, while the typed command is already
+     another row (or an edit would turn a row into one), the card says "That command is already listed as <name>." in
+     the warning colour, Add / Save changes is disabled and the fields are kept. The note is a live region that is
+     always on the page (out of the flow while empty), and the command field points at it while it applies.
+     src/editor/openInEdit.ts alreadyListed (same key as addCustom, same rule as editApp), src/settings/GeneralPage.tsx.
+
+TESTS
+  - src/editor/openInEdit.test.ts "T-753 (DT-C189)": Add alone drops a listed command; alreadyListed finds it by
+    command (case and spaces ignored), not a new command, not an unready draft, not the row being edited, yes for
+    editing another row into it and for a preset edited into a custom row that Save would refuse.
+  - src/settings/SafetyPage.test.ts SAFE-015: master off dims the rules block and gives each rule switch
+    aria-describedby="safety-master-note" on the Off note; master on has neither. Mutation check: dropping the dim
+    style fails it.
+  - src/settings/privacy.test.ts: the outbound row names Accounts & keys.
+  - src/settings/openInCard.test.ts (new): the real Open in card mounted with the fake DOM (src/tasks/fakeDom.ts, as
+    SET-037 does). A name and " GVIM " with a Vim row listed: Add custom app is off, the note reads "That command is
+    already listed as Vim.", the command field is described by it, and a click on Add then saves nothing and keeps both
+    fields; a new command leaves Add on with an empty note, and Add saves that one row and clears the fields. OpenInCard is exported for it. Mutation check: dropping
+    `|| !!dup` from the button fails it.
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t753)
+  - npx vitest run: 817 files, 6046 tests passed. npx tsc --noEmit -p .: clean. After the second review's nits:
+    src/settings + openInEdit (88 files, 496 tests) passed, tsc clean.
+  - Bundle: first load 1,487,824 B, the same as main 0d882444: +0 B against a +80 cap (settings pages are lazy).
+  - After merging main 5e481cf2 and the review 3 and 4 changes: npx vitest run 821 files, 6058 tests passed (the 2
+    card tests among them); tsc clean; first load 1,487,946 B, the same as main 5e481cf2 built on its own: +0 B.
+    Mutation check on the card test: without `|| !!dup` it fails with "expected false to be true".
+  - Review 1: opus-high-review A-, no blockers. Should-fixes taken: the rules' Off state reaches screen readers,
+    opacity 0.5 -> 0.65 for contrast on switches that stay usable, the note is an always-present live region and the
+    command field is described by it. Nits taken: the preset-to-custom test, the opacity check scoped to the rules.
+  - Review 2: opus-high-review A-, no blockers. Taken: the empty note no longer adds the card's 8px gap, the warning
+    colour, the id check pinned to the Off note.
+  - After merging main 5e481cf2 (train 23; it touched none of these code files), each item was read again on that
+    main and is still there. Review 3 (whole diff): opus-high-review A-, no blockers. Taken: the card test above
+    (the fake DOM covers it, so "no DOM renderer" was wrong) and the missing date cell on the DT-C189 row.
+    Review 4 (that delta): opus-high-review A-, no blockers. Taken: the test clicks Add in both cases, the
+    disabled check simplified.
+  - LEFT: a custom command equal to a listed preset's command is still added as a second row, as
+    before (not part of the silent clear); docs/guide/feature-index.md still says "The AI connections page" in a
+    history line; the 0.65 contrast is not measured, and the dim also
+    covers each rule switch's focus ring; Remove on the row being edited leaves Save changes on, and Save then clears
+    the fields (older than this PR, a follow-up).

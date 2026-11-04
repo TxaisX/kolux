@@ -155,7 +155,7 @@ export default function ShortcutsPage() {
                           {r.title}
                           {r.hint && <p className="keys-hint">{r.hint}</p>}
                           {r.warning && <p className="keys-hint" role="note">{r.warning}</p>}
-                          {at >= 0 && <p className="keys-hint">{note ?? "Press the new keys, or tap one modifier twice. Esc keeps what was there."}</p>}
+                          {at >= 0 && <p className="keys-hint" role="alert">{note ?? "Press the new keys, or tap one modifier twice. Esc keeps what was there."}</p>}
                         </td>
                         <td>
                           {r.labels.map((l, i) => (
@@ -179,16 +179,16 @@ export default function ShortcutsPage() {
                           ))}
                         </td>
                         <td className="keys-acts">
-                          <button className="keys-act" onClick={() => record(r.id, r.chords.length)}>
+                          <button className="keys-act" aria-label={`Add a shortcut for ${r.title}`} onClick={() => record(r.id, r.chords.length)}>
                             Add
                           </button>
                           {r.chords.length > 0 && (
-                            <button className="keys-act" onClick={end(() => void keymap.save(r.id, null))}>
+                            <button className="keys-act" aria-label={`Disable ${r.title}`} onClick={end(() => void keymap.save(r.id, null))}>
                               Disable
                             </button>
                           )}
                           {r.custom && (
-                            <button className="keys-act" onClick={end(() => void keymap.save(r.id, r.defaults, true))}>
+                            <button className="keys-act" aria-label={`Reset ${r.title}`} onClick={end(() => void keymap.save(r.id, r.defaults, true))}>
                               Reset
                             </button>
                           )}

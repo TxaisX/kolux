@@ -66,7 +66,7 @@ const view = (u: Usage, scope: "kolux" | "all", range: "7" | "30" | "90" | "all"
 test("USAGE-014: the Claude panel draws range and scope pickers, the day chart, models and recent sessions", () => {
   const html = view(usage([row("2026-03-30", { input: 1000, model: "claude-a-very-long-model-name-that-must-wrap-not-clip" })]), "kolux");
   expect(html).toContain("Last 30 days");
-  expect(html).toContain("Kolux worktrees");
+  expect(html).toContain("Kolux workspaces");
   expect(html).toContain("data-day-chart");
   expect(html).toContain("claude-a-very-long-model-name-that-must-wrap-not-clip");
   expect(html).toContain("Recent sessions");

@@ -87,7 +87,7 @@ export default function NamePrompt({ path, root, text, onSaved, onCancel }: Prop
         }}
       >
         <h2 className="ask-title">Name this note</h2>
-        <div className="ask-body">Choose a file name inside this worktree. Folders are made as needed, and .md is added when there is no extension.</div>
+        <div className="ask-body">Choose a file name inside this workspace. Folders are made as needed, and .md is added when there is no extension.</div>
         <input ref={input} className="field" value={name} aria-label="File name" aria-invalid={error !== null} onChange={(e) => (setName(e.target.value), setError(null))} />
         {error && (
           <div className="ask-body" role="alert" style={{ color: "var(--danger, #e5534b)" }}>

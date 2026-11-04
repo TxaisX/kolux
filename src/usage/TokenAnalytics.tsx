@@ -27,7 +27,7 @@ const RANGES: Array<{ id: Range; label: string }> = [
   { id: "all", label: "All time" },
 ];
 const SCOPES: Array<{ id: Scope; label: string }> = [
-  { id: "kolux", label: "Kolux worktrees" },
+  { id: "kolux", label: "Kolux workspaces" },
   { id: "all", label: "Every local use" },
 ];
 export const DEFAULT_FILTERS: Filters = { range: "30", scope: "kolux", roots: [] };

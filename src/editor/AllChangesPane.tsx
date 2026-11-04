@@ -474,7 +474,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
         <AllChangesList entries={entries} root={root} base={base} draw={draw} cache={cache.current} ready={ready} fold={fold} viewed={viewed} hidden={hidden} idPrefix={`ac-${id}`} jumpRef={jumpRef} loaded={loaded.current} onFocusView={focusedView} onGoneView={goneView} onToggleViewed={toggleViewed} onToggleFold={toggleFold} onOpenDiff={onOpenDiff && base === null ? openDiff : undefined} onStage={base === null ? stageEntry : undefined} stageBusy={pending !== null}>
           {entries === null && !error && <div className="menu-hint">Reading the changes…</div>}
           {base?.note && <div className="menu-hint ac-note">{base.note}</div>}
-          {entries && !entries.length && <div className="menu-hint">{base ? `This branch has no changes against ${base.against}.` : "This worktree has no changes."}</div>}
+          {entries && !entries.length && <div className="menu-hint">{base ? `This branch has no changes against ${base.against}.` : "This workspace has no changes."}</div>}
         </AllChangesList>
       </div>
     </section>

@@ -98,13 +98,13 @@ export function setupChoice(mode: "existing" | "new-per-run", hasSetup: boolean 
 export const unsaved = (first: Record<string, unknown>, now: Record<string, unknown>): boolean => [...new Set([...Object.keys(first), ...Object.keys(now)])].some((k) => JSON.stringify(first[k]) !== JSON.stringify(now[k]));
 
 /** Save's hint while it is held: the real reason when the worktrees could not be read, else that they are still being read. */
-export const saveHint = (ready: boolean, setupError: string | null): string | undefined => (ready ? undefined : setupError !== null ? "The project's worktrees could not be read; use Try again" : "Waiting for the project's worktrees");
+export const saveHint = (ready: boolean, setupError: string | null): string | undefined => (ready ? undefined : setupError !== null ? "The project's workspaces could not be read; use Try again" : "Waiting for the project's workspaces");
 
 /** The worktrees could not be read: the reason, and a way to ask again. */
 export function WorktreeError({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
     <div className="note error" role="alert">
-      Kolux cannot read this project's worktrees yet, so it will not save: {error}{" "}
+      Kolux cannot read this project's workspaces yet, so it will not save: {error}{" "}
       <button className="btn" onClick={onRetry}>
         Try again
       </button>
@@ -427,7 +427,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             <fieldset className="auto-label">
               <legend>Workspace</legend>
               <label className="auto-radio">
-                <input type="radio" checked={mode === "existing"} onChange={() => setMode("existing")} /> An existing worktree
+                <input type="radio" checked={mode === "existing"} onChange={() => setMode("existing")} /> An existing workspace
               </label>
               {mode === "existing" && (
                 <label className="auto-radio">
@@ -435,7 +435,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
                 </label>
               )}
               {mode === "existing" && (
-                <select className="field" aria-label="Worktree" value={workspace} disabled={!worktrees} onChange={(e) => setWorkspace(e.target.value)}>
+                <select className="field" aria-label="Workspace" value={workspace} disabled={!worktrees} onChange={(e) => setWorkspace(e.target.value)}>
                   {(worktrees ?? []).map((w) => (
                     <option key={w.path} value={w.path}>
                       {w.isMain ? `${folderName(w.path)} (main)` : (w.name ?? folderName(w.path))}
@@ -444,12 +444,12 @@ export default function AutomationDialog({ projects, agents, editing, template, 
                 </select>
               )}
               <label className="auto-radio">
-                <input type="radio" checked={mode === "new-per-run"} onChange={() => setMode("new-per-run")} /> A new worktree for every run
+                <input type="radio" checked={mode === "new-per-run"} onChange={() => setMode("new-per-run")} /> A new workspace for every run
               </label>
               {mode === "new-per-run" && <SearchPick items={branches} label="Base branch" value={base} onChange={setBase} placeholder={`From ${project?.base || "the default branch"}`} />}
               {setupShown !== null && (
                 <label className="auto-radio">
-                  <input type="checkbox" checked={setupShown} onChange={(e) => setRunSetup(e.target.checked)} /> Run the project setup in each new worktree
+                  <input type="checkbox" checked={setupShown} onChange={(e) => setRunSetup(e.target.checked)} /> Run the project setup in each new workspace
                 </label>
               )}
             </fieldset>

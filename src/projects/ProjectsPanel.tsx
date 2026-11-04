@@ -2075,7 +2075,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         )}
         {moving === w.path && !asking && (
           <div className="sb-form" data-moving={worktreeLabel(w)} onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), closeMove(w.path))}>
-            <Picker key={`move-${w.path}`} name="Move under" value={up ? worktreeLabel(up) : "No parent"} startOpen items={moveItems(p, w)} onPick={(k) => void move(p, w, k)} />
+            <Picker key={`move-${w.path}`} name="Parent" value={up ? worktreeLabel(up) : "No parent"} startOpen items={moveItems(p, w)} onPick={(k) => void move(p, w, k)} />
             <div className="btn-row">
               <button className="btn" onClick={() => closeMove(w.path)}>
                 Cancel
@@ -2280,7 +2280,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
           )}
           {(fresh[p.id] ?? []).length > 0 && review !== p.id && (
-            <button className="sb-notice" onClick={() => setReview(p.id)} title="Worktrees made with plain Git or another tool since you last looked">
+            <button className="sb-notice" onClick={() => setReview(p.id)} title="Workspaces made with plain Git or another tool since you last looked">
               {fresh[p.id].length} new workspace{fresh[p.id].length === 1 ? "" : "s"}
             </button>
           )}

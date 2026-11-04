@@ -1,0 +1,37 @@
+T-758 - Unused design tokens out, tab search as a combobox (DT-C194; UX audit W3 queue refill 16, chrome.md rows 18-19)
+Worker 2f, coordinator 57, branch s-2f/t758 from s-2f/t755 bc696a94 (stacked on #207), 2026-11-03. Cap +200 B net. For 0.1.8.
+
+CHECKED AGAINST MAIN 5e481cf2
+- (a) AccountSwitcher: already done by T-736 (d848fa7c). A failed load keeps the last list ("stale") and shows
+  "Accounts didn't load; list may be old." Nothing to change.
+- (b) AppLookCard: main still drops a failed window look silently; #204 (T-737) fixes it. Not touched here.
+- (c) styles.css --kx-* set: 24 tokens. git grep over the whole repo (every file type): only --kx-text-caption
+  (7 uses) and --kx-text-footnote (1) are read, both in src/insights/insights.css. --kx-ink fed only the three
+  alphas, which nothing read. The light-mode block only redefined the ink and the alphas.
+- (d) TabSearch.tsx (after #207): the field had a name and aria-activedescendant but no combobox role.
+
+AFTER
+- styles.css: one line, :root { --kx-text-caption: 11px; --kx-text-footnote: 12px; }, with a comment that a token
+  comes back with its first user. The Insights panel looks the same (same values).
+- Tab search: the field is role="combobox", aria-expanded while any tab is listed, and aria-controls the
+  listbox (id ts-l). The listbox is named "Open tabs"; its options take no Tab stop (the arrows move the
+  highlight); the "No open tab has that in its name" line moved out of the listbox (a listbox holds options
+  only). The dialog keeps its name, because reach.test.ts keys its dialog table on it.
+
+FIRST LOAD
+- Local vite build + scripts/bundle-budget.mjs budget() (counts JavaScript only): T-755 1,488,062, this branch
+  1,488,172, +110 over T-755 (this task's own cost; cap +200). Over main 5e481cf2 with T-755 included: +226.
+- First-load stylesheet (dist/assets/index-*.css): T-755 120,202, this branch 119,301, -901.
+  The CI line goes in the ready note.
+
+TESTS
+- src/shell/screenReaderNames.test.ts: the field carries role="combobox", aria-expanded={rows.length > 0} and
+  aria-controls="ts-l"; the listbox has id="ts-l" and its name; options have tabIndex={-1}; the no-match line is
+  outside the listbox. Trap: TabSearch.tsx put back to T-755 -> 1 failed; restored -> pass.
+- pnpm vitest run src/settings src/shell src/chrome src/insights: 159 files, 832/832. pnpm tsc --noEmit -p .: clean.
+  plan-check OK; firewall-check -Baseline 0 new.
+- Review (opus, read-only): A-, no must-fix. Applied: the no-match line out of the listbox, the listbox name,
+  aria-expanded follows the rows, options off the Tab order, "controls" not "owns" in the wording, this task's
+  cost stated on its own. Left: aria-autocomplete="list" (nit, about 25 B); renaming the dialog (breaks the
+  reach.test.ts dialog table).
+- Not run: a live screen reader.

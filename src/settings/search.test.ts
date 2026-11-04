@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGES } from "./pages";
 import { hideRule, INDEX, MAX_SEARCH, searchRepos, searchSettings } from "./search";
 
 // Where each page draws its sections (SettingsPage wraps the pages that have no sections of their own).
@@ -8,13 +9,14 @@ const SOURCES: Record<string, string[]> = {
   accounts: ["SettingsPage.tsx", "ConnectGrid.tsx", "AgentCredentials.tsx"],
   agents: ["AgentsPage.tsx"],
   terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx"],
-  git: ["GitPage.tsx", "AiRecipesSection.tsx"],
+  git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
   safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
   notifications: ["NotificationsPage.tsx", "SettingsPage.tsx"],
   shortcuts: ["ShortcutsPage.tsx"],
   usage: ["SettingsPage.tsx"],
+  claude: ["ClaudeSetupPage.tsx"],
 };
-const FILES = import.meta.glob(["./*Page.tsx", "./AiRecipesSection.tsx", "./InputCards.tsx", "./ConnectGrid.tsx", "./AgentCredentials.tsx", "./CliCard.tsx", "./CustomThemeEditor.tsx", "./TerminalImport.tsx", "./SafetyRules.tsx"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+const FILES = import.meta.glob("./*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 const read = (f: string) => FILES[`./${f}`] ?? "";
 
 describe("search all settings (SET-007)", () => {
@@ -101,18 +103,25 @@ describe("search all settings (SET-007)", () => {
     expect(searchSettings("safety")!.pages[0]).toEqual({ page: "safety", sections: "all" });
   });
   it("every section a page draws is indexed, so a search can find it and never hides it (UX-audit)", () => {
-    // The Claude page draws its cards from a list (data-section={id}) and the repo pages are not searched pages.
+    // The Claude page also draws cards from a list (data-section={id}); its fixed ones are checked here. Repo pages are not searched pages.
     const drawn: Record<string, string[]> = {
       general: ["GeneralPage.tsx", "CliCard.tsx"],
       appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
       accounts: ["SettingsPage.tsx", "AgentCredentials.tsx"],
       agents: ["AgentsPage.tsx"],
       terminal: ["TerminalPage.tsx", "InputCards.tsx", "TerminalImport.tsx"],
-      git: ["GitPage.tsx", "AiRecipesSection.tsx"],
+      git: ["GitPage.tsx", "AiRecipesSection.tsx", "SetupPolicyRow.tsx", "autoPr.tsx"],
       safety: ["SafetyPage.tsx", "SafetyRules.tsx"],
       notifications: ["NotificationsPage.tsx"],
       shortcuts: ["ShortcutsPage.tsx"],
+      claude: ["ClaudeSetupPage.tsx"],
     };
+    // T-755: a page left out of this list fails (Usage is drawn by SettingsPage, checked below), and so does a
+    // settings file that draws a section no list here reads (RepoPage and RepoSetup draw the repo pages, which are not searched).
+    const read = new Set(Object.values(drawn).flat());
+    const unread = Object.keys(FILES).map((f) => f.slice(2)).filter((f) => !f.startsWith("Repo") && !read.has(f) && /data-section="/.test(FILES[`./${f}`]));
+    expect(unread, "these draw sections no page list reads").toEqual([]);
+    expect(Object.keys(PAGES).filter((p) => p !== "usage" && !(p in drawn))).toEqual([]);
     const src = (f: string) => FILES[`./${f}`] ?? "";
     for (const [page, files] of Object.entries(drawn)) {
       const text = files.map(src).join("\n");
