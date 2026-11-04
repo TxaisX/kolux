@@ -83,3 +83,20 @@ test("under Classic the first-screen choice shows only Terminals and greys Agent
   const off = radios(c, "Opens first").filter((n) => "disabled" in n.attrs && n.attrs.disabled !== "false").map((n) => n.textContent.trim());
   expect(off).toEqual(["Agents", "Board"]);
 });
+
+test("C17-R1-01: Opens first keeps Tower, and the next start opens on Tower", async () => {
+  const first = await window_({ ...replay.legacy, uiLook: "new" });
+  await click(first.c, radios(first.c, "Opens first").find((n) => n.textContent.trim() === "Tower")!);
+  await settle();
+  expect(first.saved).toEqual([{ firstScreen: "tower", lastScreen: "tower" }]);
+  expect(picked(first.c, "Opens first")).toEqual(["Tower"]);
+  await unmount();
+  const { c } = await window_({ ...replay.legacy, uiLook: "new", firstScreen: "tower", lastScreen: "tower" });
+  expect(picked(c, "Opens first")).toEqual(["Tower"]);
+  expect(find(switcher(c), (n) => n.localName === "button" && n.attrs["aria-pressed"] === "true").map((n) => n.textContent.trim())).toEqual(["Tower"]);
+});
+
+test("C17-R1-01 guard: every screen in the top bar switcher can be Opens first", async () => {
+  const [{ screens }, { startScreen }] = await Promise.all([import("../../chrome/TopBar"), import("../general")]);
+  for (const s of screens) expect(startScreen({ uiLook: "new", firstScreen: s.id, lastScreen: s.id }), s.id).toBe(s.id);
+});

@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { durableOnly, lastWriter, openPageAt, readLook, saveLayout, savedFirst, stampLook, startScreen } from "./general";
+import { durableOnly, lastWriter, openPageAt, readLook, saveLayout, savedFirst, shownFirst, stampLook, startScreen } from "./general";
 import type { SavedLayout } from "../terminal/layout";
 
 test("VIEW-107: a failed layout save is retried once, then only the durable part is saved", async () => {
@@ -45,6 +45,16 @@ test("the first screen counts only under New", () => {
   expect(startScreen({ uiLook: "new" })).toBe("terminals");
   expect(startScreen({ uiLook: "new", firstScreen: "terminals" })).toBe("terminals");
   expect(startScreen({ uiLook: "classic" })).toBe("terminals");
+});
+
+test("C17-R1-01: Tower is a first screen the page can pick and the start honours", () => {
+  expect(savedFirst({ firstScreen: "tower" })).toBe("tower");
+  expect(startScreen({ uiLook: "new", firstScreen: "tower" })).toBe("tower");
+  expect(startScreen({ uiLook: "new", lastScreen: "tower" })).toBe("tower");
+  expect(startScreen({ uiLook: "classic", firstScreen: "tower", lastScreen: "tower" })).toBe("tower");
+  expect(shownFirst({ firstScreen: "tower" }, false)).toBe("tower");
+  expect(shownFirst({ firstScreen: "tower" }, true)).toBe("tower");
+  expect(shownFirst({ firstScreen: "board" }, true)).toBe("terminals"); // unchanged Classic clamp
 });
 
 test("VIEW-005: the screen left at quit comes back, an unknown one falls back", () => {
