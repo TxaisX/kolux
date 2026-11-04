@@ -104,8 +104,9 @@ User sees: every session as a card in a lane by status, each with a chip: Workin
 Rules: a stale working signal never shows Working; a plain shell terminal gets no chip; a stop
   caused by a limit or sign-in reads Stopped, never Done; when several files were written, the
   newest one wins and the link carries its full path; a working card shows how long it has been
-  working and its current step in plain words.
+  working and its current step in plain words; a Board with no sessions offers New session (T-754).
 Acceptance:
+  - [x] Open Board with no sessions → it shows New session, and a click opens the launch sheet. (unit; evidence/T-754.txt)
   - [x] Agent stopped by usage limit → card in a stopped state, chip says Stopped. (cards; evidence/cards-VIEW-023.txt)
   - [x] Agent finished → chip shows first line of its last message. (cards; evidence/cards-VIEW-023.txt)
   - [x] Agent writes file A, then file B, then finishes → the card links to file B. (cards; evidence/cards-VIEW-023.txt)

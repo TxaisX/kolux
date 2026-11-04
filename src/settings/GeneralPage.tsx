@@ -195,7 +195,7 @@ function OpenInCard({ settings, onSave }: { settings: Record<string, unknown>; o
   return (
     <section className="conn-card" data-section="open-in">
       <h2 className="conn-name">Open in</h2>
-      <p className="conn-detail">These apps appear, in this order, in every Open in menu: worktrees, files and the keybindings file.</p>
+      <p className="conn-detail">These apps appear, in this order, in every Open in menu: workspaces, files and the keybindings file.</p>
       <ul className="conn-list open-in-list" aria-label="Open in apps">
         {list.map((a, i) => (
           <li key={a.id}>

@@ -1,0 +1,33 @@
+T-754 / DT-C190 - The rest of the visible worktree labels say workspace; New session on an empty Board (lane D, session 72, 2026-11-03)
+Request: proof/ux-audit/requests/W3.md "Queue refill 12" (57): (a) the T-750 follow-up, the user-facing "worktree"
+labels left outside sweep #29; (b) unsure-triage shell.md:11, the empty Board has no way to start a session. Cap +90 B.
+Checked on main 5e481cf2 (after train 23) first.
+
+(a) NOW SAYS WORKSPACE (case and plural kept):
+  automations: AutomationDialog (save hint, the read error, the picker's aria-label and notes), AutomationsPage (the
+    run's Workspace term, the snapshot note), model.ts (the three event help lines).
+  browser: "No agent sessions in this workspace" (BrowserPane, SendButton, grabFlow, picture).
+  chrome/RightSidebar: the hints are "Attached workspaces" and "PR checks of attached workspaces" (shortened for the cap).
+  editor: AllChangesPane, FilePicker (x2), NamePrompt, ReviewNotes (x2), untitled.ts.
+  launch/ChooserPane title; projects/AttachedTabs + attachedTabs.ts; scm/CheckPane, PrStart.
+  settings help: AgentsPage, GeneralPage, GitPage, NotificationsPage, TerminalPage, confirmations.ts.
+  sessions/rows.ts; status/resources.ts ("No workspace"); usage/analyticsNotes.ts, TokenAnalytics ("Kolux workspaces").
+  space: SpaceView (count line, empty text, the three aria-labels, the search label) and view.ts (the delete title).
+  terminal/paneActions.ts: one failure message.
+KEPT: the settings page name "Git & worktrees" (pages.ts, RepoPage; tests and the spec name it); "linked worktree" in
+  the repo scanner and "git worktree unlock" (plain Git); the seats agent prompt; the settings search keywords; ids,
+  invoke arguments, setting keys and comments. T-750's files (palette, top bar, actions, Projects panel) are #202's.
+(b) REAL: an empty Board said only "No session yet." src/shell/window/Content.tsx now gives it a New session button
+  that calls the window store's addChooser, the same one the empty terminal grid's "Choose what to run" uses: the
+  launch sheet, or a chooser pane in a classic window; a full grid gets the usual "holds up to N panes" toast.
+
+TEST: src/shell/window/t754.test.ts mounts the real Content under the window store and clicks New session on an empty
+  Board; it failed with the button removed ("expected undefined to be defined") and passes with it. Tests that pinned
+  old labels were updated: AUTO-013, AutomationDialog, panels, CheckPane, confirmations, notifications, view, SpaceView,
+  resources.
+FULL RUN: npx vitest run: 821 files, 6055 passed, 1 failed (resources.test.ts pinned "No worktree"); updated and
+  src/status re-run: 23 files, 126 passed. tsc 0. firewall-check -Baseline: 0 new. plan-check: OK.
+BUNDLE: first load 1,488,032 B vs main 5e481cf2 1,487,946 B (both built here, 47 chunks): +86 B (cap +90).
+SPEC: spec/05 VIEW-023, a rule plus an [x] acceptance line.
+PENDING: unit-proven; not checked live in the app.
+REVIEW: sonnet-medium-review, A-, no must-fix, no should-fix; t754 and 10 changed test files (72 tests) re-run by the reviewer: passed. Nits left: two comments still say worktree (comments stay by rule); onClick={addChooser} passes the event, and addChooser takes no arguments, as in Grid.

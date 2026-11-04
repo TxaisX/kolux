@@ -8,7 +8,7 @@ import { PIN_ASK_FIELD } from "../terminal/pin";
 export type Skippable = { field: string; label: string };
 
 export const SKIPPABLE: Skippable[] = [
-  { field: CONFIRM_DELETE_FIELD, label: "deleting a worktree" },
+  { field: CONFIRM_DELETE_FIELD, label: "deleting a workspace" },
   { field: PIN_ASK_FIELD, label: "closing a pinned tab" },
   { field: CONFIRM_DELETE_KEY, label: "deleting an automation" },
   { field: CONFIRM_CLOSE_FIELD, label: "closing a terminal that is running a program" },

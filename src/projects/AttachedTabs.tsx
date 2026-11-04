@@ -12,7 +12,7 @@ export function AttachedWorktreesTab({ folder, worktrees, onOpen }: Props) {
   const rows = attachedRows(folder, worktrees);
   return (
     <div data-attached-worktrees>
-      {rows.length === 0 && <p className="conn-detail">No worktree is attached to this folder yet. One made from a terminal here is listed, and so is one made from it.</p>}
+      {rows.length === 0 && <p className="conn-detail">No workspace is attached to this folder yet. One made from a terminal here is listed, and so is one made from it.</p>}
       {rows.map((r) => (
         <button key={r.path} className="btn" style={{ display: "block", paddingLeft: 8 + r.depth * 16 }} title={r.path} onClick={() => onOpen?.(r.path)}>
           {r.label}

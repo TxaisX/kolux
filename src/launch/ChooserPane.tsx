@@ -368,7 +368,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         )}
         <div className="count-row" role="radiogroup" aria-label="Where the AIs work">
           <span className="label">Folders</span>
-          <label className="choice" title={inGit ? "Each AI seat gets a fresh worktree of its own" : NOT_GIT}>
+          <label className="choice" title={inGit ? "Each AI seat gets a fresh workspace of its own" : NOT_GIT}>
             <input type="radio" name={`copies-${number}`} checked={copies === "separate"} disabled={!inGit} onChange={() => onCopies("separate")} />
             Separate copy for each AI
           </label>

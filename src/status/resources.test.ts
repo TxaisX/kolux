@@ -5,7 +5,7 @@ import { committedNote, endNeedsAsk, formatCommitted, groupSessions } from "./re
 
 const u = { bytes: 1, cpu: 0, processes: 1, pid: null, committed: null };
 
-test("sessions sit under the deepest workspace they run in, the rest under No worktree", () => {
+test("sessions sit under the deepest workspace they run in, the rest under No workspace", () => {
   const sessions = [
     { ...u, id: 1, dir: "C:\\repo" },
     { ...u, id: 2, dir: "C:\\repo\\ws\\alpha\\src" },
@@ -17,7 +17,7 @@ test("sessions sit under the deepest workspace they run in, the rest under No wo
   expect(groups.map((g) => [g.label, g.rows.map((r) => r.id)])).toEqual([
     ["repo", [1]],
     ["alpha", [2, 5]],
-    ["No worktree", [3, 4]],
+    ["No workspace", [3, 4]],
   ]);
   const hidden = groups[2].rows[0];
   expect([hidden.name, hidden.shown]).toEqual(["Session 3 (not in a pane)", false]);

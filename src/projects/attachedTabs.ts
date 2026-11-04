@@ -39,4 +39,4 @@ export function rollup(folder: string, all: Worktree[], answers: Record<string, 
 }
 
 export const rollupLine = (w: Worst | null): string =>
-  w === "failing" ? "Failing: a check has failed in an attached worktree." : w === "pending" ? "Pending: checks are still running." : w === "passing" ? "Passing: every attached pull request is green." : "No attached worktree has a pull request with checks.";
+  w === "failing" ? "Failing: a check has failed in an attached workspace." : w === "pending" ? "Pending: checks are still running." : w === "passing" ? "Passing: every attached pull request is green." : "No attached workspace has a pull request with checks.";

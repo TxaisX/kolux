@@ -17,7 +17,7 @@ test("SET-043: each skipped confirmation is remembered on its own", () => {
   const s = { confirmWorkspaceDelete: false };
   expect(asksBeforeDelete(s)).toBe(false);
   expect(asksBeforeClose(s)).toBe(true);
-  expect(skippedOf(s).map((c) => c.label)).toEqual(["deleting a worktree"]);
+  expect(skippedOf(s).map((c) => c.label)).toEqual(["deleting a workspace"]);
 });
 
 test("SET-043: closing a pinned tab asks by default, and turning it back on makes the next close ask", () => {
