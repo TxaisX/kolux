@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChatItem } from "./model";
-import { seatArgs } from "../launch/seats";
-import { choicesFor, clean, confirmModel, controlsOff, effortsFor, failChange, loadSaved, modelCommand, modelFromWords, opensPicker, readModel, routeOf, saveChoice, savedArgs, savedSeat, sentChange, statusText, type Change } from "./controls";
+import { DEFAULT_MODEL, seatArgs } from "../launch/seats";
+import { choicesFor, clean, confirmModel, controlsOff, effortsFor, failChange, failedChange, loadSaved, modelCommand, modelFromWords, opensPicker, readModel, routeOf, saveChoice, savedArgs, savedSeat, sentChange, statusText, MODEL_NOT_SENT, type Change } from "./controls";
 
 const mem = () => {
   const m = new Map<string, string>();
@@ -70,6 +70,18 @@ describe("CHAT-024 sent and confirmed", () => {
     expect(c[0].status).toBe("sent");
     c = confirmModel(c, "sonnet");
     expect(statusText(c[0])).toBe("Confirmed");
+  });
+  it("picking the agent's own default sends /model default, and the model it then reports confirms it", () => {
+    expect(modelCommand(DEFAULT_MODEL)).toBe("/model default");
+    const sent = sentChange([], "model", DEFAULT_MODEL);
+    expect(statusText(sent[0])).toBe("Sent, not confirmed yet");
+    expect(statusText(confirmModel(sent, null)[0])).toBe("Sent, not confirmed yet");
+    expect(statusText(confirmModel(sent, "sonnet")[0])).toBe("Confirmed");
+  });
+  it("a pick that was not sent stays in the control as failed", () => {
+    const c = failedChange([], "model", DEFAULT_MODEL, MODEL_NOT_SENT);
+    expect(c[0]).toMatchObject({ what: "model", value: DEFAULT_MODEL, status: "failed", error: MODEL_NOT_SENT });
+    expect(statusText(c[0])).toBe(MODEL_NOT_SENT);
   });
   it("a failure for a replaced change is ignored", () => {
     let c = sentChange([], "model", "sonnet");
