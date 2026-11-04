@@ -29,7 +29,7 @@ import {
   type Scan,
 } from "./cleanup";
 import { canStart, finished, lossKinds, namedList, removeOne, runBulk, summary, unchecked, type Item } from "./bulkRemove";
-
+import { askText } from "../editor/closeGuard";
 type Props = {
   project: { id: string; name: string };
   onClose: () => void;
@@ -39,9 +39,13 @@ type Props = {
   onKept: (items: KeptItem[]) => void;
   /** T-149: a workspace's parent by path, so children are removed before their parents. */
   parentOf?: (path: string) => string | null | undefined;
+  /** EDIT-031: the file names with unsaved text in these workspaces, for the question. */
+  unsavedIn?: (paths: string[]) => string[];
+  /** EDIT-031: asks about those tabs (Save / Don't save / Cancel); true when the removal may go on. */
+  onAskUnsaved?: (paths: string[]) => Promise<boolean>;
 };
 
-export default function CleanupDialog({ project, onClose, onRemoved, onKept, parentOf }: Props) {
+export default function CleanupDialog({ project, onClose, onRemoved, onKept, parentOf, unsavedIn = () => [], onAskUnsaved = async () => true }: Props) {
   // The previous result shows straight away while the new scan runs.
   const [scan, setScan] = useState<Scan | null>(() => lastScan(project.id));
   const [ticks, setTicks] = useState<Record<string, boolean>>(() => {
@@ -85,6 +89,8 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
   const rows = arrangeRows(listed, view, sizes);
   const shownSet = new Set(rows.map((r) => r.path));
   const chosen = scan ? childrenFirst(tickedPaths(ticks, scan, showAll).filter((p) => shownSet.has(p)), parentOf) : [];
+  // EDIT-031: the files whose unsaved text would go with the ticked workspaces.
+  const dirtyNames = unsavedIn(chosen);
   const unread = needsSizes(view) ? listed.map((r) => r.path).filter((p) => !(p in sizes)) : [];
   useEffect(() => {
     if (unread.length === 0) return;
@@ -100,6 +106,8 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
   const chosenRows = scan ? scan.rows.filter((r) => chosen.includes(r.path)) : [];
   const remove = async () => {
     if (!canStart(chosenRows, agreed)) return;
+    // EDIT-031: the ticked workspaces' unsaved editor tabs are asked about first; on Cancel nothing is removed.
+    if (!(await onAskUnsaved(chosen))) return;
     setConfirming(false);
     setRemoving(true);
     try {
@@ -224,6 +232,16 @@ export default function CleanupDialog({ project, onClose, onRemoved, onKept, par
             {namedList(chosenRows).names.join(", ")}
             {namedList(chosenRows).more > 0 ? ` and ${namedList(chosenRows).more} more` : ""}
           </span>
+          {dirtyNames.length > 0 && (
+            <>
+              <span>{askText(dirtyNames)} Deleting these workspaces closes their tabs.</span>
+              <ul aria-label="files with unsaved changes">
+                {dirtyNames.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            </>
+          )}
           {unchecked(chosenRows).length > 0 && (
             <label className="check">
               <input type="checkbox" aria-label="remove the ones that could not be checked" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />

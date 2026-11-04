@@ -24,6 +24,7 @@ import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keep
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { askText } from "../editor/closeGuard";
 import { closeAddOnEscape, freshGroupToDrop, mayRestoreDraft, GROUP_SETTING, HIDE_AUTOMATION_SETTING, PIN_COPIES_SETTING, PIN_SETTING, SHOW_SLEEPING_SETTING, SLEEP_SETTING, asleepAfter, closingNote, rowKey, runningUnder, sleepPlan, renameTo, showSleepingFrom, SORT_SETTING, jumpUnhides, withoutAutomationMade, groupFromSetting, groupRows, pathKey, pinnedSet, recentOrder, smartOrder, sortFromSetting, type AgentState, type PrState, type RowInfo } from "./rows";
 import { linkedPrs, pushBadge, SCM_LINKED_PR_KEY, type Pushed } from "../scm/model";
 import { mergePoll, nextDelay, pollItems, STALE_MS, type PrPoll } from "../scm/poll";
@@ -136,6 +137,10 @@ type Props = {
   onRemovedAll?: (paths: string[]) => void;
   /** PROJ-053: these workspaces went to sleep; close their panes. */
   onSleep: (paths: string[]) => void;
+  /** EDIT-031: the file names with unsaved text in these workspaces, for the delete question. */
+  unsavedIn?: (paths: string[]) => string[];
+  /** EDIT-031: asks about those tabs (Save / Don't save / Cancel); true when the removal may go on. */
+  onAskUnsaved?: (paths: string[]) => Promise<boolean>;
   /** The plus menu behind "New session" (T-004): agents found on the PATH, and the launch. */
   agents: AgentInfo[];
   launching: boolean;
@@ -205,7 +210,7 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -1261,6 +1266,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   // Row 364: forgetting drops Kolux's records only, but the row vanishes, so it is confirmed first.
   const forget = async (f: { projectId: string; path: string; label: string }) => {
+    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel the workspace stays.
+    if (!(await onAskUnsaved([f.path]))) return;
     setForgetAsk(null);
     try {
       await invoke("workspace_forget", { projectId: f.projectId, path: f.path });
@@ -1273,6 +1280,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   };
   const remove = async (c = confirm) => {
     if (!c) return;
+    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel nothing is removed and no draft is dropped.
+    if (!(await onAskUnsaved([c.path]))) return;
     setBusy("removing");
     try {
       await askArchive(c.path);
@@ -1334,6 +1343,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const b = batch;
     const p = b && projects.find((x) => (worktrees[x.id] ?? []).some((y) => y.path === b.root));
     if (!b || !p) return;
+    // EDIT-031: every workspace in the batch is asked about before any of them goes.
+    if (!(await onAskUnsaved(b.order))) return;
     setBusy("removing");
     const gone: string[] = [];
     try {
@@ -1690,19 +1701,22 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   // PROJ-052: hide-sleeping (the show-sleeping switch), the default-branch row and the project filter.
   const hidden = (w: Worktree) => !rowShown(filters, { projectId: projectOf(w), isMain: w.isMain, branch: w.branch, asleep: asleep.includes(pathKey(w.path)) });
   const inList = (w: Worktree) => elsewhere(w) && !hidden(w); // the lane's listed(), renamed: main's listed is the worktree state
-  function sleep(w: Worktree) {
-    setSleepAsk(null);
+  async function sleep(w: Worktree) {
     const { next, paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
+    // EDIT-031: its unsaved editor tabs are asked about first; on Cancel it stays awake with its tabs.
+    if (!(await onAskUnsaved(paths))) return false;
+    setSleepAsk(null);
     onSetting(SLEEP_SETTING, next);
     onSleep(paths);
     invoke("workspace_sleep", { paths }).catch((err) => say("warn", `Some terminals did not close: ${String(err)}`));
+    return true;
   }
   // Sleeping closes the workspace's tabs and terminals, so running terminals are asked about first, like Remove does.
   function trySleep(w: Worktree) {
     const { paths } = sleepPlan(asleep, everyEntry.map((x) => x.w), w.path);
     const note = runNote(paths);
     if (note) setSleepAsk({ path: w.path, note });
-    else sleep(w);
+    else void sleep(w);
   }
   function wake(w: Worktree) {
     if (isAsleep(w)) onSetting(SLEEP_SETTING, asleepAfter(asleep, [], w.path, false));
@@ -1831,6 +1845,9 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const asked = new Set<string>(); // T-729: a pinned row can render twice (the copies setting); its prompts mount once
   const row = ({ p, w }: Entry, depth = 0, kids = false) => {
     const asking = confirm?.path === w.path;
+    // EDIT-031: the delete question names the files whose unsaved text would go with the workspace.
+    const dirtyNames = asking ? unsavedIn([w.path]) : [];
+    const batchNames = batch?.root === w.path ? unsavedIn(batch.order) : [];
     const info = infoOf(w);
     // PROJ-062: what the card shows under its name, and what a hover adds for the rest.
     const facts: CardFacts = { agents: liveIn(w).length, state: info.state, pr: info.pr, changed: cardChanges.countFor(w.path), note: w.comment ?? null, ports: cardPorts.portsFor(w.path), task: w.number ?? null };
@@ -1990,7 +2007,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             body={<>Put <b>{worktreeLabel(w)}</b> to sleep? Its tabs and terminals close, and so do those of the workspaces made from it.{sleepAsk.note}</>}
             confirm="Sleep"
             cancel="Keep awake"
-            onConfirm={() => (sleep(w), focusRow(w.path))}
+            onConfirm={() => void sleep(w).then((ok) => ok && focusRow(w.path))}
             onCancel={() => closeSleepAsk(w.path)}
           />
         )}
@@ -2060,6 +2077,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     <li key={d}>{labelOf(d)}</li>
                   ))}
                 </ul>
+                {batchNames.length > 0 && (
+                  <>
+                    <span>{askText(batchNames)} Deleting these workspaces closes their tabs.</span>
+                    <ul className="del-changes" aria-label="files with unsaved changes">
+                      {batchNames.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
                 {batch.error && (
                   <span className="note error" role="alert">
                     {batch.error}
@@ -2116,6 +2143,16 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                     ))}
                     {shownChanges(confirm.check).more > 0 && <li>and {shownChanges(confirm.check).more} more</li>}
                   </ul>
+                )}
+                {dirtyNames.length > 0 && (
+                  <>
+                    <span>{askText(dirtyNames)} Deleting the workspace closes their tabs.</span>
+                    <ul className="del-changes" aria-label="files with unsaved changes">
+                      {dirtyNames.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
                 {commitsNote(confirm.check) && (
                   <>
@@ -2268,6 +2305,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <CleanupDialog
               project={p}
               onClose={() => setCleanupFor(null)}
+              unsavedIn={unsavedIn}
+              onAskUnsaved={onAskUnsaved}
               onRemoved={(paths) => {
                 onRemovedAll(paths);
                 void reload();
@@ -2456,6 +2495,8 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             return p && w ? { projectId: p.id, name: worktreeLabel(w) } : undefined;
           }}
           onRemoved={onRemovedAll}
+          unsavedIn={unsavedIn}
+          onAskUnsaved={onAskUnsaved}
           onKept={(items) => setKept((old) => addKept(old, items))}
           onLeft={setPicked}
           onReload={reload}
