@@ -14,11 +14,13 @@ export function commandRows(map: Keymap, installed: readonly string[], note?: (t
   return actions.flatMap((a): PaletteItem[] => {
     if (a.id.startsWith("tab.newAgent.") && !installed.includes(a.id.slice("tab.newAgent.".length))) return [];
     const keys = labelOf(map, a.id);
-    if (!a.index) return [{ section: "Commands", label: a.title, hint: keys.join("+") || undefined, run: () => run(a.id) }];
+    const keywords = a.keywords?.join(" "); // T-728: "cron" finds Open Automations
+    if (!a.index) return [{ section: "Commands", label: a.title, hint: keys.join("+") || undefined, keywords, run: () => run(a.id) }];
     return Array.from({ length: 9 }, (_, i) => ({
       section: "Commands",
       label: a.title.replace(/1.9$/, String(i + 1)),
       hint: keys.length ? [...keys.slice(0, -1), String(i + 1)].join("+") : undefined,
+      keywords,
       run: () => run(a.id, i + 1),
     }));
   });
