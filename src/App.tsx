@@ -30,7 +30,8 @@ import { useSessionNames } from "./sessions/tabTitles";
 import { type Agent } from "./chrome/VendorMark";
 import { type Kept } from "./inbox/exitedPrompt";
 import { type Copies, type Seat, type Shape, type Lineup } from "./launch/seats";
-import { panesIn } from "./workspaces";
+import { panesIn, sameDir } from "./workspaces";
+import { namesOf, panesInDirs, unsavedInDirs } from "./projects/wsUnsaved";
 import { type SavedLayout } from "./terminal/layout";
 import { KeymapProvider } from "./keys/KeymapContext";
 import { useAgentEvents } from "./status/useAgentStatus";
@@ -177,6 +178,10 @@ function Window({ initial, layout, read }: { initial: Record<string, unknown>; l
   const exitedPrompt = useRef<Kept>({});
 
   const guard = useCloseGuard({ panes, dirty, close: (keys) => void closeTab(keys, true), toast: setToast });
+  // EDIT-031: deleting, forgetting or sleeping a workspace closes every tab in it, so its unsaved
+  // editor text is asked about first, with the same Save / Don't save / Cancel question a closing tab gets.
+  const wsUnsaved = (paths: string[]) => namesOf(unsavedInDirs(panes, dirty, paths, sameDir));
+  const askWsUnsaved = (paths: string[]) => guard.confirm(panesInDirs(panes, paths, sameDir));
 
   // The screen in front, tab labels, the clock and full pages (chrome/useScreens.tsx).
   const screenState = useScreens({ classic, hook, leavePage, liveIds, page, panes, ptys, screen, settings, settingsOpen, titles });
@@ -215,7 +220,7 @@ function Window({ initial, layout, read }: { initial: Record<string, unknown>; l
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
     ...state, ...plumb, ...chrome, ...start, ...chords, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
-    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, prRows, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef,
+    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, prRows, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
   };
   Object.assign(w, bag);
   // T-699 (DT-C135): the right sidebar as the left one's setter sees it (shell/window/narrow.ts nextLeft).

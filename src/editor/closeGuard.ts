@@ -31,6 +31,14 @@ export function closable(choice: Choice, keys: number[], unsaved: Unsaved[], sav
   return keys.filter((k) => !open.has(k));
 }
 
+/** EDIT-031 for a whole workspace: the removal may go on only on an explicit choice, and Save only when
+ *  every unsaved file was saved. Cancel stops it; Don't save drops the text on purpose. */
+export function mayRemove(choice: Choice, unsaved: Unsaved[], saved: ReadonlySet<number>): boolean {
+  if (choice === "cancel") return false;
+  if (choice === "discard") return true;
+  return unsaved.every((u) => saved.has(u.key));
+}
+
 export type SaveIo = {
   /** Whether the file's buffer still holds unsaved text (a twin tab's save may have cleaned it). */
   dirty(path: string): boolean;

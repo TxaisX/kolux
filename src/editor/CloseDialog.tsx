@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { trapTab } from "../chrome/dialogFocus";
 import { baseName, diskOf, isDirty, textOf } from "./buffers";
-import { askText, closable, saveAll, unsavedTabs, type GuardPane, type Unsaved } from "./closeGuard";
+import { askText, closable, mayRemove, saveAll, unsavedTabs, type Choice, type GuardPane, type Unsaved } from "./closeGuard";
 import NamePrompt from "./NamePrompt";
 import { needsName } from "./untitled";
 
@@ -22,7 +22,8 @@ type Options = {
 };
 
 export function useCloseGuard({ panes, dirty, close, toast }: Options) {
-  const [ask, setAsk] = useState<{ keys: number[]; unsaved: Unsaved[] } | null>(null);
+  const [ask, setAsk] = useState<{ keys: number[]; unsaved: Unsaved[]; answer?: (ok: boolean) => void } | null>(null);
+  const open = useRef<{ keys: number[]; unsaved: Unsaved[]; answer?: (ok: boolean) => void } | null>(null);
   const [naming, setNaming] = useState<{ t: Unsaved; done: (ok: boolean) => void } | null>(null);
   const [busy, setBusy] = useState(false);
   const latest = useRef({ close, toast });
@@ -32,31 +33,47 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
   const request = (keys: number[]): boolean => {
     const unsaved = unsavedTabs(keys, panes, dirty);
     if (!unsaved.length) return false;
-    setAsk({ keys, unsaved });
+    open.current = { keys, unsaved };
+    setAsk(open.current);
     return true;
   };
 
-  const choose = async (choice: "save" | "discard" | "cancel") => {
-    if (!ask || busy) return;
-    if (choice !== "save") {
-      setAsk(null);
-      const keys = closable(choice, ask.keys, ask.unsaved, new Set());
-      if (keys.length) latest.current.close(keys);
-      return;
-    }
+  /** EDIT-031 for a whole workspace: asks about the unsaved tabs among `keys` and resolves true when the
+   *  caller may go on (the files saved, or the user chose Don't save), false on Cancel or a failed save.
+   *  The caller's own removal drops the tabs and drafts; this only answers. */
+  const confirm = (keys: number[]): Promise<boolean> => {
+    const unsaved = unsavedTabs(keys, panes, dirty);
+    if (!unsaved.length) return Promise.resolve(true);
+    if (open.current) return Promise.resolve(false); // one question at a time
+    return new Promise<boolean>((answer) => {
+      open.current = { keys, unsaved, answer };
+      setAsk(open.current);
+    });
+  };
+
+  const done = (a: { keys: number[]; unsaved: Unsaved[]; answer?: (ok: boolean) => void }, choice: Choice, saved: ReadonlySet<number>) => {
+    open.current = null;
+    setAsk(null);
+    if (a.answer) return a.answer(mayRemove(choice, a.unsaved, saved));
+    const keys = closable(choice, a.keys, a.unsaved, saved);
+    if (keys.length) latest.current.close(keys);
+  };
+
+  const choose = async (choice: Choice) => {
+    const a = open.current;
+    if (!a || busy) return;
+    if (choice !== "save") return done(a, choice, new Set());
     setBusy(true);
-    const saved = await saveAll(ask.unsaved, {
+    const saved = await saveAll(a.unsaved, {
       dirty: isDirty,
       needsName: (t) => needsName(t.path, t.root, diskOf(t.path)),
       write: (t) => saveQuiet(t.path, latest.current.toast),
-      name: (t) => new Promise<boolean>((done) => setNaming({ t, done })),
+      name: (t) => new Promise<boolean>((resolve) => setNaming({ t, done: resolve })),
     });
     setBusy(false);
-    setAsk(null);
-    const keys = closable("save", ask.keys, ask.unsaved, saved);
-    const kept = ask.unsaved.filter((u) => !saved.has(u.key));
+    const kept = a.unsaved.filter((u) => !saved.has(u.key));
     if (kept.length) latest.current.toast(`${kept.length === 1 ? "1 file was" : `${kept.length} files were`} not saved and stay${kept.length === 1 ? "s" : ""} open: ${kept.map((k) => baseName(k.path)).join(", ")}.`);
-    if (keys.length) latest.current.close(keys);
+    done(a, "save", saved);
   };
 
   const cancel = useRef<HTMLButtonElement>(null);
@@ -122,5 +139,5 @@ export function useCloseGuard({ panes, dirty, close, toast }: Options) {
       )}
     </>
   );
-  return { request, dialog };
+  return { request, confirm, dialog };
 }
