@@ -2,7 +2,7 @@
 // two apps' own folders, shows what it found and what it cannot use, and saves only when asked.
 import { useState } from "react";
 import { applyAppearance, readAppearance } from "../theme";
-import { planImport, planSummary, type GhosttyImport, type WarpScan } from "./importSchemes";
+import { bringIn, planImport, planSummary, type GhosttyImport, type WarpScan } from "./importSchemes";
 import { ghosttyPatch, pickedSchemes, previewLines, readGhostty, readSavedSettings, readWarp, saveChecked, warpRows } from "./terminalImportRead";
 
 type Props = { settings: Record<string, unknown>; save: (patch: Record<string, unknown>) => Promise<unknown> };
@@ -169,7 +169,7 @@ export function WarpImportBox({ settings, save }: Props) {
           ))}
           <div className="btn-row">
             <button type="button" className="btn" disabled={busy || ticked.size === 0} onClick={() => void apply(scan)}>
-              Bring in {ticked.size || ""}
+              {bringIn(ticked.size)}
             </button>
             <button type="button" className="btn" onClick={() => setScan(null)}>
               Cancel

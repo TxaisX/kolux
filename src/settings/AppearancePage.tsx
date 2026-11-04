@@ -8,7 +8,7 @@ import { SearchFolds } from "./search";
 import { saveChanged, settingsDiff } from "./saveChanged";
 import { applyAppearance, buildTheme, customOf, isDark, MODES, previewOf, readAppearance, SPAN, swatch, themeLabel, terminalFor, themeVars, THEMES, uiFont, monoFont, writeAppearance, WEIGHTS, THEMED_SCREENS, type Appearance, type FontWeight, type Mode } from "../theme";
 import { importScheme, type CustomScheme } from "../terminal/schemes";
-import { parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
+import { bringIn, parseSchemeFile, planImport, planSummary, sameColours } from "./importSchemes";
 import { schemeOptions, SchemeList } from "./SchemePicker";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
@@ -405,7 +405,7 @@ function SchemeImport({ look, onChange }: { look: Appearance; onChange: (a: Appe
   return (
     <div className="scheme-import">
       <label className="scheme-add">
-        <span>Bring in from Warp or Ghostty</span>
+        <span>Bring in from Ghostty or Warp</span>
         <input type="file" aria-label="Warp theme or Ghostty configuration files" multiple accept=".yaml,.yml,.conf,.config,text/plain,*" onChange={(e) => void read(e.target.files).finally(() => (e.target.value = ""))} />
       </label>
       <p className="conn-detail">Pick Warp theme files (.yaml) or your Ghostty configuration file. Nothing changes until you tick schemes and apply.</p>
@@ -440,7 +440,7 @@ function SchemeImport({ look, onChange }: { look: Appearance; onChange: (a: Appe
           )}
           <div className="btn-row">
             <button type="button" className="btn" disabled={ticked.size === 0} onClick={apply}>
-              Bring in {ticked.size || ""}
+              {bringIn(ticked.size)}
             </button>
             <button type="button" className="btn" onClick={() => setIncoming([])}>
               Cancel

@@ -1115,7 +1115,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .scheme-list { min-width: 0; }
 .scheme-list.off { opacity: 0.5; }
 .scheme-label { display: block; margin-bottom: 4px; color: var(--fg-muted); font-size: 12px; }
-.scheme-list [role="listbox"] { max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+.scheme-list .scheme-rows { margin: 0; list-style: none; max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
 .scheme-row { display: flex; align-items: center; gap: 4px; }
 .scheme-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 6px; border: 0; border-radius: 4px; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
 .scheme-pick:hover:not(:disabled) { background: var(--row-selected); }

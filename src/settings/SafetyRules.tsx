@@ -198,6 +198,8 @@ export function SafetyRules({ settings, rules, save }: { settings: Settings; rul
 }
 
 const when = (ms: number) => new Date(ms).toLocaleString();
+// T-757: the outcome badges in SAFE-018's words, not the stored state names.
+const OUTCOME: Record<Attempt["outcome"], string> = { waiting: "Waiting for you", allowed: "Allowed once", denied: "Denied, not run" };
 
 export function SafetyAttemptsView({ attempts, clear, error = null }: { attempts: Attempt[]; clear: () => unknown; error?: string | null }) {
   return (
@@ -206,14 +208,14 @@ export function SafetyAttemptsView({ attempts, clear, error = null }: { attempts
       <p className="conn-detail">The last {50} commands Claude was made to ask about, newest first, kept only until Kolux closes. Secrets in a command are hidden before it is kept.</p>
       {attempts.length === 0 ? (
         <p className="conn-detail" data-empty>
-          Nothing was paused yet.
+          Claude has not asked about a command yet.
         </p>
       ) : (
         <ul data-attempts>
           {attempts.map((a, i) => (
             <li key={`${a.time}-${i}`} data-outcome={a.outcome}>
               <small>
-                {when(a.time)} · {a.worktree || "(no folder)"} · {a.rule} · <b>{a.outcome}</b>
+                {when(a.time)} · {a.worktree || "(no folder)"} · {a.rule} · <b>{OUTCOME[a.outcome]}</b>
               </small>
               <br />
               <code>{a.command}</code>

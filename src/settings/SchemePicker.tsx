@@ -24,11 +24,11 @@ export function SchemeList({ label, options, query, value, disabled, onPick, onR
   return (
     <div className={disabled ? "scheme-list off" : "scheme-list"}>
       <span className="scheme-label">{label}</span>
-      <div role="listbox" aria-label={label} aria-disabled={disabled}>
-        {shown.length === 0 && <p className="conn-detail">No scheme matches “{query}”.</p>}
+      {/* T-757: a list of pressed buttons, not a listbox: an option may not hold or sit beside Remove. */}
+      {shown.length === 0 ? <p className="conn-detail">No scheme matches “{query}”.</p> : <ul className="scheme-rows" aria-label={label}>
         {shown.map((o) => (
-          <div key={o.id} className="scheme-row">
-            <button type="button" role="option" aria-selected={o.id === value} disabled={disabled} className={o.id === value ? "scheme-pick sel" : "scheme-pick"} onClick={() => onPick(o.id)}>
+          <li key={o.id} className="scheme-row">
+            <button type="button" aria-pressed={o.id === value} disabled={disabled} className={o.id === value ? "scheme-pick sel" : "scheme-pick"} onClick={() => onPick(o.id)}>
               <span className="scheme-swatch" style={{ background: o.colours.background, color: o.colours.foreground }}>
                 Aa
                 {(["red", "green", "yellow", "blue"] as const).map((k) => (
@@ -40,9 +40,9 @@ export function SchemeList({ label, options, query, value, disabled, onPick, onR
             {o.custom && onRemove && (
               <ResetButton label="×" className="scheme-remove" title={`Remove ${o.name}`} ariaLabel={`Remove ${o.name}`} yes="Yes, remove" onReset={() => onRemove(o.id)} />
             )}
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>}
     </div>
   );
 }

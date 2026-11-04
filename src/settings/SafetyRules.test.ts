@@ -70,10 +70,12 @@ test("the rules view lists the scope's own rules, and the project scope shows wh
 
 test("the attempts view shows the masked command as given, newest first, and a disabled Clear when empty", () => {
   const empty = renderToString(createElement(SafetyAttemptsView, { attempts: [], clear: () => {} }));
-  expect(empty).toContain("Nothing was paused yet.");
+  expect(empty).toContain("Claude has not asked about a command yet.");
   expect(empty).toMatch(/data-clear[^>]*disabled/);
   const one = renderToString(createElement(SafetyAttemptsView, { attempts: [{ time: 0, worktree: "G:/w", command: "stripe refunds create --api-key sk_live_[hidden]", rule: "Stripe changes", outcome: "denied" }], clear: () => {} }));
   expect(one).toContain('data-outcome="denied"');
+  expect(one).toContain("Denied, not run"); // T-757: the page's words, not the stored state
+  expect(one).not.toContain("<b>denied</b>");
   expect(one).toContain("sk_live_[hidden]");
   expect(one).toContain("Stripe changes");
 });
