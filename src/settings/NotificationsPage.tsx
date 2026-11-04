@@ -8,6 +8,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { AUDIO_TYPES, audioTypeAllowed, CLOSE_TO_TRAY_FIELD, CUSTOM_FIELD, KINDS, loadSound, preparePlan, readNotifications, SOUND_FIELD, SOUNDS, settledValue, SUPPRESS_FOCUSED_FIELD, VOLUME_FIELD, type Sound } from "./notifications";
 import { ALERTS_FIELD, alertsOn } from "../usage/alerts";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { useLeaveSave } from "./leave";
 import { MASTER_FIELD, masterOn, testOutcome } from "../status/notifyMaster";
 
@@ -176,10 +177,10 @@ export function NotificationsView({ settings, onSave }: { settings: Record<strin
 }
 
 export default function NotificationsPage() {
-  const { settings, error, save } = useSettings();
+  const { settings, error, save, retry } = useSettings();
   return (
     <>
-      {error && <p className="conn-detail warn">{error}</p>}
+      <SettingsError error={error} loaded={settings !== null} onRetry={retry} />
       {settings && <NotificationsView settings={settings} onSave={save} />}
     </>
   );

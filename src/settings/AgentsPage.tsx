@@ -9,6 +9,7 @@ import { defaultChoices, DEFAULT_EFFORT_KEY, DEFAULT_MODEL_KEY, seatDefault } fr
 import { DEFAULT_AGENT_KEY, defaultAgentId, disabledAgents, switchAgent } from "../launch/agents";
 import { Segmented } from "./GeneralPage";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 import { settingsDiff } from "./saveChanged";
 import { GeneratedTitlesCard } from "../status/GeneratedTitlesCard";
 import { useDraft } from "./useDraft";
@@ -89,7 +90,7 @@ export function HooksSwitch({ on, onSwitch, file, problems = [] }: { on: boolean
 }
 
 export default function AgentsPage() {
-  const { settings, error, save: write } = useSettings();
+  const { settings, error, save: write, retry } = useSettings();
   const found = useContext(SearchFolds); // SET-007: a search that matches a launch line opens its fold
   const [written, setWritten] = useState(0);
   const save = (patch: Record<string, unknown>) => write(patch).then((ok) => (setWritten((n) => n + 1), ok));
@@ -127,7 +128,7 @@ export default function AgentsPage() {
     if (!settings) return;
     void Promise.all(installed.map((a) => invoke<StartLine>("agent_start_line", { id: a.id, extra: [], prompt: "" }).then((l) => [a.id, [l.program ?? a.program, ...l.args].map((x) => (/\s/.test(x) || x === "" ? `"${x}"` : x)).join(" ")] as const))).then((all) => setLines(Object.fromEntries(all)));
   }, [written, agents, settings === null]);
-  if (!settings) return error ? <p className="conn-detail warn">{error}</p> : null;
+  if (!settings) return <SettingsError error={error} loaded={false} onRetry={retry} />;
 
   const off = disabledAgents(settings);
   const def = defaultAgentId(settings);
@@ -145,7 +146,7 @@ export default function AgentsPage() {
 
   return (
     <>
-      {error && <p className="conn-detail warn">{error}</p>}
+      <SettingsError error={error} loaded onRetry={retry} />
       <section className="conn-card" data-section="default">
         <h2 className="conn-name">Default agent</h2>
         <select aria-label="default agent" className="field" value={savedMissing ? `saved:${def}` : def} onChange={(e) => save({ [DEFAULT_AGENT_KEY]: e.target.value.replace(/^saved:/, "") })}>

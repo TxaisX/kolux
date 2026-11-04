@@ -187,7 +187,9 @@ Rules: the pages are General, Appearance, Accounts & keys, Agents, Terminal & se
   holds the protected-action rules (area 10) and Usage holds the stats page (area 06), and this area
   only places them in the page list. (Kolux RS, T-701: every checkbox or switch row with text beside it
   is at least 24px tall, and a click anywhere on the row ticks it; T-707: when the box comes first, its
-  text sits right beside it.)
+  text sits right beside it; T-752: when a page's settings cannot be read, it says so with Try again
+  instead of a bare error, and when the project list cannot be read, the Repositories group stays and
+  says why with Try again.)
 Acceptance:
   - [x] Press Mod+Comma → Settings opens on the last page used, or the first. (cards; evidence/cards-SET-006.txt)
   - [x] Count the pages in the side list → exactly the ten named, plus one per repository. (cards; evidence/cards-SET-006.txt)

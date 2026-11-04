@@ -10,6 +10,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { hooksOn } from "./AgentsPage";
 import { SafetyAttempts, SafetyRules } from "./SafetyRules";
 import { useSettings } from "./useSettings";
+import { SettingsError } from "./SettingsError";
 
 export const ASK_FIELD = "protectedAsk";
 export const OFF_FIELD = "protectedOff";
@@ -107,7 +108,7 @@ export async function savedState(save: (patch: Settings) => unknown, read: () =>
 }
 
 export default function SafetyPage() {
-  const { settings, error, save } = useSettings();
+  const { settings, error, save, retry } = useSettings();
   const [rules, setRules] = useState<RuleInfo[] | null>(null);
   const [rulesError, setRulesError] = useState<string | null>(null);
   const [disk, setDisk] = useState<Settings | null>(null);
@@ -127,17 +128,13 @@ export default function SafetyPage() {
     });
   };
   const shown = disk ?? settings;
-  if (!shown) return error ? <p className="conn-detail warn" role="alert">{error}</p> : null;
+  if (!shown) return <SettingsError error={error} loaded={false} onRetry={retry} />;
   return (
     <>
       <SafetyView settings={shown} rules={rules} error={rulesError} save={guarded} />
       <SafetyRules settings={shown} rules={rules} save={guarded} />
       <SafetyAttempts />
-      {error && (
-        <p className="conn-detail warn" role="alert">
-          {error}
-        </p>
-      )}
+      <SettingsError error={error} loaded onRetry={retry} />
     </>
   );
 }
