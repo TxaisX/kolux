@@ -8,8 +8,9 @@ import { useRef, useState, type ReactNode } from "react";
 import { FileCode, Globe, Plus } from "./icons";
 import VendorMark from "./VendorMark";
 import { useMenuFocus } from "./dialogFocus";
-import { Kbd } from "../keys/KeymapContext";
+import { Kbd, useLabel } from "../keys/KeymapContext";
 import { markFor, type AgentInfo } from "../launch/PlusMenu";
+import { withChord } from "../terminal/PaneMenu";
 import StripTotals from "../usage/StripTotals";
 
 const choices = [1, 2, 4, 6];
@@ -25,6 +26,7 @@ type Props = { count: number; onLayout: (n: number) => void; agents?: AgentInfo[
 
 export default function LayoutStrip({ count, onLayout, agents = [], shells = [], onNewTab, open = false, preview }: Props) {
   const [at, setAt] = useState<{ top: number; right: number } | null>(open ? { top: 0, right: 0 } : null);
+  const shell = useLabel("tab.newTerminal"); // T-740: the chord from the keymap, not hard-coded
   const menu = useRef<HTMLDivElement>(null);
   // Focus moves to the first row, arrows move between rows, and Escape closes the menu instead of reaching the terminal.
   useMenuFocus(menu, at !== null, () => setAt(null));
@@ -53,7 +55,7 @@ export default function LayoutStrip({ count, onLayout, agents = [], shells = [],
           style={{ marginLeft: 8 }}
           aria-haspopup="menu"
           aria-expanded={at !== null}
-          title="New tab beside the focused pane (Ctrl+T for a shell)"
+          title={withChord("New tab beside the focused pane; shell", shell)}
           onClick={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             setAt({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });

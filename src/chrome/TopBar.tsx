@@ -8,7 +8,7 @@
 // from the keymap (T-005), so an edit to ~/.kolux/keybindings.json changes the chips.
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { ArrowLeft, ArrowRight, Bell, Clock, Close, Dots, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
+import { ArrowLeft, ArrowRight, Bell, Clock, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
 import { Kbd } from "../keys/KeymapContext";
 import UsagePill from "../usage/UsagePill";
 import AccountSwitcher from "../switcher/AccountSwitcher";
@@ -117,7 +117,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
             setMenuAt({ top: r.bottom + 4, left: r.left });
           }}
         >
-          <Dots />
+          <Search d="M5 7h4M7 5v4" />
         </button>
         {menuAt && (
           <>

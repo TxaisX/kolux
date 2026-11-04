@@ -1,7 +1,7 @@
 // Settings > Appearance: the colour theme row (SET-001), its tint / saturation / depth sliders
 // (SET-002) and the terminal colours picker with "Match app theme" (SET-003). Every change shows at
 // once on the whole window; the save follows a moment later so a slider drag is one write.
-import { lazy, Suspense, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useContext, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useLeaveSave } from "./leave";
 import { MAX_LEVEL, MIN_LEVEL, onZoom, percentOf, stepZoom, zoomLevel, type ZoomStep } from "./zoom";
 import { SearchFolds } from "./search";
@@ -112,8 +112,13 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
   const [fonts, setFonts] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState(false);
+  const [hi, setHi] = useState(-1); // T-742: the suggestion Up/Down has reached; Enter picks it
+  const id = useId();
+  const list = useRef<HTMLDivElement>(null);
   useEffect(() => setText(value), [value]);
+  useEffect(() => (list.current?.children[hi] as HTMLElement | undefined)?.scrollIntoView?.({ block: "nearest" }), [hi]);
   const shown = fonts ? rankFonts(fonts, typed ? text : "") : [];
+  const active = open && hi >= 0 && hi < shown.length ? hi : -1;
   const commit = (f: string) => {
     setText(f);
     setOpen(false);
@@ -128,6 +133,8 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
+        aria-controls={open && shown.length > 0 ? `${id}-list` : undefined}
+        aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
         maxLength={100}
         spellCheck={false}
         placeholder={placeholder}
@@ -136,15 +143,24 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
         onFocus={() => {
           setTyped(false);
           setOpen(true);
+          setHi(-1);
           void loadFonts().then(setFonts);
         }}
         onChange={(e) => {
           setText(e.target.value);
           setTyped(true);
           setOpen(true);
+          setHi(-1);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") commit(text);
+          const n = shown.length;
+          if ((e.key === "ArrowDown" || e.key === "ArrowUp") && n > 0) {
+            e.preventDefault();
+            const down = e.key === "ArrowDown";
+            setOpen(true);
+            setHi((down ? active + 1 : (active < 0 ? n : active) - 1 + n) % n); // from what is shown: none once the list closed
+          }
+          if (e.key === "Enter") commit(active >= 0 ? shown[active] : text);
           if (e.key === "Escape" && open) {
             e.stopPropagation();
             setOpen(false);
@@ -153,9 +169,9 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
         onBlur={() => commit(text)}
       />
       {open && shown.length > 0 && (
-        <div className="font-list" role="listbox" data-popup aria-label={`${label} suggestions`}>
-          {shown.map((f) => (
-            <button key={f} type="button" role="option" aria-selected={f === value} tabIndex={-1} style={{ fontFamily: fontStack(f, "var(--ui-font)") }} onMouseDown={(e) => e.preventDefault()} onClick={() => commit(f)}>
+        <div ref={list} className="font-list" id={`${id}-list`} role="listbox" data-popup aria-label={`${label} suggestions`}>
+          {shown.map((f, i) => (
+            <button key={f} id={`${id}-${i}`} className={i === active ? "hi" : undefined} type="button" role="option" aria-selected={f === value} tabIndex={-1} style={{ fontFamily: fontStack(f, "var(--ui-font)") }} onMouseDown={(e) => e.preventDefault()} onClick={() => commit(f)}>
               {f}
             </button>
           ))}
@@ -295,7 +311,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
             </select>
           </label>
         ))}
-        <p className="conn-detail">Zoom In, Zoom Out and Reset Size (the View menu, Ctrl+= / Ctrl+- / Ctrl+0) change only the focused terminal.</p>
+        <p className="conn-detail">Zoom In, Zoom Out and Reset Size (the top bar's Terminal zoom menu, Ctrl+= / Ctrl+- / Ctrl+0) change only the focused terminal.</p>
       </section>
       <section className="conn-card" data-section="terminal-colours">
         <h2 className="conn-name">Terminal colours</h2>

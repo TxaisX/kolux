@@ -145,8 +145,13 @@ function Rules({ label, rules }: { label: string; rules: Rule[] }) {
   );
 }
 
-export function ClaudeSetupView({ data, error, open, notice }: { data: ClaudeSetup | null; error: string; open: (p: string) => void; notice?: string }) {
-  if (error) return <div role="alert" className="settings-sub">Could not read the Claude setup: {error}</div>;
+export function ClaudeSetupView({ data, error, open, notice, retry }: { data: ClaudeSetup | null; error: string; open: (p: string) => void; notice?: string; retry?: () => void }) {
+  if (error)
+    return (
+      <div role="alert" className="settings-sub">
+        Could not read the Claude setup: {error} {retry && <button className="btn" onClick={retry}>Retry</button>}
+      </div>
+    );
   if (!data) return <div className="settings-sub">Reading the Claude setup…</div>;
   const p = data.permissions;
   const none = p.allow.length + p.ask.length + p.deny.length + p.directories.length === 0 && !p.defaultMode;
@@ -289,6 +294,7 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
   const [data, setData] = useState<ClaudeSetup | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [tries, setTries] = useState(0); // T-742: Retry reads the setup again
 
   useEffect(() => {
     invoke<Project[]>("project_list")
@@ -312,7 +318,7 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
     return () => {
       live = false;
     };
-  }, [workspace]);
+  }, [workspace, tries]);
   const pick = (path: string) => {
     setWorkspace(path);
     try {
@@ -338,7 +344,7 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
           {workspace && !projects.some((pr) => pr.path === workspace) && <option value={workspace}>{workspace}</option>}
         </select>
       </label>
-      <ClaudeSetupView data={data} error={error} open={open} notice={notice} />
+      <ClaudeSetupView data={data} error={error} open={open} notice={notice} retry={() => setTries((n) => n + 1)} />
     </div>
   );
 }

@@ -1,0 +1,29 @@
+T-738 - The Scan-folder dialog uses the shared dialog hook (DT-C174; UX audit lane C)
+Worker 49, coordinator 57, branch s-49/t738 from main 5a69c684, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "T-738 / DT-C174", from backlog-sweep-49.md #23 (keyboard.md F1).
+
+WHAT WAS WRONG
+- The audit found src/projects/ScanRepos.tsx opened without moving focus into it. T-708 (170c96dc) later added
+  autoFocus on its folder field, so focus moved in, but on close focus was not given back to the opener (it fell to
+  the page), and Escape closed it only while focus was inside it (an onKeyDown on the dialog box).
+
+THE FIX (DT-C174)
+- ScanRepos calls useDialogFocus(box, onClose, () => field.current), the shared hook in src/chrome/dialogFocus.ts:
+  focus to the folder field on open, Tab and Shift+Tab wrap inside, Escape from anywhere closes it, and on close
+  focus returns to the control that opened it. The box's onKeyDown keeps only stopPropagation (keys typed in the
+  dialog stay out of the sidebar's handlers). autoFocus on the field is gone: it ran before the hook's effect, so
+  the hook would have recorded the field as the opener.
+- src/chrome/reach.test.ts lists ScanRepos as "hook" in both of its tables (Escape and Tab).
+
+TESTS
+- src/projects/ScanRepos.focus.test.ts (new): mounts the dialog in the fake DOM with a focused opener button; focus
+  lands on the folder field; after unmount focus is back on the opener. Red-checked: main's ScanRepos fails the
+  give-back step.
+- vitest src/chrome + src/projects: 85 files, 472 passed. pnpm exec tsc --noEmit -p . : clean.
+
+REVIEW
+- Fresh sonnet-medium-review: A-, no high or medium. Escape is handled once (the hook's window capture stops it before the box or the sidebar), Tab wraps through the hook, removing autoFocus loses nothing. Lows logged to kolux-rs-after.md: an opener that is gone on close (Start Git's scan button) falls back to the default focus targets, untested; the box's stopPropagation only blocks React bubbling, as before.
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- main 5a69c684: 1,489,581 B first load (measured on s-49/t732 after merging main; T-732 changes only the lazy
+  Settings chunk). This branch: 1,489,614 B (+33). Cap +50 B.
