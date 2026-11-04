@@ -21,8 +21,10 @@ export const deleteQuestion = (title?: string): string => {
 export const doneNote = (action: FileAction, removed: number | null): string =>
   action === "delete" ? `Session deleted (${removed ?? 0} item${removed === 1 ? "" : "s"} removed).` : action === "reveal" ? "Shown in the file manager." : "Opened.";
 
-/** Runs one action on a session's files. A delete must already have been confirmed by the person. */
-export async function runFileAction(action: FileAction, s: Pick<Session, "agent" | "id">): Promise<string> {
-  const answer = await invoke<number | null>(COMMAND[action], { agent: s.agent, id: s.id });
+/** Runs one action on a session's files. A delete must already have been confirmed by the person.
+ *  C28-R5-01: a delete also says which sessions the window has open in a pane, so Rust refuses to
+ *  delete one that a pane is writing, even before any hook has reported it. */
+export async function runFileAction(action: FileAction, s: Pick<Session, "agent" | "id">, open: readonly [string, string][] = []): Promise<string> {
+  const answer = await invoke<number | null>(COMMAND[action], action === "delete" && open.length > 0 ? { agent: s.agent, id: s.id, open } : { agent: s.agent, id: s.id });
   return doneNote(action, typeof answer === "number" ? answer : null);
 }
