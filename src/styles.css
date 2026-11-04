@@ -9,43 +9,10 @@
    A bare z-index of 20 or more in any stylesheet under src fails floatStack.test.ts. */
 :root { --z-pane: 22; --z-float: 30; --z-sheet: 35; --z-page: 40; --z-menu: 41; --z-pop: 45; --z-dialog: 50; --z-notice: 55; --z-top: 60; --z-tour: 70; --z-trust: 200; }
 
-/* ---- --kx-* foundation (Claude-design port, phase 0) ----
-   The vocabulary later surfaces build on. The dark and light sets are the same ramp: the ink flips
-   and the alpha thresholds stay. No ring: the composer keeps the terminal look. */
-:root {
-  /* ink + alphas: one neutral, three thresholds, so a border never needs a dark counterpart */
-  --kx-ink: #f0efec;
-  --kx-alpha-1: color-mix(in srgb, var(--kx-ink) 5%, transparent);
-  --kx-alpha-2: color-mix(in srgb, var(--kx-ink) 10%, transparent);
-  --kx-alpha-3: color-mix(in srgb, var(--kx-ink) 20%, transparent);
-
-  /* one control height everything derives from */
-  --kx-h-control: 32px;
-  --kx-h-control-dense: 24px;
-
-  /* type: absolute leading, never a ratio */
-  --kx-text-caption: 11px;  --kx-leading-caption: 17px;
-  --kx-text-footnote: 12px; --kx-leading-footnote: 15px;
-  --kx-text-body: 13px;     --kx-leading-body: 19px;
-  --kx-text-prose: 14px;    --kx-leading-prose: 20px;
-  --kx-text-title: 20px;    --kx-leading-title: 25px;
-
-  /* motion: exits faster than enters */
-  --kx-dur-fast: 60ms; --kx-dur-snap: 120ms; --kx-dur-base: 200ms;
-  --kx-dur-sheet: 300ms; --kx-dur-slow: 450ms;
-  --kx-ease-snap: cubic-bezier(.32, .72, 0, 1);
-  --kx-ease-out: cubic-bezier(.165, .84, .44, 1);
-  --kx-ease-overshoot: cubic-bezier(.34, 1.3, .64, 1);
-
-}
-
-/* Light mode is the same ramp reversed: black ink and the same thresholds. */
-[data-mode="light"] {
-  --kx-ink: #0b0b0b;
-  --kx-alpha-1: color-mix(in srgb, var(--kx-ink) 5%, transparent);
-  --kx-alpha-2: color-mix(in srgb, var(--kx-ink) 10%, transparent);
-  --kx-alpha-3: color-mix(in srgb, var(--kx-ink) 20%, transparent);
-}
+/* ---- --kx-* type sizes (Claude-design port, phase 0) ----
+   T-758 (DT-C194): only the sizes something reads are kept; the unused ink, alphas, control heights,
+   leading and motion tokens were removed. Add a token back with its first user. */
+:root { --kx-text-caption: 11px; --kx-text-footnote: 12px; }
 
 html, body, #root { margin: 0; height: 100%; overflow: hidden; }
 body {
