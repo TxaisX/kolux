@@ -117,7 +117,7 @@ The page has three sections, all open at first: Interface, Terminal, and Window 
 | Tint | -180 to 180 degrees, default 0. Not available on Classic | |
 | Saturation | 0 to 160 percent, default 100. Not available on Classic | |
 | Depth | -3 to 6, default 0. Not available on Classic | |
-| App font | Any installed font; default is the built-in font | `appFont` |
+| App font | Any installed font; default is the built-in font. Suggestions follow as you type; Up and Down move through them and Enter picks one | `appFont` |
 | Editor font | Same as the terminal font, or any installed font | `editorFont` |
 
 ### Terminal
@@ -143,9 +143,9 @@ Under Terminal colours, "Bring in from Warp or Ghostty" lets you reuse colour sc
 - A file that cannot be read says why next to its name, and a file whose colours already match your current terminal colours is listed as nothing to apply.
 - You can keep up to 40 custom schemes. When the list is full a new one is "Not added" with a note to remove one first; replacing a scheme with the same name still works.
 
-The View menu zooms text with Ctrl+= , Ctrl+- and Ctrl+0. Zoom affects only the focused terminal.
+Ctrl+= , Ctrl+- and Ctrl+0, and the top bar's Terminal zoom button, zoom the text of the focused terminal only.
 
-The Zoom control under Interface is the only way to change the size of the whole window. Text and controls grow or shrink together. The choice is saved and applied again at the next start. The Ctrl+= keys do not change it.
+The Zoom control under Interface changes the size of the whole window, and so do the View menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0). Text and controls grow or shrink together. The choice is saved and applied again at the next start. The Ctrl+= keys do not change it.
 
 ### Window & Sidebar
 
@@ -184,7 +184,7 @@ Saved keys and sign-ins are sealed by the system keyring (Windows' secret store)
 
 **Agent Permissions matters.** Under Yolo, Claude Code starts in its automatic mode, where its own safety check approves routine actions and still stops risky ones. Codex starts with no approval prompts but inside its sandbox (the walled-off area it works in): it can change files only in the workspace's own folder. By default the sandbox also keeps its commands off the internet and away from Git's own records, so Codex can edit files but cannot commit, install packages or push. Such a command fails and Codex is told why; it does not ask you. Choose Manual if you want each agent to ask before it acts.
 
-**Agent status hooks** are small scripts Kolux puts in an agent's settings so the agent can tell Kolux what it is doing. The switch starts on, but nothing is written before you have seen the line above (on the Connect step or the one-time card); switching it off takes Kolux's entries out again. While the switch is off, the Board and Agents pages cannot show live status. The hooks badge in the status bar shows whether this switch is On or Off. The switch also shows the path of Claude Code's settings file and any problem found.
+**Agent status hooks** are small scripts Kolux puts in an agent's settings so the agent can tell Kolux what it is doing. The switch starts on, but nothing is written before you have seen the line above (on the Connect step or the one-time card); switching it off takes Kolux's entries out again. While the switch is off, the Board and Agents pages cannot show live status. The hooks badge in the status bar shows whether this switch is On or Off; click it to come here. The switch also shows the path of Claude Code's settings file and any problem found.
 
 ### Hooks for Gemini CLI, Antigravity and Amp
 

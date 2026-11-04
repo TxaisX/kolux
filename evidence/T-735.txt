@@ -1,0 +1,42 @@
+T-735 / DT-C171: a setup-step setting that fails to save must not look saved (backlog-sweep-49 #18, from findings/onboarding.md
+"onboarding/StepPanels.tsx (void save(...)) | setting saves fire-and-forget | revert + error"), lane A (90). Built on main 5a69c684,
+merged with main 99b4a9d2, then 0033ca09.
+
+WHAT MAIN ALREADY DID
+  - T-674 (c85cc5b0, 2026-11-02, before the sweep's base d552a974) shows SaveFailed ("That change could not be saved, so it
+    was put back." plus the reason, as an alert) in every setup panel that saves: notifications, default agent, and the
+    keep-awake and commit-writer stop cards. useSettings().save sets the change at once and, when the write is refused,
+    reads the stored settings back and puts back the keys it tried to change (T-598). So the switches, selects, the
+    volume slider and the radios already went back: NOT REPRODUCED for those.
+
+FIXED (two gaps the review and the new tests found)
+  - The read-back can fail too (a locked or unreadable settings file). Then nothing went back while the alert said "put
+    back". useSettings.ts: the keys now go back to the last copy known to be on disk (load, broadcast, read-back), never an
+    earlier save's change still waiting its turn (review should-fix: two refused saves in a row).
+  - The commit writer's instructions box (an uncontrolled textarea, key={stored}) kept the refused text on screen when the
+    save failed fast: React drew the change and the take-back in one pass, so the key never changed and the box never
+    remounted. StepPanels.tsx: the box sets its own text back to the stored one when its save settles false.
+
+TESTS: src/onboarding/saveFailed.test.ts mounts the real panels with the real useSettings; the host refuses settings_patch.
+  - The notifications switch goes back with the reason shown. Fails when useSettings stops putting back (mutation run:
+    "expected true to be false").
+  - The same with the read-back failing too. Fails without the useSettings fix.
+  - Two refused saves in a row with the file unreadable end on the stored value, not on the first change. Fails with
+    the old fallback (restores from the render-time copy).
+  - The instructions box shows the stored text again after typing and leaving it. Fails without the StepPanels fix
+    (box value "Write a novel." instead of "Keep it short.").
+
+VERIFY (worktree G:/Dev/kolux-rs-sessions/wt/90-t735)
+  - npx vitest run (merged with main 99b4a9d2, at bdbd62c3): 808 files, 6018 tests passed. npx tsc --noEmit -p .: clean.
+  - Again after merging main 0033ca09 (a5ce09c2): 809 files, 6021 passed, 1 failed: richSaveGuards.test.ts "an ordinary
+    keystroke is placed in well under 60 ms" took 670 ms with a second full run going (this branch does not touch the
+    editor); that file alone: 166 passed. tsc: clean.
+  - Bundle: first load 1,489,740 B on the branch vs 1,489,600 B on main 99b4a9d2: +140 B against a +250 cap.
+  - Review (test-only first draft): opus-high-review A-, "not reproduced" confirmed control by control; its two should-fix
+    rows are the two fixes above.
+  - Review of the final code (git diff origin/main): opus-high-review A-; should-fix: two refused saves in a row, the file
+    unreadable, restored the first change (never stored). Fixed in bdbd62c3: a ref holds the last copy read from disk.
+    Test: "two refused saves in a row ..." fails with the old fallback (1 failed | 3 passed) and passes now.
+  - Review of bdbd62c3: opus-high-review A. Its should-fix (re-measure the bundle) and the DT-C171 wording nit are taken.
+    Left: an initial load that resolves after a save's read-back would put the older copy in the ref; it shows only if a
+    later save fails while the file is unreadable.
