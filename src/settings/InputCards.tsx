@@ -57,7 +57,7 @@ export function InputCard({ settings, platform, onSave }: { settings: Record<str
         <span>GPU drawing</span>
         <Segmented label="GPU drawing" options={AUTO_OPTIONS} value={p.gpu} onPick={(v) => onSave({ [INPUT_FIELDS.gpu]: v })} />
       </div>
-      <p className="conn-detail">Automatic uses the graphics chip when the computer has one that works, and plain drawing otherwise. Open terminals keep how they were drawn until they are reopened.</p>
+      <p className="conn-detail">Automatic uses the graphics chip when the computer has one that works, and plain drawing otherwise. Up to six terminals use it at a time; the rest draw the plain way. Open terminals keep how they were drawn until they are reopened.</p>
       <Switch label="Middle-click pastes (the selection, else the clipboard)" checked={p.middleClick} onChange={(on) => onSave({ [INPUT_FIELDS.middleClick]: on })} />
       <Switch label="Programs may copy to the clipboard (OSC 52)" checked={p.osc52} onChange={(on) => onSave(osc52Save(on))} />
       <p className="conn-detail">The Privacy setting for clipboard access by programs must be on as well.</p>
