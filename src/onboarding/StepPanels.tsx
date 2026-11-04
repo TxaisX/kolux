@@ -379,7 +379,9 @@ export function StopSetup({ stop, taskSource }: { stop: string; taskSource: bool
         defaultValue={stored}
         placeholder="Optional: how commit messages should read"
         onBlur={(e) => {
-          if (e.target.value !== stored) void save({ [WRITER_INSTRUCTIONS_KEY]: e.target.value });
+          // T-735: a refused save shows the stored text again; when it fails fast the key never changes, so no remount does it.
+          const box = e.target;
+          if (box.value !== stored) void save({ [WRITER_INSTRUCTIONS_KEY]: box.value }).then((ok) => ok || (box.value = stored));
         }}
       />
     </div>

@@ -454,7 +454,8 @@ User sees: suggestions taken from the fonts on the machine while typing; the cho
 Rules: the installed fonts are read from the system (on Windows by asking PowerShell) only once a font
   picker is opened, with a built-in list as a fallback if that fails; names that begin with the typed
   text rank above names that merely contain it; entering a picker that already holds a font shows the
-  full list, not just matches for the current value; a safe fallback list always follows the chosen
+  full list, not just matches for the current value; Up and Down move through the suggestions and
+  Enter picks the one reached (DT-C178); a safe fallback list always follows the chosen
   family so text never disappears; an empty field means the default font, and an empty editor font
   means the editor uses the terminal font.
 Acceptance:
@@ -613,8 +614,8 @@ User does: presses Mod+= or Mod+-, presses Mod+0 to reset, uses the View menu, o
 User sees: text and controls grow or shrink together; the level is remembered after a restart.
 Rules: each step is half a zoom level, roughly 9.5 %, where a whole level is a factor of 1.2; zoom is
   held between −3 levels (roughly 58 %) and +5 levels (roughly 249 %), and reset returns to 100 % from
-  anywhere; the zoom control has a reset button of its own; the View menu offers Zoom In, Zoom Out and
-  Reset Size; on macOS the window buttons move to line up with the zoomed title bar.
+  anywhere; the zoom control has a reset button of its own; the View menu offers Zoom Interface In, Zoom
+  Interface Out and Reset Interface Zoom (DT-C177); on macOS the window buttons move to line up with the zoomed title bar.
 Acceptance:
   - [ ] Press Mod+= twice → the interface is roughly 20 % larger (one whole level); restart → the
         same size.

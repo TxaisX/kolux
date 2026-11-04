@@ -1,0 +1,40 @@
+T-742 - Hints that act (DT-C178; UX audit lane C, Polish B)
+Worker 49, coordinator 57, branch s-49/t742 from main 99b4a9d2, main 0033ca09 merged in, 2026-11-03.
+Row: proof/ux-audit/requests/W3.md "Queue refill 5", T-742. Each item was checked against main 99b4a9d2 first.
+
+CHECKED FIRST
+- Status bar hooks item (usage-status.md F2): open. chrome/StatusBar.tsx drew it as a span whose title said
+  "(Settings > Agents)"; nothing opened that page.
+- "No agent installed" (onboarding.md F1): already on main. onboarding/StepPanels.tsx NoAgent has Check again and
+  Open Agents settings (openSettings("agents")). Dropped, no change.
+- Claude setup read error (settings-a.md F3): open. ClaudeSetupView showed the error in a role=alert line with no
+  action; the read runs once per project in an effect.
+- Font suggestions (settings-a.md F6): open. FontField's input handled Enter and Escape only; the options are
+  tabIndex -1 buttons, so only the mouse reached them.
+
+WHAT CHANGED (DT-C178)
+1. chrome/StatusBar.tsx: the hooks item is a button (class "item", like the memory and update items) titled
+   "Agent status hooks are on/off. Click to open Settings > Agents"; it calls openSettings("agents", "hooks"),
+   the card's section id. settings/pages is already in first load.
+2. settings/ClaudeSetupPage.tsx: ClaudeSetupView takes an optional retry and shows a Retry button inside the
+   alert; the page keeps a tries counter in the read effect's dependencies, so Retry reads the same project again.
+3. settings/AppearancePage.tsx FontField (used by Appearance and Terminal): a reached index; ArrowDown/ArrowUp
+   move it (wrapping, and opening the list), focus and typing reset it; the input carries aria-controls and
+   aria-activedescendant; the reached option gets class "hi" (styles.css shares the hover/selected background)
+   and is scrolled into view through a ref on the list; Enter commits the reached suggestion, or the typed text
+   when none is reached. spec/17 SET-018 and docs/guide/settings.md (App font row, hooks badge) say the same.
+
+TESTS
+- src/chrome/polishB.test.ts (new, shallow-react, no browser): the hooks item is a button whose click sends
+  OPEN_SETTINGS {page: agents, section: hooks}; the error view's Retry button calls retry; FontField Down reaches
+  the first suggestion (aria-activedescendant and class hi agree), Up from the first wraps to the last, Enter picks
+  the reached name; after a pick or Escape closed the list, Down starts again at the first and Up at the last. Red-checked: with main's StatusBar.tsx, AppearancePage.tsx and ClaudeSetupPage.tsx all three fail.
+- vitest src/chrome src/settings src/onboarding: 143 files, 937 passed (the SET-001..005 cards run AppearancePage
+  on a small DOM; a first version that scrolled via document.getElementById failed there and was replaced by the
+  list ref). pnpm exec tsc --noEmit -p . : clean. plan-check OK; firewall-check -Baseline 0 new.
+
+REVIEW
+- fresh sonnet-medium-review, B+, no high. Mediums fixed: a stale highlight after Escape or a pick (Up/Down now count from what is shown), and the hooks button's hover. Lows fixed: aria-label on the hooks button, aria-controls only while the list shows. Lows left: blur may commit the same text twice (it did before this change), Retry has no type attribute (harmless outside a form)
+
+BUNDLE (pnpm exec vite build && node scripts/bundle-budget.mjs)
+- First load +133 B (main 0033ca09 1,489,655 B, branch 1,489,788 B, cap +350).

@@ -15,13 +15,13 @@ export async function copyCrashBundle(read: () => Promise<string>, write: (text:
   try {
     bundle = await read();
   } catch (e) {
-    return `The diagnostic logs could not be gathered (${e instanceof Error ? e.message : String(e)}); use Settings > Diagnostics to review them instead.`;
+    return `The diagnostic logs could not be gathered (${e instanceof Error ? e.message : String(e)}); use Settings > General > Diagnostics to review them instead.`;
   }
   if (bundle.trim() === "") return "There are no diagnostic logs to copy.";
   try {
     await write(scrub(bundle));
   } catch {
-    return "The diagnostic logs could not be put on the clipboard; use Settings > Diagnostics to review them instead.";
+    return "The diagnostic logs could not be put on the clipboard; use Settings > General > Diagnostics to review them instead.";
   }
   return CRASH_BUNDLE_COPIED;
 }

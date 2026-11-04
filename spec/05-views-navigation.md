@@ -500,10 +500,14 @@ Rules: Open tabs lead on a tie; unmatched rows sort after matched ones; filler w
   PR or issue numbers, match exactly (with or without #), never fuzzily; small typos are forgiven
   only in long words made of letters; a single Latin letter matches only the start of a word or a
   whole word; matches on a row's own fields rank ahead of matches found only on its parent project;
-  matching stays inside a fixed time budget on very large lists.
+  matching stays inside a fixed time budget on very large lists; a command is also found by its
+  keywords (cron finds Open Automations), which rank after matches on the row's own words and are
+  not shown.
 Acceptance:
   - [ ] Two worktrees match equally, one used a minute ago → it is first.
   - [ ] Type a PR number with or without # → only that exact number matches.
+  - [x] Type cron → Open Automations is listed; a row with cron in its own name lists ahead of it. (unit;
+    evidence/T-728.txt)
 Compat: —
 Source: D-05-038
 
