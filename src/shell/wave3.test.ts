@@ -34,8 +34,8 @@ test("F2 + F1: the sidebar wires the one-form rule to its five forms, and Jump h
   expect(panel).toContain("if (!formOpen.current) setCreating(project.id);");
 });
 
-test("F4: with one view the sidebar shows a Workspaces heading, not a lone tab", () => {
-  expect(panel).toContain('<h2 className="sb-heading">Workspaces</h2>');
+test("F4: with one view the sidebar shows a Folders heading, not a lone tab", () => {
+  expect(panel).toContain('<h2 className="sb-heading">{SINGLE_FOLDER ? "Folders" : "Workspaces"}</h2>');
   expect(panel).toMatch(/NOT_BUILT \? \(\s*<div className="sb-tabs" role="tablist">/);
 });
 

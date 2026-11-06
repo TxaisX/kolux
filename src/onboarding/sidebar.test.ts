@@ -37,11 +37,11 @@ describe("the sidebar's onboarding slot (VIEW-114)", () => {
     expect(sidebarSlot(c, skipped, new Set<StepId>([...CORE.slice(1), "browser", "integrations"]))).toBe("guide");
   });
 
-  it("a finished checklist keeps the slot until it is dismissed, then the entry takes it", () => {
+  it("a finished checklist leaves the sidebar at once; once dismissed too, the entry takes it", () => {
     const all = run({ milestones: { aiConnected: 1 } });
     const c = checklistOf(all, []);
     expect(c.show).toBe(true);
-    expect(sidebarSlot(c, all, new Set())).toBe("checklist");
+    expect(sidebarSlot(c, all, new Set())).toBe(null);
     const gone = run({ ...all, checklistDismissed: true });
     expect(sidebarSlot(checklistOf(gone, []), gone, new Set())).toBe("guide");
   });

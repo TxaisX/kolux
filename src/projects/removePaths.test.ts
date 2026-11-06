@@ -50,7 +50,7 @@ async function panel(sessions: Session[] = [], settings: Record<string, unknown>
   const { default: ProjectsPanel } = await import("./ProjectsPanel");
   const props = {
     openDirs: [], sessions, states: {}, unread: new Set<string>(), onUnread: () => {}, settings, onSetting: () => {},
-    activeDir: null, onSelect: () => {}, onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
+    activeDir: null, onSelect: (dir: string) => h.calls.push(`select:${dir}`), onRemoved: () => {}, onSleep: () => {}, agents: [], launching: false, onLaunch: () => {},
     defaultId: "claude", onSetDefault: () => {}, onChoose: () => {}, page: null, onPage: () => {}, refresh: 0, onIndex: () => {},
     createRequest: 0, deleteRequest: 0, onStartIn: () => {}, nest: true, onNest: () => {}, artifactsOn: false, onArtifacts: () => {},
   };
@@ -102,6 +102,16 @@ test("right-click on the project header lists Remove project last; Escape closes
   expect(items(c)).toEqual(["New workspace", "Project settings", "Remove project…"]);
   await fire(doc, "keydown", doc, { key: "Escape" });
   expect(menu(c)).toBeUndefined();
+});
+
+test("one-folder mode selects the project row as the folder and hides the old worktree rows", async () => {
+  const c = await panel();
+  const folder = find(c, (n) => hasClass(n, "proj") && hasClass(n, "folder"))[0];
+  expect(folder).toBeDefined();
+  expect(folder.attrs["data-path"]).toBe(main.path);
+  expect(find(c, (n) => hasClass(n, "old-workspaces")).length).toBeGreaterThan(0);
+  await click(c, folder);
+  expect(h.calls).toContain(`select:${main.path}`);
 });
 
 test("the main checkout row has a menu with Remove project and the header X asks the same question", async () => {

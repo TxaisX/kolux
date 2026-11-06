@@ -60,7 +60,9 @@ export const guideWanted = (c: Checklist, first: FirstRun | null | undefined): b
  *  (null while its first read is still out). */
 export function sidebarSlot(c: Checklist, first: FirstRun | null | undefined, settled: ReadonlySet<StepId> | null): Slot {
   if (!c.ready) return null;
-  if (c.show) return "checklist";
+  // ONB-013: the checklist leaves the sidebar the moment its last item is done; it does not wait
+  // for a Hide click. Its short all-done line goes with it, because the sidebar is not a report.
+  if (c.show) return c.done ? null : "checklist";
   if (!guideWanted(c, first) || settled === null) return null;
   const r = ring(settled);
   return r.done < r.total ? "guide" : null;

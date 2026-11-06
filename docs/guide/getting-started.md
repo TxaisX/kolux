@@ -19,7 +19,7 @@ You can reopen the dialog later: click the "?" (Help) button at the bottom of th
 
 Click the Help button and choose "Getting Started with Kolux". It is a checklist dialog, separate from the first-run dialog above. The "x" closes it, and so does Escape.
 
-- **Left side:** a progress ring with "N of 6 done", then the steps in two groups. Under "Setup": Turn on notifications, Choose a default agent, Enable Kolux CLI, Use Kolux's browser (optional) and Connect integrations (optional). Under "Parallel work": Multi-task, Automate workspace setup and Start work in multiple repos. The six steps that are not optional fill the ring. Click a step to read what it is for. The small eye-off button removes the checklist from the sidebar.
+- **Left side:** a progress ring with "N of 6 done", then the steps in two groups. Under "Setup": Turn on notifications, Choose a default agent, Enable Kolux CLI, Use Kolux's browser (optional) and Connect integrations (optional). Under "Parallel work": Multi-task, Automate workspace setup and Start work in multiple repos. The six steps that are not optional fill the ring. Click a step to read what it is for. The checklist removes itself from the sidebar as soon as its item is done; the small eye-off button hides it sooner.
 - **Right side:** the step's name and a line about why it matters.
 
 Only the Enable Kolux CLI step ticks by itself today. The other steps are explained but stay unticked.

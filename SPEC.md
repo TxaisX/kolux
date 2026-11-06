@@ -9,7 +9,8 @@ task needs from the table in part 2, and open only that file.
   create a worktree or any other copy of the project: every seat runs in the project folder.
   SESS-014 and SESS-023 are superseded. Automations run in the project folder, and the app hides
   the new-workspace buttons, the palette create row, the issue/PR start action and the workspaces
-  folder setting. Work still goes through a branch and a pull request, so every change has a
+  folder setting. The sidebar shows one selectable folder row per project; old worktree rows stay
+  hidden, and clicking the folder shows every pane opened there in one grid. Work still goes through a branch and a pull request, so every change has a
   reviewable record. The agent-issued `kolux worktree create` command and the backend PR/branch
   workspace commands still exist; removing them is the next change.
 

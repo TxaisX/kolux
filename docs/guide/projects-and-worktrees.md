@@ -13,7 +13,7 @@ The project sidebar shows on the Terminals view. Toggle it with Ctrl+B. The head
 | New group | Sort projects into folders of their own. Works only when grouped by Project |
 | New workspace | Make a branch in its own folder (Ctrl+N) |
 
-Each project block shows its name, a gear for project settings, a plus for a new workspace, and the main folder row (the "main checkout", your original folder). Workspaces are listed under it.
+Each project block is one folder row: its name, state dot, current branch, running count, a gear for project settings and Remove. Clicking the row shows every session pane opened in that folder, together in the same terminal grid. Kolux works in one folder per project, so the new-workspace button and the old worktree rows stay hidden; project settings still offers Clean up workspaces for folders made before this change.
 
 The bottom of the sidebar holds "New session" (start an agent in a new pane inside a fresh workspace), Model routing, Help and "Check for updates" (when the sidebar is dragged to its narrowest, that button shows its icon alone; hovering it still says what it does). A gear there lets you add a project by typing its path, or change the folder where workspaces go. An empty sidebar reads "No projects yet." Projects must be Git repositories; one without Git can start Git from the sidebar.
 
@@ -55,7 +55,7 @@ While Git works, a stand-in row shows "creating…" with a cancel x.
 
 ## Workspace rows
 
-Click a row to switch to it. Enter shows it. F2 or a double-click on the name renames it. A chevron folds a workspace's children.
+Click the folder row to show its session panes. Enter does the same. F2 or a double-click on a name still renames a workspace when one is shown.
 
 Each row shows a coloured dot for its state, the name, and hints such as "sleeping" or "external". Its buttons:
 

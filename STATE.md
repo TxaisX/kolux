@@ -220,6 +220,7 @@ recorded default until told otherwise; nothing here blocks a pass.
 
 ## Decisions made for Txais
 
+- 2026-11-05 · [projects] One folder row per project · DT-C213: the project row is the folder row and clicking it shows every pane opened in that folder in one grid; the heading reads Folders, and old worktree rows stay in the DOM but do not draw. The newcomer checklist leaves the sidebar the moment its last item is done.
 - 2026-11-05 · [release] Public rename to Kolux · DT-C212: the window, About panel, copy, README, user and developer docs, `package.json` and the GitHub repository (`TxaisX/kolux`) now say Kolux. The installer product name, install folder, app identifier, profile folder, `~/.kolux-rs` hook folder, executable names and crate names stay for one release, because `~/.kolux` still holds the old app's hook files; the next identity release moves those with a tested migration.
 - 2026-11-05 · [performance] First load made room for T-765 · the status bar, Help and recovery now call the update event bus directly instead of importing the update screen's door, and the Tower window's view/bridge split keeps its view out of the main window: 1,488,267 → 1,483,608 bytes against the 1,490,000 ceiling. T-765's frame queue now fits, with 6,392 bytes of headroom.
 - 2026-11-01 · [skills] T-180-b · DT-C66: deleting a skill inside a WSL distribution runs inside that distribution. Txais confirmed it on 2026-11-01. Reversed 2026-11-02 by DT-C94 (T-658: listed, not deletable).
@@ -295,6 +296,7 @@ recorded default until told otherwise; nothing here blocks a pass.
   the two richCodeColourTime timing tests, failing on main too), so it is not green yet (evidence/T-ENG-test-time.txt).
 
 ## Last 10 passes  (date · task · result · evidence)
+- 2026-11-05 · [projects] folder row + checklist · DT-C213: the project row is the folder row (state dot, branch, running count, click opens its grid), the heading reads Folders, old worktree rows stay in the DOM but do not draw, and First steps leaves the sidebar when its item is done; 6,428 front-end tests pass, first load 1,484,283 bytes
 - 2026-11-05 · [performance] T-765 code · merged `s-72/flood`: terminal output draws once a frame through one window-wide queue, ports skip chunks with no address and use the pane decoder; the Tower view left the first load. First load 1,483,608 bytes (6,392 under the 1,490,000 ceiling), 6,427 tests pass; the live flood proof is still pending
 - 2026-11-05 · [release] public rename · window, About, copy, README, docs, package name and GitHub repository say Kolux; installer and runtime identity stay for the next identity release (DT-C212) · branch `opt/first-load-headroom` also lands the 2.4 KB first-load cut that unblocks T-765
 - 2026-11-04 · [wave-201] train 28 · merged #224: eleven P1 fixes (settings truth, accounts, panes and history, tabs, light mode, Source Control, Skills) · CI green, evidence in the PR

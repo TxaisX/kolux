@@ -2236,13 +2236,41 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const main = list.find((w) => w.isMain);
       const others = order(list.filter((w) => !w.isMain && inList(w)).map((w) => ({ p, w })));
       const opening = creating === p.id;
+      const selected = main !== undefined && isSelected(main);
+      // One folder per project: the project row is the folder, and clicking it shows every pane
+      // opened in that folder. With worktree creation off, there is no second row to select.
+      const folder = SINGLE_FOLDER && main !== undefined;
       return (
         <div key={p.id}>
-          <div className="proj" title={p.path} {...headerDrag(p.id)} onContextMenu={(e) => pop(e, p.id, projectMenu(), "Project")}>
+          <div
+            className={`proj${folder ? " folder" : ""}${folder && selected ? " sel" : ""}`}
+            title={p.path}
+            data-path={folder ? main.path : undefined}
+            role={folder ? "button" : undefined}
+            tabIndex={folder ? 0 : undefined}
+            aria-current={folder && selected ? "true" : undefined}
+            onClick={folder ? (e) => { const el = e.target as HTMLElement | null; if (el && typeof el.closest === "function" && el.closest("button")) return; show(main); } : undefined}
+            onKeyDown={folder ? (e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              show(main);
+            } : undefined}
+            {...headerDrag(p.id)}
+            onContextMenu={(e) => pop(e, p.id, projectMenu(), "Project")}
+          >
             <HeaderBadge colour={headerColourOf(settings, "p", p.id)} />
             <ProjectIcon value={icons[p.id]} name={projectLabel(p)} auto={autoIcons[p.id]} />
+            {folder && (
+              <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
+            )}
             <span className="name" title={p.displayName ? p.name : undefined}>{projectLabel(p)}{labels[p.id]?.hint && <span className="sb-name-hint" title={labels[p.id].hint ?? undefined}>{labels[p.id].hintCut}</span>}</span>
-            <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its workspaces folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
+            {folder && (
+              <>
+                <span className="hint" title={main.path}>{worktreeLabel(main)}</span>
+                {liveCount(main)}
+              </>
+            )}
+            <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
             </button>
             {!SINGLE_FOLDER && (
@@ -2265,12 +2293,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             />
           )}
           {main && (
-            <div className="sb-main" onContextMenu={(e) => void openMenu(e, p, main)}>
+            <div className={`sb-main${SINGLE_FOLDER ? " old-workspaces" : ""}`} onContextMenu={(e) => void openMenu(e, p, main)}>
             <button className={`branch${isSelected(main) ? " sel" : ""}`} onClick={() => show(main)} title={`Show ${main.path}`}>
               <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
               <span className="name">{worktreeLabel(main)}</span>
               {pushTag(main)}
-              {liveCount(main)}
+              {!SINGLE_FOLDER && liveCount(main)}
               <span className="chev">
                 <ChevronDown size={12} />
               </span>
@@ -2327,35 +2355,39 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               parentOf={(path) => (worktrees[p.id] ?? []).find((x) => same(x.path, path))?.parent}
             />
           )}
-          {outsideCard({ outside: outsideOf(list), dismissed: dismissedOutside(settings).includes(p.id), collapsed: false, otherRows: others.length }).show && (
-            <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
-          )}
-          {(fresh[p.id] ?? []).length > 0 && review !== p.id && (
-            <button className="sb-notice" onClick={() => setReview(p.id)} title="Workspaces made with plain Git or another tool since you last looked">
-              {fresh[p.id].length} new workspace{fresh[p.id].length === 1 ? "" : "s"}
-            </button>
-          )}
-          {review === p.id && (
-            <div className="sb-form" data-review={p.id}>
-              <label title={GLOSSARY.worktree.hover}>New workspaces in {p.name}</label>
-              {(fresh[p.id] ?? []).map((w) => (
-                <div className="vis-row" key={w.path}>
-                  <span className="path" title={w.path}>{relPath(p.path, w.path)}</span>
-                  <button className="btn" onClick={() => hide(w, !w.hidden)}>
-                    {w.hidden ? "Show" : "Hide"}
+          {/* One folder per project: the old worktree rows stay in the DOM for saved work and for
+              the keyboard, but they do not draw beside the folder row. */}
+          <div className={SINGLE_FOLDER ? "old-workspaces" : undefined}>
+            {outsideCard({ outside: outsideOf(list), dismissed: dismissedOutside(settings).includes(p.id), collapsed: false, otherRows: others.length }).show && (
+              <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
+            )}
+            {(fresh[p.id] ?? []).length > 0 && review !== p.id && (
+              <button className="sb-notice" onClick={() => setReview(p.id)} title="Workspaces made with plain Git or another tool since you last looked">
+                {fresh[p.id].length} new workspace{fresh[p.id].length === 1 ? "" : "s"}
+              </button>
+            )}
+            {review === p.id && (
+              <div className="sb-form" data-review={p.id}>
+                <label title={GLOSSARY.worktree.hover}>New workspaces in {p.name}</label>
+                {(fresh[p.id] ?? []).map((w) => (
+                  <div className="vis-row" key={w.path}>
+                    <span className="path" title={w.path}>{relPath(p.path, w.path)}</span>
+                    <button className="btn" onClick={() => hide(w, !w.hidden)}>
+                      {w.hidden ? "Show" : "Hide"}
+                    </button>
+                  </div>
+                ))}
+                <div className="btn-row">
+                  <button className="btn" onClick={() => doneReview(p)}>
+                    Done
                   </button>
                 </div>
-              ))}
-              <div className="btn-row">
-                <button className="btn" onClick={() => doneReview(p)}>
-                  Done
-                </button>
               </div>
-            </div>
-          )}
-          {opening && nameField(p)}
-          {standIn(p)}
-          {nestRows(others.map((x) => x.w), nest, shutKids, (ws) => ws).map((r) => row({ p, w: r.w }, r.depth, r.kids))}
+            )}
+            {opening && nameField(p)}
+            {standIn(p)}
+            {nestRows(others.map((x) => x.w), nest, shutKids, (ws) => ws).map((r) => row({ p, w: r.w }, r.depth, r.kids))}
+          </div>
         </div>
       );
   };
@@ -2490,14 +2522,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         {NOT_BUILT ? (
           <div className="sb-tabs" role="tablist">
             <button role="tab" aria-selected="true">
-              Workspaces
+              {SINGLE_FOLDER ? "Folders" : "Workspaces"}
             </button>
             <button role="tab" aria-selected="false" title="Status (not built yet)">
               Status
             </button>
           </div>
         ) : (
-          <h2 className="sb-heading">Workspaces</h2>
+          <h2 className="sb-heading">{SINGLE_FOLDER ? "Folders" : "Workspaces"}</h2>
         )}
 
         {behind && <BehindNote text={behind} refresh={refreshesOnCreate(settings)} onRefresh={(on) => onSetting(REFRESH_SETTING, on)} onDismiss={() => (onSetting(HINT_DISMISSED_SETTING, true), setBehind(null))} />}
