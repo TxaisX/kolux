@@ -55,6 +55,8 @@ While Git works, a stand-in row shows "creating…" with a cancel x.
 
 ## Workspace rows
 
+With one folder per project, the workspace rows are hidden; they remain for folders made before the change and stay reachable through Clean up workspaces and the command line. A workspace's own row, when one is shown, works as follows.
+
 Click the folder row to show its session panes. Enter does the same. F2 or a double-click on a name still renames a workspace when one is shown.
 
 Each row shows a coloured dot for its state, the name, and hints such as "sleeping" or "external". Its buttons:
