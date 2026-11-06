@@ -46,7 +46,7 @@
     "katex": "0.16.47",
     "lexical": "^0.52.0",
     "marked": "^18.1.0",
-    "mermaid": "11.17.2",
+    "mermaid": "12.3.0",
     "pdfjs-dist": "5.4.624",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
