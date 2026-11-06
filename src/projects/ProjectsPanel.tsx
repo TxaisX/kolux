@@ -2770,7 +2770,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           Next that needs you
           <span className="hint"><KeyText id="terminals.focusNextNeedsYou" /></span>
         </div>
-        <button className="sb-new" title="New session: start an agent in a new pane inside a fresh workspace" aria-haspopup="menu" aria-expanded={plusOpen} onClick={() => setPlusOpen((o) => !o)} disabled={launching}>
+        <button className="sb-new" title="New session: start an agent in a new pane in this project folder" aria-haspopup="menu" aria-expanded={plusOpen} onClick={() => setPlusOpen((o) => !o)} disabled={launching}>
           <Plus size={13} />
           {launching ? "Starting…" : "New session"}
         </button>
