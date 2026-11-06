@@ -26,8 +26,9 @@ export type RendererChoice = {
 
 export type GpuPool = { max: number; live: number };
 
-/** The window's one pool of GPU contexts. */
-export const gpuPool: GpuPool = { max: 6, live: 0 };
+/** The window's one pool of GPU contexts. Twelve covers a full 12-pane grid; Chromium allows about
+ * sixteen per page, so a full grid still draws on the GPU. */
+export const gpuPool: GpuPool = { max: 12, live: 0 };
 
 /** Settings key: `false` draws every terminal plain; absent or `true` lets the GPU path be tried. */
 export const GPU_FIELD = "terminalGpu";

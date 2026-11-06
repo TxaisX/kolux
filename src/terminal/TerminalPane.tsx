@@ -630,6 +630,22 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // C26-R3-01: the drawing this pane belongs to, so an unmount that hands the terminals to the next drawing
     // (a re-draw of the window, not a closed tab) leaves them running.
     const gen = windowGeneration.current;
+    // A late-loading font must not leave a live session drawn in the fallback face: once the chosen
+    // font is ready, re-measure and rebuild the glyphs.
+    if (document.fonts?.ready) {
+      void document.fonts.ready
+        .then(() => {
+          if (!alive || termRef.current !== term) return;
+          choice.clearGlyphs();
+          term.refresh(0, Math.max(0, term.rows - 1));
+          try {
+            fit.fit();
+          } catch {
+            /* the pane is hidden */
+          }
+        })
+        .catch(() => undefined);
+    }
     // T-247-d: the input preferences. Wheel speed depends on the screen in use, so it is set again when the screen changes.
     const feel = () => Object.assign(term.options, inputOptions(currentInput(), keys.current.platform, navigator.language, term.buffer.active.type === "alternate", currentText().scroll));
     // SET-022: ligatures when the setting or the font asks for them and the addon is there; without it the text is drawn plain.
@@ -659,7 +675,15 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       });
     };
     settleLigatures();
-    const screenChange = term.buffer.onBufferChange(feel);
+    // A busy session changes the buffer on almost every line. The wheel speed only depends on the
+    // screen, so compare that and leave the terminal's options alone on ordinary output.
+    let screen = term.buffer.active.type;
+    const screenChange = term.buffer.onBufferChange(() => {
+      const type = term.buffer.active.type;
+      if (type === screen) return;
+      screen = type;
+      feel();
+    });
     // ACCT-059: scrollback sized to the machine's memory profile, the same every start.
     memoryProfile().then((p) => {
       if (alive) term.options.scrollback = p.scrollback;
