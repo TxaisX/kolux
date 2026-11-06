@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { PrintedUrls, afterScan, capNote, decodeOutput, rowKey, openAddress, openWhere, ownCount, stopArgs, stopNote, urlsIn, type PortRow } from "./ports";
+import { decodeOutput as paneDecode } from "../terminal/codec";
 
 const row = (port: number, addr = "127.0.0.1", external = false, terminal: number | null = 7): PortRow => ({ port, addr, pid: 1, external, started: "", terminal: external ? null : terminal });
 
@@ -71,6 +72,24 @@ test("VIEW-078 the item counts only the workspace's own ports", () => {
 test("VIEW-078 terminal output decodes from base64 and a bad payload is empty text", () => {
   expect(decodeOutput(btoa("http://localhost:1234"))).toBe("http://localhost:1234");
   expect(decodeOutput("%%%")).toBe("");
+});
+
+test("T-765 every terminal's output passes through here: a 128 KB chunk decodes about as fast as the pane's own decode", () => {
+  let text = "";
+  for (let n = 0; text.length < 128 * 1024; n++) text += `stress ${n} ${"x".repeat(120)} é\r\n`;
+  let bin = "";
+  for (const b of new TextEncoder().encode(text)) bin += String.fromCharCode(b);
+  const b64 = btoa(bin);
+  expect(decodeOutput(b64)).toBe(text);
+  const plain = (s: string) => new TextDecoder().decode(paneDecode(s));
+  const time = (f: (s: string) => string) => {
+    for (let i = 0; i < 5; i++) f(b64);
+    const t = performance.now();
+    for (let i = 0; i < 20; i++) f(b64);
+    return performance.now() - t;
+  };
+  // Relative, so a slow CI machine does not matter: main took ~27x (a callback per byte), the fix ~1x.
+  expect(time(decodeOutput)).toBeLessThan(5 * time(plain) + 5);
 });
 
 test("the scan's silent cut of external rows is announced once the cap is reached", () => {

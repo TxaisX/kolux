@@ -15,7 +15,6 @@ import { LAYOUT_FIELD, restoreAsks, restoreLayout, stillThere, type SavedLayout 
 import { sessionOrder } from "./sessions/restoreOrder";
 import "./styles.css";
 import { prefetch } from "./lazy/deferred";
-import TowerWindow from "./tower/TowerWindow";
 import { isTowerWindow } from "./tower/ownWindow";
 import { showStartFailure } from "./tower/startFailed";
 
@@ -27,6 +26,8 @@ async function start() {
   followSystemMode();
   // T-546-c: the Tower's own window draws only the Tower; the panes, the settings and the layout stay the main window's.
   if (isTowerWindow(location.hash)) {
+    // The Tower window is rare: its view stays out of the main window's first load.
+    const { default: TowerWindow } = await import("./tower/TowerWindow");
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<TowerWindow />);
     return;
   }

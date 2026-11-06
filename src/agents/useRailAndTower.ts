@@ -6,7 +6,7 @@ import { LANES, chipOf } from "../board/chip";
 import { markFor } from "../launch/PlusMenu";
 import { switcherLabel } from "../switcher/accounts";
 import { tabName } from "../terminal/tabName";
-import { useTowerBridge } from "../tower/TowerWindow";
+import { useTowerBridge } from "../tower/bridge";
 import { nameSeats, nameUsage, usageByAccount } from "../tower/tower";
 import { capOn, claudeOf, codexOf, contextFill, meterOf, meterText, planOf, readsLeft, usageLine } from "../usage/meter";
 import { useClaudePaneFigures, useCodexPaneFigures } from "../usage/paneFigures";
