@@ -19,7 +19,7 @@ test("a new automation opens on Monday to Friday with Save held until the worktr
   expect(html).toContain('aria-modal="true"');
 });
 
-test("editing opens with the saved copy: its name, prompt, base and custom line", () => {
+test("editing opens with the saved copy: its name, prompt, folder and custom line", () => {
   const html = render({
     id: "auto-1",
     name: "Leap",
@@ -35,7 +35,7 @@ test("editing opens with the saved copy: its name, prompt, base and custom line"
   expect(html).toContain("Edit automation");
   expect(html).toContain('value="Leap"');
   expect(html).toContain("check the calendar");
-  expect(html).toContain('value="release"');
+  expect(html).toContain("Every run uses the project folder");
   expect(html).toContain('value="0 0 29 2 *"');
   expect(html).toContain('value="UTC"');
 });
@@ -97,13 +97,13 @@ test("AUTO-010: the setup choice shows only for a new worktree per run in a proj
   expect(render(null)).not.toContain("Run the project setup");
 });
 
-test("T-192-c: the keep-one-session choice shows for an existing worktree only and reopens as saved", () => {
+test("T-192-c: the keep-one-session choice shows for every automation and reopens as saved", () => {
   const saved = (reuseSession: boolean, workspaceMode: "existing" | "new-per-run"): Automation => ({ id: "auto-1", name: "Leap", prompt: "go", provider: "claude", projectId: "p1", enabled: true, workspaceMode, reuseSession });
   const say = "Continue in the session the last run left open";
   expect(render(null)).toContain(say);
   expect(render(null)).not.toMatch(/type="checkbox" checked=""[^>]*\/> Continue/);
   expect(render(saved(true, "existing"))).toMatch(/type="checkbox" checked=""[^>]*\/> Continue/);
-  expect(render(saved(true, "new-per-run")), "a new worktree for every run always opens a new session").not.toContain(say);
+  expect(render(saved(true, "new-per-run")), "old new-per-run data now runs in the project folder, so the choice is offered").toContain(say);
 });
 
 test("T-085-f: the dialog offers pull request opens, checks fail and an agent finishes, each with its own note", () => {

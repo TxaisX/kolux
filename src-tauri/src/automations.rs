@@ -1499,6 +1499,7 @@ fn folder_name(path: &str) -> String {
 
 /// The window's notice that a run made its worktree. AUTO-010: it runs the project setup only when
 /// the automation chose that; one saved before the choice existed skips it.
+#[cfg(test)]
 fn created_event(project_id: &str, wt: &Worktree, auto: &Value) -> Value {
     let setup = if auto["runSetup"].as_bool() == Some(true) { "run" } else { "skip" };
     json!({ "kind": "created", "projectId": project_id, "worktree": { "path": wt.path, "branch": wt.branch, "name": wt.name, "isMain": false }, "agent": Value::Null, "prompt": "", "activate": false, "setup": setup })
@@ -1521,29 +1522,18 @@ fn place_and_start(l: &Launch, auto: &Value, run_id: &str) -> Result<Placed, Sto
         projects::load_projects(&store).into_iter().find(|p| p.id == project_id)
     }
     .ok_or_else(|| Stop::Skipped("its project is no longer in Kolux".into()))?;
-    let new_per_run = auto["workspaceMode"] == "new-per-run";
-    let wt = if new_per_run {
-        // AUTO-005: cut from the chosen base; empty means the project's default branch.
-        let base = auto["baseBranch"].as_str().map(str::trim).filter(|b| !b.is_empty());
-        let wt = projects::create_fresh_from(l.git, l.store, &project.id, base).map_err(Stop::Failed)?;
-        // AUTO-024: marked as made by an automation, so the sidebar can hide or tag it. A failed
-        // record costs only the marker, never the run.
-        if let Ok(store) = l.store.lock() {
-            let _ = projects::set_origin(&store, &wt.path, Some(&json!({ "madeBy": "automation", "automationId": auto["id"] })));
-        }
-        wt
-    } else {
-        let path = auto["workspace"].as_str().filter(|s| !s.is_empty()).unwrap_or(&project.path).to_string();
-        if !Path::new(&path).is_dir() {
-            return Err(Stop::Skipped(format!("its worktree {path} is gone")));
-        }
-        Worktree { name: None, branch: None, head: String::new(), is_main: path == project.path, path, parent: None, locked: None, hidden: false, kind: String::new(), source: None, made_by: None, number: None, comment: None }
-    };
+    // Owner change 2026-11-05: one folder per project. A run never makes a worktree; a saved
+    // workspace that no longer exists falls back to the project folder.
+    let path = auto["workspace"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .filter(|p| Path::new(p).is_dir())
+        .unwrap_or_else(|| project.path.clone());
+    let is_main = path == project.path;
+    let wt = Worktree { name: None, branch: None, head: String::new(), is_main, path, parent: None, locked: None, hidden: false, kind: String::new(), source: None, made_by: None, number: None, comment: None };
     // SAFE-023 (T-443): only a worktree Kolux made is trusted ahead of time, never the main checkout.
     let _ = crate::trust::trust_folders(&l.claude_config, &agent, &crate::trust::made_by_kolux(l.store, &[PathBuf::from(&wt.path)]));
-    if new_per_run {
-        (l.notify)(crate::cli::EVENT, created_event(&project.id, &wt, auto));
-    }
     // AUTO-009: the last run's session, when it is free, takes the prompt instead of a new tab.
     let prompt = auto["prompt"].as_str().unwrap_or_default();
     let panes = panes();
@@ -2007,7 +1997,7 @@ mod tests {
     }
 
     #[test]
-    fn auto024_a_run_that_makes_its_own_worktree_marks_it_made_by_an_automation() {
+    fn auto024_a_run_never_makes_a_worktree_and_uses_the_project_folder() {
         let dir = temp("a024");
         let repo = dir.join("repo");
         std::fs::create_dir_all(&repo).unwrap();
@@ -2028,10 +2018,9 @@ mod tests {
         let s = store.lock().unwrap();
         let project = projects::load_projects(&s)[0].clone();
         let listed = projects::list_workspaces(&git, &s, &project).unwrap();
-        let made = listed.iter().find(|w| !w.is_main).expect("the run's worktree");
-        assert_eq!(made.made_by.as_deref(), Some("automation"));
-        // A worktree made by hand is not tagged.
-        assert_eq!(listed.iter().find(|w| w.is_main).unwrap().made_by.as_deref(), None);
+        assert_eq!(listed.len(), 1, "the run makes no worktree");
+        assert!(listed[0].is_main);
+        assert_eq!(listed[0].made_by.as_deref(), None);
         drop(s);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
