@@ -12,7 +12,7 @@ import CrashReportDialog from "./CrashReportDialog";
 import RecoveryNotes from "./RecoveryNotes";
 import { loadRecoveryNotes } from "./startupNotes";
 import { repaint, WOKE_EVENT } from "./hidden";
-import { requestUpdateCheck } from "../update/UpdateCenter";
+import { requestUpdateCheck } from "../update/bus";
 import { useHeartbeat } from "./heartbeat";
 import { afterBurst, launchPrompt, updateNotice, type GraphicsPrompt, type LastAttempt } from "./model";
 

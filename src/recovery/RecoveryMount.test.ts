@@ -26,7 +26,7 @@ vi.mock("./RecoveryNotes", () => ({
   },
 }));
 vi.mock("./startupNotes", () => ({ loadRecoveryNotes: () => Promise.resolve([]) }));
-vi.mock("../update/UpdateCenter", () => ({ requestUpdateCheck: () => {} }));
+vi.mock("../update/bus", () => ({ requestUpdateCheck: () => {} }));
 
 let doc: FakeDocument;
 let unmount: () => Promise<void> = async () => {};

@@ -9,7 +9,7 @@ import ResourceManager from "../status/ResourceManager";
 import { Chip, Cup, Plug, Shell } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
 import { useMenuFocus } from "./dialogFocus";
-import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/UpdateCenter";
+import { BAR_EVENT, SHOW_EVENT, currentBar } from "../update/bus";
 import { KeepAwakeItem, useKeepAwake } from "../launch/KeepAwakeCard";
 import PortsItem from "../ports/PortsItem";
 import SkillBarItem from "../skills/SkillBarItem";

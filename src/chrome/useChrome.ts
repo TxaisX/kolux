@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { helpAction, readSynced, REPORT_CRASH_EVENT, type HelpAction, type MenuBarState, type NativeChord } from "./chromeItems";
 import { openExplore, openGuide } from "../onboarding/guide";
-import { requestUpdateCheck } from "../update/UpdateCenter";
+import { requestUpdateCheck } from "../update/bus";
 import { openAbout } from "../shell/about";
 
 export function useChrome() {

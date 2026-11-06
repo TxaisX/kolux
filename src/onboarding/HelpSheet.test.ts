@@ -21,7 +21,7 @@ vi.mock("./guide", async (orig) => ({
 vi.mock("./tour", async (orig) => ({ ...(await orig<typeof import("./tour")>()), replayTour: (id: string) => spy.calls.push("tour:" + id) }));
 vi.mock("../settings/pages", () => ({ openSettings: (p: string) => spy.calls.push("settings:" + p) }));
 vi.mock("../feedback/FeedbackDialog", () => ({ requestFeedback: () => spy.calls.push("feedback") }));
-vi.mock("../update/UpdateCenter", () => ({ requestUpdateCheck: () => spy.calls.push("updates") }));
+vi.mock("../update/bus", () => ({ requestUpdateCheck: () => spy.calls.push("updates") }));
 
 let doc: FakeDocument;
 let root: FakeNode;

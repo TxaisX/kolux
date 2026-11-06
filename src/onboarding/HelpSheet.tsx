@@ -9,7 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
 import { requestFeedback } from "../feedback/FeedbackDialog";
 import { openSettings } from "../settings/pages";
-import { requestUpdateCheck } from "../update/UpdateCenter";
+import { requestUpdateCheck } from "../update/bus";
 import { milestonesShown, openExplore, openGuide, ring } from "./guide";
 import { Ring, useGuideState } from "./Guides";
 import { replayTour, TOURS } from "./tour";
