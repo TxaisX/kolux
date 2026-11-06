@@ -18,9 +18,9 @@ test("box 2: a custom line with 61 in the minute field leaves Save off and says 
   const editing = { id: "auto-1", name: "Hourly", prompt: "x", provider: "claude", projectId: "p1", enabled: true, workspaceMode: "existing", workspace: "C:\src\shop", trigger: { kind: "schedule", cron: "61 * * * *", timezone: "UTC" }, form: { preset: "custom", time: "", day: null, custom: "61 * * * *" } };
   const props = { projects, agents: [], editing, onClose: () => {}, onSaved: () => {} } as never;
   // Worktrees read, no refusal yet: Save is on.
-  expect(save(mount(AutomationDialog, props, { 20: trees }).render()).props.disabled).toBe(false);
+  expect(save(mount(AutomationDialog, props, { 15: trees }).render()).props.disabled).toBe(false);
   // The back end's refusal arrives (the text of cards_09 auto001_box2): Save is off and the message shows.
-  const view = mount(AutomationDialog, props, { 20: trees, 23: "the minute field has 61; it takes 0 to 59" });
+  const view = mount(AutomationDialog, props, { 15: trees, 18: "the minute field has 61; it takes 0 to 59" });
   const tree = view.render();
   expect(save(tree).props.disabled).toBe(true);
   const alert = find(tree, (e) => e.props.role === "alert");

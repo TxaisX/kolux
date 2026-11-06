@@ -54,7 +54,7 @@ test("box 1: after Save the page asks for the list again and the new automation 
 test("box 2: a second press of Save while the first is in flight sends nothing, and every send carries the same request id", () => {
   h.calls.length = 0;
   h.reply = {};
-  const view = mount(AutomationDialog, { projects, agents: [], editing: null, onClose: () => {}, onSaved: () => {} } as never, { 20: trees, 6: "C:\src\shop", 1: "Morning checks", 2: "look" });
+  const view = mount(AutomationDialog, { projects, agents: [], editing: null, onClose: () => {}, onSaved: () => {} } as never, { 15: trees, 5: "C:\src\shop", 1: "Morning checks", 2: "look" });
   let tree = view.render();
   expect(saveButton(tree).props.disabled).toBe(false);
   saveButton(tree).props.onClick();
@@ -69,7 +69,7 @@ test("box 2: a second press of Save while the first is in flight sends nothing, 
   const first = callsOf("automation_save")[0][1].input.requestId;
   expect(first).toMatch(/^req-/);
   expect(view.render()).toBeTruthy();
-  const again = mount(AutomationDialog, { projects, agents: [], editing: null, onClose: () => {}, onSaved: () => {} } as never, { 20: trees, 6: "C:\src\shop", 1: "Morning checks", 2: "look" });
+  const again = mount(AutomationDialog, { projects, agents: [], editing: null, onClose: () => {}, onSaved: () => {} } as never, { 15: trees, 5: "C:\src\shop", 1: "Morning checks", 2: "look" });
   const t1 = again.render();
   saveButton(t1).props.onClick();
   saveButton(again.render()).props.onClick();
@@ -79,7 +79,7 @@ test("box 2: a second press of Save while the first is in flight sends nothing, 
 
 test("box 3: Escape shuts the find bar and the dialog stays; a second Escape shuts the dialog", () => {
   let closed = 0;
-  const view = mount(AutomationDialog, { projects, agents: [], editing: null, onClose: () => closed++, onSaved: () => {} } as never, { 20: trees, 6: "C:\src\shop" });
+  const view = mount(AutomationDialog, { projects, agents: [], editing: null, onClose: () => closed++, onSaved: () => {} } as never, { 15: trees, 5: "C:\src\shop" });
   let tree = view.render();
   expect(findAll(tree, (e) => e.props.role === "search").length).toBe(0);
   dialog(tree).props.onKeyDown(keyEvent("f", true));

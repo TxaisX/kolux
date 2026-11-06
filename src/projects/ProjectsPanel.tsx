@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
+import { SINGLE_FOLDER } from "./singleFolder";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
@@ -2244,9 +2245,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its workspaces folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
             </button>
+            {!SINGLE_FOLDER && (
             <button className={`ib${opening ? " on" : ""}`} title="New workspace: a branch in its own folder" aria-pressed={opening} onClick={() => setCreating(opening ? null : p.id)}>
               <Plus size={13} />
             </button>
+            )}
             <button className="ib rm" title="Remove project: out of Kolux; its folder stays on disk" aria-label={`Remove ${projectLabel(p)}`} data-proj-x onClick={() => setDropProject(dropProject === p.id ? null : p.id)}>
               <Minus size={11} />
             </button>
@@ -2470,9 +2473,11 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className="ib" title={groupBy === "project" ? "New group: sort projects into folders of their own" : "New group: only while the list is grouped by project (change it under Group and sort)"} aria-label="New group" onClick={newGroup} disabled={groupBy !== "project"}>
               <Box size={13} />
             </button>
+            {!SINGLE_FOLDER && (
             <button className="ib" title="New workspace: a branch in its own folder" aria-label="New workspace" aria-pressed={creating !== null} onClick={() => (creating === null ? openCreate() : setCreating(null))}>
               <Plus size={13} />
             </button>
+            )}
             {NOT_BUILT && (
               <button className="ib" title="Launch (not built yet)">
                 <Rocket size={13} />

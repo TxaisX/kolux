@@ -4,15 +4,16 @@ import { renderToString } from "react-dom/server";
 import { RepoView, draftSave, outsideChoice, outsideSave } from "./RepoPage";
 import { projectLabel } from "../projects/model";
 
-test("SET-033: a repository's base branch and workspaces folder show the inherited value until overridden", () => {
+test("SET-033: a repository's base branch shows, and the workspaces folder is gone in one-folder mode", () => {
   const p = { id: "p1", name: "app", path: "C:/src/app" };
   const html = renderToString(createElement(RepoView, { project: p, globalDir: "C:/Users/me/kolux-rs/workspaces", onSave: () => {} }));
   expect(html).toContain("New workspaces start from");
   expect(html).toContain('placeholder="the default branch"');
-  expect(html).toContain('placeholder="C:/Users/me/kolux-rs/workspaces (the global folder)"');
+  expect(html).not.toContain("Workspaces folder");
+  expect(html).toContain("Kolux works in this folder");
   const own = renderToString(createElement(RepoView, { project: { ...p, base: "develop", workspacesDir: "D:/wt" }, globalDir: "C:/g", onSave: () => {} }));
   expect(own).toContain('value="develop"');
-  expect(own).toContain('value="D:/wt"');
+  expect(own).not.toContain('value="D:/wt"');
 });
 
 test("SET-033: a draft is saved only when it changed; viewing or leaving an untouched field writes nothing", () => {

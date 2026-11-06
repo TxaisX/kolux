@@ -15,8 +15,6 @@ import { noteUse } from "../onboarding/features";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { folderName, type Project, type Worktree } from "../projects/model";
 import { closesOnScrim, defaultForm, EVENT_CHOICES, findNext, hermesEdit, hermesSchedule, scheduleChanged, GRACE, PRECHECK, preselect, type Automation, type Preset, type ScheduleForm } from "./model";
-import { probeSetup } from "../settings/setupProbe";
-import SearchPick from "../editor/SearchPick";
 import { clampBox, cronWords, fieldNames, from12, nudge, templates, to12, toPreset, weekdayNames, type Template } from "./timetable";
 
 type Props = {
@@ -122,22 +120,11 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const [prompt, setPrompt] = useState(editing?.prompt ?? start?.prompt ?? "");
   const [provider, setProvider] = useState(editing?.provider ?? "claude");
   const [projectId, setProjectId] = useState(editing?.projectId ?? projects[0]?.id ?? "");
-  const [mode, setMode] = useState<"existing" | "new-per-run">(editing?.workspaceMode ?? "existing");
+  const mode = "existing" as const;
   const [workspace, setWorkspace] = useState(editing?.workspace ?? "");
-  const [base, setBase] = useState(editing?.baseBranch ?? "");
-  // EDIT-048: the project's branches narrow as the base branch is typed (the box stays free text when the list cannot be read).
-  const [branches, setBranches] = useState<string[]>([]);
-  useEffect(() => {
-    let live = true;
-    setBranches([]);
-    if (projectId) invoke<string[]>("workspace_branches", { projectId }).then((b) => live && setBranches(b), () => undefined);
-    return () => {
-      live = false;
-    };
-  }, [projectId]);
-  const [runSetup, setRunSetup] = useState(editing?.runSetup ?? false);
+  const base = "";
+  const runSetup = false;
   const [reuse, setReuse] = useState(editing?.reuseSession ?? false);
-  const [hasSetup, setHasSetup] = useState<boolean | null>(null);
   const [grace, setGrace] = useState(editing?.missedRunGraceMinutes ?? start?.graceMinutes ?? 0);
   const [precheck, setPrecheck] = useState(editing?.precheck ?? "");
   const [limit, setLimit] = useState(editing?.precheckTimeoutSeconds ?? 60);
@@ -158,7 +145,6 @@ export default function AutomationDialog({ projects, agents, editing, template, 
   const [findQuery, setFindQuery] = useState("");
   const editor = useRef<HTMLTextAreaElement>(null);
   const find = useRef<HTMLInputElement>(null);
-  const project = projects.find((p) => p.id === projectId);
   const schedule = { ...form, timezone: zone };
 
   // AUTO-005: the project's worktrees; saving waits until Kolux has read them.
@@ -173,20 +159,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
     };
   }, [projectId]);
 
-  // AUTO-010: whether the project has a setup (kolux.yaml in its folder); one cmd cannot run as
-  // written still counts, since it is there to be chosen.
-  const projectPath = project?.path;
-  useEffect(() => {
-    setHasSetup(null);
-    if (!projectPath) return;
-    let live = true;
-    // asks the page's own read (no trust question, nothing started); a failed read keeps the option
-    void probeSetup(projectPath, true).then((has) => live && setHasSetup(has));
-    return () => {
-      live = false;
-    };
-  }, [projectPath]);
-  const setupShown = setupChoice(mode, hasSetup, runSetup);
+  // AUTO-010: the setup question belonged to a new worktree per run, which no longer exists.
 
   useEffect(() => {
     let live = true;
@@ -300,7 +273,7 @@ export default function AutomationDialog({ projects, agents, editing, template, 
         });
       return;
     }
-    const input = { id: editing?.id, requestId, name, prompt, provider, projectId, workspaceMode: mode, workspace: mode === "existing" ? workspace : null, baseBranch: mode === "new-per-run" ? base : "", runSetup: setupShown === true, reuseSession: mode === "existing" && reuse, missedRunGraceMinutes: grace, precheck, precheckTimeoutSeconds: limit, schedule, trigger: timed ? undefined : { kind: "event", event: starts } };
+    const input = { id: editing?.id, requestId, name, prompt, provider, projectId, workspaceMode: mode, workspace, baseBranch: "", runSetup: false, reuseSession: reuse, missedRunGraceMinutes: grace, precheck, precheckTimeoutSeconds: limit, schedule, trigger: timed ? undefined : { kind: "event", event: starts } };
     invoke<Automation>("automation_save", { input })
       .then((a) => {
         noteUse("automations");
@@ -426,32 +399,17 @@ export default function AutomationDialog({ projects, agents, editing, template, 
             </label>
             <fieldset className="auto-label">
               <legend>Workspace</legend>
+              <p className="caption">Every run uses the project folder. Kolux does not make a copy.</p>
               <label className="auto-radio">
-                <input type="radio" checked={mode === "existing"} onChange={() => setMode("existing")} /> An existing workspace
+                <input type="checkbox" checked={reuse} onChange={(e) => setReuse(e.target.checked)} /> Continue in the session the last run left open, when the agent is idle there
               </label>
-              {mode === "existing" && (
-                <label className="auto-radio">
-                  <input type="checkbox" checked={reuse} onChange={(e) => setReuse(e.target.checked)} /> Continue in the session the last run left open, when the agent is idle there
-                </label>
-              )}
-              {mode === "existing" && (
-                <select className="field" aria-label="Workspace" value={workspace} disabled={!worktrees} onChange={(e) => setWorkspace(e.target.value)}>
-                  {(worktrees ?? []).map((w) => (
-                    <option key={w.path} value={w.path}>
-                      {w.isMain ? `${folderName(w.path)} (main)` : (w.name ?? folderName(w.path))}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <label className="auto-radio">
-                <input type="radio" checked={mode === "new-per-run"} onChange={() => setMode("new-per-run")} /> A new workspace for every run
-              </label>
-              {mode === "new-per-run" && <SearchPick items={branches} label="Base branch" value={base} onChange={setBase} placeholder={`From ${project?.base || "the default branch"}`} />}
-              {setupShown !== null && (
-                <label className="auto-radio">
-                  <input type="checkbox" checked={setupShown} onChange={(e) => setRunSetup(e.target.checked)} /> Run the project setup in each new workspace
-                </label>
-              )}
+              <select className="field" aria-label="Workspace" value={workspace} disabled={!worktrees} onChange={(e) => setWorkspace(e.target.value)}>
+                {(worktrees ?? []).map((w) => (
+                  <option key={w.path} value={w.path}>
+                    {w.isMain ? `${folderName(w.path)} (main)` : (w.name ?? folderName(w.path))}
+                  </option>
+                ))}
+              </select>
             </fieldset>
             </>
             )}
