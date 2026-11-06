@@ -47,12 +47,12 @@ test("in the window, the other chooser draws an empty slot with no sheet; the fu
         children: createElement(ChooserPane, { number, agents: [], seats: [{ agent: null, model: null }], onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: "separate", inGit: true, onCopies: () => {}, closable: true, onClose: () => {}, saved: [], onSaved: () => {}, onPickSaved: () => {}, sheet }),
       }),
     );
-  expect(draw(21), "the focused chooser").toContain("Folders");
+  expect(draw(21), "the focused chooser").toContain("Every seat works in this project folder");
   const slot = draw(22);
   expect(slot).toContain("Choose what to run in session 22");
   expect(slot).toContain("Close session 22");
   expect(slot, "no cramped sheet in the slot").not.toContain("Folders");
-  expect(draw(22, { project: "app", path: "C:/p" }), "the New session page").toContain("Folders");
+  expect(draw(22, { project: "app", path: "C:/p" }), "the New session page").toContain("Every seat works in this project folder");
 });
 
 test("the slot's mousedown cancels the browser's focus default, so the removed button cannot blur the sheet", () => {

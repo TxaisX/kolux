@@ -23,7 +23,7 @@ import { canInstall, installTip, optionLabel, pickList, runInstall } from "./age
 import { useKeymap } from "../keys/KeymapContext";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
-import { allReady, countPlan, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
+import { allReady, countPlan, MAX_SESSIONS, modelsFor, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
 function DocsLink({ agent }: { agent: AgentInfo }) {
@@ -115,7 +115,7 @@ type Props = {
   sheet?: { project: string; path: string } | null;
 };
 
-export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, onCopies, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null }: Props) {
+export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null }: Props) {
   const mac = useKeymap().platform === "darwin";
   // SESS-018: a Ctrl+Enter that cannot launch points at the footer's unfinished seat.
   const [nudged, setNudged] = useState(false);
@@ -377,7 +377,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
         </div>
         {bigCount !== null && (
           <div className="note warn" role="alert">
-            {`${bigCount} sessions is a lot: with separate copies each AI seat makes its own folder. `}
+            {`${bigCount} sessions is a lot: every seat works in the same folder. `}
             <button className="btn" onClick={() => recount(bigCount)}>
               {`Use ${bigCount}`}
             </button>{" "}
@@ -386,24 +386,13 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             </button>
           </div>
         )}
-        <div className="count-row" role="radiogroup" aria-label="Where the AIs work">
-          <span className="label">Folders</span>
-          <label className="choice" title={inGit ? "Each AI seat gets a fresh workspace of its own" : NOT_GIT}>
-            <input type="radio" name={`copies-${number}`} checked={copies === "separate"} disabled={!inGit} onChange={() => onCopies("separate")} />
-            Separate copy for each AI
-          </label>
-          <label className="choice" title="Every seat opens in this folder">
-            <input type="radio" name={`copies-${number}`} checked={copies === "shared"} onChange={() => onCopies("shared")} />
-            Same folder for all
-          </label>
-          {!inGit && <span className="caption">{NOT_GIT}</span>}
+        <div className="count-row" role="group" aria-label="Where the AIs work">
+          <span className="label">Folder</span>
+          <span className="caption">Every seat works in this project folder. Kolux does not make extra copies.</span>
         </div>
         {sharedWarning(copies, seats.length, inGit) && (
           <div className="note warn" role="status">
-            Several AIs would be editing the same files at once.{" "}
-            <button className="btn" onClick={() => onCopies("separate")}>
-              Give each its own copy
-            </button>
+            Several AIs will edit the same files. Give each a separate task, or launch them one at a time.
           </div>
         )}
         <textarea

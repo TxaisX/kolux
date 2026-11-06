@@ -10,7 +10,6 @@ import { defaultCopies, pickShape, sheetStart, TERMINAL, type Copies, type Saved
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:\\bin\\claude.exe", docs: true };
 const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(seats.length, inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
   renderToString(createElement(ChooserPane, { number: 2, agents: [claude], seats, onSeats: () => {}, onLineup: () => {}, shape, task, onTask: () => {}, onStart: () => {}, copies, inGit, onCopies: () => {}, closable, onClose: () => {}, saved, onSaved: () => {}, onPickSaved: () => {} }));
-const radio = (html: string, label: string) => html.split("<label").find((l) => l.includes(label))!;
 const startButton = (html: string) => html.split("<button").find((b) => b.includes(">Start"))!;
 
 test("SESS-007: Claude without a model keeps Start disabled, a model enables it, Terminal is enabled at once", () => {
@@ -60,23 +59,17 @@ test("SESS-013: the count row shows the quick picks and one seat block per seat"
   expect(html).toContain("Start 3");
 });
 
-test("SESS-014: three seats in Git pick separate copies; sharing them warns with a fix; outside Git separate is disabled and explained", () => {
+test("SESS-014 (owner change 2026-11-05): every launch works in one project folder", () => {
   const three: Seat[] = [{ agent: "claude", model: "opus" }, { agent: "claude", model: "opus" }, { agent: "claude", model: "opus" }];
-  const separate = render(three);
-  expect(radio(separate, "Separate copy for each AI")).toContain("checked");
-  expect(separate).not.toContain("Give each its own copy");
-  const shared = render(three, true, true, "shared");
-  expect(radio(shared, "Same folder for all")).toContain("checked");
-  expect(shared).toContain("Several AIs would be editing the same files at once");
-  expect(shared).toContain("Give each its own copy");
+  const html = render(three);
+  expect(html).toContain("Every seat works in this project folder");
+  expect(html).not.toContain("Separate copy for each AI");
+  expect(html).toContain("Several AIs will edit the same files");
   const one = render([three[0]]);
-  expect(radio(one, "Same folder for all")).toContain("checked");
-  expect(one).not.toContain("Give each its own copy");
+  expect(one).toContain("Every seat works in this project folder");
+  expect(one).not.toContain("Several AIs will edit the same files");
   const outside = render(three, true, false);
-  expect(radio(outside, "Separate copy for each AI")).toContain("disabled");
-  expect(radio(outside, "Same folder for all")).toContain("checked");
-  expect(outside).toContain("Not a Git project: there is nothing to copy");
-  expect(outside).not.toContain("Give each its own copy");
+  expect(outside).toContain("Every seat works in this project folder");
 });
 
 test("SESS-012: the lineup shows the shape row, a task for every seat, and each seat with its role before anything starts", () => {

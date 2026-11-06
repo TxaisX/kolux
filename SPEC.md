@@ -3,6 +3,14 @@
 The front door of the Kolux RS specification. Read this file every pass, pick the one area file the
 task needs from the table in part 2, and open only that file.
 
+## 0. Owner changes after 0.15.0
+
+- **2026-11-05, one folder for launches.** A session launch does not create a worktree or any other
+  copy of the project: every seat runs in the project folder. SESS-014 and SESS-023 are superseded.
+  Work still goes through a branch and a pull request, so every change has a reviewable record.
+  Worktree creation outside launches (automations, manual workspace commands, orchestration workers)
+  is scheduled for removal; until then, no new path may create a worktree on launch.
+
 ## 1. What this is
 
 This is the behaviour spec of Kolux as it stood at version 0.15.0: what the user does, what the user
