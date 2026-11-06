@@ -628,8 +628,8 @@ Acceptance:
   - [x] A zoom step whose save fails says so (a toast, or a line under the zoom control in Interface);
         the new size stays for the session. (unit: the zoom control's line rendered, and the zoom step's message;
         the toast from the keys and the View menu is not rendered in a test; evidence/T-723.txt)
-Compat: the keybinding command ids ui.zoomIn, ui.zoomOut and ui.zoomReset stay; zoom.in, zoom.out and
-  zoom.reset remain for browser tabs (BROW-012).
+Compat: the keybinding command ids for Interface Zoom In, Interface Zoom Out and Reset Interface Zoom
+  stay; zoom.in, zoom.out and zoom.reset remain for browser tabs (BROW-012).
 Source: D-17-019
 
 ### SET-022 · Terminal text, cursor and drawing

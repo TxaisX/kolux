@@ -280,7 +280,7 @@ Acceptance:
   - [x] One saved agent with two sessions plus one unmatched Codex session → two groups; the
         unmatched one sits under Other sessions. (cards; evidence/cards-VIEW-015.txt)
   - [x] A saved agent with nothing open gets no group; with no sessions at all the rail shows an
-        empty state, not the saved agent list. (unit; src/agents/rail.test.ts)
+        empty state, not the saved agent list. (unit; the Agents rail suite)
   - [x] Select a session, switch screens and back → same session selected. (cards; evidence/cards-VIEW-015.txt)
 Compat: —
 Source: D-05-015
@@ -320,7 +320,7 @@ Rules: the preset waits for the user to pick and start it; an agent with no sess
 Acceptance:
   - [x] Click + under an agent → a not-started row appears and is selected. (cards; evidence/cards-VIEW-021.txt)
   - [x] Fresh profile with no saved agents → an empty state shows instead of a blank rail. (cards; evidence/cards-VIEW-021.txt)
-  - [x] Saved agents but no open sessions → the rail lists none of them and offers New session. (unit; src/agents/__cards__/VIEW-021.test.ts)
+  - [x] Saved agents but no open sessions → the rail lists none of them and offers New session. (unit; the Agents empty-state suite)
 Compat: —
 Source: D-05-021
 
