@@ -132,7 +132,7 @@ recorded default until told otherwise; nothing here blocks a pass.
   opens, its LF lines show joined to the next line. Pick one: (a) show every line separately and save
   the file exactly as it was; (b) show every line separately and convert the whole file to one line
   ending on the next save. Nothing changes until you pick (T-603).
-- [updates] 2026-10-30 · The feed is now the public TxaisX/kolux-rs itself (DT-R40); the signing key is at
+- [updates] 2026-10-30 · The feed is now the public TxaisX/kolux itself (DT-R40); the signing key is at
   ~/.kolux-rs/release-signing/kolux-rs.key (no password) and releases ship from the owner's PC
   (`node scripts/release.mjs`). GitHub CI is not used (DT-C54), so no billing change, releases repo or
   release secrets are needed (T-622).
@@ -211,15 +211,17 @@ recorded default until told otherwise; nothing here blocks a pass.
 | OD-12 | WSL | Nothing runs inside a distribution; WSL-stored projects open as local folders |
 | OD-14 | Shared folders and archive script in a repository's kolux.yaml | Keep both entries; only the per-repository settings controls are cut |
 | OD-15 | GitHub Projects roadmap timeline (half-done) | Show the unsupported notice |
-| OD-16 | GitHub star prompt | Off until Kolux RS has a public repository of Txais's |
+| OD-16 | GitHub star prompt | Off until Kolux has a public repository of Txais's |
 | OD-18 | Browser knobs after the browser settings page cut | Fixed defaults with toolbar-menu controls |
-| OD-20 | Does the old app's update feed hand users over to Kolux RS? | No; own feed, manual first install, importer on first launch |
+| OD-20 | Does the old app's update feed hand users over to Kolux? | No; own feed, manual first install, importer on first launch |
 | OD-21 | Bundle the 24 department agents as default suggestions? | Not bundled; suggestions load from a folder the user points Kolux at |
 | LOOK-1 | Bundle the UI and terminal fonts (Inter, JetBrains Mono / Cascadia Mono)? Their licence (SIL OFL 1.1) is not on the LOOP.md licence list | Not bundled; system font stacks only (Segoe UI, Cascadia Mono / Consolas), so the look depends on the fonts installed on the PC |
 | LOOK-2 | Vendor marks: keep Anthropic's Claude Spark (from its public press kit, no terms shipped) as a model indicator in a public release? And may someone fetch OpenAI's kit file by hand (openai.com/brand refuses every automated fetch)? | Spark kept, as nominative use; the hand-redrawn OpenAI knot was removed the same day (not a kit file, so outside the "public brand kits only" rule) and Codex shows Kolux's neutral spark glyph until a kit file arrives; see src/assets/vendors/NOTICE.md |
 
 ## Decisions made for Txais
 
+- 2026-11-05 · [release] Public rename to Kolux · DT-C212: the window, About panel, copy, README, user and developer docs, `package.json` and the GitHub repository (`TxaisX/kolux`) now say Kolux. The installer product name, install folder, app identifier, profile folder, `~/.kolux-rs` hook folder, executable names and crate names stay for one release, because `~/.kolux` still holds the old app's hook files; the next identity release moves those with a tested migration.
+- 2026-11-05 · [performance] First load made room for T-765 · the status bar, Help and recovery now call the update event bus directly instead of importing the update screen's door, so the door loads on demand: 1,488,267 → 1,485,868 bytes against the 1,490,000 ceiling. T-765's ~1.8 KB flood queue now fits, with 4,132 bytes of headroom.
 - 2026-11-01 · [skills] T-180-b · DT-C66: deleting a skill inside a WSL distribution runs inside that distribution. Txais confirmed it on 2026-11-01. Reversed 2026-11-02 by DT-C94 (T-658: listed, not deletable).
 - 2026-11-02 · [editor] T-062-b · DT-C70: a worktree inside a WSL distribution is read every 4 s, never watched.
 - 2026-11-02 · [editor] T-235-b · DT-C71: JPX (JPEG 2000) images in PDFs are decoded (Txais, 2026-11-01: allow JPX).
@@ -250,6 +252,7 @@ recorded default until told otherwise; nothing here blocks a pass.
 - 2026-10-12 · [release] T-185-a · The installed CLI is a kolux.exe plus kolux.cmd shim in the install's bin folder, built only by the release script; only a refused connection means the app is down, lost answers print an exact --retry-request command, and reset takes exactly one scope (DT-R27).
 ## Follow-ups (not built yet)
 
+- 2026-11-05 · [release] Identity migration (DT-C212): move the installer product name and install folder to Kolux, then the app identifier, profile folder, `~/.kolux-rs` hook folder, executable names and crate names, with a tested upgrade that removes the old `Kolux RS` install and PATH entry and keeps every profile. Do not touch `~/.kolux/agent-hooks` until the old app's hooks are confirmed gone.
 - 2026-10-30 · [product-ux] T-608 / T-612 · Docs not updated (not this lane's files): docs/guide/settings.md
   (lines 181, 187, 193), docs/guide/getting-started.md (12-14, 39) and docs/guide/board-agents-inbox.md (118)
   should describe the consent line, "Open a session" asking for a folder when there is no workspace, and a blocked
@@ -292,6 +295,7 @@ recorded default until told otherwise; nothing here blocks a pass.
   the two richCodeColourTime timing tests, failing on main too), so it is not green yet (evidence/T-ENG-test-time.txt).
 
 ## Last 10 passes  (date · task · result · evidence)
+- 2026-11-05 · [release] public rename · window, About, copy, README, docs, package name and GitHub repository say Kolux; installer and runtime identity stay for the next identity release (DT-C212) · branch `opt/first-load-headroom` also lands the 2.4 KB first-load cut that unblocks T-765
 - 2026-11-04 · [wave-201] train 28 · merged #224: eleven P1 fixes (settings truth, accounts, panes and history, tabs, light mode, Source Control, Skills) · CI green, evidence in the PR
 - 2026-11-04 · [wave-201] artifacts · merged #223: a workspace's pictures and videos are imported and shown from the app's own scheme; an unreadable index is reported · CI green; live proof 12/12 with `scripts/prove/live-artifacts.mjs`
 - 2026-11-04 · [wave-201] T-768/T-769 · merged #219: Delete, Remove, Sleep, multi-select Remove and Cleanup ask about unsaved editor text, Quit and Force Reload ask about a floating note, and Keep keeps every tab and draft · CI green, evidence in the PR

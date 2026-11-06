@@ -25,7 +25,7 @@ pub const TOKEN_HEADER: &str = "x-kolux-token";
 pub const IDENTITY_HEADER: &str = "x-kolux-pane";
 /// USAGE-021: the Claude config folder a status-line report's session runs under, if any.
 pub const CONFIG_HEADER: &str = "x-kolux-config";
-/// Kolux RS's own script folder under the home folder. DT-C1: not COMPAT's `~/.kolux/agent-hooks`
+/// Kolux's own script folder under the home folder. DT-C1: not COMPAT's `~/.kolux/agent-hooks`
 /// while the old app is installed beside this one, so neither overwrites the other's scripts.
 pub const SCRIPT_DIR: &str = ".kolux-rs/agent-hooks";
 pub const CLAUDE_SCRIPT: &str = "claude.cmd";
@@ -958,7 +958,7 @@ pub(crate) const SPOOL_LINE: &str = concat!(
 );
 
 fn script(agent: &str, route: &str, prints: bool) -> String {
-    let head = format!("rem Kolux RS agent hook for {agent}. Written by Kolux RS; edits are overwritten.");
+    let head = format!("rem Kolux agent hook for {agent}. Written by Kolux; edits are overwritten.");
     let (out, after) = if prints { ("", "2>NUL") } else { ("-o NUL ", ">NUL 2>&1") };
     let post = format!("%SystemRoot%\\System32\\curl.exe -s -m 1.5 --connect-timeout 0.5 --noproxy \"*\" -X POST -H \"Content-Type: application/json\" -H \"X-Kolux-Token: %KT%\" -H \"X-Kolux-Pane: %KOLUX_HOOK_IDENTITY%\" -H \"X-Kolux-Config: %KC%\" --data-binary \"@%KF%\" {out}\"http://127.0.0.1:%KP%/{route}\" {after}");
     // A status-line reading is only worth its moment: it is never held for later.
@@ -1034,7 +1034,7 @@ fn write_script(home: &Path, name: &str, script: &str) -> Result<String, String>
     let old = std::fs::read_to_string(&file).ok();
     if old.as_deref() != Some(script) {
         // STAT-005: a file of the user's under Kolux's name is never overwritten.
-        if old.is_some_and(|o| !o.contains("Written by Kolux RS")) {
+        if old.is_some_and(|o| !o.contains("Written by Kolux")) {
             return Err(format!("{} is not Kolux's own script; left alone", file.display()));
         }
         std::fs::write(&file, script).map_err(|e| e.to_string())?;
@@ -1061,7 +1061,7 @@ fn is_mine(group: &Value) -> bool {
     })
 }
 
-/// Puts exactly one Kolux RS group under each of the twelve events, leaving every other entry
+/// Puts exactly one Kolux group under each of the twelve events, leaving every other entry
 /// (another tool's hooks, the user's own) as it is. True when `settings` changed.
 pub fn install_claude_hooks(settings: &mut Value, command: &str) -> bool {
     install_groups(settings, &CLAUDE_EVENTS, &TOOL_EVENTS, command, 10)
@@ -1288,7 +1288,7 @@ fn codex_listing(home: &Path) -> Option<Vec<Value>> {
             let _ = s.flush();
         }
     };
-    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux-rs", "title": "Kolux RS", "version": env!("CARGO_PKG_VERSION") } } }));
+    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux-rs", "title": "Kolux", "version": env!("CARGO_PKG_VERSION") } } }));
     let deadline = Instant::now() + LIST_TIMEOUT;
     let mut listing = None;
     while listing.is_none() {
@@ -1815,7 +1815,7 @@ Content-Length: {}
         assert_eq!(pre.len(), 3);
         assert_eq!(pre[0]["matcher"], "Bash|PowerShell");
         assert!(pre[1]["hooks"][0]["command"].as_str().unwrap().contains(".other-app/agent-hooks"));
-        assert_eq!(pre[2]["hooks"][0]["command"], cmd, "a stale Kolux RS path is replaced in place");
+        assert_eq!(pre[2]["hooks"][0]["command"], cmd, "a stale Kolux path is replaced in place");
         assert_eq!(hooks["Stop"].as_array().unwrap().len(), 2);
         assert_eq!(hooks["PreCompact"].as_array().unwrap().len(), 1, "PreCompact is never installed");
         assert_eq!(s["permissions"]["allow"][0], "Bash");
@@ -1863,7 +1863,7 @@ Content-Length: {}
         assert_eq!(install_claude_status(&mut s, &st), (true, Some("node ~/line.js".into())));
         assert_eq!(s["statusLine"], json!({ "type": "command", "command": st, "padding": 0 }), "padding and the rest stay");
         assert_eq!(install_claude_status(&mut s, &st), (false, None), "a second install changes nothing");
-        // A stale Kolux RS command (another home) is replaced and not chained; an empty slot is filled.
+        // A stale Kolux command (another home) is replaced and not chained; an empty slot is filled.
         let mut stale = ev(r#"{"statusLine":{"type":"command","command":"k=1; \"C:/old/.kolux-rs/agent-hooks/claude-status.cmd\""}}"#);
         assert_eq!(install_claude_status(&mut stale, &st), (true, None));
         let mut none = ev(r#"{"env":{}}"#);

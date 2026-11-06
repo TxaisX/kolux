@@ -2945,7 +2945,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         run(&["init", "-q", "-b", "main"], Some(&dir)).unwrap();
         run(&["config", "user.email", "test@example.com"], Some(&dir)).unwrap();
-        run(&["config", "user.name", "Kolux RS test"], Some(&dir)).unwrap();
+        run(&["config", "user.name", "Kolux test"], Some(&dir)).unwrap();
         run(&["config", "core.autocrlf", "false"], Some(&dir)).unwrap();
         fs::write(dir.join("README.md"), "hello\n").unwrap();
         run(&["add", "."], Some(&dir)).unwrap();
@@ -3164,7 +3164,7 @@ mod tests {
         let _ = fs::remove_dir_all(&b);
         run(&["clone", "-q", &url, &b.to_string_lossy()], None).unwrap();
         run(&["config", "user.email", "test@example.com"], Some(&b)).unwrap();
-        run(&["config", "user.name", "Kolux RS test"], Some(&b)).unwrap();
+        run(&["config", "user.name", "Kolux test"], Some(&b)).unwrap();
         fs::write(b.join("theirs.txt"), "theirs\n").unwrap();
         run(&["add", "."], Some(&b)).unwrap();
         run(&["commit", "-q", "-m", "theirs"], Some(&b)).unwrap();
@@ -3237,7 +3237,7 @@ mod tests {
         run(&["commit", "-q", "-m", "add lib"], Some(&top)).unwrap();
         let inner = top.join("vendor").join("lib");
         run(&["config", "user.email", "test@example.com"], Some(&inner)).unwrap();
-        run(&["config", "user.name", "Kolux RS test"], Some(&inner)).unwrap();
+        run(&["config", "user.name", "Kolux test"], Some(&inner)).unwrap();
         fs::write(inner.join("x.txt"), "x\n").unwrap();
         run(&["add", "."], Some(&inner)).unwrap();
         run(&["commit", "-q", "-m", "moved"], Some(&inner)).unwrap();
@@ -4018,7 +4018,7 @@ and more
         let _ = fs::remove_dir_all(&other);
         run(&["clone", "-q", &bare_url, &other.to_string_lossy()], None).unwrap();
         run(&["config", "user.email", "test@example.com"], Some(&other)).unwrap();
-        run(&["config", "user.name", "Kolux RS test"], Some(&other)).unwrap();
+        run(&["config", "user.name", "Kolux test"], Some(&other)).unwrap();
         commit_file(&other, "main2.txt", "m\n");
         run(&["push", "-q"], Some(&other)).unwrap();
         assert!(remote(&dir, "rebase").unwrap().ok, "rebase from base");

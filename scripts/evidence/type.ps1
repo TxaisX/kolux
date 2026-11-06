@@ -1,4 +1,4 @@
-# Drives the running Kolux RS window without the shared keyboard or mouse: clicks and keystrokes
+# Drives the running Kolux window without the shared keyboard or mouse: clicks and keystrokes
 # are posted straight to the app's own web view child window (Chrome_RenderWidgetHostHWND), so
 # nothing lands in whatever program the user has in front. Never uses SendKeys.
 #   -Click "x,y"   click at that point of the web view (client pixels, top-left origin)
@@ -57,8 +57,8 @@ public static class Drive {
   }
 }
 "@
-$p = Get-Process | Where-Object { $_.MainWindowTitle -like "Kolux RS*" } | Select-Object -First 1
-if (-not $p) { Write-Error "no Kolux RS window"; exit 1 }
+$p = Get-Process | Where-Object { $_.MainWindowTitle -like "Kolux*" } | Select-Object -First 1
+if (-not $p) { Write-Error "no Kolux window"; exit 1 }
 $h = $p.MainWindowHandle
 $child = [Drive]::FindChild($h, "Chrome_RenderWidgetHostHWND")
 if ($child -eq [IntPtr]::Zero) { Write-Error "no web view child window"; exit 1 }

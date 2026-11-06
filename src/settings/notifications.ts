@@ -36,7 +36,7 @@ export function audioTypeAllowed(path: string): boolean {
   return ext !== undefined && (AUDIO_TYPES as readonly string[]).includes(ext);
 }
 
-/** Kolux's own tones, made for Kolux RS (DECISIONS section 5): short note sequences, in hertz. */
+/** Kolux's own tones, made for Kolux (DECISIONS section 5): short note sequences, in hertz. */
 export const TONES = {
   chime: [880, 1320],
   ping: [1568],

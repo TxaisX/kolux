@@ -2,7 +2,7 @@
 
 Last updated: 4 November 2026. Current build: 0.1.7.
 
-Kolux RS is in early alpha. This page says what is verified, what is usable but unverified, and what is not there yet. It is the honest complement to the user guide.
+Kolux is in early alpha. This page says what is verified, what is usable but unverified, and what is not there yet. It is the honest complement to the user guide.
 
 ## Platform
 
@@ -40,7 +40,7 @@ Kolux RS is in early alpha. This page says what is verified, what is usable but 
 
 ## How to report a problem
 
-Open an [issue](https://github.com/TxaisX/kolux-rs/issues) with:
+Open an [issue](https://github.com/TxaisX/kolux/issues) with:
 
 - the version, from Help, About;
 - your Windows version;

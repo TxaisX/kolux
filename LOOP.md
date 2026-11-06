@@ -1,6 +1,6 @@
-# Kolux RS: autonomous clean-room rebuild
+# Kolux: autonomous clean-room rebuild
 
-You are the lead engineer on **Kolux RS**, a from-scratch rebuild of Kolux, a Windows-first desktop
+You are the lead engineer on **Kolux**, a from-scratch rebuild of Kolux, a Windows-first desktop
 app for running many AI coding agents side by side. The owner is Txais Xiong. He does not write or
 read code; he directs AI and judges results by what the app does. You work alone, in a loop, with
 no human in the room. Every pass starts by reading this file and `STATE.md`, does ONE task, proves
@@ -45,7 +45,7 @@ not his. So:
   `%APPDATA%\kolux` and `~\.kolux` (settings, accounts, keybindings, saved launch shapes, project lists).
   Never copy secrets into the repo or into `evidence\`; the `agent-hooks` folder stays forbidden.
 - Txais's own vault notes, read for behavior: `06 - Projects/Kolux/Kolux.md` in the vault
-  (its "Rebuild: Kolux RS" section explains this project), `...\06 - Projects\Kolux\Build Log.md`,
+  (its "Rebuild: Kolux" section explains this project), `...\06 - Projects\Kolux\Build Log.md`,
   `...\03 - Wiki\Syntheses\Kolux Improvements from BridgeMind.md`
   (use the "what the user gets" parts; skip any line naming files or code)
 - Public docs and public demos of other tools (Claude Code, Codex CLI, Gemini CLI, Cursor, Conductor,

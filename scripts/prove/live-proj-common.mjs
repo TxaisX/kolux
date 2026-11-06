@@ -8,7 +8,7 @@ export * from "./live-git-common.mjs";
 export { git, LIVE_BASE, LIVE_LOGS };
 
 export const CLAUDE_PANE = 'section.pane[data-agent*="claude"]';
-export const STANDIN_BANNER = "Kolux RS stand-in for Claude Code (live-v1): banner only";
+export const STANDIN_BANNER = "Kolux stand-in for Claude Code (live-v1): banner only";
 
 /** Body lines for startPlain opts.standin: the stand-in claude.cmd (set as the claude command, so no real claude on any PATH is ever started) echoes its argv and its folder. */
 export const STANDIN_BODY = ["echo ARGV: %*", "echo CWD: %CD%"];

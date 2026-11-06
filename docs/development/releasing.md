@@ -1,6 +1,6 @@
 # Releasing
 
-A Kolux RS release is a signed installer, a signed update manifest, and a GitHub release. The release script does the mechanical work. The owner decides when to publish and holds the signing key.
+A Kolux release is a signed installer, a signed update manifest, and a GitHub release. The release script does the mechanical work. The owner decides when to publish and holds the signing key.
 
 ## Versioning
 
@@ -18,7 +18,7 @@ Tags and releases are named `v<version>`. The installer file is `Kolux RS_<versi
 
 - `main` is green in CI for the exact commit you are about to publish.
 - The signing key exists at `~/.kolux-rs/release-signing/kolux-rs.key` with its `.pub` beside it. A password is supported through `KOLUX_RELEASE_KEY_PASSWORD`.
-- `gh` is authenticated for the `TxaisX/kolux-rs` repository.
+- `gh` is authenticated for the `TxaisX/kolux` repository.
 - `git status` is clean. `pnpm ship` stages everything with `git add -A`, so unrelated working-tree changes would be included.
 - You have decided whether the release is a normal build or a recovery build.
 
@@ -111,7 +111,7 @@ A release has three assets:
 | `Kolux RS_<version>_x64-setup.exe.sig` | The minisign signature |
 | `latest.json` | The update manifest the app reads |
 
-`latest.json` points at `https://github.com/TxaisX/kolux-rs/releases/download/v<version>/Kolux.RS_<version>_x64-setup.exe` and carries the signature and publication date.
+`latest.json` points at `https://github.com/TxaisX/kolux/releases/download/v<version>/Kolux.RS_<version>_x64-setup.exe` and carries the signature and publication date.
 
 ## The installer
 

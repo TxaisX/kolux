@@ -1,6 +1,6 @@
 # PROVENANCE
 
-Where every part of the Kolux RS spec came from. This file names source types, counts and dates
+Where every part of the Kolux spec came from. This file names source types, counts and dates
 only. It holds no file names from the old repository, no code, no identifiers and no copied text.
 The build loop reads it and appends to section 5. Written by the dirty-room team on 2026-10-06.
 
@@ -11,7 +11,7 @@ The build loop reads it and appends to section 5. Written by the dirty-room team
 ### What a clean-room rebuild is
 
 The old Kolux (version 0.15.0, owned by Txais Xiong) grew out of an MIT-licensed upstream app.
-Code derived from that upstream is not his. Kolux RS rebuilds the app from scratch so that every
+Code derived from that upstream is not his. Kolux rebuilds the app from scratch so that every
 line is his. To make that provable, the people who read the old code never write the new code.
 They write a description of behavior instead (what the user does and sees). A firewall checks that
 description, and only then does the build loop see it. The builders work from the description
@@ -200,8 +200,8 @@ The column headings mean:
 
 Every area ended its firewall pass at 0 token-check hits. That held for the spec as committed
 (7dad8dd: spec/, SPEC.md and COMPAT.md re-checked 2026-10-13 with the unchanged allowlist, 0 hits),
-but it no longer describes the spec of today: 41 later builder commits added "(Kolux RS ...)" notes
-and amendments that carry 53 hits (Kolux RS's own file names, settings keys and public Claude Code
+but it no longer describes the spec of today: 41 later builder commits added "(Kolux ...)" notes
+and amendments that carry 53 hits (Kolux's own file names, settings keys and public Claude Code
 status-line field names; no old-app identifier is known among them, but the check cannot tell them
 apart). Since T-541 those 53 are the recorded baseline in `scripts/firewall-baseline.txt`, and
 `scripts/firewall-check.ps1 -Baseline` (CI and the merge gate) fails on any hit beyond it.
@@ -968,7 +968,7 @@ If a pass reads forbidden material, follow LOOP.md section 0: stop, then add a l
 > 2026-10-20 · browser T-272-d · rules from the T-272-d PLAN line; this tree's own browser.rs (navigation, chord arms) and chord.ts; Microsoft's public Win32 docs for GetGUIThreadInfo and IsChild; tauri 2.12 PlatformWebview::controller and the WebView2 controller's ParentWindow (public API docs); no outside code
 > 2026-10-20 · browser T-283 · rules from the BROW-010 and BROW-043 cards (spec/13-browser-computer.md); this tree's own browser.rs, loadState.ts, BrowserPane.tsx, procs.rs (kill_tree) and resources.rs (process start times); Win32 GetProcessTimes, QueryFullProcessImageNameW, OpenProcess through windows-sys already in the tree; the engine's BrowserProcessId through tauri's PlatformWebview; no outside code
 > 2026-10-20 · chat T-325-b (CHAT-007 omp, CHAT-002) · omp's public docs on github.com/can1357/oh-my-pi (docs/session.md, docs/session-operations-export-share-fork-resume.md, docs/environment-variables.md: session folder and file name, `session` header, message roles, PI_CODING_AGENT_DIR, PI_CONFIG_DIR) and pi.dev/docs/latest (session-format, message-types: text, thinking, toolCall, image blocks, toolResult); Grok: docs.x.ai/build/features/sessions and /build/cli/reference only say sessions sit under ~/.grok/sessions/ (no file format, nothing built from it beyond the home folder); tests use synthetic lines written for this task, no real transcript or tool home read; no new sources otherwise
-> 2026-10-20 · chat T-329-b (editor line and column from a chat link, Open-links-in-Kolux setting) · no new sources: the editor jump, App openFile and the settings key are Kolux RS code already in this repo (T-222-c, T-329), the setting row copies the switch pattern of the existing General page; tests use synthetic values; no public documentation needed
+> 2026-10-20 · chat T-329-b (editor line and column from a chat link, Open-links-in-Kolux setting) · no new sources: the editor jump, App openFile and the settings key are Kolux code already in this repo (T-222-c, T-329), the setting row copies the switch pattern of the existing General page; tests use synthetic values; no public documentation needed
 > 2026-10-20 · chat T-327-b (CHAT 022 question card, CHAT 017 menu Select All and Paste) · Claude Agent SDK public documentation on handling user input (AskUserQuestion: questions, header, options with label and description, multiSelect); the keys typed to answer are NOT from a public page (the menu prints option numbers; recorded as an after-list row and left to the live proof); tests use synthetic transcript rows and fake page objects written for this task; no real transcript or tool home read
 > 2026-10-20 · chat T-334 (CHAT 008 / 019 / 021 / 024 / 026) · Claude Code public documentation, slash commands page (the built-in command names and one-line meanings) and Codex CLI public documentation, slash commands page; skills and file lists come from this repo's own skills_scan and file_list; no real transcript, tool home or prompt text used; tests use synthetic values written for this task
 > 2026-10-20 · hooks T-122 batch 4 (STAT 018 Grok, STAT 019 Devin; STAT 020 / 021 checked, not built) · xAI Grok public documentation, hooks page (docs.x.ai/build/features/hooks) and settings reference (GROK_HOME); Devin public documentation, hooks overview and lifecycle hooks pages (docs.devin.ai/cli/extensibility/hooks/overview, .../lifecycle-hooks); Xiaomi MiMo Code public config-files reference (mimo.xiaomi.com/mimocode/config-files: no hooks key); the commented-JSON reader is written for this task with no dependency; tests use canned JSON / JSONC and synthetic payloads written for this task; no real tool home read, no agent started, no --help run
@@ -1033,10 +1033,10 @@ If a pass reads forbidden material, follow LOOP.md section 0: stop, then add a l
 > 2026-10-20 · i18n T-210-c · language packs (es, fr, ja, zh-CN, ko) written by the builder as machine translation approved by Txais 2026-10-20; the tree's own English catalog src/i18n/en.ts; no outside source
 > 2026-10-20 · i18n T-213 (allow-list rebuild) · repo docs only · the T-213 and T-213-b PLAN lines, APP-004 in spec/19, COMPAT 5.1/5.2/5.3/5.7, DECISIONS OD-05, OD-19, DT-C7; this tree's own state.rs Store, secrets.rs SECRET_SETTINGS, the settings field names in src/** and the fenced check in agent_hooks · areas 19 · synthetic fixture folders only, no real profile or old-app folder opened, nothing copied
 > 2026-10-20 · look T-301 (APP-012 app icon variants and window blur) · Tauri 2 public API documentation (tauri crate 2.12: Window::set_icon, Window::set_effects, EffectsBuilder, image::Image); no other sources
-> 2026-10-20 · look T-302-c (web places of the project icon card) · no new outside sources: the guarded icon client, address rules and lookup are Kolux RS code already in browser.rs; URL host parsing per the url crate behaviour already used there
-> 2026-10-20 · look T-266-b (PROJ-062 ports and task on the workspace card hover) · no new outside sources: Kolux RS own ports.rs scan and Worktree.number
-> 2026-10-20 · accounts T-548-b (OD-11 per-account Codex plan figures) · no new outside sources: Kolux RS own codex_usage.rs, codex_accounts.rs, src/usage and src/tower code
-> 2026-10-20 · accounts T-139-d (Codex setup-change prompt, restored panes asked again) · no new outside sources: Kolux RS own accountChange.ts, layout.ts and App.tsx pane code
+> 2026-10-20 · look T-302-c (web places of the project icon card) · no new outside sources: the guarded icon client, address rules and lookup are Kolux code already in browser.rs; URL host parsing per the url crate behaviour already used there
+> 2026-10-20 · look T-266-b (PROJ-062 ports and task on the workspace card hover) · no new outside sources: Kolux own ports.rs scan and Worktree.number
+> 2026-10-20 · accounts T-548-b (OD-11 per-account Codex plan figures) · no new outside sources: Kolux own codex_usage.rs, codex_accounts.rs, src/usage and src/tower code
+> 2026-10-20 · accounts T-139-d (Codex setup-change prompt, restored panes asked again) · no new outside sources: Kolux own accountChange.ts, layout.ts and App.tsx pane code
 > 2026-10-20 · browser T-239-b (BROW-025 Google sign-in identity) · rules from the BROW-025 spec card and the T-239-b PLAN line; webview2-com 0.39.1 public API (ICoreWebView2Settings2 UserAgent/SetUserAgent, add_NavigationStarting, NavigationStartingEventArgs RequestHeaders, AddWebResourceRequestedFilter, add_WebResourceRequested, HttpRequestHeaders SetHeader/RemoveHeader, AddScriptToExecuteOnDocumentCreated); tauri 2 public API (WebviewWindowBuilder::user_agent); the public Firefox user agent string format and the public User-Agent Client Hints header names (sec-ch-ua*); no outside code
 > 2026-10-20 · browser T-272-b (BROW-032 site permission requests) · rules from the BROW-032 spec card and the T-272-b PLAN line; webview2-com 0.39.1 public API (add_PermissionRequested, ICoreWebView2PermissionRequestedEventArgs PermissionKind/SetState, COREWEBVIEW2_PERMISSION_KIND and COREWEBVIEW2_PERMISSION_STATE values); tauri 2 public API (Emitter::emit, listen); no outside code
 > 2026-10-20 · skills T-292-b (SKILL-025/027, VIEW-100 skill half) · spec/15 and spec/05 cards only; this tree's own T-196-b event shape; no outside source
@@ -1087,7 +1087,7 @@ If a pass reads forbidden material, follow LOOP.md section 0: stop, then add a l
 
 On 2026-10-30 Txais asked for "removing the original kolux and all of its information beside the documentation build of this application so that we can keep a digital report on it in the github repo".
 
-- Deleted from the tree: `design/reference/` (36 PNG screenshot crops of the installed old app, taken 2026-10-08 for T-003b and T-005) and `evidence/T-003b-compare.png` (the T-003b pixel comparison against the old app). Why: they are pictures of the old app, not Kolux RS's own work. The measurements written from them in `design/DESIGN.md`, `design/README.md` and `design/icon/ICON.md` stay, because the app cites them; each mention of a removed image now reads "(removed 2026-10-30 at Txais's request; the measurements above stay)".
+- Deleted from the tree: `design/reference/` (36 PNG screenshot crops of the installed old app, taken 2026-10-08 for T-003b and T-005) and `evidence/T-003b-compare.png` (the T-003b pixel comparison against the old app). Why: they are pictures of the old app, not Kolux's own work. The measurements written from them in `design/DESIGN.md`, `design/README.md` and `design/icon/ICON.md` stay, because the app cites them; each mention of a removed image now reads "(removed 2026-10-30 at Txais's request; the measurements above stay)".
 - `scripts/prove/live-common.mjs`: test account A for the live checks no longer points into a folder LOOP.md section 0 forbids (audit finding X-proc.6). It reads `KOLUX_LIVE_ACCOUNT_A`, defaulting to `G:\Temp\live-signin\account-a`.
 - Added `docs/reclaim-old-kolux.md` (a plain-words report: what the old app left on the PC, what is safe to delete, what must stay, the order) and `scripts/reclaim-old-kolux.ps1` (lists, and only with `-Delete` plus a typed DELETE removes, the 5 G:\Dev folders LOOP.md section 0 lists, refusing links and stopping if that list changes; it leaves the old agent-hooks folder alone because COMPAT.md section 5 lists it as holding the Codex and Kimi hook scripts too; it takes the folder names from LOOP.md and never contains them). Txais runs it; nothing was deleted on the PC by this change.
 - `design/icon/`: the top-bar and taskbar crops `design/icon/ICON.md` names (`capture-topbar-*.png` and the others) were checked for removal too; none of them is in the tree, so nothing was deleted there. ICON.md now says so.

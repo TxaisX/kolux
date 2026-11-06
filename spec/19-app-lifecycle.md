@@ -59,7 +59,7 @@ Rules: logs go to local files that rotate, can be read only by the user, and are
   list of known secret key names, and masking text that is already masked changes nothing; the user
   can create a review copy, open it and throw it away before sharing; writing a diagnostic record
   can never make the action it records fail.
-  (Kolux RS, T-064-a: the terminals run inside the app, so the "terminal service" log is the app's own
+  (Kolux, T-064-a: the terminals run inside the app, so the "terminal service" log is the app's own
   log file in the profile logs folder (app start and exit, each session's start and end, what background passes refused;
   never a session's output or arguments); files move aside past 512 KB and the oldest go past 2 MB in
   all; the logs folder inherits the profile folder's user-only permission (ACCT-009); the copy, the
@@ -86,7 +86,7 @@ Rules: there is no usage telemetry, analytics or diagnostic upload, and the buil
   account the user set up, AI providers the user connected (using the user's credentials), and
   sites the user opens in the browser pane; Send Feedback and Report Crash submit nothing
   themselves, the browser does it after the user has read the text.
-  (Kolux RS, T-064-b: the statement sits in Settings > General > Privacy with the whole list of connections,
+  (Kolux, T-064-b: the statement sits in Settings > General > Privacy with the whole list of connections,
   including the WebView2 runtime's own startup checks to Microsoft, which belong to the Edge engine the
   window runs in and which the app cannot switch off (DT-C25); a privacy audit test fails the
   build on any network client the list does not cover; the feedback link itself is here, the message box is
@@ -118,7 +118,7 @@ Acceptance:
   - [x] Cut the network for an hour → no error appears; restore it → a check runs within about a minute. (cards; evidence/cards-APP-024.txt)
 Compat: the update feed is the GitHub releases of TxaisX/kolux-releases, which carry the update
   manifest that installed 0.15.0 copies read.
-  Amended 2026-10-09 (OD-20, DT-R01): Kolux RS reads its own feed, the GitHub releases of TxaisX/kolux-rs-releases, with a signed Tauri update manifest; the old feed is not touched.
+  Amended 2026-10-09 (OD-20, DT-R01): Kolux reads its own feed, the GitHub releases of TxaisX/kolux-releases, with a signed Tauri update manifest; the old feed is not touched.
 Source: D-19-024
 
 ### APP-025 · A downloaded update waits behind a small ready pop-up and installs on restart or quit
@@ -154,7 +154,7 @@ Rules: only checks the user asked for, and download errors, bring up the card, n
   the reduced-motion preference turns its animation off; clicking again during a running check does
   not start a second one; a check that never reaches the updater times out and says so; the first
   time an update is offered or downloading, a small dismissible tip above the card warns that
-  restarting to update closes open terminals and agents and that Kolux RS asks first, and it is gone for good once dismissed or once a
+  restarting to update closes open terminals and agents and that Kolux asks first, and it is gone for good once dismissed or once a
   download starts; a check requested while a quiet background check is already running takes that
   check over, so its result shows in the card.
   Since T-675 (DT-C111): the tip used to say running terminal sessions carry on; it now gives the warning

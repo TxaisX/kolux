@@ -991,7 +991,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         run(&["init", "-q", "-b", "main"], Some(&dir)).unwrap();
-        for (k, v) in [("user.email", "test@example.com"), ("user.name", "Kolux RS test"), ("core.autocrlf", "false"), ("commit.gpgsign", "false")] {
+        for (k, v) in [("user.email", "test@example.com"), ("user.name", "Kolux test"), ("core.autocrlf", "false"), ("commit.gpgsign", "false")] {
             run(&["config", k, v], Some(&dir)).unwrap();
         }
         fs::write(dir.join("README.md"), "hello\n").unwrap();

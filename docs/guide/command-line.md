@@ -9,13 +9,13 @@ The installed app puts a program called `kolux` (`kolux.exe`, with a `kolux.cmd`
 Two things to know:
 
 - **The help text always says `kolux-dev`.** Every usage line in `kolux --help` starts with `kolux-dev`, even when you ran `kolux`. Type `kolux` where the help says `kolux-dev`.
-- **Inside a Kolux RS pane, `kolux` is this app's command.** Kolux puts its own folder first on the PATH (the list of places Windows looks for programs) in every pane it opens. If you also have the older Kolux installed, a plain terminal outside Kolux RS may find that one instead. Registering the command for the whole computer is not built.
+- **Inside a Kolux pane, `kolux` is this app's command.** Kolux puts its own folder first on the PATH (the list of places Windows looks for programs) in every pane it opens. If you also have the older Kolux installed, a plain terminal outside Kolux may find that one instead. Registering the command for the whole computer is not built.
 
 To check which one you are running:
 
 | Check | Run | You should see |
 |---|---|---|
-| Which program is found first | `where.exe kolux` | A path under the Kolux RS install folder, ending in `bin\kolux.exe` |
+| Which program is found first | `where.exe kolux` | A path under the Kolux install folder, ending in `bin\kolux.exe` |
 | Version | `kolux --version` | `0.1.0` |
 | Which app the pane belongs to | `$env:KOLUX_APP_DIR` (PowerShell) or `echo %KOLUX_APP_DIR%` (Command Prompt) | A folder ending in `com.txaisxiong.kolux-rs` |
 

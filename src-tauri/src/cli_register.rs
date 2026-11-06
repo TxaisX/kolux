@@ -797,13 +797,13 @@ mod tests {
     fn env(n: &str) -> Option<String> {
         (n.eq_ignore_ascii_case("localappdata")).then(|| r"C:\Users\me\AppData\Local".to_string())
     }
-    const DIR: &str = r"C:\Users\me\AppData\Local\Programs\Kolux";
+    const DIR: &str = r"C:\Users\me\AppData\Local\Programs\Kolux RS";
 
     #[test]
     fn cli008_a_folder_matches_whatever_its_case_slashes_trailing_slash_or_variables() {
-        assert!(path_has(r"C:\a;c:/users/me/appdata/local/programs/kolux/;C:\b", DIR, &env));
-        assert!(path_has(r"%LOCALAPPDATA%\Programs\Kolux", DIR, &env));
-        assert!(!path_has(r"C:\a;C:\Users\me\AppData\Local\Programs\Kolux2", DIR, &env));
+        assert!(path_has(r"C:\a;c:/users/me/appdata/local/programs/kolux rs/;C:\b", DIR, &env));
+        assert!(path_has(r"%LOCALAPPDATA%\Programs\Kolux RS", DIR, &env));
+        assert!(!path_has(r"C:\a;C:\Users\me\AppData\Local\Programs\Kolux RS2", DIR, &env));
         assert!(!path_has("", DIR, &env));
         assert_eq!(path_with(r"C:\a;", DIR, &env), format!(r"C:\a;{DIR}"));
         assert_eq!(path_with("", DIR, &env), DIR);

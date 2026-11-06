@@ -1,10 +1,10 @@
-[Kolux RS documentation](../README.md)
+[Kolux documentation](../README.md)
 
-# Kolux RS user guide
+# Kolux user guide
 
 Use this guide to run several AI coding agents and shells side by side, keep each on its own branch, and see at a glance which one needs you.
 
-Kolux RS is a Windows desktop app. It starts AI coding agents (such as Claude Code and Codex) and plain shells in a grid of panes, each working in its own copy of your project so they never edit the same files at once. Three views show the same sessions three ways: a list by agent, a board by state, and the terminal grid itself.
+Kolux is a Windows desktop app. It starts AI coding agents (such as Claude Code and Codex) and plain shells in a grid of panes, each working in its own copy of your project so they never edit the same files at once. Three views show the same sessions three ways: a list by agent, a board by state, and the terminal grid itself.
 
 ## Contents
 

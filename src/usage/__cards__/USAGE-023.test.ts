@@ -42,7 +42,7 @@ test("box 1: with the network cut the shown figures keep their last values; rest
 });
 
 test("box 2: a provider that never answers does not hold Claude or Codex back", async () => {
-  // Kolux RS has no Grok usage read (USAGE-018, P1, unbuilt): the slow provider is a stand-in running the same real runner.
+  // Kolux has no Grok usage read (USAGE-018, P1, unbuilt): the slow provider is a stand-in running the same real runner.
   const slowCalls = { n: 0 };
   const slow = runner<number>({ name: "slow-grok", fetch: () => ((slowCalls.n += 1), new Promise<Fetched<number>>(() => {})), onOk: () => {}, focus: null, visibility: null });
   const claudeShown: unknown[] = [];

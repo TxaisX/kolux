@@ -58,8 +58,8 @@ const TIMEOUT: u64 = 10;
 pub const MARK: &str = "kolux_more";
 /// STAT-015: Kimi's block, opened and closed by these lines. A begin line naming Kolux under
 /// another spelling (the product's former name) is taken as the same block and replaced.
-const KIMI_BEGIN: &str = "# >>> kolux-rs status hooks (written by Kolux RS; Kolux takes this block out when its hooks go) >>>";
-const KIMI_BEGIN_JOINED: &str = "# >>> kolux-rs status hooks (written by Kolux RS; joined) >>>";
+const KIMI_BEGIN: &str = "# >>> kolux-rs status hooks (written by Kolux; Kolux takes this block out when its hooks go) >>>";
+const KIMI_BEGIN_JOINED: &str = "# >>> kolux-rs status hooks (written by Kolux; joined) >>>";
 const KIMI_END: &str = "# <<< kolux-rs status hooks <<<";
 const MEMORY_CAP: usize = 256;
 

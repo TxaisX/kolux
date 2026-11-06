@@ -1,6 +1,6 @@
 # Glossary
 
-Kolux RS uses a few words in a specific way. This page is the short version. The user guide has the full behaviour behind each one.
+Kolux uses a few words in a specific way. This page is the short version. The user guide has the full behaviour behind each one.
 
 ## Work and isolation
 

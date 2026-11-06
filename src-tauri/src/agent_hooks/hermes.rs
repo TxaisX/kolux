@@ -94,7 +94,7 @@ fn block(indent: &str, body: &[String], nl: &str, joined: bool) -> String {
     if joined {
         out.push_str(nl);
     }
-    out.push_str(&format!("{indent}{BEGIN}written by Kolux RS; taken out when its hooks go; edits inside are refused; sum {}{}) >>>{nl}", sum(&refs), if joined { "; joined" } else { "" }));
+    out.push_str(&format!("{indent}{BEGIN}written by Kolux; taken out when its hooks go; edits inside are refused; sum {}{}) >>>{nl}", sum(&refs), if joined { "; joined" } else { "" }));
     for l in body {
         out.push_str(l);
         out.push_str(nl);

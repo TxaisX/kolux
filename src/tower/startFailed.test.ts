@@ -21,9 +21,9 @@ const fakePage = () => {
 
 describe("FIX-5 a failed start", () => {
   it("names the error's first line, never a stack, and has a plain line when there is nothing to say", () => {
-    expect(startFailureText(new Error("Failed to fetch dynamically imported module\n    at x (y.js:1:1)"))).toBe("Kolux RS could not start: Failed to fetch dynamically imported module. Close it and open it again.");
+    expect(startFailureText(new Error("Failed to fetch dynamically imported module\n    at x (y.js:1:1)"))).toBe("Kolux could not start: Failed to fetch dynamically imported module. Close it and open it again.");
     expect(startFailureText("boom")).toContain("boom");
-    expect(startFailureText({})).toBe("Kolux RS could not start. Close it and open it again.");
+    expect(startFailureText({})).toBe("Kolux could not start. Close it and open it again.");
     expect(startFailureText(new Error("x".repeat(500))).length).toBeLessThan(300);
   });
 

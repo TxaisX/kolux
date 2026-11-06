@@ -1,5 +1,5 @@
 // SET-042 / SET-060 / T-037 (rest): ending every terminal session in one go from the Resource Manager,
-// and the "restart the terminal service" offer. Kolux RS runs its terminals inside the app (no separate
+// and the "restart the terminal service" offer. Kolux runs its terminals inside the app (no separate
 // service), so both end every session that existed at the click; one opened meanwhile survives, and
 // success is reported once a fresh read lists none of them. The words differ: End all keeps the
 // terminals' home ready for new ones, Restart says every pane is killed and cannot be undone.

@@ -211,7 +211,7 @@ pub fn spec(os: Os, s: &MenuState) -> Vec<Node> {
     let mut help = vec![item("help.explore", "Explore Kolux"), item("help.gettingStarted", "Getting Started"), item("help.reportCrash", "Report Crash")];
     if os != Os::Mac {
         // VIEW-106: About is the app's own panel (Safe Graphics Mode, GPU status), opened by the page; macOS keeps the stock About in its app menu.
-        help.extend([Node::Sep, item("help.about", "About Kolux RS"), item("help.checkUpdates", "Check for Updates")]);
+        help.extend([Node::Sep, item("help.about", "About Kolux"), item("help.checkUpdates", "Check for Updates")]);
     }
     bar.push(Node::Sub { label: "Help", items: help });
     bar

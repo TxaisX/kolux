@@ -9,7 +9,7 @@ type Page = { getElementById(id: string): Node_ | null; createElement(tag: strin
 export function startFailureText(error: unknown): string {
   const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   const one = raw.split(/\r?\n/)[0].trim().slice(0, 200);
-  return one ? `Kolux RS could not start: ${one}. Close it and open it again.` : "Kolux RS could not start. Close it and open it again.";
+  return one ? `Kolux could not start: ${one}. Close it and open it again.` : "Kolux could not start. Close it and open it again.";
 }
 
 /** Writes the message into the page's root and shows the window. Returns the message.

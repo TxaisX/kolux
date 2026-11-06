@@ -80,7 +80,7 @@ try {
     const n = await app.evalJs(`(() => {
       document.querySelector("#t643-notice")?.remove();
       const d = document.createElement("div"); d.id = "t643-notice"; d.className = "upd-pop upd-fixed"; d.setAttribute("role", "status");
-      d.innerHTML = '<span class="upd-pop-text">A new Kolux RS version is out on GitHub. <span class="upd-pop-ver">Version 0.1.6.</span></span><span class="upd-pop-actions"><button type="button" class="btn">Later</button><button type="button" class="btn primary">Update now</button></span>';
+      d.innerHTML = '<span class="upd-pop-text">A new Kolux version is out on GitHub. <span class="upd-pop-ver">Version 0.1.6.</span></span><span class="upd-pop-actions"><button type="button" class="btn">Later</button><button type="button" class="btn primary">Update now</button></span>';
       document.body.appendChild(d);
       const r = d.getBoundingClientRect(); const kids = [...d.querySelectorAll("*")].map((e) => e.getBoundingClientRect());
       return { position: getComputedStyle(d).position, left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), inner: innerWidth, innerH: innerHeight,

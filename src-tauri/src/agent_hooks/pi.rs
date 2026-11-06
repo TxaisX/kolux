@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 
 pub const SCRIPT: &str = "pi.cmd";
 /// The line that marks the extension as Kolux's own.
-pub const MARK_LINE: &str = "// Kolux RS status extension for Pi. Written by Kolux RS; edits are overwritten.";
+pub const MARK_LINE: &str = "// Kolux status extension for Pi. Written by Kolux; edits are overwritten.";
 /// STAT-021: the Pi events the extension reports, by Pi's own names.
 pub const EVENTS: [&str; 7] = ["session_start", "before_agent_start", "agent_start", "tool_execution_start", "tool_execution_end", "agent_settled", "session_shutdown"];
 

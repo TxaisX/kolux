@@ -27,8 +27,8 @@ export default function AboutPanel() {
   return (
     <>
       <div className="menu-backdrop" onMouseDown={() => setOpen(false)} />
-      <div className="menu about-panel" role="dialog" aria-label="About Kolux RS" onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
-        <h2 className="conn-name">About Kolux RS</h2>
+      <div className="menu about-panel" role="dialog" aria-label="About Kolux" onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
+        <h2 className="conn-name">About Kolux</h2>
         <dl className="about-rows">
           {aboutRows(facts).map((r) => (
             <div key={r.label} className="about-row">

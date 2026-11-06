@@ -38,7 +38,7 @@ describe("release notes (APP-059)", () => {
   });
   it("the manifest is the updater's signed JSON with the GitHub download address", () => {
     const m = manifest("0.1.1", "- x", "sig", downloadUrl("0.1.1"), new Date("2026-10-09T00:00:00Z"));
-    expect(m.platforms["windows-x86_64"].url).toBe("https://github.com/TxaisX/kolux-rs/releases/download/v0.1.1/Kolux.RS_0.1.1_x64-setup.exe");
+    expect(m.platforms["windows-x86_64"].url).toBe("https://github.com/TxaisX/kolux/releases/download/v0.1.1/Kolux.RS_0.1.1_x64-setup.exe");
     expect(m.pub_date).toBe("2026-10-09T00:00:00.000Z");
   });
 });

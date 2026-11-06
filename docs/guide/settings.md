@@ -199,7 +199,7 @@ Besides Claude Code and Codex, Kolux can install status hooks for Gemini CLI, An
 |---|---|---|
 | Gemini CLI | `.gemini\settings.json` | A Kolux hook added under four events: `BeforeAgent`, `AfterAgent`, `BeforeTool` and `AfterTool`. Your own hooks stay |
 | Antigravity | `.gemini\config\hooks.json` | A bundle (a named set of hooks) called `kolux-rs`, with entries for `PreInvocation`, `PreToolUse`, `PostToolUse`, `PostInvocation` and `Stop` |
-| Amp | `.config\amp\plugins\kolux-rs.js` | A plugin file (a small add-on Amp loads), written whole by Kolux. Its first line says it was written by Kolux RS |
+| Amp | `.config\amp\plugins\kolux-rs.js` | A plugin file (a small add-on Amp loads), written whole by Kolux. Its first line says it was written by Kolux |
 
 Details that matter when you look at these files:
 

@@ -1,6 +1,6 @@
 //! T-293 (APP-030): an update whose Windows signature does not match is stopped, with no bypass.
 //!
-//! The minisign check in `update.rs` proves a download came from Kolux RS's release job. This adds
+//! The minisign check in `update.rs` proves a download came from Kolux's release job. This adds
 //! the Windows publisher check on top: before a downloaded installer is kept as "ready", its
 //! Authenticode signature is read with Windows' own `Get-AuthenticodeSignature` (Windows
 //! PowerShell from the system folder, never one found on PATH) and compared with the running
@@ -114,11 +114,11 @@ pub fn publisher_name(subject: &str) -> String {
 }
 
 fn stop(why: String) -> Verdict {
-    Verdict::Stop(format!("Kolux RS refused this update: {why} It will not be offered again. Your current version keeps working."))
+    Verdict::Stop(format!("Kolux refused this update: {why} It will not be offered again. Your current version keeps working."))
 }
 
 fn retry(why: String) -> Verdict {
-    Verdict::Retry(format!("Kolux RS did not install this update: {why} It will try again next time. Your current version keeps working."))
+    Verdict::Retry(format!("Kolux did not install this update: {why} It will try again next time. Your current version keeps working."))
 }
 
 /// The decision: may this installer replace the running copy? `signed_build` is `SIGNED_BUILD`.
@@ -132,7 +132,7 @@ pub fn decide(running: &SignState, installer: &SignState, pinned: Option<&str>, 
         (None, SignState::Signed { subject, .. }) => Some(subject.clone()),
         (None, SignState::Unsigned) => None,
         (None, SignState::Broken(s)) => {
-            return retry(format!("this copy's own Windows signature is damaged ({s}), so no publisher can be trusted. Reinstall Kolux RS from its releases page."));
+            return retry(format!("this copy's own Windows signature is damaged ({s}), so no publisher can be trusted. Reinstall Kolux from its releases page."));
         }
         (None, SignState::Unknown(why)) if signed_build => {
             return retry(format!("this copy's own Windows signature could not be checked ({why})."));
@@ -146,11 +146,11 @@ pub fn decide(running: &SignState, installer: &SignState, pinned: Option<&str>, 
     match (expected, installer) {
         (Some(want), SignState::Signed { subject, .. }) if same_publisher(&want, subject) => Verdict::Install,
         (Some(want), SignState::Signed { subject, .. }) => stop(format!(
-            "the installer is signed by {} but Kolux RS is published by {}.",
+            "the installer is signed by {} but Kolux is published by {}.",
             publisher_name(subject),
             publisher_name(&want)
         )),
-        (Some(want), SignState::Unsigned) => stop(format!("the installer is not signed, but Kolux RS is signed by {}.", publisher_name(&want))),
+        (Some(want), SignState::Unsigned) => stop(format!("the installer is not signed, but Kolux is signed by {}.", publisher_name(&want))),
         (None, SignState::Signed { .. }) | (None, SignState::Unsigned) => Verdict::Install,
         (_, SignState::Broken(_) | SignState::Unknown(_)) => unreachable!("handled above"),
     }
@@ -195,9 +195,9 @@ pub fn decide_pinned(running: &SignState, installer: &SignState, pinned: Option<
         SignState::Signed { issuer, .. } if same_publisher(want, issuer) => Verdict::Install,
         SignState::Signed { issuer, .. } => {
             let got = if issuer.trim().is_empty() { "no named authority".to_string() } else { publisher_name(issuer) };
-            stop(format!("the installer's certificate was issued by {got} but Kolux RS's is issued by {}.", publisher_name(want)))
+            stop(format!("the installer's certificate was issued by {got} but Kolux's is issued by {}.", publisher_name(want)))
         }
-        _ => stop(format!("the installer is not signed, but Kolux RS's certificate is issued by {}.", publisher_name(want))),
+        _ => stop(format!("the installer is not signed, but Kolux's certificate is issued by {}.", publisher_name(want))),
     }
 }
 

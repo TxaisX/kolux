@@ -96,8 +96,8 @@ describe("update card (APP-026)", () => {
 describe("error wording", () => {
   it("turns the updater's words into a plain sentence", async () => {
     const { plainError } = await import("./card");
-    expect(plainError("error sending request for url (http://127.0.0.1:18790/latest.json)")).toBe("Kolux RS could not reach the update server.");
-    expect(plainError("The update check got no answer within 45 seconds.")).toBe("Kolux RS could not reach the update server.");
+    expect(plainError("error sending request for url (http://127.0.0.1:18790/latest.json)")).toBe("Kolux could not reach the update server.");
+    expect(plainError("The update check got no answer within 45 seconds.")).toBe("Kolux could not reach the update server.");
     expect(plainError("signature verification failed")).toMatch(/signature did not match/);
     expect(plainError("something odd")).toBe("something odd");
   });
@@ -187,9 +187,9 @@ describe("status bar item (VIEW-100)", () => {
 
   it("T-293 (APP-030): a refused installer shows a security stop with no install or retry button", () => {
     let s = run(initialCard(null, true), { type: "checkStart", requested: false }, { type: "checkDone", requested: false, found: info("0.2.0") }, { type: "downloadStart", info: info("0.2.0") });
-    s = run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:refused|Kolux RS refused this update: signed by Mallory.", offline: false });
+    s = run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:refused|Kolux refused this update: signed by Mallory.", offline: false });
     expect(s.shown && !s.collapsed).toBe(true);
-    expect(s.phase).toMatchObject({ kind: "error", retry: "none", security: true, message: "Kolux RS refused this update: signed by Mallory." });
+    expect(s.phase).toMatchObject({ kind: "error", retry: "none", security: true, message: "Kolux refused this update: signed by Mallory." });
     expect(mainAction(s.phase)).toBe("close");
     expect(barItem(s.phase)).toMatchObject({ tone: "error", text: "Update refused" });
     expect(s.popup).toBeNull();
@@ -197,7 +197,7 @@ describe("status bar item (VIEW-100)", () => {
 
   it("FIX-2 AFTER 5: the stop card closes with a Close button, not OK", () => {
     let s = run(initialCard(null, true), { type: "downloadStart", info: info("0.2.0") });
-    s = run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:refused|Kolux RS refused this update: signed by Mallory.", offline: false });
+    s = run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:refused|Kolux refused this update: signed by Mallory.", offline: false });
     expect(actionLabel(s.phase)).toBe("Close");
     expect(actionLabel({ kind: "upToDate" })).toBe("OK");
     expect(actionLabel(run(s, { type: "dismiss" }).phase)).toBeNull();
@@ -214,10 +214,10 @@ describe("status bar item (VIEW-100)", () => {
   });
 
   it("T-199 (APP-031): a half-published release is calm, silent on a quiet check, and a protocol error offers compatibility mode", () => {
-    const quiet = "update:quiet|Kolux RS 0.2.0 is still being published. Kolux RS will look again soon.";
+    const quiet = "update:quiet|Kolux 0.2.0 is still being published. Kolux will look again soon.";
     expect(run(initialCard(null, true), { type: "checkFailed", requested: false, message: quiet, offline: false }).shown).toBe(false);
     let s = run(initialCard(null, true), { type: "checkStart", requested: true }, { type: "checkFailed", requested: true, message: quiet, offline: false });
-    expect(s.phase).toMatchObject({ kind: "error", calm: true, retry: "none", message: "Kolux RS 0.2.0 is still being published. Kolux RS will look again soon." });
+    expect(s.phase).toMatchObject({ kind: "error", calm: true, retry: "none", message: "Kolux 0.2.0 is still being published. Kolux will look again soon." });
     expect(barItem(s.phase)).toBeNull();
     expect(mainAction(s.phase)).toBeNull();
     s = run(initialCard(null, true), { type: "checkStart", requested: false }, { type: "downloadStart", info: info("0.2.0") }, { type: "downloadFailed", info: info("0.2.0"), message: quiet, offline: false });
@@ -238,7 +238,7 @@ describe("T-600: the card never opens itself or takes the user's place (F02-sett
     expect(s.requested).toBe(false);
     s = run(s, { type: "downloadFailed", info: info("0.2.0"), message: "error sending request", offline: false });
     expect(s).toMatchObject({ shown: true, collapsed: false, requested: false }); // download errors bring the card up (APP-026)
-    expect(run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:refused|Kolux RS refused this update: signed by Mallory.", offline: false })).toMatchObject({ shown: true, requested: false });
+    expect(run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:refused|Kolux refused this update: signed by Mallory.", offline: false })).toMatchObject({ shown: true, requested: false });
     expect(run(s, { type: "downloadFailed", info: info("0.2.0"), message: "update:compat|error sending request", offline: false })).toMatchObject({ shown: true, requested: false });
     // A quiet check after the user's own is not the user's either.
     s = run(initialCard(null, true), { type: "checkStart", requested: true }, { type: "checkDone", requested: true, found: info("0.2.0") }, { type: "checkStart", requested: false });

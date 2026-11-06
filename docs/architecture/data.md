@@ -1,6 +1,6 @@
 # Data and storage
 
-Kolux RS keeps everything on the user's machine. There is no account, no sync service, and no server-side store. This page describes what is written, where it lives, and how it survives a crash.
+Kolux keeps everything on the user's machine. There is no account, no sync service, and no server-side store. This page describes what is written, where it lives, and how it survives a crash.
 
 ## The profile folder
 

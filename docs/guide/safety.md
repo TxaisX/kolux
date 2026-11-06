@@ -102,7 +102,7 @@ When Kolux is closed or does not answer in time, the Gemini and Antigravity scri
 
 - **A backup before the first change.** Before Kolux first changes Gemini CLI's `settings.json` or Antigravity's `hooks.json`, it copies the file beside itself with `.bak-kolux` added to its name. A copy already there is never replaced. A file that did not exist has nothing to copy.
 - **Switching hooks off puts it back.** If what remains matches the backup, Kolux writes the backup's own bytes, so the file is byte for byte what it was. If you changed the file in the meantime, Kolux takes out only its own entries and leaves yours.
-- **Amp is simpler.** The plugin is a file Kolux owns outright, so there is no backup; switching hooks off deletes it. Kolux only deletes or replaces a file whose first line says Kolux RS wrote it. A file of yours with the same name is left untouched.
+- **Amp is simpler.** The plugin is a file Kolux owns outright, so there is no backup; switching hooks off deletes it. Kolux only deletes or replaces a file whose first line says Kolux wrote it. A file of yours with the same name is left untouched.
 - **A file Kolux does not understand is left alone.** If a settings file is not valid JSON, or is not an object, Kolux refuses to edit it and says why. In Gemini CLI's file it also refuses a `hooks` value that is not an object, or an event (such as `BeforeTool`) whose value is not a list. In Antigravity's file it also refuses a `kolux-rs` bundle that is not Kolux's.
 - **Your choice on the bundle stays.** An Antigravity `kolux-rs` bundle set to `"enabled": false` stays off, and Kolux reports it as "disabled".
 - **If the backup is damaged,** Kolux stops and installs nothing rather than trust it.

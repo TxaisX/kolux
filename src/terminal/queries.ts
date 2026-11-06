@@ -3,7 +3,7 @@
 //   ("VT101 with no options", as Microsoft's public "Console Virtual Terminal Sequences" page documents),
 //   so a program behind ConPTY sees the terminal it expects; elsewhere xterm's default answer goes out.
 // - Terminal version (XTVERSION, CSI > q / CSI > 0 q, per the public xterm control sequences): answered
-//   with DCS > | Kolux RS ST. Secondary device attributes (DA2, CSI > c) keep xterm's default answer.
+//   with DCS > | Kolux ST. Secondary device attributes (DA2, CSI > c) keep xterm's default answer.
 // - A hidden Grok terminal holds back only the version answers (XTVERSION and DA2); every other query
 //   answer still goes out.
 // - Dark-or-light: the palette's own background brightness decides, not the app's light or dark mode
@@ -13,7 +13,7 @@ type Params = (number | number[])[];
 type Parser = { registerCsiHandler(id: { prefix?: string; final: string }, cb: (p: Params) => boolean): { dispose(): void } };
 
 export const DA1_WINDOWS = "\x1b[?1;0c";
-export const XTVERSION_REPLY = "\x1bP>|Kolux RS\x1b\\";
+export const XTVERSION_REPLY = "\x1bP>|Kolux\x1b\\";
 
 const noArgOrZero = (p: Params) => p.length === 0 || (p.length === 1 && (p[0] === 0 || (Array.isArray(p[0]) && p[0].length === 0)));
 

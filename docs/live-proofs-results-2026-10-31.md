@@ -5,7 +5,7 @@ time: the previous cycles were run by agents on a cloud machine that could not t
 every cycle ended with "the 20 open P0 cards need a run on your Windows PC". This run used that PC.
 
 How it was run: `scripts/prove/live-installed.mjs` launches the **installed** release build
-(0.1.2) under a throwaway home, so a "profile that has never run Kolux RS" is real without
+(0.1.2) under a throwaway home, so a "profile that has never run Kolux" is real without
 uninstalling anything, and drives its own WebView2 over the debugging port. Named checks live in
 `scripts/prove/live-checks.mjs`. Raw evidence: `evidence/live-installed-2026-10-31.txt`.
 
@@ -24,12 +24,12 @@ uninstalling anything, and drives its own WebView2 over the debugging port. Name
 Attempted on 2026-10-31 with 0.1.3 installed: running the 0.1.2 installer with `/S` over 0.1.3 does
 **not** install — no setup process is left, no error is shown, and the installed version stays 0.1.3
 (the app was closed first, so it was not a running-copy refusal). The run list's own setup line says
-"uninstall Kolux RS first if you skipped D-1", and that is the reason: an NSIS install cannot step down
+"uninstall Kolux first if you skipped D-1", and that is the reason: an NSIS install cannot step down
 a version in place.
 
 So D-1, D-2 and D-3 are one sequence, not three:
 
-1. **D-1** uninstall 0.1.3 (`/S`), then check the saved Path lost exactly the Kolux RS entry and the app
+1. **D-1** uninstall 0.1.3 (`/S`), then check the saved Path lost exactly the Kolux entry and the app
    is gone;
 2. install **0.1.2**, start it, wait for the "is ready / Restart to update" line (the check runs at
    start-up), then quit the ordinary way;

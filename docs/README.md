@@ -1,10 +1,10 @@
-# Kolux RS documentation
+# Kolux documentation
 
-This folder is the public documentation for Kolux RS. It has two audiences: people using the app, and people who want to understand how it is built.
+This folder is the public documentation for Kolux. It has two audiences: people using the app, and people who want to understand how it is built.
 
 If you are new, read [Getting started](guide/getting-started.md). If you want to know what works today, read [Status](STATUS.md).
 
-## Use Kolux RS
+## Use Kolux
 
 | Page | What it covers |
 |---|---|

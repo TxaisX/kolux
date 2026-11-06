@@ -58,7 +58,7 @@ export const FLOAT_BUTTON = ".float-btn";
 export const FLOAT_PANEL = ".float-panel";
 export const SIDEBAR_SHOW = "button[title='Show sidebar']";
 
-/** ONB-033, the surfaces Kolux RS has today (the grid tour starts from the first run's end, T-208-b). */
+/** ONB-033, the surfaces Kolux has today (the grid tour starts from the first run's end, T-208-b). */
 export const TOURS: Tour[] = [
   {
     id: "tasks",

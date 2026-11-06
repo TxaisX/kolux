@@ -1,6 +1,6 @@
 # Security model
 
-Kolux RS protects its own files, its own commands, and its own update path. It does not contain the agents it runs. This page states the boundaries plainly, including the parts that are weaker than they look.
+Kolux protects its own files, its own commands, and its own update path. It does not contain the agents it runs. This page states the boundaries plainly, including the parts that are weaker than they look.
 
 The short version:
 
@@ -117,7 +117,7 @@ There is no analytics, telemetry, or crash upload endpoint. WebView2 performs it
 
 ## Update trust
 
-The app checks `https://github.com/TxaisX/kolux-rs/releases/latest/download/latest.json` (`src-tauri/src/update.rs:24`). The public key is compiled into the build from `KOLUX_RS_RELEASE_PUBKEY`; a release build without a key refuses to update (`src-tauri/src/update.rs:25-31`, `:53-76`).
+The app checks `https://github.com/TxaisX/kolux/releases/latest/download/latest.json` (`src-tauri/src/update.rs:24`). The public key is compiled into the build from `KOLUX_RS_RELEASE_PUBKEY`; a release build without a key refuses to update (`src-tauri/src/update.rs:25-31`, `:53-76`).
 
 The update path verifies:
 

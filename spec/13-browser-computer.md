@@ -73,10 +73,10 @@ Rules: searches go to the chosen engine, one of Google, Duck Duck Go, Bing or Ka
   or reserved characters are turned into valid file addresses; Mod+L reaches the bar even while
   focus is inside the page, and only in the focused split; on a previewed document, whose bar is hidden, Mod+L presses the
   chip instead, so it opens for typing (T-677, DT-C113).
-  (Kolux RS, T-012-b-fix: inside the page a script of ours takes the chord and hands it to the
+  (Kolux, T-012-b-fix: inside the page a script of ours takes the chord and hands it to the
   app as a cancelled `kolux-chord:` navigation; the split the page sits in becomes the focused
   one as the chord arrives.)
-  (Kolux RS: a pasted file path is shown through the preview chip, BROW-039; tabs never load file: because they carry the IPC script.)
+  (Kolux: a pasted file path is shown through the preview chip, BROW-039; tabs never load file: because they carry the IPC script.)
 Acceptance:
   - [x] Type rust ownership and press Enter → results from the configured search engine. (cards; evidence/cards-BROW-003.txt)
   - [x] Type example.com → the HTTPS site loads; type localhost:3000 → it loads over HTTP. (cards; evidence/cards-BROW-003.txt)
@@ -100,7 +100,7 @@ Rules: only the toolbar button halts a load in progress, while the shortcut and 
   offers Stop rather than Retry; the button's label always names what a press will do; hard reload skips the
   cache; when the page will not reload, the pane's notice says so (the button and the shortcut both do); the Back, Forward, Reload and
   Close tab tooltips show the chord the keymap holds for them, and none when it is unbound (T-677, DT-C113).
-  (Kolux RS, T-012-b-fix: Alt+Left / Alt+Right, Mod+R and the mouse's back and forward buttons
+  (Kolux, T-012-b-fix: Alt+Left / Alt+Right, Mod+R and the mouse's back and forward buttons
   pressed inside the page are taken from the web view and run by the toolbar, so its history
   never drifts from the page's; a page's own back or forward to a neighbouring entry moves the
   toolbar's cursor too.)
@@ -123,7 +123,7 @@ Rules: the endpoint responds only under a secret path, and the bare host and por
   request that names any host other than this computer is refused, which defeats DNS rebinding; a
   request carrying a web origin (anything sent by a web page) is refused even when it knows the
   secret path; the endpoint's self-description is likewise hidden behind that secret path.
-  (Kolux RS, T-063: agents reach page control through the `kolux` CLI, so the endpoints fenced are
+  (Kolux, T-063: agents reach page control through the `kolux` CLI, so the endpoints fenced are
   the CLI line port and the hooks HTTP endpoint, both loopback-only; the per-start random token in
   a header or the request line stands in for the secret path (DT-C24); a request with a web page's
   headers, a foreign Host or no token gets 404 and an empty body, an HTTP line on the CLI port gets

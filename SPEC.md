@@ -1,6 +1,6 @@
 # SPEC
 
-The front door of the Kolux RS specification. Read this file every pass, pick the one area file the
+The front door of the Kolux specification. Read this file every pass, pick the one area file the
 task needs from the table in part 2, and open only that file.
 
 ## 0. Owner changes after 0.15.0
@@ -20,7 +20,7 @@ sees, the rules that hold, and how to check each one. It was written on 2026-10-
 team that read the old app, its tests, its registries and its project records, then rewrote
 everything as behaviour in fresh words; each file passed the automated firewall check before it
 reached this repo, so no code, identifiers, file names or copied sentences cross over. The clean
-room builds Kolux RS from this index, the 20 area files in the spec folder, and the companions
+room builds Kolux from this index, the 20 area files in the spec folder, and the companions
 `PRIORITIES.md` (build order), `COMPAT.md` (contracts kept exactly) and `DECISIONS.md` (what is
 hidden, retired or dropped, and its default). Read one area file per pass, never the whole set: the
 files run from about 600 to 1,900 lines, so search for the card id heading you need and read around
@@ -83,7 +83,7 @@ the full cards above already say. A card looks like this:
 | User does | The action, in the user's terms. |
 | User sees | The visible result. |
 | Rules | What must always hold: limits, edge cases, ordering, what must never happen. Clauses are separated by semicolons. |
-| Acceptance | A checklist, one "action → expected result" line per box. A card is done when every box passes in Kolux RS. |
+| Acceptance | A checklist, one "action → expected result" line per box. A card is done when every box passes in Kolux. |
 | Compat | A dash, or a contract the rebuild keeps exactly whatever the card's tier: a `kolux` command word or flag, a hook event, a keybinding command id, a setting the importer carries. Every Compat line points into `COMPAT.md`, which holds the full surface and wins on spelling. On 29 cards (19 in area 03, 8 in area 05, 2 in area 17) the Compat line says a keybinding command id was held back; take the exact id from `COMPAT.md` section 4.3. Wherever a card calls a name an "allowlist candidate", the exact spelling is likewise in `COMPAT.md`: keybinding ids in 4.3, environment variables in 5.5, kolux.yaml keys in 5.6. |
 | Decision | Only on H and D cards (and one X card). Four forms: H default skip, H default build (with the reason the live default path needs it), default cut with a reason and "Revive via" `DECISIONS.md`, and X replace with the owner's own. Every Decision line is mirrored in `DECISIONS.md`; when the two differ, `DECISIONS.md` wins. |
 | Source | An opaque key of the form D-nn-nnn into the dirty room's legal record, which `LOOP.md` section 0 forbids the clean room to open. Treat it as a label; never look it up. Its leading letter says nothing about the tier. |

@@ -60,12 +60,12 @@ test("rule 4: Check for updates gives the card the keyboard; a later change of p
   feed.holdDownload = true;
   await start();
   await sendWindow("kolux-check-updates"); // the user's click
-  expect(cardTitle(doc.body)).toBe("Downloading Kolux RS 0.2.0");
+  expect(cardTitle(doc.body)).toBe("Downloading Kolux 0.2.0");
   expect(keys()).toBe("card");
   terminal.focus(); // back to typing to an agent
   feed.release?.(); // the download finishes
   await pump(0);
-  expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+  expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
   expect(keys()).toBe("terminal");
   await enter();
   expect(sent("update_restart")).toHaveLength(0);
@@ -75,7 +75,7 @@ test("Trigger A: after Check and a collapse, the half-hourly check neither reope
   feed.latest = info("0.2.0");
   await start();
   await sendWindow("kolux-check-updates");
-  expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+  expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
   await press("Escape"); // collapse
   expect(collapsed()).toBe(true);
   terminal.focus();
@@ -95,11 +95,11 @@ test("Trigger B and rule 5: a background download error brings the card up witho
   feed.latest = info("0.2.0");
   fail.download = true;
   await start();
-  expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 did not download"); // download errors bring the card up (APP-026)
+  expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 did not download"); // download errors bring the card up (APP-026)
   expect(keys()).toBe("terminal");
   fail.download = false;
   await pump(31 * MIN); // the next quiet check gets it ready on the card that opened itself
-  expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+  expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
   expect(keys()).toBe("terminal");
   card(doc.body)!.focus(); // even with the keyboard on it (a click on the card), a bare Enter does not restart
   await press("Enter");
@@ -116,7 +116,7 @@ test("rule 5 positive: on a card the user opened with Check for updates, Enter r
   feed.latest = info("0.2.0");
   await start();
   await sendWindow("kolux-check-updates");
-  expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+  expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
   await enter();
   expect(sent("update_restart")).toHaveLength(0); // Enter asks first
   await click(root, withText(doc.body, "button", "Restart now")[0]);
@@ -132,6 +132,6 @@ test("rule 4: a status-bar click with nothing to show leaves no claim on the key
   terminal.focus();
   feed.status.lastCheckAt = 0;
   await pump(31 * MIN); // a quiet check, then a download error brings the card up by itself
-  expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 did not download");
+  expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 did not download");
   expect(keys()).toBe("terminal");
 });

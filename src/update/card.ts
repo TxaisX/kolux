@@ -97,7 +97,7 @@ export function problemPhase(raw: string, info: UpdateInfo | null): Phase | null
 /** The updater's own words, turned into a sentence a user can act on. */
 export function plainError(raw: string): string {
   if (/signature/i.test(raw)) return "The download's signature did not match, so it was thrown away.";
-  if (/sending request|connect|dns|resolve|network|timed out|timeout|no answer/i.test(raw)) return "Kolux RS could not reach the update server.";
+  if (/sending request|connect|dns|resolve|network|timed out|timeout|no answer/i.test(raw)) return "Kolux could not reach the update server.";
   if (/status code|404|not found/i.test(raw)) return "The update server did not have the release.";
   return raw;
 }
@@ -170,7 +170,7 @@ export function cardReducer(s: CardState, a: Action): CardState {
       // T-293 (APP-030): a refused installer is a security stop: no Try again, no install anyway.
       if (a.message.startsWith(REFUSED_MARK)) {
         const message = a.message.slice(REFUSED_MARK.length);
-        const next = "There is no way to install this download. If you did not expect this, get Kolux RS from its releases page.";
+        const next = "There is no way to install this download. If you did not expect this, get Kolux from its releases page.";
         return { ...s, shown: true, collapsed: false, popup: null, phase: { kind: "error", message, next, info: a.info, retry: "none", security: true } };
       }
       // T-199 (APP-031): an installer not uploaded yet says nothing after a quiet check.
@@ -192,7 +192,7 @@ export function cardReducer(s: CardState, a: Action): CardState {
       // the downloaded update stays ready for another try.
       const info = s.phase.kind === "ready" || (s.phase.kind === "error" && s.phase.retry === "restart") ? s.phase.info : null;
       if (!info) return { ...s, popup: null, phase: s.phase.kind === "ready" ? { kind: "idle" } : s.phase };
-      const next = "Kolux RS stayed open; your terminals were ended for the install and can be reopened. Fix the cause, then press Restart to update again.";
+      const next = "Kolux stayed open; your terminals were ended for the install and can be reopened. Fix the cause, then press Restart to update again.";
       return { ...s, popup: null, requested: true, shown: true, collapsed: false, phase: { kind: "error", message: a.message, next, info, retry: "restart" } };
     }
     case "faded":
@@ -272,13 +272,13 @@ export function barItem(p: Phase): BarItem | null {
   const title = "Click to show the update card";
   switch (p.kind) {
     case "available":
-      return { tone: "info", text: `Update ${p.info.version}`, title: `Kolux RS ${p.info.version} is available. ${title}` };
+      return { tone: "info", text: `Update ${p.info.version}`, title: `Kolux ${p.info.version} is available. ${title}` };
     case "downloading": {
       const pct = p.total ? ` · ${Math.min(100, Math.floor((p.received / p.total) * 100))}%` : "";
-      return { tone: "info", text: `Downloading ${p.info.version}${pct}`, title: `Downloading Kolux RS ${p.info.version}. ${title}` };
+      return { tone: "info", text: `Downloading ${p.info.version}${pct}`, title: `Downloading Kolux ${p.info.version}. ${title}` };
     }
     case "ready":
-      return { tone: "ready", text: "Restart to update", title: `Kolux RS ${p.info.version} is ready to install. ${title}` };
+      return { tone: "ready", text: "Restart to update", title: `Kolux ${p.info.version} is ready to install. ${title}` };
     case "error":
       if (p.calm) return null;
       return { tone: "error", text: p.security ? "Update refused" : "Update failed", title: `${p.message} ${title}` };
@@ -288,7 +288,7 @@ export function barItem(p: Phase): BarItem | null {
 }
 
 /** The tip above the card. Restarting really does close every terminal and agent, so it says so. */
-export const RESTART_TIP = "Restarting to update closes your open terminals and agents. Kolux RS asks before it restarts.";
+export const RESTART_TIP = "Restarting to update closes your open terminals and agents. Kolux asks before it restarts.";
 
 /** What the restart confirmation says: nothing restarts until the user agrees. */
 export const RESTART_ASK = { title: "Restart to update?", body: "Restarting closes every open terminal and agent. Anything still running in them ends. Save what you need first.", confirm: "Restart now" } as const;

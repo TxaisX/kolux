@@ -129,7 +129,7 @@ jobs:
       - name: Upload the installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: kolux-rs-nsis
+          name: kolux-nsis
           path: src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
 

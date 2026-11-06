@@ -39,7 +39,7 @@ pub const MARK_QUIET: &str = "update:quiet|";
 pub const MARK_COMPAT: &str = "update:compat|";
 pub const MARK_STALE: &str = "update:stale";
 /// Where a user can always get the newest installer by hand.
-pub const RELEASES_PAGE: &str = "https://github.com/TxaisX/kolux-rs/releases/latest";
+pub const RELEASES_PAGE: &str = "https://github.com/TxaisX/kolux/releases/latest";
 
 // ---------------------------------------------------------------- APP-028: install attempts
 
@@ -161,13 +161,13 @@ pub fn install_cause(raw: &str) -> String {
     let l = raw.to_lowercase();
     let has = |s: &str| l.contains(s);
     let why = if has("os error 1223") || has("canceled by the user") || has("cancelled by the user") {
-        "Windows asked for permission to run the installer and the request was refused, so Kolux RS stayed open. Press Restart to update again and allow the prompt.".to_string()
+        "Windows asked for permission to run the installer and the request was refused, so Kolux stayed open. Press Restart to update again and allow the prompt.".to_string()
     } else if has("os error 740") || has("requires elevation") {
         "The installer needs administrator permission, which this account could not give. Ask an administrator, or download the installer and run it yourself.".to_string()
     } else if has("os error 5)") || has("access is denied") || has("permission denied") {
         "Windows refused permission to start the installer (access denied). Check that you can write to the Kolux RS folder and your temporary folder, then try again.".to_string()
     } else if has("os error 32") || has("being used by another process") {
-        "A file the installer needs is in use by another program. Close other copies of Kolux RS and programs using its files, then try again.".to_string()
+        "A file the installer needs is in use by another program. Close other copies of Kolux and programs using its files, then try again.".to_string()
     } else if has("os error 112") || has("not enough space") || has("disk full") {
         "There is not enough free disk space to install the update. Free some space, then try again.".to_string()
     } else {

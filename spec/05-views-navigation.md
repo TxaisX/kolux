@@ -71,7 +71,7 @@ Acceptance:
   - [x] Agent waiting on a file-edit approval → line names that approval. (cards; evidence/cards-VIEW-016.txt)
   - [x] Agent idle 12 minutes → line says idle with the duration. (cards; evidence/cards-VIEW-016.txt)
 Compat: —
-  (Kolux RS, T-028-a: built as the chip line of the Board card, `src/board/chip.ts`; the Agents
+  (Kolux, T-028-a: built as the chip line of the Board card, `src/board/chip.ts`; the Agents
   screen reuses it when T-050 lands.)
 Source: D-05-016
 
@@ -83,7 +83,7 @@ User sees: one of a frozen set of words: working, needs you, done, stopped, idle
 Rules: a stale working reading is never shown as working; an unreachable host shows a can't-reach
   word instead of the last known state; a pane with no process yet shows starting; a preset that was
   never launched shows not started.
-  (Kolux RS, T-028-b: the rail row's word is the status vocabulary's word for the same signal the
+  (Kolux, T-028-b: the rail row's word is the status vocabulary's word for the same signal the
   Board chip reads, so a stale working reading shows the vocabulary's stale word and a queued turn
   its queued word, alongside the set above; a process that ends without a done signal reads stopped
   at once; the cannot-reach word has no remote host to show yet, DT-C21.)
@@ -111,7 +111,7 @@ Acceptance:
   - [x] Agent finished → chip shows first line of its last message. (cards; evidence/cards-VIEW-023.txt)
   - [x] Agent writes file A, then file B, then finishes → the card links to file B. (cards; evidence/cards-VIEW-023.txt)
 Compat: —
-  (Kolux RS, T-028-a: built; Setup needed and Can't reach wait for the chooser and remote work;
+  (Kolux, T-028-a: built; Setup needed and Can't reach wait for the chooser and remote work;
   the file link is the file's name with the full path as tooltip until an editor exists.)
 Source: D-05-023
 
@@ -125,7 +125,7 @@ Acceptance:
   - [x] Agent asks to run a command → card shows both buttons; approve → agent proceeds. (cards live; evidence/cards-VIEW-025.txt)
   - [x] Deny on a card → the agent receives the refusal and the card leaves needs-you. (cards live; evidence/cards-VIEW-025.txt)
 Compat: —
-  (Kolux RS, T-028-a: built through `agent_answer`, which types the agent's own keys into its
+  (Kolux, T-028-a: built through `agent_answer`, which types the agent's own keys into its
   terminal: Enter / Esc for Claude Code, y / n for Codex.)
 Source: D-05-025
 
@@ -141,7 +141,7 @@ Acceptance:
   - [x] Agent waiting on approval with unread output → row shows the permission mark. (cards; evidence/cards-VIEW-040.txt)
   - [x] Agent finished 50 minutes ago → age reads 50m; one finished three days ago → 3d. (cards; evidence/cards-VIEW-040.txt)
 Compat: —
-  (Kolux RS, T-029 deferred: waits for the palette, T-098.)
+  (Kolux, T-029 deferred: waits for the palette, T-098.)
 Source: D-05-040
 
 ### VIEW-047 · Jump to the next session that needs you
@@ -167,7 +167,7 @@ Rules: only the weekly window counts; the 5-hour window is ignored; providers th
   ever gets one; a provider shows only while its usage item is ticked in the status-bar item list
   and its agent CLI is installed; hovering a pill shows a countdown to the weekly reset, or says the
   reset time is unknown.
-  (Kolux RS, T-041-a: `src/chrome/TopBar.tsx` hides the pill's container when no provider has a
+  (Kolux, T-041-a: `src/chrome/TopBar.tsx` hides the pill's container when no provider has a
   part to show; the installed list comes from the agent scan; the status-bar item list is T-148.)
 Acceptance:
   - [x] Signed-in Claude with weekly data → a pill with a remaining percentage. (T-041-a, by a posted report)
@@ -181,7 +181,7 @@ User does: looks at the selected session's usage line.
 User sees: a rounded percentage of the plan's 5-hour window and the local time it resets.
 Rules: follows the user's used-or-remaining display preference; never prints a not-a-number value;
   stays blank for a provider without a 5-hour window.
-  (Kolux RS, T-040-b: the line is the Agents rail's footer, "Claude 38% used · resets today 15:00",
+  (Kolux, T-040-b: the line is the Agents rail's footer, "Claude 38% used · resets today 15:00",
   in the reset words the Codex pill uses; a broken provider value reads 0.)
 Acceptance:
   - [x] Claude at 37.6 % used, preference used → shows 38 % and a local reset time. (cards; evidence/cards-VIEW-018.txt)
@@ -271,7 +271,7 @@ Rules: plain shell terminals are never listed; on first open the first agent wit
   is labelled with its task's display name or title, failing that with the task text taken from the
   dispatch prompt, and only as a last resort with the raw prompt; the dispatch boilerplate never
   shows.
-  (Kolux RS, T-050: the rail stands where the worktree sidebar does; the saved agents are the
+  (Kolux, T-050: the rail stands where the worktree sidebar does; the saved agents are the
   switched-on, installed ones from Settings > Agents, in that order; a row reads the task title the
   launcher gave the session, else its folder's name; the task-text and raw-prompt fallbacks for an
   orchestrator session without a title come with T-050-b.)
@@ -294,7 +294,7 @@ Rules: chat shows for supported agents even when the global chat experiment is o
   terminal-grid message bar was removed on 2026-10-05; a live agent detected in the pane decides
   chat or terminal, over what the session was launched as; plain shells and unsupported agents get
   the terminal.
-  (Kolux RS, T-050: the terminal body and the chooser for a not-started session are built; the chat
+  (Kolux, T-050: the terminal body and the chooser for a not-started session are built; the chat
   thread, the composer and the Show terminal switch wait for the transcript and chat tasks, T-050-b,
   so every session shows its terminal until then.)
 Acceptance:
@@ -310,7 +310,7 @@ User does: clicks + on an agent group, or sees the empty state on a fresh profil
 User sees: a new not-yet-started session preset appears under that agent; with no agents an empty
   state invites building one.
 Rules: the preset waits for the user to pick and start it.
-  (Kolux RS, T-050: + adds a chooser pane with that agent already in its seat; the user picks the
+  (Kolux, T-050: + adds a chooser pane with that agent already in its seat; the user picks the
   model and presses Start; the empty state's button opens Settings > Agents.)
 Acceptance:
   - [x] Click + under an agent → a not-started row appears and is selected. (cards; evidence/cards-VIEW-021.txt)
@@ -325,7 +325,7 @@ User sees: one card per terminal pane in tab-group order; panes that were never 
   chooser cards; cards use the saved agent's name.
 Rules: editor and browser tabs never become cards; a background tab's pane is not borrowed into
   another card.
-  (Kolux RS, T-050: the Board's lanes and empty state count terminal panes only; pane headers, on
+  (Kolux, T-050: the Board's lanes and empty state count terminal panes only; pane headers, on
   the Board and in the grid, show the saved agent's name in place of the program word.)
 Acceptance:
   - [x] Two tabs, one split into two panes → three cards in tab order. (cards; evidence/cards-VIEW-024.txt)

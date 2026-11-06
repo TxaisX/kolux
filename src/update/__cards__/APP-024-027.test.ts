@@ -37,7 +37,7 @@ describe("APP-024", () => {
     await pump(1 * MIN + 1000);
     expect(sent("update_check")).toHaveLength(1);
     expect(sent("update_download")).toHaveLength(1); // 25 minutes after the publish, no click anywhere
-    expect(noticeText(doc.body)).toBe("A new Kolux RS version is out on GitHub. Version 0.2.0."); // the one notice (APP-025)
+    expect(noticeText(doc.body)).toBe("A new Kolux version is out on GitHub. Version 0.2.0."); // the one notice (APP-025)
     expect(card(doc.body)).toBeNull(); // quiet: no card
     expect(sent("update_restart")).toHaveLength(0);
   });
@@ -53,7 +53,7 @@ describe("APP-024", () => {
     expect(popup(doc.body)).toBeNull();
     feed.release?.();
     await pump(0);
-    expect(noticeText(doc.body)).toBe("A new Kolux RS version is out on GitHub. Version 0.2.0.");
+    expect(noticeText(doc.body)).toBe("A new Kolux version is out on GitHub. Version 0.2.0.");
   });
 
   test("box 2: an hour with no connection shows nothing; the check runs within a minute of its return", async () => {
@@ -95,13 +95,13 @@ describe("APP-025", () => {
     await start();
     expect(sent("update_download")).toHaveLength(1);
     expect(popup(doc.body)).not.toBeNull();
-    expect(noticeText(doc.body)).toBe("A new Kolux RS version is out on GitHub. Version 0.2.0.");
+    expect(noticeText(doc.body)).toBe("A new Kolux version is out on GitHub. Version 0.2.0.");
     expect(popupButton(doc.body, "Update now")).toBeDefined();
     expect(popupButton(doc.body, "Later")).toBeDefined();
     expect(popup(doc.body)!.attrs["aria-label"]).toBe("Update available");
     expect(card(doc.body)).toBeNull();
     await pump(31 * MIN); // another quiet check finds the same version while the pop-up is open
-    expect(doc.body.textContent.split("A new Kolux RS version is out on GitHub.").length - 1).toBe(1);
+    expect(doc.body.textContent.split("A new Kolux version is out on GitHub.").length - 1).toBe(1);
     await click(root, popupButton(doc.body, "Later"));
     expect(popup(doc.body)).toBeNull();
     await pump(95 * MIN); // three more quiet checks
@@ -154,7 +154,7 @@ describe("APP-025", () => {
     feed.latest = info("0.2.0");
     await start();
     await sendWindow("kolux-check-updates");
-    expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+    expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
     expect(popup(doc.body)).toBeNull();
   });
 });
@@ -166,7 +166,7 @@ describe("APP-026", () => {
     await start();
     await sendWindow("kolux-check-updates"); // what Help and the command palette dispatch (requestUpdateCheck)
     expect(sent("update_check")).toHaveLength(1);
-    expect(cardTitle(doc.body)).toBe("Kolux RS is up to date");
+    expect(cardTitle(doc.body)).toBe("Kolux is up to date");
     await pump(3000);
     expect(card(doc.body)).toBeNull();
   });
@@ -179,7 +179,7 @@ describe("APP-026", () => {
     expect(sent("update_check")).toHaveLength(1);
     feed.releaseCheck?.();
     await pump(0);
-    expect(cardTitle(doc.body)).toBe("Kolux RS is up to date");
+    expect(cardTitle(doc.body)).toBe("Kolux is up to date");
     expect(sent("update_check")).toHaveLength(1);
   });
 
@@ -187,7 +187,7 @@ describe("APP-026", () => {
     feed.latest = info("0.2.0");
     await start();
     await sendWindow("kolux-check-updates");
-    expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+    expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
     await click(root, byTitle(doc.body, "Dismiss"));
     expect(card(doc.body)).toBeNull();
     expect(sent("update_mark").some((c) => c.args.key === "dismissedVersion" && c.args.value === "0.2.0")).toBe(true);
@@ -222,11 +222,11 @@ describe("APP-027", () => {
     feed.holdDownload = true;
     await start();
     await sendWindow("kolux-check-updates");
-    expect(cardTitle(doc.body)).toBe("Downloading Kolux RS 0.2.0");
+    expect(cardTitle(doc.body)).toBe("Downloading Kolux 0.2.0");
     expect(notes(doc.body)).toEqual(five);
     feed.release?.();
     await pump(0);
-    expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+    expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
     expect(notes(doc.body)).toEqual(five);
     feed.latest = null; // a new check begins and finds nothing newer than the app
     feed.holdDownload = false;
@@ -238,7 +238,7 @@ describe("APP-027", () => {
     feed.latest = info("0.2.0", []); // the manifest carried none (or they could not be read)
     await start();
     await sendWindow("kolux-check-updates");
-    expect(cardTitle(doc.body)).toBe("Kolux RS 0.2.0 is ready");
+    expect(cardTitle(doc.body)).toBe("Kolux 0.2.0 is ready");
     expect(notes(doc.body)).toEqual([]);
     await click(root, withText(doc.body, "button", "Restart to update")[0]);
     await click(root, withText(doc.body, "button", "Restart now")[0]);

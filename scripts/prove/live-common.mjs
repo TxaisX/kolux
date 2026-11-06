@@ -253,7 +253,7 @@ export const SHELL = 'section.pane[data-agent="shell"]';
 export function writeStandinClaude(dir, body = []) {
   mkdirSync(dir, { recursive: true });
   const file = join(dir, "claude.cmd");
-  writeFileSync(file, ["@echo off", "echo Kolux RS stand-in for Claude Code (live-v1): banner only", ...body, "ping -n 3600 127.0.0.1 >nul", ""].join("\r\n"));
+  writeFileSync(file, ["@echo off", "echo Kolux stand-in for Claude Code (live-v1): banner only", ...body, "ping -n 3600 127.0.0.1 >nul", ""].join("\r\n"));
   return file;
 }
 

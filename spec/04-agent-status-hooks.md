@@ -109,7 +109,7 @@ User sees: the lead session keeps reading working while any child is busy, lists
   role and model, and raises needs you when a child is waiting for permission.
 Rules: a child's pending permission clears when that teammate goes idle or when a complete roster no
   longer includes it, never because the lead made unrelated progress; rosters have a size cap, a
-  background-task list that arrived cut short is marked as partial (Kolux RS, DT-C6: not built, the
+  background-task list that arrived cut short is marked as partial (Kolux, DT-C6: not built, the
   list carries no such mark), and live children missing from it are kept; each subagent turn is announced at its own Stop with its own text; a teammate going
   idle never ends the lead's working state, even when Kolux holds no stored status for the lead; a
   child already cleared away as gone never comes back as working.
@@ -149,7 +149,7 @@ User sees: after the chosen number of minutes with no terminal output, a single 
 Rules: the default is 10 minutes and 0 switches it off; it fires once per silent spell, any fresh
   output restarts the clock, and leaving the working state cancels it; silence is judged by terminal
   output, not by hook events; rows in the agent dashboard drawer carry a short quiet tag with the
-  silent time, such as quiet 12m or quiet 1h (Kolux RS, T-026-a: the alert is built; the tag
+  silent time, such as quiet 12m or quiet 1h (Kolux, T-026-a: the alert is built; the tag
   waits for the drawer view and reads `Terminals::silence`).
 Acceptance:
   - [x] Set the threshold to 1 minute and stall an agent → one alert after a minute and no more
@@ -179,7 +179,7 @@ Acceptance:
   - [x] Press Down with nothing selected → the first row is selected; Enter → it opens. (cards; evidence/cards-STAT-050.txt)
   - [x] A session finished 40 minutes ago → not listed under done today. (cards; evidence/cards-STAT-050.txt)
 Compat: the Inbox is its own top-level view; its keybinding command id view.inbox ships with no key.
-  (Kolux RS, T-026-c: built; the buttons read Open / Answer and open the terminal pane until the
+  (Kolux, T-026-c: built; the buttons read Open / Answer and open the terminal pane until the
   Code view exists, DT-C8; line counts, the host line and stale rows wait for their feeders.)
 Source: D-04-050
 
@@ -195,7 +195,7 @@ Rules: blocked and waiting both use the permission look; the Agents view adds st
   frames a second with every spinner on screen in step, and holds still when the system asks for
   reduced motion; hovering a status indicator explains it after about 200 ms, and a keyboard focus on it
   explains it at once and is described by it for screen readers (T-739); Escape closes any tip,
-  and that description goes when focus leaves (T-747) (Kolux RS, T-026-b:
+  and that description goes when focus leaves (T-747) (Kolux, T-026-b:
   the vocabulary, glyphs, spinner and hover are built; the background entry lights with T-123,
   no-recent-update with the Inbox or the Agents view, the Agents view's labels with that view).
 Acceptance:
@@ -221,7 +221,7 @@ Acceptance:
         → all open. (cards; evidence/cards-STAT-053.txt)
   - [x] Move keyboard focus to a Thought row and press Space → it opens; press Enter → it closes. (cards live; evidence/cards-STAT-053.txt)
 Compat: —
-  (Kolux RS, T-027 deferred to T-326: the rows need the transcript reader and the Agents screen.)
+  (Kolux, T-027 deferred to T-326: the rows need the transcript reader and the Agents screen.)
 Source: D-04-053
 
 ### STAT-022 · Stopped state says why an agent halted
@@ -236,7 +236,7 @@ Rules: rate-limit failures count as limit; authentication failures, an organisat
   provider error; a failure report with no error attached, or one caused by an interrupt, does not
   make the session stopped; the cause and reset time stay attached while the session is blocked and
   are dropped once it later reaches done; Claude Code and Kimi both report this state.
-  (Kolux RS, T-039-a: only Claude Code reports it, through its StopFailure hook; Kimi and Codex
+  (Kolux, T-039-a: only Claude Code reports it, through its StopFailure hook; Kimi and Codex
   have no failure hook, DT-C13. The reset time is filled by T-039-b from the status line; a
   session boundary also drops the cause. The pane header's tooltip carries the same words.)
 Acceptance:
@@ -254,7 +254,7 @@ User sees: one system notification saying the agent stopped and why, with the re
   it never reads like a finished task.
 Rules: one notification per stop episode, however many failure reports arrive; a normal finish never
   raises it; the 'Agent Stopped' switch controls it and is on by default.
-  (Kolux RS, T-039-a: the switch is settings key `notifyOnStopped`; a second report in the episode
+  (Kolux, T-039-a: the switch is settings key `notifyOnStopped`; a second report in the episode
   leaves the state as it was, so no second note is raised; 'Agent Task Complete' no longer
   covers a stop.)
 Acceptance:
@@ -271,7 +271,7 @@ User sees: Kolux's usage and context numbers refresh from the figures Claude Cod
 Rules: reports without the right token are refused; reports carrying only the context size stay out
   of the rate-limit figures; this is where the context number in the session usage meter on Board
   cards, tabs and the Agents view comes from.
-  (Kolux RS, T-039-b: Kolux's `statusLine` command is a bash line, since Claude Code runs the
+  (Kolux, T-039-b: Kolux's `statusLine` command is a bash line, since Claude Code runs the
   status line through a POSIX shell on Windows too; it saves the report to a temp file, posts it
   through `~/.kolux-rs/agent-hooks/claude-status.cmd` with the hook token and pane identity to
   the endpoint's `/claude-status` route, then runs the status line the user had before Kolux,
@@ -295,7 +295,7 @@ User sees: a notice in the main window, not tucked away in Settings, saying that
   in again, with a 'Sign in again' button.
 Rules: the notice names the account whose sign-in lapsed; the button starts the sign-in flow for
   that account.
-  (Kolux RS, T-039-a: a sign-in stop reported by a Claude pane asks Claude Code once whether the
+  (Kolux, T-039-a: a sign-in stop reported by a Claude pane asks Claude Code once whether the
   active account is still signed in, `claude_account_check`, so the notice appears without waiting
   for the next window start.)
 Acceptance:

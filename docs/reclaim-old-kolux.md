@@ -8,7 +8,7 @@ yourself, with the script `scripts\reclaim-old-kolux.ps1`.
 
 The repository side is already done: the screenshots of the old app that were kept in this repository
 were removed on 2026-10-30 (see PROVENANCE.md). The design measurements made from them stay, because
-Kolux RS uses them.
+Kolux uses them.
 
 ## What the old Kolux left on the PC
 
@@ -21,7 +21,7 @@ Kolux RS uses them.
   `.kolux` in your user folder (`~\.kolux\agent-hooks`). Claude Code, Codex and Kimi may still be set
   up to run them.
 - **Your own settings and data** in `~\.kolux` and `%APPDATA%\kolux`. These are yours, not the old
-  app's code, and Kolux RS still uses them (see below).
+  app's code, and Kolux still uses them (see below).
 
 ## Safe to delete
 
@@ -38,18 +38,18 @@ Kolux RS uses them.
 
 ## Must STAY
 
-- **`~\.kolux` and `%APPDATA%\kolux` as a whole.** Kolux RS's importer reads them, and Kolux RS reads
+- **`~\.kolux` and `%APPDATA%\kolux` as a whole.** Kolux's importer reads them, and Kolux reads
   your shortcuts from `~\.kolux\keybindings.json`.
-- **Anything under `~\.kolux-rs`.** That is Kolux RS's own data, including its release signing key.
+- **Anything under `~\.kolux-rs`.** That is Kolux's own data, including its release signing key.
 - **Your vault notes** (Txais Brain).
 - **`G:\Temp\live-signin`.** Test account A for the live checks now lives there.
 - **This repository** (`G:\Dev\kolux-rs`). The script refuses to touch it.
 
 ## The order
 
-1. **Close the old Kolux and Kolux RS.** Nothing should be using these folders while they go.
+1. **Close the old Kolux and Kolux.** Nothing should be using these folders while they go.
 2. **Uninstall the old app** (Settings > Apps > Installed apps > Kolux > Uninstall). Make sure you
-   uninstall the old Kolux, not Kolux RS, if both are listed. Kolux RS's own hooks live elsewhere and
+   uninstall the old Kolux, not Kolux, if both are listed. Kolux's own hooks live elsewhere and
    are not affected.
 3. **Sign test account A in at its new folder.** The live checks used to keep test account A inside
    one of the old scratch folders, which the script deletes. They now use
@@ -90,12 +90,8 @@ already gone are skipped.
 
 ## The old GitHub repositories
 
-The two old repositories on GitHub, **TxaisX/kolux** and **TxaisX/kolux-releases**, are being
-**archived by you, not deleted**. An archived repository stays readable (useful as a record) but nobody
-can change it. For each of the two:
+The old app's two repositories, under the former names **TxaisX/kolux** and **TxaisX/kolux-releases**,
+were removed on 2026-10-31 (Txais recorded that in `STATE.md`). Nothing here asks you to archive them.
 
-1. Open the repository on github.com.
-2. Go to **Settings**, scroll to the **Danger Zone** at the bottom.
-3. Click **Archive this repository** and confirm by typing the repository's name.
-
-You can undo this later with **Unarchive this repository** in the same place.
+**Do not archive `TxaisX/kolux` today:** that address is now this app's own repository, and archiving
+it would freeze the source, issues and update feed.

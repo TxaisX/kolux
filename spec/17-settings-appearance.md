@@ -80,7 +80,7 @@ Rules: Claude and Codex each have warnings of their own; Codex also warns when i
   on screen; limit auto-resume (Claude carries on once its limit resets) is a switch the user opts
   into, off by default; a Codex helper that quits because it was handed bad launch arguments is not
   reported as a sign-in problem.
-  (Kolux RS, T-041-b: one active Claude account serves the whole window, so the limit figures on
+  (Kolux, T-041-b: one active Claude account serves the whole window, so the limit figures on
   screen are always that account's; there is no per-view account to filter by.)
 Acceptance:
   - [x] Sign Claude out from its own CLI → the page shows Claude's sign-in warning. (cards; evidence/cards-SET-030.txt)
@@ -185,7 +185,7 @@ Rules: the pages are General, Appearance, Accounts & keys, Agents, Terminal & se
   as a hint; closing Settings returns to the screen it was opened from, also when Settings is opened
   again while already showing, and opening Settings empties any search left over from before; Safety
   holds the protected-action rules (area 10) and Usage holds the stats page (area 06), and this area
-  only places them in the page list. (Kolux RS, T-701: every checkbox or switch row with text beside it
+  only places them in the page list. (Kolux, T-701: every checkbox or switch row with text beside it
   is at least 24px tall, and a click anywhere on the row ticks it; T-707: when the box comes first, its
   text sits right beside it; T-752: when a page's settings cannot be read, it says so with Try again
   instead of a bare error, and when the project list cannot be read, the Repositories group stays and
@@ -224,7 +224,7 @@ User sees: when a coordinator gives a task a tier, the worker runs on the same p
   model picked for that tier.
 Rules: a tier left empty means the provider's default; effort choices depend on the model, so a new
   model keeps the effort if it is still offered and resets it otherwise; only providers that can route
-  by tier are listed. (Kolux RS, T-757: the provider tabs are one tab stop, Left, Right, Home and End move
+  by tier are listed. (Kolux, T-757: the provider tabs are one tab stop, Left, Right, Home and End move
   along them and open the tab reached, and the open tab labels the panel below.)
 Acceptance:
   - [x] Give the fast tier a small model and run an orchestrated task on that tier → the worker's header
@@ -495,7 +495,7 @@ User sees: terminals change scheme along with the app's mode; pane dividers and 
 Rules: the dark default is the app's own dark scheme; the separate light scheme is on by default and
   uses a Tango-style light palette; divider colour is set per mode and divider width starts at 3 px;
   unfocused panes dim to an adjustable opacity over a 140 ms fade; the catalogue narrows as the user
-  types; custom schemes are kept in settings and tidied when loaded. (Kolux RS, T-757: each list is a plain
+  types; custom schemes are kept in settings and tidied when loaded. (Kolux, T-757: each list is a plain
   list of toggle buttons, the picked one pressed, so a custom scheme's Remove sits beside its button; both
   Bring in cards say "Bring in from Ghostty or Warp" and "Bring in 2 schemes" once some are ticked.)
 Acceptance:

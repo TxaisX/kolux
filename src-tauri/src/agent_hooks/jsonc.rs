@@ -6,7 +6,7 @@
 use serde_json::Value;
 
 /// The comment lines around each of Kolux's blocks.
-pub const BEGIN: &str = "// >>> kolux-rs status hooks (written by Kolux RS; Kolux takes this block out when its hooks go) >>>";
+pub const BEGIN: &str = "// >>> kolux-rs status hooks (written by Kolux; Kolux takes this block out when its hooks go) >>>";
 pub const END: &str = "// <<< kolux-rs status hooks <<<";
 
 /// One parsed value: where it starts (its first byte).

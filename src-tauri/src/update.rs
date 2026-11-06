@@ -5,7 +5,7 @@
 //! A found update downloads by itself and waits in memory; it installs when the user clicks
 //! Restart to update, or when the app quits. The app never restarts itself to update.
 //!
-//! The feed is Kolux RS's own (OD-20): a Tauri update manifest at the latest release of the
+//! The feed is Kolux's own (OD-20): a Tauri update manifest at the latest release of the
 //! releases repository. Every download is checked against the minisign public key below; there is
 //! no switch that turns that off. Development copies and unpackaged copies never update
 //! themselves; a development copy may be pointed at a test feed through two environment
@@ -20,8 +20,8 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
-/// The update manifest of the newest published release (OD-20: Kolux RS's own feed).
-pub const RELEASE_ENDPOINT: &str = "https://github.com/TxaisX/kolux-rs/releases/latest/download/latest.json";
+/// The update manifest of the newest published release (OD-20: Kolux's own feed).
+pub const RELEASE_ENDPOINT: &str = "https://github.com/TxaisX/kolux/releases/latest/download/latest.json";
 /// The minisign public key releases are signed with. The release job (scripts/release.mjs, T-091)
 /// builds it in from the public half of the signing key; a build made without it says it cannot
 /// update instead of accepting anything unsigned.
@@ -56,11 +56,11 @@ pub fn feed(debug: bool, installed: bool, env: impl Fn(&str) -> Option<String>) 
             (Some(endpoint), Some(pubkey)) if !endpoint.trim().is_empty() && !pubkey.trim().is_empty() => {
                 Ok(Feed { endpoint: endpoint.trim().into(), pubkey: pubkey.trim().into() })
             }
-            _ => Err("This is a development copy of Kolux RS; it never updates itself.".into()),
+            _ => Err("This is a development copy of Kolux; it never updates itself.".into()),
         };
     }
     if !installed {
-        return Err("This copy of Kolux RS was not installed, so it cannot install updates. Install it from the releases page to get updates.".into());
+        return Err("This copy of Kolux was not installed, so it cannot install updates. Install it from the releases page to get updates.".into());
     }
     if RELEASE_PUBKEY.trim().is_empty() {
         return Err("This build has no update signing key, so it cannot check updates safely.".into());
@@ -271,7 +271,7 @@ pub async fn update_check(app: AppHandle) -> Result<Option<Info>, String> {
                 // A missing manifest counts as no update, not as an error.
                 care::Problem::NoManifest => None,
                 care::Problem::NoPlatform => {
-                    return Err(format!("{}The newest release has no installer for this system yet. Kolux RS will look again soon.", care::MARK_QUIET))
+                    return Err(format!("{}The newest release has no installer for this system yet. Kolux will look again soon.", care::MARK_QUIET))
                 }
                 care::Problem::Protocol if !compat => return Err(format!("{}{e}", care::MARK_COMPAT)),
                 _ => return Err(e.to_string()),
@@ -287,7 +287,7 @@ pub async fn update_check(app: AppHandle) -> Result<Option<Info>, String> {
             if !app.state::<Updates>().rounds.is_current(round) {
                 return Err(care::MARK_STALE.into());
             }
-            return Err(format!("{}Kolux RS {} is still being published. Kolux RS will look again soon.", care::MARK_QUIET, u.version));
+            return Err(format!("{}Kolux {} is still being published. Kolux will look again soon.", care::MARK_QUIET, u.version));
         }
     }
     if !app.state::<Updates>().rounds.is_current(round) {
@@ -344,7 +344,7 @@ pub async fn update_download(app: AppHandle) -> Result<Info, String> {
             // T-199 (APP-031): an installer not uploaded yet waits quietly; a protocol error offers
             // the compatibility mode.
             match care::classify(&format!("{e} {e:?}")) {
-                care::Problem::Incomplete => format!("{}Kolux RS {} is still being published. Kolux RS will look again soon.", care::MARK_QUIET, update.version),
+                care::Problem::Incomplete => format!("{}Kolux {} is still being published. Kolux will look again soon.", care::MARK_QUIET, update.version),
                 care::Problem::Protocol => format!("{}{e}", care::MARK_COMPAT),
                 _ => e.to_string(),
             }
@@ -507,10 +507,10 @@ mod tests {
 
     #[test]
     fn the_installer_check_only_asks_github_release_hosts_over_https() {
-        assert!(release_host("https://github.com/TxaisX/kolux-rs-releases/releases/download/v0.2.0/setup.exe"));
+        assert!(release_host("https://github.com/TxaisX/kolux-releases/releases/download/v0.2.0/setup.exe"));
         assert!(release_host("https://release-assets.githubusercontent.com/x"));
         assert!(release_host("https://objects.githubusercontent.com/x"));
-        assert!(!release_host("http://github.com/TxaisX/kolux-rs-releases/releases/download/v0.2.0/setup.exe"));
+        assert!(!release_host("http://github.com/TxaisX/kolux-releases/releases/download/v0.2.0/setup.exe"));
         assert!(!release_host("https://github.com.evil.example/x"));
         assert!(!release_host("https://evilgithubusercontent.com/x"));
         assert!(!release_host("https://github.com@evil.example/x"), "userinfo does not make a host");

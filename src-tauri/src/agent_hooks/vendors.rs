@@ -208,8 +208,8 @@ pub fn amp_file(home: &Path) -> PathBuf {
 
 /// Amp's plugin: it reports each event to the Kolux that opened the pane and answers nothing.
 pub fn amp_plugin() -> String {
-    r#"// Kolux RS status plugin for Amp. Written by Kolux RS; edits are overwritten.
-// It tells Kolux RS what this pane's agent is doing and never answers for Amp.
+    r#"// Kolux status plugin for Amp. Written by Kolux; edits are overwritten.
+// It tells Kolux what this pane's agent is doing and never answers for Amp.
 import { appendFileSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
@@ -435,7 +435,7 @@ pub fn install_amp(file: &Path) -> Result<bool, String> {
 
 /// FIX-1 (e): Kolux's plugin says so on its first line; the words anywhere else are the user's.
 fn amp_mine(text: &str) -> bool {
-    text.lines().next().is_some_and(|l| l.starts_with("// ") && l.contains("Written by Kolux RS"))
+    text.lines().next().is_some_and(|l| l.starts_with("// ") && l.contains("Written by Kolux"))
 }
 
 pub fn remove_amp(file: &Path) -> Result<bool, String> {
@@ -912,7 +912,7 @@ mod tests {
         let home = scratch("fix1-amp");
         let file = amp_file(&home);
         fs::create_dir_all(file.parent().unwrap()).unwrap();
-        let mine = "// my own plugin\n// (I copied the line \"Written by Kolux RS\" from theirs)\nexport default () => {}\n";
+        let mine = "// my own plugin\n// (I copied the line \"Written by Kolux\" from theirs)\nexport default () => {}\n";
         fs::write(&file, mine).unwrap();
         assert!(install_amp(&file).is_err());
         assert!(!remove_amp(&file).unwrap());
@@ -923,7 +923,7 @@ mod tests {
         let left: Vec<_> = fs::read_dir(file.parent().unwrap()).unwrap().flatten().map(|e| e.file_name()).collect();
         assert_eq!(left, vec![std::ffi::OsString::from(format!("{NAME}.js"))], "no temp file left beside it");
         let plugin = amp_plugin();
-        assert!(plugin.lines().next().unwrap().contains("Written by Kolux RS"));
+        assert!(plugin.lines().next().unwrap().contains("Written by Kolux"));
         assert!(!plugin.contains("event?.input") && !plugin.contains("input:"), "the tool input never leaves Amp");
         assert!(plugin.contains("name === 'agent.start' ? text(event?.message)"));
         assert!(plugin.contains("if (TOOL_EVENTS.includes(name)) return"));

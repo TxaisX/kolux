@@ -1,4 +1,4 @@
-// Live proofs against the INSTALLED Kolux RS build (not a dev copy).
+// Live proofs against the INSTALLED Kolux build (not a dev copy).
 //
 // The cloud builders could not do the last mile: every remaining P0 card needs a run on a real
 // Windows PC. This harness runs the installed exe under a throwaway home (so a "fresh install"
@@ -138,7 +138,7 @@ export async function targets() {
   return r.json();
 }
 
-export async function attach(match = 'Kolux RS') {
+export async function attach(match = 'Kolux') {
   const ts = await waitFor('the app page over CDP', async () => {
     const list = await targets();
     return list.find((t) => t.type === 'page' && (t.title.includes(match) || t.url.includes('tauri.localhost'))) ?? null;

@@ -24,7 +24,7 @@ export function feedbackUrl(version: string, platform: string, text = "", extra 
   const clean = wellFormed(text.trim());
   const title = first(`[Feedback] ${clean.split(/\r?\n/)[0]}`.trim(), 80);
   const url = (body: string) => `${FEEDBACK_REPO}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-  const foot = `\n\n---\nKolux RS ${version} on ${platform}${extra ? `\n${extra}` : ""}`;
+  const foot = `\n\n---\nKolux ${version} on ${platform}${extra ? `\n${extra}` : ""}`;
   const whole = url(`${clean}${foot}`);
   if (whole.length <= URL_CAP) return whole;
   const note = "\n\n(trimmed to fit in a browser address)";

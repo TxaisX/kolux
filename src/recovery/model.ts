@@ -83,9 +83,9 @@ export type LastAttempt =
 /** The notice for an install that did not take: still on the old version, with Try again and the installer page. */
 export function updateNotice(a: LastAttempt): { text: string; releasesPage: string } | null {
   if (!a || a.kind !== "failed") return null;
-  const why = a.holder ? ` ${a.holder} was holding Kolux RS's files.` : "";
+  const why = a.holder ? ` ${a.holder} was holding Kolux's files.` : "";
   return {
-    text: `The update to Kolux RS ${a.to} did not install, so this is still ${a.from}.${why} Try again, or download the installer and run it yourself.`,
+    text: `The update to Kolux ${a.to} did not install, so this is still ${a.from}.${why} Try again, or download the installer and run it yourself.`,
     releasesPage: a.releasesPage,
   };
 }

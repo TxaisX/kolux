@@ -1,6 +1,6 @@
 // @vitest-environment node
 // HID-042 (T-338): the old app's pet characters (a Claude-themed wizard and a gremlin) are
-// third-party themed art. Kolux RS ships no pet, so the card is a standing check that nothing of
+// third-party themed art. Kolux ships no pet, so the card is a standing check that nothing of
 // that art, or any pet picture at all, is in what the app bundles. If a pet is ever revived, its
 // art is the owner's own and this test is changed in the same commit as that card.
 import { expect, test } from "vitest";

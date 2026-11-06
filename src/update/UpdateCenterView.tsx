@@ -1,5 +1,5 @@
 // APP-024..027 on screen: the quiet timetable, the automatic download, the update card a requested check
-// brings up, and the one notice ("A new Kolux RS version is out on GitHub." with Update now / Later) that
+// brings up, and the one notice ("A new Kolux version is out on GitHub." with Update now / Later) that
 // appears once the update has downloaded. Both sit in the bottom-left corner (update.css), clear of the
 // status bar, and none depends on any sidebar element.
 import { useEffect, useReducer, useRef, useState } from "react";
@@ -84,7 +84,7 @@ export default function UpdateCenterView() {
       return;
     }
     if (!st.enabled || !schedule.current) {
-      dispatch({ type: "checkFailed", requested: true, message: st.reason ?? "Updates are off in this copy.", offline: false, next: "Install Kolux RS from its releases page to get updates." });
+      dispatch({ type: "checkFailed", requested: true, message: st.reason ?? "Updates are off in this copy.", offline: false, next: "Install Kolux from its releases page to get updates." });
       return;
     }
     void schedule.current.run(true);
@@ -237,23 +237,23 @@ export default function UpdateCenterView() {
     p.kind === "checking"
       ? "Checking for updates…"
       : p.kind === "upToDate"
-        ? `Kolux RS is up to date`
+        ? `Kolux is up to date`
         : p.kind === "available"
-          ? `Kolux RS ${version} is available`
+          ? `Kolux ${version} is available`
           : p.kind === "downloading"
-            ? `Downloading Kolux RS ${version}`
+            ? `Downloading Kolux ${version}`
             : p.kind === "ready"
-              ? `Kolux RS ${version} is ready`
+              ? `Kolux ${version} is ready`
               : p.kind === "error"
                 ? p.security
                   ? "Update refused for security"
                   : p.calm
                   ? "No update to install yet"
                   : p.retry === "restart"
-                  ? `Kolux RS ${version} could not install`
+                  ? `Kolux ${version} could not install`
                   : p.retry === "check" || p.retry === "compat"
                   ? "The update check failed"
-                  : `Kolux RS ${version} did not download`
+                  : `Kolux ${version} did not download`
                 : "";
   const pct = p.kind === "downloading" && p.total ? Math.min(100, Math.round((p.received / p.total) * 100)) : null;
   const action = mainAction(p);
@@ -352,7 +352,7 @@ export default function UpdateCenterView() {
         >
           <CheckCircle size={13} />
           <span className="upd-pop-text">
-            A new Kolux RS version is out on GitHub. <span className="upd-pop-ver">Version {s.popup}.</span>
+            A new Kolux version is out on GitHub. <span className="upd-pop-ver">Version {s.popup}.</span>
           </span>
           <span className="upd-pop-actions">
             <button type="button" className="btn" onClick={() => dispatch({ type: "popupClose" })}>

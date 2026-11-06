@@ -1,6 +1,6 @@
 # Testing
 
-Kolux RS has two test suites and a set of gate scripts. The front-end suite runs fast and in parallel. The Rust suite runs real PTYs, real Git repositories, and real files, so it needs a scratch home.
+Kolux has two test suites and a set of gate scripts. The front-end suite runs fast and in parallel. The Rust suite runs real PTYs, real Git repositories, and real files, so it needs a scratch home.
 
 ## Front-end tests
 

@@ -5,7 +5,7 @@
 // against the first-load budget (scripts/bundle-budget.mjs).
 
 export const OUTBOUND: ReadonlyArray<{ to: string; when: string }> = [
-  { to: "GitHub Releases (TxaisX/kolux-rs)", when: "checking for a newer version, downloading it and reading its release notes" },
+  { to: "GitHub Releases (TxaisX/kolux)", when: "checking for a newer version, downloading it and reading its release notes" },
   { to: "the git remotes and the GitHub account you set up", when: "fetch, pull, push and ship, through git on this computer" },
   { to: "the AI providers you connected", when: "each agent's own command-line tool talks to its company with your account; the app neither relays nor records that traffic" },
   { to: "the sites you open in the browser pane", when: "browsing, as in any browser, and fetching the site icon each open page names, which may be on another site such as a CDN; the app fetches it itself, sends no cookies, and never from this computer or your local network unless the page itself is open at such an address" },

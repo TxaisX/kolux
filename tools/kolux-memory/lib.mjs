@@ -176,9 +176,9 @@ function repoSlug(repo) {
   try {
     const url = execFileSync("git", ["-C", repo, "remote", "get-url", "origin"], { encoding: "utf8" }).trim();
     const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
-    return m ? `${m[1]}/${m[2]}` : "TxaisX/kolux-rs";
+    return m ? `${m[1]}/${m[2]}` : "TxaisX/kolux";
   } catch {
-    return "TxaisX/kolux-rs";
+    return "TxaisX/kolux";
   }
 }
 

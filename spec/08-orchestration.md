@@ -744,7 +744,7 @@ User sees: commands answer quickly, and long waits such as a waiting check stay 
 Rules: a local socket or named pipe carries the traffic; long waits use long-polling with
   keepalives; network transports go with area 18; a blocked ask is kept alive with the same
   keepalives as a waiting check, so a long wait for an answer is not cut off.
-  (Kolux RS, T-174-a: the local socket is a loopback TCP port with a token in a connection file in the app data folder (DT-C22);
+  (Kolux, T-174-a: the local socket is a loopback TCP port with a token in a connection file in the app data folder (DT-C22);
   a waiting check or ask re-asks every half second and prints a keepalive line every 15 s, so the
   connection is never held long; a pane Kolux opens points `KOLUX_USER_DATA_PATH` at this app's own
   folder so an inherited other-build override cannot send it elsewhere.)
@@ -788,7 +788,7 @@ Rules: every process belonging to the worktree is killed before deletion; a term
   closed too, forcibly if they do not close on their own, so no child process is orphaned; a stale
   terminal record the daemon no longer knows, with no live process behind it, does not block
   removal; such a stuck workspace is removed without force.
-  (Kolux RS, T-174-a: each shell is ended with everything it started, the pids are polled for up to
+  (Kolux, T-174-a: each shell is ended with everything it started, the pids are polled for up to
   three seconds, and a pid still there refuses the removal as stuck unless `--force`, or the
   Projects panel's force box, waives it; chat-style sessions wait for the chat view task.)
 Acceptance:

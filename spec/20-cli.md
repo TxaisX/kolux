@@ -330,7 +330,7 @@ Rules: repo selectors: id:, name: and path:; worktree selectors: identity:, id:<
   than one target never quietly picks one; from a WSL shell, a path on a Windows drive mounted into
   Linux resolves without needing the caller's distro, and when two distros write the same path the
   caller's own distro wins.
-  (Kolux RS, T-014-b-fix: `issue:` matches the issue number recorded when the command line made the
+  (Kolux, T-014-b-fix: `issue:` matches the issue number recorded when the command line made the
   worktree; `identity:` and `active` are refused with the accepted forms listed, DT-C12.)
 Acceptance:
   - [ ] Inside a worktree's folder, `kolux worktree current` shows that worktree.
@@ -434,7 +434,7 @@ Rules: `--cursor` returns only output that came after that point, and `--limit` 
   when the screen is requested yet the host can supply only the output stream, the result carries a
   warning, and output from an older host is never presented as a screen; text the user typed into an
   agent's input box but has not sent yet is labelled separately from terminal output.
-  (Kolux RS, T-134-a: the stream is the program's output with escapes removed and a redrawn line
+  (Kolux, T-134-a: the stream is the program's output with escapes removed and a redrawn line
   kept in its last state, not a rendering, so a line editor's redraws can leave traces in it; the
   screen is the window's terminal rows, which include whatever sits in an agent's input box, so unsent
   text is not labelled separately, DT-C18; one host, so the older-host warning only covers the
@@ -462,7 +462,7 @@ Rules: text followed by Enter sent to an agent counts as a prompt; the receipt r
   far as starting a turn, the result names the next command to run; wait takes `--for` with exit or
   tui-idle, plus `--timeout-ms`; a wait that ends blocked without meeting its condition exits
   non-zero.
-  (Kolux RS, T-134-a: the receipt comes from the status hooks' turn history, so a pane without hook
+  (Kolux, T-134-a: the receipt comes from the status hooks' turn history, so a pane without hook
   reports answers unknown with a warning; retry receipts live in memory, so a retry after a Kolux
   restart sends anew; there is one host and no structured chat session, so those refusals do not
   arise; tui-idle on a pane without hook reports means 3 s without output, warned; permission,

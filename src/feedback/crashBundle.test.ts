@@ -7,9 +7,9 @@ const HOME = String.raw`C:\Users\jdoe\work\repo`;
 // A bundle as the back end builds it, except that this one still holds a secret and a profile path
 // (the way a bundle from an older back end, or a bug in its masking, would).
 const BUNDLE = [
-  "Kolux RS 0.1.0 diagnostics, 2026-10-25",
+  "Kolux 0.1.0 diagnostics, 2026-10-25",
   "== kolux.log ==",
-  "app start 7, Kolux RS 0.1.0",
+  "app start 7, Kolux 0.1.0",
   `pane env ANTHROPIC_API_KEY=${TOKEN} leaked`,
   `opened ${HOME} in terminal 3`,
 ].join("\n");
@@ -20,8 +20,8 @@ describe("copyCrashBundle", () => {
     const note = await copyCrashBundle(async () => BUNDLE, async (t) => void wrote.push(t));
     expect(note).toBe(CRASH_BUNDLE_COPIED);
     expect(wrote).toHaveLength(1);
-    expect(wrote[0]).toContain("Kolux RS 0.1.0 diagnostics");
-    expect(wrote[0]).toContain("app start 7, Kolux RS 0.1.0");
+    expect(wrote[0]).toContain("Kolux 0.1.0 diagnostics");
+    expect(wrote[0]).toContain("app start 7, Kolux 0.1.0");
     expect(wrote[0]).toContain("ANTHROPIC_API_KEY=[masked] leaked");
     for (const secret of [TOKEN, "ABCDEFGHIJKLMNOPQRSTUV", "jdoe", HOME]) expect(wrote[0]).not.toContain(secret);
     expect(note).not.toContain("jdoe");

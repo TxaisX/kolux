@@ -106,7 +106,7 @@ function render(mdPath) {
 <body>
 <div class="wrap">
   <header class="doc-head">
-    <div class="kicker">Kolux RS · documentation</div>
+    <div class="kicker">Kolux · documentation</div>
     <h1>${esc(title)}</h1>
   </header>
   <main>

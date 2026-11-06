@@ -32,7 +32,7 @@ the record survives the cache being replaced.
 | Kolux repo | `G:\Dev\kolux-rs` | 2,900+ commits, worktrees, `spec/` cards, `evidence/` files, `docs/` |
 | Vault | `G:\Dev\Projects\Txais Brain` | Kolux project notes, syntheses, `.kolux/handoffs/` |
 | Local work ledger | `<db folder>\work-items.jsonl` | Completed items written with `record`; replayed on every build |
-| GitHub (optional, `--github`) | `TxaisX/kolux-rs` via `gh` | Pull requests and releases |
+| GitHub (optional, `--github`) | `TxaisX/kolux` via `gh` | Pull requests and releases |
 
 Defaults can be overridden with `--sessions`, `--repo`, `--vault`, `--db`, or the environment
 variables `KOLUX_MEMORY_SESSIONS`, `KOLUX_MEMORY_REPO`, `KOLUX_MEMORY_VAULT`, `KOLUX_MEMORY_DB`.

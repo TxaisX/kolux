@@ -153,7 +153,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["scm/StackMap.tsx", "Confirm the stack merge", "tag"],
   ["settings/GrokCard.tsx", "Use an xAI API key", "wrapper"],
   ["settings/SettingsPage.tsx", "Settings", "window"],
-  ["shell/AboutPanel.tsx", "About Kolux RS", "tag"],
+  ["shell/AboutPanel.tsx", "About Kolux", "tag"],
   ["shell/LinkAskDialog.tsx", "w.title", "tag"],
   ["shell/TabSearch.tsx", "Search open tabs", "inner"],
   ["skills/SkillsPage.tsx", "Skill folders", "window"],

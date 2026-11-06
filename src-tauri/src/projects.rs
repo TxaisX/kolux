@@ -2626,7 +2626,7 @@ pub(crate) fn set_aside_record(repo: &Path, path: &str) -> Result<SetAside, Stri
     Ok(SetAside { from, to })
 }
 
-/// T-441-c: the worktrees among `all` that Kolux RS made itself, by the origin record it keeps for
+/// T-441-c: the worktrees among `all` that Kolux made itself, by the origin record it keeps for
 /// each one it creates (the same test as trust::made_by_kolux). Txais, 2026-10-13: "Only Kolux's
 /// own": a worktree made by Claude Code or any other tool is never forgotten, folder gone or not.
 pub(crate) fn kolux_made(origins: &serde_json::Map<String, serde_json::Value>, all: Vec<Worktree>) -> Vec<Worktree> {
@@ -2650,7 +2650,7 @@ fn sweep_gone(store: &Mutex<Store>, repo: &Path, all: &[Worktree], busy: &[Strin
     })
 }
 
-/// APP-051 at launch, off the startup path: every project's gone worktrees that Kolux RS made are
+/// APP-051 at launch, off the startup path: every project's gone worktrees that Kolux made are
 /// forgotten.
 pub fn forget_gone_at_start(app: tauri::AppHandle) {
     use tauri::Manager;
@@ -2701,7 +2701,7 @@ pub(crate) fn trash_folders(store: &Mutex<Store>, git: &Git, projects: &[Project
     out
 }
 
-/// The sweep `forget_gone_at_start` runs: for every project, the gone worktrees Kolux RS made and no
+/// The sweep `forget_gone_at_start` runs: for every project, the gone worktrees Kolux made and no
 /// session uses are forgotten. A project whose folder Git cannot read is skipped. Returns every path forgotten.
 fn sweep_all_gone(store: &Mutex<Store>, git: &Git, projects: &[Project], origins: &serde_json::Map<String, serde_json::Value>, busy: &[String], diag_dir: Option<&Path>) -> Vec<String> {
     let mut forgotten = Vec::new();

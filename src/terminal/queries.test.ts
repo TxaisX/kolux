@@ -40,7 +40,7 @@ describe("ORCH-057 capability queries", () => {
     expect(mac.sent).toEqual(["\x1b[?1;2c"]);
   });
 
-  it("the version query is answered as Kolux RS; a hidden Grok pane holds back only the version answers", () => {
+  it("the version query is answered as Kolux; a hidden Grok pane holds back only the version answers", () => {
     let hidden = false;
     const t = fakeTerm();
     const q = hookQueries(t.term, t.send, { windows: true, holdVersion: () => hidden && isGrok("C:\\tools\\grok.exe --model x") });

@@ -23,8 +23,8 @@ describe("the milestone block", () => {
 
 describe("added to the diagnostics", () => {
   it("goes after the existing text, once, with one blank line between", () => {
-    const out = withBlock("Kolux RS 0.1.0 diagnostics\nline\n\n", { aiConnected: T });
-    expect(out.startsWith("Kolux RS 0.1.0 diagnostics\nline\n\nFirst milestones\n")).toBe(true);
+    const out = withBlock("Kolux 0.1.0 diagnostics\nline\n\n", { aiConnected: T });
+    expect(out.startsWith("Kolux 0.1.0 diagnostics\nline\n\nFirst milestones\n")).toBe(true);
     expect(out.endsWith("\n")).toBe(true);
     expect(out.match(/First milestones/g)).toHaveLength(1);
   });

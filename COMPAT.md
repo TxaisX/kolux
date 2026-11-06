@@ -1,6 +1,6 @@
 # COMPAT
 
-The outside surfaces Kolux RS must keep, so that Txais's habits, skills, agent setups and saved data keep working on the day he switches.
+The outside surfaces Kolux must keep, so that Txais's habits, skills, agent setups and saved data keep working on the day he switches.
 
 ## 1. Why the contracts exist, and the rule
 
@@ -47,7 +47,7 @@ Versions: the installed CLI reported 0.15.2 when its help was captured; the sour
 | Aliases | Resolve before anything else (table 2.6 lists them). |
 | Global options | `--json` and `--help` on every command, and they may come before the command words. `--page` selects a browser page on the browser commands. The old `--pairing-code` and `--environment` globals: not carried, see `DECISIONS.md`. |
 | Repo selector | `--repo` takes an id: prefix, a name: prefix or a path: prefix. |
-| Worktree selector | `--worktree` takes identity:, id: (repo id, two colons, path), name:, branch:, issue:, path:, or the words active or current. Example: `kolux worktree show --worktree branch:main` (Kolux RS, T-014-b-fix: identity: and active are refused with the accepted forms listed, DT-C12.) |
+| Worktree selector | `--worktree` takes identity:, id: (repo id, two colons, path), name:, branch:, issue:, path:, or the words active or current. Example: `kolux worktree show --worktree branch:main` (Kolux, T-014-b-fix: identity: and active are refused with the accepted forms listed, DT-C12.) |
 | Terminal selector | `--terminal` takes a handle printed by `kolux terminal list --json`. Inside a Kolux terminal it defaults to that terminal. |
 | Parent selectors | `--parent-worktree` and `--no-parent` on worktree create and set. |
 
@@ -536,10 +536,10 @@ Kolux learns what an agent is doing (working, blocked, waiting for Txais, done) 
 
 ### 3.2 Windows wrapper behaviour
 
-- Each agent gets a batch script in `~/.kolux/agent-hooks` (or a plugin where the agent uses plugins). The agent's config entry points at that script by full path. (Kolux RS, DT-C1: `~/.kolux-rs/agent-hooks` while the old app is installed beside it.)
+- Each agent gets a batch script in `~/.kolux/agent-hooks` (or a plugin where the agent uses plugins). The agent's config entry points at that script by full path. (Kolux, DT-C1: `~/.kolux-rs/agent-hooks` while the old app is installed beside it.)
 - The script runs the guard above before it touches stdin, then reads stdin with the system's built-in pager program called by its full Windows path, so a same-named program in the repo cannot capture the payload.
 - It sends with the system curl, then exits 0, then drains any leftover stdin so the agent never sees a broken pipe.
-- Claude: when Git Bash is present, the settings entry calls the batch script directly; otherwise it goes through an encoded PowerShell launcher. The Claude script skips itself when the Devin project variable is set, because Devin re-runs Claude hooks. (Kolux RS, DT-C4: not built, the variable's name is not public.)
+- Claude: when Git Bash is present, the settings entry calls the batch script directly; otherwise it goes through an encoded PowerShell launcher. The Claude script skips itself when the Devin project variable is set, because Devin re-runs Claude hooks. (Kolux, DT-C4: not built, the variable's name is not public.)
 - OpenClaude uses the same script shape without the PowerShell launcher.
 - Gemini's script prints an empty JSON object first, then does the rest.
 - Antigravity gets one small script per event, each calling one shared script.
@@ -570,7 +570,7 @@ Kolux also installs a Claude status-line command, only when the user's own statu
 |---|---|---|---|
 | Claude | `~/.claude/settings.json`, or the folder named by `CLAUDE_CONFIG_DIR` | 12: `SessionStart`, `UserPromptSubmit`, `Stop`, `StopFailure`, `SubagentStart`, `SubagentStop`, `TeammateIdle`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionRequest`, `PostCompact` (tool events match every tool) | `PreCompact` (never installed, refused if it arrives) |
 | OpenClaude | `~/.openclaude/settings.json` | Same 12 as Claude | `PreCompact` |
-| Codex | Kolux's own Codex home under `%APPDATA%\kolux\codex-runtime-home`, plus `~/.codex/hooks.json` and the hook trust entries in `~/.codex/config.toml` (Kolux RS, DT-C3: the entries are written with the keys and fingerprints Codex's own `hooks/list` reports; a user-level key is the `hooks.json` path, the event label, the group index and the handler index) | 8: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `SubagentStart`, `SubagentStop`, `Stop` | none |
+| Codex | Kolux's own Codex home under `%APPDATA%\kolux\codex-runtime-home`, plus `~/.codex/hooks.json` and the hook trust entries in `~/.codex/config.toml` (Kolux, DT-C3: the entries are written with the keys and fingerprints Codex's own `hooks/list` reports; a user-level key is the `hooks.json` path, the event label, the group index and the handler index) | 8: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `SubagentStart`, `SubagentStop`, `Stop` | none |
 | Gemini | `~/.gemini/settings.json` | 4: `BeforeAgent`, `AfterAgent`, `BeforeTool`, `AfterTool` | `PreToolUse`, `PostToolUse` (old entries are swept out) |
 | Antigravity | `~/.gemini/config/hooks.json`, inside one named bundle (kolux-status) | 5: `PreInvocation`, `PostInvocation`, `Stop`, `PreToolUse`, `PostToolUse` | none |
 | Amp | A plugin file in `~/.config/amp/plugins` | 5: `session.start`, `agent.start`, `tool.call`, `tool.result`, `agent.end` | none |
@@ -1251,7 +1251,7 @@ Cards that carry an environment contract, including variables that belong to oth
 |---|---|
 | PROJ-026 | `KOLUX_WORKSPACES_DIR` takes an absolute path; it is trimmed, and an empty value is ignored. |
 | PROJ-027 | `KOLUX_WORKTREE_ADD_TIMEOUT_MS` sets the worktree-add timeout in milliseconds, clamped to between three and thirty minutes, so work on cloud-synced folders fails fast instead of hanging. |
-| USAGE-006 | Claude and Claude Agent Teams launches get `CLAUDE_CODE_AUTO_COMPACT_WINDOW` set to 200000, unless the user already set that variable (in any letter case) or passed `--autocompact`. Codex launches get two per-run config overrides, `model_context_window` at 200000 and `model_auto_compact_token_limit` at 180000, placed before any argument terminator and skipped when the user's command already names either key or uses `--oss`, `--profile` or -p. No CLI config file is touched, and the switch is on unless the user turned it off (5.7). (Kolux RS, T-041-a: built as written, setting key `contextCap200k`; Agent Teams is skipped in Kolux RS.) |
+| USAGE-006 | Claude and Claude Agent Teams launches get `CLAUDE_CODE_AUTO_COMPACT_WINDOW` set to 200000, unless the user already set that variable (in any letter case) or passed `--autocompact`. Codex launches get two per-run config overrides, `model_context_window` at 200000 and `model_auto_compact_token_limit` at 180000, placed before any argument terminator and skipped when the user's command already names either key or uses `--oss`, `--profile` or -p. No CLI config file is touched, and the switch is on unless the user turned it off (5.7). (Kolux, T-041-a: built as written, setting key `contextCap200k`; Agent Teams is skipped in Kolux.) |
 | USAGE-022 | Codex sign-in is checked under `CODEX_HOME` when it is set, otherwise under Codex's default folder in the user's home. |
 | USAGE-027 | Kimi's saved sign-in is read from its home folder, honouring `KIMI_CODE_HOME`. |
 | ACCT-004, ACCT-024 | Claude Code takes its 1-year key from `CLAUDE_CODE_OAUTH_TOKEN`; Kolux sets that variable only in Claude panes that run in key mode. |

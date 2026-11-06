@@ -1,6 +1,6 @@
 # Building from source
 
-Kolux RS is a Tauri 2 app with a React and TypeScript front end and a Rust core. The same repository builds the desktop app, the background terminal service, the release CLI, and the NSIS installer.
+Kolux is a Tauri 2 app with a React and TypeScript front end and a Rust core. The same repository builds the desktop app, the background terminal service, the release CLI, and the NSIS installer.
 
 ## Prerequisites
 

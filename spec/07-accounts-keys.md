@@ -72,7 +72,7 @@ Rules: every account gets a private Claude configuration folder of its own, Kolu
   when the per-account entry is absent, only a shared entry that has changed is accepted (this
   covers older Claude builds); when the keychain copy and the file copy disagree, the newer one
   wins.
-  (Kolux RS, T-043-e: the macOS keychain rules are a rule table, proven against an invented
+  (Kolux, T-043-e: the macOS keychain rules are a rule table, proven against an invented
   keychain; calling it from the sign-in, and proving it live, waits for a Mac, task T-043-f in
   PLAN.md. Until then this build keeps the credentials file in the account's folder on every
   platform.)
@@ -100,7 +100,7 @@ Rules: renewal happens early, inside the last 5 minutes before expiry, and also 
   opt-out on, Kolux sends nothing to the token service and hides the stale-sign-in warnings; the
   opt-out starts off; renewal before a launch only ever touches managed accounts, never the
   system-default Claude login.
-  (Kolux RS, T-043-d, DT-C16: the switch "Leave sign-in upkeep to Claude Code" sits under the
+  (Kolux, T-043-d, DT-C16: the switch "Leave sign-in upkeep to Claude Code" sits under the
   managed accounts, settings field `claudeSignInUpkeepByClaudeCode`, absent = on. Kolux never
   renews a sign-in itself, in either position: the token service is not public documentation.
   Off means Kolux asks Claude Code whether the active account is still signed in, at start and
@@ -517,7 +517,7 @@ Rules: stale panes are matched by account identity, not by label; sign-in errors
   in a pane are caught and raise the re-auth notice (ACCT-012); a resume waits until the right
   account's home is in place; if the original account's sign-in is still unavailable after about two
   seconds, the resume fails with a try-again message rather than carrying on as another account.
-  (Kolux RS, T-139-b: a pane keeps the account id it started on and a restart hands it back to
+  (Kolux, T-139-b: a pane keeps the account id it started on and a restart hands it back to
   the pane start, which waits up to 2 s for that account's home; an account no longer listed
   refuses the start with a try-again message. Panes are not yet restored across a Kolux restart
   and sign-in errors printed in a pane are not scanned, T-139-d.)
@@ -600,7 +600,7 @@ Rules: only panes whose foreground program truly is Codex are asked; a pane wher
   background panes never take focus; panes on remote hosts or in WSL are not asked about a change
   made for this computer (those cases left with area 18); a resumed Codex pane whose sign-in folder
   matches no known account is tied to no account and is never asked.
-  (Kolux RS, T-139-b: a Codex pane runs the program itself, so "foreground program is Codex" is
+  (Kolux, T-139-b: a Codex pane runs the program itself, so "foreground program is Codex" is
   the pane's program being credited as Codex and still running; Restart remounts the pane on the
   active account at once, there is no shell to wait for; a restart that fails is a failed launch,
   DT-C19; the setup-change version and re-asking after a Kolux restart are T-139-d.)
@@ -767,7 +767,7 @@ User does: closes a pane or quits Kolux.
 User sees: no agent or shell processes are left orphaned.
 Rules: panes are asked to stop first, then forced; during an immediate Windows shutdown the whole
   process tree is ended; quitting stops every pane.
-  (Kolux RS, DT-C27 as changed 2026-10-20: quitting leaves terminals running in the background
+  (Kolux, DT-C27 as changed 2026-10-20: quitting leaves terminals running in the background
   terminal service; closing a pane still ends its whole process tree.)
 Acceptance:
   - [ ] Run a long command in a pane and quit → no matching process is left.

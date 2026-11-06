@@ -283,7 +283,7 @@ pub fn read_with(program: &Path, home: &Path) -> CodexUsage {
             let _ = s.flush();
         }
     };
-    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux-rs", "title": "Kolux RS", "version": env!("CARGO_PKG_VERSION") } } }));
+    send(json!({ "id": 1, "method": "initialize", "params": { "clientInfo": { "name": "kolux-rs", "title": "Kolux", "version": env!("CARGO_PKG_VERSION") } } }));
     let deadline = Instant::now() + READ_TIMEOUT;
     let (mut account, mut limits) = (None, None);
     let mut started = false;

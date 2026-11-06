@@ -49,7 +49,7 @@ afterEach(async () => {
 const button = (root: FakeNode, text: string) => find(root, (n) => n.localName === "button" && n.textContent.trim() === text)[0];
 
 test("APP-041 box 1 (copy half): Copy diagnostics puts exactly the back end's scrubbed bundle on the clipboard", async () => {
-  calls.bundle = "Kolux RS 0.1.0 diagnostics\nclaude --api-key [masked] -p \"hi\"\n";
+  calls.bundle = "Kolux 0.1.0 diagnostics\nclaude --api-key [masked] -p \"hi\"\n";
   const { DiagnosticsCard } = await import("../GeneralPage");
   const m = await mount(createElement(DiagnosticsCard), doc);
   unmount = m.unmount;
@@ -81,7 +81,7 @@ test("APP-070 box 3: Send feedback opens a pre-filled GitHub issue address in th
   expect(u.origin + u.pathname).toBe(FEEDBACK_REPO);
   expect(u.searchParams.get("title")).toBe("[Feedback] The pane froze after a resize");
   expect(u.searchParams.get("body")).toContain("The pane froze after a resize");
-  expect(u.searchParams.get("body")).toContain("Kolux RS 0.1.0");
+  expect(u.searchParams.get("body")).toContain("Kolux 0.1.0");
   // the only things the page asked the app to do: read its version and system, then open the address
   expect([...new Set(calls.list.map((c) => c.cmd))].sort()).toEqual(["app_info", "feedback_facts", "open_external"]);
   expect(fetchSpy).not.toHaveBeenCalled();

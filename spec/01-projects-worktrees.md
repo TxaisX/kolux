@@ -82,7 +82,7 @@ Acceptance:
   - [x] Make creating a workspace fail → the form opens again with the typed name, branch, prompt and
         base; if another project's form is open by then, the words are not put into it. (T-687; evidence/T-687.txt)
 Compat: Keybinding id workspace.create.
-  (Kolux RS, T-013-fix-a: with no project, Mod+N and the New workspace button open the add-project
+  (Kolux, T-013-fix-a: with no project, Mod+N and the New workspace button open the add-project
   form; T-013-c built the overtaken-create and stand-in tab rules: a create made with Create more
   is never overtaken, and one Git finished before the cancel reached it stays, in the background.)
 Source: D-01-020
@@ -104,7 +104,7 @@ Acceptance:
         "workspace". (Reworded per Txais 2026-10-28 decisions file, A2: keep the fallback.)
         (cards; evidence/cards-PROJ-021.txt)
 Compat: —
-  (Kolux RS, T-013-fix-b: emoji outside the short-word table become their Unicode name in words,
+  (Kolux, T-013-fix-b: emoji outside the short-word table become their Unicode name in words,
   DT-C9; the pane header shows the typed name, `evidence/T-013-fix-b-header.png`.)
 Source: D-01-021
 
@@ -156,7 +156,7 @@ User does: chooses an agent and types a prompt while creating a workspace, or pa
 User sees: the workspace opens with that agent already working on the prompt in its first tab.
 Rules: the agent runs in the startup tab made for it, not in an extra default tab; when no agent is
   chosen, the fallback order follows the catalog of installed agents.
-  (Kolux RS, T-014-b-fix: on the command line the fallback is the settings' default agent when it
+  (Kolux, T-014-b-fix: on the command line the fallback is the settings' default agent when it
   is installed, else the first installed agent in catalogue order, and only when a prompt was
   given; a create with no prompt and no agent makes the worktree and opens no agent tab.)
 Acceptance:
@@ -257,7 +257,7 @@ User does: quits and reopens Kolux.
 User sees: every workspace returns with its tabs and layout; saved state that is damaged is rescued
   in part rather than lost.
 Rules: parts that cannot be read are dropped and the rest is kept; the workspace and tab that were
-  active come back if they still exist. (Kolux RS, T-065: the tabs, the active tab per cell, the focus,
+  active come back if they still exist. (Kolux, T-065: the tabs, the active tab per cell, the focus,
   the active workspace and the stacked cells are written to the saved-layout setting as they change; an
   agent tab comes back at its prompt in its folder, the session itself is SESS-030; a browser tab comes
   back as a fresh tab; tabs whose folder is gone are dropped.)

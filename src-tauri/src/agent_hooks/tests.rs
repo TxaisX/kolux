@@ -162,10 +162,10 @@ fn stat_005_a_users_file_under_a_kolux_script_name_is_never_overwritten() {
     let dir = home.join(SCRIPT_DIR);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("claude.cmd"), "@echo my own\r\n").unwrap();
-    assert!(write_script(&home, "claude.cmd", "rem Kolux RS agent hook for x. Written by Kolux RS; edits are overwritten.").unwrap_err().contains("left alone"));
+    assert!(write_script(&home, "claude.cmd", "rem Kolux agent hook for x. Written by Kolux; edits are overwritten.").unwrap_err().contains("left alone"));
     assert_eq!(fs::read_to_string(dir.join("claude.cmd")).unwrap(), "@echo my own\r\n");
-    fs::write(dir.join("codex.cmd"), "rem old. Written by Kolux RS; edits are overwritten.").unwrap();
-    write_script(&home, "codex.cmd", "rem new. Written by Kolux RS; edits are overwritten.").unwrap();
+    fs::write(dir.join("codex.cmd"), "rem old. Written by Kolux; edits are overwritten.").unwrap();
+    write_script(&home, "codex.cmd", "rem new. Written by Kolux; edits are overwritten.").unwrap();
     assert!(fs::read_to_string(dir.join("codex.cmd")).unwrap().starts_with("rem new"), "Kolux's own older script is refreshed");
 }
 

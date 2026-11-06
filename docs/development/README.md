@@ -1,6 +1,6 @@
 # Development
 
-This section is for people building, testing, or releasing Kolux RS. The app is a Tauri 2 project: a React and TypeScript window, a Rust core, a separate terminal service, and a set of Node scripts for the gates and the release.
+This section is for people building, testing, or releasing Kolux. The app is a Tauri 2 project: a React and TypeScript window, a Rust core, a separate terminal service, and a set of Node scripts for the gates and the release.
 
 If you only want to use the app, read the [user guide](../guide/README.md).
 

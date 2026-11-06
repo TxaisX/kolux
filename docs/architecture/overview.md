@@ -1,8 +1,8 @@
 # Architecture overview
 
-![Kolux RS runtime architecture](architecture.svg)
+![Kolux runtime architecture](architecture.svg)
 
-Kolux RS is a Tauri 2 desktop app for running many AI coding agents at once. The window is React and TypeScript. The core is Rust. A separate background process owns the terminals, and a small set of loopback listeners connects the window, the agent hooks, and the `kolux` command line.
+Kolux is a Tauri 2 desktop app for running many AI coding agents at once. The window is React and TypeScript. The core is Rust. A separate background process owns the terminals, and a small set of loopback listeners connects the window, the agent hooks, and the `kolux` command line.
 
 This page follows the diagram from the outside in: processes, transports, local doors, storage, trust boundaries, and the update path. The deep dives are [Data](data.md), [Security](security.md), and [Frontend](frontend.md).
 
@@ -152,7 +152,7 @@ The terminal pane uses xterm.js with a WebGL renderer when available and a pool 
 
 ## Updates
 
-The feed is `https://github.com/TxaisX/kolux-rs/releases/latest/download/latest.json` (`src-tauri/src/update.rs:24`). The app checks at startup and every 30 minutes, with backoff after a failure. It downloads the installer into memory, verifies the minisign signature, checks the Windows publisher against the running copy, and installs through the NSIS passive installer (`src-tauri/src/update.rs:243-380`, `:422-438`).
+The feed is `https://github.com/TxaisX/kolux/releases/latest/download/latest.json` (`src-tauri/src/update.rs:24`). The app checks at startup and every 30 minutes, with backoff after a failure. It downloads the installer into memory, verifies the minisign signature, checks the Windows publisher against the running copy, and installs through the NSIS passive installer (`src-tauri/src/update.rs:243-380`, `:422-438`).
 
 Before the installer runs, the updater hands the app's children out of the kill-on-close job so the installer can outlive Kolux (`src-tauri/src/procs.rs:148`, `src-tauri/src/update.rs:444-455`). If the install fails immediately, the app takes the children back (`src-tauri/src/update.rs:428`).
 

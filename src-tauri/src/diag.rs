@@ -118,7 +118,7 @@ fn rotated(logs: &Path) -> Vec<(PathBuf, u64)> {
 /// Every log file oldest first under a header, with secrets masked: what a bug report carries.
 pub fn bundle(dir: &Path, version: &str) -> String {
     let logs = dir.join("logs");
-    let mut out = format!("Kolux RS {version} diagnostics, {} on {} {}\n", jiff::Timestamp::now(), std::env::consts::OS, std::env::consts::ARCH);
+    let mut out = format!("Kolux {version} diagnostics, {} on {} {}\n", jiff::Timestamp::now(), std::env::consts::OS, std::env::consts::ARCH);
     let mut files: Vec<PathBuf> = rotated(&logs).into_iter().map(|(p, _)| p).collect();
     files.push(logs.join(LIVE));
     for p in files {
@@ -277,7 +277,7 @@ pub fn summary(dir: &Path, version: &str, home: Option<&str>) -> String {
         }
     }
     let from = lines.len().saturating_sub(SUMMARY_LINES);
-    let mut out = format!("Kolux RS {version} diagnostics summary, {} on {} {}\n", jiff::Timestamp::now(), std::env::consts::OS, std::env::consts::ARCH);
+    let mut out = format!("Kolux {version} diagnostics summary, {} on {} {}\n", jiff::Timestamp::now(), std::env::consts::OS, std::env::consts::ARCH);
     out.push_str(&format!("== newest {} log line(s) ==\n", lines.len() - from));
     for l in &lines[from..] {
         out.push_str(l);
@@ -382,7 +382,7 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         write(&dir, "curl -H \"Authorization: Bearer SUMMARYTWO_abcdefghijk\" https://api.example/v1");
         write(&dir, &format!("profile at {}\\AppData\\Roaming\\kolux", home.to_lowercase()));
         let s = summary(&dir, "0.1.0", Some(home));
-        assert!(s.starts_with("Kolux RS 0.1.0 diagnostics summary, "), "{s}");
+        assert!(s.starts_with("Kolux 0.1.0 diagnostics summary, "), "{s}");
         for gone in ["someone", "linuxer", "macer", "SUMMARYSECRET", "SUMMARYTWO", "C:\\Users", "/home/", "/Users/"] {
             assert!(!s.contains(gone), "{gone} survived:\n{s}");
         }
@@ -465,15 +465,15 @@ secrets: one-off sealing pass sealed 0 settings field(s) and 0 file(s)";
         fs::write(&blocked, "x").unwrap();
         write(&blocked, "nothing happens");
         // The bundle: every file oldest first under a header, the secret masked, the start line kept.
-        write(&dir, "app start 7, Kolux RS 0.1.0");
+        write(&dir, "app start 7, Kolux 0.1.0");
         write(&dir, "pane env ANTHROPIC_API_KEY=sk-ant-BUNDLESECRET123456 leaked");
         let b = bundle(&dir, "0.1.0");
-        assert!(b.starts_with("Kolux RS 0.1.0 diagnostics, "), "{b}");
+        assert!(b.starts_with("Kolux 0.1.0 diagnostics, "), "{b}");
         let heads: Vec<usize> = old.iter().map(|(p, _)| b.find(&format!("== {} ==", p.file_name().unwrap().to_string_lossy())).unwrap()).collect();
         assert!(heads.windows(2).all(|w| w[0] < w[1]), "oldest first: {heads:?}");
         assert!(heads.last().unwrap() < &b.find("== kolux.log ==").unwrap());
         assert!(!b.contains("BUNDLESECRET"), "{b}");
-        assert!(b.contains("ANTHROPIC_API_KEY=[masked] leaked") && b.contains("app start 7, Kolux RS 0.1.0"), "{b}");
+        assert!(b.contains("ANTHROPIC_API_KEY=[masked] leaked") && b.contains("app start 7, Kolux 0.1.0"), "{b}");
         let _ = fs::remove_dir_all(&dir);
     }
 }

@@ -1,5 +1,5 @@
 //! ORCH-034 (T-173-c): the orchestration store upgrades in place from every earlier layout that
-//! Kolux RS itself has written, so Runs, tasks, dispatches, messages, gates and request receipts
+//! Kolux itself has written, so Runs, tasks, dispatches, messages, gates and request receipts
 //! carry over after an upgrade. Our own layouts only: the carry-over from the old app's store is an
 //! importer contract (COMPAT 5.7, T-213) and never read here.
 //!

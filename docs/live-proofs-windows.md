@@ -22,7 +22,7 @@ spec, the PLAN.md line, and the evidence file for each item.
 Have these ready:
 
 - [ ] The Windows PC, with about 5 hours. Split it into two sittings if you like: stop after Part B.
-- [ ] The newest Kolux RS installer, and the one before it, both from the Releases page of TxaisX/kolux-rs on
+- [ ] The newest Kolux installer, and the one before it, both from the Releases page of TxaisX/kolux on
       GitHub (Part D installs the older one twice).
 - [ ] Claude Code installed and signed in (your test account is fine).
 - [ ] Optional, for the Codex and Gemini items: Codex CLI and Gemini CLI installed and signed in. Codex needs an
@@ -51,12 +51,12 @@ box empty until the integrator says the fix is in and a re-run passes.
 - [x] Run — **PASS on 0.1.3** (2026-10-31): the installer left the 1,815-character Path alone, the app added
       `<install>\bin` once at its next start, every earlier entry survived, a new terminal resolved `kolux` to
       0.1.3, and a second install over the top did not double the entry. Evidence: `evidence/live-A-1-T-594.txt`.
-- Set up: no Kolux RS installed.
+- Set up: no Kolux installed.
 - Press: run the newest installer. When it ends, open a new Windows Terminal or PowerShell window (not one that was
   already open) and type `kolux --version`.
 - Should happen: the installer's details say it added Kolux's folder to your PATH. `kolux --version` prints the
-  Kolux RS version. In Start > "Edit environment variables for your account", the Path entry for your account shows
-  the Kolux RS bin folder once, and every entry you had before is still there.
+  Kolux version. In Start > "Edit environment variables for your account", the Path entry for your account shows
+  the Kolux bin folder once, and every entry you had before is still there.
 - Then: run the same installer again over the top. The bin folder is still listed only once.
 - Fail if: `kolux` is not found in a new terminal; the bin folder is listed twice; any of your old Path entries is
   missing or changed.
@@ -64,8 +64,8 @@ box empty until the integrator says the fix is in and a re-run passes.
 
 ### A-2 · T-608 · First launch asks one line of consent for status hooks
 - [ ] Run
-- Set up: the fresh install from A-1 (a profile that has never run Kolux RS).
-- Press: start Kolux RS. Go through the first-run screens. On the Connect screen, look for the line "Kolux will add
+- Set up: the fresh install from A-1 (a profile that has never run Kolux).
+- Press: start Kolux. Go through the first-run screens. On the Connect screen, look for the line "Kolux will add
   its status hooks to each AI's settings, so it can show you which one needs you." with a switch beside it. Leave
   the switch on and press Continue.
 - Should happen: the line is there and the switch starts on. After Continue, Claude's own settings file gains
@@ -112,7 +112,7 @@ Codex's settings.
 
 ## Part B: one workspace, no agent needed (about 80 minutes)
 
-Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane).
+Have your test project open in Kolux. Only B-9 uses an agent (one Claude pane).
 
 ### B-1 · VIEW-002 box 1 · Ctrl+Alt+V cycles all four screens
 - [ ] Run
@@ -155,9 +155,9 @@ Have your test project open in Kolux RS. Only B-9 uses an agent (one Claude pane
 
 ### B-5 · CLI-011 box 2 · kolux open brings a minimised Kolux to the front
 - [ ] Run
-- Set up: Kolux RS running, then minimise it.
+- Set up: Kolux running, then minimise it.
 - Press: in an ordinary terminal outside Kolux, type `kolux open`.
-- Should happen: the Kolux RS window comes back to the front, and the terminal prints "Kolux is ready; its window is in
+- Should happen: the Kolux window comes back to the front, and the terminal prints "Kolux is ready; its window is in
   front". Then minimise it again and run `kolux open --json`: the result holds `"raised": true` (CLI-011 unit, 2026-11-01).
 - Fail if: the window stays minimised, a second copy of Kolux starts, or the line says Windows kept another window in
   front / `"raised": false` (then Kolux is restored behind the terminal and only flashes in the taskbar).
@@ -399,19 +399,19 @@ page.
 **Run it anyway; tick D-1 only after the cli-path fix lands**, together with A-1.
 
 - [ ] Run
-- Press: uninstall Kolux RS from Windows Settings > Apps. Open a new terminal and type `kolux --version`.
-- Should happen: the Kolux RS bin folder is gone from your account's Path; every other entry is still there, in the
+- Press: uninstall Kolux from Windows Settings > Apps. Open a new terminal and type `kolux --version`.
+- Should happen: the Kolux bin folder is gone from your account's Path; every other entry is still there, in the
   same order; `kolux` is no longer found.
 - Fail if: the entry is still there, or any other entry was changed or removed.
 - Result: ______________________________________________
 
 ### D-2 · APP-025 box 2 · A downloaded update installs on a plain quit
 - [ ] Run
-- Set up: uninstall Kolux RS first if you skipped D-1. Install the release **before** the newest one. Start it and check Help > About Kolux RS shows that older
+- Set up: uninstall Kolux first if you skipped D-1. Install the release **before** the newest one. Start it and check Help > About Kolux shows that older
   version. Open your test project with a couple of panes arranged the way you like (D-3 uses this).
-- Press: keep working until the small pop-up in the bottom-left corner says "Kolux RS (version) is ready", with
+- Press: keep working until the small pop-up in the bottom-left corner says "Kolux (version) is ready", with
   "Restart to update". It can take up to 30 minutes. Do **not** click it. Quit Kolux the ordinary way. Start it again.
-- Should happen: Help > About Kolux RS now shows the newer version.
+- Should happen: Help > About Kolux now shows the newer version.
 - Fail if: the pop-up never appears; Kolux restarts by itself before you quit; after the quit and relaunch the old
   version still runs.
 - Result: ______________________________________________
@@ -419,7 +419,7 @@ page.
 ### D-3 · APP-048 box 2 · Your layout and sessions survive the update
 - [ ] Run (straight after D-2)
 - Should happen: the same projects, layout, sessions and settings as before the update.
-- "Previous release" here means the last Kolux RS release.
+- "Previous release" here means the last Kolux release.
 - Fail if: anything you set up before D-2 is gone or moved.
 - Carrying an old Kolux 0.15.0 profile across is a separate decision (evidence/cards-APP-048.txt), not part of this
   check.
@@ -429,11 +429,11 @@ page.
 
 ### D-4 · T-592 · "Restart to update" brings Kolux back on the new version
 - [ ] Run
-- Set up: this needs a newer release than the one installed. Uninstall Kolux RS, install the release before the
-  newest one again, start it, and check Help > About Kolux RS shows the older version.
-- Press: wait for the bottom-left pop-up "Kolux RS (version) is ready" (up to 30 minutes), then click "Restart to
+- Set up: this needs a newer release than the one installed. Uninstall Kolux, install the release before the
+  newest one again, start it, and check Help > About Kolux shows the older version.
+- Press: wait for the bottom-left pop-up "Kolux (version) is ready" (up to 30 minutes), then click "Restart to
   update".
-- Should happen: Kolux closes, the update installs, and Kolux comes back by itself. Help > About Kolux RS shows the
+- Should happen: Kolux closes, the update installs, and Kolux comes back by itself. Help > About Kolux shows the
   newer version.
 - Fail if: Kolux closes and stays closed, or comes back on the old version.
 - Result: ______________________________________________
@@ -447,7 +447,7 @@ These are still open but cannot be run now. They are listed so nothing is forgot
 - **APP-059 box 1** (every ship to main publishes a release) and **APP-060 box 1** (tests run in four parts on every
   push). Not applicable: releases ship from your PC (DT-R40); GitHub CI is not used (your decision of 2026-10-31,
   because checks run before code reaches the repo).
-- **CLI-007 box 2** (inside a Kolux pane, kolux is Kolux RS's own copy even with an older kolux registered). It needs
+- **CLI-007 box 2** (inside a Kolux pane, kolux is Kolux's own copy even with an older kolux registered). It needs
   an older kolux registered for the whole machine, and the old Kolux has been removed.
 - **T-592, the safe-graphics restarts** (Restart in safe graphics, and trying hardware graphics again, each bring
   Kolux back). Those choices only appear after graphics crashes, so they cannot be reached on purpose.

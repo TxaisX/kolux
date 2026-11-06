@@ -1,10 +1,10 @@
 # Contributing
 
-Kolux RS is in early alpha. Bug reports and feedback are welcome. Code changes are considered case by case, so open an issue before you start a substantial one.
+Kolux is in early alpha. Bug reports and feedback are welcome. Code changes are considered case by case, so open an issue before you start a substantial one.
 
 ## Report a bug
 
-Open an [issue](https://github.com/TxaisX/kolux-rs/issues) with:
+Open an [issue](https://github.com/TxaisX/kolux/issues) with:
 
 - the version, from Help, About;
 - your Windows version;
@@ -42,7 +42,7 @@ Do not add attribution lines to commits, comments, or UI. Keep the work as the p
 
 ## Clean-room provenance
 
-Kolux RS is a clean-room rebuild. Every line is meant to be original work owned by the project owner. The old Kolux app was built on someone else's MIT-licensed code, so code derived from it cannot be used.
+Kolux is a clean-room rebuild. Every line is meant to be original work owned by the project owner. The old Kolux app was built on someone else's MIT-licensed code, so code derived from it cannot be used.
 
 Do not copy, paraphrase, or paste from:
 
@@ -57,7 +57,7 @@ If you have seen forbidden source, say so in your issue before contributing. If 
 
 ## License and contribution terms
 
-Kolux RS is source-available. Copyright (c) 2026 Txais Xiong. All rights reserved. See [LICENSE](LICENSE).
+Kolux is source-available. Copyright (c) 2026 Txais Xiong. All rights reserved. See [LICENSE](LICENSE).
 
 The source is public so you can read and review it. It is not open source. Do not send a substantial code change until the owner has agreed in the issue how the contribution will be licensed.
 

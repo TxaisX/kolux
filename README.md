@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="design/icon/kolux-mark.svg" width="72" height="72" alt="Kolux RS">
+  <img src="design/icon/kolux-mark.svg" width="72" height="72" alt="Kolux">
 </p>
 
-<h1 align="center">Kolux RS</h1>
+<h1 align="center">Kolux</h1>
 
 <p align="center">
   <strong>Run many AI coding agents side by side.</strong><br>
@@ -10,20 +10,20 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TxaisX/kolux-rs/releases/latest">Download the latest build</a> ·
+  <a href="https://github.com/TxaisX/kolux/releases/latest">Download the latest build</a> ·
   <a href="docs/guide/README.md">User guide</a> ·
   <a href="docs/STATUS.md">Status</a> ·
-  <a href="https://github.com/TxaisX/kolux-rs/issues">Issues</a>
+  <a href="https://github.com/TxaisX/kolux/issues">Issues</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/TxaisX/kolux-rs/actions/workflows/ci.yml"><img src="https://github.com/TxaisX/kolux-rs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://github.com/TxaisX/kolux-rs/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux-rs?label=release" alt="Latest release"></a>
+  <a href="https://github.com/TxaisX/kolux/actions/workflows/ci.yml"><img src="https://github.com/TxaisX/kolux/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/TxaisX/kolux/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux?label=release" alt="Latest release"></a>
 </p>
 
-Kolux RS is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. When you launch two or more agents, each gets its own Git worktree by default, so they can work on the same project without editing the same files.
+Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. When you launch two or more agents, each gets its own Git worktree by default, so they can work on the same project without editing the same files.
 
-> **Early alpha.** Kolux RS is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
+> **Early alpha.** Kolux is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
 
 ## What it does
 
@@ -36,9 +36,9 @@ Kolux RS is a Windows desktop app for people who run several AI coding agents at
 
 ## Install
 
-1. Open the [latest release](https://github.com/TxaisX/kolux-rs/releases/latest) and download `Kolux.RS_<version>_x64-setup.exe`.
+1. Open the [latest release](https://github.com/TxaisX/kolux/releases/latest) and download `Kolux.RS_<version>_x64-setup.exe`.
 2. Run the installer. It installs for your Windows user and adds the `kolux` command to your PATH.
-3. Open Kolux RS. The first-run setup asks you to connect an AI, pick a project folder, and start a session.
+3. Open Kolux. The first-run setup asks you to connect an AI, pick a project folder, and start a session.
 
 The current installer is not Authenticode-signed, so Windows SmartScreen may warn on first run. Choose **More info**, then **Run anyway**, after checking that the file came from this repository's Releases page. The update manifest is signed separately.
 
@@ -56,13 +56,13 @@ On first launch, a four-step dialog asks you to connect at least one AI, choose 
 
 ## How it works
 
-Kolux RS is a Tauri 2 app. The window is React and TypeScript; the core is Rust. Each pane is a real PTY running your shell or agent, and a background terminal service lets panes outlive the window. Agents report status through hooks that Kolux installs in the agent's own settings, or through a plugin or extension where the agent supports one. Reports go to a loopback listener that requires a per-run token. There is no Kolux server.
+Kolux is a Tauri 2 app. The window is React and TypeScript; the core is Rust. Each pane is a real PTY running your shell or agent, and a background terminal service lets panes outlive the window. Agents report status through hooks that Kolux installs in the agent's own settings, or through a plugin or extension where the agent supports one. Reports go to a loopback listener that requires a per-run token. There is no Kolux server.
 
 Worktrees are ordinary Git worktrees. You can inspect, commit, or remove them with any Git tool.
 
 ## Privacy
 
-Kolux RS has no telemetry, analytics, or crash upload. Your projects, settings, terminal output, and keys stay on your computer. Keys and managed sign-ins are sealed with Windows DPAPI at current-user scope. Feedback and crash reports open a pre-filled GitHub issue in your browser; nothing is sent until you submit it.
+Kolux has no telemetry, analytics, or crash upload. Your projects, settings, terminal output, and keys stay on your computer. Keys and managed sign-ins are sealed with Windows DPAPI at current-user scope. Feedback and crash reports open a pre-filled GitHub issue in your browser; nothing is sent until you submit it.
 
 The full list of outbound connections is in Settings, General, Privacy and in the [safety guide](docs/guide/safety.md).
 
@@ -87,9 +87,9 @@ The [documentation home](docs/README.md) has the full index.
 
 ## Project
 
-Kolux RS is in early alpha. The latest build is 0.1.7 (4 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
+Kolux is in early alpha. The latest build is 0.1.7 (4 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
 
-Bug reports and feature requests go to [Issues](https://github.com/TxaisX/kolux-rs/issues). If you want to propose a code change, open an issue first so we can agree on scope; read [CONTRIBUTING.md](CONTRIBUTING.md) before you start.
+Bug reports and feature requests go to [Issues](https://github.com/TxaisX/kolux/issues). If you want to propose a code change, open an issue first so we can agree on scope; read [CONTRIBUTING.md](CONTRIBUTING.md) before you start.
 
 ## Build from source
 
@@ -113,6 +113,6 @@ The full development docs are in [docs/development](docs/development/README.md):
 
 ## License
 
-Kolux RS is source-available. Copyright (c) 2026 Txais Xiong. All rights reserved. See [LICENSE](LICENSE). The source is public so you can read and review it; it is not open source.
+Kolux is source-available. Copyright (c) 2026 Txais Xiong. All rights reserved. See [LICENSE](LICENSE). The source is public so you can read and review it; it is not open source.
 
-Kolux RS is an independent project and is not affiliated with or endorsed by Anthropic, OpenAI, Google, GitHub, Microsoft, or the other agent vendors it can run.
+Kolux is an independent project and is not affiliated with or endorsed by Anthropic, OpenAI, Google, GitHub, Microsoft, or the other agent vendors it can run.

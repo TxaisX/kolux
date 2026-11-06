@@ -7,7 +7,7 @@ import { scrub } from "./scrub";
 /** What stands between the user's text and the block the app adds. */
 export const MARK = "\n\n---\n";
 /** The first words of the block: how a block is told from a rule the user typed. */
-const BLOCK_START = "Kolux RS ";
+const BLOCK_START = "Kolux ";
 const TRIM_NOTE = "trimmed to fit in a browser address";
 
 export type Issue = { ok: true; url: string; trimmed: boolean } | { ok: false; error: string };

@@ -52,11 +52,11 @@ Rules: WSL roots are treated as local paths, not as network shares; searching a 
   that fails for a passing reason, such as a file locked for a moment, is retried a few times; one
   file reached both through its WSL path and through its Windows drive alias counts as the same file
   for change detection, while names inside the Linux file system stay case-sensitive.
-  (Kolux RS, T-062-a: a Windows removal that fails with a sharing or lock violation or access
+  (Kolux, T-062-a: a Windows removal that fails with a sharing or lock violation or access
   denied is retried five times, 60 ms apart, before it counts as failed; deletes on WSL are
   permanent and warned; the search, watcher and alias rules wait for T-062-b and a WSL
   distribution on the build machine.)
-  (Kolux RS, T-062-b, 2026-11-02: the search of a WSL root runs ripgrep inside its distribution
+  (Kolux, T-062-b, 2026-11-02: the search of a WSL root runs ripgrep inside its distribution
   through wsl.exe with no shell in between, hits mapped back by their relative paths, a missing
   wsl.exe or ripgrep reported; a WSL worktree is read every 4 s from the start instead of watched,
   the read that never goes quiet (DT-C70); one file through its WSL path and its drive alias is one
@@ -82,10 +82,10 @@ Rules: a path that leaves the project through a symlink is refused; terminal lin
   nothing beneath it; macOS system path aliases count as the same place; a save or file action begun
   for a folder workspace is refused if that workspace's folder changes before it finishes, so
   nothing lands in the wrong place.
-  (Kolux RS, T-062-a: the roots are the projects, each project's own workspaces folder and the
+  (Kolux, T-062-a: the roots are the projects, each project's own workspaces folder and the
   shared one; a parent-folder step (two dots) is refused as text; the place a path really leads to is checked only
   for reading, writing, listing and as the folder written into, so the link itself can still be
-  renamed, trashed or moved; a grant lasts the run; a workspace's folder never changes in Kolux RS,
+  renamed, trashed or moved; a grant lasts the run; a workspace's folder never changes in Kolux,
   so the mid-save refusal has nothing to guard.)
 Acceptance:
   - [x] Open a file through a symlink that points outside the worktree → refused. (cards; evidence/cards-EDIT-045.txt)
@@ -105,7 +105,7 @@ Rules: launchable files are recognised by type on every platform (programs, scri
   macOS and Linux a file with its execute permission set counts as launchable even with no
   extension; relative paths, missing files, links that are not file links, and file links naming
   another computer are ignored; the same test runs everywhere Kolux hands a file to the system.
-  (Kolux RS, T-062-a: the editor's refusal offers "Open this file anyway", which allows that one
+  (Kolux, T-062-a: the editor's refusal offers "Open this file anyway", which allows that one
   path for the run through a one-file grant; there are no browser downloads yet.)
 Acceptance:
   - [x] Click a terminal link to a batch file, a PowerShell script, an executable or a Windows
@@ -690,7 +690,7 @@ User sees: an editor tab listing the check's steps with their status and its ann
 Rules: Fix with AI needs an open pull request; clicking an annotation opens that file at that line,
   but only for files inside the worktree; the tab header shows the check's name and has no path to
   copy; each check gets one tab per worktree: opening it again returns to that tab, and two checks
-  with the same name never share one. (Kolux RS, T-686: the card has Refresh, and Retry beside a
+  with the same name never share one. (Kolux, T-686: the card has Refresh, and Retry beside a
   read error; its close button is named "Close the <name> check tab"; its layout comes from classes,
   not inline styles.)
 Acceptance:

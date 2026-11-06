@@ -38,7 +38,7 @@ Rules: before launch, Kolux records the folder as trusted in each agent's own co
   other folder; Claude's project entries always use forward slashes and the folder's real letter
   case on disk, because Claude ignores an entry written with backslashes; a folder that is already
   trusted is reported as done at once.
-  (Kolux RS, T-017-c, DT-C17: Claude Code and Codex only. Cursor and Copilot are not pre-trusted:
+  (Kolux, T-017-c, DT-C17: Claude Code and Codex only. Cursor and Copilot are not pre-trusted:
   neither documents where its trust decision is kept, and Cursor's `--trust` flag is for headless
   runs only; their own trust prompt stays with the user.)
 Acceptance:
@@ -172,7 +172,7 @@ Rules: only Claude Code is guarded, through its PreToolUse hook, and the Safety 
   rules treat the pane's worktree folder as the workspace, not merely the current directory, and the
   pane's project decides which per-project rules apply; switching a rule off takes effect on the
   very next command, with no restart.
-  (Kolux RS, T-058: the Claude hook script prints Kolux's answer, which the core builds from the
+  (Kolux, T-058: the Claude hook script prints Kolux's answer, which the core builds from the
   protected-command check; the master switch and the list of rules switched off are both settings,
   read from the settings file on every command; the proof through a signed-in Claude is T-058-b.)
 Acceptance:
@@ -203,7 +203,7 @@ Rules: force means any force flag, including the lease and mirror variants and s
   subcommand (changing directory, passing config, pointing at a git directory) are skipped over; the
   discard rule asks for a hard reset or a clean carrying the force flag, but not for a reset without
   hard or a dry-run clean.
-  (Kolux RS, T-058: the force-push and discard rules of the protected-command check; a command is
+  (Kolux, T-058: the force-push and discard rules of the protected-command check; a command is
   split on its plain chain operators, the rest of the chain and wrapper handling is the SAFE-014 task.)
 Acceptance:
   - [x] git push -f, git push origin :main, and git push --force origin main → each asks. (cards; evidence/cards-SAFE-010.txt)
@@ -223,7 +223,7 @@ Rules: only database clients count: the Postgres, MySQL, SQLite, SQL Server and 
   and the like; destructive means dropping a table, database, schema, view, index, user or role, or
   truncating; the whole command line is inspected, so SQL piped in or supplied through a heredoc is
   still seen; the dedicated drop-database tool always asks.
-  (Kolux RS, T-058: the database-drop rule; a Mongo shell command that calls drop, drop-database or
+  (Kolux, T-058: the database-drop rule; a Mongo shell command that calls drop, drop-database or
   drop-collection counts as a drop.)
 Acceptance:
   - [x] The Postgres client given a drop-table statement on its command line → asks; a truncate
@@ -249,7 +249,7 @@ Rules: Stripe: a live secret key or live restricted key anywhere in the command 
   verb; a deploy without a production marker, and a package install with a production flag, do not
   ask. All three rules are kept deliberately tight so the user does not learn to click allow without
   reading.
-  (Kolux RS, T-058: the Stripe, infrastructure and production-deploy rules; a production marker is the word prod or
+  (Kolux, T-058: the Stripe, infrastructure and production-deploy rules; a production marker is the word prod or
   production on its own, after a dash, or as the value of a flag or assignment on the command.)
 Acceptance:
   - [x] Cancelling a subscription with the Stripe CLI → asks; stripe listen, and listing customers →
@@ -278,7 +278,7 @@ Rules: recursive deletes are rm with a recursive flag; rd, rmdir, del and erase 
   used instead; with neither known, any relative recursive delete asks. Paths are compared as text
   only and never looked up on disk; Git Bash drive paths are turned into Windows form; comparisons
   on Windows ignore letter case.
-  (Kolux RS, T-059-a: the delete rule of the protected-command check; the workspace is Claude's own
+  (Kolux, T-059-a: the delete rule of the protected-command check; the workspace is Claude's own
   hook cwd, which a Kolux pane makes the worktree folder, DT-C23; a temp root wins over the
   workspace test, so a repository kept under TEMP is not protected from its own deletes.)
 Acceptance:
@@ -314,7 +314,7 @@ Rules: every program in a chain is inspected (semicolons, ampersands, pipes, and
   2026-10-04 audit findings S1 (PowerShell value switches), S2 (wrapper option values), S3
   (run-together cmd switches and the doubled slash), S4 (bare cd and popd) and the at-sign-for-HEAD
   gap; the rebuild must pass all of them from its first version.
-  (Kolux RS, T-059-a: the command splitter of the protected-command check; the inner commands of a
+  (Kolux, T-059-a: the command splitter of the protected-command check; the inner commands of a
   PowerShell -File script, a shell reading stdin, and the commands find runs through its exec flag
   are not read, and the window title of a start command is skipped only when it is empty quotes.)
 Acceptance:
@@ -392,7 +392,7 @@ Rules: a host path is any share written with a leading double backslash or doubl
   treats a leading double slash as an ordinary local path while link clicks in the interface refuse
   it on every platform, a known difference that errs on the safe side and that the rebuild may make
   consistent.
-  (Kolux RS, T-060: the host-path check and its refusal; a leading double slash is refused on
+  (Kolux, T-060: the host-path check and its refusal; a leading double slash is refused on
   every platform, in the core as well as the interface, which the card allows; the registered
   roots are the projects and the workspaces folder; terminal and note links are not built yet and
   will call the same functions; no grant flow exists yet, so the exact-file grant rule is T-062's.)
@@ -421,7 +421,7 @@ Rules: around a hundred program and script-like file types count, including unus
   finding I3); the Windows short-name test also catches ordinary names that happen to look like one,
   for example a text file whose name has a tilde and a digit, and such files are revealed rather
   than opened, which errs on the safe side.
-  (Kolux RS, T-060: the program-like and launchable checks and the open-file command; the short-name
+  (Kolux, T-060: the program-like and launchable checks and the open-file command; the short-name
   shape is a stem of up to eight characters holding a tilde followed by a digit with an extension
   of up to three; on Linux the reveal opens the folder without selecting the file.)
 Acceptance:

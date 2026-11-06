@@ -1,5 +1,5 @@
 // ONB-037 / ONB-038 (T-322-b): starring the Kolux repository through the user's own gh sign-in. It runs only when
-// the user clicks the star button, never by itself. STAR_REPO is empty until Kolux RS has a public repository
+// the user clicks the star button, never by itself. STAR_REPO is empty until Kolux has a public repository
 // (OD-16, confirmed 2026-10-13); empty means the star prompt is off and nothing here talks to GitHub.
 use crate::github::full_name_ok;
 use crate::scm::{gh_program, gh_run, gh_words};

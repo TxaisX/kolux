@@ -94,7 +94,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         {/* APP-009 / T-248-a: the Kolux mark opens the app menu (File, Edit, View, Window, Help). */}
         <button
           className="ib mark"
-          title={appMenu ? "Kolux menu" : "Kolux RS"}
+          title={appMenu ? "Kolux menu" : "Kolux"}
           aria-haspopup={appMenu ? "menu" : undefined}
           disabled={!appMenu}
           // The mark never takes focus, so Edit acts on the field or terminal that had it.

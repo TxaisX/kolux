@@ -1,4 +1,4 @@
-// Kolux RS's own line glyphs: 16-unit grid, 1.5 px strokes, drawn in the current text colour.
+// Kolux's own line glyphs: 16-unit grid, 1.5 px strokes, drawn in the current text colour.
 // None is a vendor mark (DECISIONS.md: agents get a neutral glyph or their name as text).
 import { useEffect, useRef, type SVGProps } from "react";
 

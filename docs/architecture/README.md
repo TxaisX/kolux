@@ -1,6 +1,6 @@
 # Architecture
 
-This section is the technical map of Kolux RS. It describes the 0.1.x build as it exists, not a future design. Every claim here can be checked against the source tree.
+This section is the technical map of Kolux. It describes the 0.1.x build as it exists, not a future design. Every claim here can be checked against the source tree.
 
 Start with the [overview](overview.md), or open the [infographic page](infographic.html) for the extended visual version. The diagram itself is [architecture.svg](architecture.svg), which the overview embeds and GitHub renders directly.
 

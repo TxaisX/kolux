@@ -1637,8 +1637,8 @@ mod tests {
         let profile = Path::new("C:/Users/u");
         assert!(own_install(Path::new("C:/Users/u/AppData/Local/Kolux RS"), Some(local), Some(profile)));
         assert!(own_install(Path::new("C:/Users/u/Apps/Kolux"), None, Some(profile)));
-        assert!(!own_install(Path::new("C:/Program Files/Kolux RS"), Some(local), Some(profile)));
-        assert!(!own_install(Path::new("C:/Program Files/Kolux RS"), None, None));
+        assert!(!own_install(Path::new("C:/Program Files/Kolux"), Some(local), Some(profile)));
+        assert!(!own_install(Path::new("C:/Program Files/Kolux"), None, None));
         let steps = repair_steps(Path::new("C:/x/a.dll"), "someone");
         assert_eq!(steps.len(), 3);
         assert_eq!(steps[0][1], "/reset", "inherited defaults first");

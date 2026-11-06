@@ -1,6 +1,6 @@
 # Security policy
 
-Kolux RS is in early alpha. Security fixes land on the latest 0.1.x build. Older builds are not supported.
+Kolux is in early alpha. Security fixes land on the latest 0.1.x build. Older builds are not supported.
 
 ## Reporting a vulnerability
 
@@ -8,7 +8,7 @@ Do not open a public issue for a security problem.
 
 Use GitHub's private vulnerability reporting:
 
-https://github.com/TxaisX/kolux-rs/security/advisories/new
+https://github.com/TxaisX/kolux/security/advisories/new
 
 Include:
 
@@ -43,4 +43,4 @@ I will not pursue legal action for good-faith research that follows this policy,
 
 ## What the app sends
 
-Kolux RS has no telemetry, analytics, or crash upload. The outbound connections are listed in Settings, General, Privacy and in the [user guide](docs/guide/safety.md).
+Kolux has no telemetry, analytics, or crash upload. The outbound connections are listed in Settings, General, Privacy and in the [user guide](docs/guide/safety.md).

@@ -59,9 +59,9 @@ test("T-183 APP-042: the screen boundary names what broke in plain words", () =>
 
 test("T-199 (APP-028): a failed install is reported once at the next launch with Try again and the installer page", () => {
   const n = updateNotice({ kind: "failed", from: "0.2.0", to: "0.3.0", holder: null, releasesPage: "https://example.invalid/releases" });
-  expect(n?.text).toBe("The update to Kolux RS 0.3.0 did not install, so this is still 0.2.0. Try again, or download the installer and run it yourself.");
+  expect(n?.text).toBe("The update to Kolux 0.3.0 did not install, so this is still 0.2.0. Try again, or download the installer and run it yourself.");
   expect(n?.releasesPage).toBe("https://example.invalid/releases");
-  expect(updateNotice({ kind: "failed", from: "1", to: "2", holder: "Explorer", releasesPage: "p" })?.text).toContain(" Explorer was holding Kolux RS's files.");
+  expect(updateNotice({ kind: "failed", from: "1", to: "2", holder: "Explorer", releasesPage: "p" })?.text).toContain(" Explorer was holding Kolux's files.");
   expect(updateNotice({ kind: "updated", version: "0.3.0", notes: [] })).toBeNull();
   expect(updateNotice(null)).toBeNull();
 });

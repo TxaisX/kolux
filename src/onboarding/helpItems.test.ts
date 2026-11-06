@@ -70,9 +70,9 @@ describe("APP-010 the help menu list", () => {
       ["open_external", { url: CHANGELOG_URL }],
       ["open_external", { url: GITHUB_URL }],
     ]);
-    expect(GITHUB_URL).toBe("https://github.com/TxaisX/kolux-rs");
-    expect(CHANGELOG_URL).toBe("https://github.com/TxaisX/kolux-rs/releases");
-    expect(DOCS_URL).toBe("https://github.com/TxaisX/kolux-rs/tree/main/docs");
+    expect(GITHUB_URL).toBe("https://github.com/TxaisX/kolux");
+    expect(CHANGELOG_URL).toBe("https://github.com/TxaisX/kolux/releases");
+    expect(DOCS_URL).toBe("https://github.com/TxaisX/kolux/tree/main/docs");
     for (const u of [DOCS_URL, CHANGELOG_URL, GITHUB_URL]) expect(u.startsWith("https://")).toBe(true);
   });
 
@@ -144,8 +144,8 @@ describe("APP-010 Restart Kolux", () => {
 describe("APP-010 Copy terminal diagnostics", () => {
   it("puts the back end's summary on the clipboard and says so", async () => {
     const clip = vi.fn().mockResolvedValue(undefined);
-    const note = await copyDiagnostics(async () => "Kolux RS 0.1.0 diagnostics summary", clip);
-    expect(clip).toHaveBeenCalledWith("Kolux RS 0.1.0 diagnostics summary");
+    const note = await copyDiagnostics(async () => "Kolux 0.1.0 diagnostics summary", clip);
+    expect(clip).toHaveBeenCalledWith("Kolux 0.1.0 diagnostics summary");
     expect(note).toBe(DIAG_COPIED);
   });
 

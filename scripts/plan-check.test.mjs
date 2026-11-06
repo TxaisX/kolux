@@ -10,7 +10,7 @@ const SPEC = [
   "### AAA-001 · every box ticked",
   "Tier: P0 · Pushed: 1 · State at 0.15.0: live",
   "Rules: a rule.",
-  "  (Kolux RS, T-001: a note with - [ ] inside it is not a box)",
+  "  (Kolux, T-001: a note with - [ ] inside it is not a box)",
   "Acceptance:",
   "  - [x] One → two. (T-001)",
   "  - [x] Three → four, carried on",

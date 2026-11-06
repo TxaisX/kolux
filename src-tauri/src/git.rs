@@ -1201,7 +1201,7 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         run(&["init", "-q", "-b", "main"], Some(&dir)).unwrap();
         run(&["config", "user.email", "test@example.com"], Some(&dir)).unwrap();
-        run(&["config", "user.name", "Kolux RS test"], Some(&dir)).unwrap();
+        run(&["config", "user.name", "Kolux test"], Some(&dir)).unwrap();
         fs::write(dir.join("README.md"), "hello\n").unwrap();
         run(&["add", "."], Some(&dir)).unwrap();
         run(&["commit", "-q", "-m", "first"], Some(&dir)).unwrap();

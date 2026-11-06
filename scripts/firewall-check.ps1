@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Clean-room firewall check for the Kolux RS spec files.
+  Clean-room firewall check for the Kolux spec files.
 .DESCRIPTION
   Greps the behaviour spec for things that must never cross from the old code base:
   source paths, code-file names, camelCase / snake_case / SCREAMING_SNAKE identifiers,

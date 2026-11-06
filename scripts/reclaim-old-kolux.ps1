@@ -16,7 +16,7 @@
   - It deletes NOTHING unless you start it with -Delete and then type DELETE when asked.
     It then removes each folder and prints how much space came back. If any folder could not be
     removed, it says so and ends with exit code 1.
-  Run it on your Windows PC in PowerShell 7 (pwsh). Close the old app and Kolux RS first.
+  Run it on your Windows PC in PowerShell 7 (pwsh). Close the old app and Kolux first.
 .EXAMPLE
   pwsh -NoProfile -File scripts/reclaim-old-kolux.ps1            # look only: list folders and sizes
   pwsh -NoProfile -File scripts/reclaim-old-kolux.ps1 -Delete    # remove them after you type DELETE

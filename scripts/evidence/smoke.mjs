@@ -343,7 +343,7 @@ function writeStandin() {
     join(standin, "claude.cmd"),
     [
       "@echo off",
-      "echo Kolux RS smoke stand-in for Claude Code (T-542): posts the hook events a session would.",
+      "echo Kolux smoke stand-in for Claude Code (T-542): posts the hook events a session would.",
       'if "%KOLUX_PANE_KEY%"=="" (echo not in a Kolux pane & exit /b 0)',
       "setlocal",
       'set "KP=%KOLUX_AGENT_HOOK_PORT%"',

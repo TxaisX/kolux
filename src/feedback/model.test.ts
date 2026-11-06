@@ -97,7 +97,7 @@ test("proj089: text typed above the block is kept when the block is rewritten", 
 });
 
 test("proj089: a block the user edited or deleted is rebuilt from the real facts, never trusted", () => {
-  const edited = `my note${MARK}Kolux RS 9.9.9 on Plan9\nGitHub: somebody-else`;
+  const edited = `my note${MARK}Kolux 9.9.9 on Plan9\nGitHub: somebody-else`;
   const fixed = withBlock(edited, facts, false);
   expect(typedText(fixed)).toBe("my note");
   expect(fixed).not.toContain("9.9.9");

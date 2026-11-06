@@ -132,7 +132,7 @@ Acceptance:
   - [x] Switching to another pane while the clipboard is still being read cancels the paste instead
       of typing into the new pane. (cards; evidence/cycle3-TERM-068.txt)
 Compat: keybinding id terminal.paste.
-  (Kolux RS, T-010-fix: the pane-only and wait-for-the-prompt rules are tested in
+  (Kolux, T-010-fix: the pane-only and wait-for-the-prompt rules are tested in
   `src/terminal/paste.test.ts` and proved live in `evidence/T-010-fix-paste.png`.)
 Source: D-03-068
 
@@ -304,7 +304,7 @@ User does: splits, rearranges, applies presets or restores the app.
 User sees: each running program stays in its pane; nothing restarts or duplicates.
 Rules: a split, move or preset never respawns an existing session; output from one session never
   shows up in another pane; duplicate replays into the same pane are suppressed.
-  (Kolux RS, T-067: the app keys every cell by its group id and every pane by its pane key, so a split
+  (Kolux, T-067: the app keys every cell by its group id and every pane by its pane key, so a split
   or move re-parents the existing terminal host instead of remounting it; nothing respawns.)
 Acceptance:
   - [x] After 10 random splits and moves, each pane still shows its own session. (cards live; evidence/cards-TERM-017.txt)
@@ -320,7 +320,7 @@ Rules: Copy: Cmd+C on macOS; Ctrl+Shift+C on Windows/Linux, and Ctrl+C when text
   failure the selection is kept and one notice shows (repeated failures are throttled); an empty
   selection never reports success; focus returns to the pane after copying; on macOS the copy
   shortcut follows the letter the keyboard layout produces, not the physical key position.
-  (Kolux RS, T-067: Ctrl+C with nothing selected is the interrupt and reaches the program; a refused
+  (Kolux, T-067: Ctrl+C with nothing selected is the interrupt and reaches the program; a refused
   clipboard shows one notice per 5 s in the pane header and keeps the selection; focus returns to the pane.)
 Acceptance:
   - [x] With the clipboard locked by another app, copying shows a failure notice and the selection
@@ -338,7 +338,7 @@ Rules: Auto uses GPU rendering when supported, otherwise plain rendering; on/off
   failure does not make later terminals slow to open; glyph caches reset after paste bursts and
   system resume to clear garbled text; a program's synchronized frame is shown whole, including when
   a hidden pane is revealed.
-  (Kolux RS, T-067: GPU drawing has one control, Settings > Terminal & sessions > GPU drawing
+  (Kolux, T-067: GPU drawing has one control, Settings > Terminal & sessions > GPU drawing
   (Automatic, On, Off; SET-022). T-725 removed the second switch Appearance had, see DT-C26, DT-C161. Synchronized frames are handled by the terminal renderer itself. The cap counts
   live WebGL contexts; a lost context frees its slot. Glyph atlas reset after a paste over 2 KB and after a
   heartbeat gap over 30 s. Shells that stall at process start are a terminal-start problem, carried into T-166.)
@@ -357,7 +357,7 @@ Rules: a background host keeps sessions alive while the app is closed; scrollbac
   quit and relaunch; restored panes accept input straight away; the focused pane and an expanded
   pane come back as they were; terminals created from the command line or by automation are restored
   too.
-  (Kolux RS, DT-C27 as changed 2026-10-20: Txais chose that terminals keep running after quit. The
+  (Kolux, DT-C27 as changed 2026-10-20: Txais chose that terminals keep running after quit. The
   background host is built (T-075-b); the window routing its panes through it is T-184-b.)
 Acceptance:
   - [x] Quit with a build running; reopen; the build output continues in the same pane. (cards; evidence/cards-TERM-105.txt)
@@ -381,7 +381,7 @@ Rules: saved history is written safely so a crash leaves a usable copy; large hi
   and nothing is pruned when the list of live worktrees is empty; after a dead background host is
   replaced, the rest of a partly typed line is discarded rather than run; the hold ends after a
   short idle gap or a fixed cap, so typing never stays blocked.
-  (Kolux RS, T-068: there is no background host, so the partly typed line and the hold do not
+  (Kolux, T-068: there is no background host, so the partly typed line and the hold do not
   apply; the saved output is a transcript of the terminal's own stream, replayed at the pane's
   current size, so a pane reopened at a different size shows it approximately; large histories
   are kept to one piece, 256 KB on disk and the newest 128 KB replayed.)
@@ -502,7 +502,7 @@ Rules: close tab Cmd/Ctrl+W (closes the focused pane when the tab is split); clo
   worktree open; Close to the left is also in the tab menu; closing the active tab returns to the
   tab used before it, otherwise to its right neighbour (left if it was last); when nothing is left
   open, the workspace shows its empty start view.
-  (Kolux RS, T-102-a: the five close items live in the tab's right-click menu, a bulk close is one
+  (Kolux, T-102-a: the five close items live in the tab's right-click menu, a bulk close is one
   TERM-045 question for the whole set, and `tab.closeAll` on Ctrl+Alt+W closes the focused strip;
   pinned tabs do not exist yet, so nothing is spared until the pin task lands.)
 Acceptance:
@@ -519,9 +519,9 @@ User sees: pin or unpin, Change Title, Tab Color, split, close, close others, cl
   close to the left.
 Rules: directional close items are disabled when there is nothing to close; split actions move the
   tab into a split view; middle-click closes an unpinned tab.
-  (Kolux RS, T-102-a: the close items and middle-click are in; pin, title, colour and split items
+  (Kolux, T-102-a: the close items and middle-click are in; pin, title, colour and split items
   follow with the rest of the menu.)
-  (Kolux RS, T-668: the tab strip and this menu work from the keyboard: arrows, Home and End move
+  (Kolux, T-668: the tab strip and this menu work from the keyboard: arrows, Home and End move
   focus between tabs (Enter or Space brings one forward) and between menu items, Escape closes the
   menu before the terminal gets the key; the menu is kept inside the window; a disabled close item
   says why; the close question names how many tabs it closes.)
@@ -681,14 +681,14 @@ User sees: the panes resize live; the divider is a thin coloured line.
 Rules: divider thickness defaults to 3 px; divider colour has separate light and dark values
   (neutral grey tones by default); if the pointer is lost mid-drag (left the window, capture lost),
   the drag still finishes cleanly instead of sticking.
-  (Kolux RS, T-144-a: the defaults follow DT-A7 in the Appearance chapter, 6 px and no colour, with
+  (Kolux, T-144-a: the defaults follow DT-A7 in the Appearance chapter, 6 px and no colour, with
   the width and the light / dark colours still settable there; the grid's gap is the divider, the grid
   captures the pointer, a lost capture ends the drag where it was, a pane never goes under 120 px, and
   the program hears only the final size.)
 Acceptance:
   - [ ] Releasing the mouse outside the window ends the drag at the last position.
   - [ ] Dividers are about 3 px thick by default and take a different colour in light and dark mode.
-      (Kolux RS: 6 px and uncoloured by default per DT-A7; the colours apply once set.)
+      (Kolux: 6 px and uncoloured by default per DT-A7; the colours apply once set.)
 Compat: —
 Source: D-03-010
 
@@ -699,7 +699,7 @@ User sees: header items disappear one by one; the dot, agent mark and session na
 Rules: first the branch chip goes (around 344 px); then the program name (around 264 px); then the
   action buttons (around 204 px); then the status word (around 134 px); the session name truncates
   rather than disappearing.
-  (Kolux RS, T-144-a: CSS container queries on the pane at exactly those widths; under 134 px the
+  (Kolux, T-144-a: CSS container queries on the pane at exactly those widths; under 134 px the
   whole right-hand group goes with the status word.)
 Acceptance:
   - [ ] At 250 px wide the header shows dot, mark, name, status word and buttons but no branch or
@@ -759,7 +759,7 @@ Rules: defaults: a Kolux dark theme and a Tango-style light theme, separate ligh
   asking the terminal for its colours get correct answers, with no leaked replies at startup; no
   flash of the wrong theme at startup; programs that subscribe to light/dark changes are told when
   the mode flips.
-  (Kolux RS, T-145-b: on Windows the pane's replies are written to the console layer as
+  (Kolux, T-145-b: on Windows the pane's replies are written to the console layer as
   win32-input-mode key events, since it drops them as plain bytes; the palette question and the
   light/dark question and subscription get through and are answered; the foreground/background
   questions, OSC 10 and 11 with "?", never leave the console layer, so they go unanswered until the
@@ -914,7 +914,7 @@ Rules: glyph caches are reset when the computer wakes, while a plain window refo
   alone; pane sizes are re-sent after the window settles; display scaling changes are repaired;
   slept terminals show their output and accept fresh input after wake; when the window regains
   focus, typing returns to the pane that had it, unless the user clicked somewhere else meanwhile.
-  (Kolux RS, T-166: on resume from sleep and on a display-scale change the pane clears its glyph atlas
+  (Kolux, T-166: on resume from sleep and on a display-scale change the pane clears its glyph atlas
   and re-sends its size; a plain window focus only puts typing back in the pane that had it, and only
   when nothing else holds focus. Sleep itself was not exercised live; the wake path is unit-tested.)
 Acceptance:
@@ -933,7 +933,7 @@ Rules: a stalled write pipeline recovers on its own; lost output deliveries are 
   with agents like Codex stays low; output from many busy terminals is paced so the app stays
   responsive; keystrokes held for a terminal that is not yet connected are capped in size; when a
   stuck pipeline is recovered the user is told, even if part of the clean-up fails.
-  (Kolux RS, T-166: keys typed before the shell starts are held in order and sent once, capped at
+  (Kolux, T-166: keys typed before the shell starts are held in order and sent once, capped at
   16 KB with a notice naming the dropped count; spawn and write are async so a pipe that blocks never
   holds the window; a failed write shows "Typing could not reach the program"; the app clears the
   inherited "ignore Ctrl+C" flag before its first shell, so Ctrl+C interrupts a pane's program. Not
@@ -951,7 +951,7 @@ User does: chooses Copy terminal diagnostics in the pane menu.
 User sees: a diagnostics snapshot is copied for bug reports.
 Rules: secrets and personal paths are redacted; named in the 0.12.0 release; if the snapshot cannot
   be built or copied, a notice says so; it never fails silently.
-  (Kolux RS, T-166: the pane menu's "Copy terminal diagnostics" sends the last 60 rows, soft-wrapped
+  (Kolux, T-166: the pane menu's "Copy terminal diagnostics" sends the last 60 rows, soft-wrapped
   rows joined into whole lines, with the session's facts; the home folder becomes ~ and secrets are
   scrubbed before the text reaches the clipboard; "Diagnostics copied", "Diagnostics could not be
   built (...)", "Diagnostics could not be copied (...)" and "No session to describe yet" are the notices.)
@@ -976,7 +976,7 @@ Rules: leaving a full-screen program restores the shell screen and its scrollbac
   a full-screen program dies without handing the screen back, the shell prompt is reset to a usable
   state; while the pane belongs to a program that fills the screen or captures the mouse, the shell
   never counts as ready or idle.
-  (Kolux RS, T-166: the session watches its own output for the alternate-screen and mouse modes and
+  (Kolux, T-166: the session watches its own output for the alternate-screen and mouse modes and
   counts as busy while a program owns either; leaving the program shows the shell screen as the
   terminal kept it. Not built: the cold-restore cut at an unclosed full-screen session, the prompt
   reset when a full-screen child dies, and the reattach redraw; there is no background host and no
@@ -1006,7 +1006,7 @@ Rules: the width and height the running program sees always end up equal to the 
   cannot be made, Kolux assumes the size it asked for and sends it one time rather than looping;
   when the size changes several times in quick succession the program settles on the latest size,
   never an older one.
-  (Kolux RS, T-166: proven live with a shell printing its own width once a second: two window resizes
+  (Kolux, T-166: proven live with a shell printing its own width once a second: two window resizes
   while visible, two while the tab was hidden, a divider held then released, dragged back, and a
   cancelled drag all ended with the program at the pane's columns and no width in between.)
 Acceptance:
@@ -1210,7 +1210,7 @@ Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: presses Cmd/Ctrl+F in a pane.
 User sees: a find bar highlights matches in the output and scrollback.
 Rules: invalid search patterns do not crash the find bar; very long search text is capped.
-  (Kolux RS, T-696: a search with nothing found says No matches, and Previous and Next are greyed
+  (Kolux, T-696: a search with nothing found says No matches, and Previous and Next are greyed
   out while there is nothing to step to.)
 Acceptance:
   - [ ] Searching a word present 3 times lets the user step through all 3.

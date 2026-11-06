@@ -757,10 +757,10 @@ User sees: twelve animated tiles with poster frames, recorded before Kolux exist
   name other products (a terminal and an editor by brand, and a list of agent CLIs).
 Rules: each tile has an animation, a poster image and a record of when it was made; one tile shows
   remote workspaces, which belong to the dropped remote area; these recordings and captions are not
-  the owner's own; the rebuild replaces them with recordings of Kolux RS and its own captions, and
+  the owner's own; the rebuild replaces them with recordings of Kolux and its own captions, and
   drops the remote-workspaces tile with area 18.
 Acceptance:
-  - [ ] Replacement tiles are recorded from Kolux RS itself, and no caption names another product's
+  - [ ] Replacement tiles are recorded from Kolux itself, and no caption names another product's
         brand.
   - [ ] No tile shows remote workspaces.
 Compat: —

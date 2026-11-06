@@ -479,7 +479,7 @@ mod tests {
         let git = |args: &[&str]| crate::git::run(args, Some(&repo)).unwrap();
         git(&["init", "-q", "-b", "main"]);
         git(&["config", "user.email", "t@example.com"]);
-        git(&["config", "user.name", "Kolux RS test"]);
+        git(&["config", "user.name", "Kolux test"]);
         git(&["add", "."]);
         git(&["commit", "-q", "-m", "first"]);
         let store = Mutex::new(Store::open(&t.0.join("data")).unwrap());

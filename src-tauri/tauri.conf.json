@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Kolux RS",
+        "title": "Kolux",
         "width": 1400,
         "height": 880,
         "minWidth": 900,

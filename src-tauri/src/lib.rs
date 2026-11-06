@@ -338,7 +338,7 @@ pub fn run() {
             app_look::apply_saved(app.handle());
             app.manage(links::Grants::default());
             // APP-041: the app's own start-and-stop record, next to what the terminals report.
-            diag::write(&dir, &format!("app start {starts}, Kolux RS {}", app.package_info().version));
+            diag::write(&dir, &format!("app start {starts}, Kolux {}", app.package_info().version));
             // SET-004: the window starts hidden and the page shows it once its first frame has the saved
             // look; this is the backstop for a page that never gets that far.
             // T-286-b (APP-040): the app's own view reports its engine's process failures.

@@ -27,7 +27,7 @@ import { decide, POLL_MS } from "./ci-gate.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
-export const FEED_REPO = "TxaisX/kolux-rs";
+export const FEED_REPO = "TxaisX/kolux";
 export const NOTES_MAX = 30;
 export const STALE_MS = 3 * 60 * 60 * 1000;
 const MARKER = /<!-- kolux-rs-source: ([0-9a-f]{7,40}) -->/;
@@ -383,7 +383,7 @@ export function finish(o, env, exec, out) {
     requireGreenCi(sha, env, exec);
     // APP-031: the manifest goes up last, so a release is never announced before its installer is there.
     const files = [installerName(version), installerName(version) + ".sig"].map((f) => path.join(out, f));
-    exec("gh", ["release", "create", `v${version}`, "--target", sha, "--repo", FEED_REPO, "--title", `Kolux RS ${version}`, "--notes-file", path.join(out, "notes.md"), ...files], { env: ghEnv(env) });
+    exec("gh", ["release", "create", `v${version}`, "--target", sha, "--repo", FEED_REPO, "--title", `Kolux ${version}`, "--notes-file", path.join(out, "notes.md"), ...files], { env: ghEnv(env) });
     exec("gh", ["release", "upload", `v${version}`, "--repo", FEED_REPO, path.join(out, "latest.json")], { env: ghEnv(env) });
     say(`published ${version} to ${FEED_REPO}`);
   }

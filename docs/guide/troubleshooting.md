@@ -37,7 +37,7 @@ Settings, General, Diagnostics has three buttons:
 | Write a review copy and open it | Saves the same report as `diagnostics-review.txt` in Kolux's data folder and opens it, so you can read it before sharing |
 | Throw the review copy away | Deletes that file |
 
-The report begins "Kolux RS <version> diagnostics, <time> on <os> <arch>". Anything that looks like a key, token, password, cookie, secret or sign-in is replaced with `[masked]`, and so are secrets inside web addresses and command lines. Running the scrub twice changes nothing more.
+The report begins "Kolux <version> diagnostics, <time> on <os> <arch>". Anything that looks like a key, token, password, cookie, secret or sign-in is replaced with `[masked]`, and so are secrets inside web addresses and command lines. Running the scrub twice changes nothing more.
 
 Nothing is sent anywhere. You paste the report where you choose. Failures read "could not write the review copy: ..." or "could not remove the review copy: ...".
 
@@ -93,7 +93,7 @@ If a working terminal goes silent for 10 minutes, Kolux alerts you. Change the t
 | "the Kolux window is gone" | Close and reopen Kolux |
 | "<terminal> is not running an agent Kolux recognises, or the agent has not finished starting" | Wait a few seconds, or check the pane is running a supported agent |
 
-If `kolux` runs a different app than you expect, you may have the older Kolux on your PATH. Inside a Kolux RS pane the Kolux RS command comes first. Check with `where.exe kolux`. See [Command line](command-line.md).
+If `kolux` runs a different app than you expect, you may have the older Kolux on your PATH. Inside a Kolux pane the Kolux command comes first. Check with `where.exe kolux`. See [Command line](command-line.md).
 
 ## Still stuck
 
