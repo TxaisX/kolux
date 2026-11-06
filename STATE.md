@@ -221,7 +221,7 @@ recorded default until told otherwise; nothing here blocks a pass.
 ## Decisions made for Txais
 
 - 2026-11-05 · [release] Public rename to Kolux · DT-C212: the window, About panel, copy, README, user and developer docs, `package.json` and the GitHub repository (`TxaisX/kolux`) now say Kolux. The installer product name, install folder, app identifier, profile folder, `~/.kolux-rs` hook folder, executable names and crate names stay for one release, because `~/.kolux` still holds the old app's hook files; the next identity release moves those with a tested migration.
-- 2026-11-05 · [performance] First load made room for T-765 · the status bar, Help and recovery now call the update event bus directly instead of importing the update screen's door, so the door loads on demand: 1,488,267 → 1,485,868 bytes against the 1,490,000 ceiling. T-765's ~1.8 KB flood queue now fits, with 4,132 bytes of headroom.
+- 2026-11-05 · [performance] First load made room for T-765 · the status bar, Help and recovery now call the update event bus directly instead of importing the update screen's door, and the Tower window's view/bridge split keeps its view out of the main window: 1,488,267 → 1,483,608 bytes against the 1,490,000 ceiling. T-765's frame queue now fits, with 6,392 bytes of headroom.
 - 2026-11-01 · [skills] T-180-b · DT-C66: deleting a skill inside a WSL distribution runs inside that distribution. Txais confirmed it on 2026-11-01. Reversed 2026-11-02 by DT-C94 (T-658: listed, not deletable).
 - 2026-11-02 · [editor] T-062-b · DT-C70: a worktree inside a WSL distribution is read every 4 s, never watched.
 - 2026-11-02 · [editor] T-235-b · DT-C71: JPX (JPEG 2000) images in PDFs are decoded (Txais, 2026-11-01: allow JPX).
@@ -295,6 +295,7 @@ recorded default until told otherwise; nothing here blocks a pass.
   the two richCodeColourTime timing tests, failing on main too), so it is not green yet (evidence/T-ENG-test-time.txt).
 
 ## Last 10 passes  (date · task · result · evidence)
+- 2026-11-05 · [performance] T-765 code · merged `s-72/flood`: terminal output draws once a frame through one window-wide queue, ports skip chunks with no address and use the pane decoder; the Tower view left the first load. First load 1,483,608 bytes (6,392 under the 1,490,000 ceiling), 6,427 tests pass; the live flood proof is still pending
 - 2026-11-05 · [release] public rename · window, About, copy, README, docs, package name and GitHub repository say Kolux; installer and runtime identity stay for the next identity release (DT-C212) · branch `opt/first-load-headroom` also lands the 2.4 KB first-load cut that unblocks T-765
 - 2026-11-04 · [wave-201] train 28 · merged #224: eleven P1 fixes (settings truth, accounts, panes and history, tabs, light mode, Source Control, Skills) · CI green, evidence in the PR
 - 2026-11-04 · [wave-201] artifacts · merged #223: a workspace's pictures and videos are imported and shown from the app's own scheme; an unreadable index is reported · CI green; live proof 12/12 with `scripts/prove/live-artifacts.mjs`
