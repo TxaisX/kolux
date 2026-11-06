@@ -12,7 +12,7 @@ test("the + menu's new agent tab starts with the agent's saved launch arguments"
 });
 
 test("a project's launch button starts the agent with its saved launch arguments", () => {
-  expect(app).toMatch(/startIn\(agent, wt\.path, wt\.branch, "", true, savedArgs\(agent\.id\)\)/);
+  expect(app).toMatch(/startIn\(agent, proj\.path, branch, "", true, savedArgs\(agent\.id\)\)/);
 });
 
 test("App.tsx imports savedArgs from the chat controls", () => {
