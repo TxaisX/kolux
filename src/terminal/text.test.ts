@@ -28,8 +28,9 @@ describe("terminal text settings (SET-022 / SET-025)", () => {
     expect(o.fontFamily?.startsWith('"JetBrains Mono"')).toBe(true);
     expect([o.minimumContrastRatio, o.cursorStyle, o.cursorBlink]).toEqual([4.5, "bar", false]);
   });
-  it("term-102 lifts low-contrast text by default (4.5:1) and only a saved off turns it off", () => {
-    expect(optionsOf(readText({})).minimumContrastRatio).toBe(4.5);
+  it("term-102 lifts low-contrast text only when asked; the default is off because it is costly", () => {
+    expect(optionsOf(readText({})).minimumContrastRatio).toBe(1);
+    expect(optionsOf(readText({ [FIELDS.contrast]: true })).minimumContrastRatio).toBe(4.5);
     expect(optionsOf(readText({ [FIELDS.contrast]: false })).minimumContrastRatio).toBe(1);
   });
 });

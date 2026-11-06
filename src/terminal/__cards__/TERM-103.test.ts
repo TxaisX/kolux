@@ -5,14 +5,14 @@ import { attachRenderer, gpuOn, gpuPool, type WebglLike } from "../renderer";
 
 const gl = (): WebglLike => ({ dispose() {}, onContextLoss() {} });
 
-test("ten terminals: the first six take the GPU path, the four beyond the cap are plain, none is left without a renderer choice", () => {
+test("fourteen terminals: the first twelve take the GPU path, the two beyond the cap are plain, none is left without a renderer choice", () => {
   const pool = { max: gpuPool.max, live: 0 };
-  expect(gpuPool.max).toBe(6);
+  expect(gpuPool.max).toBe(12);
   const loaded: number[] = [];
-  const choices = Array.from({ length: 10 }, (_, i) => attachRenderer({ loadAddon() { loaded.push(i); } }, gl, true, pool));
-  expect(choices.map((c) => c.mode)).toEqual(["webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "dom", "dom", "dom", "dom"]);
-  expect(loaded).toEqual([0, 1, 2, 3, 4, 5]); // plain panes never touch the GPU addon
-  expect(pool.live).toBe(6);
+  const choices = Array.from({ length: 14 }, (_, i) => attachRenderer({ loadAddon() { loaded.push(i); } }, gl, true, pool));
+  expect(choices.map((c) => c.mode)).toEqual(["webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "webgl", "dom", "dom"]);
+  expect(loaded).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]); // plain panes never touch the GPU addon
+  expect(pool.live).toBe(12);
   expect(() => choices.forEach((c) => c.clearGlyphs())).not.toThrow();
 });
 

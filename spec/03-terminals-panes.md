@@ -334,7 +334,7 @@ Tier: P0 · Pushed: 9 · State at 0.15.0: live
 User does: runs many terminals.
 User sees: fast rendering; if the GPU path fails, terminals keep working on the slower path.
 Rules: Auto uses GPU rendering when supported, otherwise plain rendering; on/off can be forced; at
-  most 6 GPU contexts at once, hidden tabs included; extra panes use the plain path; a single GPU
+  most 12 GPU contexts at once, hidden tabs included; extra panes use the plain path; a single GPU
   failure does not make later terminals slow to open; glyph caches reset after paste bursts and
   system resume to clear garbled text; a program's synchronized frame is shown whole, including when
   a hidden pane is revealed.
@@ -344,7 +344,7 @@ Rules: Auto uses GPU rendering when supported, otherwise plain rendering; on/off
   heartbeat gap over 30 s. Shells that stall at process start are a terminal-start problem, carried into T-166.)
 Acceptance:
   - [x] Opening 10 terminals never shows blank panes. (cards live; evidence/cards-TERM-103.txt)
-  - [x] With more than 6 terminals visible, the panes beyond the cap draw on the plain path and
+  - [x] With more than 12 terminals visible, the panes beyond the cap draw on the plain path and
       still show text. (cards live; evidence/cards-TERM-103.txt)
 Compat: —
 Source: D-03-103
@@ -1430,7 +1430,8 @@ Source: D-03-057
 Tier: P2 · Pushed: 7 · State at 0.15.0: live-unverified
 User does: uses a theme with weak contrast or a ligature font.
 User sees: low-contrast text is lifted to stay readable; ligatures show for known ligature fonts.
-Rules: ligatures auto: on only for fonts known to have them.
+Rules: minimum contrast is off by default and is switched on in Settings, because the per-cell
+  calculation is costly on long sessions; ligatures auto: on only for fonts known to have them.
 Acceptance:
   - [ ] Selecting a ligature font shows joined arrows; a plain font does not.
   - [ ] Dim text on a weak theme is lifted to a readable contrast.
