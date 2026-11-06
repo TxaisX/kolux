@@ -15,8 +15,9 @@ export const TERMINAL = "terminal";
 /** SESS-014: where the AIs work: a fresh worktree each, or the chooser's own folder for all. */
 export type Copies = "separate" | "shared";
 
-/** SESS-014: one copy per seat for 2+ seats in a Git project; the shared folder otherwise. */
-export const defaultCopies = (seatCount: number, inGit: boolean): Copies => (inGit && seatCount >= 2 ? "separate" : "shared");
+/** SESS-014 (owner change 2026-11-05): every seat works in the project folder. Kolux never makes
+ * an automatic copy of the project. */
+export const defaultCopies = (_seatCount: number, _inGit: boolean): Copies => "shared";
 
 /** SESS-014: the shared folder with 2+ seats in a Git project is worth a warning. */
 export const sharedWarning = (copies: Copies, seatCount: number, inGit: boolean): boolean => copies === "shared" && inGit && seatCount >= 2;
@@ -251,8 +252,9 @@ export const RULES_MARK = "--- Kolux: you are working alongside other agents ---
 export function rulesBlock(note: string): string {
   return [
     RULES_MARK,
-    "Other agents are working on this task alongside you at the same time.",
-    "Stay inside your own worktree, the folder you started in. The one file outside it you may write is your handoff note.",
+    "Other agents are working on this task alongside you in the same project folder.",
+    "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note.",
+    "Make your changes on a branch, commit them, push the branch, and open a pull request. Do not commit to main.",
     `Your handoff note is ${note}. It exists already. Keep it current after each change: the files you added, updated and removed, and what is left to do. Never edit another agent's note.`,
     "Before you say you are done, check how you use every library against its up-to-date documentation.",
   ].join("\n");
@@ -322,10 +324,10 @@ export function removeTarget<T extends { key: number; seats?: Seat[] }>(shown: T
   return target ? { key: target.key, chooser: false } : null;
 }
 
-/** SESS-018: the New session page starts from this project's previous launch for the count and
- *  the files choice, but every seat starts blank (SESS-015). Separate copies need Git. */
-export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies: Copies } {
+/** SESS-018: the New session page starts from this project's previous launch for the count, but
+ *  every seat starts blank (SESS-015). Every launch shares the project folder (owner change 2026-11-05). */
+export function sheetStart(last: Lineup | undefined, _inGit: boolean): { seats: Seat[]; copies: Copies } {
   const n = Math.min(MAX_SESSIONS, Math.max(1, last?.seats.length ?? 1));
-  const copies = last ? (last.copies === "separate" && !inGit ? "shared" : last.copies) : defaultCopies(n, inGit);
+  const copies: Copies = "shared";
   return { seats: Array.from({ length: n }, emptySeat), copies };
 }

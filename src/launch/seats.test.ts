@@ -63,8 +63,8 @@ test("an agent with a built-in list gets the program default as an explicit choi
   expect(modelArgs(null)).toEqual([]);
 });
 
-test("SESS-014: separate copies for 2+ seats in Git, the shared folder otherwise; sharing in Git with 2+ seats warns", () => {
-  expect(defaultCopies(3, true)).toBe("separate");
+test("SESS-014 (owner change 2026-11-05): every launch shares the project folder; sharing in Git with 2+ seats warns", () => {
+  expect(defaultCopies(3, true)).toBe("shared");
   expect(defaultCopies(1, true)).toBe("shared");
   expect(defaultCopies(3, false)).toBe("shared");
   expect(sharedWarning("shared", 3, true)).toBe(true);
@@ -106,7 +106,7 @@ test("SESS-012: the first message is the role brief, then the shared task, then 
 
 test("SESS-025: the rules block follows the task, names the note, and is cut off wherever the prompt is shown", () => {
   const rules = rulesBlock("C:\src\shop\.kolux\handoffs\gentle-squid.md");
-  for (const words of ["alongside", "worktree", "handoff note", "C:\src\shop\.kolux\handoffs\gentle-squid.md", "documentation"]) expect(rules).toContain(words);
+  for (const words of ["alongside", "project folder", "pull request", "handoff note", "C:\src\shop\.kolux\handoffs\gentle-squid.md", "documentation"]) expect(rules).toContain(words);
   const full = openingPrompt({ ...claude, role: "builder" }, "Fix the login page", rules);
   expect(full.startsWith(`${ROLE_BRIEFS.builder}\n\nFix the login page\n\n`)).toBe(true);
   expect(full.endsWith(rules)).toBe(true);

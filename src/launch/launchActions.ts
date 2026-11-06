@@ -1,6 +1,6 @@
 // The window's launch actions, moved out of App.tsx as they were (cycle 2, the App.tsx split): Start on a
 // chooser (SESS-013), an agent started in a workspace (PROJ-038), resume (VIEW-085), setup and default tabs
-// (PROJ-033/034), workspaces from an issue or a name, folder trust (SAFE-023) and a fresh-worktree launch
+// (PROJ-033/034), workspaces from an issue or a name, folder trust (SAFE-023) and a project-folder launch
 // (SESS-004). A plain function the window calls each render, as the closures were made each render; what
 // the window makes later in its render is read from `late` when an action runs (shell/windowLate.ts).
 import type { Pane } from "../App";
@@ -10,7 +10,7 @@ import type { WindowLate } from "../shell/windowLate";
 import { savedArgs } from "../chat/controls";
 import { noteUse } from "../onboarding/features";
 import { gatedSetup, settleSetup } from "../orchestration/workerSetup";
-import { folderName, type Created, type WorkItem, type Worktree } from "../projects/model";
+import { folderName, type Created, type WorkItem } from "../projects/model";
 import { renameOnFirstPrompt } from "../projects/renameOnWork";
 import { applySetting } from "../projects/settingWrite";
 import { startFields } from "../projects/startArgs";
@@ -25,7 +25,7 @@ import type { StartLine } from "../terminal/tabName";
 import { panesIn } from "../workspaces";
 import { paneMark, type AgentInfo } from "./PlusMenu";
 import { bulkRefusal, failureNote, settleSetups, setupMode, type NewPlace } from "./launchOrder";
-import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, defaultCopies, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
+import { LAST_LINEUP_KEY, TERMINAL, tooManySeats, lineupOf, openingPrompt, rulesBlock, seatArgs, type Lineup, type Seat } from "./seats";
 import { invoke } from "@tauri-apps/api/core";
 
 export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPlumbing>, late: WindowLate) {
@@ -52,15 +52,12 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // SESS-014: a chooser can copy only inside a Git project: its workspace, or (outside any
   // workspace) the registered projects.
   const inGitFor = (p: Pane) => p.cwd !== null || projects.length > 0;
-  // Start replaces the chooser with one pane per seat (SESS-013). With separate copies (SESS-014)
-  // every agent seat gets a fresh creature-named worktree of its own (SESS-023), made one after
-  // another so no two pick one name; with the shared folder agent seats run in the chooser's
-  // workspace, or in one fresh worktree together when the chooser sits outside any workspace.
+  // Start replaces the chooser with one pane per seat (SESS-013). Every AI seat runs in the project
+  // folder (owner change 2026-11-05): no worktree and no second copy is made.
   // Terminal seats always open in the chooser's folder. A seat's first message is its role's brief,
   // the shared task and its own prompt (SESS-012); with two or more AI seats each also gets the
-  // rules block and a handoff note made before it starts (SESS-025), in the project's main checkout
-  // (or the chooser's folder outside any project), named after its worktree, or after the folder
-  // and its seat number when the seats share one folder.
+  // rules block and a handoff note made before it starts (SESS-025), in the project folder and
+  // named after the folder and its seat number.
   const startSeats = async (key: number, seats: Seat[]) => {
     const chooser = panes.find((p) => p.key === key) ?? (sheet?.key === key ? sheet : undefined);
     if (!chooser) return;
@@ -76,31 +73,20 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const picked = seats.map((s) => (s.agent === TERMINAL ? null : agents.find((a) => a.id === s.agent && a.installed) ?? null));
       const missing = seats.find((s, i) => s.agent !== TERMINAL && !picked[i]);
       if (missing) throw new Error(`${missing.agent} is not installed.`);
-      const separate = inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
       const pid = late.projectOf(chooser.cwd) ?? projectFor(null);
+      const root = projects.find((p) => p.id === pid)?.path ?? chooser.cwd;
+      if (picked.some(Boolean) && !root) throw new Error("Add a project first: an agent needs a project folder to work in.");
       // SESS-026 (T-150): a launch that makes new workspaces settles their setup before any agent
       // starts, and is refused before anything is made when the project asks about setup each time.
       const proj = projects.find((p) => p.id === pid);
-      const makes = picked.some(Boolean) && (separate || chooser.cwd === null);
+      const makes = false;
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
       const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes);
       if (refused) throw new Error(refused);
       const madeNew: NewPlace[] = [];
       const setupTrouble: string[] = [];
-      const fresh = async (): Promise<{ cwd: string; branch: string | null }> => {
-        if (!pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
-        const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
-        madeNew.push({ cwd: wt.path, branch: wt.branch });
-        kept.push({ cwd: wt.path, branch: wt.branch });
-        return { cwd: wt.path, branch: wt.branch };
-      };
       const places: { cwd: string | null; branch: string | null }[] = [];
-      let shared: { cwd: string | null; branch: string | null } | null = null;
-      for (const a of picked) {
-        if (a === null) places.push({ cwd: chooser.cwd, branch: chooser.branch });
-        else if (separate) places.push(await fresh());
-        else places.push((shared ??= chooser.cwd === null ? await fresh() : { cwd: chooser.cwd, branch: chooser.branch }));
-      }
+      for (const a of picked) places.push({ cwd: a === null ? chooser.cwd : root, branch: chooser.branch });
       const batch = key;
       await settleSetups(madeNew, setupMode(repo?.mode), repo?.wait === true, {
         line: (dir) => trustedSetup(dir),
@@ -111,13 +97,12 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       // SESS-051: each agent's start line comes from the catalogue, prompt route included; a
       // refused line (Hermes past its limit) stops the whole Start before any pane is made.
       const side = picked.filter(Boolean).length >= 2;
-      const root = projects.find((p) => p.id === pid)?.path ?? chooser.cwd;
       if (side && !root) throw new Error("Add a project first: agents side by side keep their handoff notes in it.");
       const task = chooser.task ?? "";
       const prompts: string[] = [];
       for (const [i, a] of picked.entries()) {
         const cwd = places[i].cwd ?? "";
-        const note = a && side ? await invoke<string>("handoff_note_prepare", { root, name: separate ? folderName(cwd) : `${folderName(cwd)}-seat-${i + 1}` }) : null;
+        const note = a && side ? await invoke<string>("handoff_note_prepare", { root, name: `${folderName(cwd)}-seat-${i + 1}` }) : null;
         prompts.push(a ? openingPrompt(seats[i], task, note && rulesBlock(note)) : "");
       }
       const lines = await Promise.all(picked.map((a, i) => (a ? invoke<StartLine>("agent_start_line", { id: a.id, extra: seatArgs(seats[i]), prompt: prompts[i], picked: true }) : null)));
@@ -131,7 +116,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
           ? { key: k, cwd, branch, agent: paneMark(a, line), agentId: a.id, program: line.program ?? a.program, args: line.args, env: line.env, title, batch, typed: line.typed ?? undefined }
           : { key: k, cwd, branch, agent: "shell", program: null, args: [], title, batch };
       });
-      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", separate ? "separate" : "shared", seats) };
+      if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", "shared", seats) };
       // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018).
       setPanes((ps) => (inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : [...ps, ...made]));
       for (const n of madeNew) void openTabs(n.cwd, n.branch); // PROJ-034
@@ -302,18 +287,20 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   };
   const projectFor = (projectId: string | null): string | null => projectId ?? late.projectOf(panes.find((p) => p.key === focused)?.cwd ?? null) ?? projects[0]?.id ?? null;
 
-  // SESS-004 + SESS-023: a fresh worktree with a creature name, then the agent in a new pane there.
+  // SESS-004 (owner change 2026-11-05): the agent starts in the project folder. Kolux does not
+  // make a worktree or any other copy of the project.
   const launch = async (agent: AgentInfo, projectId: string | null) => {
     const pid = projectFor(projectId);
-    if (!pid) {
+    const proj = projects.find((p) => p.id === pid);
+    if (!proj) {
       setNotice("Add a project first: an agent needs a project folder to work in.");
       return;
     }
     setLaunching(true);
     try {
-      const wt = await invoke<Worktree>("workspace_create_fresh", { projectId: pid });
+      const branch = panesIn(panes, proj.path)[0]?.branch ?? null;
       // The agent's own start line (its options, permission mode and unpicked model default).
-      if ((await startIn(agent, wt.path, wt.branch, "", true, savedArgs(agent.id))) === null) return;
+      if ((await startIn(agent, proj.path, branch, "", true, savedArgs(agent.id))) === null) return;
       setRefresh((n) => n + 1);
       setNotice(null);
     } catch (err) {
