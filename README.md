@@ -89,7 +89,7 @@ The [documentation home](docs/README.md) has the full index.
 
 ## Project
 
-Kolux is in early alpha. The latest build is 0.1.7 (4 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
+Kolux is in early alpha. The latest build is 0.1.8 (6 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
 
 Bug reports and feature requests go to [Issues](https://github.com/TxaisX/kolux/issues). If you want to propose a code change, open an issue first so we can agree on scope; read [CONTRIBUTING.md](CONTRIBUTING.md) before you start.
 

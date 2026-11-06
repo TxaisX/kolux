@@ -257,7 +257,7 @@ function setVersion(dir, version) {
 }
 
 export function buildOnce(o, env = process.env, exec = sh) {
-  const dir = checkoutDir(env);
+  let dir = checkoutDir(env);
   if (o.buildOnly) fs.rmSync(pendingFile(env), { force: true }); // --finish acts only on what this run builds
   // 1. The checkout kept only for releases, at the newest main.
   if (!fs.existsSync(path.join(dir, ".git"))) {
@@ -268,6 +268,9 @@ export function buildOnce(o, env = process.env, exec = sh) {
     if (o.repo) git(dir, "remote", "set-url", "origin", o.repo);
     git(dir, "fetch", "-q", "--prune", "origin");
   }
+  // A checkout reached through a junction (the usual home folder on this PC) makes Tauri read the
+  // resource keys as `/Users/...` and fail the build. Use the real folder after the clone or fetch.
+  dir = fs.realpathSync(dir);
   const repo = o.repo || git(dir, "remote", "get-url", "origin");
   const sha = git(dir, "rev-parse", "origin/main");
   const latest = latestRelease(env, repo, exec);
