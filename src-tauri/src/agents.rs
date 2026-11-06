@@ -885,6 +885,14 @@ fn now_ms() -> u64 {
 /// not touched. Runs on a worker thread: the wait can be a few seconds.
 #[tauri::command(async)]
 pub fn agent_prompt_send(terminals: tauri::State<'_, crate::terminal::Terminals>, id: u32, text: String) -> PromptSent {
+    // The window types into an agent, it does not stream a file through the IPC boundary.
+    const MAX_PROMPT: usize = 8 * 1024 * 1024;
+    if text.len() > MAX_PROMPT {
+        return PromptSent {
+            outcome: "failed".to_string(),
+            why: Some(format!("The prompt is larger than the {MAX_PROMPT} bytes one send can carry.")),
+        };
+    }
     if !claim_opening(id) {
         return PromptSent::duplicate();
     }

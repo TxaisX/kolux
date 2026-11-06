@@ -198,7 +198,9 @@ impl Drop for Turn<'_> {
     fn drop(&mut self) {
         let mut s = self.0.state.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(e) = s.get_mut(&self.1) {
-            e.0 -= 1;
+            // A turn is dropped once, but a poisoned map or a future refactor must never take the
+            // process down through a release-mode underflow (`panic = "abort"`).
+            e.0 = e.0.saturating_sub(1);
             if *e == (0, 0) {
                 s.remove(&self.1);
             }
@@ -224,10 +226,11 @@ impl Limiter {
             }
             s = self.freed.wait(s).unwrap_or_else(|e| e.into_inner());
         }
-        let e = s.get_mut(&key).expect("entry held under the lock");
+        // The entry is created above, but `entry` keeps this panic-free if it ever is not.
+        let e = s.entry(key.clone()).or_default();
         e.0 += 1;
         if foreground {
-            e.1 -= 1;
+            e.1 = e.1.saturating_sub(1);
             self.freed.notify_all();
         }
         Turn(self, key)

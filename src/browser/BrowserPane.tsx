@@ -612,7 +612,8 @@ export default function BrowserPane({ id, url, title, hidden = false, focused = 
   };
   const stopPicking = () => {
     setPicking(false);
-    invoke("browser_annotate", { id, what: "stop" }).catch(() => {});
+    // The tray is closed already; a failed stop leaves the page collecting clicks, so say so.
+    invoke("browser_annotate", { id, what: "stop" }).catch((err) => setNote(String(err)));
   };
   const togglePicking = () => {
     if (picking) return stopPicking();

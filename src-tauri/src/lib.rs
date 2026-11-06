@@ -222,6 +222,12 @@ pub fn terminal_service_main(args: &[String]) -> i32 {
     pty::service::main(args)
 }
 
+/// Tauri 2 lets every window call every registered app command. The Tower window is a viewer:
+/// it may open its own window and run nothing else. Every other window keeps the full surface.
+pub fn tower_may_run(label: &str, command: &str) -> bool {
+    label != "tower" || command == "tower_window_open"
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     diag::catch_panics();
@@ -545,7 +551,15 @@ pub fn run() {
                 window.state::<fence::Fence>().dropped(paths);
             }
         })
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(|invoke: tauri::ipc::Invoke<tauri::Wry>| {
+            // Tauri 2 grants every registered app command to every window. The Tower is a viewer
+            // with its own page: it may open its own window and run nothing else. Refusing here
+            // covers every command at once, including ones added later.
+            if !tower_may_run(invoke.message.webview().label(), invoke.message.command()) {
+                invoke.resolver.reject("The Tower window cannot run app commands.");
+                return true;
+            }
+            let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![
             app_info,
             edit_menu::edit_menu_ready,
             get_settings,
@@ -976,7 +990,9 @@ pub fn run() {
             tray::tray_close_switch_available, // APP-007: Settings hides the close-to-tray switch where it cannot work
             usage_alerts::usage_alerts_fired,
             usage_alerts::usage_alert_send
-        ])
+            ];
+            handler(invoke)
+        })
         .build(context)
         .unwrap_or_else(|e| tools::startup_failed(&e.to_string()))
         .run(|app, event| {
@@ -1038,4 +1054,18 @@ pub fn run() {
                 update::install_on_quit(app);
             }
         });
+}
+
+#[cfg(test)]
+mod tower_guard_tests {
+    use super::tower_may_run;
+
+    #[test]
+    fn the_tower_window_may_only_open_itself() {
+        assert!(tower_may_run("main", "terminal_spawn"));
+        assert!(tower_may_run("tower", "tower_window_open"));
+        assert!(!tower_may_run("tower", "terminal_spawn"));
+        assert!(!tower_may_run("tower", "file_write"));
+        assert!(!tower_may_run("tower", "cleanup_remove"));
+    }
 }

@@ -1454,11 +1454,7 @@ fn run_precheck(cmd: &str, dir: &Path, limit: std::time::Duration) -> Option<Val
             break Some(s);
         }
         if began.elapsed() >= limit {
-            #[cfg(windows)]
-            {
-                use std::os::windows::process::CommandExt;
-                let _ = Command::new(crate::pty::system_program("taskkill.exe")).args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
-            }
+            crate::procs::kill_tree(child.id());
             let _ = child.kill();
             let _ = child.wait();
             break None;

@@ -682,10 +682,7 @@ const OUTPUT_CAP: u64 = 4 * 1024 * 1024;
 
 fn stop(child: &mut std::process::Child) {
     #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
-    }
+    crate::procs::kill_tree(child.id());
     let _ = child.kill();
     let _ = child.wait();
 }

@@ -245,11 +245,7 @@ pub(crate) fn finish(mut child: Child) -> Option<std::process::ExitStatus> {
         }
         std::thread::sleep(Duration::from_millis(100));
     }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        let _ = Command::new(crate::pty::system_program("taskkill.exe")).args(["/T", "/F", "/PID", &child.id().to_string()]).creation_flags(0x0800_0000).output();
-    }
+    crate::procs::kill_tree(child.id());
     let _ = child.kill();
     let _ = child.wait();
     None

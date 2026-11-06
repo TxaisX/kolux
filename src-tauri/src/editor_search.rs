@@ -428,8 +428,11 @@ fn run(mut cmd: Command, parse: impl Fn(&str, usize) -> Option<(String, Vec<Hit>
         cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
     let mut child = cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
-    let out = child.stdout.take().expect("piped");
-    let mut err = child.stderr.take().expect("piped");
+    let (Some(out), Some(mut err)) = (child.stdout.take(), child.stderr.take()) else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(std::io::Error::other("The search command's output could not be read."));
+    };
     let (tx, rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
         for line in BufReader::new(out).lines().map_while(Result::ok) {

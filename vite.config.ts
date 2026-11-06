@@ -24,6 +24,6 @@ export default defineConfig(() => ({
   test: {
     // LOOP.md section 1: the PC is shared with live agents; never more than two workers.
     maxWorkers: 2,
-    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.mjs"],
   },
 }));

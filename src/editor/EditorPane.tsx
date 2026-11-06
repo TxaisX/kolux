@@ -714,8 +714,8 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
         // EDIT-007 (T-132-b): the rich view copies its selection with the source lines it covers.
         const sel = window.getSelection();
         const got = richHost.current && sel && richHost.current.contains(sel.anchorNode) ? richContext(cm.state.doc.toString(), sel.toString(), shortPath(path, root)) : null;
-        if (!got) return false;
-        const r = sel!.getRangeAt(0).getBoundingClientRect();
+        if (!got || !sel || sel.rangeCount === 0) return false;
+        const r = sel.getRangeAt(0).getBoundingClientRect();
         navigator.clipboard.writeText(got.text).then(
           () => {
             setFlash({ x: r.right, y: r.bottom });

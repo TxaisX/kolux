@@ -5,3 +5,13 @@ dist/
 *.log
 .tools/
 src-tauri/gen/schemas/
+# Secrets and machine-local files: a release key or an environment file never belongs in the tree.
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+src-tauri/release.conf.json
+# OS clutter.
+.DS_Store
+Thumbs.db

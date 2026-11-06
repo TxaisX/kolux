@@ -11,7 +11,7 @@ use crate::orchestration::sendonce as so;
 use crate::state::Store;
 use crate::terminal::Terminals;
 use serde_json::{json, Map, Value};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::collections::BTreeMap;
@@ -990,11 +990,13 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             }
             let activate = a["activate"].as_bool().unwrap_or(false);
             let mut result = serde_json::to_value(&made).map_err(|e| Fail::new("failed", e.to_string()))?;
-            let obj = result.as_object_mut().expect("a workspace is an object");
+            let (Some(obj), Some(origin_obj)) = (result.as_object_mut(), origin.as_object()) else {
+                return Err(Fail::new("failed", "the new workspace could not be described"));
+            };
             obj.insert("projectId".into(), json!(project.id));
             obj.insert("agent".into(), json!(agent));
             obj.insert("activated".into(), json!(activate));
-            obj.extend(origin.as_object().expect("an origin is an object").clone());
+            obj.extend(origin_obj.clone());
             // PROJ-033: the window runs the setup script in a Setup tab unless it is skipped;
             // --run-hooks runs it as --setup run does. Issue lookups (PROJ-037) are T-107-c.
             let mut setup = text("setup").unwrap_or_else(|| "inherit".into());
@@ -1130,18 +1132,22 @@ fn layouts(rows: &[Value]) -> Value {
             out.push(json!({ "worktree": r["worktree"], "panes": [] }));
             out.len() - 1
         });
-        let panes = out[i]["panes"].as_array_mut().expect("panes is a list");
+        let Some(panes) = out[i]["panes"].as_array_mut() else { continue };
         let j = panes.iter().position(|p| p["pane"] == r["pane"]).unwrap_or_else(|| {
             panes.push(json!({ "pane": r["pane"], "tabs": [] }));
             panes.len() - 1
         });
-        panes[j]["tabs"].as_array_mut().expect("tabs is a list").push(json!({ "tab": r["tab"], "handle": r["handle"], "title": r["title"], "shown": r["shown"] }));
+        if let Some(tabs) = panes[j]["tabs"].as_array_mut() {
+            tabs.push(json!({ "tab": r["tab"], "handle": r["handle"], "title": r["title"], "shown": r["shown"] }));
+        }
     }
     for w in &mut out {
-        let panes = w["panes"].as_array_mut().expect("panes is a list");
+        let Some(panes) = w["panes"].as_array_mut() else { continue };
         panes.sort_by_key(|p| p["pane"].as_u64().unwrap_or(u64::MAX));
         for p in panes {
-            p["tabs"].as_array_mut().expect("tabs is a list").sort_by_key(|t| t["tab"].as_u64().unwrap_or(u64::MAX));
+            if let Some(tabs) = p["tabs"].as_array_mut() {
+                tabs.sort_by_key(|t| t["tab"].as_u64().unwrap_or(u64::MAX));
+            }
         }
     }
     Value::Array(out)
@@ -3529,6 +3535,14 @@ type Current = std::sync::Arc<Mutex<Busy>>;
 /// status question's own wait, so this stays well under STATUS_WAIT.
 const ACCEPT_READ: Duration = Duration::from_millis(1500);
 
+/// cli FIX-8: the most of one request line that is read. A command line sends a small JSON
+/// object; a larger line is dropped before it can grow memory without bound.
+const MAX_REQUEST: usize = 4 * 1024 * 1024;
+
+/// cli FIX-8: requests read and waiting their turn. The accept thread never blocks on a full
+/// queue, so a status question keeps being answered while work is backed up.
+const MAX_QUEUED: usize = 64;
+
 /// Answers requests on `listener` one at a time, for as long as the app runs.
 pub fn serve_loop(listener: TcpListener, token: &str, runtime: &str, handle: impl Fn(&Request) -> Result<Value, Fail>) {
     serve_loop_with(listener, token, runtime, || status_answer(&GRAPH_READY), handle);
@@ -3540,14 +3554,17 @@ fn serve_loop_with(listener: TcpListener, token: &str, runtime: &str, status: im
     // second thread takes each connection as it comes and reads its line, so a request knows
     // when it was sent, and a status question is answered at once while a request runs (T-076-c).
     let current: Current = std::sync::Arc::default();
-    let (queue, taken) = mpsc::channel::<(TcpStream, Instant, String)>();
+    let (queue, taken) = mpsc::sync_channel::<(TcpStream, Instant, String)>(MAX_QUEUED);
     let (busy, tok, rt) = (current.clone(), token.to_string(), runtime.to_string());
     std::thread::spawn(move || {
         for mut stream in listener.incoming().flatten() {
             let arrived = Instant::now();
             stream.set_read_timeout(Some(ACCEPT_READ)).ok();
             let mut line = String::new();
-            if BufReader::new(&stream).read_line(&mut line).is_err() {
+            let read = BufReader::new(&stream).take(MAX_REQUEST as u64).read_line(&mut line);
+            // A line that filled the cap without ending is not a whole request; dropping it is
+            // better than parsing half a command.
+            if read.is_err() || read.is_ok_and(|n| n == MAX_REQUEST && !line.ends_with('\n')) {
                 continue;
             }
             // BROW-051: a web page can only ever send HTTP here; its request line is dropped unanswered.
@@ -3562,8 +3579,19 @@ fn serve_loop_with(listener: TcpListener, token: &str, runtime: &str, status: im
             if let Ok(mut b) = busy.lock() {
                 b.waiting.push_back((command, arrived));
             }
-            if queue.send((stream, arrived, line)).is_err() {
-                break;
+            match queue.try_send((stream, arrived, line)) {
+                Ok(()) => {}
+                Err(mpsc::TrySendError::Disconnected(_)) => break,
+                // The app is behind; refusing this connection is better than holding it forever.
+                // The status deque already holds this request, so take it back out.
+                Err(mpsc::TrySendError::Full(_)) => {
+                    if let Ok(mut b) = busy.lock() {
+                        if b.waiting.back().is_some_and(|(_, at)| *at == arrived) {
+                            b.waiting.pop_back();
+                        }
+                    }
+                    continue;
+                }
             }
         }
     });

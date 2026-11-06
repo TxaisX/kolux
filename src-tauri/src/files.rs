@@ -304,6 +304,9 @@ static WRITES: std::sync::Mutex<()> = std::sync::Mutex::new(());
 /// so the editor remembers its own save and the disk-change check never takes it for an agent's.
 #[tauri::command(async)]
 pub fn file_write(path: String, text: String, loaded_hash: Option<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<Option<Stamp>, WriteError> {
+    if text.len() as u64 > TEXT_MAX {
+        return Err(WriteError::Failed(format!("The text is larger than the {TEXT_MAX} bytes the editor can write.")));
+    }
     let path = fence.allow(&path, &store, &git, true)?;
     let _one = WRITES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     write_checked(&path, &text, loaded_hash.as_deref())?;
@@ -334,7 +337,9 @@ pub fn stamp_of(path: &Path) -> Option<Stamp> {
 /// two never both add a dependency.
 #[tauri::command(async)]
 pub fn file_stamps(paths: Vec<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Vec<Option<Stamp>> {
-    paths.iter().map(|p| fence.allow(p, &store, &git, true).ok().and_then(|p| stamp_of(&p))).collect()
+    // The editor asks for the tabs in front; a page cannot turn this into a whole-drive scan.
+    const MAX_STAMPS: usize = 4_096;
+    paths.iter().take(MAX_STAMPS).map(|p| fence.allow(p, &store, &git, true).ok().and_then(|p| stamp_of(&p))).collect()
 }
 
 /// ACCT-055: Open a file shows the system picker here, so only the file the user chose is

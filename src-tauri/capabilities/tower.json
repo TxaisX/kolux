@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "tower",
-  "description": "T-546-c: the Tower's own window: events to and from the main window, and closing itself. Plugin and core permissions beyond these are not granted to it; the app's own commands stay callable from it, as from the main window (Tauri 2 allows every registered app command to every window unless the build restricts them with an app manifest), and it loads the same bundle as the main window",
+  "description": "T-546-c: the Tower's own window: events to and from the main window, and closing itself. Plugin and core permissions beyond these are not granted to it. Tauri 2 would let it call every registered app command; the invoke gate in lib.rs refuses all of them except tower_window_open. It loads the same bundle as the main window but draws only the Tower view.",
   "windows": [
     "tower"
   ],

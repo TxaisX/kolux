@@ -309,14 +309,8 @@ fn asks_to_stop(done_early: Option<&dyn Fn() -> bool>, next_check: &mut Instant)
 }
 
 fn kill_tree(pid: u32) {
-    let mut c = std::process::Command::new("taskkill");
-    c.args(["/T", "/F", "/PID", &pid.to_string()]).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        c.creation_flags(0x0800_0000);
-    }
-    let _ = c.status();
+    // One cross-platform tree kill: taskkill on Windows, the process-group signal elsewhere.
+    crate::procs::kill_tree(pid);
 }
 
 /// What a batch carries from step to step. Copy: every group's thread gets its own.

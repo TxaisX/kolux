@@ -199,7 +199,7 @@ export default function NotebookView({ path, loaded, hidden = false, readOnly = 
                 </select>
                 {kindOf(c) === "code" && typeof c.execution_count === "number" && <span className="nb-n">[{c.execution_count}]</span>}
                 {!readOnly && c.cell_type === "code" && (
-                  <RunButton i={i} running={running} onRun={() => void run(i)} onStop={() => void invoke("notebook_stop")} />
+                  <RunButton i={i} running={running} onRun={() => void run(i)} onStop={() => void invoke("notebook_stop").catch((e) => setProblem(String(e)))} />
                 )}
                 {!readOnly && (
                   <span className="nb-tools">

@@ -236,7 +236,8 @@ mod imp {
     /// `taskkill /T` ends the processes `pid` started before `pid` itself, with no console window.
     pub fn kill_tree(pid: u32) {
         use std::os::windows::process::CommandExt;
-        let _ = std::process::Command::new("taskkill").args(["/T", "/F", "/PID", &pid.to_string()]).creation_flags(0x0800_0000).output();
+        // The system copy, never whatever `taskkill` PATH finds first.
+        let _ = std::process::Command::new(crate::pty::system_program("taskkill.exe")).args(["/T", "/F", "/PID", &pid.to_string()]).creation_flags(0x0800_0000).output();
     }
 
     /// Whether some entry of the process table satisfies `hit`; `None` when the table cannot be read.

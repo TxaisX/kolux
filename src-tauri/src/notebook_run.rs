@@ -332,9 +332,14 @@ fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usi
     };
     let (out, err) = (Arc::new(Mutex::new(Capture::default())), Arc::new(Mutex::new(Capture::default())));
     let (tx, rx) = mpsc::channel();
-    drain(child.stdout.take().expect("piped"), cap, out.clone(), tx.clone());
-    drain(child.stderr.take().expect("piped"), cap, err.clone(), tx);
-    let mut stdin = child.stdin.take().expect("piped");
+    // The pipes are set above, but a spawn that somehow leaves one out stops the cell cleanly
+    // instead of aborting the process (`panic = "abort"`).
+    let (Some(stdout), Some(stderr), Some(mut stdin)) = (child.stdout.take(), child.stderr.take(), child.stdin.take()) else {
+        stop(&mut child);
+        return Err("Python's input and output could not be opened.".to_string());
+    };
+    drain(stdout, cap, out.clone(), tx.clone());
+    drain(stderr, cap, err.clone(), tx);
     let text = source.as_bytes().to_vec();
     // A thread writes the text, so a program that never reads it cannot hold this one up.
     std::thread::spawn(move || {

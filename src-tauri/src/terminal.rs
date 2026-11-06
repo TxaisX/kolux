@@ -23,6 +23,14 @@ pub const SCREEN_EVENT: &str = "terminal-screen-request";
 pub const LOG_LINES: usize = 2000;
 /// Fix-term 786: the most a log keeps of a line that has not ended yet.
 const PENDING_CAP: usize = 16 * 1024;
+/// The most one paste may carry. Files are written through `file_write`, which has its own limit.
+const MAX_WRITE: usize = 8 * 1024 * 1024;
+/// A launch line, not a process table: bounds on what one `terminal_spawn` may add.
+const MAX_SPAWN_ARGS: usize = 256;
+const MAX_SPAWN_ARG: usize = 32 * 1024;
+const MAX_SPAWN_ENV: usize = 256;
+const MAX_SPAWN_ENV_KEY: usize = 4 * 1024;
+const MAX_SPAWN_ENV_VALUE: usize = 64 * 1024;
 const SCREEN_WAIT: std::time::Duration = std::time::Duration::from_millis(1500);
 /// APP-052: the terminal service's wire protocol. Additions only bump it; the window refuses a
 /// service older than the oldest protocol it still speaks (src/terminal/reattach.ts).
@@ -1741,6 +1749,20 @@ pub fn terminal_attach(terminals: tauri::State<'_, Terminals>, pane_key: u32, ge
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminals>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, cols: u16, rows: u16, cwd: Option<String>, start: Option<String>, program: Option<String>, args: Option<Vec<String>>, env: Option<Vec<(String, String)>>, pane_key: Option<u32>, account: Option<String>) -> Result<Spawned, String> {
+    // The window sends a launch line, not a process table: a launch that needs more than this is
+    // a bug, and the IPC boundary must not be a way to build one from a compromised page.
+    if args.as_ref().is_some_and(|a| a.len() > MAX_SPAWN_ARGS) {
+        return Err(format!("The launch has more than {MAX_SPAWN_ARGS} arguments."));
+    }
+    if args.as_ref().is_some_and(|a| a.iter().any(|s| s.len() > MAX_SPAWN_ARG)) {
+        return Err(format!("An argument is longer than {MAX_SPAWN_ARG} bytes."));
+    }
+    if env.as_ref().is_some_and(|e| e.len() > MAX_SPAWN_ENV) {
+        return Err(format!("The launch has more than {MAX_SPAWN_ENV} environment entries."));
+    }
+    if env.as_ref().is_some_and(|e| e.iter().any(|(k, v)| k.len() > MAX_SPAWN_ENV_KEY || v.len() > MAX_SPAWN_ENV_VALUE)) {
+        return Err("An environment entry is too large for a launch.".to_string());
+    }
     // TERM-040: `cwd` is the workspace folder; `start` may ask for a folder relative to it.
     let cwd = cwd.map(|w| start_dir(&w, start.as_deref()));
     // ACCT-023: a resumed Codex pane runs on the account it began on, or not at all.
@@ -1876,6 +1898,9 @@ pub fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> V
 /// runtime worker, never the window's thread; typing elsewhere stays responsive.
 #[tauri::command]
 pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminals>, id: u32, data: String, generation: Option<u64>) -> Result<(), String> {
+    if data.len() > MAX_WRITE {
+        return Err(format!("The text is larger than the {MAX_WRITE} bytes a terminal can take at once."));
+    }
     // APP-052: typing carries the run of the service it was meant for; a replaced run's typing is refused.
     owns(generation)?;
     // STAT-028: Ctrl+C or Escape on its own, while the agent works, marks the coming Stop interrupted.

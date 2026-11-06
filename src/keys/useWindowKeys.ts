@@ -113,18 +113,22 @@ export function nextScreen(s: Screen): Screen {
 }
 
 export function useWindowKeys(w: WindowBag) {
+  // The listener belongs to the window, not to a render: it is added once and reads the latest
+  // bag on each key. Re-subscribing a capture listener every render was the hot path.
+  const bag = useRef(w);
+  bag.current = w;
   // Global-scope shortcuts are pressed here, wherever focus is; with Terminal first (SET-014) a
   // focused terminal keeps every chord that is not marked safe for terminals. Only actions that exist today do something; the rest are matched and left alone.
   useEffect(() => {
-    const {
-      accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, browserAction, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
-      focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
-      right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
-      setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
-      setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
-      switcherRef, terminals, toggleExplorer, unsaved
-    } = w;
     const onKey = (e: KeyboardEvent) => {
+      const {
+        accountSwitcher, activeDir, activeOf, addChooser, agentPass, agents, browserAction, classic, closePane, closeTab, defaultId, equalizePanes, expandPane,
+        focused, keymap, leavePage, newTab, nextKey, notes, notesFor, openPane, openPreview, orderOf, panes, pinned, recentTabs, removeSession, renamePane,
+        right, saveRight, saveSetting, screen, sendNotes, setActiveDir, setAskName, setBoardOpen, setCreateName, setCreateRequest, setDeleteRequest,
+        setFocused, setNotice, setPage, setPalette, setPanes, setPicked, setPicking, setReloadAsk, setRenameRequest, setRenamingTab, setScreen, setSendMenu,
+        setSettingsAt, setSettingsOpen, setSidebarOpen, setSwitcher, setToast, settings, settingsOpen, showRight, splitPane, statusOf, step, switchAccount,
+        switcherRef, terminals, toggleExplorer, unsaved
+      } = bag.current;
       // SET-009: while Settings > Shortcuts records a chord, the press is the recorder's alone.
       if (recording.on) return;
       // VIEW-109 (T-253): while an input method is composing every key is its own, shortcut chords included.
@@ -504,13 +508,11 @@ export function useWindowKeys(w: WindowBag) {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  });
+  }, []);
 
   // UX lane C (menu.rs:229): the menu's Force Reload comes to the page and runs the chord's reload, so unsaved
   // editor text is asked about first instead of being thrown away by a native reload. View > Workspace View > Space
   // lands here too (chrome/chromeItems MENU_SCREENS lists only the switcher screens).
-  const bag = useRef(w);
-  bag.current = w;
   useEffect(() => {
     const off = listen<{ id: string }>("menu-action", (e) => menuAction(e.payload.id, bag.current));
     // UX lane C (request from D-ux3, editor/AddProjectRow): a folder added while the project list is not shown opens it.

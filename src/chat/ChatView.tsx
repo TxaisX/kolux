@@ -57,6 +57,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   // CHAT-009 (T-330): what the transcript last said, kept per pane while the chat is hidden (reading.ts).
   const [seen, setSeen] = useState<Seen>(NOTHING);
   const readerRef = useRef<ChatReader | null>(null);
+  const hookSeq = useRef(0);
   const { items, state, error, open } = seen;
   const [extras, setExtras] = useState<Extra[]>([]);
   // CHAT-022 (council FIX-1): the box sends only while Kolux can see the agent is not asking in its
@@ -81,7 +82,11 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
       if (e.payload.state !== undefined) setHeard(e.payload.state);
       if (!e.payload.reply) return;
       const text = e.payload.reply;
-      setExtras((xs) => (xs.some((x) => x.text === text) ? xs : [...xs.slice(-20), { id: `hook-${Date.now()}`, role: "assistant", text, at: Date.now() }]));
+      // A hook reply has no id of its own; a counter keeps two replies in the same millisecond
+      // from sharing a React key.
+      hookSeq.current += 1;
+      const at = Date.now();
+      setExtras((xs) => (xs.some((x) => x.text === text) ? xs : [...xs.slice(-20), { id: `hook-${at}-${hookSeq.current}`, role: "assistant", text, at }]));
     });
     return () => void off.then((u) => u()).catch(() => {});
   }, [pane.key]);
@@ -448,6 +453,10 @@ export function makeHand(a: {
  * send stops on its own pane's menu even after the screen moved to another pane. */
 export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskOf, open }: { panes: ChatPane[]; focused: number | null; ptyOf?: (key: number) => number | undefined; hook?: Record<number, string | undefined>; stateOf?: (key: number) => string | undefined; onPick?: (key: number) => void; taskOf?: (key: number) => string | undefined; open?: ChatOpen }) {
   const [offers, setOffers] = useState<Record<number, Offer & { agent?: string }>>({});
+  // A failed support read keeps the last answer: a transient IPC error must not turn a live agent
+  // into "this shell has no chat".
+  const offersRef = useRef(offers);
+  offersRef.current = offers;
   // VIEW-019 (T-050-b): the sessions the user flipped to their terminal, kept while the screen is open.
   const [forced, setForced] = useState<ReadonlySet<number>>(() => new Set());
   const flip = (key: number, on: boolean) =>
@@ -468,7 +477,7 @@ export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskO
     // T-050-c: every pane is asked, a plain shell too, with its terminal: the agent detected in
     // front of it decides (Rust chat_support), and a change in front (`pane-agent`) is asked at once.
     const check = () =>
-      Promise.all(panes.map((p) => invoke<Support>("chat_support", { paneKey: p.key, terminal: ptyOf?.(p.key) }).then((s) => [p.key, liveOffer(p.program, p.title, s)] as const).catch(() => [p.key, SHELL_OFFER] as const))).then((list) => {
+      Promise.all(panes.map((p) => invoke<Support>("chat_support", { paneKey: p.key, terminal: ptyOf?.(p.key) }).then((s) => [p.key, liveOffer(p.program, p.title, s)] as const).catch(() => [p.key, offersRef.current[p.key] ?? SHELL_OFFER] as const))).then((list) => {
         if (alive) setOffers(Object.fromEntries(list));
       });
     void check();

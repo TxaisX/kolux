@@ -125,7 +125,7 @@ pub fn remove(home: &Path, file: &Path, emptied_too: bool) -> Result<bool, Strin
     if !has_mine(&v) {
         return Ok(false);
     }
-    let hooks = v.get_mut("hooks").and_then(Value::as_object_mut).expect("has Kolux's entries");
+    let Some(hooks) = v.get_mut("hooks").and_then(Value::as_object_mut) else { return Ok(false) };
     for list in hooks.values_mut().filter_map(Value::as_array_mut) {
         for g in list.iter_mut() {
             if let Some(hs) = g.get_mut("hooks").and_then(Value::as_array_mut) {
@@ -135,7 +135,7 @@ pub fn remove(home: &Path, file: &Path, emptied_too: bool) -> Result<bool, Strin
         list.retain(|g| g.get("hooks").and_then(Value::as_array).is_none_or(|h| !h.is_empty()));
     }
     hooks.retain(|_, l| l.as_array().is_none_or(|l| !l.is_empty()));
-    let root = v.as_object_mut().expect("has hooks");
+    let Some(root) = v.as_object_mut() else { return Ok(false) };
     if root.get("hooks").and_then(Value::as_object).is_some_and(Map::is_empty) {
         root.remove("hooks");
     }

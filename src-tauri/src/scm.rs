@@ -244,8 +244,19 @@ fn read_status(worktree: &Path) -> Result<Status, String> {
     st.operation = operation(worktree);
     st.lines.staged = run(&["diff", "--cached", "--numstat", "-M", "-z"], Some(worktree)).map(|t| numstat(&t)).unwrap_or_default();
     st.lines.changed = run(&["diff", "--numstat", "-z"], Some(worktree)).map(|t| numstat(&t)).unwrap_or_default();
-    // ponytail: the first 2 000 untracked files are counted; a folder of thousands shows the rest bare.
-    st.lines.untracked = st.untracked.iter().take(2_000).filter_map(|c| Some((c.path.clone(), [file_lines(&worktree.join(&c.path))?, 0]))).collect();
+    // ponytail: the first 2 000 untracked files are counted; a folder of thousands shows the rest
+    // bare. The reads share one byte budget, so a status poll never walks gigabytes of new files.
+    const UNTRACKED_BUDGET: u64 = 8 * 1024 * 1024;
+    let mut budget = UNTRACKED_BUDGET;
+    st.lines.untracked = st.untracked.iter().take(2_000).filter_map(|c| {
+        let path = worktree.join(&c.path);
+        let len = std::fs::metadata(&path).ok()?.len();
+        if len > budget {
+            return None;
+        }
+        budget -= len;
+        Some((c.path.clone(), [file_lines(&path)?, 0]))
+    }).collect();
     st.resolved = st
         .conflicts
         .iter()

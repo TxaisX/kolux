@@ -22,6 +22,9 @@ permissions:
 jobs:
   release:
     name: Build and publish
+    # Attach the release environment so its protection rules (required reviewers, branch limits)
+    # can hold a publish until someone approves it.
+    environment: release
     runs-on: windows-latest
     timeout-minutes: 120
     steps:
