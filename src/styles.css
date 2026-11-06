@@ -182,7 +182,7 @@ input { font: inherit; }
 .proj .ib { opacity: 0; }
 /* One folder per project: the old worktree rows stay in the DOM (saved work, keyboard, old rows)
    but do not draw beside the folder row. */
-.old-workspaces { display: none; }
+.sb-main.old-workspaces, .old-workspaces { display: none; }
 .proj:hover .ib, .proj .ib.on, .proj .ib:focus-visible { opacity: 1; } /* a keyboard user lands on the hidden buttons too */
 .branch { display: flex; align-items: center; height: 32px; padding: 0 12px 0 8px; gap: 8px; border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--fg-row); width: 100%; text-align: left; white-space: nowrap; }
 .branch .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

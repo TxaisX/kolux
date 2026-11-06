@@ -1,0 +1,13 @@
+T-776 / DT-C213 live look, 2026-11-06
+Dev app from G:\Dev\kolux-rs (main 36cc407d plus the .sb-main.old-workspaces CSS rule), scratch profile
+com.txaisxiong.kolux-rs.visual, scratch home G:\Temp\kolux-visual, one project added at
+G:\Temp\kolux-visual-repo.
+
+What the window showed
+- The Projects header reads "Folders".
+- One row: "kolux-visual-repo" with a folder mark, its state dot, the branch "main" and the project
+  actions. No second "main" row and no worktree row drew beside it.
+- Clicking the row selects that folder; the window was ready to show its pane grid.
+
+Screenshot: evidence/T-776-folder-row.png (1416 x 889, captured with scripts/evidence/shot.ps1 by
+PrintWindow, pid 30216).
