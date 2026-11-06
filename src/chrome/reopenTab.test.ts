@@ -119,7 +119,7 @@ test("the tab returns to the focused cell when it is in the same folder, else to
 });
 
 test("a workspace already showing the most cells takes the tab into its first cell", () => {
-  const ps = Array.from({ length: 12 }, (_, i) => pane(i + 1, "G:\\a"));
+  const ps = Array.from({ length: 24 }, (_, i) => pane(i + 1, "G:\\a"));
   expect(placement(ps, 99, "G:\\a")).toBe(1);
 });
 

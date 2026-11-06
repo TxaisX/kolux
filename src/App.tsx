@@ -4,17 +4,17 @@
 // the pane list and the sidebar. The list starts with one PowerShell pane (T-002); the plus
 // menu adds an agent pane in a fresh creature-named workspace (T-004). The grid shows one
 // workspace at a time; the other workspaces' panes stay mounted but hidden, so switching back
-// finds every terminal as it was (T-006). The grid tiles 1..12 cells in balanced rows; the
+// finds every terminal as it was (T-006). The grid tiles 1..24 cells in balanced rows; the
 // layout strip sets the count, a pane splits right or down and closes (T-009, src/terminal/grid.ts).
-// A cell holds tabs: Ctrl+T or the strip's "New tab" menu adds a shell or an agent beside the
-// focused pane, started in the workspace folder (T-010). A browser tab is a pane whose page is
+// A cell holds tabs: Ctrl+T adds a shell tab beside the focused pane, and the pane header's plus
+// (or the sidebar's New session) starts a session in a new pane, in the workspace folder (T-010). A browser tab is a pane whose page is
 // a child web view laid over its body by the back end (T-012-a, src/browser/BrowserPane.tsx);
 // its shortcuts (bar, back, forward, reload) apply while a browser pane is focused (T-012-b).
 // Insights is a card on the right (Mod+L or the top bar's panel button): tokens, estimated cost
 // and what every open agent session is doing, across all workspaces (T-646, src/insights/; it
 // replaced Source Control in the layout, T-644).
-// An editor tab is one file in CodeMirror (T-093-a, src/editor/EditorPane.tsx): "File..." in the
-// New tab menu opens one, and Mod+S saves the focused editor while the terminals screen is up.
+// An editor tab is one file in CodeMirror (T-093-a, src/editor/EditorPane.tsx): the file finder
+// opens one, and Mod+S saves the focused editor while the terminals screen is up.
 // Markdown (T-093-b): Mod+Shift+V opens a read-only preview tab, Mod+Shift+O picks one of the
 // worktree's markdown files, Mod+Shift+M makes a new untitled note at the worktree root.
 import { useEffect, useRef } from "react";

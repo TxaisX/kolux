@@ -32,7 +32,8 @@ export function windowSummary(s: Record<string, unknown>): string {
 /** Menu items that carry the in-app shortcut of the keymap action with the same id. */
 export const MENU_SHORTCUT_IDS = ["app.settings", "app.forceReload", "sidebar.left.toggle", "sidebar.right.toggle", "zoom.in", "zoom.out", "zoom.reset"] as const;
 /** Menu items whose hint is the chord of a keymap action with another id: the menu zoom is the saved
- *  interface zoom (SET-019), which has its own keys, while zoom.* in the keymap is the terminal zoom (TERM-078).
+ *  interface zoom (SET-019), which has its own keys, while zoom.* in the keymap is a browser tab's own
+ *  zoom (BROW-012). No terminal has a zoom of its own: TERM-078 sizes every terminal from one setting.
  *  The Workspace View items carry no chord (DT-C68): on a Mac a menu accelerator is a real key equivalent, and
  *  Floor's would fire beside the window's toggle of the same chord (view.floor, useWindowKeys.ts), so the
  *  palette's "Show Floor" row is where view.floor's keys are printed. */
@@ -55,7 +56,7 @@ export type MenuBarState = { screen: string; statusBarVisible: boolean; tasksBut
 
 /** `chords(id)`: the keymap's chords for an action, first one shown (empty when unbound). `classic`:
  * the Classic look, whose View menu has no Workspace View (T-049-b). Zoom shows the interface zoom keys
- * (ui.zoomIn, ui.zoomOut, ui.zoomReset), not the terminal zoom ones (TERM-078). */
+ * (ui.zoomIn, ui.zoomOut, ui.zoomReset), not a browser tab's own zoom keys (BROW-012). */
 export function menuBarState(s: Record<string, unknown>, screen: string, chords: (id: string) => readonly string[] | undefined, classic = false): MenuBarState {
   return {
     screen,

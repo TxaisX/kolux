@@ -312,7 +312,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
             </select>
           </label>
         ))}
-        <p className="conn-detail">Zoom In, Zoom Out and Reset Size (the top bar's Terminal zoom menu, Ctrl+= / Ctrl+- / Ctrl+0) change only the focused terminal.</p>
+        <p className="conn-detail">One size applies to every terminal, including ones already open. Changing it here or in Terminal &amp; sessions redraws them all at once; new terminals start at the same size. The default is 13 pt.</p>
       </section>
       <section className="conn-card" data-section="terminal-colours">
         <h2 className="conn-name">Terminal colours</h2>

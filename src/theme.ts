@@ -364,32 +364,14 @@ export const TERMINAL_EVENT = "kolux-terminal-theme";
 /** TERM-098: whether the app is in dark mode now (what a program asking the terminal is told). */
 export const currentDark = () => lastDark ?? true;
 
-// ---- TERM-097 / TERM-078: the terminal font, and each pane's zoom on top of it ----
+// ---- TERM-097 / TERM-078: one terminal font for every pane ----
 
-/** Pane key to points added by Zoom In / Zoom Out; Reset Size removes the entry. */
-const zooms = new Map<number, number>();
-/** ponytail: one point per step, 6 to 48 points; a saved per-pane zoom waits until someone asks. */
-const ZOOM_LIMIT = [6, 48] as const;
-
-/** The font options a terminal pane draws with now: the saved font (from the first frame, since
- *  main.tsx puts the cached appearance on before anything draws) plus that pane's zoom. Panes
- *  read it again on TERMINAL_EVENT. */
-export function termFont(key?: number) {
+/** The font options every terminal pane draws with now: the saved font from the first frame (main.tsx
+ *  puts the cached appearance on before anything draws). There is no per-pane zoom: the saved size is
+ *  the size of every terminal, and changing it redraws every open pane through TERMINAL_EVENT. */
+export function termFont() {
   const a = last ?? readAppearance({});
-  const size = Math.min(ZOOM_LIMIT[1], Math.max(ZOOM_LIMIT[0], a.termSize + (key === undefined ? 0 : zooms.get(key) ?? 0)));
-  return { fontFamily: fontStack(a.termFont, monoFont), fontSize: size, lineHeight: a.termLineHeight, fontWeight: a.termWeight, fontWeightBold: a.termWeightBold };
-}
-
-/** TERM-078: Zoom In, Zoom Out or Reset Size on one pane (the focused one); the others keep their
- *  size. Returns the pane's size afterwards. */
-export function zoomTerm(key: number, how: "in" | "out" | "reset"): number {
-  const base = (last ?? readAppearance({})).termSize;
-  const now = termFont(key).fontSize;
-  const next = how === "reset" ? base : Math.min(ZOOM_LIMIT[1], Math.max(ZOOM_LIMIT[0], now + (how === "in" ? 1 : -1)));
-  if (next === base) zooms.delete(key);
-  else zooms.set(key, next - base);
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(TERMINAL_EVENT));
-  return next;
+  return { fontFamily: fontStack(a.termFont, monoFont), fontSize: a.termSize, lineHeight: a.termLineHeight, fontWeight: a.termWeight, fontWeightBold: a.termWeightBold };
 }
 
 /** SET-018: the chosen fonts with a safe fallback after each; an empty editor font is the terminal font.

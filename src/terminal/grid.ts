@@ -1,6 +1,7 @@
 // The pane grid's arithmetic (TERM-001, TERM-004, TERM-006, TERM-040): how many cells a workspace
 // may hold, how they tile, what a resize adds or drops, where a split lands, and which panes share
 // a cell as tabs. Pure, so it is tested without a browser; the window applies the plan.
+import { MAX_SESSIONS } from "../launch/seats";
 import type { PaneLike } from "../workspaces";
 
 /** TERM-040: panes with the same group share one grid cell as tabs; a pane without one is its own cell. */
@@ -30,8 +31,9 @@ export function neighbourTab(keys: number[], key: number): number | null {
   return i < 0 ? null : (rest[Math.min(i, rest.length - 1)] ?? null);
 }
 
-/** TERM-001: a workspace holds 1..12 panes. */
-export const MAX_PANES = 12;
+/** TERM-001: a workspace holds at least one pane, and every seat one launch can ask for
+ * (SESS-013) fits: the strip's free field is not limited to the quick counts. */
+export const MAX_PANES = MAX_SESSIONS;
 
 export function clampCount(n: number): number {
   const whole = Math.floor(n);

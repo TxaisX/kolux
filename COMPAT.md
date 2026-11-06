@@ -861,9 +861,9 @@ Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile e
 | `view.floor` | Show Floor | none | yes |
 | `view.code` | Show Code | Mod+Shift+3 | no |
 | `floatingWorkspace.minimize` | Minimize Floating Workspace Panel | none | yes |
-| `zoom.in` | Zoom In | Mod+Equal, Mod+Shift+Plus, Mod+NumpadAdd | no |
-| `zoom.out` | Zoom Out | Mod+Minus, Mod+NumpadSubtract | no |
-| `zoom.reset` | Reset Size | Mod+0 | no |
+| `zoom.in` | Zoom Browser In | Mod+Equal, Mod+Shift+Plus, Mod+NumpadAdd | no |
+| `zoom.out` | Zoom Browser Out | Mod+Minus, Mod+NumpadSubtract | no |
+| `zoom.reset` | Reset Browser Zoom | Mod+0 | no |
 | `worktree.history.back` | Worktree History Back | Mod+Alt+ArrowLeft | no |
 | `worktree.history.forward` | Worktree History Forward | Mod+Alt+ArrowRight | no |
 | `tab.newTerminal` | New terminal tab | Mod+T | no |
@@ -970,7 +970,7 @@ Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile e
 | View | Open Worktree Palette | The `worktree.palette` chord | Nothing on click; the item has no action. The shortcut itself works through the keyboard layer. |
 | View, Workspace View | Cycle Workspace View | The `view.cycleWorkspaceView` chord | Same. |
 
-On Windows and Linux the app menu shows other shortcuts as text only (Settings, Force Reload, Reset Size, Zoom In, Zoom Out, Toggle Left Sidebar, Toggle Right Sidebar); those items do act when clicked, and the keyboard layer handles the chord. Undo and Redo in the Edit menu do not claim their chords on Windows and Linux.
+On Windows and Linux the app menu shows other shortcuts as text only (Settings, Force Reload, Reset Interface Zoom, Zoom Interface In, Zoom Interface Out, Toggle Left Sidebar, Toggle Right Sidebar); those items do act when clicked, and the keyboard layer handles the chord. Undo and Redo in the Edit menu do not claim their chords on Windows and Linux.
 
 ### 4.5 Cards that carry a keybinding contract
 
@@ -1010,7 +1010,7 @@ Each card below keeps the action ids named here, with the defaults of 4.3, so a 
 | TERM-068 | `terminal.paste`. |
 | TERM-076 | `terminal.clear`. |
 | TERM-077 | `terminal.search`. |
-| TERM-078, SET-019 | `zoom.in`, `zoom.out` and `zoom.reset`. |
+| SET-019 | `ui.zoomIn`, `ui.zoomOut` and `ui.zoomReset`. |
 | TERM-085 | `terminal.switchInputSource`, shipped unbound. |
 | STAT-050 | `view.inbox`, shipped unbound; the Inbox is its own top-level view. |
 | VIEW-002, SET-037 | `view.cycleWorkspaceView`, Mod+Alt+V. |

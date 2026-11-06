@@ -106,10 +106,12 @@ export const actions: Action[] = [
   a("view.space", "Show Space", "global", ["Mod+Alt+S"], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   a("floatingWorkspace.minimize", "Minimize Floating Workspace Panel", "global", ["Mod+Shift+H"]),
-  a("zoom.in", "Zoom In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),
-  a("zoom.out", "Zoom Out", "global", ["Mod+Minus", "Mod+NumpadSubtract"], { terminalSafe: true }),
-  a("zoom.reset", "Reset Size", "global", ["Mod+0"], { terminalSafe: true }),
-  // SET-019 (T-246-c): the saved interface zoom has its own keys, since Mod+= / Mod+- / Mod+0 zoom the focused pane (TERM-078).
+  // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every
+  // terminal from one saved setting instead of letting one pane drift.
+  a("zoom.in", "Zoom Browser In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),
+  a("zoom.out", "Zoom Browser Out", "global", ["Mod+Minus", "Mod+NumpadSubtract"], { terminalSafe: true }),
+  a("zoom.reset", "Reset Browser Zoom", "global", ["Mod+0"], { terminalSafe: true }),
+  // SET-019 (T-246-c): the saved interface zoom has keys of its own.
   a("ui.zoomIn", "Zoom Interface In", "global", ["Mod+Alt+Equal"], { group: "menu", terminalSafe: true, keywords: ["zoom", "bigger", "interface", "scale"] }),
   a("ui.zoomOut", "Zoom Interface Out", "global", ["Mod+Alt+Minus"], { group: "menu", terminalSafe: true, keywords: ["zoom", "smaller", "interface", "scale"] }),
   a("ui.zoomReset", "Reset Interface Zoom", "global", ["Mod+Alt+0"], { group: "menu", terminalSafe: true, keywords: ["zoom", "actual size", "interface", "scale"] }),

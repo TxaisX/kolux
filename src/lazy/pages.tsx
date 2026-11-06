@@ -64,7 +64,6 @@ export const RecoveryMount = deferred(() => import("../recovery/RecoveryMount"))
 export const ToolNotices = deferred(() => import("../launch/ToolNotices"));
 export const AgentStartHost = deferred(() => import("../agentstart/AgentStartHost"));
 
-// A chooser pane (SESS-007), a page's Preview button and the Tower's own drawing.
+// A chooser pane (SESS-007) and the Tower's own drawing.
 export const ChooserPane = deferred(() => import("../launch/ChooserPane"));
-export const PreviewButton = deferred(() => import("../browser/PreviewButton"));
 export const TowerView = deferred(() => import("../tower/TowerView"), loading);

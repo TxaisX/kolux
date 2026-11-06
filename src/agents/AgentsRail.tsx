@@ -1,5 +1,6 @@
-// The Agents screen's rail (VIEW-015, VIEW-021): sessions under each saved agent, + adds a
-// not-started preset (T-730: Remove under it takes it away again), and an empty state when no agent is switched on.
+// The Agents screen's rail (VIEW-015, VIEW-021): only agents with a session open right now, + adds a
+// not-started preset (T-730: Remove under it takes it away again), and an empty state that starts a
+// session instead of listing every saved agent.
 import { Fragment } from "react";
 import { Plus } from "../chrome/icons";
 import VendorMark from "../chrome/VendorMark";
@@ -7,21 +8,33 @@ import { markFor } from "../launch/PlusMenu";
 import Ring from "../usage/Ring";
 import { OTHER, sessionLabel, type Group, type RowStatus, type Session } from "./rail";
 
-type Props<S extends Session> = { groups: Group<S>[]; selected: number | null; classic: boolean; statusOf: (p: S) => RowStatus; ringOf: (p: S) => { percent: number; title: string } | null; footer: string; onSelect: (key: number) => void; onAdd: (agentId: string) => void; onSettings: () => void; taskOf?: (key: number) => string | undefined; onDrop?: (key: number) => void };
+type Props<S extends Session> = { groups: Group<S>[]; selected: number | null; classic: boolean; statusOf: (p: S) => RowStatus; ringOf: (p: S) => { percent: number; title: string } | null; footer: string; onSelect: (key: number) => void; onAdd: (agentId: string) => void; onSettings: () => void; hasAgents?: boolean; onNew?: () => void; taskOf?: (key: number) => string | undefined; onDrop?: (key: number) => void };
 
-export default function AgentsRail<S extends Session>({ groups, selected, classic, statusOf, ringOf, footer, onSelect, onAdd, onSettings, taskOf, onDrop }: Props<S>) {
+export default function AgentsRail<S extends Session>({ groups, selected, classic, statusOf, ringOf, footer, onSelect, onAdd, onSettings, hasAgents, onNew, taskOf, onDrop }: Props<S>) {
   const look = classic ? " classic" : "";
   return (
     <div className={`sidebar-wrap rail-wrap${look}`}>
       <nav className={`sidebar rail${look}`} aria-label="Sessions by agent">
         {groups.length === 0 ? (
-          <div className="empty">
-            <h2>No agents yet</h2>
-            <p>None is installed and switched on. Install one or switch one on in Settings to start a session.</p>
-            <button className="btn" onClick={onSettings}>
-              Open Settings
-            </button>
-          </div>
+          hasAgents ? (
+            <div className="empty">
+              <h2>No sessions yet</h2>
+              <p>Start one and it will show up here.</p>
+              {onNew && (
+                <button className="btn" onClick={onNew}>
+                  New session
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="empty">
+              <h2>No agents yet</h2>
+              <p>None is installed and switched on. Install one or switch one on in Settings to start a session.</p>
+              <button className="btn" onClick={onSettings}>
+                Open Settings
+              </button>
+            </div>
+          )
         ) : (
           groups.map((g) => (
             <section key={g.id} className="rail-group" data-agent={g.id} aria-label={g.name}>

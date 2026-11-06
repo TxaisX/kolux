@@ -1,4 +1,4 @@
-// TERM-001 acceptance: the pane count follows the layout strip's request, 1..12, empty panes added,
+// TERM-001 acceptance: the pane count follows the layout strip's request, 1..24, empty panes added,
 // unstarted panes dropped first, no prompt while an unstarted pane can go instead.
 import { expect, test } from "vitest";
 import { blocking, cellsOf, clampCount, resizePlan, MAX_PANES } from "../grid";
@@ -40,14 +40,14 @@ test("box 2: 6 -> 4 with 2 unstarted panes removes those 2 without any prompt", 
   expect(out.panes.every((p) => p.seats === undefined)).toBe(true); // all four survivors are the running ones
 });
 
-test("box 3: asking for 13 panes yields 12", () => {
-  expect(clampCount(13)).toBe(12);
+test("box 3: asking for 25 panes yields 24", () => {
+  expect(clampCount(25)).toBe(24);
   const four = [1, 2, 3, 4].map(running);
-  const out = setCount(four, 13);
-  expect(cellsOf(out.panes)).toHaveLength(12);
-  expect(MAX_PANES).toBe(12);
-  const twelve = Array.from({ length: 12 }, (_, i) => running(i + 1));
-  const same = setCount(twelve, 13);
+  const out = setCount(four, 25);
+  expect(cellsOf(out.panes)).toHaveLength(24);
+  expect(MAX_PANES).toBe(24);
+  const full = Array.from({ length: 24 }, (_, i) => running(i + 1));
+  const same = setCount(full, 25);
   expect(same.add).toBe(0);
-  expect(same.panes).toHaveLength(12);
+  expect(same.panes).toHaveLength(24);
 });

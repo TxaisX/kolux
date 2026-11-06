@@ -1,8 +1,7 @@
-// T-748 (DT-C184): visual consistency. The status bar draws the shared terminal glyph, every New tab row
-// has its own icon, the warning yellow and the dim scrim come from tokens, and labels are in sentence case.
+// T-748 (DT-C184): visual consistency. The status bar draws the shared terminal glyph, the warning
+// yellow and the dim scrim come from tokens, and labels are in sentence case.
 import { expect, test } from "vitest";
 import statusBar from "./StatusBar.tsx?raw";
-import layoutStrip from "./LayoutStrip.tsx?raw";
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 import terminalPage from "../settings/TerminalPage.tsx?raw";
 import shortcutsPage from "../settings/ShortcutsPage.tsx?raw";
@@ -11,13 +10,6 @@ import { searchSettings } from "../settings/search";
 test("T-748: the status bar's terminal count uses the shared Shell glyph, not typed text", () => {
   expect(statusBar).not.toContain("&gt;_");
   expect(statusBar).toContain("<Shell size={12} />");
-});
-
-test("T-748: each fixed New tab row has its own icon", () => {
-  const menu = layoutStrip.slice(layoutStrip.indexOf('pick("markdown-new")'));
-  const icons = [...menu.matchAll(/<span className="agent-mark">\s*<(\w+)/g)].map((m) => m[1]);
-  expect(icons).toHaveLength(5);
-  expect(new Set(icons).size).toBe(5);
 });
 
 test("T-748: the warning yellow and the scrim are tokens, so light themes can change them", () => {

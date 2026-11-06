@@ -47,24 +47,22 @@ test("the app mark is the six-spoke glyph on a 24-unit grid in the text colour",
   expect(html).toContain("<circle");
 });
 
-test("the layout strip offers 1, 2, 4 and 6 panes with the current one pressed", () => {
+test("the layout strip sets any pane count: the quick counts plus a free field (owner change 2026-11-06)", () => {
   const html = renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {} }));
   expect(html).toContain('class="strip"');
-  for (const n of [1, 2, 4, 6]) expect(html).toContain(`>${n}</button>`);
+  for (const n of [1, 2, 4, 6, 9, 12]) expect(html).toContain(`>${n}</button>`);
   expect(html).toMatch(/aria-pressed="true"[^>]*>1<\/button>/);
   expect(html).not.toMatch(/aria-pressed="true"[^>]*>4<\/button>/);
+  expect(html).toContain('aria-label="Any number of panes"');
+  expect(html).toContain('max="24"');
+});
+
+test("the strip no longer carries the New tab or Preview buttons (owner change 2026-11-06)", () => {
+  const html = renderToString(createElement(LayoutStrip, { count: 3, onLayout: () => {} }));
   expect(html).not.toContain("New tab");
-});
-
-test("TERM-040: the strip offers a New tab menu when the window wires one", () => {
-  const html = renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {}, agents: [], onNewTab: () => {} }));
-  expect(html).toMatch(/aria-haspopup="menu"[^>]*>.*New tab/);
-});
-
-test("BROW-001: the New tab menu offers a browser tab with its chord", () => {
-  const html = renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {}, agents: [], onNewTab: () => {}, open: true }));
-  expect(html).toMatch(/Terminal.*Browser/);
-  expect(html).toMatch(/Browser[\s\S]*?<span class="kbd">B<\/span>/);
+  expect(html).not.toContain("Preview");
+  expect(html).not.toContain("Choose agent");
+  expect(html).not.toContain("Browser");
 });
 
 test("the status bar shows hooks, memory, terminals and agents on the right", () => {
@@ -85,19 +83,6 @@ test("VIEW-011: the Automations button shows only when it is turned on, pressed 
   const on = renderToString(createElement(TopBar, { ...base, automations: { open: true, onToggle: () => {} } }));
   expect(on).toContain('title="Automations"');
   expect(on).toMatch(/aria-pressed="true"[^>]*title="Automations"|title="Automations"[^>]*aria-pressed="true"/);
-});
-
-test("SESS-006: the create menu has a terminal per installed shell, Choose agent, a browser and markdown", () => {
-  const shells = [
-    { id: "powershell", name: "Windows PowerShell", program: "powershell.exe", args: ["-NoLogo"] },
-    { id: "pwsh", name: "PowerShell 7", program: "C:\pf\pwsh.exe", args: ["-NoLogo"] },
-  ];
-  const html = renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {}, agents: [], shells, onNewTab: () => {}, open: true }));
-  expect(html).toContain("Terminal · Windows PowerShell");
-  expect(html).toContain("Terminal · PowerShell 7");
-  expect(html).toMatch(/Terminal · PowerShell 7[\s\S]*Choose agent…[\s\S]*Browser[\s\S]*New markdown file[\s\S]*Open markdown file…/);
-  // Without the shell list (an old back end) the one default terminal is still there.
-  expect(renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {}, onNewTab: () => {}, open: true }))).toContain(">Terminal</span>");
 });
 
 test("ux fix 2: the bell carries the count of panes that need you and clears at 0", () => {

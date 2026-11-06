@@ -36,8 +36,8 @@ What works today (2026-10-11; the paragraphs below this one are the task-by-task
 Windows desktop app (Tauri 2, Rust + React) with its own 36 px top bar: the Kolux mark, a sidebar
 toggle, the Agents / Board / Terminals switcher, a search box showing the palette chord, a bell
 that opens the Inbox, a usage pill with live Claude and Codex figures (it opens Settings > AI
-connections), and the window controls. Terminals is a grid of 1 to 12 panes per workspace (the
-Layout 1 / 2 / 4 / 6 strip, split right / down, close, tabs per cell, browser tabs beside the
+connections), and the window controls. Terminals is a grid of 1 to 24 panes per workspace (the
+Layout quick counts and free field, split right / down, close, tabs per cell, browser tabs beside the
 terminals), each pane a PowerShell, Claude Code, Codex or other installed agent through a Rust
 PTY and xterm.js (WebGL when the GPU allows). Board shows the same panes as cards in lanes (Needs
 you, Working, Done, Stopped, Idle) with a chip saying what each agent is doing, Approve / Deny on

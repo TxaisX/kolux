@@ -52,14 +52,14 @@ Press Expand on a card to show that session's live terminal inside the card. Pre
 
 ## The Agents page
 
-Use it to browse sessions by program rather than by state. The left rail, "Sessions by agent", has one group for each agent you have switched on and installed, then "Other sessions" for anything unmatched.
+Use it to browse sessions by program rather than by state. The left rail, "Sessions by agent", has one group for each agent with a session open right now, then "Other sessions" for anything unmatched. An agent with no session open is not listed, so the rail stays empty until a session exists.
 
 - Each row shows the agent mark, a name (the title, the folder, or "Session N"), a context ring and a status word.
-- The + beside an agent ("Add a <agent> session") adds a not-started session, shown as "New session" and "Not started".
+- The + beside a listed agent ("Add a <agent> session") adds a not-started session, shown as "New session" and "Not started". Use New session to open an agent's first one.
 - A footer line shows the picked session's 5-hour allowance and when it resets, for example "Claude 80% left".
 - The picked session's terminal (or its chooser), or its chat when it can show one (see below), fills the area beside the rail. Kolux remembers your pick; first run it picks the first agent's newest session.
 
-With no agent switched on the page says "No agents yet" with an "Open Settings" button. With an agent but no session it says "No session yet. Add one with + under an agent."
+With no agent switched on the page says "No agents yet" with an "Open Settings" button. With agents but no open session it says "No sessions yet" and offers New session, and the page beside the rail offers it too.
 
 ### Chat on the Agents page
 

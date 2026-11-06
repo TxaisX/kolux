@@ -77,7 +77,6 @@ The bar across the top is 36 pixels tall and replaces the Windows title bar. Dra
 | Control | What it does |
 |---|---|
 | Kolux mark | Opens the Kolux menu (File, Edit, View, Window, Help). See the next section |
-| Terminal zoom (magnifier with a plus) | Opens the Terminal zoom menu with Zoom In, Zoom Out and Reset Size (Ctrl+=, Ctrl+-, Ctrl+0). They act on the focused terminal |
 | Sidebar button | Hides or shows the project sidebar (Ctrl+B) |
 | Back / Forward | Return to the last workspace or page you were on, and go forward again (Ctrl+Alt+Left, Ctrl+Alt+Right) |
 | Screen switcher | Four buttons: Agents, Board, Terminals, Tower. See the next section |
@@ -105,7 +104,7 @@ Click the Kolux mark at the left end of the top bar (its tooltip says "Kolux men
 | Window | Minimize, and Zoom (which maximizes the window) |
 | Help | **About Kolux** shows the version. The other Help items (Report Crash, Explore Kolux, Getting Started, Check for Updates) are not in the menu yet |
 
-The menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0) change the whole interface size, the same one as "Zoom: Interface size" in Settings, Appearance. The top bar's Terminal zoom button described above, in contrast, acts on the focused terminal.
+The menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0) change the whole interface size, the same one as "Zoom: Interface size" in Settings, Appearance. Terminal text has one size for every terminal; set it under Settings > Terminal & sessions.
 
 ## The views
 
@@ -139,6 +138,6 @@ More detail is in [Projects and worktrees](projects-and-worktrees.md).
 3. The pane opens and the agent starts. Type your request in the pane.
 4. Watch its status word in the pane header (Working, Needs you, Done). Press the bell to see every session that needs you.
 
-Other ways in: press Ctrl+T for a plain shell, or use "New tab" and "Choose agent…" to pick the AI, model and number of sessions before anything starts.
+Other ways in: press Ctrl+T for a plain shell, the pane header's plus or the sidebar's "New session" to pick the AI, model and number of sessions before anything starts, or Ctrl+Shift+B for the browser.
 
 <!-- verified against: src/onboarding/Wizard.tsx, src/chrome/TopBar.tsx, src/usage/meter.ts, src/usage/ClaudePill.tsx, src/usage/CodexPill.tsx, src/settings/general.ts, src/projects/AddProject.tsx, src/projects/ProjectsPanel.tsx, src/launch/PlusMenu.tsx, src/keys/actions.ts, src/onboarding/Guides.tsx, src/onboarding/HelpMenu.tsx, src/onboarding/Tours.tsx, src/onboarding/guide.ts, src/onboarding/tour.ts, src-tauri/src/onboarding.rs, src/skills/SkillsPage.tsx, src/skills/skills.ts, src/skills/nav.ts, src/projects/SkillsRow.tsx, src/projects/HideableRow.tsx, src/chrome/chromeItems.ts, src-tauri/src/skills.rs, src-tauri/src/menu.rs, src/chrome/useChrome.ts at 73f5e38 -->

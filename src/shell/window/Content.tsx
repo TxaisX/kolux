@@ -41,14 +41,13 @@ import { InboxView } from "../../lazy/pages";
 import { TemplatePicker } from "../../lazy/pages";
 import { RecoveryMount } from "../../lazy/pages";
 import { ToolNotices } from "../../lazy/pages";
-import { PreviewButton } from "../../lazy/pages";
 import { TowerView } from "../../lazy/pages";
 
 export default function WindowContent() {
   const {
     sheet, projects, projectOf, projectFor, setSheet, terminals, reviewPane, reviewing, names, titles, hook,
     turn, planDrafts, setPlanDrafts, approvePlan, requestChanges, setReviewing, page, setPage, runPane, openPane,
-    select, agents, settings, savePageSettings, activeDir, fromItem, cli, shown, setCount, shells, newTab,
+    select, agents, settings, savePageSettings, activeDir, fromItem, cli, shown, setCount,
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
     screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
     focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf,
@@ -111,7 +110,7 @@ export default function WindowContent() {
       )}
       {terminals && (
         <>
-          {page === null && <LayoutStrip count={shown.length} onLayout={setCount} agents={agents.filter((a) => a.installed)} shells={shells} onNewTab={(a) => void newTab(a)} preview={<PreviewButton dir={activeDir} onFocus={setFocused} />} />}
+          {page === null && <LayoutStrip count={shown.length} onLayout={setCount} workspace={activeDir} />}
           {picking === "file" && activeDir && (
             <FilePicker
               root={activeDir}
@@ -168,7 +167,14 @@ export default function WindowContent() {
       {agentsScreen && selected === null && (
         <div className="empty">
           <h2>Agents</h2>
-          <p>{saved.length ? "No session yet. Add one with + under an agent." : "No agents yet."}</p>
+          <p>{saved.length ? "No session yet." : "No agents yet."}</p>
+          {saved.length > 0 && (
+            <div className="btn-row">
+              <button className="btn" onClick={addChooser}>
+                New session
+              </button>
+            </div>
+          )}
         </div>
       )}
       {board && cardPanes(panes).length === 0 && (

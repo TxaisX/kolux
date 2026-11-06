@@ -17,7 +17,7 @@ import { openInBrowser } from "../browser/openIn";
 import { livePages, pageRows, rememberClosed } from "../browser/pages";
 import { fileJump } from "../chat/chatLinks";
 import { savedArgs } from "../chat/controls";
-import type { NewTab } from "../chrome/LayoutStrip";
+import type { NewTab } from "./newTab";
 import { screenRows } from "../chrome/reach";
 import { closedPanes } from "../chrome/reopenTab";
 import { keyOf } from "../editor/buffers";

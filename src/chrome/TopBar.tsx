@@ -35,28 +35,17 @@ export const screens: Array<{ id: Screen; label: string }> = [
 /** `classic` (SET-037): the Classic look has no screen switcher; the window stays on Terminals.
  * `sidebarWidth` (T-049-c): Classic draws a title header exactly as wide as the left sidebar card, so it follows the card. */
 /** `automations` (VIEW-011): the Automations page button, present only when it is turned on in Settings > Appearance. */
-export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; onZoom?: (how: "in" | "out" | "reset") => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; needsYou?: number; onNotice?: (text: string) => void };
+export type TopBarProps = { screen: Screen; classic?: boolean; sidebarWidth?: number; onScreen: (s: Screen) => void; sidebarOpen: boolean; onToggleSidebar: () => void; rightOpen: boolean; onToggleRight: () => void; appName?: boolean; automations?: { open: boolean; onToggle: () => void }; installed?: string[]; onSearch?: () => void; onBack?: () => void; onForward?: () => void; fullPage?: boolean; codexAccount?: boolean; appMenu?: boolean; uiZoom?: number; needsYou?: number; onNotice?: (text: string) => void };
 
 /** The bell opens the Inbox, and closes it back to the screen that was showing before (never past it to Terminals). */
 export const bellTarget = (screen: Screen, before: Screen): Screen => (screen === "inbox" ? before : "inbox");
 
-/** TERM-078: the overflow menu's View section; each item names its keybinding id. */
-export const VIEW_ITEMS = [
-  { id: "zoom.in", how: "in", label: "Zoom In" },
-  { id: "zoom.out", how: "out", label: "Zoom Out" },
-  { id: "zoom.reset", how: "reset", label: "Reset Size" },
-] as const;
-
 /** `appName` (SET-020): the app name beside the mark, off by default (DT-A6). */
-export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, onZoom, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0, onNotice }: TopBarProps) {
+export default function TopBar({ screen, classic = false, sidebarWidth, onScreen, sidebarOpen, onToggleSidebar, rightOpen, onToggleRight, appName = false, automations, installed = [], onSearch, onBack, onForward, fullPage = false, codexAccount = false, appMenu = false, uiZoom = 1, needsYou = 0, onNotice }: TopBarProps) {
   // The screen the bell returns to when the Inbox is closed: the one that was showing before it opened.
   const before = useRef<Screen>("terminals");
   if (screen !== "inbox") before.current = screen;
   const [maximized, setMaximized] = useState(false);
-  const [menuAt, setMenuAt] = useState<{ top: number; left: number } | null>(null);
-  // T-755: closing the zoom menu (Escape, a click outside or a pick) gives focus back to its button.
-  const zoomButton = useRef<HTMLButtonElement>(null);
-  const shut = () => (setMenuAt(null), zoomButton.current?.focus());
   // USAGE-008 / VIEW-008: a pill per provider, only with a weekly figure (or Codex's refused
   // sign-in) and an installed CLI; with neither, nothing is drawn. T-550: the pill is one button
   // that opens Settings > Accounts & keys (Ctrl+, still opens Settings, app.settings).
@@ -108,34 +97,6 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         </button>
         {appName && (
           <span className="app-name">Kolux</span>
-        )}
-        <button
-          className="ib dots"
-          ref={zoomButton}
-          title="Terminal zoom"
-          aria-label="Terminal zoom"
-          aria-haspopup="menu"
-          aria-expanded={menuAt !== null}
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            setMenuAt({ top: r.bottom + 4, left: r.left });
-          }}
-        >
-          <Search d="M5 7h4M7 5v4" />
-        </button>
-        {menuAt && (
-          <>
-            <div className="menu-backdrop" onClick={shut} aria-hidden="true" data-tauri-drag-region="false" />
-            <div className="menu" role="menu" aria-label="Terminal zoom" style={menuAt} onKeyDown={(e) => e.key === "Escape" && shut()} data-tauri-drag-region="false">
-              <div className="menu-title">Terminal zoom</div>
-              {VIEW_ITEMS.map((i, n) => (
-                <button key={i.id} role="menuitem" className="menu-item" autoFocus={n === 0} disabled={!onZoom} title={`${i.label} the focused terminal`} onClick={() => (shut(), onZoom?.(i.how))}>
-                  <span className="name">{i.label}</span>
-                  <Kbd id={i.id} />
-                </button>
-              ))}
-            </div>
-          </>
         )}
         <button className="ib panel" title={sidebarOpen ? "Hide sidebar" : "Show sidebar"} aria-pressed={sidebarOpen} onClick={onToggleSidebar}>
           <PanelLeft />

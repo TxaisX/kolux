@@ -11,7 +11,6 @@ const useMenuFocus = vi.fn();
 vi.mock("./dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => useDialogFocus(...a), useMenuFocus: (...a: unknown[]) => useMenuFocus(...a) }));
 
 import Ask from "./Ask";
-import LayoutStrip from "./LayoutStrip";
 import StatusBar from "./StatusBar";
 import RightSidebar, { tabStep } from "./RightSidebar";
 
@@ -28,13 +27,6 @@ test("the confirmation dialog traps focus: Escape runs Cancel, and Cancel is the
   close();
   expect(onCancel).toHaveBeenCalledTimes(1);
   expect(typeof initial).toBe("function");
-});
-
-test("the New tab menu takes the menu keys while it is open, and not while it is shut", () => {
-  renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {}, onNewTab: () => {}, open: true }));
-  expect(useMenuFocus.mock.calls[useMenuFocus.mock.calls.length - 1]?.[1], "open").toBe(true);
-  renderToString(createElement(LayoutStrip, { count: 1, onLayout: () => {}, onNewTab: () => {} }));
-  expect(useMenuFocus.mock.calls[useMenuFocus.mock.calls.length - 1]?.[1], "shut").toBe(false);
 });
 
 test("the status bar's right-click menu and the More tabs menu use the menu keys too", () => {

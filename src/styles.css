@@ -420,12 +420,13 @@ input { font: inherit; }
 .scm-pr-base .field { flex: 1; min-width: 0; }
 
 /* ---- 6. layout strip: 40 px ---- */
-.strip { flex: none; height: 40px; display: flex; align-items: center; padding-left: 12px; gap: 16px; background: var(--strip-bg); font-size: 12px; color: var(--fg-muted); }
+.strip { flex: none; height: 40px; display: flex; align-items: center; padding-left: 12px; gap: 16px; background: var(--strip-bg); font-size: 12px; color: var(--fg-muted); container-type: inline-size; }
 .layouts { display: flex; height: 28px; border: 1px solid var(--line-focus); border-radius: 6px; overflow: hidden; }
 .layouts button { width: 32px; font-size: 13px; font-weight: 600; color: var(--fg); border-left: 1px solid var(--line-focus); }
 .layouts button:first-child { border-left: 0; }
 .layouts button[aria-pressed="true"] { background: var(--seg-active); }
 .layouts button:hover:not([aria-pressed="true"]):not(:disabled) { background: var(--row-selected); }
+.layouts .count-field { width: 58px; height: 26px; padding: 0 4px; border: 0; border-left: 1px solid var(--line-focus); border-radius: 0; background: transparent; color: var(--fg); font: inherit; text-align: center; }
 
 /* ---- 7. pane grid and pane cards ---- */
 .grid { flex: 1; min-height: 0; margin: 8px; display: grid; gap: var(--divider-width, 6px); grid-template-columns: 1fr; background: var(--divider, transparent); border-radius: 14px; }
@@ -433,12 +434,31 @@ input { font: inherit; }
    over the pane's own ground, so a divider colour behind the grid never shows through. */
 .grid .pane > * { transition: opacity 140ms ease; }
 .grid .pane:not(.focused) > * { opacity: var(--pane-dim, 1); }
-.strip .newtab { margin-left: auto; margin-right: 12px; height: 28px; }
-/* Total tokens and estimated cost, immediately left of Preview at the strip's right end. */
-.strip-right { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-.strip-totals { font: 11px/1 var(--mono-font); color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.strip-totals b { color: var(--fg); font-weight: 500; }
-.strip-totals .sep { color: var(--fg-faint); }
+/* Owner change 2026-11-06: the workspace's token and spend ribbon at the strip's right end. It
+   replaces the space the New tab and Preview buttons left. The numbers are monospaced so a changing
+   gauge does not shift the strip; the last 14 days ride at the end as small bars. */
+.strip-right { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.strip-spend { display: inline-flex; align-items: center; gap: 10px; min-width: 0; white-space: nowrap; font-size: 11px; color: var(--fg-muted); }
+.strip-spend.empty { opacity: 0.7; }
+.strip-spend-label { color: var(--fg-label); }
+.strip-spend-total, .strip-spend-cost, .strip-spend-today { font-family: var(--mono-font); font-variant-numeric: tabular-nums; }
+.strip-spend-total b, .strip-spend-cost b { color: var(--fg); font-weight: 500; }
+.strip-spend-cost { padding: 3px 6px; border-radius: 999px; color: var(--cost-fg); background: color-mix(in srgb, var(--cost-fg) 14%, transparent); }
+.strip-spend-gauge { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; flex: none; }
+.spend-bar { width: 3px; min-height: 2px; border-radius: 1px; background: var(--gauge-track); }
+.spend-bar.has { background: var(--cost-fg); opacity: 0.45; }
+.spend-bar.today { opacity: 1; }
+.strip-spend-off { padding: 2px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--fg-muted); font-size: 11px; }
+.strip-spend-off:hover { color: var(--fg); background: var(--row-selected); }
+.strip-spend-failed { color: var(--fg-faint); font-size: 11px; }
+/* The strip itself is the container, so an open right sidebar narrows the ribbon even when the
+   window is wide. The window breakpoints stay as the fallback for a WebView without containers. */
+@container (max-width: 780px) { .strip-spend-today { display: none; } }
+@container (max-width: 640px) { .strip-spend-gauge { display: none; } }
+@container (max-width: 520px) { .strip-spend-label { display: none; } }
+@media (max-width: 1080px) { .strip-spend-today { display: none; } }
+@media (max-width: 940px) { .strip-spend-gauge { display: none; } }
+@media (max-width: 820px) { .strip-spend-label { display: none; } }
 /* a cell holds tabs (TERM-040); on the New (clean) look the tab strip shows only for two tabs or more,
    on Classic always (TERM-028) */
 .cell { display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 4px; }
@@ -744,25 +764,79 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .routing-table select.field { width: 200px; }
 .routing-missing { margin-left: 4px; padding: 0 5px; border-radius: 4px; font-size: 10px; font-weight: 500; color: var(--fg-muted); background: var(--input-bg); border: 1px solid var(--line-subtle); }
 
-/* Settings (T-043-a): laid over the window body; the panes underneath stay mounted */
+/* Settings: the shape of Claude's settings modal (REA of Claude Desktop 4.4212.0): the window dims,
+ * one 1024 x 800 panel opens, a grouped rail of pages sits left and one page scrolls right. */
 .body { position: relative; }
-.settings { position: absolute; inset: 0; z-index: var(--z-page); display: flex; gap: 8px; padding: 8px; background: var(--app-bg); }
-.settings-nav { flex: none; width: 288px; display: flex; flex-direction: column; gap: 2px; padding: 12px 8px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; }
-.settings-title { padding: 0 9px 10px; font-size: 13px; font-weight: 600; color: var(--fg-label); }
+.settings { position: absolute; inset: 0; z-index: var(--z-page); display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--scrim); }
+.settings-panel { width: min(1024px, 100%); height: min(800px, 100%); max-height: 100%; display: flex; overflow: hidden; background: var(--pane-bg); border: 1px solid var(--line-strong); border-radius: 14px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45); animation: settings-in 140ms ease-out; }
+@keyframes settings-in { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .settings-panel { animation: none; } }
+.settings-nav { flex: none; width: 248px; min-height: 0; display: flex; flex-direction: column; gap: 2px; padding: 14px 10px 8px; overflow: hidden; background: var(--surface); border-right: 1px solid var(--line); }
+.settings-nav-head { flex: none; }
+.settings-title { padding: 2px 8px 12px; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--fg); }
+.settings-rail { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+.settings-block + .settings-block { margin-top: 2px; }
+.settings-group { padding: 14px 8px 4px; font-size: 11px; font-weight: 600; color: var(--fg-muted); text-transform: none; letter-spacing: 0.01em; }
 /* SET-007: the search box over the page list; the pages a search found, one after another. */
 .settings-search { margin: 0 0 8px; }
-.settings-found + .settings-found { margin-top: 20px; }
-.settings-found-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--fg-label); }
+.settings-link { height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border-radius: 7px; text-align: left; font-size: 13px; color: var(--fg-row); }
+.settings-link svg { flex: none; color: var(--fg-muted); }
+.settings-link span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-link:hover:not([aria-current="page"]) { background: var(--row-selected); }
+.settings-link[aria-current="page"] { background: var(--row-selected); color: var(--fg); font-weight: 600; }
+.settings-link[aria-current="page"] svg { color: var(--fg); }
+.settings-link.repo { height: 30px; }
+.settings-rail-foot { flex: none; padding: 16px 8px 4px; font-size: 11px; line-height: 1.45; color: var(--fg-faint); border-top: 1px solid var(--line); }
+.settings-main { flex: 1; min-width: 0; overflow-y: auto; background: var(--pane-bg); }
+.settings-main-inner { max-width: 760px; margin: 0 auto; padding: 26px 40px 64px; }
+.settings-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 0 18px; background: var(--pane-bg); }
+.settings-head h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--fg); }
+.settings-head .ib { flex: none; width: 30px; height: 30px; border-radius: 8px; }
+.settings-sub { margin: 4px 0 22px; max-width: 62ch; font-size: 12.5px; line-height: 1.55; color: var(--fg-muted); }
+.settings-found + .settings-found { margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--line); }
+.settings-found-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--fg); }
 .look-fold > summary[aria-disabled] { cursor: default; }
 /* SET-019: the zoom control. */
 .zoom-row { display: flex; align-items: center; gap: 6px; }
 .zoom-level { min-width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; }
-.settings-link { height: 32px; padding: 0 9px; border-radius: 6px; text-align: left; font-size: 13px; color: var(--fg-row); }
-.settings-link[aria-current="page"] { background: var(--row-selected); color: var(--fg); font-weight: 600; }
-.settings-main { flex: 1; min-width: 0; overflow: auto; padding: 20px 28px; background: var(--pane-bg); border: 1px solid var(--line); border-radius: 12px; }
-.settings-head { display: flex; align-items: center; justify-content: space-between; }
-.settings-head h1 { margin: 0; font-size: 18px; font-weight: 600; color: var(--fg); }
-.settings-sub { margin: 6px 0 18px; font-size: 12px; color: var(--fg-muted); }
+/* Claude's settings rows: a label and one quiet line of help on the left, the control on the right,
+ * separated by a hairline. Cards become plain sections inside the modal. */
+.settings-main .conn-card { display: block; max-width: none; margin: 0 0 30px; padding: 0; background: transparent; border: 0; border-radius: 0; }
+.settings-main .conn-card + .conn-card { margin-top: 0; }
+.settings-main .conn-name { margin: 0 0 4px; padding-bottom: 10px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--fg); border-bottom: 1px solid var(--line); }
+.settings-main .conn-detail { max-width: 66ch; font-size: 12px; line-height: 1.55; }
+.settings-main .conn-card > .look-select,
+.settings-main .conn-card > .look-slider,
+.settings-main .conn-card > .conn-switch,
+.settings-main .conn-card > .num-field,
+.settings-main .term-fields > .num-field,
+.settings-main .term-fields > .font-field,
+.settings-main .term-fields > .look-slider { min-height: 44px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.settings-main .look-slider { grid-template-columns: 150px 1fr 64px; }
+.settings-main .conn-card > .conn-switch { justify-content: space-between; align-items: flex-start; gap: 18px; }
+.settings-main .conn-card > .conn-switch input { order: 2; margin: 3px 0 0; }
+.settings-main .conn-card > .conn-switch span { min-width: 0; }
+.settings-main .term-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; margin: 0; align-items: stretch; }
+.settings-main .term-fields > .term-size { grid-column: 1 / -1; }
+.settings-main .btn-row { padding: 10px 0; }
+.settings-main .look-fold { margin-bottom: 30px; }
+.settings-main .look-fold > summary { padding: 0 0 10px; border-bottom: 1px solid var(--line); font-size: 15px; letter-spacing: -0.01em; }
+.settings-main .look-fold > .conn-card { margin-top: 0; }
+/* Connection cards stay cards: they are choices, not settings rows. */
+.settings-main .conn-grid .conn-card,
+.settings-main .conn-advanced .conn-card { display: flex; flex-direction: column; gap: 8px; max-width: none; margin: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; }
+.settings-main .conn-grid .conn-card + .conn-card,
+.settings-main .conn-advanced .conn-card + .conn-card { margin-top: 0; }
+.settings-main .conn-head .conn-name,
+.settings-main .conn-grid .conn-name,
+.settings-main .conn-advanced .conn-name { margin: 0; padding: 0; border: 0; font-size: 14px; }
+.settings-main .conn-grid .conn-detail,
+.settings-main .conn-advanced .conn-detail { font-size: 12px; }
+@media (max-width: 760px) {
+  .settings-nav { width: 200px; }
+  .settings-main-inner { padding: 20px 20px 48px; }
+  .settings-main .term-fields { grid-template-columns: 1fr; }
+}
 .conn-card { max-width: 560px; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; }
 .conn-head { display: flex; align-items: center; gap: 8px; }
 .conn-name { font-size: 14px; font-weight: 600; color: var(--fg); }
@@ -873,7 +947,6 @@ tr[data-id]:focus-visible { outline: 1px solid var(--focus-ring); outline-offset
 .seg-row button { height: 24px; padding: 0 12px; border-radius: 6px; font-size: 12px; color: var(--fg-muted); }
 .seg-row button[aria-checked="true"] { background: var(--seg-active); color: var(--fg); font-weight: 500; }
 .seg-row button:disabled { color: var(--fg-disabled); cursor: default; }
-.settings-group { padding: 12px 9px 4px; font-size: 11px; font-weight: 600; color: var(--fg-label); text-transform: uppercase; letter-spacing: 0.04em; }
 .settings-section-flash { outline: 1px solid var(--line-focus); }
 .keys-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .keys-table td { padding: 4px 0; border-top: 1px solid var(--line-subtle); color: var(--fg-row); }

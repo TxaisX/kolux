@@ -482,7 +482,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const term = new Terminal({
       ...optionsOf(currentText()),
       ...inputOptions(currentInput(), keys.current.platform, navigator.language, false, currentText().scroll), // T-247-d: Option as Meta, wheel speed
-      ...termFont(number), // TERM-097 / TERM-078: saved font plus this pane's zoom (wins over the SET-022 text font fields)
+      ...termFont(), // TERM-097: the one saved terminal font every pane draws with
       theme: currentTerminal(),
       allowProposedApi: true,
       logger: xtermLogger, // stress 802: a program's malformed escapes do not flood the console
@@ -1164,14 +1164,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const queries = hookQueries(term, write, { windows: navigator.userAgent.includes("Windows"), holdVersion: () => isHidden.current && isGrok(program) });
     const recolour = () => {
       term.options.theme = currentTerminal();
-      Object.assign(term.options, termFont(number));
+      Object.assign(term.options, termFont());
       resize();
       mode.changed();
     };
     window.addEventListener(TERMINAL_EVENT, recolour);
     // SET-022 / SET-025: open terminals follow the text, cursor and history settings.
     const retext = () => {
-      Object.assign(term.options, optionsOf(currentText()), termFont(number));
+      Object.assign(term.options, optionsOf(currentText()), termFont());
       feel();
       settleLigatures();
       resize();

@@ -4,7 +4,7 @@
 import type { WindowState } from "./windowStore";
 import type { AppInfo } from "../app-info";
 import { OPEN_IN_BROWSER, openDetail, type OpenInBrowser } from "../browser/openIn";
-import type { ShellInfo } from "../chrome/LayoutStrip";
+import type { ShellInfo } from "../terminal/newTab";
 import { applyWindowBlur } from "../chrome/appLook";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { clearMissing } from "../launch/seats";

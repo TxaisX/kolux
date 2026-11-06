@@ -11,7 +11,8 @@ vi.mock("../chrome/dialogFocus", () => ({ useDialogFocus: (...a: unknown[]) => u
 import { loadFailedText, scanFailedNote, scopeFailedNote, trackFailedNote } from "./analyticsNotes";
 import ShareButton from "./ShareButton";
 import ShareCard from "./ShareCard";
-import { TotalsView } from "./StripTotals";
+import { WorkspaceSpendView } from "./WorkspaceSpend";
+import { workspaceSpend } from "./workspaceRibbon";
 import { LoadFailed, TokenAnalyticsView, figureLabel } from "./TokenAnalytics";
 import analyticsSource from "./TokenAnalytics.tsx?raw";
 import shareCardSource from "./ShareCard.tsx?raw";
@@ -86,9 +87,9 @@ test("usage-status.md:9: the Share dialog takes focus, traps Tab and restores it
   expect(shareCardSource).not.toContain('"Escape"'); // the dialog's own window listener is gone
 });
 
-test("usage-status.md:15: the strip totals' label sits on an element that can carry one (role group)", () => {
-  const html = renderToStaticMarkup(createElement(TotalsView, { usage: usage() }));
-  expect(html).toMatch(/<span class="strip-totals" role="group"[^>]*aria-label="1,234 tokens across 1 provider"/);
+test("usage-status.md:15: the strip ribbon's label sits on an element that can carry one (role group)", () => {
+  const html = renderToStaticMarkup(createElement(WorkspaceSpendView, { spend: workspaceSpend(usage(), "C:\\work\\app", today), now: today.getTime() }));
+  expect(html).toMatch(/<span class="strip-spend" role="group"[^>]*aria-label="1,234 tokens in app across 1 session/);
 });
 
 test("usage-status.md:16: the switch is labelled with what it tracks", () => {

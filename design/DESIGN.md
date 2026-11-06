@@ -65,7 +65,7 @@ strip, pane grid, status bar); **6 px** between panes.
 | Token (suggested) | Hex | Where |
 |---|---|---|
 | `--app-bg` | `#050405` | Window background behind cards and in all gutters (very slight magenta tint: R=B>G) |
-| `--strip-bg` | `#0a0a0a` | Layout strip behind the "Layout 1 2 4 6" control |
+| `--strip-bg` | `#0a0a0a` | Layout strip behind the "Layout" quick counts and field |
 | `--pane-bg` | `#0d0d0d` | Pane header and terminal body (same colour; the terminal background) |
 | `--input-bg` | `#0f0f0f` | Top-bar segmented control track, search box fill |
 | `--surface` | `#171717` | Top bar, sidebar card, status bar |
@@ -219,12 +219,16 @@ Inner content runs from about x 13 to x 291. Top to bottom:
 
 - "Layout" label at x 309, 12 px `#a1a1a1`, vertically centred (y 51..61).
 - Button group x 363..491, y 42..69 (129 x 28), 1 px border `#2f2f2f`, radius 6 px, 1 px
-  `#2f2f2f` dividers between buttons at x 393, 426. Four buttons: "1" (x 364..392), "2"
-  (394..425), "4" (427..459, **active: fill `#404040`**), "6" (460..490). Numbers 13 px 600 white.
-- The rest of the strip is empty.
-  (Kolux, T-003b-fix-b: the strip's right end carries a "+ New tab" button, 86 x 28 at
-  x 1302..1388 in a 1400 px window, 12 px from the window's right edge, same border, radius and
-  type as the layout group; it opens the tab menu of the new-terminal-tab card, Ctrl+T for a shell.)
+  `#2f2f2f` dividers between buttons. Quick counts 1, 2, 4, 6, 9 and 12 (the current one pressed,
+  fill `#404040`), then a free number field for any count up to 24. Numbers 13 px 600 white.
+- The right end carries the workspace spend ribbon: "Workspace", the total tokens and estimated
+  cost of the workspace in front across all its sessions, today's tokens and cost, and a 14-bar
+  gauge of the last 14 days. Hover it for the seven-day figure, the provider split and the count
+  time. As the strip narrows (a right sidebar or a small window) the today figure drops first,
+  then the gauge, then the label.
+  (Kolux, owner change 2026-11-06: the strip's New tab and Preview buttons are gone; panes are
+  added with a split, a pane's plus, the sidebar's New session or a tab shortcut. Their space now
+  carries this ribbon.)
 
 ## 7. Panes
 

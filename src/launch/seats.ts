@@ -27,7 +27,7 @@ export const NOT_GIT = "Not a Git project: there is nothing to copy, so every AI
 /** The quick-pick counts (SESS-013: the rebuild settles on the New session page's set). */
 export const QUICK_COUNTS = [1, 2, 3, 4, 6, 8];
 
-/** UX audit F7: the most seats one launch can ask for (each AI seat may make a worktree), and the count above which the page asks first. */
+/** UX audit F7: the most seats one launch can ask for, and the count above which the page asks first. */
 export const MAX_SESSIONS = 24;
 export const ASK_ABOVE = 8;
 
@@ -323,6 +323,10 @@ export function removeTarget<T extends { key: number; seats?: Seat[] }>(shown: T
   const target = shown.find((p) => p.key === focused) ?? shown[shown.length - 1];
   return target ? { key: target.key, chooser: false } : null;
 }
+
+/** SESS-013: the folder a launch's seats open in. Every seat shares one folder (one folder per
+ *  project); a chooser with no folder (Home) falls back to the project folder. */
+export const seatFolder = (chooser: string | null, project: string | null): string | null => chooser ?? project;
 
 /** SESS-018: the New session page starts from this project's previous launch for the count, but
  *  every seat starts blank (SESS-015). Every launch shares the project folder (owner change 2026-11-05). */

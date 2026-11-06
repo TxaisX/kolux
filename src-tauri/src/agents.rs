@@ -55,6 +55,18 @@ type Entry = (&'static str, &'static str, &'static [&'static str], &'static [&'s
 /// inside the project folder. Never the flag that turns the sandbox off.
 const CODEX_YOLO: &[&str] = &["--sandbox", "workspace-write", "--ask-for-approval", "never"];
 
+/// OpenCode's TUI shows a persistent tab strip for every session by default. Kolux gives each
+/// terminal one session, so the strip is turned off for the pane through OpenCode's inline CLI
+/// settings (opencode.ai/v2/docs/cli/config, 2026-11-06). The user's own `cli.json` is untouched.
+pub const OPENCODE_CONFIG_ENV: &str = "OPENCODE_CLI_CONFIG_CONTENT";
+pub const OPENCODE_TABS_OFF: &str = r#"{"tabs":{"mode":"off"}}"#;
+
+/// The environment entry that keeps an OpenCode pane on one session, or `None` for every other
+/// program. `program` is the spawn program, credited the same way the pane mark is.
+pub fn opencode_env(program: Option<&str>) -> Option<(&'static str, &'static str)> {
+    (program.and_then(crate::tools::credited_program) == Some("opencode")).then_some((OPENCODE_CONFIG_ENV, OPENCODE_TABS_OFF))
+}
+
 /// The 35 visible agents: the 34 of SESS-001 in its order, then OpenCode, which Txais brought back on
 /// 2026-10-28 (reverses SESS-043; appended so the SESS-001 numbering of the others does not move).
 /// Claude Agent Teams (SESS-042) is skipped (DECISIONS.md).
@@ -983,6 +995,15 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn opencode_panes_get_the_tabs_off_setting_and_others_do_not() {
+        assert_eq!(opencode_env(Some("opencode")), Some((OPENCODE_CONFIG_ENV, OPENCODE_TABS_OFF)));
+        assert_eq!(opencode_env(Some(r"C:\bin\opencode.cmd")), Some((OPENCODE_CONFIG_ENV, OPENCODE_TABS_OFF)));
+        assert_eq!(opencode_env(Some("claude")), None);
+        assert_eq!(opencode_env(None), None);
+        assert!(OPENCODE_TABS_OFF.contains(r#""mode":"off""#));
     }
 
     // ---- T-580 (b): a leaked scratch folder in the Path never counts in a run that is not fenced ----

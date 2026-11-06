@@ -1,6 +1,6 @@
 import design from "../design/DESIGN.md?raw";
 import { expect, test } from "vitest";
-import { applyTheme, buildTheme, classic, coreTokens, isDark, previewOf, readAppearance, terminalFor, terminalTheme, themeVars, THEMES, writeAppearance, appearanceVars, termFont, zoomTerm, screenMode } from "./theme";
+import { applyAppearance, applyTheme, buildTheme, classic, coreTokens, isDark, previewOf, readAppearance, terminalFor, terminalTheme, themeVars, THEMES, writeAppearance, appearanceVars, termFont, screenMode } from "./theme";
 
 /** The `| \`--token\` | \`#hex\` |` rows of DESIGN.md section 2, as a name-to-hex map. */
 function designPalette(): Record<string, string> {
@@ -148,17 +148,22 @@ test("the editor font follows the terminal font unless it has its own", () => {
   expect(vars({ terminalFont: "Fira Code", editorFont: "Hack" })["--editor-font"]).toBe('"Hack", "Fira Code", "Cascadia Mono", Consolas, monospace');
 });
 
-test("zooming in twice then reset returns to the configured size, and only the zoomed pane changes", () => {
-  expect(termFont(7).fontSize).toBe(13);
-  expect(zoomTerm(7, "in")).toBe(14);
-  expect(zoomTerm(7, "in")).toBe(15);
-  expect(termFont(7)).toMatchObject({ fontSize: 15, lineHeight: 1, fontWeight: "normal", fontWeightBold: "bold" });
-  expect(termFont(8).fontSize, "another pane").toBe(13);
-  expect(zoomTerm(7, "reset")).toBe(13);
-  expect(termFont(7).fontSize).toBe(13);
-  for (let i = 0; i < 20; i++) zoomTerm(8, "out");
-  expect(termFont(8).fontSize, "floor").toBe(6);
-  zoomTerm(8, "reset");
+test("one saved terminal size is the size of every pane; there is no per-pane zoom", () => {
+  const had = "window" in globalThis;
+  const was = (globalThis as { window?: unknown }).window;
+  Object.assign(globalThis, { window: { dispatchEvent: () => true } });
+  try {
+    const root = { style: { setProperty: () => {} } };
+    applyAppearance(readAppearance({}), root);
+    expect(termFont()).toMatchObject({ fontSize: 13, lineHeight: 1, fontWeight: "normal", fontWeightBold: "bold" });
+    applyAppearance(readAppearance({ terminalFontSize: 10 }), root);
+    expect(termFont().fontSize, "the saved size reaches every pane").toBe(10);
+    applyAppearance(readAppearance({}), root);
+    expect(termFont().fontSize, "back to the default").toBe(13);
+  } finally {
+    if (had) Object.assign(globalThis, { window: was });
+    else delete (globalThis as { window?: unknown }).window;
+  }
 });
 
 // VIEW-006 (T-146-c)

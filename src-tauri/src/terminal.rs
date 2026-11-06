@@ -1814,6 +1814,11 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
         }
     }
     let mut env = env;
+    // OpenCode: one session per terminal. Its TUI shows a tab strip for every session by default;
+    // the inline CLI setting turns it off for this pane only, leaving the user's cli.json alone.
+    if let Some((k, v)) = crate::agents::opencode_env(program.as_deref()) {
+        env.push((k.to_string(), v.to_string()));
+    }
     // ACCT-024: a Codex pane waits (about two seconds) for the chosen account's sign-in.
     // ponytail: blocks one async worker while it waits; a timer-based wait if panes queue up.
     if let Some(i) = env.iter().position(|(k, _)| k == crate::codex_accounts::HOME_ENV).filter(|_| !pinned) {

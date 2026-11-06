@@ -1,6 +1,6 @@
 # Settings
 
-Change how Kolux looks, which agents it offers, when it notifies you, and which keys do what. Open Settings with Ctrl+, , or from the Settings buttons on the Agents screen and the project rows. It opens as a full-page overlay and remembers the last page you used. Press Esc or the x to close it.
+Change how Kolux looks, which agents it offers, when it notifies you, and which keys do what. Open Settings with Ctrl+, , or from the Settings buttons on the Agents screen and the project rows. It opens over the window with a grouped list of pages on the left, like Claude's settings, and remembers the last page you used. Press Esc or the x to close it.
 
 Changes save as you make them. They live in `settings.json` in Kolux's data folder, `%APPDATA%\com.txaisxiong.kolux-rs`. The right-hand column of each table shows the name a setting has in that file, which helps if someone asks you to check it.
 
@@ -18,6 +18,7 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 | Notifications | What alerts you, and how |
 | Shortcuts | Every command and its keys |
 | Usage | Activity counts and token use |
+| Claude | What Claude Code is set up to do here, read from its own files |
 
 Below those, a Repositories group lists one small page for each project you have added.
 
@@ -143,9 +144,9 @@ Under Terminal colours, "Bring in from Ghostty or Warp" lets you reuse colour sc
 - A file that cannot be read says why next to its name, and a file whose colours already match your current terminal colours is listed as nothing to apply.
 - You can keep up to 40 custom schemes. When the list is full a new one is "Not added" with a note to remove one first; replacing a scheme with the same name still works.
 
-Ctrl+= , Ctrl+- and Ctrl+0, and the top bar's Terminal zoom button, zoom the text of the focused terminal only.
+Terminal text has one size for every terminal. The Font size slider under Terminal and Reset to 13 pt change it, and every open terminal redraws at once; a terminal opened later starts at the same size. There is no per-pane terminal zoom.
 
-The Zoom control under Interface changes the size of the whole window, and so do the View menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0). Text and controls grow or shrink together. The choice is saved and applied again at the next start. The Ctrl+= keys do not change it.
+The Zoom control under Interface changes the size of the whole window, and so do the View menu's Zoom Interface In, Zoom Interface Out and Reset Interface Zoom (Ctrl+Alt+=, Ctrl+Alt+-, Ctrl+Alt+0). Text and controls grow or shrink together. The choice is saved and applied again at the next start. The Ctrl+= keys zoom a browser tab, not a terminal.
 
 ### Window & Sidebar
 

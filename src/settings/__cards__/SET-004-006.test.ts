@@ -89,7 +89,8 @@ test("SET-004 box 1 (pieces only): the window is created hidden and the page's f
   expect(conf.app.windows[0].visible).toBe(false);
 });
 
-const NAV = ["General", "Appearance", "Accounts & keys", "Agents", "Terminal & sessions", "Git & worktrees", "Safety", "Notifications", "Shortcuts", "Usage", "Claude"];
+// Grouped like Claude's settings rail: Personal, AI, Workspace, Usage.
+const NAV = ["General", "Appearance", "Notifications", "Shortcuts", "Accounts & keys", "Agents", "Claude", "Terminal & sessions", "Git & worktrees", "Safety", "Usage"];
 const links = (c: FakeNode) => find(c, (n) => n.localName === "button" && /settings-link/.test(n.attrs.class ?? ""));
 const current = (c: FakeNode) => links(c).filter((n) => n.attrs["aria-current"] === "page").map((n) => n.textContent.trim());
 const heading = (c: FakeNode) => find(c, (n) => n.localName === "h1")[0]?.textContent.trim();

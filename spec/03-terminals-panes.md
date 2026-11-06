@@ -725,17 +725,18 @@ Acceptance:
 Compat: —
 Source: D-03-035
 
-### TERM-078 · Zoom the terminal font
+### TERM-078 · One text size for every terminal
 Tier: P1 · Pushed: 7 · State at 0.15.0: live-unverified
-User does: uses zoom in, zoom out or reset (shortcut or the top bar's Terminal zoom menu).
-User sees: the terminal text gets bigger or smaller.
-Rules: only the pane that owns keyboard focus reacts; the top bar's Terminal zoom menu (a magnifier
-  with a plus, DT-C103, DT-C177) holds Zoom In, Zoom Out and Reset Size; from the menu they change the
-  focused terminal's text size. The View menu's zoom items zoom the whole interface instead (SET-019).
+User does: changes Font size in Settings > Terminal & sessions (or in Appearance > Terminal), or picks
+  Reset to 13 pt.
+User sees: every terminal, including ones already open, redraws at that size.
+Rules: one saved size (13 pt by default) is the size of every pane; there is no per-pane terminal zoom
+  and no Terminal zoom menu. Mod+= / Mod+- / Mod+0 stay a browser tab's own zoom (BROW-012) and do
+  nothing in a terminal. The interface has its own zoom (SET-019).
 Acceptance:
-  - [ ] Zooming in twice then reset returns to the configured font size.
-  - [ ] Zoom In from the Terminal zoom menu enlarges only the focused terminal.
-Compat: keybinding ids zoom.in, zoom.out, zoom.reset.
+  - [ ] Set 10 pt → every open terminal and a newly opened one draw at 10 pt.
+  - [ ] Pick Reset to 13 pt → every terminal returns to 13 pt.
+Compat: keybinding ids zoom.in, zoom.out, zoom.reset stay, for browser tabs only.
 Source: D-03-078
 
 ### TERM-097 · Terminal font settings

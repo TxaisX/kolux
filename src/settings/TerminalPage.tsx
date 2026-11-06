@@ -116,6 +116,21 @@ export default function TerminalPage() {
     if (onWindows()) invoke<ShellInfo[]>("shell_list").then(setShells, () => setShells([]));
   }, []);
   const text = settings ? readText(settings) : null;
+  // TERM-078: a drag on the size slider redraws the sample at once, then saves once the drag pauses.
+  // Every open terminal follows the save, so one size reaches every pane.
+  const [sizeDraft, setSizeDraft] = useState<number | null>(null);
+  useEffect(() => {
+    if (sizeDraft === null) return;
+    const t = window.setTimeout(() => {
+      setSizeDraft(null);
+      void save({ [FIELDS.size]: sizeDraft });
+    }, 250);
+    return () => window.clearTimeout(t);
+  }, [sizeDraft]);
+  useLeaveSave(() => {
+    if (sizeDraft !== null) void save({ [FIELDS.size]: sizeDraft });
+  });
+  const shownText = text && sizeDraft !== null ? { ...text, size: sizeDraft } : text;
   const shellChoice = typeof settings?.[DEFAULT_SHELL_FIELD] === "string" ? (settings[DEFAULT_SHELL_FIELD] as string) : "auto";
   const shellOptions = [{ id: "auto", name: "Automatic (PowerShell 7 when installed)" }, ...(shells ?? []).filter((s, i, all) => all.findIndex((o) => o.id === s.id) === i)];
   return (
@@ -133,17 +148,35 @@ export default function TerminalPage() {
           <p className="conn-detail">{readLook(settings) === "classic" ? "The classic look always starts with one pane." : "The first pane is a terminal; the others wait for you to pick what runs in them."}</p>
         </section>
       )}
-      {text && (
+      {text && shownText && (
         <section className="conn-card" data-section="text">
           <h2 className="conn-name">Terminal text and cursor</h2>
-          <Sample text={text} />
+          <Sample text={shownText} />
           <div className="term-fields">
-            <NumberField label="Font size" value={text.size} min={SIZE.min} max={SIZE.max} buttons onSave={(n) => save({ [FIELDS.size]: n })} />
+            <label className="look-slider term-size">
+              <span>Font size</span>
+              <input type="range" min={SIZE.min} max={SIZE.max} step={1} value={sizeDraft ?? text.size} onChange={(e) => setSizeDraft(Number(e.target.value))} />
+              <output>{sizeDraft ?? text.size} pt</output>
+            </label>
             <FontField label="Font" value={text.family} placeholder="Default (Cascadia Mono)" onPick={(f) => save({ [FIELDS.family]: f })} />
             <WeightField label="Weight" value={text.weight} onPick={(w) => save({ [FIELDS.weight]: w })} />
             <WeightField label="Bold weight" value={text.bold} onPick={(w) => save({ [FIELDS.bold]: w })} />
             <NumberField label="Line height" value={text.lineHeight} min={LINE_HEIGHT.min} max={LINE_HEIGHT.max} step={0.05} onSave={(n) => save({ [FIELDS.lineHeight]: n })} />
           </div>
+          <p className="conn-detail term-size-note">
+            One size for every terminal, including ones already open; new terminals start at the same size. The default is {SIZE.start} pt.
+            {(sizeDraft ?? text.size) !== SIZE.start && (
+              <button
+                className="btn link"
+                onClick={() => {
+                  setSizeDraft(null);
+                  void save({ [FIELDS.size]: SIZE.start });
+                }}
+              >
+                Reset to {SIZE.start} pt
+              </button>
+            )}
+          </p>
           <div className="look-select">
             <span>Cursor</span>
             <Segmented label="Cursor" options={CURSORS.map((c) => ({ id: c, label: c[0].toUpperCase() + c.slice(1) }))} value={text.cursor} onPick={(c) => save({ [FIELDS.cursor]: c })} />

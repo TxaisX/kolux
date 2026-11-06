@@ -1,13 +1,13 @@
 # Files and browser
 
-Open, edit and review a workspace's files without leaving Kolux, and keep a web page in a tab beside your terminals. Each of these is a tab in the same grid as your terminals; open them from the New tab menu in the layout strip (see [Terminals](terminals.md)).
+Open, edit and review a workspace's files without leaving Kolux, and keep a web page in a tab beside your terminals. Each of these is a tab in the same grid as your terminals; open a browser tab with Ctrl+Shift+B, a note with Ctrl+Shift+M or Ctrl+Shift+O, and a file from disk with the file finder (see [Terminals](terminals.md)).
 
 ## Open a file
 
 | To do this | Use |
 |---|---|
 | Find a file in this workspace by name | Ctrl+P ("Go to File") |
-| Pick any single file on your computer | New tab menu, "File..." |
+| Pick any single file on your computer | The file finder, "File..." |
 | Pick from the workspace's Markdown files | Ctrl+Shift+O, or "Open markdown file..." |
 | Start a new Markdown note in the workspace | Ctrl+Shift+M, or "New markdown file" |
 | Browse the workspace as a tree | Ctrl+Shift+E (the Explorer) |
@@ -89,7 +89,7 @@ A project that lives inside a WSL distribution (its path starts with `\\wsl.loca
 
 Two tabs show a workspace's uncommitted changes:
 
-- **Diff** (New tab menu, "Changed file diff...") shows one file's changes. Choose **Inline** or **Side by side**. F7 and Shift+F7 jump to the next and previous change. The "Diff actions" menu has "Show whitespace changes" and "Wrap lines". A tag shows whether you are looking at Staged or Unstaged changes.
+- **Diff** (a changed file in Source Control) shows one file's changes. Choose **Inline** or **Side by side**. F7 and Shift+F7 jump to the next and previous change. The "Diff actions" menu has "Show whitespace changes" and "Wrap lines". A tag shows whether you are looking at Staged or Unstaged changes.
 - **All Changes** shows every changed file in one scrolling view, with a file list beside it. Filter that list by name. "Viewed" marks a file you have read. It says "This worktree has no changes." when there is nothing. Each file shows its Before and After text.
 
 In All Changes, **Compare** picks what the changes are measured against: **Working tree** (what you have not committed yet) or **Branch vs** its base, for example "Branch vs main" (everything this branch changed since it left that branch, committed or not). Side by side, Wrap, Whitespace and the file tree button change the view, and **Make default** makes new All Changes tabs start with that layout. Each file has a button that opens it as a diff tab, in the split Source Control's "Open diffs in" names.
@@ -102,7 +102,7 @@ Diff lines also take review notes ("What should change here?"). A note needs som
 
 ## Browser tabs
 
-Open a web page beside your terminals, for example your app running locally. New tab menu, "Browser", or Ctrl+Shift+B.
+Open a web page beside your terminals, for example your app running locally: Ctrl+Shift+B.
 
 | To do this | Do this |
 |---|---|

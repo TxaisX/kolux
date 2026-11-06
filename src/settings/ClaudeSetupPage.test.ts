@@ -41,7 +41,7 @@ test("T-651: the precedence strip runs Managed > CLI > Local > Project > User", 
 
 test("T-651: every section is there and each row has a scope badge", () => {
   const h = html(data);
-  for (const id of ["model", "settings", "permissions", "hooks", "mcp", "skills", "agents", "plugins", "memory"]) expect(h).toContain(`data-section="${id}"`);
+  for (const id of ["model", "settings", "permissions", "hooks", "mcp", "skills", "agents", "plugins", "memory", "shared"]) expect(h).toContain(`data-section="${id}"`);
   expect(h).toContain("also set in User");
   expect(h).toContain("API_KEY=••••");
   expect(h).toContain("files (off)");

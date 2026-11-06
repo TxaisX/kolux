@@ -6,7 +6,7 @@
 // here without this file changing.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { type FakeDocument, FakeNode, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+import { type FakeDocument, FakeNode, click, find, installDom, mount, settle } from "../tasks/fakeDom";
 import { publishClaude } from "../usage/plan";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -81,7 +81,7 @@ afterEach(async () => {
 });
 
 const noop = () => {};
-const barProps = (classic: boolean) => ({ screen: "terminals", classic, sidebarWidth: 260, onScreen: noop, sidebarOpen: true, onToggleSidebar: noop, rightOpen: false, onToggleRight: noop, appName: true, automations: { open: false, onToggle: noop }, installed: ["claude"], onSearch: noop, onBack: noop, onForward: noop, onZoom: noop, appMenu: true, needsYou: 3 });
+const barProps = (classic: boolean) => ({ screen: "terminals", classic, sidebarWidth: 260, onScreen: noop, sidebarOpen: true, onToggleSidebar: noop, rightOpen: false, onToggleRight: noop, appName: true, automations: { open: false, onToggle: noop }, installed: ["claude"], onSearch: noop, onBack: noop, onForward: noop, appMenu: true, needsYou: 3 });
 
 async function mountBar(classic: boolean) {
   const { default: TopBar } = await import("./TopBar");
@@ -116,45 +116,15 @@ for (const classic of [false, true]) {
   });
 }
 
-test("the View menu and the account menu drawn inside the bar never move the window", async () => {
+test("the account menu drawn inside the bar never moves the window", async () => {
   const { c, header } = await mountBar(false);
-  await pressMenuButton(c, "Terminal zoom");
   await pressMenuButton(c, "Choose the account new panes use");
   const backdrops = find(header, (n) => n.attrs.class === "menu-backdrop");
   const menus = find(header, (n) => n.attrs.role === "menu");
-  expect(backdrops.length, "both menus are open, each with its backdrop").toBe(2);
-  expect(menus.map((m) => m.attrs["aria-label"]).sort()).toEqual(["Accounts for new panes", "Terminal zoom"]);
+  expect(backdrops.length, "the menu is open with its backdrop").toBe(1);
+  expect(menus.map((m) => m.attrs["aria-label"]).sort()).toEqual(["Accounts for new panes"]);
   for (const part of [...backdrops, ...menus]) expect(part.attrs[DRAG], name(part)).toBe("false");
   const { usedThatDrag, bareThatDoNot } = audit(header);
   expect(usedThatDrag, "presses on these move the window, but a person uses them").toEqual([]);
   expect(bareThatDoNot, "presses on these should move the window").toEqual([]);
-});
-// T-755 (DT-C191): Escape, a click outside and a pick each close the zoom menu and give focus back to its button.
-test("closing the Terminal zoom menu gives focus back to its button", async () => {
-  const proto = FakeNode.prototype as unknown as { focus: () => void };
-  const was = proto.focus;
-  proto.focus = function (this: FakeNode) {
-    doc.activeElement = this;
-  };
-  try {
-    const { c } = await mountBar(false);
-    const button = find(c, (n) => n.localName === "button" && n.attrs.title === "Terminal zoom")[0];
-    const menu = () => find(c, (n) => n.attrs.role === "menu" && n.attrs["aria-label"] === "Terminal zoom")[0];
-    const ways: Array<[string, () => Promise<void>]> = [
-      ["Escape", () => fire(c, "keydown", menu(), { key: "Escape" })],
-      ["a click outside", () => click(c, find(c, (n) => n.attrs.class === "menu-backdrop")[0])],
-      ["a pick", () => click(c, find(menu(), (n) => n.attrs.role === "menuitem")[0])],
-    ];
-    for (const [how, close] of ways) {
-      await pressMenuButton(c, "Terminal zoom");
-      expect(menu(), how).toBeDefined();
-      doc.activeElement = doc.body;
-      await close();
-      await settle();
-      expect(menu(), `${how} closes the menu`).toBeUndefined();
-      expect(doc.activeElement, `${how}: focus is back on the button`).toBe(button);
-    }
-  } finally {
-    proto.focus = was;
-  }
 });

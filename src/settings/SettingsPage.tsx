@@ -2,7 +2,7 @@
 // page is AI connections (ACCT-004): the Claude card connects on the 1-year key by default. The
 // Connect grid with install steps is ConnectGrid (ACCT-001, ACCT-003); the Claude account route and
 // the Codex sign-ins came with T-043-b / T-043-c.
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { saveChanged } from "./saveChanged";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -21,7 +21,8 @@ import GrokCard from "./GrokCard";
 import { AttentionNote, fixDoes, openInstallPage, type Fix } from "./Attention";
 import type { Project } from "../projects/model";
 import RepoPage from "./RepoPage";
-import { PAGES, pageOf, rememberPage, lastPage, type Page, type SettingsTarget } from "./pages";
+import { PAGE_GROUPS, PAGES, pageOf, rememberPage, lastPage, type Page, type PageId, type SettingsTarget } from "./pages";
+import { Bell, FolderPlus, Gear, Keyboard, List, Merge, Plug, Pulse, Shell, Sliders, Spark, Target } from "../chrome/icons";
 import { markGuide } from "../onboarding/guide";
 import { clearReadFailure, connectFailed, firstAiConnected, readFailed } from "../onboarding/firstRun";
 import { useKeymap } from "../keys/KeymapContext";
@@ -45,6 +46,21 @@ const ClaudeSetupPage = lazy(() => import("./ClaudeSetupPage"));
 const SafetyPage = lazy(() => import("./SafetyPage"));
 const TokenAnalytics = lazy(() => import("../usage/TokenAnalytics"));
 const Activity = lazy(() => import("../usage/Activity"));
+
+/** One small line glyph per page, the way Claude's settings rail does it. Repositories share FolderPlus. */
+const PAGE_ICON: Record<PageId, ComponentType<{ size?: number }>> = {
+  general: Gear,
+  appearance: Sliders,
+  accounts: Plug,
+  agents: List,
+  terminal: Shell,
+  git: Merge,
+  safety: Target,
+  notifications: Bell,
+  shortcuts: Keyboard,
+  usage: Pulse,
+  claude: Spark,
+};
 
 export function ClaudeCardView({ status, busy, error, onAction, onUseAccount, own = null, resume = false, onResume }: { status: KeyStatus | null; busy: boolean; error?: string | null; onAction: (a: KeyAction) => void; onUseAccount?: () => void; own?: OwnSignIn | null; resume?: boolean; onResume?: (on: boolean) => void }) {
   const card = keyCard(status);
@@ -342,73 +358,105 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
   }, []);
   const repo = page.startsWith("repo:") ? projects.find((p) => `repo:${p.id}` === page) : undefined;
   const title = repo ? repo.name : page in PAGES ? PAGES[page as keyof typeof PAGES] : "";
+  const matching = hits ? new Set(hits.pages.map((h) => h.page)) : null;
+  const rail = PAGE_GROUPS.map((g) => ({ ...g, pages: g.pages.filter((p) => !matching || matching.has(p)) })).filter((g) => g.pages.length > 0);
+  const repos = hits ? repoHits : projects;
   return (
-    <div ref={root} className="settings" role="dialog" aria-modal="true" aria-label="Settings" tabIndex={-1} onKeyDown={trapTab} style={{ outline: "none" }}>
-      <nav className="settings-nav" aria-label="Settings pages">
-        <div className="settings-title">Settings</div>
-        <input
-          ref={box}
-          className="field settings-search"
-          type="search"
-          aria-label="Search settings"
-          placeholder="Search settings"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && query) {
-              e.stopPropagation();
-              setQuery("");
-            }
-          }}
-        />
-        {(Object.keys(PAGES) as Array<keyof typeof PAGES>).filter((p) => !hits || hits.pages.some((h) => h.page === p)).map((p) => (
-          <button key={p} className="settings-link" aria-current={!hits && page === p ? "page" : undefined} onClick={() => go(p)}>
-            {PAGES[p]}
-          </button>
-        ))}
-        {((hits ? repoHits : projects).length > 0 || (!hits && projectsError)) && <div className="settings-group">Repositories</div>}
-        {(hits ? repoHits : projects).map((p) => (
-          <button key={p.id} className="settings-link repo" aria-current={!hits && page === `repo:${p.id}` ? "page" : undefined} onClick={() => go(`repo:${p.id}`)}>
-            {p.name}
-          </button>
-        ))}
-        {!hits && projectsError && (
-          <p className="conn-detail warn" role="alert" style={{ padding: "0 9px" }}>
-            The repositories could not be listed: {projectsError}{" "}
-            <button className="btn" onClick={() => setTries((n) => n + 1)}>
-              Try again
-            </button>
-          </p>
-        )}
-      </nav>
-      <main className="settings-main">
-        <header className="settings-head">
-          <h1>{hits ? "Search" : title}</h1>
-          <button className="ib" title="Close Settings (Esc)" aria-label="Close Settings" onClick={onClose}>
-            ×
-          </button>
-        </header>
-        {hits ? (
-          <SearchFolds.Provider value={folds}>
-            <style>{hideRule(hits)}</style>
-            {hits.refused && <p className="conn-detail warn">That search is too long: {MAX_SEARCH} characters at most.</p>}
-            {!hits.refused && hits.pages.length === 0 && repoHits.length === 0 && <p className="conn-detail">No setting matches.</p>}
-            {hits.pages.map((h) => (
-              <div key={h.page} className="settings-found" data-page={h.page}>
-                <h2 className="settings-found-title">{PAGES[h.page]}</h2>
-                <Suspense fallback={null}>
-                  <PageBody page={h.page} onSaved={saved} active={active} />
-                </Suspense>
+    <div
+      ref={root}
+      className="settings"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      tabIndex={-1}
+      onKeyDown={trapTab}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ outline: "none" }}
+    >
+      <div className="settings-panel">
+        <nav className="settings-nav" aria-label="Settings pages">
+          <div className="settings-nav-head">
+            <div className="settings-title">Settings</div>
+            <input
+              ref={box}
+              className="field settings-search"
+              type="search"
+              aria-label="Search settings"
+              placeholder="Search settings"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && query) {
+                  e.stopPropagation();
+                  setQuery("");
+                }
+              }}
+            />
+          </div>
+          <div className="settings-rail">
+            {rail.map((g) => (
+              <div key={g.title} className="settings-block">
+                <div className="settings-group">{g.title}</div>
+                {g.pages.map((p) => {
+                  const Glyph = PAGE_ICON[p];
+                  return (
+                    <button key={p} className="settings-link" aria-current={!hits && page === p ? "page" : undefined} onClick={() => go(p)}>
+                      <Glyph size={14} />
+                      <span>{PAGES[p]}</span>
+                    </button>
+                  );
+                })}
               </div>
             ))}
-            {repoHits.length <= MAX_REPOS_DRAWN ? repoHits.map((p) => <RepoPage key={p.id} project={p} onSaved={saved} />) : <p className="conn-detail">{repoHits.length} repositories match; pick one on the left.</p>}
-          </SearchFolds.Provider>
-        ) : (
-          <Suspense fallback={null}>
-            <PageBody page={page} repo={repo} onSaved={saved} active={active} />
-          </Suspense>
-        )}
-      </main>
+            {(repos.length > 0 || (!hits && projectsError)) && <div className="settings-group">Repositories</div>}
+            {repos.map((p) => (
+              <button key={p.id} className="settings-link repo" aria-current={!hits && page === `repo:${p.id}` ? "page" : undefined} onClick={() => go(`repo:${p.id}`)}>
+                <FolderPlus size={14} />
+                <span>{p.name}</span>
+              </button>
+            ))}
+            {!hits && projectsError && (
+              <p className="conn-detail warn" role="alert" style={{ padding: "0 9px" }}>
+                The repositories could not be listed: {projectsError}{" "}
+                <button className="btn" onClick={() => setTries((n) => n + 1)}>
+                  Try again
+                </button>
+              </p>
+            )}
+          </div>
+          <div className="settings-rail-foot">Settings save as you change them.</div>
+        </nav>
+        <main className="settings-main">
+          <div className="settings-main-inner">
+            <header className="settings-head">
+              <h1>{hits ? "Search" : title}</h1>
+              <button className="ib" title="Close Settings (Esc)" aria-label="Close Settings" onClick={onClose}>
+                ×
+              </button>
+            </header>
+            {hits ? (
+              <SearchFolds.Provider value={folds}>
+                <style>{hideRule(hits)}</style>
+                {hits.refused && <p className="conn-detail warn">That search is too long: {MAX_SEARCH} characters at most.</p>}
+                {!hits.refused && hits.pages.length === 0 && repoHits.length === 0 && <p className="conn-detail">No setting matches.</p>}
+                {hits.pages.map((h) => (
+                  <div key={h.page} className="settings-found" data-page={h.page}>
+                    <h2 className="settings-found-title">{PAGES[h.page]}</h2>
+                    <Suspense fallback={null}>
+                      <PageBody page={h.page} onSaved={saved} active={active} />
+                    </Suspense>
+                  </div>
+                ))}
+                {repoHits.length <= MAX_REPOS_DRAWN ? repoHits.map((p) => <RepoPage key={p.id} project={p} onSaved={saved} />) : <p className="conn-detail">{repoHits.length} repositories match; pick one on the left.</p>}
+              </SearchFolds.Provider>
+            ) : (
+              <Suspense fallback={null}>
+                <PageBody page={page} repo={repo} onSaved={saved} active={active} />
+              </Suspense>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

@@ -5,13 +5,13 @@ import { blocking, cellsOf, clampCount, columnsFor, insertBefore, MAX_PANES, nei
 const started = (key: number) => ({ key, started: true });
 const empty = (key: number) => ({ key, started: false });
 
-test("TERM-001: the count is clamped to 1..12; 13 panes yields 12", () => {
-  expect(clampCount(13)).toBe(12);
+test("TERM-001: the count is clamped to 1..24; 25 panes yields 24", () => {
+  expect(clampCount(25)).toBe(24);
   expect(clampCount(0)).toBe(1);
   expect(clampCount(-3)).toBe(1);
   expect(clampCount(6.7)).toBe(6);
   expect(clampCount(Number.NaN)).toBe(1);
-  expect(MAX_PANES).toBe(12);
+  expect(MAX_PANES).toBe(24);
 });
 
 test("TERM-001: 4 to 6 adds 2 empty panes and leaves the 4 running sessions untouched", () => {
@@ -25,7 +25,8 @@ test("TERM-001: 6 to 4 with 2 unstarted panes removes those 2, newest first, and
   expect(resizePlan(six, 5)).toEqual({ add: 0, drop: [5] });
   // Only started sessions left: nothing is dropped (the ask comes with TERM-003).
   expect(resizePlan([1, 2, 3].map(started), 1)).toEqual({ add: 0, drop: [] });
-  expect(resizePlan(six, 20)).toEqual({ add: 6, drop: [] });
+  expect(resizePlan(six, 20)).toEqual({ add: 14, drop: [] });
+  expect(resizePlan(six, 25)).toEqual({ add: 18, drop: [] });
   expect(resizePlan(six, 6)).toEqual({ add: 0, drop: [] });
 });
 
@@ -41,7 +42,7 @@ test("TERM-001: the started sessions that keep a shrink from reaching its count,
   expect(blocking(shown.slice(0, 2), 1)).toEqual([2]);
 });
 
-test("TERM-004: balanced rows for one, two, four, six, nine and twelve panes", () => {
+test("TERM-004: balanced rows for one, two, four, six, nine, twelve and twenty-four panes", () => {
   const shape = (n: number) => [columnsFor(n), rowsFor(n)];
   expect(shape(1)).toEqual([1, 1]);
   expect(shape(2)).toEqual([2, 1]);
@@ -50,6 +51,7 @@ test("TERM-004: balanced rows for one, two, four, six, nine and twelve panes", (
   expect(shape(6)).toEqual([3, 2]);
   expect(shape(9)).toEqual([3, 3]);
   expect(shape(12)).toEqual([4, 3]);
+  expect(shape(24)).toEqual([4, 6]);
   expect(shape(0)).toEqual([1, 1]);
 });
 

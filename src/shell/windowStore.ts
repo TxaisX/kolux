@@ -5,7 +5,7 @@
 import type { Pane } from "../App";
 import type { AppInfo } from "../app-info";
 import { paneAgent, paneStatus } from "../board/chip";
-import type { ShellInfo } from "../chrome/LayoutStrip";
+import type { ShellInfo } from "../terminal/newTab";
 import type { Screen } from "../chrome/TopBar";
 import { useChrome } from "../chrome/useChrome";
 import { useFileMoves } from "../editor/useFileMoves";

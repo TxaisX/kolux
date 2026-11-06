@@ -58,7 +58,7 @@ export const ArrowRight = (p: P) => (
     <path d="m5.5 3.5 4.5 4.5-4.5 4.5" />
   </Glyph>
 );
-/** A magnifier; `d` adds strokes inside the lens (T-741: the plus of the top bar's Terminal zoom button). */
+/** A magnifier; `d` adds extra strokes inside the lens for a caller that needs a variant. */
 export const Search = ({ d = "", ...p }: P) => (
   <Glyph {...p}>
     <circle cx="7" cy="7" r="4.5" />
@@ -120,6 +120,13 @@ export const FileCode = (p: P) => (
   <Glyph {...p}>
     <path d="M9 1.75H4.5A1.5 1.5 0 0 0 3 3.25v9.5a1.5 1.5 0 0 0 1.5 1.5h7a1.5 1.5 0 0 0 1.5-1.5V5.75L9 1.75Z" />
     <path d="M9 1.75v4h4M6.5 8.5 5 10l1.5 1.5m3-3L11 10l-1.5 1.5" />
+  </Glyph>
+);
+/** A keyboard: the Shortcuts page (Settings builds its own rail from these glyphs). */
+export const Keyboard = (p: P) => (
+  <Glyph {...p}>
+    <rect x="1.75" y="4" width="12.5" height="8" rx="1.5" />
+    <path d="M4.25 6.5h.01M6.75 6.5h.01M9.25 6.5h.01M11.75 6.5h.01M4.75 9.5h6.5" />
   </Glyph>
 );
 export const Sliders = (p: P) => (

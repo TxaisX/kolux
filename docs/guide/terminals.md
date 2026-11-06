@@ -4,13 +4,15 @@ Use the Terminals view to run agents and shells in a grid of panes, split and re
 
 ## The pane grid
 
-Each workspace (a branch in its own folder) has its own grid. The grid holds up to 12 panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
+Each workspace (a folder) has its own grid. The grid holds one to twenty-four panes. It picks columns by count: 1 pane is one column, 2 panes two, up to 4 panes two columns, up to 9 panes three, and more than that four.
 
 An empty workspace shows "No terminal open here." with two buttons: "Open a shell" and "Choose what to run".
 
 ### Layouts
 
-The Layout strip has four buttons: 1, 2, 4 and 6. Press one to set the pane count.
+The Layout strip sets how many panes the workspace in front holds. The quick counts are 1, 2, 4, 6, 9 and 12; the field beside them takes any number from 1 to 24, so a workspace is never limited to the presets. Splits add panes wherever you want them.
+
+The right end of the strip is the workspace spend ribbon. It totals the tokens and estimated cost of the workspace in front across every session that worked in it, including its subfolders, shows today's tokens and cost, and draws a gauge of the last 14 days. Hover it for the seven-day figure, the Claude and Codex split, and when the figures were last counted. The figures come from the local Claude and Codex logs, which stay on this computer; token tracking is opt-in per provider in Settings > Usage. With tracking off, the strip says so and opens that page.
 
 | Action | Result |
 |---|---|
@@ -18,7 +20,7 @@ The Layout strip has four buttons: 1, 2, 4 and 6. Press one to set the pane coun
 | Shrink (for example 4 to 2) | Panes that were never started are removed |
 | Shrink past a started session | Blocked. A toast says "<name> is a started session: close it to go smaller." |
 
-At 3, 5 or more than 6 panes no layout button is pressed. New workspaces start with the pane count set in Settings.
+When a split or a close changes the count, no quick button is pressed and the field shows the real number.
 
 ### Split, resize, expand
 
@@ -91,17 +93,18 @@ Pinned tabs sit before the others with a pin icon. Closing one with Ctrl+W, its 
 
 The "Remove a Session" shortcut (no key by default; set one in Settings) removes a session that has not started, or an idle shell, at once. For a running agent, or a shell with a program running, it asks first: "Stop "<name>"?". Cancel has the focus, so pressing Enter keeps the session running. Press "Stop" to go on. To stop without asking, set Settings, Terminal & sessions, "Removing a started session" to "Stop without asking".
 
-### The New tab menu
+### Adding panes and tabs
 
-The "New tab" button opens beside the focused pane.
+The layout strip's New tab and Preview buttons are gone (owner change 2026-11-06). A pane is added where you want it:
 
-| Item | What it opens |
+| Do this | How |
 |---|---|
-| Terminal | A shell. One entry for each shell Kolux found; the first is Ctrl+T. On Windows the first is the default shell you chose in Settings, Terminal & sessions, else the automatic pick. If the first shell will not start, Kolux tries the others in turn and the new pane says so in one dim line: "<shell> did not start; opened <shell>" |
-| Choose agent… | A pane that asks which AI, model or terminal to run. Nothing starts until you press Start |
-| An installed agent | That agent directly |
-| Browser | A web page tab (Ctrl+Shift+B) |
-| New markdown file / Open markdown file… | Notes tabs (Ctrl+Shift+M, Ctrl+Shift+O) |
+| Add a shell beside this pane | "Split right" on the pane header, or Ctrl+Shift+D; "Split down" with Alt+Shift+D |
+| Start a new session in a new pane | The pane header's plus, or the sidebar's "New session" |
+| A shell tab in this pane's cell | Ctrl+T |
+| The default agent in a new tab | Ctrl+Alt+T; each installed agent also has its own command in the command palette |
+| A browser tab | Ctrl+Shift+B, or a link in an agent's reply |
+| A markdown note | New: Ctrl+Shift+M. Existing: Ctrl+Shift+O |
 
 Files and diffs are covered in [Files and browser](files-and-browser.md).
 
@@ -113,12 +116,12 @@ The chooser pane, titled "Choose what to run", sets up one or many sessions befo
 |---|---|
 | Use last lineup | Repeat the last lineup for this project (appears when there is one) |
 | Shape | Pick a built-in or saved arrangement. "Save as team" stores yours under a Team name |
-| Sessions | Pick a quick count, or type any number, and press "Same for all" to copy one choice to every seat |
-| Folders | "Separate copy for each AI" gives every session its own workspace. "Same folder for all" shares one |
+| Sessions | Pick a quick count, type any number, and press "Same for all" to copy one choice to every seat. Start opens every seat as its own pane in this folder |
+| Folder | Every seat works in the project folder. Kolux does not make extra copies |
 | Task for every seat | Optional first request for all sessions |
 | Per seat | Pick the AI and its model, and an optional job title |
 
-If you share a folder between several AIs, Kolux warns "Several AIs would be editing the same files at once." and offers "Give each its own copy". Separate copies need a Git project.
+Several AIs will edit the same files. Give each a separate task, or launch them one at a time.
 
 The Start button reads "Start", or "Start N" for several, and "Starting…" while it works. It stays off until every seat has an AI and model (or Terminal).
 
@@ -220,7 +223,6 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+] / Ctrl+[ | Focus next / previous pane |
 | Ctrl+Shift+D / Alt+Shift+D | Split right / split down |
 | Ctrl+Shift+Enter | Expand or restore the pane |
-| Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / reset the focused terminal |
 | Ctrl+V, Ctrl+Shift+V, Shift+Insert | Paste |
 | Ctrl+Shift+C | Copy selection |
 | Ctrl+Shift+A | Select all terminal text |
@@ -236,8 +238,8 @@ A terminal program such as a text editor in the shell may want the same keys Kol
 | Kolux first (default) | Every Kolux shortcut keeps working while you type in a terminal |
 | Terminal first | Only the commands marked safe for terminals fire. Every other key goes to the program in the terminal |
 
-With "Terminal first", Kolux still keeps Ctrl+V, Ctrl+Tab, Ctrl+PageUp, Ctrl+PageDown and Alt+1 to Alt+9. It also keeps Ctrl+, (Settings), Ctrl+Alt+A (the floating terminal), the zoom keys, copying a selection, and the split keys. On the Shortcuts page, a command held back this way carries a "Goes to the terminal" badge. The choice covers every terminal pane, including the floating terminal.
+With "Terminal first", Kolux still keeps Ctrl+V, Ctrl+Tab, Ctrl+PageUp, Ctrl+PageDown and Alt+1 to Alt+9. It also keeps Ctrl+, (Settings), Ctrl+Alt+A (the floating terminal), the interface zoom keys, copying a selection, and the split keys. On the Shortcuts page, a command held back this way carries a "Goes to the terminal" badge. The choice covers every terminal pane, including the floating terminal.
 
 Keys that no Kolux shortcut uses always reach the program. Ctrl+R opens the shell's history search, for example, and Ctrl+Arrow moves by word. Alt+Left and Alt+Right move by word too. Ctrl+C with nothing selected is the program's interrupt. Ctrl+K and Ctrl+F belong to Kolux (clear and find); with "Terminal first" they go to the program instead, because they are not marked safe for terminals. A key you press while composing text with an input method is never taken by a Kolux shortcut.
 
-<!-- verified against: src/chrome/LayoutStrip.tsx, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, PLAN.md (T-221, T-222, T-151-b, T-140-b), src-tauri/src/pty.rs at 73f5e38 -->
+<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, PLAN.md (T-221, T-222, T-151-b, T-140-b), src-tauri/src/pty.rs at 73f5e38 -->

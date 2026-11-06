@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { allReady, clearMissing, defaultCopies, emptySeat, modelArgs, modelsFor, openingPrompt, pickShape, resizeLineup, resizeSeats, ROLE_BRIEFS, rulesBlock, sameForAll, seatReady, sharedWarning, TERMINAL, withoutFailed, withoutRules, saveShape, renameShape, restoreShape, SHAPE_LIMITS, type SavedShape, type Seat, applyLineup, FAST_SETTINGS, lineupAgents, lineupOf, offeredLineup, seatArgs, removeTarget, setDiscovered } from "./seats";
+import { allReady, clearMissing, defaultCopies, emptySeat, modelArgs, modelsFor, openingPrompt, pickShape, resizeLineup, resizeSeats, ROLE_BRIEFS, rulesBlock, sameForAll, seatReady, sharedWarning, TERMINAL, withoutFailed, withoutRules, saveShape, renameShape, restoreShape, SHAPE_LIMITS, type SavedShape, type Seat, applyLineup, FAST_SETTINGS, lineupAgents, lineupOf, offeredLineup, seatArgs, removeTarget, seatFolder, setDiscovered } from "./seats";
 
 const claude: Seat = { agent: "claude", model: "opus" };
 const term: Seat = { agent: TERMINAL, model: null };
@@ -71,6 +71,15 @@ test("SESS-014 (owner change 2026-11-05): every launch shares the project folder
   expect(sharedWarning("separate", 3, true)).toBe(false);
   expect(sharedWarning("shared", 1, true)).toBe(false);
   expect(sharedWarning("shared", 3, false)).toBe(false);
+});
+
+test("SESS-013: every seat opens in the chooser's own folder, so a whole lineup lands in one grid", () => {
+  expect(seatFolder("C:\\work\\shop", "C:\\work\\shop")).toBe("C:\\work\\shop");
+  // A chooser opened in a workspace folder keeps that folder even when the project folder differs.
+  expect(seatFolder("C:\\work\\shop-ws", "C:\\work\\shop")).toBe("C:\\work\\shop-ws");
+  // Home has no folder: the project's own folder is used.
+  expect(seatFolder(null, "C:\\work\\shop")).toBe("C:\\work\\shop");
+  expect(seatFolder(null, null)).toBeNull();
 });
 
 test("SESS-012: Swarm gives five seats labelled scout, builder, builder, tester, reviewer; more seats wrap round", () => {

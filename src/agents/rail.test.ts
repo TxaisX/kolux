@@ -15,15 +15,16 @@ test("VIEW-015: sessions group under their saved agent, unmatched ones under Oth
   const groups = railGroups(panes, saved);
   expect(groups.map((g) => [g.id, g.name, g.sessions.map((p) => p.key)])).toEqual([
     ["claude", "Claude Code", [2, 4]],
-    ["codex", "Codex", []],
     ["other", "Other sessions", [3]],
   ]);
-  expect(railGroups([shell(1)], saved).map((g) => g.id)).toEqual(["claude", "codex"]);
+  // A saved agent with nothing open is not a group: the rail stays empty until a session exists.
+  expect(railGroups([shell(1)], saved)).toEqual([]);
 });
 
 test("VIEW-021: a not-started preset sits under its agent; editor and browser tabs are never listed", () => {
   const panes = [ai(1, "codex", { kind: "editor" }), { key: 2, program: null, cwd: null, seats: [{ agent: "codex" }] }, ai(3, "claude", { kind: "browser" })];
-  expect(railGroups(panes, saved).map((g) => g.sessions.map((p) => p.key))).toEqual([[], [2]]);
+  // Claude has no session open, so it gets no group, empty or otherwise.
+  expect(railGroups(panes, saved).map((g) => [g.id, g.sessions.map((p) => p.key)])).toEqual([["codex", [2]]]);
 });
 
 test("VIEW-015: first open picks the first agent with sessions on its newest session; a remembered pick stays while it exists", () => {

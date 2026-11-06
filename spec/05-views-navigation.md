@@ -263,8 +263,9 @@ Source: D-05-004
 ### VIEW-015 · Agents screen lists sessions by saved agent
 Tier: P0 · Pushed: 7 · State at 0.15.0: live
 User does: opens the Agents screen.
-User sees: a rail of sessions grouped under each saved agent, with AI sessions that match no saved
-  agent under an Other sessions group; selecting one shows it on the right.
+User sees: a rail of sessions grouped under the saved agent each runs as, with AI sessions that match
+  no saved agent under an Other sessions group; selecting one shows it on the right. A saved agent
+  with no session open is not listed, so the rail stays empty until a session exists.
 Rules: plain shell terminals are never listed; on first open the first agent with sessions is
   chosen, on its newest session; afterwards the last selection is remembered; in the new look the
   rail is a 268px rounded card; otherwise a flat 240px rail; a session started by the orchestrator
@@ -278,6 +279,8 @@ Rules: plain shell terminals are never listed; on first open the first agent wit
 Acceptance:
   - [x] One saved agent with two sessions plus one unmatched Codex session → two groups; the
         unmatched one sits under Other sessions. (cards; evidence/cards-VIEW-015.txt)
+  - [x] A saved agent with nothing open gets no group; with no sessions at all the rail shows an
+        empty state, not the saved agent list. (unit; src/agents/rail.test.ts)
   - [x] Select a session, switch screens and back → same session selected. (cards; evidence/cards-VIEW-015.txt)
 Compat: —
 Source: D-05-015
@@ -306,15 +309,18 @@ Source: D-05-019
 
 ### VIEW-021 · Add a session from the Agents screen
 Tier: P0 · Pushed: 7 · State at 0.15.0: live-unverified
-User does: clicks + on an agent group, or sees the empty state on a fresh profile.
-User sees: a new not-yet-started session preset appears under that agent; with no agents an empty
-  state invites building one.
-Rules: the preset waits for the user to pick and start it.
+User does: clicks + on an agent group, clicks New session on the empty rail, or sees the empty state
+  on a fresh profile.
+User sees: a new not-yet-started session preset appears under that agent; with no open sessions the
+  rail offers New session; with no agents the empty state invites building one.
+Rules: the preset waits for the user to pick and start it; an agent with no session open has no group
+  and so no +, and New session is the way to open its first one.
   (Kolux, T-050: + adds a chooser pane with that agent already in its seat; the user picks the
   model and presses Start; the empty state's button opens Settings > Agents.)
 Acceptance:
   - [x] Click + under an agent → a not-started row appears and is selected. (cards; evidence/cards-VIEW-021.txt)
   - [x] Fresh profile with no saved agents → an empty state shows instead of a blank rail. (cards; evidence/cards-VIEW-021.txt)
+  - [x] Saved agents but no open sessions → the rail lists none of them and offers New session. (unit; src/agents/__cards__/VIEW-021.test.ts)
 Compat: —
 Source: D-05-021
 

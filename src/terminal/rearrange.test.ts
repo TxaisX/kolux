@@ -97,9 +97,9 @@ describe("TERM-054 dropTab", () => {
     expect(dropTab([p(1), p(2)], 1, { kind: "cell", group: 2, zone: "left" })).toBeNull(); // already left of it
   });
   it("a full workspace refuses a new cell", () => {
-    const full = Array.from({ length: 12 }, (_, i) => p(i + 1));
-    const crowded = [...full, p(13, 1)];
-    expect(dropTab(crowded, 13, { kind: "cell", group: 5, zone: "right" })).toBeNull();
+    const full = Array.from({ length: 24 }, (_, i) => p(i + 1));
+    const crowded = [...full, p(25, 1)];
+    expect(dropTab(crowded, 25, { kind: "cell", group: 5, zone: "right" })).toBeNull();
   });
   it("another workspace is never a target", () => {
     expect(dropTab([p(1), p(2, undefined, "/x")], 1, { kind: "cell", group: 2, zone: "right" })).toBeNull();

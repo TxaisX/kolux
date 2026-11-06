@@ -25,7 +25,6 @@ import { cellsOf, groupOf } from "../terminal/grid";
 import { editorCloseSet } from "../terminal/pin";
 import { nextNeedsYou } from "../terminal/status";
 import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDigit, type CycleMode } from "../terminal/tabCycle";
-import { zoomTerm } from "../theme";
 import { panesIn, sameDir } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
@@ -277,12 +276,11 @@ export function useWindowKeys(w: WindowBag) {
         case "zoom.reset":
           // CHAT-026 (T-334): inside a chat the same chords zoom the chat text; the chat hears them itself.
           if (document.activeElement?.closest(".chat")) return;
-          // BROW-012: a browser tab zooms its own page in its own steps.
+          // BROW-012: a browser tab zooms its own page in its own steps. A terminal is left alone:
+          // TERM-078 sizes every terminal from one saved setting, so Mod+= never shrinks one pane.
           if (kind === "browser") {
             browserAction(focused, hit.id === "zoom.in" ? "zoomIn" : hit.id === "zoom.out" ? "zoomOut" : "zoomReset");
-            break;
           }
-          zoomTerm(focused, hit.id === "zoom.in" ? "in" : hit.id === "zoom.out" ? "out" : "reset"); // TERM-078
           break;
         case "ui.zoomIn":
         case "ui.zoomOut":

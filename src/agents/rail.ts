@@ -15,13 +15,14 @@ const agentOf = (p: Session): string | undefined => p.agentId ?? p.seats?.[0]?.a
  *  no agent picked, and editor / browser tabs are never listed. */
 export const listed = (p: Session): boolean => !p.kind && (p.seats ? agentOf(p) !== undefined : p.program !== null);
 
-/** The rail: one group per saved agent in saved order (empty ones too, so + can add to them), then
- *  Other sessions for AI sessions that match no saved agent, only when there are any. */
+/** The rail: one group per saved agent in saved order, but only for agents with a session open right
+ *  now (an empty agent waits in Settings, not on the rail), then Other sessions for AI sessions that
+ *  match no saved agent, only when there are any. */
 export function railGroups<S extends Session>(panes: S[], saved: { id: string; name: string }[]): Group<S>[] {
   const groups: Group<S>[] = saved.map((a) => ({ id: a.id, name: a.name, sessions: [] }));
   const other: Group<S> = { id: OTHER, name: "Other sessions", sessions: [] };
   for (const p of panes.filter(listed)) (groups.find((g) => g.id === agentOf(p)) ?? other).sessions.push(p);
-  return other.sessions.length ? [...groups, other] : groups;
+  return [...groups.filter((g) => g.sessions.length > 0), ...(other.sessions.length ? [other] : [])];
 }
 
 /** The session shown: the remembered one while it is still listed, else the first agent with

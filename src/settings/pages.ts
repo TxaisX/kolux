@@ -18,6 +18,15 @@ export type PageId = keyof typeof PAGES;
 export type Page = PageId | `repo:${string}`;
 export type SettingsTarget = { page: Page; section?: string };
 
+/** The rail's groups, copied from Claude's settings layout: a few small groups with captions, one
+ *  scrolling page at a time, repositories last. */
+export const PAGE_GROUPS: ReadonlyArray<{ title: string; pages: readonly PageId[] }> = [
+  { title: "Personal", pages: ["general", "appearance", "notifications", "shortcuts"] },
+  { title: "AI", pages: ["accounts", "agents", "claude"] },
+  { title: "Workspace", pages: ["terminal", "git", "safety"] },
+  { title: "Usage", pages: ["usage"] },
+];
+
 /** The window listens for this and opens Settings at `detail` (a SettingsTarget). */
 export const OPEN_SETTINGS = "kolux-open-settings";
 export function openSettings(page: Page, section?: string): void {

@@ -32,9 +32,9 @@ describe("TERM-049 split items", () => {
     expect(splitTabOut([p(1), p(2)], 1, "right")).toBeNull();
     expect(splitMenuState([p(1), p(2)], 1).enabled).toBe(false);
     expect(splitMenuState(strip, 2)).toEqual({ enabled: true, why: null });
-    const full = [...Array.from({ length: 12 }, (_, i) => p(i + 1)), p(13, 1)];
-    expect(splitMenuState(full, 13).enabled).toBe(false);
-    expect(splitTabOut(full, 13, "right")).toBeNull();
+    const full = [...Array.from({ length: 24 }, (_, i) => p(i + 1)), p(25, 1)];
+    expect(splitMenuState(full, 25).enabled).toBe(false);
+    expect(splitTabOut(full, 25, "right")).toBeNull();
   });
   it("cellKeys lists every tab of the cell for one close question", () => {
     expect(cellKeys(strip, 3)).toEqual([1, 2, 3]);

@@ -6,14 +6,13 @@ import TopBar from "../../chrome/TopBar";
 import { chromeShown } from "../../chrome/chromeItems";
 import { stepAllowed, travel } from "../../projects/nav";
 import { zoomFactor } from "../../settings/zoom";
-import { zoomTerm } from "../../theme";
 import { isNarrow, leftShown, watchNarrow } from "./narrow";
 import { useWindow } from "./store";
 
 export default function WindowTopBar() {
   const {
     settings, screen, setScreen, needing, classic, leftWidth, terminals, page, setPage, setPalette,
-    installedIds, codex, sidebarOpen, setSidebarOpen, focused, fullPage, right, saveRight, showRight, step,
+    installedIds, codex, sidebarOpen, setSidebarOpen, fullPage, right, saveRight, showRight, step,
     hist, stillThere, settingsOpen, setNotice, rightAside,
   } = useWindow();
   const narrow = useSyncExternalStore(watchNarrow, isNarrow); // T-705 (DT-C141): redraws when the window crosses 900 px
@@ -43,6 +42,6 @@ export default function WindowTopBar() {
         if (s === "terminals") setPage(null); // W3 F3 (T-693, VIEW-009): Terminals leaves a full page (Automations, Tasks or Routing)
         setScreen(s);
       }}
-      installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, narrow, rightAside.current.shown /* filled by App.tsx before the drawing */)} onToggleSidebar={() => setSidebarOpen((o) => !o)} onZoom={(how) => zoomTerm(focused, how)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
+      installed={installedIds} codexAccount={codex.accounts.length > 0} onSearch={() => setPalette(true)} onBack={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, -1, stillThere) === null ? undefined : () => step(-1)} onForward={!stepAllowed(screen === "terminals", settingsOpen) || travel(hist, 1, stillThere) === null ? undefined : () => step(1)} sidebarOpen={leftShown(sidebarOpen, narrow, rightAside.current.shown /* filled by App.tsx before the drawing */)} onToggleSidebar={() => setSidebarOpen((o) => !o)} fullPage={fullPage} rightOpen={terminals && right.open} onToggleRight={() => (terminals && right.open ? saveRight({ open: false }) : showRight(right.tab))} />
   );
 }

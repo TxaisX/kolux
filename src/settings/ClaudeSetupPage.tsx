@@ -30,6 +30,15 @@ export type ClaudeSetup = {
   notes: string[];
 };
 
+/** The "Shared with other agents" section: Claude's CLAUDE.md mirrored into each agent's own file. */
+export type SharedSetup = {
+  source: string;
+  sourceState: string;
+  targets: { agent: string; label: string; path: string; state: string }[];
+  skills: { name: string; shared: boolean }[];
+  notes: string[];
+};
+
 /** Highest first: what wins when two layers set the same key. */
 export const PRECEDENCE = ["managed", "cli", "local", "project", "user"] as const;
 const SCOPE_NAME: Record<string, string> = { managed: "Managed", cli: "CLI", local: "Local", project: "Project", user: "User" };
@@ -145,6 +154,81 @@ function Rules({ label, rules }: { label: string; rules: Rule[] }) {
   );
 }
 
+/** The "Shared with other agents" card: Claude's CLAUDE.md is the source, and one button mirrors it
+ *  into every other agent's global instruction file. The skill folders are reported, not copied
+ *  here; the backend copies a missing skill into the shared folder on the same click. */
+export function SharedSection({ open }: { open: (p: string) => void }) {
+  const [data, setData] = useState<SharedSetup | null>(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => {
+    invoke<SharedSetup>("shared_setup_status")
+      .then((d) => {
+        setData(d);
+        setError("");
+      })
+      .catch((e) => setError(String(e)));
+  }, []);
+  useEffect(load, [load]);
+  const apply = () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    invoke<SharedSetup>("shared_setup_apply")
+      .then((d) => {
+        setData(d);
+        setNotice("Shared with every agent.");
+      })
+      .catch((e) => setError(String(e)))
+      .finally(() => setBusy(false));
+  };
+  const shared = data ? data.skills.filter((s) => s.shared).length : 0;
+  return (
+    <Section id="shared" title="Shared with other agents" open={open}>
+      <div className="settings-sub" style={{ margin: 0 }}>
+        Claude's global CLAUDE.md is copied into each agent's own instruction file, between two markers. Your own text in those files is kept.
+      </div>
+      {error && <div role="alert" className="settings-sub" style={{ margin: 0 }}>{error}</div>}
+      {notice && <div role="status" className="settings-sub" style={{ margin: 0 }}>{notice}</div>}
+      {!data ? (
+        <div className="settings-sub" style={{ margin: 0 }}>Reading the shared setup…</div>
+      ) : (
+        <>
+          <div style={{ ...row, gridTemplateColumns: "minmax(0, 12rem) minmax(0, 1fr) auto auto" }}>
+            <Cut text="Source" />
+            <Cut text={data.source} mono />
+            <span style={badgeStyle}>{data.sourceState}</span>
+            <button className="btn" title={data.source} onClick={() => open(data.source)}>Open</button>
+          </div>
+          <div className="btn-row" style={{ display: "flex", gap: 6, margin: "6px 0" }}>
+            <button className="btn" disabled={busy || data.sourceState !== "found"} onClick={apply}>
+              {busy ? "Sharing…" : "Share with other agents"}
+            </button>
+            <span className="settings-sub" style={{ margin: 0 }}>
+              {shared} of {data.skills.length} skills in the shared folder
+            </span>
+          </div>
+          {data.targets.map((t) => (
+            <div key={t.agent} style={{ ...row, gridTemplateColumns: "minmax(0, 10rem) minmax(0, 1fr) auto auto" }}>
+              <Cut text={t.label} />
+              <Cut text={t.path} mono />
+              <span style={badgeStyle} data-state={t.state}>{t.state}</span>
+              <button className="btn" title={t.path} onClick={() => open(t.path)}>Open</button>
+            </div>
+          ))}
+          {data.notes.length > 0 && (
+            <details>
+              <summary className="settings-sub" style={{ margin: 0, cursor: "pointer" }}>Notes ({data.notes.length})</summary>
+              {data.notes.map((n, i) => <Cut key={i} text={n} />)}
+            </details>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
 export function ClaudeSetupView({ data, error, open, notice, retry }: { data: ClaudeSetup | null; error: string; open: (p: string) => void; notice?: string; retry?: () => void }) {
   if (error)
     return (
@@ -253,6 +337,7 @@ export function ClaudeSetupView({ data, error, open, notice, retry }: { data: Cl
           </div>
         ))}
       </Section>
+      <SharedSection open={open} />
       {data.notes.length > 0 && (
         <details>
           <summary className="settings-sub" style={{ margin: 0, cursor: "pointer" }}>Skipped ({data.notes.length})</summary>
@@ -333,7 +418,7 @@ export default function ClaudeSetupPage({ active = "" }: { active?: string }) {
   }, []);
   return (
     <div style={{ minWidth: 0 }}>
-      <div className="settings-sub">How Claude Code is set up here. Read-only: open a file to change it.</div>
+      <div className="settings-sub">How Claude Code is set up here. Read-only, except the shared section: open a file to change it.</div>
       <label className="field" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
         <span>Workspace</span>
         <select aria-label="workspace" value={workspace} onChange={(e) => pick(e.target.value)} style={{ minWidth: 0, maxWidth: "100%" }}>

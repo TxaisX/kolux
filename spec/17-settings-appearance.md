@@ -168,14 +168,14 @@ Acceptance:
 Compat: a saved System, Light or Dark choice imports unchanged.
 Source: D-17-005
 
-### SET-006 · Settings: ten pages plus a small page per repository
+### SET-006 · Settings: eleven pages plus a small page per repository
 Tier: P0 · Pushed: 7 · State at 0.15.0: live
 User does: presses Mod+Comma, or chooses Settings from the app menu (under the app name on macOS,
   under File on Windows and Linux).
 User sees: a Settings screen with a side list of pages and a list of projects; choosing a page shows
   its sections.
 Rules: the pages are General, Appearance, Accounts & keys, Agents, Terminal & sessions, Git &
-  worktrees, Safety, Notifications, Shortcuts and Usage, and each repository adds one small page; the
+  worktrees, Safety, Notifications, Shortcuts, Usage and Claude, and each repository adds one small page; the
   old app had 33 fixed sections plus one per repository, and the rest are cut or folded in (see this
   area's D cards); a section that only makes sense on one platform is hidden on the others; links from
   elsewhere in the app can open Settings at a chosen page and section, waiting until the target is
@@ -192,7 +192,7 @@ Rules: the pages are General, Appearance, Accounts & keys, Agents, Terminal & se
   says why with Try again.)
 Acceptance:
   - [x] Press Mod+Comma → Settings opens on the last page used, or the first. (cards; evidence/cards-SET-006.txt)
-  - [x] Count the pages in the side list → exactly the ten named, plus one per repository. (cards; evidence/cards-SET-006.txt)
+  - [x] Count the pages in the side list → exactly the eleven named, plus one per repository. (cards; evidence/cards-SET-006.txt)
   - [x] Follow an in-app link to the shortcut policy → Shortcuts opens, scrolled to that setting. (cards; evidence/cards-SET-006.txt)
   - [x] Measure the Show the AI actions in Source Control row, a repository's Wait for setup row and an
       agent's switch row → each is at least 24px tall. (unit + headless browser; evidence/T-701.txt)
@@ -615,7 +615,7 @@ Source: D-17-015
 ### SET-019 · Zoom the whole interface
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: presses Mod+Alt+= or Mod+Alt+-, presses Mod+Alt+0 to reset, uses the View menu, or uses
-  the zoom control in Interface (Mod+= and Mod+- without Alt zoom the focused terminal, DT-C179).
+  the zoom control in Interface. Mod+= and Mod+- without Alt belong to a browser tab, not a terminal (BROW-012).
 User sees: text and controls grow or shrink together; the level is remembered after a restart.
 Rules: each step is half a zoom level, roughly 9.5 %, where a whole level is a factor of 1.2; zoom is
   held between −3 levels (roughly 58 %) and +5 levels (roughly 249 %), and reset returns to 100 % from
@@ -628,7 +628,8 @@ Acceptance:
   - [x] A zoom step whose save fails says so (a toast, or a line under the zoom control in Interface);
         the new size stays for the session. (unit: the zoom control's line rendered, and the zoom step's message;
         the toast from the keys and the View menu is not rendered in a test; evidence/T-723.txt)
-Compat: the keybinding command ids zoom.in, zoom.out and zoom.reset stay.
+Compat: the keybinding command ids ui.zoomIn, ui.zoomOut and ui.zoomReset stay; zoom.in, zoom.out and
+  zoom.reset remain for browser tabs (BROW-012).
 Source: D-17-019
 
 ### SET-022 · Terminal text, cursor and drawing
@@ -636,14 +637,14 @@ Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
 User does: changes font size, family, weight, line height, cursor, ligatures, GPU use and contrast in
   the Terminal section.
 User sees: a live sample terminal on the page, and every open terminal, follow each change.
-Rules: font size starts at 14 and runs from 10 to 24 in steps of 1, with typed entry and minus and plus
-  buttons (minus greyed at 10, plus greyed at 24); family and the normal and bold weights are chosen
-  here as well (how fonts behave inside terminals is area 03); line height starts at 1, and bad values
-  are corrected on save; the cursor starts as a blinking block; ligatures and GPU acceleration start on
-  automatic; a minimum-contrast mode keeps text readable on any scheme; the sample is a real terminal
-  that lives only while the page is open.
+Rules: one font size applies to every terminal, open or new (TERM-078); it starts at 13 and runs from 8
+  to 32 in steps of 1, with a slider and Reset to 13 pt; family and the normal and bold weights are
+  chosen here as well (how fonts behave inside terminals is area 03); line height starts at 1, and bad
+  values are corrected on save; the cursor starts as a blinking block; ligatures and GPU acceleration
+  start on automatic; a minimum-contrast mode keeps text readable on any scheme; the sample is a real
+  terminal that lives only while the page is open.
 Acceptance:
-  - [ ] Press plus on font size → the sample and every open terminal grow by one point.
+  - [ ] Move the font size slider → the sample and every open terminal resize at once.
   - [ ] Set the cursor to bar with blinking off → every terminal shows a steady bar.
 Compat: —
 Source: D-17-022
