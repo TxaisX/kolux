@@ -40,6 +40,8 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 2. Run the installer. It installs for your Windows user and adds the `kolux` command to your PATH.
 3. Open Kolux. The first-run setup asks you to connect an AI, pick a project folder, and start a session.
 
+> The installer file keeps its `Kolux.RS_…` name for one more release while the install identity moves; the app it installs is Kolux.
+
 The current installer is not Authenticode-signed, so Windows SmartScreen may warn on first run. Choose **More info**, then **Run anyway**, after checking that the file came from this repository's Releases page. The update manifest is signed separately.
 
 ## Requirements
