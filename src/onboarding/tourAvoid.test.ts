@@ -1,8 +1,8 @@
-// ONB-031 / UX audit 2026-10-25 Part D: the floating-workspace tour must not cover a restored workspace pane.
+// ONB-031 / UX audit 2026-10-25 Part D: a tour's callout must not cover a restored workspace pane.
 import { describe, expect, it } from "vitest";
 import { place, type Rect } from "./tour";
 
-// 1400x880 viewport as measured: pane x 305-1092, y 84-848; float button at the bottom right.
+// 1400x880 viewport as measured: pane x 305-1092, y 84-848; a small control at the bottom right.
 const b: Rect = { left: 8, top: 8, width: 1384, height: 864 };
 const pane: Rect = { left: 305, top: 84, width: 787, height: 764 };
 const button: Rect = { left: 1348, top: 792, width: 44, height: 44 };

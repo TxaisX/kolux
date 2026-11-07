@@ -867,7 +867,7 @@ Tier: P1 · Pushed: 3 · State at 0.15.0: live-unverified
 User does: opens or focuses a pane whose agent finished while they were elsewhere.
 User sees: its unread mark, glow and share of the badge clear by themselves; a session the user
   marked unread on purpose stays unread.
-Rules: this works for panes in the main grid and in a floating panel; a turn stamped later than the
+Rules: this works for panes in the main grid; a turn stamped later than the
   local clock is acknowledged exactly once; a focused pane whose status has not arrived yet, as can
   happen at startup, keeps being watched and is acknowledged when its status shows up.
 Acceptance:

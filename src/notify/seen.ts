@@ -1,5 +1,5 @@
 // STAT-049 / T-125: looking at a finished session marks it seen. A marked pane in view of a focused
-// window (main grid or a floating panel: `inView` answers for both) is acknowledged by itself,
+// window (the main grid: `inView` answers for it) is acknowledged by itself,
 // unless the user marked it unread on purpose; a pane whose status has not arrived yet keeps being
 // watched and is acknowledged once its status shows up; a turn stamped later than the local clock
 // is acknowledged exactly once (the acknowledgement is remembered by pane and stamp, never by time).

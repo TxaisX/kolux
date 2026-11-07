@@ -1,7 +1,7 @@
 // SET-014: who gets a chord while a terminal has focus. Kolux first (the default): every app
 // shortcut keeps working. Terminal first: only the commands marked safe for terminals fire and
-// every other chord goes to the program in the terminal. It covers every terminal pane, the
-// floating terminal included, because all of them are xterm views.
+// every other chord goes to the program in the terminal. It covers every terminal pane,
+// because all of them are xterm views.
 import { actionById } from "./actions";
 import { runningCommand } from "./runCommand";
 

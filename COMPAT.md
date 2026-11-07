@@ -829,7 +829,7 @@ Txais's file today: version 1; empty all-platforms, darwin and linux sections; a
 
 Windows default shows every chord the action answers to. "Ships unbound" means no default on any platform; 51 actions ship unbound, including `sessions.add`, `sessions.remove` and all 35 per-agent new-tab actions. Six more have a macOS default but none on Windows; their Windows cell says so.
 
-Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emulator went with remote and hosts), `tab.openQuickCommandsMenu` (the quick commands menu was cut) and `sidebar.ports.toggle` (deleted 2026-10-30 by T-611, DT-C53: its Ports tab went with remote hosts, VIEW-079). They stay in this table only so an old keybindings file that names them still loads: the rebuild registers none of these ids and wires no shortcut for any, so each is an unknown id, warned about and ignored, as `voice.dictation` is. The 129 count above includes them.
+Six rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile emulator went with remote and hosts), `tab.openQuickCommandsMenu` (the quick commands menu was cut), `sidebar.ports.toggle` (deleted 2026-10-30 by T-611, DT-C53: its Ports tab went with remote hosts, VIEW-079) and `floatingTerminal.toggle`, `floatingWorkspace.maximize` and `floatingWorkspace.minimize` (the floating workspace panel was removed 2026-11-06, DT-C216). They stay in this table only so an old keybindings file that names them still loads: the rebuild registers none of these ids and wires no shortcut for any, so each is an unknown id, warned about and ignored, as `voice.dictation` is. The 129 count above includes them.
 
 | Action id | Title | Windows default | Ships unbound |
 |---|---|---|---|
@@ -855,12 +855,12 @@ Three rows are not carried, see `DECISIONS.md`: `tab.newSimulator` (the mobile e
 | `sidebar.ports.toggle` (not carried since T-611, see `DECISIONS.md` DT-C53) | Show Ports | none on Windows (macOS: Mod+Shift+I) | no |
 | `sidebar.sleepingWorkspaces.toggle` | Toggle Sleeping Workspaces | none | yes |
 | `sidebar.focusWorktreeList` | Focus worktree list | Mod+Shift+0 | no |
-| `floatingTerminal.toggle` | Toggle Floating Terminal | Mod+Alt+A | no |
-| `floatingWorkspace.maximize` | Maximize Floating Workspace Panel | none on Windows (macOS: Mod+Alt+Shift+A) | no |
+| `floatingTerminal.toggle` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216) | Toggle Floating Terminal | Mod+Alt+A | no |
+| `floatingWorkspace.maximize` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216) | Maximize Floating Workspace Panel | none on Windows (macOS: Mod+Alt+Shift+A) | no |
 | `view.inbox` | Show Inbox | none | yes |
 | `view.floor` | Show Floor | none | yes |
 | `view.code` | Show Code | Mod+Shift+3 | no |
-| `floatingWorkspace.minimize` | Minimize Floating Workspace Panel | none | yes |
+| `floatingWorkspace.minimize` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216) | Minimize Floating Workspace Panel | none | yes |
 | `zoom.in` | Zoom Browser In | Mod+Equal, Mod+Shift+Plus, Mod+NumpadAdd | no |
 | `zoom.out` | Zoom Browser Out | Mod+Minus, Mod+NumpadSubtract | no |
 | `zoom.reset` | Reset Browser Zoom | Mod+0 | no |
@@ -1003,8 +1003,8 @@ Each card below keeps the action ids named here, with the defaults of 4.3, so a 
 | TERM-050 | `tab.previousRecent`. |
 | TERM-051 | `tab.nextSameType`, `tab.previousSameType`, `tab.nextAllTypes`, `tab.previousAllTypes`, `tab.nextTerminal` and `tab.previousTerminal`. |
 | TERM-052 | `tab.selectByIndex`. |
-| TERM-059 | `floatingTerminal.toggle`. |
-| TERM-060 | `floatingWorkspace.maximize` and `floatingWorkspace.minimize`. |
+| TERM-059 | `floatingTerminal.toggle` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216). |
+| TERM-060 | `floatingWorkspace.maximize` and `floatingWorkspace.minimize` (not carried since 2026-11-06, see `DECISIONS.md` DT-C216). |
 | TERM-065 | `terminal.copySelection`. |
 | TERM-067 | `terminal.selectAll`. |
 | TERM-068 | `terminal.paste`. |
@@ -1102,7 +1102,8 @@ The profile root on Windows is `%APPDATA%\kolux`; a few files live in `~/.kolux`
 | `%APPDATA%\kolux\daemon` | 2 files, 2 KB (process id and token) | Runtime |
 | `%APPDATA%\kolux\kolux-runtime.json`, `%APPDATA%\kolux\lockfile`, `%APPDATA%\kolux\DevToolsActivePort`, `%APPDATA%\kolux\windows-acl-grant.json`, `%APPDATA%\kolux\http1-compatibility.json`, `%APPDATA%\kolux\.updaterId`, two migration-complete markers | under 400 B each | Runtime |
 | `%APPDATA%\kolux\speech-models` | 4 files, 629 MB | Speech (not carried) |
-| `%APPDATA%\kolux\agent-sessions`, `%APPDATA%\kolux\floating-workspace`, `%APPDATA%\kolux\rate-limit-pty-cwd` | empty | Runtime |
+| `%APPDATA%\kolux\agent-sessions`, `%APPDATA%\kolux\rate-limit-pty-cwd` | empty | Runtime |
+| `%APPDATA%\kolux\floating-workspace` | empty | Retired floating workspace panel (not carried since 2026-11-06, DT-C216) |
 | `%APPDATA%\kolux\Cache`, `%APPDATA%\kolux\Code Cache`, `%APPDATA%\kolux\GPUCache`, the two Dawn caches, `%APPDATA%\kolux\blob_storage`, `%APPDATA%\kolux\Local Storage`, `%APPDATA%\kolux\Session Storage`, `%APPDATA%\kolux\Network`, `%APPDATA%\kolux\Partitions`, `%APPDATA%\kolux\Shared Dictionary`, the shared-storage and DIPS files, `%APPDATA%\kolux\Local State`, `%APPDATA%\kolux\Preferences` | caches and browser-engine state | Browser engine data |
 
 ### 5.2 Carry or skip, by category (17)

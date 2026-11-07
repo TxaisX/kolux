@@ -3,7 +3,7 @@
 // buffer remembers what is on disk, so a tab is unsaved only while its text differs from that by
 // more than trailing whitespace; a save writes the file once and leaves every view clean.
 //
-// The first frame loads this module (FloatingLayer asks isDirty, the window asks keyOf and
+// The first frame loads this module (the window asks isDirty, keyOf and
 // baseName), so it carries no CodeMirror: the values it cannot make itself — the annotation that
 // marks Kolux's own change and the read of it, the undo grouping a reload gets, the line separator
 // of a view, the text split into lines, and the field that holds a mixed file's endings — are

@@ -31,8 +31,8 @@ export function closeOnSettings(close: () => void, w: EventTarget = window): () 
 export const isTopDialog = (root: Element | null, dialogs: ArrayLike<Element>): boolean => root !== null && dialogs.length > 0 && dialogs[dialogs.length - 1] === root;
 
 /** Only a dialog that says aria-modal="true", or a confirmation (alertdialog), holds Escape back from the dialog the user
- *  opened. A docked tip card (aria-modal="false") and a panel that stays on the page (the floating workspace, a review
- *  pop) never do, even when they come later in the page. */
+ *  opened. A docked tip card (aria-modal="false") and a panel that stays on the page (a review pop) never do, even when
+ *  they come later in the page. */
 export const isModal = (el: { getAttribute: (n: string) => string | null }): boolean =>
   el.getAttribute("aria-modal") === "true" || el.getAttribute("role") === "alertdialog";
 

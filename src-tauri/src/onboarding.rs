@@ -254,7 +254,7 @@ pub struct Use {
 pub const FEATURES: &[&str] = &[
     "board", "palette", "browser", "browser-page", "tasks", "automations", "split", "workspace-create", "workspace-switch", "skill-setup",
     "editor", "diff", "notes", "pr", "ship", "commit", "push", "usage",
-    "inbox", "artifacts", "settings", "shortcuts", "search", "file-find", "markdown", "floating", "layout", "zoom",
+    "inbox", "artifacts", "settings", "shortcuts", "search", "file-find", "markdown", "layout", "zoom",
     "rename", "orchestration", "cli", "notifications", "default-agent", "setup-script", "second-repo", "explore", "setup-guide", "parallel",
 ];
 
@@ -277,7 +277,7 @@ fn used(mut g: Guide, id: &str, now: u64) -> Result<Guide, String> {
 
 /// ONB-033: every contextual tour id, built or planned; a seen entry for any other id (one an older
 /// version saved) is dropped on load.
-pub const TOURS: &[&str] = &["tasks", "automations", "parallel", "browser", "board", "floating", "create", "grid"];
+pub const TOURS: &[&str] = &["tasks", "automations", "parallel", "browser", "board", "create", "grid"];
 
 /// Keeps the known ids of `v` once each, in order.
 fn known(v: Vec<String>, ids: &[&str]) -> Vec<String> {

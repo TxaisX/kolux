@@ -151,9 +151,8 @@ User sees: the file appears as a tab in the editor area, coloured by its languag
   pending the tab carries an unsaved marker, and saving writes the file and removes the marker.
   After a trip to the terminal view and back, the tab is still in front with caret, selection and
   scroll unchanged.
-Rules: Mod+S saves whichever editor is active; when a floating editor panel has focus, only that
-  panel's file is written and the main editor is left alone; outside a workspace screen Mod+S does
-  nothing, unless a floating editor is the active one; a buffer that differs from the disk copy only
+Rules: Mod+S saves whichever editor is active; outside a workspace screen Mod+S does
+  nothing; a buffer that differs from the disk copy only
   in trailing whitespace is not counted as unsaved; caret, selection and scroll survive the tab
   being rebuilt by a tab switch, a view switch or a move to another pane; a newly opened file takes
   keyboard focus at once, so typing goes straight into it; a file that will not load is retried a
@@ -167,7 +166,8 @@ Acceptance:
         Mod+S → marker gone and the character is on disk. (cards; evidence/cards-EDIT-001.txt)
   - [x] Go to the terminal view and come back → same tab in front, caret and scroll where they were. (cards live; evidence/cards-EDIT-001.txt)
   - [x] With a floating editor active and another file in the main editor, press Mod+S → only the
-        floating editor's file changes on disk. (cards; evidence/cards-EDIT-001.txt)
+        floating editor's file changes on disk. (cards; evidence/cards-EDIT-001.txt. Retired
+        2026-11-06 with the floating workspace panel; DECISIONS.md DT-C216.)
   - [x] Take away read permission on a file and open it → failure message with Retry; give
         permission back and click Retry → the text loads. (cards; evidence/cards-EDIT-001.txt)
 Compat: keybinding id editor.save; stored data: the open editor tabs of each worktree.
@@ -820,8 +820,7 @@ Source: D-12-043
 
 ### EDIT-054 · A new markdown note starts untitled and is named on its first save
 Tier: P1 · Pushed: — · State at 0.15.0: live-unverified
-User does: presses Mod+Shift+M (or chooses new markdown from the Mod+J palette or the floating
-  panel), types, then saves.
+User does: presses Mod+Shift+M (or chooses new markdown from the Mod+J palette), types, then saves.
 User sees: a new tab, placed last in the tab row, holding an empty note created at the worktree root
   as a markdown file named untitled (then untitled-2, untitled-3 and onwards). The first save asks
   for a name, which may include folders that are created as needed; the tab follows the file to that

@@ -1,8 +1,8 @@
-// ONB-032 rest and ONB-033 rest (T-245-b): the board, browser, floating-workspace and workspace-creation
+// ONB-032 rest and ONB-033 rest (T-245-b): the board, browser and workspace-creation
 // tours, how a waiting tour behaves, the hand-over into the composer and the naming rule.
 import { describe, expect, it } from "vitest";
 import {
-  autoStarts, BOARD_LANE, BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW, FIRST_TARGET_TRIES, FLOAT_BUTTON, FLOAT_PANEL, gaveUp, handsOver, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
+  autoStarts, BOARD_LANE, BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW, FIRST_TARGET_TRIES, gaveUp, handsOver, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
   replayOf, SIDEBAR_SHOW, targetsOf, TOURS, type Look, type Want,
 } from "./tour";
 
@@ -22,12 +22,6 @@ describe("the catalogue (ONB-033)", () => {
     // the cookie step points at its hint button, falling back to the row in the overflow menu
     expect(targetsOf(t.steps[2])).toEqual([BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW]);
     expect(t.steps.every((s) => s.en.title && s.ko.title)).toBe(true);
-  });
-  it("has the floating-workspace tour, falling back to the panel when its list is empty", () => {
-    const t = tour("floating");
-    expect(t.trigger).toBe(FLOAT_BUTTON);
-    expect(targetsOf(t.steps[1])).toEqual([`${FLOAT_PANEL} .tabs .tab`, FLOAT_PANEL]);
-    expect(t.steps[0].action).toMatchObject({ run: "click", click: FLOAT_BUTTON });
   });
   it("the workspace-creation tour is detached from any feature switch and never starts by itself", () => {
     expect(tour("create").detached).toBe(true);
@@ -106,10 +100,10 @@ describe("a waiting tour (ONB-032)", () => {
 
 describe("the owning feature's switch", () => {
   it("only an explicit false switches a feature off", () => {
-    expect(ownerOff({ floatingWorkspace: false }, "floating")).toBe(true);
-    expect(ownerOff({ floatingWorkspace: true }, "floating")).toBe(false);
-    expect(ownerOff({}, "floating")).toBe(false);
-    expect(ownerOff(null, "floating")).toBe(false);
+    expect(ownerOff({ boardView: false }, "board")).toBe(true);
+    expect(ownerOff({ boardView: true }, "board")).toBe(false);
+    expect(ownerOff({}, "board")).toBe(false);
+    expect(ownerOff(null, "board")).toBe(false);
     expect(ownerOff({ boardView: false }, "create")).toBe(false);
   });
 });

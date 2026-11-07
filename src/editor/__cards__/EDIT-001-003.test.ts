@@ -1,14 +1,12 @@
-// EDIT-001 boxes 1, 3, 4 and EDIT-003 boxes 1, 2, 4 with the REAL buffers, disk-change and panel modules over real files
+// EDIT-001 boxes 1 and 4 and EDIT-003 boxes 1, 2, 4 with the REAL buffers and disk-change modules over real files
 // under the scratch root G:\Temp\cards-v3\edit12\ (node fs stands in for the file commands; the Rust side is cards_12.rs).
 // MIRROR src/editor/EditorPane.tsx:445 (setInterval(check, POLL_MS) calls checkOnce), EditorPane.tsx:462-480 (reload / undoReload),
-// EditorPane.tsx:826 (Retry button bumps `tries`), src/floating/FloatingLayer.tsx:140 and src/App.tsx:661 (Mod+S handlers).
+// EditorPane.tsx:826 (Retry button bumps `tries`) and src/App.tsx:661 (Mod+S handlers).
 import { history, undo } from "@codemirror/commands";
 import { EditorState, type Transaction } from "@codemirror/state";
 import { afterAll, describe, expect, test } from "vitest";
 import { attach, detach, hashOf, isDirty, loadText, relay, replaceAll, save, textOf, type View } from "../editors";
 import { beginSave, canUndo, checkOnce, endSave, forget, POLL_MS, reloadNow, remember, type Io, type Stamp } from "../diskChange";
-import { editors } from "../EditorPane";
-import { add, empty, KEY_BASE, route, saveTarget } from "../../floating/panel";
 
 // The repo has no node typings, so node's fs is loaded by name and typed here.
 type Fs = {
@@ -68,42 +66,6 @@ describe("EDIT-001", () => {
     expect(isDirty(p)).toBe(false);
     expect(readFileSync(p, "utf8")).toBe("xfn main() {}\n");
     detach(p, v);
-  });
-
-  test("box 3: with a floating editor active, Mod+S writes only the floating editor's file", async () => {
-    const a = `${dir}/main-editor.ts`;
-    const b = `${dir}/floating-note.md`;
-    writeFileSync(a, "main\n");
-    writeFileSync(b, "note\n");
-    const va = fakeView(a, "main\n");
-    const vb = fakeView(b, "note\n");
-    attach(a, va, "main\n");
-    attach(b, vb, "note\n");
-    va.type(0, "MAIN ");
-    vb.type(0, "NOTE ");
-    const panel = add(empty(), { kind: "markdown", path: b });
-    const floatKey = panel.active as number;
-    expect(floatKey).toBeGreaterThanOrEqual(KEY_BASE);
-    const mainKey = 7;
-    editors.set(mainKey, () => save(a, write(a)));
-    editors.set(floatKey, () => save(b, write(b)));
-    // the key goes to the floating layer first: panel open, focus inside it
-    expect(route("editor.save", undefined, true, true)).toEqual({ op: "save" });
-    const key = saveTarget(panel, true);
-    expect(key).toBe(floatKey);
-    await editors.get(key as number)?.();
-    expect(readFileSync(b, "utf8")).toBe("NOTE note\n");
-    expect(readFileSync(a, "utf8")).toBe("main\n"); // the main editor's file is untouched, still unsaved
-    expect(isDirty(a)).toBe(true);
-    // contrast: focus in the main window, the panel hands the key back and the main editor saves
-    expect(route("editor.save", undefined, true, false)).toBeNull();
-    expect(saveTarget(panel, false)).toBeNull();
-    await editors.get(mainKey)?.();
-    expect(readFileSync(a, "utf8")).toBe("MAIN main\n");
-    editors.delete(mainKey);
-    editors.delete(floatKey);
-    detach(a, va);
-    detach(b, vb);
   });
 
   test("box 4: an unreadable file fails after a limited number of tries with the reason; Retry loads it once access is back", async () => {

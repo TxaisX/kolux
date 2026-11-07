@@ -92,8 +92,6 @@ export const actions: Action[] = [
   a("sidebar.checks.toggle", "Show Checks", "global", []),
   a("sidebar.sleepingWorkspaces.toggle", "Toggle Sleeping Workspaces", "global", []),
   a("sidebar.focusWorktreeList", "Focus worktree list", "global", ["Mod+Shift+0"]),
-  a("floatingTerminal.toggle", "Toggle Floating Terminal", "global", ["Mod+Alt+A"], { terminalSafe: true }),
-  a("floatingWorkspace.maximize", "Maximize Floating Workspace Panel", "global", ["Mod+Shift+Backslash"], { darwin: ["Mod+Alt+Shift+A"] }),
   a("view.inbox", "Show Inbox", "global", []),
   a("view.tower", "Show Tower", "global", [], { keywords: ["agent", "dashboard"] }), // T-760: the old Agent Dashboard row's word
   // T-548 (OD-11): one key moves new panes to the provider's next account; unbound until Txais picks a chord.
@@ -105,7 +103,6 @@ export const actions: Action[] = [
   a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+Shift+P"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
   a("view.space", "Show Space", "global", ["Mod+Alt+S"], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
-  a("floatingWorkspace.minimize", "Minimize Floating Workspace Panel", "global", ["Mod+Shift+H"]),
   // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every
   // terminal from one saved setting instead of letting one pane drift.
   a("zoom.in", "Zoom Browser In", "global", ["Mod+Equal", "Mod+Shift+Plus", "Mod+NumpadAdd"], { terminalSafe: true }),

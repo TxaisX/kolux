@@ -41,7 +41,7 @@ describe("when tours start by themselves (ONB-032)", () => {
     expect(autoStarts({ ...base, id: "parallel", tried: ["split"] })).toBe(false);
   });
   it("has the catalogue the store keeps, translated", () => {
-    expect(TOURS.map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "grid", "create", "board", "browser", "floating"]);
+    expect(TOURS.map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "grid", "create", "board", "browser"]);
     expect(TOURS.every((t) => t.steps.every((s) => s.ko.title && s.en.title))).toBe(true);
   });
 });
@@ -71,6 +71,6 @@ describe("the new-workspace tour (ONB-016)", () => {
 
 describe("tours and the feature memory (ONB-042, FIX-1)", () => {
   it("tourFeature names a kept feature for every tour but the grid tour (the predicate only; the Tours.tsx call is not covered here)", () => {
-    expect(TOURS.filter((t) => tourFeature(t.id)).map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "board", "browser", "floating"]);
+    expect(TOURS.filter((t) => tourFeature(t.id)).map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "board", "browser"]);
   });
 });

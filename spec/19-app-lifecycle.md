@@ -693,8 +693,7 @@ User sees: the link opens in the default browser (or in the in-app browser where
 Rules: any attempt to move the main window to an outside web address is blocked and handed to the
   browser; foreign file hosts and data addresses dressed up as the app's own pages are blocked;
   embedded preview pages load only addresses the app has allowed, and those allowances are cleared
-  when the window is rebuilt; links from floating workspaces open in the app without changing the
-  active worktree; holding a modifier while clicking flips the chosen route, and the system browser
+  when the window is rebuilt; holding a modifier while clicking flips the chosen route, and the system browser
   stays reachable even when links normally open inside the app.
 Acceptance:
   - [ ] Click an https link in a terminal → the default browser opens it and the app window is unchanged.

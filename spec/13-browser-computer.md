@@ -285,7 +285,7 @@ User sees: the browser tabs return with their addresses and back/forward history
   page loads at once.
 Rules: the saved history for each page has a ceiling; if the saved active tab is missing, the first
   valid browser tab is chosen; tabs that belonged to deleted worktrees are dropped, and state left
-  by older builds is tidied away; browser tabs inside floating workspaces come back as well.
+  by older builds is tidied away.
 Acceptance:
   - [ ] Open three tabs, navigate twice in one, quit and relaunch → three tabs return; Back in that
         tab goes to its earlier page.
@@ -529,8 +529,8 @@ User does: presses Kolux shortcuts while typing or clicking inside a web page.
 User sees: tab switching (Ctrl+Tab included), zoom, back and forward, find, close tab, double-tap
   shortcuts and worktree delete all keep working; the page does not swallow them.
 Rules: shortcuts act on the split that owns the page; customised bindings are honoured, and a
-  held-down delete chord is taken once, not repeated; pages inside a floating window send close and
-  tab-number chords to that window; double-tap detection starts over when the page loses focus.
+  held-down delete chord is taken once, not repeated; double-tap detection starts over when the page
+  loses focus.
 Acceptance:
   - [ ] Click into a page's text field and press Ctrl+Tab → Kolux switches to the previously used
         tab.

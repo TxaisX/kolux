@@ -7,7 +7,7 @@ export type Side = "top" | "bottom" | "left" | "right";
 export type TourStep = {
   target: string;
   /** ONB-033: other places to point at when `target` is not on screen, in order (the cookie row in the
-   *  overflow menu behind its hint button; the floating panel itself when its list is empty). */
+   *  overflow menu behind its hint button). */
   alt?: string[];
   /** ONB-033: a control to click once when the target is hidden (the sidebar's toggle, when the create button is not showing). */
   reveal?: string;
@@ -19,7 +19,7 @@ export type TourStep = {
   /** The real control is what to click, so there is no Next. */
   noNext?: boolean;
 };
-export type TourId = "tasks" | "automations" | "parallel" | "grid" | "create" | "board" | "browser" | "floating";
+export type TourId = "tasks" | "automations" | "parallel" | "grid" | "create" | "board" | "browser";
 export type Tour = {
   id: TourId;
   name: string;
@@ -48,14 +48,12 @@ export const CREATE_AGENT = ".composer select[aria-label=agent]";
 export const CREATE_NOTE = ".composer textarea[aria-label=note]";
 export const FOCUSED_SPLIT = ".pane.focused:not(.browser) .pane-head button[title^='Split right']";
 
-/** ONB-033: the board, browser pane and floating workspace. */
+/** ONB-033: the board and browser pane. */
 export const BOARD_LANE = ".board .lane";
 export const BOARD_CARD = ".board .pane";
 export const BROWSER_PANE = ".pane.browser";
 export const BROWSER_COOKIES_HINT = ".pane.browser [data-go=import-cookies]";
 export const BROWSER_COOKIES_ROW = "[role=menuitem][data-go=import-cookies]";
-export const FLOAT_BUTTON = ".float-btn";
-export const FLOAT_PANEL = ".float-panel";
 export const SIDEBAR_SHOW = "button[title='Show sidebar']";
 
 /** ONB-033, the surfaces Kolux has today (the grid tour starts from the first run's end, T-208-b). */
@@ -132,16 +130,6 @@ export const TOURS: Tour[] = [
       { target: BROWSER_PANE + " [data-go=annotate]", side: "bottom", en: { title: "Grab an element", body: "Turn on Annotate, then click anything on the page to grab it for an agent." }, ko: { title: "요소 잡기", body: "주석을 켠 뒤 페이지의 아무 곳이나 클릭해 에이전트에게 넘길 요소를 잡습니다." } },
       { target: BROWSER_PANE + " .notes-tray", alt: [BROWSER_PANE + " [data-go=annotate]"], side: "top", en: { title: "Annotate it", body: "Write what should change on each grabbed element, then send the notes to an agent." }, ko: { title: "주석 달기", body: "잡은 요소마다 바꿀 내용을 적고 노트를 에이전트에게 보냅니다." } },
       { target: BROWSER_COOKIES_HINT, alt: [BROWSER_COOKIES_ROW], side: "bottom", en: { title: "Stay logged in", body: "Import your cookies so the browser pane is already signed in to your sites." }, ko: { title: "로그인 유지", body: "쿠키를 가져오면 브라우저 창이 이미 사이트에 로그인된 상태가 됩니다." } },
-    ],
-  },
-  {
-    id: "floating",
-    name: "Floating workspace",
-    trigger: FLOAT_BUTTON,
-    steps: [
-      { target: FLOAT_BUTTON, side: "left", action: { en: "Open panel", ko: "패널 열기", run: "click", click: FLOAT_BUTTON }, en: { title: "A workspace that follows you", body: "This panel works across every project, so a terminal or note is always one click away." }, ko: { title: "어디서나 따라오는 작업 공간", body: "이 패널은 모든 프로젝트에서 작동해 터미널이나 메모가 항상 한 번의 클릭 거리에 있습니다." } },
-      { target: FLOAT_PANEL + " .tabs .tab", alt: [FLOAT_PANEL], side: "bottom", en: { title: "Your tabs", body: "Terminals, agents, browsers and notes you open here stay until you close them." }, ko: { title: "내 탭", body: "여기서 연 터미널, 에이전트, 브라우저, 메모는 닫을 때까지 유지됩니다." } },
-      { target: FLOAT_PANEL + " .ib[aria-label='New terminal']", alt: [FLOAT_PANEL], side: "bottom", en: { title: "Keep a scratchpad", body: "Add a note for loose thoughts, or another terminal, agent or browser." }, ko: { title: "메모장 두기", body: "생각나는 것을 적을 메모나 터미널, 에이전트, 브라우저를 더 추가하세요." } },
     ],
   },
 ];
@@ -291,7 +279,7 @@ export function lookAt(w: Want, l: Look): "start" | "wait" | "drop" | "miss" {
 export const gaveUp = (w: Want) => w.tries >= (w.limit ?? (w.forced ? 4 * FIRST_TARGET_TRIES : FIRST_TARGET_TRIES));
 
 /** ONB-032: the settings key that switches off the feature a tour belongs to; `false` there holds the tour back. */
-export const OWNER_SWITCH: Partial<Record<TourId, string>> = { board: "boardView", browser: "browserPane", floating: "floatingWorkspace", tasks: "tasksPage", automations: "automationsPage" };
+export const OWNER_SWITCH: Partial<Record<TourId, string>> = { board: "boardView", browser: "browserPane", tasks: "tasksPage", automations: "automationsPage" };
 export const ownerOff = (settings: Record<string, unknown> | null, id: TourId): boolean => {
   const key = OWNER_SWITCH[id];
   return !!key && settings !== null && settings[key] === false;

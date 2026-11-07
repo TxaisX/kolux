@@ -132,7 +132,7 @@ type Props = {
   onDismiss: () => void;
   /** The menu's accessible name. */
   label?: string;
-  /** A z-index for the menu and its backdrop, for a host that stacks above the default layer (the floating panel). */
+  /** A z-index for the menu and its backdrop, for a host that stacks above the default layer. */
   layer?: number;
 };
 

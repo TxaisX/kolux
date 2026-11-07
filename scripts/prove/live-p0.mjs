@@ -1,9 +1,7 @@
-// LIVE proof, wave 200 crew C39 (seat 191): the two P0 data-loss guards.
+// LIVE proof, wave 200 crew C39 (seat 191): the P0 data-loss guard.
 //  A. A workspace with a dirty editor tab. Deleting the workspace must ask first, naming the file,
 //     before any folder, tab or draft goes; Keep must leave the row, the tab, the text and the draft.
-//  B. A floating note with typed text. Quit and Force Reload must ask, naming the note; Keep working
-//     must leave the panel open with the text, and the page must not reload.
-//  C. The real ~/.kolux/keybindings.json must not be touched (its mtime and size are compared).
+//  B. The real ~/.kolux/keybindings.json must not be touched (its mtime and size are compared).
 // Hidden dev app off-screen, scratch profile and scratch home, ports 1492/9312 so no other proof
 // shares this app. Copy beside the other prove scripts in the checkout being proved, then:
 //   node scripts/prove/live-p0.mjs
@@ -19,7 +17,6 @@ const { reporter, startPlain, finish, sleep, git } = await import("./live-common
 const { checker } = await import("./live-views-dom.mjs");
 
 const ID = "P0-guards";
-const NOTE_TEXT = "floating-note-text-must-survive";
 const TAB_TEXT = "dirty-tab-in-the-workspace-must-survive";
 const B_NAME = "p0-guard";
 const KEYBINDINGS = join(homedir(), ".kolux", "keybindings.json");
@@ -40,8 +37,8 @@ const stampOf = (p) => {
   }
 };
 
-// Every visible alertdialog: its accessible name, its words and its buttons. The app's Ask and the
-// floating panel's Question both draw the back-out button first.
+// Every visible alertdialog: its accessible name, its words and its buttons. The app's Ask draws the
+// back-out button first.
 const asks = (app) =>
   app.evalJs(`[...document.querySelectorAll("[role=alertdialog]")].filter((e) => e.getClientRects().length).map((e) => ({
     label: e.getAttribute("aria-label") || "",
@@ -75,10 +72,6 @@ const rows = (app) => app.evalJs(`[...document.querySelectorAll("[data-worktree]
 
 const rowOf = (app, path) =>
   app.evalJs(`(() => { const e = [...document.querySelectorAll("[data-worktree]")].find((x) => x.dataset.path === ${JSON.stringify(path)}); if (!e) return false; (e.querySelector(".sess") || e).dispatchEvent(new MouseEvent("click", { bubbles: true })); return true; })()`);
-
-const panelShown = (app) => app.evalJs(`[...document.querySelectorAll(".float-panel")].filter((e) => e.getClientRects().length).length`);
-const setMarker = (app) => app.evalJs(`(() => { window.__p0Loaded = "1"; return true; })()`);
-const marker = (app) => app.evalJs(`window.__p0Loaded || null`);
 
 const keyBefore = stampOf(KEYBINDINGS);
 say(`${ID} live ${new Date().toISOString()}; ports ${process.env.PROVE_PORT}/${process.env.PROVE_CDP}; real keybindings ${JSON.stringify(keyBefore)}`);
@@ -194,76 +187,7 @@ try {
   check("after Keep the draft is still kept (editor_drafts_drop did not run)", !!draftsAfter && draftsAfter.text.includes(TAB_TEXT), JSON.stringify((await draftsOf(B)).map((d) => d.path)));
   say(`screenshot: ${await ctx.shot(`${ID}-after-delete-keep`)}`);
 
-  // ---------- B. a floating note with typed text, then Quit and Force Reload ----------
-  await app.cdp("key", "a", "3"); // Ctrl+Alt+A: the floating panel
-  let open = await app.waitFor("the floating panel", async () => (await panelShown(app)) > 0, 6000, 300).then(() => true, () => false);
-  if (!open) {
-    await app.evalJs(`(() => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "a", code: "KeyA", ctrlKey: true, altKey: true, bubbles: true, cancelable: true })); return true; })()`);
-    open = await app.waitFor("the floating panel", async () => (await panelShown(app)) > 0, 6000, 300).then(() => true, () => false);
-  }
-  check("Ctrl+Alt+A opens the floating workspace panel", open, `visible ${open}`);
-  if (!open) throw new Error("the floating panel did not open");
-
-  const added = await app.evalJs(`(() => { const b = [...document.querySelectorAll(".float-panel .none .acts button")].find((x) => x.textContent.trim() === "New note"); if (!b) return "no New note button"; b.click(); return "clicked"; })()`);
-  await app.waitFor("the note tab", async () => (await app.evalJs(`document.querySelectorAll(".float-panel .tab").length`)) >= 1, 15000, 300);
-  const noteTitle = await app.evalJs(`document.querySelector(".float-panel .tab .name") ? document.querySelector(".float-panel .tab .name").textContent.trim() : ""`);
-  say(`New note ${added}; the tab is ${JSON.stringify(noteTitle)}`);
-  await app.waitFor("the note editor", () => app.exists(".float-panel .cm-content, .float-panel .md-rich"), 15000, 300);
-  await app.evalJs(`(() => { const b = [...document.querySelectorAll(".float-panel .view-switch button")].find((x) => x.textContent.trim() === "Source"); if (b) b.click(); return !!b; })()`);
-  await sleep(700);
-  await app.focusField(".float-panel .cm-content");
-  await app.cdp("insert", NOTE_TEXT);
-  await sleep(1200);
-  const noteText = await cmDoc(app, ".float-panel .cm-content");
-  const dirtyDot = await app.evalJs(`!!document.querySelector(".float-panel .tab .unsaved")`);
-  check("setup: the floating note holds typed text and is marked unsaved", typeof noteText === "string" && noteText.includes(NOTE_TEXT) && dirtyDot === true, `text ${JSON.stringify(String(noteText).slice(0, 60))}, dot ${dirtyDot}`);
-  const noteName = String(noteTitle).replace(/\.md$/i, "");
-  check("setup: the note has a name the question can use", noteName.length > 0, JSON.stringify(noteTitle));
-
-  await setMarker(app);
-  await app.invoke("plugin:window|close", { label: "main" }).catch((e) => say(`close request answered: ${e}`));
-  const quitAsk = await askFor(app, (d) => /quit/i.test(d.label) || (/unsaved/i.test(d.label) && !/reload/i.test(d.label)), 12000);
-  check("Quit asks first", !!quitAsk, JSON.stringify(quitAsk ?? (await asks(app))));
-  if (!quitAsk) {
-    const gone = !(await app.alive(app.pid));
-    check("the app did not quit behind the question", !gone, `alive ${!gone}`);
-    throw new Error("no quit question: the window closed on its own");
-  }
-  check("the quit question names the floating note", quitAsk.text.toLowerCase().includes(noteName.toLowerCase()), quitAsk.text);
-  check("the quit question offers Keep working and a way to quit without saving", quitAsk.buttons.some((b) => /^keep working$/i.test(b)) && quitAsk.buttons.some((b) => /quit/i.test(b)), JSON.stringify(quitAsk.buttons));
-  check("the app is still running while the quit question waits", await app.alive(app.pid), `pid ${app.pid}`);
-  say(`quit question: ${JSON.stringify(quitAsk)}`);
-  say(`screenshot: ${await ctx.shot(`${ID}-quit-ask`)}`);
-
-  const keptQuit = await clickBackOut(app);
-  const closedQuit = await askGone(app);
-  await sleep(800);
-  const afterQuit = await cmDoc(app, ".float-panel .cm-content");
-  check("Keep working backs out of the quit question", closedQuit, `clicked ${keptQuit}`);
-  check("after Keep working the floating note still holds its text", typeof afterQuit === "string" && afterQuit.includes(NOTE_TEXT), JSON.stringify(String(afterQuit).slice(0, 60)));
-  check("the page did not quit or reload between the question and the answer", (await app.alive(app.pid)) && (await marker(app)) === "1", `alive ${await app.alive(app.pid)}`);
-
-  await app.cdp("key", "r", "10"); // Ctrl+Shift+R: Force Reload
-  let reloadAsk = await askFor(app, (d) => /reload/i.test(d.label), 6000);
-  if (!reloadAsk) {
-    await app.evalJs(`(() => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "r", code: "KeyR", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true })); return true; })()`);
-    reloadAsk = await askFor(app, (d) => /reload/i.test(d.label), 6000);
-  }
-  check("Force Reload asks first", !!reloadAsk, JSON.stringify(reloadAsk ?? (await asks(app))));
-  if (reloadAsk) {
-    check("the reload question names the floating note", reloadAsk.text.toLowerCase().includes(noteName.toLowerCase()), reloadAsk.text);
-    say(`reload question: ${JSON.stringify(reloadAsk)}`);
-    const keptReload = await clickBackOut(app);
-    const closedReload = await askGone(app);
-    await sleep(800);
-    const afterReload = await cmDoc(app, ".float-panel .cm-content");
-    check("Keep working backs out of the reload question", closedReload, `clicked ${keptReload}`);
-    check("the page did not reload: the note still holds its text and the page kept its state", typeof afterReload === "string" && afterReload.includes(NOTE_TEXT) && (await marker(app)) === "1", JSON.stringify(String(afterReload).slice(0, 60)));
-    check("the floating panel is still open with the note after both questions", (await panelShown(app)) === 1 && (await app.evalJs(`document.querySelectorAll(".float-panel .tab").length`)) >= 1, `panel ${await panelShown(app)}`);
-    say(`screenshot: ${await ctx.shot(`${ID}-reload-keep`)}`);
-  }
-
-  // ---------- C. leave cleanly, and the real keybindings file ----------
+  // ---------- B. leave cleanly, and the real keybindings file ----------
   await app.invoke("plugin:window|close", { label: "main" }).catch(() => {});
   const quitAgain = await askFor(app, (d) => /quit/i.test(d.label) || (/unsaved/i.test(d.label) && !/reload/i.test(d.label)), 10000);
   say(`last quit question: ${JSON.stringify(quitAgain)}`);

@@ -16,7 +16,7 @@ test("a showing dialog or menu holds global shortcuts; none showing lets them ru
   expect(heldByOverlay("tab.newTerminal", false, root([box(false)]) as never), "hidden").toBe(false);
 });
 
-test("a panel that stays open (floating workspace, agent question card, plan sheet) holds nothing", () => {
+test("a panel that stays open (agent question card, plan sheet) holds nothing", () => {
   expect(heldByOverlay("terminals.focusNextNeedsYou", false, root([box(true, true)]) as never)).toBe(false);
   expect(heldByOverlay("tab.newTerminal", false, root([box(true, true), box(true)]) as never), "a menu over it still holds").toBe(true);
 });
@@ -48,12 +48,11 @@ const dom = (els: ReturnType<typeof real>[]) => ({
   querySelectorAll: (s: string) => els.filter((x) => matchesAny(x.el, s)),
 });
 
-test("real markup: a docked tip, the hooks card, a tour and the floating panel hold nothing; a modal dialog does", () => {
+test("real markup: a docked tip, the hooks card and a tour hold nothing; a modal dialog does", () => {
   expect(OVERLAYS).toContain('[role="dialog"]');
   expect(STAYS_OPEN).toContain('[aria-modal="false"]');
   const tip = real("tip-card", { role: "dialog", "aria-modal": "false" }); // Guides.tsx docked Tip and the hooks consent card
   const tour = real("tour", { role: "dialog", "aria-modal": "false" }); // Tours.tsx
-  const float = real("float-panel", { role: "dialog" });
   const cleanup = real("sb-form", { role: "dialog" }); // projects CleanupDialog, inline in the sidebar
   const prDraft = real("scm-ask scm-pr", { role: "dialog", "aria-label": "Create pull request" }); // scm/PrStart.tsx
   const resolve = real("scm-ask", { role: "dialog" }); // source control: resolve conflicts with an agent
@@ -63,7 +62,7 @@ test("real markup: a docked tip, the hooks card, a tour and the floating panel h
   const permission = real("chat-permission", { role: "alertdialog" }); // an inline permission card, not modal
   const modal = real("crash-report", { role: "dialog" });
   // The palette tip names the Switch workspace key: that key works while the tip shows.
-  expect(heldByOverlay("worktree.palette", false, dom([tip, tour, float, cleanup]) as never)).toBe(false);
+  expect(heldByOverlay("worktree.palette", false, dom([tip, tour, cleanup]) as never)).toBe(false);
   for (const form of [prDraft, resolve, grab, draw, found, permission]) expect(heldByOverlay("tab.newTerminal", false, dom([form]) as never), form.el.cls.join(".")).toBe(false);
   expect(heldByOverlay("terminal.splitRight", false, dom([tour]) as never), "the tour's own step still splits").toBe(false);
   expect(heldByOverlay("worktree.palette", false, dom([tip, modal]) as never)).toBe(true);
@@ -129,25 +128,16 @@ test("under a dialog the browser chords the window runs itself wait (Ctrl+L stay
   for (const id of WINDOW_BROWSER) {
     expect(actionById.get(id)?.scope, id).toBe("browser");
     expect(heldByOverlay(id, false, dom([modal]) as never), id).toBe(true);
-    expect(heldByOverlay(id, false, dom([real("float-panel", { role: "dialog" })]) as never), id).toBe(false);
+    expect(heldByOverlay(id, false, dom([real("chat-question", { role: "dialog" })]) as never), id).toBe(false);
   }
   expect(heldByOverlay("browser.grabElement", false, dom([modal]) as never)).toBe(false);
-});
-
-test("the floating panel's own chords (Ctrl+Alt+A, maximize, minimize) wait under a modal, not under the panel itself", () => {
-  const modal = real("crash-report", { role: "dialog" });
-  const float = real("float-panel", { role: "dialog" });
-  for (const id of ["floatingTerminal.toggle", "floatingWorkspace.maximize", "floatingWorkspace.minimize"]) {
-    expect(heldByOverlay(id, false, dom([float, modal]) as never), id).toBe(true);
-    expect(heldByOverlay(id, false, dom([float]) as never), id).toBe(false);
-  }
 });
 
 test("Show Search (Mod+Shift+F) opens from a terminal that already cancelled the press; it waits under a dialog", () => {
   const map = defaultsOnly("win32");
   const press = { key: "F", code: "KeyF", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false, defaultPrevented: true };
   expect(explorerSearchKey(map, press, dom([]) as never), "cancelled by the terminal").toBe(true);
-  expect(explorerSearchKey(map, press, dom([real("float-panel", { role: "dialog" })]) as never)).toBe(true);
+  expect(explorerSearchKey(map, press, dom([real("chat-question", { role: "dialog" })]) as never)).toBe(true);
   expect(explorerSearchKey(map, press, dom([real("crash-report", { role: "dialog" })]) as never), "under a dialog").toBe(false);
   expect(explorerSearchKey(map, { ...press, shiftKey: false }, dom([]) as never), "Ctrl+F is not Show Search").toBe(false);
 });

@@ -1,5 +1,4 @@
 mod folder_projects;
-mod floating_trust;
 mod repo_scan;
 mod activity;
 pub mod agents;
@@ -904,8 +903,6 @@ pub fn run() {
             files::file_write_picture,
             files::file_stamps,
             files::file_pick,
-            floating_trust::floating_pick,
-            floating_trust::floating_start,
             files::md_list,
             notebook_run::notebook_trusted,
             notebook_run::notebook_trust,

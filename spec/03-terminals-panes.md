@@ -5,14 +5,14 @@ it grows, shrinks, splits, evens out and rearranges; tabs and tab groups with th
 colours and shortcuts; the pane header with its status dot, agent mark, session name, usage
 percentage, branch chip, the finished-while-away glow and the order in which a narrow header gives
 up its items; expanding one pane to fill the space and putting it back; the clean look with rounded
-session windows; the floating workspace panel; copying, pasting, pasted screenshots, dropped files
+session windows; copying, pasting, pasted screenshots, dropped files
 and the notices shown when the clipboard fails; keyboard handling, input methods, full-screen
 programs, scrollback and clickable links in output; GPU drawing with its fallback and its cap of six
 contexts; sessions that outlive a quit, a crash or a dead background host; keeping the computer
 awake while agents work; importing themes from Warp and Ghostty; and the kolux terminal command
-group. The standalone terminal window, the attention ring and agent hibernation are hidden; remote,
-WSL and web-client terminals, phone control of desktop terminals and the quick commands menu are cut
-by default.
+group. The standalone terminal window, the attention ring and agent hibernation are hidden; the
+floating workspace panel is removed (DECISIONS.md DT-C216); remote, WSL and web-client terminals,
+phone control of desktop terminals and the quick commands menu are cut by default.
 
 Tier counts: P0 25 · P1 62 · P2 35 · H 8 · X 1 · D 6
 
@@ -618,6 +618,8 @@ Acceptance:
   - [ ] An agent finishing in the closed panel shows the dot.
   - [ ] While the panel is open, the floating button shows no dot.
 Compat: —
+Decision: retired 2026-11-06 with the floating workspace panel (DECISIONS.md DT-C216); kept as
+  history.
 Source: D-03-063
 
 ### TERM-003 · Confirm before removing a started session
@@ -1122,6 +1124,8 @@ Acceptance:
   - [ ] After the floating button is moved, it is in the same place when Kolux opens again.
 Compat: keybinding command for showing and hiding the floating panel (exact id held back until
   allowlisted).
+Decision: retired 2026-11-06 with the floating workspace panel (DECISIONS.md DT-C216); kept as
+  history.
 Source: D-03-059
 
 ### TERM-060 · Move, resize and maximize the floating panel
@@ -1137,6 +1141,8 @@ Acceptance:
   - [ ] Corrupt saved panel geometry opens the panel at its default size and place.
 Compat: keybinding commands for maximizing and minimizing the floating panel (exact ids held back
   until allowlisted).
+Decision: retired 2026-11-06 with the floating workspace panel (DECISIONS.md DT-C216); kept as
+  history.
 Source: D-03-060
 
 ### TERM-061 · Floating panel tabs and close behaviour
@@ -1152,6 +1158,8 @@ Acceptance:
   - [ ] Closing the last tab leaves the panel open on its empty state.
   - [ ] Closing an unsaved markdown tab in the panel asks before it closes.
 Compat: —
+Decision: retired 2026-11-06 with the floating workspace panel (DECISIONS.md DT-C216); kept as
+  history.
 Source: D-03-061
 
 ### TERM-070 · Paste a screenshot as a file path
@@ -1535,6 +1543,8 @@ Acceptance:
   - [ ] Cmd/Ctrl+T in the floating panel opens a floating tab.
   - [ ] A key chord the panel has no action for reaches the terminal unchanged.
 Compat: —
+Decision: retired 2026-11-06 with the floating workspace panel (DECISIONS.md DT-C216); kept as
+  history.
 Source: D-03-062
 
 ### TERM-066 · Copy on select
@@ -1895,20 +1905,20 @@ User sees: present but unused; nothing in the grid as it stands today opens it.
 Rules: nothing in the main UI opens it.
 Acceptance:
   - [ ] Nothing in the default build opens a terminal in an OS window of its own.
-  - [ ] Every terminal opens as a pane in the grid or in the floating panel.
+  - [ ] Every terminal opens as a pane in the grid.
 Compat: —
 Decision: H: default skip.
 Source: D-03-124
 
 ### TERM-131 · Agent brand marks in pane headers and tabs
 Tier: X · Pushed: 10 · State at 0.15.0: live
-User does: sees agent logos in headers, tabs and the floating panel.
+User does: sees agent logos in headers and tabs.
 User sees: the logo of each agent vendor beside its session.
 Rules: third-party brand marks; the rebuild must use owner-made or licensed marks.
 Acceptance:
   - [ ] No third-party agent logo ships in the rebuild; each agent shows an owner-made or licensed
       mark.
-  - [ ] Headers, tabs and the floating panel all show the same replacement mark for a given agent.
+  - [ ] Headers and tabs all show the same replacement mark for a given agent.
 Compat: —
 Source: D-03-131
 

@@ -636,6 +636,8 @@ Acceptance:
   - [ ] Change the trusted list through settings sync → it is unchanged after reload.
   - [ ] Unplug the drive holding a trusted folder and restart → the entry is still listed.
 Compat: —
+Decision: retired 2026-11-06 with the floating workspace panel (DECISIONS.md DT-C216); the floating
+  terminal and its trusted-folder list are gone. Kept as history.
 Source: D-10-027
 
 ### SAFE-028 · Saved settings come back valid after a restart

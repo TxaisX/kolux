@@ -15,7 +15,6 @@ import { isMarkdown } from "../editor/mdFiles";
 import { copiers, diffNav, editors } from "../keys/handles";
 import { NOTHING_TO_SEND, sendRoute } from "../editor/noteCommands";
 import { reviewOn, selections } from "../editor/notes";
-import { floatingKeys } from "../floating/keys";
 import { navTarget, stepAllowed } from "../projects/nav";
 import { SHOW_SLEEPING_SETTING, showSleepingFrom } from "../projects/rows";
 import { stepZoom, type ZoomStep } from "../settings/zoom";
@@ -52,14 +51,14 @@ export function paneCloseClaimed(paneId: number): boolean {
  *  chrome/fullPage.ts), so Mod+T never opens a tab behind a question. The Settings page is a page, not an overlay, so
  *  only overlays inside it count while it shows; the Ctrl+Tab list's own steps go on.
  *  ponytail: an overlay outside an open Settings page (rare) does not hold keys; collect both roots if it matters. */
-// Panels that stay on screen while the user works (the floating workspace, an agent's question card, the browser's
-// cookie steps, grab sheet and drawing canvas, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
+// Panels that stay on screen while the user works (an agent's question card, the browser's cookie steps, grab sheet
+// and drawing canvas, a plan under review, the update card, a docked tip or tour (aria-modal="false"), an
 // inline sidebar form: projects (and its found-issues list), source control, the pull request draft) carry role="dialog" too but are not in the way: they hold nothing, so the key a tip names still works.
 export const OVERLAYS = '.menu, [role="menu"], [role="dialog"], [aria-modal="true"], .pick-list, .font-list, .popover, .palette';
 // A terminal pane's own questions (a dead shell's exit code, Paste N lines?, an account notice) are aria-modal but cover
 // only that pane: the rest of the window, and Ctrl+W on that pane, keep working.
 export const PANE_LOCAL = ".pane-ask";
-export const STAYS_OPEN = '.float-panel, .chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet, .draw-canvas, .found-list';
+export const STAYS_OPEN = '.chat-question, .cookie-steps, .plan-sheet, .upd-card, [aria-modal="false"], .sb-form, .scm-ask, .grab-sheet, .draw-canvas, .found-list';
 // Only the app's own chords wait. An editor or explorer chord, and a browser chord the window does not run itself
 // (Ctrl+C in a page is browser.grabElement), is the focused pane's or the overlay's own and falls through as before.
 const HELD_SCOPES = new Set(["global", "tabs", "terminal"]);
@@ -132,8 +131,6 @@ export function useWindowKeys(w: WindowBag) {
       if (recording.on) return;
       // VIEW-109 (T-253): while an input method is composing every key is its own, shortcut chords included.
       if (e.isComposing || e.keyCode === 229) return;
-      // TERM-059..061 (T-220): the floating panel's keys come first, on every screen.
-      if (floatingKeys.handle(e)) return;
       const kind = screen === "terminals" ? panes.find((p) => p.key === focused)?.kind : undefined;
       const inTree = !!document.activeElement?.closest(".explorer"); // the explorer's own keys (EDIT-034) come with T-094-b
       // EDIT-001: in an editor the editor shortcuts come first and terminal ones do not apply;

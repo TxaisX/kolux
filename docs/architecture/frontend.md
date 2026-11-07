@@ -36,7 +36,7 @@ The element tree is:
     Sidebar
     Content
     Right
-  Hosts (status bar, floating layer, wizard, update, edit menu)
+  Hosts (status bar, wizard, update, edit menu)
 ```
 
 (`src/shell/WindowView.tsx:31-42`). The top bar is 36 px and is the drag region (`src/styles.css:45`). Under 900 CSS pixels the side panels take turns rather than shrinking to nothing (`src/shell/window/narrow.ts:4-30`).
@@ -66,7 +66,7 @@ The element tree is:
 | `update` | Update center and timetable | `src/update/UpdateCenter.tsx` |
 | `recovery` | Heartbeat, crash screen, error boundary | `src/recovery/RecoveryMount.tsx` |
 
-Supporting folders: `shell` (window state and layout), `chrome` (top bar, status bar, icons), `launch` (agents, seats, chooser), `status` (agent status and notifications), `keys` (keymap and shortcuts), `i18n` (six languages), `look` (pane header cards), `floating` (floating workspace panel), `marks` (vendor marks), `notify` (badge and notification pacing), and `setup` (trust prompts).
+Supporting folders: `shell` (window state and layout), `chrome` (top bar, status bar, icons), `launch` (agents, seats, chooser), `status` (agent status and notifications), `keys` (keymap and shortcuts), `i18n` (six languages), `look` (pane header cards), `marks` (vendor marks), `notify` (badge and notification pacing), and `setup` (trust prompts).
 
 ## State and data flow
 

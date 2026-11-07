@@ -6,10 +6,10 @@ import { chordMatches, chordsOf, labelOf, labelParts, matchEvent, parseChord, re
 
 const key = (k: Partial<KeyLike>): KeyLike => ({ key: "", code: "", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...k });
 
-test("the table registers the 139 carried commands (T-727 added view.routing, UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 57 ship unbound (T-746 bound view.space; T-727: view.routing unbound, UX lane C: view.automations added unbound, floatingWorkspace.minimize now bound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound; T-717 left terminal.closePane unbound, Mod+W is tab.close's) and only workspace rename has a macOS chord only (T-746 gave New agent tab Mod+Alt+T everywhere) (UX lane C gave three Ctrl+Shift chords)", () => {
-  expect(actions.length).toBe(139);
+test("the table registers the 136 carried commands (T-727 added view.routing, UX lane C added view.automations and focus.chrome, TERM-053 added tab.search, VIEW-053 added one, T-546 added view.tower, T-246-c added the three ui.zoom keys, T-548 added the two account switches, T-146-e added view.space, T-611 dropped sidebar.ports.toggle); 57 ship unbound (T-746 bound view.space; T-727: view.routing unbound, UX lane C: view.automations added unbound; T-239 bound Reopen closed tab again; the two T-548 account switches ship unbound; T-717 left terminal.closePane unbound, Mod+W is tab.close's) and only workspace rename has a macOS chord only (T-746 gave New agent tab Mod+Alt+T everywhere) (UX lane C gave three Ctrl+Shift chords)", () => {
+  expect(actions.length).toBe(136);
   const ids = new Set(actions.map((a) => a.id));
-  expect(ids.size).toBe(139);
+  expect(ids.size).toBe(136);
   expect(ids.has("sidebar.sourceControl.toggle")).toBe(false); // T-644
   expect(ids.has("tab.newSimulator")).toBe(false);
   expect(ids.has("tab.openQuickCommandsMenu")).toBe(false);
@@ -143,7 +143,7 @@ test("FIX-1 AltGr: Ctrl+Alt with a typed character that is not the chord's own k
   // the older chords: Polish AltGr+A types a-ogonek, German AltGr+plus types a tilde
   expect(chordMatches("Mod+Alt+A", key({ ...ctrlAlt, code: "KeyA", key: "ą" }), "win32")).toBeNull();
   expect(chordMatches("Mod+Alt+BracketRight", key({ ...ctrlAlt, code: "BracketRight", key: "~" }), "win32")).toBeNull();
-  expect(hits({ ...ctrlAlt, code: "KeyA", key: "ą" })).not.toBe("floatingTerminal.toggle");
+  expect(hits({ ...ctrlAlt, code: "KeyA", key: "ą" })).toBeNull();
   expect(hits({ ...ctrlAlt, code: "BracketRight", key: "~" })).not.toBe("tab.nextSameType");
   // Linux is the same
   expect(chordMatches("Mod+Alt+0", key({ ...ctrlAlt, code: "Digit0", key: "}" }), "linux")).toBeNull();
@@ -178,7 +178,7 @@ test("FIX-2 AltGr: Ctrl+Alt+letter still fires on a non-Latin layout (no AltGr l
     expect(chordMatches("Mod+Alt+A", key({ ...ctrlAlt, code: "KeyA", key: k }), "win32"), k).toEqual({});
     expect(chordMatches("Mod+Alt+A", key({ ...ctrlAlt, code: "KeyA", key: k }), "linux"), k).toEqual({});
   }
-  expect(matchEvent(resolve(null, "win32"), key({ ...ctrlAlt, code: "KeyA", key: "ф" }), ["global", "tabs"])?.id).toBe("floatingTerminal.toggle");
+  expect(matchEvent(resolve(null, "win32"), key({ ...ctrlAlt, code: "Digit0", key: "ф" }), ["global", "tabs"])?.id).toBe("ui.zoomReset");
   // the AltGraph flag still wins on a non-Latin layout, and a Latin letter that is not the chord's own is still typed text
   expect(chordMatches("Mod+Alt+A", { ...key({ ...ctrlAlt, code: "KeyA", key: "ф" }), getModifierState: gr }, "win32")).toBeNull();
   expect(chordMatches("Mod+Alt+A", key({ ...ctrlAlt, code: "KeyA", key: "ą" }), "win32")).toBeNull();

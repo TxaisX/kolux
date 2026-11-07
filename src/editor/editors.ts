@@ -1,5 +1,5 @@
 // The CodeMirror side of the open-file buffers (EDIT-001, T-603). buffers.ts holds the documents and
-// carries no CodeMirror, because the first frame loads it (FloatingLayer asks isDirty, the window asks
+// carries no CodeMirror, because the first frame loads it (the window asks isDirty, keyOf and
 // keyOf and baseName); this module is what the editor and the buffers' tests import, and loading it
 // installs every value the store cannot make itself: the annotation that marks Kolux's own change and
 // the read of it, the undo grouping a reload gets (isolateHistory, compared by identity with the

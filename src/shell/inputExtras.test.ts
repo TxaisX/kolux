@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { COPY_FAILED, copyOnSelect, installTapReset, latestOnly, routeFloating, searchTabs } from "./inputExtras";
+import { COPY_FAILED, copyOnSelect, installTapReset, latestOnly, searchTabs } from "./inputExtras";
 import { windowTaps } from "../keys/tapHit";
 
 describe("term-066 copy on select", () => {
@@ -46,22 +46,7 @@ describe("term-053 search open tabs", () => {
   });
 });
 
-describe("term-062 shortcuts inside the floating panel", () => {
-  it("new tab, markdown, switching and number act on the panel while focus is in it", () => {
-    expect(routeFloating("tab.newTerminal", undefined, true, true)).toEqual({ op: "add", kind: "terminal" });
-    expect(routeFloating("tab.newMarkdown", undefined, true, true)).toEqual({ op: "add", kind: "markdown" });
-    expect(routeFloating("tab.selectByIndex", 2, true, true)).toEqual({ op: "select", n: 2 }); // C01-R1-01: the digit is the position
-    expect(routeFloating("tab.nextAllTypes", undefined, true, true)).toEqual({ op: "step", by: 1, mode: "all" });
-  });
-  it("rename is the panel's inside it and the window's outside it", () => {
-    expect(routeFloating("tab.rename", undefined, true, true)).toEqual({ op: "rename" });
-    expect(routeFloating("tab.rename", undefined, true, false)).toBeNull();
-    expect(routeFloating("tab.rename", undefined, false, true)).toBeNull();
-  });
-  it("a chord the panel has no action for passes through", () => {
-    expect(routeFloating("terminal.clear", undefined, true, true)).toBeNull();
-    expect(routeFloating("editor.find", undefined, true, true)).toBeNull();
-  });
+describe("term-062 a double tap does not survive a lost focus", () => {
   it("losing the window's focus forgets half a double tap", () => {
     const handlers: Record<string, () => void> = {};
     const target = { addEventListener: (n: string, f: () => void) => (handlers[n] = f), removeEventListener: (n: string) => delete handlers[n] } as unknown as Window;

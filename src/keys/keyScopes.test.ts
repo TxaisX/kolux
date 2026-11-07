@@ -63,8 +63,8 @@ describe("APP-013 tab keys from every focus", () => {
 });
 
 // T-717 (DT-C153): no default chord is bound twice among the scopes one key handler tries together. Each set below
-// is one that a handler passes to matchEvent: the window's (scopesFor), a focused terminal's (shellKeys), the
-// floating panel's, and each pane's own. Two actions on one chord in a live set means the table order picks the
+// is one that a handler passes to matchEvent: the window's (scopesFor), a focused terminal's (shellKeys),
+// and each pane's own. Two actions on one chord in a live set means the table order picks the
 // winner and the other's chord is dead.
 // The pane close ships unbound, so a menu or tooltip that showed its chord would show none; they show tab.close's.
 const SRC = import.meta.glob(["/src/**/*.{ts,tsx}", "!/src/**/*.test.{ts,tsx}", "!/src/**/__cards__/**"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;

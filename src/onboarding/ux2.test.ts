@@ -72,15 +72,15 @@ describe("onboarding.md:8: the dialogs take the focus and Escape works from anyw
     const list = [modal, tip].filter(isModal) as unknown as Element[];
     expect(isTopDialog(modal as unknown as Element, list)).toBe(true);
   });
-  it("the floating workspace panel (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does", () => {
+  it("a panel that stays open (role=dialog, no aria-modal) later on the page does not take Explore's Escape; a confirmation over it does", () => {
     const attrs = (a: Record<string, string>) => ({ getAttribute: (n: string) => a[n] ?? null });
     const explore = attrs({ role: "dialog", "aria-modal": "true" });
-    const floating = attrs({ role: "dialog" });
+    const staysOpen = attrs({ role: "dialog" });
     const review = attrs({ role: "dialog", "aria-label": "Add review note" });
     const confirm = attrs({ role: "alertdialog" });
     const top = (list: ReturnType<typeof attrs>[]) => isTopDialog(explore as unknown as Element, list.filter(isModal) as unknown as Element[]);
-    expect(top([explore, floating, review])).toBe(true);
-    expect(top([explore, floating, confirm])).toBe(false);
+    expect(top([explore, staysOpen, review])).toBe(true);
+    expect(top([explore, staysOpen, confirm])).toBe(false);
   });
   it("Open Settings (a button, a palette page or Ctrl+,) closes Explore and the Setup Guide, so Settings is not left behind; the stop unsubscribes", () => {
     const w = new EventTarget();

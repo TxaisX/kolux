@@ -410,9 +410,8 @@ User does: meets each surface for the first time.
 User sees: short tours for: the board (plan, then move cards through lanes to done); running agents
   in parallel (split a pane, then start another task); the browser pane (grab, annotate, stay logged
   in by importing cookies); tasks (source, filter, start from a row); automations (create one, then
-  see results); the floating workspace (works across every project, has a scratchpad); workspace
-  creation (choose a project, name new work or reuse existing work, pick an agent); and the grid
-  tour after onboarding (ONB-012).
+  see results); workspace creation (choose a project, name new work or reuse existing work, pick an
+  agent); and the grid tour after onboarding (ONB-012).
 Rules: running the split command carries the parallel-agents tour past its split step; the tour
   opens the sidebar if the create button is hidden, and cancels if that button is missing; that tour
   is offered only on an active workspace terminal tab, and only to people who have never split a
@@ -421,7 +420,6 @@ Rules: running the split command carries the parallel-agents tour past its split
   that tour's create step hands nothing off to a tour; the browser tour's cookie step waits until
   its menu row can be measured, falling back from a hint button to the row in the overflow menu; its
   progress always counts three steps, even while the cookie step's target is not yet visible; the
-  floating-workspace tour falls back to the panel itself when its list is empty; the
   workspace-creation tour hands over into the composer; turning on automatic naming from the first
   message clears a generated name, while turning it off keeps the name; the tasks tour points first
   at a row's start-work action and only after that at the toolbar controls.
