@@ -33,7 +33,7 @@ test("box 1 (the click half): the search hint is one button that asks for the wo
   const { c, calls } = await open("terminals");
   const hint = find(c, (n) => n.localName === "button" && n.attrs.class === "searchbox");
   expect(hint).toHaveLength(1);
-  expect(hint[0].textContent).toContain("Search");
+  expect(hint[0].textContent).toContain("Go to / Run a command");
   await click(c, hint[0]);
   expect(calls).toEqual(["search"]);
 });

@@ -88,9 +88,11 @@ export function useLabel(id: string): string[] {
   return labelOf(useKeymap(), id);
 }
 
-/** A chord drawn as keycaps with "+" between them, or "Unassigned". */
-export function Kbd({ id }: { id: string }) {
-  const parts = useLabel(id);
+/** A chord drawn as keycaps with "+" between them, or "Unassigned". `shown`: the parts to draw instead of the
+ *  command's first chord (T-800: the top-bar box shows the Ctrl+K that also opens it). */
+export function Kbd({ id, shown }: { id: string; shown?: string[] }) {
+  const first = useLabel(id);
+  const parts = shown && shown.length > 0 ? shown : first;
   if (parts.length === 0) return <span className="kbd-none">Unassigned</span>;
   return (
     <>

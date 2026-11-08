@@ -34,7 +34,7 @@ test("chords parse, normalise their spelling and refuse Mod mixed with Ctrl", ()
 test("fresh Windows profile: Ctrl+Shift+J opens the palette, Alt+1 selects tab 1, Ctrl+Shift+D splits right, Ctrl+J is next-needs-you", () => {
   const map = resolve(null, "win32");
   expect(map.errors).toEqual([]);
-  expect(chordsOf(map, "worktree.palette")).toEqual(["Mod+Shift+J"]);
+  expect(chordsOf(map, "worktree.palette")).toEqual(["Mod+Shift+J", "Mod+Shift+P"]);
   expect(chordsOf(map, "terminals.focusNextNeedsYou")).toEqual(["Mod+J"]);
   expect(matchEvent(map, key({ key: "J", code: "KeyJ", ctrlKey: true, shiftKey: true }), ["global"])).toEqual({ id: "worktree.palette" });
   expect(matchEvent(map, key({ key: "j", code: "KeyJ", ctrlKey: true }), ["global"])).toEqual({ id: "terminals.focusNextNeedsYou" });
@@ -51,7 +51,7 @@ test("fresh Windows profile: Ctrl+Shift+J opens the palette, Alt+1 selects tab 1
 
 test("macOS differs where SET-013 says so, and Mod means Cmd there", () => {
   const map = resolve(null, "darwin");
-  expect(chordsOf(map, "worktree.palette")).toEqual(["Mod+J"]);
+  expect(chordsOf(map, "worktree.palette")).toEqual(["Mod+J", "Mod+Shift+P"]);
   expect(chordsOf(map, "terminals.focusNextNeedsYou")).toEqual(["Mod+Shift+J"]);
   expect(chordsOf(map, "tab.selectByIndex")).toEqual(["Ctrl+1"]);
   expect(chordsOf(map, "terminal.splitRight")).toEqual(["Mod+D"]);
@@ -101,7 +101,7 @@ test("a bad chord, an unknown id or an unknown platform is reported for that ent
 test("a file that is not an object keeps the defaults and says so", () => {
   const map = resolve([1, 2], "win32");
   expect(map.errors.length).toBe(1);
-  expect(chordsOf(map, "worktree.palette")).toEqual(["Mod+Shift+J"]);
+  expect(chordsOf(map, "worktree.palette")).toEqual(["Mod+Shift+J", "Mod+Shift+P"]);
 });
 
 test("two custom chords that clash inside their scope are dropped and the defaults stay; defaults may overlap", () => {

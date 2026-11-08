@@ -330,7 +330,7 @@ Rules: there are 138 commands, 82 with a chord and 56 without (since T-673, DT-C
   Cmd on a Mac and for Ctrl on the other two platforms; some commands have a default only on macOS
   (rename workspace; new agent tab too until T-746 gave it Ctrl+Alt+T, which also gave Show Space
   Mod+Alt+S); since T-673 rename tab has Windows and Linux chords too, and Move Focus to the Top Bar
-  (Mod+Shift+P) is a chord a focused terminal passes through; Add a Session and Remove a Session
+  (F6 since T-800, DT-C226; it was Mod+Shift+P) is a chord a focused terminal passes through; Add a Session and Remove a Session
   have no chord, and Ctrl+Shift+N stays with Create worktree; command ids face the user because they
   key the keybindings file, so the rebuild keeps them. The three floating workspace commands (show,
   maximise, minimise) were removed 2026-11-06 (DECISIONS.md DT-C216), so their chords are gone.
@@ -338,7 +338,7 @@ Acceptance:
   - [x] Fresh profile on Windows → Alt+1 selects tab 1, Ctrl+Shift+J opens the palette, Mod+Shift+D
         splits right. (cards; evidence/cards-SET-013.txt)
   - [x] Fresh profile → the Unassigned filter lists the board, dashboard, tasks, inbox and floor views. (cards; evidence/cards-SET-013.txt)
-  - [x] Fresh profile on Windows → Ctrl+Shift+G renames the tab, Ctrl+Shift+P from a terminal moves focus
+  - [x] Fresh profile on Windows → Ctrl+Shift+G renames the tab, F6 from a terminal moves focus (T-800, DT-C226: Ctrl+Shift+P opens Go to / Run a command)
         to the top bar; no two default chords clash in a shared scope on any platform. (T-673;
         evidence/T-673.txt)
   - [x] With a menu, the palette or a modal dialog or question up, an app chord (Ctrl+T, Ctrl+W, Ctrl+Tab,
@@ -353,7 +353,7 @@ Compat: default chords, macOS first and then Windows and Linux where they differ
   Alt+1 to 9; settings.search Mod+F; split right Mod+D | Mod+Shift+D; split down Mod+Shift+D |
   Alt+Shift+D; terminal.clear Mod+K; step through workspace screens Mod+Alt+V; focus the next terminal
   that needs you Mod+Shift+J | Ctrl+J; tab.rename Mod+R | Mod+Shift+G; move focus to the
-  top bar Mod+Shift+P; macOS only: workspace.rename Mod+Alt+R, new agent tab Mod+Alt+T (the ports
+  top bar F6; macOS only: workspace.rename Mod+Alt+R, new agent tab Mod+Alt+T (the ports
   panel toggle went with VIEW-079). Shipped without a chord: open board,
   dashboard.toggle, view.tasks, view.inbox, view.floor, sidebar.checks.toggle, sleeping workspaces
   panel toggle, quick commands menu, send review notes, equalise pane

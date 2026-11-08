@@ -218,7 +218,7 @@ test("T-798 (P4B-01): worktrees off hides Create, Rename and Delete worktree fro
     expect(worktreesOffNote(id, false), id).toBeNull();
   }
   expect(worktreesOffNote("workspace.openBoard", true)).toBeNull(); // the rest of the workspace commands still run
-  expect(labels(true)).toContain("Switch workspace");
+  expect(labels(true)).toContain("Go to / Run a command");
   // The build ships with worktrees off, and the window's key switch asks before it acts.
   expect(SINGLE_FOLDER).toBe(true);
   expect(labels(true)).toEqual(commandRows(map, [], undefined, () => undefined).map((r) => r.label));
