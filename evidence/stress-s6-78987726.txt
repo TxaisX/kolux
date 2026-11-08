@@ -1,0 +1,43 @@
+stress S6 (Unicode and ANSI torture (one pane)) at 2026-11-08T16:25:22.801Z on 78987726 (G:\Dev\kolux-rs-lanes\ready-tools)
+args: S6 --port 1423 --cdp 9263 --temp G:/Temp/stress/ready-tools-T-813; ran 289 s
+
+PASS  every payload was written to the pane and the program finished
+      bar: 11 of 11 within 120 s
+      measured: 11 of 11 ran to the end; seconds [zwj 3.6, rtl 3.2, combining 3.6, longline 3.4, csi 3.4, utf8 3.1, osc 4.9, modes 3.4, fuzz 4.1, win:0 3.4, win:1 3.4]; write time ms [zwj 20, rtl 4, combining 6, longline 6, csi 116, utf8 31, osc 1714, modes 301, fuzz 844, win:0 1, win:1 2]
+PASS  no crash: the app process and the page stay up, no panic in the app log, no page error
+      bar: alive after every payload, 0 panics, 0 page errors
+      measured: process alive [zwj true, rtl true, combining true, longline true, csi true, utf8 true, osc true, modes true, fuzz true, win:0 true, win:1 true]; panics 0; page errors [zwj 0, rtl 0, combining 0, longline 0, csi 0, utf8 0, osc 0, modes 0, fuzz 0, win:0 0, win:1 0]
+PASS  no hang over 1 s: longest page timer gap while a payload runs
+      bar: < 1000 ms (idle baseline 34 ms)
+      measured: [zwj 197, rtl 240, combining 107, longline 42, csi 36, utf8 91, osc 53, modes 300, fuzz 127, win:0 30, win:1 26] ms; over the bar: [none]
+PASS  no hang over 1 s: CDP round trip of a trivial script while a payload runs
+      bar: max < 1000 ms, 0 timeouts
+      measured: max ms [zwj 236, rtl 283, combining 242, longline 301, csi 199, utf8 204, osc 225, modes 344, fuzz 209, win:0 219, win:1 172]; p95 ms [zwj 236, rtl 283, combining 242, longline 301, csi 199, utf8 204, osc 225, modes 344, fuzz 209, win:0 219, win:1 172]; over the bar: [none]
+PASS  malformed input is dropped quietly: xterm.js parse-error lines written to the page console per payload
+      bar: 0 console.error lines per payload (a flood costs time and hides real errors)
+      measured: [zwj 0, rtl 0, combining 0, longline 0, csi 0, utf8 0, osc 0, modes 0, fuzz 0, win:0 0, win:1 0]
+INCONCLUSIVE  cursor position: the cursor the terminal draws sits right after the marker the program wrote last
+      bar: cursor on the marker row, text before it exactly "S6C", for every payload
+      measured: [zwj row 2/48 before-cursor "S6C"; rtl row 2/48 before-cursor "S6C"; combining no cursor drawn; longline row 2/48 before-cursor "S6C"; csi row 2/48 before-cursor "S6C"; utf8 row 2/48 before-cursor "S6C"; osc row 2/48 before-cursor "S6C"; modes row 2/48 before-cursor "S6C"; fuzz row 2/48 before-cursor "S6C"; win:0 row 2/48 before-cursor "S6C"; win:1 row 2/48 before-cursor "C"]
+INCONCLUSIVE  cursor position: the terminal's own report (CSI 6n) agrees with the drawn cursor
+      bar: answers within 4 s; column 4; same row as the drawn cursor
+      measured: [zwj 2;4 in 30 ms; rtl 2;4 in 31 ms; combining 2;4 in 33 ms; longline 2;4 in 31 ms; csi 2;4 in 30 ms; utf8 2;4 in 30 ms; osc 2;4 in 30 ms; modes 2;4 in 31 ms; fuzz 2;4 in 31 ms; win:0 2;4 in 33 ms; win:1 1;1 in 30 ms]
+INCONCLUSIVE  cursor position: where the width is known, the column is the known one
+      bar: reported column == expected, before any clean-up
+      measured: [zwj expected 7 got column 34 (row 48) (width 103); rtl expected 21 got column 21 (row 48) (width 104); combining expected 11 got column 21 (row 48) (width 104); longline expected 24 got column 24 (row 48) (width 104)]
+FAIL  the pane still works after each payload
+      bar: the done line shows within 30 s and a typed command's output shows
+      measured: [zwj done true after 3.0 s echo true, rtl done true after 3.0 s echo true, combining done true after 0.2 s echo true, longline done true after 3.0 s echo true, csi done true after 3.3 s echo true, utf8 done true after 3.4 s echo true, osc done true after 3.5 s echo true, modes done true after 3.3 s echo true, fuzz done true after 3.5 s echo true, win:0 done true after 3.0 s echo true, win:1 done false (waited 120.3 s) echo false]
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.4 s; pre-close tree 8 (msedgewebview2.exe x6, conhost.exe x1, powershell.exe x1); survivors 0 (none)
+
+notes:
+  - idle baseline: longest page timer gap 34 ms over 165 ticks (20 ms timer)
+  - combining: no cursor drawn after the payload: {"cursor":false,"rows":48,"markerRow":1,"lastText":47,"anyCursor":0,"scrolled":{"top":0,"h":713,"c":713}}; after the echo: {"cursor":false,"markerRow":1}
+  - win:1: revive tries (true = the pane showed output again): {"sizeAtFail":48,"nothing":true}
+  - win:1: the pane did not recover (done false, echo false); it was closed and a new terminal opened
+  - the three cursor checks are INCONCLUSIVE (harness): csi and win:1 fail only because CSI 8;1;1t froze the pane at 1x1; combining sometimes shows no cursor span (blink or DOM); fuzz ends inside an escape sequence; known widths assume grapheme-cluster widths and ConPTY re-emits output with its own width tables, so a width difference cannot be pinned on xterm.js alone
+  - ran: zwj rtl combining longline csi utf8 osc modes fuzz win:0 win:1; not run: none
+
+S6: FAIL

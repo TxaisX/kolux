@@ -5,7 +5,7 @@
 import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import { TERM, addProjectAndOpen, appMemMB, fmt, gitInit, installProbe, pageErrors, seedProfile, snapshot, stats } from "./lib.mjs";
+import { TERM, addProjectAndOpen, appMemMB, fmt, gitInit, installProbe, pageErrors, seedProfile, snapshot, stats, openDiffFromCli } from "./lib.mjs";
 
 export const title = "Editor with big files and a big diff";
 export const seed = seedProfile;
@@ -146,21 +146,14 @@ export async function run({ launch, checks, opts }) {
     r.memAfter = appMemMB(await snapshot(app)) - before;
   }
 
-  // Diffs through the "Changed file diff" menu entry.
+  // Diffs through the command line event (cli-workspace file-diff).
   const DIFF_STATE = `(() => {
     const ask = [...document.querySelectorAll(".notice.md-banner")].find((e) => /large/i.test(e.textContent)); if (ask) return { kind: "asked", text: ask.textContent.slice(0, 160) };
     const d = document.querySelector(".diff-body .cm-editor .cm-line, .diff-body .cm-mergeView .cm-line, .diff-body .cm-line"); if (d) return { kind: "drawn", lines: document.querySelectorAll(".diff-body .cm-line").length };
     return null;
   })()`;
   async function openDiffByMenu(name) {
-    await app.click("button.newtab");
-    await app.sleep(500);
-    await app.evalJs(`(() => { const it = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((x) => /Changed file diff/.test(x.textContent)); if (it) it.click(); return it ? "ok" : null; })()`);
-    await app.waitFor("the changed file picker", () => app.exists('[role="dialog"][aria-label="Open a changed file"] .picker-input'), 15000, 200);
-    await app.focusField('[role="dialog"][aria-label="Open a changed file"] .picker-input');
-    await app.cdp("insert", name, "");
-    await app.waitFor(`the picker lists ${name}`, async () => unwrap(await app.evalJs(`[...document.querySelectorAll('[role="dialog"][aria-label="Open a changed file"] *')].some(e => e.children.length === 0 && e.textContent.includes(${JSON.stringify(name)}))`)), 30000, 200);
-    await app.cdp("key", "Enter", "0");
+    await openDiffFromCli(app, repo, name);
   }
   for (const [name, expect] of [["rewrite19k.txt", "asked"], ["rewrite25k.txt", "asked"]]) {
     const r = await watch(name, () => openDiffByMenu(name), DIFF_STATE);
