@@ -84,7 +84,7 @@ export async function run({ launch, checks }) {
         app.evalJs(`({ panes: document.querySelectorAll(${JSON.stringify(TERM)}).length, menuOpen: !!document.querySelector('[role="menu"]'), dialog: (document.querySelector('[role="alertdialog"]')?.textContent ?? "").slice(0, 120), notice: [...document.querySelectorAll('.notice, .toast, [role="alert"], [role="status"]')].map((e) => e.textContent.trim().slice(0, 100)).filter(Boolean) })`).catch((e) => `ERR ${e.message.slice(0, 100)}`),
         app.sleep(15000).then(() => "NO ANSWER in 15 s"),
       ]);
-      const procs = (await snapshot(app)).filter((p) => /kolux-rs|msedgewebview2/.test(p.name)).map((p) => `${p.name}#${p.pid} threads ${p.threads}`).join(", ");
+      const procs = (await snapshot(app)).filter((p) => /^kolux(-rs)?(\.exe)?$|msedgewebview2/.test(p.name)).map((p) => `${p.name}#${p.pid} threads ${p.threads}`).join(", ");
       checks.note(`stall in round ${r}: page probe after ${((Date.now() - t1) / 1000).toFixed(1)} s = ${JSON.stringify(probe)}; ${procs}`);
       break;
     }

@@ -63,7 +63,7 @@ describe("release notes (APP-059)", () => {
   });
   it("the manifest is the updater's signed JSON with the GitHub download address", () => {
     const m = manifest("0.1.1", "- x", "sig", downloadUrl("0.1.1"), new Date("2026-10-09T00:00:00Z"));
-    expect(m.platforms["windows-x86_64"].url).toBe("https://github.com/TxaisX/kolux/releases/download/v0.1.1/Kolux.RS_0.1.1_x64-setup.exe");
+    expect(m.platforms["windows-x86_64"].url).toBe("https://github.com/TxaisX/kolux/releases/download/v0.1.1/Kolux_0.1.1_x64-setup.exe");
     expect(m.pub_date).toBe("2026-10-09T00:00:00.000Z");
   });
 });
@@ -178,7 +178,7 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
         if (opts.env?.TAURI_SIGNING_PRIVATE_KEY) fs.writeFileSync(exe + ".sig", "c2lnbmF0dXJl");
       }
       if (name === "tauri signer") return execFileSync(process.execPath, [TAURI_JS, ...args.slice(1)], { env: opts.env, encoding: "utf8", windowsHide: true });
-      if (name === "kolux.exe") {
+      if (name === "kolux-cli.exe") {
         if (args[0] === "--version") return version();
         if (args[0] === "--help") return "kolux --version\nkolux worktree create --name <name>";
         return JSON.stringify({ success: true, result: { added: ["uiLook", "language"] } });
@@ -270,8 +270,8 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
       const t = tools(s.checkout, { tagName: "v0.1.7", body: "" });
       const r = buildOnce({ repo: s.origin }, s.env, t.exec);
       expect(r).toMatchObject({ version: "0.1.8", published: true });
-      const build = t.calls.filter((c) => ["pnpm", "cargo", "kolux.exe"].includes(c.name));
-      expect(build.map((c) => c.name)).toEqual(["pnpm", "cargo", "pnpm", "kolux.exe", "kolux.exe", "kolux.exe"]);
+      const build = t.calls.filter((c) => ["pnpm", "cargo", "kolux-cli.exe"].includes(c.name));
+      expect(build.map((c) => c.name)).toEqual(["pnpm", "cargo", "pnpm", "kolux-cli.exe", "kolux-cli.exe", "kolux-cli.exe"]);
       for (const c of build) expect(held(c), `${c.name} ${c.args.join(" ")}`).toEqual([]);
       const signer = t.calls.filter((c) => c.name === "tauri signer");
       expect(signer.map((c) => c.args.slice(1, 5))).toEqual([["signer", "sign", "--app-version", "0.1.8"]]);

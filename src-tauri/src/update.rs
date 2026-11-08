@@ -21,7 +21,15 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// The update manifest of the newest published release (OD-20: Kolux's own feed).
-pub const RELEASE_ENDPOINT: &str = "https://github.com/TxaisX/kolux/releases/latest/download/latest.json";
+pub const DEFAULT_RELEASE_ENDPOINT: &str = "https://github.com/TxaisX/kolux/releases/latest/download/latest.json";
+/// Where a release build reads its feed. The release job never sets `KOLUX_RS_RELEASE_ENDPOINT`, so a
+/// shipped build reads the GitHub feed above; the update proof rig (scripts/prove/update-rig.mjs, T-785)
+/// builds scratch-identity installers against a feed on the loopback address. It is a build-time
+/// value: an installed release build still takes no feed from its environment.
+pub const RELEASE_ENDPOINT: &str = match option_env!("KOLUX_RS_RELEASE_ENDPOINT") {
+    Some(e) => e,
+    None => DEFAULT_RELEASE_ENDPOINT,
+};
 /// The minisign public key releases are signed with. The release job (scripts/release.mjs, T-091)
 /// builds it in from the public half of the signing key; a build made without it says it cannot
 /// update instead of accepting anything unsigned.
@@ -553,6 +561,17 @@ mod tests {
     fn development_copy_takes_a_test_feed() {
         let f = feed(true, false, env_with(&[(ENV_ENDPOINT, "http://127.0.0.1:9/latest.json "), (ENV_PUBKEY, "abc")])).unwrap();
         assert_eq!(f, Feed { endpoint: "http://127.0.0.1:9/latest.json".into(), pubkey: "abc".into() });
+    }
+
+    #[test]
+    fn the_shipped_feed_is_the_github_release_manifest() {
+        // The release job (scripts/release.mjs) sets no endpoint override; only the T-785 proof rig does.
+        assert_eq!(DEFAULT_RELEASE_ENDPOINT, "https://github.com/TxaisX/kolux/releases/latest/download/latest.json");
+        if option_env!("KOLUX_RS_RELEASE_ENDPOINT").is_none() {
+            assert_eq!(RELEASE_ENDPOINT, DEFAULT_RELEASE_ENDPOINT);
+        }
+        let src = include_str!("../../scripts/release.mjs");
+        assert!(!src.contains("KOLUX_RS_RELEASE_ENDPOINT"), "the release job must never point a shipped build at another feed");
     }
 
     #[test]

@@ -924,7 +924,7 @@ mod tests {
         let row = |pid: u32, ppid: u32, name: &str| (pid, ppid, name.to_string());
         let me = 100;
         let table = vec![
-            row(me, 1, "kolux-rs.exe"),
+            row(me, 1, "kolux.exe"),
             row(200, me, "msedgewebview2.exe"), // the browser process
             row(201, 200, "msedgewebview2.exe"), // its renderer and helpers
             row(202, 200, "msedgewebview2.exe"),

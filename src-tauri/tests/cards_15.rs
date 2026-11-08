@@ -3,7 +3,7 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::artifacts::{self, Library, Origin};
+use kolux_lib::artifacts::{self, Library, Origin};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 

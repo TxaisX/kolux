@@ -1,5 +1,5 @@
 [package]
-name = "kolux-rs"
+name = "kolux"
 version = "0.1.0"
 description = "Kolux: run many AI coding agents side by side"
 authors = ["Txais Xiong"]
@@ -8,10 +8,10 @@ publish = false
 edition = "2021"
 # File::try_lock (the skill lock, SKILL-022) is stable from Rust 1.89.
 rust-version = "1.90"
-default-run = "kolux-rs"
+default-run = "kolux"
 
 [lib]
-name = "kolux_rs_lib"
+name = "kolux_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
@@ -19,10 +19,12 @@ name = "kolux-dev"
 path = "src/bin/kolux-dev.rs"
 
 # CLI-006: the shipped command line. Only the release script builds it, so a development build
-# never puts a `kolux` on its panes' search path that would stand in for the installed one.
+# never puts a `kolux` on its panes' search path that would stand in for the installed one. T-790: the app
+# program is now `kolux` too, so cargo cannot hold both under one name; this one is built as `kolux-cli`
+# and shipped as bin\kolux.exe (scripts/release.mjs and the update rig copy it under that name).
 [[bin]]
-name = "kolux"
-path = "src/bin/kolux.rs"
+name = "kolux-cli"
+path = "src/bin/kolux-cli.rs"
 required-features = ["release-cli"]
 
 [features]
@@ -74,7 +76,7 @@ windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_System_C
 
 [dev-dependencies]
 # Integration tests reach the test-only fakes without a flag; a release build never sees dev-dependencies.
-kolux-rs = { path = ".", features = ["test-fakes"] }
+kolux = { path = ".", features = ["test-fakes"] }
 
 [profile.release]
 codegen-units = 1

@@ -840,7 +840,7 @@ mod tests {
     #[test]
     fn cli007_an_installed_copy_registers_the_bin_folder_beside_the_app() {
         let d = scratch("installed");
-        let app = d.join(if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" });
+        let app = d.join(if cfg!(windows) { "kolux.exe" } else { "kolux" });
         std::fs::write(&app, "").unwrap();
         // A development build: no bin folder, so the CLI is the program's own folder.
         assert_eq!(folder_and_exe_of(app.clone(), None).unwrap(), (d.to_path_buf(), app.clone()));

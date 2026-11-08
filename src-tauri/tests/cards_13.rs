@@ -2,8 +2,8 @@
 //! endpoint (request gate) and the CLI line port (real listener on a loopback port); no network beyond 127.0.0.1.
 
 use base64::Engine;
-use kolux_rs_lib::cli::{call, serve_loop, Request};
-use kolux_rs_lib::hooks::{answer, gate, parse_request, Request as Http};
+use kolux_lib::cli::{call, serve_loop, Request};
+use kolux_lib::hooks::{answer, gate, parse_request, Request as Http};
 use serde_json::json;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};

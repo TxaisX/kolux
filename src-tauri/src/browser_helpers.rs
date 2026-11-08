@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn brow043_a_crashed_runs_helper_is_closed_at_start() {
         let records = [h(500, 77, 9, 900)];
-        let look = system(&[(10, 1000, "kolux-rs.exe"), (500, 77, "msedgewebview2.exe")]);
+        let look = system(&[(10, 1000, "kolux.exe"), (500, 77, "msedgewebview2.exe")]);
         assert_eq!(to_close(&records, ME, look), vec![500]);
     }
 
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn brow043_this_runs_and_a_live_runs_helpers_are_left_alone() {
         let records = [h(500, 77, ME.0, ME.1), h(600, 88, 20, 2000)];
-        let look = system(&[(500, 77, WV), (600, 88, WV), (20, 2000, "kolux-rs.exe")]);
+        let look = system(&[(500, 77, WV), (600, 88, WV), (20, 2000, "kolux.exe")]);
         assert!(to_close(&records, ME, &look).is_empty());
         assert_eq!(kept(&records, ME, &look), vec![h(600, 88, 20, 2000)], "the live run keeps its record");
         // The other run's id now belongs to a later process: that run is gone, its helper closes.

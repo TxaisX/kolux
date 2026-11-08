@@ -45,7 +45,7 @@ export function sampler(app, log) {
   const refresh = async () => {
     try {
       names = new Map((await app.treeOf(app.pid)).map((p) => [p.pid, p.name]));
-      names.set(app.pid, "kolux-rs.exe");
+      names.set(app.pid, "kolux.exe");
     } catch {}
   };
   const loop = (async () => {
@@ -146,9 +146,9 @@ export async function runProxy(mode, ctx, { check, log }, ports) {
     const rows = [...seen.keys()];
     log(`TCP sample (${[...seen.values()].reduce((a, b) => a + b, 0)} sightings, distinct): ${JSON.stringify(rows)}`);
     const outside = rows.filter((r) => !local(r.split(" -> ")[1]));
-    const own = rows.filter((r) => r.startsWith("kolux-rs.exe")), ownOut = outside.filter((r) => r.startsWith("kolux-rs.exe"));
+    const own = rows.filter((r) => r.startsWith("kolux.exe")), ownOut = outside.filter((r) => r.startsWith("kolux.exe"));
     const engOut = outside.filter((r) => r.startsWith("msedgewebview2.exe"));
-    check("Kolux's own process (kolux-rs.exe, where the size probe, icon fetch and diagnosis run) made no connection to anything but this machine", own.length > 0 && ownOut.length === 0, JSON.stringify(ownOut));
+    check("Kolux's own process (kolux.exe, where the size probe, icon fetch and diagnosis run) made no connection to anything but this machine", own.length > 0 && ownOut.length === 0, JSON.stringify(ownOut));
     log(`ENGINE FINDING (not a Kolux-client claim): WebView2 direct non-loopback sockets = ${JSON.stringify(engOut)}; stub saw the page = ${mine.some((e) => e.method === "GET" && e.url.endsWith(`${HOST}/`))}`);
   } else {
     const url = `http://127.0.0.1:${ports.web}/`;

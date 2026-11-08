@@ -2007,12 +2007,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "kolux-rs"
+name = "kolux"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
  "jiff",
- "kolux-rs",
+ "kolux",
  "libc",
  "portable-pty",
  "regex",

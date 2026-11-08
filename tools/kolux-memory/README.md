@@ -38,7 +38,7 @@ Defaults can be overridden with `--sessions`, `--repo`, `--vault`, `--db`, or th
 variables `KOLUX_MEMORY_SESSIONS`, `KOLUX_MEMORY_REPO`, `KOLUX_MEMORY_VAULT`, `KOLUX_MEMORY_DB`.
 
 The default database is
-`%APPDATA%\com.txaisxiong.kolux-rs\memory\kolux-memory.db`. A test or a second profile can point
+`%APPDATA%\com.txaisxiong.kolux\memory\kolux-memory.db`. A test or a second profile can point
 `--db` somewhere else. Nothing in the repo is modified by a build.
 
 ## What is stored

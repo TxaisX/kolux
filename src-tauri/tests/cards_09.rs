@@ -1,11 +1,11 @@
 //! spec/09 P0 boxes AUTO-001, AUTO-004, AUTO-005: timetables, event triggers and the dialog's save.
 //! Every call goes through the crate's pub API; the window is a recording closure and no agent starts.
 
-use kolux_rs_lib::automations::{self as auto, Launch, KEY, RUNS_KEY};
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::projects;
-use kolux_rs_lib::scm::{PolledPr, Pr};
-use kolux_rs_lib::state::Store;
+use kolux_lib::automations::{self as auto, Launch, KEY, RUNS_KEY};
+use kolux_lib::git::Git;
+use kolux_lib::projects;
+use kolux_lib::scm::{PolledPr, Pr};
+use kolux_lib::state::Store;
 use serde_json::{json, Value};
 use std::cell::RefCell;
 use std::collections::HashMap;

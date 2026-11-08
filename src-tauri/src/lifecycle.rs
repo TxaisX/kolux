@@ -848,23 +848,23 @@ mod tests {
     #[test]
     fn app001_the_duplicate_exit_code_is_never_zero_and_the_name_carries_the_identifier() {
         assert_ne!(DUPLICATE_EXIT, 0);
-        assert_eq!(mutex_name("com.txaisxiong.kolux-rs.shell"), "Local\\com.txaisxiong.kolux-rs.shell.instance");
+        assert_eq!(mutex_name("com.txaisxiong.kolux.shell"), "Local\\com.txaisxiong.kolux.shell.instance");
         assert_ne!(mutex_name("a"), mutex_name("b"), "a lane build never blocks the installed app");
     }
 
     #[test]
     fn app001_one_copy_per_profile_and_two_profiles_run_side_by_side() {
-        let id = "com.txaisxiong.kolux-rs";
-        let real = Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux-rs");
-        let scratch = Path::new(r"G:\Temp\live-installed\home\AppData\Roaming\com.txaisxiong.kolux-rs");
+        let id = "com.txaisxiong.kolux";
+        let real = Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux");
+        let scratch = Path::new(r"G:\Temp\live-installed\home\AppData\Roaming\com.txaisxiong.kolux");
         assert_eq!(mutex_name_for(id, real), mutex_name_for(id, real), "the same profile keeps its name");
         assert_eq!(
             mutex_name_for(id, real),
-            mutex_name_for(id, Path::new(r"c:\users\ME\appdata\roaming\COM.TXAISXIONG.KOLUX-RS")),
+            mutex_name_for(id, Path::new(r"c:\users\ME\appdata\roaming\COM.TXAISXIONG.KOLUX")),
             "Windows paths are case-insensitive: one profile is still one copy"
         );
         assert_ne!(mutex_name_for(id, real), mutex_name_for(id, scratch), "a proof copy on its own profile never blocks the real app");
-        assert!(mutex_name_for(id, real).starts_with("Local\\com.txaisxiong.kolux-rs.instance-"), "the name stays in the build's namespace");
+        assert!(mutex_name_for(id, real).starts_with("Local\\com.txaisxiong.kolux.instance-"), "the name stays in the build's namespace");
     }
 
     #[cfg(windows)]

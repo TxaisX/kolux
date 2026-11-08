@@ -5,7 +5,7 @@
 //
 //   pnpm smoke                       launch the app from this checkout with its own profile, run, close, clean up
 //   pnpm smoke -- --attach           drive an app that is already running with --remote-debugging-port=<cdp>
-//   options: --port 1431 (vite) · --cdp 9240 · --identifier com.txaisxiong.kolux-rs.smoke · --temp <folder>
+//   options: --port 1431 (vite) · --cdp 9240 · --identifier com.txaisxiong.kolux.smoke · --temp <folder>
 //            --only 1,3 · --keep (leave the app and the temp folder for a look) · --timeout <minutes for the first build>
 //            --offscreen (T-560: the app's window is moved far off-screen once it shows; CDP works as usual;
 //                         not with --keep)
@@ -29,7 +29,7 @@
 //         non-default setting live, the app pid's descendant tree is captured (Win32_Process ParentProcessId
 //         walk), the window is closed through the app's own path (window close over CDP, the same as the X
 //         button; never taskkill) and every process from that tree still alive afterwards is a survivor: FAIL
-//         on any. The same profile is relaunched (the built kolux-rs.exe from this checkout, vite restarted by
+//         on any. The same profile is relaunched (the built kolux.exe from this checkout, vite restarted by
 //         this script when tauri dev took it down): Kolux's settings.json must be byte-identical to its
 //         pre-quit bytes before anything is touched, the setting must hold, and every restored shell must echo
 //         a marker. Then a saved layout of 12 shell panes is written and the app is relaunched 10 times; 15 s
@@ -82,7 +82,7 @@ const opt = (name, fallback) => {
 const flag = (name) => args.includes(`--${name}`);
 const PORT = opt("port", "1431");
 const CDP = opt("cdp", "9240");
-const IDENTIFIER = opt("identifier", "com.txaisxiong.kolux-rs.smoke");
+const IDENTIFIER = opt("identifier", "com.txaisxiong.kolux.smoke");
 const TEMP = opt("temp", "G:\\Temp\\kolux-rs-smoke");
 const ATTACH = flag("attach");
 const KEEP = flag("keep");

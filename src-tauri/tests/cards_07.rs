@@ -5,14 +5,14 @@
 //! is read, started or contacted, and no credential store of the machine is touched.
 #![cfg(windows)]
 
-use kolux_rs_lib::claude_accounts as ca;
-use kolux_rs_lib::claude_key as ck;
-use kolux_rs_lib::codex_accounts as cx;
-use kolux_rs_lib::grok;
-use kolux_rs_lib::install;
-use kolux_rs_lib::routing;
-use kolux_rs_lib::secrets;
-use kolux_rs_lib::state::Store;
+use kolux_lib::claude_accounts as ca;
+use kolux_lib::claude_key as ck;
+use kolux_lib::codex_accounts as cx;
+use kolux_lib::grok;
+use kolux_lib::install;
+use kolux_lib::routing;
+use kolux_lib::secrets;
+use kolux_lib::state::Store;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -363,8 +363,8 @@ fn acct013_box2_a_claude_usage_limit_reaches_the_card_as_a_reset_time_with_no_fi
     let store = store.lock().unwrap();
     let resets = NOW + 3 * 3_600_000;
     // The status line reports the 5-hour window used up; the hook keeps when it lifts (hooks.rs:545).
-    let limits = [kolux_rs_lib::hooks::Limit { kind: "five_hour".into(), used_percent: 100.0, resets_at: Some(resets) }];
-    let lifts = kolux_rs_lib::hooks::exhausted(&limits).unwrap();
+    let limits = [kolux_lib::hooks::Limit { kind: "five_hour".into(), used_percent: 100.0, resets_at: Some(resets) }];
+    let lifts = kolux_lib::hooks::exhausted(&limits).unwrap();
     store.set(ck::LIMIT_KEY, &lifts.to_string()).unwrap();
     // MIRROR claude_key.rs:423-424: the card's attention is usage_limit() of the kept time.
     let kept = store.get(ck::LIMIT_KEY).unwrap().and_then(|t| t.parse().ok());
@@ -603,7 +603,7 @@ fn acct003_box1_install_progress_moves_then_the_tool_is_found_with_no_restart() 
     let winget = fake_winget(&dir, &bin);
     let argv = winget_line(&winget).get_argv().iter().map(|a| a.to_string_lossy().into_owned()).collect::<Vec<_>>();
     assert_eq!(&argv[1..4], ["install", "--id", "OpenAI.Codex"]);
-    assert!(kolux_rs_lib::agents::find_in(std::slice::from_ref(&bin), "codex").is_none(), "Codex is missing to begin with");
+    assert!(kolux_lib::agents::find_in(std::slice::from_ref(&bin), "codex").is_none(), "Codex is missing to begin with");
     // The install, with the progress the card would show after each poll.
     let seen: Arc<Mutex<Vec<u8>>> = Arc::default();
     let tick = seen.clone();
@@ -628,7 +628,7 @@ fn acct003_box1_install_progress_moves_then_the_tool_is_found_with_no_restart() 
     std::env::set_var("PATH", &old);
     let dirs: Vec<PathBuf> = std::env::split_paths(&path).collect();
     assert!(dirs.iter().any(|d| d == &bin), "the new folder is on the program search path");
-    assert!(kolux_rs_lib::agents::find_in(&dirs, "codex").is_some(), "Codex is found right after the install");
+    assert!(kolux_lib::agents::find_in(&dirs, "codex").is_some(), "Codex is found right after the install");
     assert_eq!(install::found_after("Codex", true), Ok(()));
 }
 

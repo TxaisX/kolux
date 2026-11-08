@@ -38,6 +38,7 @@ mod groups;
 pub mod hooks;
 mod include;
 mod import;
+mod profile_move;
 // T-043-e: the macOS keychain rule table; the Mac wiring that calls it is T-043-f.
 #[cfg_attr(not(test), allow(dead_code))]
 mod keychain;
@@ -260,7 +261,13 @@ pub fn run() {
             // launcher owns without breakaway, say) the children would outlive a crash, so that is logged.
             let job_ok = procs::app_job_start();
             let dir = app.path().app_data_dir()?;
+            // T-790: the first start under the new identifier copies the old profile in (never deletes it),
+            // before anything writes into the new folder; what it did is logged once the log has a place.
+            let moved = profile_move::run(&dir);
             diag::set_dir(&dir);
+            if let Some(m) = &moved {
+                diag::write(&dir, &format!("kolux-rs: {}", m.summary()));
+            }
             // T-182 (APP-020, macOS and Linux): the login shell's environment, read in the background.
             login_env::start();
             // T-283 (BROW-043): an earlier run's leftover browser helpers are closed, on a thread of

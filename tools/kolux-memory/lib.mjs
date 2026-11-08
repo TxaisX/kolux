@@ -29,7 +29,7 @@ export function defaults() {
     sessions: process.env.KOLUX_MEMORY_SESSIONS || join(home, ".local", "share", "opencode", "opencode.db"),
     repo: process.env.KOLUX_MEMORY_REPO || REPO,
     vault: process.env.KOLUX_MEMORY_VAULT || join(REPO, "..", "Projects", "Txais Brain"),
-    db: process.env.KOLUX_MEMORY_DB || join(appData, "com.txaisxiong.kolux-rs", "memory", "kolux-memory.db"),
+    db: process.env.KOLUX_MEMORY_DB || join(appData, "com.txaisxiong.kolux", "memory", "kolux-memory.db"),
     ledger: process.env.KOLUX_MEMORY_LEDGER || "",
     github: false,
     git: true,

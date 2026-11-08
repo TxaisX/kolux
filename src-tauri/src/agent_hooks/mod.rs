@@ -454,7 +454,7 @@ pub const TARGETS: &str = "targets";
 
 /// The production app's identifier (`tauri.conf.json`), which is also the name of its profile
 /// folder. A profile folder with any other name belongs to a lane, smoke or test run.
-pub const PRODUCTION_ID: &str = "com.txaisxiong.kolux-rs";
+pub const PRODUCTION_ID: &str = "com.txaisxiong.kolux";
 
 /// A fenced run writes a Claude settings file only when this file sits in its folder or in a
 /// folder above it, inside the temp folder (T-152-b (2)).

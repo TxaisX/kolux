@@ -156,7 +156,7 @@ export async function run({ launch, checks, opts }) {
     if (!r.cursor?.cursor) checks.note(name + ": no cursor drawn after the payload: " + JSON.stringify({ ...r.cursor, markerHtml: undefined }) + "; after the echo: " + JSON.stringify(r.cursorAfterEcho ? { cursor: r.cursorAfterEcho.cursor, prefix: r.cursorAfterEcho.prefix, markerRow: r.cursorAfterEcho.markerRow } : null));
     if (!r.done || !r.alive) await revive(app, r, name);
     const snap = await snapshot(app).catch(() => []);
-    r.procAlive = snap.some((q) => q.name === "kolux-rs.exe");
+    r.procAlive = snap.some((q) => q.name === "kolux.exe");
     const allErrs = await pageErrors(app).catch(() => ["unreachable"]);
     const errList = allErrs.slice(errSeen).filter((e) => !/xterm.js: Parsing error/.test(String(e)));
     errSeen = allErrs.length;

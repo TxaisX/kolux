@@ -302,8 +302,132 @@
   Pop $R9
 !macroend
 
+; T-790 (DT-C212): the product is "Kolux", no longer "Kolux RS". An install of the old name sits in its own
+; folder under its own Uninstall entry ("<product> RS"), so without this step the new one would land beside it
+; and both would show in Settings > Apps. Before the files go in, the old install is retired: its own
+; uninstaller runs in place (/P, or /S in a silent install; never the delete-my-data box, which stays off), then
+; its leftovers and its Uninstall entry go. Nothing here touches the profile: the old profile folder
+; (%APPDATA%\com.txaisxiong.kolux-rs) is never deleted, and the app copies it into the new one when it first
+; starts (profile_move.rs). The old uninstaller takes its own bin folder off the PATH; $KoluxOldHadPath says
+; it was there (or could not be read, a PATH over the NSIS limit), so POSTINSTALL puts the new bin folder back
+; even in an update, which otherwise leaves the PATH as the user has it (T-789).
+!define KOLUX_OLD_UNINST "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCTNAME} RS"
+Var KoluxOldDir
+Var KoluxOldHadPath
+
+; $KoluxOldDir: the folder the old install lives in, or "" when there is no old entry (or it names no folder).
+!macro KOLUX_OLD_DIR
+  StrCpy $KoluxOldDir ""
+  ClearErrors
+  ReadRegStr $R1 HKCU "${KOLUX_OLD_UNINST}" "InstallLocation"
+  ${If} $R1 == ""
+    ReadRegStr $R0 HKCU "${KOLUX_OLD_UNINST}" "UninstallString"
+    StrCpy $R2 $R0 1
+    ${If} $R2 == '"'
+      StrCpy $R0 $R0 "" 1
+      StrCpy $R3 0
+      ${Do}
+        StrCpy $R2 $R0 1 $R3
+        ${If} $R2 == '"'
+        ${OrIf} $R2 == ""
+          ${ExitDo}
+        ${EndIf}
+        IntOp $R3 $R3 + 1
+      ${Loop}
+      StrCpy $R0 $R0 $R3
+    ${EndIf}
+    StrLen $R3 $R0
+    IntOp $R3 $R3 - 14
+    ${If} $R3 > 0
+      StrCpy $R2 $R0 "" $R3
+      ${If} $R2 == "\uninstall.exe"
+        StrCpy $R1 $R0 $R3
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
+  ; A value written with quotes around the folder loses them.
+  StrCpy $R2 $R1 1
+  ${If} $R2 == '"'
+    StrCpy $R1 $R1 "" 1
+  ${EndIf}
+  StrCpy $R2 $R1 1 -1
+  ${If} $R2 == '"'
+    StrCpy $R1 $R1 -1
+  ${EndIf}
+  StrCpy $R2 $R1 1 -1
+  ${If} $R2 == "\"
+    StrCpy $R1 $R1 -1
+  ${EndIf}
+  StrCpy $KoluxOldDir $R1
+!macroend
+
+!macro KOLUX_RETIRE_OLD
+  !insertmacro KOLUX_SAVE
+  StrCpy $KoluxOldHadPath 0
+  !insertmacro KOLUX_OLD_DIR
+  ClearErrors
+  ReadRegStr $R0 HKCU "${KOLUX_OLD_UNINST}" "DisplayName"
+  ${If} ${Errors}
+  ${AndIf} $KoluxOldDir == ""
+    ; No old install: nothing to do.
+  ${Else}
+    DetailPrint "Found an earlier install under the old name (${PRODUCTNAME} RS)"
+    ; Was the old bin folder on the PATH? A PATH too long to read counts as yes.
+    ${If} $KoluxOldDir != ""
+    ${AndIf} $KoluxOldDir != "$INSTDIR"
+      StrCpy $R0 $INSTDIR
+      StrCpy $INSTDIR $KoluxOldDir
+      !insertmacro KOLUX_PATH_NAME
+      ${If} $R9 != ""
+        ClearErrors
+        ReadRegStr $R8 HKCU "Environment" $R9
+        ${If} ${Errors}
+          StrCpy $KoluxOldHadPath 1
+        ${Else}
+          !insertmacro KOLUX_PATH_CUT
+          ${If} $R6 > 0
+            StrCpy $KoluxOldHadPath 1
+          ${EndIf}
+        ${EndIf}
+      ${EndIf}
+      StrCpy $INSTDIR $R0
+      ; Retire it: its own uninstaller, run in place, then what it leaves.
+      ${If} ${FileExists} "$KoluxOldDir\uninstall.exe"
+        ${If} ${Silent}
+          StrCpy $R2 "/S"
+        ${Else}
+          StrCpy $R2 "/P"
+        ${EndIf}
+        ClearErrors
+        ExecWait '"$KoluxOldDir\uninstall.exe" $R2 _?=$KoluxOldDir' $R3
+        ${If} ${Errors}
+          StrCpy $R3 "not run"
+        ${EndIf}
+        ${If} $R3 != 0
+          ; T-790 review: the old copy is still installed (its uninstaller could not run, the old app could not
+          ; be stopped, or it was cancelled). Keep its uninstaller and its Settings > Apps entry, and stop here,
+          ; so there are never two copies with no way to remove one. Nothing has been changed yet.
+          DetailPrint "The old uninstaller did not finish (exit code $R3); the install stops and changes nothing"
+          MessageBox MB_OK|MB_ICONSTOP "${PRODUCTNAME} could not remove the earlier ${PRODUCTNAME} RS install (is it still running?). Close it and run this installer again. Nothing was changed." /SD IDOK
+          !insertmacro KOLUX_RESTORE
+          Abort
+        ${EndIf}
+        DetailPrint "The old uninstaller finished"
+        Delete "$KoluxOldDir\uninstall.exe"
+      ${EndIf}
+      ; Only an empty folder goes; anything the user kept in it stays.
+      RMDir "$KoluxOldDir\bin"
+      RMDir "$KoluxOldDir"
+    ${EndIf}
+    DeleteRegKey HKCU "${KOLUX_OLD_UNINST}"
+    DetailPrint "The old ${PRODUCTNAME} RS entry is gone from Settings > Apps; your profile is kept"
+  ${EndIf}
+  !insertmacro KOLUX_RESTORE
+!macroend
+
 !macro NSIS_HOOK_PREINSTALL
   !insertmacro KOLUX_WIN10_NOTICE
+  !insertmacro KOLUX_RETIRE_OLD
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
@@ -334,7 +458,12 @@
 
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "Pick your coding agents when Kolux opens"
-  !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
+  ${If} $KoluxOldHadPath = 1
+    ; T-790: the old install had kolux on the PATH and its uninstaller took it off: put the new one back.
+    !insertmacro KOLUX_PATH_ADD
+  ${Else}
+    !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
+  ${EndIf}
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL

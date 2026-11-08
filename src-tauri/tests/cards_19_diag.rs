@@ -4,7 +4,7 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::diag::{write, FILE_CAP, TOTAL_CAP};
+use kolux_lib::diag::{write, FILE_CAP, TOTAL_CAP};
 use std::fs;
 
 const LINE: usize = 4 * 1024;

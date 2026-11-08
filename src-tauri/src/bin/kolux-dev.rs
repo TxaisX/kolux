@@ -2,5 +2,5 @@
 //! library so the app and this program share one parser and one wire format.
 
 fn main() {
-    std::process::exit(kolux_rs_lib::cli::main(std::env::args().skip(1).collect()));
+    std::process::exit(kolux_lib::cli::main(std::env::args().skip(1).collect()));
 }

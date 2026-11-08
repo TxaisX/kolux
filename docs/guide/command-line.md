@@ -17,11 +17,11 @@ To check which one you are running:
 |---|---|---|
 | Which program is found first | `where.exe kolux` | A path under the Kolux install folder, ending in `bin\kolux.exe` |
 | Version | `kolux --version` | `0.1.0` |
-| Which app the pane belongs to | `$env:KOLUX_APP_DIR` (PowerShell) or `echo %KOLUX_APP_DIR%` (Command Prompt) | A folder ending in `com.txaisxiong.kolux-rs` |
+| Which app the pane belongs to | `$env:KOLUX_APP_DIR` (PowerShell) or `echo %KOLUX_APP_DIR%` (Command Prompt) | A folder ending in `com.txaisxiong.kolux` |
 
 ## How it reaches the app
 
-The running app listens on a random port of your own computer (address `127.0.0.1`, reachable only from this machine). It writes the port and a one-run secret key into `cli.json` in its data folder, `%APPDATA%\com.txaisxiong.kolux-rs`. The command reads that file, sends one request and prints the answer.
+The running app listens on a random port of your own computer (address `127.0.0.1`, reachable only from this machine). It writes the port and a one-run secret key into `cli.json` in its data folder, `%APPDATA%\com.txaisxiong.kolux`. The command reads that file, sends one request and prints the answer.
 
 - A request that looks like a web page request is dropped, so a web page cannot talk to Kolux this way.
 - A request with the wrong key is refused.
@@ -268,4 +268,4 @@ These commands act on a workspace's own browser tab and files. They take `--work
 
 `kolux orchestration ask` on the packaged Windows build hands a new question back after about 100 seconds with exit status 75 and the command to resume it (`--resume <message>`). A resumed wait never hands back again; it waits out its own timeout.
 
-<!-- verified against: src-tauri/src/cli/mod.rs, src-tauri/src/bin/kolux.rs, src-tauri/src/bin/kolux-dev.rs, src-tauri/Cargo.toml, src-tauri/cli/kolux.cmd, src-tauri/src/terminal.rs, src-tauri/src/resources.rs, src/status/ResourceManager.tsx, src-tauri/src/orchestration.rs, src-tauri/src/local_cli.rs, PLAN.md at 6a1ecc08 -->
+<!-- verified against: src-tauri/src/cli/mod.rs, src-tauri/src/bin/kolux-cli.rs, src-tauri/src/bin/kolux-dev.rs, src-tauri/Cargo.toml, src-tauri/cli/kolux.cmd, src-tauri/src/terminal.rs, src-tauri/src/resources.rs, src/status/ResourceManager.tsx, src-tauri/src/orchestration.rs, src-tauri/src/local_cli.rs, PLAN.md at 6a1ecc08 -->

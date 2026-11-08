@@ -48,8 +48,8 @@ The first Rust build takes several minutes. Later builds reuse `src-tauri/target
 | Output | Path |
 |---|---|
 | Front-end bundle | `dist/` |
-| Desktop executable | `src-tauri/target/release/kolux-rs.exe` |
-| NSIS installer | `src-tauri/target/release/bundle/nsis/Kolux RS_<version>_x64-setup.exe` |
+| Desktop executable | `src-tauri/target/release/kolux.exe` |
+| NSIS installer | `src-tauri/target/release/bundle/nsis/Kolux_<version>_x64-setup.exe` |
 | Release CLI | `src-tauri/target/release/kolux.exe` when built with `--features release-cli` |
 | CLI shim | `src-tauri/cli/kolux.cmd` |
 

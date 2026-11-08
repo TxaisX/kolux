@@ -173,7 +173,7 @@ export async function run({ launch, checks, opts }) {
   }
 
   const snap = await snapshot(app).catch(() => []);
-  const alive = snap.some((q) => q.name === "kolux-rs.exe");
+  const alive = snap.some((q) => q.name === "kolux.exe");
   const errs = await pageErrors(app).catch(() => ["unreachable"]);
   const memEnd = appMemMB(snap);
   const stillOpen = unwrap(await app.evalJs(`document.querySelectorAll(".cm-editor").length`).catch(() => -1));

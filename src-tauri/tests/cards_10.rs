@@ -3,8 +3,8 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::status::{report, Agent};
-use kolux_rs_lib::trust::{claude_config_file, claude_key, trust_folders};
+use kolux_lib::status::{report, Agent};
+use kolux_lib::trust::{claude_config_file, claude_key, trust_folders};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
@@ -142,7 +142,7 @@ fn safe001_box2_a_shell_permission_carries_no_plan() {
 // SAFE-009..012: the hook's real answer (hooks::reply_body) fed PreToolUse payloads. Every command
 // below is only ever a string handed to the matcher; nothing is run.
 
-use kolux_rs_lib::hooks::reply_body;
+use kolux_lib::hooks::reply_body;
 
 fn pre_tool(tool: &str, command: &str) -> Vec<u8> {
     json!({ "hook_event_name": "PreToolUse", "session_id": "cards", "tool_name": tool, "cwd": scratch_root::root().join("safe10").join("work").to_string_lossy().as_ref(), "tool_input": { "command": command } }).to_string().into_bytes()
@@ -381,7 +381,7 @@ fn safe014_box6_harmless_lookalikes_and_text_that_is_only_printed_run() {
     must_run("Bash", &["sudo -u root ls build", "timeout 5 ls", "nice -n 10 echo hi", "powershell -ExecutionPolicy Bypass -Command \"Write-Host hi\"", "rd /s/q build", "echo \"rm -rf /\"", "echo 'rm -rf /'"]);
 }
 
-use kolux_rs_lib::protected_custom::{listen, protected_attempts};
+use kolux_lib::protected_custom::{listen, protected_attempts};
 
 /// Pauses `command` through the hook (cwd names the test, so parallel tests keep their rows apart) and returns the kept command text.
 fn kept(cwd: &str, call: &str, command: &str) -> String {
@@ -414,7 +414,7 @@ fn safe019_box2_a_mysql_short_password_flag_a_token_flag_and_a_postgres_url_with
     for (i, (cmd, secret)) in cases.iter().enumerate() {
         let shown = kept("G:/Dev/cards-safe019b", &format!("c{i}"), cmd);
         assert!(!shown.contains(secret.as_str()), "{secret} leaked: {shown}");
-        assert!(shown.contains(kolux_rs_lib::protected::HIDDEN), "marked hidden: {shown}");
+        assert!(shown.contains(kolux_lib::protected::HIDDEN), "marked hidden: {shown}");
     }
     let page = serde_json::to_string(&protected_attempts().into_iter().filter(|a| a.worktree == "G:/Dev/cards-safe019b").collect::<Vec<_>>()).unwrap();
     assert!(cases.iter().all(|(_, s)| !page.contains(s.as_str())), "{page}");
@@ -449,10 +449,10 @@ fn safe015_box2_master_switch_off_means_no_protected_command_asks() {
 }
 
 // ---- SAFE-021 / SAFE-022 (batch 4): only fake path strings; no opener, no explorer, no network is ever called ----
-use kolux_rs_lib::artifacts::open_external;
-use kolux_rs_lib::fence::{check, Fence};
-use kolux_rs_lib::links::{fence as file_fence, fence_key, host_path, launchable, program_like, refuse_host};
-use kolux_rs_lib::state::Store;
+use kolux_lib::artifacts::open_external;
+use kolux_lib::fence::{check, Fence};
+use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, program_like, refuse_host};
+use kolux_lib::state::Store;
 use std::collections::HashSet;
 
 const OTHER_MACHINES: [&str; 9] = [

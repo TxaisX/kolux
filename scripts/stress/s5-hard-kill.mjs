@@ -107,7 +107,7 @@ export async function run({ launch, checks, opts }) {
     const tree = await app.treeOf(pid);
     // The hard kill: this app's own pid and its descendants, nothing else.
     await app.run("taskkill", ["/PID", String(pid), "/T", "/F"]).catch(() => {});
-    await app.treeGone([{ pid, name: "kolux-rs.exe", created: undefined }, ...tree]).catch(() => {});
+    await app.treeGone([{ pid, name: "kolux.exe", created: undefined }, ...tree]).catch(() => {});
     // tauri dev takes its vite down some seconds after the app dies; end that tree now so the relaunch never races it.
     if (app.dev?.pid) await app.run("taskkill", ["/PID", String(app.dev.pid), "/T", "/F"]).catch(() => {});
     for (let i = 0; i < 20 && (await fetch("http://localhost:" + opts.port + "/").then((r) => r.ok, () => false)); i++) await app.sleep(500);
