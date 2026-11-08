@@ -1,12 +1,12 @@
 // VIEW 089 (T-153-d): what a past session's Show file, Open file and Delete buttons ask of the back
 // end (sessions::files). The back end finds the files from the agent and id alone and refuses
 // anything outside the folder the agent keeps its sessions in.
-import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import type { Session } from "./model";
 
 export type FileAction = "reveal" | "open" | "delete";
 
-const COMMAND: Record<FileAction, string> = { reveal: "session_reveal", open: "session_open", delete: "session_delete" };
+const COMMAND: Record<FileAction, CommandName> = { reveal: "session_reveal", open: "session_open", delete: "session_delete" };
 
 export const DELETE_WARNING = "Delete this session's files? This cannot be undone.";
 
@@ -25,6 +25,6 @@ export const doneNote = (action: FileAction, removed: number | null): string =>
  *  C28-R5-01: a delete also says which sessions the window has open in a pane, so Rust refuses to
  *  delete one that a pane is writing, even before any hook has reported it. */
 export async function runFileAction(action: FileAction, s: Pick<Session, "agent" | "id">, open: readonly [string, string][] = []): Promise<string> {
-  const answer = await invoke<number | null>(COMMAND[action], action === "delete" && open.length > 0 ? { agent: s.agent, id: s.id, open } : { agent: s.agent, id: s.id });
+  const answer = await invokeNamed<number | null>(COMMAND[action], action === "delete" && open.length > 0 ? { agent: s.agent, id: s.id, open } : { agent: s.agent, id: s.id });
   return doneNote(action, typeof answer === "number" ? answer : null);
 }

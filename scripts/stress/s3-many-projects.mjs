@@ -69,8 +69,9 @@ const FILTER_JS = (names) => `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const open = document.querySelector('aside.sidebar button[title="Group and sort the list"]');
   if (!open) return { error: "no filter button" };
-  if (open.getAttribute("aria-pressed") !== "true") open.click();
-  await sleep(300);
+  // S-02: the panel can take seconds to draw with 150 projects, and a toggle test on aria-pressed no longer matches the button: look for the panel itself.
+  if (!document.querySelector("[data-filter-projects]")) open.click();
+  for (let i = 0; i < 300 && !document.querySelector("[data-filter-projects] input[type=checkbox]"); i++) await sleep(50);
   const settle = async (action, want) => {
     const before = count();
     let worst = 0, last = performance.now(), frames = 0, stop = false;

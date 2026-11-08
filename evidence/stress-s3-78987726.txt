@@ -1,0 +1,44 @@
+stress S3 (Many projects (150 projects, 300 worktrees)) at 2026-11-08T16:45:48.801Z on 78987726 (G:\Dev\kolux-rs-lanes\ready-tools)
+args: S3 --port 1423 --cdp 9263 --temp G:/Temp/stress/ready-tools-T-813; ran 489 s
+
+FAIL  sidebar shows all 150 projects after a page load
+      bar: 150 .proj rows within 2000 ms of navigation start
+      measured: 31928 ms since navigation start (150 projects, 21 worktree rows at that moment; polled 1x, cadence ~150 ms)
+FAIL  one full worktree scan of 150 projects (one workspace_scan each, one after another)
+      bar: finishes inside the panel's 5000 ms refresh interval, else its result is dropped when the next scan starts
+      measured: not finished in 240 s (page said undefined)
+FAIL  every worktree is listed (a main-checkout row and one extra worktree row per project)
+      bar: 150 button.branch rows + 150 .sess rows
+      measured: 129 main rows + 129 worktree rows, 150 projects (not reached within 120 s)
+PASS  scrolling the sidebar: scroll + layout cost per step (60 steps top to bottom)
+      bar: p95 < 100 ms, max < 200 ms
+      measured: p50 0.1, p95 0.2, max 0.3 ms; scrollHeight 4817
+FAIL  scrolling the sidebar: frame gap (requestAnimationFrame to the next)
+      bar: p95 < 100 ms
+      measured: p50 8.1, p95 138.2, max 193.4 ms over 60 frames
+PASS  filtering: every change moved the list (3 narrow + 3 clear)
+      bar: 6 of 6 changed the .proj count
+      measured: 6 of 6; counts 150->149 149->150 150->149 149->150 150->149 149->150
+PASS  filtering: time until the list changes
+      bar: max < 500 ms (my bar; the plan names only per-frame cost)
+      measured: p50 156.4, max 287.8 ms over 6 changes
+FAIL  filtering: longest frame gap while the list changes
+      bar: max < 100 ms
+      measured: p50 144.8, max 199.2 ms over 6 changes
+PASS  page errors during the run (this page load)
+      bar: 0
+      measured: 0
+PASS  app is still running at the end
+      bar: alive
+      measured: alive
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 19.1 s; pre-close tree 10 (msedgewebview2.exe x6, git.exe x2, conhost.exe x2); survivors 0 (none)
+
+notes:
+  - first load: {"proj":150,"sess":11,"main":11,"now":28276}; counts now {"proj":150,"sess":18,"main":18,"now":29222}
+  - workspace_list p-001 returned: [{"path":"G:\\Temp\\stress\\ready-tools-T-813\\s3\\repos\\proj-001","branch":"main","head":"a49b57b2eaa1a9d8ff36c47e6776083fec4e8512","isMain":true,"name":null,"parent":null,"locked":null,"hidden":false,"kind":"main","source":null,"madeBy":null,"number":null,"comment":null},{"path":"G:\\Temp\\stress\\ready-tools-T-813\\s3\\repos\\proj-001-wt","branch":"feat-001","head":"a49b57b2eaa1a9d8ff36c47e6776083fec4e8512","isMain":false,"name":null,"parent":null,"locked":null,"hidden":false,"kind":"externa
+  - filter panel lists 150 project checkboxes; rows [{"name":"proj-001","narrow":{"before":150,"after":149,"ms":156.4,"worstGap":158.1,"frames":24},"wide":{"before":149,"after":150,"ms":207.9,"worstGap":155.4,"frames":27}},{"name":"proj-075","narrow":{"before":150,"after":149,"ms":137.2,"worstGap":137.5,"frames":20},"wide":{"before":149,"after":150,"ms":287.8,"worstGap":199.2,"frames":24}},{"name":"proj-150","narrow":{"before":150,"after":149,"ms":144.5,"worstGap":144.8,"frames":19},"wide":{"before":149,"after":150,"ms":187.7,"worstGap":144.3,"frames":28}}]
+  - app + web view processes: kolux-rs.exe 62 MB, msedgewebview2.exe 159 MB, msedgewebview2.exe 13 MB, msedgewebview2.exe 86 MB, msedgewebview2.exe 66 MB, msedgewebview2.exe 21 MB, msedgewebview2.exe 382 MB
+
+S3: FAIL

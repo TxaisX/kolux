@@ -4,6 +4,7 @@
 // are already running keep the account they started on (ACCT-017). Pure: the component and the
 // palette rows both read this file; the Rust commands are the existing activate ones.
 
+import type { CommandName } from "../ipc/commands";
 export type Provider = "claude" | "codex";
 
 /** What the switcher reads of the Claude accounts view (the rest of it is Settings' business). */
@@ -27,7 +28,7 @@ export type Group = { provider: Provider; name: string; choices: Choice[]; busy:
 
 export const SYSTEM_DEFAULT = "System default";
 const NAMES: Record<Provider, string> = { claude: "Claude", codex: "Codex" };
-const COMMANDS: Record<Provider, string> = { claude: "claude_account_activate", codex: "codex_account_activate" };
+const COMMANDS: Record<Provider, CommandName> = { claude: "claude_account_activate", codex: "codex_account_activate" };
 
 const same = (a: string | null | undefined, b: string | null | undefined) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 
@@ -79,7 +80,7 @@ export function buttonText(groups: Group[]): string {
 
 /** Switches the account new panes of this provider use. Returns whether anything was asked: the
  *  account already in use, an unlisted one and a provider mid sign-in are left alone. */
-export async function pickAccount(call: (command: string, args: { id: string | null }) => Promise<unknown>, group: Group, id: string | null): Promise<boolean> {
+export async function pickAccount(call: (command: CommandName, args: { id: string | null }) => Promise<unknown>, group: Group, id: string | null): Promise<boolean> {
   const choice = group.choices.find((c) => c.id === id);
   if (!choice || choice.active || group.busy) return false;
   await call(COMMANDS[group.provider], { id });

@@ -7,6 +7,7 @@
 // the next launch with Try again and the installer page.
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
 import CrashReportDialog from "./CrashReportDialog";
 import RecoveryNotes from "./RecoveryNotes";
@@ -82,8 +83,8 @@ export default function RecoveryMount() {
   const stay = g.kind === "launch" && g.stay;
   // T-724 (DT-C160): a choice closes the prompt only once it went through; a failure stays in the prompt, told.
   // Restart and Try hardware again restart the app when they work, so they never close it themselves.
-  const choose = (cmd: string, fail: string, close?: boolean, args?: Record<string, boolean>) =>
-    (setGerr(""), void invoke(cmd, args).then(() => close && setG(null), (e) => setGerr(`${fail}: ${String(e)}`)));
+  const choose = (cmd: CommandName, fail: string, close?: boolean, args?: Record<string, boolean>) =>
+    (setGerr(""), void invokeNamed(cmd, args).then(() => close && setG(null), (e) => setGerr(`${fail}: ${String(e)}`)));
   return (
     <>
       <CrashReportDialog />

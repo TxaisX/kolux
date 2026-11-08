@@ -5,6 +5,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { saveChanged } from "./saveChanged";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
 import VendorMark from "../chrome/VendorMark";
 import { actionLabel, keyCard, ownSignInLine, RESUME_FIELD, resumeOn, type KeyAction, type KeyStatus, type OwnSignIn } from "./claudeKey";
@@ -162,7 +163,7 @@ export function ClaudeCard({ onConnected = () => {} }: { onConnected?: (on: bool
     if (a === "disconnect" && !sure) return setAsking(true);
     const command = a === "cancel" ? "claude_key_cancel" : a === "disconnect" ? "claude_key_disconnect" : "claude_key_connect";
     setBusy(a !== "cancel");
-    const call = invoke(command);
+    const call = invokeNamed(command);
     call.catch((e) => setError(command === "claude_key_connect" ? connectFailed("Claude", e) : String(e)));
     // ACCT-002: the buttons come back after 30 seconds even if no answer arrives.
     void settleWithin(call).then(() => {

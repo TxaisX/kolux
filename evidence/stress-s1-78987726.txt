@@ -1,0 +1,26 @@
+stress S1 (Pane churn (40 panes x 5 rounds)) at 2026-11-08T15:45:59.865Z on 78987726 (G:\Dev\kolux-rs-lanes\ready-tools)
+args: S1 --port 1423 --cdp 9263 --temp G:/Temp/stress/ready-tools-T-813; ran 199 s
+
+PASS  every round opened 40 panes and closed them all
+      bar: 5 rounds, no stall
+      measured: r1: 40 open; r2: 40 open; r3: 40 open; r4: 40 open; r5: 40 open
+PASS  pane host processes still in the app's tree after the final close
+      bar: 0
+      measured: 0 (none); per round [0 0 0 0 0]
+PASS  orphan shell / console host processes (seen under the app, alive, no longer its children)
+      bar: 0
+      measured: 0 of 413 ever seen
+PASS  app memory after round 5 vs after round 1 (app + web view working set, MB; floor of 3 readings per round)
+      bar: within +15% of round 1
+      measured: 629 -> 679 MB (8.0%); per round [629 625 634 678 679]; peak per round [779 773 771 834 856]
+FAIL  page errors (window error, unhandled rejection, console.error) during the run
+      bar: 0
+      measured: 4: console.error: Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.7 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)
+
+notes:
+  - open time per pane p95 by round [325 294 309 315 321] ms, max [455 424 471 414 434] ms; close max [205 186 189 122 154] ms; 164 s total; pane host process names counted: powershell.exe, pwsh.exe, cmd.exe, conhost.exe, OpenConsole.exe
+
+S1: FAIL

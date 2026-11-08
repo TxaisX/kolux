@@ -24,6 +24,7 @@ import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { open } from "@tauri-apps/plugin-dialog";
 import { askText } from "../editor/closeGuard";
 import { underDir } from "../workspaces";
@@ -1649,10 +1650,10 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     window.addEventListener("focus", askCard);
     return () => window.removeEventListener("focus", askCard);
   }, [askCard]);
-  const cardDo = async (cmd: string, args: Record<string, unknown>) => {
+  const cardDo = async (cmd: CommandName, args: Record<string, unknown>) => {
     setCardBusy(true);
     try {
-      await invoke(cmd, args);
+      await invokeNamed(cmd, args);
     } catch (err) {
       say("error", String(err)); // a refused save ("That suggestion changed") is followed by the card's new offer
     } finally {

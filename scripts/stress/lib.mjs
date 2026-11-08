@@ -5,6 +5,22 @@ import { join } from "node:path";
 import { createApp } from "../evidence/app-launch.mjs";
 
 export const TERM = "section.pane[data-agent]";
+// In-page helper (S-02): `button.newtab` and its "New tab" menu are gone (owner change 2026-11-06), and from 10 panes on the grid is a tab strip
+// with no pane header buttons. The window's own key for "New terminal tab" (Mod+T, tab.newTerminal) works at every count. Paste NEW_TERMINAL_JS
+// into a page script, then await newTerminal(); it returns true once the key event was sent (the caller waits for the pane).
+export const NEW_TERMINAL_JS = `async function newTerminal(sleep) {
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "t", code: "KeyT", ctrlKey: true, bubbles: true, cancelable: true }));
+  await sleep(0);
+  return true;
+}`;
+// S-02: the New tab menu's "Changed file diff" picker is gone, and so is the Source Control sidebar (T-644). What still opens a file's diff tab
+// from outside is the command line's event: `kolux diff` makes the backend emit "cli-workspace" with kind "file-diff"; the same event is emitted here
+// through the page's IPC, so the window's own handler (useCliBridge) selects the folder and opens the diff.
+export async function openDiffFromCli(app, repo, name, staged = false) {
+  const dir = repo.replace(/\//g, "\\");
+  const payload = { kind: "file-diff", path: `${dir}\\${name}`, staged, worktree: dir, branch: null };
+  await app.evalJs(`window.__TAURI_INTERNALS__.invoke("plugin:event|emit", { event: "cli-workspace", payload: ${JSON.stringify(payload)} }).then(() => true)`);
+}
 export const SHELL = 'section.pane[data-agent="shell"]';
 export const SHELL_NAMES = new Set(["powershell.exe", "pwsh.exe", "cmd.exe"]);
 // Host processes a terminal pane leaves behind when it is not cleaned up.
@@ -88,12 +104,47 @@ export async function gitInit(app, dir, name = "stress") {
   await g(["add", "."]);
   await g(["commit", "-q", "-m", "stress"]);
 }
-export async function addProjectAndOpen(app, repo) {
-  await app.waitFor("the sidebar", () => app.exists('.sb-foot button[title^="Add a project by path"]'), 30000);
-  await app.click('.sb-foot button[title^="Add a project by path"]');
+// The Add project dialog opens from the sidebar's "kolux-add-project" window event (what the plus button, the setup guide and
+// the Automations page all fire), so the helper does not depend on where the layout puts the button. Its "Type a path" link
+// (button[data-add-by-path]) leads to the folder field. S-01: the old .sb-foot button no longer exists.
+export const ADD_PROJECT_EVENT = "kolux-add-project";
+export const CHOOSER = "section.pane.chooser";
+// A fresh profile opens the first-run guide over the grid: close it (Close, then Skip in its question) so clicks reach the app.
+export async function dismissFirstRun(app) {
+  const any = '[role="dialog"], [role="alertdialog"]';
+  for (let t = 0; t < 10 && (await app.exists(any)); t++) {
+    const asked = await app.evalJs(`[...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Skip") && /Skip setup\\?/.test(document.body.innerText)`);
+    if (asked) await app.clickWhere("button", "/^\\s*Skip\\s*$/");
+    else if (await app.exists('[role="dialog"] button[aria-label="Close setup"]')) await app.click('[role="dialog"] button[aria-label="Close setup"]');
+    else await app.cdp("key", "Escape");
+    await app.sleep(800);
+  }
+}
+export async function openAddByPath(app) {
+  await app.waitFor("the app shell", () => app.exists("aside.sidebar"), 60000);
+  await dismissFirstRun(app);
+  await app.evalJs(`(window.dispatchEvent(new CustomEvent(${JSON.stringify(ADD_PROJECT_EVENT)})), true)`);
+  await app.waitFor("the add-by-path item", () => app.exists("button[data-add-by-path]"), 10000);
+  await app.click("button[data-add-by-path]");
   await app.waitFor("the project folder field", () => app.exists('input[aria-label="project folder"]'), 5000);
+}
+// A new project opens the launch chooser, not a shell: seat 1 gets Terminal (React's select listens for change, so the value goes
+// through the native setter), then Start, once the agent search has finished and enabled it. The way a user would.
+export async function startTerminalFromChooser(app) {
+  const seat = `${CHOOSER} select[aria-label="Seat 1: which AI"]`;
+  await app.waitFor("the chooser's Terminal choice", () => app.exists(`${seat} option[value="terminal"]`), 30000);
+  const r = await app.evalJs(`(() => { const s = document.querySelector(${JSON.stringify(seat)}); if (!s) return "missing"; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "terminal"); s.dispatchEvent(new Event("change", { bubbles: true })); return s.value; })()`);
+  if (r !== "terminal") throw new Error(`could not pick Terminal in the chooser: ${r}`);
+  const start = `${CHOOSER} button.btn.primary`;
+  await app.waitFor("the chooser's Start button", () => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some((b) => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
+  await app.clickWhere(start, "/^\\s*Start\\s*$/");
+}
+export async function addProjectAndOpen(app, repo) {
+  await openAddByPath(app);
   await app.focusField('input[aria-label="project folder"]');
   await app.cdp("insert", repo, "enter");
+  await app.waitFor("the launch chooser", async () => (await app.shown(CHOOSER)) >= 1, 30000);
+  await startTerminalFromChooser(app);
   await app.waitFor("the first shell pane", async () => (await app.shown(TERM)) >= 1, 30000);
   await app.waitFor("the first pane's input field", () => app.exists(`${TERM} .xterm-helper-textarea`), 30000);
 }
