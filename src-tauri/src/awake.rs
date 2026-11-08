@@ -109,12 +109,12 @@ mod sys {
 
 #[cfg(not(windows))]
 mod sys {
-    use std::process::{Child, Command, Stdio};
+    use std::process::{Child, Stdio};
     pub struct Hold(Child);
     /// The system's own sleep blocker, held for as long as the child runs.
     pub fn hold() -> Option<Hold> {
         let (program, args) = super::blocker(std::process::id(), cfg!(target_os = "macos"));
-        let child = Command::new(program).args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok()?;
+        let child = crate::winproc::command(program).args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok()?;
         super::running_after(child, super::BLOCKER_SETTLE).map(Hold)
     }
     impl super::Renew for Hold {

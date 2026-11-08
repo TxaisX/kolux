@@ -408,7 +408,7 @@ mod imp {
 mod imp {
     /// `pgrep -P` ships with Linux and macOS: exit 0 when a child was listed, 1 when none.
     pub fn has_children(pid: u32) -> Option<bool> {
-        let out = std::process::Command::new("pgrep").arg("-P").arg(pid.to_string()).output().ok()?;
+        let out = crate::winproc::command("pgrep").arg("-P").arg(pid.to_string()).output().ok()?;
         match out.status.code() {
             Some(0) => Some(true),
             Some(1) => Some(false),
@@ -436,7 +436,7 @@ mod imp {
 
     /// `kill -0` tells whether the process exists without touching it.
     pub fn alive(pid: u32) -> Option<bool> {
-        let out = std::process::Command::new("kill").arg("-0").arg(pid.to_string()).output().ok()?;
+        let out = crate::winproc::command("kill").arg("-0").arg(pid.to_string()).output().ok()?;
         match out.status.code() {
             Some(0) => Some(true),
             Some(1) => Some(false),
@@ -447,7 +447,7 @@ mod imp {
     /// The PTY child leads its own process group, so the group signal takes everything it started.
     pub fn kill_tree(pid: u32) {
         for args in kill_args(pid) {
-            let _ = std::process::Command::new("kill").args(&args).output();
+            let _ = crate::winproc::command("kill").args(&args).output();
         }
     }
 

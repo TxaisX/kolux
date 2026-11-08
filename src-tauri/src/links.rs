@@ -351,19 +351,19 @@ fn reveal_command(path: &Path) -> std::process::Command {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        let mut c = std::process::Command::new("explorer.exe");
+        let mut c = crate::winproc::command("explorer.exe");
         c.raw_arg(format!("/select,\"{}\"", path.display()));
         c
     }
     #[cfg(target_os = "macos")]
     {
-        let mut c = std::process::Command::new("open");
+        let mut c = crate::winproc::command("open");
         c.arg("-R").arg(path);
         c
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let mut c = std::process::Command::new("xdg-open");
+        let mut c = crate::winproc::command("xdg-open");
         c.arg(path.parent().unwrap_or(path));
         c
     }

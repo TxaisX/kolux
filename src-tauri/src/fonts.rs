@@ -2,8 +2,6 @@
 //! Windows PowerShell lists them through .NET's InstalledFontCollection; elsewhere fontconfig's
 //! `fc-list`. A failure is an error, and the interface falls back to its built-in list.
 
-use std::process::Command;
-
 /// One family per line in, a sorted list without blanks or repeats out (fc-list may give
 /// "Family,Alias" on one line; the first name is kept).
 pub(crate) fn tidy_fonts(raw: &str) -> Vec<String> {
@@ -22,7 +20,7 @@ fn read_fonts() -> Result<Vec<String>, String> {
     #[cfg(windows)]
     let mut cmd = {
         use std::os::windows::process::CommandExt;
-        let mut c = Command::new(crate::pty::system_program(crate::pty::WINDOWS_POWERSHELL)); // T-663
+        let mut c = std::process::Command::new(crate::pty::system_program(crate::pty::WINDOWS_POWERSHELL)); // T-663
         c.args([
             "-NoProfile",
             "-NonInteractive",
@@ -34,7 +32,7 @@ fn read_fonts() -> Result<Vec<String>, String> {
     };
     #[cfg(not(windows))]
     let mut cmd = {
-        let mut c = Command::new(crate::pty::full_path_program("fc-list").ok_or("fc-list was not found on this computer")?); // T-663
+        let mut c = crate::winproc::command(crate::pty::full_path_program("fc-list").ok_or("fc-list was not found on this computer")?); // T-663
         c.args([":", "family"]);
         c
     };

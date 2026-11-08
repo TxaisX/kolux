@@ -113,7 +113,7 @@ function summaryOf(md) {
 
 function gitRoot(repo) {
   try {
-    return execFileSync("git", ["-C", repo, "rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
+    return execFileSync("git", ["-C", repo, "rev-parse", "--show-toplevel"], { encoding: "utf8", windowsHide: true }).trim();
   } catch {
     return null;
   }
@@ -126,6 +126,7 @@ function readGit(repo) {
   try {
     raw = execFileSync("git", ["-C", repo, "log", "--all", "--date=iso-strict", `--pretty=format:${fmt}`, "--numstat"], {
       encoding: "utf8",
+      windowsHide: true,
       maxBuffer: 512 * 1024 * 1024,
     });
   } catch {
@@ -152,7 +153,7 @@ function readGit(repo) {
   }
   let worktrees = [];
   try {
-    const wt = execFileSync("git", ["-C", repo, "worktree", "list", "--porcelain"], { encoding: "utf8" });
+    const wt = execFileSync("git", ["-C", repo, "worktree", "list", "--porcelain"], { encoding: "utf8", windowsHide: true });
     let cur = {};
     for (const line of wt.split(/\r?\n/)) {
       if (line.startsWith("worktree ")) { if (cur.path) worktrees.push(cur); cur = { path: line.slice(9) }; }
@@ -166,7 +167,7 @@ function readGit(repo) {
 
 function ghJson(args) {
   try {
-    return JSON.parse(execFileSync("gh", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
+    return JSON.parse(execFileSync("gh", args, { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024 }));
   } catch {
     return null;
   }
@@ -174,7 +175,7 @@ function ghJson(args) {
 
 function repoSlug(repo) {
   try {
-    const url = execFileSync("git", ["-C", repo, "remote", "get-url", "origin"], { encoding: "utf8" }).trim();
+    const url = execFileSync("git", ["-C", repo, "remote", "get-url", "origin"], { encoding: "utf8", windowsHide: true }).trim();
     const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
     return m ? `${m[1]}/${m[2]}` : "TxaisX/kolux";
   } catch {

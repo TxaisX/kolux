@@ -31,8 +31,8 @@ describe("installer Windows 10 notice", () => {
     try {
       fs.copyFileSync(hooks, path.join(dir, "installer-hooks.nsh"));
       fs.copyFileSync(harness, path.join(dir, "harness.nsi"));
-      execFileSync(makensis, ["-V1", "/DHOOKS=installer-hooks.nsh", "harness.nsi"], { cwd: dir, stdio: "pipe" });
-      execFileSync(path.join(dir, "t786-harness.exe"), ["/S"], { cwd: dir, stdio: "pipe" });
+      execFileSync(makensis, ["-V1", "/DHOOKS=installer-hooks.nsh", "harness.nsi"], { cwd: dir, stdio: "pipe", windowsHide: true });
+      execFileSync(path.join(dir, "t786-harness.exe"), ["/S"], { cwd: dir, stdio: "pipe", windowsHide: true });
       const lines = fs.readFileSync(path.join(dir, "t786-result.txt"), "utf8").split(/\r?\n/).filter(Boolean);
       const cases = lines.filter((l) => l.includes("expect="));
       expect(cases.length).toBe(8);

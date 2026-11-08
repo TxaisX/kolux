@@ -274,7 +274,7 @@ mod imp {
 
     /// `ps` on Linux and macOS: pid, parent, resident KiB and cumulative CPU time.
     pub fn processes() -> Option<Vec<Proc>> {
-        let out = std::process::Command::new("ps").args(["-axo", "pid=,ppid=,rss=,time="]).output().ok()?;
+        let out = crate::winproc::command("ps").args(["-axo", "pid=,ppid=,rss=,time="]).output().ok()?;
         let text = String::from_utf8_lossy(&out.stdout).into_owned();
         Some(
             text.lines()
