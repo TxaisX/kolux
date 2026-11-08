@@ -12,9 +12,10 @@ const claude: ClaudeLimit[] = [
 ];
 const codex: CodexUsage = { state: "ok", fiveHour: { usedPercent: 12, resetsAt: null, windowMins: 300 }, weekly: null, resetCredits: null, plan: "plus", message: null };
 
-test("context fill is measured against the 200k cap, else the model's own window (USAGE-005)", () => {
-  expect(contextFill({ tokens: 100_000, window: 1_000_000 })).toBe(50);
-  expect(contextFill({ tokens: 100_000, window: 1_000_000 }, false)).toBe(10);
+test("context fill is measured toward the 170k auto handoff, or a smaller window (USAGE-005, owner change 2026-11-07)", () => {
+  expect(contextFill({ tokens: 100_000, window: 1_000_000 })).toBe(59);
+  expect(contextFill({ tokens: 100_000, window: 1_000_000 }, false)).toBe(59);
+  expect(contextFill({ tokens: 50_000, window: 100_000 }, false)).toBe(50);
   expect(contextFill({ tokens: 250_000, window: 200_000 })).toBe(100);
   expect(contextFill({ tokens: 5, window: 0 }, false)).toBe(0);
   // USAGE-006: the cap is on until the setting says off; a setting never saved counts as on.
@@ -36,8 +37,8 @@ test("plan figures follow the session's agent and vanish when the read failed (U
 
 test("the Board meter shows the context bar only after a reading, plan figures without it, and nothing with neither (USAGE-002)", () => {
   const full = meterOf({ tokens: 84_000, window: 200_000 }, "claude", claude, codex)!;
-  expect(full).toEqual({ context: { tokens: 84_000, window: 200_000, percent: 42 }, plan: { fiveHour: 38, weekly: 63 } });
-  expect(meterText(full)).toBe("Context 84k / 200k (42%)\n5-hour 38% · Weekly 63%");
+  expect(full).toEqual({ context: { tokens: 84_000, window: 170_000, percent: 49 }, plan: { fiveHour: 38, weekly: 63 } });
+  expect(meterText(full)).toBe("Context 84k / 170k before auto handoff (49%)\n5-hour 38% · Weekly 63%");
   const fresh = meterOf(undefined, "claude", claude, codex)!;
   expect(fresh.context).toBeUndefined();
   expect(meterText(fresh)).toBe("5-hour 38% · Weekly 63%");

@@ -714,6 +714,7 @@ pub fn run() {
             app_look::app_look_apply,
             token_usage::token_usage,
             token_usage::token_usage_scan,
+            token_usage::workspace_worktrees,
             token_usage::token_tracking_set,
             trust::trust_folders_cmd,
             scm::scm_status, scm::scm_count, scm::scm_reveal,

@@ -49,7 +49,7 @@ test("box 2: rows with a context reading show a ring, rows without one show none
   const rows = html.split('data-session="').slice(1);
   expect(rows).toHaveLength(2);
   expect(rows[0]).toContain('class="ring');
-  expect(rows[0]).toContain("Context 100k / 1M (50%)");
+  expect(rows[0]).toContain("Context 100k / 170k before auto handoff (59%)");
   expect(rows[1]).not.toContain("ring");
   expect((html.match(/<svg class="ring/g) ?? []).length).toBe(1);
 });

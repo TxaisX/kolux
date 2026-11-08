@@ -17,6 +17,8 @@ export type WorkspaceSpend = {
   dir: string;
   /** Whether any provider is tracked at all; when false the ribbon offers the way to turn it on. */
   tracked: boolean;
+  /** How many worktree folders besides the workspace's own were counted. */
+  worktrees: number;
   /** Distinct agent sessions that worked in the folder (a provider prefix keeps two providers apart). */
   sessions: number;
   /** The oldest saved count (ms epoch) the figures come from, null when a tracked provider has no count yet. */
@@ -59,19 +61,34 @@ export function workspaceName(dir: string | null | undefined): string {
   return parts[parts.length - 1] ?? "";
 }
 
-/** The tracked providers whose rows worked in `dir` or a folder inside it. */
-function rowsIn(usage: Usage, dir: string): Array<{ provider: Provider; rows: Row[] }> {
+/** Owner change 2026-11-07: Kolux keeps a repo's worktrees under `…/workspaces/<repo>/<name>`, so a
+ *  session in a worktree that was since removed (git no longer lists it) still counts toward its repo. */
+export function inKoluxWorktree(cwd: string, dir: string): boolean {
+  const repo = workspaceName(dir).toLowerCase();
+  if (!repo) return false;
+  const parts = cwd.toLowerCase().split(/[\\/]+/).filter(Boolean);
+  return parts.some((p, i) => p === "workspaces" && parts[i + 1] === repo && i + 2 < parts.length);
+}
+
+/** Whether a session folder belongs to the workspace: the folder itself, one of its worktrees, or a Kolux worktree of the repo. */
+export function inWorkspace(cwd: string, dir: string, worktrees: string[] = []): boolean {
+  if (cwd === "") return false;
+  return underDir(cwd, dir) || worktrees.some((w) => underDir(cwd, w)) || inKoluxWorktree(cwd, dir);
+}
+
+/** The tracked providers whose rows worked in the workspace (see `inWorkspace`). */
+function rowsIn(usage: Usage, dir: string, worktrees: string[]): Array<{ provider: Provider; rows: Row[] }> {
   const out: Array<{ provider: Provider; rows: Row[] }> = [];
   for (const provider of PROVIDERS) {
     const saved = usage[provider];
     if (!usage.tracking[provider] || !saved) continue;
-    out.push({ provider, rows: saved.rows.filter((r) => r.cwd !== "" && underDir(r.cwd, dir)) });
+    out.push({ provider, rows: saved.rows.filter((r) => inWorkspace(r.cwd, dir, worktrees)) });
   }
   return out;
 }
 
 /** The workspace's figures, split into all time, today and the last seven days, with a daily gauge series. */
-export function workspaceSpend(usage: Usage, dir: string, today: Date, span = 14): WorkspaceSpend {
+export function workspaceSpend(usage: Usage, dir: string, today: Date, span = 14, worktrees: string[] = []): WorkspaceSpend {
   const tracked = PROVIDERS.some((p) => usage.tracking[p]);
   const day = localDay(today);
   const from = rangeStart("7", today);
@@ -85,7 +102,7 @@ export function workspaceSpend(usage: Usage, dir: string, today: Date, span = 14
   const days = new Map<string, Partial<Record<Provider, Row[]>>>();
   for (const k of keys) days.set(k, {});
 
-  for (const { provider, rows } of rowsIn(usage, dir)) {
+  for (const { provider, rows } of rowsIn(usage, dir, worktrees)) {
     const f = figureOf(provider, rows);
     add(all, f);
     if (f.tokens > 0) providers.push({ provider, ...f });
@@ -109,6 +126,7 @@ export function workspaceSpend(usage: Usage, dir: string, today: Date, span = 14
   return {
     dir,
     tracked,
+    worktrees: worktrees.filter((w) => !underDir(w, dir) && !underDir(dir, w)).length,
     sessions: sessions.size,
     scannedAt,
     error,

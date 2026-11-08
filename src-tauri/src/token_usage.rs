@@ -469,6 +469,22 @@ pub fn usage_in(store: &Mutex<Store>, mine: impl Fn(&str) -> bool) -> Value {
     Value::Object(out)
 }
 
+/// Owner change 2026-11-07: every folder that belongs to the workspace at `path`: its own and each
+/// git worktree of the same repo, so the spend ribbon counts the sessions that ran in a child
+/// worktree too. A folder that is not a repo (or git failing) answers just the folder.
+#[tauri::command]
+pub async fn workspace_worktrees(path: String) -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut out = vec![path.clone()];
+        if let Ok(text) = crate::git::run(&["worktree", "list", "--porcelain"], Some(Path::new(&path))) {
+            out.extend(crate::git::parse_worktrees(&text).into_iter().map(|w| w.path));
+        }
+        out
+    })
+    .await
+    .unwrap_or_default()
+}
+
 #[tauri::command]
 pub async fn token_usage_scan(app: tauri::AppHandle, provider: String) -> Result<Saved, String> {
     use tauri::Manager;
