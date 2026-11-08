@@ -2,7 +2,7 @@
 // tested without one. Wire shapes are frozen with the Rust side (agents_install_many and the
 // "agent-install-progress" event, both camelCase).
 import type { AgentInfo } from "./PlusMenu";
-import { canInstall } from "./agentInstall";
+import { canInstall, installNoteOf } from "./agentInstall";
 
 /** One entry of agents_install_many's answer. */
 export type InstallResult = { id: string; ok: boolean; error?: string | null; agent?: AgentInfo | null };
@@ -76,7 +76,8 @@ export function rowWords(a: AgentInfo, progress: Progress): string | null {
     if (p.state === "ok") return "Installed";
     return p.error ? `Failed: ${p.error}` : "Failed";
   }
-  return a.installed ? "Installed" : null;
+  // T-787 (P3-14): an agent that needs Node.js on a PC without it says that Windows will ask for admin permission.
+  return a.installed ? "Installed" : installNoteOf(a);
 }
 
 /** Whether a row's box is ticked: installed rows always are. */

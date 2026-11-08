@@ -15,7 +15,10 @@ export function pickList(agents: AgentInfo[], detecting: boolean): AgentInfo[] {
 export const optionLabel = (a: AgentInfo): string => (a.installed ? a.name : `${a.name} (not installed)`);
 
 /** What Install shows as its tooltip: the command Kolux would run. */
-export const installTip = (a: AgentInfo): string => a.install ?? `Install ${a.name}`;
+export const installTip = (a: AgentInfo): string => [a.install ?? `Install ${a.name}`, a.installNote].filter(Boolean).join(". ");
+
+/** T-787 (P3-14): the line shown beside Install when a click would raise Windows' admin prompt for Node.js; null when it would not. */
+export const installNoteOf = (a: AgentInfo): string | null => (!a.installed && a.installable !== false ? (a.installNote ?? null) : null);
 
 /** Install is offered for a picked agent that is missing and that Kolux knows an official route for. */
 export const canInstall = (a: AgentInfo | undefined): boolean => !!a && !a.installed && a.installable !== false;

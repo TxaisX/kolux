@@ -19,7 +19,7 @@ import VendorMark from "../chrome/VendorMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
 import { seatStart, type SeatDefault } from "./defaultSeat";
-import { canInstall, installTip, optionLabel, pickList, runInstall } from "./agentInstall";
+import { canInstall, installNoteOf, installTip, optionLabel, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
@@ -484,6 +484,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                         {installing === a.id ? "Installing…" : "Install"}
                       </button>
                       )}
+                      {installNoteOf(a) && <span className="caption" data-install-note>{installNoteOf(a)}</span>}
                       {selfInstallHint(a) && <span className="caption">{selfInstallHint(a)}</span>}
                       {installError[a.id] && (
                         <span className="agent-missing" role="alert">

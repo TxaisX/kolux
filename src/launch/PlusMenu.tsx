@@ -28,7 +28,9 @@ import "./plusMenuExtras.css";
 
 export type AgentInfo = { id: string; name: string; program: string; args: string[]; installed: boolean; path: string | null; docs?: boolean;
   /** T-570: Kolux knows an official install route for this agent on this OS; `install` is that command in words (a tooltip). */
-  installable?: boolean; install?: string | null };
+  installable?: boolean; install?: string | null;
+  /** T-787: set while installing this agent first needs Node.js on a PC without it; Windows will ask for admin permission, so the Install button says so. */
+  installNote?: string | null };
 
 // FIX-3: markFor, paneMark and the credit rule live in paneMark.ts (one rule shared with Rust); re-exported so every caller keeps its import.
 export { markFor, paneMark } from "./paneMark";
