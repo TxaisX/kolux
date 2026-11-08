@@ -1896,8 +1896,12 @@ mod tests {
             let _ = fs::remove_file(&mark);
             match own {
                 "hook" => hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark))),
-                "credential" => run(&["config", "credential.helper", "evil-helper"], Some(&dir)).unwrap(),
-                _ => run(&["config", "core.hooksPath", "evil-hooks"], Some(&dir)).unwrap(),
+                "credential" => {
+                    run(&["config", "credential.helper", "evil-helper"], Some(&dir)).unwrap();
+                }
+                _ => {
+                    run(&["config", "core.hooksPath", "evil-hooks"], Some(&dir)).unwrap();
+                }
             }
             let s = push_step(&dir).unwrap();
             assert_eq!(s.kind, "failed", "{own}: {s:?}");

@@ -151,17 +151,24 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
 const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$|^core\.(sshcommand|gitproxy|hookspath)$|^remote\..*\.(uploadpack|receivepack)$|^credential\.(.*\.)?helper$|^merge\..*\.driver$";
 
 /// The keys a USER's own config may set that a folder's keys of the same name would shadow (S4).
-const USER_NET_KEYS: &str = r"^core\.(sshcommand|gitproxy)$|^remote\..*\.(uploadpack|receivepack)$";
+const USER_NET_KEYS: &str = r"^core\.(sshcommand|gitproxy)$";
 
 /// A key whose value is a program git runs on a read, and which a read blanks (see `overrides_for`).
 fn is_program_key(key: &str) -> bool {
     key.starts_with("filter.") || key.starts_with("diff.") || key.starts_with("gpg.")
 }
 
-/// A key naming a program for a transfer (S4): replaced, never just blanked, so the user's own value
-/// of the same key (or git's default) still applies.
+/// A key naming a program for a transfer (S4) that is replaced, never just blanked, so the user's own
+/// value of the same key (or git's default) still applies: an environment variable outranks it.
 fn is_net_key(key: &str) -> bool {
-    key == "core.sshcommand" || key == "core.gitproxy" || (key.starts_with("remote.") && (key.ends_with(".uploadpack") || key.ends_with(".receivepack")))
+    key == "core.sshcommand" || key == "core.gitproxy"
+}
+
+/// A folder's own `remote.<name>.uploadpack` or `receivepack` (S4). These cannot be replaced: git
+/// keeps the FIRST value it reads for them ("more than one uploadpack given, using the first"), and the
+/// folder's own config is read before anything Kolux passes, so a transfer that would use one is refused.
+fn is_pack_key(key: &str) -> bool {
+    key.starts_with("remote.") && (key.ends_with(".uploadpack") || key.ends_with(".receivepack"))
 }
 
 fn is_credential_key(key: &str) -> bool {
@@ -837,6 +844,9 @@ fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result
         if let Some((key, _)) = found.iter().find(|(k, _)| is_credential_key(k)) {
             return Err(refusal(args, dir, &format!("the folder sets its own credential helper ({key}), a program that is handed your sign-in details on every transfer")));
         }
+        if let Some((key, _)) = found.iter().find(|(k, _)| is_pack_key(k)) {
+            return Err(refusal(args, dir, &format!("the folder names its own program for the other end of a transfer ({key}), which git would run in place of its own")));
+        }
     }
     if let Some((key, _)) = found.iter().find(|(k, _)| k == "core.hookspath") {
         return Err(refusal(args, dir, &format!("the folder points git at a hooks folder of its own ({key}), whose programs run around git commands")));
@@ -863,7 +873,6 @@ pub(crate) fn write_refusal(args: &[&str], cwd: Option<&Path>) -> Option<String>
 /// config pairs for the per-remote programs.
 #[derive(Default)]
 struct Net {
-    pairs: Vec<(String, String)>,
     env: Vec<(&'static str, String)>,
 }
 
@@ -900,8 +909,9 @@ fn user_net_values(cwd: &Path) -> Vec<(String, String)> {
     values
 }
 
-/// S4 (DT-C229): the transfer programs a folder's own config names (`core.sshCommand`,
-/// `core.gitProxy`, `remote.<name>.uploadpack` and `receivepack`) never run. Each is REPLACED by what
+/// S4 (DT-C229): the ssh and proxy commands a folder's own config names (`core.sshCommand`,
+/// `core.gitProxy`) never run. (A folder's own `remote.<name>.uploadpack` or `receivepack` cannot be
+/// replaced, so a transfer in an untrusted folder that sets one is refused: see `is_pack_key`.) Each is REPLACED by what
 /// the user's own config says for it, or git's own default when it says nothing, never just blanked
 /// (a blank would also override the user's global value, and an empty ssh command runs nothing at
 /// all). The ssh and proxy commands go through the environment, which outranks every config file,
@@ -940,10 +950,7 @@ fn net_overrides(found: &[(String, String)], cwd: &Path, strict: bool) -> Result
                     net.env.push(("GIT_PROXY_COMMAND", value));
                 }
             }
-            _ => {
-                let default = if key.ends_with(".uploadpack") { "git-upload-pack" } else { "git-receive-pack" };
-                net.pairs.push((key.to_string(), mine(key).unwrap_or_else(|| default.to_string())));
-            }
+            _ => {}
         }
     }
     Ok(net)
@@ -961,9 +968,7 @@ pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Comma
     let mut env = Vec::new();
     // A trusted folder's own transfer programs are the user's to run; everywhere else they are replaced.
     if access == Access::Reads {
-        let net = net_overrides(&found, dir, network(&args)).map_err(|what| refusal(&args, dir, &what))?;
-        pairs.extend(net.pairs);
-        env = net.env;
+        env = net_overrides(&found, dir, network(&args)).map_err(|what| refusal(&args, dir, &what))?.env;
     }
     Ok(base_command(&args, cwd, &pairs, &env))
 }
@@ -976,12 +981,8 @@ pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
     debug_assert!(cwd.is_none() || !(writes_content(args) || network(args) || ref_write(args)), "git {args:?} writes or transfers: use git::command_checked");
     let found = cwd.map(|dir| repo_programs(leading_options(args), dir)).unwrap_or_default();
     let args = guarded(args, &found, Access::Reads);
-    let mut pairs = overrides_for(&found, Access::Reads);
-    let mut env = Vec::new();
-    if let Some(net) = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()) {
-        pairs.extend(net.pairs);
-        env = net.env;
-    }
+    let pairs = overrides_for(&found, Access::Reads);
+    let env = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()).map(|net| net.env).unwrap_or_default();
     base_command(&args, cwd, &pairs, &env)
 }
 
@@ -3246,6 +3247,19 @@ mod tests {
         }
     }
 
+    /// An executable script beside `marker` that leaves it and passes its input through, as a path git can
+    /// run (S4). `core.gitProxy` is started as a program, never through a shell, so a shell line will not do.
+    fn marker_script(marker: &Path) -> String {
+        let script = marker.with_extension("sh");
+        fs::write(&script, format!("#!/bin/sh\necho ran >> \"{}\"\ncat\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        script.to_string_lossy().replace('\\', "/")
+    }
+
     /// A bare repository holding the history of `dir`, to be a remote for it.
     fn bare_copy(dir: &Path, name: &str) -> PathBuf {
         let bare = std::env::temp_dir().join(format!("kolux-rs-git-{name}-bare-{}", std::process::id()));
@@ -3402,33 +3416,35 @@ mod tests {
         run(&["config", "--unset-all", "core.sshCommand"], Some(&dir)).unwrap();
         // proxy command: for a git:// URL.
         run(&["remote", "add", "viaproxy", "git://127.0.0.1:1/x"], Some(&dir)).unwrap();
-        run(&["config", "core.gitProxy", &program], Some(&dir)).unwrap();
+        run(&["config", "core.gitProxy", &marker_script(&marker)], Some(&dir)).unwrap();
         assert!(!plain_git(&["fetch", "viaproxy"], &dir).status.success());
         assert!(marker.exists(), "the premise: plain git runs core.gitProxy");
         fs::remove_file(&marker).unwrap();
         let _ = run(&["fetch", "viaproxy"], Some(&dir));
         assert!(!marker.exists(), "Kolux's git ran the folder's core.gitProxy");
         run(&["config", "--unset-all", "core.gitProxy"], Some(&dir)).unwrap();
-        // upload-pack and receive-pack: a local remote runs them through the shell.
+        // upload-pack and receive-pack: a local remote runs them through the shell. git keeps the FIRST
+        // value it reads for these, so they cannot be replaced: the transfer is refused instead.
         run(&["remote", "add", "local", &bare.to_string_lossy()], Some(&dir)).unwrap();
         run(&["config", "remote.local.uploadpack", &program], Some(&dir)).unwrap();
         run(&["config", "remote.local.receivepack", &program], Some(&dir)).unwrap();
         assert!(!plain_git(&["fetch", "local"], &dir).status.success());
         assert!(marker.exists(), "the premise: plain git runs remote.<name>.uploadpack");
         fs::remove_file(&marker).unwrap();
-        run(&["fetch", "local"], Some(&dir)).expect("the fetch goes through git's own upload-pack");
-        assert!(!marker.exists(), "Kolux's git ran the folder's uploadpack");
-        assert!(!plain_git(&["push", "local", "main"], &dir).status.success());
-        assert!(marker.exists(), "the premise: plain git runs remote.<name>.receivepack");
-        fs::remove_file(&marker).unwrap();
-        fs::write(dir.join("more.txt"), "more\n").unwrap();
-        run(&["add", "-A"], Some(&dir)).unwrap();
-        run(&["commit", "-q", "-m", "more"], Some(&dir)).unwrap();
-        run(&["push", "local", "main"], Some(&dir)).expect("the push goes through git's own receive-pack");
-        assert!(!marker.exists(), "Kolux's git ran the folder's receivepack");
-        // A read that could fetch (a partial clone's missing objects) has them replaced too.
+        for args in [&["fetch", "local"][..], &["push", "local", "main"], &["ls-remote", "local"], &["pull", "local", "main"]] {
+            let why = run(args, Some(&dir)).unwrap_err();
+            plain_message(&why, args[0]);
+            assert!(why.contains("remote.local.uploadpack") || why.contains("remote.local.receivepack"), "{why}");
+        }
+        assert!(!marker.exists(), "Kolux's git ran the folder's uploadpack or receivepack");
+        assert!(refused(&["status"], &dir).is_none() && refused(&["commit", "-q", "-m", "x"], &dir).is_none(), "not a transfer");
+        // An ssh command of the folder's own is replaced on a read too (a partial clone's read can fetch).
+        run(&["config", "core.sshCommand", &program], Some(&dir)).unwrap();
         let status = command(&["status"], Some(&dir));
-        assert!(status.get_envs().any(|(k, v)| k == "GIT_SSH_COMMAND" || k == "GIT_PROXY_COMMAND" || v.is_some()));
+        assert!(status.get_envs().any(|(k, v)| k == "GIT_SSH_COMMAND" && v.is_some_and(|v| v == "ssh")), "{:?}", status.get_envs().collect::<Vec<_>>());
+        // Trusted: the folder's own programs are the user's to run.
+        trust_for_test(&dir);
+        assert!(refused(&["fetch", "local"], &dir).is_none());
         ISOLATED.with(|i| i.set(false));
         let _ = fs::remove_dir_all(&dir);
         let _ = fs::remove_dir_all(&bare);
@@ -3445,17 +3461,16 @@ mod tests {
         let global = std::env::temp_dir().join(format!("kolux-rs-git-d-user-net-global-{}", std::process::id()));
         let _ = fs::remove_file(&global);
         let global_s = global.to_string_lossy().to_string();
-        for (key, value) in [("core.sshCommand", marker_program(&mine)), ("core.gitProxy", marker_program(&mine)), ("remote.local.uploadpack", marker_program(&mine))] {
+        for (key, value) in [("core.sshCommand", marker_program(&mine)), ("core.gitProxy", marker_script(&mine))] {
             assert!(plain_git(&["config", "--file", &global_s, key, &value], &dir).status.success());
         }
         GLOBAL_FOR_TEST.with(|g| *g.borrow_mut() = Some(global.clone()));
-        for (key, value) in [("core.sshCommand", marker_program(&theirs)), ("core.gitProxy", marker_program(&theirs)), ("remote.local.uploadpack", marker_program(&theirs))] {
+        for (key, value) in [("core.sshCommand", marker_program(&theirs)), ("core.gitProxy", marker_script(&theirs))] {
             run(&["config", key, &value], Some(&dir)).unwrap();
         }
         run(&["remote", "add", "viassh", "ssh://127.0.0.1:1/x"], Some(&dir)).unwrap();
         run(&["remote", "add", "viaproxy", "git://127.0.0.1:1/x"], Some(&dir)).unwrap();
-        run(&["remote", "add", "local", &bare.to_string_lossy()], Some(&dir)).unwrap();
-        for remote in ["viassh", "viaproxy", "local"] {
+        for remote in ["viassh", "viaproxy"] {
             let _ = fs::remove_file(&mine);
             let _ = run(&["fetch", remote], Some(&dir));
             assert!(mine.exists(), "{remote}: the user's own program did not run");
@@ -3485,7 +3500,7 @@ mod tests {
         run(&["remote", "add", "viassh", "ssh://127.0.0.1:1/x"], Some(&dir)).unwrap();
         trust_for_test(&dir);
         let cmd = command_checked(&["fetch", "viassh"], Some(&dir)).unwrap();
-        assert!(!cmd.get_envs().any(|(k, _)| k == "GIT_SSH_COMMAND"), "a trusted folder's ssh command is not replaced");
+        assert!(!cmd.get_envs().any(|(k, v)| k == "GIT_SSH_COMMAND" && v.is_some()), "a trusted folder's ssh command is not replaced");
         let _ = run(&["fetch", "viassh"], Some(&dir));
         assert!(marker.exists(), "the trusted folder's own ssh command did not run");
         ISOLATED.with(|i| i.set(false));
