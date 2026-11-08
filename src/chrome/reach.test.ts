@@ -112,6 +112,7 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 const DIALOGS: [file: string, label: string, how: string][] = [
   ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
   ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "tag"],
+  ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["board/WorkspaceBoard.tsx", "Workspace statuses", "tag"],
   ["browser/BrowserPane.tsx", "Import from Google Chrome", "tag"],
   ["browser/BrowserPane.tsx", "Open an outside address?", "tag"],
@@ -287,6 +288,7 @@ function closes(d: Found, how: string, all: Found[]): boolean {
 const TRAPS: [file: string, label: string, how: "trapTab" | "hook" | "own"][] = [
   ["agentstart/AgentStartHost.tsx", "Continue in an agent", "hook"],
   ["automations/AutomationDialog.tsx", "editing ? `Edit ${editing.name}` : \"New Automation\"", "trapTab"],
+  ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["board/WorkspaceBoard.tsx", "Workspace statuses", "trapTab"],
   ["chrome/Ask.tsx", "title", "hook"],
   ["editor/CloseDialog.tsx", "Save changes before closing?", "trapTab"],

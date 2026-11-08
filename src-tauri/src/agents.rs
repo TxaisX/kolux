@@ -623,7 +623,7 @@ pub fn parse_env(typed: &str) -> Vec<(String, String)> {
 }
 
 /// C11-R1-01: the default model and effort from Settings > Agents (`defaultModel`, `defaultEffort`,
-/// shipped as opus at high), as the flags the agent takes. An untouched profile keeps the old line;
+/// shipped as opus at medium), as the flags the agent takes. An untouched profile keeps the old line;
 /// an empty string means "no default: pick a model for each seat" and adds nothing; a model this
 /// agent does not list belongs to another agent and adds nothing, as the launch chooser decides
 /// (`seatStart` in src/launch/defaultSeat.ts). An effort the model does not take is dropped.
@@ -635,7 +635,7 @@ fn default_model_args(settings: &serde_json::Value, id: &str) -> Vec<String> {
         Some(m) => m.to_string(),
     };
     let effort = match text("defaultEffort") {
-        None => Some("high"),
+        None => Some("medium"),
         Some("") => None,
         Some(e) => Some(e),
     };
@@ -774,6 +774,34 @@ pub fn agent_start_line(store: tauri::State<'_, std::sync::Mutex<crate::state::S
     Ok(line)
 }
 
+/// Txais 2026-11-08: a Claude Code seat runs Opus at medium as the lead and its subagents on Sonnet at
+/// high. A stuck subagent stops and returns a BLOCKED report; the lead answers it with a fix or another
+/// approach. Kolux's own `general-purpose` definition (`--agents`, which outranks user and project
+/// agents) carries the model, effort and the BLOCKED rule; `--append-system-prompt` tells the lead what
+/// to do with one; `CLAUDE_CODE_SUBAGENT_MODEL` puts the person's own subagents that name no model on
+/// Sonnet too (one that names a model keeps it). Text avoids cmd.exe's special characters.
+pub const SUBAGENT_MODEL_ENV: &str = "CLAUDE_CODE_SUBAGENT_MODEL";
+const WORKER_DESCRIPTION: &str = "General worker for research, multi-step tasks and code changes. Runs on Sonnet at high effort and reports BLOCKED to the lead when stuck.";
+const WORKER_PROMPT: &str = "You are a worker subagent for a lead agent. Do the task in your brief fully with the tools you have, and check your own work before you report. If you get stuck, stop instead of guessing or looping. Stuck means the same error twice, a fact you cannot find, or a choice your brief does not settle. Then return a report whose first line is BLOCKED, followed by what you were doing, what you tried, the exact error or gap, your best guess at the cause, and what you need from the lead. The lead will send back a fix or another way to attack the problem. When you finish, end with a short report of what you did, what you verified, and anything left open.";
+const LEAD_NOTE: &str = "Subagents you spawn with the general-purpose type run on Sonnet at high effort. When a subagent report starts with BLOCKED, work out the cause yourself and answer with a concrete fix or a different approach, by SendMessage to that subagent or a new spawn with a corrected brief. Do not resend the same brief unchanged.";
+
+/// The lead-and-workers setup for a Claude Code line: arguments in front and the subagent model
+/// variable. Nothing when the person replaced Claude's arguments in Settings (their line is theirs),
+/// and no arguments when the program starts through cmd.exe, which does not honour the JSON's quoting.
+fn add_team(settings: &serde_json::Value, id: &str, line: &mut StartLine, via_cmd: bool) {
+    if id != "claude" || option_field(settings, id, "args").is_some() {
+        return;
+    }
+    if !line.env.iter().any(|(n, _)| n.eq_ignore_ascii_case(SUBAGENT_MODEL_ENV)) {
+        line.env.push((SUBAGENT_MODEL_ENV.to_string(), "sonnet".to_string()));
+    }
+    if via_cmd || line.args.iter().any(|a| a == "--agents" || a.starts_with("--append-system-prompt")) {
+        return;
+    }
+    let agents = serde_json::json!({ "general-purpose": { "description": WORKER_DESCRIPTION, "prompt": WORKER_PROMPT, "model": "sonnet", "effort": "high" } });
+    line.args.splice(0..0, ["--agents".to_string(), agents.to_string(), "--append-system-prompt".to_string(), LEAD_NOTE.to_string()]);
+}
+
 /// T-605 (X-sec.1, L2-rust-crates.1, R08-orch-auto-chat.2): `start_line_as`, except that an agent
 /// whose program starts through cmd.exe (`via_cmd`, asked about the program the window will run: the
 /// user's own command, else the catalogue's installed one) starts bare and has its opening prompt
@@ -781,8 +809,10 @@ pub fn agent_start_line(store: tauri::State<'_, std::sync::Mutex<crate::state::S
 /// a GitHub title with `"` and `&` could run a command, and it ends the line at the first line break.
 fn launch_line(settings: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool, start: Start<'_>, via_cmd: impl Fn(&str) -> bool) -> Result<StartLine, String> {
     let program = command_override(settings, id).map(str::to_string).or_else(|| installed_program(id));
-    let typed = !prompt.trim().is_empty() && program.as_deref().is_some_and(via_cmd);
+    let cmd = program.as_deref().is_some_and(via_cmd);
+    let typed = !prompt.trim().is_empty() && cmd;
     let mut line = start_line_as(settings, id, extra, if typed { "" } else { prompt }, picked, start)?;
+    add_team(settings, id, &mut line, cmd);
     if typed {
         line.typed = Some(prompt.trim().to_string());
     }
@@ -1184,9 +1214,9 @@ X=1" } } });
 
     #[test]
     fn c11r101_unpicked_claude_takes_the_settings_default_model_and_effort() {
-        // an untouched profile keeps today's line exactly (opus at high)
+        // an untouched profile starts on opus at medium (Txais 2026-11-08)
         let none = serde_json::json!({});
-        assert_eq!(start_line(&none, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto", "--model", "opus", "--effort", "high"]));
+        assert_eq!(start_line(&none, "claude", &[], "", false).unwrap().args, s(&["--permission-mode", "auto", "--model", "opus", "--effort", "medium"]));
         // Settings > Agents "Default model and effort" is what an unpicked start uses (Continue with,
         // a restored tab, the Settings preview)
         let set = serde_json::json!({ "defaultModel": "sonnet", "defaultEffort": "low" });
@@ -1205,10 +1235,40 @@ X=1" } } });
     }
 
     #[test]
-    fn sess029_unpicked_claude_gets_its_top_model_at_high_effort() {
+    fn claude_seats_get_sonnet_high_workers_that_report_blocked_to_the_lead() {
+        let none = serde_json::json!({});
+        let line = launch_line(&none, "claude", &[], "go", false, Start::Fresh, |_| false).unwrap();
+        assert_eq!(line.args[0], "--agents");
+        let gp = &serde_json::from_str::<serde_json::Value>(&line.args[1]).unwrap()["general-purpose"];
+        assert_eq!((gp["model"].as_str(), gp["effort"].as_str()), (Some("sonnet"), Some("high")));
+        assert!(gp["prompt"].as_str().unwrap().contains("BLOCKED"));
+        assert_eq!(line.args[2], "--append-system-prompt");
+        assert!(line.args[3].contains("BLOCKED"));
+        assert_eq!(&line.args[4..], &s(&["--permission-mode", "auto", "--model", "opus", "--effort", "medium", "go"])[..]);
+        assert!(line.env.contains(&(SUBAGENT_MODEL_ENV.to_string(), "sonnet".to_string())));
+        // no cmd.exe special characters in the text, since a shim may still see it
+        assert!(!line.args.iter().any(|a| a.contains(['%', '^', '&', '|', '<', '>'])));
+        // through cmd.exe: the variable only, no JSON on the line
+        let shim = launch_line(&none, "claude", &[], "", false, Start::Fresh, |_| true).unwrap();
+        assert!(!shim.args.contains(&"--agents".to_string()));
+        assert!(shim.env.iter().any(|(k, _)| k == SUBAGENT_MODEL_ENV));
+        // the person's own arguments or variable win; other agents get nothing
+        let own = serde_json::json!({ "agentOptions": { "claude": { "args": "--model haiku" } } });
+        let mine = launch_line(&own, "claude", &[], "", false, Start::Fresh, |_| false).unwrap();
+        assert_eq!(mine.args, s(&["--model", "haiku"]));
+        assert!(mine.env.is_empty());
+        let env = serde_json::json!({ "agentOptions": { "claude": { "env": "CLAUDE_CODE_SUBAGENT_MODEL=opus" } } });
+        let kept = launch_line(&env, "claude", &[], "", false, Start::Fresh, |_| false).unwrap();
+        assert_eq!(kept.env, vec![(SUBAGENT_MODEL_ENV.to_string(), "opus".to_string())]);
+        let codex = launch_line(&none, "codex", &[], "", false, Start::Fresh, |_| false).unwrap();
+        assert!(!codex.args.contains(&"--agents".to_string()) && codex.env.iter().all(|(k, _)| k != SUBAGENT_MODEL_ENV));
+    }
+
+    #[test]
+    fn sess029_unpicked_claude_gets_its_top_model_at_medium_effort() {
         let none = serde_json::json!({});
         let line = start_line(&none, "claude", &[], "go", false).unwrap();
-        assert_eq!(line.args, s(&["--permission-mode", "auto", "--model", "opus", "--effort", "high", "go"]));
+        assert_eq!(line.args, s(&["--permission-mode", "auto", "--model", "opus", "--effort", "medium", "go"]));
         // an effort or a model already named, in the user's own arguments or the extra ones, wins
         let own = serde_json::json!({ "agentOptions": { "claude": { "args": "--effort=low" } } });
         assert_eq!(start_line(&own, "claude", &[], "", false).unwrap().args, s(&["--effort=low"]));
@@ -1305,9 +1365,11 @@ X=1" } } });
             .unwrap();
             assert!(line.args.iter().all(|a| !a.contains("Crash") && !a.contains('&') && !a.contains('\n')), "{id}: {:?}", line.args);
             assert_eq!(line.typed.as_deref(), Some(prompt), "{id}");
-            assert_eq!(line, start_line_as(&none, id, &[], "", true, Start::Fresh).map(|l| StartLine { typed: Some(prompt.into()), ..l }).unwrap(), "{id} starts bare");
+            // `add_team` is the Claude seat's lead-and-workers setup, the same on both sides.
+            let with_team = |mut l: StartLine, cmd: bool| (add_team(&none, id, &mut l, cmd), l).1;
+            assert_eq!(line, start_line_as(&none, id, &[], "", true, Start::Fresh).map(|l| with_team(StartLine { typed: Some(prompt.into()), ..l }, true)).unwrap(), "{id} starts bare");
             let direct = launch_line(&none, id, &[], prompt, true, Start::Fresh, |_| false).unwrap();
-            assert_eq!(direct, start_line_as(&none, id, &[], prompt, true, Start::Fresh).unwrap(), "{id} keeps its route");
+            assert_eq!(direct, start_line_as(&none, id, &[], prompt, true, Start::Fresh).map(|l| with_team(l, false)).unwrap(), "{id} keeps its route");
         }
         assert!(asked.borrow().iter().any(|p| p == "claude") && asked.borrow().iter().any(|p| p == "gemini"), "the catalogue's program is the one asked about: {:?}", asked.borrow());
         // The user's own command is the program asked about; a blank prompt stays none.
@@ -1470,7 +1532,7 @@ X=1" } } });
         // Claude Code keeps its permission mode and the unpicked model in front (T-066 shape).
         assert_eq!(
             start_line_as(&none, "claude", &[], "", false, Start::Restore(Some("sid"))).unwrap().args,
-            s(&["--permission-mode", "auto", "--model", "opus", "--effort", "high", "--resume", "sid"])
+            s(&["--permission-mode", "auto", "--model", "opus", "--effort", "medium", "--resume", "sid"])
         );
     }
 

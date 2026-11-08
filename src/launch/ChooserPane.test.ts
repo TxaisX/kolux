@@ -145,25 +145,27 @@ const agent = (id: string, name: string, installed: boolean): AgentInfo => ({ id
 const renderWith = (agents: AgentInfo[], detecting = false, seats: Seat[] = [{ agent: null, model: null }]) =>
   renderToString(createElement(ChooserPane, { saved: [], onSaved: () => {}, onPickSaved: () => {}, number: 2, agents, detecting, seats, onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: "shared", inGit: true, onCopies: () => {}, closable: true, onClose: () => {} }));
 
-const optionsOf = (html: string) => [...html.matchAll(/<option[^>]*value="([^"]*)"[^>]*>([^<]*)</g)].map((m) => [m[1], m[2]]);
+const agentButtons = (html: string) => [...html.matchAll(/<button class="btn agent-btn"[^>]*aria-pressed="(true|false)"[^>]*>(.*?)<\/button>/g)].map((m) => [m[2].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'"), m[1]]);
 
-test("T-570: one dropdown per seat lists every agent A to Z (T-664); a missing one reads (not installed) and can still be picked", () => {
-  const list = [agent("aider", "Aider", true), agent("grok", "Grok", false), agent("codex", "Codex", true), claude, agent("goose", "Goose", false)];
+test("Txais 2026-11-08: each seat has a button for Claude Code, Codex, OpenCode and Grok, then Terminal and Other; the rest sit behind Other", () => {
+  const list = [agent("aider", "Aider", true), agent("grok", "Grok", false), agent("codex", "Codex", true), claude, agent("opencode", "OpenCode", true), agent("goose", "Goose", false)];
   const html = renderWith(list);
-  expect(html.match(/<select[^>]*which AI/g)).toHaveLength(1);
-  expect(optionsOf(html).map((o) => o[1])).toEqual(["Choose an AI…", "Aider", "Claude Code", "Codex", "Goose (not installed)", "Grok (not installed)", "Terminal"]);
-  expect(html).not.toContain('type="radio" name="seat-2-0-ai"');
-  expect(html).not.toContain("More agents");
+  expect(html).not.toContain("<select");
+  expect(html).toContain('aria-label="Seat 1: which AI"');
+  expect(agentButtons(html).map((b) => b[0])).toEqual(["Claude Code", "Codex", "OpenCode", "Grok" + "not installed", "Terminal", "Other…"]);
+  expect(html).not.toContain(">Aider<");
   expect(html).not.toContain(">Install<");
   expect(startButton(renderWith(list))).toContain("disabled");
   expect(startButton(renderWith(list, false, [{ agent: "claude", model: "opus" }]))).not.toContain("disabled");
 });
 
-test("T-570: the dropdown shows the seat's pick; a picked agent with docs links to them", () => {
-  const html = renderWith([claude, agent("grok", "Grok", true)], false, [{ agent: "claude", model: "opus" }]);
-  expect(html).toMatch(/<option[^>]*value="claude"[^>]*selected/);
+test("Txais 2026-11-08: the seat's pick shows as a pressed button; an agent picked from Other names itself on the Other button", () => {
+  const list = [claude, agent("grok", "Grok", true), agent("aider", "Aider", true)];
+  const html = renderWith(list, false, [{ agent: "claude", model: "opus" }]);
+  expect(agentButtons(html).find((b) => b[0] === "Claude Code")?.[1]).toBe("true");
   expect(html).toContain("Claude Code docs");
-  expect(renderWith([claude], false, [{ agent: TERMINAL, model: null }])).toMatch(/<option[^>]*value="terminal"[^>]*selected/);
+  expect(agentButtons(renderWith(list, false, [{ agent: TERMINAL, model: null }])).find((b) => b[0] === "Terminal")?.[1]).toBe("true");
+  expect(agentButtons(renderWith(list, false, [{ agent: "aider", model: null }])).find((b) => b[0] === "Other: Aider")?.[1]).toBe("true");
 });
 
 test("T-201-c SESS-017: any agent with its own page links out to it, the folded ones too", () => {
@@ -174,13 +176,12 @@ test("T-201-c SESS-017: any agent with its own page links out to it, the folded 
 });
 
 test("SESS-017: nothing reads not installed while detection runs, and finding no AI at all says so", () => {
-  const looking = renderWith([], true);
+  const looking = renderWith([agent("grok", "Grok", false)], true);
   expect(looking).not.toContain("not installed");
   expect(looking).toContain("Looking for AI programs");
   const none = renderWith([agent("claude", "Claude Code", false), agent("codex", "Codex", false), agent("grok", "Grok", false)]);
   expect(none).toContain("No AI programs have been found yet");
-  expect(optionsOf(none).find((o) => o[1] === "Terminal")).toBeDefined();
-  expect(none).not.toMatch(/<option[^>]*value="terminal"[^>]*disabled/);
+  expect(agentButtons(none).find((b) => b[0] === "Terminal")).toBeDefined();
 });
 
 const renderSeats = (seats: Seat[]) =>

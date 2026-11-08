@@ -12,6 +12,15 @@ export function pickList(agents: AgentInfo[], detecting: boolean): AgentInfo[] {
   return [...agents].sort((x, y) => x.name.localeCompare(y.name, undefined, { sensitivity: "base" }));
 }
 
+/** The agents with their own button on each seat, in this order (Txais 2026-11-08). Every other agent sits behind Other. */
+export const FEATURED = ["claude", "codex", "opencode", "grok"];
+
+/** The featured agents Kolux knows about, in FEATURED order. */
+export const featuredRows = (rows: AgentInfo[]): AgentInfo[] => FEATURED.flatMap((id) => rows.filter((a) => a.id === id));
+
+/** What the Other window lists: installed agents without their own button, A to Z (rows arrive sorted). */
+export const otherRows = (rows: AgentInfo[]): AgentInfo[] => rows.filter((a) => a.installed && !FEATURED.includes(a.id));
+
 export const optionLabel = (a: AgentInfo): string => (a.installed ? a.name : `${a.name} (not installed)`);
 
 /** What Install shows as its tooltip: the command Kolux would run. */

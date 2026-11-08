@@ -62,6 +62,8 @@ enum Kind {
 fn targets(home: &Path) -> Vec<(&'static str, &'static str, PathBuf, Kind)> {
     vec![
         ("codex", "Codex", home.join(".codex").join("AGENTS.md"), Kind::Markdown),
+        // OpenCode reads its global rules from `~/.config/opencode/AGENTS.md` on every OS.
+        ("opencode", "OpenCode", home.join(".config").join("opencode").join("AGENTS.md"), Kind::Markdown),
         ("gemini", "Gemini CLI", home.join(".gemini").join("GEMINI.md"), Kind::Markdown),
         ("grok", "Grok", home.join(".grok").join("AGENTS.md"), Kind::Markdown),
         ("copilot", "Copilot CLI", home.join(".copilot").join("copilot-instructions.md"), Kind::Markdown),
@@ -320,6 +322,8 @@ mod tests {
         let codex = fs::read_to_string(t.join(".codex").join("AGENTS.md")).unwrap();
         assert!(codex.starts_with("my codex notes"), "the user's text is kept: {codex}");
         assert!(codex.contains("Be brief."));
+        let opencode = fs::read_to_string(t.join(".config").join("opencode").join("AGENTS.md")).unwrap();
+        assert!(opencode.contains("Be brief."), "OpenCode gets the block too: {opencode}");
         // A second run changes nothing.
         let again = apply(&t).unwrap();
         assert_eq!(again.targets, after.targets);
