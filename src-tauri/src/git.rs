@@ -139,12 +139,12 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
 /// filter on checkout, a textconv or external diff on `diff`/`show` of a commit, a signature
 /// program on a log that shows signatures (review fix 2). Only the keys a listing finds are
 /// blanked, so a user's own drivers in their global config stay as they are.
-const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$";
+const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$";
 
 /// The program lines `git lfs install` writes, which run the user's own installed git-lfs and
 /// nothing the folder brought along; a driver made only of these is left alone, so a repository
 /// with LFS set up locally keeps working under Kolux.
-const LFS_LINES: [(&str, &str); 3] = [("clean", "git-lfs clean -- %f"), ("smudge", "git-lfs smudge -- %f"), ("process", "git-lfs filter-process")];
+const LFS_LINES: [(&str, &str); 5] = [("clean", "git-lfs clean -- %f"), ("smudge", "git-lfs smudge -- %f"), ("process", "git-lfs filter-process"), ("smudge", "git-lfs smudge --skip -- %f"), ("process", "git-lfs filter-process --skip")];
 
 /// What a git run may do with the repository's own program keys (review fix 2, Txais 2026-11-08,
 /// DT-C229): a read always has them blanked; a write that runs the repository's clean or smudge
@@ -198,6 +198,9 @@ fn overrides_for(found: &[(String, String)], access: Access) -> Vec<(String, Str
     };
     let mut out = Vec::with_capacity(found.len());
     for (key, _) in found {
+        if key == INCOMPLETE_KEY {
+            continue;
+        }
         let Some(driver) = key.rsplit_once('.').map(|(d, _)| d) else { continue };
         if access == Access::TrustedWrite && !key.starts_with("diff.") {
             continue;
@@ -234,52 +237,168 @@ fn program_filters(found: &[(String, String)]) -> Vec<(String, String)> {
     out
 }
 
-/// The git dir and the shared (common) git dir for a git run in `cwd`, found from the `.git`
-/// folder or file of `cwd` or an ancestor without running git. None when `cwd` is in no repository.
-fn repo_dirs(cwd: &Path) -> Option<(PathBuf, PathBuf)> {
-    let dot_git = cwd.ancestors().take(64).map(|d| d.join(".git")).find(|g| g.exists())?;
-    let git_dir = if dot_git.is_dir() {
-        dot_git
-    } else {
-        // A linked worktree or a submodule: `.git` is a file saying `gitdir: <path>`, relative to the folder it is in.
-        let text = std::fs::read_to_string(&dot_git).ok()?;
-        let rel = text.lines().find_map(|l| l.strip_prefix("gitdir:"))?.trim();
-        dot_git.parent()?.join(rel)
-    };
-    // The shared folder: `commondir` names it (relative to the git dir) for a linked worktree.
-    let common = std::fs::read_to_string(git_dir.join("commondir")).ok().map(|t| git_dir.join(t.trim())).unwrap_or_else(|| git_dir.clone());
-    Some((git_dir, common))
+/// A config file's text, for the few files read as text here (no git run): nothing unless it is a
+/// regular file (a pipe, a device or a folder named like a config file never blocks the read), and
+/// at most 1 MB of it (a hostile folder's multi-gigabyte "config" is not slurped).
+fn read_small(path: &Path) -> Option<String> {
+    use std::io::Read;
+    if !std::fs::metadata(path).ok()?.is_file() {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(path).ok()?.take(1 << 20).read_to_end(&mut bytes).ok()?;
+    Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// Every submodule's own config under `modules` (`.git/modules`), nested submodules included
-/// (a submodule's git folder holds its own `modules`). A git run in the parent lets the child gits
-/// it starts for a submodule read that config, so a filter named there runs as well (review fix 2).
-fn module_configs(modules: &Path, out: &mut Vec<PathBuf>, depth: usize) {
-    if depth > 8 || out.len() >= 256 {
-        return;
+/// The git folder a `.git` entry stands for: the folder itself, or the folder a `.git` file names
+/// (`gitdir: <path>`, relative to the folder the file is in), as a linked worktree or a submodule
+/// has it. Links are followed, as git follows them.
+fn resolve_dot_git(dot_git: &Path) -> Option<PathBuf> {
+    if dot_git.is_dir() {
+        return Some(dot_git.to_path_buf());
     }
-    let Ok(entries) = std::fs::read_dir(modules) else { return };
+    let text = read_small(dot_git)?;
+    let rel = text.lines().find_map(|l| l.strip_prefix("gitdir:"))?.trim();
+    Some(dot_git.parent()?.join(rel))
+}
+
+/// The worktree folder, the git dir and the shared (common) git dir for a git run in `cwd`, found
+/// from the `.git` folder or file of `cwd` or an ancestor without running git. None when `cwd` is
+/// in no repository.
+fn repo_layout(cwd: &Path) -> Option<(PathBuf, PathBuf, PathBuf)> {
+    let dot_git = cwd.ancestors().take(64).map(|d| d.join(".git")).find(|g| g.exists())?;
+    let root = dot_git.parent()?.to_path_buf();
+    let git_dir = resolve_dot_git(&dot_git)?;
+    // The shared folder: `commondir` names it (relative to the git dir) for a linked worktree.
+    let common = read_small(&git_dir.join("commondir")).map(|t| git_dir.join(t.trim())).unwrap_or_else(|| git_dir.clone());
+    Some((root, git_dir, common))
+}
+
+/// The git dir and the shared (common) git dir for a git run in `cwd` (see `repo_layout`).
+fn repo_dirs(cwd: &Path) -> Option<(PathBuf, PathBuf)> {
+    repo_layout(cwd).map(|(_, git_dir, common)| (git_dir, common))
+}
+
+/// How deep the walks below go, and how many submodule configs each keeps. A walk that hits either
+/// says so (false), and the listing then fails closed instead of silently leaving some out.
+const SUBMODULE_DEPTH: usize = 8;
+const SUBMODULES_KEPT: usize = 256;
+const LISTING_LIMIT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// Every submodule's own config under `modules` (`.git/modules`), nested submodules included
+/// (a submodule's git folder holds its own `modules`); links are followed. A git run in the parent
+/// lets the child gits it starts for a submodule read that config, so a filter named there runs as
+/// well (review fix 2). False when a cap cut the walk short.
+fn module_configs(modules: &Path, out: &mut Vec<PathBuf>, depth: usize) -> bool {
+    let Ok(entries) = std::fs::read_dir(modules) else { return true };
+    if depth > SUBMODULE_DEPTH {
+        return false;
+    }
+    let mut complete = true;
     for entry in entries.flatten() {
-        if !entry.file_type().is_ok_and(|t| t.is_dir()) {
+        let dir = entry.path();
+        if !dir.is_dir() {
             continue;
         }
-        let dir = entry.path();
         let config = dir.join("config");
         if config.is_file() {
+            if out.len() >= SUBMODULES_KEPT {
+                return false;
+            }
             out.push(config);
-            module_configs(&dir.join("modules"), out, depth + 1);
+            complete &= module_configs(&dir.join("modules"), out, depth + 1);
         } else {
             // A submodule named `a/b` lives in `modules/a/b`: `a` is only a folder on the way.
-            module_configs(&dir, out, depth + 1);
+            complete &= module_configs(&dir, out, depth + 1);
         }
     }
+    complete
+}
+
+/// What a walk over the gitlinks of a worktree found (review fix 3, finding B2): a submodule's git
+/// folder need not be under `.git/modules` (an embedded `sub/.git` folder, or a `.git` file naming
+/// a folder anywhere), so the index, which lists every gitlink, is the authority.
+#[derive(Default)]
+struct GitlinkWalk {
+    /// Each submodule's own `config` and `config.worktree`.
+    configs: Vec<PathBuf>,
+    /// Files whose change can change the answer: every `.git` a gitlink might have, each submodule's HEAD and index.
+    watch: Vec<PathBuf>,
+    /// False when git could not list a worktree's gitlinks, or a cap cut the walk short.
+    incomplete: bool,
+    kept: usize,
+}
+
+/// The folders of the gitlinks (index mode 160000) of the worktree at `root`, from `git ls-files -s`,
+/// which reads only the index and runs no program. None when git did not answer in time; a git that
+/// refuses (not a repository, someone else's folder) answers nothing, and refuses the real run too.
+fn gitlinks(root: &Path) -> Option<Vec<PathBuf>> {
+    let out = output_within(base_command(&["ls-files", "-s", "-z"], Some(root), &[]), LISTING_LIMIT)?;
+    if !out.status.success() {
+        return Some(Vec::new());
+    }
+    Some(out.stdout.split(|b| *b == 0).filter_map(|rec| rec.strip_prefix(b"160000 ")).filter_map(|rec| rec.iter().position(|b| *b == b'\t').map(|i| root.join(&*String::from_utf8_lossy(&rec[i + 1..])))).collect())
+}
+
+fn walk_gitlinks(root: &Path, depth: usize, walk: &mut GitlinkWalk) {
+    let Some(paths) = gitlinks(root) else {
+        walk.incomplete = true;
+        return;
+    };
+    for folder in paths {
+        let dot_git = folder.join(".git");
+        walk.watch.push(dot_git.clone());
+        // A submodule that is not checked out has no git folder yet; the `.git` watched above shows when it gets one.
+        let Some(git_dir) = dot_git.exists().then(|| resolve_dot_git(&dot_git)).flatten().filter(|d| d.is_dir()) else { continue };
+        if depth >= SUBMODULE_DEPTH || walk.kept >= SUBMODULES_KEPT {
+            walk.incomplete = true;
+            return;
+        }
+        walk.kept += 1;
+        walk.configs.extend([git_dir.join("config"), git_dir.join("config.worktree")]);
+        walk.watch.extend([git_dir.join("HEAD"), git_dir.join("index")]);
+        walk_gitlinks(&folder, depth + 1, walk);
+    }
+}
+
+/// `cmd` run for at most `limit` with its standard output read: None when it could not start or did
+/// not finish (it is then killed). The standard error is dropped.
+fn output_within(mut cmd: Command, limit: std::time::Duration) -> Option<std::process::Output> {
+    use std::io::Read;
+    use std::process::Stdio;
+    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+    let mut child = cmd.spawn().ok()?;
+    let mut pipe = child.stdout.take()?;
+    let reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let _ = pipe.read_to_end(&mut bytes);
+        bytes
+    });
+    let started = std::time::Instant::now();
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if started.elapsed() < limit => std::thread::sleep(std::time::Duration::from_millis(10)),
+            _ => {
+                // The whole tree: a program git started would otherwise keep the pipe open.
+                crate::procs::kill_tree(child.id());
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+        }
+    };
+    // A run that timed out is not waited for any further.
+    let stdout = if status.is_some() { reader.join().unwrap_or_default() } else { Vec::new() };
+    status.map(|status| std::process::Output { status, stdout, stderr: Vec::new() })
 }
 
 /// The config files `include.path` and `includeIf.<condition>.path` name in `file` (read as text, no
 /// git run): a relative path is relative to the including file, `~/` is the home folder. Every
-/// target counts whether or not its condition holds, so the stamp only errs toward a fresh listing.
+/// target counts whether or not its condition holds, so the stamp only errs toward a fresh listing
+/// (a condition that depends on the checked-out branch is why HEAD is stamped as well).
 fn include_targets(file: &Path) -> Vec<PathBuf> {
-    let Ok(text) = std::fs::read_to_string(file) else { return Vec::new() };
+    let Some(text) = read_small(file) else { return Vec::new() };
     let mut out = Vec::new();
     let take = |line: &str, out: &mut Vec<PathBuf>| {
         let Some((key, value)) = line.split_once('=') else { return };
@@ -321,12 +440,18 @@ fn include_targets(file: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// `files` and, depth first, every file they include (git itself stops at depth 10).
-fn with_includes(files: &[PathBuf]) -> Vec<PathBuf> {
+/// `files` and, depth first, every file they include (git itself stops at depth 10); false when
+/// the count cap cut the walk short.
+fn with_includes_checked(files: &[PathBuf]) -> (Vec<PathBuf>, bool) {
     let mut all: Vec<PathBuf> = Vec::new();
+    let mut complete = true;
     let mut todo: Vec<(PathBuf, usize)> = files.iter().cloned().map(|f| (f, 0)).collect();
     while let Some((file, depth)) = todo.pop() {
-        if all.contains(&file) || all.len() >= 512 {
+        if all.contains(&file) {
+            continue;
+        }
+        if all.len() >= 512 {
+            complete = false;
             continue;
         }
         if depth < 10 {
@@ -334,68 +459,122 @@ fn with_includes(files: &[PathBuf]) -> Vec<PathBuf> {
         }
         all.push(file);
     }
-    all
+    (all, complete)
 }
 
-/// The config files that decide the program keys for a git run in `cwd`: the shared `config` and
-/// the worktree's own `config.worktree` (listed through git, which follows their includes), and
-/// every submodule's own `config` (listed with `--file`). None when `cwd` is in no repository.
-fn repo_config_files(cwd: &Path) -> Option<(Vec<PathBuf>, Vec<PathBuf>)> {
-    let (git_dir, common) = repo_dirs(cwd)?;
-    let mut subs = Vec::new();
-    module_configs(&common.join("modules"), &mut subs, 0);
-    Some((vec![common.join("config"), git_dir.join("config.worktree")], subs))
+#[cfg(test)]
+fn with_includes(files: &[PathBuf]) -> Vec<PathBuf> {
+    with_includes_checked(files).0
 }
 
-/// How the config files looked when a listing was taken: modification time and size of each.
+/// How the files a listing depends on looked when it was taken: modification time and size of each
+/// (a missing one is `None`, so its appearing counts as a change).
 type ConfigStamp = Vec<(PathBuf, Option<(std::time::SystemTime, u64)>)>;
 
-fn config_stamp(files: &[PathBuf]) -> ConfigStamp {
-    with_includes(files).into_iter().map(|f| (f.clone(), std::fs::metadata(&f).ok().and_then(|m| Some((m.modified().ok()?, m.len()))))).collect()
+fn stat_of(file: &Path) -> Option<(std::time::SystemTime, u64)> {
+    std::fs::metadata(file).ok().and_then(|m| Some((m.modified().ok()?, m.len())))
 }
 
-/// One listing per repository, kept while its config files are unchanged, so a status read costs
-/// the same number of git processes as before (T-033-e sizes the watcher's process count on it).
-/// One cached listing: the folder, how its config files looked, and the program keys they gave.
-type RepoPrograms = (PathBuf, ConfigStamp, Vec<(String, String)>);
+fn stamp_holds(stamp: &ConfigStamp) -> bool {
+    stamp.iter().all(|(file, was)| stat_of(file) == *was)
+}
+
+/// `paths` once each, whichever way they are spelled (a submodule's `gitdir: ../.git/modules/x` and
+/// the walk of `.git/modules` reach the same file).
+fn unique_files(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut seen: Vec<PathBuf> = Vec::new();
+    let mut out = Vec::new();
+    for path in paths {
+        let key = path.canonicalize().unwrap_or_else(|_| path.clone());
+        if !seen.contains(&key) {
+            seen.push(key);
+            out.push(path);
+        }
+    }
+    out
+}
+
+/// One listing per repository, kept while the files it depends on are unchanged, so a status read
+/// costs the same number of git processes as before (T-033-e sizes the watcher's process count on it).
+/// One cached listing: the folder, its git dir, how the files it depends on looked, and the program
+/// keys they gave.
+type RepoPrograms = (PathBuf, PathBuf, ConfigStamp, Vec<(String, String)>);
 static REPO_PROGRAMS: std::sync::Mutex<Vec<RepoPrograms>> = std::sync::Mutex::new(Vec::new());
 const REPO_PROGRAMS_KEPT: usize = 256;
 
+/// The key a listing carries when it could not be made complete (a cap cut a walk short, git did not
+/// answer in time): not a git key, never blanked, but a read then runs without submodule checks
+/// (`guarded`) and a write that runs filters is refused in an untrusted folder.
+const INCOMPLETE_KEY: &str = "kolux.listing-incomplete";
+
+fn incomplete(found: &[(String, String)]) -> bool {
+    found.iter().any(|(k, _)| k == INCOMPLETE_KEY)
+}
+
 /// The program keys the repository (and every submodule) names, for a git run in `cwd`; `prefix`
 /// is the run's own leading options (`-C dir`, `-c k=v`), so the listing reads the same repository.
-/// The listing is a plain `git config` read, which runs no program of the repository's.
+/// The listing is a plain `git config` read, which runs no program of the repository's. It depends
+/// on the config files (and what they include), on `config.worktree`, on HEAD (an `includeIf
+/// onbranch:` condition), and on the index of the repository and each submodule (the gitlinks it
+/// lists decide which submodule configs count), so a change to any of them makes a new listing.
 fn repo_programs(prefix: &[&str], cwd: &Path) -> Vec<(String, String)> {
-    let files = repo_config_files(cwd);
-    let stamp = files.as_ref().map(|(top, subs)| config_stamp(&[top.as_slice(), subs.as_slice()].concat()));
-    if let Some(stamp) = &stamp {
+    let layout = repo_layout(cwd);
+    if let Some((_, git_dir, _)) = &layout {
         if let Ok(cache) = REPO_PROGRAMS.lock() {
-            if let Some((_, _, found)) = cache.iter().find(|(dir, s, _)| dir == cwd && s == stamp) {
+            if let Some((_, _, _, found)) = cache.iter().find(|(dir, g, stamp, _)| dir == cwd && g == git_dir && stamp_holds(stamp)) {
                 return found.clone();
             }
         }
     }
-    let listing = |args: &[&str]| -> Vec<u8> {
+    let mut complete = true;
+    let listing = |args: &[&str], complete: &mut bool| -> Vec<u8> {
         // Exit 1 is "no such key": nothing to blank. Any other failure (not a repository) the same.
-        base_command(args, Some(cwd), &[]).stdin(std::process::Stdio::null()).stderr(std::process::Stdio::null()).output().ok().filter(|o| o.status.success()).map(|o| o.stdout).unwrap_or_default()
+        match output_within(base_command(args, Some(cwd), &[]), LISTING_LIMIT) {
+            Some(out) if out.status.success() => out.stdout,
+            Some(_) => Vec::new(),
+            None => {
+                *complete = false;
+                Vec::new()
+            }
+        }
     };
     let mut args: Vec<&str> = prefix.to_vec();
     args.extend(["config", "-z", "--show-scope", "--get-regexp", REPO_PROGRAM_KEYS]);
-    let mut found = parse_listing(&listing(&args), true);
-    for config in files.iter().flat_map(|(_, subs)| subs) {
-        let config = config.to_string_lossy();
-        for pair in parse_listing(&listing(&["config", "-z", "--includes", "--file", &config, "--get-regexp", REPO_PROGRAM_KEYS]), false) {
-            if !found.contains(&pair) {
-                found.push(pair);
+    let mut found = parse_listing(&listing(&args, &mut complete), true);
+    let mut stamped: Vec<PathBuf> = Vec::new();
+    if let Some((root, git_dir, common)) = &layout {
+        let mut subs = Vec::new();
+        complete &= module_configs(&common.join("modules"), &mut subs, 0);
+        let mut walk = GitlinkWalk::default();
+        walk_gitlinks(root, 0, &mut walk);
+        complete &= !walk.incomplete;
+        subs.extend(walk.configs);
+        let subs = unique_files(subs.into_iter().flat_map(|c| [c.with_file_name("config.worktree"), c]).collect());
+        for config in subs.iter().filter(|c| c.is_file()) {
+            let config = config.to_string_lossy();
+            for pair in parse_listing(&listing(&["config", "-z", "--includes", "--file", &config, "--get-regexp", REPO_PROGRAM_KEYS], &mut complete), false) {
+                if !found.contains(&pair) {
+                    found.push(pair);
+                }
             }
         }
+        let (mut files, included) = with_includes_checked(&[vec![common.join("config"), git_dir.join("config.worktree")], subs].concat());
+        complete &= included;
+        files.extend([git_dir.join("HEAD"), git_dir.join("index"), common.join("modules")]);
+        files.extend(walk.watch);
+        stamped = files;
     }
-    if let Some(stamp) = stamp {
+    if !complete {
+        found.push((INCOMPLETE_KEY.to_string(), "1".to_string()));
+    }
+    if let Some((_, git_dir, _)) = layout {
+        let stamp: ConfigStamp = unique_files(stamped).into_iter().map(|f| (f.clone(), stat_of(&f))).collect();
         if let Ok(mut cache) = REPO_PROGRAMS.lock() {
-            cache.retain(|(dir, _, _)| dir != cwd);
+            cache.retain(|(dir, _, _, _)| dir != cwd);
             if cache.len() >= REPO_PROGRAMS_KEPT {
                 cache.remove(0);
             }
-            cache.push((cwd.to_path_buf(), stamp, found.clone()));
+            cache.push((cwd.to_path_buf(), git_dir, stamp, found.clone()));
         }
     }
     found
@@ -479,46 +658,76 @@ pub(crate) fn trust_for_test(folder: &Path) {
     TRUST_FILES.with(|f| *f.borrow_mut() = Some((file, std::env::temp_dir().join("kolux-rs-test-no-codex.toml"))));
 }
 
-/// Why `args` must not run in `cwd` (review fix 2, DT-C229): it writes content, the folder names a
-/// filter of its own, and the folder is not trusted. Such a write is refused instead of run with
-/// the filter skipped, because a skipped clean or smudge filter stores plaintext where the
-/// repository expects ciphertext (git-crypt, transcrypt) or checks ciphertext out. None when the
-/// write may go ahead.
-pub(crate) fn write_refusal(args: &[&str], cwd: Option<&Path>) -> Option<String> {
-    let dir = cwd?;
+/// What a run of `args` in `dir` may do with the repository's own program keys, decided from the
+/// keys already listed (DT-C229). A read has them blanked. A write that runs clean or smudge
+/// filters (`writes_content`) keeps them in a trusted folder (the folder's own signing program too,
+/// so a trusted commit still signs); in an untrusted folder that names a filter of its own it is
+/// REFUSED instead of run with the filter skipped, because a skipped clean or smudge filter stores
+/// plaintext where the repository expects ciphertext (git-crypt, transcrypt) or checks ciphertext out.
+fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result<Access, String> {
     if !writes_content(args) {
-        return None;
+        return Ok(Access::Reads);
     }
-    let filters = program_filters(&repo_programs(leading_options(args), dir));
-    if filters.is_empty() || folder_trusted(dir) {
-        return None;
+    if folder_trusted(dir) {
+        return Ok(Access::TrustedWrite);
     }
-    let names = filters.iter().map(|(d, k)| format!("\"{d}\" ({k})")).collect::<Vec<_>>().join(", ");
+    let filters = program_filters(found);
+    if filters.is_empty() && !incomplete(found) {
+        return Ok(Access::Reads);
+    }
+    let what = if filters.is_empty() {
+        "the folder has more submodules than Kolux can check for programs of their own".to_string()
+    } else {
+        let names = filters.iter().map(|(d, k)| format!("\"{d}\" ({k})")).collect::<Vec<_>>().join(", ");
+        format!("the folder has its own git filter {names}, which runs a program every time files are staged or checked out")
+    };
     let rest = after_options(args);
     let verb = rest.iter().take(if rest.first() == Some(&"worktree") { 2 } else { 1 }).copied().collect::<Vec<_>>().join(" ");
-    Some(format!(
-        "Kolux did not run `git {verb}` in {}: the folder has its own git filter {names}, which runs a program every time files are staged or checked out, and the folder is not trusted. Trust the folder (open an agent in it and accept its trust prompt), then try again.",
+    Err(format!(
+        "Kolux did not run `git {verb}` in {}: {what}, and the folder is not trusted. Trust the folder (open an agent in it and accept its trust prompt), then try again.",
         dir.display()
     ))
 }
 
-/// A git process with Kolux's environment (see `base_command`) for a run that may write: refused
-/// with `write_refusal`'s message when the folder's own filter must not run unasked.
-pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Command, String> {
-    match write_refusal(args, cwd) {
-        Some(why) => Err(why),
-        None => Ok(command(args, cwd)),
-    }
+/// Why `args` must not run in `cwd` (see `write_access`): None when the run may go ahead.
+pub(crate) fn write_refusal(args: &[&str], cwd: Option<&Path>) -> Option<String> {
+    let dir = cwd?;
+    write_access(args, dir, &repo_programs(leading_options(args), dir)).err()
 }
 
-/// A git process with Kolux's environment (see `base_command`), its repository's own program keys
-/// blanked when it runs in a folder (T-779, review finding 1): always for a read; for a write that
-/// runs filters only in an untrusted folder (`command_checked` refuses a write there that has a
-/// filter, so only a caller that skips it ever sees the blanked write).
+/// A git process with Kolux's environment (see `base_command`) for ANY run, the one a caller that
+/// may write must use: the listing, the refusal and the blanking come from one decision, so nothing
+/// can change between the check and the run. Err is the refusal's plain message.
+pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Command, String> {
+    let Some(dir) = cwd else { return Ok(base_command(args, None, &[])) };
+    let found = repo_programs(leading_options(args), dir);
+    let access = write_access(args, dir, &found)?;
+    let args = guarded(args, &found, access);
+    Ok(base_command(&args, cwd, &overrides_for(&found, access)))
+}
+
+/// A git process with Kolux's environment (see `base_command`) for a READ, its repository's own
+/// program keys blanked (T-779, review finding 1). A run that writes content must go through
+/// `command_checked`; here it is a bug, and a debug build stops on it.
 pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
+    debug_assert!(cwd.is_none() || !writes_content(args), "git {args:?} writes content: use git::command_checked");
     let found = cwd.map(|dir| repo_programs(leading_options(args), dir)).unwrap_or_default();
-    let trusted_write = !program_filters(&found).is_empty() && writes_content(args) && cwd.is_some_and(folder_trusted);
-    base_command(args, cwd, &overrides_for(&found, if trusted_write { Access::TrustedWrite } else { Access::Reads }))
+    let args = guarded(args, &found, Access::Reads);
+    base_command(&args, cwd, &overrides_for(&found, Access::Reads))
+}
+
+/// `args`, with submodules left out of a status or diff when the listing of the repository's
+/// programs is incomplete (see `INCOMPLETE_KEY`): git then starts no child git for a submodule whose
+/// own config Kolux could not read. An explicit `--ignore-submodules` of the caller's stays.
+fn guarded<'a>(args: &[&'a str], found: &[(String, String)], access: Access) -> Vec<&'a str> {
+    let mut out = args.to_vec();
+    if access == Access::Reads && incomplete(found) && !args.iter().any(|a| a.starts_with("--ignore-submodules")) {
+        let at = args.len() - after_options(args).len();
+        if matches!(args.get(at).copied(), Some("status" | "diff" | "diff-files" | "diff-index")) {
+            out.insert(at + 1, "--ignore-submodules=all");
+        }
+    }
+    out
 }
 
 fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, String)]) -> Command {
@@ -2047,7 +2256,7 @@ mod tests {
         let repo = base.join("r");
         fs::create_dir_all(&repo).unwrap();
         let g = |args: &[&str], dir: &Path| {
-            let out = command(args, Some(dir)).output().unwrap();
+            let out = command_checked(args, Some(dir)).unwrap().output().unwrap();
             assert!(out.status.success(), "{args:?}: {}", String::from_utf8_lossy(&out.stderr));
         };
         g(&["init", "-q", "-b", "main"], &repo);
@@ -2459,6 +2668,11 @@ mod tests {
         let parent = run(&["rev-parse", "HEAD"], Some(&dir)).unwrap();
         let body = format!("tree {tree}\nparent {parent}\nauthor T <t@example.com> 1700000000 +0000\ncommitter T <t@example.com> 1700000000 +0000\ngpgsig -----BEGIN PGP SIGNATURE-----\n \n iQEzBAABCAAdFiEEAAAA\n =abcd\n -----END PGP SIGNATURE-----\n\nsigned\n");
         let mut hash = Command::new("git");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            hash.creation_flags(0x0800_0000); // no console window
+        }
         hash.args(["hash-object", "-t", "commit", "-w", "--literally", "--stdin"]).current_dir(&dir).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped());
         let mut child = hash.spawn().unwrap();
         std::io::Write::write_all(&mut child.stdin.take().unwrap(), body.as_bytes()).unwrap();
@@ -2512,6 +2726,236 @@ mod tests {
         let base = keys(&dir);
         fs::write(git_dir.join("deeper.cfg"), "[filter \"evil\"]\n\tclean = evil\n").unwrap();
         assert_eq!(keys(&dir), base + 1, "a change in an included file refreshed the listing");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// The Kolux git config keys (the value of each `GIT_CONFIG_KEY_n`) a built command carries.
+    fn blanked_keys(cmd: &Command) -> Vec<String> {
+        cmd.get_envs().filter(|(k, _)| k.to_string_lossy().starts_with("GIT_CONFIG_KEY_")).filter_map(|(_, v)| v.map(|v| v.to_string_lossy().to_string())).collect()
+    }
+
+    /// A submodule at `sub` (a worktree folder of its own) added to a fresh parent repository, its git
+    /// folder wherever `init_args` puts it; the submodule's own config then names a clean filter and
+    /// an attributes line applies it. Returns (parent, submodule git dir, marker).
+    fn submodule_with_filter(name: &str, outside: Option<&Path>) -> (PathBuf, PathBuf, PathBuf) {
+        let dir = temp_repo(name);
+        let sub = dir.join("sub");
+        fs::create_dir_all(&sub).unwrap();
+        let mut init = vec!["init", "-q", "-b", "main"];
+        let outside_text = outside.map(|o| o.to_string_lossy().to_string());
+        if let Some(o) = &outside_text {
+            init.extend(["--separate-git-dir", o]);
+        }
+        assert!(plain_git(&init, &sub).status.success());
+        for (k, v) in [("user.email", "t@example.com"), ("user.name", "t"), ("core.autocrlf", "false")] {
+            assert!(plain_git(&["config", k, v], &sub).status.success());
+        }
+        fs::write(sub.join("README.md"), "sub\n").unwrap();
+        assert!(plain_git(&["add", "."], &sub).status.success());
+        assert!(plain_git(&["commit", "-q", "-m", "sub first"], &sub).status.success());
+        assert!(plain_git(&["add", "sub"], &dir).status.success());
+        assert!(plain_git(&["commit", "-q", "-m", "add sub"], &dir).status.success());
+        let git_dir = outside.map(Path::to_path_buf).unwrap_or_else(|| sub.join(".git"));
+        let marker = dir.join("sub-filter-ran.txt");
+        let mut text = fs::read_to_string(git_dir.join("config")).unwrap();
+        text.push_str(&format!("[filter \"evil\"]\n\tclean = {}\n", marker_program(&marker)));
+        fs::write(git_dir.join("config"), text).unwrap();
+        fs::create_dir_all(git_dir.join("info")).unwrap();
+        fs::write(git_dir.join("info").join("attributes"), "* filter=evil\n").unwrap();
+        // The same bytes written again: the stat is stale, so the submodule's git re-cleans the file.
+        let readme = sub.join("README.md");
+        let bytes = fs::read(&readme).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        fs::write(&readme, bytes).unwrap();
+        (dir, git_dir, marker)
+    }
+
+    /// Plain git runs the submodule's filter on the parent's status; Kolux's git does not.
+    fn assert_submodule_filter_blanked(dir: &Path, marker: &Path) {
+        let args: [&[&str]; 3] = [&["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], &["status", "--porcelain=v2", "--ignore-submodules=none", "-z"], &["diff", "--numstat", "-z", "--ignore-submodules=none"]];
+        let control = plain_git(args[1], dir);
+        assert!(control.status.success(), "{}", String::from_utf8_lossy(&control.stderr));
+        assert!(marker.exists(), "control: git itself did not run the submodule's clean filter, so the test proves nothing");
+        for a in args {
+            let _ = fs::remove_file(marker);
+            let out = command(a, Some(dir)).output().unwrap();
+            assert!(out.status.success(), "{a:?}: {}", String::from_utf8_lossy(&out.stderr));
+            assert!(!marker.exists(), "the submodule's clean filter ran under Kolux's git {a:?}");
+        }
+    }
+
+    /// Review fix 3, B2: a submodule whose git folder is the embedded `sub/.git`, not one under
+    /// `.git/modules`, is found through the index's gitlinks, and its own filter is blanked.
+    #[test]
+    fn t779c_an_embedded_dot_git_submodules_own_filter_never_runs_under_kolux_git() {
+        let (dir, _git_dir, marker) = submodule_with_filter("c-embedded", None);
+        assert!(!dir.join(".git").join("modules").join("sub").exists(), "the fixture must keep the submodule out of .git/modules");
+        assert_submodule_filter_blanked(&dir, &marker);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 3, B2: a `.git` file naming a git folder anywhere (here outside the repository).
+    #[test]
+    fn t779c_a_submodule_whose_gitdir_points_outside_the_repository_is_blanked() {
+        let outside = std::env::temp_dir().join(format!("kolux-rs-git-c-outside-gitdir-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&outside);
+        let (dir, _git_dir, marker) = submodule_with_filter("c-outside", Some(&outside));
+        assert!(dir.join("sub").join(".git").is_file(), "the fixture needs a .git file");
+        assert_submodule_filter_blanked(&dir, &marker);
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&outside);
+    }
+
+    /// Review fix 3, B2: the submodule listing refreshes when the gitlink set changes (a submodule
+    /// appears in the index with a filter that was not there when the first listing was taken).
+    #[test]
+    fn t779c_a_gitlink_added_later_refreshes_the_listing() {
+        let dir = temp_repo("c-later");
+        let status = ["status", "--porcelain=v2", "-z"];
+        let base = blanked_keys(&command(&status, Some(&dir))).len();
+        let sub = dir.join("late");
+        fs::create_dir_all(&sub).unwrap();
+        assert!(plain_git(&["init", "-q", "-b", "main"], &sub).status.success());
+        for (k, v) in [("user.email", "t@example.com"), ("user.name", "t")] {
+            assert!(plain_git(&["config", k, v], &sub).status.success());
+        }
+        fs::write(sub.join("f.txt"), "x\n").unwrap();
+        assert!(plain_git(&["add", "."], &sub).status.success());
+        assert!(plain_git(&["commit", "-q", "-m", "late"], &sub).status.success());
+        let mut text = fs::read_to_string(sub.join(".git").join("config")).unwrap();
+        text.push_str("[filter \"evil\"]\n\tclean = evil\n");
+        fs::write(sub.join(".git").join("config"), text).unwrap();
+        // Not a gitlink yet: the parent's git starts nothing for it.
+        assert_eq!(blanked_keys(&command(&status, Some(&dir))).len(), base);
+        assert!(plain_git(&["add", "late"], &dir).status.success());
+        assert!(blanked_keys(&command(&status, Some(&dir))).len() > base, "the gitlink's filter is blanked as soon as the index lists it");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 3, B2: a walk that hits a cap says so, and the listing then fails closed: a status
+    /// leaves submodules out, a write that runs filters is refused in an untrusted folder and runs
+    /// in a trusted one.
+    #[test]
+    fn t779c_a_capped_submodule_walk_fails_closed() {
+        let dir = temp_repo("c-cap");
+        let modules = dir.join(".git").join("modules");
+        for i in 0..SUBMODULES_KEPT + 4 {
+            let folder = modules.join(format!("m{i:04}"));
+            fs::create_dir_all(&folder).unwrap();
+            fs::write(folder.join("config"), "[core]\n\tbare = false\n").unwrap();
+        }
+        let mut got = Vec::new();
+        assert!(!module_configs(&modules, &mut got, 0), "a walk over more than the cap says it was cut short");
+        assert_eq!(got.len(), SUBMODULES_KEPT);
+        let mut deep = dir.join(".git").join("deepmodules");
+        for _ in 0..SUBMODULE_DEPTH + 3 {
+            deep = deep.join("a").join("modules");
+        }
+        fs::create_dir_all(&deep).unwrap();
+        let mut got = Vec::new();
+        assert!(!module_configs(&dir.join(".git").join("deepmodules"), &mut got, 0), "a walk deeper than the cap says it was cut short");
+        let status: Vec<String> = command(&["status", "--porcelain=v2", "-z"], Some(&dir)).get_args().map(|a| a.to_string_lossy().to_string()).collect();
+        assert!(status.iter().any(|a| a == "--ignore-submodules=all"), "{status:?}");
+        let why = run(&["add", "-A"], Some(&dir)).unwrap_err();
+        assert!(why.contains("more submodules than Kolux can check") && why.contains("Trust the folder"), "{why}");
+        let log: Vec<String> = command(&["log", "-1"], Some(&dir)).get_args().map(|a| a.to_string_lossy().to_string()).collect();
+        assert_eq!(log, ["log", "-1"], "a read that starts no submodule git is left as it was");
+        trust_for_test(&dir);
+        run(&["add", "-A"], Some(&dir)).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 3, B2: a `modules/<name>` that is a link to a folder is followed, as git does.
+    #[test]
+    fn t779c_a_linked_modules_entry_is_followed() {
+        let dir = temp_repo("c-link");
+        let real = std::env::temp_dir().join(format!("kolux-rs-git-c-link-real-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&real);
+        fs::create_dir_all(&real).unwrap();
+        fs::write(real.join("config"), "[filter \"evil\"]\n\tclean = evil\n").unwrap();
+        let modules = dir.join(".git").join("modules");
+        fs::create_dir_all(&modules).unwrap();
+        #[cfg(windows)]
+        let made = std::os::windows::fs::symlink_dir(&real, modules.join("linked")).is_ok();
+        #[cfg(not(windows))]
+        let made = std::os::unix::fs::symlink(&real, modules.join("linked")).is_ok();
+        if made {
+            let mut got = Vec::new();
+            assert!(module_configs(&modules, &mut got, 0));
+            assert_eq!(got.len(), 1, "{got:?}");
+            assert!(blanked_keys(&command(&["status", "--porcelain=v2", "-z"], Some(&dir))).iter().any(|k| k == "filter.evil.clean"));
+        }
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&real);
+    }
+
+    /// Review fix 3, B2: a submodule's own `config.worktree` is read as well.
+    #[test]
+    fn t779c_a_submodules_config_worktree_is_listed() {
+        let (dir, git_dir, _marker) = submodule_with_filter("c-wtcfg", None);
+        let status = ["status", "--porcelain=v2", "-z"];
+        let base = blanked_keys(&command(&status, Some(&dir))).len();
+        fs::write(git_dir.join("config.worktree"), "[filter \"other\"]\n\tsmudge = evil\n").unwrap();
+        assert_eq!(blanked_keys(&command(&status, Some(&dir))).len(), base + 1);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 3, S1: `includeIf "onbranch:"` makes the listing depend on the checked-out branch,
+    /// so a branch switch (which changes only HEAD) refreshes it.
+    #[test]
+    fn t779c_a_branch_switch_refreshes_an_onbranch_include() {
+        let dir = temp_repo("c-onbranch");
+        let git_dir = dir.join(".git");
+        fs::write(git_dir.join("branch.cfg"), "[filter \"evil\"]\n\tclean = evil\n").unwrap();
+        let mut text = fs::read_to_string(git_dir.join("config")).unwrap();
+        text.push_str("[includeIf \"onbranch:feature\"]\n\tpath = branch.cfg\n");
+        fs::write(git_dir.join("config"), text).unwrap();
+        let status = ["status", "--porcelain=v2", "-z"];
+        let base = blanked_keys(&command(&status, Some(&dir))).len();
+        assert!(plain_git(&["switch", "-q", "-c", "feature"], &dir).status.success());
+        assert_eq!(blanked_keys(&command(&status, Some(&dir))).len(), base + 1, "the listing followed the branch");
+        assert!(plain_git(&["switch", "-q", "main"], &dir).status.success());
+        assert_eq!(blanked_keys(&command(&status, Some(&dir))).len(), base, "and followed it back");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 3, S2: only a regular file is read as config text, and only its first megabyte.
+    #[test]
+    fn t779c_include_targets_read_only_regular_files_and_only_a_megabyte() {
+        let dir = temp_repo("c-small");
+        let folder = dir.join("not-a-file.cfg");
+        fs::create_dir_all(&folder).unwrap();
+        assert!(read_small(&folder).is_none() && include_targets(&folder).is_empty());
+        let big = dir.join("big.cfg");
+        let mut text = "#".repeat((1 << 20) + 16);
+        text.push_str("\n[include]\n\tpath = past-the-limit.cfg\n");
+        fs::write(&big, text).unwrap();
+        assert!(include_targets(&big).is_empty(), "the include after the first megabyte was read");
+        let small = dir.join("small.cfg");
+        fs::write(&small, "[include]\n\tpath = x.cfg\n").unwrap();
+        assert_eq!(include_targets(&small).len(), 1);
+        // A listing that does not finish is cut off instead of waited for.
+        let slow = base_command(&["-c", "alias.slow=!sleep 30", "slow"], Some(&dir), &[]);
+        let started = std::time::Instant::now();
+        assert!(output_within(slow, std::time::Duration::from_millis(400)).is_none());
+        assert!(started.elapsed() < std::time::Duration::from_secs(20));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 3, S3: a trusted folder with a repo-local `gpg.program` and no filter keeps it on
+    /// a commit (signing works); an untrusted one has it blanked, and the commit is not refused.
+    #[test]
+    fn t779c_a_trusted_folders_gpg_program_survives_a_commit() {
+        let dir = temp_repo("c-gpg-trusted");
+        run(&["config", "gpg.program", "my-signer"], Some(&dir)).unwrap();
+        let commit = ["commit", "-q", "-m", "x"];
+        let cmd = command_checked(&commit, Some(&dir)).expect("no filter: not refused");
+        assert!(blanked_keys(&cmd).iter().any(|k| k == "gpg.program"), "untrusted: blanked");
+        trust_for_test(&dir);
+        let cmd = command_checked(&commit, Some(&dir)).unwrap();
+        assert!(!blanked_keys(&cmd).iter().any(|k| k == "gpg.program"), "trusted: the signing program is kept");
+        // A read in the same trusted folder still blanks it.
+        assert!(blanked_keys(&command(&["log", "-1"], Some(&dir))).iter().any(|k| k == "gpg.program"));
         let _ = fs::remove_dir_all(&dir);
     }
 }

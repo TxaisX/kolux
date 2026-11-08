@@ -1264,7 +1264,7 @@ mod tests {
         let dir = crate::test_dir::TempDir(base.join(format!("scm-watch-{name}-{}", std::process::id())));
         let _ = std::fs::remove_dir_all(&*dir);
         std::fs::create_dir_all(&*dir).unwrap();
-        let git = |a: &[&str]| assert!(crate::git::command(a, Some(&dir)).output().unwrap().status.success(), "{a:?}");
+        let git = |a: &[&str]| assert!(crate::git::command_checked(a, Some(&dir)).unwrap().output().unwrap().status.success(), "{a:?}");
         git(&["init", "-q", "-b", "main"]);
         git(&["config", "user.email", "t@example.com"]);
         git(&["config", "user.name", "t"]);
@@ -1323,7 +1323,7 @@ mod tests {
         assert!(t.elapsed() >= QUIET);
         assert!(until(Duration::from_secs(10), || seen.lock().unwrap().last().is_some_and(|s| s.changed.len() == 1)));
         // Staging from outside moves the index: another read, now staged.
-        assert!(crate::git::command(&["add", "a.txt"], Some(&dir)).output().unwrap().status.success());
+        assert!(crate::git::command_checked(&["add", "a.txt"], Some(&dir)).unwrap().output().unwrap().status.success());
         assert!(until(Duration::from_secs(10), || seen.lock().unwrap().last().is_some_and(|s| s.staged.len() == 1)));
         // The read itself must not move the index into another read (git status runs without optional locks).
         // How long one read takes right now: on a loaded PC it is seconds, and the windows scale with it.
@@ -1513,7 +1513,7 @@ mod tests {
     fn fix1_unwatch_root_joins_five_readers_in_under_100_ms_and_tells_the_page_only_when_asked() {
         let _live = live();
         let dir = repo("join5");
-        let git = |args: &[&str], cwd: &Path| crate::git::command(args, Some(cwd)).output().unwrap();
+        let git = |args: &[&str], cwd: &Path| crate::git::command_checked(args, Some(cwd)).unwrap().output().unwrap();
         std::fs::create_dir_all(dir.join(".git/info")).unwrap();
         let linked = dir.parent().unwrap().join(format!("scm-watch-join5-wt-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&linked);
@@ -1625,7 +1625,7 @@ mod tests {
     fn t033e_a_linked_worktree_commit_is_seen_and_its_removal_ends_the_watch() {
         let _live = live();
         let dir = repo("linked");
-        let git = |args: &[&str], cwd: &Path| crate::git::command(args, Some(cwd)).output().unwrap();
+        let git = |args: &[&str], cwd: &Path| crate::git::command_checked(args, Some(cwd)).unwrap().output().unwrap();
         let ok = |args: &[&str], cwd: &Path| assert!(git(args, cwd).status.success(), "{args:?}");
         let base = dir.parent().unwrap().to_path_buf();
         let linked = base.join(format!("scm-watch-linked-wt-{}", std::process::id()));

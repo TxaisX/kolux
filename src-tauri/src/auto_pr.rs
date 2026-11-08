@@ -7,7 +7,7 @@
 //! repository whose `index.lock` exists is left alone (the lock is never deleted), and every read of
 //! the history has a time limit that fails the step instead of passing it.
 
-use crate::git::{command, run, Git, NO_PROMPT};
+use crate::git::{command, command_checked, run, Git, NO_PROMPT};
 use crate::scm::{self, Status};
 use regex::bytes::Regex;
 use std::collections::{BTreeMap, BTreeSet};
@@ -473,7 +473,7 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     let saved = run(&["write-tree"], Some(dir)).map_err(|e| format!("could not save the staging area first: {e}"))?;
     let fail = |s: AutoStep| Ok(undo(dir, &saved, &head_before, s));
 
-    match run_limited(command(&["add", "-A"], Some(dir)), PUSH_LIMIT) {
+    match command_checked(&["add", "-A"], Some(dir)).and_then(|c| run_limited(c, PUSH_LIMIT)) {
         // A git stopped at the limit may leave its index.lock behind; that is left alone (see `undo`).
         Err(e) => return fail(step("failed", format!("Not committed: {}", scrub(&e)))),
         Ok((false, log)) => return fail(step("failed", format!("Not committed: git add failed: {}", scrub(&crate::git::failure_reason(&log).unwrap_or_else(|| "git gave no reason".into()))))),
@@ -490,7 +490,7 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     }
 
     let message = format!("Auto-commit on {} after an agent turn", ctx.branch);
-    let (ok, log) = match run_limited(command(&["commit", "--quiet", "-m", &message], Some(dir)), PUSH_LIMIT) {
+    let (ok, log) = match command_checked(&["commit", "--quiet", "-m", &message], Some(dir)).and_then(|c| run_limited(c, PUSH_LIMIT)) {
         Ok(r) => r,
         Err(e) => {
             // The commit may have landed before Kolux lost sight of git.
@@ -1856,6 +1856,11 @@ mod tests {
     #[test]
     fn t652_a_command_that_outlives_its_limit_is_stopped() {
         let mut cmd = if cfg!(windows) { Command::new("ping") } else { Command::new("sleep") };
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // no console window
+        }
         if cfg!(windows) {
             cmd.args(["-n", "8", "127.0.0.1"]);
         } else {
@@ -2098,6 +2103,11 @@ mod tests {
     #[test]
     fn t652_a_command_with_input_outlives_its_limit_or_answers() {
         let mut cmd = if cfg!(windows) { Command::new("ping") } else { Command::new("sleep") };
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // no console window
+        }
         if cfg!(windows) {
             cmd.args(["-n", "8", "127.0.0.1"]);
         } else {
