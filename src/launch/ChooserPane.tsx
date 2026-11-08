@@ -19,8 +19,9 @@ import VendorMark from "../chrome/VendorMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
 import { firstSeatStart, seatStart, type SeatDefault } from "./defaultSeat";
-import { canInstall, installNoteOf, installTip, optionLabel, pickList, runInstall } from "./agentInstall";
+import { canInstall, FEATURED, featuredRows, installNoteOf, installTip, otherRows, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
+import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
 import { allReady, countPlan, MAX_SESSIONS, modelsFor, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
@@ -40,6 +41,40 @@ function DocsLink({ agent }: { agent: AgentInfo }) {
         </span>
       )}
     </>
+  );
+}
+
+/** Txais 2026-11-08: the window behind a seat's Other button, listing installed agents without a button of their own. */
+function OtherAgents({ seat, agents, picked, onPick, onMore, onClose }: { seat: number; agents: AgentInfo[]; picked: string | null; onPick: (id: string) => void; onMore: () => void; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useDialogFocus(box, onClose); // focus on open, Tab kept inside, Escape from anywhere, focus back on close
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={box} className="other-agents" role="dialog" aria-modal="true" aria-label="Other AI programs">
+        <h2>Other AI programs</h2>
+        <span className="caption">{`Installed on this computer. Your pick runs in seat ${seat + 1}.`}</span>
+        {agents.length === 0 ? (
+          <span className="caption">No other AI programs are installed.</span>
+        ) : (
+          <div className="other-agents-list">
+            {agents.map((a) => (
+              <button key={a.id} className="btn agent-btn" aria-pressed={picked === a.id} onClick={() => onPick(a.id)}>
+                <VendorMark agent={markFor(a.id)} size={12} />
+                {a.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="btn-row">
+          <button className="btn link" onClick={onMore}>
+            Add more agents
+          </button>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -158,6 +193,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     // T-571: the default model and effort start the seat (else the agent's saved pick, Row 389); the person can still change both.
     setSeat(i, seatStart(id, seatDefault_));
   };
+  // An installed agent (or Terminal) starts the seat; a missing one is shown so its Install button appears.
+  const chooseAgent = (i: number, id: string) => {
+    const a = rows.find((x) => x.id === id);
+    if (id === TERMINAL || a?.installed) return pickAgent(i, id);
+    setShown((s) => ({ ...s, [i]: id }));
+    setSeat(i, { agent: null, model: null, effort: undefined, fast: undefined });
+  };
+  // Which seat's Other window is open (Txais 2026-11-08: the four main agents get buttons, the rest sit behind Other).
+  const [otherFor, setOtherFor] = useState<number | null>(null);
   // SESS-029: Grok and Cursor are asked for their models once per app run.
   const [, setLive] = useState(0);
   useEffect(() => {
@@ -444,34 +488,31 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                     .
                   </span>
                 )}
-                {shownPick(seats, shown, i) && <VendorMark agent={shownPick(seats, shown, i) === TERMINAL ? "shell" : markFor(shownPick(seats, shown, i) ?? "")} size={12} />}
-                <select
-                  aria-label={`Seat ${i + 1}: which AI`}
-                  value={shownPick(seats, shown, i) ?? ""}
-                  onChange={(e) => {
-                    const id = e.currentTarget.value;
-                    const a = rows.find((x) => x.id === id);
-                    if (id === TERMINAL || a?.installed) return pickAgent(i, id);
-                    setShown((s) => ({ ...s, [i]: id }));
-                    setSeat(i, { agent: null, model: null, effort: undefined, fast: undefined });
-                  }}
-                >
-                  <option value="" disabled>
-                    Choose an AI…
-                  </option>
-                  {[{ label: "Installed", list: rows.filter((a) => a.installed) }, { label: "Others", list: rows.filter((a) => !a.installed) }].map((g) =>
-                    g.list.length === 0 ? null : (
-                      <optgroup key={g.label} label={g.label}>
-                        {g.list.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {optionLabel(a)}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ),
-                  )}
-                  <option value={TERMINAL}>Terminal</option>
-                </select>
+                {!detecting && (
+                  <div className="choices" role="group" aria-label={`Seat ${i + 1}: which AI`}>
+                    {featuredRows(rows).map((a) => (
+                      <button key={a.id} className="btn agent-btn" aria-pressed={shownPick(seats, shown, i) === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => chooseAgent(i, a.id)}>
+                        <VendorMark agent={markFor(a.id)} size={12} />
+                        {a.name}
+                        {!a.installed && <span className="agent-btn-note">not installed</span>}
+                      </button>
+                    ))}
+                    <button className="btn agent-btn" aria-pressed={shownPick(seats, shown, i) === TERMINAL} title="A plain terminal, no AI" onClick={() => chooseAgent(i, TERMINAL)}>
+                      <VendorMark agent="shell" size={12} />
+                      Terminal
+                    </button>
+                    {(() => {
+                      const pick = shownPick(seats, shown, i);
+                      const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
+                      return (
+                        <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={() => setOtherFor(i)}>
+                          {other && <VendorMark agent={markFor(other.id)} size={12} />}
+                          {other ? `Other: ${other.name}` : "Other…"}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                )}
                 {(() => {
                   const a = rows.find((x) => x.id === shownPick(seats, shown, i));
                   if (!a) return null;
@@ -602,6 +643,16 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
           </button>
         </div>
       </footer>
+      {otherFor !== null && (
+        <OtherAgents
+          seat={otherFor}
+          agents={otherRows(rows)}
+          picked={seats[otherFor]?.agent ?? null}
+          onPick={(id) => (pickAgent(otherFor, id), setOtherFor(null))}
+          onMore={() => (setOtherFor(null), openSettings("accounts"))}
+          onClose={() => setOtherFor(null)}
+        />
+      )}
     </section>
   );
 }

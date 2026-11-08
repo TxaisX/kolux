@@ -8,7 +8,7 @@ export const DEFAULT_MODEL_KEY = "defaultModel";
 export const DEFAULT_EFFORT_KEY = "defaultEffort";
 
 /** What a profile that never chose gets. An empty string saved means "no default: pick per seat". */
-export const SHIPPED_DEFAULT = { model: "opus", effort: "high" };
+export const SHIPPED_DEFAULT = { model: "opus", effort: "medium" }; // Opus at medium (Txais 2026-11-08)
 
 export type SeatDefault = { model: string; effort: string };
 

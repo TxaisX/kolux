@@ -250,6 +250,9 @@ const FLOW_LOW: u64 = 128 * 1024;
 pub(crate) const FLOW_WAIT: Duration = Duration::from_secs(2);
 /// The whole service stop at an update quit: the share of the quit budget it must fit (row 1014).
 pub(crate) const UPDATE_STOP_LIMIT: Duration = Duration::from_secs(2);
+/// DT-C27 (2026-11-08): how long a start waits, on its own thread, for a leftover service to end.
+const LEFTOVER_STOP_LIMIT: Duration = Duration::from_secs(5);
+const LEFTOVER_PROBE_WAIT: Duration = Duration::from_millis(500);
 
 impl Flow {
     /// Counts `bytes` just sent to the pane and, past the high mark, waits for it to catch up.
@@ -1505,14 +1508,27 @@ impl Terminals {
     /// T-184-b (TERM-105, APP-052): links the window to the background terminal service, starting it
     /// when none runs, and takes back the terminals it kept running, on a thread; a pane asking
     /// meanwhile waits (`wait_linked`). Panes then start, type, resize and close through it, and
-    /// quitting leaves them running. An installed build only, unless `KOLUX_TERMINAL_SERVICE` says
-    /// otherwise (`link::wanted`); without the service, panes run in the window as before.
+    /// quitting leaves them running. Only with `KOLUX_TERMINAL_SERVICE=1` (`link::wanted`).
+    ///
+    /// DT-C27 (Txais, 2026-11-08): otherwise panes run in the window and end with it, and a service
+    /// left by an earlier Kolux (and every shell and agent it still holds) is stopped, so each start
+    /// is fresh. Single-instance is claimed before this runs, so no other open window uses it.
     pub fn use_service(&self, app: &AppHandle) {
-        let release = !cfg!(debug_assertions);
-        if !crate::pty::link::wanted(release, std::env::var("KOLUX_TERMINAL_SERVICE").ok().as_deref()) {
+        let Ok(dir) = app.path().app_data_dir() else { return };
+        if !crate::pty::link::wanted(std::env::var("KOLUX_TERMINAL_SERVICE").ok().as_deref()) {
+            std::thread::spawn(move || {
+                use crate::pty::service;
+                let Some(ep) = service::read_endpoint(&dir) else { return };
+                let stopped = service::stop(&dir, LEFTOVER_STOP_LIMIT);
+                // A record naming a dead process, or one that does not answer as a service (its pid
+                // reused by another program), is forgotten so later starts do not wait on it again.
+                if stopped || matches!(service::probe(&dir, LEFTOVER_PROBE_WAIT), service::Probe::None) {
+                    service::remove_endpoint_if_ours(&dir, ep.pid);
+                }
+                crate::diag::write(&dir, &format!("leftover terminal service stopped at start: {stopped}"));
+            });
             return;
         }
-        let Ok(dir) = app.path().app_data_dir() else { return };
         *self.service.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Linking::Starting;
         *self.service.dir.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(dir.clone());
         let (me, app) = (self.clone(), app.clone());
@@ -1606,9 +1622,9 @@ impl Terminals {
         Some((link, owned))
     }
 
-    /// Ends every session the window runs: the window is closing. T-184-b: the ones the background
-    /// service runs go on (DT-C27 reversed); the window lets go of them and records how much of
-    /// each one's output it drew, so the next window adds only what it missed.
+    /// Ends every session the window runs: the window is closing. Only with `KOLUX_TERMINAL_SERVICE=1`
+    /// (T-184-b) do the ones the background service runs go on; the window lets go of them and records
+    /// how much of each one's output it drew, so the next window adds only what it missed.
     pub fn kill_all(&self) {
         crate::automations::QUITTING.store(true, std::sync::atomic::Ordering::SeqCst);
         self.let_go();

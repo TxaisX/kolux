@@ -70,10 +70,10 @@ test("a slow start draws the window without the saved tabs, then hands them to t
   // opened during the wait stays drawn.
   expect(back.key).toBe(slow.key);
   expect(back.props.late?.panes.map((p) => [p.key, p.agent, p.args])).toEqual([
-    [1, "claude", ["--resume", "s-1"]],
+    [1, "shell", []],
     [2, "shell", []],
-    [3, "codex", ["--resume", "thr_3"]],
-  ]);
+    [3, "shell", []],
+  ]); // DT-C27 (2026-11-08): a fresh start brings agent tabs back as plain shells, never resumed
   expect(back.props.late?.focused).toBe(3);
   expect(back.props.initial).toMatchObject({ language: "fr" });
   // The rest of what a timely read sets up follows the late answer too: the language and the terminal text.
