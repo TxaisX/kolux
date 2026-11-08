@@ -3,6 +3,7 @@
 This page lists every finished build task and, in plain words, what it gives you.
 Each row links to the guide page that explains the feature; "internal" means behind-the-scenes work you never see.
 Tasks not yet ticked off in the build plan are not listed.
+Rows that talk about extra workspace folders or worktrees describe what Kolux built before it moved to one folder per project; the sidebar no longer offers those.
 
 ## 0. Walking skeleton
 
@@ -11,11 +12,11 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-001 | The app opens one window and saves its state and settings on your computer. | [Getting started](getting-started.md) |
 | T-001-fix | Project notes on current state were rewritten for accuracy. | internal |
 | T-002 | Open a PowerShell terminal pane that takes typing and resizes. | [Terminals](terminals.md) |
-| T-003 | Add a git folder as a project and give a branch its own workspace folder. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-003 | Add a git folder as a project and give a branch its own workspace folder. | [Projects and folders](projects-and-worktrees.md) |
 | T-003b | The window uses Kolux's own look: custom title bar, side bar and top bar. | [Getting started](getting-started.md) |
 | T-003b-fix-a | The top bar keeps the view switcher centred and window buttons visible. | [Getting started](getting-started.md) |
 | T-003b-fix-b | Design notes now record where the New tab and split buttons sit. | internal |
-| T-004 | Start Claude Code in its own fresh worktree, named after a creature. | [Getting started](getting-started.md) |
+| T-004 | Start Claude Code in a pane named after a creature (earlier versions gave each one its own worktree). | [Getting started](getting-started.md) |
 | T-542 | A one-command smoke test checks the app's main flows end to end. | internal |
 | T-005 | Keyboard shortcuts live in a file you own, with sensible default keys. | [Settings](settings.md) |
 
@@ -23,7 +24,7 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-006 | Switching workspaces is instant and each keeps its own state. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-006 | Switching workspaces is instant and each keeps its own state. | [Projects and folders](projects-and-worktrees.md) |
 | T-007-a | The plus menu lists only agents really installed and starts one in a new pane. | [Getting started](getting-started.md) |
 | T-007-a-fix | Agent detection now also finds tools on your machine and user PATH. | [Getting started](getting-started.md) |
 | T-007-b | An empty pane asks what to run; choose how many sessions to start. | [Terminals](terminals.md) |
@@ -41,26 +42,26 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-012-b-fix | Browser shortcuts such as Mod+L and Alt+Left work inside a web page. | [Files and browser](files-and-browser.md) |
 | T-500 | Browser tabs open only web pages, and the app's page policy blocks other content. | [Safety](safety.md) |
 
-### P0 · theme 2 · Isolation: one worktree per agent (20 cards)
+### P0 · theme 2 · Isolation (earlier versions: one worktree per agent) (20 cards)
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-013 | Add a project by choosing a folder; its checkout and worktrees appear. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-013-fix-a | New workspace opens the add-project form when you have no project yet. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-013-c | Creating workspaces cleans up half-made folders and branches if cancelled or overtaken. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-013-fix-b | Emoji workspace names are turned into readable words. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-014-a | Choose where workspace folders live and what a new workspace starts from. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-013 | Add a project by choosing a folder; its checkout and worktrees appear. | [Projects and folders](projects-and-worktrees.md) |
+| T-013-fix-a | New workspace opens the add-project form when you have no project yet. | [Projects and folders](projects-and-worktrees.md) |
+| T-013-c | Creating workspaces cleans up half-made folders and branches if cancelled or overtaken. | [Projects and folders](projects-and-worktrees.md) |
+| T-013-fix-b | Emoji workspace names are turned into readable words. | [Projects and folders](projects-and-worktrees.md) |
+| T-014-a | Choose where workspace folders live and what a new workspace starts from. | [Projects and folders](projects-and-worktrees.md) |
 | T-014-b | The kolux worktree command creates and removes worktrees. | [Command line](command-line.md) |
 | T-014-b-fix | Creating a worktree with a prompt falls back to your default agent. | [Command line](command-line.md) |
-| T-015 | Each agent gets its own copy of the project, or share one folder. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-016 | One command starts a worker agent in its own worktree. | [Command line](command-line.md) |
-| T-017-a | New Claude worktrees are pre-trusted so the first prompt is not lost. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-017-b | New Codex worktrees are pre-trusted the same way. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-015 | Earlier versions: each agent could get its own copy of the project. Today every agent shares the project folder. | [Projects and folders](projects-and-worktrees.md) |
+| T-016 | One command starts a worker agent (earlier versions put it in its own worktree). | [Command line](command-line.md) |
+| T-017-a | New Claude worktrees are pre-trusted so the first prompt is not lost. | [Projects and folders](projects-and-worktrees.md) |
+| T-017-b | New Codex worktrees are pre-trusted the same way. | [Projects and folders](projects-and-worktrees.md) |
 | T-017-c | Decision recorded: Cursor and Copilot worktrees are not pre-trusted. | internal |
-| T-018-a | Stage, unstage and commit changes from the Source Control panel. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-018-b | The main Source Control button always offers the next step, including remote actions. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-018-c | Source Control rows select with Ctrl and Shift clicks for bulk actions. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-019 | Worktrees are created, moved and removed through git safely. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-018-a | Stage, unstage and commit changes in All Changes. | [Projects and folders](projects-and-worktrees.md) |
+| T-018-b | All Changes offers Push, Pull and Sync when Git allows them. | [Projects and folders](projects-and-worktrees.md) |
+| T-018-c | All Changes has Stage all and Unstage all for bulk actions. | [Projects and folders](projects-and-worktrees.md) |
+| T-019 | Worktrees are created, moved and removed through git safely. | [Projects and folders](projects-and-worktrees.md) |
 | T-020 | Pick the folder new worktrees go into. | [Settings](settings.md) |
 | T-021 | The kolux worktree create command can start an agent inside. | [Command line](command-line.md) |
 
@@ -68,7 +69,7 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-022 | Group and sort the workspace list; workspaces needing you come first. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-022 | Group and sort the workspace list; workspaces needing you come first. | [Projects and folders](projects-and-worktrees.md) |
 | T-023 | Each pane header shows agent, name and a colour-coded status word. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-024 | Tabs show activity, and bells or finishes raise notifications. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-025-a | Claude Code reports its status through hooks Kolux installs and looks after. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -84,10 +85,10 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-030 | An idle agent is told when mail arrives; workers report done and heartbeats. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-031 | Each automation keeps a numbered run history you can step through. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-032 | Review a plan in sections and comment before Claude approves it. | [Board, Agents and Inbox](board-agents-inbox.md) |
-| T-033 | Source Control lists changes by section and opens a change for review. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-033-b | Source Control, diffs and All Changes update within about a second of a change, instead of polling. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-033 | All Changes lists every changed file and opens a change for review. | [Projects and folders](projects-and-worktrees.md) |
+| T-033-b | Diffs and All Changes update within about a second of a change, instead of polling. | [Projects and folders](projects-and-worktrees.md) |
 | T-033-c | Choose which split a diff opens in; All Changes compares the branch with its base, keeps a default layout and has a commit box; files Git ignores no longer refresh the list. | [Files and browser](files-and-browser.md) |
-| T-033-f | Source Control keeps updating for an ignored folder that still holds tracked files, and notices edits to `.git/info/exclude`. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-033-f | All Changes keeps updating for an ignored folder that still holds tracked files, and notices edits to `.git/info/exclude`. | [Projects and folders](projects-and-worktrees.md) |
 | T-033-g | The All Changes tab is ready to commit as soon as it opens, and a branch with no history in common with its base says so instead of comparing silently. | [Files and browser](files-and-browser.md) |
 | T-034 | Leave review notes on diff lines and send them to the agent. | [Files and browser](files-and-browser.md) |
 | T-035 | Open in Code and Answer in Code jump to the agent's pane. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -126,7 +127,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-049-a | Three workspace screens, Agents, Board and Terminals, switch from the keyboard. | [Getting started](getting-started.md) |
 | T-049-b | The Kolux menu's View menu has a Workspace View choice for Agents, Board, Terminals, Tower and Floor, with the current screen ticked. It is absent in the Classic look. | [Getting started](getting-started.md) |
 | T-050 | The Agents screen lists sessions by saved agent with chat, terminal and composer. | [Board, Agents and Inbox](board-agents-inbox.md) |
-| T-051 | The left sidebar shows, hides and resizes, listing projects and their sessions. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-051 | The left sidebar shows, hides and resizes, listing projects and their sessions. | [Projects and folders](projects-and-worktrees.md) |
 | T-053 | Pick the app colour theme: Classic or one of 16 hues, with sliders. | [Settings](settings.md) |
 | T-054 | Choose Light, Dark or System mode in the ten-page Settings. | [Settings](settings.md) |
 | T-418 | First launch is dark with the new look. | [Getting started](getting-started.md) |
@@ -151,15 +152,15 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-065 | Workspace tabs and layout are saved and restored. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-066 | Agent sessions resume after a quit or a crash. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-066-b | Resume forms are built in for 17 more agents, each used only when an agent tab is restored. | [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart) |
-| T-066-c | A restored agent tab asks for its resume form and is marked "restored without resume" when it has none. Kiro and Aider resume their folder's last conversation; the other agents resume when Kolux knows their session ID. | [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart) |
-| T-066-d, T-066-e | Agents without status hooks (Cursor, Gemini CLI, Goose, Amp and the rest of that row) get their session ID from the agent itself: the resume command it prints at exit, or its own sessions list run in the tab's folder when the layout is saved. | [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart) |
+| T-065 | Workspace tabs and layout are saved and restored. | [Projects and folders](projects-and-worktrees.md) |
+| T-066 | Agent sessions resume after a quit or a crash. | [Projects and folders](projects-and-worktrees.md) |
+| T-066-b | Resume forms are built in for 17 more agents, each used only when an agent tab is restored. | [Projects and folders](projects-and-worktrees.md#agent-sessions-after-a-restart) |
+| T-066-c | A restored agent tab asks for its resume form and is marked "restored without resume" when it has none. Kiro and Aider resume their folder's last conversation; the other agents resume when Kolux knows their session ID. | [Projects and folders](projects-and-worktrees.md#agent-sessions-after-a-restart) |
+| T-066-d, T-066-e | Agents without status hooks (Cursor, Gemini CLI, Goose, Amp and the rest of that row) get their session ID from the agent itself: the resume command it prints at exit, or its own sessions list run in the tab's folder when the layout is saved. | [Projects and folders](projects-and-worktrees.md#agent-sessions-after-a-restart) |
 | T-067 | Panes keep their identity across layout changes; copying never happens silently. | [Terminals](terminals.md) |
-| T-068 | Terminal output is restored after the background host or computer died. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-069-a | The app reopens on the screen and page you left, saving on quit. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-069-b | A slow start never drops your saved tabs. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-068 | Terminal output is restored after the background host or computer died. | [Projects and folders](projects-and-worktrees.md) |
+| T-069-a | The app reopens on the screen and page you left, saving on quit. | [Projects and folders](projects-and-worktrees.md) |
+| T-069-b | A slow start never drops your saved tabs. | [Projects and folders](projects-and-worktrees.md) |
 | T-071 | Task state changes keep tasks and workers in step; a worker can be stopped. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-072-a | Every automation run ends with a truthful status. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-072-b | A dispatched run completes only when its agent really finishes. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -175,7 +176,7 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-077 | Child workspaces nest under their parent. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-077 | Child workspaces nest under their parent. | [Projects and folders](projects-and-worktrees.md) |
 | T-078 | Launch shapes Solo, Pair, Workbench and Swarm assign roles to agents. | [Getting started](getting-started.md) |
 | T-079 | Terminal commands in the kolux command line list and control terminals. | [Command line](command-line.md) |
 | T-079-b | Terminal show, read, send and wait in the command line, with time limits, warnings and safe retries. | [Command line](command-line.md) |
@@ -238,7 +239,7 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-098 | Jump between workspaces from the keyboard or a worktree palette. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-098 | Jump between workspaces from the keyboard or a worktree palette. | [Projects and folders](projects-and-worktrees.md) |
 | T-099 | Refresh agents finds a fresh install; switch individual agents off. | [Settings](settings.md) |
 | T-100-a | Shortcuts open a new agent tab, terminal or workspace composer. | [Terminals](terminals.md) |
 | T-101-a | Set a default pane count; a full grid makes room for a new session. | [Terminals](terminals.md) |
@@ -248,29 +249,29 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-104-c | The default shell you chose is tried first, and the automatic shells wait behind it as fallbacks; a pane says in one dim line when the chosen shell did not start. | [Settings](settings.md#default-shell) |
 | T-105 | The kolux terminal command lists, shows, creates, splits and renames terminals. | [Command line](command-line.md) |
 
-### P1 · theme 2 · Isolation: one worktree per agent (36 cards)
+### P1 · theme 2 · Isolation (earlier versions: one worktree per agent) (36 cards)
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-106-a | Picking a linked worktree selects its main repository; branch names take a prefix. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-106-b | Check out an open pull request into a workspace. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-107-a | Worktrees made outside Kolux are noticed; show or hide individual ones. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-107-b | A project setup script runs when a workspace is created. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-107-c | Create a workspace straight from a GitHub issue or pull request. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-108-a | Kolux tells its own worktrees apart from external and scratch ones. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-108-b | Worktrees made by another tool are not shown by default, a documented gap. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-109-a | The new workspace composer picks the project and names from a branch or item. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-109-b | The composer suggests GitHub issues and pull requests. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-109-c | A failed worktree creation retries by policy; cancelling mid-way cleans up. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-110-a | Setup scripts get the workspace's folders as variables, .bat scripts run under Command Prompt, and a half-active conda environment is cleared. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-111-a | See a branch summary against its base branch. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-106-a | Picking a linked worktree selects its main repository; branch names take a prefix. | [Projects and folders](projects-and-worktrees.md) |
+| T-106-b | Check out an open pull request into a workspace. | [Projects and folders](projects-and-worktrees.md) |
+| T-107-a | Worktrees made outside Kolux are noticed; show or hide individual ones. | [Projects and folders](projects-and-worktrees.md) |
+| T-107-b | A project setup script runs when a workspace is created. | [Projects and folders](projects-and-worktrees.md) |
+| T-107-c | Create a workspace straight from a GitHub issue or pull request. | [Projects and folders](projects-and-worktrees.md) |
+| T-108-a | Kolux tells its own worktrees apart from external and scratch ones. | [Projects and folders](projects-and-worktrees.md) |
+| T-108-b | Worktrees made by another tool are not shown by default, a documented gap. | [Projects and folders](projects-and-worktrees.md) |
+| T-109-a | The new workspace composer picks the project and names from a branch or item. | [Projects and folders](projects-and-worktrees.md) |
+| T-109-b | The composer suggests GitHub issues and pull requests. | [Projects and folders](projects-and-worktrees.md) |
+| T-109-c | A failed worktree creation retries by policy; cancelling mid-way cleans up. | [Projects and folders](projects-and-worktrees.md) |
+| T-110-a | Setup scripts get the workspace's folders as variables, .bat scripts run under Command Prompt, and a half-active conda environment is cleared. | [Projects and folders](projects-and-worktrees.md) |
+| T-111-a | See a branch summary against its base branch. | [Projects and folders](projects-and-worktrees.md) |
 | T-111-b | Shortcuts delete a workspace and rename a tab. | [Terminals](terminals.md) |
-| T-111-c | The palette ranks results, filters by repository, creates worktrees and runs quick actions. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-112-a | Import setup scripts from other tools' configuration. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-113-a | A failed worktree scan never drops worktrees from the sidebar list. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-111-c | The palette ranks results, filters by repository, creates worktrees and runs quick actions. | [Projects and folders](projects-and-worktrees.md) |
+| T-112-a | Import setup scripts from other tools' configuration. | [Projects and folders](projects-and-worktrees.md) |
+| T-113-a | A failed worktree scan never drops worktrees from the sidebar list. | [Projects and folders](projects-and-worktrees.md) |
 | T-114 | Choose whether per-run worktrees run the project setup. | [Board, Agents and Inbox](board-agents-inbox.md) |
-| T-115-a | Keep a per-workspace handoff note you can give to an agent. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-115-b | Search worktrees from the Mod+J palette. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-115-a | Keep a per-workspace handoff note you can give to an agent. | [Projects and folders](projects-and-worktrees.md) |
+| T-115-b | Search worktrees from the Mod+J palette. | [Projects and folders](projects-and-worktrees.md) |
 | T-116-a | The Git and worktrees settings page sets branch names and source control defaults. | [Settings](settings.md) |
 | T-116-c-a | Per-repository settings set the base branch and workspaces folder. | [Settings](settings.md) |
 | T-117-a | Command-line selectors pick repos, worktrees and terminals, defaulting to the current folder. | [Command line](command-line.md) |
@@ -293,7 +294,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-124 | No recent update after 30 minutes without status; the terminal title stands in before hooks report; programs can report status in band. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-124-c | Approve and Deny on a card only for a permission the agent's hooks reported; "no status for" names how long since the last status. | [Board, agents and inbox](board-agents-inbox.md) |
 | T-123-d | A waiting agent's card shows every question it asked, not only the first. | [Board, agents and inbox](board-agents-inbox.md) |
-| T-127 | A Checks panel and pull request comments show in the sidebar. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-127 | A Checks panel and pull request comments show in the sidebar. | [Projects and folders](projects-and-worktrees.md) |
 | T-128-a | Kolux recognises which agent runs in each pane. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-129-a | kolux worktree ps sums up orchestration across worktrees. | [Command line](command-line.md) |
 | T-129-b | List workers by state to see what can be cleaned up. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -336,7 +337,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-145-a | Terminals use Kolux dark colours by default and a light scheme in light mode. | [Settings](settings.md) |
 | T-145-b | Terminal colour answers to programs are measured and match what programs ask. | [Terminals](terminals.md) |
 | T-146-a | The right sidebar opens, closes, resizes and remembers its tab. | [Getting started](getting-started.md) |
-| T-146-b | The right sidebar's Checks tab, a More menu for tabs that do not fit, and Try again when a panel breaks. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-146-b | The right sidebar's Checks tab, a More menu for tabs that do not fit, and Try again when a panel breaks. | [Projects and folders](projects-and-worktrees.md) |
 | T-146-c | Settings sets a different theme per screen under Appearance, Mode. | [Settings](settings.md) |
 | T-146-f | Escape inside a text field never leaves a full page. | [Getting started](getting-started.md) |
 | T-147 | The status bar can be shown, hidden and its items chosen. | [Settings](settings.md) |
@@ -359,7 +360,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-153-b | Delete, reveal or open a past session's files. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-154-a | A key that can no longer be unsealed is cleared with a reconnect hint. | [Safety](safety.md) |
 | T-154-b | The app window can read only files it was given access to. | [Safety](safety.md) |
-| T-154-c | Explorer and Source Control file changes stay within granted folders. | [Safety](safety.md) |
+| T-154-c | Explorer and All Changes file changes stay within granted folders. | [Safety](safety.md) |
 | T-155-a | Abandon a worker's dispatch without touching processes or files. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-157 | Stored secrets stay sealed by the system keyring, with no plain-text fallback. | [Safety](safety.md) |
 | T-160 | Command typos are caught before the app is contacted, with safe suggestions. | [Command line](command-line.md) |
@@ -384,9 +385,9 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-173-b | The orchestration store is limited to your user and upgrades safely. | [Safety](safety.md) |
 | T-174-a | The command line reaches the open app through a local channel. | [Command line](command-line.md) |
 | T-175 | Runs missed while Kolux was away get a grace window; history keeps 100 runs. | [Board, Agents and Inbox](board-agents-inbox.md) |
-| T-176-a | Pull request status stays current without flooding GitHub, and outages are visible. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-176-b | The shown workspace's pull request refreshes itself with backoff. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-176-c | Pull requests for background workspaces are polled per repository. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-176-a | Pull request status stays current without flooding GitHub, and outages are visible. | [Projects and folders](projects-and-worktrees.md) |
+| T-176-b | The shown workspace's pull request refreshes itself with backoff. | [Projects and folders](projects-and-worktrees.md) |
+| T-176-c | Pull requests for background workspaces are polled per repository. | [Projects and folders](projects-and-worktrees.md) |
 | T-184 | Closing a terminal or the app leaves no orphaned processes. | [Terminals](terminals.md) |
 | T-185-a | On Windows the kolux command works through a shim and launcher. | [Command line](command-line.md) |
 | T-185-b | kolux terminal close ends a terminal. | [Command line](command-line.md) |
@@ -395,9 +396,9 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-186-a | Nest a new workspace under a parent and change a workspace's parent. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-186-a | Nest a new workspace under a parent and change a workspace's parent. | [Projects and folders](projects-and-worktrees.md) |
 | T-187-a | Save a lineup of agents as a shape or team and reuse it. | [Getting started](getting-started.md) |
-| T-189-a | Automations and Skills pages open; ask an agent to fix things from Source Control. | [Board, Agents and Inbox](board-agents-inbox.md) |
+| T-189-a | Automations and Skills pages open. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-190-a | Group addresses send one message to several agents; delivered mail reads clearly. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-190-b | Decision gates hold a task until a person resolves them. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-191-a | Reset orchestration state by scope; start Claude Agent Teams in a terminal. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -439,28 +440,28 @@ Tasks not yet ticked off in the build plan are not listed.
 |---|---|---|
 | T-214-a | Clone a repository from a URL or start a new empty project. | [Getting started](getting-started.md) |
 | T-215-a | kolux project list works; project groups organise projects. | [Command line](command-line.md) |
-| T-216-a | Pin workspaces to a section; sort by recent activity. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-217-a | Put a workspace to sleep and rename it inline. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-224-a | A Tasks page button and shortcut; find pull requests and checks from the palette. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-216-a | Pin workspaces to a section; sort by recent activity. | [Projects and folders](projects-and-worktrees.md) |
+| T-217-a | Put a workspace to sleep and rename it inline. | [Projects and folders](projects-and-worktrees.md) |
+| T-224-a | A Tasks page button and shortcut; find pull requests and checks from the palette. | [Projects and folders](projects-and-worktrees.md) |
 | T-226 | Git history in the sidebar, a pull request from Checks, and the Ports item in the status bar with a Stop that ends only the program it showed. | [Terminals](terminals.md#ports-in-the-status-bar) |
-| T-227-a | Commit with push, sync or force push; hand a failed push to an agent. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-227-b | The branch row compares the workspace with its base branch. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-227-c | An AI writes the commit message from what is staged. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-227-a | Commit with push, sync or force push; hand a failed push to an agent. | [Projects and folders](projects-and-worktrees.md) |
+| T-227-b | The branch row compares the workspace with its base branch. | [Projects and folders](projects-and-worktrees.md) |
+| T-227-c | An AI writes the commit message from what is staged. | [Projects and folders](projects-and-worktrees.md) |
 | T-228-a | Choose who writes commit messages and branch names. | [Settings](settings.md) |
 | T-228-b | Pick the agent, model and effort that writes commit messages. | [Settings](settings.md) |
 | T-228-c | Commit message writer settings extend to custom prompts or commands. | [Settings](settings.md) |
-| T-229-a | An AI drafts the pull request title and description. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-229-b | Pull request links printed by an agent are recognised. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-229-c | A Checks panel shows CI results beside the drafted pull request. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-230-a | Send review comments to the agent; PR merge conflicts get an AI explanation. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-230-b | Review comments and merge conflict help work for background pull requests. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-230-c | Review comments are read from the pull request and sent to the agent. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-231-a | Review notes on Markdown documents; the Tasks page lists GitHub issues and PRs. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-231-b | The Tasks page offers presets, search and repository choice. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-232-a | Preview an issue or PR, open the full PR page, and review its files. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-232-b | Issue and PR preview and the full PR page are completed. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-229-a | An AI drafts the pull request title and description. | [Projects and folders](projects-and-worktrees.md) |
+| T-229-b | Pull request links printed by an agent are recognised. | [Projects and folders](projects-and-worktrees.md) |
+| T-229-c | A Checks panel shows CI results beside the drafted pull request. | [Projects and folders](projects-and-worktrees.md) |
+| T-230-a | Send review comments to the agent; PR merge conflicts get an AI explanation. | [Projects and folders](projects-and-worktrees.md) |
+| T-230-b | Review comments and merge conflict help work for background pull requests. | [Projects and folders](projects-and-worktrees.md) |
+| T-230-c | Review comments are read from the pull request and sent to the agent. | [Projects and folders](projects-and-worktrees.md) |
+| T-231-a | Review notes on Markdown documents; the Tasks page lists GitHub issues and PRs. | [Projects and folders](projects-and-worktrees.md) |
+| T-231-b | The Tasks page offers presets, search and repository choice. | [Projects and folders](projects-and-worktrees.md) |
+| T-232-a | Preview an issue or PR, open the full PR page, and review its files. | [Projects and folders](projects-and-worktrees.md) |
+| T-232-b | Issue and PR preview and the full PR page are completed. | [Projects and folders](projects-and-worktrees.md) |
 | T-233-a | The Git and worktrees settings page is available. | [Settings](settings.md) |
-| T-233-b | Order the Source Control groups on the Git and worktrees page. | [Settings](settings.md) |
+| T-233-b | Order the changed-file groups on the Git and worktrees page (no longer shown). | [Settings](settings.md) |
 | T-233-c | The GitHub API budget is shown on the Git and worktrees page. | [Settings](settings.md) |
 | T-221 | Drop files onto a terminal, let programs copy to the clipboard, clear the screen (Ctrl+K), find text in a pane (Ctrl+F) and keep shell keys such as Ctrl+R for the shell. | [Terminals](terminals.md) |
 | T-222 | Shift+Enter makes a new line in Claude and Codex, typing in Korean, Chinese and Japanese is sent once finished, and web links and file paths in output open with Ctrl+click. | [Terminals](terminals.md) |
@@ -529,12 +530,12 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-288 | A workspace made from a linked issue runs the project's issue command with the issue number filled in; a committed or linked override file never counts as your own. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-288 | A workspace made from a linked issue runs the project's issue command with the issue number filled in; a committed or linked override file never counts as your own. | [Projects and folders](projects-and-worktrees.md) |
 | T-289 | Copy session, terminal and pane IDs; links point to other terminals and tasks. | [Terminals](terminals.md) |
 | T-290 | Kolux checks whether each agent has the orchestration skill. | [Board, Agents and Inbox](board-agents-inbox.md) |
-| T-291-a | An Automations row in the sidebar, off by default; hide automation worktrees. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-291-b | The View menu toggles the Automations row and hides automation worktrees. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-291-c | An Automation tag appears on workspace cards. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-291-a | An Automations row in the sidebar, off by default; hide automation worktrees. | [Projects and folders](projects-and-worktrees.md) |
+| T-291-b | The View menu toggles the Automations row and hides automation worktrees. | [Projects and folders](projects-and-worktrees.md) |
+| T-291-c | An Automation tag appears on workspace cards. | [Projects and folders](projects-and-worktrees.md) |
 | T-292 | A skill freshness pill and status bar note show running skill updates. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-347 | Panes stop inheriting the old app's data-path setting. | [Safety](safety.md) |
 
@@ -550,8 +551,8 @@ Tasks not yet ticked off in the build plan are not listed.
 
 | Task | Feature | Guide page |
 |---|---|---|
-| T-313 | Pull offers Merge, Rebase or Fast-forward only when Git has no pull policy; changed submodules show as single rows; filter the changes and right-click a file to copy its path, open it in its app or show it in the file manager (which never leaves the workspace). | [Projects and worktrees](projects-and-worktrees.md) |
-| T-314-a | The Tasks page can open on a default preset, has pickers to filter by state, author, assignee, label and reviewer, and lets a fork list issues from its upstream project. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-313 | Pull offers Merge, Rebase or Fast-forward only when Git has no pull policy; changed submodules show as single rows; filter the changes and right-click a file to copy its path, open it in its app or show it in the file manager (which never leaves the workspace). | [Projects and folders](projects-and-worktrees.md) |
+| T-314-a | The Tasks page can open on a default preset, has pickers to filter by state, author, assignee, label and reviewer, and lets a fork list issues from its upstream project. | [Projects and folders](projects-and-worktrees.md) |
 | T-238 | Find on a page (Ctrl+F), a separate zoom for each browser tab, and links a page opens in a new window become Kolux browser tabs (middle-click or Ctrl-click opens one behind). | [Files and browser](files-and-browser.md#find-zoom-and-the-site-icon) |
 | T-272 | Pages cannot flood you with tabs: 5 new tabs per 10 seconds, the rest dropped quietly. | [Files and browser](files-and-browser.md#links-that-open-new-tabs) |
 | Browser FIX-1 | One shared tab allowance for link opens and new windows; site-icon fetches are capped and every redirect is checked, so a public page cannot make Kolux fetch from your own machine or network. | [Safety](safety.md#browser-tabs-what-pages-may-do) |
@@ -560,4 +561,4 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-325 | The Agents page shows a Claude Code, OpenClaude or Codex session as a live chat with each message once and in order. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
 | T-326 | Chat folds the agent's work: Thought rows, steps, file edits as diff cards, a subagent row and busy timers. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
 | T-327 | A chat message box that types into the agent's terminal and follows the newest message; it holds a send while the agent is asking, and Request changes on a plan waits until the agent leaves its menu. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
-<!-- generated from PLAN.md at 950ba36 -->
+<!-- verified against: PLAN.md at f28a7e65 -->

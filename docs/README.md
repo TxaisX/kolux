@@ -11,7 +11,7 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 | [Getting started](guide/getting-started.md) | First launch, setup, the top bar, your first agent |
 | [Terminals](guide/terminals.md) | Panes, splits, tabs, layouts, paste, shortcuts |
 | [Board, Agents and Inbox](guide/board-agents-inbox.md) | Session states, approvals, the Tower and the Floor |
-| [Projects and worktrees](guide/projects-and-worktrees.md) | Projects, workspaces, branches, review and commit |
+| [Projects and folders](guide/projects-and-worktrees.md) | Projects, folders, review and commit |
 | [Files and browser](guide/files-and-browser.md) | The editor, diffs, previews, the browser pane |
 | [Settings](guide/settings.md) | Appearance, terminal, notifications, shortcuts, agents |
 | [Safety](guide/safety.md) | What Kolux guards, what it warns about, and what it leaves to you |
@@ -24,7 +24,7 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 | Page | What it covers |
 |---|---|
 | [Status](STATUS.md) | What is verified, what is missing, and what alpha means here |
-| [Glossary](GLOSSARY.md) | The words the app uses: workspace, worktree, seat, pane, hook, and the rest |
+| [Glossary](GLOSSARY.md) | The words the app uses: project, workspace, seat, pane, Model routing, and the rest |
 | [Safety](guide/safety.md) | The security model in plain words |
 | [Privacy](guide/settings.md#privacy) | Every outbound connection the app makes |
 | [Security policy](../SECURITY.md) | Private vulnerability reporting |

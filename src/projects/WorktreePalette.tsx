@@ -6,7 +6,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { workItem, worktreeLabel, type Project, type Worktree } from "./model";
-import { SINGLE_FOLDER } from "./singleFolder";
+import { paletteCreateName, SINGLE_FOLDER } from "./singleFolder";
 import { MAX_QUERY, fold, queryWords, scoreText } from "./nav";
 import { sameDir } from "../workspaces";
 import { githubItem, workspaceFor } from "../scm/paste";
@@ -262,7 +262,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
     [items, projects, lists, query, chips, hasWorktree, extra],
   );
   const rows = useMemo(() => [...pasted, ...found], [pasted, found]);
-  const create = typed ? query.trim() : null;
+  const create = paletteCreateName(query);
   const item = create ? workItem(create) : null;
   const repoChips = chips.filter((c) => c.field === "repo");
   const into = repoChips.length === 1 ? (projects.find((p) => p.id === repoChips[0].value) ?? null) : null;
@@ -292,7 +292,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
   return (
     <>
       <div className="menu-backdrop" onMouseDown={onClose} />
-      <div className="menu note-picker palette" role="dialog" aria-label="Switch workspace">
+      <div className="menu note-picker palette" role="dialog" aria-label="Go to / Run a command">
         <input
           autoFocus
           className="picker-input"

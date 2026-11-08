@@ -207,12 +207,12 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+B | Hide or show the left sidebar |
 | Ctrl+L | Hide or show the right sidebar |
 | Ctrl+Shift+E | Show Explorer in the right sidebar; press it again while the Explorer has focus to hide it |
-| Ctrl+Shift+J | Open the worktree switcher |
-| Ctrl+Shift+Up / Ctrl+Shift+Down | Previous / next worktree |
-| Ctrl+Shift+0 | Focus the worktree list |
-| Ctrl+1 to Ctrl+9 | Select the workspace at that position |
-| Ctrl+N or Ctrl+Shift+N | Create a workspace |
-| Ctrl+Shift+Backspace | Delete the workspace (it asks first) |
+| Ctrl+Shift+J | Open the Switch workspace picker |
+| Ctrl+Shift+Up / Ctrl+Shift+Down | Previous / next row in the sidebar list |
+| Ctrl+Shift+0 | Focus the project list |
+| Ctrl+1 to Ctrl+9 | Select the sidebar row at that position |
+| Ctrl+N or Ctrl+Shift+N | Create a workspace. Kolux now works in one folder per project, so the sidebar shows no form for it |
+| Ctrl+Shift+Backspace | Delete a workspace left by an older version (it asks first) |
 | Ctrl+Alt+Left / Ctrl+Alt+Right | Back / forward through workspaces and pages |
 | Ctrl+J | Jump to the next session that needs you |
 | Ctrl+T | New shell tab |
@@ -242,4 +242,4 @@ With "Terminal first", Kolux still keeps Ctrl+V, Ctrl+Tab, Ctrl+PageUp, Ctrl+Pag
 
 Keys that no Kolux shortcut uses always reach the program. Ctrl+R opens the shell's history search, for example, and Ctrl+Arrow moves by word. Alt+Left and Alt+Right move by word too. Ctrl+C with nothing selected is the program's interrupt. Ctrl+K and Ctrl+F belong to Kolux (clear and find); with "Terminal first" they go to the program instead, because they are not marked safe for terminals. A key you press while composing text with an input method is never taken by a Kolux shortcut.
 
-<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, PLAN.md (T-221, T-222, T-151-b, T-140-b), src-tauri/src/pty.rs at 73f5e38 -->
+<!-- verified against: src/chrome/LayoutStrip.tsx, src/usage/WorkspaceSpend.tsx, src/usage/workspaceRibbon.ts, src/chrome/TopBar.tsx, src/App.tsx, src/terminal/TerminalPane.tsx, src/terminal/PaneMenu.tsx, src/terminal/paste.ts, src/terminal/permissionAnswer.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/status.ts, src/terminal/layout.ts, src/launch/ChooserPane.tsx, src/keys/actions.ts, src/keys/terminalPolicy.ts, src/settings/ShortcutsPage.tsx, src/settings/TerminalPage.tsx, src/terminal/text.ts, src/terminal/drop.ts, src/terminal/osc52.ts, src/terminal/find.ts, src/terminal/FindBar.tsx, src/terminal/shellKeys.ts, src/terminal/links.ts, src-tauri/src/terminal.rs, src-tauri/src/automations.rs, src-tauri/src/pty.rs, PLAN.md at c2ef69fc -->

@@ -1,0 +1,8 @@
+
+ Test Files  95 passed (95)
+      Tests  523 passed (523)
+   Start at  07:28:45
+   Duration  25.78s (transform 3.64s, setup 0ms, import 10.93s, tests 19.70s, environment 11ms)
+
+tsc: clean
+plan-check: OK

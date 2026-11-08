@@ -255,13 +255,86 @@
   Pop $R0
 !macroend
 
+; T-786 (P3-15, DT-C220): Windows 11 is the tested target, so an install on a Windows 10 build (below 22000)
+; first shows a notice saying so. It is a plain OK box that answers itself in a silent install, and an update
+; (/UPDATE on the command line) skips it, so nobody sees it twice. BUILD is the registry's CurrentBuildNumber.
+; $R9 is set to 1 when the notice is due: a non-empty build number below 22000.
+!macro KOLUX_WIN10_DUE BUILD
+  StrCpy $R9 0
+  ${If} "${BUILD}" != ""
+    ${If} "${BUILD}" < 22000
+      StrCpy $R9 1
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+; $R9 is set to 1 when the command line holds /UPDATE (the updater's relaunch), else 0.
+!macro KOLUX_IS_UPDATE
+  StrCpy $R9 0
+  StrLen $R8 $CMDLINE
+  StrCpy $R7 0
+  ${While} $R7 < $R8
+    StrCpy $R6 $CMDLINE 7 $R7
+    ${If} $R6 == "/UPDATE"
+      StrCpy $R9 1
+      ${Break}
+    ${EndIf}
+    IntOp $R7 $R7 + 1
+  ${EndWhile}
+!macroend
+
+!macro KOLUX_WIN10_NOTICE
+  Push $R9
+  Push $R8
+  Push $R7
+  Push $R6
+  !insertmacro KOLUX_IS_UPDATE
+  ${If} $R9 = 0
+    ReadRegStr $R6 HKLM "SOFTWARE\Microsoft\Windows NT\CurrentVersion" "CurrentBuildNumber"
+    !insertmacro KOLUX_WIN10_DUE "$R6"
+    ${If} $R9 = 1
+      MessageBox MB_OK|MB_ICONINFORMATION "Kolux is tested on Windows 11. This PC runs Windows 10 (build $R6), which is not verified yet: resizing a terminal pane may cut up long lines.$\r$\n$\r$\nKolux will still install. Keep your work in Git and report what breaks." /SD IDOK
+    ${EndIf}
+  ${EndIf}
+  Pop $R6
+  Pop $R7
+  Pop $R8
+  Pop $R9
+!macroend
+
+!macro NSIS_HOOK_PREINSTALL
+  !insertmacro KOLUX_WIN10_NOTICE
+!macroend
+
 !macro NSIS_HOOK_PREUNINSTALL
   !insertmacro KOLUX_PATH_APP_REMOVE
 !macroend
 
+; T-789 (P3-07): an update (/UPDATE) leaves the PATH as the user has it. Someone who pressed Remove kolux in
+; Settings would otherwise find the command back after the next update; a first install still adds it.
+!macro KOLUX_PATH_ADD_UNLESS_UPDATE
+  Push $R5
+  Push $R9
+  Push $R8
+  Push $R7
+  Push $R6
+  !insertmacro KOLUX_IS_UPDATE
+  StrCpy $R5 $R9
+  Pop $R6
+  Pop $R7
+  Pop $R8
+  Pop $R9
+  ${If} $R5 = 0
+    !insertmacro KOLUX_PATH_ADD
+  ${Else}
+    DetailPrint "Update: leaving the kolux command on the PATH as it is"
+  ${EndIf}
+  Pop $R5
+!macroend
+
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "Pick your coding agents when Kolux opens"
-  !insertmacro KOLUX_PATH_ADD
+  !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL

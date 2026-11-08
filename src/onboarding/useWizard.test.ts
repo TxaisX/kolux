@@ -89,6 +89,7 @@ async function mountWizard(settings: Record<string, unknown> = {}, activeDir: st
     activeDir,
     kitAIs: [],
     startIn: async (a: { id: string }, dir: string) => (started.push(`${a.id}@${dir}`), 1),
+    openShell: () => void started.push("shell"),
     startKit: async () => true,
     setKitConflict: () => {},
     setKits: () => {},
@@ -237,4 +238,51 @@ test("T-612: with a workspace in front, Open a session starts the session there 
   expect(started).toEqual(["claude@C:/w"]);
   expect(closes).toEqual(["completed"]);
   expect(heard.filter((x) => x === "add-project")).toEqual([]);
+});
+
+// T-796 (p4a-04): the last screen starts what the user picked; the folder step returns to it instead of finishing setup.
+test("T-796: a plain terminal pick opens a shell in the folder in front, closes setup as completed and starts no agent", async () => {
+  const app = await mountWizard({}, "C:/w");
+  await app.now().wizardSession("terminal");
+  await app.settle();
+  expect(started).toEqual(["shell"]);
+  expect(closes).toEqual(["completed"]);
+});
+
+test("T-796: an agent pick starts that agent, not the first one offered", async () => {
+  const app = await mountWizard({}, "C:/w");
+  await app.now().wizardSession("claude");
+  await app.settle();
+  expect(started).toEqual(["claude@C:/w"]);
+  expect(closes).toEqual(["completed"]);
+});
+
+test("T-796: Pick a folder from the Your work screen returns to the last screen once a folder is added, and finishes nothing", async () => {
+  const { ADD_PROJECT } = await import("./firstRun");
+  win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
+  const app = await mountWizard({ defaultAgent: "claude" });
+  app.now().pickFolder(null, true);
+  await app.settle();
+  expect(app.now().wizard).toBeNull();
+  expect(heard).toContain("add-project");
+  app.now().projectAdded("C:/new", "main");
+  await app.settle();
+  expect(app.now().wizard).toBe(3); // the last screen
+  expect(closes).toEqual([]);
+  expect(started).toEqual([]); // no agent is started behind the user's back; the last screen asks
+  expect(calls).toContain("onboarding_step");
+  app.now().projectAdded("C:/other", null);
+  await app.settle();
+  expect(closes).toEqual([]);
+});
+
+test("T-796: a plain terminal pick with no folder at all still goes to Add Project, once", async () => {
+  const { ADD_PROJECT } = await import("./firstRun");
+  win.addEventListener(ADD_PROJECT, () => heard.push("add-project"));
+  const app = await mountWizard();
+  await app.now().wizardSession("terminal");
+  await app.settle();
+  expect(heard.filter((x) => x === "add-project")).toHaveLength(1);
+  expect(started).toEqual([]);
+  expect(closes).toEqual([]);
 });

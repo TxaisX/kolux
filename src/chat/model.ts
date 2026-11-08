@@ -113,6 +113,9 @@ export function agentsView<P extends { key: number }>(shown: P | "starting" | nu
   return forced.has(shown.key) ? "terminal" : "chat";
 }
 
+/** T-809 (P4a-12): the line over a pane the Agents screen is waiting on: "Ended" once its process is gone, never "Starting…" over an ended pane. */
+export const startingLine = (ended: boolean): string => (ended ? "Ended" : "Starting…");
+
 /** T-050-b: the chat covers the terminal only once the transcript is found; before that (and when
  * it cannot be read) the chat's line and box sit above the terminal, so a prompt the agent shows at
  * launch, before its first turn is written, stays in sight. */

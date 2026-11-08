@@ -1,0 +1,29 @@
+T-786 evidence (2026-11-08, lane ready-docs-2). Windows 10 installer notice. No installer was built.
+
+What changed: src-tauri/installer-hooks.nsh gains NSIS_HOOK_PREINSTALL -> KOLUX_WIN10_NOTICE. It reads
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentBuildNumber; a non-empty number below 22000 shows an
+OK box ("Kolux is tested on Windows 11. This PC runs Windows 10 (build N) ...") with /SD IDOK, so a silent
+install answers it itself. A command line holding /UPDATE skips it. tauri.conf.json is not touched (it already
+names this hook file).
+
+Proof 1: scripts/installer-notice.test.mjs (vitest) compiles the REAL hook file, included as is by
+scripts/installer-notice-harness.nsi, with the NSIS Tauri caches (%LOCALAPPDATA%\tauri\NSIS) and runs it:
+
+  build 19045: due=1 expect=1
+  build 21999: due=1 expect=1
+  build 22000: due=0 expect=0
+  build 26200: due=0 expect=0
+  build : due=0 expect=0
+  cmdline "k.exe" /P /UPDATE: update=1 expect=1
+  cmdline "k.exe" /S: update=0 expect=0
+  cmdline "k.exe" /update: update=1 expect=1
+  notice macro ran to the end
+
+(The last line is the full KOLUX_WIN10_NOTICE macro compiled and run in a silent exe on this Windows 11 PC,
+build 26300: the box is not due here, and the macro balances its pushes and pops.)
+
+Live proof of the box itself on a Windows 10 build needs a VM; none is available. Steps for the bug-fix phase:
+run Kolux.RS_<version>_x64-setup.exe on Windows 10 22H2 (build 19045): the notice appears once before files
+copy; /S shows nothing; an in-app update shows nothing.
+
+T-786-b (xterm buildNumber) is left open as STUCK: JUDGMENT, see PLAN.md.

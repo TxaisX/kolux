@@ -8,11 +8,11 @@ Open, edit and review a workspace's files without leaving Kolux, and keep a web 
 |---|---|
 | Find a file in this workspace by name | Ctrl+P ("Go to File") |
 | Pick any single file on your computer | The file finder, "File..." |
-| Pick from the workspace's Markdown files | Ctrl+Shift+O, or "Open markdown file..." |
-| Start a new Markdown note in the workspace | Ctrl+Shift+M, or "New markdown file" |
+| Pick from the workspace's Markdown files | Ctrl+Shift+O, or "Open markdown tab" |
+| Start a new Markdown note in the workspace | Ctrl+Shift+M, or "New markdown tab" |
 | Browse the workspace as a tree | Ctrl+Shift+E (the Explorer) |
 
-The pickers filter as you type. Arrow keys move, Enter opens, Esc closes. If the workspace has none, you see "This worktree has no files." These menu items need an open workspace; otherwise Kolux says "Open a workspace to pick one of its changed files" and similar.
+The pickers filter as you type. Arrow keys move, Enter opens, Esc closes. If the workspace has none, you see "This workspace has no files." (or "markdown files", or "changed files", for those pickers). These items need an open workspace; otherwise Kolux says, for example, "Open a workspace to find a file in it." or "Open a workspace to pick one of its changed files."
 
 A file you pick with "File..." is the only thing Kolux grants access to. See [Safety](safety.md).
 
@@ -57,7 +57,7 @@ Markdown files open in a **Rich** view that shows headings, lists and links as f
 ### Copy with context and review notes
 
 - **Copy Context** (Ctrl+Alt+C) copies your selection with its file path and line range, ready to paste into an agent. The editor says "Copied with path and lines".
-- **Review notes:** select text and press Ctrl+Shift+A to leave a note for an agent. The switch is in Settings, General, Review notes. Notes can be sent to the agent from Source Control. See [Projects and worktrees](projects-and-worktrees.md).
+- **Review notes:** select text and press Ctrl+Shift+A to leave a note for an agent. The switch is in Settings, General, Review notes. See [Reviewing changes](projects-and-worktrees.md#reviewing-changes).
 
 ## The Explorer
 
@@ -83,22 +83,22 @@ If a folder cannot be read, the panel says "The folder did not load: <error>" wi
 
 ### Projects stored in WSL
 
-A project that lives inside a WSL distribution (its path starts with `\\wsl.localhost\<distribution>\` or `\\wsl$\<distribution>\`) follows three rules of its own. Searching its text runs ripgrep inside that distribution, so ripgrep has to be installed there (`sudo apt install ripgrep` in Ubuntu); if WSL or ripgrep is missing, the search says so instead of finding nothing. A file opened through its WSL path and through its Windows drive alias (`\\wsl.localhost\Ubuntu\mnt\c\work\a.ts` and `C:\work\a.ts`, or the `wsl$` and `wsl.localhost` spellings of one path) is one file: the two tabs share one text and one unsaved marker, while names inside the Linux file system stay case-sensitive, so `notes.md` and `Notes.md` are two files there. Source Control reads such a project's changes every 4 seconds instead of watching its folder, so a change never goes unnoticed when the distribution cannot hold a watch. For now Kolux still refuses to open files under a `\\wsl.localhost` or `\\wsl$` path, the way it refuses any path on another computer, so these rules take effect only once that refusal is lifted; they have not yet been tried against a real distribution.
+A project that lives inside a WSL distribution (its path starts with `\\wsl.localhost\<distribution>\` or `\\wsl$\<distribution>\`) follows three rules of its own. Searching its text runs ripgrep inside that distribution, so ripgrep has to be installed there (`sudo apt install ripgrep` in Ubuntu); if WSL or ripgrep is missing, the search says so instead of finding nothing. A file opened through its WSL path and through its Windows drive alias (`\\wsl.localhost\Ubuntu\mnt\c\work\a.ts` and `C:\work\a.ts`, or the `wsl$` and `wsl.localhost` spellings of one path) is one file: the two tabs share one text and one unsaved marker, while names inside the Linux file system stay case-sensitive, so `notes.md` and `Notes.md` are two files there. All Changes reads such a project's changes every 4 seconds instead of watching its folder, so a change never goes unnoticed when the distribution cannot hold a watch. For now Kolux still refuses to open files under a `\\wsl.localhost` or `\\wsl$` path, the way it refuses any path on another computer, so these rules take effect only once that refusal is lifted; they have not yet been tried against a real distribution.
 
 ## See what changed
 
 Two tabs show a workspace's uncommitted changes:
 
-- **Diff** (a changed file in Source Control) shows one file's changes. Choose **Inline** or **Side by side**. F7 and Shift+F7 jump to the next and previous change. The "Diff actions" menu has "Show whitespace changes" and "Wrap lines". A tag shows whether you are looking at Staged or Unstaged changes.
-- **All Changes** shows every changed file in one scrolling view, with a file list beside it. Filter that list by name. "Viewed" marks a file you have read. It says "This worktree has no changes." when there is nothing. Each file shows its Before and After text.
+- **Diff** (a file opened as a diff tab from All Changes) shows one file's changes. Choose **Inline** or **Side by side**. F7 and Shift+F7 jump to the next and previous change. The "Diff actions" menu has "Show whitespace changes" and "Wrap lines". A tag shows whether you are looking at Staged or Unstaged changes.
+- **All Changes** shows every changed file in one scrolling view, with a file list beside it. Filter that list by name. "Viewed" marks a file you have read. It says "This workspace has no changes." when there is nothing. Each file shows its Before and After text.
 
-In All Changes, **Compare** picks what the changes are measured against: **Working tree** (what you have not committed yet) or **Branch vs** its base, for example "Branch vs main" (everything this branch changed since it left that branch, committed or not). Side by side, Wrap, Whitespace and the file tree button change the view, and **Make default** makes new All Changes tabs start with that layout. Each file has a button that opens it as a diff tab, in the split Source Control's "Open diffs in" names.
+In All Changes, **Compare** picks what the changes are measured against: **Working tree** (what you have not committed yet) or **Branch vs** its base, for example "Branch vs main" (everything this branch changed since it left that branch, committed or not). Side by side, Wrap, Whitespace and the file tree button change the view, and **Make default** makes new All Changes tabs start with that layout. Each file has a button that opens it as a diff tab.
 
-While Compare is set to the branch, a commit box shows under the header. It commits only what is staged (the button says, for example, "Commit 3 staged"); stage files in Source Control. If a Git hook refuses the commit, it says "Commit blocked by a hook" with the hook's output. The tab reads the staged files once when it opens, so the Commit button knows its count at once instead of after the next update.
+A commit box shows under the header. It commits only what is staged (the button says, for example, "Commit 3 staged"); use Stage all or a file's Stage button first. If a Git hook refuses the commit, it says "Commit blocked by a hook" with the hook's output. The tab reads the staged files once when it opens, so the Commit button knows its count at once instead of after the next update.
 
 When Compare is set to the branch and the branch shares no history with its base (an unrelated branch, or a shallow copy cut before the two split), a hint line at the top says "vs <base> tip: no common ancestor found", and the changes are measured against the base's latest commit. If the branch has no commits yet, or the base no longer exists, the tab says so instead of showing a comparison. Keeping the branch view up to date no longer runs a second Git status each time, so a busy workspace costs less.
 
-Diff lines also take review notes ("What should change here?"). A note needs some text; to remove one, use the bin on its card. Staging, committing and discarding are in [Projects and worktrees](projects-and-worktrees.md).
+Diff lines also take review notes ("What should change here?"). A note needs some text; to remove one, use the bin on its card. Staging, committing and discarding are in [Projects and folders](projects-and-worktrees.md).
 
 ## Browser tabs
 
@@ -163,8 +163,10 @@ The Artifacts library holds only what its viewer can show in the app: **HTML pag
 
 **A link in a page asks first.** A page runs its own script, so a click that leaves the page never opens your browser by itself: Kolux shows a strip above the viewer, `Open example.com?`, naming the address's host (for a mail address, the address without any `?body=`), and the browser opens only when you click **Open** there, once, for exactly that address. Open is disabled for the first second, so a click meant for the page cannot land on it; **Cancel** closes the question, and after three Cancels in a row that page stops asking until you pick it again.
 
-## Not available
+## Grab an element and reload
 
-"Grab page element" and hard reload have keys listed on the Shortcuts page, but they do nothing yet in this version. Use Ctrl+R to reload.
+The **Grab** button in the browser tab's toolbar ("Grab an element: pick it to see its details and picture") lets you click one element on the page. A sheet then covers the page with the element's picture and its details, with **Copy details** and **Send to agent**. Escape or Close shows the page again. The key listed as "Grab Page Element" on the Shortcuts page does the same; with text selected in the page, the key copies the text instead.
 
-<!-- verified against: src/editor/EditorPane.tsx, src/editor/DiskBanner.tsx, src/editor/diskChange.ts, src/editor/DiffPane.tsx, src/editor/AllChangesPane.tsx, src/scm/split.ts, src/editor/Explorer.tsx, src/editor/FilePicker.tsx, src/editor/PreviewPane.tsx, src/editor/markdown.ts, src/browser/BrowserPane.tsx, src/browser/address.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/browser/colour.ts, src/browser/browser.css, src/browser/zoom.ts, src/browser/site.ts, src-tauri/src/browser.rs, src-tauri/src/scm.rs at 5f3b287 -->
+Ctrl+R reloads the page. "Reload Browser Page (second key)" (Ctrl+Shift+R) is a second key for the same reload, not a separate hard reload.
+
+<!-- verified against: src/editor/EditorPane.tsx, src/editor/DiskBanner.tsx, src/editor/diskChange.ts, src/editor/DiffPane.tsx, src/editor/AllChangesPane.tsx, src/scm/split.ts, src/editor/Explorer.tsx, src/editor/FilePicker.tsx, src/editor/PreviewPane.tsx, src/editor/markdown.ts, src/browser/BrowserPane.tsx, src/browser/address.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/browser/colour.ts, src/browser/browser.css, src/browser/zoom.ts, src/browser/site.ts, src-tauri/src/browser.rs, src-tauri/src/scm.rs at c2ef69fc -->

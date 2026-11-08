@@ -68,7 +68,7 @@ pnpm release --no-publish           # build, smoke-test, and sign, then stop
 
 The order matters. A client that sees the manifest must be able to fetch a complete installer and signature.
 
-The notes are generated from commit subjects, so they read like a changelog for the build, not a user-facing announcement. If a release needs human notes, write them in the GitHub release body after the script publishes.
+The notes are generated from commit subjects, so they read like a changelog for the build, not a user-facing announcement. To ship human notes instead, keep a `CHANGELOG.md` at the repository root: a section headed `## 0.1.10` (or `## [0.1.10]`, with an optional date after it) replaces the commit subjects for that version, and a section headed `## Unreleased` is used when none names the version. The update card shows the first lines of whichever notes were published. With no `CHANGELOG.md`, or no matching non-empty section, the commit subjects are used as before.
 
 ## The CI gate
 

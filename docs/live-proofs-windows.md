@@ -356,7 +356,7 @@ and start a test server (evidence/T-606.txt). That setup has to be prepared by a
 **needs** GitHub Copilot installed through npm (a paid GitHub plan).
 
 - [ ] Run (once the setup is prepared)
-- Press: in Source Control, click "write commit message" with Claude as the writer.
+- Press: there is no door to the commit-message writer today (it lived in the old changes panel, removed in T-644); this step waits for the home T-771 gives the Changes view.
 - Should happen: the message is written; no marker file appears; no server starts. With Copilot as the writer, the
   message is written (before the fix it failed with "batch file arguments are invalid").
 - Fail if: no message, a marker file appears, or Copilot fails with that error.

@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { markGuide, type GuideRecord } from "./guide";
 import { features, hasUsed, noteUse } from "./features";
-import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, handsOver, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
+import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
 
 
 /** The first copy of `sel` that is really on screen (hidden copies are passed over). */
@@ -183,8 +183,6 @@ export default function Tours() {
   const [notice, setNotice] = useState<string | null>(null); // 49-ux2: why a replay did not start
   const running = useRef<TourId | null>(null);
   running.current = run?.tour.id ?? null;
-  const here = useRef(0); // the step the running tour is on, for the hand-over
-  here.current = run?.at ?? 0;
 
   useEffect(() => {
     invoke<GuideRecord>("tours_get").then(
@@ -279,10 +277,7 @@ export default function Tours() {
     ) : null;
   const end = (how: "done" | "skipped" | "lost") => {
     const id = run.tour.id;
-    const next = handsOver(id, how, here.current);
     setRun(null);
-    // ONB-033: the create button opened the composer: the workspace-creation tour takes over, once the composer shows.
-    if (next) want.current = { id: next, forced: true, tries: 0, page: pageKey() };
     if (how === "lost") return;
     // Skipping or finishing marks it seen, once.
     if (rec.current && !rec.current.toursSeen.includes(id)) {

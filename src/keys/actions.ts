@@ -73,7 +73,9 @@ export const actions: Action[] = [
   a("worktree.quickOpen", "Go to File", "global", ["Mod+P"]),
   a("app.settings", "Open Settings", "global", ["Mod+Comma"], { group: "menu", keywords: ["preferences", "options"], terminalSafe: true }),
   a("app.forceReload", "Force Reload", "global", ["Mod+Shift+R"], { group: "menu" }),
-  a("worktree.palette", "Switch workspace", "global", ["Mod+Shift+J"], { darwin: ["Mod+J"] }),
+  // T-800 (P4B-13, DT-C226): the top-bar box and this dialog are "Go to / Run a command"; Ctrl+Shift+P is the chord people expect.
+  // Ctrl+K opens it too wherever Clear active pane's Ctrl+K does not apply (keys/paletteKey.ts): that row keeps Mod+K (COMPAT.md).
+  a("worktree.palette", "Go to / Run a command", "global", ["Mod+Shift+J", "Mod+Shift+P"], { darwin: ["Mod+J", "Mod+Shift+P"], keywords: ["switch workspace", "command palette"] }),
   a("worktree.navigateUp", "Previous worktree", "global", ["Mod+Shift+ArrowUp"]),
   a("worktree.navigateDown", "Next worktree", "global", ["Mod+Shift+ArrowDown"]),
   a("workspace.create", "Create worktree", "global", ["Mod+N", "Mod+Shift+N"], { darwin: ["Mod+N"] }),
@@ -99,8 +101,8 @@ export const actions: Action[] = [
   a("account.switchCodex", "Switch Codex account", "global", [], { keywords: ["account", "sign in", "login"] }),
   a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake", "toggle"] }),
   a("view.floor", "Show Floor", "global", []),
-  // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there.
-  a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+Shift+P"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
+  // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there. T-800: Ctrl+F6 (Ctrl+Shift+P is the palette now; bare F6 belongs to terminal programs such as htop and mc, DT-C109).
+  a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+F6"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
   a("view.space", "Show Space", "global", ["Mod+Alt+S"], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every

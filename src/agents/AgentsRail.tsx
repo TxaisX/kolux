@@ -8,9 +8,9 @@ import { markFor } from "../launch/PlusMenu";
 import Ring from "../usage/Ring";
 import { OTHER, sessionLabel, type Group, type RowStatus, type Session } from "./rail";
 
-type Props<S extends Session> = { groups: Group<S>[]; selected: number | null; classic: boolean; statusOf: (p: S) => RowStatus; ringOf: (p: S) => { percent: number; title: string } | null; footer: string; onSelect: (key: number) => void; onAdd: (agentId: string) => void; onSettings: () => void; hasAgents?: boolean; onNew?: () => void; taskOf?: (key: number) => string | undefined; onDrop?: (key: number) => void };
+type Props<S extends Session> = { groups: Group<S>[]; selected: number | null; classic: boolean; statusOf: (p: S) => RowStatus; ringOf: (p: S) => { percent: number; title: string } | null; footer: string; onSelect: (key: number) => void; onAdd: (agentId: string) => void; onSettings: () => void; hasAgents?: boolean; onNew?: () => void; taskOf?: (key: number) => string | undefined; onDrop?: (key: number) => void; /** T-809: where the plain shells are, and a way to open that screen. */ shells?: string; onTerminals?: () => void };
 
-export default function AgentsRail<S extends Session>({ groups, selected, classic, statusOf, ringOf, footer, onSelect, onAdd, onSettings, hasAgents, onNew, taskOf, onDrop }: Props<S>) {
+export default function AgentsRail<S extends Session>({ groups, selected, classic, statusOf, ringOf, footer, onSelect, onAdd, onSettings, hasAgents, onNew, taskOf, onDrop, shells, onTerminals }: Props<S>) {
   const look = classic ? " classic" : "";
   return (
     <div className={`sidebar-wrap rail-wrap${look}`}>
@@ -65,6 +65,11 @@ export default function AgentsRail<S extends Session>({ groups, selected, classi
               })}
             </section>
           ))
+        )}
+        {shells && (
+          <button className="rail-shells" data-rail-shells onClick={onTerminals} title="The plain shells are not listed here; open the Terminals screen to use them">
+            {shells}
+          </button>
         )}
         {footer && (
           <div className="rail-foot" title="The picked session's 5-hour window">

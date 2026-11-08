@@ -27,8 +27,10 @@ import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDi
 import { panesIn, sameDir } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
+import { worktreesOffNote } from "../projects/singleFolder";
 import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
+import { kPalette } from "./paletteKey";
 import { recording } from "./record";
 import { tapHit, windowTaps } from "./tapHit";
 import { heldByTerminal } from "./terminalPolicy";
@@ -136,18 +138,27 @@ export function useWindowKeys(w: WindowBag) {
       // EDIT-001: in an editor the editor shortcuts come first and terminal ones do not apply;
       // the ones Kolux has no action for yet are left to CodeMirror.
       // SET-009: a modifier tapped twice runs the command bound to "Double+<modifier>" (keys/tapHit.ts).
-      const hit =
+      const found =
         tapHit(windowTaps, keymap, e) ||
         (kind === "browser" && matchEvent(keymap, e, ["browser"])) ||
         matchEvent(keymap, e, scopesFor({ screen, kind, inTree })) ||
         // GIT-042: a preview tab takes the one editor shortcut that applies to it.
         (kind === "preview" && [matchEvent(keymap, e, ["editor"])].find((h) => h?.id === "editor.addReviewNote"));
+      // T-800: Ctrl+K opens the palette except in a terminal (Clear active pane) and a rich view (the Link box).
+      const hit = kPalette(found, keymap, e, document.activeElement);
       if (!hit || heldByTerminal(hit.id, settings)) return;
       if (heldByOverlay(hit.id, !!switcherRef.current)) {
         e.preventDefault(); // the overlay's own key handlers still see it; the webview's built-in action does not run
         return;
       }
       const inFront = panesIn(panes, activeDir).some((p) => p.key === focused);
+      // T-798 (P4B-01): worktrees are off, so Ctrl+N, rename and delete say so instead of opening a hidden form.
+      const offNote = worktreesOffNote(hit.id);
+      if (offNote) {
+        e.preventDefault();
+        setToast(offNote);
+        return;
+      }
       switch (hit.id) {
         case "focus.chrome":
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.

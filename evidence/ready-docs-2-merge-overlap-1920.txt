@@ -1,0 +1,10 @@
+READY-DOCS-2 MERGE overlap check, window 1920x1032 (dev app, identifier com.txaisxiong.kolux-rs.ready-docs-2.merge, CDP 9241; pid 26024 at x=-1920 rect 1920x1032 ok=True)
+ok at 1904px: .switcher 813-1091 · .searchbox 1432-1622
+ok at 1904px: .topbar button[title="Automations"] 1372-1396 · .searchbox 1432-1622
+ok at 1904px: .pane-head .title 355-380 · .pane-head .right 1418-1587
+ok at 1904px: .switcher 813-1091 · .topbar .ib.bell 1630-1654
+missing: .sb-foot .upd
+ok at 1904px: .sb-foot button[title^="Model routing"] 45-69 · .sb-foot button[title="Help"] 72-96
+missing: .sb-group-row
+ok at 1904px: .hint 212-236 · .sb-foot 9-296
+exit 1

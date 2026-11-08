@@ -9,7 +9,8 @@ export const installAgent = (id: string): Promise<AgentInfo> => invoke<AgentInfo
 /** Every catalogue agent for the dropdown, A to Z by shown name (T-664, Txais 2026-11-02; replaces the featured three first). Nothing while detection runs. */
 export function pickList(agents: AgentInfo[], detecting: boolean): AgentInfo[] {
   if (detecting) return [];
-  return [...agents].sort((x, y) => x.name.localeCompare(y.name, undefined, { sensitivity: "base" }));
+  // T-809 (P4a-11): the installed agents sit above the rest, each group A to Z.
+  return [...agents].sort((x, y) => Number(y.installed) - Number(x.installed) || x.name.localeCompare(y.name, undefined, { sensitivity: "base" }));
 }
 
 /** The agents with their own button on each seat, in this order (Txais 2026-11-08). Every other agent sits behind Other. */
@@ -24,7 +25,10 @@ export const otherRows = (rows: AgentInfo[]): AgentInfo[] => rows.filter((a) => 
 export const optionLabel = (a: AgentInfo): string => (a.installed ? a.name : `${a.name} (not installed)`);
 
 /** What Install shows as its tooltip: the command Kolux would run. */
-export const installTip = (a: AgentInfo): string => a.install ?? `Install ${a.name}`;
+export const installTip = (a: AgentInfo): string => [a.install ?? `Install ${a.name}`, a.installNote].filter(Boolean).join(". ");
+
+/** T-787 (P3-14): the line shown beside Install when a click would raise Windows' admin prompt for Node.js; null when it would not. */
+export const installNoteOf = (a: AgentInfo): string | null => (!a.installed && a.installable !== false ? (a.installNote ?? null) : null);
 
 /** Install is offered for a picked agent that is missing and that Kolux knows an official route for. */
 export const canInstall = (a: AgentInfo | undefined): boolean => !!a && !a.installed && a.installable !== false;

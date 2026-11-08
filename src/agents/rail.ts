@@ -15,6 +15,12 @@ const agentOf = (p: Session): string | undefined => p.agentId ?? p.seats?.[0]?.a
  *  no agent picked, and editor / browser tabs are never listed. */
 export const listed = (p: Session): boolean => !p.kind && (p.seats ? agentOf(p) !== undefined : p.program !== null);
 
+/** T-809 (P4a-12): the rail lists AI sessions only, so it says where the plain shells are: how many are open and that they live on the Terminals screen. Empty when there are none. */
+export function shellNote(panes: Session[]): string {
+  const n = panes.filter((p) => !p.kind && !p.seats && p.program === null).length;
+  return n === 0 ? "" : `${n} ${n === 1 ? "shell is" : "shells are"} on the Terminals screen`;
+}
+
 /** The rail: one group per saved agent in saved order, but only for agents with a session open right
  *  now (an empty agent waits in Settings, not on the rail), then Other sessions for AI sessions that
  *  match no saved agent, only when there are any. */

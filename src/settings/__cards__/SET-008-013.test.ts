@@ -200,7 +200,7 @@ test("SET-011 box 3: a win32 section overriding a shared entry wins on Windows; 
 test("SET-013 box 1: on Windows Alt+1 selects tab 1, Ctrl+Shift+J opens the palette, Mod+Shift+D splits right", async () => {
   const { c, keymap } = await page(file({ version: 1, keybindings: {} }));
   expect(chords(row(c, "tab.selectByIndex"))[0]).toMatch(/^Alt\+1/);
-  expect(chords(row(c, "worktree.palette"))).toEqual(["Ctrl+Shift+J"]);
+  expect(chords(row(c, "worktree.palette"))).toEqual(["Ctrl+Shift+J", "Ctrl+Shift+P"]);
   expect(chords(row(c, "terminal.splitRight"))).toEqual(["Ctrl+Shift+D"]);
   const { matchEvent } = await import("../../keys/keymap");
   const ev = (key: string, code: string, o: Record<string, boolean>) => ({ key, code, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, ...o });

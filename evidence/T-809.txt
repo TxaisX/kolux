@@ -1,0 +1,5 @@
+T-809 (P4a-11, P4a-12): Agents screen and seat picker
+pnpm exec vitest run src/agents src/launch/agentInstall.test.ts src/launch/ChooserPane.test.ts: Test Files 13 passed; Tests 86 passed
+pnpm exec vitest related (rail, AgentsRail, chat/model, ChatView, Content, Sidebar, agentInstall, ChooserPane, defaultSeat, SeatChooser, T809.test): Test Files 104 passed; Tests 648 passed
+tsc: clean. No Rust file changed by this task (cargo build and clippy were last run for T-787 on the same Rust).
+Behaviour: the line over an ended pane on the Agents screen reads "Ended" (startingLine, fed by running[key] === false), never "Starting..."; the rail ends with "N shells are on the Terminals screen", a button that opens Terminals; the New session picker groups agents under Installed then Others (each A to Z), Terminal last, and seat 1 starts on the default agent when it is installed and every seat is blank.

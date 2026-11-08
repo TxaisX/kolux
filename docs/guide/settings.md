@@ -13,7 +13,7 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 | Accounts & keys | Signing in to Claude, Codex and Grok |
 | Agents | Which agents are on, how they start, whether they ask permission |
 | Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default shell, close warnings, pinned tabs, removing a running session |
-| Git & worktrees | Branch names, Source Control, commit messages |
+| Git & worktrees | Branch names, compare base, commit messages |
 | Safety | A short note on protected commands (see [Safety](safety.md)) |
 | Notifications | What alerts you, and how |
 | Shortcuts | Every command and its keys |
@@ -56,7 +56,7 @@ Preferences for the built-in editor and the diff views.
 | Show changes made only of whitespace | Off, so a line that only moved spaces or tabs is hidden | `diffShowWhitespace` |
 | File tree beside the combined diff | Off | `diffFileTree` |
 
-**Not wired up yet.** This build saves these choices, but the editor and the diff views do not read them yet, so changing one has no visible effect for now. The editor's font is a different setting and does work: see Editor font under [Interface](#interface).
+The editor and the diff views read these choices when they open. A diff or All Changes tab that you have already set up keeps its own layout (**Make default** in All Changes saves the layout for new tabs). The editor's font is a different setting: see Editor font under [Interface](#interface).
 
 ### Open in
 
@@ -67,7 +67,7 @@ The apps that every "Open in" menu is meant to list (for a workspace, a file, an
 
 Saved as `openInApps`.
 
-**Not wired up yet.** The list saves, but the Open in menus do not read it yet.
+The Open in menus read this list.
 
 ### Network proxy
 
@@ -82,7 +82,7 @@ For a network that makes you go through a proxy. The card is folded shut when no
 
 The address is sealed in the system keyring (see [Secrets](safety.md#secrets)); it is not saved in the clear in `settings.json` and is never shown back. Once one is set the card says so. To change the other two parts and keep the address, leave the address box empty and press Apply; type a new address to replace it.
 
-**Not wired up yet.** The card says "Kolux's own traffic goes through it", but this build only stores the proxy: update checks and downloads do not use it yet.
+The update check goes through the saved proxy. If the setting cannot be used, the check stops and says so instead of going around the proxy.
 
 ### Diagnostics
 
@@ -270,12 +270,11 @@ The shell you pick is tried first. If it will not start (it was uninstalled, or 
 | Name the branch after the work | On. An agent's first task in a workspace that still has the suggested name renames its branch to a short description of the work. A name you typed, a pushed branch and one with a pull request keep their names. Ask to rename the folder too (on) follows it | `renameBranches`, `autoBranchName` |
 | Default compare base | The repository default, or the branch's upstream | `scmSummaryUpstream` |
 | Refresh the base first | Off. When on, it fast-forwards the base branch only | `refreshBaseFirst` |
-| Source Control group order | Staged first (default) or Changes first. Conflicts always come first | |
 | Commit messages written by | Claude Code (default), a custom command with a `{prompt}` placeholder, or Off. An instructions box takes up to 2000 characters | |
 | GitHub API budget | Shows how much of GitHub's hourly allowance is left; "Check again" re-reads it | |
 | Ask before deleting a workspace | On. A workspace with changes, a lock or a nested workspace always asks | |
 
-A worktree is a separate working copy of a project on its own branch; Kolux calls it a workspace. See [Projects and worktrees](projects-and-worktrees.md).
+This page keeps its old name. Kolux now works in one folder per project, so a project's own **Workspaces folder** no longer shows in its settings. See [Projects and folders](projects-and-worktrees.md).
 
 ## Notifications
 
@@ -323,4 +322,4 @@ Each project has two settings: "New workspaces start from" (blank means the defa
 
 The mouse wheel scrolls long menus, pickers and sheets, including the lists inside dialogs. Over such a surface the wheel moves the nearest part, working outward from the pointer, that can still scroll that way. When nothing in the menu can move, the wheel does nothing, so the page behind it does not jump. Ctrl+wheel (zoom) and sideways scrolling are left alone, and a list that sits inline on a page still scrolls its page.
 
-<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/ShortcutsPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx at 73f5e38 -->
+<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/ShortcutsPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx at c2ef69fc -->

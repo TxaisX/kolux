@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoStarts, CREATE_AGENT, CREATE_PROJECT, CREATE_NAME, CREATE_NOTE, GRID_PANE, GRID_RESULTS, GRID_STATUS, gridStarts, nextShown, place, prevShown, stepLabel, tourFeature, TOURS } from "./tour";
+import { autoStarts, FOCUSED_SPLIT, GRID_PANE, GRID_RESULTS, GRID_STATUS, gridStarts, nextShown, place, prevShown, stepLabel, tourFeature, TOURS } from "./tour";
 
 const base = { id: "tasks" as const, auto: true, seen: [], slotUsed: false, blocked: false, tried: [] };
 
@@ -41,7 +41,7 @@ describe("when tours start by themselves (ONB-032)", () => {
     expect(autoStarts({ ...base, id: "parallel", tried: ["split"] })).toBe(false);
   });
   it("has the catalogue the store keeps, translated", () => {
-    expect(TOURS.map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "grid", "create", "board", "browser"]);
+    expect(TOURS.map((t) => t.id)).toEqual(["tasks", "automations", "parallel", "grid", "board", "browser"]);
     expect(TOURS.every((t) => t.steps.every((s) => s.ko.title && s.en.title))).toBe(true);
   });
 });
@@ -60,12 +60,15 @@ describe("the grid tour when the first run ends (ONB-012)", () => {
   });
 });
 
-describe("the new-workspace tour (ONB-016)", () => {
-  it("points at the composer's project, name, agent and note, and only the Setup Guide starts it", () => {
-    const t = TOURS.find((x) => x.id === "create")!;
-    expect(t.steps.map((s) => s.target)).toEqual([CREATE_PROJECT, CREATE_NAME, CREATE_AGENT, CREATE_NOTE]);
-    expect(autoStarts({ ...base, id: "create" })).toBe(false);
-    expect(tourFeature("create")).toBe(false);
+describe("the tours promise one folder per project (T-776)", () => {
+  it("has no tour for creating a workspace, which the app no longer offers", () => {
+    expect(TOURS.some((t) => t.id === ("create" as string))).toBe(false);
+  });
+  it("the parallel tour points only at things that show: the split button, then the sidebar status dot", () => {
+    const t = TOURS.find((x) => x.id === "parallel")!;
+    expect(t.steps.map((s) => s.target)).toEqual([FOCUSED_SPLIT, GRID_STATUS]);
+    const words = TOURS.flatMap((x) => x.steps.map((s) => `${s.en.title} ${s.en.body}`)).join(" ");
+    expect(words).not.toMatch(/own copy|separate copy|never collide|worktree/i);
   });
 });
 

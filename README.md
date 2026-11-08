@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Run many AI coding agents side by side.</strong><br>
-  Each one gets its own terminal. From two agents up, each gets its own Git worktree by default.
+  Each one gets its own terminal, all in your project's folder.
 </p>
 
 <p align="center">
@@ -21,17 +21,17 @@
   <a href="https://github.com/TxaisX/kolux/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux?label=release" alt="Latest release"></a>
 </p>
 
-Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. When you launch two or more agents, each gets its own Git worktree by default, so they can work on the same project without editing the same files.
+Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. Kolux works in one folder per project: every agent you launch there works in that same folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other.
 
 > **Early alpha.** Kolux is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
 
 ## What it does
 
-- **Parallel agents without shared checkouts.** Launch a Solo, Pair, Workbench, or Swarm lineup. From two agents up, each seat gets its own worktree by default; a shared folder is one click away.
-- **One window.** Terminals, browser tabs, an editor, diffs, and source control sit in the same split layout.
+- **Parallel agents in one folder.** Launch a Solo, Pair, Workbench, or Swarm lineup. Every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them.
+- **One window.** Terminals, browser tabs, an editor, and diffs sit in the same split layout.
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
-- **Review and ship.** Stage, commit, push, open a pull request, and follow checks without leaving the app.
+- **Review and ship.** When an agent finishes, press **Review changes** on its Board card or Inbox row. That opens All Changes, where you read every changed file, then stage, commit, push, and pull. Pull-request checks show in the right panel's Checks tab.
 - **Local first.** No telemetry. Keys are sealed with Windows DPAPI. The app talks to GitHub (Releases and API), your Git remotes, and the AI providers you connect; the full list is in Settings, General, Privacy.
 
 ## Install
@@ -42,15 +42,19 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 
 > The installer file keeps its `Kolux.RS_…` name for one more release while the install identity moves; the app it installs is Kolux.
 
-The current installer is not Authenticode-signed, so Windows SmartScreen may warn on first run. Choose **More info**, then **Run anyway**, after checking that the file came from this repository's Releases page. The update manifest is signed separately.
+**The installer is not code-signed yet.** Kolux is a free alpha and has no Windows code-signing certificate, so Windows treats the installer as from an unknown publisher. What you will see:
+
+- **SmartScreen ("Windows protected your PC").** Choose **More info**, then **Run anyway**, after checking that you downloaded the file from this repository's Releases page. Right-click the file, open **Properties**, and the **Digital Signatures** tab will be absent; that is expected until signing arrives.
+- **Smart App Control.** If Windows 11 has Smart App Control turned on, it can block an unsigned installer with no Run anyway button. Kolux cannot be installed on that PC until the installer is signed; Windows does not offer a one-off exception.
+- **Updates are still checked.** The update manifest carries its own signature, and an installed Kolux verifies it before installing an update.
 
 ## Requirements
 
-- Windows 11 x64 is the tested target. Windows 10 is not yet verified end to end.
-- The WebView2 runtime. Windows 11 includes it; the installer can fetch it if it is missing.
-- Git, for worktrees and source control.
+- Windows 11 x64 is the tested target. Windows 10 is not yet verified end to end: resizing a terminal pane may cut up long lines there, and the installer says so before it installs.
+- The WebView2 runtime. Windows 11 includes it; the installer can fetch it if it is missing, which needs an internet connection; on a PC without WebView2 and offline, install the runtime first.
+- Git, for the changes view and for committing, pushing, and pull requests.
 - At least one agent CLI. Kolux can install some agents for you; others you install first.
-- Node.js for agents that are distributed through npm. Kolux reports when the installed Node is too old.
+- Node.js for agents that are distributed through npm. If an agent's install fails because Node.js is too old, Kolux says which version the agent needs and how to update.
 
 ## First run
 
@@ -59,8 +63,6 @@ On first launch, a four-step dialog asks you to connect at least one AI, choose 
 ## How it works
 
 Kolux is a Tauri 2 app. The window is React and TypeScript; the core is Rust. Each pane is a real PTY running your shell or agent, and a background terminal service lets panes outlive the window. Agents report status through hooks that Kolux installs in the agent's own settings, or through a plugin or extension where the agent supports one. Reports go to a loopback listener that requires a per-run token. There is no Kolux server.
-
-Worktrees are ordinary Git worktrees. You can inspect, commit, or remove them with any Git tool.
 
 ## Privacy
 
@@ -72,7 +74,7 @@ The full list of outbound connections is in Settings, General, Privacy and in th
 
 | Read | For |
 |---|---|
-| [User guide](docs/guide/README.md) | The full guide: setup, terminals, projects, source control, settings, CLI |
+| [User guide](docs/guide/README.md) | The full guide: setup, terminals, projects, reviewing changes, settings, CLI |
 | [Getting started](docs/guide/getting-started.md) | First launch, the top bar, your first agent |
 | [Status](docs/STATUS.md) | What is verified, what is missing, and what alpha means here |
 | [Glossary](docs/GLOSSARY.md) | The words the app uses |

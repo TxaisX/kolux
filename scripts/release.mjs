@@ -53,9 +53,41 @@ export function nextVersion(projectVersion, latestTag) {
   return `${base[0]}.${base[1]}.${base[2] + 1}`;
 }
 
-/** The release notes: each commit subject since the last release, 30 at most, then the hidden marker. */
-export function notesBody(subjects, sha) {
-  const lines = subjects.filter((s) => s.trim()).slice(0, NOTES_MAX).map((s) => `- ${s.trim()}`);
+/** P3-19 (T-789): the hand-written section of CHANGELOG.md for this version, or null. The heading is
+ *  `## 0.1.10`, `## [0.1.10]` or `## v0.1.10`, with anything after it (a date); when no section names the
+ *  version, `## Unreleased` or `## Next` is the one to ship. Its lines run to the next `## ` heading. */
+export function changelogSection(text, version) {
+  if (!text) return null;
+  const lines = String(text).replace(/\r\n/g, "\n").split("\n");
+  const heading = (l) => /^##\s+(.*)$/.exec(l)?.[1].trim() ?? null;
+  const named = (h) => {
+    const m = /^\[?v?(\d+\.\d+\.\d+)\]?(\s|$)/.exec(h);
+    return m ? m[1] : /^(unreleased|next)\b/i.test(h) ? "unreleased" : null;
+  };
+  const find = (want) => lines.findIndex((l) => heading(l) !== null && named(heading(l)) === want);
+  let at = find(version);
+  if (at < 0) at = find("unreleased");
+  if (at < 0) return null;
+  const body = [];
+  for (const l of lines.slice(at + 1)) {
+    if (heading(l) !== null) break;
+    body.push(l.trimEnd());
+  }
+  return body.join("\n").trim() || null;
+}
+
+/** Which heading changelogSection took (`## 0.1.10` or `## Unreleased`), so the release log says it. */
+export function changelogHeading(text, version) {
+  const lines = String(text ?? "").replace(/\r\n/g, "\n").split("\n").filter((l) => /^##\s+/.test(l));
+  const v = lines.find((l) => /^##\s+\[?v?(\d+\.\d+\.\d+)\]?(\s|$)/.exec(l)?.[1] === version);
+  return (v ?? lines.find((l) => /^##\s+(unreleased|next)\b/i.test(l)) ?? "(none)").trim();
+}
+
+
+/** The release notes: the hand-written CHANGELOG section when there is one, else each commit subject since
+ *  the last release, 30 at most; then the hidden marker. */
+export function notesBody(subjects, sha, section = null) {
+  const lines = section ? [section] : subjects.filter((s) => s.trim()).slice(0, NOTES_MAX).map((s) => `- ${s.trim()}`);
   return `${lines.join("\n")}\n\n<!-- kolux-rs-source: ${sha} -->\n`;
 }
 export const markerOf = (body) => MARKER.exec(body ?? "")?.[1] ?? null;
@@ -288,8 +320,13 @@ export function buildOnce(o, env = process.env, exec = sh) {
   const known = prev && spawnSync("git", ["-C", dir, "merge-base", "--is-ancestor", prev, sha]).status === 0;
   const range = known ? [`${prev}..${sha}`] : [sha, "-n", String(NOTES_MAX)];
   const subjects = git(dir, "log", "--no-merges", "--format=%s", ...range).split("\n");
-  const notes = notesBody(subjects, sha);
+  const changelog = path.join(dir, "CHANGELOG.md");
+  const section = fs.existsSync(changelog) ? changelogSection(fs.readFileSync(changelog, "utf8"), version) : null;
+  const notes = notesBody(subjects, sha, section);
   say(`release ${version} from main ${sha.slice(0, 7)} (project ${projectVersion}, newest release ${latest?.tag ?? "none"})`);
+  if (!fs.existsSync(changelog)) say("notes: no CHANGELOG.md; using commit subjects");
+  else if (!section) say(`notes: CHANGELOG.md has no section for ${version} or Unreleased; using commit subjects`);
+  else say(`notes: CHANGELOG.md section ${changelogHeading(fs.readFileSync(changelog, "utf8"), version)}`);
   console.log(notes);
   if (o.dryRun) {
     say(`dry run: would set version ${version}, run pnpm install and pnpm tauri build --bundles nsis with no secret in reach, smoke-test, sign with tauri signer and ${keyFile(env)}, then publish ${installerName(version)}, its .sig and latest.json to ${env.KOLUX_RELEASE_PUBLISH_DIR ? path.resolve(env.KOLUX_RELEASE_PUBLISH_DIR) : FEED_REPO}`);

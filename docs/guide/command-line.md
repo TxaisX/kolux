@@ -9,7 +9,7 @@ The installed app puts a program called `kolux` (`kolux.exe`, with a `kolux.cmd`
 Two things to know:
 
 - **The help text always says `kolux-dev`.** Every usage line in `kolux --help` starts with `kolux-dev`, even when you ran `kolux`. Type `kolux` where the help says `kolux-dev`.
-- **Inside a Kolux pane, `kolux` is this app's command.** Kolux puts its own folder first on the PATH (the list of places Windows looks for programs) in every pane it opens. If you also have the older Kolux installed, a plain terminal outside Kolux may find that one instead. Registering the command for the whole computer is not built.
+- **Inside a Kolux pane, `kolux` is this app's command.** Kolux puts its own folder first on the PATH (the list of places Windows looks for programs) in every pane it opens. If you also have the older Kolux installed, a plain terminal outside Kolux may find that one instead. To use `kolux` in terminals outside Kolux, press **Set up** in the Enable Kolux CLI step of Getting Started, or **Register kolux** on the CLI card in Settings, General. On Windows that adds the CLI folder to your user PATH, so open a new terminal window afterwards. **Remove kolux** on the same card takes it away.
 
 To check which one you are running:
 
@@ -72,7 +72,7 @@ Many commands take `--repo` or `--worktree` to say which project or workspace yo
 | `--repo` | `id:<id>`, `name:<name>`, `path:<folder>` |
 | `--worktree` | `active`, `current`, `id:<repo-id>::<path>`, `identity:...`, `name:...`, `branch:...`, `issue:...`, `path:...` |
 
-A worktree is a separate working copy of a project on its own branch; the rest of this guide calls it a workspace. With no selector, the command uses the folder you are standing in.
+A worktree is a separate working copy of a project on its own branch; the rest of this guide calls it a workspace. The app itself now works in one folder per project and no longer offers to make extra ones, and its sidebar does not list them. The command line still can: `kolux worktree create` makes a real extra folder on its own branch, and `kolux worktree rm` removes one. With no selector, the command uses the folder you are standing in.
 
 ## Projects and workspaces
 
@@ -84,8 +84,8 @@ A worktree is a separate working copy of a project on its own branch; the rest o
 | `kolux repo show` | Shows one repository |
 | `kolux repo set-base-ref --ref <ref>` | Sets the branch new workspaces start from |
 | `kolux repo search-refs --query <text>` | Searches branches and tags; `--limit` caps the list |
-| `kolux worktree create --name <name>` | Makes a workspace. Options: `--repo`, `--agent`, `--prompt`, `--setup run\|skip\|inherit`, `--base-branch`, `--issue`, `--comment`, `--parent-worktree`, `--no-parent`, `--run-hooks`, `--activate` |
-| `kolux worktree rm --worktree <selector>` | Removes a workspace (also `remove`, `delete`). `--force` and `--run-hooks` are optional |
+| `kolux worktree create --name <name>` | Makes an extra working folder on its own branch, the kind older versions made. The sidebar does not list it; `--agent` and `--prompt` start the agent in it, and `--activate` brings that folder in front. Options: `--repo`, `--agent`, `--prompt`, `--setup run\|skip\|inherit`, `--base-branch`, `--issue`, `--comment`, `--parent-worktree`, `--no-parent`, `--run-hooks`, `--activate` |
+| `kolux worktree rm --worktree <selector>` | Removes an extra workspace folder and closes its panes (also `remove`, `delete`). It refuses a project's main folder, and refuses a folder with uncommitted changes unless you add `--force`. A branch holding commits found nowhere else is kept. `--run-hooks` is accepted but teardown scripts do not run |
 | `kolux worktree list` | Lists workspaces; a project whose folder cannot be read (deleted, or on an offline drive) is named instead of emptying the list |
 | `kolux worktree ps` | Lists them with a summary of orchestration work |
 | `kolux worktree show` | Shows one workspace |
@@ -96,7 +96,7 @@ A worktree is a separate working copy of a project on its own branch; the rest o
 
 `--prompt` needs `--agent`: a first prompt has to go to an agent.
 
-Example: make a workspace named `fix-login` and switch to it.
+Example: make an extra folder named `fix-login` and bring it in front.
 
 ```
 kolux worktree create --name fix-login --activate
@@ -250,8 +250,22 @@ A mistyped command is caught before Kolux is contacted, with a suggestion: "no c
 | --path is required: the folder of a Git repository | Give `repo add` a `--path` |
 | kolux.exe is missing from the folder of kolux.cmd; reinstall Kolux. | Reinstall |
 
-## Not built yet
+## Browser, files, Git and sessions
 
-These do not exist, so do not look for them: opening or comparing files from the command line, a `tab` command, registering `kolux` on the PATH for the whole computer, `worker-read`, `ask`'s older hand-back with exit status 75, and a command to reset a held task.
+These commands act on a workspace's own browser tab and files. They take `--worktree <selector>` to name another workspace's, and `--json` for machine-readable output.
 
-<!-- verified against: src-tauri/src/cli.rs, src-tauri/src/bin/kolux.rs, src-tauri/src/bin/kolux-dev.rs, src-tauri/Cargo.toml, src-tauri/cli/kolux.cmd, src-tauri/src/terminal.rs, src-tauri/src/resources.rs, src/status/ResourceManager.tsx, PLAN.md (T-262-c, T-250-a, T-250-b, T-076-c, T-287-c, MERGE-49) at 73f5e38; worker and held-task sections (src-tauri/src/orchestration.rs, src-tauri/src/local_cli.rs, T-089-c, T-129-c, T-172-c, T-279-c) at 5e6726c2 -->
+| Command | What it does |
+|---|---|
+| `kolux goto --url <address>`, `back`, `forward`, `reload`, `snapshot` | Drive the workspace's visible browser tab. `snapshot` lists the page's elements with references (`e1`, `e2`, ...) that the other browser commands take |
+| `kolux click`, `fill`, `type`, `select`, `hover`, `find`, `get`, `wait`, `eval`, `screenshot`, `pdf` | Act on, read and capture the page. `kolux exec --command "<browser command>"` runs one browser command written as a line |
+| `kolux tab list`, `tab show`, `tab switch --index <n>`, `tab create`, `tab close` | List, pick, open and close the workspace's browser tabs. `tab close` is destructive. `tab lease` and `tab release` let one holder own a placement at a time |
+| `kolux file open <path>`, `file diff <path>`, `file open-changed` | Open a file, open a file's diff (`--staged` for the staged one), or open every changed file as diffs or in the editor (`--mode diff`, `edit` or `both`). A path must lie inside the workspace |
+| `kolux file list`, `file read --path <file>`, `file rename --path <file> --to <new path>` | List a folder, read a file, rename a file, always inside the workspace |
+| `kolux git branch`, `git pr` | Read the workspace's branch and its pull request from the workspace's own folder. Nothing is pushed |
+| `kolux sessions list` | The workspace's past Claude sessions with their titles |
+
+`kolux orchestration worker-read --dispatch <id>` reads what a worker said: its transcript turns, else its terminal output (labelled as a fallback), else the archive saved when it was released. `--source auto|transcript|terminal` picks one, and `--cursor` and `--limit` (1 to 100) page through it.
+
+`kolux orchestration ask` on the packaged Windows build hands a new question back after about 100 seconds with exit status 75 and the command to resume it (`--resume <message>`). A resumed wait never hands back again; it waits out its own timeout.
+
+<!-- verified against: src-tauri/src/cli/mod.rs, src-tauri/src/bin/kolux.rs, src-tauri/src/bin/kolux-dev.rs, src-tauri/Cargo.toml, src-tauri/cli/kolux.cmd, src-tauri/src/terminal.rs, src-tauri/src/resources.rs, src/status/ResourceManager.tsx, src-tauri/src/orchestration.rs, src-tauri/src/local_cli.rs, PLAN.md at 6a1ecc08 -->

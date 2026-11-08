@@ -112,9 +112,12 @@ Rules: the kit that matches the chosen sample is pre-selected, otherwise the fir
   other case (no workspace yet, a real folder, or no agent) the setup dialog opens; 'Just open a
   session' starts a single session with an empty prompt, using the first available agent, in the
   project's main copy rather than a separate worktree; with no workspace it leads to picking a folder
-  (T-612); since T-674 (DT-C110), with no agent installed and switched on the last button is 'Pick a folder' and
-  says why, and a session request that finds no agent says that nothing started instead of doing
-  nothing; the ping switch is the app-wide notifications setting, so flipping
+  (T-612); since T-796 (DT-C225) the fourth screen lists every installed, switched-on AI agent and a
+  plain terminal, the default agent is already picked, and the main button starts the pick; with no
+  agent installed only the plain terminal is listed, with a line saying why, and a session request that
+  finds no agent says that nothing started instead of doing nothing; the third screen keeps Continue
+  greyed until a folder exists and offers 'Skip for now', and a folder picked there brings the wizard
+  back on the fourth screen; the ping switch is the app-wide notifications setting, so flipping
   it here flips it everywhere; a successful launch by either route records onboarding as completed
   and begins the grid tour (ONB-012).
 Acceptance:
@@ -123,8 +126,10 @@ Acceptance:
   - [ ] No agent installed and switched on → the last button reads 'Pick a folder'; a session request
         says nothing started.
   - [ ] Turn the ping switch off → Settings shows notifications off.
-  - [x] No agent installed → the last button reads 'Pick a folder' with a line saying why; installing
-        an agent from the Connect screen counts at once. (T-674; evidence/T-674.txt)
+  - [x] No agent installed → the last screen lists only the plain terminal, with a line saying why;
+        installing an agent from the Connect screen counts at once. (T-674, reworded by T-796 / DT-C225; evidence/T-796.txt)
+  - [x] Third screen with no folder → Continue is greyed with a reason and 'Skip for now' leaves setup;
+        the fourth screen lets the user pick an agent or a plain terminal. (T-796; evidence/T-796.txt)
 Compat: —
 Source: D-16-005
 

@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:memory": "node --test tools/kolux-memory/test.mjs",
     "memory": "node tools/kolux-memory/cli.mjs",
-    "check": "tsc && node scripts/license-check.mjs && node scripts/plan-check.mjs && node scripts/workflow-check.mjs && node scripts/invoke-contract.mjs && node --test tools/kolux-memory/test.mjs",
+    "check": "tsc && node scripts/license-check.mjs && node scripts/plan-check.mjs && node scripts/glossary-check.mjs && node scripts/guide-check.mjs && node scripts/workflow-check.mjs && node scripts/invoke-contract.mjs && node --test tools/kolux-memory/test.mjs",
     "ship": "node scripts/ship.mjs",
     "release": "node scripts/release.mjs",
     "smoke": "node scripts/evidence/smoke.mjs",

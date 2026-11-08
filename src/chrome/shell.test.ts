@@ -30,7 +30,8 @@ test("the top bar carries the screen switcher, search hint, usage pill and windo
 test("the search box chips follow the keybindings file", () => {
   const topbar = createElement(TopBar, { screen: "terminals", onScreen: () => {}, sidebarOpen: true, onToggleSidebar: () => {}, rightOpen: false, onToggleRight: () => {} });
   const plain = renderToString(topbar);
-  expect(plain).toMatch(/kbd">Ctrl<.*kbd">Shift<.*kbd">J</);
+  expect(plain).toMatch(/kbd">Ctrl<.*kbd">K</); // T-800: Ctrl+K also opens it, and is what the box shows
+  expect(plain).toContain("Go to / Run a command");
   const custom: KeymapState = { ...resolve({ version: 1, platforms: { win32: { "worktree.palette": "Mod+Alt+P" } } }, "win32"), path: null, reload: () => {}, save: async () => {} };
   const html = renderToString(createElement(KeymapContext.Provider, { value: custom }, topbar));
   expect(html).toMatch(/kbd">Ctrl<.*kbd">Alt<.*kbd">P</);

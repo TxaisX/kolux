@@ -168,7 +168,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     setPanes, setRefresh, setupExits, splitPane, startIn, startSetup, termCreate, termRename, termSwitch
   });
 
-  const wizardState = useWizard({ setToast, agents, settings, activeDir, startIn });
+  const wizardState = useWizard({ setToast, agents, settings, activeDir, startIn, openShell: () => void paneA.newTab(null) });
 
   useEffect(() => void hearStates(listen).catch(() => {}), []);
   useEffect(() => void import("./scm/autoPrWatch").catch(() => {}), []); // T-653: on demand after mount, kept out of the first load
