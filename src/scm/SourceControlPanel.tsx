@@ -606,7 +606,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
           </span>
         )}
         {name !== "Conflicts" && (
-          <button className="ib" title="Discard" aria-label={`Discard ${r.path}`} disabled={busy} onClick={(e) => { e.stopPropagation(); askDiscard(name, [r], false); }}>
+          <button className="ib" data-testid="scm-discard-file" title="Discard" aria-label={`Discard ${r.path}`} disabled={busy} onClick={(e) => { e.stopPropagation(); askDiscard(name, [r], false); }}>
             <Undo />
           </button>
         )}

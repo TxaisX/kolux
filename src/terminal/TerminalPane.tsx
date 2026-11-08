@@ -1586,7 +1586,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   menuRef.current = openMenu;
 
   return (
-    <section ref={box} className={`pane${focused ? " focused" : ""}${glow || unread ? " glow" : ""}${unread ? " unread" : ""}${card ? " card" : ""}${card?.expanded ? " expanded" : ""}`} hidden={hidden} aria-label={`${title} pane`} onMouseDown={onFocus} data-agent={shown} data-key={number} data-dropping={dropping || undefined} style={{ ...(card?.column ? { gridColumn: card.column } : {}), ...(dropping ? { outline: "2px solid var(--line-focus)", outlineOffset: -2 } : {}) }}>
+    <section ref={box} className={`pane${focused ? " focused" : ""}${glow || unread ? " glow" : ""}${unread ? " unread" : ""}${card ? " card" : ""}${card?.expanded ? " expanded" : ""}`} hidden={hidden} aria-label={`${title} pane`} data-testid="terminal-pane" onMouseDown={onFocus} data-agent={shown} data-key={number} data-dropping={dropping || undefined} style={{ ...(card?.column ? { gridColumn: card.column } : {}), ...(dropping ? { outline: "2px solid var(--line-focus)", outlineOffset: -2 } : {}) }}>
       <header
         className="pane-head"
         onContextMenu={(e) => {
@@ -1619,7 +1619,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             </svg>
           </span>
         )}
-        <span className={`st ${tone || "idle"}`} role="img" aria-label={`status: ${word}`} data-tip={[explain, drawing].filter(Boolean).join(" · ")}>
+        <span className={`st ${tone || "idle"}`} role="img" data-testid="pane-status-dot" aria-label={`status: ${word}`} data-tip={[explain, drawing].filter(Boolean).join(" · ")}>
           <StatusGlyph glyph={glyph} size={glyph === "spinner" ? 11 : 12} />
         </span>
         <span className="agent-mark" title={agentLabel}>
@@ -1741,12 +1741,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             <Expand size={12} />
           </button>
           {onSplit && (
-            <button className="ib" onClick={() => onSplit("right")} title={splitTip}>
+            <button className="ib" data-testid="pane-split-right" onClick={() => onSplit("right")} title={splitTip}>
               <SplitRight size={12} />
             </button>
           )}
           <button
             className="ib"
+            data-testid="pane-new-session"
             title="New session: start an agent in a new pane"
             aria-haspopup="menu"
             aria-expanded={plusAt !== null}

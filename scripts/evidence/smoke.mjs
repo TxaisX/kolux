@@ -16,7 +16,8 @@
 //         in an environment variable before the change and writes that variable to a file after it (only the
 //         same process can know it).
 // Flow 2  Mod+S in an editor tab writes the file: the bytes on disk carry what was typed.
-// Flow 3  Discard in Source Control asks first, and Cancel loses nothing: the file and git status are unchanged.
+// Flow 3  Delete in the Explorer asks first, and Cancel keeps the file byte-identical on disk. (It used to test the
+//         Source Control Discard, which T-644/DT-C85 removed with the panel.)
 // Flow 4  a Claude pane's status dot turns Working: agentOptions.claude.command points at a stand-in program
 //         that posts the same hook events Kolux's installed hook posts (SessionStart, UserPromptSubmit) from the
 //         pane's own hook variables. CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE and HOME (with APPDATA and
@@ -47,6 +48,19 @@
 // of flow 4 is on whether or not the switch exists yet (T-152-gate), and moves the window to the second screen
 // when there is one. Attach mode changes the running app's settings for flow 4 and puts them back afterwards;
 // it cannot run flow 5 (it has no exe path to relaunch).
+//
+// Selectors: every element this script clicks or waits on is found by a data-testid, never by its visible text or
+// class, so renaming a label or restyling a control cannot break a flow. The ids, by where they live:
+//   chrome/    layout-strip  layout-count-<n>  right-sidebar  right-sidebar-toggle  right-tab-<tab id>
+//   projects/  sidebar-add-project  add-project-by-path  add-project-folder-input
+//   launch/    chooser-pane  seat-<n>-agents  seat-agent-<agent id>  chooser-start  new-session-menu  new-session-item-<agent id>
+//   terminal/  terminal-pane  pane-status-dot  pane-split-right  pane-new-session
+//   editor/    editor-pane  explorer-row  explorer-tree
+//   other      onboarding-dialog (onboarding/Wizard)  ask-dialog  ask-body  ask-cancel  ask-confirm (chrome/Ask, flow 3)
+// Renaming a label must not touch these ids; scripts/smoke-testids.test.mjs fails when one is missing from src/.
+// What still matches on something else: the ARIA roles tab and menuitem, the text of a tab, menu item
+// or Explorer row to pick one among several, the libraries' own .xterm-helper-textarea and .cm-content (no id can
+// be put on markup xterm.js and CodeMirror own); and the .name inside an Explorer row.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
@@ -125,24 +139,32 @@ const SHELL_NAMES = new Set(["powershell.exe", "pwsh.exe", "cmd.exe"]);
 
 const git = (a) => run("git", a, { cwd: repo });
 
-const TERM = "section.pane[data-agent]";
+const tid = (id) => `[data-testid="${id}"]`;
+// Library-made inner elements keep their own selectors: the libraries own that markup and take no test id.
+const XTERM_INPUT = ".xterm-helper-textarea";
+const EDITOR_INPUT = ".cm-content";
+const TERM = tid("terminal-pane");
 // Shell panes only: data-agent is the agent name, so a Claude pane matches TERM but not SHELL.
-const SHELL = 'section.pane[data-agent="shell"]';
-const CHOOSER = "section.pane.chooser";
-const CLAUDE = 'section.pane[data-agent*="claude"]';
+const SHELL = `${tid("terminal-pane")}[data-agent="shell"]`;
+const CHOOSER = tid("chooser-pane");
+const CLAUDE = `${tid("terminal-pane")}[data-agent*="claude"]`;
 // The right sidebar's tab by name; the panel button opens the sidebar when it is closed.
+const RIGHT_TABS = `${tid("right-sidebar")} [role="tab"]`;
 const rightTab = async (name) => {
-  if (!(await exists('aside.rside [role="tab"]'))) await click("button.ib.panel");
-  await waitFor("the right sidebar", () => exists('aside.rside [role="tab"]'), 5000);
-  await clickWhere('aside.rside [role="tab"]', `/^\\s*${name}\\s*$/`);
+  if (!(await exists(RIGHT_TABS))) await click(tid("right-sidebar-toggle"));
+  await waitFor("the right sidebar", () => exists(RIGHT_TABS), 5000);
+  await clickWhere(RIGHT_TABS, `/^\\s*${name}\\s*$/`);
 };
-const LAYOUT_ON = '.layouts button[aria-pressed="true"]';
+const LAYOUT_ON = `${tid("layout-strip")} button[aria-pressed="true"]`;
 const layoutCount = () => evalJs(`document.querySelector(${JSON.stringify(LAYOUT_ON)})?.textContent.trim() ?? null`);
-const pickLayout = (n) => clickWhere(".layouts button", `/^\\s*${n}\\s*$/`);
+const pickLayout = (n) => click(tid(`layout-count-${n}`));
+// the old new-tab button is gone; a pane's header has a "New session" plus that opens the same agent menu. A shown terminal
+// pane takes the focus first, so the plus belongs to a pane a user sees, and the new session joins that pane's cell.
 const newTab = async (label) => {
-  await click("button.newtab");
-  await waitFor("the New tab menu", () => exists('[role="menu"][aria-label="New tab"]'), 5000);
-  await clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', label);
+  await focusPane(TERM, 0, XTERM_INPUT);
+  await click(`${TERM}.focused ${tid("pane-new-session")}`);
+  await waitFor("the New session menu", () => exists(tid("new-session-menu")), 5000);
+  await clickWhere(`${tid("new-session-menu")} [role="menuitem"]`, label);
 };
 const read = (file) => (existsSync(file) ? readFileSync(file, "utf8") : null);
 const bytes = (file) => (existsSync(file) ? readFileSync(file) : null);
@@ -195,43 +217,42 @@ async function setup() {
   else await pageUp(30000);
   // T-543-b: with no layout saved the window opens with no pane until a workspace is opened.
   // 9d677875 moved "Add a project by path" from the footer gear into the Add project dialog's "Type a path" link.
-  await waitFor("the sidebar", () => exists('aside.sidebar button[aria-label="Add project"]'), 30000);
+  await waitFor("the sidebar", () => exists(tid("sidebar-add-project")), 30000);
   const before = await count(TERM);
   log(`zero panes after launch: ${before === 0 ? "PASS" : "FAIL"} (${before} ${TERM})`);
   if (!ATTACH && before !== 0) throw new Error(`a fresh profile opened with ${before} pane(s); T-543-b wants none until a workspace is opened`);
-  if (await exists('.onboarding, [aria-label="Welcome"]')) log("WARN a first-run dialog is open; the flows may not reach the grid");
-  await click('aside.sidebar button[aria-label="Add project"]');
-  await waitFor("the add-by-path link", () => exists("button[data-add-by-path]"), 5000);
-  await click("button[data-add-by-path]");
-  await waitFor("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
-  await focusField('input[aria-label="project folder"]');
+  if (await exists(tid("onboarding-dialog"))) log("WARN a first-run dialog is open; the flows may not reach the grid");
+  await click(tid("sidebar-add-project"));
+  await waitFor("the add-by-path link", () => exists(tid("add-project-by-path")), 5000);
+  await click(tid("add-project-by-path"));
+  await waitFor("the project folder field", () => exists(tid("add-project-folder-input")), 5000);
+  await focusField(tid("add-project-folder-input"));
   await cdp("insert", repo, "enter");
   // T-569/T-577: a new workspace opens the launch chooser, not a shell; pick Terminal and Start, the way a user would.
   await waitFor("the launch chooser", async () => (await shown(CHOOSER)) >= 1, 30000);
   await startTerminalFromChooser();
   await waitFor("the first shell pane", async () => (await shown(TERM)) >= 1, 30000);
-  await waitFor("the first shell pane's input field", () => exists(`${TERM} .xterm-helper-textarea`), 30000);
+  await waitFor("the first shell pane's input field", () => exists(`${TERM} ${XTERM_INPUT}`), 30000);
   log(`setup: ${repo} added as a project; ${await shown(TERM)} shell pane shown`);
 }
 
 // The first chooser's seat 1 gets its "Terminal" button (a92dae95 replaced the seat dropdown with a row of agent
 // buttons), then its Start button, once the agent search has finished and enabled it.
 async function startTerminalFromChooser() {
-  const seat = `${CHOOSER} [role="group"][aria-label="Seat 1: which AI"] button`;
-  const isTerminal = (extra = "") => evalJs(`[...document.querySelectorAll(${JSON.stringify(seat)})].some(b => /^\\s*Terminal\\s*$/.test(b.textContent)${extra})`);
-  await waitFor("the chooser's Terminal choice", () => isTerminal(), 30000);
-  await clickWhere(seat, "/^\\s*Terminal\\s*$/");
-  await waitFor("Terminal picked in seat 1", () => isTerminal(' && b.getAttribute("aria-pressed") === "true"'), 5000);
-  const start = `${CHOOSER} button.btn.primary`;
-  await waitFor("the chooser's Start button", () => evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some(b => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
-  await clickWhere(start, "/^\\s*Start\\s*$/");
+  const terminal = `${CHOOSER} ${tid("seat-1-agents")} ${tid("seat-agent-terminal")}`;
+  await waitFor("the chooser's Terminal choice", () => exists(terminal), 30000);
+  await click(terminal);
+  await waitFor("Terminal picked in seat 1", () => exists(`${terminal}[aria-pressed="true"]`), 5000);
+  const start = `${CHOOSER} ${tid("chooser-start")}`;
+  await waitFor("the chooser's Start button", () => exists(`${start}:not(:disabled)`), 60000);
+  await click(start);
 }
 
 // Types a line into the n-th shown shell and waits for the file it writes; a shell still starting up may
 // swallow the first keystrokes, so the line is sent again until the file is there.
 async function shellWrites(index, line, file, what, tries = 3) {
   for (let t = 1; ; t++) {
-    await focusPane(SHELL, index, ".xterm-helper-textarea");
+    await focusPane(SHELL, index, XTERM_INPUT);
     await cdp("insert", line, "enter");
     try {
       return await waitFor(what, () => read(file), 15000, 500);
@@ -246,8 +267,8 @@ async function flow1() {
   const start = await shown(TERM);
   for (const want of [start + 1, start + 2]) {
     // A shown pane takes the focus first, so the split goes to a pane a user sees.
-    await focusPane(TERM, 0, ".xterm-helper-textarea");
-    await click('.pane.focused button[title^="Split right"]');
+    await focusPane(TERM, 0, XTERM_INPUT);
+    await click(`${TERM}.focused ${tid("pane-split-right")}`);
     await waitFor(`${want} shell panes`, async () => (await shown(TERM)) === want, 30000);
   }
   await pickLayout(4);
@@ -258,7 +279,7 @@ async function flow1() {
   const stamp = Date.now().toString(36);
   const markOf = (i) => `smoke-${stamp}-${i}`;
   for (let i = 0; i < before.shells; i++) {
-    await focusPane(TERM, i, ".xterm-helper-textarea");
+    await focusPane(TERM, i, XTERM_INPUT);
     await cdp("insert", `$env:SMOKE_MARK = '${markOf(i)}'; 'ready' | Set-Content '${slash(join(marks, `ready-${i}.txt`))}'`, "enter");
     await waitFor(`shell ${i + 1} to answer`, () => read(join(marks, `ready-${i}.txt`))?.includes("ready"), 45000, 500);
   }
@@ -267,7 +288,7 @@ async function flow1() {
   const after = await grid();
   if (after.shells !== before.shells || after.choosers !== 6 - after.shells) throw new Error(`after Layout 6 expected the ${before.shells} shells plus ${6 - before.shells} empty panes, got ${JSON.stringify(after)}`);
   for (let i = 0; i < after.shells; i++) {
-    await focusPane(TERM, i, ".xterm-helper-textarea");
+    await focusPane(TERM, i, XTERM_INPUT);
     await cdp("insert", `$env:SMOKE_MARK | Set-Content '${slash(join(marks, `after-${i}.txt`))}'`, "enter");
   }
   const wanted = new Set(Array.from({ length: before.shells }, (_, i) => markOf(i)));
@@ -288,14 +309,14 @@ const TYPED = "typed by smoke ";
 async function flow2() {
   // The file was committed before the project was added, so the Explorer lists it (the tree is read once per open).
   await rightTab("Explorer");
-  await waitFor("notes.txt in the Explorer", () => exists('[role="tree"] .ex-row[role="treeitem"]'), 10000);
-  await clickWhere('[role="tree"] .ex-row[role="treeitem"]', "/^\\s*notes\\.txt\\s*$/");
-  const editor = 'section.pane.editor[aria-label="notes.txt pane"]';
-  await waitFor("the editor tab", () => shown(`${editor} .cm-content`), 10000);
-  await focusPane(editor, 0, ".cm-content");
+  await waitFor("notes.txt in the Explorer", () => exists(tid("explorer-row")), 10000);
+  await clickWhere(tid("explorer-row"), "/^\\s*notes\\.txt\\s*$/");
+  const editor = tid("editor-pane");
+  await waitFor("the editor tab", () => shown(`${editor} ${EDITOR_INPUT}`), 10000);
+  await focusPane(editor, 0, EDITOR_INPUT);
   const text = `${TYPED}${Date.now()}`;
   await cdp("insert", text);
-  await waitFor("the editor to hold the text", () => evalJs(`[...document.querySelectorAll(${JSON.stringify(editor + " .cm-content")})].some(e => e.textContent.includes(${JSON.stringify(text)}))`), 5000);
+  await waitFor("the editor to hold the text", () => evalJs(`[...document.querySelectorAll(${JSON.stringify(editor + " " + EDITOR_INPUT)})].some(e => e.textContent.includes(${JSON.stringify(text)}))`), 5000);
   const before = read(smokeFile);
   if (before !== ORIGINAL) throw new Error("notes.txt changed on disk before Mod+S");
   await cdp("key", "s", "2"); // Ctrl+S (Mod+S on Windows)
@@ -307,30 +328,29 @@ async function flow2() {
 
 // ---------- flow 3 ----------
 async function flow3() {
-  const before = read(smokeFile);
-  if (before === ORIGINAL) {
-    // Flow 2 did not run or did not change the file: make a change by hand so Discard has something to ask about.
-    writeFileSync(smokeFile, ORIGINAL + "changed by smoke\n");
-  }
-  const changed = read(smokeFile);
-  const status = (await git(["status", "--porcelain"])).stdout.trim();
-  if (!status.includes("notes.txt")) throw new Error(`git does not see notes.txt as changed: "${status}"`);
-  await rightTab("Source Control");
-  // The panel re-reads git status every 4 s.
-  await waitFor("the Discard button for notes.txt", () => exists('button[aria-label="Discard notes.txt"]'), 15000, 500);
-  await click('button[aria-label="Discard notes.txt"]');
-  const ask = await waitFor("the discard prompt", () => evalJs(`(() => { const d = document.querySelector('[role="alertdialog"]'); if (!d) return null; return { title: d.getAttribute("aria-label"), body: d.querySelector(".ask-body")?.textContent ?? "", buttons: [...d.querySelectorAll(".btn-row button")].map(b => ({ text: b.textContent.trim(), cls: b.className })) }; })()`), 5000);
-  if (ask.buttons.length < 2) throw new Error(`the prompt has no choice to cancel: ${JSON.stringify(ask)}`);
-  if (read(smokeFile) !== changed) throw new Error("the file changed while the prompt was open");
-  const cancel = ask.buttons.findIndex((b) => !/danger|primary/.test(b.cls));
-  if (cancel < 0) throw new Error(`no cancel button in ${JSON.stringify(ask.buttons)}`);
-  await evalJs(`document.querySelectorAll('[role="alertdialog"] .btn-row button')[${cancel}].click()`);
-  await waitFor("the prompt to close", async () => !(await exists('[role="alertdialog"]')), 5000);
+  // This replaces the old flow 3, which tested Discard in Source Control: that panel was removed (T-644/DT-C85).
+  // Deleting a file from the Explorer is what asks first now.
+  const bytes = () => (existsSync(smokeFile) ? readFileSync(smokeFile) : null);
+  const before = bytes();
+  if (!before) throw new Error("notes.txt is missing before the delete check");
+  await rightTab("Explorer");
+  await waitFor("notes.txt in the Explorer", () => exists(tid("explorer-row")), 10000);
+  await clickWhere(tid("explorer-row"), "/^\\s*notes\\.txt\\s*$/");
+  await focusField(tid("explorer-tree"));
+  await cdp("key", "Delete");
+  const ask = await waitFor("the delete prompt", () => evalJs(`(() => { const d = document.querySelector(${JSON.stringify(tid("ask-dialog"))}); if (!d) return null; return { title: d.getAttribute("aria-label"), body: d.querySelector(${JSON.stringify(tid("ask-body"))})?.textContent ?? "", cancel: !!d.querySelector(${JSON.stringify(tid("ask-cancel"))}), confirm: !!d.querySelector(${JSON.stringify(tid("ask-confirm"))}) }; })()`), 5000);
+  if (!ask.cancel || !ask.confirm) throw new Error(`the prompt has no choice to cancel: ${JSON.stringify(ask)}`);
+  if (!/notes\.txt/.test(ask.body)) throw new Error(`the prompt does not name notes.txt: ${JSON.stringify(ask)}`);
+  const open = bytes();
+  if (!open || !open.equals(before)) throw new Error("notes.txt changed or went away while the prompt was open");
+  await click(tid("ask-cancel"));
+  await waitFor("the prompt to close", async () => !(await exists(tid("ask-dialog"))), 5000);
   await sleep(1000);
-  if (read(smokeFile) !== changed) throw new Error("Cancel lost the change on disk");
-  const statusAfter = (await git(["status", "--porcelain"])).stdout.trim();
-  if (!statusAfter.includes("notes.txt")) throw new Error(`git no longer sees the change after Cancel: "${statusAfter}"`);
-  return `Discard asked first ("${ask.title}", buttons ${ask.buttons.map((b) => b.text).join(" / ")}); after "${ask.buttons[cancel].text}" notes.txt and git status are unchanged`;
+  const after = bytes();
+  if (!after) throw new Error("Cancel deleted notes.txt");
+  if (!after.equals(before)) throw new Error("Cancel changed notes.txt on disk");
+  if (!(await evalJs(`[...document.querySelectorAll(${JSON.stringify(tid("explorer-row"))})].some(e => /^\\s*notes\\.txt\\s*$/.test((e.querySelector(".name") ?? e).textContent || ""))`))) throw new Error("notes.txt left the Explorer after Cancel");
+  return `Delete in the Explorer asked first ("${ask.title}": ${ask.body}); after Cancel notes.txt is still on disk, byte-identical (${after.length} bytes). This replaces the old flow 3, which tested the Source Control Discard that T-644/DT-C85 removed.`;
 }
 
 // ---------- flow 4 ----------
@@ -378,7 +398,7 @@ const dotWorking = () =>
   waitFor(
     "the status dot to turn Working",
     async () => {
-      const w = await evalJs(`[...document.querySelectorAll(${JSON.stringify(CLAUDE + " .st")})].map(e => e.getAttribute("aria-label"))`);
+      const w = await evalJs(`[...document.querySelectorAll(${JSON.stringify(CLAUDE + " " + tid("pane-status-dot"))})].map(e => e.getAttribute("aria-label"))`);
       return w.find((x) => x === "status: Working") ?? null;
     },
     30000,
@@ -420,8 +440,8 @@ async function flow5() {
   // Split right makes a shell in a new cell from any terminal pane, even when a Claude tab hides the shell under it.
   while ((await shown(SHELL)) < 2) {
     const want = (await shown(SHELL)) + 1;
-    await focusPane(TERM, 0, ".xterm-helper-textarea");
-    await click('.pane.focused button[title^="Split right"]');
+    await focusPane(TERM, 0, XTERM_INPUT);
+    await click(`${TERM}.focused ${tid("pane-split-right")}`);
     await waitFor(`${want} shell panes`, async () => (await shown(SHELL)) >= want, 30000);
   }
   await standinOn();
@@ -620,7 +640,7 @@ if (flag("self-test")) {
   writeFileSync(join(partial, TEMP_MARKER), "");
   const heldLog = join(partial, "z-app.log");
   writeFileSync(heldLog, "x");
-  spawn("powershell", ["-NoProfile", "-Command", `$f=[IO.File]::Open('${heldLog}','Open','ReadWrite','None'); Start-Sleep -Milliseconds 5000; $f.Close()`], { stdio: "ignore", windowsHide: true });
+  spawn("powershell", ["-NoProfile", "-WindowStyle", "Hidden", "-Command", `$f=[IO.File]::Open('${heldLog}','Open','ReadWrite','None'); Start-Sleep -Milliseconds 5000; $f.Close()`], { stdio: "ignore", windowsHide: true });
   for (let i = 0; i < 40; i++) {
     try {
       writeFileSync(heldLog, "x");

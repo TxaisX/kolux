@@ -140,7 +140,7 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
   return (
     <>
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className="menu" role="menu" aria-label="New session" style={style} ref={menuBox} onKeyDown={arrows}>
+      <div className="menu" role="menu" aria-label="New session" data-testid="new-session-menu" style={style} ref={menuBox} onKeyDown={arrows}>
         <div className="menu-title">New session</div>
         {target && (
           <div className="menu-hint">
@@ -181,7 +181,7 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
         )}
         {shown.map((a) => (
           <div className="menu-row" key={a.id}>
-            <button role="menuitem" className="menu-item" disabled={busy || !!pass?.error} onClick={() => onPick(a)} title={`Start ${a.name} (${a.path}) in a new pane inside a fresh workspace`}>
+            <button role="menuitem" className="menu-item" data-testid={`new-session-item-${a.id}`} disabled={busy || !!pass?.error} onClick={() => onPick(a)} title={`Start ${a.name} (${a.path}) in a new pane inside a fresh workspace`}>
               <span className="agent-mark">
                 <VendorMark agent={markFor(a.id)} size={13} />
               </span>

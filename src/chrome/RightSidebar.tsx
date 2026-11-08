@@ -180,11 +180,11 @@ export default function RightSidebar({ tab, width, max, hidden = false, offered,
     onTab(shown[to].id);
   };
   return (
-    <aside className="rside" aria-label="Right sidebar" hidden={hidden} style={{ width }}>
+    <aside className="rside" aria-label="Right sidebar" data-testid="right-sidebar" hidden={hidden} style={{ width }}>
       <Grip side="right" width={width} min={RIGHT_MIN} max={max} label="Resize the right sidebar" className="rside-grip" onWidth={onWidth} />
       <div className="rside-tabs" role="tablist" aria-label="Right sidebar tabs" onKeyDown={onTabKey}>
         {shown.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={t.id === current} tabIndex={t.id === current ? 0 : -1} title={t.hint} className="rside-tab" onClick={() => onTab(t.id)}>
+          <button key={t.id} type="button" role="tab" aria-selected={t.id === current} tabIndex={t.id === current ? 0 : -1} data-testid={`right-tab-${t.id}`} title={t.hint} className="rside-tab" onClick={() => onTab(t.id)}>
             {t.label}
           </button>
         ))}
