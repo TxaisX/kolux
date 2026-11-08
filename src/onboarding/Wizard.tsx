@@ -13,6 +13,8 @@ import CodexCard from "../settings/CodexCard";
 import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
+import { isAiAgent, TERMINAL_ID } from "./agentKind";
+import { defaultAgentId, menuAgents, offeredAgents } from "../launch/agents";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { sessionAgent } from "./sessionAgent";
 import { HOOKS_LINE, hooksDefault, recordHooks, recordsHooks } from "./hooksOn";
@@ -32,8 +34,14 @@ type ViewProps = {
   ping: boolean;
   /** T-608: the status hooks switch beside the one line of consent (on until the user turns it off). */
   hooks: boolean;
-  /** 49-ux2: no AI agent is installed, so Open a session is held back with its reason and a Re-check. */
+  /** 49-ux2: no AI agent is installed, so only a plain terminal is offered, with its reason and a Re-check. */
   noAgent?: boolean;
+  /** T-796: a folder exists (a project is added). Your work waits for one; the last screen needs one to start in. */
+  hasFolder?: boolean;
+  /** T-796: what the last screen can start (installed agents, then a plain terminal), and which is picked. */
+  choices?: SessionChoice[];
+  choice?: string;
+  onChoice?: (id: string) => void;
   onRecheck?: () => void;
   cards?: ReactNode;
   onPing: (on: boolean) => void;
@@ -42,6 +50,8 @@ type ViewProps = {
   onMain: () => void;
   onSecondary: () => void;
   onPickFolder: () => void;
+  /** T-796: Skip for now on Your work with no folder: leaves setup, which Help > Onboarding brings back. */
+  onSkipWork?: () => void;
   onClose?: () => void;
   /** ONB-006: the leave question is showing. */
   leaving?: boolean;
@@ -51,14 +61,28 @@ type ViewProps = {
   onStay?: () => void;
 };
 
-export const mainOff = (at: number, connected: boolean) => at === 1 && !connected;
+/** The main button is held back on Connect until an AI is connected, and on Your work until a folder exists (T-796). */
+export const mainOff = (at: number, connected: boolean, hasFolder = true) => (at === 1 && !connected) || (at === 2 && !hasFolder);
+
+/** T-796: one thing the last screen can start. */
+export type SessionChoice = { id: string; name: string };
+/** T-796: the installed, switched-on AI agents (the default first), then one plain terminal that needs no agent. */
+export const sessionChoices = (agents: AgentInfo[], settings: Record<string, unknown> | null | undefined): SessionChoice[] => [
+  ...menuAgents(offeredAgents(agents, settings ?? {}), defaultAgentId(settings))
+    .filter((a) => isAiAgent(a.id))
+    .map((a) => ({ id: a.id, name: a.name })),
+  { id: TERMINAL_ID, name: "Plain terminal" },
+];
 
 // 49-ux2: these live here, not in sessionAgent.ts, so the code loaded at start does not carry them.
 /** Why the last button picks a folder instead of opening a session while no agent is installed. */
-export const NO_AGENT_WHY = "No AI agent is installed yet, so this opens a plain terminal in a folder. Install one in Settings > Agents, then check again.";
+export const NO_AGENT_WHY = "No AI agent is installed yet, so only a plain terminal is offered. Install one in Settings > Agents, then check again.";
+/** T-796: why Continue waits on Your work. */
+export const NO_FOLDER_WHY = "Pick a folder to continue, or skip this for now.";
 
-/** The wizard's last button: an agent session when one is installed, otherwise a folder (a plain terminal needs no agent). */
-export const lastMain = (noAgent: boolean): "Open a session" | "Pick a folder" => (noAgent ? "Pick a folder" : "Open a session");
+/** The wizard's last button: what the pick starts, or the folder first when none exists yet (T-796: the pick is the user's). */
+export const lastMain = (hasFolder: boolean, plain = false): "Open a session" | "Open a terminal" | "Pick a folder" =>
+  !hasFolder ? "Pick a folder" : plain ? "Open a terminal" : "Open a session";
 
 /** Reads the agent list now and again whenever another view installs or changes one (agents-changed). Returns the stop. */
 export function followAgents(
@@ -78,8 +102,11 @@ export function followAgents(
 
 export function WizardView(p: ViewProps) {
   const screen = SCREENS[p.at];
-  const main = ["Get started", "Continue", "Continue", lastMain(!!p.noAgent)][p.at];
-  const secondary = [null, "I’ll do this later", null, null][p.at];
+  const hasFolder = p.hasFolder ?? true;
+  const choices = p.choices ?? [];
+  const pick = choices.find((c) => c.id === p.choice) ?? choices[0];
+  const main = ["Get started", "Continue", "Continue", lastMain(hasFolder, pick?.id === TERMINAL_ID)][p.at];
+  const secondary = [null, "I’ll do this later", hasFolder ? null : "Skip for now", null][p.at];
   return (
     <div className="ask-backdrop onb-backdrop" onMouseDown={(e) => e.button === 0 && e.target === e.currentTarget && p.onOutside?.()}>
       <div className="onb-drag" data-tauri-drag-region />
@@ -131,6 +158,16 @@ export function WizardView(p: ViewProps) {
           )}
           {p.at === 3 && (
             <>
+              {choices.length > 0 && (
+                <div className="onb-choices" role="radiogroup" aria-label="Start with">
+                  {choices.map((c) => (
+                    <label key={c.id} className="onb-ping">
+                      <input type="radio" name="onb-start" checked={pick?.id === c.id} onChange={() => p.onChoice?.(c.id)} />
+                      <span>{c.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
               <label className="onb-ping">
                 <input type="checkbox" role="switch" checked={p.ping} onChange={(e) => p.onPing(e.target.checked)} />
                 <span>Tell me whenever an AI finishes</span>
@@ -140,12 +177,16 @@ export function WizardView(p: ViewProps) {
         </div>
         <div className="onb-foot">
           {secondary && (
-            <button className="btn onb-secondary" onClick={p.onSecondary}>
+            <button className="btn onb-secondary" onClick={p.at === 2 ? p.onSkipWork : p.onSecondary}>
               {secondary}
             </button>
           )}
-          {mainOff(p.at, p.connected) && p.at === 1 ? (
+          {mainOff(p.at, p.connected, hasFolder) && p.at === 1 ? (
             <span className="onb-gap onb-why">{t("onboarding.connect.wait")}</span>
+          ) : mainOff(p.at, p.connected, hasFolder) && p.at === 2 ? (
+            <span className="onb-gap onb-why" role="status">
+              {NO_FOLDER_WHY}
+            </span>
           ) : p.at === 3 && p.noAgent ? (
             <span className="onb-gap onb-why" role="status">
               {NO_AGENT_WHY}{" "}
@@ -161,7 +202,7 @@ export function WizardView(p: ViewProps) {
               Back
             </button>
           )}
-          <button className="btn primary onb-main" disabled={mainOff(p.at, p.connected)} onClick={p.onMain}>
+          <button className="btn primary onb-main" disabled={mainOff(p.at, p.connected, hasFolder)} onClick={p.onMain}>
             {main}
             <span className="onb-chord">{/Mac/i.test(globalThis.navigator?.platform ?? "") ? "⌘ ↵" : "Ctrl ↵"}</span>
           </button>
@@ -187,7 +228,11 @@ type Props = {
   start: number;
   ping: boolean;
   onPing: (on: boolean) => void;
-  onSession: () => void;
+  /** T-796: starts what the last screen picked ("terminal" is a plain terminal). */
+  onSession: (choice: string) => void;
+  /** T-796: a folder exists, so Your work can go on and the last screen can start something. */
+  hasFolder: boolean;
+  /** Pick a folder from Your work: Add Project opens and the wizard comes back on the last screen. */
   onPickFolder: () => void;
   /** ONB-006: Skip in the leave question; the wizard closes as dismissed. */
   onClose: () => void;
@@ -213,6 +258,10 @@ export default function Wizard(props: Props) {
   // Read again on every screen and on agents-changed: an agent installed from the Connect screen counts at once.
   useEffect(() => followAgents(() => invoke<AgentInfo[]>("agent_list"), (cb) => listen("agents-changed", (e) => cb(e.payload)), setAgents), [at]);
   const noAgent = agents !== null && sessionAgent(agents, settings) === null;
+  // T-796: what the last screen offers; the first is the default agent, or the plain terminal when no agent is installed.
+  const choices = sessionChoices(agents ?? [], settings);
+  const [picked, setPicked] = useState<string | null>(null);
+  const choice = choices.find((c) => c.id === picked)?.id ?? choices[0].id;
   const go = (to: number, later = false) => {
     // The stored step is the last screen finished (onboarding.rs); a failed save keeps the wizard going.
     if (to > at) invoke("onboarding_step", { step: to - 1 }).catch(() => {});
@@ -220,9 +269,9 @@ export default function Wizard(props: Props) {
     if (recordsHooks(at, to, later)) void recordHooks(hooksNow).catch(() => {});
     setAt(to);
   };
-  const main = () => [() => go(1), () => go(2), () => go(3), () => (noAgent ? props.onPickFolder() : props.onSession())][at]();
+  const main = () => [() => go(1), () => go(2), () => go(3), () => props.onSession(choice)][at]();
   const secondary = () => (at === 1 ? go(2, true) : undefined);
-  const off = mainOff(at, connected);
+  const off = mainOff(at, connected, props.hasFolder);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (leaveKey(e)) return setLeaving(true);
@@ -250,6 +299,11 @@ export default function Wizard(props: Props) {
       ping={props.ping}
       hooks={hooksNow}
       noAgent={noAgent}
+      hasFolder={props.hasFolder}
+      choices={choices}
+      choice={choice}
+      onChoice={setPicked}
+      onSkipWork={() => props.onClose()}
       onRecheck={readAgents}
       cards={<ConnectGrid cards={cards} />}
       onPing={props.onPing}

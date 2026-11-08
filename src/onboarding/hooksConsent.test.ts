@@ -126,7 +126,7 @@ test("T-608: the wizard writes no hooks until the user moves on from the line; t
   vi.stubGlobal("navigator", { platform: "Win32" });
   const draw = (start = 0) => {
     h.i = 0;
-    return Wizard({ start, ping: true, onPing() {}, onSession() {}, onPickFolder() {}, onClose() {} }) as unknown as { props: Record<string, (...a: unknown[]) => void> & { at: number; hooks: boolean } };
+    return Wizard({ start, ping: true, onPing() {}, onSession() {}, hasFolder: true, onPickFolder() {}, onClose() {} }) as unknown as { props: Record<string, (...a: unknown[]) => void> & { at: number; hooks: boolean } };
   };
   // The saved settings are read by an effect, which does not run here: what the switch shows while they
   // load (on) is what moving on records, so the screen and the record never differ.
@@ -159,13 +159,13 @@ test("T-608: the wizard writes no hooks until the user moves on from the line; t
   ]);
 });
 
-test("49-ux2 (onboarding.md:4, :15): with no agent the last button picks a folder; Check again reads the list, and an agent then opens a session", async () => {
+test("49-ux2 (onboarding.md:4, :15): with no agent the last screen offers only the plain terminal; Check again reads the list, and an agent then becomes the pick", async () => {
   vi.stubGlobal("navigator", { platform: "Win32" });
   const picked = vi.fn();
   const session = vi.fn();
   const draw = () => {
     h.i = 0;
-    return Wizard({ start: 3, ping: true, onPing() {}, onSession: session, onPickFolder: picked, onClose() {} }) as unknown as { props: Record<string, (...a: unknown[]) => void> & { noAgent: boolean } };
+    return Wizard({ start: 3, ping: true, onPing() {}, onSession: session, hasFolder: true, onPickFolder: picked, onClose() {} }) as unknown as { props: Record<string, (...a: unknown[]) => void> & { noAgent: boolean } };
   };
   agentList = [];
   draw().props.onRecheck(); // Check again
@@ -173,16 +173,18 @@ test("49-ux2 (onboarding.md:4, :15): with no agent the last button picks a folde
   let el = draw();
   expect(el.props.noAgent).toBe(true);
   el.props.onMain();
-  expect(picked).toHaveBeenCalledTimes(1);
-  expect(session).not.toHaveBeenCalled();
+  expect(session).toHaveBeenCalledTimes(1);
+  expect(session).toHaveBeenLastCalledWith("terminal"); // T-796: no agent, so the plain terminal is the pick, never a folder question
+  expect(picked).not.toHaveBeenCalled();
   agentList = [{ id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:/bin/claude" }];
   draw().props.onRecheck();
   await flush();
   el = draw();
   expect(el.props.noAgent).toBe(false);
   el.props.onMain();
-  expect(session).toHaveBeenCalledTimes(1);
-  expect(picked).toHaveBeenCalledTimes(1);
+  expect(session).toHaveBeenCalledTimes(2);
+  expect(session).toHaveBeenLastCalledWith("claude");
+  expect(picked).not.toHaveBeenCalled();
 });
 
 test("49-ux2 (onboarding.md:7): the one-time card's Turn off records off and closes; Not now records nothing", async () => {

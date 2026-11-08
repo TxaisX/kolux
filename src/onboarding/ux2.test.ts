@@ -31,9 +31,12 @@ describe("onboarding.md:4, :15: Open a session needs an agent", () => {
     expect(sessionAgent([], {})).toBeNull();
     expect(sessionAgent([{ ...claude, installed: false }], {})).toBeNull();
     expect(sessionAgent([claude], {})?.id).toBe("claude");
-    expect(mainOff(3, true)).toBe(false); // never greyed out: with no agent it picks a folder (a plain terminal)
-    expect(lastMain(true)).toBe("Pick a folder");
-    expect(lastMain(false)).toBe("Open a session");
+    expect(mainOff(3, true)).toBe(false); // never greyed out: with no agent a plain terminal is the pick (T-796)
+    expect(mainOff(2, true, false)).toBe(true); // T-796: Your work waits for a folder
+    expect(mainOff(2, true, true)).toBe(false);
+    expect(lastMain(false)).toBe("Pick a folder"); // no folder at the last screen: the one way on
+    expect(lastMain(true)).toBe("Open a session");
+    expect(lastMain(true, true)).toBe("Open a terminal");
     expect(NO_AGENT_WHY).toMatch(/Settings > Agents/);
   });
 

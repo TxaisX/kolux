@@ -1,0 +1,8 @@
+T-796 proof (text; live screenshot waits for the bug-fix phase per routing v3)
+Audit: p4a-04 (Wizard step 4 offered only a checkbox; Open a session with no folder opened a fifth dialog; step 3 Continue worked with no folder).
+Gate: pnpm test src/onboarding/firstRun
+  pnpm exec vitest run src/onboarding -> Test Files 38 passed (38), Tests 364 passed (364)
+  pnpm exec vitest related Wizard.tsx useWizard.ts Hosts.tsx App.tsx -> Test Files 24 passed (24), Tests 163 passed (163)
+  pnpm exec tsc -> exit 0
+New tests: firstRun.test.ts (step 3 greyed + Skip for now; step 4 radio list and button label; choice order), useWizard.test.ts (plain terminal pick opens a shell, agent pick starts that agent, Pick a folder from step 3 returns to step 4 and finishes nothing, no-folder terminal pick goes to Add Project once), ux2/hooksConsent updated to the new last-screen rule (DECISIONS DT-C225).
+Live-proof steps (for the bug-fix phase): fresh profile -> Get started -> Connect (later) -> Your work: Continue greyed, Skip for now visible -> Pick a folder, add a repo -> wizard is back on 4 of 4 with Claude/Codex/Plain terminal radios -> pick Plain terminal -> Open a terminal -> a shell tab opens in the folder and setup is recorded completed.
