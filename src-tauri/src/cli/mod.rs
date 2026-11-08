@@ -1106,6 +1106,9 @@ fn pane_target(req: &Request) -> Option<Option<String>> {
         return Some(named.or_else(|| req.pane.as_ref().map(|p| p.handle.clone())));
     }
     match c {
+        // Review fix 1 (B3): `close --tab` closes every pane of the tab whatever `--terminal` says, so it
+        // names no single pane.
+        "terminal.close" if req.args["tab"] == true => Some(None),
         "terminal.show" | "terminal.split" | "terminal.rename" | "terminal.switch" | "terminal.close" => Some(named),
         _ => None,
     }
@@ -1126,7 +1129,7 @@ fn starts_program(req: &Request) -> bool {
 /// stays a worker; after a restart the old run's dispatches name no pane, so survivors count as
 /// coordinators). A worker that started
 /// workers of its own may still drive those. A worker naming no pane at all (`terminal close
-/// --worktree`, which closes a whole worktree's panes) is refused too.
+/// --worktree` or `--tab`, which close a whole worktree's or tab's panes) is refused too.
 pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Result<(), Fail> {
     use crate::orchestration::terminal_of;
     let Some(me) = me else { return Ok(()) };
@@ -1165,7 +1168,7 @@ pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Resu
         }),
         None => Err(Fail {
             code: "pane_scope",
-            message: format!("{me} is a worker, so this command cannot act on every terminal of a worktree: name its own terminal with --terminal {me}"),
+            message: format!("{me} is a worker, so this command cannot act on every terminal of a worktree or tab: name its own terminal with --terminal {me} and leave --tab off"),
             data: json!({ "caller": me }),
         }),
     }
@@ -8025,6 +8028,23 @@ mod tests {
         for (command, args) in [("terminal.split", json!({ "terminal": "term-3", "command": "claude" })), ("terminal.create", json!({ "command": "claude" }))] {
             pane_scope(&pane_req(command, Some(("term-1", "key-1")), args), Some("term-1"), &ds).unwrap();
         }
+    }
+
+    /// Review fix 1 (B3): `terminal close --terminal <own> --tab` closes every pane of the tab, so a
+    /// worker may not use it; a plain close of its own pane stays allowed.
+    #[test]
+    fn t793_b3_a_worker_cannot_close_the_whole_tab_around_its_own_pane() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let me = Some(("term-2", "key-2"));
+        for tab in [json!(true)] {
+            let e = pane_scope(&pane_req("terminal.close", me, json!({ "terminal": "term-2", "tab": tab })), Some("term-2"), &ds).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{}", e.message);
+        }
+        for args in [json!({ "terminal": "term-2" }), json!({ "terminal": "term-2", "tab": false })] {
+            pane_scope(&pane_req("terminal.close", me, args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{args}: {}", e.message));
+        }
+        // A coordinator closes tabs as before.
+        pane_scope(&pane_req("terminal.close", Some(("term-1", "key-1")), json!({ "terminal": "term-1", "tab": true })), Some("term-1"), &ds).unwrap();
     }
 
     #[test]
