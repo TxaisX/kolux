@@ -13,7 +13,8 @@ const RULES: RuleInfo[] = [
 
 function page(settings: Record<string, unknown>) {
   const saved: Record<string, unknown>[] = [];
-  const tree = SafetyView({ settings, rules: RULES, save: (p: Record<string, unknown>) => void saved.push(p) } as never) as unknown as El;
+  const tree = SafetyView({ settings: { agentStatusHooks: true, ...settings }, rules: RULES, // T-799: the switches are live only while the status hooks are on
+     save: (p: Record<string, unknown>) => void saved.push(p) } as never) as unknown as El;
   const sw = (label: string) => findAll(tree, (e) => e.type === "input" && e.props["aria-label"] === label)[0];
   return { sw, saved };
 }

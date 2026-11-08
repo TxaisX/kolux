@@ -8,7 +8,7 @@ import SafetyPage, { asksAtAll, ASK_FIELD, OFF_FIELD, offIds, ruleOn, SafetyView
 
 type Effect = { deps: unknown[] | undefined; cleanup?: () => void };
 const h = vi.hoisted(() => ({ slots: [] as unknown[], i: 0, effects: [] as Effect[], e: 0, queue: [] as (() => void)[], dirty: false }));
-const store = vi.hoisted(() => ({ file: {} as Record<string, unknown>, failSave: false, rules: [] as unknown[] }));
+const store = vi.hoisted(() => ({ file: {} as Record<string, unknown>, failSave: false, rules: [] as unknown[], calls: [] as string[], failSync: false }));
 
 vi.mock("react", async (orig) => {
   const real = await orig<typeof import("react")>();
@@ -41,7 +41,10 @@ vi.mock("react", async (orig) => {
 });
 // The saved file: what get_settings reads and what a save writes, unless the write is made to fail.
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: (cmd: string) => {
+  invoke: (cmd: string, args?: { set?: Record<string, unknown>; clear?: boolean }) => {
+    store.calls.push(cmd);
+    if (cmd === "settings_patch") return Promise.resolve(void Object.assign(store.file, args?.set ?? {}));
+    if (cmd === "agent_hooks_sync") return store.failSync ? Promise.reject(new Error("the agent settings file is locked")) : Promise.resolve({});
     if (cmd === "protected_rules") return Promise.resolve(store.rules);
     if (cmd === "get_settings") return Promise.resolve({ ...store.file });
     return Promise.reject(new Error(`unexpected ${cmd}`));
@@ -65,7 +68,8 @@ const RULES: RuleInfo[] = [
   { id: "delete", name: "Deleting folders outside the workspace", samples: ["rm -rf ../other-project", "rm -rf ~"] },
   { id: "discard", name: "Throwing away uncommitted work", samples: ["git reset --hard", "git clean -fdx"] },
 ];
-const view = (settings: Record<string, unknown>, rules: RuleInfo[] | null = RULES, error: string | null = null) => renderToString(createElement(SafetyView, { settings, rules, error, save: () => {} }));
+// T-799: the status hooks are on unless a test says otherwise, because with them off the switches are greyed.
+const view = (settings: Record<string, unknown>, rules: RuleInfo[] | null = RULES, error: string | null = null, extra: Record<string, unknown> = {}) => renderToString(createElement(SafetyView, { settings: { agentStatusHooks: true, ...settings }, rules, error, save: () => {}, ...extra }));
 const switchOf = (html: string, label: string) => html.match(new RegExp(`<input[^>]*aria-label="${label}"[^>]*>`))?.[0] ?? "";
 
 test("SAFE-015: the section explains itself, says only Claude Code is covered and reminds that the status hooks must be on", () => {
@@ -76,7 +80,7 @@ test("SAFE-015: the section explains itself, says only Claude Code is covered an
   expect(html).toContain("agent status hooks");
   expect(html).not.toContain('role="alert"');
   // With the hooks switch off (its default) the reminder is a warning that points at Settings > Agents.
-  const off = view({});
+  const off = view({ agentStatusHooks: false });
   expect(off).toContain('role="alert"');
   expect(off).toContain("Settings &gt; Agents");
 });
@@ -190,13 +194,15 @@ async function mountPage() {
 beforeEach(() => {
   h.slots = [];
   h.effects = [];
-  store.file = {};
+  store.file = { agentStatusHooks: true };
+  store.calls = [];
+  store.failSync = false;
   store.failSave = false;
   store.rules = RULES;
 });
 
 test("SAFE-015 FIX-2: the page draws the saved settings, and after a save that failed no switch shows a state that is not on disk, not even while the next save is still running", async () => {
-  store.file = { [OFF_FIELD]: ["force-push"] };
+  store.file = { agentStatusHooks: true, [OFF_FIELD]: ["force-push"] };
   const page = await mountPage();
   expect(switchOf(page.html(), "Ask before protected actions")).toContain("checked");
   expect(switchOf(page.html(), "Force-push to main")).not.toContain("checked");
@@ -219,4 +225,44 @@ test("SAFE-015 FIX-2: the page draws the saved settings, and after a save that f
   expect(switchOf(page.html(), "Stripe changes")).not.toContain("checked");
   expect(switchOf(page.html(), "Ask before protected actions")).toContain("checked");
   expect(store.file[OFF_FIELD]).toEqual(["force-push", "stripe"]);
+});
+
+test("T-799 (p4a-05): with the status hooks off the master switch reads off, every switch is greyed and disabled, and Turn on sits in the note", () => {
+  const html = view({ agentStatusHooks: false }, RULES, null, { turnOnHooks: () => {} });
+  expect(switchOf(html, "Ask before protected actions")).not.toContain("checked");
+  expect(switchOf(html, "Ask before protected actions")).toContain("disabled");
+  expect(html).toMatch(/<small id="safety-master-note">Off: the status hooks are off/);
+  for (const r of RULES) expect(switchOf(html, r.name), r.name).toContain("disabled");
+  expect(html.match(/<div data-rules[^>]*>/)?.[0]).toContain("data-hooks-off");
+  expect(html).toMatch(/<button[^>]*data-turn-on-hooks[^>]*>Turn on<[/]button>/);
+  // With the hooks on there is nothing to turn on and the switches work.
+  const on = view({}, RULES, null, { turnOnHooks: () => {} });
+  expect(on).not.toContain("data-turn-on-hooks");
+  expect(on).not.toContain("data-hooks-off");
+  expect(switchOf(on, "Stripe changes")).not.toContain("disabled");
+  expect(switchOf(on, "Ask before protected actions")).toContain("checked");
+});
+
+test("T-799 (p4a-05): Turn on saves the hooks switch, syncs the agents and the page then draws live switches", async () => {
+  store.file = {};
+  const page = await mountPage();
+  expect(switchOf(page.html(), "Ask before protected actions")).toContain("disabled");
+  const props = (page as unknown as { view: () => { turnOnHooks: () => Promise<void> } }).view();
+  await props.turnOnHooks();
+  await page.settle();
+  expect(store.file.agentStatusHooks).toBe(true);
+  expect(store.calls).toEqual(expect.arrayContaining(["settings_patch", "agent_hooks_sync"]));
+  expect(switchOf(page.html(), "Ask before protected actions")).not.toContain("disabled");
+  expect(switchOf(page.html(), "Ask before protected actions")).toContain("checked");
+  expect(page.html()).not.toContain("data-turn-on-hooks");
+});
+
+test("T-799 (p4a-05): a Turn on that fails to reach the agents says why", async () => {
+  store.file = {};
+  store.failSync = true;
+  const page = await mountPage();
+  await (page as unknown as { view: () => { turnOnHooks: () => Promise<void> } }).view().turnOnHooks();
+  await page.settle();
+  expect(page.html()).toContain("did not finish");
+  expect(page.html()).toContain("the agent settings file is locked");
 });

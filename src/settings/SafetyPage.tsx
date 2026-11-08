@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { hooksOn } from "./AgentsPage";
+import { recordHooks } from "../onboarding/hooksOn";
 import { SafetyAttempts, SafetyRules } from "./SafetyRules";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
@@ -36,11 +37,16 @@ type ViewProps = {
   /** Why the rule list could not be read. */
   error?: string | null;
   save: (patch: Settings) => unknown;
+  /** T-799 (p4a-05): the one-click "Turn on" beside the hooks-off note; without it the note only points at Settings > Agents. */
+  turnOnHooks?: () => unknown;
+  /** Why "Turn on" did not work. */
+  turnOnError?: string | null;
 };
 
-export function SafetyView({ settings, rules, error = null, save }: ViewProps) {
-  const master = asksAtAll(settings);
+export function SafetyView({ settings, rules, error = null, save, turnOnHooks, turnOnError = null }: ViewProps) {
   const hooks = hooksOn(settings);
+  // T-799 (p4a-05): with the status hooks off nothing can ask, so the master switch reads off and the switches are greyed until they are on.
+  const master = asksAtAll(settings) && hooks;
   return (
     <section className="conn-card" data-section="protected" aria-label="Protected actions">
       <h2 className="conn-name">Protected actions</h2>
@@ -51,13 +57,23 @@ export function SafetyView({ settings, rules, error = null, save }: ViewProps) {
         Only Claude Code is covered; Codex and other agents are not. This is advisory, not a safety control: a command can be written around a rule.
       </p>
       <p className={hooks ? "conn-detail" : "conn-detail warn"} data-hooks-note role={hooks ? undefined : "alert"}>
-        {hooks ? "Protected actions work through the agent status hooks, which are on." : "The agent status hooks are off, so Claude cannot ask yet. Turn them on in Settings > Agents."}
+        {hooks ? "Protected actions work through the agent status hooks, which are on." : "The agent status hooks are off, so Claude cannot ask yet. Turn them on here or in Settings > Agents."}{" "}
+        {!hooks && turnOnHooks && (
+          <button type="button" className="btn" data-turn-on-hooks onClick={() => void turnOnHooks()}>
+            Turn on
+          </button>
+        )}
       </p>
-      <label className="conn-switch">
-        <input type="checkbox" role="switch" aria-label="Ask before protected actions" checked={master} onChange={(e) => void save(switchAll(e.target.checked))} />
+      {turnOnError && (
+        <p className="conn-detail warn" role="alert">
+          Turning on the status hooks did not finish: {turnOnError}
+        </p>
+      )}
+      <label className="conn-switch" data-hooks-off={hooks ? undefined : ""}>
+        <input type="checkbox" role="switch" aria-label="Ask before protected actions" checked={master} disabled={!hooks} onChange={(e) => void save(switchAll(e.target.checked))} />
         <span>
           Ask before protected actions
-          <small id="safety-master-note">{master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
+          <small id="safety-master-note">{!hooks ? "Off: the status hooks are off, so nothing can ask yet." : master ? "On: each rule below that is switched on asks." : "Off: no rule asks, whatever its own switch says."}</small>
         </span>
       </label>
       {error && (
@@ -67,10 +83,10 @@ export function SafetyView({ settings, rules, error = null, save }: ViewProps) {
       )}
       {rules === null && !error && <p className="conn-detail">Reading the rules...</p>}
       {rules && (
-        <div data-rules data-master-off={master ? undefined : ""}>
+        <div data-rules data-master-off={master ? undefined : ""} data-hooks-off={hooks ? undefined : ""}>
           {rules.map((r) => (
             <label className="conn-switch" key={r.id} data-rule={r.id}>
-              <input type="checkbox" role="switch" aria-label={r.name} aria-describedby={master ? undefined : "safety-master-note"} checked={ruleOn(settings, r.id)} onChange={(e) => void save(switchRule(settings, r.id, e.target.checked))} />
+              <input type="checkbox" role="switch" aria-label={r.name} aria-describedby={master ? undefined : "safety-master-note"} checked={ruleOn(settings, r.id)} disabled={!hooks} onChange={(e) => void save(switchRule(settings, r.id, e.target.checked))} />
               <span>
                 {r.name}
                 <small>
@@ -112,6 +128,7 @@ export default function SafetyPage() {
   const [rules, setRules] = useState<RuleInfo[] | null>(null);
   const [rulesError, setRulesError] = useState<string | null>(null);
   const [disk, setDisk] = useState<Settings | null>(null);
+  const [turnOnError, setTurnOnError] = useState<string | null>(null);
   const latest = useRef(0);
   useEffect(() => {
     invoke<RuleInfo[]>("protected_rules").then(setRules, (e) => setRulesError(String(e)));
@@ -127,11 +144,25 @@ export default function SafetyPage() {
       return ok;
     });
   };
+  // T-799: one click saves the hooks switch and brings every agent in line (the same call the wizard and Settings > Agents make), then re-reads.
+  const turnOnHooks = async () => {
+    setTurnOnError(null);
+    try {
+      await recordHooks(true);
+    } catch (e) {
+      setTurnOnError(String(e));
+    }
+    try {
+      setDisk(await invoke<Settings>("get_settings"));
+    } catch {
+      // the page keeps what it showed
+    }
+  };
   const shown = disk ?? settings;
   if (!shown) return <SettingsError error={error} loaded={false} onRetry={retry} />;
   return (
     <>
-      <SafetyView settings={shown} rules={rules} error={rulesError} save={guarded} />
+      <SafetyView settings={shown} rules={rules} error={rulesError} save={guarded} turnOnHooks={turnOnHooks} turnOnError={turnOnError} />
       <SafetyRules settings={shown} rules={rules} save={guarded} />
       <SafetyAttempts />
       <SettingsError error={error} loaded onRetry={retry} />

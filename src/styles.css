@@ -1729,3 +1729,7 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 :where(:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 :where([tabindex="-1"]:focus-visible) { outline: none; }
 .xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible { outline: none; }
+
+/* T-799 (p4a-05): with the status hooks off nothing can ask, so the master switch and every rule switch are greyed and not clickable. */
+.conn-switch[data-hooks-off], [data-hooks-off] > .conn-switch { opacity: 0.5; cursor: default; }
+.conn-switch[data-hooks-off] input, [data-hooks-off] > .conn-switch input { cursor: not-allowed; }
