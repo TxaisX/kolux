@@ -11,7 +11,7 @@ import { locale } from "../language";
 import "./chat.css";
 import { fold, isFullPath, thoughtIds as idsOf, toggled, type View } from "./steps";
 import { NoticeRow, PlanRow, StepRow, ThoughtRow } from "./StepRows";
-import { SHELL_OFFER, agentsView, handOver, handTargets, viewedFirst, capPending, chatCovers, combine, liveOffer, pickChat, typingInto, lastReply, lastReplyItem, previewToShow, stamp, type ChatItem, type ChatRead, type Extra, type Offer, type Pending, type Preview, type Row, type Support } from "./model";
+import { SHELL_OFFER, agentsView, handOver, handTargets, viewedFirst, capPending, chatCovers, combine, liveOffer, pickChat, startingLine, typingInto, lastReply, lastReplyItem, previewToShow, stamp, type ChatItem, type ChatRead, type Extra, type Offer, type Pending, type Preview, type Row, type Support } from "./model";
 import { useTurnPreview } from "../terminal/turnRead";
 import { Composer, type ComposerHandle } from "./MessageBox";
 import { readModel } from "./controls";
@@ -451,7 +451,7 @@ export function makeHand(a: {
 /** The Agents screen's chat: the picked pane's chat when it can show one (`pickChat`). `hook`: the
  * window's hook readings by pane, for the box's note; `stateOf`: the same readings read live, so a
  * send stops on its own pane's menu even after the screen moved to another pane. */
-export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskOf, open }: { panes: ChatPane[]; focused: number | null; ptyOf?: (key: number) => number | undefined; hook?: Record<number, string | undefined>; stateOf?: (key: number) => string | undefined; onPick?: (key: number) => void; taskOf?: (key: number) => string | undefined; open?: ChatOpen }) {
+export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskOf, open, endedOf }: { /** T-809: true once the pane's process has ended. */ endedOf?: (key: number) => boolean; panes: ChatPane[]; focused: number | null; ptyOf?: (key: number) => number | undefined; hook?: Record<number, string | undefined>; stateOf?: (key: number) => string | undefined; onPick?: (key: number) => void; taskOf?: (key: number) => string | undefined; open?: ChatOpen }) {
   const [offers, setOffers] = useState<Record<number, Offer & { agent?: string }>>({});
   // A failed support read keeps the last answer: a transient IPC error must not turn a live agent
   // into "this shell has no chat".
@@ -507,7 +507,7 @@ export function AgentsChat({ panes, focused, ptyOf, hook, stateOf, onPick, taskO
   if (view === "starting" || shown === "starting")
     return (
       <div className="chat" aria-label="Chat">
-        <div className="chat-state" role="status">Starting…</div>
+        <div className="chat-state" role="status">{startingLine(endedOf?.(focused ?? -1) ?? false)}</div>
       </div>
     );
   const key = shown.key;

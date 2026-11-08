@@ -2,7 +2,7 @@
 // project list (PROJ-063, PROJ-067, PROJ-020), its resize grip (VIEW-050) and the Agents rail
 // (VIEW-015, VIEW-021, VIEW-024). The content column beside it is in Content.tsx.
 import AgentsRail from "../../agents/AgentsRail";
-import { rowStatus } from "../../agents/rail";
+import { rowStatus, shellNote } from "../../agents/rail";
 import { Grip, LEFT_KEY, LEFT_MAX, LEFT_MIN, clampLeft } from "../../chrome/RightSidebar";
 import { allSwitchedOff } from "../../launch/agents";
 import { NESTING_KEY } from "../../projects/model";
@@ -20,7 +20,7 @@ export default function WindowSidebar() {
     createRequest, createName, deleteRequest, renameRequest, setRenameRequest, startIn, projectAdded,
     setScreen, setStandIns, startSetup, setProjects, setOwner, setNames, leftWidth, setDragLeft,
     agentsScreen, groups, selected, saved, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset, closePane,
-    workerNames, ptys, wsUnsaved, askWsUnsaved,
+    workerNames, ptys, wsUnsaved, askWsUnsaved, panes,
   } = useWindow();
   return (
     <>
@@ -108,6 +108,8 @@ export default function WindowSidebar() {
           hasAgents={saved.length > 0}
           onNew={addChooser}
           taskOf={(k) => workerNames[`term-${ptys.current[k]}`]}
+          shells={shellNote(panes)}
+          onTerminals={() => setScreen("terminals")}
         />
       )}
     </>

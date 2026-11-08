@@ -9,7 +9,8 @@ export const installAgent = (id: string): Promise<AgentInfo> => invoke<AgentInfo
 /** Every catalogue agent for the dropdown, A to Z by shown name (T-664, Txais 2026-11-02; replaces the featured three first). Nothing while detection runs. */
 export function pickList(agents: AgentInfo[], detecting: boolean): AgentInfo[] {
   if (detecting) return [];
-  return [...agents].sort((x, y) => x.name.localeCompare(y.name, undefined, { sensitivity: "base" }));
+  // T-809 (P4a-11): the installed agents sit above the rest, each group A to Z.
+  return [...agents].sort((x, y) => Number(y.installed) - Number(x.installed) || x.name.localeCompare(y.name, undefined, { sensitivity: "base" }));
 }
 
 export const optionLabel = (a: AgentInfo): string => (a.installed ? a.name : `${a.name} (not installed)`);

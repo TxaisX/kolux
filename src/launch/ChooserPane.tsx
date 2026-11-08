@@ -18,7 +18,7 @@ import { launchWarnings, useLaunchUsage } from "../usage/launchWarn";
 import VendorMark from "../chrome/VendorMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
-import { seatStart, type SeatDefault } from "./defaultSeat";
+import { firstSeatStart, seatStart, type SeatDefault } from "./defaultSeat";
 import { canInstall, installNoteOf, installTip, optionLabel, pickList, runInstall } from "./agentInstall";
 import { useKeymap } from "../keys/KeymapContext";
 import { WindowStore } from "../shell/window/store";
@@ -111,11 +111,13 @@ type Props = {
   /** SESS-021: this project's last lineup, when it has one worth offering; applied only on the click. */
   lastLineup?: Lineup | null;
   onUseLineup?: () => void;
+  /** T-809: the default agent's id; seat 1 starts on it once detection has answered, when it is installed and the seats are all still blank. */
+  defaultAgent?: string;
   /** SESS-018: set on the New look: the chooser is the full-page New session sheet for this project. */
   sheet?: { project: string; path: string } | null;
 };
 
-export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null }: Props) {
+export default function ChooserPane({ number, hidden = false, focused = false, agents, detecting = false, seats, onSeats, shape, onLineup, task, onTask, onStart, copies, inGit, busy = false, closable, onClose, onFocus, saved, onSaved, onPickSaved, pass, onRefresh, seatDefault: seatDefault_ = { model: "", effort: "" }, lastLineup, onUseLineup, sheet = null, defaultAgent = "" }: Props) {
   const mac = useKeymap().platform === "darwin";
   // SESS-018: a Ctrl+Enter that cannot launch points at the footer's unfinished seat.
   const [nudged, setNudged] = useState(false);
@@ -141,6 +143,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   useEffect(() => {
     if (focused && !hidden && !box.current?.contains(document.activeElement)) box.current?.focus();
   }, [focused, hidden]);
+  // T-809 (P4a-11): seat 1 starts on the default agent instead of an empty 37-entry list; only while every seat is still blank, once.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || detecting) return;
+    seeded.current = true;
+    const start = firstSeatStart(seatsRef.current, defaultAgent, rows, seatDefault_);
+    if (start) onSeats(start);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detecting]);
   // A program with no model list has nothing to pick: its seat uses the program's own default.
   const pickAgent = (i: number, id: string) => {
     setShown(({ [i]: _gone, ...rest }) => rest);
@@ -448,11 +459,17 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                   <option value="" disabled>
                     Choose an AI…
                   </option>
-                  {rows.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {optionLabel(a)}
-                    </option>
-                  ))}
+                  {[{ label: "Installed", list: rows.filter((a) => a.installed) }, { label: "Others", list: rows.filter((a) => !a.installed) }].map((g) =>
+                    g.list.length === 0 ? null : (
+                      <optgroup key={g.label} label={g.label}>
+                        {g.list.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {optionLabel(a)}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ),
+                  )}
                   <option value={TERMINAL}>Terminal</option>
                 </select>
                 {(() => {

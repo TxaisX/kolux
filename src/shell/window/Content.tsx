@@ -50,7 +50,7 @@ export default function WindowContent() {
     select, agents, settings, savePageSettings, activeDir, fromItem, cli, shown, setCount,
     setFocused, picking, openFile, setToast, setPicking, openDiff, toast, notice, keymapNotice, setNotice,
     screen, setScreen, inbox, inboxSeen, now, reviewChanges, panes, selected,
-    focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf,
+    focused, ptys, hookRef, setAgentSel, tower, towerSeats, towerUsage, floor, space, waiting, statusOf, running,
     standIns, saved, board, agentsScreen, openDirs, workerNames, addChooser,
   } = useWindow();
   return (
@@ -156,7 +156,7 @@ export default function WindowContent() {
       )}
       {screen === "skills" && <SkillsPage workspace={activeDir} onClose={() => closeSkills(setScreen)} />}
       {inbox && <InboxView items={inboxItems(inboxSeen.sources, now)} now={now} onOpen={openPane} onReview={reviewChanges} />}
-      {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: openInBrowser, inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
+      {screen === "agents" && <AgentsChat open={{ onOpenFile: (path, line, column) => openFile(path, line, column), onOpenLink: openInBrowser, inKolux: linksOpenInKolux(settings), onReview: (k, plan, cut) => setReviewing({ key: k, plan, cut }) }} taskOf={(k) => workerNames[`term-${ptys.current[k]}`]} panes={panes.filter((p) => !p.kind && !p.seats).map((p) => ({ key: p.key, cwd: p.cwd, title: p.title, program: p.program }))} focused={selected ?? focused} ptyOf={(k) => ptys.current[k]} endedOf={(k) => running[k] === false} hook={hook} stateOf={(k) => hookRef.current[k]} onPick={(key) => {
         setAgentSel(key);
         setFocused(key);
       }} />}
