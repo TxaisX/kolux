@@ -268,4 +268,4 @@ These commands act on a workspace's own browser tab and files. They take `--work
 
 `kolux orchestration ask` on the packaged Windows build hands a new question back after about 100 seconds with exit status 75 and the command to resume it (`--resume <message>`). A resumed wait never hands back again; it waits out its own timeout.
 
-<!-- verified against: src-tauri/src/cli/mod.rs, src-tauri/src/bin/kolux.rs, src-tauri/src/bin/kolux-dev.rs, src-tauri/Cargo.toml, src-tauri/cli/kolux.cmd, src-tauri/src/terminal.rs, src-tauri/src/resources.rs, src/status/ResourceManager.tsx, src-tauri/src/orchestration.rs, src-tauri/src/local_cli.rs, PLAN.md at c2ef69fc -->
+<!-- verified against: src-tauri/src/cli/mod.rs, src-tauri/src/bin/kolux.rs, src-tauri/src/bin/kolux-dev.rs, src-tauri/Cargo.toml, src-tauri/cli/kolux.cmd, src-tauri/src/terminal.rs, src-tauri/src/resources.rs, src/status/ResourceManager.tsx, src-tauri/src/orchestration.rs, src-tauri/src/local_cli.rs, PLAN.md at 6a1ecc08 -->
