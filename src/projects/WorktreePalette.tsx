@@ -292,7 +292,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
   return (
     <>
       <div className="menu-backdrop" onMouseDown={onClose} />
-      <div className="menu note-picker palette" role="dialog" aria-label="Switch workspace">
+      <div className="menu note-picker palette" role="dialog" aria-label="Go to / Run a command">
         <input
           autoFocus
           className="picker-input"

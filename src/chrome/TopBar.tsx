@@ -9,7 +9,8 @@
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ArrowLeft, ArrowRight, Bell, Clock, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
-import { Kbd } from "../keys/KeymapContext";
+import { Kbd, useKeymap } from "../keys/KeymapContext";
+import { paletteHint } from "../keys/paletteKey";
 import UsagePill from "../usage/UsagePill";
 import AccountSwitcher from "../switcher/AccountSwitcher";
 import { weeklyOf } from "../usage/claude";
@@ -51,6 +52,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
   // that opens Settings > Accounts & keys (Ctrl+, still opens Settings, app.settings).
   const plan = usePlan();
   const { settings } = useSettings();
+  const keymap = useKeymap();
   // The usage items in the status-bar list (Settings > Appearance) switch each provider off here.
   const { claude: claudeOn, codex: codexOn, any: anyPill } = usagePills({
     claudeInstalled: installed.includes("claude"),
@@ -129,10 +131,10 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
         <button className="ib panel" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onClick={onToggleRight}>
           <PanelRight />
         </button>
-        <button className="searchbox" title="Jump to a workspace, tab, project or setting" onClick={onSearch}>
+        <button className="searchbox" title="Go to a workspace, tab, project or setting, or run a command" onClick={onSearch}>
           <Search />
-          <span className="ph">Search</span>
-          <Kbd id="worktree.palette" />
+          <span className="ph">Go to / Run a command</span>
+          <Kbd id="worktree.palette" shown={paletteHint(keymap)} />
         </button>
         <button className="ib bell" aria-label={needsYou > 0 ? t(needsYou === 1 ? "inbox.bell.needs.one" : "inbox.bell.needs.many", { count: needsYou }) : "Inbox"} title="Inbox" aria-pressed={screen === "inbox"} onClick={() => onScreen(bellTarget(screen, before.current))}>
           <Bell />

@@ -36,10 +36,11 @@ export default function WindowHosts() {
           start={wizard}
           ping={settings["notifyOnFinish" satisfies KindKey] !== false}
           onPing={(on) => saveSetting("notifyOnFinish" satisfies KindKey, on)}
-          onSession={() => void wizardSession()}
+          onSession={(choice) => void wizardSession(choice)}
+          hasFolder={projects.length > 0}
           onPickFolder={() => {
             if (wizardClose.retry()) return;
-            pickFolder(); // ONB-004, the same hand-over T-612's Open a session uses with no workspace
+            pickFolder(null, true); // ONB-004: Add Project, then back to the last screen (T-796)
           }}
           onClose={() => {
             if (wizardClose.retry()) return;

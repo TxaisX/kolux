@@ -33,8 +33,8 @@ test("rule: the default chord is the palette's chord swapped per platform", () =
   const mac = resolve(null, "darwin");
   expect(chordsOf(win, "terminals.focusNextNeedsYou")).toEqual(["Mod+J"]);
   expect(chordsOf(mac, "terminals.focusNextNeedsYou")).toEqual(["Mod+Shift+J"]);
-  expect(chordsOf(win, "worktree.palette")).toEqual(["Mod+Shift+J"]);
-  expect(chordsOf(mac, "worktree.palette")).toEqual(["Mod+J"]);
+  expect(chordsOf(win, "worktree.palette")).toEqual(["Mod+Shift+J", "Mod+Shift+P"]);
+  expect(chordsOf(mac, "worktree.palette")).toEqual(["Mod+J", "Mod+Shift+P"]);
   expect(matchEvent(win, j({ ctrlKey: true }), ["global"])).toEqual({ id: "terminals.focusNextNeedsYou" });
   expect(matchEvent(mac, j({ metaKey: true, shiftKey: true, key: "J" }), ["global"])).toEqual({ id: "terminals.focusNextNeedsYou" });
 });

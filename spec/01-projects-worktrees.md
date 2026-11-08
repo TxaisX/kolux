@@ -308,7 +308,7 @@ Acceptance:
   - [ ] Type api fix → only workspaces matching both words show.
   - [ ] Hide sleeping rows and type nothing → sleeping workspaces are not listed, but main checkouts
         are.
-  - [x] Open the palette → it is named Switch workspace and lists workspaces under Workspaces. (unit; evidence/T-750.txt)
+  - [x] Open the palette → it is named Go to / Run a command (Switch workspace before T-800, DT-C226) and lists workspaces under Workspaces. (unit; evidence/T-750.txt)
 Compat: Keybinding id worktree.palette.
 Source: D-01-057
 

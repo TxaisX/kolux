@@ -242,6 +242,7 @@ Rules: classic chrome keeps a sidebar-width title header and no top bar; the top
   goes back to the screen shown before it (DT-C103).
 Acceptance:
   - [x] Click the search hint → the worktree palette opens with focus in its input. (cards live; evidence/cards-VIEW-003.txt)
+        T-800 (DT-C226): the hint and the dialog are named Go to / Run a command, and the hint shows Ctrl+K.
   - [x] Click the bell → the Inbox page opens. (cards; evidence/cards-VIEW-003.txt)
   - [x] Open the Inbox from Projects, click the bell again → back on Projects, not Terminals. (unit; evidence/T-667.txt)
 Compat: —
