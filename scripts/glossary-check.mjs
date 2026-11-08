@@ -16,7 +16,7 @@ export const LABELS = [
   ["Group", "src/projects/ProjectsPanel.tsx"],
   ["Workspace", "src/projects/ProjectsPanel.tsx"],
   ["Sleeping", "src/keys/actions.ts"],
-  ["Switch workspace", "src/keys/actions.ts"],
+  ["Go to / Run a command", "src/keys/actions.ts"],
   ["Branch", "src/editor/AllChangesPane.tsx"],
   ["Space", "src/space/SpaceView.tsx"],
   ["Agents", "src/chrome/TopBar.tsx"],

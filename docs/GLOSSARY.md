@@ -19,8 +19,8 @@ A project's folder together with its sessions and layout. Each project has one. 
 **Sleeping**
 A workspace row Kolux has put to rest. It stays in the list marked "sleeping". The **Group and sort** form in the sidebar has a checkbox to show or hide sleeping workspaces.
 
-**Switch workspace**
-The command that opens a quick picker of your workspaces (Ctrl+Shift+J on Windows). Type to filter, press Enter to go there.
+**Go to / Run a command**
+The box in the top bar and the picker it opens (Ctrl+Shift+J or Ctrl+Shift+P on Windows; Ctrl+K too, outside a terminal) to jump to a workspace or run a command. Type to filter, press Enter. It was called Switch workspace before.
 
 **Branch**
 The Git branch the project folder is on.
