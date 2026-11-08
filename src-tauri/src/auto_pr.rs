@@ -463,6 +463,12 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     if let Some(stop) = precheck(&ctx.st, &ctx.top, "committed")? {
         return Ok(stop);
     }
+    // A folder's own clean filter runs under `add` and `commit` only when the folder is trusted
+    // (DT-C229); in an untrusted one the commit is refused up front, before anything is staged,
+    // never made with the filter skipped.
+    if let Some(why) = crate::git::write_refusal(&["add", "-A"], Some(dir)) {
+        return Ok(step("failed", format!("Not committed: {}", scrub(&why))));
+    }
     let head_before = head_oid(dir);
     let saved = run(&["write-tree"], Some(dir)).map_err(|e| format!("could not save the staging area first: {e}"))?;
     let fail = |s: AutoStep| Ok(undo(dir, &saved, &head_before, s));
@@ -474,7 +480,7 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
         Ok((true, _)) => {}
     }
     // The authoritative scan: the blobs the commit would hold, after any filter has run (a folder's own
-    // filter never runs under Kolux's git since T-779; a user-level or git-lfs one still may).
+    // filter runs only in a trusted folder, see above; a user-level or git-lfs one runs as well).
     let hits = match staged_blobs(dir).and_then(|blobs| scan_blobs(dir, &blobs)) {
         Ok(h) => h,
         Err(e) => return fail(step("failed", format!("Not committed: {}", scrub(&e)))),
@@ -1479,9 +1485,12 @@ mod tests {
         cleanup(&[&dir, &bare]);
     }
 
-    /// The scan reads the staged blobs, not the working files. Since T-779 a folder's own clean filter
-    /// never runs under Kolux's git, so the blob is the working file as it is and the filter that would
-    /// have slipped a token into the commit has no say; a token in the working file itself is caught.
+    /// The scan reads the staged blobs, not the working files, so a clean filter that slips a token
+    /// into the commit is caught. The folder's own filter runs only when the user trusts the folder
+    /// (review fix 2, DT-C229): in an untrusted one the commit is refused up front, naming the filter
+    /// and saying to trust the folder, with nothing staged and nothing committed; it is never made
+    /// with the filter skipped (that would store plaintext where a git-crypt repository wants
+    /// ciphertext).
     #[test]
     fn t652_what_the_commit_would_hold_is_what_gets_scanned() {
         let (dir, bare) = with_origin("j-filter");
@@ -1490,15 +1499,23 @@ mod tests {
         // The folder's own clean filter would add a key to the file on its way into the index.
         run(&["config", "filter.addtoken.clean", &format!("cat; echo TOKEN={}", fake_token())], Some(&dir)).unwrap();
         fs::write(dir.join("app.cfg"), "a=1\n").unwrap();
-        let s = commit_step(&dir).unwrap();
-        assert_eq!(s.kind, "done", "{s:?}");
-        assert_eq!(run(&["cat-file", "-p", "HEAD:app.cfg"], Some(&dir)).unwrap(), "a=1", "the blob is the working file: the filter never ran (T-779)");
-        // The same token in the working file is what the blob scan catches.
-        fs::write(dir.join("app.cfg"), format!("a=1\nTOKEN={}\n", fake_token())).unwrap();
         let before_head = head(&dir);
+        // Untrusted folder: refused, plainly, before anything is staged.
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "failed", "{s:?}");
+        assert!(s.message.starts_with("Not committed: ") && s.message.contains("addtoken") && s.message.contains("trust"), "{}", s.message);
+        assert_eq!(index_of(&dir), "?? app.cfg", "nothing was staged");
+        assert_eq!(head(&dir), before_head, "nothing was committed");
+        // Trusted folder: the filter runs, and the blob scan catches the token it added.
+        crate::git::trust_for_test(&dir);
         let s = commit_step(&dir).unwrap();
         assert_eq!((s.kind.as_str(), s.files.as_slice()), ("blocked", ["app.cfg".to_string()].as_slice()), "{s:?}");
-        assert_eq!(index_of(&dir), "M app.cfg", "the staging area is as it was (the change unstaged)");
+        assert_eq!(index_of(&dir), "?? app.cfg", "the staging area is as it was");
+        assert_eq!(head(&dir), before_head);
+        // A token in the working file itself is caught the same way.
+        fs::write(dir.join("app.cfg"), format!("a=1\nTOKEN={}\n", fake_token())).unwrap();
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "blocked", "{s:?}");
         assert_eq!(head(&dir), before_head);
         cleanup(&[&dir, &bare]);
     }

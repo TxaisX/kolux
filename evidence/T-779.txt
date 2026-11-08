@@ -65,3 +65,45 @@ Review fix (opus-high-review 2026-11-08, findings 1 and 6) · 2026-11-08
     test git::tests::t779_repo_program_overrides_blank_the_repositorys_own_keys_but_not_git_lfs ... ok
     test git::tests::t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git ... ok
     test git::tests::t779_injected_config_appends_after_the_users_own_slots ... ok
+
+Review fix 2 (opus-high-review 2026-11-08, blockers: writes, submodules, gpg; nit: includes) · 2026-11-08
+  Writes (Txais, 2026-11-08, DT-C229): reads always blank the folder's own program keys; a write
+  that runs clean/smudge (add, commit, checkout, switch, restore, reset, merge, pull, rebase,
+  cherry-pick, revert, apply, am, stash, worktree add, submodule update/add...) runs the folder's own
+  filters only when the folder is trusted (Claude hasTrustDialogAccepted or Codex trust_level =
+  "trusted", for the folder or its main checkout; read only, trust.rs unchanged). In an untrusted
+  folder with a filter of its own (git-lfs's three standard lines exempt) the write is REFUSED
+  with a message naming the filter and saying to trust the folder; nothing is staged, no filter
+  runs, and auto_pr's commit step reports "Not committed: ..." before it writes anything.
+  Submodules: .git/modules/**/config is listed recursively (nested submodules too) and read for
+  program keys; the files are part of the cache stamp. Probe fact: the child git a parent
+  `status --ignore-submodules=none` starts for a submodule inherits the GIT_CONFIG_* slots, so the
+  blanked key holds there (the submodule test is the oracle).
+  gpg: log.showSignature=false is a fixed pair; gpg.program and gpg.<fmt>.program are blanked for
+  reads. Include nit: include.path / includeIf target files (mtime + size) are in the stamp.
+  Fails before (each fix reverted by a one-line probe in one build, restored after):
+    test git::tests::t779_injected_config_appends_after_the_users_own_slots ... FAILED
+    test git::tests::t779b_a_write_through_the_folders_own_filter_is_refused_unless_the_folder_is_trusted ... FAILED   (unwrap_err on an Ok value: the write went ahead)
+    test git::tests::t779b_git_lfs_and_a_required_only_driver_never_block_a_write_and_trust_follows_the_main_checkout ... FAILED
+    test auto_pr::tests::t652_what_the_commit_would_hold_is_what_gets_scanned ... FAILED
+    test git::tests::t779b_a_submodules_own_clean_filter_never_runs_under_kolux_git ... FAILED   (the submodule's clean filter ran under Kolux's git status)
+    test git::tests::t779b_module_configs_are_found_recursively_and_a_change_refreshes_the_listing ... FAILED
+    test git::tests::t779b_a_repositorys_own_gpg_program_never_runs_under_kolux_git_log ... FAILED   (the repository's gpg program ran under Kolux's git log)
+    test git::tests::t779b_gpg_program_keys_are_blanked_for_reads ... FAILED
+    test git::tests::t779b_included_config_files_are_part_of_the_listing_stamp ... FAILED   (extra.cfg missing from ["config"])
+    test result: FAILED. 0 passed; 9 failed
+  Passes after (git:: editor_search:: auto_pr:: t033e t033g, 125 tests):
+    test git::tests::t779b_a_write_through_the_folders_own_filter_is_refused_unless_the_folder_is_trusted ... ok
+    test git::tests::t779b_git_lfs_and_a_required_only_driver_never_block_a_write_and_trust_follows_the_main_checkout ... ok
+    test git::tests::t779b_a_submodules_own_clean_filter_never_runs_under_kolux_git ... ok
+    test git::tests::t779b_module_configs_are_found_recursively_and_a_change_refreshes_the_listing ... ok
+    test git::tests::t779b_a_repositorys_own_gpg_program_never_runs_under_kolux_git_log ... ok
+    test git::tests::t779b_gpg_program_keys_are_blanked_for_reads ... ok
+    test git::tests::t779b_included_config_files_are_part_of_the_listing_stamp ... ok
+    test auto_pr::tests::t652_what_the_commit_would_hold_is_what_gets_scanned ... ok
+    test result: ok. 125 passed; 0 failed
+  VERIFY: cargo build exit 0; cargo clippy --all-targets -- -D warnings exit 0; no TS changed (tsc not run).
+  Limits (not fixed here): other repo-local program keys (core.sshCommand, core.editor,
+  credential.helper, diff.external, merge drivers, core.hooksPath) are out of scope; managed Claude
+  accounts' own config files are not consulted for trust (conservative: refuses); includeIf
+  conditions are ignored in the stamp (over-inclusive, never stale).
