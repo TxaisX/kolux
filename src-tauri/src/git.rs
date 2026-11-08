@@ -1755,6 +1755,11 @@ mod tests {
         let mut plain = Command::new("git");
         plain.args(["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"]).current_dir(&dir).env("GIT_OPTIONAL_LOCKS", "0");
         plain.env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            plain.creation_flags(0x0800_0000); // no console flashes up during the test either
+        }
         let plain_out = plain.output().unwrap();
         assert!(plain_out.status.success(), "{}", String::from_utf8_lossy(&plain_out.stderr));
         assert!(marker.exists(), "control: git itself did not run the fsmonitor program, so the test proves nothing");
