@@ -93,6 +93,9 @@ thread_local! {
     /// an empty global file, no system file, and nothing the parent process injected (config
     /// pairs or a password helper), so a test's result never depends on this PC's git setup.
     pub(crate) static ISOLATED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Tests only: with `ISOLATED`, the file this thread's gits read as the user's global config
+    /// (default: an empty one), so a test can give "the user" a value of its own.
+    pub(crate) static GLOBAL_FOR_TEST: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
 }
 
 /// Tests only: an empty file to stand in for the user's global git config.
@@ -139,7 +142,39 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
 /// filter on checkout, a textconv or external diff on `diff`/`show` of a commit, a signature
 /// program on a log that shows signatures (review fix 2). Only the keys a listing finds are
 /// blanked, so a user's own drivers in their global config stay as they are.
-const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$";
+///
+/// S4 (DT-C229, Txais 2026-11-08: "Yes, include it"): the same listing also finds the keys through
+/// which a folder names a program for a TRANSFER or a hook: the ssh and proxy commands and the
+/// upload/receive programs (replaced on every run, see `net_overrides`), and the keys that make a
+/// write or a transfer unsafe to run at all in an untrusted folder (a credential helper, a hooks
+/// folder, a merge driver: see `write_access`).
+const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$|^core\.(sshcommand|gitproxy|hookspath)$|^remote\..*\.(uploadpack|receivepack)$|^credential\.(.*\.)?helper$|^merge\..*\.driver$";
+
+/// The keys a USER's own config may set that a folder's keys of the same name would shadow (S4).
+const USER_NET_KEYS: &str = r"^core\.(sshcommand|gitproxy)$|^remote\..*\.(uploadpack|receivepack)$";
+
+/// A key whose value is a program git runs on a read, and which a read blanks (see `overrides_for`).
+fn is_program_key(key: &str) -> bool {
+    key.starts_with("filter.") || key.starts_with("diff.") || key.starts_with("gpg.")
+}
+
+/// A key naming a program for a transfer (S4): replaced, never just blanked, so the user's own value
+/// of the same key (or git's default) still applies.
+fn is_net_key(key: &str) -> bool {
+    key == "core.sshcommand" || key == "core.gitproxy" || (key.starts_with("remote.") && (key.ends_with(".uploadpack") || key.ends_with(".receivepack")))
+}
+
+fn is_credential_key(key: &str) -> bool {
+    key == "credential.helper" || (key.starts_with("credential.") && key.ends_with(".helper"))
+}
+
+fn is_merge_driver_key(key: &str) -> bool {
+    key.starts_with("merge.") && key.ends_with(".driver")
+}
+
+/// The pseudo-key a listing carries for each hooks folder of the repository and its submodules (S4):
+/// never a git key, never blanked; `write_access` looks inside it when a run is attempted.
+const HOOKS_KEY: &str = "kolux.hooks-dir";
 
 /// The program lines `git lfs install` writes, which run the user's own installed git-lfs and
 /// nothing the folder brought along; a driver made only of these is left alone, so a repository
@@ -198,7 +233,7 @@ fn overrides_for(found: &[(String, String)], access: Access) -> Vec<(String, Str
     };
     let mut out = Vec::with_capacity(found.len());
     for (key, _) in found {
-        if key == INCOMPLETE_KEY {
+        if !is_program_key(key) {
             continue;
         }
         let Some(driver) = key.rsplit_once('.').map(|(d, _)| d) else { continue };
@@ -333,7 +368,7 @@ struct GitlinkWalk {
 /// which reads only the index and runs no program. None when git did not answer in time; a git that
 /// refuses (not a repository, someone else's folder) answers nothing, and refuses the real run too.
 fn gitlinks(root: &Path) -> Option<Vec<PathBuf>> {
-    let out = output_within(base_command(&["ls-files", "-s", "-z"], Some(root), &[]), LISTING_LIMIT)?;
+    let out = output_within(base_command(&["ls-files", "-s", "-z"], Some(root), &[], &[]), LISTING_LIMIT)?;
     if !out.status.success() {
         return Some(Vec::new());
     }
@@ -529,7 +564,7 @@ fn repo_programs(prefix: &[&str], cwd: &Path) -> Vec<(String, String)> {
     let mut complete = true;
     let listing = |args: &[&str], complete: &mut bool| -> Vec<u8> {
         // Exit 1 is "no such key": nothing to blank. Any other failure (not a repository) the same.
-        match output_within(base_command(args, Some(cwd), &[]), LISTING_LIMIT) {
+        match output_within(base_command(args, Some(cwd), &[], &[]), LISTING_LIMIT) {
             Some(out) if out.status.success() => out.stdout,
             Some(_) => Vec::new(),
             None => {
@@ -549,6 +584,12 @@ fn repo_programs(prefix: &[&str], cwd: &Path) -> Vec<(String, String)> {
         walk_gitlinks(root, 0, &mut walk);
         complete &= !walk.incomplete;
         subs.extend(walk.configs);
+        // The hooks folders git would run a hook from: the repository's own, and each submodule's.
+        let mut hook_dirs = vec![common.join("hooks")];
+        hook_dirs.extend(subs.iter().filter_map(|c| c.parent().map(|g| g.join("hooks"))));
+        for dir in unique_files(hook_dirs) {
+            found.push((HOOKS_KEY.to_string(), dir.to_string_lossy().into_owned()));
+        }
         let subs = unique_files(subs.into_iter().flat_map(|c| [c.with_file_name("config.worktree"), c]).collect());
         for config in subs.iter().filter(|c| c.is_file()) {
             let config = config.to_string_lossy();
@@ -658,35 +699,157 @@ pub(crate) fn trust_for_test(folder: &Path) {
     TRUST_FILES.with(|f| *f.borrow_mut() = Some((file, std::env::temp_dir().join("kolux-rs-test-no-codex.toml"))));
 }
 
+/// Whether `args` is a git command that talks to another repository (S4): fetch, pull, push, clone,
+/// ls-remote, `remote update|show|prune|set-head`, and the submodule commands that fetch or clone.
+fn network(args: &[&str]) -> bool {
+    let rest = after_options(args);
+    let second = rest.get(1).copied();
+    match rest.first().copied() {
+        Some("fetch" | "pull" | "push" | "clone" | "ls-remote" | "fetch-pack" | "send-pack") => true,
+        Some("remote") => matches!(second, Some("update" | "show" | "prune" | "set-head")),
+        Some("submodule") => matches!(second, Some("update" | "add")),
+        _ => false,
+    }
+}
+
+/// Whether `args` is a git command that may merge content, and so run a merge driver (S4).
+fn merges(args: &[&str]) -> bool {
+    let rest = after_options(args);
+    match rest.first().copied() {
+        Some("merge" | "pull" | "rebase" | "cherry-pick" | "revert" | "am") => true,
+        Some("stash") => matches!(rest.get(1).copied(), Some("pop" | "apply" | "branch")),
+        _ => false,
+    }
+}
+
+/// Whether `args` changes refs without writing content (`branch` and `tag` in their creating,
+/// deleting and renaming forms, `update-ref`, `notes`): the `reference-transaction` hook runs on it.
+fn ref_write(args: &[&str]) -> bool {
+    let rest = after_options(args);
+    match rest.first().copied() {
+        Some("update-ref" | "notes") => true,
+        Some("branch" | "tag") => {
+            let flags = &rest[1..];
+            let mutating = flags.iter().any(|a| matches!(*a, "-d" | "-D" | "-m" | "-M" | "-c" | "-C" | "-f" | "-u" | "--delete" | "--move" | "--copy" | "--force" | "--unset-upstream" | "--edit-description") || a.starts_with("--set-upstream-to"));
+            let listing = flags.iter().any(|a| matches!(*a, "-l" | "--list" | "--show-current" | "-a" | "-r" | "--all" | "--remotes" | "-v" | "-vv" | "--verbose") || a.starts_with("--contains") || a.starts_with("--merged") || a.starts_with("--no-merged") || a.starts_with("--points-at") || a.starts_with("--format"));
+            mutating || (!listing && flags.iter().any(|a| !a.starts_with('-')))
+        }
+        _ => false,
+    }
+}
+
+const COMMIT_HOOKS: [&str; 5] = ["pre-commit", "prepare-commit-msg", "commit-msg", "post-commit", "post-rewrite"];
+const EVERY_RUN_HOOKS: [&str; 3] = ["reference-transaction", "post-index-change", "pre-auto-gc"];
+
+/// The hooks a run of `args` can start (githooks(5)); a run is checked only against its own.
+fn hooks_run_by(args: &[&str]) -> Vec<&'static str> {
+    let mut hooks: Vec<&'static str> = Vec::new();
+    match after_options(args).first().copied() {
+        Some("add") => hooks.push("post-index-change"),
+        Some("commit") => {
+            hooks.extend(COMMIT_HOOKS);
+            hooks.extend(EVERY_RUN_HOOKS);
+        }
+        Some("push") => hooks.extend(["pre-push", "reference-transaction"]),
+        Some("fetch" | "ls-remote" | "remote" | "clone" | "fetch-pack" | "send-pack" | "update-ref" | "branch" | "tag" | "notes") => hooks.extend(["reference-transaction", "pre-auto-gc"]),
+        Some("merge" | "pull" | "rebase" | "cherry-pick" | "revert" | "am" | "stash" | "submodule") => {
+            hooks.extend(COMMIT_HOOKS);
+            hooks.extend(EVERY_RUN_HOOKS);
+            hooks.extend(["pre-merge-commit", "post-merge", "post-checkout", "pre-rebase", "applypatch-msg", "pre-applypatch", "post-applypatch"]);
+        }
+        // checkout, switch, restore, reset, read-tree, checkout-index, sparse-checkout, worktree add, apply
+        _ => {
+            hooks.push("post-checkout");
+            hooks.extend(EVERY_RUN_HOOKS);
+        }
+    }
+    hooks
+}
+
+/// The files in a hooks folder git would run: not a `.sample`, a regular file, and (where the file
+/// system has the bit) executable.
+fn executable_hooks(dir: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    entries
+        .flatten()
+        .take(4096)
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().into_owned();
+            let meta = std::fs::metadata(e.path()).ok()?;
+            if name.ends_with(".sample") || !meta.is_file() {
+                return None;
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if meta.permissions().mode() & 0o111 == 0 {
+                    return None;
+                }
+            }
+            Some(name)
+        })
+        .collect()
+}
+
+/// The first hook a run of `args` would start from any hooks folder the listing found: (hook, folder).
+fn hook_in_the_way(args: &[&str], found: &[(String, String)]) -> Option<(String, String)> {
+    let wanted = hooks_run_by(args);
+    found.iter().filter(|(k, _)| k == HOOKS_KEY).find_map(|(_, dir)| executable_hooks(Path::new(dir)).into_iter().find(|n| wanted.contains(&n.as_str())).map(|n| (n, dir.clone())))
+}
+
+/// The plain refusal (DT-C229): what Kolux did not run, why, and what to do about it.
+fn refusal(args: &[&str], dir: &Path, what: &str) -> String {
+    let rest = after_options(args);
+    let verb = rest.iter().take(if rest.first() == Some(&"worktree") { 2 } else { 1 }).copied().collect::<Vec<_>>().join(" ");
+    format!("Kolux did not run `git {verb}` in {}: {what}, and the folder is not trusted. Trust the folder (open an agent in it and accept its trust prompt), then try again.", dir.display())
+}
+
 /// What a run of `args` in `dir` may do with the repository's own program keys, decided from the
 /// keys already listed (DT-C229). A read has them blanked. A write that runs clean or smudge
 /// filters (`writes_content`) keeps them in a trusted folder (the folder's own signing program too,
 /// so a trusted commit still signs); in an untrusted folder that names a filter of its own it is
 /// REFUSED instead of run with the filter skipped, because a skipped clean or smudge filter stores
 /// plaintext where the repository expects ciphertext (git-crypt, transcrypt) or checks ciphertext out.
+///
+/// S4 (Txais 2026-11-08): in an untrusted folder a write, a ref change or a transfer (`network`) is
+/// refused too, with the same plain message, when the folder sets a credential helper (transfers), a
+/// hooks folder, an executable hook the command would start, or (merging commands) a merge driver.
+/// None of these can be blanked without changing what the command does, so it is not run at all. A
+/// trusted folder runs normally, keeping its own keys.
 fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result<Access, String> {
-    if !writes_content(args) {
+    let writes = writes_content(args);
+    let transfer = network(args);
+    if !writes && !transfer && !ref_write(args) {
         return Ok(Access::Reads);
     }
     if folder_trusted(dir) {
-        return Ok(Access::TrustedWrite);
+        return Ok(if writes || transfer { Access::TrustedWrite } else { Access::Reads });
     }
-    let filters = program_filters(found);
-    if filters.is_empty() && !incomplete(found) {
-        return Ok(Access::Reads);
-    }
-    let what = if filters.is_empty() {
-        "the folder has more submodules than Kolux can check for programs of their own".to_string()
-    } else {
+    let filters = if writes { program_filters(found) } else { Vec::new() };
+    if !filters.is_empty() {
         let names = filters.iter().map(|(d, k)| format!("\"{d}\" ({k})")).collect::<Vec<_>>().join(", ");
-        format!("the folder has its own git filter {names}, which runs a program every time files are staged or checked out")
-    };
-    let rest = after_options(args);
-    let verb = rest.iter().take(if rest.first() == Some(&"worktree") { 2 } else { 1 }).copied().collect::<Vec<_>>().join(" ");
-    Err(format!(
-        "Kolux did not run `git {verb}` in {}: {what}, and the folder is not trusted. Trust the folder (open an agent in it and accept its trust prompt), then try again.",
-        dir.display()
-    ))
+        return Err(refusal(args, dir, &format!("the folder has its own git filter {names}, which runs a program every time files are staged or checked out")));
+    }
+    if incomplete(found) && (writes || transfer) {
+        return Err(refusal(args, dir, "the folder has more submodules than Kolux can check for programs of their own"));
+    }
+    if transfer {
+        if let Some((key, _)) = found.iter().find(|(k, _)| is_credential_key(k)) {
+            return Err(refusal(args, dir, &format!("the folder sets its own credential helper ({key}), a program that is handed your sign-in details on every transfer")));
+        }
+    }
+    if let Some((key, _)) = found.iter().find(|(k, _)| k == "core.hookspath") {
+        return Err(refusal(args, dir, &format!("the folder points git at a hooks folder of its own ({key}), whose programs run around git commands")));
+    }
+    if let Some((hook, folder)) = hook_in_the_way(args, found) {
+        return Err(refusal(args, dir, &format!("the folder has its own git hook \"{hook}\" (in {folder}), a program that runs around this command")));
+    }
+    if merges(args) {
+        if let Some((key, _)) = found.iter().find(|(k, _)| is_merge_driver_key(k)) {
+            return Err(refusal(args, dir, &format!("the folder has its own merge driver ({key}), a program that runs when changes are merged")));
+        }
+    }
+    Ok(Access::Reads)
 }
 
 /// Why `args` must not run in `cwd` (see `write_access`): None when the run may go ahead.
@@ -695,25 +858,131 @@ pub(crate) fn write_refusal(args: &[&str], cwd: Option<&Path>) -> Option<String>
     write_access(args, dir, &repo_programs(leading_options(args), dir)).err()
 }
 
+/// What replaces a folder's own transfer programs on a run (S4): environment variables for the ssh
+/// and proxy commands (the environment outranks every config file, a folder's and a user's alike) and
+/// config pairs for the per-remote programs.
+#[derive(Default)]
+struct Net {
+    pairs: Vec<(String, String)>,
+    env: Vec<(&'static str, String)>,
+}
+
+/// The environment variable `name` as the parent process has it (tests: none, see `ISOLATED`).
+fn parent_env(name: &str) -> Option<std::ffi::OsString> {
+    #[cfg(test)]
+    if ISOLATED.with(|i| i.get()) {
+        return None;
+    }
+    std::env::var_os(name)
+}
+
+/// `value` as one word for a shell line (GIT_SSH_COMMAND is run through `sh`).
+fn sh_quote(value: &str) -> String {
+    let value = if cfg!(windows) { value.replace('\\', "/") } else { value.to_string() };
+    format!("'{}'", value.replace('\'', r"'\''"))
+}
+
+/// The values the USER's own config (system, global, and what their shell injects) gives the keys of
+/// `USER_NET_KEYS`, in config order (a later one wins). A plain `git config` read: it runs no program.
+fn user_net_values(cwd: &Path) -> Vec<(String, String)> {
+    let args = ["config", "-z", "--show-scope", "--get-regexp", USER_NET_KEYS];
+    let Some(out) = output_within(base_command(&args, Some(cwd), &[], &[]), LISTING_LIMIT).filter(|o| o.status.success()) else { return Vec::new() };
+    let mut records = out.stdout.split(|b| *b == 0);
+    let mut values = Vec::new();
+    while let (Some(scope), Some(entry)) = (records.next(), records.next()) {
+        if matches!(scope, b"local" | b"worktree") || entry.is_empty() {
+            continue;
+        }
+        let entry = String::from_utf8_lossy(entry);
+        let (key, value) = entry.split_once('\n').unwrap_or((&entry, ""));
+        values.push((key.to_string(), value.trim_end_matches('\r').to_string()));
+    }
+    values
+}
+
+/// S4 (DT-C229): the transfer programs a folder's own config names (`core.sshCommand`,
+/// `core.gitProxy`, `remote.<name>.uploadpack` and `receivepack`) never run. Each is REPLACED by what
+/// the user's own config says for it, or git's own default when it says nothing, never just blanked
+/// (a blank would also override the user's global value, and an empty ssh command runs nothing at
+/// all). The ssh and proxy commands go through the environment, which outranks every config file,
+/// unless the parent process set the variable itself (it already wins). `strict` (a transfer): a user
+/// proxy rule that is limited to some domains cannot be handed over through the environment, so the
+/// run is refused with `Err` instead of losing it silently; otherwise that case runs with no proxy.
+fn net_overrides(found: &[(String, String)], cwd: &Path, strict: bool) -> Result<Net, String> {
+    let mut keys: Vec<&str> = Vec::new();
+    for (key, _) in found {
+        if is_net_key(key) && !keys.contains(&key.as_str()) {
+            keys.push(key);
+        }
+    }
+    let mut net = Net::default();
+    if keys.is_empty() {
+        return Ok(net);
+    }
+    let user = user_net_values(cwd);
+    let mine = |key: &str| user.iter().rev().find(|(k, _)| k == key).map(|(_, v)| v.clone());
+    for key in keys {
+        match key {
+            "core.sshcommand" => {
+                if parent_env("GIT_SSH_COMMAND").is_none() {
+                    let value = mine(key).or_else(|| parent_env("GIT_SSH").map(|p| sh_quote(&p.to_string_lossy()))).unwrap_or_else(|| "ssh".to_string());
+                    net.env.push(("GIT_SSH_COMMAND", value));
+                }
+            }
+            "core.gitproxy" => {
+                if parent_env("GIT_PROXY_COMMAND").is_none() {
+                    let value = match mine(key) {
+                        None => String::new(),
+                        Some(v) if !v.contains(" for ") => v,
+                        Some(_) if strict => return Err("the folder sets its own core.gitProxy, and your own git settings have a proxy rule for particular domains that Kolux could not keep while ignoring the folder's".to_string()),
+                        Some(_) => String::new(),
+                    };
+                    net.env.push(("GIT_PROXY_COMMAND", value));
+                }
+            }
+            _ => {
+                let default = if key.ends_with(".uploadpack") { "git-upload-pack" } else { "git-receive-pack" };
+                net.pairs.push((key.to_string(), mine(key).unwrap_or_else(|| default.to_string())));
+            }
+        }
+    }
+    Ok(net)
+}
+
 /// A git process with Kolux's environment (see `base_command`) for ANY run, the one a caller that
-/// may write must use: the listing, the refusal and the blanking come from one decision, so nothing
-/// can change between the check and the run. Err is the refusal's plain message.
+/// may write or transfer must use: the listing, the refusal and the blanking come from one decision,
+/// so nothing can change between the check and the run. Err is the refusal's plain message.
 pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Command, String> {
-    let Some(dir) = cwd else { return Ok(base_command(args, None, &[])) };
+    let Some(dir) = cwd else { return Ok(base_command(args, None, &[], &[])) };
     let found = repo_programs(leading_options(args), dir);
     let access = write_access(args, dir, &found)?;
     let args = guarded(args, &found, access);
-    Ok(base_command(&args, cwd, &overrides_for(&found, access)))
+    let mut pairs = overrides_for(&found, access);
+    let mut env = Vec::new();
+    // A trusted folder's own transfer programs are the user's to run; everywhere else they are replaced.
+    if access == Access::Reads {
+        let net = net_overrides(&found, dir, network(&args)).map_err(|what| refusal(&args, dir, &what))?;
+        pairs.extend(net.pairs);
+        env = net.env;
+    }
+    Ok(base_command(&args, cwd, &pairs, &env))
 }
 
 /// A git process with Kolux's environment (see `base_command`) for a READ, its repository's own
-/// program keys blanked (T-779, review finding 1). A run that writes content must go through
-/// `command_checked`; here it is a bug, and a debug build stops on it.
+/// program keys blanked (T-779, review finding 1) and its transfer programs replaced (S4). A run
+/// that writes content or transfers must go through `command_checked`; here it is a bug, and a
+/// debug build stops on it.
 pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
-    debug_assert!(cwd.is_none() || !writes_content(args), "git {args:?} writes content: use git::command_checked");
+    debug_assert!(cwd.is_none() || !(writes_content(args) || network(args) || ref_write(args)), "git {args:?} writes or transfers: use git::command_checked");
     let found = cwd.map(|dir| repo_programs(leading_options(args), dir)).unwrap_or_default();
     let args = guarded(args, &found, Access::Reads);
-    base_command(&args, cwd, &overrides_for(&found, Access::Reads))
+    let mut pairs = overrides_for(&found, Access::Reads);
+    let mut env = Vec::new();
+    if let Some(net) = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()) {
+        pairs.extend(net.pairs);
+        env = net.env;
+    }
+    base_command(&args, cwd, &pairs, &env)
 }
 
 /// `args`, with submodules left out of a status or diff when the listing of the repository's
@@ -730,7 +999,7 @@ fn guarded<'a>(args: &[&'a str], found: &[(String, String)], access: Access) -> 
     out
 }
 
-fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, String)]) -> Command {
+fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, String)], net_env: &[(&'static str, String)]) -> Command {
     let mut cmd = Command::new("git");
     cmd.args(args);
     #[cfg(test)]
@@ -741,8 +1010,8 @@ fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, Str
     });
     #[cfg(test)]
     if ISOLATED.with(|i| i.get()) {
-        cmd.env("GIT_CONFIG_GLOBAL", empty_global_config()).env("GIT_CONFIG_NOSYSTEM", "1");
-        for v in ["GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS", "GIT_ASKPASS", "SSH_ASKPASS"] {
+        cmd.env("GIT_CONFIG_GLOBAL", GLOBAL_FOR_TEST.with(|g| g.borrow().clone()).unwrap_or_else(empty_global_config)).env("GIT_CONFIG_NOSYSTEM", "1");
+        for v in ["GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS", "GIT_ASKPASS", "SSH_ASKPASS", "GIT_SSH_COMMAND", "GIT_SSH", "GIT_PROXY_COMMAND"] {
             cmd.env_remove(v);
         }
     }
@@ -773,6 +1042,10 @@ fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, Str
     #[cfg(test)]
     let existing = if ISOLATED.with(|i| i.get()) { None } else { existing };
     for (name, value) in injected_config(existing.as_deref(), repo_programs) {
+        cmd.env(name, value);
+    }
+    // S4: the replacements for a folder's own ssh and proxy commands (see `net_overrides`).
+    for (name, value) in net_env {
         cmd.env(name, value);
     }
     cmd
@@ -2935,7 +3208,7 @@ mod tests {
         fs::write(&small, "[include]\n\tpath = x.cfg\n").unwrap();
         assert_eq!(include_targets(&small).len(), 1);
         // A listing that does not finish is cut off instead of waited for.
-        let slow = base_command(&["-c", "alias.slow=!sleep 30", "slow"], Some(&dir), &[]);
+        let slow = base_command(&["-c", "alias.slow=!sleep 30", "slow"], Some(&dir), &[], &[]);
         let started = std::time::Instant::now();
         assert!(output_within(slow, std::time::Duration::from_millis(400)).is_none());
         assert!(started.elapsed() < std::time::Duration::from_secs(20));
@@ -2957,5 +3230,276 @@ mod tests {
         // A read in the same trusted folder still blanks it.
         assert!(blanked_keys(&command(&["log", "-1"], Some(&dir))).iter().any(|k| k == "gpg.program"));
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    // ---- S4 (DT-C229, Txais 2026-11-08: "Yes, include it") -----------------------------------------
+
+    /// A hook of the folder's own that leaves `marker` and lets the command go on.
+    fn marker_hook(dir: &Path, name: &str, marker: &Path) {
+        let path = dir.join(".git").join("hooks").join(name);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, format!("#!/bin/sh\necho ran >> \"{}\"\nexit 0\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    /// A bare repository holding the history of `dir`, to be a remote for it.
+    fn bare_copy(dir: &Path, name: &str) -> PathBuf {
+        let bare = std::env::temp_dir().join(format!("kolux-rs-git-{name}-bare-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&bare);
+        assert!(plain_git(&["clone", "-q", "--bare", &dir.to_string_lossy(), &bare.to_string_lossy()], dir).status.success());
+        bare
+    }
+
+    fn refused(args: &[&str], dir: &Path) -> Option<String> {
+        write_refusal(args, Some(dir))
+    }
+
+    fn plain_message(why: &str, verb: &str) {
+        assert!(why.contains(&format!("git {verb}")) && why.contains("not trusted") && why.contains("Trust the folder"), "{why}");
+    }
+
+    /// S4: a credential helper of the folder's own is refused on every transfer (it is handed the
+    /// user's sign-in details), the plain message names it, a commit is not a transfer, and trust lifts it.
+    #[test]
+    fn t779d_a_folders_own_credential_helper_refuses_every_transfer_until_trusted() {
+        let dir = temp_repo("d-credential");
+        for key in ["credential.helper", "credential.https://example.com.helper"] {
+            run(&["config", key, "my-helper"], Some(&dir)).unwrap();
+            for args in [&["fetch", "origin"][..], &["push", "origin", "main"], &["pull"], &["ls-remote", "origin"], &["-c", "x.y=z", "fetch"]] {
+                let why = refused(args, &dir).unwrap_or_else(|| panic!("{key} {args:?} was not refused"));
+                plain_message(&why, after_options(args)[0]);
+                assert!(why.contains("credential helper") && why.contains(key.to_lowercase().split("//").next().unwrap().trim_end_matches(':')), "{why}");
+                assert!(run(args, Some(&dir)).is_err() && command_checked(args, Some(&dir)).is_err());
+            }
+            assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_none() && refused(&["status"], &dir).is_none(), "not a transfer");
+            run(&["config", "--unset-all", key], Some(&dir)).unwrap();
+        }
+        run(&["config", "credential.helper", "my-helper"], Some(&dir)).unwrap();
+        trust_for_test(&dir);
+        for args in [&["fetch", "origin"][..], &["push", "origin", "main"], &["pull"], &["ls-remote", "origin"]] {
+            assert!(refused(args, &dir).is_none() && command_checked(args, Some(&dir)).is_ok(), "{args:?}");
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// S4: `core.hooksPath` makes any write, ref change or transfer unsafe in an untrusted folder.
+    #[test]
+    fn t779d_a_folders_own_hooks_path_refuses_writes_and_transfers_until_trusted() {
+        let dir = temp_repo("d-hookspath");
+        run(&["config", "core.hooksPath", "evil-hooks"], Some(&dir)).unwrap();
+        for args in [&["commit", "-q", "-m", "x"][..], &["push", "origin", "main"], &["fetch"], &["merge", "side"], &["checkout", "-q", "main"], &["add", "-A"], &["branch", "-D", "nope"], &["tag", "v1"]] {
+            let why = refused(args, &dir).unwrap_or_else(|| panic!("{args:?} was not refused"));
+            plain_message(&why, after_options(args)[0]);
+            assert!(why.contains("core.hookspath"), "{why}");
+        }
+        for args in [&["status"][..], &["log", "-1"], &["diff"], &["branch", "--show-current"], &["branch", "-a"], &["tag", "-l"], &["config", "--list"]] {
+            assert!(refused(args, &dir).is_none(), "{args:?} is a read");
+        }
+        trust_for_test(&dir);
+        for args in [&["commit", "-q", "-m", "x"][..], &["push", "origin", "main"], &["fetch"], &["tag", "v1"]] {
+            assert!(refused(args, &dir).is_none(), "{args:?}");
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// S4: an executable hook in the hooks folder is refused only for the commands that would start it,
+    /// a `.sample` never is, nothing runs when refused, and a trusted folder runs the hook.
+    #[test]
+    fn t779d_a_folders_own_executable_hook_refuses_the_command_that_would_run_it_until_trusted() {
+        let dir = temp_repo("d-hook");
+        let marker = dir.join("hook-ran.txt");
+        marker_hook(&dir, "pre-commit.sample", &marker);
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_none(), "a .sample is never run");
+        marker_hook(&dir, "pre-commit", &marker);
+        marker_hook(&dir, "pre-push", &marker);
+        marker_hook(&dir, "post-checkout", &marker);
+        let why = refused(&["commit", "-q", "-m", "x"], &dir).expect("pre-commit refuses commit");
+        plain_message(&why, "commit");
+        assert!(why.contains("\"pre-commit\"") && why.contains("hook"), "{why}");
+        let why = refused(&["push", "origin", "main"], &dir).expect("pre-push refuses push");
+        assert!(why.contains("\"pre-push\""), "{why}");
+        let why = refused(&["checkout", "-q", "main"], &dir).expect("post-checkout refuses checkout");
+        assert!(why.contains("\"post-checkout\""), "{why}");
+        // A command that starts none of these hooks goes ahead.
+        assert!(refused(&["fetch", "origin"], &dir).is_none(), "fetch starts none of the three");
+        assert!(refused(&["add", "-A"], &dir).is_none(), "add starts only post-index-change");
+        assert!(refused(&["status"], &dir).is_none());
+        // Refused for real: nothing ran, nothing was committed.
+        fs::write(dir.join("README.md"), "changed\n").unwrap();
+        run(&["add", "-A"], Some(&dir)).unwrap();
+        assert!(run(&["commit", "-q", "-m", "second"], Some(&dir)).is_err());
+        assert!(!marker.exists(), "a refused command ran the hook");
+        assert_eq!(run(&["rev-list", "--count", "HEAD"], Some(&dir)).unwrap().trim(), "1");
+        // Trusted: the commit runs and so does the hook.
+        trust_for_test(&dir);
+        run(&["commit", "-q", "-m", "second"], Some(&dir)).unwrap();
+        assert!(marker.exists(), "the trusted folder's own hook did not run");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// S4: a merge driver of the folder's own is refused for the commands that merge content, and only those.
+    #[test]
+    fn t779d_a_folders_own_merge_driver_refuses_merging_commands_until_trusted() {
+        let dir = temp_repo("d-merge");
+        run(&["config", "merge.evil.driver", "evil %O %A %B"], Some(&dir)).unwrap();
+        for args in [&["merge", "side"][..], &["pull"], &["pull", "--rebase"], &["rebase", "main"], &["cherry-pick", "abc"], &["revert", "abc"], &["stash", "pop"]] {
+            let why = refused(args, &dir).unwrap_or_else(|| panic!("{args:?} was not refused"));
+            plain_message(&why, after_options(args)[0]);
+            assert!(why.contains("merge driver") && why.contains("merge.evil.driver"), "{why}");
+        }
+        for args in [&["commit", "-q", "-m", "x"][..], &["fetch"], &["push", "origin", "main"], &["status"], &["add", "-A"], &["checkout", "-q", "main"], &["stash", "list"]] {
+            assert!(refused(args, &dir).is_none(), "{args:?} runs no merge driver");
+        }
+        trust_for_test(&dir);
+        for args in [&["merge", "side"][..], &["pull"], &["rebase", "main"], &["cherry-pick", "abc"]] {
+            assert!(refused(args, &dir).is_none(), "{args:?}");
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// S4: a submodule's hooks folder is looked at too.
+    #[test]
+    fn t779d_a_submodules_own_hook_refuses_the_command_that_would_run_it() {
+        let (dir, sub_git, _marker) = submodule_with_filter("d-sub-hook", None);
+        let marker = dir.join("sub-hook-ran.txt");
+        let hooks = sub_git.join("hooks");
+        fs::create_dir_all(&hooks).unwrap();
+        fs::write(hooks.join("pre-commit"), format!("#!/bin/sh\necho ran >> \"{}\"\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(hooks.join("pre-commit"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        // The filter of the same submodule is refused first; take it away to see the hook's refusal.
+        run(&["config", "--file", &sub_git.join("config").to_string_lossy(), "--unset-all", "filter.evil.clean"], Some(&dir)).unwrap();
+        let why = refused(&["commit", "-q", "-m", "x"], &dir).expect("the submodule's hook refuses the commit");
+        assert!(why.contains("\"pre-commit\""), "{why}");
+        assert!(!marker.exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// S4: the folder's own ssh command, proxy command, upload-pack and receive-pack programs never run
+    /// on a transfer (plain git runs each: the control), and the transfer still goes through.
+    #[test]
+    fn t779d_a_folders_own_transfer_programs_never_run() {
+        ISOLATED.with(|i| i.set(true));
+        let dir = temp_repo("d-net");
+        let marker = dir.join("net-ran.txt");
+        let program = marker_program(&marker);
+        let bare = bare_copy(&dir, "d-net");
+        // ssh command: plain git runs it for an ssh URL; Kolux's git runs the real ssh (which fails: nothing listens).
+        run(&["remote", "add", "viassh", "ssh://127.0.0.1:1/x"], Some(&dir)).unwrap();
+        run(&["config", "core.sshCommand", &program], Some(&dir)).unwrap();
+        assert!(!plain_git(&["fetch", "viassh"], &dir).status.success());
+        assert!(marker.exists(), "the premise: plain git runs core.sshCommand");
+        fs::remove_file(&marker).unwrap();
+        let _ = run(&["fetch", "viassh"], Some(&dir));
+        assert!(!marker.exists(), "Kolux's git ran the folder's core.sshCommand");
+        run(&["config", "--unset-all", "core.sshCommand"], Some(&dir)).unwrap();
+        // proxy command: for a git:// URL.
+        run(&["remote", "add", "viaproxy", "git://127.0.0.1:1/x"], Some(&dir)).unwrap();
+        run(&["config", "core.gitProxy", &program], Some(&dir)).unwrap();
+        assert!(!plain_git(&["fetch", "viaproxy"], &dir).status.success());
+        assert!(marker.exists(), "the premise: plain git runs core.gitProxy");
+        fs::remove_file(&marker).unwrap();
+        let _ = run(&["fetch", "viaproxy"], Some(&dir));
+        assert!(!marker.exists(), "Kolux's git ran the folder's core.gitProxy");
+        run(&["config", "--unset-all", "core.gitProxy"], Some(&dir)).unwrap();
+        // upload-pack and receive-pack: a local remote runs them through the shell.
+        run(&["remote", "add", "local", &bare.to_string_lossy()], Some(&dir)).unwrap();
+        run(&["config", "remote.local.uploadpack", &program], Some(&dir)).unwrap();
+        run(&["config", "remote.local.receivepack", &program], Some(&dir)).unwrap();
+        assert!(!plain_git(&["fetch", "local"], &dir).status.success());
+        assert!(marker.exists(), "the premise: plain git runs remote.<name>.uploadpack");
+        fs::remove_file(&marker).unwrap();
+        run(&["fetch", "local"], Some(&dir)).expect("the fetch goes through git's own upload-pack");
+        assert!(!marker.exists(), "Kolux's git ran the folder's uploadpack");
+        assert!(!plain_git(&["push", "local", "main"], &dir).status.success());
+        assert!(marker.exists(), "the premise: plain git runs remote.<name>.receivepack");
+        fs::remove_file(&marker).unwrap();
+        fs::write(dir.join("more.txt"), "more\n").unwrap();
+        run(&["add", "-A"], Some(&dir)).unwrap();
+        run(&["commit", "-q", "-m", "more"], Some(&dir)).unwrap();
+        run(&["push", "local", "main"], Some(&dir)).expect("the push goes through git's own receive-pack");
+        assert!(!marker.exists(), "Kolux's git ran the folder's receivepack");
+        // A read that could fetch (a partial clone's missing objects) has them replaced too.
+        let status = command(&["status"], Some(&dir));
+        assert!(status.get_envs().any(|(k, v)| k == "GIT_SSH_COMMAND" || k == "GIT_PROXY_COMMAND" || v.is_some()));
+        ISOLATED.with(|i| i.set(false));
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&bare);
+    }
+
+    /// S4: a replaced key is not a blank: what the USER's own config says for the key still applies
+    /// (a blank would have overridden it, and an empty ssh command runs nothing at all).
+    #[test]
+    fn t779d_the_users_own_transfer_programs_still_apply_when_the_folder_sets_the_same_keys() {
+        ISOLATED.with(|i| i.set(true));
+        let dir = temp_repo("d-user-net");
+        let bare = bare_copy(&dir, "d-user-net");
+        let (mine, theirs) = (dir.join("user-ran.txt"), dir.join("folder-ran.txt"));
+        let global = std::env::temp_dir().join(format!("kolux-rs-git-d-user-net-global-{}", std::process::id()));
+        let _ = fs::remove_file(&global);
+        let global_s = global.to_string_lossy().to_string();
+        for (key, value) in [("core.sshCommand", marker_program(&mine)), ("core.gitProxy", marker_program(&mine)), ("remote.local.uploadpack", marker_program(&mine))] {
+            assert!(plain_git(&["config", "--file", &global_s, key, &value], &dir).status.success());
+        }
+        GLOBAL_FOR_TEST.with(|g| *g.borrow_mut() = Some(global.clone()));
+        for (key, value) in [("core.sshCommand", marker_program(&theirs)), ("core.gitProxy", marker_program(&theirs)), ("remote.local.uploadpack", marker_program(&theirs))] {
+            run(&["config", key, &value], Some(&dir)).unwrap();
+        }
+        run(&["remote", "add", "viassh", "ssh://127.0.0.1:1/x"], Some(&dir)).unwrap();
+        run(&["remote", "add", "viaproxy", "git://127.0.0.1:1/x"], Some(&dir)).unwrap();
+        run(&["remote", "add", "local", &bare.to_string_lossy()], Some(&dir)).unwrap();
+        for remote in ["viassh", "viaproxy", "local"] {
+            let _ = fs::remove_file(&mine);
+            let _ = run(&["fetch", remote], Some(&dir));
+            assert!(mine.exists(), "{remote}: the user's own program did not run");
+            assert!(!theirs.exists(), "{remote}: the folder's own program ran");
+        }
+        // A proxy rule of the user's that is limited to some domains cannot be carried over: the
+        // transfer is refused plainly rather than run without it; a read still runs.
+        assert!(plain_git(&["config", "--file", &global_s, "core.gitProxy", "some-proxy for example.com"], &dir).status.success());
+        let why = run(&["fetch", "viaproxy"], Some(&dir)).unwrap_err();
+        assert!(why.contains("core.gitProxy") && why.contains("Trust the folder"), "{why}");
+        assert!(command(&["status"], Some(&dir)).output().unwrap().status.success());
+        GLOBAL_FOR_TEST.with(|g| *g.borrow_mut() = None);
+        ISOLATED.with(|i| i.set(false));
+        let _ = fs::remove_file(&global);
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&bare);
+    }
+
+    /// S4: in a trusted folder the transfer programs are the folder's own and run as written; no
+    /// replacement is injected.
+    #[test]
+    fn t779d_a_trusted_folders_transfer_programs_run_normally() {
+        ISOLATED.with(|i| i.set(true));
+        let dir = temp_repo("d-net-trusted");
+        let marker = dir.join("trusted-ran.txt");
+        run(&["config", "core.sshCommand", &marker_program(&marker)], Some(&dir)).unwrap();
+        run(&["remote", "add", "viassh", "ssh://127.0.0.1:1/x"], Some(&dir)).unwrap();
+        trust_for_test(&dir);
+        let cmd = command_checked(&["fetch", "viassh"], Some(&dir)).unwrap();
+        assert!(!cmd.get_envs().any(|(k, _)| k == "GIT_SSH_COMMAND"), "a trusted folder's ssh command is not replaced");
+        let _ = run(&["fetch", "viassh"], Some(&dir));
+        assert!(marker.exists(), "the trusted folder's own ssh command did not run");
+        ISOLATED.with(|i| i.set(false));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// S4: the ref-changing forms of branch and tag are told from their reading forms.
+    #[test]
+    fn t779d_ref_changes_are_told_from_reads() {
+        for args in [&["branch", "x"][..], &["branch", "-D", "x"], &["tag", "v1"], &["tag", "-d", "v1"], &["update-ref", "refs/heads/x", "HEAD"], &["branch", "-m", "a", "b"]] {
+            assert!(ref_write(args), "{args:?}");
+        }
+        for args in [&["branch"][..], &["branch", "--show-current"], &["branch", "-a"], &["branch", "--list", "x*"], &["tag"], &["tag", "-l", "v*"], &["branch", "--contains", "abc"], &["status"], &["commit", "-m", "x"]] {
+            assert!(!ref_write(args), "{args:?}");
+        }
     }
 }

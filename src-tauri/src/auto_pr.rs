@@ -466,7 +466,8 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     // A folder's own clean filter runs under `add` and `commit` only when the folder is trusted
     // (DT-C229); in an untrusted one the commit is refused up front, before anything is staged,
     // never made with the filter skipped.
-    if let Some(why) = crate::git::write_refusal(&["add", "-A"], Some(dir)) {
+    // S4: the commit's own hooks and merge drivers are part of the same check, made before anything is staged.
+    if let Some(why) = crate::git::write_refusal(&["add", "-A"], Some(dir)).or_else(|| crate::git::write_refusal(&["commit", "--quiet", "-m", "x"], Some(dir))) {
         return Ok(step("failed", format!("Not committed: {}", scrub(&why))));
     }
     let head_before = head_oid(dir);
@@ -842,7 +843,11 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
         return Ok(step("clean", "Nothing to push yet: the branch has no commits."));
     };
     // What origin has right now, not what this computer last heard.
-    let mut cmd = command(&["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*"], Some(dir));
+    // S4 (DT-C229): a folder's own credential helper, hooks folder or hook stops the transfer in an untrusted folder.
+    let mut cmd = match command_checked(&["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*"], Some(dir)) {
+        Ok(c) => c,
+        Err(why) => return Ok(step("failed", format!("Not pushed: {}", scrub(&why)))),
+    };
     cmd.envs(NO_PROMPT);
     let (ok, listing) = match run_limited(cmd, REMOTE_LIMIT) {
         Ok(r) => r,
@@ -896,7 +901,10 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
     // the commit (push.followTags) and no submodule commits (push.recurseSubmodules), whose
     // messages and files were never scanned.
     let refspec = format!("{oid}:refs/heads/{branch}");
-    let mut cmd = command(&["push", "--no-follow-tags", "--no-recurse-submodules", "--", "origin", &refspec], Some(dir));
+    let mut cmd = match command_checked(&["push", "--no-follow-tags", "--no-recurse-submodules", "--", "origin", &refspec], Some(dir)) {
+        Ok(c) => c,
+        Err(why) => return Ok(step("failed", format!("Not pushed: {}", scrub(&why)))),
+    };
     cmd.envs(NO_PROMPT);
     let (ok, log) = match run_limited(cmd, PUSH_LIMIT) {
         Ok(r) => r,
@@ -1470,6 +1478,7 @@ mod tests {
         let (dir, bare) = with_origin("j-hook");
         branch(&dir, "feature");
         let key = fake_claude_key();
+        crate::git::trust_for_test(&dir); // an untrusted folder's own hooks are refused up front (S4)
         hook(&dir, "pre-commit", &format!("#!/bin/sh\necho \"hook says no {key}\" >&2\nexit 1\n"));
         fs::write(dir.join("ok.txt"), "fine\n").unwrap();
         fs::write(dir.join("README.md"), "changed\n").unwrap();
@@ -1874,6 +1883,40 @@ mod tests {
         assert!(ok && out.starts_with("git version"), "{out}");
     }
 
+    /// S4 (DT-C229): the automatic ls-remote and push go through the write gate. In an untrusted
+    /// folder whose own hook or credential helper would run, the step stops with the plain message and
+    /// nothing is sent or run; a trusted folder pushes as before.
+    #[test]
+    fn t779d_the_automatic_push_in_an_untrusted_folder_stops_at_the_gate() {
+        for own in ["hook", "credential", "hookspath"] {
+            let (dir, bare) = with_origin(&format!("s4-{own}"));
+            branch(&dir, "feature");
+            commit_file(&dir, "a.txt", "a\n");
+            let mark = std::env::temp_dir().join(format!("kolux-rs-autopr-s4-mark-{}-{own}", id()));
+            let _ = fs::remove_file(&mark);
+            match own {
+                "hook" => hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark))),
+                "credential" => run(&["config", "credential.helper", "evil-helper"], Some(&dir)).unwrap(),
+                _ => run(&["config", "core.hooksPath", "evil-hooks"], Some(&dir)).unwrap(),
+            }
+            let s = push_step(&dir).unwrap();
+            assert_eq!(s.kind, "failed", "{own}: {s:?}");
+            assert!(s.message.starts_with("Not pushed: ") && s.message.contains("not trusted") && s.message.contains("Trust the folder"), "{own}: {s:?}");
+            assert_eq!(remote_ref(&bare, "feature"), None, "{own}: nothing was pushed");
+            assert!(!mark.exists(), "{own}: the folder's own hook ran");
+            // Trusted: the same step goes through.
+            crate::git::trust_for_test(&dir);
+            if own == "hook" {
+                let s = push_step(&dir).unwrap();
+                assert_eq!(s.kind, "done", "{s:?}");
+                assert_eq!(remote_ref(&bare, "feature"), Some(head(&dir)));
+                assert!(mark.exists(), "the trusted folder's own pre-push hook runs");
+            }
+            cleanup(&[&dir, &bare]);
+            let _ = fs::remove_file(&mark);
+        }
+    }
+
     #[test]
     fn t652_a_branch_on_origin_that_lost_its_upstream_is_linked_on_the_next_run_without_pushing() {
         let (dir, bare) = with_origin("p-relink");
@@ -1882,6 +1925,7 @@ mod tests {
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
         // A pre-push hook that leaves a mark, so a push can be told from none.
+        crate::git::trust_for_test(&dir); // an untrusted folder's own hooks are refused up front (S4)
         hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark)));
         let s = push_step(&dir).unwrap();
         assert_eq!(s.kind, "done", "{s:?}");
