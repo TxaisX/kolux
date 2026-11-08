@@ -24,7 +24,7 @@ If you are new, read [Getting started](guide/getting-started.md). If you want to
 | Page | What it covers |
 |---|---|
 | [Status](STATUS.md) | What is verified, what is missing, and what alpha means here |
-| [Glossary](GLOSSARY.md) | The words the app uses: workspace, worktree, seat, pane, hook, and the rest |
+| [Glossary](GLOSSARY.md) | The words the app uses: project, workspace, seat, pane, Model routing, and the rest |
 | [Safety](guide/safety.md) | The security model in plain words |
 | [Privacy](guide/settings.md#privacy) | Every outbound connection the app makes |
 | [Security policy](../SECURITY.md) | Private vulnerability reporting |
