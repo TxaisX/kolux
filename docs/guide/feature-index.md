@@ -561,4 +561,4 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-325 | The Agents page shows a Claude Code, OpenClaude or Codex session as a live chat with each message once and in order. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
 | T-326 | Chat folds the agent's work: Thought rows, steps, file edits as diff cards, a subagent row and busy timers. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
 | T-327 | A chat message box that types into the agent's terminal and follows the newest message; it holds a send while the agent is asking, and Request changes on a plan waits until the agent leaves its menu. | [Board, Agents and Inbox](board-agents-inbox.md#chat-on-the-agents-page) |
-<!-- verified against: PLAN.md at c2ef69fc -->
+<!-- verified against: PLAN.md at f28a7e65 -->
