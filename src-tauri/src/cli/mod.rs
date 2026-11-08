@@ -1114,17 +1114,19 @@ fn pane_target(req: &Request) -> Option<Option<String>> {
 /// T-793 / DT-C228: a request that carries a pane may only target its own pane, unless the caller
 /// is a coordinator. `me` is the terminal the pane key proves (`caller`); a call that proves no
 /// pane is not scoped here (it has no identity to scope by, and the same-user limit in DT-C228
-/// says why that is the edge of this check). A coordinator is a pane that is no worker: it has no
-/// open dispatch of its own (the same test as `orchestration::nest`). A worker that started
+/// says why that is the edge of this check). A coordinator is a pane that is no worker: no dispatch of
+/// this run was ever made to it, finished or not (review fix 1: a worker that settles its own dispatch
+/// stays a worker; after a restart the old run's dispatches name no pane, so survivors count as
+/// coordinators). A worker that started
 /// workers of its own may still drive those. A worker naming no pane at all (`terminal close
 /// --worktree`, which closes a whole worktree's panes) is refused too.
 pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Result<(), Fail> {
-    use crate::orchestration::{finished, terminal_of};
+    use crate::orchestration::terminal_of;
     let (Some(me), Some(target)) = (me, pane_target(req)) else { return Ok(()) };
     if target.as_deref() == Some(me) {
         return Ok(());
     }
-    let worker = dispatches.iter().any(|d| !finished(d) && terminal_of(d).as_deref() == Some(me));
+    let worker = dispatches.iter().any(|d| terminal_of(d).as_deref() == Some(me));
     if !worker {
         return Ok(());
     }
@@ -7935,10 +7937,27 @@ mod tests {
         // A pane with no dispatch at all (a person's own terminal) is no worker either.
         let req = pane_req("terminal.send", Some(("term-9", "key-9")), json!({ "terminal": "term-3", "text": "x" }));
         pane_scope(&req, Some("term-9"), &ds).unwrap();
-        // A worker whose dispatch has settled is a coordinator again.
-        let done = [worker("d-1", 2, 1, "completed")];
-        let req = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
-        pane_scope(&req, Some("term-2"), &done).unwrap();
+    }
+
+    /// Review fix 1 (B1): a worker cannot become a coordinator by settling its own dispatch. Each route
+    /// that settles it (worker-abandon, task-update to ready, the done report) leaves the pane a worker.
+    #[test]
+    fn t793_b1_a_worker_that_settles_its_own_dispatch_is_still_a_worker() {
+        let send_to_3 = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+        // worker-abandon on its own dispatch (orchestration::abandon has no caller check).
+        let mut ds = vec![worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        let mut tasks: Vec<Value> = vec![];
+        crate::orchestration::abandon(&mut tasks, &mut ds, "d-1", Some("run-1"), 1).unwrap();
+        assert_eq!(ds[0]["status"], "abandoned");
+        assert_eq!(pane_scope(&send_to_3, Some("term-2"), &ds).unwrap_err().code, "pane_scope");
+        // every other way a dispatch settles reads the same: the pane that ran it stays a worker.
+        for status in ["completed", "failed", "stopped", "abandoned", "released"] {
+            let ds = [worker("d-1", 2, 1, status), worker("d-2", 3, 1, "running")];
+            assert_eq!(pane_scope(&send_to_3, Some("term-2"), &ds).unwrap_err().code, "pane_scope", "{status}");
+        }
+        // the coordinator that started it is unaffected.
+        let from_1 = pane_req("terminal.send", Some(("term-1", "key-1")), json!({ "terminal": "term-3", "text": "x" }));
+        pane_scope(&from_1, Some("term-1"), &ds).unwrap();
     }
 
     #[test]
