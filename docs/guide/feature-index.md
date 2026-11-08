@@ -16,7 +16,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-003b | The window uses Kolux's own look: custom title bar, side bar and top bar. | [Getting started](getting-started.md) |
 | T-003b-fix-a | The top bar keeps the view switcher centred and window buttons visible. | [Getting started](getting-started.md) |
 | T-003b-fix-b | Design notes now record where the New tab and split buttons sit. | internal |
-| T-004 | Start Claude Code in its own fresh worktree, named after a creature. | [Getting started](getting-started.md) |
+| T-004 | Start Claude Code in a pane named after a creature (earlier versions gave each one its own worktree). | [Getting started](getting-started.md) |
 | T-542 | A one-command smoke test checks the app's main flows end to end. | internal |
 | T-005 | Keyboard shortcuts live in a file you own, with sensible default keys. | [Settings](settings.md) |
 
@@ -42,7 +42,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-012-b-fix | Browser shortcuts such as Mod+L and Alt+Left work inside a web page. | [Files and browser](files-and-browser.md) |
 | T-500 | Browser tabs open only web pages, and the app's page policy blocks other content. | [Safety](safety.md) |
 
-### P0 · theme 2 · Isolation: one worktree per agent (20 cards)
+### P0 · theme 2 · Isolation (earlier versions: one worktree per agent) (20 cards)
 
 | Task | Feature | Guide page |
 |---|---|---|
@@ -53,8 +53,8 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-014-a | Choose where workspace folders live and what a new workspace starts from. | [Projects and folders](projects-and-worktrees.md) |
 | T-014-b | The kolux worktree command creates and removes worktrees. | [Command line](command-line.md) |
 | T-014-b-fix | Creating a worktree with a prompt falls back to your default agent. | [Command line](command-line.md) |
-| T-015 | Each agent gets its own copy of the project, or share one folder. | [Projects and folders](projects-and-worktrees.md) |
-| T-016 | One command starts a worker agent in its own worktree. | [Command line](command-line.md) |
+| T-015 | Earlier versions: each agent could get its own copy of the project. Today every agent shares the project folder. | [Projects and folders](projects-and-worktrees.md) |
+| T-016 | One command starts a worker agent (earlier versions put it in its own worktree). | [Command line](command-line.md) |
 | T-017-a | New Claude worktrees are pre-trusted so the first prompt is not lost. | [Projects and folders](projects-and-worktrees.md) |
 | T-017-b | New Codex worktrees are pre-trusted the same way. | [Projects and folders](projects-and-worktrees.md) |
 | T-017-c | Decision recorded: Cursor and Copilot worktrees are not pre-trusted. | internal |
@@ -249,7 +249,7 @@ Rows that talk about extra workspace folders or worktrees describe what Kolux bu
 | T-104-c | The default shell you chose is tried first, and the automatic shells wait behind it as fallbacks; a pane says in one dim line when the chosen shell did not start. | [Settings](settings.md#default-shell) |
 | T-105 | The kolux terminal command lists, shows, creates, splits and renames terminals. | [Command line](command-line.md) |
 
-### P1 · theme 2 · Isolation: one worktree per agent (36 cards)
+### P1 · theme 2 · Isolation (earlier versions: one worktree per agent) (36 cards)
 
 | Task | Feature | Guide page |
 |---|---|---|
