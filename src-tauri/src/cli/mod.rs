@@ -5500,6 +5500,8 @@ mod tests {
         let claude_installed = crate::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
         // SET-028: the light tier was given Sonnet at low effort in settings, so the worker runs on it.
         store.lock().unwrap().save_settings(&json!({ "modelRouting": { "claude": { "light": { "model": "sonnet", "effort": "low" } } } })).unwrap();
+        // T-780: the user accepted the main checkout in Claude already; only then is a worktree of it pre-trusted.
+        crate::trust::trust_claude(&ctx.claude_config, std::slice::from_ref(&repo)).unwrap();
         let start = json!({ "spec": "add a test", "agent": "claude", "tier": "light", "worktree": "new-top-level", "setup": "inherit", "timeoutMs": "1" });
         let out = dispatch(&ctx, &req("orchestration.worker-start", &repo, start.clone())).unwrap_err();
         if claude_installed {
@@ -5512,11 +5514,11 @@ mod tests {
             assert!(out.data["setupNote"].as_str().is_some_and(|n| n.contains("setup script")), "cli FIX-7: the receipt says what the window does about setup");
             let wt = PathBuf::from(out.data["worktree"]["path"].as_str().unwrap());
             assert!(wt.join(".git").exists());
-            // SAFE-023: the new worktree is trusted before the start; the main checkout is not (T-443).
+            // SAFE-023: the new worktree is trusted before the start, because its main checkout already was (T-443, T-780).
             assert_eq!(out.data["trust"], true, "{}", out.data["trust"]);
             let conf: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join(".claude.json")).unwrap()).unwrap();
             assert_eq!(conf["projects"][crate::trust::claude_key(&wt).unwrap()]["hasTrustDialogAccepted"], true);
-            assert!(conf["projects"].get(crate::trust::claude_key(&repo).unwrap()).is_none(), "the main checkout keeps Claude's own prompt");
+            assert_eq!(conf["projects"][crate::trust::claude_key(&repo).unwrap()]["hasTrustDialogAccepted"], true, "T-780: the user's own acceptance of the main checkout is what let the worktree be pre-trusted");
             let ev = events.lock().unwrap();
             let n = ev.len();
             assert_eq!(ev[n - 2]["kind"], "created");
