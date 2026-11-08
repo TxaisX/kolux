@@ -17,7 +17,8 @@ The root is `%APPDATA%\com.txaisxiong.kolux-rs` (`src-tauri/src/resources/recove
 | `logs/diagnostics-review.txt` | Text | The review copy written by the Diagnostics card. |
 | `terminals.json` | JSON | Terminal service port, token, pid, generation, protocol. |
 | `cli.json` | JSON | CLI loopback port, token, pid. |
-| `agent-hooks-endpoint.txt` | One line, `port token` | What the agent hook scripts read. |
+| `agent-hooks-endpoint.txt` | One line, `port -` | The hook port. It carries no token. |
+| `agent-hooks-endpoint-<terminal>.txt` | One line, `port token` | What one pane's hook scripts read; the token is that pane's own (HMAC of the run secret over its pane key). Swept at start and exit. |
 | `terminals-seen.json` | JSON | How much output the window drew, for reattach. |
 | `agent-hooks-spool.txt` | Text | Events held while Kolux was closed. |
 | `artifacts/` | JSON plus folders | The artifact library and its stored files. |

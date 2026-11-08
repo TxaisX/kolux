@@ -42,6 +42,11 @@ pub const OTHER_USAGE_EVENT: &str = "claude-usage-of";
 pub const LIMITS_KEY: &str = "claudeRateLimits";
 /// The running Kolux's port and token, read by the script on every run (a pane outlives a restart).
 pub const ENDPOINT_FILE: &str = "agent-hooks-endpoint.txt";
+/// T-793 (DT-C228): each pane's own endpoint file, `agent-hooks-endpoint-<terminal>.txt` beside `ENDPOINT_FILE`, holds that
+/// pane's port and its own token.
+pub const PANE_ENDPOINT_PREFIX: &str = "agent-hooks-endpoint-";
+/// T-793: what the shared `ENDPOINT_FILE` carries where a token used to be: no pane can post with it.
+const NO_TOKEN: &str = "-";
 pub const HOOK_VERSION: u32 = 1;
 /// Claude Code's events Kolux listens to. `PreCompact` is never installed (COMPAT 3.4).
 pub const CLAUDE_EVENTS: [&str; 12] = [
@@ -354,14 +359,60 @@ pub fn gate(req: &Request, token: &str) -> Option<u16> {
             return Some(404);
         }
     }
-    (h.get(TOKEN_HEADER).map(String::as_str) != Some(token)).then_some(404)
+    // T-793: the token must be the one minted for the pane the identity header names; the old shared token, no token and
+    // one pane's token under another pane's identity all end here with nothing told.
+    proven(req, token).is_none().then_some(404)
+}
+
+/// T-793 (DT-C228): HMAC-SHA256 (RFC 2104) over the `sha2` crate already in the tree, so no new dependency.
+fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+    let mut block = [0u8; 64];
+    if key.len() > 64 {
+        block[..32].copy_from_slice(&Sha256::digest(key));
+    } else {
+        block[..key.len()].copy_from_slice(key);
+    }
+    let pad = |byte: u8| block.map(|b| b ^ byte);
+    let mut inner = Sha256::new();
+    inner.update(pad(0x36));
+    inner.update(msg);
+    let mut outer = Sha256::new();
+    outer.update(pad(0x5c));
+    outer.update(inner.finalize());
+    outer.finalize().into()
+}
+
+/// T-793: the token one pane's hook scripts carry: HMAC-SHA256 of the pane's key and terminal under the listener's own
+/// secret, which never leaves this process. It proves nothing about any other pane, and a token a pane leaks cannot be
+/// turned into another pane's.
+pub fn pane_token(secret: &str, pane_key: u32, terminal: Option<u32>) -> String {
+    let who = match terminal {
+        Some(t) => format!("kolux-hook-pane:{pane_key}:{t}"),
+        None => format!("kolux-hook-pane:{pane_key}:-"),
+    };
+    hmac_sha256(secret.as_bytes(), who.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// Equal without stopping at the first difference.
+fn same(a: &str, b: &str) -> bool {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    a.len() == b.len() && a.iter().zip(b).fold(0u8, |d, (x, y)| d | (x ^ y)) == 0
+}
+
+/// T-793: the pane a request proves it is: its identity header names a pane, and its token is the one minted for exactly
+/// that pane. None when either is missing, malformed or does not match.
+pub fn proven(req: &Request, secret: &str) -> Option<(u32, Option<u32>)> {
+    let (pane_key, terminal) = req.headers.get(IDENTITY_HEADER).and_then(|h| identity(h))?;
+    let token = req.headers.get(TOKEN_HEADER)?;
+    same(token, &pane_token(secret, pane_key, terminal)).then_some((pane_key, terminal))
 }
 
 pub fn answer(req: &Request, token: &str) -> (u16, Option<crate::status::Status>) {
-    if req.headers.get(TOKEN_HEADER).map(String::as_str) != Some(token) {
+    let Some((pane_key, terminal)) = req.headers.get(IDENTITY_HEADER).and_then(|h| identity(h)) else { return (400, None) };
+    if proven(req, token).is_none() {
         return (403, None);
     }
-    let Some((pane_key, terminal)) = req.headers.get(IDENTITY_HEADER).and_then(|h| identity(h)) else { return (400, None) };
     let Ok(event) = serde_json::from_slice::<Value>(&req.body) else { return (400, None) };
     let (agent, event) = match req.path.as_str() {
         "/claude" => (crate::status::Agent::Claude, event),
@@ -437,10 +488,10 @@ pub struct Usage {
 
 /// A status-line report: token-checked like a hook, then the figures. `Err` is the status code.
 pub fn usage(req: &Request, token: &str) -> Result<Usage, u16> {
-    if req.headers.get(TOKEN_HEADER).map(String::as_str) != Some(token) {
+    let (pane_key, terminal) = req.headers.get(IDENTITY_HEADER).and_then(|h| identity(h)).ok_or(400u16)?;
+    if proven(req, token).is_none() {
         return Err(403);
     }
-    let (pane_key, terminal) = req.headers.get(IDENTITY_HEADER).and_then(|h| identity(h)).ok_or(400u16)?;
     let v: Value = serde_json::from_slice(&req.body).map_err(|_| 400u16)?;
     // At most 200 characters of the id, like the other fields this route passes on (marks FIX-2).
     let session = v["session_id"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(|s| trim(s, 200)).zip(terminal).map(|(s, t)| format!("{s}@{t}"));
@@ -860,9 +911,12 @@ fn rename_on_prompt(app: &AppHandle, status: &crate::status::Status) {
 pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    // T-793: the secret every pane's token is made from. It is kept only here: not in a file, not in a pane's environment.
     let token = crate::cli::secret();
     let endpoint = data_dir.join(ENDPOINT_FILE);
-    std::fs::write(&endpoint, format!("{port} {token}\n")).map_err(|e| e.to_string())?;
+    // A crash leaves the last run's per-pane files; their tokens mean nothing to this run.
+    remove_endpoint_files(data_dir);
+    std::fs::write(&endpoint, format!("{port} {NO_TOKEN}\n")).map_err(|e| e.to_string())?;
     // T-583: the settings are read once before any hook, so not even the first answer waits on the store.
     let last = Mutex::new(app.try_state::<Mutex<crate::state::Store>>().and_then(|s| s.lock().ok().map(|s| Arc::new(s.settings()))).unwrap_or_default());
     let (read, raise) = (app.clone(), app.clone());
@@ -876,16 +930,38 @@ pub fn serve(app: AppHandle, data_dir: &Path) -> Result<Hooks, String> {
     Ok(Hooks { port, token, endpoint })
 }
 
+/// T-793: removes the shared endpoint file and every pane's own, from `dir`.
+pub fn remove_endpoint_files(dir: &Path) {
+    let _ = std::fs::remove_file(dir.join(ENDPOINT_FILE));
+    for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        let name = entry.file_name();
+        if name.to_str().is_some_and(|n| n.starts_with(PANE_ENDPOINT_PREFIX) && n.ends_with(".txt")) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
 impl Hooks {
-    /// The variables a pane's programs (and their hooks) see (COMPAT 5.5; DT-C2 for the identity).
+    /// T-793: where one terminal's own endpoint file sits: beside the shared file, so the hook script's held-events file
+    /// (named from its folder) stays the one it always was.
+    pub fn pane_endpoint(&self, terminal: u32) -> PathBuf {
+        self.endpoint.with_file_name(format!("{PANE_ENDPOINT_PREFIX}{terminal}.txt"))
+    }
+
+    /// The variables a pane's programs (and their hooks) see (COMPAT 5.5; DT-C2 for the identity). T-793 (DT-C228): the
+    /// token is this pane's own, and the endpoint file the script reads first is this pane's own, written here with the
+    /// same port and token as the variables (a failed write leaves the pane on the variables).
     pub fn pane_env(&self, pane_key: u32, terminal: u32) -> Vec<(String, String)> {
         let identity = json!({ "paneKey": pane_key, "terminal": terminal, "hookVersion": HOOK_VERSION });
+        let token = pane_token(&self.token, pane_key, Some(terminal));
+        let file = self.pane_endpoint(terminal);
+        let _ = std::fs::write(&file, format!("{} {token}\n", self.port));
         vec![
             ("KOLUX_AGENT_HOOK_PORT".into(), self.port.to_string()),
-            ("KOLUX_AGENT_HOOK_TOKEN".into(), self.token.clone()),
+            ("KOLUX_AGENT_HOOK_TOKEN".into(), token),
             ("KOLUX_PANE_KEY".into(), pane_key.to_string()),
             ("KOLUX_TERMINAL_HANDLE".into(), terminal.to_string()),
-            ("KOLUX_HOOK_ENDPOINT".into(), self.endpoint.to_string_lossy().into_owned()),
+            ("KOLUX_HOOK_ENDPOINT".into(), file.to_string_lossy().into_owned()),
             ("KOLUX_HOOK_IDENTITY".into(), base64::engine::general_purpose::STANDARD.encode(identity.to_string())),
         ]
     }
@@ -1491,12 +1567,163 @@ mod tests {
         serde_json::from_str(json).unwrap()
     }
 
+    /// The token `pane_env` mints for the pane an identity header names.
+    fn signed(secret: &str, id: &str) -> String {
+        let (pane, terminal) = identity(id).unwrap();
+        pane_token(secret, pane, terminal)
+    }
+
+    /// An identity header the way a pane's environment carries it.
+    fn ident(pane: u32, terminal: u32) -> String {
+        base64::engine::general_purpose::STANDARD.encode(format!(r#"{{"paneKey":{pane},"terminal":{terminal},"hookVersion":1}}"#))
+    }
+
+    /// One hook request, as the script's curl would send it; `token` none sends no token header.
+    fn post(path: &str, token: Option<&str>, id: &str, body: &str) -> Request {
+        let token = token.map(|t| format!("X-Kolux-Token: {t}\r\n")).unwrap_or_default();
+        let raw = format!("POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\n{token}X-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+        parse_request(&mut raw.as_bytes()).unwrap()
+    }
+
+    fn hex(bytes: [u8; 32]) -> String {
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    #[test]
+    fn t793_hmac_sha256_matches_the_rfc_4231_vectors() {
+        assert_eq!(hex(hmac_sha256(&[0x0b; 20], b"Hi There")), "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7");
+        assert_eq!(hex(hmac_sha256(b"Jefe", b"what do ya want for nothing?")), "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843");
+        // A key longer than the block is hashed first.
+        assert_eq!(
+            hex(hmac_sha256(&[0xaa; 131], b"Test Using Larger Than Block-Size Key - Hash Key First")),
+            "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
+        );
+    }
+
+    #[test]
+    fn t793_a_hook_event_signed_with_pane_as_token_for_pane_b_is_refused() {
+        let (a, b) = (ident(7, 3), ident(8, 4));
+        let body = r#"{"hook_event_name":"PermissionRequest","tool_name":"Write"}"#;
+        // Each pane's own token is accepted, and names the pane it was made for.
+        let own = post("/claude", Some(&signed("tok", &a)), &a, body);
+        assert_eq!(gate(&own, "tok"), None);
+        assert_eq!(proven(&own, "tok"), Some((7, Some(3))));
+        assert_eq!(answer(&own, "tok").1.map(|s| (s.pane_key, s.terminal)), Some((7, Some(3))));
+        // Pane A's token under pane B's identity: refused at the edge (404, nothing told) and by the status step (403).
+        let forged = post("/claude", Some(&signed("tok", &a)), &b, body);
+        assert_eq!(gate(&forged, "tok"), Some(404));
+        assert_eq!(proven(&forged, "tok"), None);
+        assert_eq!(answer(&forged, "tok").0, 403);
+        let status_line = post("/claude-status", Some(&signed("tok", &a)), &b, r#"{"session_id":"s"}"#);
+        assert_eq!(usage(&status_line, "tok").map(|_| ()), Err(403));
+        // The same pane under another terminal is another pane: the token binds both.
+        let moved = post("/claude", Some(&signed("tok", &a)), &ident(7, 4), body);
+        assert_eq!(gate(&moved, "tok"), Some(404));
+        // An identity without a terminal needs a token minted without one.
+        let bare = base64::engine::general_purpose::STANDARD.encode(r#"{"paneKey":7}"#);
+        assert_eq!(gate(&post("/claude", Some(&signed("tok", &a)), &bare, body), "tok"), Some(404));
+        assert_eq!(gate(&post("/claude", Some(&pane_token("tok", 7, None)), &bare, body), "tok"), None);
+    }
+
+    #[test]
+    fn t793_the_old_shared_token_and_an_absent_token_are_refused() {
+        let id = ident(7, 3);
+        let body = r#"{"hook_event_name":"Stop"}"#;
+        // Before T-793 every pane carried the one token; a pane still holding it (or a script that sends it) gets nothing.
+        let old = post("/claude", Some("tok"), &id, body);
+        assert_eq!((gate(&old, "tok"), proven(&old, "tok")), (Some(404), None));
+        assert_eq!(answer(&old, "tok").0, 403);
+        assert_eq!(usage(&post("/claude-status", Some("tok"), &id, "{}"), "tok").map(|_| ()), Err(403));
+        // No token at all, an empty one and the shared file's placeholder.
+        for token in [None, Some(""), Some(NO_TOKEN)] {
+            let req = post("/claude", token, &id, body);
+            assert_eq!((gate(&req, "tok"), proven(&req, "tok")), (Some(404), None), "{token:?}");
+            assert_eq!(answer(&req, "tok").0, 403, "{token:?}");
+        }
+        // A token from an earlier run (another secret) is no better.
+        let earlier = post("/claude", Some(&signed("an-earlier-run", &id)), &id, body);
+        assert_eq!(gate(&earlier, "tok"), Some(404));
+        // A token cut short, or with a character added, differs.
+        let good = signed("tok", &id);
+        for t in [&good[..good.len() - 1], &format!("{good}0"), &good.to_uppercase()] {
+            assert_eq!(gate(&post("/claude", Some(t), &id, body), "tok"), Some(404), "{t}");
+        }
+        // No identity header: nothing to prove, so nothing passes the edge or the status step.
+        let mut nameless = post("/claude", Some(&good), &id, body);
+        nameless.headers.remove(IDENTITY_HEADER);
+        assert_eq!((gate(&nameless, "tok"), answer(&nameless, "tok").0), (Some(404), 400));
+    }
+
+    #[test]
+    fn t793_each_pane_env_carries_its_own_token_and_endpoint_file() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-t793-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let h = Hooks { port: 5, token: "secret".into(), endpoint: dir.join(ENDPOINT_FILE) };
+        let env = |pane, terminal| h.pane_env(pane, terminal);
+        let get = |env: &[(String, String)], k: &str| env.iter().find(|(n, _)| n == k).map(|(_, v)| v.clone()).unwrap();
+        let (a, b) = (env(9, 4), env(10, 6));
+        assert_ne!(get(&a, "KOLUX_AGENT_HOOK_TOKEN"), get(&b, "KOLUX_AGENT_HOOK_TOKEN"));
+        assert_ne!(get(&a, "KOLUX_HOOK_ENDPOINT"), get(&b, "KOLUX_HOOK_ENDPOINT"));
+        assert_ne!(get(&a, "KOLUX_AGENT_HOOK_TOKEN"), "secret", "the secret itself never reaches a pane");
+        // The file beside the shared one holds that pane's port and token: what the script reads first.
+        let file = PathBuf::from(get(&a, "KOLUX_HOOK_ENDPOINT"));
+        assert_eq!(file.parent(), Some(dir.as_path()));
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), format!("5 {}\n", get(&a, "KOLUX_AGENT_HOOK_TOKEN")));
+        // The pane's token proves that pane; the other's does not.
+        let id = get(&a, "KOLUX_HOOK_IDENTITY");
+        assert!(proven(&post("/claude", Some(&get(&a, "KOLUX_AGENT_HOOK_TOKEN")), &id, "{}"), "secret").is_some());
+        assert!(proven(&post("/claude", Some(&get(&b, "KOLUX_AGENT_HOOK_TOKEN")), &id, "{}"), "secret").is_none());
+        // Cleanup takes the shared file and every pane's, and leaves the held-events file alone.
+        std::fs::write(dir.join(ENDPOINT_FILE), "5 -\n").unwrap();
+        std::fs::write(dir.join(agent_hooks::saved::SPOOL_FILE), "x\n").unwrap();
+        remove_endpoint_files(&dir);
+        let mut left: Vec<String> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        left.sort();
+        assert_eq!(left, vec![agent_hooks::saved::SPOOL_FILE.to_string()]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn t793_over_the_wire_a_forged_pane_gets_a_bare_404_and_raises_nothing() {
+        use std::io::Read as _;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let raised = Arc::new(AtomicUsize::new(0));
+        let count = Arc::clone(&raised);
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let line = Line { token: "tok".into(), settings: Box::new(|| Arc::new(json!({}))), raise: Box::new(move |_| { count.fetch_add(1, Ordering::SeqCst); }), after: Box::new(|_| {}) };
+        std::thread::spawn(move || accept(listener, Arc::new(line)));
+        let send = |token: Option<&str>, id: &str| {
+            let event = r#"{"hook_event_name":"UserPromptSubmit","prompt":"go","session_id":"t793"}"#;
+            let token = token.map(|t| format!("X-Kolux-Token: {t}\r\n")).unwrap_or_default();
+            let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
+            s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
+            write!(s, "POST /claude HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{token}X-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{event}", event.len()).unwrap();
+            let mut reply = String::new();
+            let _ = s.read_to_string(&mut reply);
+            let (head, body) = reply.split_once("\r\n\r\n").unwrap_or((&reply, ""));
+            (head.lines().next().unwrap_or_default().to_string(), body.to_string())
+        };
+        let (a, b) = (ident(58_401, 1), ident(58_402, 2));
+        // Pane A's own token under its own identity is heard.
+        assert!(send(Some(&signed("tok", &a)), &a).0.contains("200"));
+        assert_eq!(raised.load(Ordering::SeqCst), 1);
+        // Pane A's token naming pane B, the old shared token and no token are each answered 404 with nothing in the body.
+        for (what, token, id) in [("A's token for B", Some(signed("tok", &a)), &b), ("shared token", Some("tok".to_string()), &a), ("no token", None, &a)] {
+            let (status, body) = send(token.as_deref(), id);
+            assert!(status.contains("404") && body.is_empty(), "{what}: {status} {body:?}");
+        }
+        assert_eq!(raised.load(Ordering::SeqCst), 1, "a refused request changes no pane's state");
+    }
+
     #[test]
     fn row_828_a_usage_sum_past_u64_is_dropped_not_wrapped() {
         let id = base64::engine::general_purpose::STANDARD.encode(r#"{"paneKey":4,"terminal":2}"#);
+        let tk = signed("tok", &id);
         let read = |body: &str| {
             let raw = format!("POST /claude-status HTTP/1.1
-X-Kolux-Token: tok
+X-Kolux-Token: {tk}
 X-Kolux-Pane: {id}
 Content-Length: {}
 
@@ -1742,8 +1969,9 @@ Content-Length: {}
     #[test]
     fn brow051_the_endpoint_answers_only_kolux_tools_never_a_web_page_or_another_host() {
         let id = base64::engine::general_purpose::STANDARD.encode(r#"{"paneKey":7,"terminal":3,"hookVersion":1}"#);
+        let tk = signed("tok", &id);
         let req = |extra: &str| {
-            let raw = format!("POST /claude HTTP/1.1\r\nHost: 127.0.0.1:4321\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\n{extra}Content-Length: 2\r\n\r\n{{}}");
+            let raw = format!("POST /claude HTTP/1.1\r\nHost: 127.0.0.1:4321\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\n{extra}Content-Length: 2\r\n\r\n{{}}");
             parse_request(&mut raw.as_bytes()).unwrap()
         };
         // Kolux's own hook script: curl with the token, no web headers.
@@ -1773,8 +2001,9 @@ Content-Length: {}
     #[test]
     fn a_hook_request_is_parsed_and_checked() {
         let id = base64::engine::general_purpose::STANDARD.encode(r#"{"paneKey":7,"terminal":3,"hookVersion":1}"#);
+        let tk = signed("tok", &id);
         let body = r#"{"hook_event_name":"PermissionRequest","tool_name":"Write"}"#;
-        let raw = format!("POST /claude HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+        let raw = format!("POST /claude HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
         let req = parse_request(&mut raw.as_bytes()).unwrap();
         assert_eq!(req.path, "/claude");
         let (code, status) = answer(&req, "tok");
@@ -1788,7 +2017,7 @@ Content-Length: {}
         bad.headers.remove(IDENTITY_HEADER);
         assert_eq!(answer(&bad, "tok").0, 400);
         // A no-change event still answers 200 with nothing to raise.
-        let quiet = format!("POST /claude HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: 32\r\n\r\n{{\"hook_event_name\":\"PreCompact\"}}");
+        let quiet = format!("POST /claude HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: 32\r\n\r\n{{\"hook_event_name\":\"PreCompact\"}}");
         let (code, status) = answer(&parse_request(&mut quiet.as_bytes()).unwrap(), "tok");
         assert!(code == 200 && status.is_none());
     }
@@ -1877,7 +2106,8 @@ Content-Length: {}
         // USAGE-034: the status line's cost.total_cost_usd is the session's total so far, in US dollars.
         let u = |body: &str| {
             let id = base64::engine::general_purpose::STANDARD.encode(r#"{"paneKey":4,"terminal":2,"hookVersion":1}"#);
-            let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+            let tk = signed("tok", &id);
+            let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
             usage(&parse_request(&mut raw.as_bytes()).unwrap(), "tok").unwrap()
         };
         assert_eq!(u(r#"{"cost":{"total_cost_usd":3.1475},"context_window":{"context_window_size":200000,"total_input_tokens":5000}}"#).cost_usd, Some(3.1475));
@@ -1900,7 +2130,8 @@ Content-Length: {}
         // report of the old one (stand-in review of lane/marks ee2bfbc, FIX-SOON 5).
         let id = |j: &str| base64::engine::general_purpose::STANDARD.encode(j);
         let post = |pane: &str, body: &str| {
-            let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {pane}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+            let tk = signed("tok", pane);
+            let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {pane}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
             usage(&parse_request(&mut raw.as_bytes()).unwrap(), "tok").unwrap()
         };
         let t2 = id(r#"{"paneKey":4,"terminal":2,"hookVersion":1}"#);
@@ -1935,8 +2166,9 @@ Content-Length: {}
         // STAT-040: the token is checked; the figures come out as Kolux keeps them (ms resets);
         // a report with only the context size carries no limits.
         let id = base64::engine::general_purpose::STANDARD.encode(r#"{"paneKey":4,"terminal":2,"hookVersion":1}"#);
+        let tk = signed("tok", &id);
         let body = r#"{"model":{"id":"claude-fable-5-1"},"context_window":{"context_window_size":200000,"total_input_tokens":50000,"used_percentage":25},"rate_limits":[{"kind":"five_hour","percentUsed":40,"resetsAt":"2026-10-12T20:00:00Z"},{"kind":"seven_day","percentUsed":100.0,"resetsAt":"2026-10-12T20:00:00.5+02:00"},{"kind":"odd"}]}"#;
-        let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+        let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
         let req = parse_request(&mut raw.as_bytes()).unwrap();
         let u = usage(&req, "tok").unwrap();
         assert_eq!((u.pane_key, u.context_tokens, u.context_window), (4, Some(50_000), Some(200_000)));
@@ -1950,7 +2182,7 @@ Content-Length: {}
         // USAGE-021: the report names the config folder its session runs under; a report from a
         // different folder than the active account's is dropped, a one-window update keeps the
         // other window as it was.
-        let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nX-Kolux-Config: C:\\u\\.kolux-rs\\claude-accounts\\a\\\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+        let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nX-Kolux-Config: C:\\u\\.kolux-rs\\claude-accounts\\a\\\r\nContent-Length: {}\r\n\r\n{body}", body.len());
         let u = usage(&parse_request(&mut raw.as_bytes()).unwrap(), "tok").unwrap();
         assert_eq!(u.config_dir.as_deref(), Some("C:\\u\\.kolux-rs\\claude-accounts\\a\\"));
         assert!(same_folder(Some("c:/u/.kolux-rs/claude-accounts/a"), u.config_dir.as_deref()));
@@ -1962,13 +2194,13 @@ Content-Length: {}
         assert_eq!(merged, vec![Limit { kind: "five_hour".into(), used_percent: 50.0, resets_at: Some(9) }, old[1].clone()]);
         assert_eq!(merge_limits(vec![], &old), old);
         assert_eq!(merge_limits(old.clone(), &[]), old);
-        let only = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: 76\r\n\r\n{{\"context_window\":{{\"context_window_size\":200000,\"total_input_tokens\":30000}}}}");
+        let only = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: 76\r\n\r\n{{\"context_window\":{{\"context_window_size\":200000,\"total_input_tokens\":30000}}}}");
         let u = usage(&parse_request(&mut only.as_bytes()).unwrap(), "tok").unwrap();
         assert_eq!((u.context_tokens, u.context_window, u.limits.len()), (Some(30_000), Some(200_000), 0));
         // USAGE-005: tokens are the stated total, else input plus cache writes plus cache reads,
         // else the stated percentage applied to the window.
         let read = |body: &str| {
-            let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
+            let raw = format!("POST /claude-status HTTP/1.1\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{body}", body.len());
             usage(&parse_request(&mut raw.as_bytes()).unwrap(), "tok").unwrap()
         };
         let u = read(r#"{"context_window":{"context_window_size":1000000,"current_usage":{"input_tokens":1000,"cache_creation_input_tokens":20000,"cache_read_input_tokens":79000}}}"#);
@@ -1985,8 +2217,11 @@ Content-Length: {}
 
     #[test]
     fn a_pane_gets_the_hook_variables_with_a_decodable_identity() {
-        let h = Hooks { port: 5, token: "t".into(), endpoint: PathBuf::from("e.txt") };
+        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-env-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let h = Hooks { port: 5, token: "t".into(), endpoint: dir.join(ENDPOINT_FILE) };
         let env = h.pane_env(9, 4);
+        let _ = std::fs::remove_dir_all(&dir);
         let get = |k: &str| env.iter().find(|(n, _)| n == k).map(|(_, v)| v.as_str()).unwrap();
         assert_eq!((get("KOLUX_AGENT_HOOK_PORT"), get("KOLUX_PANE_KEY"), get("KOLUX_TERMINAL_HANDLE")), ("5", "9", "4"));
         assert_eq!(identity(get("KOLUX_HOOK_IDENTITY")), Some((9, Some(4))));
@@ -2101,9 +2336,10 @@ Content-Length: {}
         use std::io::Read as _;
         let started = Instant::now();
         let id = base64::engine::general_purpose::STANDARD.encode(format!(r#"{{"paneKey":{pane},"terminal":{pane}}}"#));
+        let tk = signed("tok", &id);
         let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
         s.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
-        write!(s, "POST /claude HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Kolux-Token: tok\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{event}", event.len()).unwrap();
+        write!(s, "POST /claude HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nX-Kolux-Token: {tk}\r\nX-Kolux-Pane: {id}\r\nContent-Length: {}\r\n\r\n{event}", event.len()).unwrap();
         let mut reply = String::new();
         let _ = s.read_to_string(&mut reply);
         (reply.split_once("\r\n\r\n").map(|(_, body)| body.to_string()).unwrap_or_default(), started.elapsed())

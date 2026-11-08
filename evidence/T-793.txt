@@ -1,0 +1,43 @@
+T-793 · Per-pane tokens: hook listener and CLI loopback (P2b-02, P2b-12) · lane ready-sec-2 · 2026-11-08 · decision DT-C228 (Txais, option b)
+
+What changed
+- src-tauri/src/hooks.rs (HARD-STOP file; needs the opus-high-review before merge)
+  - The run secret never leaves memory. Each pane's token is HMAC-SHA256(secret, "kolux-hook-pane:<paneKey>:<terminal|->"), hand-rolled over the existing sha2 crate (no new crate, Cargo.lock untouched), compared in constant time.
+  - /claude, /answer and /usage accept a request only when X-Kolux-Token is the token of the identity in its own X-Kolux-Pane header. Pane A's token sent for pane B is refused.
+  - The shared token is gone. A missing, empty, old shared, "-" or wrong token gets the empty 404 (gate); /answer and /usage keep 400 for a missing identity and 403 for a wrong token.
+  - Per-pane endpoint files agent-hooks-endpoint-<terminal>.txt ("port token") sit beside agent-hooks-endpoint.txt, which now holds "port -" and proves nothing. pane_env sets KOLUX_AGENT_HOOK_TOKEN and KOLUX_HOOK_ENDPOINT to the pane's own token and file. Files are swept at listener start and at app exit.
+- src-tauri/src/lib.rs: one line (exit cleanup calls hooks::remove_endpoint_files).
+- src-tauri/src/cli/mod.rs: pane_scope / scoped / pane_target. A request whose pane key the app proves may only target its own terminal (terminal read/send/wait/show/split/rename/switch/close; a dispatch id in --terminal is resolved first; close --worktree counts as every pane), unless the caller is a coordinator (no open dispatch of its own, or the pane that started the target). Refusal code: pane_scope. Mail, worker-start, terminal list/create are not scoped. An unproven pane (no pane, or a key the app never gave) is unidentified and unscoped, as before.
+- scripts/prove/live-USAGE-007.mjs reads the pane's own endpoint file. docs/architecture/{data,overview,security}.md updated.
+
+Before (what the old code did, from the code at c5c8d0fa)
+- One token for every pane (cli::secret()) was in each pane's environment and in agent-hooks-endpoint.txt: any pane could post a hook event, answer or usage request carrying any other pane's X-Kolux-Pane identity. The old hooks tests posted with the shared "tok" and passed (that behaviour is now the refused case in t793_the_old_shared_token_and_an_absent_token_are_refused).
+- The CLI loopback checked the global token only: any pane could terminal send/read/close any terminal.
+- The new tests were written against these shapes; they were not run against the old code (no second checkout, no stash by rule), so there is no recorded red run; the old behaviour is read from the diff.
+
+Tests that hit the real edge (10 new, all pass)
+hooks
+- t793_hmac_sha256_matches_the_rfc_4231_vectors
+- t793_a_hook_event_signed_with_pane_as_token_for_pane_b_is_refused
+- t793_the_old_shared_token_and_an_absent_token_are_refused (old shared token, none, empty, "-": 404; answer 403; usage 403)
+- t793_each_pane_env_carries_its_own_token_and_endpoint_file
+- t793_over_the_wire_a_forged_pane_gets_a_bare_404_and_raises_nothing (real listener on a socket)
+cli
+- t793_a_worker_pane_targeting_another_pane_is_refused (all 8 terminal commands, plus the coordinator's own pane)
+- t793_the_same_request_from_a_coordinator_passes (also a pane with no dispatch, and a worker whose dispatch settled)
+- t793_a_worker_keeps_its_own_pane_and_the_workers_it_started (own pane, implicit own pane, claimed handle that the key does not prove, nested coordinator)
+- t793_a_worker_cannot_close_a_whole_worktree_and_listing_stays_open
+- t793_through_the_store_a_pane_the_runtime_cannot_prove_is_not_scoped_and_a_proven_worker_is (real orchestration store, dispatch id resolved before the check)
+
+Limit (DT-C228 states it): a same-user model, not a sandbox. A process that can read a pane's endpoint file holds that pane's token; a CLI caller that sends no pane or an unprovable key is unidentified and unscoped; terminal list and terminal create have no target and are not scoped; per-pane files are swept at start and exit, not per terminal close.
+
+Gates (lane ready-sec-2, build slot held for all of them)
+- cargo build                                   -> Finished `dev` profile
+- cargo clippy --all-targets -- -D warnings     -> Finished `dev` profile, no warnings
+- cargo test --lib -- hooks:: cli:: agent_hooks:: -> test result: ok. 365 passed; 0 failed
+- cargo test --lib -- t793                      -> test result: ok. 10 passed; 0 failed
+- pnpm exec tsc                                 -> exit 0
+- node scripts/plan-check.mjs                   -> plan-check: OK
+- PLAN.md duplicate-id grep                     -> prints nothing
+- full cargo test                               -> 2967 passed; 2 failed. scm::writers t606 is the known environment failure on this PC (20 s stand-in agent timeout, fails alone, CI skips it, see kolux-rs-after.md 2026-11-03); status::tests::p81_a_deny_settle... is a load flake and passes alone (1 passed on rerun).
+- full pnpm test                                -> Test Files  862 passed (862); Tests  6372 passed (6372)

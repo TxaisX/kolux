@@ -943,6 +943,8 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
         None
     };
     let req = by_id.as_ref().unwrap_or(req);
+    // T-793 (DT-C228): a pane may only act on its own terminal unless it is a coordinator.
+    scoped(ctx, req)?;
     let a = &req.args;
     let text = |k: &str| a[k].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
     match req.command.as_str() {
@@ -1092,6 +1094,77 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
 
 /// How long a terminal command waits for the window to act on it.
 const PANE_WAIT: Duration = Duration::from_secs(15);
+
+
+/// T-793 / DT-C228: the pane a terminal command acts on. `Some(None)` is a command that names no
+/// pane at all; `None` is a command that is not a terminal command.
+fn pane_target(req: &Request) -> Option<Option<String>> {
+    let c = req.command.as_str();
+    let named = req.args["terminal"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+    if TERM.iter().any(|(_, w, _)| *w == c) {
+        // terminal read, send and wait act on the caller's own terminal unless told otherwise.
+        return Some(named.or_else(|| req.pane.as_ref().map(|p| p.handle.clone())));
+    }
+    match c {
+        "terminal.show" | "terminal.split" | "terminal.rename" | "terminal.switch" | "terminal.close" => Some(named),
+        _ => None,
+    }
+}
+
+/// T-793 / DT-C228: a request that carries a pane may only target its own pane, unless the caller
+/// is a coordinator. `me` is the terminal the pane key proves (`caller`); a call that proves no
+/// pane is not scoped here (it has no identity to scope by, and the same-user limit in DT-C228
+/// says why that is the edge of this check). A coordinator is a pane that is no worker: it has no
+/// open dispatch of its own (the same test as `orchestration::nest`). A worker that started
+/// workers of its own may still drive those. A worker naming no pane at all (`terminal close
+/// --worktree`, which closes a whole worktree's panes) is refused too.
+pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Result<(), Fail> {
+    use crate::orchestration::{finished, terminal_of};
+    let (Some(me), Some(target)) = (me, pane_target(req)) else { return Ok(()) };
+    if target.as_deref() == Some(me) {
+        return Ok(());
+    }
+    let worker = dispatches.iter().any(|d| !finished(d) && terminal_of(d).as_deref() == Some(me));
+    if !worker {
+        return Ok(());
+    }
+    let mine = |t: &str| {
+        let n = me.strip_prefix("term-").and_then(|n| n.parse::<u64>().ok());
+        n.is_some() && dispatches.iter().any(|d| d["fromTerminal"].as_u64() == n && terminal_of(d).as_deref() == Some(t))
+    };
+    match target {
+        Some(t) if mine(&t) => Ok(()),
+        Some(t) => Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so this command cannot act on {t}: a worker's terminal commands work on its own terminal, and only the coordinator that started a terminal (or a pane that is no worker) may drive it"),
+            data: json!({ "caller": me, "target": t }),
+        }),
+        None => Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so this command cannot act on every terminal of a worktree: name its own terminal with --terminal {me}"),
+            data: json!({ "caller": me }),
+        }),
+    }
+}
+
+/// The scope check as `dispatch` runs it: only a terminal command that carries a pane needs the
+/// dispatches, so every other command never loads them.
+fn scoped(ctx: &Ctx, req: &Request) -> Result<(), Fail> {
+    scoped_with(ctx, req, &|k| ctx.terminals.by_key(k))
+}
+
+/// `scoped` with the terminal behind a pane key given, so a test can stand a pane in.
+fn scoped_with(ctx: &Ctx, req: &Request, by_key: &dyn Fn(&str) -> Option<String>) -> Result<(), Fail> {
+    if req.pane.is_none() || pane_target(req).is_none() {
+        return Ok(());
+    }
+    let me = caller_with(req, by_key).ok().flatten();
+    if me.is_none() {
+        return Ok(());
+    }
+    let dispatches = load_list(&*ctx.store.lock().map_err(|e| e.to_string())?, DISPATCHES_KEY)?;
+    pane_scope(req, me.as_deref(), &dispatches)
+}
 
 fn no_terminal(h: &str) -> Fail {
     Fail { code: "not_found", message: format!("no open terminal is {h}"), data: json!({ "hint": format!("{} terminal list prints the handles", crate::orchestration::CLI) }) }
@@ -7822,6 +7895,115 @@ mod tests {
         dispatch(&ctx, &req(json!({ "files": [md, "x.txt"] }))).unwrap();
         assert_eq!(told.lock().unwrap().as_slice(), &[json!({ "emit": "open-files", "payload": null })]);
         assert_eq!(crate::lifecycle::take_open(), vec![md.to_string()], "only the markdown file was queued");
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- T-793 / DT-C228: a pane may only target its own pane, unless it is a coordinator.
+
+    fn worker(id: &str, terminal: u32, from: u32, status: &str) -> Value {
+        json!({ "id": id, "runtime": std::process::id(), "runId": "run-1", "status": status, "terminal": terminal, "fromTerminal": from })
+    }
+
+    fn pane_req(command: &str, pane: Option<(&str, &str)>, args: Value) -> Request {
+        Request { id: "r".into(), token: String::new(), command: command.into(), cwd: String::new(), args, pane: pane.map(|(h, k)| Pane { handle: h.into(), key: k.into() }), cli: String::new(), arrived: None }
+    }
+
+    #[test]
+    fn t793_a_worker_pane_targeting_another_pane_is_refused() {
+        // term-1 coordinates; term-2 and term-3 are its workers.
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        for command in ["terminal.send", "terminal.read", "terminal.wait", "terminal.show", "terminal.split", "terminal.rename", "terminal.switch", "terminal.close"] {
+            let req = pane_req(command, Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+            let e = pane_scope(&req, Some("term-2"), &ds).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command}: {}", e.message);
+            assert!(e.message.contains("term-2") && e.message.contains("term-3"), "{}", e.message);
+        }
+        // The coordinator's own pane too: a worker cannot send into term-1.
+        let req = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-1", "text": "x" }));
+        assert_eq!(pane_scope(&req, Some("term-2"), &ds).unwrap_err().code, "pane_scope");
+    }
+
+    #[test]
+    fn t793_the_same_request_from_a_coordinator_passes() {
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        for command in ["terminal.send", "terminal.read", "terminal.wait", "terminal.show", "terminal.split", "terminal.rename", "terminal.switch", "terminal.close"] {
+            let req = pane_req(command, Some(("term-1", "key-1")), json!({ "terminal": "term-3", "text": "x" }));
+            pane_scope(&req, Some("term-1"), &ds).unwrap_or_else(|e| panic!("{command}: {}", e.message));
+        }
+        // A pane with no dispatch at all (a person's own terminal) is no worker either.
+        let req = pane_req("terminal.send", Some(("term-9", "key-9")), json!({ "terminal": "term-3", "text": "x" }));
+        pane_scope(&req, Some("term-9"), &ds).unwrap();
+        // A worker whose dispatch has settled is a coordinator again.
+        let done = [worker("d-1", 2, 1, "completed")];
+        let req = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+        pane_scope(&req, Some("term-2"), &done).unwrap();
+    }
+
+    #[test]
+    fn t793_a_worker_keeps_its_own_pane_and_the_workers_it_started() {
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 4, 2, "running")];
+        let own = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-2", "text": "x" }));
+        pane_scope(&own, Some("term-2"), &ds).unwrap();
+        // terminal read, send and wait with no --terminal mean the caller's own pane.
+        for command in ["terminal.send", "terminal.read", "terminal.wait"] {
+            pane_scope(&pane_req(command, Some(("term-2", "key-2")), json!({ "text": "x" })), Some("term-2"), &ds).unwrap();
+        }
+        // ...but a handle the call claims is not the one its key proves: that is another pane.
+        let e = pane_scope(&pane_req("terminal.send", Some(("term-3", "key-2")), json!({ "text": "x" })), Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope");
+        // term-2 started term-4, so it drives it (a nested coordinator).
+        let sub = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-4", "text": "x" }));
+        pane_scope(&sub, Some("term-2"), &ds).unwrap();
+        // ...and term-4, a worker one level down, cannot drive its parent.
+        let up = pane_req("terminal.send", Some(("term-4", "key-4")), json!({ "terminal": "term-2", "text": "x" }));
+        assert_eq!(pane_scope(&up, Some("term-4"), &ds).unwrap_err().code, "pane_scope");
+    }
+
+    #[test]
+    fn t793_a_worker_cannot_close_a_whole_worktree_and_listing_stays_open() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let sweep = pane_req("terminal.close", Some(("term-2", "key-2")), json!({ "worktree": "current" }));
+        let e = pane_scope(&sweep, Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope", "{}", e.message);
+        pane_scope(&sweep, Some("term-1"), &ds).unwrap();
+        for command in ["terminal.list", "terminal.create", "worktree.create", "orchestration.send"] {
+            pane_scope(&pane_req(command, Some(("term-2", "key-2")), json!({ "terminal": "term-3" })), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{command}: {}", e.message));
+        }
+    }
+
+    #[test]
+    fn t793_through_the_store_a_pane_the_runtime_cannot_prove_is_not_scoped_and_a_proven_worker_is() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")]).unwrap();
+        // term-1 is the coordinator (key-1), term-2 a worker (key-2).
+        let by_key = |k: &str| match k {
+            "key-1" => Some("term-1".to_string()),
+            "key-2" => Some("term-2".to_string()),
+            _ => None,
+        };
+        let go = |pane: Option<(&str, &str)>, target: &str| scoped_with(&ctx, &pane_req("terminal.send", pane, json!({ "terminal": target, "text": "x" })), &by_key);
+        assert_eq!(go(Some(("term-2", "key-2")), "term-3").unwrap_err().code, "pane_scope");
+        go(Some(("term-2", "key-2")), "term-2").unwrap();
+        go(Some(("term-1", "key-1")), "term-3").unwrap();
+        // A key the runtime never gave proves no one, so there is nobody to scope.
+        go(Some(("term-2", "guessed")), "term-3").unwrap();
+        // No pane at all (a shell outside Kolux that sends none) is not scoped either.
+        go(None, "term-3").unwrap();
+        // A dispatch id in --terminal is turned into its handle first (by_dispatch), so the
+        // check sees the terminal it will really act on.
+        let ds = load_list(&store.lock().unwrap(), DISPATCHES_KEY).unwrap();
+        let named = by_dispatch(&pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "d-2", "text": "x" })), &ds).unwrap().unwrap();
+        assert_eq!(named.args["terminal"], "term-3");
+        assert_eq!(scoped_with(&ctx, &named, &by_key).unwrap_err().code, "pane_scope");
         drop(ctx);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);

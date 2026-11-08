@@ -15,14 +15,16 @@ Four local doors accept commands:
 
 | Door | Token | Where the token lives |
 |---|---|---|
-| Agent hook listener | `x-kolux-token` header | `agent-hooks-endpoint.txt` in the profile |
+| Agent hook listener | `x-kolux-token` header, one per pane | `agent-hooks-endpoint-<terminal>.txt` in the profile |
 | CLI loopback | `token` field in the JSON request | `cli.json` in the profile |
 | Preview server | 128-bit random path segment per folder | In memory only |
 | Terminal service | `hello` operation token | `terminals.json` in the profile |
 
-All four bind `127.0.0.1` on random ports. None binds a public interface. The hook listener refuses any request with an `Origin`, `Referer`, or `Sec-Fetch-*` header, checks the Host, and returns 404 with an empty body for a missing or wrong token (`src-tauri/src/hooks.rs:341-358`). The CLI listener drops HTTP request lines and answers a wrong token with an `unauthorized` envelope (`src-tauri/src/cli/mod.rs:3553-3580`). The terminal service requires a valid `hello` before any other operation (`src-tauri/src/pty_service.rs:433-442`).
+All four bind `127.0.0.1` on random ports. None binds a public interface. The hook listener refuses any request with an `Origin`, `Referer`, or `Sec-Fetch-*` header, checks the Host, and returns 404 with an empty body for a missing or wrong token (`src-tauri/src/hooks.rs`). The CLI listener drops HTTP request lines and answers a wrong token with an `unauthorized` envelope (`src-tauri/src/cli/mod.rs:3553-3580`). The terminal service requires a valid `hello` before any other operation (`src-tauri/src/pty_service.rs:433-442`).
 
 The limit is the token model itself. These are bearer tokens stored in user-readable files. Any process running as the same Windows user can read `terminals.json` or `cli.json` and drive the terminal service or the CLI. There is no peer-process identity check. That is a same-user boundary, not a defense against local malware. It is also why the app does not pretend the local doors are a security sandbox.
+
+Per-pane scoping (T-793, DT-C228). A hook event is accepted only with the token minted for the pane that sent it: HMAC-SHA256 of the run secret over the pane key and terminal, written to that pane's own `agent-hooks-endpoint-<terminal>.txt`. A token minted for pane A is refused for pane B, and a request with no token, the old shared token, or the placeholder in `agent-hooks-endpoint.txt` gets the same empty 404. A CLI request that carries a pane and whose pane key the app proves may only act on that pane's own terminal, unless the caller is a coordinator (a pane that is no worker: it has no open dispatch of its own), or the target is a terminal the caller started. Both checks still sit inside the same-user boundary above: a process that can read another pane's endpoint file, or that sends no pane identity at all, is outside what they can tell apart.
 
 ## The file fence
 

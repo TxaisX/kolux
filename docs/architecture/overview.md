@@ -62,7 +62,7 @@ Everything lives under `%APPDATA%\com.txaisxiong.kolux-rs` (`src-tauri/src/resou
 - `settings.json` plus `.bak`, written to a temporary file and renamed (`src-tauri/src/state.rs:225-260`);
 - `vault/`, one DPAPI-sealed file per managed sign-in (`src-tauri/src/secrets.rs:300-309`);
 - `logs/kolux.log`, rotated and scrubbed for sharing (`src-tauri/src/diag.rs:4-23`);
-- `terminals.json`, `cli.json`, and `agent-hooks-endpoint.txt`, the endpoint files for the local doors;
+- `terminals.json`, `cli.json`, and `agent-hooks-endpoint.txt` plus one `agent-hooks-endpoint-<terminal>.txt` per pane, the endpoint files for the local doors;
 - `artifacts/`, `browser-profiles/`, and the managed Claude and Codex homes.
 
 Hook scripts are not in the profile. They live in `~/.kolux-rs/agent-hooks` (`src-tauri/src/hooks.rs:30-36`), and each install writes a `.bak-kolux` copy beside the agent's own settings.
@@ -123,7 +123,7 @@ The important limit: these are **bearer tokens in user-readable files**. Any pro
 | `vault/` | DPAPI-sealed blobs | Managed Claude and Codex sign-ins |
 | `logs/kolux.log` | Text, rotated | Diagnostics; scrubbed before sharing |
 | `terminals.json` / `cli.json` | JSON endpoint records | Loopback port and token |
-| `agent-hooks-endpoint.txt` | One line, `port token` | What the hook scripts read |
+| `agent-hooks-endpoint.txt` / `agent-hooks-endpoint-<terminal>.txt` | One line, `port -` / `port token` | The hook port; each pane reads its own file for its own token |
 | `artifacts/` | `library.json` plus one folder per entry | Artifact library |
 | `browser-profiles/` | WebView2 user data | Browser tabs and logins |
 

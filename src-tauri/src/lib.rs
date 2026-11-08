@@ -1048,7 +1048,7 @@ pub fn run() {
                     }
                     diag::write(&dir, "app exit");
                     let _ = std::fs::remove_file(dir.join(cli::FILE));
-                    let _ = std::fs::remove_file(dir.join(hooks::ENDPOINT_FILE));
+                    hooks::remove_endpoint_files(&dir);
                 }
                 // APP-025: an update that finished downloading installs as the app quits.
                 update::install_on_quit(app);
