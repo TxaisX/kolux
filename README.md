@@ -42,7 +42,11 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 
 > The installer file keeps its `Kolux.RS_…` name for one more release while the install identity moves; the app it installs is Kolux.
 
-The current installer is not Authenticode-signed, so Windows SmartScreen may warn on first run. Choose **More info**, then **Run anyway**, after checking that the file came from this repository's Releases page. The update manifest is signed separately.
+**The installer is not code-signed yet.** Kolux is a free alpha and has no Windows code-signing certificate, so Windows treats the installer as from an unknown publisher. What you will see:
+
+- **SmartScreen ("Windows protected your PC").** Choose **More info**, then **Run anyway**, after checking that you downloaded the file from this repository's Releases page. Right-click the file, open **Properties**, and the **Digital Signatures** tab will be absent; that is expected until signing arrives.
+- **Smart App Control.** If Windows 11 has Smart App Control turned on, it can block an unsigned installer with no Run anyway button. Kolux cannot be installed on that PC until the installer is signed; Windows does not offer a one-off exception.
+- **Updates are still checked.** The update manifest carries its own signature, and an installed Kolux verifies it before installing an update.
 
 ## Requirements
 

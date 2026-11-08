@@ -72,7 +72,7 @@ Many commands take `--repo` or `--worktree` to say which project or workspace yo
 | `--repo` | `id:<id>`, `name:<name>`, `path:<folder>` |
 | `--worktree` | `active`, `current`, `id:<repo-id>::<path>`, `identity:...`, `name:...`, `branch:...`, `issue:...`, `path:...` |
 
-A worktree is a separate working copy of a project on its own branch; the rest of this guide calls it a workspace. The app itself now works in one folder per project and no longer offers to make extra ones, so these names describe the older idea. With no selector, the command uses the folder you are standing in.
+A worktree is a separate working copy of a project on its own branch; the rest of this guide calls it a workspace. The app itself now works in one folder per project and no longer offers to make extra ones, and its sidebar does not list them. The command line still can: `kolux worktree create` makes a real extra folder on its own branch, and `kolux worktree rm` removes one. With no selector, the command uses the folder you are standing in.
 
 ## Projects and workspaces
 
@@ -84,8 +84,8 @@ A worktree is a separate working copy of a project on its own branch; the rest o
 | `kolux repo show` | Shows one repository |
 | `kolux repo set-base-ref --ref <ref>` | Sets the branch new workspaces start from |
 | `kolux repo search-refs --query <text>` | Searches branches and tags; `--limit` caps the list |
-| `kolux worktree create --name <name>` | Makes a workspace. Options: `--repo`, `--agent`, `--prompt`, `--setup run\|skip\|inherit`, `--base-branch`, `--issue`, `--comment`, `--parent-worktree`, `--no-parent`, `--run-hooks`, `--activate` |
-| `kolux worktree rm --worktree <selector>` | Removes a workspace (also `remove`, `delete`). `--force` and `--run-hooks` are optional |
+| `kolux worktree create --name <name>` | Makes an extra working folder on its own branch, the kind older versions made. The sidebar does not list it; `--agent` and `--prompt` start the agent in it, and `--activate` brings that folder in front. Options: `--repo`, `--agent`, `--prompt`, `--setup run\|skip\|inherit`, `--base-branch`, `--issue`, `--comment`, `--parent-worktree`, `--no-parent`, `--run-hooks`, `--activate` |
+| `kolux worktree rm --worktree <selector>` | Removes an extra workspace folder and closes its panes (also `remove`, `delete`). It refuses a project's main folder, and refuses a folder with uncommitted changes unless you add `--force`. A branch holding commits found nowhere else is kept. `--run-hooks` is accepted but teardown scripts do not run |
 | `kolux worktree list` | Lists workspaces; a project whose folder cannot be read (deleted, or on an offline drive) is named instead of emptying the list |
 | `kolux worktree ps` | Lists them with a summary of orchestration work |
 | `kolux worktree show` | Shows one workspace |
@@ -96,7 +96,7 @@ A worktree is a separate working copy of a project on its own branch; the rest o
 
 `--prompt` needs `--agent`: a first prompt has to go to an agent.
 
-Example: make a workspace named `fix-login` and switch to it.
+Example: make an extra folder named `fix-login` and bring it in front.
 
 ```
 kolux worktree create --name fix-login --activate

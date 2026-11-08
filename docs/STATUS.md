@@ -22,7 +22,7 @@ Kolux is in early alpha. This page says what is verified, what is usable but unv
 
 ## Known gaps in the alpha
 
-- **The installer is not Authenticode-signed.** Windows SmartScreen warns on first run. The update manifest is signed separately.
+- **The installer is not Authenticode-signed.** Windows SmartScreen warns on first run (More info, then Run anyway), and a Windows 11 PC with Smart App Control on can block it outright. Signing waits on a certificate identity. The update manifest is signed separately.
 - **The "Install CLI & Skills" step cannot fetch the published skills yet.** The skills repository is not public. The `kolux` command itself installs and works.
 - **Quit-to-install updates are not yet proven end to end.** When the app offers an update, use **Restart to update** rather than relying on quit.
 - **Codex and Gemini status on a fresh machine is not yet proven** without manual setup. Claude Code is the most tested path.
