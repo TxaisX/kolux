@@ -8094,4 +8094,32 @@ mod tests {
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }
+    /// Review fix 1 (nit 1): the refusal is reached through `dispatch` itself, so deleting `scoped(ctx, req)?;` from it
+    /// turns this red.
+    #[test]
+    fn t793_dispatch_refuses_a_worker_pane_that_targets_another_pane() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-dispatch-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let here = dir.to_string_lossy().into_owned();
+        for (id, key) in [(1, "key-1"), (2, "key-2"), (3, "key-3")] {
+            terminals.fake_session(id, &here, None);
+            terminals.fake_key(id, key);
+        }
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running")]).unwrap();
+        // term-2 is a worker; its key proves it, and term-3 is not its own pane.
+        for command in ["terminal.send", "terminal.read", "terminal.close"] {
+            let req = pane_req(command, Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command}: {}", e.message);
+        }
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

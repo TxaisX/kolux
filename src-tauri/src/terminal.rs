@@ -1471,6 +1471,12 @@ impl Terminals {
         }
     }
 
+    /// T-793 review fix 1: the pane secret `key` for a fake session, so a test can send a request as that pane.
+    #[cfg(any(test, feature = "test-fakes"))]
+    pub fn fake_key(&self, id: u32, key: &str) {
+        self.inner.lock().unwrap().keys.insert(id, key.to_string());
+    }
+
     /// APP-052: the session window pane `pane_key` started in this run, if it still runs.
     pub fn attached(&self, pane_key: u32) -> Option<u32> {
         let inner = self.inner.lock().ok()?;
