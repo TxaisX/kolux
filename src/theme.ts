@@ -81,6 +81,12 @@ export const SYNTAX_KEYS = ["syn-keyword", "syn-name", "syn-function", "syn-type
 export const SYNTAX_FLOOR = 4.6;
 /** C23-R3-02: the ratio the sidebar's four primary inks must reach on the ground they are painted on. */
 export const SIDEBAR_FLOOR = 4.6;
+/** T-801 (P4B-14): the grounds a light-mode text or icon token can sit on, and the tokens floored against the darkest of them. */
+const LIGHT_GROUNDS = ["app-bg", "strip-bg", "pane-bg", "surface", "chip-bg", "row-selected"] as const;
+const LIGHT_TEXT = ["fg-row", "fg-muted", "fg-nav", "fg-label", "fg-faint", "mark", "link", "working", "done", "gauge-text", "warn", "danger", "cost-fg"] as const;
+/** Icons and dots need 3:1, not 4.5:1; a little over so rounding in `hsl` cannot drop the measured pair under the bar. */
+const LIGHT_ICON = ["fg-icon-dim", "working-icon", "done-icon"] as const;
+const ICON_FLOOR = 3.1;
 
 /** `accent` (T-648) is not part of any built-in theme: only a custom theme that sets it defines `--accent`, so
  *  the fallbacks written beside `var(--accent, ...)` keep deciding the look for everyone else. */
@@ -306,6 +312,13 @@ function builtIn(a: Appearance, dark: boolean): Theme {
     const selected = mix(out["pane-bg"], out["line-focus"], 0.9);
     const ground = luminance(caret) <= luminance(selected) ? caret : selected;
     for (const k of SYNTAX_KEYS) out[k] = floorInk(out[k], ground, SYNTAX_FLOOR);
+    // T-801 (P4B-14, p4a-10): the greys turned over and the status colours darkened a quarter still measured 1.4 to 3.7:1 on the
+    // light grounds (the Ctrl+J hint, "5m ago", warning, error and done text). Each is moved toward black only as far as it must go to
+    // read on the darkest ground it is drawn on, so the hue holds and a token already past the floor is left as it was.
+    const darkest = LIGHT_GROUNDS.map((g) => out[g]).reduce((lo, g) => (luminance(g) < luminance(lo) ? g : lo));
+    for (const [keys, need] of [[LIGHT_TEXT, SIDEBAR_FLOOR], [LIGHT_ICON, ICON_FLOOR]] as const) {
+      for (const k of keys) if (contrast(out[k], darkest) < need) out[k] = floorInk(out[k], darkest, need);
+    }
   }
   return out;
 }

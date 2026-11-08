@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { buildTheme, classic, hsl, readAppearance, themeVars } from "../theme";
+import { buildTheme, classic, contrast, hsl, readAppearance, themeVars } from "../theme";
 
 // Stand-in review of lane/marks b08c624c, FIX-SOON 4: the cost chip's colour is a theme token, not a
 // literal that every theme shares. Review of 2d4235af, AFTER 1: the light value must actually be darker.
@@ -27,8 +27,15 @@ test("USAGE-034: --cost-fg is a theme token in dark and light, darker on the lig
   expect(light["cost-fg"]).not.toBe(dark["cost-fg"]);
   // A status colour in a light theme is the dark value at 75% lightness, so lightness must fall.
   expect(lightness(light["cost-fg"])).toBeLessThan(lightness(dark["cost-fg"]));
-  // exactly the dark colour with its lightness cut to three quarters (review AFTER 2: no loose tolerance)
+  // the dark colour with its lightness cut to three quarters (review AFTER 2: no loose tolerance), then, T-801 (P4B-14),
+  // cut further only as far as 4.5:1 on the darkest light ground needs: the hue and saturation are the cut's own
   const [h, s, l] = toHsl(dark["cost-fg"]);
-  expect(light["cost-fg"]).toBe(hsl(h, s, l * 0.75));
+  const cut = hsl(h, s, l * 0.75);
+  expect(contrast(light["cost-fg"], light["row-selected"])).toBeGreaterThanOrEqual(4.5);
+  const [lh, ls, ll] = toHsl(light["cost-fg"]);
+  expect(Math.abs(lh - toHsl(cut)[0])).toBeLessThan(2);
+  expect(Math.abs(ls - toHsl(cut)[1])).toBeLessThan(0.03);
+  expect(ll).toBeLessThanOrEqual(toHsl(cut)[2] + 0.002);
+  if (contrast(cut, light["row-selected"]) >= 4.6) expect(light["cost-fg"]).toBe(cut);
   expect(themeVars(dark)["--cost-fg"]).toBe(classic["cost-fg"]);
 });
