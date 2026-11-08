@@ -194,12 +194,15 @@ async function setup() {
   if (!ATTACH) await launch();
   else await pageUp(30000);
   // T-543-b: with no layout saved the window opens with no pane until a workspace is opened.
-  await waitFor("the sidebar", () => exists('.sb-foot button[title^="Add a project by path"]'), 30000);
+  // 9d677875 moved "Add a project by path" from the footer gear into the Add project dialog's "Type a path" link.
+  await waitFor("the sidebar", () => exists('aside.sidebar button[aria-label="Add project"]'), 30000);
   const before = await count(TERM);
   log(`zero panes after launch: ${before === 0 ? "PASS" : "FAIL"} (${before} ${TERM})`);
   if (!ATTACH && before !== 0) throw new Error(`a fresh profile opened with ${before} pane(s); T-543-b wants none until a workspace is opened`);
   if (await exists('.onboarding, [aria-label="Welcome"]')) log("WARN a first-run dialog is open; the flows may not reach the grid");
-  await click('.sb-foot button[title^="Add a project by path"]');
+  await click('aside.sidebar button[aria-label="Add project"]');
+  await waitFor("the add-by-path link", () => exists("button[data-add-by-path]"), 5000);
+  await click("button[data-add-by-path]");
   await waitFor("the project folder field", () => exists('input[aria-label="project folder"]'), 5000);
   await focusField('input[aria-label="project folder"]');
   await cdp("insert", repo, "enter");
