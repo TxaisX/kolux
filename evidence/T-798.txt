@@ -5,3 +5,7 @@
    Duration  60.39s (transform 14.11s, setup 0ms, import 27.83s, tests 35.25s, environment 32ms)
 
 tsc: clean
+
+Review fix (coordinator, 2026-11-08): Enter on typed text in the workspace palette no longer reaches worktree creation while worktrees are off.
+The palette create name comes from paletteCreateName (src/projects/singleFolder.ts), null under SINGLE_FOLDER.
+vitest run src/projects/singleFolder.test.ts src/projects/WorktreePalette: Test Files 2 passed (2), Tests 10 passed (10); tsc --noEmit exit 0.
