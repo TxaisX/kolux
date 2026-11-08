@@ -32,8 +32,19 @@ Independent read-only review of c6cf758..ef8e68b (2026-11-08), and what was done
   S9 the update rig builds "proof-rs" from today's tree, not from v0.1.10; build the old side from the tag.
   Nits: old uninstaller /P shows its progress window during a GUI install; `kolux-rs:` log prefix kept.
 
+Re-review of e32c85f4 (independent, read-only): no blockers. Fixed after it:
+  - a database SQLite cannot snapshot (damaged, busy over 5 s) is copied as it is (db + log), so the first
+    start never comes up on an empty profile; a killed run's state.db.copying side files are cleared first;
+  - state.db.bak and settings.json.bak are not carried (they hold old paths and recovery would restore them);
+  - settings.json is rewritten under a temporary name and renamed;
+  - the installer message says the current version stays and the next update check offers it again
+    (installMode is passive, so an updater-driven run does show it).
+  Left as known limits: paths in other case/slash forms or inside account config files are not repointed
+  (they keep pointing at the intact old folder); text in history that names the old folder is rewritten;
+  opening the old database read-only can leave -wal/-shm beside it in the old profile.
+
 Cloud runs (Linux; Windows-only tests are compiled out):
-  cargo test --lib profile_move -> 9 passed (links, snapshot with unfolded log, repointed paths added)
+  cargo test --lib profile_move -> 10 passed (links, snapshot with unfolded log, repointed paths, damaged db carried as is)
   cargo test --lib -- profile_move lifecycle t785 update -> 95 passed, 1 failed:
      lifecycle app019 (a C:/ file URL is not absolute on Linux; unchanged by T-790, environment only)
   vitest scripts/installer-notice.test.mjs -> 2 passed, 1 skipped (makensis harness is Windows-only)

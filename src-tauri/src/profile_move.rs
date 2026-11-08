@@ -28,6 +28,8 @@ use crate::resources::recovery::STATE_FILE;
 pub const FORMER_SUFFIX: &str = "-rs";
 
 /// Left out of the copy: the old run's address and token, and anything that is only a lock.
+/// Review (T-790): the last-good copies (`state.db.bak`, `settings.json.bak`) stay behind too: they hold
+/// paths into the old profile, and recovery would restore them; the new app writes its own.
 const SKIPPED: &[&str] = &["cli.json"];
 
 /// The write-ahead log that belongs to `state.db`.
@@ -99,12 +101,29 @@ pub fn move_profile(profile: &Path) -> Option<Moved> {
     if let Ok(text) = fs::read_to_string(&settings) {
         let moved = repoint(&text, &from, profile);
         if moved != text {
-            let _ = fs::write(&settings, moved);
+            // Under a temporary name, then renamed: a start killed mid-write never leaves it cut short.
+            let tmp = profile.join("settings.json.kolux-copying");
+            if fs::write(&tmp, moved).and_then(|()| fs::rename(&tmp, &settings)).is_err() {
+                let _ = fs::remove_file(&tmp);
+            }
         }
     }
     let tmp = profile.join(format!("{STATE_FILE}.copying"));
-    let _ = fs::remove_file(&tmp);
-    match copy_database(&from.join(STATE_FILE), &tmp, &from, profile).and_then(|n| fs::rename(&tmp, profile.join(STATE_FILE)).map(|()| n).map_err(|e| e.to_string())) {
+    // A killed run's temporary database and its side files go first (a stale log could replay over the snapshot).
+    for side in ["", "-wal", "-shm", "-journal"] {
+        let _ = fs::remove_file(profile.join(format!("{STATE_FILE}.copying{side}")));
+    }
+    // Review (T-790): if SQLite cannot take the snapshot (a damaged or long-busy database), the files are
+    // copied as they are, so the first start never comes up on an empty profile; recovery then works on them.
+    let copied = copy_database(&from.join(STATE_FILE), &tmp, &from, profile).or_else(|why| {
+        for side in ["-wal", "-shm", "-journal"] {
+            let _ = fs::remove_file(profile.join(format!("{STATE_FILE}.copying{side}")));
+        }
+        out.left.push(format!("{STATE_FILE} snapshot ({why}); copied as it is"));
+        copy_file(&from.join(WAL), &profile.join(WAL), &mut out);
+        fs::copy(from.join(STATE_FILE), &tmp).map_err(|e| e.to_string())
+    });
+    match copied.and_then(|n| fs::rename(&tmp, profile.join(STATE_FILE)).map(|()| n).map_err(|e| e.to_string())) {
         Ok(n) => {
             out.files += 1;
             out.bytes += n;
@@ -169,7 +188,7 @@ fn copy_database(old: &Path, tmp: &Path, from: &Path, to: &Path) -> Result<u64, 
 fn skipped(name: &str, top: bool) -> bool {
     let lower = name.to_ascii_lowercase();
     // The database and its log are placed last by `move_profile`; `.copying` is a leftover of an earlier try.
-    (top && (SKIPPED.contains(&lower.as_str()) || lower == STATE_FILE || lower == WAL || lower == format!("{STATE_FILE}.copying") || lower == "state.db-shm")) || lower.ends_with(".lock")
+    (top && (SKIPPED.contains(&lower.as_str()) || lower == "state.db.bak" || lower == "settings.json.bak" || lower == STATE_FILE || lower == WAL || lower == format!("{STATE_FILE}.copying") || lower == "state.db-shm")) || lower.ends_with(".lock")
 }
 
 fn copy_file(from: &Path, to: &Path, out: &mut Moved) {
@@ -436,6 +455,26 @@ mod tests {
         assert_eq!(kv(&new.join("state.db")), expect);
         assert_eq!(fs::read_to_string(new.join("settings.json")).unwrap(), expect);
         assert_eq!(kv(&old.join("state.db")), stored, "the old profile stays as it was");
+        let _ = fs::remove_dir_all(&r);
+    }
+
+
+    /// Review (T-790): a database SQLite cannot snapshot (damaged) is still carried, as it is, so the first
+    /// start never comes up empty (recovery takes it from there); leftovers of a killed run are cleared; the
+    /// last-good copies stay behind.
+    #[test]
+    fn t790_a_damaged_database_is_carried_as_it_is_and_the_last_good_copies_stay_behind() {
+        let r = root("damaged");
+        let (old, new) = (r.join("com.txaisxiong.kolux-proof-rs"), r.join("com.txaisxiong.kolux-proof"));
+        put(&old.join("state.db"), "not a database at all");
+        put(&old.join("state.db.bak"), "old last-good database");
+        put(&old.join("settings.json.bak"), "old last-good settings");
+        put(&new.join("state.db.copying-wal"), "a stale log from a killed run");
+        let m = move_profile(&new).expect("moved");
+        assert_eq!(fs::read_to_string(new.join("state.db")).unwrap(), "not a database at all");
+        assert!(m.left.iter().any(|l| l.contains("snapshot") && l.contains("copied as it is")), "{m:?}");
+        assert!(!new.join("state.db.copying-wal").exists() && !new.join("state.db.copying").exists());
+        assert!(!new.join("state.db.bak").exists() && !new.join("settings.json.bak").exists());
         let _ = fs::remove_dir_all(&r);
     }
 
