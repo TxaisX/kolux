@@ -21,7 +21,18 @@ export function unhiddenSpawns(text) {
       if (SPAWNERS.has(imported)) named.add(local);
     }
   }
-  const ns = [...text.matchAll(/import\s+\*\s+as\s+(\w+)\s+from\s*["'](?:node:)?child_process["']/g)].map((m) => m[1]);
+  // `const { spawn } = require("child_process")` names its spawners the same way.
+  for (const m of text.matchAll(/const\s*\{([^}]*)\}\s*=\s*require\(\s*["'](?:node:)?child_process["']\s*\)/g)) {
+    for (const part of m[1].split(",")) {
+      const [imported, local = imported] = part.trim().split(/\s*:\s*/);
+      if (SPAWNERS.has(imported)) named.add(local);
+    }
+  }
+  // A whole-module name: `import * as cp`, `import cp from`, `const cp = require(...)`.
+  const ns = [
+    ...[...text.matchAll(/import\s+(?:\*\s+as\s+)?(\w+)\s+from\s*["'](?:node:)?child_process["']/g)].map((m) => m[1]),
+    ...[...text.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*["'](?:node:)?child_process["']\s*\)/g)].map((m) => m[1]),
+  ];
   const found = [];
   for (const m of text.matchAll(/\b(\w+)\s*\(/g)) {
     const prefix = text.slice(Math.max(0, m.index - 30), m.index);
@@ -31,7 +42,11 @@ export function unhiddenSpawns(text) {
     if (/^\s*(export\s+)?(async\s+)?function\b/.test(text.slice(lineStart, m.index + 1))) continue; // a declaration
     let i = m.index + m[0].length;
     for (let depth = 1; i < text.length && depth; i++) depth += text[i] === "(" ? 1 : text[i] === ")" ? -1 : 0;
-    if (!/windowsHide/.test(text.slice(m.index, i))) found.push(text.slice(0, m.index).split("\n").length);
+    // windowsHide must be true, unless the spawn starts a program with a window of its own and says so.
+    const call = text.slice(m.index, i);
+    const line = text.slice(0, m.index).split("\n").length;
+    const marked = /nowin-allow:/.test(text.split("\n").slice(Math.max(0, line - 4), line).join("\n"));
+    if (!/windowsHide:\s*true/.test(call) && !marked) found.push(line);
   }
   return found;
 }
@@ -55,6 +70,12 @@ describe("T-816 scripts start no console window", () => {
     expect(unhiddenSpawns(head + 'run("git", [], {\n  windowsHide: true,\n});\n')).toEqual([]);
     expect(unhiddenSpawns(head + "const m = /x/.exec(s);\n")).toEqual([]);
     expect(unhiddenSpawns('import * as cp from "node:child_process";\ncp.execFileSync("git");\n')).toEqual([2]);
+    // Review (T-816): require, a default import, and windowsHide: false are seen; an explained exception passes.
+    expect(unhiddenSpawns('const { spawn: go } = require("child_process");\ngo("git");\n')).toEqual([2]);
+    expect(unhiddenSpawns('const cp = require("node:child_process");\ncp.spawn("git");\n')).toEqual([2]);
+    expect(unhiddenSpawns('import cp from "node:child_process";\ncp.spawnSync("git");\n')).toEqual([2]);
+    expect(unhiddenSpawns(head + 'spawnSync("git", [], { windowsHide: false });\n')).toEqual([2]);
+    expect(unhiddenSpawns(head + '// nowin-allow: starts the app, which has a window of its own\nspawnSync("app.exe", [], { windowsHide: false });\n')).toEqual([]);
   });
 
   it("every spawn under scripts/ and tools/ passes windowsHide", () => {

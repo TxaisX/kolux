@@ -49,6 +49,20 @@ mod tests {
         ("cli_accounts.rs", "Command::new(program)"), // `kolux accounts login`: the agent's sign-in in the user's own terminal
     ];
 
+    /// `line` without its `//` comment; a `//` inside a string literal (a URL) is not a comment.
+    fn code_of(line: &str) -> &str {
+        let (mut in_str, mut prev) = (false, '\0');
+        for (i, c) in line.char_indices() {
+            match c {
+                '"' if prev != '\\' => in_str = !in_str,
+                '/' if !in_str && prev == '/' => return &line[..i - 1],
+                _ => {}
+            }
+            prev = c;
+        }
+        line
+    }
+
     fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
         for entry in std::fs::read_dir(dir).unwrap().flatten() {
             let path = entry.path();
@@ -75,25 +89,29 @@ mod tests {
         for (i, line) in lines.iter().enumerate() {
             if !in_test && line.starts_with("#[cfg(test)]") {
                 let next = lines[i + 1..].iter().find(|l| !l.trim_start().starts_with("#[")).copied().unwrap_or("");
-                in_test = ["mod ", "pub mod ", "fn ", "pub fn ", "impl"].iter().any(|p| next.starts_with(p));
+                // `mod x;` (a body in another file) opens no block here: the lines after it are production code.
+                in_test = ["mod ", "pub mod ", "fn ", "pub fn ", "impl"].iter().any(|p| next.starts_with(p)) && !next.trim_end().ends_with(';');
                 continue;
             }
             if in_test {
                 in_test = *line != "}";
                 continue;
             }
-            let code = line.split("//").next().unwrap_or("");
-            let Some(at) = code.find("Command") else { continue };
-            let after: String = code[at + "Command".len()..].chars().filter(|c| !c.is_whitespace()).take(6).collect();
-            // A `Command` at the end of the line may be spaced onto the next one: `Command\n    ::new(`.
-            let spaced = after.is_empty() && lines.get(i + 1).is_some_and(|n| n.trim_start().starts_with("::new("));
-            if !after.starts_with("::new(") && !spaced {
+            let code = code_of(line);
+            // Every `Command` on the line counts (`let c: Command = Command::new(..)` names the type first).
+            let spawn = code.match_indices("Command").any(|(at, _)| {
+                let after: String = code[at + "Command".len()..].chars().filter(|c| !c.is_whitespace()).take(6).collect();
+                // A `Command` at the end of the line may be spaced onto the next one: `Command\n    ::new(`.
+                after.starts_with("::new(") || (after.is_empty() && lines.get(i + 1).is_some_and(|n| n.trim_start().starts_with("::new(")))
+            });
+            if !spawn {
                 continue;
             }
             if ALLOWED.iter().any(|(f, text)| *f == rel && code.contains(text)) {
                 continue;
             }
-            let hidden = lines[i..lines.len().min(i + WINDOW)].iter().any(|l| l.contains("creation_flags") || l.contains("winproc::"));
+            // Only code counts: a comment that merely names winproc or creation_flags hides nothing.
+            let hidden = lines[i..lines.len().min(i + WINDOW)].iter().map(|l| code_of(l)).any(|c| c.contains("creation_flags") || c.contains("winproc::"));
             if !hidden {
                 found.push(i + 1);
             }
@@ -114,6 +132,15 @@ mod tests {
         assert!(unhidden_spawns("x.rs", &helper).is_empty());
         let after_cfg_use = format!("#[cfg(test)]\nuse std::fs;\nfn a() {{\n    let c = {new}\"x\");\n}}\n");
         assert_eq!(unhidden_spawns("x.rs", &after_cfg_use), vec![4], "a single cfg(test) item does not hide the code after it");
+        // Review (T-816): four ways the scanner was fooled before.
+        let after_cfg_mod = format!("#[cfg(test)]\nmod t;\nfn a() {{\n    let c = {new}\"x\");\n}}\n");
+        assert_eq!(unhidden_spawns("x.rs", &after_cfg_mod), vec![4], "a cfg(test) `mod t;` (body elsewhere) hides nothing after it");
+        let typed = format!("fn a() {{\n    let c: Command = {new}\"x\");\n}}\n");
+        assert_eq!(unhidden_spawns("x.rs", &typed), vec![2], "the type named before the constructor does not hide it");
+        let commented = format!("fn a() {{\n    let c = {new}\"x\");\n    // see winproc:: and creation_flags\n}}\n");
+        assert_eq!(unhidden_spawns("x.rs", &commented), vec![2], "a comment naming the helper does not hide the spawn");
+        let url = format!("fn a() {{\n    let u = \"https://x\"; let c = {new}\"x\");\n}}\n");
+        assert_eq!(unhidden_spawns("x.rs", &url), vec![2], "a URL's // is not a comment");
     }
 
     #[test]

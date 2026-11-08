@@ -128,6 +128,8 @@ export function launch(paths, { keep = false } = {}) {
     CODEX_HOME: paths.codex,
   });
   for (const k of ['KOLUX_TERMINAL_SERVICE', 'KOLUX_DEV_REPO_ROOT', 'KOLUX_CLI_COMMAND', 'KOLUX_RELEASE_CHECKOUT', 'KOLUX_APP_DIR', 'KOLUX_USER_DATA_PATH', 'CARGO_TARGET_DIR']) delete env[k];
+  // nowin-allow: this starts the installed Kolux app itself (a GUI with its own window) for a live proof
+  // run by hand on Txais's PC; windowsHide would hide the app's own window, not a console.
   const child = spawn(EXE, [], { env, detached: true, stdio: 'ignore', windowsHide: false });
   child.unref();
   return child.pid;
