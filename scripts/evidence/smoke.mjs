@@ -214,13 +214,14 @@ async function setup() {
   log(`setup: ${repo} added as a project; ${await shown(TERM)} shell pane shown`);
 }
 
-// The first chooser's seat 1 gets "Terminal" (React's select listens for change, so the value goes through
-// the native setter), then its Start button, once the agent search has finished and enabled it.
+// The first chooser's seat 1 gets its "Terminal" button (a92dae95 replaced the seat dropdown with a row of agent
+// buttons), then its Start button, once the agent search has finished and enabled it.
 async function startTerminalFromChooser() {
-  const seat = `${CHOOSER} select[aria-label="Seat 1: which AI"]`;
-  await waitFor("the chooser's Terminal choice", () => exists(`${seat} option[value="terminal"]`), 30000);
-  const r = await evalJs(`(() => { const s = document.querySelector(${JSON.stringify(seat)}); if (!s) return "missing"; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "terminal"); s.dispatchEvent(new Event("change", { bubbles: true })); return s.value; })()`);
-  if (r !== "terminal") throw new Error(`could not pick Terminal in the chooser: ${r}`);
+  const seat = `${CHOOSER} [role="group"][aria-label="Seat 1: which AI"] button`;
+  const isTerminal = (extra = "") => evalJs(`[...document.querySelectorAll(${JSON.stringify(seat)})].some(b => /^\\s*Terminal\\s*$/.test(b.textContent)${extra})`);
+  await waitFor("the chooser's Terminal choice", () => isTerminal(), 30000);
+  await clickWhere(seat, "/^\\s*Terminal\\s*$/");
+  await waitFor("Terminal picked in seat 1", () => isTerminal(' && b.getAttribute("aria-pressed") === "true"'), 5000);
   const start = `${CHOOSER} button.btn.primary`;
   await waitFor("the chooser's Start button", () => evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some(b => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
   await clickWhere(start, "/^\\s*Start\\s*$/");

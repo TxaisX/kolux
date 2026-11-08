@@ -1,0 +1,8 @@
+pnpm smoke at 2026-11-08T19:23:56.662Z on d787db83 (G:\Dev\kolux-rs-lanes\ready-docs-2)
+args: -- --port 1431 --cdp 9240 --temp G:\\Temp\\smoke-ready-docs-2 --keep; T-184 ticked: false; flow 5 report-only
+PASS 1: grid 4 -> 6 (3 shells + 1 empty -> 3 shells + 3 empty); all 3 shells echoed the marker set before the change (same PTY processes)
+PASS 2: Mod+S wrote notes.txt: disk now holds "typed by smoke 1794165833775" plus the original line (42 bytes)
+FAIL 3: no aside.rside [role="tab"] whose text matches /^\s*Source Control\s*$/
+FAIL 4: nothing to click at button.newtab
+FAIL 5 [report-only]: nothing to click at button.newtab
+smoke: 2/4 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)
