@@ -47,9 +47,9 @@ public static class Silent {
     return d;
   }
   public static int Start(string commandLine, string cwd, string desktop) {
-    STARTUPINFO si = new STARTUPINFO(); si.cb = Marshal.SizeOf(si); si.lpDesktop = "winsta0\\" + desktop;
+    STARTUPINFO si = new STARTUPINFO(); si.cb = Marshal.SizeOf(si); si.lpDesktop = "winsta0\\" + desktop; si.dwFlags = 1; si.wShowWindow = 0;
     PROCESS_INFORMATION pi;
-    if (!CreateProcessW(null, new StringBuilder(commandLine), IntPtr.Zero, IntPtr.Zero, false, 0, IntPtr.Zero, cwd, ref si, out pi)) throw new Exception("CreateProcess failed: " + Marshal.GetLastWin32Error());
+    if (!CreateProcessW(null, new StringBuilder(commandLine), IntPtr.Zero, IntPtr.Zero, false, 0x08000000, IntPtr.Zero, cwd, ref si, out pi)) throw new Exception("CreateProcess failed: " + Marshal.GetLastWin32Error());
     CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
     return pi.dwProcessId;
   }

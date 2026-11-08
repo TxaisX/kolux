@@ -640,7 +640,7 @@ if (flag("self-test")) {
   writeFileSync(join(partial, TEMP_MARKER), "");
   const heldLog = join(partial, "z-app.log");
   writeFileSync(heldLog, "x");
-  spawn("powershell", ["-NoProfile", "-Command", `$f=[IO.File]::Open('${heldLog}','Open','ReadWrite','None'); Start-Sleep -Milliseconds 5000; $f.Close()`], { stdio: "ignore", windowsHide: true });
+  spawn("powershell", ["-NoProfile", "-WindowStyle", "Hidden", "-Command", `$f=[IO.File]::Open('${heldLog}','Open','ReadWrite','None'); Start-Sleep -Milliseconds 5000; $f.Close()`], { stdio: "ignore", windowsHide: true });
   for (let i = 0; i < 40; i++) {
     try {
       writeFileSync(heldLog, "x");

@@ -17,7 +17,7 @@ export const run = (file, a, options = {}) =>
   new Promise((resolve, reject) => {
     execFile(file, a, { windowsHide: true, maxBuffer: 1 << 24, ...options }, (err, stdout, stderr) => (err ? reject(Object.assign(err, { stdout, stderr })) : resolve({ stdout, stderr })));
   });
-export const ps = (script) => run("powershell", ["-NoProfile", "-NonInteractive", "-Command", script]).then((r) => r.stdout.trim());
+export const ps = (script) => run("powershell", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script]).then((r) => r.stdout.trim());
 
 export async function waitFor(what, probe, ms = 15000, every = 250) {
   const end = Date.now() + ms;
