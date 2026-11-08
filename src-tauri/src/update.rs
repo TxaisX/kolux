@@ -23,7 +23,7 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 /// The update manifest of the newest published release (OD-20: Kolux's own feed).
 pub const DEFAULT_RELEASE_ENDPOINT: &str = "https://github.com/TxaisX/kolux/releases/latest/download/latest.json";
 /// Where a release build reads its feed. The release job never sets `KOLUX_RS_RELEASE_ENDPOINT`, so a
-/// shipped build reads the GitHub feed above; the update proof rig (scripts/prove/update-rig.mjs, T-785)
+/// shipped build reads the GitHub feed above; the T-785 update proof rig
 /// builds scratch-identity installers against a feed on the loopback address. It is a build-time
 /// value: an installed release build still takes no feed from its environment.
 pub const RELEASE_ENDPOINT: &str = match option_env!("KOLUX_RS_RELEASE_ENDPOINT") {
