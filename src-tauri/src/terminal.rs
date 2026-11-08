@@ -367,6 +367,11 @@ impl History {
 
     fn append(&mut self, chunk: &[u8]) {
         use std::io::Write as _;
+        // T-792 (P2b-04): what reaches the disk goes through the diagnostics mask first. A chunk that
+        // is not whole UTF-8 (cut inside a character) is written as it came; a token split across two
+        // chunks is not caught here, the same best effort the mask gives everywhere else.
+        let masked = std::str::from_utf8(chunk).ok().map(crate::diag::scrub);
+        let chunk: &[u8] = masked.as_deref().map_or(chunk, str::as_bytes);
         if self.file.is_none() {
             self.file = std::fs::OpenOptions::new().create(true).append(true).open(&self.path).ok();
         }
@@ -2075,6 +2080,25 @@ mod tests {
         crate::shell_marks::apply(&mut zsh, &own);
         assert!(own.join("zsh").join(".zshrc").is_file(), "a hook file that went missing is written again on the next pane start");
         let _ = std::fs::remove_dir_all(base.parent().unwrap());
+    }
+
+    /// T-792 (P2b-04): what a pane printed reaches its history file through the diagnostics mask.
+    #[test]
+    fn t792_pane_history_is_masked_on_disk() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-term-t792-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut h = History::open(&dir, 7).unwrap();
+        h.append(b"$ export ANTHROPIC_API_KEY=sk-ant-HISTSECRET1234567890\r\n");
+        h.append("\u{1b}[32mok\u{1b}[0m eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\r\n".as_bytes());
+        // Not UTF-8 (a chunk cut inside a character): written as it came.
+        h.append(&[0xff, 0xfe, b'r', b'a', b'w', b'\n']);
+        let on_disk = std::fs::read(history_file(&dir, 7)).unwrap();
+        let text = String::from_utf8_lossy(&on_disk);
+        assert!(!text.contains("HISTSECRET") && !text.contains("SflKxwRJ"), "{text}");
+        assert!(text.contains("ANTHROPIC_API_KEY=[masked]\r\n") && text.contains("ok\u{1b}[0m [masked]\r\n"), "{text}");
+        assert_eq!(&on_disk[on_disk.len() - 6..], &[0xff, 0xfe, b'r', b'a', b'w', b'\n']);
+        assert_eq!(h.size, on_disk.len() as u64, "the cap counts the bytes written");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// ACCT-053: the redraw buffer of a restored pane never starts inside a wide character. A tail with a

@@ -1,0 +1,31 @@
+T-792 · Mask on disk too (P2b-04, P2b-07, P2b-08) · lane ready-sec · 2026-11-08
+
+What changed
+- src-tauri/src/diag.rs write_capped: every kolux.log line goes through diag::scrub as it is written (P2b-07).
+- src-tauri/src/diag.rs scrub_word: a bare JWT (three base64url parts joined by dots, starting eyJ, 20+ chars) is a token by shape, like the vendor prefixes and AKIA/ASIA ids (P2b-08). A closing quote after trailing punctuation no longer hides the shape.
+- src-tauri/src/terminal.rs History::append: each UTF-8 chunk is masked before it reaches <profile>/history/<key>.log; a chunk that is not whole UTF-8 is written as it came (P2b-04). terminal_history_append uses the same path.
+- Not a hard-stop file: trust.rs and hooks.rs untouched by this task.
+
+The auditor's Node mask test (p2b-mask-test.txt lines 18 and 48; the script itself is not in the repo) reproduced as Rust assertions
+- line 18 input : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+  line 18 output: [masked]
+- line 48 input : error from pane: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c rejected
+  line 48 output: error from pane: [masked] rejected
+- also asserted: a quoted JWT with a trailing comma keeps its quote and comma; "eyJust", "eyJ.dot", "e.y.J" stay; scrub([masked]) == [masked].
+
+Three new cases (gate: cargo test diag terminal)
+- diag::tests::t792_a_bare_jwt_is_masked_alone_and_inside_a_sentence
+- diag::tests::t792_kolux_log_is_masked_when_written (write(dir, "... ANTHROPIC_API_KEY=sk-ant-DISKSECRET... and <JWT> seen") -> file holds "ANTHROPIC_API_KEY=[masked] and [masked] seen")
+- terminal::tests::t792_pane_history_is_masked_on_disk (export line and ANSI-wrapped JWT masked in the history file, a non-UTF-8 chunk written raw, History.size == bytes on disk)
+Fails before (pre-fix run): test result: FAILED. 0 passed; 3 failed
+
+Gates
+- cargo test --lib diag     -> test result: ok. 18 passed; 0 failed
+- cargo test --lib terminal -> test result: ok. 111 passed; 0 failed
+- cargo clippy --all-targets -- -D warnings -> Finished `dev` profile, no warnings
+- cargo build -> Finished `dev` profile
+- pnpm exec tsc --noEmit -p . -> exit 0 (no TS changed; vitest related not needed)
+
+Limits (best effort, same as the mask elsewhere)
+- A token split across two PTY read chunks is not caught by the history writer.
+- Restored scrollback after a restart shows [masked] where the secret was printed; the live pane is unchanged.

@@ -67,6 +67,9 @@ fn write_capped(dir: &Path, line: &str, file_cap: u64, total_cap: u64) {
         return;
     }
     let live = logs.join(LIVE);
+    // T-792 (P2b-07): the mask runs as the line is written, so the file on disk never holds the
+    // secret; the bundle masks again when it reads, which changes nothing.
+    let line = scrub(line);
     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&live) {
         let _ = writeln!(f, "{} {line}", now_secs());
     }
@@ -191,9 +194,12 @@ fn scrub_word(word: &str) -> (String, bool) {
     if (word.starts_with('-') && secret_name(bare.trim_start_matches('-'))) || matches!(bare.to_ascii_lowercase().as_str(), "bearer" | "basic") {
         return (word.to_string(), true);
     }
-    // A token recognisable by its shape alone.
-    let core = bare.trim_end_matches([',', ';', ')', '}', '>']);
-    if (core.len() >= 12 && KNOWN.iter().any(|k| core.starts_with(k))) || (core.len() >= 20 && (core.starts_with("AKIA") || core.starts_with("ASIA"))) {
+    // A token recognisable by its shape alone: a vendor prefix, an AWS key id, or a bare JWT
+    // (T-792, P2b-08: three base64url parts joined by dots, the first `eyJ` as every JSON header
+    // encodes to).
+    let core = bare.trim_end_matches(['"', '\'', ',', ';', ')', '}', '>']);
+    let jwt = core.len() >= 20 && core.starts_with("eyJ") && core.matches('.').count() == 2 && core.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b'='));
+    if (core.len() >= 12 && KNOWN.iter().any(|k| core.starts_with(k))) || (core.len() >= 20 && (core.starts_with("AKIA") || core.starts_with("ASIA"))) || jwt {
         return (masked(word), false);
     }
     (word.to_string(), false)
@@ -322,6 +328,28 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// p2b-mask-test.txt lines 18 and 48: the auditor's bare JWT, alone and inside a sentence.
+    const JWT: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+
+    #[test]
+    fn t792_a_bare_jwt_is_masked_alone_and_inside_a_sentence() {
+        assert_eq!(scrub(JWT), MASK, "p2b-mask-test line 18");
+        assert_eq!(scrub(&format!("error from pane: {JWT} rejected")), format!("error from pane: {MASK} rejected"), "p2b-mask-test line 48");
+        assert_eq!(scrub(&format!("\"{JWT}\",")), format!("\"{MASK}\","), "a leading quote and trailing punctuation stay");
+        assert_eq!(scrub("eyJust a word, eyJ.dot and e.y.J stay"), "eyJust a word, eyJ.dot and e.y.J stay", "short or dotless words are no token");
+        assert_eq!(scrub(MASK), MASK, "masking twice changes nothing");
+    }
+
+    #[test]
+    fn t792_kolux_log_is_masked_when_written() {
+        let dir = temp_dir("t792-log");
+        write(&dir, &format!("pane env ANTHROPIC_API_KEY=sk-ant-DISKSECRET1234567890 and {JWT} seen"));
+        let log = fs::read_to_string(dir.join("logs").join(LIVE)).unwrap();
+        assert!(!log.contains("DISKSECRET") && !log.contains("SflKxwRJ"), "{log}");
+        assert!(log.contains("pane env ANTHROPIC_API_KEY=[masked] and [masked] seen"), "{log}");
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
