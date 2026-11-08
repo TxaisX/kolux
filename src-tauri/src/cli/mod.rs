@@ -1114,11 +1114,27 @@ fn pane_target(req: &Request) -> Option<Option<String>> {
     }
 }
 
-/// A terminal command that starts a program: `terminal create` or `terminal split` with a non-blank
-/// `--command`. Without a command the new pane is a plain shell the caller can already type into.
+/// A command that starts a program in a pane the caller has no dispatch for: `terminal create` or
+/// `terminal split` with a non-blank `--command` (without one the new pane is a plain shell the
+/// caller can already type into); review fix 2 (N2) `worktree create` with a non-blank `--agent` or
+/// `--prompt` (the window opens an agent tab for it); and the automations whose run opens an agent
+/// tab, or types its prompt into an idle agent pane (`automations create`, `edit` that sets the
+/// prompt or the provider, `run`).
 fn starts_program(req: &Request) -> bool {
-    matches!(req.command.as_str(), "terminal.create" | "terminal.split")
-        && req.args["command"].as_str().is_some_and(|c| !c.trim().is_empty())
+    let set = |k: &str| req.args[k].as_str().is_some_and(|c| !c.trim().is_empty());
+    match req.command.as_str() {
+        "terminal.create" | "terminal.split" => set("command"),
+        "worktree.create" => set("agent") || set("prompt"),
+        "automations.create" | "automations.run" => true,
+        "automations.edit" => set("prompt") || set("provider"),
+        _ => false,
+    }
+}
+
+/// Review fix 2 (N1): `orchestration reset --tasks` or `--all` wipes the dispatch list, so a worker
+/// that ran it would stop being one. `--messages` leaves the dispatches alone.
+fn resets_dispatches(req: &Request) -> bool {
+    req.command == RESET && (req.args["tasks"] == true || req.args["all"] == true)
 }
 
 /// T-793 / DT-C228: a request that carries a pane may only target its own pane, unless the caller
@@ -1133,25 +1149,32 @@ fn starts_program(req: &Request) -> bool {
 pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Result<(), Fail> {
     use crate::orchestration::terminal_of;
     let Some(me) = me else { return Ok(()) };
-    let spawns = starts_program(req);
+    let (spawns, resets) = (starts_program(req), resets_dispatches(req));
     let target = match pane_target(req) {
         Some(t) => t,
-        None if spawns => None,
+        None if spawns || resets => None,
         None => return Ok(()),
     };
-    if !spawns && target.as_deref() == Some(me) {
+    if !spawns && !resets && target.as_deref() == Some(me) {
         return Ok(());
     }
     let worker = dispatches.iter().any(|d| terminal_of(d).as_deref() == Some(me));
     if !worker {
         return Ok(());
     }
+    if resets {
+        return Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so it cannot reset tasks: that wipes the dispatch list and would turn it into a coordinator (a worker may still run orchestration reset --messages)"),
+            data: json!({ "caller": me }),
+        });
+    }
     if spawns {
         // Review fix 1 (B2): a pane started with a command runs outside every scope (it carries no
         // dispatch), so a worker could use it to reach any terminal. Only a coordinator starts programs.
         return Err(Fail {
             code: "pane_scope",
-            message: format!("{me} is a worker, so it cannot start a program in a new pane: ask the coordinator that started it to run that command"),
+            message: format!("{me} is a worker, so `{}` cannot start a program or agent in a new pane: ask the coordinator that started it to run that command", req.command.replace('.', " ")),
             data: json!({ "caller": me }),
         });
     }
@@ -1182,7 +1205,7 @@ fn scoped(ctx: &Ctx, req: &Request) -> Result<(), Fail> {
 
 /// `scoped` with the terminal behind a pane key given, so a test can stand a pane in.
 fn scoped_with(ctx: &Ctx, req: &Request, by_key: &dyn Fn(&str) -> Option<String>) -> Result<(), Fail> {
-    if req.pane.is_none() || (pane_target(req).is_none() && !starts_program(req)) {
+    if req.pane.is_none() || (pane_target(req).is_none() && !starts_program(req) && !resets_dispatches(req)) {
         return Ok(());
     }
     let me = caller_with(req, by_key).ok().flatten();
@@ -8122,7 +8145,7 @@ mod tests {
     }
 
     /// A runtime with `term-1` (a coordinator), `term-2` (worker of dispatch d-1) and `term-3`, each with its key.
-    fn fix2_ctx<'a>(dir: &std::path::Path, git_: &'a Git, store: &'a Mutex<Store>, terminals: &'a Terminals, notify: &'a dyn Fn(Value)) -> Ctx<'a> {
+    fn fix2_ctx<'a>(dir: &std::path::Path, git_: &'a Git, store: &'a Mutex<Store>, terminals: &'a Terminals, notify: &'a (dyn Fn(Value) + Sync)) -> Ctx<'a> {
         let here = dir.to_string_lossy().into_owned();
         for (id, key) in [(1, "key-1"), (2, "key-2"), (3, "key-3")] {
             terminals.fake_session(id, &here, None);
