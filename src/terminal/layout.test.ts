@@ -2,7 +2,7 @@
 // the active workspace and tab come back while they still exist.
 import { expect, test } from "vitest";
 import { sessionOrder } from "../sessions/restoreOrder";
-import { joinMarks, joinSaved, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
+import { freshShells, joinMarks, joinSaved, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
 
 const shell = (key: number, cwd: string | null, extra: Record<string, unknown> = {}) => ({ key, cwd, branch: null, agent: "shell" as const, program: null, args: [], ...extra });
 
@@ -238,4 +238,29 @@ test("c26r301: a slow start keeps the saved pins and tab colours, and the layout
   ]);
   // A mark the user set during the wait wins over the saved one for the same tab.
   expect(joinMarks({ pinned: new Set([2]), colors: { 2: "blue" } }, late)).toEqual({ pinned: new Set([1, 2]), colors: { 2: "blue" } });
+});
+
+test("dtc27: a fresh start brings agent tabs back as plain shells in their folder; shells, choosers and other tabs as saved", () => {
+  const l = freshShells({
+    panes: [
+      { key: 1, cwd: "C:/a", branch: "main", agent: "claude", agentId: "claude", program: "claude", args: [], session: "s1", account: "x", title: "Fix it", pinned: true },
+      { key: 2, cwd: "C:/b", branch: null, agent: "shell", agentId: "gemini", program: "gemini", args: [] },
+      { key: 3, cwd: "C:/c", branch: null, agent: "shell", program: "pwsh", args: ["-NoLogo"] },
+      { key: 4, cwd: "C:/d", branch: null, agent: "shell", program: null, args: [], chooser: true, agentId: "codex" },
+      { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "browser" },
+      { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true },
+    ],
+    activeTab: { 0: 1 }, focused: 1, activeDir: "C:/a", stacked: {},
+  });
+  expect(l.panes[0]).toEqual({ key: 1, cwd: "C:/a", branch: "main", agent: "shell", program: null, args: [], title: "Fix it", pinned: true });
+  expect(l.panes[1]).toEqual({ key: 2, cwd: "C:/b", branch: null, agent: "shell", program: null, args: [] });
+  expect(l.panes.slice(2)).toEqual([
+    { key: 3, cwd: "C:/c", branch: null, agent: "shell", program: "pwsh", args: ["-NoLogo"] },
+    { key: 4, cwd: "C:/d", branch: null, agent: "shell", program: null, args: [], chooser: true, agentId: "codex" },
+    { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "browser" },
+    { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: null, args: [], title: "Setup" },
+  ]);
+  const saved = layoutOf([{ key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true }], {}, 6, "C:/e", {});
+  expect(freshShells(restoreLayout(saved)!).panes[0].program).toBeNull();
+  expect(l.panes.some(restoreAsks)).toBe(false);
 });

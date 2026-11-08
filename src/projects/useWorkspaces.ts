@@ -62,7 +62,7 @@ export function useWorkspaceActions({ panes, setPanes, setFocused, setActiveDir,
       const cells = cellsOf(panesIn(ps, dir));
       const tab = where === "tab" || cells.length >= MAX_PANES;
       if (!tab && where === "down" && cells.length === 1) setStacked((st) => ({ ...st, [dir]: true }));
-      return [...ps, { key, cwd: dir, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: tab ? cells[0]?.group : undefined }];
+      return [...ps, { key, cwd: dir, branch, agent: "shell", program: line.program, args: line.args, title: "Setup", setupScript: true, word: line.program.split(/[\\/]/).pop()?.replace(/\.exe$/i, ""), group: tab ? cells[0]?.group : undefined }];
     });
     if (then)
       afterSetup.current[key] = () =>

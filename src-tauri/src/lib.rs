@@ -360,7 +360,7 @@ pub fn run() {
                 });
             }
             app.manage(Terminals::default());
-            // T-184-b (TERM-105): panes run in the background terminal service and outlive the window.
+            // DT-C27 (2026-11-08): panes run in the window and end with it; a leftover background service is stopped.
             app.state::<Terminals>().use_service(app.handle());
             // APP-008 / T-248-d: the tray icon with Open Kolux, Quit and the dot. Optional: a failure is logged and the app goes on.
             if let Err(e) = tray::install(app.handle()) {

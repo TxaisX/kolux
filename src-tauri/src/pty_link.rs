@@ -437,15 +437,11 @@ impl Acker {
 
 // ---------------------------------------------------------------- pure rules
 
-/// Coordinator default (2026-10-20, Txais may overrule): an installed (release) build keeps its
-/// terminals in the background service; a development build only when `KOLUX_TERMINAL_SERVICE=1`,
-/// so lane rebuilds and smoke runs never leave a service holding the build's own program file.
-pub fn wanted(release: bool, env: Option<&str>) -> bool {
-    match env {
-        Some("1") => true,
-        Some("0") => false,
-        _ => release,
-    }
+/// DT-C27 (Txais, 2026-11-08: "we do not want any kolux terminals running in the background"): no
+/// build keeps its terminals in the background service, so quitting ends every pane and a start is
+/// fresh. Only `KOLUX_TERMINAL_SERVICE=1` (a developer testing the service itself) still links to it.
+pub fn wanted(env: Option<&str>) -> bool {
+    env == Some("1")
 }
 
 /// The handle an adopted terminal keeps: the one it had (programs inside it know themselves by
@@ -751,12 +747,11 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn t184b_only_installed_builds_use_the_service_unless_told() {
-        assert!(wanted(true, None));
-        assert!(!wanted(false, None));
-        assert!(wanted(false, Some("1")));
-        assert!(!wanted(true, Some("0")));
-        assert!(wanted(true, Some("yes")));
+    fn t184b_no_build_uses_the_service_unless_told() {
+        assert!(!wanted(None));
+        assert!(wanted(Some("1")));
+        assert!(!wanted(Some("0")));
+        assert!(!wanted(Some("yes")));
     }
 
     #[test]

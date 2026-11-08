@@ -676,7 +676,13 @@ pub fn main(words: Vec<String>) -> i32 {
         };
         // CLI-011 / T-075-b: a background terminal service this build cannot pair with is a clear
         // refusal before anything starts; a compatible one is attached to by the window open starts.
-        let launch = || crate::pty::service::before_open(&data_dir()).map_err(|why| Fail { code: "service_incompatible", message: why, data: json!({}) }).and_then(|_| launch_app());
+        // DT-C27 (2026-11-08): with the service off, a leftover one is stopped by the window, never a refusal here.
+        let launch = || {
+            if crate::pty::link::wanted(std::env::var("KOLUX_TERMINAL_SERVICE").ok().as_deref()) {
+                crate::pty::service::before_open(&data_dir()).map_err(|why| Fail { code: "service_incompatible", message: why, data: json!({}) })?;
+            }
+            launch_app()
+        };
         // CLI-011 box 2: the running copy (its pid from the startup file) may take the foreground
         // before it is asked, and once it answered its window is raised from here as well, as a
         // second launch does (lifecycle::forward_to); only Windows can say whether that worked.

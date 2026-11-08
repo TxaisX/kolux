@@ -43,6 +43,8 @@ export type SavedPane = {
   color?: string;
   /** An empty chooser pane (SESS-007): it comes back empty, with its pre-picked agent if it had one. */
   chooser?: true;
+  /** DT-C27: a workspace Setup tab (its program is the setup script); a fresh start opens a plain shell. */
+  setupScript?: true;
 };
 export type SavedLayout = { panes: SavedPane[]; activeTab: Record<number, number>; focused: number; activeDir: string | null; stacked: Record<string, boolean> };
 
@@ -83,6 +85,7 @@ export function layoutOf(panes: LivePane[], activeTab: Record<number, number>, f
     if (p.forkOf) s.forkOf = p.forkOf;
     if (p.account !== undefined) s.account = p.account;
     if (p.title !== undefined) s.title = p.title;
+    if (p.setupScript) s.setupScript = true;
     if (p.group !== undefined) s.group = p.group;
     if (p.kind !== undefined) s.kind = p.kind;
     if (p.path !== undefined) s.path = p.path;
@@ -167,6 +170,24 @@ export function restoreAsks(p: Pick<SavedPane, "agent" | "agentId" | "program" |
   return !p.kind && !!p.agentId && !(p.agent === "shell" && p.program === null);
 }
 
+/** DT-C27 (Txais, 2026-11-08: start fresh, "no ai slop"): every terminal tab that ran an agent comes
+ *  back as a new plain shell in its folder, so no agent is started or resumed on its own, and a Setup
+ *  tab does not run its setup script again. Plain shells,
+ *  empty choosers and browser, editor and other tabs come back as saved. */
+export function freshShells(l: SavedLayout): SavedLayout {
+  const panes = l.panes.map((p) => {
+    if (p.kind || p.chooser || (p.agent === "shell" && !p.agentId && !p.setupScript)) return p;
+    const s: SavedPane = { ...p, agent: "shell", program: null, args: [] };
+    delete s.setupScript;
+    delete s.agentId;
+    delete s.session;
+    delete s.forkOf;
+    delete s.account;
+    return s;
+  });
+  return { ...l, panes };
+}
+
 const str = (v: unknown): v is string => typeof v === "string";
 const strOrNull = (v: unknown): v is string | null => v === null || typeof v === "string";
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -195,6 +216,7 @@ function readPane(v: unknown): SavedPane | null {
   if (o.pinned === true) p.pinned = true;
   if (isTabColor(o.color)) p.color = o.color;
   if (o.chooser === true && !p.kind && p.program === null) p.chooser = true;
+  if (o.setupScript === true && !p.kind) p.setupScript = true;
   return p;
 }
 
