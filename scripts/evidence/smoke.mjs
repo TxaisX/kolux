@@ -16,7 +16,8 @@
 //         in an environment variable before the change and writes that variable to a file after it (only the
 //         same process can know it).
 // Flow 2  Mod+S in an editor tab writes the file: the bytes on disk carry what was typed.
-// Flow 3  Discard in Source Control asks first, and Cancel loses nothing: the file and git status are unchanged.
+// Flow 3  Delete in the Explorer asks first, and Cancel keeps the file byte-identical on disk. (It used to test the
+//         Source Control Discard, which T-644/DT-C85 removed with the panel.)
 // Flow 4  a Claude pane's status dot turns Working: agentOptions.claude.command points at a stand-in program
 //         that posts the same hook events Kolux's installed hook posts (SessionStart, UserPromptSubmit) from the
 //         pane's own hook variables. CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE and HOME (with APPDATA and
@@ -54,12 +55,12 @@
 //   projects/  sidebar-add-project  add-project-by-path  add-project-folder-input
 //   launch/    chooser-pane  seat-<n>-agents  seat-agent-<agent id>  chooser-start  new-session-menu  new-session-item-<agent id>
 //   terminal/  terminal-pane  pane-status-dot  pane-split-right  pane-new-session
-//   editor/    editor-pane  explorer-row
-//   other      onboarding-dialog (onboarding/Wizard)  scm-discard-file (scm/SourceControlPanel, flow 3)
+//   editor/    editor-pane  explorer-row  explorer-tree
+//   other      onboarding-dialog (onboarding/Wizard)  ask-dialog  ask-body  ask-cancel  ask-confirm (chrome/Ask, flow 3)
 // Renaming a label must not touch these ids; scripts/smoke-testids.test.mjs fails when one is missing from src/.
-// What still matches on something else: the ARIA roles tab, menuitem and alertdialog, the text of a tab, menu item
+// What still matches on something else: the ARIA roles tab and menuitem, the text of a tab, menu item
 // or Explorer row to pick one among several, the libraries' own .xterm-helper-textarea and .cm-content (no id can
-// be put on markup xterm.js and CodeMirror own), and the discard prompt's .btn-row and .ask-body.
+// be put on markup xterm.js and CodeMirror own); and the .name inside an Explorer row.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
@@ -327,30 +328,29 @@ async function flow2() {
 
 // ---------- flow 3 ----------
 async function flow3() {
-  const before = read(smokeFile);
-  if (before === ORIGINAL) {
-    // Flow 2 did not run or did not change the file: make a change by hand so Discard has something to ask about.
-    writeFileSync(smokeFile, ORIGINAL + "changed by smoke\n");
-  }
-  const changed = read(smokeFile);
-  const status = (await git(["status", "--porcelain"])).stdout.trim();
-  if (!status.includes("notes.txt")) throw new Error(`git does not see notes.txt as changed: "${status}"`);
-  await rightTab("Source Control");
-  // The panel re-reads git status every 4 s.
-  await waitFor("the Discard button for notes.txt", () => exists(tid("scm-discard-file")), 15000, 500);
-  await click(tid("scm-discard-file"));
-  const ask = await waitFor("the discard prompt", () => evalJs(`(() => { const d = document.querySelector('[role="alertdialog"]'); if (!d) return null; return { title: d.getAttribute("aria-label"), body: d.querySelector(".ask-body")?.textContent ?? "", buttons: [...d.querySelectorAll(".btn-row button")].map(b => ({ text: b.textContent.trim(), cls: b.className })) }; })()`), 5000);
-  if (ask.buttons.length < 2) throw new Error(`the prompt has no choice to cancel: ${JSON.stringify(ask)}`);
-  if (read(smokeFile) !== changed) throw new Error("the file changed while the prompt was open");
-  const cancel = ask.buttons.findIndex((b) => !/danger|primary/.test(b.cls));
-  if (cancel < 0) throw new Error(`no cancel button in ${JSON.stringify(ask.buttons)}`);
-  await evalJs(`document.querySelectorAll('[role="alertdialog"] .btn-row button')[${cancel}].click()`);
-  await waitFor("the prompt to close", async () => !(await exists('[role="alertdialog"]')), 5000);
+  // This replaces the old flow 3, which tested Discard in Source Control: that panel was removed (T-644/DT-C85).
+  // Deleting a file from the Explorer is what asks first now.
+  const bytes = () => (existsSync(smokeFile) ? readFileSync(smokeFile) : null);
+  const before = bytes();
+  if (!before) throw new Error("notes.txt is missing before the delete check");
+  await rightTab("Explorer");
+  await waitFor("notes.txt in the Explorer", () => exists(tid("explorer-row")), 10000);
+  await clickWhere(tid("explorer-row"), "/^\\s*notes\\.txt\\s*$/");
+  await focusField(tid("explorer-tree"));
+  await cdp("key", "Delete");
+  const ask = await waitFor("the delete prompt", () => evalJs(`(() => { const d = document.querySelector(${JSON.stringify(tid("ask-dialog"))}); if (!d) return null; return { title: d.getAttribute("aria-label"), body: d.querySelector(${JSON.stringify(tid("ask-body"))})?.textContent ?? "", cancel: !!d.querySelector(${JSON.stringify(tid("ask-cancel"))}), confirm: !!d.querySelector(${JSON.stringify(tid("ask-confirm"))}) }; })()`), 5000);
+  if (!ask.cancel || !ask.confirm) throw new Error(`the prompt has no choice to cancel: ${JSON.stringify(ask)}`);
+  if (!/notes\.txt/.test(ask.body)) throw new Error(`the prompt does not name notes.txt: ${JSON.stringify(ask)}`);
+  const open = bytes();
+  if (!open || !open.equals(before)) throw new Error("notes.txt changed or went away while the prompt was open");
+  await click(tid("ask-cancel"));
+  await waitFor("the prompt to close", async () => !(await exists(tid("ask-dialog"))), 5000);
   await sleep(1000);
-  if (read(smokeFile) !== changed) throw new Error("Cancel lost the change on disk");
-  const statusAfter = (await git(["status", "--porcelain"])).stdout.trim();
-  if (!statusAfter.includes("notes.txt")) throw new Error(`git no longer sees the change after Cancel: "${statusAfter}"`);
-  return `Discard asked first ("${ask.title}", buttons ${ask.buttons.map((b) => b.text).join(" / ")}); after "${ask.buttons[cancel].text}" notes.txt and git status are unchanged`;
+  const after = bytes();
+  if (!after) throw new Error("Cancel deleted notes.txt");
+  if (!after.equals(before)) throw new Error("Cancel changed notes.txt on disk");
+  if (!(await evalJs(`[...document.querySelectorAll(${JSON.stringify(tid("explorer-row"))})].some(e => /^\\s*notes\\.txt\\s*$/.test((e.querySelector(".name") ?? e).textContent || ""))`))) throw new Error("notes.txt left the Explorer after Cancel");
+  return `Delete in the Explorer asked first ("${ask.title}": ${ask.body}); after Cancel notes.txt is still on disk, byte-identical (${after.length} bytes). This replaces the old flow 3, which tested the Source Control Discard that T-644/DT-C85 removed.`;
 }
 
 // ---------- flow 4 ----------

@@ -931,6 +931,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         ref={box}
         tabIndex={0}
         role="tree"
+        data-testid="explorer-tree"
         aria-label={`Files of ${name}`}
         aria-multiselectable
         aria-activedescendant={index >= 0 ? `ex-row-${index}` : undefined}

@@ -36,6 +36,13 @@ test.each(used)("src/ carries data-testid %s", (id) => {
   expect(declared(id)).toBe(true);
 });
 
+test("flow 3 checks the Explorer delete prompt by test id, not the removed Source Control Discard", () => {
+  for (const id of ["explorer-tree", "ask-dialog", "ask-body", "ask-cancel", "ask-confirm"]) expect(used, id).toContain(id);
+  expect(used).not.toContain("scm-discard-file");
+  expect(smoke).not.toContain('[role="alertdialog"]');
+  expect(smoke).not.toContain(".btn-row");
+});
+
 test("the check itself catches a missing id", () => {
   expect(declared("no-such-control")).toBe(false);
 });
