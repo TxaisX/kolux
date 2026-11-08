@@ -406,9 +406,9 @@ Var KoluxOldHadPath
         ${If} $R3 != 0
           ; T-790 review: the old copy is still installed (its uninstaller could not run, the old app could not
           ; be stopped, or it was cancelled). Keep its uninstaller and its Settings > Apps entry, and stop here,
-          ; so there are never two copies with no way to remove one. Nothing has been changed yet.
+          ; so there are never two copies with no way to remove one. The old copy, its entry and the profile stay.
           DetailPrint "The old uninstaller did not finish (exit code $R3); the install stops and changes nothing"
-          MessageBox MB_OK|MB_ICONSTOP "${PRODUCTNAME} could not remove the earlier ${PRODUCTNAME} RS install (is it still running?). Close it and run this installer again. Nothing was changed." /SD IDOK
+          MessageBox MB_OK|MB_ICONSTOP "${PRODUCTNAME} could not remove the earlier ${PRODUCTNAME} RS install (is it still running?). Your current version stays as it is. Close it, then try again: the next update check offers this update again." /SD IDOK
           !insertmacro KOLUX_RESTORE
           Abort
         ${EndIf}
