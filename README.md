@@ -51,7 +51,7 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 ## Requirements
 
 - Windows 11 x64 is the tested target. Windows 10 is not yet verified end to end: resizing a terminal pane may cut up long lines there, and the installer says so before it installs.
-- The WebView2 runtime. Windows 11 includes it; the installer can fetch it if it is missing.
+- The WebView2 runtime. Windows 11 includes it; the installer can fetch it if it is missing, which needs an internet connection; on a PC without WebView2 and offline, install the runtime first.
 - Git, for the changes view and for committing, pushing, and pull requests.
 - At least one agent CLI. Kolux can install some agents for you; others you install first.
 - Node.js for agents that are distributed through npm. If an agent's install fails because Node.js is too old, Kolux says which version the agent needs and how to update.

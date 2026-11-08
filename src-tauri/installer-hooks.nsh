@@ -310,9 +310,29 @@
   !insertmacro KOLUX_PATH_APP_REMOVE
 !macroend
 
+; T-789 (P3-07): an update (/UPDATE) leaves the PATH as the user has it. Someone who pressed Remove kolux in
+; Settings would otherwise find the command back after the next update; a first install still adds it.
+!macro KOLUX_PATH_ADD_UNLESS_UPDATE
+  Push $R9
+  Push $R8
+  Push $R7
+  Push $R6
+  !insertmacro KOLUX_IS_UPDATE
+  StrCpy $R5 $R9
+  Pop $R6
+  Pop $R7
+  Pop $R8
+  Pop $R9
+  ${If} $R5 = 0
+    !insertmacro KOLUX_PATH_ADD
+  ${Else}
+    DetailPrint "Update: leaving the kolux command on the PATH as it is"
+  ${EndIf}
+!macroend
+
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "Pick your coding agents when Kolux opens"
-  !insertmacro KOLUX_PATH_ADD
+  !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL

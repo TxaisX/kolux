@@ -21,6 +21,11 @@ describe("installer Windows 10 notice", () => {
     expect(text).toContain('"${BUILD}" < 22000');
   });
 
+  it("T-789: the post-install hook adds the kolux command to the PATH only when this is not an update", () => {
+    expect(text).toMatch(/!macro NSIS_HOOK_POSTINSTALL[\s\S]*?!insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE\s+!macroend/);
+    expect(text).toMatch(/!macro KOLUX_PATH_ADD_UNLESS_UPDATE[\s\S]*?\$\{If\} \$R5 = 0\s+!insertmacro KOLUX_PATH_ADD\s+\$\{Else\}/);
+  });
+
   it.runIf(process.platform === "win32" && fs.existsSync(makensis))("decides from the build number and /UPDATE as the harness expects", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "t786-"));
     try {

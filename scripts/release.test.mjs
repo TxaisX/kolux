@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { acquire, buildOnce, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, smokeCli, smokeMigration, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
+import { acquire, buildOnce, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, smokeCli, smokeMigration, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
 import { decide, WAIT_MS } from "./ci-gate.mjs";
 import { checkPromises, checkWorkflow } from "./workflow-check.mjs";
 import { parseArgs } from "./ship.mjs";
@@ -24,6 +24,26 @@ describe("release version (APP-059)", () => {
   it("picks the newest rehearsal folder by number, not by text", () => {
     expect(newestTag(["v0.1.9", "v0.1.10", "latest.json", "v0.1.2"])).toBe("v0.1.10");
     expect(newestTag(["latest.json"])).toBeNull();
+  });
+});
+
+describe("hand-written release notes (P3-19, T-789)", () => {
+  const log = ["# Changelog", "", "## Unreleased", "- Next thing", "", "## [0.1.10] - 2026-11-08", "- Review changes opens All Changes", "- Faster start", "", "## 0.1.9", "- Older", ""].join("\n");
+  it("takes the section named for the version, to the next heading", () => {
+    expect(changelogSection(log, "0.1.10")).toBe("- Review changes opens All Changes\n- Faster start");
+    expect(changelogSection(log.replace(/\n/g, "\r\n"), "0.1.9")).toBe("- Older");
+  });
+  it("falls back to Unreleased, and to nothing when there is no section or it is empty", () => {
+    expect(changelogSection(log, "0.1.11")).toBe("- Next thing");
+    expect(changelogSection("# Changelog\n\n## 0.1.2\n- x\n", "0.1.3")).toBeNull();
+    expect(changelogSection("## 0.1.3\n\n## 0.1.2\n- x\n", "0.1.3")).toBeNull();
+    expect(changelogSection("", "0.1.3")).toBeNull();
+  });
+  it("puts the section in the notes in place of the commit subjects and keeps the marker", () => {
+    const body = notesBody(["Keep the spec firewall clean"], "abc1234def", "- Review changes opens All Changes");
+    expect(body.startsWith("- Review changes opens All Changes\n")).toBe(true);
+    expect(body).not.toContain("firewall");
+    expect(markerOf(body)).toBe("abc1234def");
   });
 });
 

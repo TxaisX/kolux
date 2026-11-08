@@ -34,3 +34,8 @@ Section
   FileWrite $Out "notice macro ran to the end$\r$\n"
   FileClose $Out
 SectionEnd
+
+; T-789: never called (it would write the real PATH); it only has to compile, with the real gate macro inside.
+Function neverCalled
+  !insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE
+FunctionEnd

@@ -472,6 +472,9 @@ fn end_for_installer(app: &AppHandle) {
 pub fn install_on_quit(app: &AppHandle) {
     let ready = app.state::<Updates>().ready.lock().ok().and_then(|mut r| r.take());
     if let Some((update, bytes)) = ready {
+        // P3-11 (T-789): the attempt is written down before anything can stop it, so the next launch says
+        // "did not install" (still on the old version) instead of staying silent when the install is skipped.
+        record_attempt(app, &update);
         if !app.state::<Terminals>().end_for_update() {
             // Row 1031: the service holds the program the installer would replace; the update is tried again next launch.
             if let Ok(dir) = app.path().app_data_dir() {
@@ -479,7 +482,6 @@ pub fn install_on_quit(app: &AppHandle) {
             }
             return;
         }
-        record_attempt(app, &update);
         let _ = update.restart_after_install(crate::lifecycle::restart_requested()).install(&bytes);
     }
 }
@@ -498,6 +500,18 @@ mod tests {
     fn row1031_the_skipped_install_line_names_the_version_and_the_reason() {
         let line = install_skipped_line("1.2.3");
         assert!(line.contains("1.2.3") && line.contains("terminal service did not stop"), "{line}");
+    }
+
+    #[test]
+    fn p3_11_a_skipped_install_at_quit_is_still_recorded_so_the_next_launch_reports_it() {
+        let src = include_str!("update.rs");
+        let body = &src[src.find("pub fn install_on_quit").unwrap()..src.find("fn install_skipped_line").unwrap()];
+        let recorded = body.find("record_attempt(app, &update)").expect("the attempt is recorded");
+        assert!(recorded < body.find("end_for_update()").unwrap(), "recorded before the skip can return");
+        assert!(recorded < body.find("return;").unwrap());
+        // and what the next launch makes of a recorded attempt that never reached the new version
+        let raw = care::attempt_json("1.0.0", "1.1.0", 1_000, &[]);
+        assert!(matches!(care::outcome(Some(&raw), "1.0.0", 2_000), Some(care::LastAttempt::Failed { .. })));
     }
 
     fn env_with(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
