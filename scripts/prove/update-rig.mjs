@@ -306,15 +306,18 @@ export async function setUpWorkspace(page) {
     sh("git", ["-c", "user.name=rig", "-c", "user.email=rig@example.invalid", "add", "."], { cwd: repo });
     sh("git", ["-c", "user.name=rig", "-c", "user.email=rig@example.invalid", "commit", "-q", "-m", "rig"], { cwd: repo });
   }
-  await waitFor("the add-project button", () => page.exists('.sb-foot button[title^="Add a project by path"]'), 30000);
-  await page.click('.sb-foot button[title^="Add a project by path"]');
+  await waitFor("the add-project button", () => page.exists('aside.sidebar button[aria-label="Add project"]'), 30000);
+  await page.click('aside.sidebar button[aria-label="Add project"]');
+  await waitFor("the type-a-path link", () => page.exists("button[data-add-by-path]"), 10000);
+  await page.click("button[data-add-by-path]");
   await waitFor("the project folder field", () => page.exists('input[aria-label="project folder"]'), 5000);
   await page.eval(`document.querySelector('input[aria-label="project folder"]').focus()`);
   await page.send("Input.insertText", { text: repo });
   await page.enter();
-  const seat = `${CHOOSER} select[aria-label="Seat 1: which AI"]`;
-  await waitFor("the chooser's Terminal choice", () => page.exists(`${seat} option[value="terminal"]`), 30000);
-  await page.eval(`(() => { const s = document.querySelector(${JSON.stringify(seat)}); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "terminal"); s.dispatchEvent(new Event("change", { bubbles: true })); return s.value; })()`);
+  // Seat 1's row of featured agents (a button per agent); Terminal is the plain shell.
+  const terminal = `${CHOOSER} button.agent-btn[title="A plain terminal, no AI"]`;
+  await waitFor("the chooser's Terminal button", () => page.exists(terminal), 30000);
+  await page.click(terminal);
   const start = `${CHOOSER} button.btn.primary`;
   await waitFor("the chooser's Start button", () => page.eval(`[...document.querySelectorAll(${JSON.stringify(start)})].some(b => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
   await page.eval(`[...document.querySelectorAll(${JSON.stringify(start)})].find(b => /^\\s*Start\\s*$/.test(b.textContent)).click()`);
@@ -400,6 +403,10 @@ export async function prove785() {
       log(`D-4: pop-up "${popupText}" with the app on ${before.page} (exe ${before.exe})`);
       const clicked = await page.clickText("Update now", `${POPUP} button`);
       if (clicked !== "clicked") throw new Error("Update now button missing");
+      // Restarting ends every terminal, so the app asks first (APP 029); the answer is the dialog's own button.
+      await waitFor("the restart question", () => page.exists('[role="alertdialog"][aria-label="Restart to update?"]'), 15000, 250);
+      if ((await page.clickText("Restart now", '[role="alertdialog"] button')) !== "clicked") throw new Error("Restart now button missing");
+      log(`D-4: answered the restart question with "Restart now"`);
       page.close();
       await waitFor(`pid ${pid} to end`, async () => !alive(pid), 90000, 500);
       await installerDone(id, next);
@@ -429,7 +436,10 @@ export async function prove785() {
       const stillOld = fileVersion(exe);
       page.close();
       await quit(pid);
+      // The installer starts a moment after the app ends: wait for the new version to be in place, then for the installer to end.
+      await waitFor(`${exe} to be version ${next}`, () => fileVersion(exe) === next, 180000, 1000);
       await installerDone(id, next);
+      await sleep(5000); // a copy that restarted by itself would show by now
       const after = fileVersion(exe);
       verdict("D-2 install on quit", stillOld === old && after === next && appPids(id).length === 0, `exe before quit ${stillOld}, after quit ${after}; app did not restart itself (running copies: ${appPids(id).length})`);
       const pid2 = launch(id);
