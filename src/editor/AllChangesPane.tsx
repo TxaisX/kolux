@@ -17,6 +17,7 @@
 // are spacers sized from an estimate, then from the measured height (sectionWindow.ts).
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { basicSetup } from "codemirror";
 import { EditorView } from "@codemirror/view";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
@@ -70,7 +71,7 @@ export const estimate = (e: Entry) => {
  * base what became of the file. */
 export const tagOf = (e: Entry, base: boolean) => (e.clash ? "Conflict" : base ? (e.code === "A" ? "Added" : e.code === "D" ? "Deleted" : e.code === "?" ? "Untracked" : "Changed") : e.code === "?" ? "Untracked" : e.staged ? "Staged" : "Unstaged");
 /** The call that reads the branch against its base; `known` is the base the last status named. */
-export const baseCall = (root: string, pinned: string | null, status: Status | null): [string, Record<string, unknown>] => ["scm_base_changes", { worktree: root, pinned, known: status?.base ?? null }];
+export const baseCall = (root: string, pinned: string | null, status: Status | null): [CommandName, Record<string, unknown>] => ["scm_base_changes", { worktree: root, pinned, known: status?.base ?? null }];
 /** FIX-2: the status read as the tab opens is used only until the watcher's first status lands, so a late answer never replaces a newer one. */
 export function statusGate(take: (s: Status) => void): { first: (s: Status) => void; watched: (s: Status) => void; reread: () => (s: Status) => void } {
   let fresh = false;
@@ -115,7 +116,7 @@ export const abortLoss = (op: string): string =>
       ? "Commits already replayed onto the new base are thrown away (the branch keeps the commits it had), and the conflicts you resolved (staged or not) are lost."
       : `Commits the ${op} already made are removed from the branch, and the conflicts you resolved (staged or not) are lost.`);
 /** The command and arguments a section reads its two texts with. */
-export const sidesCall = (base: Base | null, root: string, e: Entry): [string, Record<string, unknown>] => (base ? ["scm_base_sides", { worktree: root, path: e.path, since: base.since }] : ["diff_sides", { path: e.path, staged: e.staged }]);
+export const sidesCall = (base: Base | null, root: string, e: Entry): [CommandName, Record<string, unknown>] => (base ? ["scm_base_sides", { worktree: root, path: e.path, since: base.since }] : ["diff_sides", { path: e.path, staged: e.staged }]);
 
 type Props = { id: number; root: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; onOpenDiff?: (path: string, staged: boolean) => void; pinnedBase?: string | null };
 
@@ -165,7 +166,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     let alive = true;
     // The read hands back its base with the entries, so nothing lands after the tab moved on (FIX-2).
     const read = (): Promise<{ base: Base | null; es: Entry[] }> =>
-      mode === "base" ? invoke<BaseChanges>(...baseCall(root, pinnedBase, latest.current)).then((b) => ({ base: { against: b.against, since: b.since, note: b.note }, es: b.entries })) : invoke<Entry[]>("change_entries", { root }).then((es) => ({ base: null, es }));
+      mode === "base" ? invokeNamed<BaseChanges>(...baseCall(root, pinnedBase, latest.current)).then((b) => ({ base: { against: b.against, since: b.since, note: b.note }, es: b.entries })) : invoke<Entry[]>("change_entries", { root }).then((es) => ({ base: null, es }));
     const fetch = () =>
       read().then(
         ({ base, es }) => {
@@ -541,7 +542,7 @@ export const Section = memo(function Section({ anchor, e, name, root, base, draw
     if (hit && hit.stamp === e.stamp) setSides(hit.sides);
     else {
       const [cmd, args] = sidesCall(base, root, e);
-      invoke<Sides>(cmd, args).then(
+      invokeNamed<Sides>(cmd, args).then(
         (s) => {
           if (!alive) return;
           cache.set(key, { stamp: e.stamp, sides: s });

@@ -5,6 +5,7 @@
 // still running is kept, because an empty answer never replaces figures already shown.
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { heldListen } from "../recovery/hidden";
 import VendorMark from "../chrome/VendorMark";
 import { StatusGlyph } from "../chrome/icons";
@@ -27,7 +28,7 @@ export const publishStored = (limits: ClaudeLimit[]) => {
 /** T-548-b: the active account's stored windows, published even when there are none. After an account switch
  *  the figures shown still belong to the old account; the new one may not have reported yet, and an empty
  *  answer must clear them rather than leave another account's numbers under its name. */
-export const readActiveClaude = (call: (command: string) => Promise<unknown> = (c) => invoke(c)) => call("claude_usage").then((l) => publishStored(l as ClaudeLimit[]));
+export const readActiveClaude = (call: (command: CommandName) => Promise<unknown> = (c) => invokeNamed(c)) => call("claude_usage").then((l) => publishStored(l as ClaudeLimit[]));
 
 /** A report the status line pushed just now: the same, and a forecast reading at the time it
  * arrived (USAGE-031). FIX-2 (council FS-4): the event carries the windows merged with the last

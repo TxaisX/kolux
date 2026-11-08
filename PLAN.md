@@ -740,7 +740,7 @@ No new features. Each task names the audit finding ids it closes (P1-, P2A-, P2b
 - [ ] T-810 · Six destinations: Sessions (was Terminals) · Agents with a Chat / List (Tower) / Timeline (Floor) picker · Board with a "Group by" toggle that absorbs Workspace statuses · Inbox · a Library sidebar group (Tasks, Automations, Artifacts, Skills) · Settings holding Space and Model routing as sections; one Help list; right panel Files · Changes (T-771) · Checks · Insights · History (P4B-04, P4B-02, P4B-11, P4B-12; pending DT-C223) · ui · open · gate: the screen-count script prints 6 top-level destinations; every old palette command still reaches its screen · L
 
 ### gates and proofs
-- [ ] T-811 · Test budgets: raise `editPlacement.test.ts:60` to 20 s and `scm_writers.rs:897` t606 to 60 s; route the 17 variable-name invoke calls through one typed name map so `invoke-contract.mjs` sees them (P1-08, V13-02, P1-10) · tests · open · gate: `pnpm test` and `cargo test` green under `VITEST_MAX_WORKERS=2` with two Rust builds running · S / M
+- [x] T-811 · Test budgets: raise `editPlacement.test.ts:60` to 20 s and `scm_writers.rs:897` t606 to 60 s; route the 17 variable-name invoke calls through one typed name map so `invoke-contract.mjs` sees them (P1-08, V13-02, P1-10) · tests · open · gate: `pnpm test` and `cargo test` green under `VITEST_MAX_WORKERS=2` with two Rust builds running · S / M
 - [ ] T-812 · Proofs on 0.1.9: the no-telemetry watch (APP 070) on the shipped build and a one-line note on the Codex row that its status comes from the terminal title (P1-06, P3-13; APP 070) · release + ui · open · gate: `evidence/T-812.txt` quotes the watch; the Codex row text is in a test · S
 
 ### stress follow-ups

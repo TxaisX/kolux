@@ -4,6 +4,7 @@
 // helper process, so the same pace as the pill: every five minutes, a focus at most every two).
 import { useEffect, useRef } from "react";
 import { invoke, type InvokeArgs } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
 import type { ClaudeLimit } from "./claude";
 import type { CodexUsage } from "./codex";
@@ -51,11 +52,11 @@ export function useCodexPaneFigures(panes: Array<{ agent: string; account?: stri
   }, [key]);
 }
 
-type Call = (command: string, args?: unknown) => Promise<unknown>;
+type Call = (command: CommandName, args?: unknown) => Promise<unknown>;
 
 /** T-548-b: the windows Claude Code last reported from one account's config folder (`null` = Claude's own
  *  sign-in, no folder). An account that is no longer listed has no folder to read, so no windows. */
-export async function readClaudeOf(id: string | null, call: Call = (c, a) => invoke(c, a as InvokeArgs | undefined)): Promise<ClaudeLimit[]> {
+export async function readClaudeOf(id: string | null, call: Call = (c, a) => invokeNamed(c, a as InvokeArgs | undefined)): Promise<ClaudeLimit[]> {
   let configDir: string | null = null;
   if (id !== null) {
     const view = (await call("claude_accounts")) as { accounts: Array<{ id: string; configDir: string }> };
@@ -71,7 +72,7 @@ const normFolder = (p: string) => p.trim().replace(/\\/g, "/").replace(/\/+$/, "
 /** T-548-b: which of the wanted accounts a status-line report's config folder belongs to (`claude-usage-of`
  *  names that folder; null = the default sign-in). Case and slash direction do not matter, as in hooks.rs.
  *  The account list is asked only when a managed account is wanted. Null when none of them is that folder. */
-export async function accountOfFolder(folder: string | null, ids: Array<string | null>, call: Call = (c, a) => invoke(c, a as InvokeArgs | undefined)): Promise<{ id: string | null } | null> {
+export async function accountOfFolder(folder: string | null, ids: Array<string | null>, call: Call = (c, a) => invokeNamed(c, a as InvokeArgs | undefined)): Promise<{ id: string | null } | null> {
   if (folder === null) return ids.includes(null) ? { id: null } : null;
   const managed = ids.filter((i): i is string => i !== null);
   if (!managed.length) return null;
@@ -82,7 +83,7 @@ export async function accountOfFolder(folder: string | null, ids: Array<string |
 
 /** T-548-b: one status-line report from another account's folder: only the reader of that folder asks again
  *  (one claude_usage_of), and only a read with windows replaces what is shown (USAGE-023). */
-export async function rereadFolder(folder: string | null, ids: Array<string | null>, publish: (id: string | null, l: ClaudeLimit[]) => void, call: Call = (c, a) => invoke(c, a as InvokeArgs | undefined)): Promise<void> {
+export async function rereadFolder(folder: string | null, ids: Array<string | null>, publish: (id: string | null, l: ClaudeLimit[]) => void, call: Call = (c, a) => invokeNamed(c, a as InvokeArgs | undefined)): Promise<void> {
   const hit = await accountOfFolder(folder, ids, call);
   if (!hit) return;
   const l = (await call("claude_usage_of", { configDir: folder })) as ClaudeLimit[];

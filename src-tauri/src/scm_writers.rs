@@ -859,8 +859,10 @@ mod tests {
         if cfg!(windows) {
             let f = dir.join("stand-in.cmd");
             // `find /c` prints 0 for empty input but exits 1, and this script ends on that line, so
-            // the writer would read a successful run as a failed agent. A real agent exits 0.
-            std::fs::write(&f, "@echo off\r\ncd\r\necho %*\r\ndir /b /a 2>nul | find /c /v \"\"\r\nexit /b 0\r\n").unwrap();
+            // the writer would read a successful run as a failed agent. A real agent exits 0. Windows'
+            // own find.exe by path: with Git's usr\bin ahead on PATH, a bare `find /c` is GNU find and
+            // walks the whole C: drive, which is why this test ran out of time.
+            std::fs::write(&f, "@echo off\r\ncd\r\necho %*\r\ndir /b /a 2>nul | %SystemRoot%\\System32\\find.exe /c /v \"\"\r\nexit /b 0\r\n").unwrap();
             return f;
         }
         let f = dir.join("stand-in");
@@ -894,7 +896,7 @@ mod tests {
         std::fs::write(ws.join(".mcp.json"), r#"{"mcpServers":{}}"#).unwrap();
         let agent = stand_in(&ws);
         let w = WriterArg { agent: Some("claude".into()), ..Default::default() };
-        let out = ask_with(&w, "Write the message.", &ws, "t606", std::time::Duration::from_secs(20), &|name| (name == "claude").then(|| agent.clone())).unwrap();
+        let out = ask_with(&w, "Write the message.", &ws, "t606", std::time::Duration::from_secs(60), &|name| (name == "claude").then(|| agent.clone())).unwrap();
         let lines: Vec<&str> = out.lines().map(str::trim).collect();
         let ran_in = Path::new(lines[0]);
         assert!(!ran_in.starts_with(&*ws) && ran_in.file_name().is_some_and(|n| n.to_string_lossy().starts_with("kolux-writer-")), "ran in {ran_in:?}; the workspace is {:?}", *ws);
@@ -902,7 +904,7 @@ mod tests {
         assert!(!ran_in.exists(), "the folder goes when the run ends");
         assert!(lines[1].contains("--setting-sources user") && lines[1].contains("--strict-mcp-config"), "{}", lines[1]);
         let cursor = WriterArg { agent: Some("cursor".into()), ..Default::default() };
-        let out = ask_with(&cursor, "Write the message.", &ws, "t606-cursor", std::time::Duration::from_secs(20), &|name| (name == "cursor-agent").then(|| agent.clone())).unwrap();
+        let out = ask_with(&cursor, "Write the message.", &ws, "t606-cursor", std::time::Duration::from_secs(60), &|name| (name == "cursor-agent").then(|| agent.clone())).unwrap();
         assert!(out.lines().nth(1).is_some_and(|l| l.contains("--trust")), "{out}");
     }
 
