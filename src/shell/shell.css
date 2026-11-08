@@ -45,3 +45,9 @@ html .pane.editor.rail-open.toc-open .md-rich { padding-right: calc(var(--toc-w,
 .pane.editor .note-toc-grip { position: absolute; z-index: 3; top: 28px; bottom: 0; right: calc(var(--toc-w, 230px) - 3px); width: 6px; cursor: col-resize; touch-action: none; }
 .pane.editor .note-toc-grip:hover, .pane.editor .note-toc-grip:focus-visible { background: var(--focus-ring); opacity: 0.5; outline: none; }
 .pane.editor .note-front { flex: none; margin: 0; max-height: 30%; overflow: auto; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--line-subtle); color: var(--fg-muted); font: 12px var(--mono-font); white-space: pre-wrap; }
+
+/* T-783: the third-party notices inside the About panel. */
+.about-panel.about-wide { width: min(760px, 92vw); top: 6%; }
+.about-sub { margin: 4px 0 0; font-size: 12px; font-weight: 600; color: var(--fg); }
+.about-note { margin: 0; font-size: 12px; color: var(--fg-muted); }
+.about-notices { margin: 0; max-height: 60vh; overflow: auto; padding: 8px 10px; font: 11px/1.45 var(--mono-font, ui-monospace, monospace); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg); background: var(--surface); border: 1px solid var(--line-subtle); border-radius: 6px; }
