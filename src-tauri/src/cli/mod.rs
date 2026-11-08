@@ -1111,6 +1111,13 @@ fn pane_target(req: &Request) -> Option<Option<String>> {
     }
 }
 
+/// A terminal command that starts a program: `terminal create` or `terminal split` with a non-blank
+/// `--command`. Without a command the new pane is a plain shell the caller can already type into.
+fn starts_program(req: &Request) -> bool {
+    matches!(req.command.as_str(), "terminal.create" | "terminal.split")
+        && req.args["command"].as_str().is_some_and(|c| !c.trim().is_empty())
+}
+
 /// T-793 / DT-C228: a request that carries a pane may only target its own pane, unless the caller
 /// is a coordinator. `me` is the terminal the pane key proves (`caller`); a call that proves no
 /// pane is not scoped here (it has no identity to scope by, and the same-user limit in DT-C228
@@ -1122,13 +1129,28 @@ fn pane_target(req: &Request) -> Option<Option<String>> {
 /// --worktree`, which closes a whole worktree's panes) is refused too.
 pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Result<(), Fail> {
     use crate::orchestration::terminal_of;
-    let (Some(me), Some(target)) = (me, pane_target(req)) else { return Ok(()) };
-    if target.as_deref() == Some(me) {
+    let Some(me) = me else { return Ok(()) };
+    let spawns = starts_program(req);
+    let target = match pane_target(req) {
+        Some(t) => t,
+        None if spawns => None,
+        None => return Ok(()),
+    };
+    if !spawns && target.as_deref() == Some(me) {
         return Ok(());
     }
     let worker = dispatches.iter().any(|d| terminal_of(d).as_deref() == Some(me));
     if !worker {
         return Ok(());
+    }
+    if spawns {
+        // Review fix 1 (B2): a pane started with a command runs outside every scope (it carries no
+        // dispatch), so a worker could use it to reach any terminal. Only a coordinator starts programs.
+        return Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so it cannot start a program in a new pane: ask the coordinator that started it to run that command"),
+            data: json!({ "caller": me }),
+        });
     }
     let mine = |t: &str| {
         let n = me.strip_prefix("term-").and_then(|n| n.parse::<u64>().ok());
@@ -1157,7 +1179,7 @@ fn scoped(ctx: &Ctx, req: &Request) -> Result<(), Fail> {
 
 /// `scoped` with the terminal behind a pane key given, so a test can stand a pane in.
 fn scoped_with(ctx: &Ctx, req: &Request, by_key: &dyn Fn(&str) -> Option<String>) -> Result<(), Fail> {
-    if req.pane.is_none() || pane_target(req).is_none() {
+    if req.pane.is_none() || (pane_target(req).is_none() && !starts_program(req)) {
         return Ok(());
     }
     let me = caller_with(req, by_key).ok().flatten();
@@ -7978,6 +8000,31 @@ mod tests {
         // ...and term-4, a worker one level down, cannot drive its parent.
         let up = pane_req("terminal.send", Some(("term-4", "key-4")), json!({ "terminal": "term-2", "text": "x" }));
         assert_eq!(pane_scope(&up, Some("term-4"), &ds).unwrap_err().code, "pane_scope");
+    }
+
+    /// Review fix 1 (B2): a worker cannot start a program in a pane of its own (split or create with a
+    /// command), because a new pane carries no pane key a scope check could hold it to.
+    #[test]
+    fn t793_b2_a_worker_cannot_start_a_program_through_split_or_create() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let me = Some(("term-2", "key-2"));
+        for (command, args) in [
+            ("terminal.split", json!({ "terminal": "term-2", "command": "calc.exe" })),
+            ("terminal.split", json!({ "command": "calc.exe" })),
+            ("terminal.create", json!({ "command": "calc.exe" })),
+            ("terminal.create", json!({ "worktree": "current", "command": "  powershell -c x " })),
+        ] {
+            let e = pane_scope(&pane_req(command, me, args.clone()), Some("term-2"), &ds).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command} {args}: {}", e.message);
+        }
+        // Without a program they only open a shell, which is what a worker may still do.
+        for (command, args) in [("terminal.split", json!({ "terminal": "term-2" })), ("terminal.create", json!({})), ("terminal.create", json!({ "command": "   " }))] {
+            pane_scope(&pane_req(command, me, args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{command} {args}: {}", e.message));
+        }
+        // A coordinator starts programs as before.
+        for (command, args) in [("terminal.split", json!({ "terminal": "term-3", "command": "claude" })), ("terminal.create", json!({ "command": "claude" }))] {
+            pane_scope(&pane_req(command, Some(("term-1", "key-1")), args), Some("term-1"), &ds).unwrap();
+        }
     }
 
     #[test]
