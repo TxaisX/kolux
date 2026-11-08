@@ -71,6 +71,7 @@ const MAX_HEAD: u64 = 64 << 10;
 const READ_WITHIN: Duration = Duration::from_secs(2);
 
 /// The listener the panes' hooks report to.
+#[derive(Clone)]
 pub struct Hooks {
     pub port: u16,
     pub token: String,
@@ -941,7 +942,51 @@ pub fn remove_endpoint_files(dir: &Path) {
     }
 }
 
+/// T-793 review fix 1 (B4): panes that outlive a restart or an update keep the environment they were started
+/// with, whose token this run's secret no longer matches, and the sweeps (`serve`, the exit sweep) removed their endpoint
+/// files. The hook script reads the endpoint file first, so adopting such a pane rewrites its file here, with a token made
+/// for the terminal id its environment names (the id it had when it started, not a remapped one). The adopt step runs on a
+/// thread of its own, `serve` on the setup thread, so either may come last: an adopted pane is noted before the listener
+/// is looked for, and `flush` runs after the listener is managed, so no pane is missed whichever order they run in.
+#[derive(Default)]
+pub struct Survivors(Mutex<Vec<(u32, u32)>>);
+
+/// The panes adopted in this run (see `Survivors`).
+pub static SURVIVORS: Survivors = Survivors(Mutex::new(Vec::new()));
+
+impl Survivors {
+    /// An adopted terminal: its pane key and the terminal id its environment names. `hooks` is looked up after the note
+    /// is made; when the listener is already up the file is written now, otherwise `flush` writes it.
+    pub fn adopt(&self, pane: Option<u32>, terminal: Option<u32>, hooks: impl FnOnce() -> Option<Hooks>) {
+        let (Some(pane), Some(terminal)) = (pane, terminal) else { return };
+        if let Ok(mut all) = self.0.lock() {
+            if !all.contains(&(pane, terminal)) {
+                all.push((pane, terminal));
+            }
+        }
+        if let Some(h) = hooks() {
+            h.write_pane_file(pane, terminal);
+        }
+    }
+
+    /// Writes the endpoint file of every pane adopted so far; run once the listener exists.
+    pub fn flush(&self, hooks: &Hooks) {
+        let all = self.0.lock().map(|a| a.clone()).unwrap_or_default();
+        for (pane, terminal) in all {
+            hooks.write_pane_file(pane, terminal);
+        }
+    }
+}
+
 impl Hooks {
+    /// T-793 review fix 1 (B4): writes one pane's own endpoint file (port and that pane's token) and returns the token.
+    pub fn write_pane_file(&self, pane_key: u32, terminal: u32) -> String {
+        let token = pane_token(&self.token, pane_key, Some(terminal));
+        let _ = std::fs::write(self.pane_endpoint(terminal), format!("{} {token}
+", self.port));
+        token
+    }
+
     /// T-793: where one terminal's own endpoint file sits: beside the shared file, so the hook script's held-events file
     /// (named from its folder) stays the one it always was.
     pub fn pane_endpoint(&self, terminal: u32) -> PathBuf {
@@ -953,9 +998,8 @@ impl Hooks {
     /// same port and token as the variables (a failed write leaves the pane on the variables).
     pub fn pane_env(&self, pane_key: u32, terminal: u32) -> Vec<(String, String)> {
         let identity = json!({ "paneKey": pane_key, "terminal": terminal, "hookVersion": HOOK_VERSION });
-        let token = pane_token(&self.token, pane_key, Some(terminal));
+        let token = self.write_pane_file(pane_key, terminal);
         let file = self.pane_endpoint(terminal);
-        let _ = std::fs::write(&file, format!("{} {token}\n", self.port));
         vec![
             ("KOLUX_AGENT_HOOK_PORT".into(), self.port.to_string()),
             ("KOLUX_AGENT_HOOK_TOKEN".into(), token),
@@ -1681,6 +1725,48 @@ mod tests {
         let mut left: Vec<String> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
         left.sort();
         assert_eq!(left, vec![agent_hooks::saved::SPOOL_FILE.to_string()]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 1 (B4): a pane that outlives a restart keeps its old environment, so adopting it writes the endpoint
+    /// file its hook script reads first, with a token this run's secret proves for the terminal id the old environment
+    /// names, whichever of the listener and the adopt step comes last.
+    #[test]
+    fn t793_b4_adopting_a_surviving_pane_writes_its_endpoint_file_in_either_order() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-hooks-t793-b4-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let h = Hooks { port: 7, token: "this-run".into(), endpoint: dir.join(ENDPOINT_FILE) };
+        let identity = |pane: u32, terminal: u32| base64::engine::general_purpose::STANDARD.encode(json!({ "paneKey": pane, "terminal": terminal, "hookVersion": HOOK_VERSION }).to_string());
+        let proves = |pane: u32, terminal: u32| {
+            let file = std::fs::read_to_string(h.pane_endpoint(terminal)).unwrap_or_default();
+            let Some((port, token)) = file.trim().split_once(' ') else { return false };
+            port == "7" && proven(&post("/claude", Some(token), &identity(pane, terminal), "{}"), "this-run") == Some((pane, Some(terminal)))
+        };
+        // The adopt step first: the listener is not up, so the pane is noted and written once the listener is.
+        let early = Survivors::default();
+        early.adopt(Some(31), Some(5), || None);
+        early.adopt(None, Some(6), || None);
+        early.adopt(Some(32), None, || None);
+        assert!(!proves(31, 5), "nothing is written while no listener exists");
+        early.flush(&h);
+        assert!(proves(31, 5), "flush writes the surviving pane's file");
+        assert!(!h.pane_endpoint(6).exists(), "a terminal without a pane key is not written");
+        // The listener first: the adopt step writes at once.
+        let late = Survivors::default();
+        late.adopt(Some(33), Some(8), || Some(h.clone()));
+        assert!(proves(33, 8), "adopt writes at once when the listener is up");
+        // The id the survivor's environment names is the one used, not any other.
+        assert!(!proves(33, 9));
+        // The step really is wired in: adopt calls it, with the id the surviving process was started with, and the
+        // listener is flushed right after it is managed.
+        let terminal_rs = include_str!("terminal.rs");
+        let at = terminal_rs.find("fn adopt(").expect("adopt exists");
+        let body = &terminal_rs[at..at + 6000];
+        assert!(body.contains("SURVIVORS.adopt(pane, as_u32(&meta[\"id\"])"), "adopt notes each surviving pane");
+        let lib_rs = include_str!("lib.rs");
+        let manage = lib_rs.find("app.manage(hooks);").expect("hooks are managed");
+        assert!(lib_rs[manage..manage + 400].contains("SURVIVORS.flush("), "the listener is flushed after it is managed");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

@@ -404,6 +404,8 @@ pub fn run() {
             }
             let hooks = hooks::serve(app.handle().clone(), &dir)?;
             app.manage(hooks);
+            // T-793 review fix 1 (B4): panes adopted before the listener existed get their endpoint files now.
+            hooks::SURVIVORS.flush(&app.state::<hooks::Hooks>());
             let settings = app.state::<Mutex<Store>>().lock().map(|s| s.settings()).unwrap_or_default();
             let profile = dir.clone();
             std::thread::spawn(move || {

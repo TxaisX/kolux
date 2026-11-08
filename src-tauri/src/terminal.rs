@@ -1572,6 +1572,8 @@ impl Terminals {
                 inner.next_id = inner.next_id.max(id);
                 inner.fresh_incarnation(id);
                 let pane = as_u32(&meta["pane"]);
+                // T-793 review fix 1 (B4): the survivor keeps its old environment, so its endpoint file is written again (hooks.rs, Survivors).
+                crate::hooks::SURVIVORS.adopt(pane, as_u32(&meta["id"]), || app.try_state::<crate::hooks::Hooks>().map(|h| h.inner().clone()));
                 let program = meta["program"].as_str().map(str::trim).filter(|p| !p.is_empty()).map(str::to_string);
                 let is_program = program.as_deref().is_some_and(|p| !is_shell_program(p));
                 let cwd = meta["cwd"].as_str().map(str::to_string);
