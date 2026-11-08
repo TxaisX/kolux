@@ -35,3 +35,33 @@ Kolux and the real profiles were never touched)
   2026-11-08T15:50:19.839Z marker after a forced status read: absent
   2026-11-08T15:50:19.839Z RESULT: PASS, no marker: the folder's core.fsmonitor program never ran under Kolux
   2026-11-08T15:50:29.332Z app closed: [true,"window close over CDP, exited in 3.1 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)"]
+
+Review fix (opus-high-review 2026-11-08, findings 1 and 6) · 2026-11-08
+  Finding 1: core.fsmonitor=false alone left a repository's own filter.<x>.clean running on
+  `status --porcelain=v2` and `diff --numstat -z` (stale index stat, as in a zip-extracted folder),
+  and diff.<x>.textconv on `show`/`diff` of a commit.
+  Fix (git.rs): git::command lists `git config -z --show-scope --get-regexp
+  '^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$'` for the folder and
+  blanks every key in the local/worktree scope through further GIT_CONFIG_KEY_n/VALUE_n slots
+  ("" for the programs, "false" for required, so a blanked clean filter does not fail the read).
+  git-lfs's own three standard lines are the one exception (a repository with `git lfs install
+  --local` keeps working). The listing is cached per folder while .git/config and config.worktree
+  (mtime + size) are unchanged, so a status read costs the same git processes as before (T-033-e).
+  Finding 6: editor_search.rs git grep now goes through git::command.
+  Probe facts (git 2.55.0.windows.3, scratch repo G:\Temp\ready-sec-T-779\probe, removed after):
+    plain `git status --porcelain=v2` with stale stat: marker written (clean filter ran)
+    with GIT_CONFIG_KEY_0=filter.evil.clean VALUE_0= (and required=false): exit 0, no marker
+    filter.evil.required=true with a blanked clean and no required override: status dies
+      ("clean filter 'evil' failed"), hence the forced required=false
+    empty diff.<x>.textconv: `git show` says "cannot spawn : No such file or directory" and stops
+      (the program never runs; a repo-local textconv is rare, global ones are untouched)
+  Fails before (command() built with no repository overrides, one-line probe, reverted):
+    test git::tests::t779_a_repositorys_own_textconv_never_runs_under_kolux_git ... FAILED
+    test git::tests::t779_a_repositorys_own_clean_filter_never_runs_under_kolux_git ... FAILED
+    test result: FAILED. 0 passed; 2 failed
+  Passes after:
+    test git::tests::t779_a_repositorys_own_clean_filter_never_runs_under_kolux_git ... ok
+    test git::tests::t779_a_repositorys_own_textconv_never_runs_under_kolux_git ... ok
+    test git::tests::t779_repo_program_overrides_blank_the_repositorys_own_keys_but_not_git_lfs ... ok
+    test git::tests::t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git ... ok
+    test git::tests::t779_injected_config_appends_after_the_users_own_slots ... ok

