@@ -105,6 +105,30 @@ pub(crate) fn empty_global_config() -> PathBuf {
     path
 }
 
+/// T-779 (P2A-01): the git config Kolux forces on every git it runs, as `GIT_CONFIG_COUNT`
+/// environment slots, so the command line stays as written. `core.fsmonitor=false` always: a folder
+/// added as a project may arrive with an attacker-written `.git/config` naming a program there, and
+/// git would run it on the first `status`; the environment outranks every config file, so the
+/// program never runs under Kolux. `core.longpaths=true` on Windows (GIT-070). `existing` is the
+/// user's own `GIT_CONFIG_COUNT`: their pairs stay in slots `0..n` and ours follow, so neither side
+/// is dropped (before T-779 Kolux injected nothing when the user's shell set the variable). A count
+/// git itself would reject as bogus is treated as none.
+pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>) -> Vec<(String, String)> {
+    let start = existing.and_then(|v| v.to_str()).and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(0);
+    let mut pairs = vec![("core.fsmonitor", "false")];
+    if cfg!(windows) {
+        pairs.push(("core.longpaths", "true"));
+    }
+    let mut out = Vec::with_capacity(pairs.len() * 2 + 1);
+    for (i, (key, value)) in pairs.iter().enumerate() {
+        let slot = start + i;
+        out.push((format!("GIT_CONFIG_KEY_{slot}"), key.to_string()));
+        out.push((format!("GIT_CONFIG_VALUE_{slot}"), value.to_string()));
+    }
+    out.push(("GIT_CONFIG_COUNT".to_string(), (start + pairs.len()).to_string()));
+    out
+}
+
 pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
     let mut cmd = Command::new("git");
     cmd.args(args);
@@ -141,11 +165,14 @@ pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
         use std::os::unix::process::CommandExt;
         cmd.process_group(0).env("GIT_TERMINAL_PROMPT", "0");
     }
-    // GIT-070: paths past Windows' old 260-character limit work (Git for Windows' own switch). Given
-    // through the environment so the command line stays as written, and only when nothing else is
-    // injecting config that way; a git older than 2.31 ignores it.
-    if cfg!(windows) && std::env::var_os("GIT_CONFIG_COUNT").is_none() {
-        cmd.env("GIT_CONFIG_COUNT", "1").env("GIT_CONFIG_KEY_0", "core.longpaths").env("GIT_CONFIG_VALUE_0", "true");
+    // T-779 (P2A-01) and GIT-070: the config Kolux forces (`injected_config`), appended after any
+    // pairs the user's own shell injects the same way; a git older than 2.31 ignores all of it.
+    let existing = std::env::var_os("GIT_CONFIG_COUNT");
+    // An isolated test sees no pair the parent shell injected (see above), so ours start at slot 0.
+    #[cfg(test)]
+    let existing = if ISOLATED.with(|i| i.get()) { None } else { existing };
+    for (name, value) in injected_config(existing.as_deref()) {
+        cmd.env(name, value);
     }
     cmd
 }
@@ -1323,9 +1350,13 @@ mod tests {
     fn git070_long_windows_paths_are_switched_on_without_changing_the_command_line() {
         let cmd = command(&["status"], None);
         let env: Vec<_> = cmd.get_envs().filter_map(|(k, v)| Some((k.to_string_lossy().into_owned(), v?.to_string_lossy().into_owned()))).collect();
-        if std::env::var_os("GIT_CONFIG_COUNT").is_none() {
-            assert!(env.contains(&("GIT_CONFIG_KEY_0".into(), "core.longpaths".into())), "{env:?}");
-        }
+        // T-779: the slot number follows the user's own pairs (and core.fsmonitor takes the first of
+        // ours), so what matters is a key slot naming core.longpaths with "true" in the same slot.
+        let slot = env.iter().find(|(k, v)| k.starts_with("GIT_CONFIG_KEY_") && v == "core.longpaths").map(|(k, _)| k["GIT_CONFIG_KEY_".len()..].to_string());
+        let slot = slot.unwrap_or_else(|| panic!("no core.longpaths slot: {env:?}"));
+        assert!(env.contains(&(format!("GIT_CONFIG_VALUE_{slot}"), "true".into())), "{env:?}");
+        let count: usize = env.iter().find(|(k, _)| k == "GIT_CONFIG_COUNT").map(|(_, v)| v.parse().unwrap()).unwrap();
+        assert!(slot.parse::<usize>().unwrap() < count, "the slot is inside the count: {env:?}");
         assert_eq!(cmd.get_args().collect::<Vec<_>>(), ["status"]);
     }
 
@@ -1707,5 +1738,57 @@ mod tests {
         assert_eq!(list[1].branch, None);
         assert_eq!(list[1].head, "bbbb");
         assert!(list[1].path.ends_with("x"));
+    }
+
+    /// T-779 (P2A-01): a folder that arrives with its own `.git/config` names a program in
+    /// `core.fsmonitor`; git would run it on the first `status`. Kolux's git never does, whatever
+    /// the repository says.
+    #[test]
+    fn t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git() {
+        let dir = temp_repo("fsmonitor");
+        let marker = dir.join("fsmonitor-ran.txt");
+        let marker_str = marker.to_string_lossy().replace('\\', "/");
+        // The hook git runs through its shell; it leaves a marker file where we can see it.
+        let hook = if cfg!(windows) { format!("cmd.exe /c echo ran > \"{marker_str}\"") } else { format!("touch \"{marker_str}\"") };
+        run(&["config", "core.fsmonitor", &hook], Some(&dir)).unwrap();
+        // The attacker's setting is really in the folder's own config, and plain git obeys it.
+        let mut plain = Command::new("git");
+        plain.args(["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"]).current_dir(&dir).env("GIT_OPTIONAL_LOCKS", "0");
+        plain.env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+        let plain_out = plain.output().unwrap();
+        assert!(plain_out.status.success(), "{}", String::from_utf8_lossy(&plain_out.stderr));
+        assert!(marker.exists(), "control: git itself did not run the fsmonitor program, so the test proves nothing");
+        fs::remove_file(&marker).unwrap();
+        // Kolux's git, with the exact arguments scm::status uses.
+        let out = command(&["status", "--porcelain=v2", "--branch", "--untracked-files=all", "-z"], Some(&dir)).output().unwrap();
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        assert!(!marker.exists(), "the repository's core.fsmonitor program ran under Kolux's git");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// T-779 (P2A-01): the guard also holds when the user's own shell already injects config through
+    /// `GIT_CONFIG_COUNT`; Kolux's pairs are appended after theirs instead of being dropped.
+    #[test]
+    fn t779_injected_config_appends_after_the_users_own_slots() {
+        let ours = injected_config(None);
+        assert!(ours.iter().any(|(k, v)| k == "GIT_CONFIG_KEY_0" && v == "core.fsmonitor"), "{ours:?}");
+        assert!(ours.iter().any(|(k, v)| k == "GIT_CONFIG_VALUE_0" && v == "false"), "{ours:?}");
+        let count = ours.iter().find(|(k, _)| k == "GIT_CONFIG_COUNT").map(|(_, v)| v.clone()).unwrap();
+        let n: usize = count.parse().unwrap();
+        assert_eq!(n, if cfg!(windows) { 2 } else { 1 });
+        if cfg!(windows) {
+            assert!(ours.contains(&("GIT_CONFIG_KEY_1".to_string(), "core.longpaths".to_string())), "{ours:?}");
+            assert!(ours.contains(&("GIT_CONFIG_VALUE_1".to_string(), "true".to_string())), "{ours:?}");
+        }
+        // The user's shell set two pairs: ours start at slot 2 and the count grows by ours.
+        let theirs = injected_config(Some(std::ffi::OsStr::new("2")));
+        assert!(theirs.contains(&("GIT_CONFIG_KEY_2".to_string(), "core.fsmonitor".to_string())), "{theirs:?}");
+        assert!(theirs.contains(&("GIT_CONFIG_VALUE_2".to_string(), "false".to_string())), "{theirs:?}");
+        assert!(!theirs.iter().any(|(k, _)| k == "GIT_CONFIG_KEY_0" || k == "GIT_CONFIG_KEY_1"), "{theirs:?}");
+        let count = theirs.iter().find(|(k, _)| k == "GIT_CONFIG_COUNT").map(|(_, v)| v.clone()).unwrap();
+        assert_eq!(count, (2 + n).to_string());
+        // A count git itself would reject ("bogus") is treated as none: ours start at 0.
+        let bogus = injected_config(Some(std::ffi::OsStr::new("lots")));
+        assert!(bogus.contains(&("GIT_CONFIG_KEY_0".to_string(), "core.fsmonitor".to_string())), "{bogus:?}");
     }
 }

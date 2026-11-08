@@ -1,0 +1,37 @@
+T-779 · Hostile-repository guard (P2A-01, N-01) · 2026-11-08 · lane ready-sec
+
+What changed
+  src-tauri/src/git.rs: every git Kolux runs now gets core.fsmonitor=false through the
+  GIT_CONFIG_COUNT / GIT_CONFIG_KEY_n / GIT_CONFIG_VALUE_n slots (git::injected_config). Kolux's
+  pairs are appended after whatever GIT_CONFIG_COUNT the user's environment already carries, so
+  neither the user's pairs nor Kolux's are dropped (the old code skipped core.longpaths entirely
+  when the user had set a count). A folder's own .git/config can no longer name a program that
+  `git status` runs.
+
+Unit gate (git.rs)
+  t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git
+    before the wiring: FAILED ("the repository's core.fsmonitor program ran under Kolux's git")
+    after the wiring:  ok
+  t779_injected_config_appends_after_the_users_own_slots: ok
+  cargo test --lib git::  -> test result: ok. 31 passed; 0 failed
+
+Live add-folder run (scratch dev app, identifier com.txaisxiong.kolux-rs.ready-sec, vite 1424,
+scratch CLAUDE_CONFIG_DIR / CODEX_HOME / KOLUX_APP_DIR under G:\Temp\ready-sec-T-779; the installed
+Kolux and the real profiles were never touched)
+  2026-11-08T15:49:17.838Z fixture G:\Temp\ready-sec-T-779\hostile: .git/config core.fsmonitor = cmd.exe /c echo fsmonitor-hook-ran > "G:\Temp\ready-sec-T-779\fsmonitor-ran.txt"
+  2026-11-08T15:49:18.159Z control, plain git status in the fixture: marker APPEARED (git obeys the folder's config)
+  2026-11-08T15:49:18.160Z launching the scratch app: profile G:\Temp\ready-sec-T-779\home\AppData\Roaming\com.txaisxiong.kolux-rs.ready-sec, CLAUDE_CONFIG_DIR G:\Temp\ready-sec-T-779\tmp\claude-config, CODEX_HOME G:\Temp\ready-sec-T-779\tm
+  2026-11-08T15:49:45.013Z app pid 30964 (G:\Dev\kolux-rs-lanes\ready-sec\src-tauri\target\debug\kolux-rs.exe); window: moved
+  2026-11-08T15:49:45.719Z marker before add: absent
+  2026-11-08T15:49:48.496Z added G:\Temp\ready-sec-T-779\hostile as a project through the sidebar's add-by-path route; waiting 30 s with no further action
+  2026-11-08T15:49:53.512Z t+5s marker absent
+  2026-11-08T15:49:58.529Z t+10s marker absent
+  2026-11-08T15:50:03.545Z t+15s marker absent
+  2026-11-08T15:50:08.558Z t+20s marker absent
+  2026-11-08T15:50:13.567Z t+25s marker absent
+  2026-11-08T15:50:18.577Z t+30s marker absent
+  2026-11-08T15:50:18.852Z projects the app holds: [{"id":"hostile-1794152988868","name":"hostile","path":"G:\\Temp\\ready-sec-T-779\\hostile"}]
+  2026-11-08T15:50:19.838Z scm_status run again on purpose: {"branch":"main","upstream":null,"upstreamRemote":null,"ahead":0,"behind":0,"rewritten":false,"base":"main","head":"445eb9998e6491389a26a48f7383053c7b4a1a6b","staged":[],"changed":
+  2026-11-08T15:50:19.839Z marker after a forced status read: absent
+  2026-11-08T15:50:19.839Z RESULT: PASS, no marker: the folder's core.fsmonitor program never ran under Kolux
+  2026-11-08T15:50:29.332Z app closed: [true,"window close over CDP, exited in 3.1 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)"]
