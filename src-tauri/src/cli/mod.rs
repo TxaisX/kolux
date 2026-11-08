@@ -3420,10 +3420,13 @@ fn worker_start_as(ctx: &Ctx, req: &Request, coordinator: Option<String>) -> Res
     // SAFE-023: a worktree Kolux made is trusted before the agent starts (never the main checkout or
     // a folder made elsewhere, T-443); best effort, a failure never stops the worker.
     let mine = crate::trust::made_by_kolux(ctx.store, &[PathBuf::from(&worktree.path)]);
-    let trusted = match crate::trust::trust_folders(&ctx.claude_config, &agent_id, &mine) {
-        Ok(_) if mine.is_empty() => json!("not trusted: not a worktree Kolux made, so the agent asks itself"),
-        Ok(_) => json!(true),
-        Err(e) => json!(format!("not trusted: {e}")),
+    let trusted = if mine.is_empty() {
+        json!(crate::trust::not_pre_trusted_why(ctx.store, Path::new(&worktree.path)))
+    } else {
+        match crate::trust::trust_folders(&ctx.claude_config, &agent_id, &mine) {
+            Ok(_) => json!(true),
+            Err(e) => json!(format!("not trusted: {e}")),
+        }
     };
     let since = Instant::now();
     // cli FIX-4 (council AFTER 4): the window runs the new worktree's setup script unless the

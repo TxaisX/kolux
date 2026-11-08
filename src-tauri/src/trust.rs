@@ -309,10 +309,29 @@ pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
 
 /// SAFE-023 (T-443): the folders of `paths` that are worktrees Kolux made itself (it keeps a record
 /// of each one it creates). Any other folder, the project's own main checkout included, is never
-/// trusted ahead of time and keeps the agent's own trust prompt.
+/// trusted ahead of time and keeps the agent's own trust prompt. T-780 (review finding 2): a
+/// worktree whose record carries a pull request (made from one, or linked to one later) holds
+/// another author's branch, so it is never pre-trusted either, whoever made the folder.
 pub fn made_by_kolux(store: &std::sync::Mutex<crate::state::Store>, paths: &[PathBuf]) -> Vec<PathBuf> {
     let Ok(store) = store.lock() else { return Vec::new() };
-    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some()).cloned().collect()
+    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some_and(|o| !holds_pull_request(&o))).cloned().collect()
+}
+
+/// Whether a worktree's origin record names a pull request (`pr`), i.e. the branch checked out is
+/// a pull request's, possibly from a stranger's fork.
+fn holds_pull_request(origin: &serde_json::Value) -> bool {
+    origin["pr"].as_str().is_some_and(|url| !url.trim().is_empty())
+}
+
+/// T-780: why `path` is left out of the pre-trust, for a caller's notice: it holds a pull request's
+/// branch, or Kolux has no record of making it.
+pub fn not_pre_trusted_why(store: &std::sync::Mutex<crate::state::Store>, path: &Path) -> &'static str {
+    let holds_pr = store.lock().ok().and_then(|s| crate::projects::origin(&s, &path.to_string_lossy())).is_some_and(|o| holds_pull_request(&o));
+    if holds_pr {
+        "not trusted: this worktree holds a pull request's branch, so the agent asks itself"
+    } else {
+        "not trusted: not a worktree Kolux made, so the agent asks itself"
+    }
 }
 
 /// The window's pre-trust before a launch: only the Kolux-made worktrees among `paths` are trusted.
@@ -512,6 +531,35 @@ mod tests {
         drop(store);
         let _ = std::fs::remove_dir_all(&d);
     }
+    /// T-780 (review finding 2): a worktree Kolux made for a pull request holds a stranger's fork
+    /// branch; its record carries the pull request, and that keeps it out of the pre-trust even
+    /// though Kolux made the folder and the main checkout is trusted. Linking a pull request to a
+    /// worktree later does the same; unlinking it brings the pre-trust back.
+    #[test]
+    fn t780_a_worktree_holding_a_pull_request_is_never_pre_trusted() {
+        let d = temp("t780-pr");
+        let (main, wt) = test_repo_with_worktree(&d);
+        let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
+        let key = wt.to_string_lossy().to_string();
+        // Made from a pull request, as projects::open_pull_request records it.
+        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/12" }))).unwrap();
+        assert!(made_by_kolux(&store, std::slice::from_ref(&wt)).is_empty(), "a pull request's branch is not pre-trusted");
+        assert_eq!(not_pre_trusted_why(&store, &wt), "not trusted: this worktree holds a pull request's branch, so the agent asks itself");
+        let file = d.join(".claude.json");
+        trust_claude(&file, std::slice::from_ref(&main)).unwrap();
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)), Err("no folders to trust".to_string()), "nothing is written for a pull request worktree");
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert!(doc["projects"].get(claude_key(&wt).unwrap()).is_none(), "{doc}");
+        // The same worktree with the pull request unlinked (details form) is Kolux's own again.
+        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": null }))).unwrap();
+        assert_eq!(made_by_kolux(&store, std::slice::from_ref(&wt)), vec![wt.clone()]);
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)).unwrap(), 1);
+        // A folder with no record at all says so.
+        assert_eq!(not_pre_trusted_why(&store, &d.join("elsewhere")), "not trusted: not a worktree Kolux made, so the agent asks itself");
+        drop(store);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
     #[test]
     fn t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is() {
         let d = temp("t780-main");
