@@ -120,7 +120,7 @@ fn kill_tree(pid: u32) {
     }
     #[cfg(not(windows))]
     {
-        let _ = std::process::Command::new("kill").args(["-9", &pid.to_string()]).output();
+        let _ = crate::winproc::command("kill").args(["-9", &pid.to_string()]).output();
     }
 }
 

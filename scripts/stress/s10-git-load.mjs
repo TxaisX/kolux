@@ -37,7 +37,7 @@ const DIAG_JS = `(() => {
 const unwrap = (v) => (v && typeof v === "object" && "result" in v && v.result && "value" in v.result ? v.result.value : v);
 const slotStatus = () => {
   try {
-    return execFileSync(process.execPath, [SLOT, "status"], { encoding: "utf8", timeout: 15000 }).trim().split(/\r?\n/).join(" | ");
+    return execFileSync(process.execPath, [SLOT, "status"], { encoding: "utf8", timeout: 15000, windowsHide: true }).trim().split(/\r?\n/).join(" | ");
   } catch (e) {
     return `slot status failed: ${e.message.slice(0, 80)}`;
   }

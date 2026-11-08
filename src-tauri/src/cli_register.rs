@@ -548,7 +548,7 @@ impl Links for RealLinks {
         std::fs::remove_file(at)
     }
     fn elevated(&self, shell: &str) -> Result<(), String> {
-        let mut child = std::process::Command::new("osascript").args(osascript_args(shell)).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("cannot start osascript: {e}"))?;
+        let mut child = crate::winproc::command("osascript").args(osascript_args(shell)).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("cannot start osascript: {e}"))?;
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(600);
         loop {
             match child.try_wait() {

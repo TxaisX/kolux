@@ -23,7 +23,7 @@ export function decide(runs, sha, elapsedMs) {
 
 function runsFor(sha) {
   // gh is a plain program on CI; the shell is only for a .cmd stand-in on Windows. The sha is checked hex.
-  const r = spawnSync("gh", ["run", "list", "--workflow", "ci.yml", "--commit", sha, "--json", "status,conclusion,url", "--limit", "20"], { encoding: "utf8", shell: process.platform === "win32" });
+  const r = spawnSync("gh", ["run", "list", "--workflow", "ci.yml", "--commit", sha, "--json", "status,conclusion,url", "--limit", "20"], { windowsHide: true, encoding: "utf8", shell: process.platform === "win32" });
   if (r.status !== 0) throw new Error(`gh run list failed: ${(r.stderr || r.stdout).trim()}`);
   return JSON.parse(r.stdout || "[]");
 }

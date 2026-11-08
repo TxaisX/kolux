@@ -45,7 +45,7 @@ const check = (item, name, pass, detail) => {
   log(`${pass ? "PASS" : "FAIL"} ${item}: ${name}: ${detail}`);
 };
 
-const ps = (cmd, input) => execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", cmd], { encoding: "utf8", ...(input === undefined ? {} : { input }) }).trim();
+const ps = (cmd, input) => execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", cmd], { encoding: "utf8", windowsHide: true, ...(input === undefined ? {} : { input }) }).trim();
 const q = (s) => s.replace(/'/g, "''");
 const norm = (s) => s.replaceAll("\\", "/").toLowerCase();
 // A path inside a command line, with a boundary after it: the data folder must not match com.txaisxiong.kolux-rs.prove.
@@ -347,7 +347,7 @@ try {
   rmSync(REPO, { recursive: true, force: true });
   mkdirSync(REPO, { recursive: true });
   writeFileSync(join(REPO, "notes.txt"), "t-544\n");
-  for (const a of [["init", "-q", "-b", "main"], ["add", "."], ["-c", "user.name=prove", "-c", "user.email=prove@localhost", "commit", "-q", "-m", "start"]]) execFileSync("git", a, { cwd: REPO });
+  for (const a of [["init", "-q", "-b", "main"], ["add", "."], ["-c", "user.name=prove", "-c", "user.email=prove@localhost", "commit", "-q", "-m", "start"]]) execFileSync("git", a, { cwd: REPO, windowsHide: true });
   mkdirSync(RUN, { recursive: true });
   await launch("launch 1");
   log(`item 3: after the first launch: ${DATA.map((p) => `${p} ${existsSync(p) ? "created" : "absent"}`).join("; ")}`);
@@ -532,7 +532,7 @@ if (!DRY) {
 if (voided) log(`VOID: ${voided}`);
 for (const [item, r] of Object.entries(results)) log(`ITEM-RESULT ${item} ${r.every(Boolean) ? "PASS" : "FAIL"}`);
 log(`RESULT: ${DRY ? "DRY" : voided ? "VOID" : code === 0 ? "PASS" : "FAIL"}`);
-const head = (() => { try { return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim(); } catch { return "?"; } })();
+const head = (() => { try { return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8", windowsHide: true }).trim(); } catch { return "?"; } })();
 const text = ev.join("\n");
 writeFileSync(`${LIVE_LOGS}/T-544${DRY ? "-dry" : ""}.out.txt`, `${text}\n`);
 if (!DRY) {

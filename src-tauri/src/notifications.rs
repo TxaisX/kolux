@@ -212,9 +212,9 @@ pub fn notification_test(app: tauri::AppHandle, sound: bool) -> Result<Value, St
 #[tauri::command]
 pub fn open_notification_settings() -> Result<(), String> {
     #[cfg(windows)]
-    let run = std::process::Command::new("explorer.exe").arg("ms-settings:notifications").spawn();
+    let run = crate::winproc::command("explorer.exe").arg("ms-settings:notifications").spawn();
     #[cfg(target_os = "macos")]
-    let run = std::process::Command::new("open").arg("x-apple.systempreferences:com.apple.preference.notifications").spawn();
+    let run = crate::winproc::command("open").arg("x-apple.systempreferences:com.apple.preference.notifications").spawn();
     #[cfg(all(unix, not(target_os = "macos")))]
     let run: std::io::Result<std::process::Child> = Err(std::io::Error::other("this system's notification settings cannot be opened from Kolux"));
     run.map(|_| ()).map_err(|e| e.to_string())

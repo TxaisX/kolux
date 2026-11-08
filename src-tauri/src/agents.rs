@@ -1018,7 +1018,7 @@ pub fn open_install_page(agent: String) -> Result<(), String> {
     let opener = "open";
     #[cfg(all(unix, not(target_os = "macos")))]
     let opener = "xdg-open";
-    std::process::Command::new(opener).arg(url).spawn().map(|_| ()).map_err(|e| e.to_string())
+    crate::winproc::command(opener).arg(url).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

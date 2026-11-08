@@ -109,6 +109,7 @@ pub mod trust;
 mod update;
 mod visibility;
 mod web_icon;
+pub(crate) mod winproc;
 mod usage_alerts;
 
 use state::Store;

@@ -212,7 +212,7 @@ fn rg_args(a: &Ask) -> Vec<String> {
 }
 
 fn rg_command(root: &Path, a: &Ask) -> Command {
-    let mut cmd = Command::new("rg");
+    let mut cmd = crate::winproc::command("rg");
     cmd.args(rg_args(a)).current_dir(root);
     cmd
 }
@@ -243,7 +243,7 @@ pub fn wsl_root(root: &Path) -> Option<(String, String)> {
 /// and the patterns reach ripgrep exactly as typed. ripgrep has to be installed in the
 /// distribution; the Windows side needs no working folder on the share.
 fn wsl_rg_command(distro: &str, linux_root: &str, a: &Ask) -> Command {
-    let mut cmd = Command::new(crate::pty::system_program("wsl.exe")); // T-663
+    let mut cmd = crate::winproc::command(crate::pty::system_program("wsl.exe")); // T-663
     cmd.args(["-d", distro, "--cd", linux_root, "-e", "rg"]).args(rg_args(a));
     cmd
 }
@@ -295,7 +295,7 @@ fn wsl_error_line(stderr: &str) -> Option<&str> {
 }
 
 fn git_command(root: &Path, a: &Ask) -> Command {
-    let mut cmd = Command::new("git");
+    let mut cmd = crate::winproc::command("git");
     cmd.args(["-c", "core.quotepath=off", "grep", "-z", "-n", "--column", "-I", "--no-color", "--untracked"]);
     if !a.match_case {
         cmd.arg("-i");

@@ -38,14 +38,14 @@ export async function buildRepo(dir, log = console.log) {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const git = (args, opt = {}) => {
-    const r = spawnSync("git", ["-c", "user.name=stress", "-c", "user.email=stress@example.invalid", ...args], { cwd: dir, encoding: "utf8", maxBuffer: 1 << 28, ...opt });
+    const r = spawnSync("git", ["-c", "user.name=stress", "-c", "user.email=stress@example.invalid", ...args], { cwd: dir, encoding: "utf8", maxBuffer: 1 << 28, windowsHide: true, ...opt });
     if (r.status !== 0) throw new Error(`git ${args.join(" ")} failed: ${(r.stderr || "").slice(0, 300)}`);
     return r.stdout;
   };
   git(["init", "-q", "-b", "main"]);
   git(["config", "core.autocrlf", "false"]);
   const cur = new Map(); // file number -> current path
-  const child = spawn("git", ["fast-import", "--quiet", "--date-format=raw"], { cwd: dir, stdio: ["pipe", "ignore", "pipe"] });
+  const child = spawn("git", ["fast-import", "--quiet", "--date-format=raw"], { cwd: dir, windowsHide: true, stdio: ["pipe", "ignore", "pipe"] });
   let err = "";
   child.stderr.on("data", (d) => (err += d));
   const exited = new Promise((r) => child.on("close", r));

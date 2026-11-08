@@ -50,7 +50,7 @@ class Stop extends Error {}
 
 export function ship(o, { cwd = process.cwd(), log = console.log, env = process.env } = {}) {
   const git = (args, { quiet = false, allowFail = false } = {}) => {
-    const r = spawnSync("git", args, { cwd, encoding: "utf8" });
+    const r = spawnSync("git", args, { cwd, encoding: "utf8", windowsHide: true });
     if (r.status !== 0 && !allowFail) throw new Stop(`git ${args.join(" ")} failed:\n${(r.stderr || r.stdout).trim()}`);
     if (!quiet && r.stdout.trim()) log(r.stdout.trim());
     return r;
@@ -126,7 +126,7 @@ function aiMessage(git, model, env) {
   // The prompt goes in on stdin; the arguments are fixed words, so the shell sees nothing typed.
   // The model id passed parseArgs' check, so it holds no shell characters.
   const win = process.platform === "win32";
-  const r = win ? spawnSync(`claude -p --model ${model}`, { input: prompt, encoding: "utf8", shell: true, env, timeout: 120000 }) : spawnSync("claude", ["-p", "--model", model], { input: prompt, encoding: "utf8", env, timeout: 120000 });
+  const r = win ? spawnSync(`claude -p --model ${model}`, { input: prompt, encoding: "utf8", shell: true, env, timeout: 120000, windowsHide: true }) : spawnSync("claude", ["-p", "--model", model], { input: prompt, encoding: "utf8", env, timeout: 120000, windowsHide: true });
   const line = (r.stdout || "").split(/\r?\n/).map((l) => l.trim().replace(/^["'`]|["'`]$/g, "")).find(Boolean);
   if (r.status !== 0 || !line) throw new Stop(`the AI could not write a commit message (${(r.stderr || r.error?.message || "no answer").trim().slice(0, 200)}). Pass --message "<text>" and ship again.`);
   return line;

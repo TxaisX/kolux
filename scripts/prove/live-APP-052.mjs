@@ -21,7 +21,7 @@ const stamp = Date.now().toString(36).slice(-4);
 const M1 = `APP052-A${stamp}-END`;
 const M2 = `APP052-B${stamp}-END`;
 const ROOT = `${LIVE_BASE}/run-APP-052`.replaceAll("\\", "/").toLowerCase();
-const ps = (cmd) => execFileSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8" }).trim();
+const ps = (cmd) => execFileSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8", windowsHide: true }).trim();
 // Terminal-service processes whose command line names this scratch root (never any other service on the machine).
 const services = () => {
   const out = ps(`Get-CimInstance Win32_Process -Filter "CommandLine like '%--terminal-service%'" | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)|$($_.CommandLine)" }`);

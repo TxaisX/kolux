@@ -7,7 +7,7 @@ process.env.KOLUX_TERMINAL_SERVICE = "1";
 const rep = reporter();
 const { log, lines: ev } = rep;
 const ROOT = `${LIVE_BASE}/run-APP-052d`.toLowerCase();
-const ps = (c) => execFileSync("powershell", ["-NoProfile", "-Command", c], { encoding: "utf8" }).trim();
+const ps = (c) => execFileSync("powershell", ["-NoProfile", "-Command", c], { encoding: "utf8", windowsHide: true }).trim();
 const snap = () =>
   ps(`Get-CimInstance Win32_Process | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)|$($_.Name)|$($_.CommandLine)" }`)
     .split(/\r?\n/).map((l) => l.split("|"));

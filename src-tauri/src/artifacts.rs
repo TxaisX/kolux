@@ -1440,7 +1440,7 @@ pub(crate) fn system_open(url: &str) -> Result<(), String> {
     #[cfg(not(windows))]
     {
         let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
-        std::process::Command::new(opener).arg(&url).spawn().map(|_| ()).map_err(|e| format!("could not open {url}: {e}"))
+        crate::winproc::command(opener).arg(&url).spawn().map(|_| ()).map_err(|e| format!("could not open {url}: {e}"))
     }
 }
 

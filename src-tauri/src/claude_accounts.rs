@@ -169,16 +169,6 @@ fn read(path: &Path) -> Option<String> {
     fs::read_to_string(path).ok()
 }
 
-fn hide(cmd: &mut std::process::Command) {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    }
-    #[cfg(not(windows))]
-    let _ = cmd;
-}
-
 /// `claude auth status --json` inside `dir` (None: Claude Code's own sign-in, as a plain pane
 /// would see it), hidden, given up on after 20 s.
 pub fn auth_status(program: &Path, dir: Option<&Path>) -> Option<String> {
@@ -188,7 +178,7 @@ pub fn auth_status(program: &Path, dir: Option<&Path>) -> Option<String> {
         cmd.env(CONFIG_ENV, dir);
     }
     cmd.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::null());
-    hide(&mut cmd);
+    crate::winproc::quiet(&mut cmd);
     let mut child = cmd.spawn().ok()?;
     let deadline = std::time::Instant::now() + STATUS_LIMIT;
     loop {
