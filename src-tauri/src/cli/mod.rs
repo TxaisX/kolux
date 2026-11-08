@@ -8120,4 +8120,111 @@ mod tests {
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    /// A runtime with `term-1` (a coordinator), `term-2` (worker of dispatch d-1) and `term-3`, each with its key.
+    fn fix2_ctx<'a>(dir: &std::path::Path, git_: &'a Git, store: &'a Mutex<Store>, terminals: &'a Terminals, notify: &'a dyn Fn(Value)) -> Ctx<'a> {
+        let here = dir.to_string_lossy().into_owned();
+        for (id, key) in [(1, "key-1"), (2, "key-2"), (3, "key-3")] {
+            terminals.fake_session(id, &here, None);
+            terminals.fake_key(id, key);
+        }
+        save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running")]).unwrap();
+        Ctx { claude_config: dir.join(".claude.json"), git: git_, store, terminals, notify, front: &|| Ok(()) }
+    }
+
+    /// Review fix 2 (N1): a worker may not reset the dispatch list (`--tasks`, `--all`): that would turn it into a coordinator.
+    #[test]
+    fn t793_fix2_dispatch_refuses_orchestration_reset_from_a_worker() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-reset-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        for scope in ["tasks", "all"] {
+            let req = pane_req("orchestration.reset", Some(("term-2", "key-2")), json!({ scope: true }));
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "--{scope}: {}", e.message);
+            assert!(e.message.contains("term-2") && e.message.contains("reset"), "{}", e.message);
+            // Nothing was wiped: term-2 is still a worker.
+            assert_eq!(load_list(&store.lock().unwrap(), DISPATCHES_KEY).unwrap().len(), 1, "--{scope} wiped the dispatch list");
+        }
+        // The coordinator may reset; a worker may still clear its mail (--messages leaves the dispatch list alone).
+        let ds = [worker("d-1", 2, 1, "running")];
+        pane_scope(&pane_req("orchestration.reset", Some(("term-2", "key-2")), json!({ "messages": true })), Some("term-2"), &ds).unwrap();
+        for scope in ["tasks", "all"] {
+            pane_scope(&pane_req("orchestration.reset", Some(("term-1", "key-1")), json!({ scope: true })), Some("term-1"), &ds).unwrap();
+        }
+        let req = pane_req("orchestration.reset", Some(("term-1", "key-1")), json!({ "tasks": true }));
+        dispatch(&ctx, &req).unwrap_or_else(|e| panic!("coordinator reset: {}", e.message));
+        assert!(load_list(&store.lock().unwrap(), DISPATCHES_KEY).unwrap().is_empty());
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 2 (N2): `worktree create` with an agent or a prompt opens an agent tab in a new pane, so a worker may not run it.
+    #[test]
+    fn t793_fix2_dispatch_refuses_a_worker_worktree_create_that_starts_an_agent() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-wt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        for args in [json!({ "name": "x", "agent": "claude" }), json!({ "name": "x", "prompt": "do it" }), json!({ "name": "x", "agent": "claude", "prompt": "do it" })] {
+            let req = pane_req("worktree.create", Some(("term-2", "key-2")), args.clone());
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{args}: {}", e.message);
+            assert!(e.message.contains("term-2"), "{}", e.message);
+        }
+        // No agent, no prompt (or blank ones): no program starts, so a worker may go on; and a coordinator may start one.
+        let ds = [worker("d-1", 2, 1, "running")];
+        for args in [json!({ "name": "x" }), json!({ "name": "x", "agent": " ", "prompt": "" })] {
+            pane_scope(&pane_req("worktree.create", Some(("term-2", "key-2")), args), Some("term-2"), &ds).unwrap();
+        }
+        pane_scope(&pane_req("worktree.create", Some(("term-1", "key-1")), json!({ "name": "x", "agent": "claude", "prompt": "go" })), Some("term-1"), &ds).unwrap();
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 2 (item 3): an automation run opens an agent tab (or types its prompt into an idle agent pane), so a worker may not
+    /// create one, change what it says, or run one; reading, pausing and removing them are not program starts.
+    #[test]
+    fn t793_fix2_dispatch_refuses_worker_automations_that_start_an_agent() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-auto-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        let refused = [
+            ("automations.create", json!({ "name": "n", "prompt": "p", "trigger": "hourly" })),
+            ("automations.edit", json!({ "id": "auto-1", "prompt": "new" })),
+            ("automations.edit", json!({ "id": "auto-1", "provider": "codex" })),
+            ("automations.run", json!({ "id": "auto-1" })),
+        ];
+        for (command, args) in refused {
+            let req = pane_req(command, Some(("term-2", "key-2")), args);
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command}: {}", e.message);
+        }
+        let ds = [worker("d-1", 2, 1, "running")];
+        for (command, args) in [("automations.list", json!({})), ("automations.show", json!({ "id": "auto-1" })), ("automations.runs", json!({ "id": "auto-1" })), ("automations.remove", json!({ "id": "auto-1" })), ("automations.edit", json!({ "id": "auto-1", "name": "renamed" }))] {
+            pane_scope(&pane_req(command, Some(("term-2", "key-2")), args), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{command}: {}", e.message));
+        }
+        for command in ["automations.create", "automations.run"] {
+            pane_scope(&pane_req(command, Some(("term-1", "key-1")), json!({ "id": "auto-1", "prompt": "p" })), Some("term-1"), &ds).unwrap();
+        }
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
