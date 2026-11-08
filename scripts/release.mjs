@@ -229,7 +229,7 @@ function sh(cmd, args, opts = {}) {
   // argument here is ours. One command string, so node does not warn about unescaped arguments.
   const shell = !!opts.shim && process.platform === "win32";
   if (shell) [cmd, args] = [[cmd, ...args].map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(" "), []];
-  const r = spawnSync(cmd, args, { encoding: "utf8", shell, cwd: opts.cwd, env: opts.env ?? process.env, maxBuffer: 1 << 28 });
+  const r = spawnSync(cmd, args, { encoding: "utf8", shell, cwd: opts.cwd, env: opts.env ?? process.env, maxBuffer: 1 << 28, windowsHide: true });
   if (opts.echo) process.stdout.write((r.stdout || "") + (r.stderr || ""));
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(" ")} failed (exit ${r.status ?? r.error?.message}):\n${(r.stderr || r.stdout || "").trim().slice(-2000)}`);
   return (r.stdout || "").trim();
@@ -317,7 +317,7 @@ export function buildOnce(o, env = process.env, exec = sh) {
   const projectVersion = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")).version;
   const version = nextVersion(projectVersion, latest?.tag);
   const prev = markerOf(latest?.body);
-  const known = prev && spawnSync("git", ["-C", dir, "merge-base", "--is-ancestor", prev, sha]).status === 0;
+  const known = prev && spawnSync("git", ["-C", dir, "merge-base", "--is-ancestor", prev, sha], { windowsHide: true }).status === 0;
   const range = known ? [`${prev}..${sha}`] : [sha, "-n", String(NOTES_MAX)];
   const subjects = git(dir, "log", "--no-merges", "--format=%s", ...range).split("\n");
   const changelog = path.join(dir, "CHANGELOG.md");
