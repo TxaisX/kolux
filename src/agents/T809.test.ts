@@ -41,16 +41,17 @@ const info = (id: string, name: string, installed: boolean): AgentInfo => ({ id,
 const AGENTS = [info("aider", "Aider", false), info("grok", "Grok", true), info("claude", "Claude Code", true), info("zed", "Zed", false)];
 const D = { model: "opus", effort: "high" };
 
-test("P4a-11: the picker puts Installed above Others, each A to Z, with Terminal after both", () => {
+// Txais 2026-11-08 (a92dae95) replaced the Installed/Others dropdown with a button row: the featured agents in
+// FEATURED order, then Terminal, then Other… (installed agents without a button of their own).
+test("P4a-11: the picker shows the featured agents first, then Terminal, then Other…; unfeatured missing agents get no button", () => {
   const html = renderToStaticMarkup(createElement(ChooserPane, { number: 1, agents: AGENTS, seats: [emptySeat()], onSeats: () => {}, onLineup: () => {}, shape: "custom", task: "", onTask: () => {}, onStart: () => {}, copies: "shared", inGit: true, onCopies: () => {}, closable: true, onClose: () => {}, saved: [], onSaved: () => {}, onPickSaved: () => {} }));
   const at = (s: string) => html.indexOf(s);
-  expect(at('label="Installed"')).toBeGreaterThan(-1);
-  expect(at('label="Installed"')).toBeLessThan(at("Claude Code"));
+  expect(at("Claude Code")).toBeGreaterThan(-1);
   expect(at("Claude Code")).toBeLessThan(at("Grok"));
-  expect(at("Grok")).toBeLessThan(at('label="Others"'));
-  expect(at('label="Others"')).toBeLessThan(at("Aider (not installed)"));
-  expect(at("Aider (not installed)")).toBeLessThan(at("Zed (not installed)"));
-  expect(at("Zed (not installed)")).toBeLessThan(at(">Terminal<"));
+  expect(at("Grok")).toBeLessThan(at(">Terminal<"));
+  expect(at(">Terminal<")).toBeLessThan(at("Other…"));
+  expect(html).not.toContain("Aider");
+  expect(html).not.toContain("Zed");
 });
 
 test("P4a-11: seat 1 starts on the default agent when it is installed and every seat is blank; otherwise nothing changes", () => {

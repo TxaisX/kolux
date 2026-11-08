@@ -112,10 +112,10 @@ describe("council D2 MERGE 47 FB1 and FS1", () => {
 });
 
 describe("T-692 (E3) focus.chrome from inside a terminal", () => {
-  it("F6 leaves the terminal for the top bar even with Terminal first on; a held chord does not (T-800: Ctrl+Shift+P is the palette now)", () => {
+  it("Ctrl+F6 leaves the terminal for the top bar even with Terminal first on; a held chord does not (T-800: Ctrl+Shift+P is the palette now)", () => {
     const inXterm = { closest: (sel: string) => (sel === ".xterm" ? {} : null) } as unknown as Element;
     const held = (id: string) => heldByTerminal(id, { terminalShortcuts: "terminal" }, inXterm);
-    expect(routeKey(win, key("F6", "F6"), false, "shell", held)).toEqual({ kind: "kolux", id: "focus.chrome" });
+    expect(routeKey(win, key("F6", "F6", { ctrlKey: true }), false, "shell", held)).toEqual({ kind: "kolux", id: "focus.chrome" });
     expect(routeKey(win, key("KeyP", "P", { ctrlKey: true, shiftKey: true }), false, "shell", held)).toEqual({ kind: "shell" });
     expect(routeKey(win, key("KeyK", "k", { ctrlKey: true }), false, "shell", held)).toEqual({ kind: "shell" });
   });
