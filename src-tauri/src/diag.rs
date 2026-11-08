@@ -167,15 +167,18 @@ fn masked(word: &str) -> String {
 const ESC: char = '\u{1b}';
 
 /// The escape sequence `s` starts with (its first char is ESC): a CSI sequence (`ESC [`, parameter and
-/// intermediate bytes, one final byte), else ESC and the one char after it; all of `s` when cut short.
+/// intermediate bytes 0x21..=0x3f, one final byte 0x40..=0x7e), else ESC and the one char after it. A
+/// sequence cut short, or one a stray byte breaks, ends before the byte that is not its own; a space
+/// (an intermediate byte in ECMA-48 that no terminal writes) ends it too, so a sequence never swallows
+/// the start of the word after it; the cut is always on a character boundary.
 fn escape_len(s: &str) -> usize {
     let b = s.as_bytes();
     if b.get(1) == Some(&b'[') {
         let mut i = 2;
-        while i < b.len() && (0x20..=0x3f).contains(&b[i]) {
+        while i < b.len() && (0x21..=0x3f).contains(&b[i]) {
             i += 1;
         }
-        return (i + 1).min(b.len());
+        return if i < b.len() && (0x40..=0x7e).contains(&b[i]) { i + 1 } else { i };
     }
     1 + s[1..].chars().next().map_or(0, char::len_utf8)
 }
@@ -403,6 +406,11 @@ mod tests {
         assert_eq!(scrub("\u{1b}cTOKEN=x"), "\u{1b}cTOKEN=[masked]");
         assert_eq!(scrub("TOKEN=x\u{1b}"), "TOKEN=[masked]\u{1b}");
         assert_eq!(scrub("TOKEN=x\u{1b}[3"), "TOKEN=[masked]\u{1b}[3");
+        // A sequence a multi-byte character or a control byte breaks ends before it (s9 fuzz: no cut inside a char).
+        assert_eq!(scrub("\u{1b}[\u{824ac}TOKEN=x"), "\u{1b}[\u{824ac}TOKEN=[masked]");
+        assert_eq!(scrub("\u{1b}[3\nTOKEN=x"), "\u{1b}[3\nTOKEN=[masked]");
+        assert_eq!(scrub("\u{1b}[  ghp_Ab1Cd2Ab1Cd2Ab1Cd2Ab1Cd2;"), "\u{1b}[  [masked];", "a space ends the sequence (s9 fuzz)");
+        assert_eq!(scrub("\u{1b}\u{9b}TOKEN=x \u{1b}[\u{1b}[0mTOKEN=y"), "\u{1b}\u{9b}TOKEN=[masked] \u{1b}[\u{1b}[0mTOKEN=[masked]");
         assert_eq!(masked("abc\u{1b}[0m,"), "[masked]\u{1b}[0m,");
         let once = scrub("\u{1b}[31mTOKEN=abc123\u{1b}[0m \u{1b}[1m\u{1b}[0m");
         assert_eq!(scrub(&once), once, "idempotent with sequences");

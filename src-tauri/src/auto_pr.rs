@@ -473,7 +473,8 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
         Ok((false, log)) => return fail(step("failed", format!("Not committed: git add failed: {}", scrub(&crate::git::failure_reason(&log).unwrap_or_else(|| "git gave no reason".into()))))),
         Ok((true, _)) => {}
     }
-    // The authoritative scan: the blobs the commit would hold, after any filter has run.
+    // The authoritative scan: the blobs the commit would hold, after any filter has run (a folder's own
+    // filter never runs under Kolux's git since T-779; a user-level or git-lfs one still may).
     let hits = match staged_blobs(dir).and_then(|blobs| scan_blobs(dir, &blobs)) {
         Ok(h) => h,
         Err(e) => return fail(step("failed", format!("Not committed: {}", scrub(&e)))),
@@ -1478,18 +1479,26 @@ mod tests {
         cleanup(&[&dir, &bare]);
     }
 
+    /// The scan reads the staged blobs, not the working files. Since T-779 a folder's own clean filter
+    /// never runs under Kolux's git, so the blob is the working file as it is and the filter that would
+    /// have slipped a token into the commit has no say; a token in the working file itself is caught.
     #[test]
     fn t652_what_the_commit_would_hold_is_what_gets_scanned() {
         let (dir, bare) = with_origin("j-filter");
         branch(&dir, "feature");
         commit_file(&dir, ".gitattributes", "*.cfg filter=addtoken\n");
-        // A clean filter adds a key to the file on its way into the index; the working file has none.
+        // The folder's own clean filter would add a key to the file on its way into the index.
         run(&["config", "filter.addtoken.clean", &format!("cat; echo TOKEN={}", fake_token())], Some(&dir)).unwrap();
         fs::write(dir.join("app.cfg"), "a=1\n").unwrap();
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        assert_eq!(run(&["cat-file", "-p", "HEAD:app.cfg"], Some(&dir)).unwrap(), "a=1", "the blob is the working file: the filter never ran (T-779)");
+        // The same token in the working file is what the blob scan catches.
+        fs::write(dir.join("app.cfg"), format!("a=1\nTOKEN={}\n", fake_token())).unwrap();
         let before_head = head(&dir);
         let s = commit_step(&dir).unwrap();
         assert_eq!((s.kind.as_str(), s.files.as_slice()), ("blocked", ["app.cfg".to_string()].as_slice()), "{s:?}");
-        assert_eq!(index_of(&dir), "?? app.cfg", "the staging area is as it was");
+        assert_eq!(index_of(&dir), "M app.cfg", "the staging area is as it was (the change unstaged)");
         assert_eq!(head(&dir), before_head);
         cleanup(&[&dir, &bare]);
     }
