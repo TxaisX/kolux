@@ -203,6 +203,14 @@ pub fn install_text(id: &str) -> Option<String> {
     })
 }
 
+/// T-787 (P3-14): the words on an Install button when a click would first install a machine-wide runtime. Node.js has
+/// no per-user installer, so Windows asks for admin permission; the person is told before they click. `None` for
+/// an agent that needs no such runtime, or when the runtime is already on the PC (`have_npm`).
+pub fn install_note(id: &str, have_npm: bool) -> Option<String> {
+    let runtime = row_of(id)?.needs?;
+    (runtime.machine_scope() && !have_npm).then(|| format!("Needs {} (Windows will ask for admin permission)", runtime.facts().2))
+}
+
 /// The frozen winget line (arguments after `winget`).
 fn winget_args(id: &str) -> Vec<String> {
     ["install", "--exact", "--id", id, "--silent", "--accept-package-agreements", "--accept-source-agreements"].iter().map(|s| s.to_string()).collect()
@@ -509,6 +517,7 @@ fn info_of(id: &str) -> Option<AgentInfo> {
         docs: super::install_page(id).is_some(),
         installable: install_text(id).is_some(),
         install: install_text(id),
+        install_note: install_note(id, find_in(&search_dirs(), "npm").is_some()),
     })
 }
 
@@ -967,6 +976,23 @@ mod tests {
     }
 
     #[test]
+    fn an_npm_agent_says_windows_will_ask_for_admin_only_while_node_is_missing() {
+        // T-787 (P3-14): the Install button's note
+        let note = "Needs Node.js (Windows will ask for admin permission)";
+        for id in ["gemini", "pi", "autohand", "openclaude"] {
+            assert_eq!(install_note(id, false).as_deref(), Some(note), "{id}");
+            assert_eq!(install_note(id, true), None, "{id} with Node.js on the PC");
+        }
+        // a script agent, a uv agent and an agent with no route never carry it
+        assert_eq!(install_note("claude", false), None);
+        assert_eq!(install_note("ante", false), None);
+        assert_eq!(install_note("not-an-agent", false), None);
+        for r in TABLE.iter().filter(|r| r.needs == Some(Runtime::Uv) || r.needs == Some(Runtime::Git)) {
+            assert_eq!(install_note(r.id, false), None, "{}", r.id);
+        }
+    }
+
+    #[test]
     fn a_silent_install_never_starts_a_machine_wide_runtime() {
         assert_eq!(silent_refusal(Runtime::Node, Mode::Silent).as_deref(), Some("needs Node.js (install it, then use Install in Kolux)"));
         // uv and Git (T-577) are per-user, so a silent install may install them; an interactive one may install any
@@ -1119,6 +1145,7 @@ mod tests {
                 docs: false,
                 installable: install_text(id).is_some(),
                 install: install_text(id),
+                install_note: install_note(id, self.have.lock().unwrap().contains("npm")),
             })
         }
         fn program(&self, name: &str) -> Option<PathBuf> {

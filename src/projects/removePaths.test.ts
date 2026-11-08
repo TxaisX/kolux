@@ -99,7 +99,7 @@ test("the running-terminal line is left out when the ask is switched off or noth
 test("right-click on the project header lists Remove project last; Escape closes the menu", async () => {
   const c = await panel();
   await rightClick(c, find(c, (n) => hasClass(n, "proj"))[0]);
-  expect(items(c)).toEqual(["New workspace", "Project settings", "Remove project…"]);
+  expect(items(c)).toEqual(["Project settings", "Remove project…"]); // T-798: no New workspace while worktrees are off
   await fire(doc, "keydown", doc, { key: "Escape" });
   expect(menu(c)).toBeUndefined();
 });

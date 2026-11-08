@@ -4,6 +4,7 @@
 import type { Pane } from "../../App";
 import { chooserClosable } from "../../launch/chooserClosable";
 import { seatDefault } from "../../launch/defaultSeat";
+import { defaultAgentId } from "../../launch/agents";
 import { SAVED_SHAPES_KEY, applyLineup, defaultCopies, offeredLineup, restoreShape, type SavedShape, type Seat } from "../../launch/seats";
 import { panesIn } from "../../workspaces";
 import { useWindow } from "./store";
@@ -35,6 +36,7 @@ export default function SeatChooser({ pane: p, hidden, focused, onFocus, onClose
       pass={agentPass}
       onRefresh={refreshAgents}
       seatDefault={seatDefault(settings)}
+      defaultAgent={defaultAgentId(settings)}
       lastLineup={offeredLineup(lineupsOf(settings)[projectOf(p.cwd) ?? projectFor(null) ?? ""], installedIds)}
       onUseLineup={() => {
         const l = offeredLineup(lineupsOf(settings)[projectOf(p.cwd) ?? projectFor(null) ?? ""], installedIds);

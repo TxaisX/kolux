@@ -27,6 +27,7 @@ import { chosenTab, cycleTab, openSwitcher, stepSwitcher, switchOrderOf, tabAtDi
 import { panesIn, sameDir } from "../workspaces";
 import { actionById } from "./actions";
 import { forceReload, windowCommand } from "./commands";
+import { worktreesOffNote } from "../projects/singleFolder";
 import { scopesFor } from "./keyScopes";
 import { matchEvent, type KeyLike, type Keymap } from "./keymap";
 import { recording } from "./record";
@@ -148,6 +149,13 @@ export function useWindowKeys(w: WindowBag) {
         return;
       }
       const inFront = panesIn(panes, activeDir).some((p) => p.key === focused);
+      // T-798 (P4B-01): worktrees are off, so Ctrl+N, rename and delete say so instead of opening a hidden form.
+      const offNote = worktreesOffNote(hit.id);
+      if (offNote) {
+        e.preventDefault();
+        setToast(offNote);
+        return;
+      }
       switch (hit.id) {
         case "focus.chrome":
           // UX lane C: out of a terminal (or anywhere) to the top bar's first control; Tab goes on from there.

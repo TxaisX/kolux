@@ -30,6 +30,13 @@ export function seatStart(agent: string, d: SeatDefault, saved: ReturnType<typeo
   return { agent, model: models.length === 1 ? DEFAULT_MODEL : null, effort: undefined, fast: undefined, ...(saved.model ? saved : {}) };
 }
 
+/** T-809 (P4a-11): the seats with the default agent put on seat 1, or null when nothing should change: no default saved, it is not installed, or a seat already has a pick. */
+export function firstSeatStart(seats: Seat[], defaultId: string, agents: { id: string; installed: boolean }[], d: SeatDefault): Seat[] | null {
+  if (defaultId === "" || !agents.some((a) => a.id === defaultId && a.installed)) return null;
+  if (seats.length === 0 || seats.some((s) => s.agent !== null)) return null;
+  return seats.map((s, i) => (i === 0 ? { ...s, ...seatStart(defaultId, d) } : s));
+}
+
 /** The Settings choices: every model any built-in agent lists (once per id), and the effort levels they use. */
 export function defaultChoices(): { models: { id: string; label: string }[]; efforts: string[] } {
   const models = new Map<string, string>();

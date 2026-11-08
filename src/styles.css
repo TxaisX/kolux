@@ -1582,6 +1582,9 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .sess .ring.warn { color: var(--working-icon); }
 .sess .ring.danger { color: var(--meter-danger); }
 .rail-group { flex: none; }
+.rail-shells { margin-top: auto; padding: 8px; font-size: 11px; text-align: left; background: none; border: 0; color: var(--fg-muted); cursor: pointer; }
+.rail-shells:hover { color: var(--fg); text-decoration: underline; }
+.rail-shells + .rail-foot { margin-top: 0; }
 .rail-foot { margin-top: auto; padding: 10px 8px 4px; font-size: 11px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pane-head .right .meter-plan { margin-right: 8px; font-size: 11px; color: var(--fg-muted); }
 /* TERM-010: the grid's gap is the divider (width and light / dark colours from Appearance, DT-A7);
@@ -1729,3 +1732,7 @@ html[data-window-blur="on"] body { background: color-mix(in srgb, var(--app-bg) 
 :where(:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 :where([tabindex="-1"]:focus-visible) { outline: none; }
 .xterm :focus-visible, .xterm:focus-visible, .xterm-helper-textarea:focus-visible { outline: none; }
+
+/* T-799 (p4a-05): with the status hooks off nothing can ask, so the master switch and every rule switch are greyed and not clickable. */
+.conn-switch[data-hooks-off], [data-hooks-off] > .conn-switch { opacity: 0.5; cursor: default; }
+.conn-switch[data-hooks-off] input, [data-hooks-off] > .conn-switch input { cursor: not-allowed; }
