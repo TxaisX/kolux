@@ -199,7 +199,8 @@ fn scrub_word(word: &str) -> (String, bool) {
     // encodes to).
     let core = bare.trim_end_matches(['"', '\'', ',', ';', ')', '}', '>']);
     let jwt = core.len() >= 20 && core.starts_with("eyJ") && core.matches('.').count() == 2 && core.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b'='));
-    if (core.len() >= 12 && KNOWN.iter().any(|k| core.starts_with(k))) || (core.len() >= 20 && (core.starts_with("AKIA") || core.starts_with("ASIA"))) || jwt {
+    // A word that already carries the mask (secrets::mask writes `sk-ant-[masked]`) is left as it is.
+    if !core.contains(MASK) && ((core.len() >= 12 && KNOWN.iter().any(|k| core.starts_with(k))) || (core.len() >= 20 && (core.starts_with("AKIA") || core.starts_with("ASIA"))) || jwt) {
         return (masked(word), false);
     }
     (word.to_string(), false)
