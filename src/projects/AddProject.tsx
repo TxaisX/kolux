@@ -156,7 +156,7 @@ export function AddProjectView({ step, onStep, onBrowse, onByPath, onClose, api,
               </button>
             </div>
             {onByPath && (
-              <button className="link" data-add-by-path onClick={onByPath}>
+              <button className="link" data-add-by-path data-testid="add-project-by-path" onClick={onByPath}>
                 Type a path, or change the workspaces folder…
               </button>
             )}

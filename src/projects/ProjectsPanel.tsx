@@ -2499,7 +2499,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className={`ib${filterOpen ? " on" : ""}`} title="Group and sort the list" aria-label="Group and sort the list" aria-pressed={filterOpen} onClick={() => setFilterOpen((o) => !o)}>
               <Funnel size={13} />
             </button>
-            <button className="ib" title="Add project: clone, open a folder or start a new one" aria-label="Add project" aria-pressed={adding} onClick={() => setAdding(true)} disabled={busy !== ""}>
+            <button className="ib" title="Add project: clone, open a folder or start a new one" aria-label="Add project" data-testid="sidebar-add-project" aria-pressed={adding} onClick={() => setAdding(true)} disabled={busy !== ""}>
               <FolderPlus size={13} />
             </button>
             <button className="ib" title={groupBy === "project" ? "New group: sort projects into folders of their own" : "New group: only while the list is grouped by project (change it under Group and sort)"} aria-label="New group" onClick={newGroup} disabled={groupBy !== "project"}>
@@ -2561,7 +2561,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           {showAdd && (
             <div className="sb-form" onKeyDown={(e) => closeAddOnEscape(e.key, e.nativeEvent.isComposing, (e.target as HTMLElement).getAttribute("aria-label") === "workspaces folder" && rootDraft !== place.dir) && setShowAdd(false)}>
               <label>Add a project by path</label>
-              <input aria-label="project folder" className="field" placeholder="path to a folder" value={pathDraft} onChange={(e) => setPathDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPath(pathDraft)} />
+              <input aria-label="project folder" data-testid="add-project-folder-input" className="field" placeholder="path to a folder" value={pathDraft} onChange={(e) => setPathDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPath(pathDraft)} />
               <div className="btn-row">
                 <button className="btn" onClick={() => addPath(pathDraft)} disabled={busy !== "" || !pathDraft.trim()}>
                   Add

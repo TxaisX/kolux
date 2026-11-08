@@ -110,7 +110,7 @@ export function WizardView(p: ViewProps) {
   return (
     <div className="ask-backdrop onb-backdrop" onMouseDown={(e) => e.button === 0 && e.target === e.currentTarget && p.onOutside?.()}>
       <div className="onb-drag" data-tauri-drag-region />
-      <div className="onb" role="dialog" aria-modal="true" aria-label="Get started with Kolux" tabIndex={-1} onKeyDown={trapTab}>
+      <div className="onb" data-testid="onboarding-dialog" role="dialog" aria-modal="true" aria-label="Get started with Kolux" tabIndex={-1} onKeyDown={trapTab}>
         <div className="onb-head">
           <Mark size={22} />
           <div className="onb-progress">

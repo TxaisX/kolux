@@ -951,6 +951,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
                 key={r.node.path}
                 id={`ex-row-${i}`}
                 role="treeitem"
+                data-testid="explorer-row"
                 aria-level={r.depth + 1}
                 aria-expanded={dir ? isOpen : undefined}
                 aria-selected={sel.has(r.node.path)}
