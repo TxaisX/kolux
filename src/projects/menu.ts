@@ -39,12 +39,16 @@ export type MenuFor = {
   /** The row is the first / last of its siblings, so Move up / Move down is off. */
   first?: boolean;
   last?: boolean;
+  /** T-798: worktrees are off (SINGLE_FOLDER), so the main row has no New workspace. Defaults to the build-wide switch. */
+  worktreesOff?: boolean;
 };
 
 const REMOVE_PROJECT: MenuItem = { id: "proj:remove", label: "Remove project…", danger: true, sep: true };
+import { SINGLE_FOLDER } from "./singleFolder";
+
 const NEW_WORKSPACE: MenuItem = { id: "proj:new", label: "New workspace" };
 /** Right-click on a project header. */
-export const projectMenu = (): MenuItem[] => [NEW_WORKSPACE, { id: "proj:settings", label: "Project settings" }, REMOVE_PROJECT];
+export const projectMenu = (worktreesOff: boolean = SINGLE_FOLDER): MenuItem[] => [...(worktreesOff ? [] : [NEW_WORKSPACE]), { id: "proj:settings", label: "Project settings" }, REMOVE_PROJECT]; // T-798: no New workspace while worktrees are off
 /** Right-click on a group row. */
 export const groupMenu = (): MenuItem[] => [{ id: "grp:settings", label: "Group settings" }, { id: "grp:delete", label: "Delete group…", danger: true, sep: true }];
 
@@ -56,7 +60,7 @@ export const groupMenu = (): MenuItem[] => [{ id: "grp:settings", label: "Group 
 export function rowMenu(o: MenuFor): MenuItem[] {
   const one = o.count === 1;
   // T-749 (DT-C185): the main checkout row starts with the workspace action its project header has.
-  const items: MenuItem[] = one && o.isMain ? [NEW_WORKSPACE] : [];
+  const items: MenuItem[] = one && o.isMain && !(o.worktreesOff ?? SINGLE_FOLDER) ? [NEW_WORKSPACE] : [];
   if (!o.isMain) items.push({ id: "delete", label: one ? "Delete" : `Delete ${o.count} workspaces`, danger: true, disabled: o.deleting });
   if (!o.isMain) items.push({ id: o.asleep && one ? "wake" : "sleep", label: o.asleep && one ? "Wake" : "Sleep" });
   if (o.statuses.length > 0) items.push({ id: "status", label: "Move to status", children: [...o.statuses.map((s) => ({ id: `status:${s.id}`, label: s.label })), { id: "statuses:edit", label: "Edit statuses…" }] });

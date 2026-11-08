@@ -13,8 +13,8 @@ describe("PROJ-065 workspace context menu", () => {
   it("a sleeping workspace offers Wake; the main checkout is never deleted or slept", () => {
     expect(ids({ asleep: true })).toContain("wake");
     // T-749 (DT-C185): the main row also offers New workspace, as its project header does; a selection does not.
-    expect(ids({ isMain: true })).toEqual(["proj:new", "status", "details", "open-in", "proj:remove"]);
-    expect(ids({ isMain: true, count: 3 })).not.toContain("proj:new");
+    expect(ids({ isMain: true, worktreesOff: false })).toEqual(["proj:new", "status", "details", "open-in", "proj:remove"]);
+    expect(ids({ isMain: true, count: 3, worktreesOff: false })).not.toContain("proj:new");
   });
   it("the file manager is named for the platform and Open in has the editors and a terminal", () => {
     expect(fileManagerName("MacIntel")).toBe("Finder");
@@ -38,7 +38,7 @@ describe("PROJ-065 workspace context menu", () => {
 describe("T-640 every row has a way out", () => {
   const last = (items: { id: string; danger?: boolean; sep?: boolean }[]) => items[items.length - 1];
   it("a project header lists New workspace, Project settings and a red Remove project last, below a divider", () => {
-    expect(projectMenu().map((i) => i.id)).toEqual(["proj:new", "proj:settings", "proj:remove"]);
+    expect(projectMenu(false).map((i) => i.id)).toEqual(["proj:new", "proj:settings", "proj:remove"]);
     expect(last(projectMenu())).toMatchObject({ id: "proj:remove", danger: true, sep: true });
   });
   it("the main checkout cannot be deleted, slept or hidden, so its way out is Remove project", () => {
@@ -76,5 +76,16 @@ describe("T-055 deleting a workspace with children", () => {
   });
   it("a loop in the records does not hang", () => {
     expect(deletePlan(["x"], [W("x", "y"), W("y", "x")], false).order.sort()).toEqual(["x", "y"]);
+  });
+});
+
+describe("T-798 (P4B-01) worktrees are off", () => {
+  it("is the build-wide default: SINGLE_FOLDER is on, so no menu offers New workspace", () => {
+    expect(projectMenu().map((i) => i.id)).toEqual(["proj:settings", "proj:remove"]);
+    expect(ids({ isMain: true })).toEqual(["status", "details", "open-in", "proj:remove"]);
+  });
+  it("the main row and the header keep every other item when worktrees are off", () => {
+    expect(ids({ isMain: true, worktreesOff: true })).toEqual(ids({ isMain: true, worktreesOff: false }).filter((id) => id !== "proj:new"));
+    expect(projectMenu(true).map((i) => i.id)).toEqual(projectMenu(false).map((i) => i.id).filter((id) => id !== "proj:new"));
   });
 });

@@ -1,0 +1,7 @@
+
+ Test Files  191 passed (191)
+      Tests  1143 passed (1143)
+   Start at  07:26:56
+   Duration  60.39s (transform 14.11s, setup 0ms, import 27.83s, tests 35.25s, environment 32ms)
+
+tsc: clean
