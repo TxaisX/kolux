@@ -9,7 +9,7 @@ export type TourStep = {
   /** ONB-033: other places to point at when `target` is not on screen, in order (the cookie row in the
    *  overflow menu behind its hint button). */
   alt?: string[];
-  /** ONB-033: a control to click once when the target is hidden (the sidebar's toggle, when the create button is not showing). */
+  /** ONB-033: a control to click once when the target is hidden (the sidebar's toggle, when the sidebar is hidden). */
   reveal?: string;
   side: Side;
   en: Words;
@@ -19,7 +19,7 @@ export type TourStep = {
   /** The real control is what to click, so there is no Next. */
   noNext?: boolean;
 };
-export type TourId = "tasks" | "automations" | "parallel" | "grid" | "create" | "board" | "browser";
+export type TourId = "tasks" | "automations" | "parallel" | "grid" | "board" | "browser";
 export type Tour = {
   id: TourId;
   name: string;
@@ -41,11 +41,6 @@ export const targetsOf = (s: TourStep): string[] => [s.target, ...(s.alt ?? [])]
 export const GRID_PANE = ".pane.focused:not(.browser)";
 export const GRID_STATUS = ".sb-list .dot.live";
 export const GRID_RESULTS = "[data-results]";
-/** ONB-016: the new-workspace composer's name, agent and note fields. */
-export const CREATE_PROJECT = ".composer [data-picker=Project]";
-export const CREATE_NAME = ".composer input[aria-label='workspace name']";
-export const CREATE_AGENT = ".composer select[aria-label=agent]";
-export const CREATE_NOTE = ".composer textarea[aria-label=note]";
 export const FOCUSED_SPLIT = ".pane.focused:not(.browser) .pane-head button[title^='Split right']";
 
 /** ONB-033: the board and browser pane. */
@@ -84,7 +79,7 @@ export const TOURS: Tour[] = [
     ring: true,
     steps: [
       { target: FOCUSED_SPLIT, side: "bottom", action: { en: "Split terminal", ko: "터미널 나누기", run: "split" }, en: { title: "Run agents side by side", body: "Split the pane to get a second terminal in the same folder." }, ko: { title: "에이전트를 나란히", body: "창을 나눠 같은 폴더에서 두 번째 터미널을 엽니다." } },
-      { target: "aside button[title^='New workspace']", reveal: SIDEBAR_SHOW, side: "right", noNext: true, en: { title: "Start another task", body: "A new workspace gives the next agent its own copy of the project, so the two never collide." }, ko: { title: "다른 작업 시작", body: "새 작업 공간은 다음 에이전트에게 프로젝트의 별도 사본을 주므로 서로 부딪히지 않습니다." } },
+      { target: GRID_STATUS, reveal: SIDEBAR_SHOW, side: "right", en: { title: "Tell them apart", body: "Both agents work in this project's folder. Each has its own dot in the sidebar: it turns yellow when it needs you and green when it is done. Give each a different task so they do not edit the same files." }, ko: { title: "구분하기", body: "두 에이전트 모두 이 프로젝트 폴더에서 일합니다. 각자 사이드바에 점이 있어 도움이 필요하면 노란색, 끝나면 초록색이 됩니다. 같은 파일을 고치지 않도록 서로 다른 작업을 맡기세요." } },
     ],
   },
   {
@@ -96,19 +91,6 @@ export const TOURS: Tour[] = [
       { target: GRID_PANE, side: "bottom", en: { title: "This is a session", body: "An AI agent works here in its own terminal. Type to it any time." }, ko: { title: "세션입니다", body: "AI 에이전트가 자기 터미널에서 일합니다. 언제든 입력할 수 있습니다." } },
       { target: GRID_STATUS, side: "right", en: { title: "Its status", body: "The dot spins while it works, turns yellow when it needs you and green when it is done." }, ko: { title: "상태", body: "일하는 동안 점이 돌고, 도움이 필요하면 노란색, 끝나면 초록색이 됩니다." } },
       { target: GRID_RESULTS, side: "right", en: { title: "Your results", body: "What a kit makes is gathered here, ready to open." }, ko: { title: "결과", body: "키트가 만든 것이 여기에 모여 바로 열 수 있습니다." } },
-    ],
-  },
-  {
-    // ONB-016: started by the Setup Guide's Multi-task action once the composer is open; never by itself.
-    id: "create",
-    name: "New workspace",
-    trigger: CREATE_NAME,
-    detached: true,
-    steps: [
-      { target: CREATE_PROJECT, side: "right", en: { title: "Choose a project", body: "The workspace is a copy of this project, in its own folder." }, ko: { title: "프로젝트 고르기", body: "작업 공간은 이 프로젝트의 별도 폴더 사본입니다." } },
-      { target: CREATE_NAME, side: "right", en: { title: "Name new work, or reuse some", body: "Type a short name and Kolux makes a branch and a folder for it. Type an existing branch's name to pick that work up again." }, ko: { title: "새 작업 이름 또는 기존 작업", body: "짧은 이름을 입력하면 Kolux가 브랜치와 폴더를 만듭니다. 기존 브랜치 이름을 입력하면 그 작업을 이어 갑니다." } },
-      { target: CREATE_AGENT, side: "right", en: { title: "Pick an agent", body: "Choose which agent starts in it, or none for a plain terminal." }, ko: { title: "에이전트 선택", body: "시작할 에이전트를 고르거나, 일반 터미널을 쓰려면 고르지 않습니다." } },
-      { target: CREATE_NOTE, side: "right", en: { title: "Say what to do", body: "An optional note becomes the agent's first prompt. Press Enter to create." }, ko: { title: "할 일 적기", body: "선택 사항인 메모가 에이전트의 첫 프롬프트가 됩니다. Enter를 눌러 만듭니다." } },
     ],
   },
   {
@@ -153,7 +135,7 @@ export function prevShown(present: readonly boolean[], i: number): number | null
 /** Whether a tour may start by itself this launch (replay buttons skip every one of these). */
 export function autoStarts(o: { id: TourId; auto: boolean | null; seen: readonly string[]; slotUsed: boolean; blocked: boolean; tried: readonly string[]; workspaceTab?: boolean }): boolean {
   // ONB-012: the grid tour never starts by itself; only the first run's end starts it.
-  if (o.id === "grid" || o.id === "create") return false;
+  if (o.id === "grid") return false;
   if (!o.auto || o.slotUsed || o.blocked || o.seen.includes(o.id)) return false;
   // ONB-033: the parallel tour only for someone who has never split a pane.
   if (o.id === "parallel" && o.tried.includes("split")) return false;
@@ -250,7 +232,7 @@ export const startGridTour = () => window.dispatchEvent(new CustomEvent(START_GR
 export const gridStarts = (how: "kit" | "session" | "skip" | "folder", seen: readonly string[]) => (how === "kit" || how === "session") && !seen.includes("grid");
 /** ONB-042: the tours whose surface is a feature the profile keeps a use of. The grid tour is a
  *  tour of the whole first screen, not a feature on the fixed list, so opening it notes nothing. */
-export const tourFeature = (id: TourId): boolean => id !== "grid" && id !== "create";
+export const tourFeature = (id: TourId): boolean => id !== "grid";
 /** A kit start can take a while to open its panes: the grid tour waits this many looks for its first target. */
 export const GRID_TRIES = 4 * FIRST_TARGET_TRIES;
 
@@ -293,13 +275,6 @@ export function progress(tour: Pick<Tour, "count">, present: readonly boolean[],
   const shownIdx = present.flatMap((p, i) => (p ? [i] : []));
   if (tour.count) return { label: stepLabel(at, tour.count), dots: tour.count, on: at };
   return { label: stepLabel(shownIdx.indexOf(at), shownIdx.length), dots: shownIdx.length, on: shownIdx.indexOf(at) };
-}
-
-/** The tour that takes over when `from` ends: the parallel tour's create step ends by the user pressing the create
- *  button, which opens the composer and hands over to the workspace-creation tour. Any other way the composer opens, or
- *  any other step, hands nothing over. */
-export function handsOver(from: TourId, how: "done" | "skipped" | "lost", step: number): TourId | null {
-  return from === "parallel" && how === "done" && step === 1 ? "create" : null;
 }
 
 /** ONB-033: automatic naming from the first message. Turning it on clears a generated name (a name the user typed stays);

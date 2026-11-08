@@ -5,19 +5,13 @@ Kolux uses a few words in a specific way. This page is the short version. The us
 ## Work and isolation
 
 **Project**
-A Git repository added to Kolux. Projects appear in the left sidebar. A project has one main checkout and any number of workspaces.
-
-**Main checkout**
-The original folder you added. It stays on its own branch and is not a workspace.
-
-**Worktree**
-A Git feature: an extra working folder for the same repository, checked out on its own branch. Worktrees share the repository's history but have separate files.
+A folder you add to Kolux, usually a Git repository. Projects appear in the left sidebar under Folders. Kolux works in that one folder: every agent you start there works in the same files, and Kolux makes no extra copies.
 
 **Workspace**
-Kolux's name for a worktree. Each workspace has its own branch, its own folder, and its own sessions. From two agents up, a new lineup gives each seat its own workspace by default.
+A project's folder together with its sessions and layout. Each project has one. Because every agent shares it, give each agent a different task, or launch them one at a time; the launch chooser warns when several AIs would edit the same files.
 
 **Branch**
-The Git branch a workspace is on. A workspace can start from `main`, another workspace, or any ref.
+The Git branch the project folder is on.
 
 ## Running agents
 

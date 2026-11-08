@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Run many AI coding agents side by side.</strong><br>
-  Each one gets its own terminal. From two agents up, each gets its own Git worktree by default.
+  Each one gets its own terminal, all in your project's folder.
 </p>
 
 <p align="center">
@@ -21,13 +21,13 @@
   <a href="https://github.com/TxaisX/kolux/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux?label=release" alt="Latest release"></a>
 </p>
 
-Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. When you launch two or more agents, each gets its own Git worktree by default, so they can work on the same project without editing the same files.
+Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. Kolux works in one folder per project: every agent you launch there works in that same folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other.
 
 > **Early alpha.** Kolux is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
 
 ## What it does
 
-- **Parallel agents without shared checkouts.** Launch a Solo, Pair, Workbench, or Swarm lineup. From two agents up, each seat gets its own worktree by default; a shared folder is one click away.
+- **Parallel agents in one folder.** Launch a Solo, Pair, Workbench, or Swarm lineup. Every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them.
 - **One window.** Terminals, browser tabs, an editor, diffs, and source control sit in the same split layout.
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
@@ -48,9 +48,9 @@ The current installer is not Authenticode-signed, so Windows SmartScreen may war
 
 - Windows 11 x64 is the tested target. Windows 10 is not yet verified end to end.
 - The WebView2 runtime. Windows 11 includes it; the installer can fetch it if it is missing.
-- Git, for worktrees and source control.
+- Git, for the changes view and for committing, pushing, and pull requests.
 - At least one agent CLI. Kolux can install some agents for you; others you install first.
-- Node.js for agents that are distributed through npm. Kolux reports when the installed Node is too old.
+- Node.js for agents that are distributed through npm. If an agent's install fails because Node.js is too old, Kolux says which version the agent needs and how to update.
 
 ## First run
 
@@ -59,8 +59,6 @@ On first launch, a four-step dialog asks you to connect at least one AI, choose 
 ## How it works
 
 Kolux is a Tauri 2 app. The window is React and TypeScript; the core is Rust. Each pane is a real PTY running your shell or agent, and a background terminal service lets panes outlive the window. Agents report status through hooks that Kolux installs in the agent's own settings, or through a plugin or extension where the agent supports one. Reports go to a loopback listener that requires a per-run token. There is no Kolux server.
-
-Worktrees are ordinary Git worktrees. You can inspect, commit, or remove them with any Git tool.
 
 ## Privacy
 

@@ -1,8 +1,8 @@
-// ONB-032 rest and ONB-033 rest (T-245-b): the board, browser and workspace-creation
-// tours, how a waiting tour behaves, the hand-over into the composer and the naming rule.
+// ONB-032 rest and ONB-033 rest (T-245-b): the board and browser tours, how a waiting tour behaves
+// and the naming rule. T-776 dropped the workspace-creation tour and its hand-over: Kolux makes no extra folders.
 import { describe, expect, it } from "vitest";
 import {
-  autoStarts, BOARD_LANE, BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW, FIRST_TARGET_TRIES, gaveUp, handsOver, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
+  autoStarts, BOARD_LANE, BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW, FIRST_TARGET_TRIES, gaveUp, lookAt, nameAfterToggle, nextShown, ownerOff, progress,
   replayOf, SIDEBAR_SHOW, targetsOf, TOURS, type Look, type Want,
 } from "./tour";
 
@@ -23,11 +23,7 @@ describe("the catalogue (ONB-033)", () => {
     expect(targetsOf(t.steps[2])).toEqual([BROWSER_COOKIES_HINT, BROWSER_COOKIES_ROW]);
     expect(t.steps.every((s) => s.en.title && s.ko.title)).toBe(true);
   });
-  it("the workspace-creation tour is detached from any feature switch and never starts by itself", () => {
-    expect(tour("create").detached).toBe(true);
-    expect(autoStarts({ id: "create", auto: true, seen: [], slotUsed: false, blocked: false, tried: [] })).toBe(false);
-  });
-  it("the parallel tour's create step opens the sidebar when its button is hidden", () => {
+  it("the parallel tour's second step opens the sidebar when it is hidden", () => {
     expect(tour("parallel").steps[1].reveal).toBe(SIDEBAR_SHOW);
   });
 });
@@ -73,7 +69,7 @@ describe("a waiting tour (ONB-032)", () => {
   it("is held back while the feature that owns it is switched off, unless it is detached", () => {
     expect(lookAt(want(), look({ off: true }))).toBe("drop");
     expect(lookAt(want({ forced: true }), look({ off: true }))).toBe("drop");
-    expect(lookAt(want({ id: "create", forced: true }), look({ off: true, detached: true }))).toBe("start");
+    expect(lookAt(want({ id: "parallel", forced: true }), look({ off: true, detached: true }))).toBe("start");
   });
   it("a forced request stops when the user moves to another page", () => {
     expect(lookAt(want({ forced: true }), look({ page: ".board" }))).toBe("drop");
@@ -104,7 +100,7 @@ describe("the owning feature's switch", () => {
     expect(ownerOff({ boardView: true }, "board")).toBe(false);
     expect(ownerOff({}, "board")).toBe(false);
     expect(ownerOff(null, "board")).toBe(false);
-    expect(ownerOff({ boardView: false }, "create")).toBe(false);
+    expect(ownerOff({ boardView: false }, "parallel")).toBe(false);
   });
 });
 
@@ -115,19 +111,6 @@ describe("replay requests", () => {
     expect(replayOf({ id: "board" })).toEqual({ id: "board", after: undefined });
     expect(replayOf(null)).toBeNull();
     expect(replayOf({ id: 4 })).toBeNull();
-  });
-});
-
-describe("the hand-over into the composer (ONB-033)", () => {
-  it("pressing the create button on the parallel tour's create step hands over to the creation tour", () => {
-    expect(handsOver("parallel", "done", 1)).toBe("create");
-  });
-  it("the composer opened any other way hands nothing to a tour", () => {
-    expect(handsOver("parallel", "skipped", 1)).toBeNull();
-    expect(handsOver("parallel", "done", 0)).toBeNull();
-    expect(handsOver("parallel", "lost", 1)).toBeNull();
-    expect(handsOver("tasks", "done", 1)).toBeNull();
-    expect(handsOver("create", "done", 3)).toBeNull();
   });
 });
 

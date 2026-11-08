@@ -80,7 +80,7 @@ export type Stop = { id: string; title: string; caption: string; optional?: bool
 export type Workflow = Stop & { stops: Stop[] };
 
 export const WORKFLOWS: Workflow[] = [
-  { id: "workspaces", title: "Workspaces", caption: "Each workspace is its own copy of a project, so agents can work side by side without stepping on each other.", stops: [] },
+  { id: "workspaces", title: "Projects", caption: "Kolux works in one folder per project. Run several agents in it side by side, each in its own pane, and give each a different task so they do not edit the same files.", stops: [] },
   { id: "tasks", title: "Tasks", caption: "Tasks gather what needs doing: from GitHub, from your notes or typed in. Start an agent on any of them with one click, and its progress shows on the task.", stops: [] },
   {
     id: "agents",

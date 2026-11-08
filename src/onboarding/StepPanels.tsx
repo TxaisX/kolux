@@ -16,7 +16,6 @@ import {
   type Hands, type Proj,
 } from "./actions";
 import { markGuide, type GuideRecord, type Place } from "./guide";
-import { replayTour } from "./tour";
 import { awakeToggle, stopCard, STOP_SKILLS, writerBack } from "./stopCards";
 import { SkillStop, UsageStop } from "./LiveStopCards";
 import { AWAKE_KEY, HOOKS_OFF_HELP } from "../launch/KeepAwakeCard";
@@ -65,7 +64,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
       if (target.kind === "ask") return setAsk(true);
       composer.reset();
       close();
-      if ((await composer.open(target)) === "opened") replayTour("create");
+      await composer.open(target);
     } catch (e) {
       setFailed(failedNote(e));
     } finally {
@@ -74,7 +73,7 @@ export function MultitaskPanel({ close }: { close: () => void }) {
   };
   return (
     <>
-      <p className="guide-note">A workspace is a copy of your project in its own folder, so a second agent never collides with the first.</p>
+      <p className="guide-note">Kolux works in one folder per project, so a second agent works in the same folder as the first. Give each agent a different task so they do not edit the same files.</p>
       {failed && (
         <p className="guide-note warn" role="alert">
           {failed}

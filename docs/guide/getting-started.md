@@ -46,7 +46,7 @@ A tour is a small callout beside a part of the window. It shows a title, a sente
 |---|---|
 | Tasks | A row, the Preset picker and the search box on the Tasks page |
 | Automations | The create button and the button for every run's results on the Automations page |
-| Agents in parallel | The Split button on the focused terminal pane, then the New workspace button |
+| Agents in parallel | The Split button on the focused terminal pane, then the status dot of each session in the sidebar |
 
 A tour starts by itself once, the first time its screen is showing, and only on a profile where the first-run dialog showed. An older profile never gets automatic tours. Only one tour starts by itself per launch. Skip or Done marks it seen. Under Tours in the Help menu you can replay any tour, seen or not. The replay waits until its screen is showing. The Agents in parallel tour does not start by itself if you have already split a pane. Its first callout has a "Split terminal" button in place of Next.
 
