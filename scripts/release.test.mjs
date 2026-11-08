@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { acquire, buildOnce, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, smokeCli, smokeMigration, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
+import { acquire, buildOnce, changelogHeading, changelogSection, downloadUrl, installerName, isStale, manifest, markerOf, newestTag, nextVersion, notesBody, run, smokeCli, smokeMigration, takeQueued, unlock, verifySignature, FEED_REPO, STALE_MS } from "./release.mjs";
 import { decide, WAIT_MS } from "./ci-gate.mjs";
 import { checkPromises, checkWorkflow } from "./workflow-check.mjs";
 import { parseArgs } from "./ship.mjs";
@@ -32,6 +32,11 @@ describe("hand-written release notes (P3-19, T-789)", () => {
   it("takes the section named for the version, to the next heading", () => {
     expect(changelogSection(log, "0.1.10")).toBe("- Review changes opens All Changes\n- Faster start");
     expect(changelogSection(log.replace(/\n/g, "\r\n"), "0.1.9")).toBe("- Older");
+  });
+  it("names the heading it shipped, so the release log says which section went out", () => {
+    expect(changelogHeading(log, "0.1.10")).toBe("## [0.1.10] - 2026-11-08");
+    expect(changelogHeading(log.replace(/\n/g, "\r\n"), "0.1.11")).toBe("## Unreleased");
+    expect(changelogHeading("# Changelog\n\n## 0.1.2\n- x\n", "0.1.3")).toBe("(none)");
   });
   it("falls back to Unreleased, and to nothing when there is no section or it is empty", () => {
     expect(changelogSection(log, "0.1.11")).toBe("- Next thing");

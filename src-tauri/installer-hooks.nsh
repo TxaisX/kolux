@@ -313,6 +313,7 @@
 ; T-789 (P3-07): an update (/UPDATE) leaves the PATH as the user has it. Someone who pressed Remove kolux in
 ; Settings would otherwise find the command back after the next update; a first install still adds it.
 !macro KOLUX_PATH_ADD_UNLESS_UPDATE
+  Push $R5
   Push $R9
   Push $R8
   Push $R7
@@ -328,6 +329,7 @@
   ${Else}
     DetailPrint "Update: leaving the kolux command on the PATH as it is"
   ${EndIf}
+  Pop $R5
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
