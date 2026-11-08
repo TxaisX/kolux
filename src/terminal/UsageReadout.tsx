@@ -4,7 +4,7 @@
 // cost in a cyan chip. What fits is decided by the header's measured width (headerUsage.ts).
 import { useEffect, useRef, useState } from "react";
 import Ring from "../usage/Ring";
-import { claudeOf, codexOf, tone as toneOf } from "../usage/meter";
+import { claudeOf, codexOf, HANDOFF_AT, shortTokens, tone as toneOf } from "../usage/meter";
 import { countdown } from "../usage/claude";
 import { usePlan } from "../usage/plan";
 import { costText, hoverLines, piecesFor, planFigure, startTicker, tokensText, windowsOf, type PlanWindow, type Readout } from "./headerUsage";
@@ -18,7 +18,7 @@ export function ContextGauge({ context, agent, windows = [], left = false, now }
   const none = context === null || context === undefined;
   const percent = none ? 0 : Math.round(context);
   const waiting = agent === "codex" ? "Context used: Codex does not report its context to Kolux, so there is no figure to show." : "Context used: nothing received yet. The figure appears with the agent's first status report.";
-  const title = none ? (agent === "shell" ? "Context used (agents only)" : waiting) : `Context used: ${percent}% of the agent's context window`;
+  const title = none ? (agent === "shell" ? "Context used (agents only)" : waiting) : `Context used: ${percent}% of the way to the auto handoff at ${shortTokens(HANDOFF_AT)} tokens (the session then hands off and clears)`;
   // The tint reads the real figure: 90.4% is beyond 90 though it shows as 90% (stand-in review of
   // lane/marks 243736d, AFTER 9).
   return (
@@ -37,7 +37,7 @@ export function UsageReadoutView({ context, agent, readout, windows, width, now 
     <span className="usage-readout">
       <ContextGauge context={context} agent={agent} windows={windows} left={readout.left} now={new Date(now)} />
       {pieces.tokens && readout.tokens !== null && (
-        <span className="usage-tokens" title="Context tokens used / the context window">
+        <span className="usage-tokens" title="Context tokens held now / the auto handoff point">
           {tokensText(readout.tokens, readout.window)}
         </span>
       )}

@@ -47,7 +47,7 @@ test("USAGE-034: the plan figures follow used-or-left, the tint still follows us
 
 test("USAGE-034: the hover keeps the gauge's line and adds one per window", () => {
   const html = view();
-  expect(html).toMatch(/title="Context used: 78% of the agent&#x27;s context window\n5-hour: 34% used, resets [^\n]*\nWeekly: 91% used, resets [^"]*"/);
+  expect(html).toMatch(/title="Context used: 78% of the way to the auto handoff at 170k tokens \(the session then hands off and clears\)\n5-hour: 34% used, resets [^\n]*\nWeekly: 91% used, resets [^"]*"/);
 });
 
 test("USAGE-034: no cost report yet is no chip", () => {

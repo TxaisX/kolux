@@ -1,9 +1,8 @@
 // Owner change 2026-11-06: the token and spend ribbon at the right end of the layout strip, above
 // the terminals. It totals the current workspace across every terminal and session that worked in
 // it, and draws a small gauge of the last 14 days so the running spend has a shape, not just a
-// number. The figures come from the saved scan (`token_usage`); a count older than ten minutes is
-// refreshed incrementally first, so the ribbon keeps up with long sessions without reading a log on
-// every render. Clicking the off state opens Settings > Usage.
+// number. The figures come from the saved scan (`token_usage`), refreshed incrementally every 15
+// seconds (2026-11-07), and cover the workspace folder plus its git worktrees. Clicking the off state opens Settings > Usage.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { locale } from "../language";
@@ -11,8 +10,10 @@ import { openSettings } from "../settings/pages";
 import { NAMES, type Usage } from "./tokens";
 import { dueForScan, workspaceName, workspaceSpend, type SpendDay, type SpendFigure, type WorkspaceSpend as SpendFigures } from "./workspaceRibbon";
 
-const REFRESH_MS = 60_000;
-const SCAN_MS = 10 * 60_000;
+// Owner change 2026-11-07: live. The scan is incremental (only a log that grew is read again), so the
+// ribbon recounts every 15 seconds while the window is shown and the running session's spend moves.
+const REFRESH_MS = 15_000;
+const SCAN_MS = 15_000;
 const compact = (n: number) => new Intl.NumberFormat(locale(), { notation: "compact", maximumFractionDigits: 1 }).format(n);
 const money = (usd: number) => new Intl.NumberFormat(locale(), { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(usd);
 
@@ -83,7 +84,7 @@ export function WorkspaceSpendView({ spend, now = Date.now(), onOpenUsage = () =
   const providerWords = spend.providers.map((p) => `${NAMES[p.provider]} ${compact(p.tokens)} tok · ${costLine(p)}`).join("\n");
   const title = [
     spend.dir,
-    `${spend.all.tokens.toLocaleString(locale())} tokens across ${spend.sessions} session${spend.sessions === 1 ? "" : "s"}, ${costLine(spend.all)}`,
+    `${spend.all.tokens.toLocaleString(locale())} tokens across ${spend.sessions} session${spend.sessions === 1 ? "" : "s"}${spend.worktrees ? ` (this folder and ${spend.worktrees} worktree${spend.worktrees === 1 ? "" : "s"})` : ""}, ${costLine(spend.all)}`,
     `Today: ${spend.today.tokens.toLocaleString(locale())} tokens · ${costLine(spend.today)}`,
     `Last 7 days: ${spend.week.tokens.toLocaleString(locale())} tokens · ${costLine(spend.week)}`,
     providerWords,
@@ -114,10 +115,21 @@ export function WorkspaceSpendView({ spend, now = Date.now(), onOpenUsage = () =
 export default function WorkspaceSpend({ workspace }: { workspace: string | null }) {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [failed, setFailed] = useState(false);
+  const [worktrees, setWorktrees] = useState<string[]>([]);
+  // The workspace's git worktrees, asked once per workspace: their sessions count toward it.
+  useEffect(() => {
+    setWorktrees([]);
+    if (!workspace) return;
+    let live = true;
+    invoke<string[]>("workspace_worktrees", { path: workspace }).then((w) => live && setWorktrees(w), () => {});
+    return () => {
+      live = false;
+    };
+  }, [workspace]);
   // Only the newest read may write: a workspace switch or a slow scan can leave an older one in flight.
   const seq = useRef(0);
   const load = useCallback(() => {
-    if (!workspace) return;
+    if (!workspace || document.hidden) return; // a hidden window does not scan; focus brings it back up to date
     const id = ++seq.current;
     const read = () => invoke<Usage>("token_usage");
     read()
@@ -140,15 +152,17 @@ export default function WorkspaceSpend({ workspace }: { workspace: string | null
     if (!workspace) return;
     load();
     const timer = setInterval(load, REFRESH_MS);
+    document.addEventListener("visibilitychange", load);
     return () => {
       seq.current += 1; // a read still in flight is no longer the newest
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", load);
     };
   }, [load, workspace]);
-  const spend = useMemo(() => (usage && workspace ? workspaceSpend(usage, workspace, new Date()) : null), [usage, workspace]);
+  const spend = useMemo(() => (usage && workspace ? workspaceSpend(usage, workspace, new Date(), 14, worktrees) : null), [usage, workspace, worktrees]);
   if (spend) return <WorkspaceSpendView spend={spend} />;
   return failed && workspace ? (
-    <span className="strip-spend-failed" title="Could not read the saved token figures. The strip tries again every minute.">
+    <span className="strip-spend-failed" title="Could not read the saved token figures. The strip tries again every 15 seconds.">
       usage unavailable
     </span>
   ) : null;

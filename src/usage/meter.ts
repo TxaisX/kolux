@@ -13,10 +13,20 @@ export const CAP = 200_000;
 export const CAP_FIELD = "contextCap200k";
 export const capOn = (settings: Record<string, unknown>): boolean => settings[CAP_FIELD] !== false;
 
-/** Context fill, 0 to 100, against the effective window: the cap while it is on, else the model's own. */
-// ponytail: the cap is always on until T-041 wires the USAGE-006 switch through this argument.
+/** Owner change 2026-11-07: where a session hands off and clears itself (the context-relay Stop hook,
+ *  CONTEXT_RELAY_THRESHOLD, default 170k). The ring fills toward this point, not the window's edge. */
+export const HANDOFF_AT = 170_000;
+
+/** The token count a session's ring is measured against: the handoff point, or the effective
+ *  window (the cap while it is on, else the model's own) when that is smaller. */
+export function contextLimit(window: number, capped = true): number {
+  const w = capped ? CAP : window;
+  return w > 0 ? Math.min(HANDOFF_AT, w) : HANDOFF_AT;
+}
+
+/** Context fill, 0 to 100, toward the handoff point (see `contextLimit`). */
 export function contextFill(r: ContextReading, capped = true): number {
-  const window = capped ? CAP : r.window;
+  const window = contextLimit(r.window, capped);
   if (window <= 0) return 0;
   return Math.min(100, Math.max(0, Math.round((r.tokens / window) * 100)));
 }
@@ -85,7 +95,7 @@ export const accountKey = (id: string | null): string => id ?? "";
 /** The card's meter, or null when there is neither a context reading nor plan figures (USAGE-002). */
 export function meterOf(ctx: ContextReading | undefined, agent: string, claude: ClaudeLimit[], codex: CodexUsage | null, capped = true): Meter | null {
   const m: Meter = {};
-  if (ctx) m.context = { ...ctx, percent: contextFill(ctx, capped) };
+  if (ctx) m.context = { ...ctx, window: contextLimit(ctx.window, capped), percent: contextFill(ctx, capped) };
   const plan = planOf(agent, claude, codex);
   if (plan) m.plan = plan;
   return m.context || m.plan ? m : null;
@@ -94,7 +104,7 @@ export function meterOf(ctx: ContextReading | undefined, agent: string, claude: 
 /** The hover text shared by the card meter, the tab ring and the header gauge. */
 export function meterText(m: Meter): string {
   const lines: string[] = [];
-  if (m.context) lines.push(`Context ${shortTokens(m.context.tokens)} / ${shortTokens(m.context.window)} (${m.context.percent}%)`);
+  if (m.context) lines.push(`Context ${shortTokens(m.context.tokens)} / ${shortTokens(m.context.window)} before auto handoff (${m.context.percent}%)`);
   if (m.plan) lines.push([m.plan.fiveHour !== null && `5-hour ${m.plan.fiveHour}%`, m.plan.weekly !== null && `Weekly ${m.plan.weekly}%`].filter(Boolean).join(" · "));
   return lines.join("\n");
 }

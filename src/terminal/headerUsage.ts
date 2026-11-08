@@ -3,7 +3,7 @@
 // width, the hover lines, and the clock that keeps the countdowns moving. The component that draws
 // them is UsageReadout.tsx.
 import { locale } from "../language";
-import { CAP, shortTokens, shownPercent, tone, type ContextReading } from "../usage/meter";
+import { CAP, contextLimit, shortTokens, shownPercent, tone, type ContextReading } from "../usage/meter";
 import type { ClaudeLimit } from "../usage/claude";
 import type { CodexUsage } from "../usage/codex";
 
@@ -48,8 +48,8 @@ export function costText(usd: number | null | undefined): string | null {
  * window, cost) and the used-or-left choice. `tokens` is null until the first report. */
 export type Readout = { tokens: number | null; window: number; costUsd: number | null; left: boolean };
 export function readoutOf(r: (ContextReading & { costUsd?: number }) | undefined, capped: boolean, left: boolean): Readout {
-  if (!r) return { tokens: null, window: CAP, costUsd: null, left };
-  return { tokens: r.tokens, window: capped ? CAP : r.window, costUsd: r.costUsd ?? null, left };
+  if (!r) return { tokens: null, window: contextLimit(CAP, capped), costUsd: null, left };
+  return { tokens: r.tokens, window: contextLimit(r.window, capped), costUsd: r.costUsd ?? null, left };
 }
 
 // Measured by eye on the real header, in px. BASE is everything else the header holds at the

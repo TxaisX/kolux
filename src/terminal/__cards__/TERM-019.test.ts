@@ -23,7 +23,7 @@ test("box 1: a single-pane grid still shows the header, with the program, the se
 
 test("box 2: in a split tab each pane carries its own header with its own usage percentage", () => {
   // MIRROR App.tsx:3203: context={context[p.key] ? contextFill(context[p.key], capped) : null}; the readings are per pane key
-  const readings: Record<number, { tokens: number; window: number } | undefined> = { 1: { tokens: 20_000, window: 200_000 }, 2: { tokens: 150_000, window: 200_000 } };
+  const readings: Record<number, { tokens: number; window: number } | undefined> = { 1: { tokens: 17_000, window: 200_000 }, 2: { tokens: 127_500, window: 200_000 } };
   const fill = (key: number) => {
     const r = readings[key];
     return r ? contextFill(r, true) : null;

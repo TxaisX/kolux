@@ -54,10 +54,10 @@ test("USAGE-034: tokens read used / window, and cost reads dollars with two deci
   expect(costText(-1)).toBeNull();
 });
 
-test("USAGE-034: the capped window shows 200k against the model's own while the cap is on", () => {
-  expect(readoutOf({ tokens: 155_000, window: 1_000_000, costUsd: 3.15 }, true, false)).toEqual({ tokens: 155_000, window: 200_000, costUsd: 3.15, left: false });
-  expect(readoutOf({ tokens: 155_000, window: 1_000_000 }, false, true)).toEqual({ tokens: 155_000, window: 1_000_000, costUsd: null, left: true });
-  expect(readoutOf(undefined, true, false)).toEqual({ tokens: null, window: 200_000, costUsd: null, left: false });
+test("USAGE-034: the readout measures against the 170k auto handoff point (owner change 2026-11-07)", () => {
+  expect(readoutOf({ tokens: 155_000, window: 1_000_000, costUsd: 3.15 }, true, false)).toEqual({ tokens: 155_000, window: 170_000, costUsd: 3.15, left: false });
+  expect(readoutOf({ tokens: 155_000, window: 1_000_000 }, false, true)).toEqual({ tokens: 155_000, window: 170_000, costUsd: null, left: true });
+  expect(readoutOf(undefined, true, false)).toEqual({ tokens: null, window: 170_000, costUsd: null, left: false });
 });
 
 const have = { tokens: true, windows: 2, cost: true };
