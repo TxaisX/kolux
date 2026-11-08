@@ -41,3 +41,38 @@ Gates (lane ready-sec-2, build slot held for all of them)
 - PLAN.md duplicate-id grep                     -> prints nothing
 - full cargo test                               -> 2967 passed; 2 failed. scm::writers t606 is the known environment failure on this PC (20 s stand-in agent timeout, fails alone, CI skips it, see kolux-rs-after.md 2026-11-03); status::tests::p81_a_deny_settle... is a load flake and passes alone (1 passed on rerun).
 - full pnpm test                                -> Test Files  862 passed (862); Tests  6372 passed (6372)
+
+Review fix 1 (opus-high-review BLOCK B1-B4, nits 1 and 4; Txais's S1 decision)
+Commits on lane/ready-sec-2, one per blocker, each with a test whose red run on the old behaviour is recorded here.
+- B1 7b6fe8d4: a worker that settled its own dispatch (worker_done, abandon, task-update --status ready) became a coordinator. pane_scope now treats any pane that is terminal_of ANY dispatch of this runtime as a worker, finished or not.
+  test t793_b1_a_worker_that_settles_its_own_dispatch_is_still_a_worker
+  red: FAILED, panicked at src\cli\mod.rs:7950, unwrap_err on Ok (the abandoned worker's terminal send to another pane was allowed)
+- B2 93ecc6c1: worker split/create with a command made an unscoped pane. terminal.create and terminal.split with a non-blank --command are refused from a worker (own split target included); no command, or a coordinator, passes.
+  test t793_b2_a_worker_cannot_start_a_program_through_split_or_create
+  red: FAILED, panicked at src\cli\mod.rs:7995, unwrap_err on Ok (split --terminal <own> --command and create --command were allowed)
+- B3 184fa6a8: terminal close --terminal <own> --tab closes every pane of the tab. pane_target names no single pane for close --tab, so a worker gets the many-panes refusal; plain own close and a coordinator's --tab pass.
+  test t793_b3_a_worker_cannot_close_the_whole_tab_around_its_own_pane
+  red: FAILED, panicked at src\cli\mod.rs:8037:131, unwrap_err on Ok
+- B4 a59fb2da (hooks.rs, terminal.rs adopt, lib.rs; hooks.rs needs the opus-high-review again): panes that outlive a restart lost their per-pane endpoint file to the sweeps and carry a stale token. hooks::Survivors notes each adopted terminal (pane key + the meta id its environment names, not a remapped id) before looking for the listener; adopt writes the file at once when the listener is up, and lib.rs flushes after app.manage(hooks), so either order works. Hooks::write_pane_file is shared with pane_env. Release note: "restart agents once after this update" is in the commit subject (release notes are built from subjects); agents started before the update still carry the old token in their environment.
+  test t793_b4_adopting_a_surviving_pane_writes_its_endpoint_file_in_either_order (adopt first then flush, listener first then adopt, token proven under this run's secret for the old terminal id, a pane-less terminal not written, source guards that adopt calls Survivors and lib.rs flushes after manage)
+  red: writes stubbed out (the old behaviour): FAILED, panicked at src\hooks.rs:1753:9, "flush writes the surviving pane's file"
+- Nit 1 151350b0: test t793_dispatch_refuses_a_worker_pane_that_targets_another_pane goes through dispatch(&ctx, ...) with real pane keys (Terminals::fake_key, test only) for terminal send/read/close.
+  red: with `scoped(ctx, req)?;` commented out of dispatch: FAILED, panicked at src\cli\mod.rs:8118:42, unwrap_err on an Ok value ({"terminal":"term-3","delivered":["text"],...}: the send went through)
+- Nit 4 (DECISIONS DT-C228 (2)): after a restart the old run's dispatches name no pane, so surviving workers count as coordinators.
+- S1 (Txais, 2026-11-08, "No, allow it"): orchestration worker-stop, worker-read, dispatch --to --inject and worker-start terminal reuse stay UNSCOPED and are not touched. DT-C228 (3) now says they can act on other panes' terminals, including the coordinator's, and adds: every pane can read every pane's token file.
+- docs/architecture/security.md updated to match.
+
+Gates after the fixes (slot held, released after)
+- cargo clippy --all-targets -- -D warnings -> Finished, no warnings (one single_element_loop in the B3 test fixed first)
+- cargo test --lib -- hooks:: cli:: agent_hooks:: t793 -> ok. 370 passed; 0 failed
+- cargo test --lib -- t793 -> ok. 15 passed; 0 failed
+- full cargo test (before the clippy test-only edit) -> 2973 passed; 1 failed: scm::writers t606, the known environment failure (20 s stand-in agent timeout, CI skips it, kolux-rs-after.md 2026-11-03); the p81 flake passed this time
+- pnpm exec tsc -> exit 0; node scripts/plan-check.mjs -> plan-check: OK; PLAN.md duplicate-id grep -> prints nothing
+- full pnpm test -> Test Files 862 passed (862); Tests 6372 passed (6372)
+
+Hidden child windows (coordinator request, Txais: console windows popping up)
+Audit of every std::process::Command in hooks.rs, cli/mod.rs, terminal.rs and orchestration.rs (+ orchestration/runtime.rs). Production spawns already hidden or detached, nothing changed:
+- terminal.rs layout-save child and taskkill: CREATE_NO_WINDOW (0x08000000) already set.
+- cli/mod.rs app_command (launch the app): DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP, no console is created, stdio null.
+- cli/mod.rs claude_teams: the CLI's own pass-through to `claude` in the caller's terminal; it must inherit that console to be interactive, so it is deliberately not hidden.
+- hooks.rs and orchestration.rs: no production child spawn. Remaining spawns in these files are test helpers (git, icacls) that inherit cargo's console.

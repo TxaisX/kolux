@@ -8036,10 +8036,8 @@ mod tests {
     fn t793_b3_a_worker_cannot_close_the_whole_tab_around_its_own_pane() {
         let ds = [worker("d-1", 2, 1, "running")];
         let me = Some(("term-2", "key-2"));
-        for tab in [json!(true)] {
-            let e = pane_scope(&pane_req("terminal.close", me, json!({ "terminal": "term-2", "tab": tab })), Some("term-2"), &ds).unwrap_err();
-            assert_eq!(e.code, "pane_scope", "{}", e.message);
-        }
+        let e = pane_scope(&pane_req("terminal.close", me, json!({ "terminal": "term-2", "tab": true })), Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope", "{}", e.message);
         for args in [json!({ "terminal": "term-2" }), json!({ "terminal": "term-2", "tab": false })] {
             pane_scope(&pane_req("terminal.close", me, args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{args}: {}", e.message));
         }
