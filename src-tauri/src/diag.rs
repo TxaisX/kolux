@@ -154,12 +154,30 @@ fn env_name(name: &str) -> bool {
     name.len() >= 2 && name.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_') && name.bytes().any(|b| b.is_ascii_uppercase())
 }
 
-/// The word with its value replaced by the mask; a leading quote and trailing punctuation stay.
+/// The word with its value replaced by the mask; a leading quote and trailing punctuation stay. An
+/// escape sequence (ESC, 0x1b) ends the value: the colour reset or cursor move after it stays.
 fn masked(word: &str) -> String {
+    let (word, tail) = word.find(ESC).map_or((word, ""), |i| word.split_at(i));
     let lead = word.len() - word.trim_start_matches(['"', '\'']).len();
     let core = &word[lead..];
     let keep = core.trim_end_matches(['"', '\'', ',', ';', ')', '}', '>']).len();
-    format!("{}{MASK}{}", &word[..lead], &core[keep..])
+    format!("{}{MASK}{}{tail}", &word[..lead], &core[keep..])
+}
+
+const ESC: char = '\u{1b}';
+
+/// The escape sequence `s` starts with (its first char is ESC): a CSI sequence (`ESC [`, parameter and
+/// intermediate bytes, one final byte), else ESC and the one char after it; all of `s` when cut short.
+fn escape_len(s: &str) -> usize {
+    let b = s.as_bytes();
+    if b.get(1) == Some(&b'[') {
+        let mut i = 2;
+        while i < b.len() && (0x20..=0x3f).contains(&b[i]) {
+            i += 1;
+        }
+        return (i + 1).min(b.len());
+    }
+    1 + s[1..].chars().next().map_or(0, char::len_utf8)
 }
 
 /// One whitespace-delimited word, masked where a rule applies; `true` when the NEXT word is its value.
@@ -208,6 +226,8 @@ fn scrub_word(word: &str) -> (String, bool) {
 
 /// Masks key-value pairs, secrets on a command line, environment-style lines, credentials in
 /// addresses and known token shapes. Whitespace is kept as it was; `scrub(scrub(t)) == scrub(t)`.
+/// An escape sequence (ESC, 0x1b) ends a word the way whitespace does, so a value a terminal colours
+/// (`ESC[31mTOKEN=xESC[0m`) is still seen as `TOKEN=x`; the sequence itself is kept and never masked.
 pub fn scrub(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut mask_next = false;
@@ -216,7 +236,14 @@ pub fn scrub(text: &str) -> String {
         let ws = rest.len() - rest.trim_start().len();
         out.push_str(&rest[..ws]);
         rest = &rest[ws..];
-        let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+        let end = rest.find(|c: char| c.is_whitespace() || c == ESC).unwrap_or(rest.len());
+        if end == 0 && !rest.is_empty() {
+            // The escape sequence passes through; a value the next word holds is still masked.
+            let esc = &rest[..escape_len(rest)];
+            out.push_str(esc);
+            rest = &rest[esc.len()..];
+            continue;
+        }
         let word = &rest[..end];
         rest = &rest[end..];
         if word.is_empty() {
@@ -235,6 +262,35 @@ pub fn scrub(text: &str) -> String {
         let (text, next) = scrub_word(word);
         out.push_str(&text);
         mask_next = next;
+    }
+    out
+}
+
+/// `scrub` over bytes that may not be whole UTF-8 (a pane's output chunk cut inside a character, or
+/// raw binary): every valid stretch is masked, the bytes between them and a cut-off tail are kept as
+/// they came, so what is readable is masked and nothing is dropped or altered beyond the mask.
+pub fn scrub_bytes(chunk: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(chunk.len());
+    let mut rest = chunk;
+    while !rest.is_empty() {
+        match std::str::from_utf8(rest) {
+            Ok(text) => {
+                out.extend_from_slice(scrub(text).as_bytes());
+                break;
+            }
+            Err(e) => {
+                let good = e.valid_up_to();
+                if let Ok(text) = std::str::from_utf8(&rest[..good]) {
+                    out.extend_from_slice(scrub(text).as_bytes());
+                }
+                let Some(bad) = e.error_len() else {
+                    out.extend_from_slice(&rest[good..]);
+                    break;
+                };
+                out.extend_from_slice(&rest[good..good + bad]);
+                rest = &rest[good + bad..];
+            }
+        }
     }
     out
 }
@@ -333,6 +389,30 @@ mod tests {
 
     /// p2b-mask-test.txt lines 18 and 48: the auditor's bare JWT, alone and inside a sentence.
     const JWT: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+
+    /// T-792 review fix (findings 3 and 4): an escape sequence ends a word and a value, so a coloured
+    /// `NAME=value` is masked and the colour reset after the value stays; the valid part of a chunk
+    /// cut inside a character is masked too, the cut bytes written as they came.
+    #[test]
+    fn t792_an_escape_sequence_ends_a_word_and_a_cut_chunk_still_masks_its_whole_part() {
+        assert_eq!(scrub("\u{1b}[31mTOKEN=abc123\u{1b}[0m"), "\u{1b}[31mTOKEN=[masked]\u{1b}[0m");
+        assert_eq!(scrub("\u{1b}[2K$ export ANTHROPIC_API_KEY=sk-ant-ESCSECRET12345678\u{1b}[0m\r\n"), "\u{1b}[2K$ export ANTHROPIC_API_KEY=[masked]\u{1b}[0m\r\n");
+        // The value after a scheme word, coloured on its own: the sequence passes, the value is masked.
+        assert_eq!(scrub("Authorization: Bearer \u{1b}[1mabc.def\u{1b}[0m done"), "Authorization: Bearer \u{1b}[1m[masked]\u{1b}[0m done");
+        // ESC and one char, a bare ESC at the end, and a sequence cut short.
+        assert_eq!(scrub("\u{1b}cTOKEN=x"), "\u{1b}cTOKEN=[masked]");
+        assert_eq!(scrub("TOKEN=x\u{1b}"), "TOKEN=[masked]\u{1b}");
+        assert_eq!(scrub("TOKEN=x\u{1b}[3"), "TOKEN=[masked]\u{1b}[3");
+        assert_eq!(masked("abc\u{1b}[0m,"), "[masked]\u{1b}[0m,");
+        let once = scrub("\u{1b}[31mTOKEN=abc123\u{1b}[0m \u{1b}[1m\u{1b}[0m");
+        assert_eq!(scrub(&once), once, "idempotent with sequences");
+        assert_eq!(scrub("\u{1b}[32mok\u{1b}[0m fine"), "\u{1b}[32mok\u{1b}[0m fine", "nothing to mask: unchanged");
+        // Bytes: a secret before the cut, two invalid bytes in the middle, a character cut after two of three bytes.
+        let cut = b"TOKEN=aaaa \xff\xfe TOKEN=bbbb \xe2\x82";
+        assert_eq!(scrub_bytes(cut), b"TOKEN=[masked] \xff\xfe TOKEN=[masked] \xe2\x82");
+        assert_eq!(scrub_bytes(b"plain \xff"), b"plain \xff");
+        assert_eq!(scrub_bytes(b""), b"");
+    }
 
     #[test]
     fn t792_a_bare_jwt_is_masked_alone_and_inside_a_sentence() {

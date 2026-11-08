@@ -61,7 +61,9 @@ fn old_log_push(log: &mut OutputLog, chunk: &[u8]) {
 fn new_handler(inner: &Mutex<Inner>, prs: &mut crate::scm::PrScan, id: u32, chunk: &[u8]) -> u64 {
     let data = base64::engine::general_purpose::STANDARD.encode(chunk);
     std::hint::black_box(&data);
-    let seq = inner.lock().map(|mut i| i.book_chunk(id, chunk, false)).unwrap();
+    // T-792 review fix (finding 5): the mask runs before the lock, as the real handler does.
+    let on_disk = crate::diag::scrub_bytes(chunk);
+    let seq = inner.lock().map(|mut i| i.book_chunk(id, chunk, &on_disk, false)).unwrap();
     std::hint::black_box(prs.feed(chunk));
     seq
 }
