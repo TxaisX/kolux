@@ -9,7 +9,7 @@ export const SHELL = 'section.pane[data-agent="shell"]';
 export const SHELL_NAMES = new Set(["powershell.exe", "pwsh.exe", "cmd.exe"]);
 // Host processes a terminal pane leaves behind when it is not cleaned up.
 export const PANE_PROCS = new Set(["powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe", "OpenConsole.exe"]);
-export const IDENTIFIER = "com.txaisxiong.kolux-rs.stress";
+export const IDENTIFIER = "com.txaisxiong.kolux.stress";
 export const TEMP_MARKER = ".kolux-rs-stress-temp";
 export const slash = (p) => p.replace(/\\/g, "/");
 
@@ -116,7 +116,7 @@ export async function snapshot(app, pid = app.pid) {
       return { pid: Number(p), name, ppid: Number(ppid), ws: Number(ws), handles: Number(handles), threads: Number(threads), created };
     });
 }
-const UI_PROCS = new Set(["kolux-rs.exe", "msedgewebview2.exe"]);
+const UI_PROCS = new Set(["kolux.exe", "msedgewebview2.exe"]);
 // The app's own memory: the app process and its web view processes (shells and what they run are not the app).
 export const appMemMB = (snap) => snap.filter((p) => UI_PROCS.has(p.name)).reduce((a, p) => a + p.ws, 0) / 1048576;
 export const handlesOf = (snap) => snap.filter((p) => UI_PROCS.has(p.name)).reduce((a, p) => a + p.handles, 0);

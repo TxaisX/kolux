@@ -3,11 +3,11 @@
 //! hook documentation; everything is in memory (no config file of any tool is read or written).
 
 use base64::Engine;
-use kolux_rs_lib::hooks::{answer, claude_change, codex_change, install_claude_hooks, reply_body, Request};
-use kolux_rs_lib::status::{quiet_check, report, Agent, Session};
+use kolux_lib::hooks::{answer, claude_change, codex_change, install_claude_hooks, reply_body, Request};
+use kolux_lib::status::{quiet_check, report, Agent, Session};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use kolux_rs_lib::status::LIMIT_RESETS_AT;
+use kolux_lib::status::LIMIT_RESETS_AT;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 

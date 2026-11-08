@@ -3,7 +3,7 @@
 //! Kolux reads from the registry (Windows) is the real one; every scenario therefore compares
 //! against a baseline taken under the same environment before it adds anything.
 
-use kolux_rs_lib::agents::{catalogue, AgentInfo};
+use kolux_lib::agents::{catalogue, AgentInfo};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -155,9 +155,9 @@ fn sess001_box3_a_file_that_cannot_run_or_a_folder_named_after_an_agent_is_not_o
 
 // ---- SESS-023: every agent seat gets its own creature-named worktree ----
 
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::projects::{add_project, create_fresh_workspace, forget_workspace, load_projects, remove_worktree, Place, Project};
-use kolux_rs_lib::state::Store;
+use kolux_lib::git::Git;
+use kolux_lib::projects::{add_project, create_fresh_workspace, forget_workspace, load_projects, remove_worktree, Place, Project};
+use kolux_lib::state::Store;
 use std::process::Command;
 
 fn repo_for_launches(tag: &str) -> PathBuf {
@@ -225,7 +225,7 @@ fn sess023_three_separate_copy_seats_get_three_distinct_creature_worktrees_and_a
 
 // ---- SESS-027: no-prompt approval modes by default; the user's own arguments replace them ----
 
-use kolux_rs_lib::agents::{start_line_as, Start, StartLine};
+use kolux_lib::agents::{start_line_as, Start, StartLine};
 
 fn start_line(s: &serde_json::Value, id: &str, extra: &[String], prompt: &str, picked: bool) -> Result<StartLine, String> {
     start_line_as(s, id, extra, prompt, picked, Start::Fresh)
@@ -265,7 +265,7 @@ fn sess027_box2_codex_custom_default_arguments_replace_the_built_in_ones() {
 #[cfg(windows)]
 #[test]
 fn sess030_box3_resume_starts_in_a_project_folder_whose_path_contains_spaces() {
-    use kolux_rs_lib::pty::{program_command, PtySession};
+    use kolux_lib::pty::{program_command, PtySession};
     use std::sync::Arc;
     let _g = ENV.lock().unwrap_or_else(|e| e.into_inner());
     let root = scratch("s30-root");
@@ -307,7 +307,7 @@ fn sess030_box3_resume_starts_in_a_project_folder_whose_path_contains_spaces() {
 
 // ---- SESS-051: each catalogue agent's program, start line and opening-prompt route ----
 
-use kolux_rs_lib::agents::credited_agent;
+use kolux_lib::agents::credited_agent;
 
 fn line_of(id: &str, prompt: &str) -> StartLine {
     start_line(&serde_json::json!({}), id, &[], prompt, true).unwrap()

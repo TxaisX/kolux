@@ -3,7 +3,7 @@
 //! documentation; everything is in memory. The card's wording is proven on the TypeScript side
 //! (src/board/__cards__), fed the same payload shapes these tests assert.
 
-use kolux_rs_lib::status::{answer_keys, report, Agent, Session};
+use kolux_lib::status::{answer_keys, report, Agent, Session};
 use serde_json::{json, Value};
 
 fn ev(j: &str) -> Value {
@@ -72,7 +72,7 @@ fn view025_a_card_answer_types_the_agents_own_keys_and_the_pane_leaves_needs_you
 }
 
 // ---- VIEW-005 / VIEW-107: the real settings Store and the saved window state ----
-use kolux_rs_lib::state::Store;
+use kolux_lib::state::Store;
 
 fn store_dir(tag: &str) -> std::path::PathBuf {
     let d = std::env::temp_dir().join(format!("kolux-rs-cards05-{tag}-{}", std::process::id()));
@@ -140,7 +140,7 @@ fn view107_box1_three_saved_tabs_are_read_back_whole_after_the_store_is_reopened
 }
 
 // ---- VIEW-012: the Artifacts library behind the page ----
-use kolux_rs_lib::artifacts::{Library, Origin};
+use kolux_lib::artifacts::{Library, Origin};
 
 #[test]
 fn view012_box1_add_two_files_and_the_newest_is_listed_first() {

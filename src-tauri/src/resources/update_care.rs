@@ -165,7 +165,7 @@ pub fn install_cause(raw: &str) -> String {
     } else if has("os error 740") || has("requires elevation") {
         "The installer needs administrator permission, which this account could not give. Ask an administrator, or download the installer and run it yourself.".to_string()
     } else if has("os error 5)") || has("access is denied") || has("permission denied") {
-        "Windows refused permission to start the installer (access denied). Check that you can write to the Kolux RS folder and your temporary folder, then try again.".to_string()
+        "Windows refused permission to start the installer (access denied). Check that you can write to the Kolux folder and your temporary folder, then try again.".to_string()
     } else if has("os error 32") || has("being used by another process") {
         "A file the installer needs is in use by another program. Close other copies of Kolux and programs using its files, then try again.".to_string()
     } else if has("os error 112") || has("not enough space") || has("disk full") {

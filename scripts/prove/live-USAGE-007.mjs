@@ -11,7 +11,7 @@ import { runCli, allPaneBuffers } from "./live-cli-common.mjs";
 
 const STANDIN = ["echo ARGV: %*", "echo CWD: %CD%", "echo IDENT: %KOLUX_HOOK_IDENTITY%", ":again", "set /p L=", "echo GOT: %L%", "goto again"];
 const PROMPT_WORDS = "The usage limit has reset. Please continue where you left off.";
-const IDENTIFIER = "com.txaisxiong.kolux-rs.prove";
+const IDENTIFIER = "com.txaisxiong.kolux.prove";
 
 const post = (port, path, headers, body) =>
   new Promise((resolve, reject) => {

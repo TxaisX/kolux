@@ -4,7 +4,7 @@ Kolux keeps everything on the user's machine. There is no account, no sync servi
 
 ## The profile folder
 
-The root is `%APPDATA%\com.txaisxiong.kolux-rs` (`src-tauri/src/resources/recovery.rs:849-851`, `src-tauri/tauri.conf.json:5`). A development or test run can point somewhere else with `KOLUX_APP_DIR` or `KOLUX_USER_DATA_PATH` (`src-tauri/src/cli/mod.rs:48-53`).
+The root is `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.rs:849-851`, `src-tauri/tauri.conf.json:5`). A development or test run can point somewhere else with `KOLUX_APP_DIR` or `KOLUX_USER_DATA_PATH` (`src-tauri/src/cli/mod.rs:48-53`).
 
 | Path | Format | Purpose |
 |---|---|---|

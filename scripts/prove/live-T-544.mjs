@@ -14,12 +14,12 @@ import { reporter, dismissFirstRun, sleep, waitFor, TERM, ROOT, LIVE_BASE, LIVE_
 import { paneStates as readPaneStates } from "./pane-states.mjs";
 
 const DRY = process.env.PROVE_DRY === "1";
-const ID = "com.txaisxiong.kolux-rs";
+const ID = "com.txaisxiong.kolux";
 const CDP = 9291;
 const LA = process.env.LOCALAPPDATA;
 const AD = process.env.APPDATA;
-const INSTALL = join(LA, "Kolux RS");
-const EXE = join(INSTALL, "kolux-rs.exe");
+const INSTALL = join(LA, "Kolux");
+const EXE = join(INSTALL, "kolux.exe");
 const CLI = join(INSTALL, "bin", "kolux.exe");
 const DATA = [join(AD, ID), join(LA, ID)];
 const RUN = `${LIVE_BASE}/run-T-544`;
@@ -48,7 +48,7 @@ const check = (item, name, pass, detail) => {
 const ps = (cmd, input) => execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", cmd], { encoding: "utf8", ...(input === undefined ? {} : { input }) }).trim();
 const q = (s) => s.replace(/'/g, "''");
 const norm = (s) => s.replaceAll("\\", "/").toLowerCase();
-// A path inside a command line, with a boundary after it: the data folder must not match com.txaisxiong.kolux-rs.prove.
+// A path inside a command line, with a boundary after it: the data folder must not match com.txaisxiong.kolux.prove.
 const names = (cmd, path) => new RegExp(norm(path).replace(/[.*+?^${}()|[\]]/g, "\\$&") + "(?![\\w.-])").test(norm(cmd));
 const ours = (cmd) => [INSTALL, ...DATA].some((p) => names(cmd, p));
 
@@ -60,7 +60,7 @@ const inJob = (pid) => {
   }
 };
 const appsRunning = () =>
-  ps(`Get-CimInstance Win32_Process -Filter "Name='kolux-rs.exe'" | Where-Object { $_.ExecutablePath -like '${q(INSTALL)}\\*' -and $_.CommandLine -notlike '*--terminal-service*' } | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)" }`)
+  ps(`Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" | Where-Object { $_.ExecutablePath -like '${q(INSTALL)}\\*' -and $_.CommandLine -notlike '*--terminal-service*' } | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)" }`)
     .split(/\r?\n/).filter(Boolean).map((l) => ({ pid: Number(l.split("|")[0]), ppid: Number(l.split("|")[1]) }));
 const services = () =>
   ps(`Get-CimInstance Win32_Process -Filter "CommandLine like '%--terminal-service%'" | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)|$($_.CommandLine)" }`)
@@ -122,7 +122,7 @@ function wmiStart(commandLine, cwd, vars, show = 4) {
 
 function startMenuLink() {
   const pd = process.env.ProgramData ?? "C:\\ProgramData";
-  const tries = [join(AD, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux RS.lnk"), join(AD, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux RS\\Kolux RS.lnk"), join(pd, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux RS.lnk"), join(pd, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux RS\\Kolux RS.lnk")];
+  const tries = [join(AD, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux.lnk"), join(AD, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux\\Kolux.lnk"), join(pd, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux.lnk"), join(pd, "Microsoft\\Windows\\Start Menu\\Programs\\Kolux\\Kolux.lnk")];
   return tries.find((p) => existsSync(p)) ?? null;
 }
 const configLine = () => {
@@ -315,7 +315,7 @@ try {
   const running = appsRunning();
   const runningSvc = mine();
   if (running.length || runningSvc.length) {
-    log(`QUESTION: the installed app is already running (kolux-rs.exe pids ${JSON.stringify(running.map((p) => p.pid))}, terminal services ${JSON.stringify(runningSvc.map((s) => s.pid))}); not launching`);
+    log(`QUESTION: the installed app is already running (kolux.exe pids ${JSON.stringify(running.map((p) => p.pid))}, terminal services ${JSON.stringify(runningSvc.map((s) => s.pid))}); not launching`);
     process.exit(3);
   }
   if (!existsSync(EXE) || !existsSync(CLI)) {
@@ -476,12 +476,12 @@ try {
   app.pid = null;
 
   // Item 5: the Start menu shortcut through Explorer, no CDP.
-  if (!lnk) check("item5", "the Start menu shortcut starts the app outside any job", false, "no Kolux RS.lnk in the user or common Start menu");
+  if (!lnk) check("item5", "the Start menu shortcut starts the app outside any job", false, "no Kolux.lnk in the user or common Start menu");
   else {
     const ex = spawn("explorer.exe", [lnk], { detached: true, stdio: "ignore", windowsHide: true });
     ex.unref();
-    const found = await waitFor("kolux-rs.exe from the shortcut", async () => appsRunning()[0] ?? null, 30000, 500).catch(() => null);
-    if (!found) check("item5", "the Start menu shortcut starts the app outside any job", false, "no kolux-rs.exe from the install within 30 s");
+    const found = await waitFor("kolux.exe from the shortcut", async () => appsRunning()[0] ?? null, 30000, 500).catch(() => null);
+    if (!found) check("item5", "the Start menu shortcut starts the app outside any job", false, "no kolux.exe from the install within 30 s");
     else {
       log(`item 5: window: ${await app.moveWindow(found.pid)}`);
       const parent = procName(found.ppid);
@@ -492,7 +492,7 @@ try {
       const svcJobs = svcs.map((s) => [s.pid, inJob(s.pid)]);
       for (const [pid, j] of svcJobs) log(`IsProcessInJob item 5: terminal service pid ${pid} ${j}`);
       log(`item 5 ${mask(configLine())}`);
-      check("item5", "the shortcut started kolux-rs.exe under the desktop's Explorer, outside this script's job", parent.toLowerCase() === "explorer" && found.ppid !== ex.pid && parentJob === "False" && svcJobs.length >= 1 && svcJobs.every(([, j]) => j === "False"), `parent ${parent} ${found.ppid} in a job ${parentJob}; services ${JSON.stringify(svcJobs)}`);
+      check("item5", "the shortcut started kolux.exe under the desktop's Explorer, outside this script's job", parent.toLowerCase() === "explorer" && found.ppid !== ex.pid && parentJob === "False" && svcJobs.length >= 1 && svcJobs.every(([, j]) => j === "False"), `parent ${parent} ${found.ppid} in a job ${parentJob}; services ${JSON.stringify(svcJobs)}`);
       log(`item 5 close: ${await closeNoCdp(found.pid)}`);
     }
   }
@@ -537,6 +537,6 @@ const text = ev.join("\n");
 writeFileSync(`${LIVE_LOGS}/T-544${DRY ? "-dry" : ""}.out.txt`, `${text}\n`);
 if (!DRY) {
   mkdirSync(join(ROOT, "evidence"), { recursive: true });
-  writeFileSync(join(ROOT, "evidence", "T-544.txt"), `T-544 live proof of the installed build (items 2-5, APP-052 b1/b2)\ninstalled build: ${process.env.T544_INSTALLER_SHA ?? "(installer sha not given)"} (per-user NSIS install at %LOCALAPPDATA%\\Kolux RS)\nprover: node scripts/prove/live-T-544.mjs (lane head ${head}), slot t544 held; app started through WMI Win32_Process.Create with the Explorer environment; CDP ${CDP}\nscreenshots: ${LIVE_LOGS}\n\n${text}\n`);
+  writeFileSync(join(ROOT, "evidence", "T-544.txt"), `T-544 live proof of the installed build (items 2-5, APP-052 b1/b2)\ninstalled build: ${process.env.T544_INSTALLER_SHA ?? "(installer sha not given)"} (per-user NSIS install at %LOCALAPPDATA%\\Kolux)\nprover: node scripts/prove/live-T-544.mjs (lane head ${head}), slot t544 held; app started through WMI Win32_Process.Create with the Explorer environment; CDP ${CDP}\nscreenshots: ${LIVE_LOGS}\n\n${text}\n`);
 }
 process.exit(code);

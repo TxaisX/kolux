@@ -113,7 +113,7 @@
 <text x="930" y="535" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#716879" text-anchor="start">HTTPS · update check</text>
 <rect x="1210" y="230" width="350" height="210" rx="10" fill="#292531" stroke="#45404F" stroke-width="1"/>
 <text x="1230" y="254" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="600" fill="#AAA203" text-anchor="start" letter-spacing="1.6">PROFILE · %APPDATA%</text>
-<text x="1230" y="274" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#716879" text-anchor="start">com.txaisxiong.kolux-rs</text>
+<text x="1230" y="274" font-family="Cascadia Mono, Consolas, monospace" font-size="10.5" font-weight="400" fill="#716879" text-anchor="start">com.txaisxiong.kolux</text>
 <text x="1230" y="298" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#AAA203" text-anchor="start">settings.json</text>
 <text x="1400" y="298" font-family="Segoe UI, Inter, system-ui, sans-serif" font-size="9.5" font-weight="400" fill="#716879" text-anchor="start">+ .bak, written atomically</text>
 <text x="1230" y="318" font-family="Cascadia Mono, Consolas, monospace" font-size="10" font-weight="400" fill="#AAA203" text-anchor="start">state.db</text>

@@ -8,7 +8,7 @@ This page follows the diagram from the outside in: processes, transports, local 
 
 ## Design in one page
 
-- **One desktop app, one profile.** A single `kolux-rs.exe` owns the window, the store, and the local listeners. A named mutex keeps one copy per profile.
+- **One desktop app, one profile.** A single `kolux.exe` owns the window, the store, and the local listeners. A named mutex keeps one copy per profile.
 - **The terminal service is separate.** Panes run in a detached child process, so a window reload or an ordinary quit does not end the agents. The service exits after 600 seconds with no terminals and no attached window.
 - **The control plane is local only.** The hook listener, the CLI loopback, the preview server, and the terminal service all bind `127.0.0.1` on random ports. Each requires a bearer token, and each refuses browser-shaped requests.
 - **Worktrees are ordinary Git.** A workspace is a Git worktree on its own branch. Nothing about the repository format is proprietary.
@@ -18,8 +18,8 @@ This page follows the diagram from the outside in: processes, transports, local 
 
 | Process | Role | Lifetime | Talks to |
 |---|---|---|---|
-| `kolux-rs.exe` | Tauri/Wry host: window, React UI, Rust commands, store, hook listener, CLI listener, preview server, updater | Starts with the app, exits on quit | The terminal service over TCP, the profile folder, GitHub Releases, Git |
-| `kolux-rs.exe --terminal-service <identifier> <data folder>` | Detached terminal service: PTY sessions, pane processes, job objects | Survives window close and ordinary quit; exits after 600 s with no terminals and no attached window | The window over TCP; the OS PTY layer |
+| `kolux.exe` | Tauri/Wry host: window, React UI, Rust commands, store, hook listener, CLI listener, preview server, updater | Starts with the app, exits on quit | The terminal service over TCP, the profile folder, GitHub Releases, Git |
+| `kolux.exe --terminal-service <identifier> <data folder>` | Detached terminal service: PTY sessions, pane processes, job objects | Survives window close and ordinary quit; exits after 600 s with no terminals and no attached window | The window over TCP; the OS PTY layer |
 | `msedgewebview2.exe` | WebView2 browser and renderer processes for the main window and browser child webviews | Managed by Wry and Windows | The local app origin, browser pages |
 | Agent CLI / shell | The user's shell or agent inside a pane | Child of the terminal service; dies with its pane job | Its own config, the workspace, the hook listener |
 | `kolux.exe` / `kolux-dev.exe` | CLI client, one JSON request over loopback | One command, then exit | The desktop app's CLI listener |
@@ -56,7 +56,7 @@ Each pane is a real PTY from `portable-pty`, backed by ConPTY on Windows (`src-t
 
 ### App to storage
 
-Everything lives under `%APPDATA%\com.txaisxiong.kolux-rs` (`src-tauri/src/resources/recovery.rs:849-851`). The important pieces are:
+Everything lives under `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.rs:849-851`). The important pieces are:
 
 - `state.db`, one SQLite file in WAL mode with a single `kv(key, value)` table (`src-tauri/src/state.rs:36-41`);
 - `settings.json` plus `.bak`, written to a temporary file and renamed (`src-tauri/src/state.rs:225-260`);

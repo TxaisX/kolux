@@ -5,13 +5,13 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::agents::{start_line_as, Start};
-use kolux_rs_lib::claude_accounts::{auth_status, own_sign_in};
-use kolux_rs_lib::cli::{dispatch, parse, Ctx, Request};
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::projects::{add_project, create_workspace, place_from, resolve_workspaces_dir, workspace_path, workspaces_dir, Project};
-use kolux_rs_lib::state::Store;
-use kolux_rs_lib::terminal::Terminals;
+use kolux_lib::agents::{start_line_as, Start};
+use kolux_lib::claude_accounts::{auth_status, own_sign_in};
+use kolux_lib::cli::{dispatch, parse, Ctx, Request};
+use kolux_lib::git::Git;
+use kolux_lib::projects::{add_project, create_workspace, place_from, resolve_workspaces_dir, workspace_path, workspaces_dir, Project};
+use kolux_lib::state::Store;
+use kolux_lib::terminal::Terminals;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -210,7 +210,7 @@ fn set028_box1_a_tier_given_a_small_model_starts_the_worker_on_it_and_its_start_
     let events = Mutex::new(Vec::<Value>::new());
     let notify = |v: Value| {
         if let Some(r) = v["setupRequest"].as_str() {
-            kolux_rs_lib::orchestration::setup_gate::settle(r, json!({ "result": "none" }));
+            kolux_lib::orchestration::setup_gate::settle(r, json!({ "result": "none" }));
         }
         events.lock().unwrap().push(v)
     };
@@ -228,7 +228,7 @@ fn set028_box1_a_tier_given_a_small_model_starts_the_worker_on_it_and_its_start_
         assert_eq!((start["agent"].as_str(), out.data["tier"].as_str()), (Some("claude"), Some("light")));
         start["extra"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect::<Vec<_>>()
     };
-    let claude_installed = kolux_rs_lib::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
+    let claude_installed = kolux_lib::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
     if !claude_installed {
         eprintln!("Claude Code is not installed here, so a tier worker cannot start");
         return;

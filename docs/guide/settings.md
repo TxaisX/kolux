@@ -2,7 +2,7 @@
 
 Change how Kolux looks, which agents it offers, when it notifies you, and which keys do what. Open Settings with Ctrl+, , or from the Settings buttons on the Agents screen and the project rows. It opens over the window with a grouped list of pages on the left, like Claude's settings, and remembers the last page you used. Press Esc or the x to close it.
 
-Changes save as you make them. They live in `settings.json` in Kolux's data folder, `%APPDATA%\com.txaisxiong.kolux-rs`. The right-hand column of each table shows the name a setting has in that file, which helps if someone asks you to check it.
+Changes save as you make them. They live in `settings.json` in Kolux's data folder, `%APPDATA%\com.txaisxiong.kolux`. The right-hand column of each table shows the name a setting has in that file, which helps if someone asks you to check it.
 
 ## The pages
 

@@ -1,12 +1,12 @@
 //! spec/08 P0 boxes ORCH-001, 002, 003, 005, 006, 007: Runs, typed mail, check batches, replies, and the
 //! idle-agent pointer. Every call goes through the crate's pub API; no agent is started.
 
-use kolux_rs_lib::cli::{dispatch, parse, serve_loop, Ctx, Fail, Pane, Request};
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::orchestration::pointer::{pump, readers, Arrival, PaneLook, Pointers, POLL};
-use kolux_rs_lib::orchestration::{self as o, Mail, Mode, Peer};
-use kolux_rs_lib::state::Store;
-use kolux_rs_lib::terminal::Terminals;
+use kolux_lib::cli::{dispatch, parse, serve_loop, Ctx, Fail, Pane, Request};
+use kolux_lib::git::Git;
+use kolux_lib::orchestration::pointer::{pump, readers, Arrival, PaneLook, Pointers, POLL};
+use kolux_lib::orchestration::{self as o, Mail, Mode, Peer};
+use kolux_lib::state::Store;
+use kolux_lib::terminal::Terminals;
 use serde_json::{json, Value};
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
@@ -445,7 +445,7 @@ fn orch007_box2_a_coordinator_in_the_middle_of_a_turn_gets_no_line_until_the_tur
     q.rebind(bound_runs(&m));
     q.arrive("term-1", Arrival { id: "msg-x".into(), run: None });
     let working = PaneLook { now_ms: 10, live: true, hooks_state: Some("working".into()), ..PaneLook::default() };
-    assert!(matches!(q.decide("term-1", &working, false), kolux_rs_lib::orchestration::pointer::Decision::Hold(_)));
+    assert!(matches!(q.decide("term-1", &working, false), kolux_lib::orchestration::pointer::Decision::Hold(_)));
 }
 
 #[test]
@@ -848,7 +848,7 @@ fn orch018_box1_a_claude_light_tier_worker_starts_on_haiku_with_no_effort_settin
     git_ok(&repo, &["commit", "-q", "--allow-empty", "-m", "one"]);
     let git = Git::detect().unwrap();
     let store = Mutex::new(Store::open(&root.join("data")).unwrap());
-    kolux_rs_lib::projects::add_project(&git, &store.lock().unwrap(), &repo).unwrap();
+    kolux_lib::projects::add_project(&git, &store.lock().unwrap(), &repo).unwrap();
     {
         // Routing left as shipped: no modelRouting key is saved.
         let s = store.lock().unwrap();
@@ -862,13 +862,13 @@ fn orch018_box1_a_claude_light_tier_worker_starts_on_haiku_with_no_effort_settin
     let events = Mutex::new(Vec::<Value>::new());
     let notify = |v: Value| {
         if let Some(r) = v["setupRequest"].as_str() {
-            kolux_rs_lib::orchestration::setup_gate::settle(r, json!({ "result": "none" }));
+            kolux_lib::orchestration::setup_gate::settle(r, json!({ "result": "none" }));
         }
         events.lock().unwrap().push(v)
     };
     let terminals = Terminals::default();
     let ctx = Ctx { claude_config: root.join(".claude.json"), git: &git, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
-    let claude_installed = kolux_rs_lib::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
+    let claude_installed = kolux_lib::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
     if !claude_installed {
         eprintln!("Claude Code is not installed here, so box 1 cannot be shown");
         return;

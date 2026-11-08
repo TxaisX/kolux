@@ -4,10 +4,10 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::projects::{add_project, create_workspace, place_from, remove_check, remove_worktree, removal_refused};
-use kolux_rs_lib::scm::{commit, discard_paths, remote, stage, status, summary, Change, Status};
-use kolux_rs_lib::state::Store;
+use kolux_lib::git::Git;
+use kolux_lib::projects::{add_project, create_workspace, place_from, remove_check, remove_worktree, removal_refused};
+use kolux_lib::scm::{commit, discard_paths, remote, stage, status, summary, Change, Status};
+use kolux_lib::state::Store;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -343,7 +343,7 @@ fn git016_boxes_60_changed_files_and_a_clean_branch_feed_the_review_prompt_real_
 }
 
 /// A project over a repo with a local bare origin, its profile store beside it (all under git11b).
-fn project_over(git: &Git, d: &Path) -> (Store, kolux_rs_lib::projects::Project, PathBuf) {
+fn project_over(git: &Git, d: &Path) -> (Store, kolux_lib::projects::Project, PathBuf) {
     let (w, _bare) = with_origin(d);
     let profile = d.join("profile");
     std::fs::create_dir_all(&profile).unwrap();

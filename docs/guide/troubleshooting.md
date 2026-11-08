@@ -45,7 +45,7 @@ For one terminal, a pane's menu has "Copy terminal diagnostics". It is masked th
 
 ## The log
 
-Kolux keeps a log at `logs\kolux.log` in its data folder, `%APPDATA%\com.txaisxiong.kolux-rs`. It records:
+Kolux keeps a log at `logs\kolux.log` in its data folder, `%APPDATA%\com.txaisxiong.kolux`. It records:
 
 - when the app starts and exits;
 - when terminal sessions start and end;
@@ -54,7 +54,7 @@ Kolux keeps a log at `logs\kolux.log` in its data folder, `%APPDATA%\com.txaisxi
 
 A crash in a background thread ends only that thread. A crash in the main thread is fatal and is logged first. When the log passes 512 KB it moves aside as `kolux.<number>.log`; the oldest copies are deleted once the total passes 2 MB. The log never leaves your computer, and it is scrubbed when included in a report.
 
-The browser engine keeps its own data in `%LOCALAPPDATA%\com.txaisxiong.kolux-rs\EBWebView`.
+The browser engine keeps its own data in `%LOCALAPPDATA%\com.txaisxiong.kolux\EBWebView`.
 
 ## After a quit or a crash
 

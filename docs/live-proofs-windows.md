@@ -234,7 +234,7 @@ newer release; the T-566 and T-612 items still need this run.
 - [ ] Box 2: kill the terminal service
 - Set up: type `echo MARKER-TWO` in the pane.
 - Press: open Task Manager, Details tab. Right-click a column heading, choose "Select columns", tick "Command line".
-  Find the kolux-rs.exe whose command line holds "--terminal-service" and End task on it. Then quit Kolux and start
+  Find the kolux.exe whose command line holds "--terminal-service" and End task on it. Then quit Kolux and start
   it again.
 - Should happen: the pane comes back showing its saved history (MARKER-TWO), with a new shell below it.
 - Fail if: the history is lost, or typing goes into the wrong pane afterwards.
@@ -377,7 +377,7 @@ page.
 **Needs** a network monitor (box 1) and a tool that can read the contents of encrypted requests (box 2).
 
 - [ ] Box 1: watch the session
-- Press: after the agent items above, look at the monitor's list for both kolux-rs.exe and msedgewebview2.exe
+- Press: after the agent items above, look at the monitor's list for both kolux.exe and msedgewebview2.exe
   (not the agent programs, which talk to their own companies).
 - Should happen: every connection goes to one of the destinations listed in Settings > General > Privacy. None goes
   to an analytics or telemetry host.

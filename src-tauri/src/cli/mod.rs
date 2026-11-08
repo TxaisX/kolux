@@ -48,7 +48,7 @@ pub fn bundled_skills() -> Vec<(&'static str, &'static str)> {
 pub const FILE: &str = "cli.json";
 /// The event the front end gets when the CLI made or removed a workspace.
 pub const EVENT: &str = "cli-workspace";
-const DATA_DIR: &str = "com.txaisxiong.kolux-rs";
+const DATA_DIR: &str = "com.txaisxiong.kolux";
 /// The environment value that tells the CLI which running app opened its terminal (CLI-007).
 pub const APP_DIR_ENV: &str = "KOLUX_APP_DIR";
 
@@ -345,18 +345,21 @@ fn status_exit(r: &Value) -> i32 {
 fn launch_app() -> Result<(), Fail> {
     let exe = match std::env::var_os("KOLUX_APP_EXECUTABLE").filter(|e| !e.is_empty()) {
         Some(e) => PathBuf::from(e),
-        None => {
-            // CLI-006: an installed CLI sits in the install's bin folder, one level below the app.
-            let me = std::env::current_exe().map_err(|e| Fail::new("launch_failed", e.to_string()))?;
-            let name = if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" };
-            let beside = me.with_file_name(name);
-            match me.parent().and_then(Path::parent).map(|p| p.join(name)) {
-                Some(up) if !beside.is_file() && up.is_file() => up,
-                _ => beside,
-            }
-        }
+        None => app_program(&std::env::current_exe().map_err(|e| Fail::new("launch_failed", e.to_string()))?),
     };
     app_command(&exe).spawn().map(drop).map_err(|e| Fail::new("launch_failed", format!("could not start Kolux from {}: {e}", exe.display())))
+}
+
+/// The app program for the CLI at `me`. CLI-006: an installed CLI sits in the install's bin folder, one level
+/// below the app. T-790: both are named `kolux` now (bin\kolux.exe and kolux.exe), so a program of that name
+/// next to `me` that is `me` itself is never taken for the app.
+fn app_program(me: &Path) -> PathBuf {
+    let name = if cfg!(windows) { "kolux.exe" } else { "kolux" };
+    let beside = me.with_file_name(name);
+    match me.parent().and_then(Path::parent).map(|p| p.join(name)) {
+        Some(up) if (beside == me || !beside.is_file()) && up.is_file() => up,
+        _ => beside,
+    }
 }
 
 /// The app's command line for `launch_app`. T-595 (CLI-011, R01-cli.4): it runs in the app's own
@@ -5752,13 +5755,31 @@ mod tests {
     /// folder, so Windows can still delete or rename that worktree and nothing planted there is loaded.
     #[test]
     fn cli011_open_starts_the_app_in_its_own_folder_not_the_callers() {
-        let app = std::env::temp_dir().join("kolux-t595-app").join(if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" });
+        let app = std::env::temp_dir().join("kolux-t595-app").join(if cfg!(windows) { "kolux.exe" } else { "kolux" });
         let cmd = app_command(&app);
         assert_eq!(cmd.get_current_dir(), app.parent());
         assert_ne!(cmd.get_current_dir(), Some(std::env::current_dir().unwrap().as_path()), "the caller's folder");
         assert_eq!(cmd.get_args().count(), 0);
         // A relative program (a test's KOLUX_APP_EXECUTABLE) keeps the caller's folder: moving would change the file it names.
-        assert_eq!(app_command(Path::new("kolux-rs")).get_current_dir(), None);
+        assert_eq!(app_command(Path::new("kolux")).get_current_dir(), None);
+    }
+
+    /// T-790: the installed layout has the command line at bin\kolux.exe and the app at kolux.exe, the same
+    /// name; `kolux open` starts the app, never the command line again.
+    #[test]
+    fn t790_the_app_program_is_never_the_command_line_itself() {
+        let dir = std::env::temp_dir().join(format!("kolux-t790-layout-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let name = if cfg!(windows) { "kolux.exe" } else { "kolux" };
+        std::fs::create_dir_all(dir.join("bin")).unwrap();
+        std::fs::write(dir.join(name), "").unwrap();
+        std::fs::write(dir.join("bin").join(name), "").unwrap();
+        assert_eq!(app_program(&dir.join("bin").join(name)), dir.join(name), "installed: the app one level up");
+        // A development layout: the command line has its own name, the app sits beside it.
+        let cli = dir.join(if cfg!(windows) { "kolux-cli.exe" } else { "kolux-cli" });
+        std::fs::write(&cli, "").unwrap();
+        assert_eq!(app_program(&cli), dir.join(name), "beside it");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// CLI-011 box 2: every `app.open` asks the window forward, exactly once, and answers ready
