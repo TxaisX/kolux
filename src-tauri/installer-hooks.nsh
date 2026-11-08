@@ -401,10 +401,18 @@ Var KoluxOldHadPath
         ClearErrors
         ExecWait '"$KoluxOldDir\uninstall.exe" $R2 _?=$KoluxOldDir' $R3
         ${If} ${Errors}
-          DetailPrint "The old uninstaller could not be run"
-        ${Else}
-          DetailPrint "The old uninstaller finished (exit code $R3)"
+          StrCpy $R3 "not run"
         ${EndIf}
+        ${If} $R3 != 0
+          ; T-790 review: the old copy is still installed (its uninstaller could not run, the old app could not
+          ; be stopped, or it was cancelled). Keep its uninstaller and its Settings > Apps entry, and stop here,
+          ; so there are never two copies with no way to remove one. Nothing has been changed yet.
+          DetailPrint "The old uninstaller did not finish (exit code $R3); the install stops and changes nothing"
+          MessageBox MB_OK|MB_ICONSTOP "${PRODUCTNAME} could not remove the earlier ${PRODUCTNAME} RS install (is it still running?). Close it and run this installer again. Nothing was changed." /SD IDOK
+          !insertmacro KOLUX_RESTORE
+          Abort
+        ${EndIf}
+        DetailPrint "The old uninstaller finished"
         Delete "$KoluxOldDir\uninstall.exe"
       ${EndIf}
       ; Only an empty folder goes; anything the user kept in it stays.

@@ -22,7 +22,9 @@ describe("installer Windows 10 notice", () => {
   });
 
   it("T-789: the post-install hook adds the kolux command to the PATH only when this is not an update", () => {
-    expect(text).toMatch(/!macro NSIS_HOOK_POSTINSTALL[\s\S]*?!insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE\s+!macroend/);
+    // T-790: an install that retired the old identity (whose uninstaller took its bin off the PATH) puts the
+    // new one back; every other install goes through the T-789 rule.
+    expect(text).toMatch(/!macro NSIS_HOOK_POSTINSTALL[\s\S]*?\$\{If\} \$KoluxOldHadPath = 1\s+(?:;[^\n]*\n\s*)*!insertmacro KOLUX_PATH_ADD\s+\$\{Else\}\s+!insertmacro KOLUX_PATH_ADD_UNLESS_UPDATE\s+\$\{EndIf\}\s+!macroend/);
     expect(text).toMatch(/!macro KOLUX_PATH_ADD_UNLESS_UPDATE[\s\S]*?\$\{If\} \$R5 = 0\s+!insertmacro KOLUX_PATH_ADD\s+\$\{Else\}/);
   });
 

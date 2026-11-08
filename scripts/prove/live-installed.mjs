@@ -39,7 +39,7 @@ export const run = (file, a, opt = {}) =>
 /**
  * True when this process is itself running inside a Kolux terminal.
  *
- * start/stop close every kolux-rs window, so running them from a Kolux terminal kills the app, the
+ * start/stop close every Kolux app window (kolux.exe, or kolux-rs.exe before T-790), so running them from a Kolux terminal kills the app, the
  * terminal service under it, and the proof, taking the caller's own session with it. A proof is
  * started from a plain Windows Terminal or PowerShell window instead, which is why this guard exists
  * rather than a comment.
@@ -61,7 +61,7 @@ async function insideKoluxTerminal() {
     `for ($i = 0; $i -lt 12; $i++) {`,
     `  $x = Get-CimInstance Win32_Process -Filter "ProcessId=$p" -ErrorAction SilentlyContinue`,
     `  if (-not $x) { break }`,
-    `  if ($x.Name -match '^kolux-rs\\.exe$') { 'yes'; break }`,
+    `  if ($x.Name -match '^kolux(-rs)?\\.exe$') { 'yes'; break }`, // T-790: kolux.exe, or kolux-rs.exe before it
     `  $p = $x.ParentProcessId`,
     `  if (-not $p -or $p -eq 0) { break }`,
     `}`,
@@ -251,13 +251,13 @@ export async function closeRunning() {
     $targets = @()${pid ? ` + ${pid}` : ''}
     $svc = @(Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '--terminal-service' -and $_.CommandLine -like "*$mine*" })
     $targets += @($svc | ForEach-Object { $_.ParentProcessId })
-    $alive = @($targets | Sort-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | Where-Object { $_.ProcessName -eq 'kolux-rs' -and $_.MainWindowHandle -ne 0 })
+    $alive = @($targets | Sort-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | Where-Object { $_.ProcessName -in @('kolux', 'kolux-rs') -and $_.MainWindowHandle -ne 0 })
     foreach ($p in $alive) { $p.CloseMainWindow() | Out-Null }
     $end = (Get-Date).AddSeconds(30)
     while ((Get-Date) -lt $end -and @($alive | Where-Object { -not $_.HasExited }).Count -gt 0) { Start-Sleep -Milliseconds 300 }
     @($alive | Where-Object { -not $_.HasExited }).Count
   `]).then((r) => Number(r.stdout.trim())).catch(() => -1);
-  if (n > 0) throw new Error(`${n} kolux-rs window process(es) still run after a graceful close; use PROVE_KILL=1 to force`);
+  if (n > 0) throw new Error(`${n} kolux-rs window process(es) (kolux or kolux-rs) still run after a graceful close; use PROVE_KILL=1 to force`);
   if (n === 0) await sleep(1500);
   return n;
 }
