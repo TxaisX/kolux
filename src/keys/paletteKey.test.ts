@@ -27,9 +27,10 @@ describe("the dialog and its chords", () => {
     }
   });
 
-  it("the top-bar escape moved to F6, so Ctrl+Shift+P is free", () => {
-    expect(chordsOf(win, "focus.chrome")).toEqual(["F6"]);
-    expect(matchEvent(win, ev("F6", { code: "F6" }), ["global"])).toEqual({ id: "focus.chrome" });
+  it("the top-bar escape moved to Ctrl+F6, so Ctrl+Shift+P is free and bare F6 still reaches terminal programs", () => {
+    expect(chordsOf(win, "focus.chrome")).toEqual(["Mod+F6"]);
+    expect(matchEvent(win, ev("F6", { code: "F6", ctrlKey: true }), ["global"])).toEqual({ id: "focus.chrome" });
+    expect(matchEvent(win, ev("F6", { code: "F6" }), ["global"])).toBeFalsy();
   });
 });
 

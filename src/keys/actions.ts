@@ -101,8 +101,8 @@ export const actions: Action[] = [
   a("account.switchCodex", "Switch Codex account", "global", [], { keywords: ["account", "sign in", "login"] }),
   a("sidebar.sleeping.toggle", "Show or Hide Sleeping Workspaces", "global", [], { keywords: ["sleep", "asleep", "wake", "toggle"] }),
   a("view.floor", "Show Floor", "global", []),
-  // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there. T-800: F6 itself (Ctrl+Shift+P is the palette now).
-  a("focus.chrome", "Move Focus to the Top Bar", "global", ["F6"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
+  // UX lane C (keyboard F6): a way out of a terminal to the top bar; Tab moves on from there. T-800: Ctrl+F6 (Ctrl+Shift+P is the palette now; bare F6 belongs to terminal programs such as htop and mc, DT-C109).
+  a("focus.chrome", "Move Focus to the Top Bar", "global", ["Mod+F6"], { terminalSafe: true, keywords: ["escape terminal", "leave terminal"] }),
   a("view.space", "Show Space", "global", ["Mod+Alt+S"], { keywords: ["disk", "worktrees", "size", "reclaim"] }),
   a("view.code", "Show Code", "global", ["Mod+Shift+3"]),
   // BROW-012: a browser tab's own zoom. These keys do nothing in a terminal: TERM-078 sizes every
