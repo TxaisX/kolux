@@ -13,7 +13,7 @@ Changes save as you make them. They live in `settings.json` in Kolux's data fold
 | Accounts & keys | Signing in to Claude, Codex and Grok |
 | Agents | Which agents are on, how they start, whether they ask permission |
 | Terminal & sessions | How many panes a new workspace has, terminal text and cursor, scrolling, the clipboard, the default shell, close warnings, pinned tabs, removing a running session |
-| Git & worktrees | Branch names, Source Control, commit messages |
+| Git & worktrees | Branch names, compare base, commit messages |
 | Safety | A short note on protected commands (see [Safety](safety.md)) |
 | Notifications | What alerts you, and how |
 | Shortcuts | Every command and its keys |
@@ -270,7 +270,6 @@ The shell you pick is tried first. If it will not start (it was uninstalled, or 
 | Name the branch after the work | On. An agent's first task in a workspace that still has the suggested name renames its branch to a short description of the work. A name you typed, a pushed branch and one with a pull request keep their names. Ask to rename the folder too (on) follows it | `renameBranches`, `autoBranchName` |
 | Default compare base | The repository default, or the branch's upstream | `scmSummaryUpstream` |
 | Refresh the base first | Off. When on, it fast-forwards the base branch only | `refreshBaseFirst` |
-| Source Control group order | Staged first (default) or Changes first. Conflicts always come first | |
 | Commit messages written by | Claude Code (default), a custom command with a `{prompt}` placeholder, or Off. An instructions box takes up to 2000 characters | |
 | GitHub API budget | Shows how much of GitHub's hourly allowance is left; "Check again" re-reads it | |
 | Ask before deleting a workspace | On. A workspace with changes, a lock or a nested workspace always asks | |

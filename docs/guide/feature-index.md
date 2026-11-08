@@ -57,9 +57,9 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-017-a | New Claude worktrees are pre-trusted so the first prompt is not lost. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-017-b | New Codex worktrees are pre-trusted the same way. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-017-c | Decision recorded: Cursor and Copilot worktrees are not pre-trusted. | internal |
-| T-018-a | Stage, unstage and commit changes from the Source Control panel. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-018-b | The main Source Control button always offers the next step, including remote actions. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-018-c | Source Control rows select with Ctrl and Shift clicks for bulk actions. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-018-a | Stage, unstage and commit changes in All Changes. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-018-b | All Changes offers Push, Pull and Sync when Git allows them. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-018-c | All Changes has Stage all and Unstage all for bulk actions. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-019 | Worktrees are created, moved and removed through git safely. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-020 | Pick the folder new worktrees go into. | [Settings](settings.md) |
 | T-021 | The kolux worktree create command can start an agent inside. | [Command line](command-line.md) |
@@ -84,10 +84,10 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-030 | An idle agent is told when mail arrives; workers report done and heartbeats. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-031 | Each automation keeps a numbered run history you can step through. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-032 | Review a plan in sections and comment before Claude approves it. | [Board, Agents and Inbox](board-agents-inbox.md) |
-| T-033 | Source Control lists changes by section and opens a change for review. | [Projects and worktrees](projects-and-worktrees.md) |
-| T-033-b | Source Control, diffs and All Changes update within about a second of a change, instead of polling. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-033 | All Changes lists every changed file and opens a change for review. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-033-b | Diffs and All Changes update within about a second of a change, instead of polling. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-033-c | Choose which split a diff opens in; All Changes compares the branch with its base, keeps a default layout and has a commit box; files Git ignores no longer refresh the list. | [Files and browser](files-and-browser.md) |
-| T-033-f | Source Control keeps updating for an ignored folder that still holds tracked files, and notices edits to `.git/info/exclude`. | [Projects and worktrees](projects-and-worktrees.md) |
+| T-033-f | All Changes keeps updating for an ignored folder that still holds tracked files, and notices edits to `.git/info/exclude`. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-033-g | The All Changes tab is ready to commit as soon as it opens, and a branch with no history in common with its base says so instead of comparing silently. | [Files and browser](files-and-browser.md) |
 | T-034 | Leave review notes on diff lines and send them to the agent. | [Files and browser](files-and-browser.md) |
 | T-035 | Open in Code and Answer in Code jump to the agent's pane. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -359,7 +359,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-153-b | Delete, reveal or open a past session's files. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-154-a | A key that can no longer be unsealed is cleared with a reconnect hint. | [Safety](safety.md) |
 | T-154-b | The app window can read only files it was given access to. | [Safety](safety.md) |
-| T-154-c | Explorer and Source Control file changes stay within granted folders. | [Safety](safety.md) |
+| T-154-c | Explorer and All Changes file changes stay within granted folders. | [Safety](safety.md) |
 | T-155-a | Abandon a worker's dispatch without touching processes or files. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-157 | Stored secrets stay sealed by the system keyring, with no plain-text fallback. | [Safety](safety.md) |
 | T-160 | Command typos are caught before the app is contacted, with safe suggestions. | [Command line](command-line.md) |
@@ -397,7 +397,7 @@ Tasks not yet ticked off in the build plan are not listed.
 |---|---|---|
 | T-186-a | Nest a new workspace under a parent and change a workspace's parent. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-187-a | Save a lineup of agents as a shape or team and reuse it. | [Getting started](getting-started.md) |
-| T-189-a | Automations and Skills pages open; ask an agent to fix things from Source Control. | [Board, Agents and Inbox](board-agents-inbox.md) |
+| T-189-a | Automations and Skills pages open. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-190-a | Group addresses send one message to several agents; delivered mail reads clearly. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-190-b | Decision gates hold a task until a person resolves them. | [Board, Agents and Inbox](board-agents-inbox.md) |
 | T-191-a | Reset orchestration state by scope; start Claude Agent Teams in a terminal. | [Board, Agents and Inbox](board-agents-inbox.md) |
@@ -460,7 +460,7 @@ Tasks not yet ticked off in the build plan are not listed.
 | T-232-a | Preview an issue or PR, open the full PR page, and review its files. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-232-b | Issue and PR preview and the full PR page are completed. | [Projects and worktrees](projects-and-worktrees.md) |
 | T-233-a | The Git and worktrees settings page is available. | [Settings](settings.md) |
-| T-233-b | Order the Source Control groups on the Git and worktrees page. | [Settings](settings.md) |
+| T-233-b | Order the changed-file groups on the Git and worktrees page (no longer shown). | [Settings](settings.md) |
 | T-233-c | The GitHub API budget is shown on the Git and worktrees page. | [Settings](settings.md) |
 | T-221 | Drop files onto a terminal, let programs copy to the clipboard, clear the screen (Ctrl+K), find text in a pane (Ctrl+F) and keep shell keys such as Ctrl+R for the shell. | [Terminals](terminals.md) |
 | T-222 | Shift+Enter makes a new line in Claude and Codex, typing in Korean, Chinese and Japanese is sent once finished, and web links and file paths in output open with Ctrl+click. | [Terminals](terminals.md) |

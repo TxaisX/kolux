@@ -80,7 +80,7 @@ The bar across the top is 36 pixels tall and replaces the Windows title bar. Dra
 | Sidebar button | Hides or shows the project sidebar (Ctrl+B) |
 | Back / Forward | Return to the last workspace or page you were on, and go forward again (Ctrl+Alt+Left, Ctrl+Alt+Right) |
 | Screen switcher | Four buttons: Agents, Board, Terminals, Tower. See the next section |
-| Right-panel button | Shows or hides the right panel, which holds Source Control. Hidden while a full page is open |
+| Right-panel button | Shows or hides the right panel, which holds Explorer, Insights, Checks, Attached, PR Checks and History. Hidden while a full page is open |
 | Search box | Jump to a worktree, tab, project or setting (Ctrl+Shift+J) |
 | Bell | Opens the Inbox. Press it again to return to Terminals |
 | Usage pill | Shows how much of your weekly AI allowance is left, for example "Claude 80% left". Click it to open Settings at Accounts & keys. Hover for the reset time |

@@ -28,10 +28,10 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 ## What it does
 
 - **Parallel agents in one folder.** Launch a Solo, Pair, Workbench, or Swarm lineup. Every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them.
-- **One window.** Terminals, browser tabs, an editor, diffs, and source control sit in the same split layout.
+- **One window.** Terminals, browser tabs, an editor, and diffs sit in the same split layout.
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
-- **Review and ship.** Stage, commit, push, open a pull request, and follow checks without leaving the app.
+- **Review and ship.** When an agent finishes, press **Review changes** on its Board card or Inbox row. That opens All Changes, where you read every changed file, then stage, commit, push, and pull. Pull-request checks show in the right panel's Checks tab.
 - **Local first.** No telemetry. Keys are sealed with Windows DPAPI. The app talks to GitHub (Releases and API), your Git remotes, and the AI providers you connect; the full list is in Settings, General, Privacy.
 
 ## Install
@@ -70,7 +70,7 @@ The full list of outbound connections is in Settings, General, Privacy and in th
 
 | Read | For |
 |---|---|
-| [User guide](docs/guide/README.md) | The full guide: setup, terminals, projects, source control, settings, CLI |
+| [User guide](docs/guide/README.md) | The full guide: setup, terminals, projects, reviewing changes, settings, CLI |
 | [Getting started](docs/guide/getting-started.md) | First launch, the top bar, your first agent |
 | [Status](docs/STATUS.md) | What is verified, what is missing, and what alpha means here |
 | [Glossary](docs/GLOSSARY.md) | The words the app uses |

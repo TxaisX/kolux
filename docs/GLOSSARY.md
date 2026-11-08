@@ -84,8 +84,8 @@ A folder with a `SKILL.md` file that teaches an agent how to do a job. Kolux can
 
 ## Git and safety
 
-**Source Control**
-The Git panel in the right sidebar. It stages, discards, commits, pushes, pulls, and opens pull requests.
+**All Changes**
+A tab that lists every changed file of a project in one scroll. Open it with **Review changes** on a finished agent's Board card or Inbox row. It stages, unstages, commits, pushes, and pulls.
 
 **Checks**
 The CI status for a pull request, with the check's steps and annotations.

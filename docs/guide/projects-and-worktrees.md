@@ -20,7 +20,7 @@ When someone makes a worktree outside Kolux, a notice says "N new workspace(s)" 
 
 ## The right sidebar
 
-On the Terminals view, the right sidebar holds Explorer, Source Control and Checks. Ctrl+L hides or shows it, dragging its edge resizes it, and it remembers the last tab you used. When it is too narrow for every tab, the ones that do not fit go into a **More** menu; picking one there brings it onto the strip.
+On the Terminals view, the right sidebar holds Explorer, Insights, Checks, Attached, PR Checks and History. Ctrl+L hides or shows it, dragging its edge resizes it, and it remembers the last tab you used. When it is too narrow for every tab, the ones that do not fit go into a **More** menu; picking one there brings it onto the strip.
 
 If a panel breaks, it is replaced by "This panel stopped working and was closed; the rest of Kolux keeps running." with **Try again**, which draws it afresh. Switching tabs also starts it afresh.
 
@@ -87,74 +87,25 @@ Press the sliders button.
 
 Group headers fold. Pinned rows gather in a "Pinned" section. A project group has its own gear to rename it, move it or delete it. Deleting a group offers an "also remove the projects" checkbox.
 
-## Source Control
+## Reviewing changes
 
-Open the right panel with Ctrl+Shift+G (Ctrl+L hides or shows the panel). Source Control lists the changes in the current workspace.
+When an agent finishes, open the Board and press **Review changes** on its Done card, or open the Inbox (the bell in the top bar), pick the finished row and press **Review changes**. Both open the **All Changes** tab, which lists every changed file of the project in one scroll. Nothing else opens it today: the right panel (Explorer, Insights, Checks, Attached, PR Checks, History) has no changes list, and Ctrl+Shift+G renames the current tab.
 
-| Section | Rows |
+Inside All Changes:
+
+| Part | What it does |
 |---|---|
-| Conflicts | Files Git cannot merge by itself |
-| Staged | Changes ready to commit |
-| Changes | Edited files not staged |
-| Untracked | New files Git does not know yet |
+| Compare | **Working tree** (what you have not committed yet) or **Branch vs** its base |
+| Inline / Side by side | How each diff is drawn. Wrap long lines and Show whitespace changes sit beside them |
+| File tree | Shows or hides the list of files beside the diffs |
+| Each file | A Viewed checkbox, Stage or Unstage (in the Working tree view), and a button that opens the file as a diff tab |
+| Stage all, Unstage all | Move every changed file in or out of the next commit |
+| Push, Pull, Sync | Offered when Git allows them; each says why when it is greyed out |
+| Commit box | Type a message and press Ctrl+Enter, or press **Commit**. It commits only what is staged |
 
-Each section has a count, Stage all or Unstage all, and Discard all. Each row has Stage or Unstage and Discard. Click selects a row, Ctrl adds, Shift selects a range, and a bar then offers the same actions for the selection. Esc clears it.
+If a merge, rebase or similar is half done, a notice says so and offers to stop it and go back to where it began, after asking. The list refreshes within about a second of any change to the project's files or Git state. Changes to files Git ignores do not trigger it, unless the ignored folder still holds files Git tracks. While files keep changing the status is read at most once every 4 seconds; if Kolux cannot watch the folder, it checks every 4 seconds instead.
 
-Header buttons: Review changes (an agent checks the branch), All changes, Filter the changes, list or tree view, Refresh, Close.
-
-**Filter the changes.** The funnel button opens a "Filter by path" box. Type part of a file's path (any capitals) and each section keeps only the rows that match; a renamed file also matches its old path. If nothing matches, the panel says "No changed file matches ...". Esc empties the box and closes it, and so does the funnel button.
-
-**A file's menu.** Right-click a changed file for four choices: Copy path (the full path on disk), Copy relative path (from the workspace's folder), Open in its app (opens the file in the program your computer uses for that kind of file) and Show in file manager (shows the file in its folder, or the nearest folder that still exists if the file was deleted).
-
-Both are careful. Open in its app only opens a file that exists; for a type on Kolux's fixed list of program types, such as `.exe`, `.bat`, `.rdp` or `.iso`, it shows the file in its folder instead of running it. Show in file manager never leaves the workspace: if the file's path goes through a link (a symbolic link or junction), it stops with "... goes through a link that leads outside the worktree" and opens nothing. See [Safety](safety.md).
-
-**Submodules.** A submodule is a repository kept inside another one. When one has changed, it is a single row under Changes, with a small note such as "submodule · new commits" or "submodule · changed files, untracked files". The files inside it are not listed one by one. Kolux lists at most 50 changed submodules; if there are more, a note says how many were left out.
-
-"Open diffs in" picks where a clicked file's diff opens: **This split**, **Next split** (the split after this one; with only one split, a new one) or **New split**.
-
-### Commit
-
-Type a message in the box (placeholder "Message (Ctrl+Enter to commit on <branch>)") and press Ctrl+Enter. "Write the message with AI" drafts one. Your draft is kept per workspace.
-
-The main button proposes the next step on its own:
-
-| Order | Button |
-|---|---|
-| 1 | Commit (off with "Write a message first" or "Resolve the conflicts first") |
-| 2 | Stage all |
-| 3 | Publish branch |
-| 4 | Force push with lease |
-| 5 | Sync, with counts ahead and behind |
-| 6 | Pull |
-| 7 | Push |
-| 8 | Create pull request |
-
-A "Commit and" menu commits then pushes, syncs or force pushes. A "Remote actions" menu has Push, Pull, Sync, Fetch, Fast-forward, Force push with lease, Publish branch and Rebase from base.
-
-**When Git has no pull policy.** If your branch and its remote have each gained commits (their histories have split) and Git has not been told how to combine them, a pull stops. Kolux then shows "stopped: this branch and its remote have split, and git has no pull policy set" with a choice of how to bring the remote's commits in. Pressing a button runs the pull again that way:
-
-| Button | What it does |
-|---|---|
-| Merge | Joins the two histories with a merge commit |
-| Rebase | Replays this branch's commits on top of the remote's |
-| Fast-forward only | Pulls only when no merge is needed, so it fails while the histories are split |
-
-Each button has a "Copy setting" button beside it. It copies the Git command that makes that choice permanent, for example `git config pull.rebase true`. Kolux only copies it; nothing changes until you run it yourself.
-
-The panel can also create a pull request (Title, Description, base branch), open the current one, link another, merge it, and run "Fix with AI" on failed checks. The list refreshes after each action, and within about a second of any change to the workspace's files or Git state while the panel is open. Changes to files Git ignores (your .gitignore, which usually covers build and package folders) do not trigger it, unless the ignored folder still holds files Git tracks: a change to one of those counts. Editing `.git/info/exclude` (your private ignore list) is noticed too, in a linked workspace as well. While files keep changing the status is read at most once every 4 seconds. If Kolux cannot watch the folder, it checks every 4 seconds instead. Open diffs and All Changes follow the same rule.
-
-### Discarding changes
-
-Discard always asks first, and the message tells you the consequence.
-
-| What you discard | What the question says |
-|---|---|
-| A new, untracked file | "Delete <name>?" It is deleted from disk. This cannot be undone. Button: Delete |
-| A deleted file | "Restore <name>?" The file comes back as Git last had it. Button: Restore |
-| A modified file | "Discard changes to <name>?" Staged: its staged and unstaged changes are lost. Unstaged: its unstaged changes are lost; anything staged stays. Button: Discard |
-| Several rows | "Discard all N in <section>?" with counts of files deleted, restored and losing changes. Button: Discard all |
-
-Conflicts cannot be discarded. Staged new files are deleted from disk, not only unstaged.
+See [Files and browser](files-and-browser.md) for the diff tab and the Compare options in detail.
 
 ## The Tasks page
 
