@@ -15,6 +15,16 @@ describe("the catalogue (ONB-033)", () => {
     expect(t.trigger).toBe(BOARD_LANE);
     expect(t.steps[1].alt).toContain(".board");
   });
+  it("p4a-09: the board tour names the columns as states, in the board's own order, not stages", async () => {
+    const { LANES } = await import("../board/chip");
+    const lane = tour("board").steps.find((s) => s.target === BOARD_LANE)!;
+    const body = lane.en.body;
+    expect(body).not.toMatch(/stage|first one/i);
+    const at = LANES.map((l) => body.indexOf(l.title));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(lane.ko.body).not.toMatch(/첫 열|한 단계/);
+  });
   it("has the browser tour: grab, annotate, import cookies, always counted as three", () => {
     const t = tour("browser");
     expect(t.steps).toHaveLength(3);

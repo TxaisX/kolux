@@ -98,7 +98,7 @@ export const TOURS: Tour[] = [
     name: "Board",
     trigger: BOARD_LANE,
     steps: [
-      { target: BOARD_LANE, side: "bottom", en: { title: "Plan, then watch it move", body: "Each column is a stage. New work starts in the first one." }, ko: { title: "계획하고 지켜보기", body: "각 열은 한 단계입니다. 새 작업은 첫 열에서 시작합니다." } },
+      { target: BOARD_LANE, side: "bottom", en: { title: "Watch work move", body: "Each column is a state: Needs you, Working, Done, Stopped or Idle. A card moves as its agent's state changes." }, ko: { title: "작업 지켜보기", body: "각 열은 에이전트의 상태입니다. 상태가 바뀌면 카드가 열 사이를 옮겨 갑니다." } },
       { target: BOARD_CARD, alt: [".board"], side: "right", en: { title: "Move cards through the lanes", body: "A card follows its agent from lane to lane until it is done." }, ko: { title: "카드를 단계별로 옮기기", body: "카드는 에이전트를 따라 끝날 때까지 열 사이를 이동합니다." } },
     ],
   },
