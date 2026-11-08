@@ -63,7 +63,7 @@ With no agent switched on the page says "No agents yet" with an "Open Settings" 
 
 ### Chat on the Agents page
 
-Use it to read a Claude Code, OpenClaude or Codex session as a conversation instead of a terminal, and to talk to the agent without clicking into its terminal. When the picked session can show chat, the chat appears in the page body. A session that cannot (another program, or no saved conversation Kolux can find on this computer) keeps its terminal. While the program is still starting, the page says "Starting...". Kolux checks again every 3 seconds, so chat appears once the session is ready.
+Use it to read a Claude Code, OpenClaude, Codex or omp session as a conversation instead of a terminal, and to talk to the agent without clicking into its terminal. When the picked session can show chat, the chat appears in the page body. A session that cannot (another program, or no saved conversation Kolux can find on this computer) keeps its terminal. While the program is still starting, the page says "Starting...". Kolux checks again every 3 seconds, so chat appears once the session is ready.
 
 The chat follows the agent's saved conversation live, even before that file exists: it says "Loading the conversation..." and then fills in. With nothing said yet it reads "No messages yet. What you and the agent say shows up here." Each message appears once, in order, with its time (hover for the full date). A reply still being written shows faintly until the saved version replaces it. Hover a message for **Copy** and **Top**. Click a picture to see it full size.
 
@@ -105,7 +105,7 @@ Before each key it types, Kolux checks again for the session the message was sen
 
 **Scrolling.** The chat follows new messages while you are at the bottom (within about 48 pixels). Scroll up and it holds still while replies stream in. A **Jump to latest** button takes you back. After you send, the view goes to the bottom. With no session picked in the rail, the box types into the first agent that can chat, and a line says "Typing into <name>".
 
-Not there yet: a **Show terminal** switch on the chat, answering an agent's question with a card in the chat, and chat for Grok and omp. Use the terminal for those.
+**Show terminal** at the top right of the chat swaps the chat for the session's raw terminal, and back. When the agent asks a question or for permission, a card appears in the chat with buttons to answer it. Grok has no chat yet; use its terminal.
 
 ### Request changes on a plan
 
@@ -142,7 +142,7 @@ Click a row, or walk the rows with Up and Down and press Enter, to open that pan
 
 ## The Floor
 
-Use it to see when each agent worked, waited for you or sat idle. It has no button yet: give "Show Floor" a key in the keyboard shortcuts, then press it. Pick another view to leave.
+Use it to see when each agent worked, waited for you or sat idle. It has no button in the top bar: open it from the View menu (Workspace View, Floor) or the command palette's "Show Floor", or give "Show Floor" a key in the keyboard shortcuts. Pick another view to leave.
 
 Each agent pane is one lane, named after its terminal. Coloured stretches show Working, Needs you (a permission, a question or a block), Idle and Unverifiable. Unverifiable means the pane's terminal has closed, so Kolux cannot vouch for its quiet stretches. Hover a stretch for its times. Pick the range at the top: 15 minutes, 60 minutes (the default) or Today (from midnight). The page reads again every 5 seconds. With nothing to show it says "No agent reported any activity in this range."
 

@@ -207,12 +207,12 @@ On Windows, the main key is Ctrl. You can change every shortcut in Settings (see
 | Ctrl+B | Hide or show the left sidebar |
 | Ctrl+L | Hide or show the right sidebar |
 | Ctrl+Shift+E | Show Explorer in the right sidebar; press it again while the Explorer has focus to hide it |
-| Ctrl+Shift+J | Open the worktree switcher |
-| Ctrl+Shift+Up / Ctrl+Shift+Down | Previous / next worktree |
-| Ctrl+Shift+0 | Focus the worktree list |
-| Ctrl+1 to Ctrl+9 | Select the workspace at that position |
-| Ctrl+N or Ctrl+Shift+N | Create a workspace |
-| Ctrl+Shift+Backspace | Delete the workspace (it asks first) |
+| Ctrl+Shift+J | Open the Switch workspace picker |
+| Ctrl+Shift+Up / Ctrl+Shift+Down | Previous / next row in the sidebar list |
+| Ctrl+Shift+0 | Focus the project list |
+| Ctrl+1 to Ctrl+9 | Select the sidebar row at that position |
+| Ctrl+N or Ctrl+Shift+N | Create a workspace. Kolux now works in one folder per project, so the sidebar shows no form for it |
+| Ctrl+Shift+Backspace | Delete a workspace left by an older version (it asks first) |
 | Ctrl+Alt+Left / Ctrl+Alt+Right | Back / forward through workspaces and pages |
 | Ctrl+J | Jump to the next session that needs you |
 | Ctrl+T | New shell tab |

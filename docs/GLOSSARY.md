@@ -34,7 +34,7 @@ A full page that shows how much disk space your project folders take. A scan ref
 An AI coding CLI that Kolux can run in a pane, such as Claude Code, Codex, Gemini CLI, or one of the other supported tools. Kolux can install some agents itself; others you install first. **Agents** is also the name of a screen in the top bar: a chat view of your agents.
 
 **Terminals**
-The main screen, in the top bar's Agents, Board and Terminals switcher. It holds the grid of tabs and panes where agents and shells run, with the right panel beside it.
+The main screen, in the top bar's Agents, Board, Terminals and Tower switcher. It holds the grid of tabs and panes where agents and shells run, with the right panel beside it.
 
 **New session**
 The button at the bottom of the left sidebar. It starts an agent in a new pane in the project folder.
@@ -178,7 +178,7 @@ The Settings page that lists every keyboard shortcut and lets you change it.
 Opens from the memory item in the status bar. It shows what Kolux and each terminal session use, and offers to clean up sessions. The same figures print with `kolux diagnostics memory`.
 
 **Classic**
-The plain look, chosen in Settings. It has no Agents, Board and Terminals switcher, and the window stays on Terminals. It is also the name of the default app icon.
+The plain look, chosen in Settings. It has no Agents, Board, Terminals and Tower switcher, and the window stays on Terminals. It is also the name of the default app icon.
 
 **Getting Started**
 "Getting Started with Kolux", the checklist dialog in the Help menu. It shows a ring such as "N of 6 done" and walks through notifications, a default agent, the CLI and more.

@@ -23,7 +23,7 @@ Find out what went wrong, get a safe report to share, and get back to work. Star
 | "Sign in again" on a card | A sign-in lapsed | Use the button, or Settings, Accounts & keys |
 | A save was refused: "changed on disk since you opened it" | An agent or program changed the file | Choose Reload or Keep mine. See [Files and browser](files-and-browser.md) |
 | "outside your projects" | The fence blocked a file | See [Safety](safety.md) |
-| Removing a workspace is refused | The workspace is locked, holds another workspace, has changes, or changed since you were asked | Read the message. A locked workspace is never force-deleted: unlock it with `git worktree unlock` first |
+| Removing an old workspace is refused | The workspace is locked, holds another workspace, has changes, or changed since you were asked | Read the message. A locked workspace is never force-deleted: unlock it with `git worktree unlock` first |
 | `worker-start` ends with "the worker did not come up within N ms; it may still be starting in the background (<dispatch> in <folder>)", though the agent is running | The window did not stamp a session for the dispatch in time, usually a slow start on a busy PC. A tab you open yourself is never taken for the worker. A session that starts later is still tied to the dispatch for 10 minutes and shows in `worker-show`, `worker-list` and `worker-release` | Use the commands in the answer (`--json` lists them), or `worker-show` and `worker-stop` once the agent has come up. See [Command line](command-line.md#worker-commands) |
 | A command says "Kolux is not running; start it with `kolux open` first" | The command line cannot find the app | Run `kolux status` to see why (`not-running` or `stale`), then `kolux open`. See [Command line](command-line.md) |
 
@@ -62,7 +62,7 @@ Kolux saves your tabs and layout as you work and brings them back at the next st
 
 - **Tabs and layout** return, with the active tab and focus. A tab whose folder is gone is dropped on its own; the rest stay.
 - **Terminal output** returns. The last text of each pane is replayed with a grey note: "restored after a restart, the shell below is new". The program is new; it does not carry on from where it was.
-- **Agent sessions** resume. An agent tab restarts on the same start line with the agent's own resume form, using the session it last reported (Claude Code, Codex and 15 more agents have one built in; Kiro and Aider also resume without a reported session). This needs the agent status hooks on. A pane marked "restored without resume" had no session to go back to and started at its prompt. See [Projects and worktrees](projects-and-worktrees.md#agent-sessions-after-a-restart).
+- **Agent sessions** resume. An agent tab restarts on the same start line with the agent's own resume form, using the session it last reported (Claude Code, Codex and 15 more agents have one built in; Kiro and Aider also resume without a reported session). This needs the agent status hooks on. A pane marked "restored without resume" had no session to go back to and started at its prompt. See [Projects and folders](projects-and-worktrees.md#agent-sessions-after-a-restart).
 - **Programs do not survive.** Closing a pane, quitting or a crash ends every program Kolux started, so none is left running in the background. A running build or server is stopped.
 - A tab you close on purpose stays closed, and its saved output is forgotten.
 - A slow start never drops your tabs: if the saved settings were slow to read, Kolux waits.

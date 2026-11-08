@@ -56,7 +56,7 @@ Preferences for the built-in editor and the diff views.
 | Show changes made only of whitespace | Off, so a line that only moved spaces or tabs is hidden | `diffShowWhitespace` |
 | File tree beside the combined diff | Off | `diffFileTree` |
 
-**Not wired up yet.** This build saves these choices, but the editor and the diff views do not read them yet, so changing one has no visible effect for now. The editor's font is a different setting and does work: see Editor font under [Interface](#interface).
+The editor and the diff views read these choices when they open. A diff or All Changes tab that you have already set up keeps its own layout (**Make default** in All Changes saves the layout for new tabs). The editor's font is a different setting: see Editor font under [Interface](#interface).
 
 ### Open in
 
@@ -67,7 +67,7 @@ The apps that every "Open in" menu is meant to list (for a workspace, a file, an
 
 Saved as `openInApps`.
 
-**Not wired up yet.** The list saves, but the Open in menus do not read it yet.
+The Open in menus read this list.
 
 ### Network proxy
 
@@ -82,7 +82,7 @@ For a network that makes you go through a proxy. The card is folded shut when no
 
 The address is sealed in the system keyring (see [Secrets](safety.md#secrets)); it is not saved in the clear in `settings.json` and is never shown back. Once one is set the card says so. To change the other two parts and keep the address, leave the address box empty and press Apply; type a new address to replace it.
 
-**Not wired up yet.** The card says "Kolux's own traffic goes through it", but this build only stores the proxy: update checks and downloads do not use it yet.
+The update check goes through the saved proxy. If the setting cannot be used, the check stops and says so instead of going around the proxy.
 
 ### Diagnostics
 
@@ -274,7 +274,7 @@ The shell you pick is tried first. If it will not start (it was uninstalled, or 
 | GitHub API budget | Shows how much of GitHub's hourly allowance is left; "Check again" re-reads it | |
 | Ask before deleting a workspace | On. A workspace with changes, a lock or a nested workspace always asks | |
 
-A worktree is a separate working copy of a project on its own branch; Kolux calls it a workspace. See [Projects and worktrees](projects-and-worktrees.md).
+This page keeps its old name. Kolux now works in one folder per project, so a project's own **Workspaces folder** no longer shows in its settings. See [Projects and folders](projects-and-worktrees.md).
 
 ## Notifications
 
