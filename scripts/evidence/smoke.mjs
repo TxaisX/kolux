@@ -139,10 +139,13 @@ const rightTab = async (name) => {
 const LAYOUT_ON = '.layouts button[aria-pressed="true"]';
 const layoutCount = () => evalJs(`document.querySelector(${JSON.stringify(LAYOUT_ON)})?.textContent.trim() ?? null`);
 const pickLayout = (n) => clickWhere(".layouts button", `/^\\s*${n}\\s*$/`);
+// button.newtab is gone; a pane's header has a "New session" plus that opens the same agent menu. A shown terminal
+// pane takes the focus first, so the plus belongs to a pane a user sees, and the new session joins that pane's cell.
 const newTab = async (label) => {
-  await click("button.newtab");
-  await waitFor("the New tab menu", () => exists('[role="menu"][aria-label="New tab"]'), 5000);
-  await clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', label);
+  await focusPane(TERM, 0, ".xterm-helper-textarea");
+  await click('.pane.focused button[title^="New session"]');
+  await waitFor("the New session menu", () => exists('[role="menu"][aria-label="New session"]'), 5000);
+  await clickWhere('[role="menu"][aria-label="New session"] [role="menuitem"]', label);
 };
 const read = (file) => (existsSync(file) ? readFileSync(file, "utf8") : null);
 const bytes = (file) => (existsSync(file) ? readFileSync(file) : null);
