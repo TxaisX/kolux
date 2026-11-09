@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { agentFromTitle, followedTitle, Gate, IDLE, parseOsc, printsMarks, reduceIdentity, Scanner, shownAgent, Startup, startupText, tabAgent, typedAsIs, type Identity, type Mark } from "./shellMarks";
+import { describe, expect, it, vi } from "vitest";
+import { agentFromTitle, followedTitle, Gate, identityPacer, IDLE, TITLE_PACE_MS, parseOsc, printsMarks, reduceIdentity, Scanner, shownAgent, Startup, startupText, tabAgent, typedAsIs, type Identity, type Mark } from "./shellMarks";
 
 const enc = new TextEncoder();
 const bytes = (s: string) => enc.encode(s);
@@ -203,5 +203,71 @@ describe("identity from titles and marks (TERM-058)", () => {
   it("a user's own name beats the program title", () => {
     expect(followedTitle("Build box", { running: true, title: "Claude Code", agent: "claude" }, "Terminal 1")).toBe("Build box");
     expect(followedTitle("   ", { running: true, title: "Claude Code", agent: "claude" }, "Terminal 1")).toBe("Claude Code");
+  });
+});
+
+describe("title storm (perf: one render per real change, titles paced)", () => {
+  const title = (text: string): Mark => ({ kind: "title", text }) as Mark;
+  it("gives back the same identity when a mark changes nothing", () => {
+    const a = reduceIdentity(IDLE, title("✳ Claude Code"));
+    expect(reduceIdentity(a, title("✳ Claude Code"))).toBe(a);
+    const r = reduceIdentity(IDLE, { kind: "start" } as Mark);
+    expect(reduceIdentity(r, { kind: "start" } as Mark)).toBe(r);
+    expect(reduceIdentity(a, title("✶ Claude Code"))).not.toBe(a);
+  });
+  // Each apply is one setLive in the pane, so one TerminalPane render, one onIdentity and one window render.
+  const feed = (titles: string[], gapMs: number) => {
+    vi.useFakeTimers();
+    try {
+      const applied: Identity[] = [];
+      const pacer = identityPacer((id) => applied.push(id));
+      let now = IDLE;
+      const note = (next: Identity) => {
+        if (next === now) return; // TerminalPane.noteIdentity's own check
+        now = next;
+        pacer.note(next);
+      };
+      note(reduceIdentity(now, title("✳ Claude Code"))); // the agent appears: goes at once
+      const first = applied.length;
+      for (const t of titles) {
+        note(reduceIdentity(now, title(t)));
+        vi.advanceTimersByTime(gapMs);
+      }
+      vi.advanceTimersByTime(TITLE_PACE_MS);
+      return { first, extra: applied.length - first, last: applied[applied.length - 1], now };
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+  it("100 identical title marks cost no extra render", () => {
+    const r = feed(Array(100).fill("✳ Claude Code"), 10);
+    expect(r.first).toBe(1);
+    expect(r.extra).toBe(0);
+  });
+  it("100 distinct titles in one second cost about five renders, and the newest title lands", () => {
+    const frames = Array.from({ length: 100 }, (_, i) => `${"✳✶✻✽"[i % 4]} Claude Code ${i}`);
+    const r = feed(frames, 10);
+    expect(r.extra).toBeGreaterThan(0);
+    expect(r.extra).toBeLessThanOrEqual(6);
+    expect(r.last).toBe(r.now);
+    expect(r.last?.title).toBe(frames[99]);
+  });
+  it("a change of running or agent is never held back", () => {
+    vi.useFakeTimers();
+    try {
+      const applied: Identity[] = [];
+      const pacer = identityPacer((id) => applied.push(id));
+      const a = reduceIdentity(IDLE, title("✳ Claude Code"));
+      pacer.note(a);
+      pacer.note(reduceIdentity(a, title("✶ Claude Code"))); // title only: held
+      expect(applied).toEqual([a]);
+      pacer.note(IDLE); // the prompt came back: at once, and the held title is dropped
+      expect(applied).toEqual([a, IDLE]);
+      vi.advanceTimersByTime(TITLE_PACE_MS * 2);
+      expect(applied).toEqual([a, IDLE]);
+      pacer.stop();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

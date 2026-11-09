@@ -6,7 +6,7 @@
 import { deferred } from "./deferred";
 
 /** T-093-a: one file in CodeMirror. */
-export const EditorPane = deferred(() => import("../editor/EditorPane"));
+export const EditorPane = deferred(() => import("../editor/EditorPane"), undefined, { prefetch: true }); // DT-C230: read after the first frame
 
 /** T-033 / EDIT-056: the diff view, and every change in the worktree beside it. */
 export const DiffPane = deferred(() => import("../editor/DiffPane"));
@@ -16,7 +16,7 @@ export const AllChangesPane = deferred(() => import("../editor/AllChangesPane"))
 export const PreviewPane = deferred(() => import("../editor/PreviewPane"));
 
 /** T-012-a: a page in its own web view, laid over the pane body by the back end. */
-export const BrowserPane = deferred(() => import("../browser/BrowserPane"));
+export const BrowserPane = deferred(() => import("../browser/BrowserPane"), undefined, { prefetch: true }); // DT-C230: read after the first frame
 
 /** The CI check tab: one pull request check with its log excerpt and Fix with AI. */
 export const CheckPane = deferred(() => import("../scm/CheckPane"));

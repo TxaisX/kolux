@@ -5,7 +5,7 @@ import type { Pane } from "../App";
 import { programWord } from "../launch/PlusMenu";
 import { generatedOn, generatedTitle, tabText, tabTip } from "../shell/tabTitle";
 import { launchedAgent, launchedName } from "../status/credit";
-import { needsBeat, statusTitle, useBeatFrame } from "../status/tabNameRule";
+import { needsBeat, statusTitle, useBeatKeys, useBeatText } from "../status/tabNameRule";
 import { tabName } from "../terminal/tabName";
 import { showScreen } from "../theme";
 import { useEscapeLeaves } from "./fullPage";
@@ -31,15 +31,13 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
   // terminal panes without a name of their own.
   // STAT-035 / T-124-b: the tab-name rule on top of the followed title: Kolux names ready and action required for agents whose own titles do not, and one shared beat animates its spinners.
   const ruleOf = (p: Pane) => ({ named: Boolean(labelOf(p) || p.title?.trim()), agent: p.kind ? null : launchedAgent(p), name: launchedName(p) ?? programWord(p.agent), live: liveIds[p.key]?.title, state: hook[p.key] });
-  const beatFrame = useBeatFrame(panes.filter((p) => needsBeat(ruleOf(p))).map((p) => p.key));
+  // The beat runs while some tab animates, but its frames re-render only those tab labels (BeatLabel), not the window.
+  useBeatKeys(panes.filter((p) => needsBeat(ruleOf(p))).map((p) => p.key));
   const tabLabel = (p: Pane) => {
-    const full = statusTitle({ ...ruleOf(p), shown: tabName(p, titles, labelOf(p), liveIds), frame: beatFrame });
-    const shown = p.kind ? full : tabText({ full, own: p.title, on: generatedOn(settings), generated: generatedTitle({ label: labelOf(p), word: p.agent === "shell" ? "Shell" : programWord(p.agent), branch: p.branch, cwd: p.cwd }) });
-    return (
-      <span className="tab-name" data-tip={tabTip(full, shown)}>
-        {shown}
-      </span>
-    );
+    const rule = ruleOf(p);
+    const shownName = tabName(p, titles, labelOf(p), liveIds);
+    const textOf = (full: string) => (p.kind ? full : tabText({ full, own: p.title, on: generatedOn(settings), generated: generatedTitle({ label: labelOf(p), word: p.agent === "shell" ? "Shell" : programWord(p.agent), branch: p.branch, cwd: p.cwd }) }));
+    return <BeatLabel animate={needsBeat(rule)} full={(frame) => statusTitle({ ...rule, shown: shownName, frame })} text={textOf} />;
   };
   useEffect(() => {
     if (!agentsScreen && !board && !terminals) return;
@@ -63,9 +61,21 @@ export function useScreens({ classic, hook, leavePage, liveIds, page, panes, pty
     return () => window.clearInterval(t);
   }, [timed]);
   return {
-    terminals, board, inbox, tower, floor, space, agentsScreen, workerNames, setWorkerNames, labelOf, ruleOf, beatFrame, tabLabel, now, setNow, timed,
+    terminals, board, inbox, tower, floor, space, agentsScreen, workerNames, setWorkerNames, labelOf, ruleOf, tabLabel, now, setNow, timed,
     fullPage,
   };
 }
 
 export type Screens = ReturnType<typeof useScreens>;
+
+/** STAT-035: one tab's name; an animating one reads the shared beat itself, so a spinner frame
+ *  re-renders this label alone. */
+function BeatLabel({ animate, full: fullOf, text }: { animate: boolean; full: (frame: string) => string; text: (full: string) => string }) {
+  const full = fullOf(useBeatText(animate));
+  const shown = text(full);
+  return (
+    <span className="tab-name" data-tip={tabTip(full, shown)}>
+      {shown}
+    </span>
+  );
+}

@@ -2,8 +2,9 @@
 // time it is opened, so a Terminals screen does not carry the settings pages, the note renderer, the plan
 // sheet or the editor into the window's first frame (cycle 3, first load). Every name here is the module's
 // own export, so a caller swaps its import line and nothing else changes: `deferred` keeps the place the
-// element sits in, and `prefetch()` reads the code in the background once the window is up, so opening one
-// stays instant.
+// element sits in. DT-C230: `prefetch()` reads the settings page, the plan sheet and the help sheet (no
+// placeholder) and the chooser pane (a new pane) at the first idle moment; every other surface here loads
+// the first time it is opened.
 import { createElement, type ComponentProps, type ComponentType } from "react";
 import { deferred } from "./deferred";
 
@@ -11,10 +12,10 @@ import { deferred } from "./deferred";
 const loading = createElement("div", { className: "empty", role: "status" }, "Loading…");
 
 /** ORCH-020 / SESS-025: the plan sheet a finished agent's plan is reviewed in. */
-export const PlanSheet = deferred(() => import("../terminal/PlanSheet"));
+export const PlanSheet = deferred(() => import("../terminal/PlanSheet"), undefined, { prefetch: true }); // DT-C230: no placeholder
 
 // Settings, and the two notices that sit on it.
-export const SettingsPage = deferred(() => import("../settings/SettingsPage"));
+export const SettingsPage = deferred(() => import("../settings/SettingsPage"), undefined, { prefetch: true }); // DT-C230: no placeholder
 export const RoutingPage = deferred(() => import("../settings/RoutingPage"), loading);
 export const SignInNotice = deferred(() => import("../settings/SignInNotice"));
 export const KeyLostNotice = deferred(() => import("../settings/KeyLostNotice"));
@@ -40,7 +41,7 @@ export const AgentsChat = deferred<ChatProps>(() => import("../chat/ChatView").t
 // The first-run guide and its wizard, and the help menu's sheet.
 export const Guides = deferred(() => import("../onboarding/Guides"));
 export const Wizard = deferred(() => import("../onboarding/Wizard"));
-export const HelpSheet = deferred(() => import("../onboarding/HelpSheet"));
+export const HelpSheet = deferred(() => import("../onboarding/HelpSheet"), undefined, { prefetch: true }); // DT-C230: no placeholder, and small
 
 // The file surfaces: the explorer, the template picker, a project row, the palette, review notes.
 export const Explorer = deferred(() => import("../editor/Explorer"));
@@ -65,5 +66,5 @@ export const ToolNotices = deferred(() => import("../launch/ToolNotices"));
 export const AgentStartHost = deferred(() => import("../agentstart/AgentStartHost"));
 
 // A chooser pane (SESS-007) and the Tower's own drawing.
-export const ChooserPane = deferred(() => import("../launch/ChooserPane"));
+export const ChooserPane = deferred(() => import("../launch/ChooserPane"), undefined, { prefetch: true }); // DT-C230: a new pane; keys typed before it loads would reach the old one
 export const TowerView = deferred(() => import("../tower/TowerView"), loading);
