@@ -35,12 +35,11 @@ export function publicFiles(ref) {
   const all = git('ls-tree', '-r', '--name-only', ref).split('\n').filter(Boolean);
   const keep = new Set(all.filter((p) => !isPrivate(p)));
   const tracked = new Set(all);
-  for (const p of all) {
-    if (!/^(src|src-tauri)\//.test(p) || !/\.(ts|tsx|rs|mjs)$/.test(p)) continue;
-    for (const line of git('show', `${ref}:${p}`).split('\n')) {
-      if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue;
-      for (const m of line.matchAll(EVIDENCE_REF)) if (tracked.has(m[0])) keep.add(m[0]);
-    }
+  let hits = '';
+  try { hits = git('grep', '-hE', 'evidence/', ref, '--', 'src/', 'src-tauri/'); } catch { /* no hits */ }
+  for (const line of hits.split('\n')) {
+    if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue;
+    for (const m of line.matchAll(EVIDENCE_REF)) if (tracked.has(m[0])) keep.add(m[0]);
   }
   return [...keep].sort();
 }
@@ -63,10 +62,17 @@ function main() {
   if (fresh) { try { og('checkout', '-q', '--orphan', `export-${sha}`); } catch { /* new repo, already orphan */ } }
 
   for (const e of readdirSync(out)) if (e !== '.git') rmSync(join(out, e), { recursive: true, force: true });
-  const tar = spawnSync('git', ['archive', '--format=tar', ref, '--', ...files], { cwd: ROOT, maxBuffer: 1 << 30 });
-  if (tar.status !== 0) throw new Error(String(tar.stderr));
-  const x = spawnSync('tar', ['-x', '-f', '-', '-C', out], { input: tar.stdout });
-  if (x.status !== 0) throw new Error(String(x.stderr));
+  // The whole tree comes out in one archive (a file list would overflow the Windows command line),
+  // then everything that is not public is removed.
+  const tar = spawnSync('git', ['archive', '--format=tar', ref], { cwd: ROOT, maxBuffer: 1 << 30 });
+  if (tar.status !== 0) throw new Error(`git archive failed: ${tar.stderr || tar.error}`);
+  const x = spawnSync('tar', ['-x', '-f', '-', '-C', out], { input: tar.stdout, maxBuffer: 1 << 30 });
+  if (x.status !== 0) throw new Error(`tar failed: ${x.stderr || x.error}`);
+  const keep = new Set(files);
+  for (const p of git('ls-tree', '-r', '--name-only', ref).split('\n')) if (p && !keep.has(p)) rmSync(join(out, p), { force: true });
+  for (const d of PRIVATE.filter((x) => x.endsWith('/'))) {
+    if (![...keep].some((p) => p.startsWith(d))) rmSync(join(out, d), { recursive: true, force: true });
+  }
 
   og('add', '-A');
   const changed = og('status', '--porcelain');

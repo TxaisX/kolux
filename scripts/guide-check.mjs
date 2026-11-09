@@ -78,7 +78,11 @@ export function check(root = ROOT, git = gitIn(root)) {
   return problems;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// The public repo is a clean export with no build history to check markers against (export-public.mjs).
+const publicExport = !fs.existsSync(path.join(ROOT, "PLAN.md"));
+if (publicExport && import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  console.log("guide-check: skipped (no PLAN.md: public export, markers are checked in the dev repo)");
+} else if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const problems = check();
   if (problems.length) {
     for (const p of problems) console.error(`guide-check: ${p}`);
