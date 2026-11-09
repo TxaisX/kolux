@@ -5,7 +5,8 @@
 // ponytail: a syntax scan, so text built far from the JSX (a helper in another file) is only
 // caught when that file is listed here.
 import { expect, test } from "vitest";
-import ts from "typescript";
+// TypeScript 7 ships no JS compiler API, so the syntax scan uses the 6.x package (kept for this test only).
+import ts from "typescript6";
 import { renderToString } from "react-dom/server";
 import { createElement } from "react";
 import { BANNED, GLOSSARY, jargon, CONNECT } from "./glossary";
