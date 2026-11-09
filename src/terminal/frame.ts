@@ -6,6 +6,14 @@
 // is dropped; a pane that is off screen draws a small trickle, enough to keep its acknowledgements
 // flowing and little enough that a background flood never competes with the visible tab.
 //
+// DT-C236: since the engine is told when the window is minimised or in the tray, `document.hidden`
+// turns true then and no animation frame comes. The shown pane of such a window is not "off screen"
+// in the trickle's sense (nothing competes with it and nothing is painted), so it keeps its full
+// share, stepped by a timer at the frame's rate instead of by the frame; a program running ahead
+// is not slowed to the trickle for the time the window sits minimised. The panes behind other tabs
+// trickle as before. A visibility change re-plans every waiting pane, so one that waited on an
+// animation frame when the window went away moves to the timer at once.
+//
 // The budget is measured, not guessed: xterm parses about 19 MB/s on this thread (the second case in
 // outputFlood.test.ts), so 128 KB is ~7 ms of a 16.7 ms frame, and a pane gets its share of that.
 // What the queue does not do is decide what is drawn: the reader's own window (512 KB unacked) is
@@ -16,8 +24,10 @@ export type FrameSink = {
   write(bytes: Uint8Array, done: () => void): void;
   /** `bytes` of the reader's output are settled: drawn, or already held by a snapshot. */
   ack(bytes: number): void;
-  /** This pane is not on screen: an inactive tab, or the whole window is hidden. */
+  /** This pane is not on screen: it sits behind another tab. */
   hidden(): boolean;
+  /** The whole window is out of sight (minimised, in the tray): no frame comes, nothing is painted. */
+  unseen?(): boolean;
 };
 
 export type FrameOutput = {
@@ -101,6 +111,17 @@ type Options = {
   hiddenMs?: number;
   clock?: () => number;
   scheduler?: FrameScheduler;
+  /** Called with the function to run on every visibility change (the document's event by default). */
+  onVisibility?: (f: () => void) => void;
+};
+
+/** How a waiting pane is stepped. */
+type Mode = "frame" | "timer" | "trickle";
+
+const documentVisibility = (f: () => void) => {
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", f);
+  }
 };
 
 /**
@@ -120,13 +141,17 @@ export function frameOutputs(options: Options = {}) {
     for (const p of waiting) if (!p.offScreen()) n++;
     return n;
   };
+  // DT-C236: the window went out of sight or came back; every waiting pane re-plans its next step.
+  (options.onVisibility ?? documentVisibility)(() => {
+    for (const p of [...waiting]) p.wake();
+  });
 
   class Pane implements FrameOutput {
     private parts: Part[] = [];
     private bytes = 0;
     private inflight = 0;
     private cancel: (() => void) | null = null;
-    private dueOff: boolean | null = null;
+    private due: Mode | null = null;
     private closed = false;
 
     constructor(private readonly sink: FrameSink) {}
@@ -137,6 +162,11 @@ export function frameOutputs(options: Options = {}) {
 
     offScreen(): boolean {
       return this.sink.hidden();
+    }
+
+    private mode(): Mode {
+      if (this.offScreen()) return "trickle";
+      return this.sink.unseen?.() ? "timer" : "frame";
     }
 
     push(bytes: Uint8Array, ack = bytes.length, seq?: number): void {
@@ -157,7 +187,7 @@ export function frameOutputs(options: Options = {}) {
     flushNow(): void {
       this.cancel?.();
       this.cancel = null;
-      this.dueOff = null;
+      this.due = null;
       if (!this.parts.length) return;
       if (this.closed) {
         this.drop();
@@ -175,7 +205,7 @@ export function frameOutputs(options: Options = {}) {
     clear(): void {
       this.cancel?.();
       this.cancel = null;
-      this.dueOff = null;
+      this.due = null;
       this.drop();
     }
 
@@ -183,25 +213,26 @@ export function frameOutputs(options: Options = {}) {
       this.closed = true;
       this.cancel?.();
       this.cancel = null;
-      this.dueOff = null;
+      this.due = null;
       this.drop();
     }
 
     private plan(): void {
       if (this.closed || this.inflight > 0 || !this.parts.length) return;
-      const off = this.offScreen();
+      const mode = this.mode();
       if (this.cancel) {
-        if (this.dueOff === off) return;
+        if (this.due === mode) return;
         this.cancel();
         this.cancel = null;
       }
-      this.dueOff = off;
+      this.due = mode;
       const run = () => {
         this.cancel = null;
-        this.dueOff = null;
+        this.due = null;
         this.tick();
       };
-      this.cancel = off ? scheduler.later(run, hiddenMs) : scheduler.frame(run);
+      this.cancel =
+        mode === "trickle" ? scheduler.later(run, hiddenMs) : mode === "timer" ? scheduler.later(run, frameMs) : scheduler.frame(run);
     }
 
     private tick(): void {

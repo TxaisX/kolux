@@ -5,6 +5,7 @@ import ScreenBoundary from "./recovery/ScreenBoundary";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { applyAppearance, cachedAppearance, followSystemMode, readAppearance } from "./theme";
+import { installWindowBackground } from "./recovery/windowBackground";
 import { stampLook } from "./settings/general";
 import { applyLanguage, LANGUAGE_FIELD } from "./language";
 import { registerBundledPacks } from "./i18n/packs";
@@ -31,6 +32,8 @@ async function start() {
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<TowerWindow />);
     return;
   }
+  // DT-C236: the main window's page tells the engine its background (the Tower has its own view and look).
+  installWindowBackground();
   // FIX-4 (council d2 AFTER 8): the App module (and everything it imports) is loaded for the main
   // window only; the Tower window never evaluates it. The load starts now and runs beside the settings read.
   const loadApp = import("./App");

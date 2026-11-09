@@ -1,0 +1,18 @@
+== final code run (stopped by the harness at 60 s for system memory pressure; restore done by hand below) ==
+== FINAL RUN (final code, memory LOW on) ==
+[20:42:24] == item 1/2/4: main view out of sight ==
+[20:42:24] visibilityState shown: "visible"
+[20:42:24] marker set: "before-minimise"
+[20:42:25] renderers before minimise: ["29736 ws=212.6MB private=170.3MB"]
+[20:42:26] minimize: cmd 6 on 7671544 iconic=True
+[20:42:28] visibilityState minimised (1.5 s): "hidden" hidden=true
+[20:43:29] renderers 60 s minimised: ["29736 ws=29.8MB private=148.3MB"]
+[20:43:34] visibilityState minimised (60 s): 
+
+== final code, restore by hand (local time) ==
+[12:44:17] final code, still minimised: hidden; renderers: 29736 ws=35.9MB private=151.7MB
+restoring hwnd 7671544 (iconic before: True)
+t=0ms (captured at 162ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% restore-frame-0-0ms.png
+t=1000ms (captured at 1092ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% restore-frame-4-1000ms.png
+[12:44:19] visibilityState restored: visible; rAF 5 ms; marker before-minimise kept (no reload); renderers 3 s after restore: 29736 ws=92.9MB private=151.5MB
+kolux.log: 0 lines matching 'no heartbeat|reload'

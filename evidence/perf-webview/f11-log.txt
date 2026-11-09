@@ -1,0 +1,28 @@
+2026-11-09T21:26:45.908Z [minimised] kolux.log before: 0 of 36 lines match /no heartbeat|reload/i
+2026-11-09T21:26:46.008Z [minimised] marker set: perf-webview-minimised-1794259605907
+2026-11-09T21:26:46.766Z [minimised] hide: cmd 6 on 3869256 iconic=True
+2026-11-09T21:26:50.629Z [minimised] state: visible=True iconic=True; document.hidden=true
+2026-11-09T21:27:50.860Z [minimised] away: marker=kept hidden=true left=330s; kolux.log: 0 of 37 lines match /no heartbeat|reload/i
+2026-11-09T21:28:51.062Z [minimised] away: marker=kept hidden=true left=270s; kolux.log: 0 of 37 lines match /no heartbeat|reload/i
+2026-11-09T21:29:51.262Z [minimised] away: marker=kept hidden=true left=210s; kolux.log: 0 of 37 lines match /no heartbeat|reload/i
+2026-11-09T21:30:51.464Z [minimised] away: marker=kept hidden=true left=149s; kolux.log: 0 of 37 lines match /no heartbeat|reload/i
+2026-11-09T21:31:51.735Z [minimised] away: marker=kept hidden=false left=89s; kolux.log: 0 of 37 lines match /no heartbeat|reload/i
+2026-11-09T21:32:51.967Z [minimised] away: marker=kept hidden=true left=29s; kolux.log: 0 of 38 lines match /no heartbeat|reload/i
+2026-11-09T21:33:52.175Z [minimised] away: marker=kept hidden=true left=0s; kolux.log: 0 of 38 lines match /no heartbeat|reload/i
+2026-11-09T21:33:52.956Z [minimised] back: cmd 9 on 3869256 iconic=False
+2026-11-09T21:33:56.947Z [minimised] state: visible=True iconic=False; document.hidden=true
+2026-11-09T21:33:57.066Z [minimised] RESULT minimised 6.5 min: marker survived; kolux.log after: 0 of 38 lines match /no heartbeat|reload/i
+2026-11-09T21:35:00.314Z [tray] kolux.log before: 0 of 39 lines match /no heartbeat|reload/i
+2026-11-09T21:35:00.434Z [tray] marker set: perf-webview-tray-1794260100313
+2026-11-09T21:35:02.863Z [tray] hide: wmclose on 3869256 visible=False
+2026-11-09T21:35:07.481Z [tray] state: visible=False iconic=True; document.hidden=true
+2026-11-09T21:36:07.719Z [tray] away: marker=kept hidden=true left=330s; kolux.log: 0 of 39 lines match /no heartbeat|reload/i
+2026-11-09T21:37:07.916Z [tray] away: marker=kept hidden=true left=270s; kolux.log: 0 of 39 lines match /no heartbeat|reload/i
+2026-11-09T21:38:08.114Z [tray] away: marker=kept hidden=true left=210s; kolux.log: 0 of 40 lines match /no heartbeat|reload/i
+2026-11-09T21:39:08.320Z [tray] away: marker=kept hidden=true left=149s; kolux.log: 0 of 40 lines match /no heartbeat|reload/i
+2026-11-09T21:40:08.509Z [tray] away: marker=kept hidden=true left=89s; kolux.log: 0 of 40 lines match /no heartbeat|reload/i
+2026-11-09T21:41:08.704Z [tray] away: marker=kept hidden=true left=29s; kolux.log: 0 of 40 lines match /no heartbeat|reload/i
+2026-11-09T21:42:08.916Z [tray] away: marker=kept hidden=true left=0s; kolux.log: 0 of 40 lines match /no heartbeat|reload/i
+2026-11-09T21:42:09.880Z [tray] back: cmd 5 on 3869256 iconic=False
+2026-11-09T21:42:13.777Z [tray] state: visible=True iconic=False; document.hidden=false
+2026-11-09T21:42:13.874Z [tray] RESULT tray 6.5 min: marker survived; kolux.log after: 0 of 40 lines match /no heartbeat|reload/i
