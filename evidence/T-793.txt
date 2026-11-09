@@ -76,3 +76,38 @@ Audit of every std::process::Command in hooks.rs, cli/mod.rs, terminal.rs and or
 - cli/mod.rs app_command (launch the app): DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP, no console is created, stdio null.
 - cli/mod.rs claude_teams: the CLI's own pass-through to `claude` in the caller's terminal; it must inherit that console to be interactive, so it is deliberately not hidden.
 - hooks.rs and orchestration.rs: no production child spawn. Remaining spawns in these files are test helpers (git, icacls) that inherit cargo's console.
+
+Review fix 2 test runs (2026-11-09, cloud Linux; the fix-2 commits 41491bd7 + 9cd43f16 had never been run)
+  GREEN: cargo test --lib t793 -> 18 passed, 0 failed (all three t793_fix2_* included)
+  RED (starts_program back to terminal create/split only, resets_dispatches false; tests unchanged):
+    test cli::tests::t793_fix2_dispatch_refuses_worker_automations_that_start_an_agent ... FAILED
+    test cli::tests::t793_fix2_dispatch_refuses_a_worker_worktree_create_that_starts_an_agent ... FAILED
+    test cli::tests::t793_fix2_dispatch_refuses_orchestration_reset_from_a_worker ... FAILED
+    thread 'cli::tests::t793_fix2_dispatch_refuses_worker_automations_that_start_an_agent' (3071) panicked at src/cli/mod.rs:8237:13:
+    thread 'cli::tests::t793_fix2_dispatch_refuses_a_worker_worktree_create_that_starts_an_agent' (3069) panicked at src/cli/mod.rs:8202:13:
+    thread 'cli::tests::t793_fix2_dispatch_refuses_orchestration_reset_from_a_worker' (3070) panicked at src/cli/mod.rs:8168:42:
+    test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 2901 filtered out; finished in 0.24s
+    error: test failed, to rerun pass `--lib`
+
+Review fix 3 (independent read-only review 2026-11-09 of fix 2 + every hooks.rs change on this lane)
+  Review result: one blocker (A1), two should-fix (A2, A3), nits. hooks.rs: no blocker (HMAC checked against
+  RFC 4231, constant-time compare, gate before answer/usage, secret never on disk or in a log, numeric file names).
+  A1 (blocker) worktree rm stops every terminal under a worktree: a worker now gets pane_scope for it.
+  A2 a worker dispatching back up to its coordinator got a lasting hold on it and demoted it to a worker:
+     a row pointing back up its own sender's chain is now left out of the scope check (earlier row wins).
+  A3 automations edit that sets the timetable, --enabled, workspace, repo, workspace mode, --precheck or the
+     session choice starts an agent (or the precheck command) at the next fire: refused for a worker;
+     renaming and --disabled stay allowed.
+  A4 a pane key that does not prove the request's from is refused, not treated as no pane.
+  Left as nits (backlog): A5 worktree create's default setup tab (gated by the setup-trust prompt);
+     B1 cli::secret() from RandomState rather than a CSPRNG; B2 a closed pane's endpoint file and token stay
+     for the run; B3 write_pane_file truncates in place (a reader can see it empty); B4 the shared spool file
+     takes no token (same-user limit, DT-C228 (3)).
+  GREEN: cargo test --lib t793 -> 22 passed, 0 failed
+  RED (the four fixes reverted, tests unchanged):
+    test cli::tests::t793_fix3_a_worker_cannot_remove_a_worktree ... FAILED
+    test cli::tests::t793_fix3_a_worker_cannot_schedule_or_redirect_an_automation ... FAILED
+    test cli::tests::t793_fix3_a_dispatch_back_up_the_chain_grants_and_demotes_nothing ... FAILED
+    test cli::tests::t793_fix3_a_pane_that_does_not_prove_its_from_is_refused ... FAILED
+    test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 2904 filtered out; finished in 0.24s
+    error: test failed, to rerun pass `--lib`

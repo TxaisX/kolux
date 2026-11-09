@@ -1109,6 +1109,9 @@ fn pane_target(req: &Request) -> Option<Option<String>> {
         // Review fix 1 (B3): `close --tab` closes every pane of the tab whatever `--terminal` says, so it
         // names no single pane.
         "terminal.close" if req.args["tab"] == true => Some(None),
+        // Review fix 3 (A1): `worktree rm` stops every terminal under the worktree, like `terminal close
+        // --worktree`, so it names no single pane.
+        "worktree.rm" => Some(None),
         "terminal.show" | "terminal.split" | "terminal.rename" | "terminal.switch" | "terminal.close" => Some(named),
         _ => None,
     }
@@ -1126,7 +1129,14 @@ fn starts_program(req: &Request) -> bool {
         "terminal.create" | "terminal.split" => set("command"),
         "worktree.create" => set("agent") || set("prompt"),
         "automations.create" | "automations.run" => true,
-        "automations.edit" => set("prompt") || set("provider"),
+        // Review fix 3 (A3): an edit that changes when or where the automation runs, or the command its
+        // precheck runs, starts an agent (or that command) at the next fire as surely as `run` does.
+        "automations.edit" => {
+            // (Turning one off, `--disabled`, starts nothing and stays allowed.)
+            ["prompt", "provider", "trigger", "time", "day", "timezone", "workspace", "repo", "workspaceMode", "precheck"].iter().any(|k| set(k))
+                || req.args["enabled"] == true
+                || !req.args["reuseSession"].is_null()
+        }
         _ => false,
     }
 }
@@ -1158,6 +1168,9 @@ pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Resu
     if !spawns && !resets && target.as_deref() == Some(me) {
         return Ok(());
     }
+    // Review fix 3 (A2): a row that points back up its own sender's chain (a worker dispatching to its
+    // coordinator, or further up) grants nothing and demotes nobody: it is left out of every check here.
+    let dispatches = &dispatches_in_order(dispatches);
     let worker = dispatches.iter().any(|d| terminal_of(d).as_deref() == Some(me));
     if !worker {
         return Ok(());
@@ -1197,6 +1210,32 @@ pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Resu
     }
 }
 
+/// The dispatch rows in the order they were made, without those that point back up their sender's own
+/// chain: a row `{terminal: T, fromTerminal: F}` is dropped when, following only EARLIER kept rows from F
+/// to the pane that dispatched it (and on up), the walk reaches T. The first row of a pair always wins.
+fn dispatches_in_order(dispatches: &[Value]) -> Vec<Value> {
+    use crate::orchestration::terminal_of;
+    let mut kept: Vec<Value> = Vec::with_capacity(dispatches.len());
+    for d in dispatches {
+        let (Some(to), Some(from)) = (terminal_of(d), d["fromTerminal"].as_u64().map(|n| format!("term-{n}"))) else {
+            kept.push(d.clone());
+            continue;
+        };
+        let mut at = from;
+        let mut seen = std::collections::HashSet::new();
+        let mut cyclic = at == to;
+        while !cyclic && seen.insert(at.clone()) {
+            let Some(up) = kept.iter().find(|k| terminal_of(k).as_deref() == Some(at.as_str())).and_then(|k| k["fromTerminal"].as_u64()) else { break };
+            at = format!("term-{up}");
+            cyclic = at == to;
+        }
+        if !cyclic {
+            kept.push(d.clone());
+        }
+    }
+    kept
+}
+
 /// The scope check as `dispatch` runs it: only a terminal command that carries a pane needs the
 /// dispatches, so every other command never loads them.
 fn scoped(ctx: &Ctx, req: &Request) -> Result<(), Fail> {
@@ -1208,7 +1247,9 @@ fn scoped_with(ctx: &Ctx, req: &Request, by_key: &dyn Fn(&str) -> Option<String>
     if req.pane.is_none() || (pane_target(req).is_none() && !starts_program(req) && !resets_dispatches(req)) {
         return Ok(());
     }
-    let me = caller_with(req, by_key).ok().flatten();
+    // Review fix 3 (A4): a pane key that does not prove the caller (a mismatched `from`) is refused,
+    // never treated as a call with no pane.
+    let me = caller_with(req, by_key)?;
     if me.is_none() {
         return Ok(());
     }
@@ -8153,6 +8194,78 @@ mod tests {
         }
         save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running")]).unwrap();
         Ctx { claude_config: dir.join(".claude.json"), git: git_, store, terminals, notify, front: &|| Ok(()) }
+    }
+
+    /// Review fix 3 (A1): `worktree rm` stops every terminal under the worktree, so a worker may not run it;
+    /// a coordinator may.
+    #[test]
+    fn t793_fix3_a_worker_cannot_remove_a_worktree() {
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        let rm = |who: (&str, &str)| pane_req("worktree.rm", Some(who), json!({ "worktree": "name:sibling", "force": true }));
+        let e = pane_scope(&rm(("term-2", "key-2")), Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope", "{}", e.message);
+        pane_scope(&rm(("term-1", "key-1")), Some("term-1"), &ds).unwrap();
+    }
+
+    /// Review fix 3 (A2): a worker that dispatches back up to its own coordinator gains nothing from the row:
+    /// it still cannot drive the coordinator, and the coordinator does not become a worker.
+    #[test]
+    fn t793_fix3_a_dispatch_back_up_the_chain_grants_and_demotes_nothing() {
+        // term-1 started term-2; term-2 started term-3; then term-2 and term-3 dispatch back up to term-1.
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 2, "running"), worker("d-3", 1, 2, "running"), worker("d-4", 1, 3, "running")];
+        let send = |who: &str, to: &str| pane_req("terminal.send", Some((who, "k")), json!({ "terminal": to, "text": "x" }));
+        assert_eq!(pane_scope(&send("term-2", "term-1"), Some("term-2"), &ds).unwrap_err().code, "pane_scope");
+        assert_eq!(pane_scope(&send("term-3", "term-1"), Some("term-3"), &ds).unwrap_err().code, "pane_scope");
+        // term-1 is still a coordinator: it may drive anyone, start programs and reset.
+        pane_scope(&send("term-1", "term-3"), Some("term-1"), &ds).unwrap();
+        pane_scope(&pane_req("orchestration.reset", Some(("term-1", "k")), json!({ "tasks": true })), Some("term-1"), &ds).unwrap();
+        // The worker still drives the worker it started itself.
+        pane_scope(&send("term-2", "term-3"), Some("term-2"), &ds).unwrap();
+        // A plain downward chain is untouched by the filter.
+        assert_eq!(dispatches_in_order(&ds[..2]).len(), 2);
+        assert_eq!(dispatches_in_order(&ds).len(), 2);
+    }
+
+    /// Review fix 3 (A3): an automation edit that changes when or where it runs, or its precheck command,
+    /// starts an agent (or that command) at the next fire; a worker may still rename one or turn it off.
+    #[test]
+    fn t793_fix3_a_worker_cannot_schedule_or_redirect_an_automation() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let edit = |args: Value| pane_req("automations.edit", Some(("term-2", "key-2")), args);
+        for args in [
+            json!({ "id": "a", "trigger": "* * * * *" }),
+            json!({ "id": "a", "enabled": true }),
+            json!({ "id": "a", "workspace": "path:/x" }),
+            json!({ "id": "a", "repo": "/x" }),
+            json!({ "id": "a", "workspaceMode": "new-per-run" }),
+            json!({ "id": "a", "precheck": "sh evil.sh" }),
+            json!({ "id": "a", "reuseSession": true }),
+            json!({ "id": "a", "time": "09:00" }),
+        ] {
+            assert_eq!(pane_scope(&edit(args.clone()), Some("term-2"), &ds).map_err(|e| e.code), Err("pane_scope"), "{args}");
+        }
+        for args in [json!({ "id": "a", "name": "renamed" }), json!({ "id": "a", "disabled": true }), json!({ "id": "a", "enabled": false })] {
+            pane_scope(&edit(args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{args}: {}", e.message));
+        }
+    }
+
+    /// Review fix 3 (A4): a request whose pane key does not prove the `from` it names is refused, never
+    /// treated as one with no pane (which is not scoped).
+    #[test]
+    fn t793_fix3_a_pane_that_does_not_prove_its_from_is_refused() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix3-from-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        let req = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x", "from": "term-1" }));
+        assert!(dispatch(&ctx, &req).is_err(), "a worker claiming to be term-1 must not reach term-3");
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Review fix 2 (N1): a worker may not reset the dispatch list (`--tasks`, `--all`): that would turn it into a coordinator.
