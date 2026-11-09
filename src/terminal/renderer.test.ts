@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { attachRenderer, GPU_FIELD, gpuOn, parkWhenHidden, PARK_AFTER_MS, resumeHook, watchResume, type RendererMode, type WebglLike } from "./renderer";
+import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, parkWhenHidden, PARK_AFTER_MS, resumeHook, watchResume, type RendererMode, type WebglLike } from "./renderer";
 
 function fakeWebgl(): WebglLike & { disposed: number; lose: () => void } {
   let lose = () => {};
@@ -230,4 +230,28 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     expect(resumeHook({})).toBeNull();
     expect(resumeHook(null)).toBeNull();
   });
+});
+
+test("every pane's resume watch rides one window-level heartbeat that runs only while a pane listens", () => {
+  const live = new Set<() => void>();
+  const timers = { every: (fn: () => void) => (live.add(fn), fn), stop: (h: unknown) => void live.delete(h as () => void) };
+  let now = 1_000_000;
+  const resumed = [0, 0];
+  const a = watchResume(() => resumed[0]++, () => now);
+  const b = watchResume(() => resumed[1]++, () => now);
+  const offA = onHeartbeat(a.tick, timers);
+  const offB = onHeartbeat(b.tick, timers);
+  expect(live.size).toBe(1); // one timer for both panes
+  now += 5_000;
+  live.forEach((fn) => fn());
+  now += 90_000; // the machine slept
+  live.forEach((fn) => fn());
+  expect(resumed).toEqual([1, 1]);
+  offA();
+  expect(live.size).toBe(1);
+  offB();
+  expect(live.size).toBe(0);
+  const offC = onHeartbeat(() => {}, timers);
+  expect(live.size).toBe(1);
+  offC();
 });

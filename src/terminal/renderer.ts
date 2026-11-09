@@ -191,3 +191,26 @@ export function watchResume(onResume: () => void, now: () => number = Date.now, 
     },
   };
 }
+
+/** How often the window's one heartbeat ticks (watchResume reads a gap over 30 s as a sleep). */
+export const HEARTBEAT_MS = 5000;
+
+const heartTimers = { every: (fn: () => void, ms: number): unknown => setInterval(fn, ms), stop: (h: unknown) => clearInterval(h as ReturnType<typeof setInterval>) };
+const heartbeats = new Map<object, { fns: Set<() => void>; handle: unknown }>();
+
+/** One window-level heartbeat for every pane's resume watch, instead of an interval per pane; the
+ *  timer runs only while a pane listens. Returns the leave. */
+export function onHeartbeat(fn: () => void, timers: { every: (fn: () => void, ms: number) => unknown; stop: (h: unknown) => void } = heartTimers): () => void {
+  let set = heartbeats.get(timers);
+  if (!set) heartbeats.set(timers, (set = { fns: new Set(), handle: null }));
+  const beat = set;
+  beat.fns.add(fn);
+  beat.handle ??= timers.every(() => beat.fns.forEach((f) => f()), HEARTBEAT_MS);
+  return () => {
+    beat.fns.delete(fn);
+    if (beat.fns.size === 0 && beat.handle !== null) {
+      timers.stop(beat.handle);
+      beat.handle = null;
+    }
+  };
+}

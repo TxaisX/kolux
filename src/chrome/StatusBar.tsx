@@ -4,7 +4,7 @@
 // items or hide it; Settings > Appearance brings it back.
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { formatMemory } from "../status/memory";
+import { formatMemory, pollWhileVisible } from "../status/memory";
 import ResourceManager from "../status/ResourceManager";
 import { Chip, Cup, Plug, Shell } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
@@ -52,11 +52,11 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
     if (!shows("memory")) return;
     let live = true;
     const tick = () => invoke<number | null>("process_memory").then((b) => live && setMemory(b)).catch(() => {});
-    tick();
-    const t = setInterval(tick, 2000);
+    // Asked only while the window is visible: a minimised Kolux makes no call every two seconds.
+    const stop = pollWhileVisible(tick, 2000);
     return () => {
       live = false;
-      clearInterval(t);
+      stop();
     };
   }, [hidden.includes("memory")]);
   // VIEW-096: a right-click inside an item's popover belongs to the popover, not to the bar.

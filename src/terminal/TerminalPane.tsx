@@ -29,7 +29,7 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, parkWhenHidden, resumeHook, watchResume, type RendererMode } from "./renderer";
+import { attachRenderer, onHeartbeat, parkWhenHidden, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
@@ -1303,7 +1303,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       resize();
     };
     const sleep = watchResume(wake);
-    const beat = setInterval(sleep.tick, 5000);
+    const beat = onHeartbeat(sleep.tick); // one window-level 5 s timer for every pane
     const scale = watchScale(wake);
     // TERM-114: the window coming back puts typing in the pane that had it, unless the user
     // clicked somewhere else meanwhile.
@@ -1331,7 +1331,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       selected.dispose();
       mode.dispose();
       queries.dispose();
-      clearInterval(beat);
+      beat();
       scale.dispose();
       window.removeEventListener("focus", refocus);
       termRef.current = null;
