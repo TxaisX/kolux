@@ -44,7 +44,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 toml_edit = "0.25"
 rusqlite = { version = "0.37", features = ["bundled"] }
 portable-pty = "0.9"
-base64 = "0.22"
+base64 = "0.23"
 tauri-plugin-dialog = "2"
 # USAGE-009: usage alerts are system notifications, sent from the Rust side.
 tauri-plugin-notification = "2"
