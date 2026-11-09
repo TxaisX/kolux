@@ -30,7 +30,7 @@ The goal was to move every dependency with a new major version up to it, keep CI
 | `cargo clippy --all-targets -- -D warnings` | clean |
 | `cargo deny check` | advisories, bans, licences, sources ok |
 | Full `cargo test` (test-env.ps1) | 3,197 tests in 23 groups, 0 failed. An earlier run had one load-timing failure (`after696`, terminal service stop on update) that passed 3 of 3 alone and in the full re-run. |
-| CI on GitHub | see the run on the pushed commit |
+| CI on GitHub | green: types and licences, Rust tests and lints, all 4 front-end shards |
 
 ## Not done
 
