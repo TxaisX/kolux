@@ -47,6 +47,7 @@ import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
 import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
+import { blinkRest } from "./blinkRest";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
@@ -501,6 +502,16 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     applyKoluxUnicode(term); // T-308 / TERM-104: Unicode 16 widths and emoji sequences (xterm alone knows Unicode 6)
     term.open(el);
     termRef.current = term;
+    // DT-C231: a blinking cursor holds steady after a few seconds with no input (each blink redraws the
+    // pane); typing, a click or focus makes it blink again. The setting itself stays the user's.
+    const blink = blinkRest((on) => {
+      if (term.options.cursorBlink !== on) term.options.cursorBlink = on;
+    });
+    blink.want(currentText().blink);
+    const pokeBlink = () => blink.poke();
+    const blinkInput = term.onData(pokeBlink);
+    term.textarea?.addEventListener("focus", pokeBlink);
+    el.addEventListener("mousedown", pokeBlink);
     // TERM-107 (T-566): the first key or click from mount on clears the restored mark; no restore step runs first.
     const pane = box.current;
     const unmark = () => {
@@ -1215,7 +1226,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // SET-022 / SET-025: open terminals follow the text, cursor and history settings.
     const retext = () => {
       // ACCT-059 vs SET-025: the settled scrollback in the one assignment (xterm trims on every change).
-      Object.assign(term.options, paneOptionsOf(currentText(), profileRows), termFont());
+      const { cursorBlink, ...settled } = paneOptionsOf(currentText(), profileRows);
+      Object.assign(term.options, settled, termFont());
+      blink.want(cursorBlink === true); // DT-C231: a resting cursor stays steady
       feel();
       settleLigatures();
       resize();
@@ -1347,6 +1360,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       el.removeEventListener("mouseenter", hover);
       el.removeEventListener("mousedown", dragDown);
       el.removeEventListener("mousemove", dragMove);
+      el.removeEventListener("mousedown", pokeBlink);
+      term.textarea?.removeEventListener("focus", pokeBlink);
+      blinkInput.dispose();
+      blink.stop();
       unwatchPointer();
       screenChange.dispose();
       ligatures?.dispose();
