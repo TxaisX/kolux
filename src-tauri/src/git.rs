@@ -268,9 +268,20 @@ fn parse_listing(listing: &[u8], scoped: bool) -> Vec<(String, String)> {
         if entry.is_empty() {
             continue;
         }
-        let entry = String::from_utf8_lossy(entry);
-        let (key, value) = entry.split_once('\n').unwrap_or((&entry, ""));
-        found.push((key.to_string(), value.trim_end_matches('\r').to_string()));
+        let (key, value) = match entry.iter().position(|b| *b == b'\n') {
+            Some(i) => (&entry[..i], &entry[i + 1..]),
+            None => (entry, &entry[..0]),
+        };
+        // Review fix 8 follow-up (P1): a key that is not valid text cannot be blanked by name (the environment
+        // carries text, and the lossy spelling names a key that does not exist while the real one stays live),
+        // so the listing records it under `UNREADABLE_KEY` and an untrusted run is refused instead.
+        let Ok(key) = std::str::from_utf8(key) else {
+            if !found.iter().any(|(k, _)| k == UNREADABLE_KEY) {
+                found.push((UNREADABLE_KEY.to_string(), String::from_utf8_lossy(key).into_owned()));
+            }
+            continue;
+        };
+        found.push((key.to_string(), String::from_utf8_lossy(value).trim_end_matches('\r').to_string()));
     }
     found
 }
@@ -599,6 +610,29 @@ const INCOMPLETE_KEY: &str = "kolux.listing-incomplete";
 
 fn incomplete(found: &[(String, String)]) -> bool {
     found.iter().any(|(k, _)| k == INCOMPLETE_KEY)
+}
+
+/// Review fix 8 follow-up (P1): the key a listing carries when a program key of the folder's own is not valid
+/// text (its value: that key, lossily spelled, for the message). Such a key cannot be blanked (see
+/// `parse_listing`), so every run in the folder is refused until the folder is trusted.
+const UNREADABLE_KEY: &str = "kolux.listing-unreadable";
+
+/// The refusal for an untrusted run in a folder whose listing carries `UNREADABLE_KEY`; None otherwise.
+fn unreadable_program_key(found: &[(String, String)], dir: &Path) -> Option<String> {
+    let (_, key) = found.iter().find(|(k, _)| k == UNREADABLE_KEY)?;
+    if folder_trusted(dir) {
+        return None;
+    }
+    Some(format!("the folder's git config names a program under a key that is not readable text ({key}), which Kolux cannot switch off"))
+}
+
+/// A git read Kolux refuses (see `command`): a process that cannot start, since its program does not exist,
+/// with the reason in `KOLUX_REFUSAL` for anyone who inspects it. `command` returns a Command, not a Result,
+/// so a refusal there has to be one that never runs git.
+fn never_runs(reason: &str) -> Command {
+    let mut cmd = Command::new("kolux-refused-git-read");
+    cmd.env("KOLUX_REFUSAL", reason);
+    cmd
 }
 
 /// The program keys the repository (and every submodule) names, for a git run in `cwd`; `prefix`
@@ -989,8 +1023,9 @@ fn hooks_path_base(dir: &Path) -> PathBuf {
 }
 
 /// A git URL that names a repository on this computer: `file://`, or a path (git's rule: no `scheme://`
-/// and no `host:path` scp form; a single letter before the colon is a Windows drive, any letter: git takes
-/// `ä:/x` as a path too, review fix 8 follow-up P3).
+/// and no `host:path` scp form; before the colon, Git for Windows' own drive rule (`has_dos_drive_prefix`):
+/// any one ASCII byte, or one to four bytes with the high bit set, so `ä:/x`, `1:x`, `_:x`, `€:x` and `😀:x`
+/// are paths to it, review fix 8 follow-up P3; Kolux applies the rule on every platform, fail-safe).
 fn is_local_url(url: &str) -> bool {
     let lower = url.to_ascii_lowercase();
     if lower.starts_with("file:") {
@@ -1001,8 +1036,16 @@ fn is_local_url(url: &str) -> bool {
     }
     match (url.find(':'), url.find(['/', '\\'])) {
         (Some(c), slash) if slash.is_none_or(|s| c < s) => {
-            let mut before = url[..c].chars();
-            matches!((before.next(), before.next()), (Some(drive), None) if drive.is_alphabetic())
+            let bytes = url.as_bytes();
+            if bytes[0] & 0x80 == 0 {
+                c == 1
+            } else {
+                let mut i = 1;
+                while i < 4 && i < bytes.len() && bytes[i] & 0x80 != 0 {
+                    i += 1;
+                }
+                c == i
+            }
         }
         _ => true,
     }
@@ -1193,6 +1236,9 @@ fn no_lazy_fetch(found: &[(String, String)], dir: &Path, pairs: &mut Vec<(String
 pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Command, String> {
     let Some(dir) = cwd else { return Ok(base_command(args, None, &[], &[])) };
     let found = repo_programs(leading_options(args), dir);
+    if let Some(what) = unreadable_program_key(&found, dir) {
+        return Err(refusal(args, dir, &what));
+    }
     let access = write_access(args, dir, &found)?;
     let args = guarded(args, &found, access);
     let mut pairs = overrides_for(&found, access);
@@ -1220,6 +1266,9 @@ pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Comma
 pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
     debug_assert!(cwd.is_none() || !(writes_content(args) || network(args) || ref_write(args) || runs_hooks(args)), "git {args:?} writes, transfers or runs hooks: use git::command_checked");
     let found = cwd.map(|dir| repo_programs(leading_options(args), dir)).unwrap_or_default();
+    if let Some(what) = cwd.and_then(|dir| unreadable_program_key(&found, dir).map(|what| refusal(args, dir, &what))) {
+        return never_runs(&what);
+    }
     let args = guarded(args, &found, Access::Reads);
     let mut pairs = overrides_for(&found, Access::Reads);
     let mut env = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()).map(|net| net.env).unwrap_or_default();
@@ -4024,7 +4073,8 @@ mod tests {
         plain_git(&["add", ".gitattributes"], &dir);
         plain_git(&["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-qm", "attrs"], &dir);
         plain_git(&["config", &odd_key, "x"], &dir);
-        // A tracked file whose content changed: status re-hashes it, through the clean filter.
+        // A tracked file whose content changed: `diff` re-hashes it through the clean filter every time
+        // (`status` may trust a stat under load, which made the premise flaky: review follow-up P3).
         fs::write(dir.join("README.md"), "changed\n").unwrap();
         // The word as Kolux wrote it before, and as it writes it now.
         let old_word = format!("'{odd_key}='");
@@ -4042,15 +4092,15 @@ mod tests {
             let out = c.output().unwrap();
             (out.status.code(), String::from_utf8_lossy(&out.stdout).trim_end().to_string())
         };
-        // The premise: the one-word form made git run the program on a status.
-        with(&old_word, &["status", "--short"]);
+        // The premise: the one-word form made git run the program on a diff.
+        with(&old_word, &["diff"]);
         assert!(marker.exists(), "the premise: plain git splits '{odd_key}=' at the first = and runs the program");
         fs::remove_file(&marker).unwrap();
         // The split form: the full key, as one key, and nothing under `filter.a.clean`.
         let (_, listed) = with(&new_word, &["config", "--show-scope", "--get-regexp", "^filter\\.a"]);
         assert!(listed.lines().any(|l| l == format!("command\t{odd_key}")), "{listed}");
         assert_eq!(with(&new_word, &["config", "--get", "filter.a.clean"]).0, Some(1), "nothing was set under filter.a.clean");
-        with(&new_word, &["status", "--short"]);
+        with(&new_word, &["diff"]);
         assert!(!marker.exists(), "the split form still ran the program");
         // A quote in the key round-trips too.
         let quoted_key = "filter.it's.clean".to_string();
@@ -4058,17 +4108,69 @@ mod tests {
         let (_, listed) = with(&word, &["config", "--show-scope", "--get-regexp", "^filter\\.it"]);
         assert!(listed.lines().any(|l| l == format!("command\t{quoted_key}")), "{listed}");
         // Live through Kolux: the folder's odd key is found and blanked, the parent's (empty) list is extended
-        // in the split form, and the status runs nothing.
+        // in the split form, and the diff runs nothing. A positive control right before: the same diff still
+        // runs the program under the old word.
+        with(&old_word, &["diff"]);
+        assert!(marker.exists(), "the control: plain git still runs the program on this diff");
+        fs::remove_file(&marker).unwrap();
         ISOLATED.with(|i| i.set(true));
         PARENT_ENV_FOR_TEST.with(|p| *p.borrow_mut() = vec![("GIT_CONFIG_PARAMETERS".to_string(), String::new())]);
-        let cmd = command(&["status", "--short"], Some(&dir));
+        let cmd = command(&["diff"], Some(&dir));
         let parameters = cmd.get_envs().find(|(k, _)| *k == "GIT_CONFIG_PARAMETERS").and_then(|(_, v)| v).map(|v| v.to_string_lossy().into_owned()).unwrap_or_default();
         assert!(parameters.contains(&new_word), "{parameters}");
-        let status = run(&["status", "--short"], Some(&dir));
+        let diff = run(&["diff"], Some(&dir));
         PARENT_ENV_FOR_TEST.with(|p| p.borrow_mut().clear());
         ISOLATED.with(|i| i.set(false));
-        assert!(status.is_ok(), "{status:?}");
+        assert!(diff.is_ok(), "{diff:?}");
         assert!(!marker.exists(), "Kolux's git ran the folder's program through GIT_CONFIG_PARAMETERS");
+        let _ = fs::remove_file(&marker);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 8 follow-up (P1): a program key the folder spells in bytes that are not valid text cannot be
+    /// blanked by name: the environment carries text, so the lossy spelling blanks a key that does not exist
+    /// while the real one stays live (plain git with that blank runs the program on a diff: the premise). An
+    /// untrusted run in such a folder is refused, through `run` and through `command`, and nothing runs; a
+    /// trusted folder's run goes ahead as the user set it up.
+    #[test]
+    fn t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run() {
+        let dir = temp_repo("p8-utf8");
+        let marker = dir.join("..").join(format!("kolux-rs-p8-utf8-pwn-{}.txt", std::process::id()));
+        let _ = fs::remove_file(&marker);
+        let program = format!("echo PWNED >> \"{}\"; cat #", marker.to_string_lossy().replace('\\', "/"));
+        let config = dir.join(".git").join("config");
+        let mut bytes = fs::read(&config).unwrap();
+        bytes.extend_from_slice(b"[filter \"a\xff\"]\n\tclean = ");
+        bytes.extend_from_slice(program.as_bytes());
+        bytes.push(b'\n');
+        fs::write(&config, bytes).unwrap();
+        fs::write(dir.join(".gitattributes"), b"* filter=a\xff\n").unwrap();
+        fs::write(dir.join("README.md"), "changed\n").unwrap();
+        // The premise: the lossy name blanked (as a slot, the one form the environment has), plain git still runs
+        // the program the real key names.
+        let mut plain = Command::new("git");
+        plain.args(["diff"]).current_dir(&dir).env("GIT_CONFIG_COUNT", "1").env("GIT_CONFIG_KEY_0", "filter.a\u{FFFD}.clean").env("GIT_CONFIG_VALUE_0", "").env_remove("GIT_CONFIG_PARAMETERS");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            plain.creation_flags(0x0800_0000);
+        }
+        plain.output().unwrap();
+        assert!(marker.exists(), "the premise: blanking the lossy name leaves the real key live");
+        fs::remove_file(&marker).unwrap();
+        // Kolux, untrusted: neither route runs git in the folder.
+        let diff = run(&["diff"], Some(&dir));
+        let spawned = command(&["diff"], Some(&dir)).output();
+        assert!(!marker.exists(), "Kolux's git ran the program under a key it could not blank");
+        let why = diff.expect_err("a read under an unreadable program key is refused");
+        plain_message(&why, "diff");
+        assert!(why.contains("not readable text") && why.contains("filter.a") && why.contains(".clean"), "{why}");
+        assert!(spawned.is_err(), "a refused read's command never starts");
+        let found = repo_programs(&[], &dir);
+        assert!(found.iter().any(|(k, _)| k == UNREADABLE_KEY), "{found:?}");
+        // Trusted: the folder's programs are the user's own.
+        trust_for_test(&dir);
+        assert!(run(&["diff"], Some(&dir)).is_ok());
         let _ = fs::remove_file(&marker);
         let _ = fs::remove_dir_all(&dir);
     }
@@ -4256,11 +4358,11 @@ mod tests {
 
     #[test]
     fn t779e_local_urls_are_told_from_remote_ones() {
-        // `ä:/x` and `Ω:x`: git takes a single letter before the colon as a drive, whatever the alphabet (P3).
-        for u in ["/srv/x.git", "./evil.git", ".", "..", "file:///x", "C:/repos/x", r"C:\repos\x", "relative/path", "ä:/x", "Ω:x", "d:"] {
+        // Git for Windows' drive rule: one ASCII byte, or one to four high-bit bytes, before the colon (P3).
+        for u in ["/srv/x.git", "./evil.git", ".", "..", "file:///x", "C:/repos/x", r"C:\repos\x", "relative/path", "ä:/x", "Ω:x", "d:", "1:x", "_:x", "ää:x", "€:x", "😀:x"] {
             assert!(is_local_url(u), "{u}");
         }
-        for u in ["https://github.com/a/b", "ssh://h/x", "git@github.com:a/b.git", "host:path", "ab:/x", "äb:/x"] {
+        for u in ["https://github.com/a/b", "ssh://h/x", "git@github.com:a/b.git", "host:path", "ab:/x", "äb:/x", "😀a:x", "ääa:x"] {
             assert!(!is_local_url(u), "{u}");
         }
     }

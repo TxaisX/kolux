@@ -160,3 +160,51 @@ cargo clippy -j 2 --all-targets -- -D warnings: Finished, exit 0
 cargo test -j 2 --lib git:: -> test result: ok. 81 passed; 0 failed; 0 ignored (was 80: +1 new test)
 cargo test -j 2 --lib t779 -> 54 passed (was 53: +1 new test)
 Full suite skipped on the coordinator's instruction (run after merge).
+
+==================================================================================================
+== T-779 fix 8 follow-up 2 (re-review of cf8439d6: pre-existing P1 unreadable key, P3 flaky, P3 drive rule) ==
+==================================================================================================
+P1: parse_listing read keys with String::from_utf8_lossy. A key in bytes that are not valid text
+  (`[filter "a\xff"] clean = <program>` + `.gitattributes` `* filter=a\xff`) was blanked under the U+FFFD
+  spelling (a key that does not exist) and the real key stayed live. The environment carries text only, so the
+  key cannot be blanked at all. Fix: parse_listing splits key/value on bytes, a key that fails from_utf8 is
+  recorded once as kolux.listing-unreadable (value = lossy key); unreadable_program_key(found, dir) gives the
+  refusal for an untrusted folder; command_checked returns Err(refusal) (so run/output refuse with the DT-C229
+  message), command() returns never_runs(reason): a process whose program does not exist (`kolux-refused-git-read`,
+  env KOLUX_REFUSAL=<reason>), so the 4 direct spawners (files.rs, scm_watch.rs, editor_search.rs, newproject.rs)
+  get a spawn error and nothing runs in the folder. A trusted folder runs as before. Applies to every family the
+  listing covers (one listing, REPO_PROGRAM_KEYS: filter/diff/merge/gpg/credential/hooks/pack/...): the check is on
+  the key bytes, before any family logic.
+  Test: t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run
+    premise: plain git with GIT_CONFIG_KEY_0=filter.a<U+FFFD>.clean blanked runs the program on `diff` (marker written)
+    Kolux: run(diff) -> Err containing "not readable text", "filter.a", ".clean" (plain_message shape);
+           command(diff).output() -> Err (never started); marker absent; listing carries kolux.listing-unreadable;
+           trust_for_test(dir) -> run(diff) Ok.
+P3 flaky: t779_a_forced_key_with_an_equals_sign_stays_one_key now uses `diff` (re-hashes the changed file every
+  time) for the premise, the negative check, and the live Kolux check, with a positive control (old word, plain git,
+  marker written) right before the live negative. Other new marker tests use push hooks (deterministic) or `diff`.
+P3 drive rule: is_local_url before the first ':' follows Git for Windows' has_dos_drive_prefix: one ASCII byte, or
+  one to four high-bit bytes -> local. Test t779e_local_urls_are_told_from_remote_ones: local now also 1:x, _:x, ää:x,
+  €:x, 😀:x; remote also 😀a:x, ääa:x (plus ab:/x, äb:/x, host:path).
+
+== RED (old parse_listing lossy read and old single-letter drive rule restored temporarily, marked RED PROOF) ==
+cargo test -j 2 --lib -- not_valid_text local_urls_are_told
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... FAILED
+test git::tests::t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run ... FAILED
+thread 'git::tests::t779e_local_urls_are_told_from_remote_ones' panicked at src\git.rs:4349:13:
+1:x
+thread 'git::tests::t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run' panicked at src\git.rs:4150:9:
+Kolux's git ran the program under a key it could not blank
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 3035 filtered out
+== RESTORE == cp of the saved green copy; cmp: identical to green copy; RED PROOF marks: 0
+== GREEN: three consecutive `cargo test -j 2 --lib t779` runs ==
+run 1: test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 37.91s
+run 2: test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 27.78s
+run 3: test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 27.80s
+test git::tests::t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run ... ok
+test git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key ... ok
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... ok
+== GATES ==
+cargo clippy -j 2 --all-targets -- -D warnings: Finished `dev` profile [unoptimized + debuginfo] target(s) in 31.52s, exit 0
+cargo test -j 2 --lib git:: -> test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 2955 filtered out; finished in 30.57s (was 81: +1 new test)
+Full suite skipped on the coordinator's instruction (run after merge).
