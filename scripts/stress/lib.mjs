@@ -2,6 +2,7 @@
 // memory snapshots, in-page probes, statistics and the result record. A scenario returns checks; run.mjs writes them.
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createApp } from "../evidence/app-launch.mjs";
 
 export const TERM = "section.pane[data-agent]";
@@ -88,12 +89,26 @@ export async function gitInit(app, dir, name = "stress") {
   await g(["add", "."]);
   await g(["commit", "-q", "-m", "stress"]);
 }
+export const CHOOSER = "section.pane.chooser";
+// Same path as scripts/evidence/smoke.mjs: the sidebar's "Add project" button, its "type a path" link, the folder field, then the launch
+// chooser (a new project opens the chooser, not a shell) where Terminal is picked in seat 1 and Start pressed.
 export async function addProjectAndOpen(app, repo) {
-  await app.waitFor("the sidebar", () => app.exists('.sb-foot button[title^="Add a project by path"]'), 30000);
-  await app.click('.sb-foot button[title^="Add a project by path"]');
+  await app.waitFor("the sidebar", () => app.exists('aside.sidebar button[aria-label="Add project"]'), 30000);
+  await app.click('aside.sidebar button[aria-label="Add project"]');
+  await app.waitFor("the add-by-path link", () => app.exists("button[data-add-by-path]"), 5000);
+  await app.click("button[data-add-by-path]");
   await app.waitFor("the project folder field", () => app.exists('input[aria-label="project folder"]'), 5000);
   await app.focusField('input[aria-label="project folder"]');
   await app.cdp("insert", repo, "enter");
+  await app.waitFor("the launch chooser", async () => (await app.shown(CHOOSER)) >= 1, 30000);
+  const seat = `${CHOOSER} [role="group"][aria-label="Seat 1: which AI"] button`;
+  const isTerminal = (extra = "") => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(seat)})].some(b => /^\\s*Terminal\\s*$/.test(b.textContent)${extra})`);
+  await app.waitFor("the chooser's Terminal choice", () => isTerminal(), 30000);
+  await app.clickWhere(seat, "/^\\s*Terminal\\s*$/");
+  await app.waitFor("Terminal picked in seat 1", () => isTerminal(' && b.getAttribute("aria-pressed") === "true"'), 5000);
+  const start = `${CHOOSER} button.btn.primary`;
+  await app.waitFor("the chooser's Start button", () => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some(b => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
+  await app.clickWhere(start, "/^\\s*Start\\s*$/");
   await app.waitFor("the first shell pane", async () => (await app.shown(TERM)) >= 1, 30000);
   await app.waitFor("the first pane's input field", () => app.exists(`${TERM} .xterm-helper-textarea`), 30000);
 }
@@ -162,3 +177,68 @@ export async function typeInto(app, index, text, sel = TERM) {
   await app.focusPane(sel, index, ".xterm-helper-textarea");
   await app.cdp("insert", text, "enter");
 }
+
+// ---------- app footprint (S11) ----------
+// The app's own processes only: the window kolux-rs.exe, the detached terminal service kolux-rs.exe and every msedgewebview2.exe
+// under the window. Shells, conhost and agents are not the app. Private bytes = Win32_Process PrivatePageCount.
+const FOOTPRINT_PS = fileURLToPath(new URL("./footprint-sample.ps1", import.meta.url));
+export const FOOTPRINT_ROLES = ["window", "service", "wv-browser", "renderer", "gpu-process", "utility", "crashpad-handler"];
+const MB = 1048576;
+// Samples `windowS` seconds (a tick every `intervalS`) and returns { cores, perRole: {role: {n, wsMB, privMB, cpuCorePct, cpuTotalPct, gpuDedMB, gpuSharedMB, gpuCommitMB, gpuEngPct, handles, threads}}, ticks }.
+export async function footprint(app, windowS = 60, intervalS = 2) {
+  const match = slash(app.temp);
+  const r = await app.run("powershell", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", FOOTPRINT_PS, "-AppPid", String(app.pid), "-ServiceMatch", match, "-WindowS", String(windowS), "-IntervalS", String(intervalS)], { timeout: (windowS + 180) * 1000 });
+  const j = JSON.parse(r.stdout);
+  const cores = j.cores;
+  const gpuByPid = j.gpu ?? {};
+  const ticks = (Array.isArray(j.ticks) ? j.ticks : [j.ticks]).map((t) => ({ t: Date.parse(t.t), procs: Array.isArray(t.procs) ? t.procs : t.procs ? [t.procs] : [] }));
+  const roles = new Set(ticks.flatMap((t) => t.procs.map((p) => p.role)));
+  const roleList = [...roles, "total"];
+  const pidRole = new Map(ticks.flatMap((t) => t.procs.map((p) => [String(p.pid), p.role])));
+  const gpuOf = (role) => {
+    if (!j.gpuRows) return { gpuDedMB: NaN, gpuSharedMB: NaN, gpuCommitMB: NaN, gpuEngPct: NaN };
+    let ded = 0, shared = 0, commit = 0, eng = 0;
+    for (const [pid, g] of Object.entries(gpuByPid)) if (role === "total" || pidRole.get(pid) === role) { ded += g.ded; shared += g.shared; commit += g.commit; eng += g.eng; }
+    return { gpuDedMB: ded / MB, gpuSharedMB: shared / MB, gpuCommitMB: commit / MB, gpuEngPct: eng };
+  };
+  const perRole = {};
+  for (const role of roleList) {
+    const sel = (t) => t.procs.filter((p) => role === "total" || p.role === role);
+    const mean = (f) => ticks.reduce((a, t) => a + sel(t).reduce((b, p) => b + f(p), 0), 0) / ticks.length;
+    let cpu100 = 0;
+    let secs = 0;
+    for (let i = 1; i < ticks.length; i++) {
+      const prev = new Map(ticks[i - 1].procs.map((p) => [p.pid, p]));
+      for (const p of sel(ticks[i])) if (prev.has(p.pid)) cpu100 += Math.max(0, p.cpu100ns - prev.get(p.pid).cpu100ns);
+      secs += (ticks[i].t - ticks[i - 1].t) / 1000;
+    }
+    const core = secs > 0 ? (cpu100 / 1e7 / secs) * 100 : NaN;
+    perRole[role] = {
+      n: mean((p) => 1),
+      wsMB: mean((p) => p.ws) / MB,
+      privMB: mean((p) => p.priv) / MB,
+      cpuCorePct: core,
+      cpuTotalPct: core / cores,
+      ...gpuOf(role),
+      handles: mean((p) => p.handles),
+      threads: mean((p) => p.threads),
+    };
+  }
+  if (!j.gpuRows) console.log(`  warn: no GPU counter rows this window (${String(j.gpuErr ?? "").slice(0, 200)})`);
+  return { cores, gpuRows: j.gpuRows ?? 0, gpuErr: j.gpuErr ?? "", perRole, ticks: ticks.length, seconds: ticks.length > 1 ? (ticks[ticks.length - 1].t - ticks[0].t) / 1000 : 0 };
+}
+
+// The page's own numbers: JS heap, canvases (a WebGL context is one canvas), pane and xterm element counts.
+export const PAGE_STATS_JS = `(() => {
+  const m = performance.memory || {};
+  const q = (s) => document.querySelectorAll(s).length;
+  return { jsHeapUsedMB: (m.usedJSHeapSize || 0) / 1048576, jsHeapTotalMB: (m.totalJSHeapSize || 0) / 1048576, canvases: q("canvas"), panes: q("section.pane[data-agent]"), shownPanes: [...document.querySelectorAll("section.pane[data-agent]")].filter((e) => e.offsetParent !== null).length, domNodes: document.getElementsByTagName("*").length };
+})()`;
+
+// Minimize / restore the app's window (Win32 ShowWindow: 6 = SW_MINIMIZE, 9 = SW_RESTORE). Returns whether the window is iconic after.
+export const showWindow = (app, cmd) =>
+  app.ps(
+    `Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h,int c); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);' -Name W -Namespace K11
+     $h = (Get-Process -Id ${app.pid}).MainWindowHandle
+     [K11.W]::ShowWindow($h, ${cmd}) | Out-Null; Start-Sleep -Milliseconds 800; "iconic=" + [K11.W]::IsIconic($h)`,
+  );
