@@ -2,8 +2,8 @@
 // time it is opened, so a Terminals screen does not carry the settings pages, the note renderer, the plan
 // sheet or the editor into the window's first frame (cycle 3, first load). Every name here is the module's
 // own export, so a caller swaps its import line and nothing else changes: `deferred` keeps the place the
-// element sits in, and `prefetch()` reads the code in the background once the window is up, so opening one
-// stays instant.
+// element sits in. DT-C230: `prefetch()` reads the settings page and the plan sheet (no placeholder) at the
+// first idle moment and every other surface about ten seconds after start; one opened before that loads then.
 import { createElement, type ComponentProps, type ComponentType } from "react";
 import { deferred } from "./deferred";
 
@@ -11,10 +11,10 @@ import { deferred } from "./deferred";
 const loading = createElement("div", { className: "empty", role: "status" }, "Loading…");
 
 /** ORCH-020 / SESS-025: the plan sheet a finished agent's plan is reviewed in. */
-export const PlanSheet = deferred(() => import("../terminal/PlanSheet"));
+export const PlanSheet = deferred(() => import("../terminal/PlanSheet"), undefined, { prefetch: true }); // DT-C230: no placeholder
 
 // Settings, and the two notices that sit on it.
-export const SettingsPage = deferred(() => import("../settings/SettingsPage"));
+export const SettingsPage = deferred(() => import("../settings/SettingsPage"), undefined, { prefetch: true }); // DT-C230: no placeholder
 export const RoutingPage = deferred(() => import("../settings/RoutingPage"), loading);
 export const SignInNotice = deferred(() => import("../settings/SignInNotice"));
 export const KeyLostNotice = deferred(() => import("../settings/KeyLostNotice"));

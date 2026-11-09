@@ -26,8 +26,9 @@ import { WorkspaceBoard } from "../../lazy/pages";
 import { FolderRenameAsk } from "../../lazy/pages";
 import { TrustPrompt } from "../../lazy/pages";
 
-/** The tab menu (TERM-044..TERM-049) loads on its first right-click, not at start (bundle-budget.mjs). */
-const TabMenu = deferred(() => import("./TabMenuView"));
+/** The tab menu (TERM-044..TERM-049) is not in the start bundle (bundle-budget.mjs); it has no placeholder,
+ *  so it is read at the first idle moment after start (DT-C230) and the first right-click draws it at once. */
+const TabMenu = deferred(() => import("./TabMenuView"), undefined, { prefetch: true });
 
 export default function WindowDialogs() {
   const {
