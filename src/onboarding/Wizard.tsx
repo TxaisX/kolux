@@ -19,6 +19,7 @@ import type { AgentInfo } from "../launch/PlusMenu";
 import { sessionAgent } from "./sessionAgent";
 import { HOOKS_LINE, hooksDefault, recordHooks, recordsHooks } from "./hooksOn";
 import { useSettings } from "../settings/useSettings";
+import { usePulseRest } from "../chrome/pulseRest";
 
 const inWizard = (t: EventTarget | null) => t instanceof Element && t.closest(".onb") !== null;
 
@@ -106,6 +107,8 @@ export function WizardView(p: ViewProps) {
   const choices = p.choices ?? [];
   const pick = choices.find((c) => c.id === p.choice) ?? choices[0];
   const main = ["Get started", "Continue", "Continue", lastMain(hasFolder, pick?.id === TERMINAL_ID)][p.at];
+  // DT-C239: the tiles' "at work" dots rest after a while with no input (each pulse frame redraws the blurred backdrop).
+  const [resting, tiles] = usePulseRest<HTMLDivElement>(p.at === 0);
   const secondary = [null, "I’ll do this later", hasFolder ? null : "Skip for now", null][p.at];
   return (
     <div className="ask-backdrop onb-backdrop" onMouseDown={(e) => e.button === 0 && e.target === e.currentTarget && p.onOutside?.()}>
@@ -129,7 +132,7 @@ export function WizardView(p: ViewProps) {
         <p className="onb-sub">{screen.sub}</p>
         <div className="onb-body">
           {p.at === 0 && (
-            <div className="onb-tiles">
+            <div ref={tiles} className={resting ? "onb-tiles resting" : "onb-tiles"}>
               {TILES.map((t) => (
                 <div key={t.ai} className="onb-tile" aria-label={`${t.ai} at work`}>
                   <span className="onb-dot" />

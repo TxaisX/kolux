@@ -1,0 +1,12 @@
+round 1 before     gpuCpu=19.99 rendererCpu=7.55 windowCpu=1.67 gpuEng=11.96 gpuPid=32712
+round 1 after      gpuCpu=0.10 rendererCpu=1.20 windowCpu=2.24 gpuEng=0.06 gpuPid=32712
+round 1 noWizard   gpuCpu=0.00 rendererCpu=1.51 windowCpu=1.87 gpuEng=0.00 gpuPid=32712
+round 2 before     gpuCpu=20.72 rendererCpu=7.34 windowCpu=2.08 gpuEng=5.76 gpuPid=32712
+round 2 after      gpuCpu=0.10 rendererCpu=1.04 windowCpu=1.77 gpuEng=0.04 gpuPid=32712
+round 2 noWizard   gpuCpu=0.47 rendererCpu=1.25 windowCpu=2.08 gpuEng=0.00 gpuPid=32712
+round 3 before     gpuCpu=21.60 rendererCpu=6.25 windowCpu=1.77 gpuEng=5.86 gpuPid=32712
+round 3 after      gpuCpu=0.73 rendererCpu=1.56 windowCpu=1.87 gpuEng=0.04 gpuPid=32712
+round 3 noWizard   gpuCpu=0.10 rendererCpu=0.73 windowCpu=1.35 gpuEng=0.00 gpuPid=32712
+MEAN before     gpuCpu=20.77 rendererCpu=7.05 gpuEng=7.86 (n=3)
+MEAN after      gpuCpu=0.31 rendererCpu=1.27 gpuEng=0.05 (n=3)
+MEAN noWizard   gpuCpu=0.19 rendererCpu=1.16 gpuEng=0.00 (n=3)
