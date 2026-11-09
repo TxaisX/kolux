@@ -838,32 +838,66 @@ fn hook_in_the_way(args: &[&str], found: &[(String, String)]) -> Option<(String,
     found.iter().filter(|(k, _)| k == HOOKS_KEY).find_map(|(_, dir)| wanted.iter().find(|h| hook_file(Path::new(dir), h)).map(|h| (h.to_string(), dir.clone())))
 }
 
-/// Review fix 5 (B2): a push from an untrusted folder that could land in a repository on this computer.
-/// The receiving repository runs its own hooks, filters, fsmonitor and gc with its own config, so instead
-/// of judging the target, any push is refused when its URL argument, or any push URL of ANY of the folder's
-/// remotes (git picks the remote through pushDefault/pushRemote, and pushes to every pushurl), is local.
-/// A listing that fails or does not answer refuses too. Some(the local URL or the reason), or None.
+/// Review fix 5/6 (B2): a push from an untrusted folder that could land in a repository on this computer.
+/// The receiving repository runs its own hooks, filters and gc under its own config, so instead of judging
+/// the target, the push is refused when any address it could use is local. git resolves the addresses:
+/// the repository argument (or, for a bare `push`, every remote git could pick: the branch's pushRemote,
+/// remote.pushDefault, the branch's remote, origin) through `git ls-remote --get-url`, which applies insteadOf
+/// and reads legacy remote files and contacts nothing; and every push URL (`--all`) of every listed remote.
+/// A name nothing resolves comes back as itself and counts as a path. A listing that fails refuses.
 fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
     let rest = after_options(args);
     if rest.first() != Some(&"push") {
         return None;
     }
-    let mut urls: Vec<String> = rest[1..].iter().filter(|a| !a.starts_with('-')).map(|a| a.to_string()).collect();
-    urls.extend(rest[1..].iter().filter_map(|a| a.strip_prefix("--repo=")).map(str::to_string));
     let listed = |args: &[&str]| -> Option<String> {
         let out = output_within(base_command(args, Some(dir), &[], &[]), LISTING_LIMIT)?;
         out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
     };
+    // The repository argument: `--repo=<r>`, else the first word after the options (after `--` too).
+    let mut repo = rest[1..].iter().find_map(|a| a.strip_prefix("--repo=")).map(str::to_string);
+    if repo.is_none() {
+        let mut words = rest[1..].iter().skip_while(|a| a.starts_with('-') && **a != "--");
+        repo = words.find(|a| **a != "--").map(|a| a.to_string());
+    }
+    let mut candidates: Vec<String> = Vec::new();
+    match repo {
+        Some(r) => candidates.push(r),
+        None => {
+            let branch = listed(&["symbolic-ref", "-q", "--short", "HEAD"]).map(|b| b.trim().to_string()).unwrap_or_default();
+            for key in [format!("branch.{branch}.pushRemote"), "remote.pushDefault".to_string(), format!("branch.{branch}.remote")] {
+                if let Some(v) = listed(&["config", "--get", &key]) {
+                    candidates.push(v.trim().to_string());
+                }
+            }
+            candidates.push("origin".to_string());
+        }
+    }
+    let mut urls: Vec<String> = Vec::new();
+    for c in candidates.iter().filter(|c| !c.is_empty()) {
+        let Some(url) = listed(&["ls-remote", "--get-url", c]) else { return Some(format!("the address of {c} could not be read")) };
+        urls.push(url.trim().to_string());
+    }
     let Some(remotes) = listed(&["remote"]) else { return Some("the folder's remotes could not be listed".into()) };
     for remote in remotes.lines().map(str::trim).filter(|r| !r.is_empty()) {
         let Some(push) = listed(&["remote", "get-url", "--push", "--all", remote]) else { return Some(format!("the push address of remote {remote} could not be read")) };
         urls.extend(push.lines().map(|l| l.trim().to_string()));
     }
-    // A bare argument that names a remote stands for its URLs (listed above); one that is not a remote and
-    // looks like a path is the URL itself.
-    let remote_names: Vec<&str> = remotes.lines().map(str::trim).collect();
-    let path_shaped = |u: &str| u.contains(['/', '\\', ':']) || u == "." || u == "..";
-    urls.into_iter().filter(|u| !u.is_empty() && !remote_names.contains(&u.as_str()) && path_shaped(u)).find(|u| is_local_url(u))
+    urls.into_iter().filter(|u| !u.is_empty()).find(|u| is_local_url(u))
+}
+
+/// Where git resolves a relative `core.hooksPath`: the worktree's top level, or the git dir of a bare
+/// repository (review fix 6; `rev-parse` runs no program). `dir` itself when neither can be read.
+fn hooks_path_base(dir: &Path) -> PathBuf {
+    for args in [&["rev-parse", "--show-toplevel"][..], &["rev-parse", "--absolute-git-dir"]] {
+        if let Some(out) = output_within(base_command(args, Some(dir), &[], &[]), LISTING_LIMIT).filter(|o| o.status.success()) {
+            let p = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !p.is_empty() {
+                return PathBuf::from(p);
+            }
+        }
+    }
+    dir.to_path_buf()
 }
 
 /// A git URL that names a repository on this computer: `file://`, or a path (git's rule: no `scheme://`
@@ -922,9 +956,6 @@ fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result
         if let Some((key, _)) = found.iter().find(|(k, _)| is_credential_key(k)) {
             return Err(refusal(args, dir, &format!("the folder sets its own credential helper ({key}), a program that is handed your sign-in details on every transfer")));
         }
-        if let Some(url) = local_push_target(args, dir) {
-            return Err(refusal(args, dir, &format!("the push could go to a repository on this computer ({url}), which runs programs of its own as it receives")));
-        }
         if let Some((key, _)) = found.iter().find(|(k, _)| is_pack_key(k)) {
             return Err(refusal(args, dir, &format!("the folder names its own program for the other end of a transfer ({key}), which git would run in place of its own")));
         }
@@ -941,7 +972,7 @@ fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result
     let with_hooks_path: Vec<(String, String)> = found
         .iter()
         .filter(|(k, _)| k == "core.hookspath")
-        .map(|(_, v)| (HOOKS_KEY.to_string(), if Path::new(v).is_absolute() { v.clone() } else { dir.join(v).to_string_lossy().into_owned() }))
+        .map(|(_, v)| (HOOKS_KEY.to_string(), if Path::new(v).is_absolute() { v.clone() } else { hooks_path_base(dir).join(v).to_string_lossy().into_owned() }))
         .chain(found.iter().cloned())
         .collect();
     if let Some((hook, folder)) = hook_in_the_way(args, &with_hooks_path) {
@@ -951,6 +982,9 @@ fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result
         if let Some((key, _)) = found.iter().find(|(k, _)| is_merge_driver_key(k)) {
             return Err(refusal(args, dir, &format!("the folder has its own merge driver ({key}), a program that runs when changes are merged")));
         }
+    }
+    if let Some(url) = local_push_target(args, dir) {
+        return Err(refusal(args, dir, &format!("the push could go to a repository on this computer ({url}), which runs programs of its own as it receives")));
     }
     Ok(Access::Reads)
 }
@@ -1026,22 +1060,19 @@ fn net_overrides(found: &[(String, String)], cwd: &Path, strict: bool) -> Result
     let mine = |key: &str| user.iter().rev().find(|(k, _)| k == key).map(|(_, v)| v.clone());
     for key in keys {
         match key {
-            "core.sshcommand" => {
-                if parent_env("GIT_SSH_COMMAND").is_none() {
-                    let value = mine(key).or_else(|| parent_env("GIT_SSH").map(|p| sh_quote(&p.to_string_lossy()))).unwrap_or_else(|| "ssh".to_string());
-                    net.env.push(("GIT_SSH_COMMAND", value));
-                }
+            // The parent process's own variable already wins over every config file: nothing to replace then.
+            "core.sshcommand" if parent_env("GIT_SSH_COMMAND").is_none() => {
+                let value = mine(key).or_else(|| parent_env("GIT_SSH").map(|p| sh_quote(&p.to_string_lossy()))).unwrap_or_else(|| "ssh".to_string());
+                net.env.push(("GIT_SSH_COMMAND", value));
             }
-            "core.gitproxy" => {
-                if parent_env("GIT_PROXY_COMMAND").is_none() {
-                    let value = match mine(key) {
-                        None => String::new(),
-                        Some(v) if !v.contains(" for ") => v,
-                        Some(_) if strict => return Err("the folder sets its own core.gitProxy, and your own git settings have a proxy rule for particular domains that Kolux could not keep while ignoring the folder's".to_string()),
-                        Some(_) => String::new(),
-                    };
-                    net.env.push(("GIT_PROXY_COMMAND", value));
-                }
+            "core.gitproxy" if parent_env("GIT_PROXY_COMMAND").is_none() => {
+                let value = match mine(key) {
+                    None => String::new(),
+                    Some(v) if !v.contains(" for ") => v,
+                    Some(_) if strict => return Err("the folder sets its own core.gitProxy, and your own git settings have a proxy rule for particular domains that Kolux could not keep while ignoring the folder's".to_string()),
+                    Some(_) => String::new(),
+                };
+                net.env.push(("GIT_PROXY_COMMAND", value));
             }
             _ => {}
         }
@@ -1077,6 +1108,10 @@ pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Comma
     // A trusted folder's own transfer programs are the user's to run; everywhere else they are replaced.
     if access == Access::Reads {
         env = net_overrides(&found, dir, network(&args)).map_err(|what| refusal(&args, dir, &what))?.env;
+        // Review fix 6: an untrusted push never pushes submodules (their remotes are not checked).
+        if after_options(&args).first() == Some(&"push") {
+            pairs.push(("push.recurseSubmodules".to_string(), "no".to_string()));
+        }
         if !network(&args) {
             no_lazy_fetch(&found, dir, &mut pairs, &mut env);
         }
@@ -3488,6 +3523,8 @@ mod tests {
     #[test]
     fn t779d_a_folders_own_merge_driver_refuses_merging_commands_until_trusted() {
         let dir = temp_repo("d-merge");
+        // A remote that is not on this computer, so `push origin` is judged only for its merge driver.
+        run(&["remote", "add", "origin", "https://example.com/a/b.git"], Some(&dir)).unwrap();
         run(&["config", "merge.evil.driver", "evil %O %A %B"], Some(&dir)).unwrap();
         for args in [&["merge", "side"][..], &["pull"], &["pull", "--rebase"], &["rebase", "main"], &["cherry-pick", "abc"], &["revert", "abc"], &["stash", "pop"]] {
             let why = refused(args, &dir).unwrap_or_else(|| panic!("{args:?} was not refused"));
@@ -3715,6 +3752,70 @@ mod tests {
         for d in [&dir, &dir2, &dir3, &payload] {
             let _ = fs::remove_dir_all(d);
         }
+    }
+
+    /// Review fix 6: the six ways the fifth round still reached a local repository, each from an untrusted folder.
+    #[test]
+    fn t779e_push_addresses_are_resolved_by_git_itself() {
+        let base = temp_repo("e-p6-src");
+        let payload = bare_copy(&base, "e-p6-payload");
+        let p = payload.to_string_lossy().replace('\\', "/");
+        let must = |dir: &Path, args: &[&str], what: &str| {
+            let why = refused(args, dir).unwrap_or_else(|| panic!("{what}: {args:?} was not refused"));
+            assert!(why.contains("on this computer"), "{what}: {why}");
+        };
+        // 1. No origin remote; insteadOf rewrites the word "origin" to the payload.
+        let d1 = temp_repo("e-p6-1");
+        run(&["config", &format!("url.{p}.insteadOf"), "origin"], Some(&d1)).unwrap();
+        must(&d1, &["push", "--set-upstream", "--", "origin", "main"], "insteadOf");
+        // 2, 3. Legacy remote files.
+        let d2 = temp_repo("e-p6-2");
+        fs::create_dir_all(d2.join(".git").join("remotes")).unwrap();
+        fs::write(d2.join(".git").join("remotes").join("origin"), format!("URL: {p}\n")).unwrap();
+        must(&d2, &["push", "origin", "main"], ".git/remotes");
+        let d3 = temp_repo("e-p6-3");
+        fs::create_dir_all(d3.join(".git").join("branches")).unwrap();
+        fs::write(d3.join(".git").join("branches").join("origin"), format!("{p}\n")).unwrap();
+        must(&d3, &["push", "origin", "main"], ".git/branches");
+        // 4. No remote at all: a bare word is a path to git.
+        let d4 = temp_repo("e-p6-4");
+        must(&d4, &["push", "origin", "main"], "a word that is no remote");
+        // 5. A bare push whose pushDefault (or the branch's remote) is a path.
+        let d5 = temp_repo("e-p6-5");
+        run(&["config", "remote.pushDefault", &p], Some(&d5)).unwrap();
+        must(&d5, &["push"], "pushDefault path");
+        let d5b = temp_repo("e-p6-5b");
+        run(&["config", "branch.main.remote", &p], Some(&d5b)).unwrap();
+        must(&d5b, &["push"], "branch remote path");
+        // 6. An untrusted push never recurses into submodules.
+        let cmd = command_checked(&["push", "https://example.com/a.git", "main"], Some(&d4)).unwrap();
+        assert!(blanked_keys(&cmd).iter().any(|k| k == "push.recurseSubmodules"));
+        // A remote-only folder is still not refused.
+        let ok = temp_repo("e-p6-ok");
+        run(&["remote", "add", "origin", "https://example.com/a/b.git"], Some(&ok)).unwrap();
+        assert!(refused(&["push", "--set-upstream", "--", "origin", "main"], &ok).is_none());
+        assert!(refused(&["push"], &ok).is_none());
+        for d in [&base, &payload, &d1, &d2, &d3, &d4, &d5, &d5b, &ok] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 6: a relative core.hooksPath is resolved against the worktree's top level, as git does, so a
+    /// gc run from a subfolder still sees the hook.
+    #[test]
+    fn t779e_a_relative_hooks_path_is_read_from_the_top_level() {
+        let dir = temp_repo("e-hp-sub");
+        fs::create_dir_all(dir.join(".husky")).unwrap();
+        fs::create_dir_all(dir.join("sub")).unwrap();
+        run(&["config", "core.hooksPath", ".husky"], Some(&dir)).unwrap();
+        fs::write(dir.join(".husky").join("pre-auto-gc"), "#!/bin/sh\nexit 0\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dir.join(".husky").join("pre-auto-gc"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        assert!(refused(&["gc", "--auto", "--quiet"], &dir.join("sub")).is_some());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// Review fix 5 (B4): promisor is a git boolean, and before git 2.45 (which ignores GIT_NO_LAZY_FETCH) every
