@@ -96,6 +96,9 @@ thread_local! {
     /// Tests only: with `ISOLATED`, the file this thread's gits read as the user's global config
     /// (default: an empty one), so a test can give "the user" a value of its own.
     pub(crate) static GLOBAL_FOR_TEST: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
+    /// Tests only: with `ISOLATED`, what `parent_env` answers for these variables, as if the parent
+    /// process had set them (review fix 8 follow-up: the GIT_CONFIG_PARAMETERS wiring is tested live).
+    pub(crate) static PARENT_ENV_FOR_TEST: std::cell::RefCell<Vec<(String, String)>> = const { std::cell::RefCell::new(Vec::new()) };
 }
 
 /// Tests only: an empty file to stand in for the user's global git config.
@@ -145,11 +148,15 @@ fn forced_config(repo_programs: &[(String, String)]) -> Vec<(&str, &str)> {
 
 /// Review fix 8 (P2-1): the parent's `GIT_CONFIG_PARAMETERS` (git's own carrier for `-c` pairs, which git
 /// reads AFTER the `GIT_CONFIG_COUNT` slots, so a pair in it outranks every slot) with Kolux's pairs appended
-/// in its format (`'key=value'`, single-quoted, space-separated), so Kolux's values win in that list too.
+/// in git's split form (`'key'='value'`, each side single-quoted on its own, space-separated), so Kolux's
+/// values win in that list too. The one-word form `'key=value'` is NOT safe here: git splits it at the FIRST
+/// `=`, and a forced key comes from the folder's own config, where a subsection may hold `=` (review fix 8
+/// follow-up, P1: `[filter "a.clean=<program> #"] clean = x` would have set `filter.a.clean` to the program).
 /// None when the parent set nothing: the slots then stand alone.
 fn config_parameters(existing: Option<&std::ffi::OsStr>, repo_programs: &[(String, String)]) -> Option<String> {
     let existing = existing?.to_string_lossy().into_owned();
-    let ours = forced_config(repo_programs).iter().map(|(k, v)| format!("'{}'", format!("{k}={v}").replace('\'', "'\\''"))).collect::<Vec<_>>().join(" ");
+    let sq = |s: &str| format!("'{}'", s.replace('\'', "'\\''"));
+    let ours = forced_config(repo_programs).iter().map(|(k, v)| format!("{}={}", sq(k), sq(v))).collect::<Vec<_>>().join(" ");
     Some(if existing.trim().is_empty() { ours } else { format!("{existing} {ours}") })
 }
 
@@ -927,11 +934,16 @@ fn push_gate(rest: &[&str], dir: &Path) -> Result<(), String> {
         }
     }
     // P1-1: a rewrite rule to a local base, which git applies to the push address after the gate's own lookups.
-    let rules = push_listing(&["config", "-z", "--get-regexp", r"^url\..*\.(push)?insteadof$"], dir, Some(1))?.unwrap_or_default();
-    for key in rules.split('\0').filter(|r| !r.is_empty()).map(|r| r.split('\n').next().unwrap_or("")) {
+    // Records: `<scope>\0<key>\n<value>\0`. A rule from the user's own settings (global, system, or their shell)
+    // refuses too (fail-safe: it still lands on this computer), but the message says whose rule it is (P3).
+    let rules = push_listing(&["config", "-z", "--show-scope", "--get-regexp", r"^url\..*\.(push)?insteadof$"], dir, Some(1))?.unwrap_or_default();
+    let mut records = rules.split('\0');
+    while let (Some(scope), Some(entry)) = (records.next(), records.next()) {
+        let key = entry.split('\n').next().unwrap_or("");
         let base = key.strip_prefix("url.").and_then(|k| k.strip_suffix(".pushinsteadof").or_else(|| k.strip_suffix(".insteadof"))).unwrap_or(key);
         if is_local_url(base) {
-            return Err(format!("the folder rewrites push addresses to {base} ({key})"));
+            let whose = if matches!(scope, "local" | "worktree") { "the folder rewrites".to_string() } else { format!("your own git settings ({scope} config) rewrite") };
+            return Err(format!("{whose} push addresses to {base} ({key})"));
         }
     }
     let mut urls: Vec<String> = Vec::new();
@@ -952,7 +964,7 @@ fn push_gate(rest: &[&str], dir: &Path) -> Result<(), String> {
         urls.push(url);
     }
     let remotes = push_listing(&["remote"], dir, None)?.unwrap_or_default();
-    for remote in remotes.lines().filter(|r| !r.trim().is_empty()) {
+    for remote in remotes.lines().filter(|r| !r.is_empty()) {
         let push = push_listing(&["remote", "get-url", "--push", "--all", "--", remote], dir, None)?.unwrap_or_default();
         urls.extend(push.lines().map(|l| l.trim().to_string()));
     }
@@ -977,7 +989,8 @@ fn hooks_path_base(dir: &Path) -> PathBuf {
 }
 
 /// A git URL that names a repository on this computer: `file://`, or a path (git's rule: no `scheme://`
-/// and no `host:path` scp form; a single drive letter before the colon is a Windows path).
+/// and no `host:path` scp form; a single letter before the colon is a Windows drive, any letter: git takes
+/// `ä:/x` as a path too, review fix 8 follow-up P3).
 fn is_local_url(url: &str) -> bool {
     let lower = url.to_ascii_lowercase();
     if lower.starts_with("file:") {
@@ -987,7 +1000,10 @@ fn is_local_url(url: &str) -> bool {
         return !url[..i].chars().all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c)) || i == 0;
     }
     match (url.find(':'), url.find(['/', '\\'])) {
-        (Some(c), slash) if slash.is_none_or(|s| c < s) => c == 1 && url.as_bytes()[0].is_ascii_alphabetic(),
+        (Some(c), slash) if slash.is_none_or(|s| c < s) => {
+            let mut before = url[..c].chars();
+            matches!((before.next(), before.next()), (Some(drive), None) if drive.is_alphabetic())
+        }
         _ => true,
     }
 }
@@ -1083,7 +1099,7 @@ struct Net {
 fn parent_env(name: &str) -> Option<std::ffi::OsString> {
     #[cfg(test)]
     if ISOLATED.with(|i| i.get()) {
-        return None;
+        return PARENT_ENV_FOR_TEST.with(|p| p.borrow().iter().find(|(k, _)| k == name).map(|(_, v)| std::ffi::OsString::from(v)));
     }
     std::env::var_os(name)
 }
@@ -3973,9 +3989,88 @@ mod tests {
         assert!(refused(&["push", "origin", "main"], &dir).is_none(), "a rule to a remote base");
         run(&["config", &format!("url.{p}.insteadOf"), "https://example.invalid/"], Some(&dir)).unwrap();
         assert!(refused(&["push", "origin", "main"], &dir).unwrap().contains("insteadof"), "insteadOf to a local base");
+        // P3: the same rule in the USER's global config still refuses (it lands on this computer all the same),
+        // but the message does not blame the folder.
+        run(&["config", "--unset", &format!("url.{p}.insteadOf")], Some(&dir)).unwrap();
+        assert!(refused(&["push", "origin", "main"], &dir).is_none(), "no rule left in the folder");
+        let global = dir.join("user-gitconfig");
+        fs::write(&global, format!("[url \"{p}\"]\n\tpushInsteadOf = https://example.invalid/\n")).unwrap();
+        ISOLATED.with(|i| i.set(true));
+        GLOBAL_FOR_TEST.with(|g| *g.borrow_mut() = Some(global.clone()));
+        let why = refused(&["push", "origin", "main"], &dir).expect("a global rule to a local base");
+        GLOBAL_FOR_TEST.with(|g| *g.borrow_mut() = None);
+        ISOLATED.with(|i| i.set(false));
+        assert!(why.contains("your own git settings (global config) rewrite push addresses") && !why.contains("the folder rewrites"), "{why}");
         for d in [&base, &payload, &dir] {
             let _ = fs::remove_dir_all(d);
         }
+    }
+
+    /// Review fix 8 follow-up (P1): a forced key is handed to GIT_CONFIG_PARAMETERS in git's split form, one
+    /// quoted word for the key and one for the value, so a `=` inside the key (a filter whose subsection is
+    /// `a.clean=<program> #`) stays part of the key instead of starting the value. In the one-word form git
+    /// split it at the first `=`, which set `filter.a.clean` to the program, and `status` ran it (plain git
+    /// with that word: the premise). The wiring is live: an "inherited" empty GIT_CONFIG_PARAMETERS is enough
+    /// to make Kolux append its pairs.
+    #[test]
+    fn t779_a_forced_key_with_an_equals_sign_stays_one_key() {
+        use std::ffi::OsStr;
+        let dir = temp_repo("p8-eq");
+        let marker = dir.join("..").join(format!("kolux-rs-p8-eq-pwn-{}.txt", std::process::id()));
+        let _ = fs::remove_file(&marker);
+        let program = format!("echo PWNED >> \"{}\"; cat #", marker.to_string_lossy().replace('\\', "/"));
+        let odd_key = format!("filter.a.clean={program}.clean");
+        fs::write(dir.join(".gitattributes"), "* filter=a\n").unwrap();
+        plain_git(&["add", ".gitattributes"], &dir);
+        plain_git(&["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-qm", "attrs"], &dir);
+        plain_git(&["config", &odd_key, "x"], &dir);
+        // A tracked file whose content changed: status re-hashes it, through the clean filter.
+        fs::write(dir.join("README.md"), "changed\n").unwrap();
+        // The word as Kolux wrote it before, and as it writes it now.
+        let old_word = format!("'{odd_key}='");
+        let parameters = config_parameters(Some(OsStr::new("")), &[(odd_key.clone(), String::new())]).unwrap();
+        let new_word = format!("'{odd_key}'=''");
+        assert!(parameters.ends_with(&format!(" {new_word}")), "{parameters}");
+        let with = |word: &str, args: &[&str]| {
+            let mut c = Command::new("git");
+            c.args(args).current_dir(&dir).env("GIT_CONFIG_PARAMETERS", word).env_remove("GIT_CONFIG_COUNT");
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                c.creation_flags(0x0800_0000);
+            }
+            let out = c.output().unwrap();
+            (out.status.code(), String::from_utf8_lossy(&out.stdout).trim_end().to_string())
+        };
+        // The premise: the one-word form made git run the program on a status.
+        with(&old_word, &["status", "--short"]);
+        assert!(marker.exists(), "the premise: plain git splits '{odd_key}=' at the first = and runs the program");
+        fs::remove_file(&marker).unwrap();
+        // The split form: the full key, as one key, and nothing under `filter.a.clean`.
+        let (_, listed) = with(&new_word, &["config", "--show-scope", "--get-regexp", "^filter\\.a"]);
+        assert!(listed.lines().any(|l| l == format!("command\t{odd_key}")), "{listed}");
+        assert_eq!(with(&new_word, &["config", "--get", "filter.a.clean"]).0, Some(1), "nothing was set under filter.a.clean");
+        with(&new_word, &["status", "--short"]);
+        assert!(!marker.exists(), "the split form still ran the program");
+        // A quote in the key round-trips too.
+        let quoted_key = "filter.it's.clean".to_string();
+        let word = config_parameters(Some(OsStr::new("")), &[(quoted_key.clone(), String::new())]).unwrap();
+        let (_, listed) = with(&word, &["config", "--show-scope", "--get-regexp", "^filter\\.it"]);
+        assert!(listed.lines().any(|l| l == format!("command\t{quoted_key}")), "{listed}");
+        // Live through Kolux: the folder's odd key is found and blanked, the parent's (empty) list is extended
+        // in the split form, and the status runs nothing.
+        ISOLATED.with(|i| i.set(true));
+        PARENT_ENV_FOR_TEST.with(|p| *p.borrow_mut() = vec![("GIT_CONFIG_PARAMETERS".to_string(), String::new())]);
+        let cmd = command(&["status", "--short"], Some(&dir));
+        let parameters = cmd.get_envs().find(|(k, _)| *k == "GIT_CONFIG_PARAMETERS").and_then(|(_, v)| v).map(|v| v.to_string_lossy().into_owned()).unwrap_or_default();
+        assert!(parameters.contains(&new_word), "{parameters}");
+        let status = run(&["status", "--short"], Some(&dir));
+        PARENT_ENV_FOR_TEST.with(|p| p.borrow_mut().clear());
+        ISOLATED.with(|i| i.set(false));
+        assert!(status.is_ok(), "{status:?}");
+        assert!(!marker.exists(), "Kolux's git ran the folder's program through GIT_CONFIG_PARAMETERS");
+        let _ = fs::remove_file(&marker);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// Review fix 8 (P1-2): a push target that begins with `-` (a `remote.pushDefault` of `--heads`, or the word
@@ -4058,10 +4153,10 @@ mod tests {
         assert_eq!(read(&[("GIT_CONFIG_PARAMETERS", "'protocol.file.allow=always'"), ("GIT_CONFIG_COUNT", "1"), ("GIT_CONFIG_KEY_0", "protocol.file.allow"), ("GIT_CONFIG_VALUE_0", "never")]), "always");
         assert_eq!(config_parameters(None, &never), None, "nothing to append to");
         let appended = config_parameters(Some(OsStr::new("'protocol.file.allow=always'")), &never).unwrap();
-        assert!(appended.starts_with("'protocol.file.allow=always' 'core.fsmonitor=false' ") && appended.ends_with(" 'protocol.file.allow=never'"), "{appended}");
+        assert!(appended.starts_with("'protocol.file.allow=always' 'core.fsmonitor'='false' ") && appended.ends_with(" 'protocol.file.allow'='never'"), "{appended}");
         assert_eq!(read(&[("GIT_CONFIG_PARAMETERS", &appended)]), "never");
         let quoted = config_parameters(Some(OsStr::new("")), &[("a.b".to_string(), "it's".to_string())]).unwrap();
-        assert!(quoted.ends_with("'a.b=it'\\''s'"), "{quoted}");
+        assert!(quoted.ends_with("'a.b'='it'\\''s'"), "{quoted}");
         assert_eq!(allow_protocol(None, &never), None);
         assert_eq!(allow_protocol(Some(OsStr::new("file:https:ext")), &never).unwrap(), "https");
         assert_eq!(allow_protocol(Some(OsStr::new("file:https")), &[]).unwrap(), "file:https", "a trusted run keeps the parent's list but for ext");
@@ -4161,10 +4256,11 @@ mod tests {
 
     #[test]
     fn t779e_local_urls_are_told_from_remote_ones() {
-        for u in ["/srv/x.git", "./evil.git", ".", "..", "file:///x", "C:/repos/x", r"C:\repos\x", "relative/path"] {
+        // `ä:/x` and `Ω:x`: git takes a single letter before the colon as a drive, whatever the alphabet (P3).
+        for u in ["/srv/x.git", "./evil.git", ".", "..", "file:///x", "C:/repos/x", r"C:\repos\x", "relative/path", "ä:/x", "Ω:x", "d:"] {
             assert!(is_local_url(u), "{u}");
         }
-        for u in ["https://github.com/a/b", "ssh://h/x", "git@github.com:a/b.git", "host:path"] {
+        for u in ["https://github.com/a/b", "ssh://h/x", "git@github.com:a/b.git", "host:path", "ab:/x", "äb:/x"] {
             assert!(!is_local_url(u), "{u}");
         }
     }

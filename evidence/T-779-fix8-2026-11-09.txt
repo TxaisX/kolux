@@ -103,3 +103,60 @@ tests\cards_scratch_root.rs (target\debug\deps\cards_scratch_root-a9a4dee7b99055
 tests\shim.rs (target\debug\deps\shim-15782c5f9c9b2f96.exe) test result: ok. 3 passed; 0 failed; finished in 0.13s
 test result: ok. 0 passed; 0 failed; finished in 0.00s 
 Failures (all pre-existing, the other agent's lane): cards_11 git004_box3, git006_box1_and_2, git007_box1 (untrusted scratch folder refused: own pre-commit hook; push to a local origin.git, the fix-7 gate's refusal with the same message as at c0fea821); cards_10 safe023_box2, safe024_box1, safe024_box2 ("not trusted: ... is not a git worktree"). t606 passed under the scratch env; row961 passed.
+
+==================================================================================================
+== T-779 fix 8 follow-up (review of f8bd6241 = BLOCK): P1 config_parameters split form, P3 a/b/c ==
+==================================================================================================
+P1 (confirmed by plain git, probe in a throwaway repo G:\Temp\ready-sec-2-fix8b\r, git 2.55.0.windows.3):
+  git config 'filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean' x ; .gitattributes: * filter=a
+  -- old one-word form: GIT_CONFIG_PARAMETERS="'filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean='" git status --short
+     -> ../pwn.txt WRITTEN (git split the word at the first '=' and set filter.a.clean to the program)
+  -- split form:        GIT_CONFIG_PARAMETERS="'filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean'=''" git status --short
+     -> ls ../pwn.txt: No such file or directory
+     git config --show-scope --get-regexp filter  ->  command	filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean    (the full odd key, empty value)
+     git config --get filter.a.clean  -> exit 1
+  Fix (git.rs config_parameters): each forced pair is written `'key'='value'`, key and value sq-quoted on their own
+  (sq(s) = ' + s.replace(', '\'') + '). Doc comment says why the one-word form is unsafe.
+  Test: t779_a_forced_key_with_an_equals_sign_stays_one_key
+   - unit: the word for the odd key ends with `'<odd key>'=''`; a key with a quote (filter.it's.clean) round-trips;
+     `git config --show-scope --get-regexp '^filter\.a'` under the word shows exactly `command<TAB><odd key>`; `--get filter.a.clean` exits 1
+   - premise: plain git under the OLD word writes the marker on `git status --short`
+   - live wiring (new): PARENT_ENV_FOR_TEST thread-local (tests only) makes parent_env answer GIT_CONFIG_PARAMETERS="" under
+     ISOLATED, so base_command appends Kolux's pairs; `command(["status","--short"])` carries the split word; `run(status)`
+     leaves no marker. (Wiring test was feasible: one thread-local, read only under #[cfg(test)] + ISOLATED.)
+P3 (a) is_local_url: a single alphabetic char (any alphabet) before ':' is a drive -> local. Probe: `git ls-remote 'ä:/x'` ->
+    "fatal: 'ä:/x' does not appear to be a git repository" (git took it as a path). Test t779e_local_urls_are_told_from_remote_ones
+    now has ä:/x, Ω:x, d: local; ab:/x, äb:/x, host:path remote.
+P3 (b) push_gate remotes loop: `r.is_empty()` (no trim). No test can create a whitespace-only remote name, so no red for this one.
+P3 (c) choice: the rewrite-rule listing runs with `--show-scope`; scope local/worktree -> "the folder rewrites push addresses to
+    <base> (<key>)"; any other scope -> "your own git settings (<scope> config) rewrite push addresses to <base> (<key>)". Still refuses
+    (fail-safe). Test t779e_a_rewrite_rule_to_a_local_address_refuses_the_push: new tail puts the rule in the user's global config
+    (GLOBAL_FOR_TEST under ISOLATED) and asserts the message names the user's settings and not the folder.
+
+== RED (old code restored temporarily, marked RED PROOF; cargo test -j 2 --lib t779) ==
+test git::tests::t779_a_parents_own_git_environment_never_outranks_kolux ... FAILED
+test git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key ... FAILED
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... FAILED
+test git::tests::t779e_a_rewrite_rule_to_a_local_address_refuses_the_push ... FAILED
+test result: FAILED. 50 passed; 4 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 37.25s
+  git.rs:4156 (parents_own): 'protocol.file.allow=always' 'core.fsmonitor=false' ... 'protocol.file.allow=never'   (one-word form)
+  git.rs:4033 (forced_key, unit): 'core.fsmonitor=false' ... 'filter.a.clean=echo PWNED >> "...pwn.txt"; cat #.clean='   (one-word form)
+  git.rs:4261 (local_urls): ä:/x
+  git.rs:4003 (rewrite_rule): "...(the folder rewrites push addresses to G:/Temp/kolux-rs-git-e-p8-rw-payload-bare-30340 (...))"
+     for a rule that sits in the user's global config
+== RED 2 (same old code, the two unit asserts of forced_key taken out so the live assert speaks; --exact) ==
+thread 'git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key' panicked at src\git.rs:4071:9:
+Kolux's git ran the folder's program through GIT_CONFIG_PARAMETERS
+test result: FAILED. 0 passed; 1 failed
+== RESTORE == cp of the saved green copy; grep -c 'RED PROOF' = 0; cmp: identical to green copy; CRLF kept.
+== GREEN (cargo test -j 2 --lib t779) ==
+test git::tests::t779_a_parents_own_git_environment_never_outranks_kolux ... ok
+test git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key ... ok
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... ok
+test git::tests::t779e_a_rewrite_rule_to_a_local_address_refuses_the_push ... ok
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 31.30s
+== GATES (after restore) ==
+cargo clippy -j 2 --all-targets -- -D warnings: Finished, exit 0
+cargo test -j 2 --lib git:: -> test result: ok. 81 passed; 0 failed; 0 ignored (was 80: +1 new test)
+cargo test -j 2 --lib t779 -> 54 passed (was 53: +1 new test)
+Full suite skipped on the coordinator's instruction (run after merge).
