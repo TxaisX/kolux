@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
-import { followedTitle, Gate, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
+import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
@@ -815,10 +815,12 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // (agent_prompt_send, from App.tsx's onPty); only a shell pane types its startup command here.
     const startup = new Startup(agent === "shell" ? typed : undefined, wrapped);
     let identityNow: Identity = IDLE;
+    // A title-only change is paced (shellMarks.identityPacer); running and agent changes go at once.
+    const pacer = identityPacer(setLive);
     const noteIdentity = (next: Identity) => {
       if (next === identityNow) return;
       identityNow = next;
-      setLive(next);
+      pacer.note(next);
     };
     let readyWait: ReturnType<typeof setTimeout> | undefined;
     const openGate = () => {
@@ -1296,6 +1298,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
 
     return () => {
       alive = false;
+      pacer.stop();
       window.removeEventListener(DIVIDER_DONE, resize);
       window.removeEventListener(TERMINAL_EVENT, recolour);
       window.removeEventListener(TEXT_EVENT, retext);
