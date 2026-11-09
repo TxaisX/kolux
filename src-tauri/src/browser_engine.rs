@@ -38,7 +38,7 @@ mod imp {
     use cookies::Entry;
     use tauri::webview::cookie::SameSite;
     use std::path::PathBuf;
-    use webview2_com::{AcceleratorKeyPressedEventHandler, CallDevToolsProtocolMethodCompletedHandler, ClearServerCertificateErrorActionsCompletedHandler, DownloadStartingEventHandler, GetCookiesCompletedHandler, NavigationStartingEventHandler, PermissionRequestedEventHandler, PrintToPdfCompletedHandler, ProcessFailedEventHandler, ServerCertificateErrorDetectedEventHandler, WebResourceRequestedEventHandler};
+    use webview2_com::{AcceleratorKeyPressedEventHandler, TrySuspendCompletedHandler, CallDevToolsProtocolMethodCompletedHandler, ClearServerCertificateErrorActionsCompletedHandler, DownloadStartingEventHandler, GetCookiesCompletedHandler, NavigationStartingEventHandler, PermissionRequestedEventHandler, PrintToPdfCompletedHandler, ProcessFailedEventHandler, ServerCertificateErrorDetectedEventHandler, WebResourceRequestedEventHandler};
     use webview2_com::WindowCloseRequestedEventHandler;
     use crate::browser::selfclose::Engine;
     use std::sync::Arc;
@@ -411,6 +411,37 @@ mod imp {
         let _ = unsafe { core.CallDevToolsProtocolMethod(&HSTRING::from("Runtime.evaluate"), &HSTRING::from(params), &handler) };
     }
 
+    /// DT-C230 (BROW-002, BROW-021): a tab hidden for a while is suspended, which stops its timers
+    /// and script and gives memory back while keeping the page's state (typed text, scroll, history).
+    /// Not while the page plays audio (the third BROW-021 exemption; the other two are checked by the
+    /// caller). The engine refuses when the view is visible or DevTools is open, which is fine.
+    pub fn try_suspend(controller: &ICoreWebView2Controller) {
+        // SAFETY: CoreWebView2 hands back the page's engine object.
+        let Ok(core) = (unsafe { controller.CoreWebView2() }) else { return };
+        if let Ok(c8) = core.cast::<ICoreWebView2_8>() {
+            let mut playing = BOOL::default();
+            // SAFETY: IsDocumentPlayingAudio only writes the flag.
+            if unsafe { c8.IsDocumentPlayingAudio(&mut playing) }.is_ok() && playing.as_bool() {
+                return;
+            }
+        }
+        let Ok(c3) = core.cast::<ICoreWebView2_3>() else { return };
+        let done = TrySuspendCompletedHandler::create(Box::new(|_r, _ok| Ok(())));
+        // SAFETY: the engine keeps the handler until it runs.
+        let _ = unsafe { c3.TrySuspend(&done) };
+    }
+
+    /// DT-C230: a suspended page is resumed (before it is shown, or before an agent's call reaches it).
+    pub fn resume(controller: &ICoreWebView2Controller) {
+        // SAFETY: CoreWebView2 hands back the page's engine object.
+        let Ok(c3) = (unsafe { controller.CoreWebView2() }).and_then(|c| c.cast::<ICoreWebView2_3>()) else { return };
+        let mut suspended = BOOL::default();
+        // SAFETY: IsSuspended only writes the flag; Resume takes nothing.
+        if unsafe { c3.IsSuspended(&mut suspended) }.is_ok() && suspended.as_bool() {
+            let _ = unsafe { c3.Resume() };
+        }
+    }
+
     /// The engine prints the page to `path`; whether it succeeded (or why not) goes to `tx`.
     pub fn print_pdf(controller: &ICoreWebView2Controller, path: &str, tx: Sender<Result<bool, String>>) {
         let fail = tx.clone();
@@ -639,6 +670,24 @@ pub fn devtools(v: &Webview, method: &str, params: String, wait: Duration) -> Re
         let _ = (v, method, params, wait);
         Err("page capture needs WebView2 (Windows)".into())
     }
+}
+
+/// DT-C230: suspends a hidden tab's page on the main thread (nothing happens when the page plays
+/// audio, is visible or has DevTools open).
+pub fn try_suspend(v: &Webview) {
+    #[cfg(windows)]
+    let _ = v.with_webview(|pw| imp::try_suspend(&pw.controller()));
+    #[cfg(not(windows))]
+    let _ = v;
+}
+
+/// DT-C230: resumes a suspended page; posted to the main thread, so a call queued after it (a show,
+/// an eval) finds the page awake.
+pub fn resume(v: &Webview) {
+    #[cfg(windows)]
+    let _ = v.with_webview(|pw| imp::resume(&pw.controller()));
+    #[cfg(not(windows))]
+    let _ = v;
 }
 
 /// T-657 (DT-C93): runs one of the app's own scripts in a page the way that gives the page no
