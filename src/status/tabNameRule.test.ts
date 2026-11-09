@@ -89,4 +89,22 @@ describe("STAT-035 shared beat", () => {
     t.fire();
     expect(seen).toEqual([FRAMES[1]]);
   });
+
+  it("hands frames to readers of the frame (the tab labels), not to the window: joining runs the timer, watching does not", () => {
+    const t = fake();
+    const beat = new Beat(() => false, t.timers);
+    let labelRenders = 0;
+    const unwatch = beat.watch(() => labelRenders++);
+    expect(t.live.size).toBe(0); // a reader alone starts no timer
+    const off = beat.join(3, () => {}); // useBeatKeys: the window joins without re-rendering itself
+    t.fire();
+    t.fire();
+    expect(labelRenders).toBe(2);
+    expect(beat.snapshot()).toBe(FRAMES[2]);
+    unwatch();
+    t.fire();
+    expect(labelRenders).toBe(2);
+    off();
+    expect(beat.running).toBe(false);
+  });
 });

@@ -230,7 +230,7 @@ export function reduceIdentity(state: Identity, mark: Mark, restored = false): I
   if (restored) return state;
   switch (mark.kind) {
     case "start":
-      return { ...state, running: true };
+      return state.running ? state : { ...state, running: true };
     case "prompt":
     case "end":
       return IDLE;
@@ -238,9 +238,53 @@ export function reduceIdentity(state: Identity, mark: Mark, restored = false): I
       const agent = agentFromTitle(mark.text);
       // A title arriving before the shell printed a start mark (PowerShell has no preexec) still
       // means a program is running when it names an agent.
-      return { running: state.running || agent !== null, title: mark.text, agent: agent ?? (state.running ? state.agent : null) };
+      const running = state.running || agent !== null;
+      const next = agent ?? (state.running ? state.agent : null);
+      // The same title again (an agent repainting its title) is no change: the same object comes back,
+      // so nothing downstream re-renders.
+      if (running === state.running && mark.text === state.title && next === state.agent) return state;
+      return { running, title: mark.text, agent: next };
     }
   }
+}
+
+/** A title-only change reaches the pane (and the window's tab names) at most this late. */
+export const TITLE_PACE_MS = 200;
+
+/** Hands identities to `apply`: a change of `running` or `agent` at once (the hook and guess rules
+ *  read those transitions), a change of the title alone at most once per TITLE_PACE_MS, the newest
+ *  title winning. An agent that animates its title many times a second costs about five renders a
+ *  second instead of one per frame of its spinner. */
+export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => void, ms: number) => () => void = (fn, ms) => {
+  const t = setTimeout(fn, ms);
+  return () => clearTimeout(t);
+}) {
+  let shown: Identity = IDLE;
+  let pending: Identity | null = null;
+  let cancel: (() => void) | null = null;
+  const flush = () => {
+    cancel?.();
+    cancel = null;
+    if (pending === null) return;
+    const next = pending;
+    pending = null;
+    if (next === shown) return;
+    shown = next;
+    apply(next);
+  };
+  return {
+    note(next: Identity) {
+      pending = next;
+      if (next.running !== shown.running || next.agent !== shown.agent) flush();
+      else cancel ??= wait(flush, TITLE_PACE_MS);
+    },
+    flush,
+    stop() {
+      cancel?.();
+      cancel = null;
+      pending = null;
+    },
+  };
 }
 
 /** TERM-058: the agent a pane shows. The pane's own program (an agent launch) is what it is;

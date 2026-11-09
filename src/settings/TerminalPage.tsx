@@ -11,7 +11,8 @@ import { CONFIRM_CLOSE_FIELD, asksBeforeClose } from "../terminal/closing";
 import { PIN_ASK_FIELD, pinAsks } from "../terminal/pin";
 import { REMOVE_FIELD, readRemove } from "../terminal/remove";
 import { DEFAULT_PANES_FIELD, PANE_COUNTS, seedCount } from "../terminal/grid";
-import { clampNumber, CURSORS, DEFAULT_SHELL_FIELD, FIELDS, LINE_HEIGHT, optionsOf, readText, SCROLLBACK, SIZE, WEIGHTS, type TerminalText } from "../terminal/text";
+import { clampNumber, CURSORS, DEFAULT_SHELL_FIELD, FIELDS, LINE_HEIGHT, optionsOf, readText, SCROLLBACK, scrollbackRows, SIZE, WEIGHTS, type TerminalText } from "../terminal/text";
+import { memoryProfile } from "../terminal/flow";
 import { currentTerminal, TERMINAL_EVENT } from "../theme";
 import { FontField } from "./AppearancePage";
 import { Segmented } from "./GeneralPage";
@@ -116,6 +117,15 @@ export default function TerminalPage() {
     if (onWindows()) invoke<ShellInfo[]>("shell_list").then(setShells, () => setShells([]));
   }, []);
   const text = settings ? readText(settings) : null;
+  // DT-C228: with no scrollback saved, every pane keeps the rows this computer's memory profile sets.
+  const [autoRows, setAutoRows] = useState<number | null>(null);
+  useEffect(() => {
+    let on = true;
+    void memoryProfile().then((p) => on && setAutoRows(p.scrollback));
+    return () => {
+      on = false;
+    };
+  }, []);
   // TERM-078: a drag on the size slider redraws the sample at once, then saves once the drag pauses.
   // Every open terminal follows the save, so one size reaches every pane.
   const [sizeDraft, setSizeDraft] = useState<number | null>(null);
@@ -193,10 +203,11 @@ export default function TerminalPage() {
         <section className="conn-card" data-section="scrolling">
           <h2 className="conn-name">History and scrolling</h2>
           <div className="term-fields">
-            <NumberField label="Scrollback rows" value={text.scrollback} min={SCROLLBACK.min} max={SCROLLBACK.max} onSave={(n) => save({ [FIELDS.scrollback]: n })} />
+            <NumberField label="Scrollback rows" value={scrollbackRows(text, autoRows)} min={SCROLLBACK.min} max={SCROLLBACK.max} onSave={(n) => save({ [FIELDS.scrollback]: n })} />
             <NumberField label="Scroll sensitivity" value={text.scroll} min={0.1} max={5} step={0.1} onSave={(n) => save({ [FIELDS.scroll]: n })} />
             <NumberField label="Fast scroll (with Alt)" value={text.fastScroll} min={1} max={20} onSave={(n) => save({ [FIELDS.fastScroll]: n })} />
           </div>
+          {!text.scrollbackSet && autoRows !== null && <p className="conn-detail">Scrollback rows: Automatic ({autoRows} rows), set from this computer's memory. Type a number to choose your own.</p>}
           {settings && (
             <>
               <Switch label="Keep shell history separate for each workspace" checked={settings[SHELL_HISTORY_FIELD] !== false} onChange={(on) => save({ [SHELL_HISTORY_FIELD]: on })} />

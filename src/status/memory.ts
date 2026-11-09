@@ -9,3 +9,30 @@ export function formatMemory(bytes: number | null | undefined): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
   return `${mb.toFixed(1)} MB`;
 }
+
+type Visible = Pick<Document, "addEventListener" | "removeEventListener" | "visibilityState">;
+type Every = { every: (fn: () => void, ms: number) => unknown; stop: (h: unknown) => void };
+const realEvery: Every = { every: (fn, ms) => setInterval(fn, ms), stop: (h) => clearInterval(h as ReturnType<typeof setInterval>) };
+
+/** Runs `tick` now and every `ms` while the window is visible; a hidden (minimised) window asks
+ *  nothing, and the figure is read again the moment it is shown. Returns the stop. */
+export function pollWhileVisible(tick: () => void, ms: number, doc: Visible = document, timers: Every = realEvery): () => void {
+  let handle: unknown = null;
+  const start = () => {
+    if (handle !== null) return;
+    tick();
+    handle = timers.every(tick, ms);
+  };
+  const pause = () => {
+    if (handle === null) return;
+    timers.stop(handle);
+    handle = null;
+  };
+  const on = () => (doc.visibilityState === "visible" ? start() : pause());
+  doc.addEventListener("visibilitychange", on);
+  on();
+  return () => {
+    doc.removeEventListener("visibilitychange", on);
+    pause();
+  };
+}
