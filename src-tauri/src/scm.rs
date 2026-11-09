@@ -3169,11 +3169,14 @@ mod tests {
         run(&["init", "-q", "--bare", "-b", "main"], Some(&origin)).unwrap();
         let url = origin.to_string_lossy().replace('\\', "/");
         let a = temp_repo("git008-a");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&a);
         run(&["remote", "add", "origin", &url], Some(&a)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&a)).unwrap();
         let b = std::env::temp_dir().join(format!("kolux-rs-scm-git008-b-{}", std::process::id()));
         let _ = fs::remove_dir_all(&b);
         run(&["clone", "-q", &url, &b.to_string_lossy()], None).unwrap();
+        crate::git::trust_for_test(&b); // the second clone pushes too
         run(&["config", "user.email", "test@example.com"], Some(&b)).unwrap();
         run(&["config", "user.name", "Kolux test"], Some(&b)).unwrap();
         fs::write(b.join("theirs.txt"), "theirs\n").unwrap();
@@ -3575,6 +3578,8 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("pr");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -3644,6 +3649,8 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("pr-nopush");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -3705,6 +3712,8 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("hist");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -3974,6 +3983,8 @@ and more
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("pushed");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         assert_eq!(state(&dir), Some(("synced", 0)));
@@ -4017,6 +4028,8 @@ and more
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let bare_url = bare.to_string_lossy().replace('\\', "/");
         let dir = temp_repo("remote");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare_url], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -4042,6 +4055,7 @@ and more
         let other = std::env::temp_dir().join(format!("kolux-rs-scm-other-{}", std::process::id()));
         let _ = fs::remove_dir_all(&other);
         run(&["clone", "-q", &bare_url, &other.to_string_lossy()], None).unwrap();
+        crate::git::trust_for_test(&other); // the second clone pushes too
         run(&["config", "user.email", "test@example.com"], Some(&other)).unwrap();
         run(&["config", "user.name", "Kolux test"], Some(&other)).unwrap();
         commit_file(&other, "main2.txt", "m\n");
@@ -4118,6 +4132,8 @@ and more
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let bare_url = bare.to_string_lossy().replace('\\', "/");
         let dir = temp_repo("slashremote");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "team/fork", &bare_url], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "team/fork", "main"], Some(&dir)).unwrap();
         let st = status(&dir).unwrap();

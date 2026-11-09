@@ -1048,6 +1048,9 @@ mod tests {
         run(&["remote", "add", "origin", &url(&bare)], Some(&dir)).unwrap();
         setup_push(&["push", "-q", "-u", "origin", "main"], &dir);
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; the fixture stands for
+        // the user's own repository. Tests of an untrusted folder call `untrust_for_test` after this.
+        crate::git::trust_for_test(&dir);
         (dir, bare)
     }
 
@@ -1517,6 +1520,7 @@ mod tests {
     #[test]
     fn t652_what_the_commit_would_hold_is_what_gets_scanned() {
         let (dir, bare) = with_origin("j-filter");
+        crate::git::untrust_for_test(); // this test starts in an untrusted folder
         branch(&dir, "feature");
         commit_file(&dir, ".gitattributes", "*.cfg filter=addtoken\n");
         // The folder's own clean filter would add a key to the file on its way into the index.
@@ -1904,6 +1908,7 @@ mod tests {
     fn t779d_the_automatic_push_in_an_untrusted_folder_stops_at_the_gate() {
         for own in ["hook", "credential", "hookspath"] {
             let (dir, bare) = with_origin(&format!("s4-{own}"));
+            crate::git::untrust_for_test();
             branch(&dir, "feature");
             commit_file(&dir, "a.txt", "a\n");
             let mark = std::env::temp_dir().join(format!("kolux-rs-autopr-s4-mark-{}-{own}", id()));

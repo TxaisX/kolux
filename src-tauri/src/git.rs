@@ -149,7 +149,7 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
 /// upload/receive programs (replaced on every run, see `net_overrides`), and the keys that make a
 /// write or a transfer unsafe to run at all in an untrusted folder (a credential helper, a hooks
 /// folder, a merge driver: see `write_access`).
-const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$|^core\.(sshcommand|gitproxy|hookspath)$|^remote\..*\.(uploadpack|receivepack)$|^credential\.(.*\.)?helper$|^merge\..*\.driver$|^core\.alternaterefscommand$|^extensions\.partialclone$|^remote\..*\.promisor$";
+const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$|^core\.(sshcommand|gitproxy|hookspath)$|^remote\..*\.(uploadpack|receivepack)$|^credential\.(.*\.)?helper$|^merge\..*\.driver$|^core\.alternaterefscommand$|^extensions\.partialclone$|^remote\..*\.promisor$|^hook\..*\.command$";
 
 /// The keys a USER's own config may set that a folder's keys of the same name would shadow (S4).
 const USER_NET_KEYS: &str = r"^core\.(sshcommand|gitproxy)$";
@@ -167,7 +167,9 @@ const ALT_REFS: &str = "core.alternaterefscommand";
 /// Review fix 4 (B3, B4): a partial clone's read can fetch missing objects on its own (lazy fetch), which
 /// runs the folder's credential helper or contacts whatever its promisor remote names.
 fn partial_clone(found: &[(String, String)]) -> bool {
-    found.iter().any(|(k, v)| k == "extensions.partialclone" || (k.starts_with("remote.") && k.ends_with(".promisor") && v.eq_ignore_ascii_case("true")))
+    // Review fix 5: promisor is a git boolean (`1`, `yes`, `on`, or the bare key all count).
+    let truthy = |v: &str| matches!(v.trim().to_ascii_lowercase().as_str(), "" | "true" | "yes" | "on" | "1");
+    found.iter().any(|(k, v)| k == "extensions.partialclone" || (k.starts_with("remote.") && k.ends_with(".promisor") && truthy(v)))
 }
 
 /// A key naming a program for a transfer (S4) that is replaced, never just blanked, so the user's own
@@ -702,13 +704,25 @@ fn trust_files() -> (PathBuf, PathBuf) {
     TRUST_FILES.with(|f| f.borrow().clone()).unwrap_or_else(|| (std::env::temp_dir().join("kolux-rs-test-no-claude.json"), std::env::temp_dir().join("kolux-rs-test-no-codex.toml")))
 }
 
-/// Tests only: the user trusts `folder` in Claude's file, for this test's thread.
+/// Tests only: no folder is trusted on this test's thread again (after `trust_for_test`).
+#[cfg(test)]
+pub(crate) fn untrust_for_test() {
+    TRUST_FILES.with(|f| *f.borrow_mut() = None);
+}
+
+/// Tests only: the user trusts `folder` (as well as any folder trusted before) in Claude's file, for this test's thread.
 #[cfg(test)]
 pub(crate) fn trust_for_test(folder: &Path) {
     let key = crate::trust::claude_key(folder).unwrap();
     let mut project = serde_json::Map::new();
     project.insert("hasTrustDialogAccepted".into(), serde_json::Value::Bool(true));
-    let mut projects = serde_json::Map::new();
+    // Adds to what this thread already trusts (a test with two clones trusts both).
+    let mut projects = TRUST_FILES
+        .with(|f| f.borrow().clone())
+        .and_then(|(file, _)| std::fs::read_to_string(file).ok())
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .and_then(|d| d["projects"].as_object().cloned())
+        .unwrap_or_default();
     projects.insert(key, serde_json::Value::Object(project));
     let mut doc = serde_json::Map::new();
     doc.insert("projects".into(), serde_json::Value::Object(projects));
@@ -724,7 +738,7 @@ fn network(args: &[&str]) -> bool {
     let rest = after_options(args);
     let second = rest.get(1).copied();
     match rest.first().copied() {
-        Some("fetch" | "pull" | "push" | "clone" | "ls-remote" | "fetch-pack" | "send-pack") => true,
+        Some("fetch" | "pull" | "push" | "clone" | "ls-remote" | "fetch-pack" | "send-pack" | "maintenance") => true,
         Some("remote") => matches!(second, Some("update" | "show" | "prune" | "set-head")),
         Some("submodule") => matches!(second, Some("update" | "add")),
         _ => false,
@@ -824,60 +838,32 @@ fn hook_in_the_way(args: &[&str], found: &[(String, String)]) -> Option<(String,
     found.iter().filter(|(k, _)| k == HOOKS_KEY).find_map(|(_, dir)| wanted.iter().find(|h| hook_file(Path::new(dir), h)).map(|h| (h.to_string(), dir.clone())))
 }
 
-/// Review fix 4 (B2): why a `push` in `dir` would run a program of the RECEIVING repository, when its push
-/// URL (`git remote get-url --push` applies the folder's insteadOf rules and runs no program) is a
-/// repository on this computer: a receive hook in its hooks folder, its own `core.hooksPath` or
-/// `core.alternateRefsCommand`, or a target that cannot be told (fail closed). None when the push is safe.
+/// Review fix 5 (B2): a push from an untrusted folder that could land in a repository on this computer.
+/// The receiving repository runs its own hooks, filters, fsmonitor and gc with its own config, so instead
+/// of judging the target, any push is refused when its URL argument, or any push URL of ANY of the folder's
+/// remotes (git picks the remote through pushDefault/pushRemote, and pushes to every pushurl), is local.
+/// A listing that fails or does not answer refuses too. Some(the local URL or the reason), or None.
 fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
     let rest = after_options(args);
     if rest.first() != Some(&"push") {
         return None;
     }
-    let remote = rest[1..].iter().copied().find(|a| !a.starts_with('-')).unwrap_or("origin");
-    // A configured remote first (its name may hold a slash: `team/fork`); otherwise the argument is the URL.
-    let out = output_within(base_command(&["remote", "get-url", "--push", remote], Some(dir), &[], &[]), LISTING_LIMIT)?;
-    let url = if out.status.success() {
-        String::from_utf8_lossy(&out.stdout).trim().to_string()
-    } else if remote.contains(['/', '\\', ':']) || remote == "." || remote == ".." {
-        remote.to_string()
-    } else {
-        return None; // no such remote and not a URL: git refuses the push itself
+    let mut urls: Vec<String> = rest[1..].iter().filter(|a| !a.starts_with('-')).map(|a| a.to_string()).collect();
+    urls.extend(rest[1..].iter().filter_map(|a| a.strip_prefix("--repo=")).map(str::to_string));
+    let listed = |args: &[&str]| -> Option<String> {
+        let out = output_within(base_command(args, Some(dir), &[], &[]), LISTING_LIMIT)?;
+        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
     };
-    if !is_local_url(&url) {
-        return None;
+    let Some(remotes) = listed(&["remote"]) else { return Some("the folder's remotes could not be listed".into()) };
+    for remote in remotes.lines().map(str::trim).filter(|r| !r.is_empty()) {
+        let Some(push) = listed(&["remote", "get-url", "--push", "--all", remote]) else { return Some(format!("the push address of remote {remote} could not be read")) };
+        urls.extend(push.lines().map(|l| l.trim().to_string()));
     }
-    let path = url.strip_prefix("file://").unwrap_or(&url);
-    let path = if Path::new(path).is_absolute() { PathBuf::from(path) } else { dir.join(path) };
-    let unsafe_target = |why: &str| Some(format!("{url}: {why}"));
-    let Some(git_dir) = receiving_git_dir(&path) else { return unsafe_target("a repository Kolux could not look inside") };
-    const RECEIVE_HOOKS: [&str; 7] = ["pre-receive", "update", "post-receive", "post-update", "push-to-checkout", "proc-receive", "reference-transaction"];
-    if let Some(h) = RECEIVE_HOOKS.iter().find(|h| hook_file(&git_dir.join("hooks"), h)) {
-        return unsafe_target(&format!("it has its own \"{h}\" hook"));
-    }
-    let config = git_dir.join("config");
-    let listing = ["config", "--includes", "--file", &config.to_string_lossy(), "--get-regexp", r"^core\.(hookspath|alternaterefscommand)$"];
-    match output_within(base_command(&listing, Some(dir), &[], &[]), LISTING_LIMIT) {
-        Some(out) if out.status.success() && !out.stdout.is_empty() => unsafe_target("its own config names a hooks folder or a program"),
-        Some(out) if out.status.success() || out.status.code() == Some(1) => None,
-        _ if !config.exists() => None,
-        _ => unsafe_target("its config could not be read"),
-    }
-}
-
-/// The git dir a push into `path` uses: `path` itself when it is a bare repository, else its `.git`
-/// (a folder, or a `.git` file naming one).
-fn receiving_git_dir(path: &Path) -> Option<PathBuf> {
-    if path.join("HEAD").is_file() && path.join("objects").is_dir() {
-        return Some(path.to_path_buf());
-    }
-    let dot = path.join(".git");
-    if dot.is_dir() {
-        return Some(dot);
-    }
-    let text = std::fs::read_to_string(&dot).ok()?;
-    let target = text.trim().strip_prefix("gitdir:")?.trim();
-    let target = if Path::new(target).is_absolute() { PathBuf::from(target) } else { path.join(target) };
-    target.is_dir().then_some(target)
+    // A bare argument that names a remote stands for its URLs (listed above); one that is not a remote and
+    // looks like a path is the URL itself.
+    let remote_names: Vec<&str> = remotes.lines().map(str::trim).collect();
+    let path_shaped = |u: &str| u.contains(['/', '\\', ':']) || u == "." || u == "..";
+    urls.into_iter().filter(|u| !u.is_empty() && !remote_names.contains(&u.as_str()) && path_shaped(u)).find(|u| is_local_url(u))
 }
 
 /// A git URL that names a repository on this computer: `file://`, or a path (git's rule: no `scheme://`
@@ -937,16 +923,28 @@ fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result
             return Err(refusal(args, dir, &format!("the folder sets its own credential helper ({key}), a program that is handed your sign-in details on every transfer")));
         }
         if let Some(url) = local_push_target(args, dir) {
-            return Err(refusal(args, dir, &format!("the push goes to a repository on this computer that would run a program of its own as it receives ({url})")));
+            return Err(refusal(args, dir, &format!("the push could go to a repository on this computer ({url}), which runs programs of its own as it receives")));
         }
         if let Some((key, _)) = found.iter().find(|(k, _)| is_pack_key(k)) {
             return Err(refusal(args, dir, &format!("the folder names its own program for the other end of a transfer ({key}), which git would run in place of its own")));
         }
     }
-    if let Some((key, _)) = found.iter().find(|(k, _)| k == "core.hookspath") {
+    // Review fix 5: a command whose only risk is a hook (gc, the index commands) is checked against the hooks
+    // really in the folder's own hooks folder (husky and the like set one); anything else is refused outright.
+    let hook_only = !writes && !transfer && !ref_write(args);
+    if let Some((key, _)) = found.iter().find(|(k, _)| k == "core.hookspath").filter(|_| !hook_only) {
         return Err(refusal(args, dir, &format!("the folder points git at a hooks folder of its own ({key}), whose programs run around git commands")));
     }
-    if let Some((hook, folder)) = hook_in_the_way(args, found) {
+    if let Some((key, _)) = found.iter().find(|(k, _)| k.starts_with("hook.") && k.ends_with(".command")) {
+        return Err(refusal(args, dir, &format!("the folder names a hook program in its git config ({key}), which runs around git commands")));
+    }
+    let with_hooks_path: Vec<(String, String)> = found
+        .iter()
+        .filter(|(k, _)| k == "core.hookspath")
+        .map(|(_, v)| (HOOKS_KEY.to_string(), if Path::new(v).is_absolute() { v.clone() } else { dir.join(v).to_string_lossy().into_owned() }))
+        .chain(found.iter().cloned())
+        .collect();
+    if let Some((hook, folder)) = hook_in_the_way(args, &with_hooks_path) {
         return Err(refusal(args, dir, &format!("the folder has its own git hook \"{hook}\" (in {folder}), a program that runs around this command")));
     }
     if merges(args) {
@@ -1051,6 +1049,21 @@ fn net_overrides(found: &[(String, String)], cwd: &Path, strict: bool) -> Result
     Ok(net)
 }
 
+/// Review fix 4/5 (B3, B4): in an untrusted partial clone a read never fetches on its own (git 2.45+), no
+/// credential helper runs if one does (an empty value empties git's list), and, since git before 2.45
+/// ignores GIT_NO_LAZY_FETCH, every transport is switched off (each by name: a folder's own
+/// protocol.<name>.allow outranks protocol.allow).
+fn no_lazy_fetch(found: &[(String, String)], dir: &Path, pairs: &mut Vec<(String, String)>, env: &mut Vec<(&'static str, String)>) {
+    if !partial_clone(found) || folder_trusted(dir) {
+        return;
+    }
+    env.push(("GIT_NO_LAZY_FETCH", "1".to_string()));
+    pairs.push(("credential.helper".to_string(), String::new()));
+    for proto in ["protocol.allow", "protocol.file.allow", "protocol.git.allow", "protocol.ssh.allow", "protocol.http.allow", "protocol.https.allow"] {
+        pairs.push((proto.to_string(), "never".to_string()));
+    }
+}
+
 /// A git process with Kolux's environment (see `base_command`) for ANY run, the one a caller that
 /// may write or transfer must use: the listing, the refusal and the blanking come from one decision,
 /// so nothing can change between the check and the run. Err is the refusal's plain message.
@@ -1064,6 +1077,9 @@ pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Comma
     // A trusted folder's own transfer programs are the user's to run; everywhere else they are replaced.
     if access == Access::Reads {
         env = net_overrides(&found, dir, network(&args)).map_err(|what| refusal(&args, dir, &what))?.env;
+        if !network(&args) {
+            no_lazy_fetch(&found, dir, &mut pairs, &mut env);
+        }
     }
     Ok(base_command(&args, cwd, &pairs, &env))
 }
@@ -1078,11 +1094,8 @@ pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
     let args = guarded(args, &found, Access::Reads);
     let mut pairs = overrides_for(&found, Access::Reads);
     let mut env = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()).map(|net| net.env).unwrap_or_default();
-    // Review fix 4 (B3, B4): in an untrusted partial clone a read never fetches on its own (git 2.45+), and
-    // no credential helper runs if one does (an empty value empties git's list of helpers).
-    if partial_clone(&found) && cwd.is_some_and(|dir| !folder_trusted(dir)) {
-        env.push(("GIT_NO_LAZY_FETCH", "1".to_string()));
-        pairs.push(("credential.helper".to_string(), String::new()));
+    if let Some(dir) = cwd {
+        no_lazy_fetch(&found, dir, &mut pairs, &mut env);
     }
     base_command(&args, cwd, &pairs, &env)
 }
@@ -3550,7 +3563,7 @@ mod tests {
         for args in [&["fetch", "local"][..], &["push", "local", "main"], &["ls-remote", "local"], &["pull", "local", "main"]] {
             let why = run(args, Some(&dir)).unwrap_err();
             plain_message(&why, args[0]);
-            assert!(why.contains("remote.local.uploadpack") || why.contains("remote.local.receivepack"), "{why}");
+            assert!(why.contains("remote.local.uploadpack") || why.contains("remote.local.receivepack") || why.contains("on this computer"), "{why}");
         }
         assert!(!marker.exists(), "Kolux's git ran the folder's uploadpack or receivepack");
         assert!(refused(&["status"], &dir).is_none() && refused(&["commit", "-q", "-m", "x"], &dir).is_none(), "not a transfer");
@@ -3657,43 +3670,104 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// B2: a push into a repository on this computer runs THAT repository's receive hooks; from an untrusted
-    /// folder it is refused when the target has one (a bare remote, or `.` itself), and goes ahead when not.
+    /// B2 (review fix 5): a push into a repository on this computer runs THAT repository's hooks, filters and gc
+    /// under its own config, so from an untrusted folder any push is refused when any of the folder's push
+    /// URLs is local: whichever remote git would pick (pushDefault), every pushurl, or a path argument. Pushes
+    /// to remote URLs go ahead, and a trusted folder pushes anywhere.
     #[test]
-    fn t779e_a_push_to_a_local_repository_with_receive_hooks_is_refused() {
+    fn t779e_a_push_that_could_reach_a_local_repository_is_refused() {
         let dir = temp_repo("e-push");
         let marker = dir.join("receive-ran.txt");
-        let bare = bare_copy(&dir, "e-push");
-        run(&["remote", "add", "origin", &bare.to_string_lossy()], Some(&dir)).unwrap();
-        run(&["remote", "add", "team/fork", &bare.to_string_lossy()], Some(&dir)).unwrap();
-        fs::write(dir.join("more.txt"), "more\n").unwrap();
-        run(&["add", "-A"], Some(&dir)).unwrap();
-        run(&["commit", "-q", "-m", "more"], Some(&dir)).unwrap();
-        // No receive hook in the bare remote: the push goes through.
-        run(&["push", "-q", "origin", "main"], Some(&dir)).expect("a plain local remote still works");
-        // With one (as a bare repository in a downloaded folder could have): refused, by name or slash name.
-        marker_hook(&bare, "pre-receive", &marker);
-        let hook = bare.join(".git").join("hooks").join("pre-receive");
-        fs::create_dir_all(bare.join("hooks")).unwrap();
-        fs::rename(&hook, bare.join("hooks").join("pre-receive")).unwrap();
-        for remote in ["origin", "team/fork"] {
-            let why = refused(&["push", remote, "main"], &dir).unwrap_or_else(|| panic!("{remote} was not refused"));
+        let payload = bare_copy(&dir, "e-push-payload");
+        fs::create_dir_all(payload.join("hooks")).unwrap();
+        fs::write(payload.join("hooks").join("post-receive"), format!("#!/bin/sh\necho ran >> \"{}\"\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(payload.join("hooks").join("post-receive"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        // A normal-looking origin, and a pushDefault that sends a bare `git push` to the payload (review 1).
+        run(&["remote", "add", "origin", "https://example.com/a/b.git"], Some(&dir)).unwrap();
+        run(&["remote", "add", "evil", &payload.to_string_lossy()], Some(&dir)).unwrap();
+        run(&["config", "remote.pushDefault", "evil"], Some(&dir)).unwrap();
+        for args in [&["push"][..], &["push", "origin", "main"], &["push", "-q", "--repo=origin"]] {
+            let why = refused(args, &dir).unwrap_or_else(|| panic!("{args:?} was not refused"));
             plain_message(&why, "push");
             assert!(why.contains("on this computer"), "{why}");
         }
-        // `.` (the folder itself) with a receive hook of its own.
-        marker_hook(&dir, "post-receive", &marker);
-        assert!(refused(&["push", ".", "HEAD:refs/heads/x"], &dir).is_some());
-        // A target whose own config names a hooks folder.
-        let bare2 = bare_copy(&dir, "e-push2");
-        assert!(plain_git(&["config", "--file", &bare2.join("config").to_string_lossy(), "core.hooksPath", "/x"], &dir).status.success());
-        assert!(refused(&["push", &bare2.to_string_lossy(), "main"], &dir).is_some());
-        assert!(!marker.exists());
+        assert!(run(&["push", "-q", "evil", "main"], Some(&dir)).is_err());
+        assert!(!marker.exists(), "the receiving repository's hook ran");
+        // A second pushurl on an otherwise remote origin (review 2), and a path argument.
+        let dir2 = temp_repo("e-push-2");
+        run(&["remote", "add", "origin", "https://example.com/a/b.git"], Some(&dir2)).unwrap();
+        run(&["config", "--add", "remote.origin.pushurl", "https://example.com/a/b.git"], Some(&dir2)).unwrap();
+        run(&["config", "--add", "remote.origin.pushurl", &payload.to_string_lossy()], Some(&dir2)).unwrap();
+        assert!(refused(&["push", "origin", "main"], &dir2).is_some());
+        let dir3 = temp_repo("e-push-3");
+        assert!(refused(&["push", ".", "HEAD:refs/heads/x"], &dir3).is_some());
+        assert!(refused(&["push", "./x.git", "main"], &dir3).is_some());
+        // Only remote URLs: the push is not refused here (it fails later, offline, but no gate stops it).
+        run(&["remote", "add", "origin", "https://example.com/a/b.git"], Some(&dir3)).unwrap();
+        assert!(refused(&["push", "origin", "main"], &dir3).is_none());
+        // Trusted: the user's own local remote works.
         trust_for_test(&dir);
-        assert!(refused(&["push", "origin", "main"], &dir).is_none());
+        assert!(refused(&["push"], &dir).is_none());
+        for d in [&dir, &dir2, &dir3, &payload] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 5 (B4): promisor is a git boolean, and before git 2.45 (which ignores GIT_NO_LAZY_FETCH) every
+    /// transport is switched off on an untrusted partial clone's read, so its lazy fetch runs nothing.
+    #[test]
+    fn t779e_a_partial_clone_read_runs_no_program_on_any_git() {
+        let base = temp_repo("e-promisor-src");
+        let marker = base.join("lazy-ran.txt");
+        let bare = bare_copy(&base, "e-promisor");
+        for value in ["1", "yes", "on"] {
+            let dir = temp_repo(&format!("e-promisor-{value}"));
+            run(&["config", "remote.origin.url", &bare.to_string_lossy()], Some(&dir)).unwrap();
+            run(&["config", "remote.origin.promisor", value], Some(&dir)).unwrap();
+            let cmd = command(&["show", "HEAD"], Some(&dir));
+            assert!(blanked_keys(&cmd).iter().any(|k| k == "protocol.file.allow"), "promisor={value} was not seen");
+            let _ = fs::remove_dir_all(&dir);
+        }
+        // Live: a real partial clone whose blob is missing, with the folder's own upload-pack program.
+        let blobless = std::env::temp_dir().join(format!("kolux-rs-git-e-blobless-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&blobless);
+        assert!(plain_git(&["config", "--file", &bare.join("config").to_string_lossy(), "uploadpack.allowFilter", "true"], &base).status.success());
+        assert!(plain_git(&["clone", "-q", "--no-checkout", "--filter=blob:none", &format!("file://{}", bare.to_string_lossy().replace('\\', "/")), &blobless.to_string_lossy()], &base).status.success());
+        run(&["config", "remote.origin.uploadpack", &exit_script(&marker)], Some(&blobless)).unwrap();
+        let _ = plain_git(&["show", "HEAD:README.md"], &blobless);
+        assert!(marker.exists(), "the premise: plain git's read lazy-fetches through the folder's upload-pack");
+        fs::remove_file(&marker).unwrap();
+        let _ = run(&["show", "HEAD:README.md"], Some(&blobless));
+        assert!(!marker.exists(), "Kolux's read ran the folder's upload-pack");
+        for d in [&base, &bare, &blobless] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 5: a folder with its own hooks folder (husky and the like) still gets its background gc when
+    /// that folder has no pre-auto-gc hook; one that has it is refused. A hook named in config is refused.
+    #[test]
+    fn t779e_gc_looks_inside_the_folders_own_hooks_folder() {
+        let dir = temp_repo("e-hookspath-gc");
+        fs::create_dir_all(dir.join(".husky")).unwrap();
+        run(&["config", "core.hooksPath", ".husky"], Some(&dir)).unwrap();
+        assert!(refused(&["gc", "--auto", "--quiet"], &dir).is_none(), "a hooks folder without pre-auto-gc");
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some(), "a write is still refused outright");
+        fs::write(dir.join(".husky").join("pre-auto-gc"), "#!/bin/sh\nexit 0\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dir.join(".husky").join("pre-auto-gc"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        assert!(refused(&["gc", "--auto", "--quiet"], &dir).is_some());
+        run(&["config", "--unset", "core.hooksPath"], Some(&dir)).unwrap();
+        run(&["config", "hook.lint.command", "sh evil.sh"], Some(&dir)).unwrap();
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).unwrap().contains("hook.lint.command"));
         let _ = fs::remove_dir_all(&dir);
-        let _ = fs::remove_dir_all(&bare);
-        let _ = fs::remove_dir_all(&bare2);
     }
 
     #[test]
