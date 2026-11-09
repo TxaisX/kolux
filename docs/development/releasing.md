@@ -22,6 +22,22 @@ Tags and releases are named `v<version>`. The installer file is `Kolux RS_<versi
 - `git status` is clean. `pnpm ship` stages everything with `git add -A`, so unrelated working-tree changes would be included.
 - You have decided whether the release is a normal build or a recovery build.
 
+## Two repositories
+
+Development happens in a private repository (the `origin` remote). The public repository
+`TxaisX/kolux` (the `public` remote) holds a clean export of the source and the releases, and the
+app's update feed reads from it. `scripts/export-public.mjs` makes that export: it leaves out the
+build records, proof logs, audits and agent tooling, and keeps only the few test fixtures the tests
+read. A release builds from the public `main`, so export before you release:
+
+```powershell
+pnpm ship --main --no-release                                        # land on the private main
+node scripts/export-public.mjs --push                                # public main = clean copy of it
+pnpm release --repo https://github.com/TxaisX/kolux.git              # build and publish from the public repo
+```
+
+Do not push `main` or any branch to the `public` remote by hand: that would publish the private files.
+
 ## The owner flow
 
 ```powershell
