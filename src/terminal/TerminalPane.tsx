@@ -46,7 +46,7 @@ import { frameOutputs, type FrameOutput } from "./frame";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
-import { currentText, optionsOf, TEXT_EVENT } from "./text";
+import { currentText, optionsOf, scrollbackRows, TEXT_EVENT } from "./text";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
@@ -637,6 +637,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     fit.fit();
 
     let alive = true;
+    let profileRows: number | null = null; // ACCT-059: the memory profile's rows, once known
     // C26-R3-01: the drawing this pane belongs to, so an unmount that hands the terminals to the next drawing
     // (a re-draw of the window, not a closed tab) leaves them running.
     const gen = windowGeneration.current;
@@ -694,9 +695,11 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       screen = type;
       feel();
     });
-    // ACCT-059: scrollback sized to the machine's memory profile, the same every start.
+    // ACCT-059: scrollback sized to the machine's memory profile, the same every start, but only when
+    // the user has not saved a scrollback of their own (SET-025 wins; see scrollbackRows).
     memoryProfile().then((p) => {
-      if (alive) term.options.scrollback = p.scrollback;
+      profileRows = p.scrollback;
+      if (alive) term.options.scrollback = scrollbackRows(currentText(), profileRows);
     });
     // ACCT-054: output is acknowledged as drawn, in running totals, so the reader pauses the
     // program when this pane falls behind rather than letting the app fall behind with it.
@@ -1172,6 +1175,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // SET-022 / SET-025: open terminals follow the text, cursor and history settings.
     const retext = () => {
       Object.assign(term.options, optionsOf(currentText()), termFont());
+      term.options.scrollback = scrollbackRows(currentText(), profileRows); // ACCT-059 vs SET-025
       feel();
       settleLigatures();
       resize();

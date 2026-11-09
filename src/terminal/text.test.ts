@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampNumber, FIELDS, optionsOf, readText } from "./text";
+import { clampNumber, FIELDS, optionsOf, readText, scrollbackRows } from "./text";
 
 describe("terminal text settings (SET-022 / SET-025)", () => {
   it("starts at 13 point, line height 1, a blinking block and 1000 rows of history", () => {
@@ -13,6 +13,13 @@ describe("terminal text settings (SET-022 / SET-025)", () => {
     expect(readText({ [FIELDS.size]: 9 }).size).toBe(9);
     expect(readText({ [FIELDS.size]: 7 }).size).toBe(8);
     expect(clampNumber("1.234", 1, 2, 1, 0.05)).toBe(1.25);
+  });
+  it("keeps the user's saved scrollback over the memory profile; the profile fills in only when nothing was saved (ACCT-059 vs SET-025)", () => {
+    expect(scrollbackRows(readText({ [FIELDS.scrollback]: 1000 }), 10000)).toBe(1000);
+    expect(scrollbackRows(readText({ [FIELDS.scrollback]: 0 }), 10000)).toBe(0);
+    expect(scrollbackRows(readText({ [FIELDS.scrollback]: 50000 }), 2000)).toBe(50000);
+    expect(scrollbackRows(readText({}), 10000)).toBe(10000);
+    expect(scrollbackRows(readText({}), null)).toBe(1000);
   });
   it("converts an older scrollback saved as text to rows", () => {
     expect(readText({ [FIELDS.scrollback]: "5000" }).scrollback).toBe(5000);

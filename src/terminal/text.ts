@@ -51,6 +51,8 @@ export type TerminalText = {
    *  calculation is costly on a busy, long session. */
   contrast: boolean;
   scrollback: number;
+  /** True when the user saved a scrollback of their own (the key exists in the settings). */
+  scrollbackSet: boolean;
   scroll: number;
   fastScroll: number;
   copyOnSelect: boolean;
@@ -82,6 +84,7 @@ export function readText(s: Record<string, unknown>, onWindows = windows()): Ter
     contrast: s[FIELDS.contrast] === true, // TERM-102: opt-in; the ratio is costly on long sessions
     // An older setting saved as a string of rows is read as rows.
     scrollback: clampNumber(s[FIELDS.scrollback], SCROLLBACK.min, SCROLLBACK.max, SCROLLBACK.start),
+    scrollbackSet: s[FIELDS.scrollback] !== undefined && s[FIELDS.scrollback] !== null,
     scroll: clampNumber(s[FIELDS.scroll], 0.1, 5, 1.15, 0.1), // TERM-089: normal wheel speed 1.15
     fastScroll: clampNumber(s[FIELDS.fastScroll], 1, 20, 5),
     copyOnSelect: s[FIELDS.copyOnSelect] === true,
@@ -89,6 +92,12 @@ export function readText(s: Record<string, unknown>, onWindows = windows()): Ter
     linkMenu: linkMenuOn(s), // TERM-094
   };
 }
+
+/** The rows of history a pane keeps (decision on ACCT-059 vs SET-025): the user's saved setting wins;
+ *  the machine's memory profile only fills in when nothing was saved (or before the profile is known,
+ *  the SET-025 default). */
+export const scrollbackRows = (t: TerminalText, profileRows: number | null | undefined): number =>
+  t.scrollbackSet || profileRows == null ? t.scrollback : profileRows;
 
 /** The family to draw with: the chosen one with the built-in stack behind it. */
 export const familyOf = (t: TerminalText) => fontStack(t.family, monoFont);
