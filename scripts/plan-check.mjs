@@ -230,4 +230,8 @@ function main() {
   console.log('plan-check: OK');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main();
+// The public repo is a clean export without the planning files (scripts/export-public.mjs).
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  if (!existsSync(join(ROOT, 'PLAN.md'))) console.log('plan-check: skipped (no PLAN.md: public export)');
+  else main();
+}
