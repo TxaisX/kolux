@@ -185,3 +185,24 @@ Review fix 4 (independent read-only review of S4, 2026-11-09: 6 blockers, 3 shou
     (t779e_a_hook_among_many_decoys passes on the old code here: ext4 does not list a folder alphabetically, so
      the old cap missed nothing; its red run, and the .exe/case half, need Windows.)
   PENDING on Windows: cargo test --lib t779 and the full suite; red for B6.
+
+Review fix 5 (independent re-review of 6ff3d6a7, 2026-11-09: B2 and B4 still open, reproduced with plain git)
+  B2 the push gate judged the wrong remote (a bare push uses pushDefault/pushRemote), only the first pushurl,
+     the wrong git dir, and only hooks (the receiving repository also runs its filters, fsmonitor and gc with
+     its own config): replaced, as the reviewer advised, by one rule: from an untrusted folder any push is
+     refused when its URL argument or any push URL (--all) of any remote is on this computer; a failed listing
+     refuses. Tests that push to a local bare remote now trust their folder (they stand for the user's repo).
+  B4 promisor=1/yes/on/bare was not seen, and git before 2.45 ignores GIT_NO_LAZY_FETCH: promisor parsed as a
+     git boolean; an untrusted partial clone's read also switches off every protocol by name; the guard now
+     runs on both read paths (command and command_checked; the WIP had it only on command).
+  Should-fix done: maintenance is a transfer; gc and the index commands look inside the folder's own
+     core.hooksPath folder instead of always refusing (husky repos still get the background tidy); a hook
+     named in config (hook.<name>.command) refuses like core.hooksPath. trust_for_test adds to the thread's
+     trusted folders (tests with two clones).
+  GREEN: cargo test --lib -- git:: auto_pr:: scm:: tidy:: -> 250 passed, 3 failed (the Linux-only three).
+  RED (the three new tests on 6ff3d6a7):
+    test git::tests::t779e_gc_looks_inside_the_folders_own_hooks_folder ... FAILED
+    test git::tests::t779e_a_push_that_could_reach_a_local_repository_is_refused ... FAILED
+    test git::tests::t779e_a_partial_clone_read_runs_no_program_on_any_git ... FAILED
+    test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 2921 filtered out; finished in 0.42s
+    error: test failed, to rerun pass `--lib`
