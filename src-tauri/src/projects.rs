@@ -44,6 +44,13 @@ pub struct Created {
     pub note: Option<String>,
     /// GIT-067: include-file and shared-folder entries that could not be brought along.
     pub warnings: Vec<String>,
+    /// T-780 (review round 3, 2026-11-09): true only when `head_is_on_origin` proved, right after
+    /// the checkout and before any record was written, that the new worktree's HEAD is on a branch
+    /// of the `origin` remote. False means "not proven" (a fork's commit, a local-only commit, no
+    /// origin, a git error, a timeout), and `record_made` then writes the sticky pull-request
+    /// marker so `trust::made_by_kolux` never pre-trusts it. Never sent to the window.
+    #[serde(skip)]
+    pub own: bool,
 }
 
 /// GIT-067: creations in one repository take turns; a failed one hands the turn on at once.
@@ -276,14 +283,55 @@ pub fn item_number(origin: &serde_json::Value) -> Option<u64> {
 /// pull request's branch is never pre-trusted again (`trust::made_by_kolux`).
 pub const PR_EVER_KEY: &str = "prEver";
 
-/// Records (or with `None`, forgets) how the workspace at `path` came to be.
+/// Records (or with `None`, forgets) how the workspace at `path` came to be. T-780 (round 3): a
+/// record that holds the sticky marker `PR_EVER_KEY` keeps it through every rewrite, so no later
+/// writer (the details form, the CLI's `worktree set`, a link to an issue) can bring the pre-trust
+/// back; only forgetting the workspace (`None`) drops it.
 pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>) -> Result<(), String> {
     let mut all = load_origins(store);
+    let key = name_key(path);
     match origin {
-        Some(o) => all.insert(name_key(path), o.clone()),
-        None => all.remove(&name_key(path)),
+        Some(o) => {
+            let mut o = o.clone();
+            if o.is_object() && all.get(&key).is_some_and(|was| was[PR_EVER_KEY] == true) {
+                o[PR_EVER_KEY] = true.into();
+            }
+            all.insert(key, o)
+        }
+        None => all.remove(&key),
     };
     store.set(ORIGINS_KEY, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
+}
+
+/// T-780 (review round 3, 2026-11-09): positive proof that the worktree at `dir` holds Kolux's
+/// own code: its HEAD commit is reachable from at least one branch of the `origin` remote. Run
+/// right after the checkout, before its first record, outside the store lock (T-442-b). Anything
+/// short of that proof (no `origin`, HEAD only on a fork or a local branch, a git error or a
+/// timeout) is false, and the worktree then counts as foreign: the agent asks about trust itself.
+/// Accepted cost: a user whose canonical remote is not named `origin` loses the pre-trust.
+pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
+    let Ok(sha) = crate::git::run_within(&["rev-parse", "--verify", "HEAD^{commit}"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let sha = sha.trim();
+    if sha.len() < 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        return false;
+    }
+    let Ok(refs) = crate::git::run_within(&["for-each-ref", "--contains", sha, "--format=%(refname)", "refs/remotes/origin/"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    refs.lines().map(str::trim).any(|r| r.strip_prefix("refs/remotes/origin/").is_some_and(|rest| !rest.is_empty()))
+}
+
+/// T-780 (review round 3): the one place a worktree Kolux just made gets its first record. `origin`
+/// is the caller's record (`madeBy` and its details); when the checkout was not proven to be on
+/// `origin` (`Created::own`), the sticky marker `PR_EVER_KEY` goes into that same first write, so
+/// there is never a record without it for `trust::made_by_kolux` to read. Then the worktree is
+/// marked seen (PROJ-041). Every creation path (composer, CLI, agent-first launches, branch open,
+/// issue links) comes through here.
+pub fn record_made(store: &Store, project: &Project, made: &Created, origin: serde_json::Value) -> Result<(), String> {
+    let mut origin = if origin.is_object() { origin } else { serde_json::json!({}) };
+    if !made.own {
+        origin[PR_EVER_KEY] = true.into();
+    }
+    set_origin(store, &made.worktree.path, Some(&origin))?;
+    note_seen(store, project, &made.worktree.path)
 }
 
 fn load_map(store: &Store, key: &str) -> serde_json::Map<String, serde_json::Value> {
@@ -308,12 +356,10 @@ fn save_seen<'a>(store: &Store, project: &Project, keys: impl IntoIterator<Item 
     store.set(SEEN_KEY, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
 }
 
-/// A worktree Kolux itself just made is never offered as new (PROJ-041), and its record makes it
-/// managed wherever it sits (PROJ-044); a more detailed origin written by the caller is kept.
+/// A worktree Kolux itself just made is never offered as new (PROJ-041). T-780 (round 3): this
+/// writes no origin record any more; the record, `madeBy` included, comes from `record_made`,
+/// which decides the trust marker first. A path with no record is never pre-trusted (fail-safe).
 pub fn note_seen(store: &Store, project: &Project, path: &str) -> Result<(), String> {
-    if origin(store, path).is_none() {
-        set_origin(store, path, Some(&serde_json::json!({ "madeBy": "app" })))?;
-    }
     match seen_of(store, project) {
         Some(mut seen) => {
             seen.insert(name_key(path));
@@ -1064,7 +1110,9 @@ pub fn create_workspace_until(git: &Git, place: &Place, project: &Project, typed
         .into_iter()
         .find(|w| same_folder(Path::new(&w.path), &dest))
         .ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
-    Ok(Created { worktree, base: from, note, warnings })
+    // T-780: decided here, before any record exists and with no store lock held.
+    let own = head_is_on_origin(&dest);
+    Ok(Created { worktree, base: from, note, warnings, own })
 }
 
 /// Every workspace folder name and branch in use across all registered projects (SESS-023 and
@@ -1260,37 +1308,11 @@ pub fn create_fresh_workspace<S: std::ops::Deref<Target = Store>>(git: &Git, loc
         pick_name(&store, &retired_scope(place, project), taken, seed)
     };
     let created = create_workspace(git, place, project, &name, base)?;
-    note_seen(&*lock()?, project, &created.worktree.path)?;
-    note_foreign_base(&*lock()?, git, project, &created)?;
+    record_made(&*lock()?, project, &created, serde_json::json!({ "madeBy": "app" }))?;
     let made = created.worktree;
     // PROJ-039: Kolux invented this name, so the first work may rename the branch to fit it.
     mark_suggested(&*lock()?, &made.path, true)?;
     Ok(made)
-}
-
-/// T-780 (review P2-2, 2026-11-09): whether the worktree `made` checked out a branch that comes
-/// from a remote other than `origin`: the ref it was made from is `refs/remotes/<x>/...` with `x`
-/// not `origin`, or its branch tracks such a remote. `pr_checkout::open` adds a fork as a remote
-/// for a stranger's pull request and never removes it, so a later worktree on that remote's
-/// branch holds the same foreign work.
-pub(crate) fn from_foreign_remote(git: &Git, repo: &Path, made: &Created) -> bool {
-    let remote_of_ref = |full: &str| full.trim().strip_prefix("refs/remotes/").and_then(|r| r.split('/').next()).map(str::to_string);
-    let base = made.base.trim();
-    let by_ref = if base.is_empty() || base.starts_with('-') { None } else { crate::git::run(&["rev-parse", "--symbolic-full-name", base], Some(repo)).ok().and_then(|s| remote_of_ref(&s)) };
-    let by_upstream = made.worktree.branch.as_deref().filter(|b| git.branch_taken(repo, b)).and_then(|b| crate::git::run(&["config", "--get", &format!("branch.{b}.remote")], Some(repo)).ok()).map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
-    [by_ref, by_upstream].into_iter().flatten().any(|remote| remote != "origin")
-}
-
-/// T-780 (review P2-2): a worktree made from another remote's branch is recorded as holding a pull
-/// request (`PR_EVER_KEY`), so `trust::made_by_kolux` never pre-trusts it. Call after the record is
-/// written; the existing record is kept.
-pub(crate) fn note_foreign_base(store: &Store, git: &Git, project: &Project, made: &Created) -> Result<(), String> {
-    if !from_foreign_remote(git, Path::new(&project.path), made) {
-        return Ok(());
-    }
-    let mut o = origin(store, &made.worktree.path).filter(serde_json::Value::is_object).unwrap_or_else(|| serde_json::json!({}));
-    o[PR_EVER_KEY] = true.into();
-    set_origin(store, &made.worktree.path, Some(&o))
 }
 
 /// GIT-067: uncommitted work (submodule work included) stops the removal unless `force`; the
@@ -1372,7 +1394,17 @@ pub fn open_branch_workspace_until(git: &Git, place: &Place, project: &Project, 
         return Err(undo_create(git, repo, &dest, None));
     }
     let worktree = git.worktrees(repo)?.into_iter().find(|w| same_folder(Path::new(&w.path), &dest)).ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
-    Ok(Created { worktree, base: branch.to_string(), note: None, warnings })
+    // T-780: decided here, before any record exists and with no store lock held.
+    let own = head_is_on_origin(&dest);
+    Ok(Created { worktree, base: branch.to_string(), note: None, warnings, own })
+}
+
+/// `open_branch_workspace_until` plus the worktree's first record (T-780: the trust marker is
+/// decided in that first write). `workspace_open_branch` is this with the composer's nesting.
+pub fn open_named_until(git: &Git, store: &Mutex<Store>, project: &Project, place: &Place, branch: &str, folder: Option<&str>, overtaken: &dyn Fn() -> bool) -> Result<Created, String> {
+    let made = open_branch_workspace_until(git, place, project, branch, folder, overtaken)?;
+    record_made(&*store.lock().map_err(|e| e.to_string())?, project, &made, serde_json::json!({ "madeBy": "app", "existingBranch": true }))?;
+    Ok(made)
 }
 
 /// The branches a workspace can be opened on (PROJ-030): local ones, then remote ones by their
@@ -1393,17 +1425,11 @@ pub fn workspace_branches(store: StoreState<'_>, project_id: String) -> Result<V
 #[allow(clippy::too_many_arguments)]
 pub fn workspace_open_branch(git: State<'_, Git>, store: StoreState<'_>, project_id: String, branch: String, folder: Option<String>, parent: Option<String>, ticket: Option<u64>, active_folder: Option<String>) -> Result<Created, String> {
     let (project, place) = locked_place(&store, &project_id)?;
-    let made = open_branch_workspace_until(&git, &place, &project, &branch, folder.as_deref(), &|| dropped(ticket));
+    let made = open_named_until(&git, &store, &project, &place, &branch, folder.as_deref(), &|| dropped(ticket));
     if let Some(t) = ticket {
         settle_create(t);
     }
     let mut made = made?;
-    {
-        let store = store.lock().map_err(|e| e.to_string())?;
-        set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": true })))?;
-        note_seen(&store, &project, &made.worktree.path)?;
-        note_foreign_base(&store, &git, &project, &made)?;
-    }
     nest_under(&git, &store, &project, &mut made, parent.as_deref(), active_folder.as_deref())?;
     let _ = crate::activity::touch(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path); // PROJ-051
     Ok(made)
@@ -1517,8 +1543,8 @@ pub fn workspace_from_item(app: tauri::AppHandle, git: State<'_, Git>, store: St
         return workspace_open_pr(app, git, store, project.id, item.number, None, None, None, None, None);
     }
     let issue = crate::pr_checkout::issue(&crate::scm::gh_program()?, Path::new(&project.path), item.number)?;
-    let made = create_named(&git, &store, &project.id, &issue.title, None, None)?;
-    set_origin(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "issue": issue.number, "issueUrl": issue.url })))?;
+    // T-780: the issue link rides in the first record, so the trust marker is decided with it.
+    let made = create_named(&git, &store, &project.id, &issue.title, None, None, Some(serde_json::json!({ "madeBy": "app", "issue": issue.number, "issueUrl": issue.url })))?;
     Ok(made)
 }
 
@@ -2219,16 +2245,19 @@ fn locked_place(store: &Mutex<Store>, project_id: &str) -> Result<(Project, Plac
 
 /// Makes a workspace in a registered project and keeps the typed name (the sidebar's Create and
 /// `kolux-dev worktree create` both come through here). `branch` (the composer's Advanced) names
-/// the branch in place of the name (SESS-037).
-pub fn create_named(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>) -> Result<Created, String> {
-    create_named_until(git, store, project_id, name, base, branch, &|| false)
+/// the branch in place of the name (SESS-037). `origin` is the caller's record for the new
+/// worktree (its `madeBy` and details), `{ "madeBy": "app" }` when None; T-780: it is written once,
+/// by `record_made`, with the trust marker decided in that same write.
+pub fn create_named(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>, origin: Option<serde_json::Value>) -> Result<Created, String> {
+    create_named_until(git, store, project_id, name, base, branch, origin, &|| false)
 }
 
 /// `create_named` with the overtaken checks of `create_workspace_until` (PROJ-020).
-pub fn create_named_until(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>, overtaken: &dyn Fn() -> bool) -> Result<Created, String> {
+#[allow(clippy::too_many_arguments)]
+pub fn create_named_until(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>, origin: Option<serde_json::Value>, overtaken: &dyn Fn() -> bool) -> Result<Created, String> {
     let (project, place) = locked_place(store, project_id)?;
     let mut made = create_workspace_until(git, &place, &project, non_blank(branch).unwrap_or(name), base, overtaken)?;
-    note_seen(&*store.lock().map_err(|e| e.to_string())?, &project, &made.worktree.path)?;
+    record_made(&*store.lock().map_err(|e| e.to_string())?, &project, &made, origin.unwrap_or_else(|| serde_json::json!({ "madeBy": "app" })))?;
     let typed = name.trim();
     if typed != made.worktree.branch.as_deref().unwrap_or_default() {
         let store = store.lock().map_err(|e| e.to_string())?;
@@ -2242,7 +2271,10 @@ pub fn create_named_until(git: &Git, store: &Mutex<Store>, project_id: &str, nam
 #[tauri::command(async)]
 #[allow(clippy::too_many_arguments)]
 pub fn workspace_create(git: State<'_, Git>, store: StoreState<'_>, project_id: String, name: String, base: Option<String>, branch: Option<String>, parent: Option<String>, ticket: Option<u64>, issue: Option<crate::pr_checkout::Linkable>, active_folder: Option<String>, suggested: Option<bool>) -> Result<Created, String> {
-    let made = create_named_until(&git, &store, &project_id, &name, base.as_deref(), branch.as_deref(), &|| dropped(ticket));
+    // SESS-036: linked to the issue the composer named it from (the `issue:` selector finds it);
+    // T-780: the link rides in the first record, where the trust marker is decided.
+    let origin = issue.map(|i| serde_json::json!({ "madeBy": "app", "issue": i.number, "issueUrl": i.url }));
+    let made = create_named_until(&git, &store, &project_id, &name, base.as_deref(), branch.as_deref(), origin, &|| dropped(ticket));
     if let Some(t) = ticket {
         settle_create(t);
     }
@@ -2254,13 +2286,7 @@ pub fn workspace_create(git: State<'_, Git>, store: StoreState<'_>, project_id: 
         if suggested == Some(true) && branch.is_none() {
             mark_suggested(&store, &made.worktree.path, true)?;
         }
-        if let Some(i) = issue {
-            // SESS-036: linked to the issue the composer named it from (the `issue:` selector finds it)
-            set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "issue": i.number, "issueUrl": i.url })))?;
-        }
-        let project = find_project(&store, &project_id)?;
-        note_foreign_base(&store, &git, &project, &made)?;
-        project
+        find_project(&store, &project_id)?
     };
     nest_under(&git, &store, &project, &mut made, parent.as_deref(), active_folder.as_deref())?;
     let _ = crate::activity::touch(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path); // PROJ-051
@@ -4015,10 +4041,10 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         store.save_settings(&settings).unwrap();
         let project = add_project(&git, &store, &repo).unwrap();
         let store = Mutex::new(store);
-        let made = create_named(&git, &store, &project.id, "Fix login", None, Some("feat/x")).unwrap().worktree;
+        let made = create_named(&git, &store, &project.id, "Fix login", None, Some("feat/x"), None).unwrap().worktree;
         assert_eq!(made.branch.as_deref(), Some("feat-x"));
         assert_eq!(made.name.as_deref(), Some("Fix login"));
-        let plain = create_named(&git, &store, &project.id, "Fix login", None, None).unwrap().worktree;
+        let plain = create_named(&git, &store, &project.id, "Fix login", None, None, None).unwrap().worktree;
         assert_eq!(plain.branch.as_deref(), Some("fix-login"));
         assert_eq!(plain.name.as_deref(), Some("Fix login"));
     }
@@ -4797,13 +4823,14 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         let project = add_project(&git, &store, &repo).unwrap();
         let place = nested(&temp("ws068"));
         let a = create_workspace(&git, &place, &project, "alpha", None).unwrap().worktree.path;
-        let b = create_workspace(&git, &place, &project, "beta", None).unwrap().worktree.path;
+        let made_b = create_workspace(&git, &place, &project, "beta", None).unwrap();
+        let b = made_b.worktree.path.clone();
         let c = create_workspace(&git, &place, &project, "gamma", None).unwrap().worktree.path;
         set_name(&store, &b, Some("Beta work")).unwrap();
         reparent(&git, &store, &project, &b, Some(&a)).unwrap();
         reparent(&git, &store, &project, &c, Some(&b)).unwrap();
         save_workspace_note(&store, &b, "half done").unwrap();
-        note_seen(&store, &project, &b).unwrap(); // what the create commands record: made by Kolux
+        record_made(&store, &project, &made_b, serde_json::json!({ "madeBy": "app" })).unwrap(); // what the create commands record (T-780: one write, marker decided by record_made)
         assert!(unseen(&git, &store, &project).unwrap().is_empty());
         let key = |p: &Path| name_key(&p.to_string_lossy());
         let paths = |l: &[Worktree]| l.iter().map(|w| name_key(&w.path)).collect::<Vec<_>>();
@@ -5891,66 +5918,220 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         drop(store);
     }
 
-    /// T-780 (review P2-2): a worktree made on a branch from a remote other than `origin` (a fork
-    /// left behind by a pull request checkout) is recorded as holding a pull request, whichever
-    /// way it was made: opened by the branch's short name (Git makes the local branch track the
-    /// fork), started from the fork's ref as a base, or opened on a local branch that tracks the
-    /// fork. A branch from `origin` or a plain local branch is Kolux's own.
-    #[test]
-    fn t780_a_worktree_on_another_remotes_branch_is_never_pre_trusted() {
+    /// T-780 (round 3): a repo with an `origin` holding `main` and `ours`, and a `fork` remote
+    /// holding `theirs`, a commit found nowhere on origin. Returns (store, project, repo, root,
+    /// folders to remove).
+    fn t780_fixture(tag: &str) -> (Mutex<Store>, Project, PathBuf, PathBuf, Vec<PathBuf>) {
         let git = Git::detect().unwrap();
-        let profile = temp("t780-fork");
-        let store = Mutex::new(Store::open(&profile).unwrap());
-        let origin_remote = temp("t780-fork-origin");
+        let profile = temp(&format!("{tag}-profile"));
+        let store = Store::open(&profile).unwrap();
+        let origin_remote = temp(&format!("{tag}-origin"));
         git_in(&origin_remote, &["init", "-q", "--bare", "-b", "main"]);
-        let fork = temp("t780-fork-fork");
+        let fork = temp(&format!("{tag}-fork"));
         git_in(&fork, &["init", "-q", "--bare", "-b", "main"]);
-        let repo = temp_repo("t780-fork-r");
+        let repo = temp_repo(&format!("{tag}-repo"));
         git_in(&repo, &["remote", "add", "origin", &origin_remote.to_string_lossy()]);
         git_in(&repo, &["remote", "add", "fork", &fork.to_string_lossy()]);
-        // Our branch lives on origin, a stranger's on the fork; neither stays local.
+        git_in(&repo, &["push", "-q", "origin", "main"]);
         git_in(&repo, &["branch", "ours"]);
         git_in(&repo, &["push", "-q", "origin", "ours"]);
         git_in(&repo, &["branch", "-D", "ours"]);
-        git_in(&repo, &["branch", "theirs"]);
+        // The stranger's branch carries a commit of its own, so its HEAD is on no origin branch.
+        git_in(&repo, &["checkout", "-q", "-b", "theirs"]);
+        fs::write(repo.join("theirs.txt"), "from a fork").unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "a commit by a stranger"]);
         git_in(&repo, &["push", "-q", "fork", "theirs"]);
+        git_in(&repo, &["checkout", "-q", "main"]);
         git_in(&repo, &["branch", "-D", "theirs"]);
-        let root = temp("t780-fork-root");
-        let project = add_project(&git, &store.lock().unwrap(), &repo).unwrap();
-        let record = |made: &Created| {
-            let s = store.lock().unwrap();
-            set_origin(&s, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": true }))).unwrap();
-            note_foreign_base(&s, &git, &project, made).unwrap();
-            origin(&s, &made.worktree.path).unwrap()
-        };
-        let theirs = open_branch_workspace(&git, &nested(&root), &project, "theirs", None).unwrap();
-        assert_eq!(git.upstream_of(&repo, "theirs").as_deref(), Some("fork/theirs"));
-        assert!(from_foreign_remote(&git, &repo, &theirs), "opened by short name: the local branch tracks the fork");
-        assert_eq!(record(&theirs)[PR_EVER_KEY], true);
-        assert!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&theirs.worktree.path)]).is_empty(), "a fork's branch is not pre-trusted");
-        let from_theirs = create_workspace(&git, &nested(&root), &project, "from-theirs", Some("fork/theirs")).unwrap();
-        assert!(from_foreign_remote(&git, &repo, &from_theirs), "started from the fork's ref as a base");
-        assert_eq!(record(&from_theirs)[PR_EVER_KEY], true);
+        let root = temp(&format!("{tag}-root"));
+        let mut settings = store.settings();
+        settings["branchPrefix"] = serde_json::json!("none");
+        settings[WORKSPACES_DIR_SETTING] = serde_json::json!(root.to_string_lossy());
+        store.save_settings(&settings).unwrap();
+        let project = add_project(&git, &store, &repo).unwrap();
+        (Mutex::new(store), project, repo, root.clone(), vec![profile, origin_remote, fork, root])
+    }
+
+    fn t780_record(store: &Mutex<Store>, path: &str) -> serde_json::Value {
+        origin(&store.lock().unwrap(), path).expect("the worktree has a record")
+    }
+
+    fn t780_pre_trusted(store: &Mutex<Store>, path: &str) -> bool {
+        crate::trust::made_by_kolux(store, &[PathBuf::from(path)]) == vec![PathBuf::from(path)]
+    }
+
+    /// T-780 (round 3, a): the composer's base is a local branch that tracks the fork (what a
+    /// `git checkout theirs` leaves behind). `workspace_create` comes through `create_named_until`;
+    /// `workspace_open_branch` through `open_named_until`. Both first records carry the marker.
+    #[test]
+    fn t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780a");
         git_in(&repo, &["branch", "--track", "by-hand", "fork/theirs"]);
-        let by_hand = open_branch_workspace(&git, &nested(&root), &project, "by-hand", None).unwrap();
-        assert!(from_foreign_remote(&git, &repo, &by_hand), "a local branch tracking the fork");
-        assert_eq!(record(&by_hand)[PR_EVER_KEY], true);
-        // Kolux's own: origin's branch, a fresh branch from origin's ref, a plain local branch.
-        let ours = open_branch_workspace(&git, &nested(&root), &project, "ours", None).unwrap();
-        assert_eq!(git.upstream_of(&repo, "ours").as_deref(), Some("origin/ours"));
-        assert!(!from_foreign_remote(&git, &repo, &ours));
-        assert!(record(&ours).get(PR_EVER_KEY).is_none());
-        assert_eq!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&ours.worktree.path)]), vec![PathBuf::from(&ours.worktree.path)], "origin's branch is pre-trusted as before");
-        let from_ours = create_workspace(&git, &nested(&root), &project, "from-ours", Some("origin/ours")).unwrap();
-        assert!(!from_foreign_remote(&git, &repo, &from_ours));
-        git_in(&repo, &["branch", "local-only"]);
-        let local = open_branch_workspace(&git, &nested(&root), &project, "local-only", None).unwrap();
-        assert!(!from_foreign_remote(&git, &repo, &local));
-        assert!(record(&local).get(PR_EVER_KEY).is_none());
+        assert_eq!(git.upstream_of(&repo, "by-hand").as_deref(), Some("fork/theirs"));
+        let made = create_named(&git, &store, &project.id, "from by-hand", Some("by-hand"), None, None).unwrap();
+        assert!(!made.own, "HEAD is the fork's commit, found on no origin branch");
+        let rec = t780_record(&store, &made.worktree.path);
+        assert_eq!((rec["madeBy"].as_str(), rec[PR_EVER_KEY].as_bool()), (Some("app"), Some(true)), "{rec}");
+        assert!(!t780_pre_trusted(&store, &made.worktree.path), "a fork's code is never pre-trusted");
+        // the branch opened as it is (Open branch in the composer)
+        let (project2, place) = locked_place(&store, &project.id).unwrap();
+        let opened = open_named_until(&git, &store, &project2, &place, "by-hand", Some("opened-by-hand"), &|| false).unwrap();
+        assert!(!opened.own);
+        assert_eq!(t780_record(&store, &opened.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &opened.worktree.path));
+        // the fork's branch by its short name (Git makes the tracking branch itself)
+        let short = open_named_until(&git, &store, &project2, &place, "theirs", None, &|| false).unwrap();
+        assert_eq!(t780_record(&store, &short.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &short.worktree.path));
         drop(store);
-        for d in [profile, repo, root, origin_remote, fork] {
+        for d in cleanup.into_iter().chain([repo]) {
             let _ = fs::remove_dir_all(d);
         }
+    }
+
+    /// T-780 (round 3, b): the base names the fork's commit directly, by sha or as a rev expression
+    /// (`fork/theirs~0`), and so no ref name gives it away; the content check still marks it.
+    #[test]
+    fn t780_a_fork_commit_as_base_is_never_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780b");
+        let sha = rev(&repo, "fork/theirs");
+        let by_sha = create_named(&git, &store, &project.id, "from sha", Some(&sha), None, None).unwrap();
+        assert!(!by_sha.own);
+        assert_eq!(t780_record(&store, &by_sha.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &by_sha.worktree.path));
+        let by_rev = create_named(&git, &store, &project.id, "from rev", Some("fork/theirs~0"), None, None).unwrap();
+        assert_eq!(t780_record(&store, &by_rev.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &by_rev.worktree.path));
+        // the agent-first launch with a saved base (AUTO-005) goes the same way
+        let fresh = create_fresh_from(&git, &store, &project.id, Some("fork/theirs")).unwrap();
+        assert_eq!(t780_record(&store, &fresh.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &fresh.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, d): a checkout whose HEAD is on an origin branch is Kolux's own, however the
+    /// base was spelled: `origin/main`, the local `main`, no base at all (the agent-first launch),
+    /// an issue-linked record, or an existing origin branch opened as it is. No marker, pre-trusted.
+    #[test]
+    fn t780_a_checkout_on_origin_is_still_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780d");
+        let made = [
+            create_named(&git, &store, &project.id, "from origin main", Some("origin/main"), None, None).unwrap().worktree.path,
+            create_named(&git, &store, &project.id, "from local main", Some("main"), None, None).unwrap().worktree.path,
+            create_named(&git, &store, &project.id, "linked", None, None, Some(serde_json::json!({ "madeBy": "app", "issue": 7, "issueUrl": "https://github.com/o/r/issues/7" }))).unwrap().worktree.path,
+            create_fresh_from(&git, &store, &project.id, None).unwrap().path,
+        ];
+        for path in &made {
+            let rec = t780_record(&store, path);
+            assert_eq!(rec["madeBy"], "app", "{rec}");
+            assert!(rec.get(PR_EVER_KEY).is_none(), "no marker on Kolux's own code: {rec}");
+            assert!(t780_pre_trusted(&store, path), "{path}");
+        }
+        assert_eq!(t780_record(&store, &made[2])["issue"], 7, "the issue link rides in the first record");
+        let (project2, place) = locked_place(&store, &project.id).unwrap();
+        let ours = open_named_until(&git, &store, &project2, &place, "ours", None, &|| false).unwrap();
+        assert!(ours.own);
+        let rec = t780_record(&store, &ours.worktree.path);
+        assert_eq!((rec["madeBy"].as_str(), rec["existingBranch"].as_bool(), rec.get(PR_EVER_KEY)), (Some("app"), Some(true), None), "{rec}");
+        assert!(t780_pre_trusted(&store, &ours.worktree.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, e): without positive proof the worktree is marked: no `origin` remote at
+    /// all, a HEAD with a local commit no origin branch has yet, and `head_is_on_origin` itself on
+    /// a folder that is no git checkout (what a git error looks like).
+    #[test]
+    fn t780_without_proof_of_origin_the_worktree_is_marked() {
+        let git = Git::detect().unwrap();
+        // no origin remote
+        let profile = temp("t780e-profile");
+        let store = Store::open(&profile).unwrap();
+        let repo = temp_repo("t780e-repo");
+        let root = temp("t780e-root");
+        let mut settings = store.settings();
+        settings["branchPrefix"] = serde_json::json!("none");
+        settings[WORKSPACES_DIR_SETTING] = serde_json::json!(root.to_string_lossy());
+        store.save_settings(&settings).unwrap();
+        let project = add_project(&git, &store, &repo).unwrap();
+        let store = Mutex::new(store);
+        let made = create_named(&git, &store, &project.id, "no origin", None, None, None).unwrap();
+        assert!(!made.own);
+        let rec = t780_record(&store, &made.worktree.path);
+        assert_eq!((rec["madeBy"].as_str(), rec[PR_EVER_KEY].as_bool()), (Some("app"), Some(true)), "{rec}");
+        assert!(!t780_pre_trusted(&store, &made.worktree.path), "no origin: fail-safe");
+        let fresh = create_fresh_from(&git, &store, &project.id, None).unwrap();
+        assert_eq!(t780_record(&store, &fresh.path)[PR_EVER_KEY], true);
+        assert!(!head_is_on_origin(&profile), "not a git folder: no proof");
+        drop(store);
+        for d in [profile, repo, root] {
+            let _ = fs::remove_dir_all(d);
+        }
+        // an origin, but HEAD carries a commit origin does not have yet
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780e2");
+        git_in(&repo, &["checkout", "-q", "-b", "ahead"]);
+        fs::write(repo.join("local.txt"), "not pushed").unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "local only"]);
+        git_in(&repo, &["checkout", "-q", "main"]);
+        assert!(head_is_on_origin(&repo), "main itself is on origin");
+        let ahead = create_named(&git, &store, &project.id, "from ahead", Some("ahead"), None, None).unwrap();
+        assert!(!ahead.own);
+        assert!(!head_is_on_origin(Path::new(&ahead.worktree.path)));
+        assert_eq!(t780_record(&store, &ahead.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &ahead.worktree.path), "accepted cost: unpushed work is not pre-trusted");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, f): the marker is in the first record written, never added by a second
+    /// write: `record_made` puts it into the one `set_origin` it makes; `note_seen` on its own
+    /// writes no record at all (so no `madeBy` ever exists without the marker); and `set_origin`
+    /// keeps the marker through every later rewrite of the record.
+    #[test]
+    fn t780_the_first_record_already_carries_the_marker() {
+        let profile = temp("t780f");
+        let store = Store::open(&profile).unwrap();
+        let project = project_at("p780f", &profile);
+        let wt = profile.join("wt").to_string_lossy().into_owned();
+        let worktree = Worktree { name: None, branch: Some("x".into()), head: String::new(), is_main: false, path: wt.clone(), parent: None, locked: None, hidden: false, kind: String::new(), source: None, made_by: None, number: None, comment: None };
+        // the seen mark alone leaves no record
+        note_seen(&store, &project, &wt).unwrap();
+        assert!(origin(&store, &wt).is_none(), "note_seen writes no madeBy");
+        // the first and only write of a foreign worktree's record holds madeBy and the marker
+        let foreign = Created { worktree: worktree.clone(), base: "x".into(), note: None, warnings: vec![], own: false };
+        let before = store.get(ORIGINS_KEY).unwrap();
+        record_made(&store, &project, &foreign, serde_json::json!({ "madeBy": "cli", "comment": "c" })).unwrap();
+        let rec = origin(&store, &wt).unwrap();
+        assert_eq!((rec["madeBy"].as_str(), rec["comment"].as_str(), rec[PR_EVER_KEY].as_bool()), (Some("cli"), Some("c"), Some(true)), "{rec}");
+        assert_ne!(before, store.get(ORIGINS_KEY).unwrap());
+        let store = Mutex::new(store);
+        assert!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&wt)]).is_empty());
+        let store = store.into_inner().unwrap();
+        // every rewrite keeps it: a bare madeBy, the details form
+        set_origin(&store, &wt, Some(&serde_json::json!({ "madeBy": "app" }))).unwrap();
+        assert_eq!(origin(&store, &wt).unwrap()[PR_EVER_KEY], true, "set_origin keeps the sticky marker");
+        save_details(&store, &wt, "", "", "note").unwrap();
+        assert_eq!(origin(&store, &wt).unwrap()[PR_EVER_KEY], true);
+        // forgetting the workspace drops it; a new worktree at that path starts clean
+        set_origin(&store, &wt, None).unwrap();
+        let own = Created { worktree, base: "x".into(), note: None, warnings: vec![], own: true };
+        record_made(&store, &project, &own, serde_json::json!({ "madeBy": "app" })).unwrap();
+        let rec = origin(&store, &wt).unwrap();
+        assert_eq!((rec["madeBy"].as_str(), rec.get(PR_EVER_KEY)), (Some("app"), None), "{rec}");
+        drop(store);
+        let _ = fs::remove_dir_all(profile);
     }
 
     /// after-list row 882: a refused read of the folder flags or the saved setup must not leave the

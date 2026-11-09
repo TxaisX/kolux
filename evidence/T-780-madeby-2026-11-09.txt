@@ -114,3 +114,131 @@ cargo test -j 2 --lib cli::       exit 0   test result: ok. 188 passed; 0 failed
 cargo test -j 2 --test cards_10   exit 0   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.96s
 cargo test -j 2 --test cards_11   exit 0   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.35s
 cargo clippy -j 2 --all-targets -- -D warnings  exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 19s
+
+================================================================================
+T-780 review round 3 (2026-11-09, lane ready-sec-madeby, base 426ff7d6)
+================================================================================
+
+Findings fixed (review of 426ff7d6):
+  P1-A  CLI `orchestration.worker-start` with --name never called note_foreign_base: a fork
+        branch checked out through it was pre-trusted.
+  P1-B  name-based detection (`rev-parse --symbolic-full-name <base>` + the branch's upstream)
+        missed a local branch tracking the fork, a bare sha, `fork/theirs~0` and any other rev
+        expression that resolves to a stranger's commit.
+  P2    from_foreign_remote treated any git error as "not foreign" (fail-open).
+  P3    the plain record was written first and the marker added in a second write, so a crash
+        or a concurrent reader between the two saw a clean record; git ran under the store lock.
+  P3    workspace_from_item's issue path never marked at all.
+
+Design (content-based, fail-safe, one write):
+  projects::head_is_on_origin(dir) -> bool    (projects.rs ~312)
+      `git rev-parse --verify HEAD^{commit}` then
+      `git for-each-ref --contains <sha> --format=%(refname) refs/remotes/origin/`,
+      both through crate::git::run_within with READ_TIMEOUT (30 s). True only when at least one
+      `refs/remotes/origin/<name>` line comes back. A git error, a timeout, a malformed sha, no
+      `origin` remote, an empty listing: all false. It is called in the git-only creation layer
+      (create_workspace_until, open_branch_workspace_until), inside repo_turn, with no store lock
+      held (T-442-b kept).
+  Created.own: bool  (#[serde(skip)], never sent to the window)
+      set from head_is_on_origin by the two creation functions above; pr_checkout::open sets it
+      false by construction (a pull request's head is never Kolux's own).
+  projects::record_made(store, project, made, origin)    (projects.rs ~328)
+      the single writer of a fresh madeBy record. When !made.own it puts `"prEver": true` into the
+      record BEFORE the one set_origin call, then note_seen. There is no window with a clean
+      record on disk.
+  projects::note_seen no longer writes `{madeBy:"app"}`; it only maintains the seen list. A
+      caller that wants a record goes through record_made and so through the own check.
+  projects::set_origin carries an existing `prEver: true` over onto any rewritten object record
+      (belt for save_details, the CLI issue/comment edit and any future writer).
+  from_foreign_remote and note_foreign_base deleted.
+  create_named / create_named_until gained `origin: Option<serde_json::Value>` so the caller's
+      record (CLI madeBy "cli" with parent/cwd/issue, the app's issue link) is the first and only
+      write. open_named_until added for the open-branch path (same shape).
+
+Every creation path and how it decides the marker:
+  workspace_create (window, blank or with issue)        -> create_named_until -> record_made(own)
+  workspace_from_item (window, from an issue)           -> create_named           -> record_made(own)
+  workspace_open_branch (window, existing branch)       -> open_named_until       -> record_made(own)
+  workspace_create_fresh (window)                       -> create_fresh_from -> create_fresh_workspace -> record_made(own)
+  CLI worktree.create (with or without --base-branch)   -> create_named(origin=cli record) -> record_made(own)
+  CLI orchestration.worker-start --name [--base-branch] -> create_named          -> record_made(own)
+  CLI orchestration.worker-start (no --name)            -> create_fresh -> create_fresh_from -> record_made(own)
+  hooks.rs test helper                                  -> create_fresh_from     -> record_made(own)
+  workspace_open_pr (window, pull request)              -> pr_checkout::open (own=false) then its
+                                                           own set_origin with `prEver: true` (unchanged, already correct)
+  Remaining set_origin callers (save_details, CLI issue/comment edit, forget_origin) rewrite or
+  remove existing records; set_origin keeps the marker on a rewrite. No path writes a fresh madeBy
+  record without going through record_made.
+
+Accepted costs (frozen by the coordinator, 2026-11-09):
+  - A repo whose canonical remote is not named `origin` never gets pre-trust: its worktrees are all
+    marked prEver and Claude/Codex ask their own "trust this folder?" question. Correct, just slower.
+  - A worktree started from unpushed local commits (HEAD not reachable from any origin/* ref) is
+    not pre-trusted either, even though the commits are the user's own. Same effect: the agent asks.
+  - Any git failure or timeout during the check costs pre-trust, never grants it.
+  - The CLI test fixture had to gain a bare `origin` remote so its own-branch cases stay pre-trusted.
+
+Tests (projects.rs tests t780_*, cli.rs test create_and_remove_a_worktree_from_the_command_line):
+  a. t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted
+       base = local branch `theirs-local` tracking fork/theirs -> record madeBy app + prEver true,
+       made_by_kolux empty, not_pre_trusted_why mentions the pull request.
+  b. t780_a_fork_commit_as_base_is_never_pre_trusted
+       base = the fork commit's sha, then `fork/theirs~0` (rev expression), then create_fresh_from
+       with the sha -> all marked.
+  c. (CLI) create_and_remove_a_worktree_from_the_command_line
+       orchestration.worker-start --name stranger --base-branch fork/theirs through dispatch():
+       trust text says "pull request", record madeBy app + prEver true, made_by_kolux empty, no
+       entry for the folder in .claude.json; worktree.create "stranger two" on fork/theirs -> madeBy
+       cli + prEver true; worktree.create "own" on origin/main -> madeBy cli, no prEver, pre-trusted.
+  d. t780_a_checkout_on_origin_is_still_pre_trusted
+       base origin/main and an existing branch whose HEAD is on origin -> no marker, pre-trusted.
+  e. t780_without_proof_of_origin_the_worktree_is_marked
+       no `origin` remote; a folder that is not a git repo; a branch one commit ahead of origin ->
+       all marked (fail-safe).
+  f. t780_the_first_record_already_carries_the_marker
+       note_seen writes no record; record_made with own=false writes madeBy and prEver in one
+       set_origin; save_details and set_origin keep the marker; forget then own=true writes clean.
+
+RED (426ff7d6 logic temporarily re-applied by re-edit: own = true, note_seen writing madeBy,
+set_origin without carry-over, name-based fail-open note_foreign_base called only where 426ff7d6
+called it; restored afterwards by copying the saved GREEN files back; no stash, no checkout):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_the_first_record_already_carries_the_marker ... FAILED   (src\projects.rs:6133)
+    test projects::tests::t780_without_proof_of_origin_the_worktree_is_marked ... FAILED   (src\projects.rs:6090)
+    test projects::tests::t780_a_fork_commit_as_base_is_never_pre_trusted ... FAILED   (src\projects.rs:6024)
+    test projects::tests::t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted ... FAILED   (src\projects.rs:5996)
+    test projects::tests::t780_a_checkout_on_origin_is_still_pre_trusted ... ok   (regression guard: passes under both)
+    test result: FAILED. 10 passed; 4 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 6.73s   exit=101
+  cargo test -j 2 --lib create_and_remove_a_worktree_from_the_command_line
+    test cli::tests::create_and_remove_a_worktree_from_the_command_line ... FAILED
+    panicked at src\cli\mod.rs:5762:13  (the worker-start --name fork/theirs worktree was pre-trusted: P1-A)
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3037 filtered out; finished in 32.14s   exit=101
+
+GREEN (restored files; `grep -c "// RED"` = 0, no note_foreign_base / from_foreign_remote left):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_the_first_record_already_carries_the_marker ... ok
+    test projects::tests::t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted ... ok
+    test projects::tests::t780_a_fork_commit_as_base_is_never_pre_trusted ... ok
+    test projects::tests::t780_without_proof_of_origin_the_worktree_is_marked ... ok
+    test projects::tests::t780_a_checkout_on_origin_is_still_pre_trusted ... ok
+    test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 9.09s   exit=0
+  cargo test -j 2 --lib create_and_remove_a_worktree_from_the_command_line
+    test cli::tests::create_and_remove_a_worktree_from_the_command_line ... ok
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3037 filtered out; finished in 35.92s   exit=0
+
+Not covered by a test: the Tauri command wrappers themselves (workspace_create, workspace_from_item,
+workspace_open_branch) take State<> arguments and are exercised through the helpers they call
+(create_named_until, create_named, open_named_until); workspace_open_pr is unchanged.
+
+VERIFY (round 3 commit), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri:
+cargo test -j 2 --lib t780         exit 0   test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 8.23s
+cargo test -j 2 --lib trust::      exit 0   test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 3023 filtered out; finished in 2.45s
+cargo test -j 2 --lib projects::   exit 101 test result: FAILED. 115 passed; 1 failed  (proj068_records_follow_a_workspace_moved_outside_kolux_and_a_quiet_refresh_keeps_the_order:
+  the test called note_seen to get a madeBy record, which note_seen no longer writes; it now calls record_made like the create commands do)
+  rerun after the test fix:        exit 0   test result: ok. 116 passed; 0 failed; 0 ignored; 0 measured; 2922 filtered out; finished in 50.79s
+cargo test -j 2 --lib cli::        exit 0   test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2850 filtered out; finished in 42.62s
+cargo test -j 2 --lib automations:: exit 0  test result: ok. 82 passed; 0 failed; 1 ignored; 0 measured; 2955 filtered out; finished in 3.47s
+cargo test -j 2 --test cards_10    exit 0   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.34s
+cargo test -j 2 --test cards_11    exit 0   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.14s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 39.91s
+  rerun after the test fix:        exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 28.21s
