@@ -985,6 +985,8 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             {
                 let store = ctx.store.lock().map_err(|e| e.to_string())?;
                 projects::set_origin(&store, &made.worktree.path, Some(&origin))?;
+                // T-780: a base on a remote other than origin (a fork's pull request branch) is never pre-trusted.
+                projects::note_foreign_base(&store, ctx.git, &project, &made)?;
                 // PROJ-047: the sidebar nests it under its parent.
                 if let Some(p) = &parent {
                     projects::set_parent(&store, &made.worktree.path, Some(p))?;

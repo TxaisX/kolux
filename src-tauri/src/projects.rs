@@ -1259,11 +1259,38 @@ pub fn create_fresh_workspace<S: std::ops::Deref<Target = Store>>(git: &Git, loc
         let store = lock()?;
         pick_name(&store, &retired_scope(place, project), taken, seed)
     };
-    let made = create_workspace(git, place, project, &name, base)?.worktree;
-    note_seen(&*lock()?, project, &made.path)?;
+    let created = create_workspace(git, place, project, &name, base)?;
+    note_seen(&*lock()?, project, &created.worktree.path)?;
+    note_foreign_base(&*lock()?, git, project, &created)?;
+    let made = created.worktree;
     // PROJ-039: Kolux invented this name, so the first work may rename the branch to fit it.
     mark_suggested(&*lock()?, &made.path, true)?;
     Ok(made)
+}
+
+/// T-780 (review P2-2, 2026-11-09): whether the worktree `made` checked out a branch that comes
+/// from a remote other than `origin`: the ref it was made from is `refs/remotes/<x>/...` with `x`
+/// not `origin`, or its branch tracks such a remote. `pr_checkout::open` adds a fork as a remote
+/// for a stranger's pull request and never removes it, so a later worktree on that remote's
+/// branch holds the same foreign work.
+pub(crate) fn from_foreign_remote(git: &Git, repo: &Path, made: &Created) -> bool {
+    let remote_of_ref = |full: &str| full.trim().strip_prefix("refs/remotes/").and_then(|r| r.split('/').next()).map(str::to_string);
+    let base = made.base.trim();
+    let by_ref = if base.is_empty() || base.starts_with('-') { None } else { crate::git::run(&["rev-parse", "--symbolic-full-name", base], Some(repo)).ok().and_then(|s| remote_of_ref(&s)) };
+    let by_upstream = made.worktree.branch.as_deref().filter(|b| git.branch_taken(repo, b)).and_then(|b| crate::git::run(&["config", "--get", &format!("branch.{b}.remote")], Some(repo)).ok()).map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    [by_ref, by_upstream].into_iter().flatten().any(|remote| remote != "origin")
+}
+
+/// T-780 (review P2-2): a worktree made from another remote's branch is recorded as holding a pull
+/// request (`PR_EVER_KEY`), so `trust::made_by_kolux` never pre-trusts it. Call after the record is
+/// written; the existing record is kept.
+pub(crate) fn note_foreign_base(store: &Store, git: &Git, project: &Project, made: &Created) -> Result<(), String> {
+    if !from_foreign_remote(git, Path::new(&project.path), made) {
+        return Ok(());
+    }
+    let mut o = origin(store, &made.worktree.path).filter(serde_json::Value::is_object).unwrap_or_else(|| serde_json::json!({}));
+    o[PR_EVER_KEY] = true.into();
+    set_origin(store, &made.worktree.path, Some(&o))
 }
 
 /// GIT-067: uncommitted work (submodule work included) stops the removal unless `force`; the
@@ -1375,6 +1402,7 @@ pub fn workspace_open_branch(git: State<'_, Git>, store: StoreState<'_>, project
         let store = store.lock().map_err(|e| e.to_string())?;
         set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": true })))?;
         note_seen(&store, &project, &made.worktree.path)?;
+        note_foreign_base(&store, &git, &project, &made)?;
     }
     nest_under(&git, &store, &project, &mut made, parent.as_deref(), active_folder.as_deref())?;
     let _ = crate::activity::touch(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path); // PROJ-051
@@ -2099,6 +2127,11 @@ pub fn save_details(store: &Store, path: &str, name: &str, item: &str, comment: 
     let n = name.trim();
     set_name(store, path, if n.is_empty() { None } else { Some(n) })?;
     let mut o = origin(store, path).filter(serde_json::Value::is_object).unwrap_or_else(|| serde_json::json!({}));
+    // T-780 (review P2-1): a pull request once linked leaves its sticky marker, records written
+    // before the marker existed included, so clearing or replacing `pr` never restores pre-trust.
+    if !o["pr"].is_null() && !matches!(o["pr"].as_str(), Some(u) if u.trim().is_empty()) {
+        o[PR_EVER_KEY] = true.into();
+    }
     o["issue"] = serde_json::Value::Null;
     o["issueUrl"] = serde_json::Value::Null;
     o["pr"] = serde_json::Value::Null;
@@ -2225,7 +2258,9 @@ pub fn workspace_create(git: State<'_, Git>, store: StoreState<'_>, project_id: 
             // SESS-036: linked to the issue the composer named it from (the `issue:` selector finds it)
             set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "issue": i.number, "issueUrl": i.url })))?;
         }
-        find_project(&store, &project_id)?
+        let project = find_project(&store, &project_id)?;
+        note_foreign_base(&store, &git, &project, &made)?;
+        project
     };
     nest_under(&git, &store, &project, &mut made, parent.as_deref(), active_folder.as_deref())?;
     let _ = crate::activity::touch(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path); // PROJ-051
@@ -5826,6 +5861,96 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         let o = origin(&store, u).unwrap();
         assert!(o.get("madeBy").is_none() && o.get(PR_EVER_KEY).is_none(), "{o}");
         drop(store);
+    }
+
+    /// T-780 (review P2-1): a record written before the sticky marker existed (`pr` set, no
+    /// marker) gets the marker when the details form clears or replaces its pull request, so the
+    /// unlink never restores the pre-trust.
+    #[test]
+    fn t780_unlinking_a_legacy_pull_request_record_marks_it_sticky() {
+        let profile = temp("t780-legacy");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        let w = profile.join("legacy-pr").to_string_lossy().to_string();
+        set_origin(&store.lock().unwrap(), &w, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/1" }))).unwrap();
+        save_details(&store.lock().unwrap(), &w, "", "", "").unwrap();
+        let o = origin(&store.lock().unwrap(), &w).unwrap();
+        assert!(o["pr"].is_null() && o[PR_EVER_KEY] == true, "{o}");
+        assert!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&w)]).is_empty(), "a legacy pull request record stays out of the pre-trust after the unlink");
+        // Replacing the pull request with an issue marks it too.
+        let w2 = profile.join("legacy-pr-2").to_string_lossy().to_string();
+        set_origin(&store.lock().unwrap(), &w2, Some(&serde_json::json!({ "madeBy": "app", "pr": "https://github.com/o/r/pull/2" }))).unwrap();
+        save_details(&store.lock().unwrap(), &w2, "", "#9", "").unwrap();
+        let o = origin(&store.lock().unwrap(), &w2).unwrap();
+        assert!(o["pr"].is_null() && o["issue"] == 9 && o[PR_EVER_KEY] == true, "{o}");
+        // A record that never held a pull request gets no marker from a details save.
+        let w3 = profile.join("plain").to_string_lossy().to_string();
+        set_origin(&store.lock().unwrap(), &w3, Some(&serde_json::json!({ "madeBy": "app", "pr": "" }))).unwrap();
+        save_details(&store.lock().unwrap(), &w3, "", "", "").unwrap();
+        assert!(origin(&store.lock().unwrap(), &w3).unwrap().get(PR_EVER_KEY).is_none());
+        assert_eq!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&w3)]), vec![PathBuf::from(&w3)]);
+        drop(store);
+    }
+
+    /// T-780 (review P2-2): a worktree made on a branch from a remote other than `origin` (a fork
+    /// left behind by a pull request checkout) is recorded as holding a pull request, whichever
+    /// way it was made: opened by the branch's short name (Git makes the local branch track the
+    /// fork), started from the fork's ref as a base, or opened on a local branch that tracks the
+    /// fork. A branch from `origin` or a plain local branch is Kolux's own.
+    #[test]
+    fn t780_a_worktree_on_another_remotes_branch_is_never_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let profile = temp("t780-fork");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        let origin_remote = temp("t780-fork-origin");
+        git_in(&origin_remote, &["init", "-q", "--bare", "-b", "main"]);
+        let fork = temp("t780-fork-fork");
+        git_in(&fork, &["init", "-q", "--bare", "-b", "main"]);
+        let repo = temp_repo("t780-fork-r");
+        git_in(&repo, &["remote", "add", "origin", &origin_remote.to_string_lossy()]);
+        git_in(&repo, &["remote", "add", "fork", &fork.to_string_lossy()]);
+        // Our branch lives on origin, a stranger's on the fork; neither stays local.
+        git_in(&repo, &["branch", "ours"]);
+        git_in(&repo, &["push", "-q", "origin", "ours"]);
+        git_in(&repo, &["branch", "-D", "ours"]);
+        git_in(&repo, &["branch", "theirs"]);
+        git_in(&repo, &["push", "-q", "fork", "theirs"]);
+        git_in(&repo, &["branch", "-D", "theirs"]);
+        let root = temp("t780-fork-root");
+        let project = add_project(&git, &store.lock().unwrap(), &repo).unwrap();
+        let record = |made: &Created| {
+            let s = store.lock().unwrap();
+            set_origin(&s, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": true }))).unwrap();
+            note_foreign_base(&s, &git, &project, made).unwrap();
+            origin(&s, &made.worktree.path).unwrap()
+        };
+        let theirs = open_branch_workspace(&git, &nested(&root), &project, "theirs", None).unwrap();
+        assert_eq!(git.upstream_of(&repo, "theirs").as_deref(), Some("fork/theirs"));
+        assert!(from_foreign_remote(&git, &repo, &theirs), "opened by short name: the local branch tracks the fork");
+        assert_eq!(record(&theirs)[PR_EVER_KEY], true);
+        assert!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&theirs.worktree.path)]).is_empty(), "a fork's branch is not pre-trusted");
+        let from_theirs = create_workspace(&git, &nested(&root), &project, "from-theirs", Some("fork/theirs")).unwrap();
+        assert!(from_foreign_remote(&git, &repo, &from_theirs), "started from the fork's ref as a base");
+        assert_eq!(record(&from_theirs)[PR_EVER_KEY], true);
+        git_in(&repo, &["branch", "--track", "by-hand", "fork/theirs"]);
+        let by_hand = open_branch_workspace(&git, &nested(&root), &project, "by-hand", None).unwrap();
+        assert!(from_foreign_remote(&git, &repo, &by_hand), "a local branch tracking the fork");
+        assert_eq!(record(&by_hand)[PR_EVER_KEY], true);
+        // Kolux's own: origin's branch, a fresh branch from origin's ref, a plain local branch.
+        let ours = open_branch_workspace(&git, &nested(&root), &project, "ours", None).unwrap();
+        assert_eq!(git.upstream_of(&repo, "ours").as_deref(), Some("origin/ours"));
+        assert!(!from_foreign_remote(&git, &repo, &ours));
+        assert!(record(&ours).get(PR_EVER_KEY).is_none());
+        assert_eq!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&ours.worktree.path)]), vec![PathBuf::from(&ours.worktree.path)], "origin's branch is pre-trusted as before");
+        let from_ours = create_workspace(&git, &nested(&root), &project, "from-ours", Some("origin/ours")).unwrap();
+        assert!(!from_foreign_remote(&git, &repo, &from_ours));
+        git_in(&repo, &["branch", "local-only"]);
+        let local = open_branch_workspace(&git, &nested(&root), &project, "local-only", None).unwrap();
+        assert!(!from_foreign_remote(&git, &repo, &local));
+        assert!(record(&local).get(PR_EVER_KEY).is_none());
+        drop(store);
+        for d in [profile, repo, root, origin_remote, fork] {
+            let _ = fs::remove_dir_all(d);
+        }
     }
 
     /// after-list row 882: a refused read of the folder flags or the saved setup must not leave the

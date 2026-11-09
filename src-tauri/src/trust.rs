@@ -328,7 +328,12 @@ fn names_its_maker(origin: &serde_json::Value) -> bool {
 /// a pull request's, possibly from a stranger's fork; or ever did (the sticky marker
 /// `projects::PR_EVER_KEY`), since unlinking the pull request does not change the branch.
 fn holds_pull_request(origin: &serde_json::Value) -> bool {
-    origin["pr"].as_str().is_some_and(|url| !url.trim().is_empty()) || origin[crate::projects::PR_EVER_KEY] == true
+    // Fail safe: any `pr` that is not null or a blank string counts, whatever its type; the marker
+    // counts whenever it is present and neither null nor false.
+    let pr = &origin["pr"];
+    let pr_now = !pr.is_null() && !matches!(pr.as_str(), Some(url) if url.trim().is_empty());
+    let ever = &origin[crate::projects::PR_EVER_KEY];
+    pr_now || (!ever.is_null() && *ever != false)
 }
 
 /// T-780: why `path` is left out of the pre-trust, for a caller's notice: it holds a pull request's
@@ -597,6 +602,43 @@ mod tests {
         assert!(made_by_kolux(&store, std::slice::from_ref(&added)).is_empty());
         drop(store);
         let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// T-780 (review, test weakness): a linked worktree the user made by hand (`git worktree add`
+    /// outside Kolux) of a main checkout they trusted themselves. A details record on it must not
+    /// make it count as Kolux-made, so the launch writes no trust mark for it.
+    #[test]
+    fn t780_a_worktree_the_user_made_by_hand_gets_no_trust_mark_from_a_details_record() {
+        let d = temp("t780-by-hand");
+        let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
+        let file = d.join(".claude.json");
+        let (main, by_hand) = test_repo_with_worktree(&d);
+        crate::projects::save_details(&store.lock().unwrap(), &by_hand.to_string_lossy(), "Hand made", "#3", "mine").unwrap();
+        trust_claude(&file, std::slice::from_ref(&main)).unwrap();
+        let picked = made_by_kolux(&store, &[main.clone(), by_hand.clone()]);
+        assert!(picked.is_empty(), "{picked:?}");
+        assert_eq!(trust_for_launch(&store, &file, "claude", &[main.clone(), by_hand.clone()]), Err("no folders to trust".to_string()));
+        let _ = trust_folders_in(&file, &d.join("config.toml"), "claude", &picked);
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert!(doc["projects"].get(claude_key(&by_hand).unwrap()).is_none(), "{doc}");
+        assert_eq!(doc["projects"].as_object().unwrap().len(), 1, "the user's own entry only: {doc}");
+        assert!(!d.join("config.toml").exists());
+        drop(store);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// T-780 (review P3-1): the pull request check fails safe: a `pr` of any type other than null
+    /// or a blank string counts, and the sticky marker counts whenever it is present and neither
+    /// null nor false.
+    #[test]
+    fn t780_holds_pull_request_fails_safe() {
+        let ever = crate::projects::PR_EVER_KEY;
+        for held in [json!({ "pr": "https://github.com/o/r/pull/1" }), json!({ "pr": 12 }), json!({ "pr": true }), json!({ "pr": { "url": "x" } }), json!({ "pr": ["x"] }), json!({ ever: true }), json!({ ever: 1 }), json!({ ever: "yes" }), json!({ ever: "" }), json!({ ever: {} }), json!({ "pr": null, ever: true })] {
+            assert!(holds_pull_request(&held), "{held}");
+        }
+        for free in [json!({}), json!({ "pr": null }), json!({ "pr": "" }), json!({ "pr": "   " }), json!({ ever: false }), json!({ ever: null }), json!({ "pr": null, ever: false }), json!({ "madeBy": "app", "issue": 4 })] {
+            assert!(!holds_pull_request(&free), "{free}");
+        }
     }
 
     /// T-780: a Kolux-made worktree stays pre-trusted when its details are edited (the record

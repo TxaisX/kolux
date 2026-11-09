@@ -50,3 +50,67 @@ cargo test -j 2 --test cards_10   => exit 0  test result: ok. 40 passed; 0 faile
 cargo test -j 2 --test cards_11   => exit 0  test result: ok. 12 passed; 0 failed
 cargo clippy -j 2 --all-targets -- -D warnings => see below
 cargo clippy -j 2 --all-targets -- -D warnings => exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 7m 06s
+
+================================================================================
+REVIEW FOLLOW-UP (APPROVE WITH CHANGES on 0fe4de49), same lane, 2026-11-09
+================================================================================
+P2-1  save_details now sets prEver before clearing/replacing a non-null, non-blank `pr`, so legacy
+      records (pr set, no marker) also stay out of the pre-trust after an unlink. CLI-019 worktree.set
+      never touches `pr` (it sets only issue/issueUrl/comment), so it needed no change: the pr it
+      leaves in place keeps holds_pull_request true, and a later details unlink marks it.
+P2-2  New projects::from_foreign_remote(git, repo, &Created): true when the ref the worktree was made
+      from resolves (git rev-parse --symbolic-full-name) to refs/remotes/<x>/... with x != origin, or
+      the new worktree's branch tracks a remote other than origin (git config branch.<b>.remote).
+      New projects::note_foreign_base(store, git, project, &Created) merges "prEver": true into the
+      record when that is true. Called after the origin record is written in: workspace_open_branch,
+      workspace_create, create_fresh_workspace (fresh/creature names, incl. a saved fork base), and
+      CLI worktree.create (cli/mod.rs). NOT covered (said so in the report): a same-repo PR branch
+      reused after its PR-made worktree was removed (the fork remote is origin itself); a branch
+      checked out detached from a fork SHA; a fork remote named "origin".
+      Finding while testing: open_branch_workspace("fork/theirs") is refused by branch_taken
+      ("there is no branch fork/theirs"); the fork branch enters by its short name ("theirs", Git
+      makes the local branch track the fork) or by a hand-made tracking branch, both covered.
+P3-1  trust::holds_pull_request fails safe: `pr` counts when not null and not a blank string
+      (numbers, objects, true all count); prEver counts when present and neither null nor false.
+Test  t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it keeps the non-git folder;
+      a new test covers a hand-made linked worktree of a trusted main checkout.
+
+RED (tests written; behaviour lines stubbed: note_foreign_base returned early, save_details marker
+     off, holds_pull_request on the previous one-liner, made_by_kolux without names_its_maker):
+  cargo test -j 2 --lib t780
+test trust::tests::t780_holds_pull_request_fails_safe ... FAILED                                   (P3-1, panicked trust.rs:627)
+test projects::tests::t780_unlinking_a_legacy_pull_request_record_marks_it_sticky ... FAILED       (P2-1, panicked projects.rs:5878)
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... FAILED   (names_its_maker stubbed out)
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... FAILED           (names_its_maker stubbed out)
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... ok
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+test projects::tests::t780_a_worktree_on_another_remotes_branch_is_never_pre_trusted ... FAILED    (P2-2, projects.rs:5930 left: Null right: true; from_foreign_remote itself was already true)
+test result: FAILED. 4 passed; 5 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 2.82s
+  cargo test -j 2 --lib t780_a_worktree_the_user_made_by_hand   (same stubs, c963a26a logic for made_by_kolux)
+test trust::tests::t780_a_worktree_the_user_made_by_hand_gets_no_trust_mark_from_a_details_record ... FAILED (panicked trust.rs:619)
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3033 filtered out; finished in 1.18s
+
+GREEN (stubs removed, fixes in place):  cargo test -j 2 --lib t780
+test trust::tests::t780_holds_pull_request_fails_safe ... ok
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok
+test projects::tests::t780_unlinking_a_legacy_pull_request_record_marks_it_sticky ... ok
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... ok
+test trust::tests::t780_a_worktree_the_user_made_by_hand_gets_no_trust_mark_from_a_details_record ... ok
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... ok
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+test projects::tests::t780_a_worktree_on_another_remotes_branch_is_never_pre_trusted ... ok
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 39.27s
+
+VERIFY (follow-up commit), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri:
+cargo test -j 2 --lib trust::     exit 0   test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 3019 filtered out; finished in 20.80s
+cargo test -j 2 --lib projects::  exit 101 test result: FAILED. 111 passed; 1 failed  (projects::branch_prefix_async_tests::branch_prefix_check_is_an_async_command_that_matches_the_sync_one, load-flaky, untouched by this change)
+  rerun alone:                    exit 0   test result: ok. 1 passed; 0 failed; finished in 0.99s
+  rerun projects:: whole:         exit 0   test result: ok. 112 passed; 0 failed; 0 ignored; 0 measured; 2922 filtered out; finished in 101.95s
+cargo test -j 2 --lib cli::       exit 0   test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2846 filtered out; finished in 46.36s
+cargo test -j 2 --test cards_10   exit 0   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.96s
+cargo test -j 2 --test cards_11   exit 0   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.35s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 19s
