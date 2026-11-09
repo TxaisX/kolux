@@ -206,3 +206,21 @@ Review fix 5 (independent re-review of 6ff3d6a7, 2026-11-09: B2 and B4 still ope
     test git::tests::t779e_a_partial_clone_read_runs_no_program_on_any_git ... FAILED
     test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 2921 filtered out; finished in 0.42s
     error: test failed, to rerun pass `--lib`
+
+Review fix 6 (independent re-review of 509538cc, 2026-11-09: one blocker, six push bypasses reproduced)
+  The push gate still listed only `git remote` and path-shaped words: insteadOf on a missing origin,
+  .git/remotes and .git/branches files, a bare word that is a path, pushDefault/branch remote set to a path,
+  and push.recurseSubmodules reaching a submodule's local remote. Now git resolves every address it could use
+  (ls-remote --get-url for the named repository, or for a bare push for pushRemote, pushDefault, the branch's
+  remote and origin), plus every push URL of every remote; an untrusted push sets push.recurseSubmodules=no.
+  The local-push refusal comes after the hook checks, so a hook refusal still names the hook.
+  Should-fix done: a relative core.hooksPath is read from the worktree's top level (gc from a subfolder).
+  Left as nits (backlog): ~ and /c/ forms of hooksPath; protocols other than the six named on a partial
+  clone's read (ftp, a git-remote-<x> helper on PATH: not a program from the repository).
+  clippy: net_overrides' guards folded into the match (collapsible_match on clippy 1.97).
+  GREEN: cargo test --lib -- git:: auto_pr:: scm:: tidy:: -> 252 passed, 3 failed (the Linux-only three).
+  RED (the two new tests on 509538cc):
+    test git::tests::t779e_a_relative_hooks_path_is_read_from_the_top_level ... FAILED
+    test git::tests::t779e_push_addresses_are_resolved_by_git_itself ... FAILED
+    test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 0.43s
+    error: test failed, to rerun pass `--lib`
