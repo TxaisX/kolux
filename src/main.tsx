@@ -60,8 +60,8 @@ async function start() {
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
       void getCurrentWindow().show().catch(() => {});
-      // Cycle 3 (first load): the pages, the editor and the browser pane are read in the background now
-      // that the first frame is up, so opening one stays as quick as it was while the start stays small.
+      // Cycle 3 (first load), DT-C230: the editor and the browser pane are read in the background now that
+      // the first frame is up, so opening one stays as quick as it was; every other surface loads on first open.
       prefetch();
     }),
   );
