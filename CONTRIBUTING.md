@@ -51,7 +51,7 @@ Do not copy, paraphrase, or paste from:
 - the old app's hook scripts under `~\.kolux\agent-hooks\`;
 - any document that quotes file paths, function names, or code from those sources.
 
-The allowed sources for behaviour are the spec in this repository (`SPEC.md`, `spec/`, `COMPAT.md`) and public documentation for other tools. The build records behind it (task plan, decisions, provenance log) are kept in the maintainer's private development repository.
+The allowed sources for behaviour are the spec in this repository (`SPEC.md`, `spec/`, `COMPAT.md`) and public documentation for other tools. The build records behind it (`PLAN.md`, `DECISIONS.md`, `PROVENANCE.md`) show how each part was built.
 
 If you have seen forbidden source, say so in your issue before contributing. If you realize a contribution was derived from it, stop and report it. A provenance breach voids the clean-room record, so it is better to ask than to guess.
 

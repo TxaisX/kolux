@@ -78,7 +78,7 @@ export function check(root = ROOT, git = gitIn(root)) {
   return problems;
 }
 
-// The public repo is a clean export with no build history to check markers against (export-public.mjs).
+// A checkout without the planning files has no build history to check markers against.
 const publicExport = !fs.existsSync(path.join(ROOT, "PLAN.md"));
 if (publicExport && import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   console.log("guide-check: skipped (no PLAN.md: public export, markers are checked in the dev repo)");
