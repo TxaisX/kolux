@@ -1193,8 +1193,11 @@ impl Terminals {
                 // for a chunk the pump counted before the registry was taken above (P2 perf).
                 let tail = log.map(|l| crate::automations::screen_text(&lock(&l).read(None, Some(crate::automations::RUN_OUTPUT_LINES))));
                 let session = agent.zip(tail.as_ref()).and_then(|(agent, (text, _))| session_id::hint_session(agent, text));
-                // The history file is left alone from here: a write already counted finishes first.
-                drop(hist.as_deref().map(lock));
+                // The history file is left alone from here: a write already counted finishes first, and
+                // the file handle goes at once.
+                if let Some(h) = hist {
+                    drop(lock(&h));
+                }
                 // Row 784: the PTY closes here, not under the registry the pump needs.
                 drop(removed);
                 // Row 625: a worker's transcript path stays on its dispatch row before its hook sessions go.
@@ -1340,8 +1343,11 @@ impl Terminals {
             }
             inner.sessions.remove(&id)
         };
-        // P2 perf: a history write the pump counted before the kill finishes before kill returns.
-        drop(hist.as_deref().map(lock));
+        // P2 perf: a history write the pump counted before the kill finishes before kill returns, and
+        // the file handle goes with it.
+        if let Some(h) = hist {
+            drop(lock(&h));
+        }
         // Row 784: the teardown (ClosePseudoConsole) may wait on the pump, which needs the registry.
         if let Some(mut s) = gone {
             s.kill();
@@ -1718,7 +1724,7 @@ impl Terminals {
         if let Some(l) = &link {
             l.detach();
         }
-        let mut gone = Vec::new();
+        let (mut gone, mut hists) = (Vec::new(), Vec::new());
         if let Ok(mut inner) = self.inner.lock() {
             let seen: Vec<(u32, u64)> = inner.sessions.iter().filter_map(|(id, s)| if let Session::Remote(r) = s { Some((r.id, inner.snaps.get(id).map_or(0, |n| n.seq))) } else { None }).collect();
             let dir = self.service.dir.lock().ok().and_then(|d| d.clone());
@@ -1727,12 +1733,17 @@ impl Terminals {
             }
             inner.dirs.clear();
             inner.keys.clear();
-            inner.hist.clear();
+            hists.extend(inner.hist.drain().map(|(_, h)| h));
             inner.snaps.clear();
             for (_, f) in inner.flow.drain() {
                 f.release();
             }
             gone.extend(inner.sessions.drain().map(|(_, s)| s));
+        }
+        // P2 perf (TERM-106): a history write the pump counted before the registry was taken lands
+        // before the app goes on to exit; waited for outside the registry, as in `kill`.
+        for h in hists {
+            drop(lock(&h));
         }
         // Row 784: killed after the registry is released (a teardown may wait on the pump).
         for s in gone {
@@ -2419,6 +2430,37 @@ mod tests {
         assert_eq!(a.join().unwrap(), 8);
         assert_eq!(std::fs::read(history_file(&dir, 1)).unwrap(), b"from a\r\n");
         assert_eq!(std::fs::read(history_file(&dir, 2)).unwrap(), b"from b\r\nmore b\r\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// P2 perf (TERM-106): quitting waits for a history write already under way, so the last output a
+    /// pane counted is on disk when `let_go` returns.
+    #[test]
+    fn perf_let_go_waits_for_a_history_write_under_way() {
+        let t = Terminals::default();
+        let dir = std::env::temp_dir().join(format!("kolux-perf-letgo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        t.fake_session(1, &dir.to_string_lossy(), None);
+        let stall = Duration::from_millis(400);
+        let hist = {
+            let mut slow = History::open(&dir, 1).unwrap();
+            slow.slow = stall;
+            let hist = Arc::new(Mutex::new(slow));
+            t.inner.lock().unwrap().hist.insert(1, hist.clone());
+            hist
+        };
+        let registry = t.inner.clone();
+        let a = std::thread::spawn(move || take_chunk(&registry, 1, b"last words\r\n", false));
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while hist.try_lock().is_ok() {
+            assert!(Instant::now() < deadline, "the write never started");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        drop(hist);
+        t.let_go();
+        assert_eq!(std::fs::read(history_file(&dir, 1)).unwrap(), b"last words\r\n", "on disk when let_go returns");
+        assert!(t.inner.lock().unwrap().hist.is_empty());
+        assert_eq!(a.join().unwrap(), 12);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

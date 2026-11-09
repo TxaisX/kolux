@@ -6,8 +6,9 @@
 //! with it) once the app is that far behind, which is the flow control the pane's own acks sit on top of.
 
 use std::io::Read;
-use std::sync::mpsc::{sync_channel, Receiver};
+use std::sync::mpsc::{sync_channel, Receiver, RecvTimeoutError};
 use std::thread;
+use std::time::Duration;
 
 /// One read from the PTY.
 const READ_BUF: usize = 32 * 1024;
@@ -15,6 +16,9 @@ const READ_BUF: usize = 32 * 1024;
 const QUEUE_DEPTH: usize = 4;
 /// The most one call to `on_output` carries.
 const BATCH_MAX: usize = 128 * 1024;
+/// P3 perf: how long the queue stays empty before a batch buffer that grew past one read is given
+/// back. Steady streaming with shorter gaps keeps the buffer (no reallocation per batch).
+const SHRINK_AFTER: Duration = Duration::from_secs(2);
 
 /// Starts the reader and the pump over `reader`; `first` is delivered before anything read. The
 /// threads end when the reader hits end of file or an error.
@@ -44,24 +48,32 @@ pub(super) fn start(mut reader: impl Read + Send + 'static, first: Option<String
             }
             // P3 perf: grows with what a batch needs instead of reserving ~160 KB for the pane's life.
             let mut batch: Vec<u8> = Vec::new();
-            let mut carry = None;
-            while step(&rx, &mut batch, &mut carry, &mut on_output) {}
+            while step(&rx, &mut batch, SHRINK_AFTER, &mut on_output) {}
         })
         .map_err(|e| e.to_string())?;
     Ok(())
 }
 
-/// One call to `on_output`: what has piled up since the last one (up to `BATCH_MAX`), starting
-/// with `carry` when the last step left a read over. False once the reader has ended. A batch that
-/// grew past one read gives its memory back once nothing more is waiting, so an idle pane keeps
-/// at most `READ_BUF` (P3 perf); during a flood the next read is carried and the buffer kept.
-fn step(rx: &Receiver<Vec<u8>>, batch: &mut Vec<u8>, carry: &mut Option<Vec<u8>>, on_output: &mut impl FnMut(&[u8])) -> bool {
-    let read = match carry.take() {
-        Some(read) => read,
-        None => match rx.recv() {
+/// One call to `on_output`: what has piled up since the last one (up to `BATCH_MAX`). False once
+/// the reader has ended. P3 perf: a buffer that grew past one read waits at most `idle` for the next
+/// read; if none comes it is given back (an idle pane keeps at most `READ_BUF`) and the step makes
+/// no call. A small buffer waits without a timer, as before.
+fn step(rx: &Receiver<Vec<u8>>, batch: &mut Vec<u8>, idle: Duration, on_output: &mut impl FnMut(&[u8])) -> bool {
+    let read = if batch.capacity() > READ_BUF {
+        match rx.recv_timeout(idle) {
+            Ok(read) => read,
+            Err(RecvTimeoutError::Timeout) => {
+                batch.clear();
+                batch.shrink_to(READ_BUF);
+                return true;
+            }
+            Err(RecvTimeoutError::Disconnected) => return false,
+        }
+    } else {
+        match rx.recv() {
             Ok(read) => read,
             Err(_) => return false,
-        },
+        }
     };
     batch.clear();
     batch.extend_from_slice(&read);
@@ -72,15 +84,6 @@ fn step(rx: &Receiver<Vec<u8>>, batch: &mut Vec<u8>, carry: &mut Option<Vec<u8>>
         }
     }
     on_output(batch);
-    if batch.capacity() > READ_BUF {
-        match rx.try_recv() {
-            Ok(more) => *carry = Some(more),
-            Err(_) => {
-                batch.clear();
-                batch.shrink_to(READ_BUF);
-            }
-        }
-    }
     true
 }
 
@@ -179,12 +182,14 @@ mod tests {
         (s.0.clone(), s.1, s.2, started.elapsed())
     }
 
-    /// P3 perf: the batch buffer is not reserved up front, keeps its size through a flood, and gives
-    /// back what a large batch took once nothing more is waiting; batching and order are unchanged.
+    /// P3 perf: the batch buffer is not reserved up front, keeps its size while output keeps coming
+    /// (no reallocation per batch), and gives back what a large batch took only once the queue has
+    /// been empty for the idle time; batching and order are unchanged.
     #[test]
     fn perf_the_batch_buffer_shrinks_back_once_the_queue_is_empty() {
+        let idle = Duration::from_millis(50);
         let (tx, rx) = std::sync::mpsc::channel::<Vec<u8>>();
-        let (mut batch, mut carry) = (Vec::new(), None);
+        let mut batch = Vec::new();
         assert_eq!(batch.capacity(), 0, "nothing reserved before output");
         let mut calls: Vec<Vec<u8>> = Vec::new();
         let mut sink = |c: &[u8]| calls.push(c.to_vec());
@@ -192,17 +197,22 @@ mod tests {
         for i in 0..6u8 {
             tx.send(vec![i; READ_BUF]).unwrap();
         }
-        assert!(step(&rx, &mut batch, &mut carry, &mut sink));
-        assert!(batch.capacity() >= BATCH_MAX, "the buffer is kept while more is waiting");
-        assert!(carry.is_some(), "the next read is carried, not lost");
-        assert!(step(&rx, &mut batch, &mut carry, &mut sink));
+        assert!(step(&rx, &mut batch, idle, &mut sink));
+        let big = batch.capacity();
+        assert!(big >= BATCH_MAX);
+        // More output inside the idle time: the same buffer is used again, not shrunk and regrown.
+        assert!(step(&rx, &mut batch, idle, &mut sink));
+        assert_eq!(batch.capacity(), big, "kept while output keeps coming");
+        let waited = std::time::Instant::now();
+        assert!(step(&rx, &mut batch, idle, &mut sink), "an idle wait is not the end");
+        assert!(waited.elapsed() >= idle, "shrunk only after the idle time");
         assert!(batch.capacity() <= READ_BUF, "idle: {} bytes kept", batch.capacity());
         // A small read on an idle pane keeps a small buffer.
         tx.send(b"prompt> ".to_vec()).unwrap();
-        assert!(step(&rx, &mut batch, &mut carry, &mut sink));
+        assert!(step(&rx, &mut batch, idle, &mut sink));
         assert!(batch.capacity() <= READ_BUF);
         drop(tx);
-        assert!(!step(&rx, &mut batch, &mut carry, &mut sink), "the reader ended");
+        assert!(!step(&rx, &mut batch, idle, &mut sink), "the reader ended");
         let lens: Vec<usize> = calls.iter().map(Vec::len).collect();
         assert_eq!(lens, [BATCH_MAX, 2 * READ_BUF, 8], "the same batches as before");
         let all: Vec<u8> = calls.concat();
