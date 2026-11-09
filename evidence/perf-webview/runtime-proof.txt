@@ -1,0 +1,87 @@
+perf-webview runtime proofs 2026-11-09T20:26:43.879Z pid=26964
+[20:26:43] == item 1/2/4: main view out of sight ==
+[20:26:44] visibilityState shown: "visible"
+[20:26:44] marker set: "before-minimise"
+[20:26:44] renderers before minimise: ["37876 ws=203.2MB private=161.6MB"]
+[20:26:45] minimize: shown 2359734
+[20:26:46] visibilityState minimised (1.5 s): "hidden" hidden=true
+[20:27:47] renderers 60 s minimised: ["37876 ws=29.5MB private=147.9MB"]
+[20:27:47] visibilityState minimised (60 s): "hidden"
+[20:28:53] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37876 ws=63.1MB private=150.2MB"]
+[20:28:54] restore frames:
+t=0ms (captured at 86ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-0-0ms.png
+t=50ms (captured at 162ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-1-50ms.png
+t=120ms (captured at 240ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-2-120ms.png
+t=300ms (captured at 318ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-3-300ms.png
+t=1000ms (captured at 1023ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-4-1000ms.png
+[20:28:55] visibilityState restored: "hidden"
+[20:28:56] first paint after restore (rAF within): "no frame in 1000 ms"
+[20:28:56] marker after restore (same page, no reload): "before-minimise"
+[20:28:59] renderers 3 s after restore (memory NORMAL): ["37876 ws=65.5MB private=150.8MB"]
+[20:28:59] == item 3: hidden tab suspended ==
+[20:29:00] open tab: "ok"
+[20:29:04] targets: page | counter page | http://127.0.0.1:18090/counter.html || page | Kolux 0.1.0 | http://localhost:1431/
+[20:29:04] counter running: 41 then 42
+[20:29:04] typed into input: "kept while suspended"
+[20:29:04] hide tab: "ok" n0=44
+[20:29:05] renderers right after hide: ["37876 ws=73.1MB private=151.5MB","16528 ws=52.9MB private=21.0MB"]
+[20:30:20] 75 s hidden; while suspended, eval (may be unavailable): 645
+[20:30:20] renderers 75 s hidden: ["37876 ws=78.5MB private=155.1MB","16528 ws=56.7MB private=22.4MB"]
+[20:30:21] show tab: "ok"
+[20:30:21] after show: n1=647 (n1-n0=603; unsuspended would be ~750), input='"kept while suspended"'
+[20:30:23] 2 s later: n2=669 (counting again: true) show->eval took 2393 ms total
+[20:30:23] close tab: "ok"
+[20:30:23] done all
+perf-webview runtime proofs 2026-11-09T20:33:48.120Z pid=26964
+[20:33:48] == item 1/2/4: main view out of sight ==
+[20:33:48] visibilityState shown: "visible"
+[20:33:48] marker set: "before-minimise"
+[20:33:48] renderers before minimise: ["37876 ws=92.4MB private=151.3MB"]
+[20:33:49] minimize: cmd 6 on 2359734 iconic=True
+[20:33:51] visibilityState minimised (1.5 s): "hidden" hidden=true
+[20:34:52] renderers 60 s minimised: ["37876 ws=19.2MB private=148.5MB"]
+[20:34:52] visibilityState minimised (60 s): "hidden"
+[20:35:57] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37876 ws=35.3MB private=148.0MB"]
+[20:35:59] restore frames:
+restoring hwnd 2359734
+t=0ms (captured at 106ms): mean rgb(44,45,45) white=4.5% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-0-0ms.png
+t=50ms (captured at 194ms): mean rgb(44,45,45) white=4.5% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-1-50ms.png
+t=120ms (captured at 270ms): mean rgb(37,37,37) white=3.7% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-2-120ms.png
+t=300ms (captured at 350ms): mean rgb(27,27,27) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-3-300ms.png
+t=1000ms (captured at 1053ms): mean rgb(26,26,26) white=0.7% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-4-1000ms.png
+[20:35:59] visibilityState restored: "visible"
+[20:36:00] first paint after restore (rAF within): "1 ms"
+[20:36:00] marker after restore (same page, no reload): "before-minimise"
+[20:36:03] renderers 3 s after restore (memory NORMAL): ["37876 ws=61.8MB private=148.3MB"]
+[20:36:03] done vis
+perf-webview runtime proofs 2026-11-09T20:38:43.400Z pid=472
+[20:38:43] == item 1/2/4: main view out of sight ==
+[20:38:43] visibilityState shown: "visible"
+[20:38:43] marker set: "before-minimise"
+[20:38:44] renderers before minimise: ["37340 ws=217.1MB private=173.9MB"]
+[20:38:44] minimize: cmd 6 on 1904708 iconic=True
+[20:38:46] visibilityState minimised (1.5 s): "hidden" hidden=true
+[20:39:47] renderers 60 s minimised: ["37340 ws=202.6MB private=156.6MB"]
+[20:39:47] visibilityState minimised (60 s): "hidden"
+[20:40:53] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37340 ws=198.9MB private=152.4MB"]
+[20:40:55] restore frames:
+restoring hwnd 1904708 (iconic before: True)
+t=0ms (captured at 100ms, PrintWindow ok=True, 1044x788): mean rgb(5,4,5) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-0-0ms.png
+t=50ms (captured at 173ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-1-50ms.png
+t=120ms (captured at 253ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-2-120ms.png
+t=300ms (captured at 331ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-3-300ms.png
+t=1000ms (captured at 1032ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-4-1000ms.png
+[20:40:55] visibilityState restored: "visible"
+[20:40:55] first paint after restore (rAF within): "17 ms"
+[20:40:55] marker after restore (same page, no reload): "before-minimise"
+[20:40:59] renderers 3 s after restore (memory NORMAL): ["37340 ws=204.4MB private=157.4MB"]
+[20:40:59] done vis
+perf-webview runtime proofs 2026-11-09T20:42:24.734Z pid=33668
+[20:42:24] == item 1/2/4: main view out of sight ==
+[20:42:24] visibilityState shown: "visible"
+[20:42:24] marker set: "before-minimise"
+[20:42:25] renderers before minimise: ["29736 ws=212.6MB private=170.3MB"]
+[20:42:26] minimize: cmd 6 on 7671544 iconic=True
+[20:42:28] visibilityState minimised (1.5 s): "hidden" hidden=true
+[20:43:29] renderers 60 s minimised: ["29736 ws=29.8MB private=148.3MB"]
+[20:43:34] visibilityState minimised (60 s): 

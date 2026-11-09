@@ -1,0 +1,43 @@
+perf-webview: WebView2 control changes, runtime evidence (2026-11-09)
+
+Dev build of this lane run with scratch homes and --remote-debugging-port=9431; the page is asked over
+CDP (proof.mjs), the window is minimised/restored with ShowWindow on the "Tauri Window" HWND, frames are
+the window's own pixels (PrintWindow PW_RENDERFULLCONTENT, frames.ps1), renderer memory is the
+msedgewebview2 --type=renderer of this profile (working set / private bytes). Full logs: runtime-proof.txt
+(UTC times), control-run-no-memory-low.txt, final-code-run.txt.
+
+Item 1 (DT-C228) main view told when out of sight
+  shown: visible | 1.5 s after minimise: hidden (document.hidden true) | 60 s: hidden
+  after restore: visible; requestAnimationFrame fired in 1 ms / 17 ms / 5 ms (three runs)
+  first frame after restore (PrintWindow 1044x788): t=0 mean rgb(5,4,5) white 0.0% (control run; the page's
+  own background before content), final code rgb(9,9,9) white 0.6% at 0 ms and 1000 ms
+  (restore-frame-0-0ms.png, restore-frame-4-1000ms.png). Never white. A marker set before the minimise
+  survived every restore: no reload.
+  Fixed on the way: Focused(true) while minimised (a tab's view created under the window takes focus) is
+  no longer a show (lib.rs).
+
+Item 2 (DT-C228) memory target LOW after 60 s out of sight; main renderer ws / private MB
+  LOW on, first build : before 203.2/161.6 | 60 s 29.5/147.9 | 125 s 63.1/150.2 | 3 s after restore 65.5/150.8
+  LOW on, second run  : before  92.4/151.3 | 60 s 19.2/148.5 | 125 s 35.3/148.0 | 3 s after restore 61.8/148.3
+  LOW on, final code  : before 212.6/170.3 | 60 s 29.8/148.3 | (run stopped by the harness) | 92.9/151.5 after restore at ~2 min
+  CONTROL, LOW off    : before 217.1/173.9 | 60 s 202.6/156.6 | 125 s 198.9/152.4 | 3 s after restore 204.4/157.4
+  Working set while minimised: ~200 MB without LOW, 20-65 MB with it. Private bytes move little either
+  way (the ~20 MB drop comes from the hidden state itself). Kept.
+
+Item 3 (DT-C230) hidden tabs suspended after 60 s (counter.html: 100 ms setInterval counter + input)
+  n0 = 44 at hide; 75 s later n = 645 (= n0 + ~600: ran its first 60 s, then stopped); after show n1 = 647,
+  input still "kept while suspended"; 2 s later n2 = 669 (counting again). Unsuspended, 75 s gives ~750.
+  The tab's renderer stayed alive (BROW-002, no reload): 16528 ws 52.9 -> 56.7 MB.
+
+Item 4 (DT-C229) only --disable-background-timer-throttling stays
+  Two minutes minimised on three runs: marker survived every restore, kolux.log has no
+  "interface recovery: no heartbeat" line: the 2 s heartbeat kept arriving with the single flag. The
+  blank-after-sleep repaint (repaint() in src/recovery/hidden.ts) does not depend on the flags; the
+  restore painted within a frame.
+
+Test runs
+  cargo clippy --all-targets -- -D warnings: Finished, exit 0 (final code)
+  cargo test --no-fail-fast -- browser recovery tray webview (test env): lib 376 passed; 0 failed, 377 in all
+    (cargo-test-touched-suites.txt), run before the one-line lib.rs focus fix; the rerun on the final code
+    was stopped by the harness for system memory pressure while compiling.
+  pnpm exec vitest run src/recovery src/terminal: Test Files 111 passed (111), Tests 672 passed (672)

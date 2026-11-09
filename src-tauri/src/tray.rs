@@ -355,6 +355,7 @@ pub fn window_minimised(app: &tauri::AppHandle) {
 pub fn open_window(app: &tauri::AppHandle) {
     use tauri::Manager;
     if let Some(w) = app.get_webview_window(MAIN_LABEL) {
+        crate::webview_power::main_shown(app); // DT-C228: the engine hears "in sight" before the first frame
         let _ = w.show();
         let _ = w.unminimize();
         let _ = w.set_focus();
@@ -383,6 +384,7 @@ pub fn quit(app: &tauri::AppHandle) {
     let generation = begin_quit();
     match app.get_webview_window(MAIN_LABEL) {
         Some(w) => {
+            crate::webview_power::main_shown(app); // DT-C228
             let _ = w.show();
             let _ = w.unminimize();
             let _ = w.set_focus();
@@ -517,6 +519,7 @@ pub fn on_close_requested(app: &tauri::AppHandle, quitting: bool) -> bool {
     if let Some(w) = app.get_webview_window(MAIN_LABEL) {
         let _ = w.hide();
     }
+    crate::webview_power::main_hidden(app); // DT-C228: the engine learns the view is out of sight
     if let Some(state) = app.try_state::<TrayState>() {
         if let Ok(mut d) = state.dot.lock() {
             d.window_hidden();
