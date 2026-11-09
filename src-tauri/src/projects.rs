@@ -293,7 +293,8 @@ pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>)
     match origin {
         Some(o) => {
             let mut o = o.clone();
-            if o.is_object() && all.get(&key).is_some_and(|was| was[PR_EVER_KEY] == true) {
+            // The carry-over honours every marker shape `trust::holds_pull_request` honours: present, not null, not false.
+            if o.is_object() && all.get(&key).is_some_and(|was| !was[PR_EVER_KEY].is_null() && was[PR_EVER_KEY] != false) {
                 o[PR_EVER_KEY] = true.into();
             }
             all.insert(key, o)
@@ -310,13 +311,66 @@ pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>)
 /// timeout) is false, and the worktree then counts as foreign: the agent asks about trust itself.
 /// Accepted cost: a user whose canonical remote is not named `origin` loses the pre-trust.
 pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
-    let Ok(sha) = crate::git::run_within(&["rev-parse", "--verify", "HEAD^{commit}"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    // Review round 4 (P2): "under refs/remotes/origin/" is not proof by itself. A fetch refspec such
+    // as `+refs/pull/*/head:refs/remotes/origin/pr/*` (a common setting) puts strangers' pull request
+    // heads there too. Only a ref that origin's BRANCH refspecs write, and no other refspec does, counts.
+    let Some((branches, others)) = origin_fetch_destinations(dir) else { return false };
+    // Review round 4 (P3): `--no-replace-objects` reads commits as they are; a replacement ref
+    // (`git replace`) could otherwise make origin's tip read as a descendant of a stranger's commit.
+    let Ok(sha) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--verify", "HEAD^{commit}"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
     let sha = sha.trim();
     if sha.len() < 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return false;
     }
-    let Ok(refs) = crate::git::run_within(&["for-each-ref", "--contains", sha, "--format=%(refname)", "refs/remotes/origin/"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
-    refs.lines().map(str::trim).any(|r| r.strip_prefix("refs/remotes/origin/").is_some_and(|rest| !rest.is_empty()))
+    let Ok(refs) = crate::git::run_within(&["--no-replace-objects", "for-each-ref", "--contains", sha, "--format=%(refname)"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    refs.lines().map(str::trim).any(|r| r.starts_with("refs/remotes/") && branches.iter().any(|p| refspec_side_matches(p, r, false)) && !others.iter().any(|p| refspec_side_matches(p, r, true)))
+}
+
+/// Where `origin`'s fetch refspecs put its branches (a source of `refs/heads/*`, `refs/heads/<dir>/*`
+/// or one exact `refs/heads/<name>`) and where they put everything else, both as full-ref patterns.
+/// None, and so no proof, when the config cannot be read, holds no branch refspec, or holds one this
+/// code does not understand (a destination outside `refs/remotes/`, a second `*`, a negative refspec
+/// that is not a plain ref pattern). A refspec without a destination fetches to FETCH_HEAD only.
+fn origin_fetch_destinations(dir: &Path) -> Option<(Vec<String>, Vec<String>)> {
+    let text = crate::git::run_within(&["--no-replace-objects", "config", "--get-all", "remote.origin.fetch"], Some(dir), crate::git::READ_TIMEOUT).ok()?;
+    let (mut branches, mut others) = (Vec::new(), Vec::new());
+    for line in text.lines().map(str::trim).filter(|l| !l.is_empty()) {
+        if let Some(negative) = line.strip_prefix('^') {
+            // A negative refspec only removes sources from a fetch; it writes nothing.
+            if negative.starts_with("refs/") && !negative.contains(':') && negative.matches('*').count() <= 1 {
+                continue;
+            }
+            return None;
+        }
+        let spec = line.strip_prefix('+').unwrap_or(line);
+        let Some((src, dst)) = spec.split_once(':') else { continue };
+        let (stars_src, stars_dst) = (src.matches('*').count(), dst.matches('*').count());
+        if src.is_empty() || dst.is_empty() || stars_src > 1 || stars_dst > 1 || stars_src != stars_dst || !dst.starts_with("refs/remotes/") {
+            return None;
+        }
+        let is_branches = src.strip_prefix("refs/heads/").is_some_and(|rest| !rest.is_empty() && (!rest.contains('*') || rest == "*" || rest.ends_with("/*")));
+        if is_branches {
+            branches.push(dst.to_string());
+        } else {
+            others.push(dst.to_string());
+        }
+    }
+    if branches.is_empty() {
+        return None;
+    }
+    Some((branches, others))
+}
+
+/// Whether one side of a fetch refspec (an exact ref, or a pattern with one `*`) covers `refname`.
+/// `star_may_be_empty` widens a pattern so a doubtful ref is excluded rather than counted.
+fn refspec_side_matches(pattern: &str, refname: &str, star_may_be_empty: bool) -> bool {
+    match pattern.split_once('*') {
+        None => pattern == refname,
+        Some((pre, suf)) => {
+            let fits = refname.len() >= pre.len() + suf.len() && refname.starts_with(pre) && refname.ends_with(suf);
+            fits && (star_may_be_empty || refname.len() > pre.len() + suf.len())
+        }
+    }
 }
 
 /// T-780 (review round 3): the one place a worktree Kolux just made gets its first record. `origin`
@@ -5913,8 +5967,7 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         let w3 = profile.join("plain").to_string_lossy().to_string();
         set_origin(&store.lock().unwrap(), &w3, Some(&serde_json::json!({ "madeBy": "app", "pr": "" }))).unwrap();
         save_details(&store.lock().unwrap(), &w3, "", "", "").unwrap();
-        assert!(origin(&store.lock().unwrap(), &w3).unwrap().get(PR_EVER_KEY).is_none());
-        assert_eq!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&w3)]), vec![PathBuf::from(&w3)]);
+        assert!(origin(&store.lock().unwrap(), &w3).unwrap().get(PR_EVER_KEY).is_none(), "a blank pr is no pull request (round 4: the launch filter also wants a real checkout on origin, see trust::tests)");
         drop(store);
     }
 
@@ -6130,6 +6183,111 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         record_made(&store, &project, &own, serde_json::json!({ "madeBy": "app" })).unwrap();
         let rec = origin(&store, &wt).unwrap();
         assert_eq!((rec["madeBy"].as_str(), rec.get(PR_EVER_KEY)), (Some("app"), None), "{rec}");
+        drop(store);
+        let _ = fs::remove_dir_all(profile);
+    }
+
+    /// T-780 (round 4 review, P2): `remote.origin.fetch = +refs/pull/*/head:refs/remotes/origin/pr/*`
+    /// (a common setting) puts strangers' pull request heads under refs/remotes/origin/ too. Only a
+    /// ref written by a refspec that fetches origin's branches, and by no other refspec, is proof.
+    #[test]
+    fn t780_a_pull_request_head_fetched_under_origin_is_no_proof() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780pr");
+        git_in(&repo, &["push", "-q", "origin", "fork/theirs:refs/pull/12/head"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        assert_eq!(rev(&repo, "origin/pr/12"), rev(&repo, "fork/theirs"));
+        // what `git worktree add ../wt pr/12` leaves behind: a local pr/12 tracking origin/pr/12
+        git_in(&repo, &["branch", "--track", "pr/12", "origin/pr/12"]);
+        let (project2, place) = locked_place(&store, &project.id).unwrap();
+        let opened = open_named_until(&git, &store, &project2, &place, "pr/12", Some("pr-12"), &|| false).unwrap();
+        assert!(!opened.own, "a pull request head under refs/remotes/origin/pr/ is none of origin's branches");
+        assert_eq!(t780_record(&store, &opened.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &opened.worktree.path));
+        // `origin/pr/12` named as the base is refused before any checkout (`base_available` fetches
+        // `origin pr/12`, a branch origin does not have); the head's commit id gets through, and is marked.
+        let refused = create_named(&git, &store, &project.id, "from pr ref", Some("origin/pr/12"), None, None).unwrap_err();
+        assert!(refused.contains("not a branch, tag or commit"), "{refused}");
+        let based = create_named(&git, &store, &project.id, "from pr head", Some(&rev(&repo, "origin/pr/12")), None, None).unwrap();
+        assert!(!based.own);
+        assert_eq!(t780_record(&store, &based.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &based.worktree.path));
+        // origin's own branch still proves itself beside the extra refspec
+        let own = create_named(&git, &store, &project.id, "still own", Some("origin/main"), None, None).unwrap();
+        assert!(own.own);
+        assert!(t780_record(&store, &own.worktree.path).get(PR_EVER_KEY).is_none());
+        assert!(t780_pre_trusted(&store, &own.worktree.path));
+        // no refspec that fetches branches, or no refspec at all: no proof, whatever the refs say
+        git_in(&repo, &["config", "--unset-all", "remote.origin.fetch"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        assert!(!head_is_on_origin(Path::new(&own.worktree.path)), "only a pull request refspec");
+        git_in(&repo, &["config", "--unset-all", "remote.origin.fetch"]);
+        assert!(!head_is_on_origin(Path::new(&own.worktree.path)), "no fetch refspec");
+        // a refspec this code does not read (a destination outside refs/remotes/) is no proof either
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/heads/*:refs/mirror/origin/*"]);
+        assert!(!head_is_on_origin(Path::new(&own.worktree.path)), "a destination outside refs/remotes/");
+        // the usual refspec, plus a negative one and one without a destination: proof again
+        git_in(&repo, &["config", "--unset-all", "remote.origin.fetch"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "^refs/heads/wip/*"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "refs/tags/v1"]);
+        assert!(head_is_on_origin(Path::new(&own.worktree.path)));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 4 review, P3): a replacement ref (`git replace`) can make origin's tip read as
+    /// a descendant of a stranger's commit, which fools a plain `--contains`; the proof reads
+    /// objects as they are.
+    #[test]
+    fn t780_a_replaced_object_cannot_fake_the_proof() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780rp");
+        let main_sha = rev(&repo, "origin/main");
+        let theirs = rev(&repo, "fork/theirs");
+        // a child of the stranger's commit, then origin/main's tip is told to read as that child
+        git_in(&repo, &["checkout", "-q", "--detach", "fork/theirs"]);
+        fs::write(repo.join("more.txt"), "more from the fork").unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "a second commit by a stranger"]);
+        let child = rev(&repo, "HEAD");
+        git_in(&repo, &["checkout", "-q", "main"]);
+        git_in(&repo, &["replace", "-f", &main_sha, &child]);
+        let fooled = String::from_utf8(Command::new("git").args(["for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        assert!(fooled.contains("refs/remotes/origin/main"), "the graft fools a plain --contains: {fooled:?}");
+        let made = create_named(&git, &store, &project.id, "grafted", Some(&theirs), None, None).unwrap();
+        assert!(!made.own, "the proof reads objects as they are, replacements aside");
+        assert_eq!(t780_record(&store, &made.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &made.worktree.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 4 review, P3): the carry-over keeps every marker shape `trust::holds_pull_request`
+    /// honours (present, not null, not false), not only the literal `true`.
+    #[test]
+    fn t780_set_origin_keeps_every_marker_shape_the_trust_check_honours() {
+        let profile = temp("t780-shapes");
+        let store = Store::open(&profile).unwrap();
+        for (i, marker) in [serde_json::json!(true), serde_json::json!(1), serde_json::json!("yes"), serde_json::json!({})].into_iter().enumerate() {
+            let w = format!("C:\\ws\\shape-{i}");
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", PR_EVER_KEY: marker }))).unwrap();
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", "comment": "rewritten" }))).unwrap();
+            let rec = origin(&store, &w).unwrap();
+            assert_eq!(rec[PR_EVER_KEY], true, "shape {i}: {rec}");
+        }
+        for (i, absent) in [serde_json::Value::Null, serde_json::json!(false)].into_iter().enumerate() {
+            let w = format!("C:\\ws\\free-{i}");
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", PR_EVER_KEY: absent }))).unwrap();
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", "comment": "rewritten" }))).unwrap();
+            let rec = origin(&store, &w).unwrap();
+            assert!(rec.get(PR_EVER_KEY).is_none(), "shape {i}: {rec}");
+        }
         drop(store);
         let _ = fs::remove_dir_all(profile);
     }

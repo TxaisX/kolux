@@ -242,3 +242,93 @@ cargo test -j 2 --test cards_10    exit 0   test result: ok. 40 passed; 0 failed
 cargo test -j 2 --test cards_11    exit 0   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.14s
 cargo clippy -j 2 --all-targets -- -D warnings  exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 39.91s
   rerun after the test fix:        exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 28.21s
+
+================================================================================
+T-780 review round 4 (2026-11-09, lane ready-sec-madeby, base fd6c917a; APPROVE WITH CHANGES)
+================================================================================
+
+1. P2, pull request heads under refs/remotes/origin/ (reviewer repro: `remote.origin.fetch =
+   +refs/pull/*/head:refs/remotes/origin/pr/*`, `git worktree add ../wt pr/12` -> own:true).
+   projects::head_is_on_origin now reads `git config --get-all remote.origin.fetch` (run_within,
+   READ_TIMEOUT) through origin_fetch_destinations(): a ref counts only when it falls under the
+   destination of a refspec whose source is `refs/heads/*`, `refs/heads/<dir>/*` or one exact
+   `refs/heads/<name>`, AND under the destination of no refspec with any other source. Fail-safe:
+   None (= no proof) when the config cannot be read, holds no branch refspec, a destination lies
+   outside refs/remotes/, a side has two `*`, the two sides disagree on `*`, or a negative refspec is
+   not a plain `^refs/...` pattern. Negative refspecs that are plain ref patterns are skipped (they
+   only remove sources), and a refspec without a destination (FETCH_HEAD only) is skipped.
+   `for-each-ref --contains <sha> --format=%(refname)` is now listed without a pattern and filtered
+   by those destinations; a doubtful ref (an empty `*` match on a foreign pattern) is excluded.
+   Extra accepted cost: a remote whose branch refspec writes outside refs/remotes/ (a mirror layout)
+   gets no pre-trust.
+2. P3, replacement refs: `--no-replace-objects` goes before every git subcommand the check runs
+   (config, rev-parse, for-each-ref). Verified by hand first: with `git replace -f <origin/main>
+   <child of the stranger's commit>` a plain `for-each-ref --contains <stranger>` lists
+   refs/remotes/origin/main; with --no-replace-objects it lists nothing.
+3. P3, set_origin carry-over: the marker is carried when `!was[prEver].is_null() && was[prEver] !=
+   false`, the same test trust::holds_pull_request applies.
+4. P3, recheck at launch (trust.rs, the only trust.rs change this round besides its test fixture):
+   - made_by_kolux: unchanged record filter (madeBy present, no pull request), now run in a block
+     that releases the store lock, then every surviving path is filtered again by
+     projects::head_is_on_origin(path). A Kolux-made worktree whose checkout is not on origin any
+     more (a fork branch checked out by hand, an unpushed commit) is dropped, so trust_for_launch,
+     trust_folders_cmd, the automations launch and the CLI worker-start (all of which go through
+     made_by_kolux) write nothing for it.
+   - not_pre_trusted_why: a Kolux-made record whose checkout fails the recheck gets the same text as
+     a pull request worktree ("not trusted: this worktree holds a pull request's branch, so the
+     agent asks itself"); git runs after the store lock is released.
+   - test fixture test_repo_with_worktree (cfg(test), shared with claude_accounts tests): the repo
+     now pushes main to a bare origin.git beside it, so its worktree is on origin's branch; the push
+     uses plain git because Kolux's runner refuses a local-path push from an untrusted folder.
+   - test t780_unlinking_a_legacy_pull_request_record_marks_it_sticky (projects.rs): its last
+     made_by_kolux assertion on a path that is no git worktree was replaced by the record check
+     (the launch filter now also wants a real checkout on origin).
+
+Tests added (red on the fd6c917a logic, green after):
+  t780_a_pull_request_head_fetched_under_origin_is_no_proof (projects.rs): bare origin gets the
+     stranger's commit at refs/pull/12/head; the repo gets the pull refspec and fetches; a local
+     pr/12 tracking origin/pr/12 is opened as a branch -> own false, prEver true, not pre-trusted;
+     `origin/pr/12` named as a base is refused by base_available before any checkout (it fetches
+     `origin pr/12`, a branch origin does not have), so the head's commit id is used as the base ->
+     marked; origin/main still own; only-pull-refspec, no-refspec and refs/mirror destinations ->
+     no proof; the usual refspec plus `^refs/heads/wip/*` plus `refs/tags/v1` -> proof.
+  t780_a_replaced_object_cannot_fake_the_proof (projects.rs): `git replace -f <origin/main> <child
+     of the stranger's commit>`; asserts a plain --contains is fooled, then create_named on the
+     stranger's sha -> own false, prEver true, not pre-trusted.
+  t780_set_origin_keeps_every_marker_shape_the_trust_check_honours (projects.rs): true, 1, "yes",
+     {} survive a rewrite as true; null and false leave no marker.
+  t780_the_launch_rechecks_the_checkout_against_origin (trust.rs): Kolux-made worktree on origin ->
+     pre-trusted; an extra commit in it -> made_by_kolux empty, not_pre_trusted_why = pull request
+     text, trust_for_launch Err("no folders to trust"), .claude.json holds the user's entry only;
+     `git checkout --detach origin/main` -> trust_for_launch writes 1 again.
+
+RED (fd6c917a logic temporarily re-applied by re-edit: check counts any ref under
+refs/remotes/origin/ with replacements honoured, carry-over only for the literal true, no recheck in
+made_by_kolux / not_pre_trusted_why; the fixture change kept; restored by copying the saved GREEN
+files back, no stash, no checkout):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_a_pull_request_head_fetched_under_origin_is_no_proof ... FAILED   (src\projects.rs:6208, `assert!(!opened.own)`: item 1)
+    test projects::tests::t780_a_replaced_object_cannot_fake_the_proof ... FAILED   (src\projects.rs:6265, `assert!(!made.own)`: item 2)
+    test projects::tests::t780_set_origin_keeps_every_marker_shape_the_trust_check_honours ... FAILED   (src\projects.rs:6285: item 3)
+    test trust::tests::t780_the_launch_rechecks_the_checkout_against_origin ... FAILED   (src\trust.rs:745, made_by_kolux still lists the drifted worktree: item 4)
+    test result: FAILED. 14 passed; 4 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 13.35s   exit=101
+
+GREEN (restored files; `grep -c "// RED"` = 0 in projects.rs and trust.rs):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_a_pull_request_head_fetched_under_origin_is_no_proof ... ok
+    test projects::tests::t780_a_replaced_object_cannot_fake_the_proof ... ok
+    test projects::tests::t780_set_origin_keeps_every_marker_shape_the_trust_check_honours ... ok
+    test trust::tests::t780_the_launch_rechecks_the_checkout_against_origin ... ok
+    test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 13.90s   exit=0
+
+VERIFY (round 4 commit), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri
+(claude_accounts:: added because its trust tests share the changed fixture):
+cargo test -j 2 --lib t780             exit 0  test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 15.17s
+cargo test -j 2 --lib trust::          exit 0  test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 3026 filtered out; finished in 4.56s
+cargo test -j 2 --lib projects::       exit 0  test result: ok. 119 passed; 0 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 64.08s
+cargo test -j 2 --lib cli::            exit 0  test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2854 filtered out; finished in 50.24s
+cargo test -j 2 --lib automations::    exit 0  test result: ok. 82 passed; 0 failed; 1 ignored; 0 measured; 2959 filtered out; finished in 3.59s
+cargo test -j 2 --lib claude_accounts:: exit 0 test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 2988 filtered out; finished in 5.09s
+cargo test -j 2 --test cards_10        exit 0  test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.34s
+cargo test -j 2 --test cards_11        exit 0  test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.80s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 36.78s

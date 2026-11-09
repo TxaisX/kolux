@@ -290,8 +290,8 @@ fn carries_trust(file: &Path, agent: &str, folder: &Path) -> bool {
     }
 }
 
-/// A repository with one commit at `dir/main` and a worktree of it at `dir/wt`, for tests here and
-/// in `claude_accounts`.
+/// A repository with one commit at `dir/main`, pushed to a bare `origin` at `dir/origin.git`, and a
+/// worktree of it at `dir/wt`, for tests here and in `claude_accounts`.
 #[cfg(test)]
 pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
     let (main, wt) = (dir.join("main"), dir.join("wt"));
@@ -303,6 +303,13 @@ pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
 ").unwrap();
     crate::git::run(&["add", "."], Some(&main)).unwrap();
     crate::git::run(&["commit", "-q", "-m", "first"], Some(&main)).unwrap();
+    // T-780 (round 4): a bare `origin` holding main, so the worktree's checkout is on origin's branch.
+    let origin = dir.join("origin.git");
+    std::fs::create_dir_all(&origin).unwrap();
+    crate::git::run(&["init", "-q", "--bare", "-b", "main"], Some(&origin)).unwrap();
+    crate::git::run(&["remote", "add", "origin", &origin.to_string_lossy()], Some(&main)).unwrap();
+    // Plain git: Kolux's own runner refuses a push to a repository on this computer from an untrusted folder.
+    assert!(std::process::Command::new("git").args(["push", "-q", "origin", "main"]).current_dir(&main).output().unwrap().status.success());
     crate::git::run(&["worktree", "add", "-q", "-b", "kolux-wt", &wt.to_string_lossy()], Some(&main)).unwrap();
     (main, wt)
 }
@@ -314,9 +321,15 @@ pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
 /// another author's branch, so it is never pre-trusted either, whoever made the folder. Review
 /// 2026-11-09: only a record that names its maker (`madeBy`, written by every Kolux creator) counts;
 /// the details form and the CLI write records for any folder a user names, without one.
+/// Review round 4 (T-780, P3): the record says what the checkout held when Kolux made it; what it
+/// holds at launch is checked again (`projects::head_is_on_origin`, git run with the store lock
+/// released), so a fork's branch checked out by hand, or an unpushed commit, is not pre-trusted either.
 pub fn made_by_kolux(store: &std::sync::Mutex<crate::state::Store>, paths: &[PathBuf]) -> Vec<PathBuf> {
-    let Ok(store) = store.lock() else { return Vec::new() };
-    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some_and(|o| names_its_maker(&o) && !holds_pull_request(&o))).cloned().collect()
+    let recorded: Vec<PathBuf> = {
+        let Ok(store) = store.lock() else { return Vec::new() };
+        paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some_and(|o| names_its_maker(&o) && !holds_pull_request(&o))).cloned().collect()
+    };
+    recorded.into_iter().filter(|p| crate::projects::head_is_on_origin(p)).collect()
 }
 
 /// Whether an origin record was written by a Kolux creator (a non-empty `madeBy`).
@@ -339,8 +352,11 @@ fn holds_pull_request(origin: &serde_json::Value) -> bool {
 /// T-780: why `path` is left out of the pre-trust, for a caller's notice: it holds a pull request's
 /// branch, or Kolux has no record of making it.
 pub fn not_pre_trusted_why(store: &std::sync::Mutex<crate::state::Store>, path: &Path) -> &'static str {
-    let holds_pr = store.lock().ok().and_then(|s| crate::projects::origin(&s, &path.to_string_lossy())).is_some_and(|o| holds_pull_request(&o));
-    if holds_pr {
+    let record = store.lock().ok().and_then(|s| crate::projects::origin(&s, &path.to_string_lossy()));
+    let holds_pr = record.as_ref().is_some_and(holds_pull_request);
+    // Review round 4: a Kolux-made worktree whose checkout is not on origin any more reads the same.
+    let drifted = record.as_ref().is_some_and(names_its_maker) && !holds_pr && !crate::projects::head_is_on_origin(path);
+    if holds_pr || drifted {
         "not trusted: this worktree holds a pull request's branch, so the agent asks itself"
     } else {
         "not trusted: not a worktree Kolux made, so the agent asks itself"
@@ -711,6 +727,35 @@ mod tests {
         assert!(doc["projects"].get(claude_key(&plain).unwrap()).is_none());
         // The main checkout itself is its own main: already trusted means nothing new to add.
         assert_eq!(trust_folders_in(&claude, &codex, "claude", std::slice::from_ref(&main)).unwrap(), 0);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// T-780 (round 4 review, P3): the record says what the checkout held when Kolux made it; the
+    /// launch checks the checkout again, so a fork's branch checked out by hand or an unpushed
+    /// commit is not pre-trusted, and nothing is written for it.
+    #[test]
+    fn t780_the_launch_rechecks_the_checkout_against_origin() {
+        let d = temp("t780-recheck");
+        let (main, wt) = test_repo_with_worktree(&d);
+        let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
+        crate::projects::set_origin(&store.lock().unwrap(), &wt.to_string_lossy(), Some(&json!({ "madeBy": "app" }))).unwrap();
+        assert_eq!(made_by_kolux(&store, std::slice::from_ref(&wt)), vec![wt.clone()], "made on origin's branch: pre-trusted");
+        // a stranger's commit becomes the checkout (a fork branch checked out by hand)
+        crate::git::run(&["commit", "-q", "--allow-empty", "-m", "a commit from a fork"], Some(&wt)).unwrap();
+        assert!(made_by_kolux(&store, std::slice::from_ref(&wt)).is_empty(), "the checkout is no longer on origin");
+        assert_eq!(not_pre_trusted_why(&store, &wt), "not trusted: this worktree holds a pull request's branch, so the agent asks itself");
+        let file = d.join(".claude.json");
+        trust_claude(&file, std::slice::from_ref(&main)).unwrap();
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)), Err("no folders to trust".to_string()));
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert!(doc["projects"].get(claude_key(&wt).unwrap()).is_none(), "no trust written: {doc}");
+        assert_eq!(doc["projects"].as_object().unwrap().len(), 1, "the user's own entry only: {doc}");
+        // back on origin's branch: pre-trusted again, the check is live
+        crate::git::run(&["checkout", "-q", "--detach", "origin/main"], Some(&wt)).unwrap();
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)).unwrap(), 1);
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(doc["projects"][claude_key(&wt).unwrap()]["hasTrustDialogAccepted"], true);
+        drop(store);
         let _ = std::fs::remove_dir_all(&d);
     }
 }
