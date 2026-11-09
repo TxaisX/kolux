@@ -34,7 +34,7 @@ Open an issue first. Once the scope is agreed:
    - `. .\scripts\test-env.ps1` then `cargo test`
    - `cargo clippy --all-targets -- -D warnings`
 4. Update the user guide or architecture docs if the behaviour or a boundary changed.
-5. For a visible change, include a screenshot from the app's own window in `evidence/`.
+5. For a visible change, attach a screenshot from the app's own window to the pull request.
 
 Match the style of the file you are editing. The code comments explain why, not what. Do not add a dependency for a small job an existing crate or the standard library already does.
 
@@ -51,7 +51,7 @@ Do not copy, paraphrase, or paste from:
 - the old app's hook scripts under `~\.kolux\agent-hooks\`;
 - any document that quotes file paths, function names, or code from those sources.
 
-The allowed sources for behaviour are the spec in this repository (`SPEC.md`, `spec/`, `COMPAT.md`, `PRIORITIES.md`, `DECISIONS.md`, `PROVENANCE.md`) and public documentation for other tools.
+The allowed sources for behaviour are the spec in this repository (`SPEC.md`, `spec/`, `COMPAT.md`) and public documentation for other tools. The build records behind it (task plan, decisions, provenance log) are kept in the maintainer's private development repository.
 
 If you have seen forbidden source, say so in your issue before contributing. If you realize a contribution was derived from it, stop and report it. A provenance breach voids the clean-room record, so it is better to ask than to guess.
 

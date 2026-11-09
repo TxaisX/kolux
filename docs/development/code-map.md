@@ -122,15 +122,16 @@ If you add a screen, update the screen union in `src/chrome/TopBar.tsx`, the pag
 | `SPEC.md` | The behaviour spec index |
 | `spec/01...21-*.md` | The 20 area files |
 | `COMPAT.md` | Contracts kept from the old app |
-| `PRIORITIES.md` | Build order and theme ranks |
-| `PLAN.md` | The ordered task list and card coverage |
-| `STATE.md` | Current counters, what works, open decisions |
-| `DECISIONS.md` | Defaults, strikes, and choices the build follows |
-| `PROVENANCE.md` | Clean-room source log |
-| `evidence/` | Per-task proof output |
-| `docs/live-proofs-windows.md` | The installed-build proof run sheet |
+| `PRIORITIES.md` | Build order and theme ranks (private repo only) |
+| `PLAN.md` | The ordered task list and card coverage (private repo only) |
+| `STATE.md` | Current counters, what works, open decisions (private repo only) |
+| `DECISIONS.md` | Defaults, strikes, and choices the build follows (private repo only) |
+| `PROVENANCE.md` | Clean-room source log (private repo only) |
+| `evidence/` | Per-task proof output; the public repo keeps only the test fixtures |
+| `docs/live-proofs-windows.md` | The installed-build proof run sheet (private repo only) |
 
-These are build records. Read `PLAN.md` and `DECISIONS.md` before changing behaviour that a card already defines. Do not rewrite them to make a change look approved.
+The public repository is a clean export of the private development repository
+(`scripts/export-public.mjs`), so the rows marked private are not in it. These are build records. Read `PLAN.md` and `DECISIONS.md` before changing behaviour that a card already defines. Do not rewrite them to make a change look approved.
 
 ## Where to change what
 
