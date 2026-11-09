@@ -16,6 +16,12 @@ test("an untrusted main checkout names the project as the sidebar shows it, matc
   expect(trustNote("Codex", unknown, projects)).toBe("Codex may ask whether to trust this workspace: you haven't trusted other in Codex yet.");
 });
 
+test("with a managed account in use the line names that account, not Claude as a whole", () => {
+  const reason = "not trusted: the main checkout C:\\Users\\me\\code\\my-app is not trusted for claude yet, so its worktree C:\\w keeps the agent's own prompt";
+  expect(trustNote("Claude", reason, projects, true)).toBe("Claude may ask whether to trust this workspace: you haven't trusted My App in this Claude account yet.");
+  expect(trustNote("Claude", reason, projects, false)).toBe("Claude may ask whether to trust this workspace: you haven't trusted My App in Claude yet.");
+});
+
 test("a pull request's worktree says why, in words", () => {
   expect(trustNote("Claude", "not trusted: this worktree holds a pull request's branch, so the agent asks itself", projects)).toBe(
     "Claude may ask whether to trust this workspace because it holds a pull request.",

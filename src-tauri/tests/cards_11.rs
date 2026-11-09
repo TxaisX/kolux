@@ -83,6 +83,7 @@ fn with_origin(d: &Path) -> (PathBuf, PathBuf) {
 /// DT-C229 / T-780: the user's own answer to Claude's trust prompt for `w`, written where Kolux
 /// reads it (the scratch Claude config) in the shape Claude writes it. Git runs a trusted folder's
 /// own hooks and lets it push to a repository on this computer; an untrusted one is refused both.
+/// Every caller holds the STATES lock, so no two tests write that one file at once.
 fn user_trusted(w: &Path) {
     let file = kolux_rs_lib::trust::claude_config_file();
     assert!(norm(&file).starts_with(&norm(scratch_root::root())), "{file:?} is not under the scratch root");
@@ -253,6 +254,8 @@ fn git004_box1_staged_file_and_a_message_make_exactly_one_new_commit_and_a_clean
 
 #[test]
 fn git004_box3_a_pre_commit_hook_that_exits_1_blocks_the_commit_and_what_it_printed_comes_back() {
+    // user_trusted writes the one shared scratch Claude config, as git006 and git007 do: one at a time.
+    let _lock = STATES.lock().unwrap_or_else(|e| e.into_inner());
     let d = scratch("g4b3");
     let w = repo(&d, "w");
     // The hook runs only in a folder the user trusted; an untrusted one is refused before git starts.

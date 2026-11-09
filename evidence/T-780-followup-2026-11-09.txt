@@ -47,3 +47,29 @@ VERIFY
 Live proof (bug-fix phase, not run now): add a project you have never trusted in Claude, make a
 workspace, start Claude in it -> the toast "Claude may ask whether to trust this workspace: you
 haven't trusted <project> in Claude yet." appears; the window keeps focus.
+
+Review fixes (review of 1f518599: APPROVE WITH CHANGES) · 2026-11-09
+1. Flaky: git004_box3 now takes the STATES lock like git006/git007, so no two cards_11 tests write
+   the one shared scratch .claude.json (trust.rs write_checked uses one fixed temp path) at once.
+2. Latency: pretrust no longer awaits any lookup after trust_folders_cmd answers. The pull-request
+   check (workspace_details_get) and the account check run unawaited; the line shows when they resolve.
+3. Multi-seat: trust lines are gathered and marked said only after the success path puts them in the
+   notice bar. A Start that throws later (handoff note, start line) leaves them unsaid, so the next
+   launch says them; a line that arrives after the Start ended is a toast of its own.
+4. Wording: for Claude, when a managed account is active and key mode is off (claude_accounts view:
+   active !== null && !keyMode, the same rule trust_for_launch uses to pick the account's .claude.json),
+   the line reads "... you haven't trusted <project> in this Claude account yet." Codex keeps
+   "in Codex": trust.rs writes Codex trust to one file, with no managed-account file.
+   Not covered: a CLAUDE_CONFIG_DIR set in the agent's own options with no managed account still reads
+   "in Claude", and a custom Claude program override is not checked.
+
+VERIFY (review fixes)
+  pnpm check                     -> tsc ok; license-check: OK; plan-check: OK; workflow-check: OK; invoke-contract: OK (753 calls / 473 commands); node tests pass 5 fail 0 (exit 0)
+  pnpm exec vitest run src/launch/launchActions.test.ts -> Tests 6 passed (6)
+  pnpm test                      -> Test Files 863 passed (863); Tests 6378 passed (6378)
+  cd src-tauri; . ..\scripts\test-env.ps1 (KRS_SCRATCH_ROOT=G:\Temp\ready-sec-trust-scratch)
+  cargo test -j 2 --test cards_11 (3 runs in a row)
+    RUN 1 -> test result: ok. 12 passed; 0 failed
+    RUN 2 -> test result: ok. 12 passed; 0 failed
+    RUN 3 -> test result: ok. 12 passed; 0 failed
+  cargo clippy -j 2 --all-targets -- -D warnings -> Finished; exit 0
