@@ -3,7 +3,7 @@
 // The card and its header follow design/DESIGN.md section 7: status icon, agent mark, title,
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
 import { trapTab } from "../chrome/dialogFocus";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
@@ -29,7 +29,7 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, watchResume, type RendererMode } from "./renderer";
+import { attachRenderer, parkWhenHidden, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
@@ -103,7 +103,7 @@ export type PaneNotice = { title: string; body: string; primary: string; onPrima
 type Props = {
   /** Kept mounted but not shown: another workspace is in front (PROJ-066). */
   hidden?: boolean;
-  /** TERM-103: false draws plain; true tries the GPU path (six panes at most, the rest plain). */
+  /** TERM-103: false draws plain; true tries the GPU path (twelve panes at most, the rest plain; DT-C229). */
   gpu?: boolean;
   /** VIEW-024: the saved agent's name, shown in the header in place of the program word. */
   name?: string;
@@ -404,6 +404,12 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const serviceRef = useRef<ServiceInfo | null>(null);
   const isHidden = useRef(hidden);
   isHidden.current = hidden;
+  // DT-C229: a pane hidden for 30 s gives its GPU context back; shown again, it takes one before the
+  // frame is drawn (a layout effect, so the first visible frame is whole: TERM-103).
+  const parking = useRef<ReturnType<typeof parkWhenHidden> | null>(null);
+  useLayoutEffect(() => {
+    parking.current?.hidden(hidden);
+  }, [hidden]);
   // T-765: a tab that comes back catches up at once, without waiting for the next output chunk.
   useEffect(() => {
     outputRef.current?.wake();
@@ -635,6 +641,16 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     setRenderer(choice.mode);
     choice.onFallback(() => setRenderer("dom"));
     fit.fit();
+    // DT-C229: only where xterm can be resumed at once on reveal; elsewhere the context is kept.
+    const resume = resumeHook(term);
+    if (resume) {
+      parking.current = parkWhenHidden(choice, (mode) => {
+        resume(); // xterm draws in this frame's animation step, not after the observer's late callback
+        term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
+        setRenderer(mode);
+      });
+      parking.current.hidden(isHidden.current);
+    }
 
     let alive = true;
     let profileRows: number | null = null; // ACCT-059: the memory profile's rows, once known
@@ -1325,6 +1341,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       unlisteners.forEach((u) => u());
       const id = idRef.current;
       if (id !== null && killsOnUnmount(gen)) invoke("terminal_kill", { id }).catch(() => {});
+      parking.current?.stop();
+      parking.current = null;
       choice.dispose();
       pasting.detach();
       shots();

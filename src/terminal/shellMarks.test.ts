@@ -234,7 +234,7 @@ describe("title storm (perf: one render per real change, titles paced)", () => {
         vi.advanceTimersByTime(gapMs);
       }
       vi.advanceTimersByTime(TITLE_PACE_MS);
-      return { first, extra: applied.length - first, last: applied.at(-1), now };
+      return { first, extra: applied.length - first, last: applied[applied.length - 1], now };
     } finally {
       vi.useRealTimers();
     }

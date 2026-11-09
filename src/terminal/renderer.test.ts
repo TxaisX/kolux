@@ -1,5 +1,5 @@
-import { expect, test } from "vitest";
-import { attachRenderer, GPU_FIELD, gpuOn, watchResume, type WebglLike } from "./renderer";
+import { describe, expect, test } from "vitest";
+import { attachRenderer, GPU_FIELD, gpuOn, parkWhenHidden, PARK_AFTER_MS, resumeHook, watchResume, type RendererMode, type WebglLike } from "./renderer";
 
 function fakeWebgl(): WebglLike & { disposed: number; lose: () => void } {
   let lose = () => {};
@@ -116,4 +116,118 @@ test("a heartbeat that skips far ahead means the machine slept: the glyph caches
   now += 5_000;
   w.tick();
   expect(resumed).toBe(1);
+});
+
+describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
+  const clock = () => {
+    const waits = new Map<number, { fn: () => void; at: number }>();
+    let now = 0;
+    let n = 0;
+    return {
+      wait: (fn: () => void, ms: number) => {
+        const id = n++;
+        waits.set(id, { fn, at: now + ms });
+        return () => void waits.delete(id);
+      },
+      pass(ms: number) {
+        now += ms;
+        for (const [id, w] of [...waits]) if (w.at <= now) (waits.delete(id), w.fn());
+      },
+    };
+  };
+
+  test("disposes the addon and frees the slot after 30 s hidden, and takes a new one on reveal with a redraw", () => {
+    const pool = { max: 12, live: 0 };
+    const made: ReturnType<typeof fakeWebgl>[] = [];
+    const loaded: unknown[] = [];
+    const choice = attachRenderer({ loadAddon: (a) => loaded.push(a) }, () => (made.push(fakeWebgl()), made[made.length - 1]), true, pool);
+    const c = clock();
+    const redraws: RendererMode[] = [];
+    const park = parkWhenHidden(choice, (m) => redraws.push(m), PARK_AFTER_MS, c.wait);
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS - 1);
+    expect([made[0].disposed, pool.live, choice.mode]).toEqual([0, 1, "webgl"]); // still held under 30 s
+    c.pass(1);
+    expect([made[0].disposed, pool.live, choice.mode, park.parked]).toEqual([1, 0, "dom", true]);
+    park.hidden(false);
+    expect(loaded).toHaveLength(2); // the same attach path loads a fresh addon
+    expect([pool.live, choice.mode, made[1].disposed]).toEqual([1, "webgl", 0]);
+    expect(redraws).toEqual(["webgl"]); // the pane repaints once, in the reveal
+  });
+
+  test("a pane shown again inside 30 s keeps its context and is not redrawn", () => {
+    const pool = { max: 12, live: 0 };
+    const gl = fakeWebgl();
+    const choice = attachRenderer({ loadAddon() {} }, () => gl, true, pool);
+    const c = clock();
+    const redraws: RendererMode[] = [];
+    const park = parkWhenHidden(choice, (m) => redraws.push(m), PARK_AFTER_MS, c.wait);
+    park.hidden(true);
+    c.pass(10_000);
+    park.hidden(false);
+    c.pass(PARK_AFTER_MS);
+    expect([gl.disposed, pool.live, redraws.length]).toEqual([0, 1, 0]);
+  });
+
+  test("the freed slot lets another pane draw on the GPU; the woken pane draws plain while the pool is full", () => {
+    const pool = { max: 1, live: 0 };
+    const hiddenPane = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const c = clock();
+    const redraws: RendererMode[] = [];
+    const park = parkWhenHidden(hiddenPane, (m) => redraws.push(m), PARK_AFTER_MS, c.wait);
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS);
+    const other = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    expect(other.mode).toBe("webgl");
+    park.hidden(false);
+    expect([hiddenPane.mode, redraws]).toEqual(["dom", ["dom"]]); // still redrawn whole, on the plain path
+    other.dispose();
+    hiddenPane.dispose();
+    expect(pool.live).toBe(0);
+  });
+
+  test("a plain pane and a lost context are never parked or re-attached", () => {
+    const pool = { max: 12, live: 0 };
+    const plain = attachRenderer({ loadAddon() {} }, fakeWebgl, false, pool);
+    expect([plain.park(), plain.wake()]).toEqual([false, "dom"]);
+    const gl = fakeWebgl();
+    let made = 0;
+    const lost = attachRenderer({ loadAddon() {} }, () => (made++, gl), true, pool);
+    gl.lose();
+    expect([lost.park(), lost.wake(), made, pool.live]).toEqual([false, "dom", 1, 0]);
+  });
+
+  test("a disposed pane's late timer does nothing and a dispose after park counts nothing twice", () => {
+    const pool = { max: 12, live: 0 };
+    const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const c = clock();
+    const park = parkWhenHidden(choice, () => {}, PARK_AFTER_MS, c.wait);
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS);
+    choice.dispose();
+    expect(choice.wake()).toBe("dom");
+    expect(pool.live).toBe(0);
+    park.hidden(true);
+    park.stop();
+    c.pass(PARK_AFTER_MS);
+    expect(pool.live).toBe(0);
+  });
+
+  test("resumes xterm through its own observer handler when it has one, and declines otherwise", () => {
+    const seen: unknown[] = [];
+    const service = {
+      paused: true,
+      _handleIntersectionChange(e: { isIntersecting: boolean }) {
+        this.paused = !e.isIntersecting;
+        seen.push(e);
+      },
+    };
+    const hook = resumeHook({ _core: { _renderService: service } });
+    expect(hook).not.toBeNull();
+    hook?.();
+    expect(service.paused).toBe(false);
+    expect(seen).toHaveLength(1);
+    expect(resumeHook({})).toBeNull();
+    expect(resumeHook(null)).toBeNull();
+  });
 });
