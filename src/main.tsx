@@ -33,7 +33,12 @@ async function start() {
     return;
   }
   // DT-C236: the main window's page tells the engine its background (the Tower has its own view and look).
-  installWindowBackground();
+  // Cosmetic only: a page that cannot read its colour must never stop the start.
+  try {
+    installWindowBackground();
+  } catch {
+    /* the engine keeps its default background */
+  }
   // FIX-4 (council d2 AFTER 8): the App module (and everything it imports) is loaded for the main
   // window only; the Tower window never evaluates it. The load starts now and runs beside the settings read.
   const loadApp = import("./App");
