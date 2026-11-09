@@ -168,12 +168,12 @@ struct Found {
 }
 
 /// A folder's entries; a folder that could not be listed whole clears `whole` (one that is not
-/// there is listed whole: it has nothing in it).
+/// there, or is a file, is listed whole: it has nothing in it).
 fn list(dir: &Path, whole: &mut bool) -> Vec<fs::DirEntry> {
     match fs::read_dir(dir) {
         Ok(entries) => entries.filter_map(|e| e.map_err(|_| *whole = false).ok()).collect(),
         Err(e) => {
-            *whole &= e.kind() == std::io::ErrorKind::NotFound;
+            *whole &= matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory);
             Vec::new()
         }
     }
@@ -194,7 +194,8 @@ fn transcripts(root: &Path, out: &mut Vec<Found>) -> bool {
     let mut whole = true;
     out.clear();
     for project in list(root, &mut whole) {
-        if !project.file_type().is_ok_and(|t| t.is_dir()) {
+        // a project folder may be a symbolic link or junction to one elsewhere
+        if !project.file_type().is_ok_and(|t| t.is_dir() || (t.is_symlink() && project.path().is_dir())) {
             continue;
         }
         for e in list(&project.path(), &mut whole) {
@@ -490,5 +491,28 @@ mod tests {
         let page = "G:\\Temp\\page.html";
         fs::write(&p, call("a", "Artifact", serde_json::json!({"file_path": page})) + &result("a", url, page, false)).unwrap();
         assert_eq!(w.poll(&root, t0 + Duration::from_secs(2), SystemTime::now(), &mut size).len(), 1);
+    }
+
+    #[test]
+    fn skill_035_a_linked_project_folder_is_watched_and_a_root_that_is_a_file_lists_whole() {
+        let t = crate::test_dir::temp("capture-linked");
+        let (root, real) = (t.0.join("projects"), t.0.join("elsewhere"));
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&real).unwrap();
+        fs::write(real.join("s.jsonl"), "{}
+").unwrap();
+        let link = root.join("G--linked");
+        // a junction on Windows (no special right needed), a symbolic link elsewhere
+        #[cfg(windows)]
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&link).arg(&real).output().is_ok_and(|o| o.status.success());
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(&real, &link).is_ok();
+        assert!(made, "the link could not be made");
+        let mut out = Vec::new();
+        assert!(transcripts(&root, &mut out));
+        assert_eq!(out.iter().map(|f| f.path.clone()).collect::<Vec<_>>(), vec![link.join("s.jsonl")]);
+        let file = t.0.join("a-file");
+        fs::write(&file, "").unwrap();
+        assert!(transcripts(&file, &mut out) && out.is_empty(), "a file where the folder should be has nothing in it");
     }
 }
