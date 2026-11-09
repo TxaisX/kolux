@@ -11,6 +11,16 @@ const allowed = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'I
 const ok = expr => expr.split(/\s+OR\s+/i).some(alt => allowed.has(alt.replace(/[()]/g, '').trim()))
   || expr.split(/\s+AND\s+/i).every(alt => allowed.has(alt.replace(/[()]/g, '').trim()));
 
+// Scoped exceptions (DECISIONS DT-C228, approved by Txais 2026-11-09): a package the gate would reject for
+// a licence expression it offers, where one alternative was elected on purpose. The key is the package name,
+// `offered` is the exact expression pnpm lists (a different expression, say after a relicense, fails again),
+// `elected` is the alternative Kolux takes. Nothing here widens the allow-list above: EPL-2.0 is not on it.
+// elkjs (Mermaid 12's ELK layout) is EPL-2.0 OR GPL-3.0-or-later; Kolux elects EPL-2.0, the weak file-level
+// copyleft, and ships the library unmodified with its notice in THIRD-PARTY-NOTICES.md.
+export const EXCEPTIONS = {
+  elkjs: { offered: 'EPL-2.0 OR GPL-3.0-or-later', elected: 'EPL-2.0' },
+};
+
 // T-589 (X-proc.14): pnpm before 12 lists a package whose package.json names no license as "Unknown",
 // even when it ships a licence file (khroma: a lowercase `license` holding the MIT text). Reading that
 // file gives the same answer on every pnpm. ponytail: the common permissive texts only; a package with
@@ -34,7 +44,8 @@ export function failures(byLicense) {
   for (const [license, pkgs] of Object.entries(byLicense))
     for (const p of pkgs) {
       const fromFile = license === 'Unknown' && p.paths?.length > 0 && p.paths.every(dir => ok(licenceFromFile(dir) ?? 'Unknown'));
-      if (!ok(license) && !fromFile) bad.push(`${p.name}@${p.versions?.join(',') ?? p.version} · ${license}`);
+      const elected = EXCEPTIONS[p.name]?.offered === license;
+      if (!ok(license) && !fromFile && !elected) bad.push(`${p.name}@${p.versions?.join(',') ?? p.version} · ${license}`);
     }
   return bad;
 }

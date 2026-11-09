@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { failures, licenceFromFile } from "./license-check.mjs";
+import { EXCEPTIONS, failures, licenceFromFile } from "./license-check.mjs";
 
 const MIT = "The MIT License (MIT)\n\nCopyright (c) 2019-present Someone\n\nPermission is hereby granted, free of charge, to any person obtaining a copy";
 const pkg = (files) => {
@@ -25,5 +25,13 @@ describe("JS licence gate", () => {
     expect(failures(listed(pkg({ license: MIT })))).toEqual([]);
     expect(failures(listed(pkg({ LICENSE: "All rights reserved." })))).toEqual(["khroma@2.1.0 · Unknown"]);
     expect(failures({ "GPL-3.0": [{ name: "copyleft", versions: ["1.0.0"], paths: [pkg({ license: MIT })] }] })).toEqual(["copyleft@1.0.0 · GPL-3.0"]);
+  });
+
+  it("takes elkjs under its elected EPL-2.0 and nothing else under the same expression", () => {
+    const both = "EPL-2.0 OR GPL-3.0-or-later";
+    expect(EXCEPTIONS.elkjs.elected).toBe("EPL-2.0");
+    expect(failures({ [both]: [{ name: "elkjs", versions: ["0.12.1"], paths: [] }] })).toEqual([]);
+    expect(failures({ [both]: [{ name: "other-lib", versions: ["1.0.0"], paths: [] }] })).toEqual(["other-lib@1.0.0 · " + both]);
+    expect(failures({ "GPL-3.0-or-later": [{ name: "elkjs", versions: ["0.13.0"], paths: [] }] })).toEqual(["elkjs@0.13.0 · GPL-3.0-or-later"]);
   });
 });
