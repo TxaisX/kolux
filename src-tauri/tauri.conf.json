@@ -39,6 +39,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "../THIRD-PARTY-NOTICES.md": "licenses/THIRD-PARTY-NOTICES.md",
+      "../licenses/EPL-2.0.txt": "licenses/EPL-2.0.txt"
+    },
     "windows": {
       "nsis": {
         "installerHooks": "./installer-hooks.nsh"

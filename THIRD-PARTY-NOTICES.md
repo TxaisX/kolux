@@ -14,7 +14,7 @@ the permissive licences on its allow-list. The one library that needs a note is 
   library inside a larger work is allowed when the library's source is made available, and that is the
   case here. The rest of Kolux stays under its own licence. If Kolux ever changes an elkjs file, that
   changed file must be published under EPL-2.0.
-- **Licence text:** <https://www.eclipse.org/legal/epl-2.0/>
+- **Licence text:** <https://www.eclipse.org/legal/epl-2.0/>; the copy shipped with elkjs is `licenses/EPL-2.0.txt`, and the installer puts it and this file in a `licenses` folder of the install.
 - **Source code of elkjs:** <https://github.com/kieler/elkjs> (the exact release is the `0.12.1` tag; the
   same files are in the npm package `elkjs@0.12.1`).
 - **Decision record:** DT-C228 in `DECISIONS.md` (approved by Txais, 2026-11-09). The scoped exception is
