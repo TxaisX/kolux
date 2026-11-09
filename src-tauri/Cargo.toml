@@ -56,7 +56,7 @@ trash = "5"
 reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
 unicode_names2 = "4.0.0"
 # SKILL-013: the README lists SHA-256 hashes (sha2 is already in the tree).
-sha2 = "0.10"
+sha2 = "0.11"
 # T-156-b (SAFE-016): the user's own regular-expression rules, built with a size limit (already in the tree).
 regex = "1"
 
