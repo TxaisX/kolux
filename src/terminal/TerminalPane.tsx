@@ -46,7 +46,7 @@ import { frameOutputs, type FrameOutput } from "./frame";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
-import { currentText, optionsOf, scrollbackRows, TEXT_EVENT } from "./text";
+import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
@@ -1192,8 +1192,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     window.addEventListener(TERMINAL_EVENT, recolour);
     // SET-022 / SET-025: open terminals follow the text, cursor and history settings.
     const retext = () => {
-      Object.assign(term.options, optionsOf(currentText()), termFont());
-      term.options.scrollback = scrollbackRows(currentText(), profileRows); // ACCT-059 vs SET-025
+      // ACCT-059 vs SET-025: the settled scrollback in the one assignment (xterm trims on every change).
+      Object.assign(term.options, paneOptionsOf(currentText(), profileRows), termFont());
       feel();
       settleLigatures();
       resize();

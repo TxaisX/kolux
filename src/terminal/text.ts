@@ -99,6 +99,13 @@ export function readText(s: Record<string, unknown>, onWindows = windows()): Ter
 export const scrollbackRows = (t: TerminalText, profileRows: number | null | undefined): number =>
   t.scrollbackSet || profileRows == null ? t.scrollback : profileRows;
 
+/** The xterm options for `t` with the scrollback already settled (scrollbackRows), so one
+ *  assignment never passes through a lower interim value: xterm trims the buffer on every change. */
+export const paneOptionsOf = (t: TerminalText, profileRows: number | null | undefined): ITerminalOptions => ({
+  ...optionsOf(t),
+  scrollback: scrollbackRows(t, profileRows),
+});
+
 /** The family to draw with: the chosen one with the built-in stack behind it. */
 export const familyOf = (t: TerminalText) => fontStack(t.family, monoFont);
 
