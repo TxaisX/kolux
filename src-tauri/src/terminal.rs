@@ -21,7 +21,7 @@ pub const EXIT_EVENT: &str = "terminal-exit";
 pub const SCREEN_EVENT: &str = "terminal-screen-request";
 /// Lines kept per terminal for `kolux terminal read` (CLI-024); older ones are dropped.
 pub const LOG_LINES: usize = 2000;
-/// P2 perf (DT-C228): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
+/// P2 perf (DT-C235): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
 /// (up to `PENDING_CAP` each) would otherwise let one pane hold ~32 MB.
 pub const LOG_BYTES: usize = 1024 * 1024;
 /// Fix-term 786: the most a log keeps of a line that has not ended yet.
@@ -2662,7 +2662,7 @@ mod tests {
         assert_eq!(log.read(Some(14), None).lines[0].text, "row tworow one");
     }
 
-    /// P2 perf (DT-C228): long lines are held to `LOG_BYTES` as well as `LOG_LINES`; the cursor keeps
+    /// P2 perf (DT-C235): long lines are held to `LOG_BYTES` as well as `LOG_LINES`; the cursor keeps
     /// counting every line and a reader behind the kept lines is told some were dropped (CLI-024).
     #[test]
     fn perf_the_line_log_keeps_to_its_byte_budget_and_its_cursor() {

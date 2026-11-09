@@ -34,6 +34,7 @@ describe("the locked diagram page", () => {
     expect(dark.theme).toBe("dark");
     expect(dark.themeVariables.primaryTextColor).toBeTruthy();
     expect(mermaidConfig(false).theme).toBe("neutral");
+    expect([dark.layout, dark.look]).toEqual(["dagre", "classic"]); // Mermaid 12 would default to ELK and the neo look
   });
 });
 
