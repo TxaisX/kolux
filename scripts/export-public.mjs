@@ -22,7 +22,7 @@ export const PRIVATE = [
   '.claude/', '.kolux/', 'artifacts/', 'evidence/',
   'docs/history/', 'docs/research/', 'docs/reclaim-old-kolux.md',
   'docs/live-proofs-windows.md', 'docs/live-proofs-results-2026-10-31.md',
-  'scripts/token-report.py',
+  'scripts/token-report.py', 'scripts/plan-check.test.mjs',
 ];
 
 /** Code and tests read a few files under evidence/ (fixtures, include_str!); those stay. */
