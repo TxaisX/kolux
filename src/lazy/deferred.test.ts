@@ -38,10 +38,11 @@ test("DT-C230: prefetch reads only the surfaces marked for it; the rest wait for
   expect(read).toEqual(["editor"]);
 });
 
-test("DT-C230: of the pane bodies only the editor and the browser pane are marked for prefetch", async () => {
-  const src = (await import("node:fs")).readFileSync(new URL("./panes.tsx", import.meta.url), "utf8");
+test("DT-C230: of the pane bodies only the editor and the browser pane are marked for prefetch", () => {
+  const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
+  const src = nodeFs.readFileSync(new URL("./panes.tsx", import.meta.url), "utf8");
   const marked = [...src.matchAll(/export const (\w+) = deferred\(.*\{ prefetch: true \}/g)].map((m) => m[1]);
   expect(marked).toEqual(["EditorPane", "BrowserPane"]);
-  const pages = (await import("node:fs")).readFileSync(new URL("./pages.tsx", import.meta.url), "utf8");
+  const pages = nodeFs.readFileSync(new URL("./pages.tsx", import.meta.url), "utf8");
   expect(pages).not.toContain("prefetch: true");
 });
