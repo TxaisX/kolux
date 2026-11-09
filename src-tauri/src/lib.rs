@@ -536,7 +536,7 @@ pub fn run() {
                 }
             }
             // APP-008 / T-248-d: the window is back on screen, so the tray's attention dot clears.
-            // DT-C228: and the engine learns the view is in sight again (a restore without a resize).
+            // DT-C236: and the engine learns the view is in sight again (a restore without a resize).
             if let tauri::WindowEvent::Focused(true) = event {
                 // A focus while minimised (a tab's view created under a minimised window takes it) is
                 // not a show: the view stays out of sight until the restore's resize.
@@ -546,7 +546,7 @@ pub fn run() {
                 }
             }
             // STAT-047 / T-248-c: a minimised window is out of sight, so the tray's dot may light.
-            // DT-C228: the engine is told too (wry skips SIZE_MINIMIZED), so document.hidden turns true
+            // DT-C236: the engine is told too (wry skips SIZE_MINIMIZED), so document.hidden turns true
             // and APP-017's hold engages; the restore's resize tells it the view is back.
             if let tauri::WindowEvent::Resized(_) = event {
                 if window.label() == "main" {
@@ -979,7 +979,7 @@ pub fn run() {
             diag::diag_summary, // APP-010: Help > Copy terminal diagnostics
             lifecycle::app_restart, // APP-010: Help > Restart Kolux
             resources::recovery::ui_heartbeat,
-            webview_power::window_background, // DT-C228: the engine's default background follows the theme
+            webview_power::window_background, // DT-C236: the engine's default background follows the theme
             resources::recovery::startup_recovery_notes,
             resources::recovery::graphics_crash_noted,
             resources::recovery::graphics_keep_running,

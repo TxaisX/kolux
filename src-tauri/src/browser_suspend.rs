@@ -1,4 +1,4 @@
-//! DT-C230 (BROW-002, BROW-021): a tab's page that has been hidden for `SUSPEND_AFTER` is suspended
+//! DT-C237 (BROW-002, BROW-021): a tab's page that has been hidden for `SUSPEND_AFTER` is suspended
 //! (ICoreWebView2_3::TrySuspend). Every web view runs with the background-timer exemption Kolux needs
 //! for its own page (recovery.rs UNTHROTTLED), so a hidden tab otherwise keeps full-speed timers and
 //! script for ever. Suspending stops them and gives memory back while the page keeps its state: typed

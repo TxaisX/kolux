@@ -1,11 +1,11 @@
-// DT-C228 (APP-017): the body colour reaches the engine's default background, once per change.
+// DT-C236 (APP-017): the body colour reaches the engine's default background, once per change.
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => undefined) }));
 
 import { installWindowBackground, opaqueRgb } from "./windowBackground";
 
-describe("DT-C228 window background", () => {
+describe("DT-C236 window background", () => {
   test("an opaque colour is sent; transparent and translucent send null", () => {
     expect(opaqueRgb("rgb(5, 4, 5)")).toEqual([5, 4, 5]);
     expect(opaqueRgb("rgba(5, 4, 5, 1)")).toEqual([5, 4, 5]);

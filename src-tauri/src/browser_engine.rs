@@ -411,7 +411,7 @@ mod imp {
         let _ = unsafe { core.CallDevToolsProtocolMethod(&HSTRING::from("Runtime.evaluate"), &HSTRING::from(params), &handler) };
     }
 
-    /// DT-C230 (BROW-002, BROW-021): a tab hidden for a while is suspended, which stops its timers
+    /// DT-C237 (BROW-002, BROW-021): a tab hidden for a while is suspended, which stops its timers
     /// and script and gives memory back while keeping the page's state (typed text, scroll, history).
     /// Not while the page plays audio (the third BROW-021 exemption; the other two are checked by the
     /// caller). The engine refuses when the view is visible or DevTools is open, which is fine.
@@ -431,7 +431,7 @@ mod imp {
         let _ = unsafe { c3.TrySuspend(&done) };
     }
 
-    /// DT-C230: a suspended page is resumed (before it is shown, or before an agent's call reaches it).
+    /// DT-C237: a suspended page is resumed (before it is shown, or before an agent's call reaches it).
     pub fn resume(controller: &ICoreWebView2Controller) {
         // SAFETY: CoreWebView2 hands back the page's engine object.
         let Ok(c3) = (unsafe { controller.CoreWebView2() }).and_then(|c| c.cast::<ICoreWebView2_3>()) else { return };
@@ -672,7 +672,7 @@ pub fn devtools(v: &Webview, method: &str, params: String, wait: Duration) -> Re
     }
 }
 
-/// DT-C230: suspends a hidden tab's page on the main thread (nothing happens when the page plays
+/// DT-C237: suspends a hidden tab's page on the main thread (nothing happens when the page plays
 /// audio, is visible or has DevTools open).
 pub fn try_suspend(v: &Webview) {
     #[cfg(windows)]
@@ -681,7 +681,7 @@ pub fn try_suspend(v: &Webview) {
     let _ = v;
 }
 
-/// DT-C230: resumes a suspended page; posted to the main thread, so a call queued after it (a show,
+/// DT-C237: resumes a suspended page; posted to the main thread, so a call queued after it (a show,
 /// an eval) finds the page awake.
 pub fn resume(v: &Webview) {
     #[cfg(windows)]

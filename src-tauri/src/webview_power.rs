@@ -1,4 +1,4 @@
-//! APP-017 (DT-C228): the main web view is told when the window is out of sight. wry never passes a
+//! APP-017 (DT-C236): the main web view is told when the window is out of sight. wry never passes a
 //! minimise on to the engine (wry-0.57.1 webview2/mod.rs:1333 skips SIZE_MINIMIZED) and Tauri's hide
 //! and show touch the window only (tauri-runtime-wry lib.rs:3380), so until now `document.hidden`
 //! never turned true while Kolux sat minimised or in the tray: APP-017's hold (src/recovery/hidden.ts),

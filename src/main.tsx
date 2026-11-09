@@ -24,7 +24,7 @@ import { showStartFailure } from "./tower/startFailed";
 // is the window shown, so its first visible frame already has the saved colours and font.
 async function start() {
   applyAppearance(cachedAppearance());
-  installWindowBackground(); // DT-C228: the engine's default background follows the body colour
+  installWindowBackground(); // DT-C236: the engine's default background follows the body colour
   followSystemMode();
   // T-546-c: the Tower's own window draws only the Tower; the panes, the settings and the layout stay the main window's.
   if (isTowerWindow(location.hash)) {

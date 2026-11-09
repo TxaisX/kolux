@@ -42,7 +42,7 @@ pub mod downloads;
 // T-179: BROW-020 tabs come back after a restart on their trail, BROW-021 the memory budget.
 #[path = "browser_session.rs"]
 pub mod session;
-// DT-C230: a tab hidden for a while is suspended (timers stop, memory goes back, state stays).
+// DT-C237: a tab hidden for a while is suspended (timers stop, memory goes back, state stays).
 #[path = "browser_suspend.rs"]
 pub mod suspend;
 // T-272-d: which page holds the keyboard, from the system's focus (keyboard chord provenance).
@@ -1544,10 +1544,10 @@ pub async fn browser_bounds(app: AppHandle, id: u32, spot: Spot, shown: bool, ba
     set_shown(id, shown);
     if !shown {
         v.hide().map_err(err)?;
-        suspend::hidden(app.clone(), id); // DT-C230: suspended after SUSPEND_AFTER if still away
+        suspend::hidden(app.clone(), id); // DT-C237: suspended after SUSPEND_AFTER if still away
         return Ok(());
     }
-    suspend::shown(&v, id); // DT-C230: awake before the first frame
+    suspend::shown(&v, id); // DT-C237: awake before the first frame
     if let Ok(mut s) = SPOTS.lock() {
         s.insert(id, spot);
     }
@@ -1716,7 +1716,7 @@ pub async fn browser_close(app: AppHandle, id: u32) -> Result<(), String> {
     downloads::cancel_tab(&app, id);
     history::forget_tab(id);
     session::forget(id); // T-179: a closed tab does not come back after a restart
-    suspend::forget(id); // DT-C230
+    suspend::forget(id); // DT-C237
     preview::forget(id); // T-159
     popup::close_for(&app, id); // T-158 (BROW-015): a tab's popups close with it
     let closed = view(&app, id).and_then(|v| v.close().map_err(err));
@@ -1937,7 +1937,7 @@ fn drive(act: Act) -> Result<serde_json::Value, String> {
     if let Act::Eval(id, ..) | Act::Navigate(id, _) | Act::Go(id, _) | Act::Relayout(id, _) | Act::DevTools(id, ..) | Act::Pdf(id, _) = act {
         preview::drivable(id)?; // T-159 (BROW-040): a preview is driven only once it has rendered
         session::drove(id);
-        suspend::driven(app, id); // DT-C230: a suspended page wakes before the agent's call reaches it
+        suspend::driven(app, id); // DT-C237: a suspended page wakes before the agent's call reaches it
     }
     match act {
         Act::Eval(id, script, wait) => {

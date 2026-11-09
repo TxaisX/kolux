@@ -1,4 +1,4 @@
-// DT-C228 (APP-017): the engine's default background follows the page's own. Since the main view is
+// DT-C236 (APP-017): the engine's default background follows the page's own. Since the main view is
 // now told when the window is minimised or in the tray (webview_power.rs), the first frame after a
 // restore may come before the page paints; the engine fills it with its default background, which is
 // white unless set. The page's body colour is sent to `window_background` whenever the theme applies,

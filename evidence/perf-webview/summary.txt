@@ -6,7 +6,7 @@ the window's own pixels (PrintWindow PW_RENDERFULLCONTENT, frames.ps1), renderer
 msedgewebview2 --type=renderer of this profile (working set / private bytes). Full logs: runtime-proof.txt
 (UTC times), control-run-no-memory-low.txt, final-code-run.txt.
 
-Item 1 (DT-C228) main view told when out of sight
+Item 1 (DT-C236) main view told when out of sight
   shown: visible | 1.5 s after minimise: hidden (document.hidden true) | 60 s: hidden
   after restore: visible; requestAnimationFrame fired in 1 ms / 17 ms / 5 ms (three runs)
   first frame after restore (PrintWindow 1044x788): t=0 mean rgb(5,4,5) white 0.0% (control run; the page's
@@ -16,7 +16,7 @@ Item 1 (DT-C228) main view told when out of sight
   Fixed on the way: Focused(true) while minimised (a tab's view created under the window takes focus) is
   no longer a show (lib.rs).
 
-Item 2 (DT-C228) memory target LOW after 60 s out of sight; main renderer ws / private MB
+Item 2 (DT-C236) memory target LOW after 60 s out of sight; main renderer ws / private MB
   LOW on, first build : before 203.2/161.6 | 60 s 29.5/147.9 | 125 s 63.1/150.2 | 3 s after restore 65.5/150.8
   LOW on, second run  : before  92.4/151.3 | 60 s 19.2/148.5 | 125 s 35.3/148.0 | 3 s after restore 61.8/148.3
   LOW on, final code  : before 212.6/170.3 | 60 s 29.8/148.3 | (run stopped by the harness) | 92.9/151.5 after restore at ~2 min
@@ -24,12 +24,12 @@ Item 2 (DT-C228) memory target LOW after 60 s out of sight; main renderer ws / p
   Working set while minimised: ~200 MB without LOW, 20-65 MB with it. Private bytes move little either
   way (the ~20 MB drop comes from the hidden state itself). Kept.
 
-Item 3 (DT-C230) hidden tabs suspended after 60 s (counter.html: 100 ms setInterval counter + input)
+Item 3 (DT-C237) hidden tabs suspended after 60 s (counter.html: 100 ms setInterval counter + input)
   n0 = 44 at hide; 75 s later n = 645 (= n0 + ~600: ran its first 60 s, then stopped); after show n1 = 647,
   input still "kept while suspended"; 2 s later n2 = 669 (counting again). Unsuspended, 75 s gives ~750.
   The tab's renderer stayed alive (BROW-002, no reload): 16528 ws 52.9 -> 56.7 MB.
 
-Item 4 (DT-C229) only --disable-background-timer-throttling stays
+Item 4 (DT-C238) only --disable-background-timer-throttling stays
   Two minutes minimised on three runs: marker survived every restore, kolux.log has no
   "interface recovery: no heartbeat" line: the 2 s heartbeat kept arriving with the single flag. The
   blank-after-sleep repaint (repaint() in src/recovery/hidden.ts) does not depend on the flags; the
