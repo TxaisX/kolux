@@ -653,6 +653,23 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           setRenderer(mode);
         },
         parked: () => setRenderer("dom"), // terminal_diagnostics reports the path really drawing
+        // A program mid synchronized output: xterm draws nothing until it ends, so the reveal waits.
+        held: () => term.modes.synchronizedOutputMode,
+        whenFree: (fn) => {
+          let subs: Array<{ dispose(): void }> = [];
+          const off = () => {
+            subs.forEach((s) => s.dispose());
+            subs = [];
+          };
+          // It ends in a write (the program's own end) or on xterm's timeout, which repaints.
+          const check = () => {
+            if (term.modes.synchronizedOutputMode) return;
+            off();
+            fn();
+          };
+          subs = [term.onWriteParsed(check), term.onRender(check)];
+          return off;
+        },
       });
       parking.current.hidden(isHidden.current);
     }

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, onSlotFree, parkWhenHidden, PARK_AFTER_MS, renderNowHook, resumeHook, watchResume, type ParkHooks, type RendererMode, type WebglLike } from "./renderer";
 
+/** Lets the slot hand-on (queued as a microtask) run. */
+const handOn = () => Promise.resolve();
+
 function fakeWebgl(): WebglLike & { disposed: number; lose: () => void } {
   let lose = () => {};
   return {
@@ -138,6 +141,10 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
         return () => void waits.delete(id);
       },
       now: () => now,
+      /** Time moves on but no timer fires (a background window's throttled timers). */
+      skew(ms: number) {
+        now += ms;
+      },
       pass(ms: number) {
         now += ms;
         for (const [id, w] of [...waits]) if (w.at <= now) (waits.delete(id), w.fn());
@@ -178,7 +185,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     expect([gl.disposed, pool.live, redraws.length]).toEqual([0, 1, 0]);
   });
 
-  test("the freed slot lets another pane draw on the GPU; the woken pane draws plain while the pool is full", () => {
+  test("the freed slot lets another pane draw on the GPU; the woken pane draws plain while the pool is full", async () => {
     const pool = { max: 1, live: 0 };
     const hiddenPane = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
     const c = clock();
@@ -191,6 +198,8 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     park.hidden(false);
     expect([hiddenPane.mode, hiddenPane.waiting, redraws]).toEqual(["dom", true, ["dom"]]); // still redrawn whole, on the plain path
     other.dispose(); // the freed slot goes to the visible pane that was refused for a full pool
+    expect(hiddenPane.mode).toBe("dom"); // not inside the dispose itself
+    await handOn();
     expect([hiddenPane.mode, redraws, pool.live]).toEqual(["webgl", ["dom", "webgl"], 1]);
     park.stop();
     hiddenPane.dispose();
@@ -238,7 +247,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     park.stop();
   });
 
-  test("a pane revealed into a full pool evicts the pane hidden longest, never a visible one, and no waiter steals the slot", () => {
+  test("a pane revealed into a full pool evicts the pane hidden longest, never a visible one, and no waiter steals the slot", async () => {
     const pool = { max: 3, live: 0 };
     const c = clock();
     const pane = () => {
@@ -255,21 +264,88 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const x = pane();
     const w = pane(); // visible, refused for a full pool
     expect([x.choice.mode, w.choice.mode, w.choice.waiting, pool.live]).toEqual(["webgl", "dom", true, 3]);
+    // q1 and q2 have been hidden 30 s and more, but their park timers have not fired yet (a busy or
+    // throttled window): they would park anyway, so they may be evicted.
     q1.park.hidden(true);
-    c.pass(1_000);
+    c.skew(1_000);
     q2.park.hidden(true);
-    c.pass(1_000);
+    c.skew(PARK_AFTER_MS);
     p.park.hidden(false);
     expect([p.choice.mode, q1.choice.mode, q2.choice.mode, x.choice.mode, w.choice.mode, pool.live]).toEqual(["webgl", "dom", "webgl", "webgl", "dom", 3]);
     expect([q1.park.parked, q1.log, p.log]).toEqual([true, ["parked"], ["parked", "resume", "redraw webgl"]]);
     q1.park.hidden(false); // q2 is now the only hidden pane holding a context
     expect([q1.choice.mode, q2.choice.mode, q2.park.parked]).toEqual(["webgl", "dom", true]);
     c.pass(PARK_AFTER_MS); // the timers of evicted panes were cancelled: nothing parks twice
-    expect([q2.log, pool.live]).toEqual([["parked"], 3]);
+    await handOn();
+    expect([q2.log, pool.live, w.choice.mode]).toEqual([["parked"], 3, "dom"]);
     for (const t of [p, q1, q2, x, w]) t.park.stop();
   });
 
-  test("with every slot held by a visible pane, the revealed pane draws plain and takes the next slot freed", () => {
+  test("a pane hidden under 30 s is never evicted: the revealed pane draws plain and takes the slot when that pane parks", async () => {
+    const pool = { max: 2, live: 0 };
+    const c = clock();
+    const pane = () => {
+      const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+      const log: string[] = [];
+      const park = parkWhenHidden(choice, hooksFor([], log), { wait: c.wait, pool, now: c.now });
+      return { choice, log, park };
+    };
+    const p = pane();
+    const q = pane();
+    p.park.hidden(true);
+    c.pass(PARK_AFTER_MS); // p parks
+    const x = pane(); // takes p's slot
+    q.park.hidden(true);
+    c.pass(PARK_AFTER_MS - 1);
+    p.park.hidden(false);
+    expect([p.choice.mode, p.choice.waiting, q.choice.mode, q.log]).toEqual(["dom", true, "webgl", []]);
+    expect(p.log).toEqual(["parked", "resume", "redraw dom"]); // whole on the plain path
+    c.pass(1); // q's own park, on time
+    expect(p.choice.mode).toBe("dom");
+    await handOn();
+    expect([p.choice.mode, q.log, pool.live]).toEqual(["webgl", ["parked"], 2]);
+    expect(p.log).toEqual(["parked", "resume", "redraw dom", "resume", "redraw webgl"]);
+    for (const t of [p, q, x]) t.park.stop();
+  });
+
+  test("a reveal during synchronized output waits for it to end before taking a context and drawing", () => {
+    const pool = { max: 12, live: 0 };
+    const c = clock();
+    const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const log: string[] = [];
+    let held = true;
+    const frees: Array<() => void> = [];
+    const hooks: ParkHooks = {
+      ...hooksFor([], log),
+      held: () => held,
+      whenFree: (fn) => {
+        frees.push(fn);
+        return () => void frees.splice(frees.indexOf(fn), 1);
+      },
+    };
+    const park = parkWhenHidden(choice, hooks, { wait: c.wait, pool, now: c.now });
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS);
+    park.hidden(false);
+    expect([choice.mode, log, frees.length, pool.live]).toEqual(["dom", ["parked", "resume"], 1, 0]); // no context yet, nothing drawn blank
+    park.hidden(false); // a second reveal call waits on the same end
+    expect(frees.length).toBe(1);
+    held = false;
+    frees.shift()?.(); // synchronized output ends
+    expect([choice.mode, log, pool.live]).toEqual(["webgl", ["parked", "resume", "resume", "redraw webgl"], 1]);
+
+    held = true;
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS);
+    park.hidden(false);
+    park.hidden(true); // hidden again before the end: the wait is dropped
+    expect(frees.length).toBe(0);
+    park.hidden(false);
+    park.stop(); // and on unmount
+    expect([frees.length, choice.mode]).toEqual([0, "dom"]);
+  });
+
+  test("with every slot held by a visible pane, the revealed pane draws plain and takes the next slot freed", async () => {
     const pool = { max: 1, live: 0 };
     const c = clock();
     const holder = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
@@ -280,12 +356,13 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     park.hidden(false);
     expect([late.mode, holder.mode, redraws]).toEqual(["dom", "webgl", ["dom"]]);
     holder.dispose();
+    await handOn();
     expect([late.mode, redraws, pool.live]).toEqual(["webgl", ["dom", "webgl"], 1]);
     park.stop();
     holderPark.stop();
   });
 
-  test("a hidden waiter takes a freed slot only when shown; a lost or refused pane never takes one", () => {
+  test("a hidden waiter takes a freed slot only when shown; a lost or refused pane never takes one", async () => {
     const pool = { max: 1, live: 0 };
     const c = clock();
     const holder = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
@@ -293,6 +370,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const park = parkWhenHidden(waiter, hooksFor([]), { wait: c.wait, pool, now: c.now });
     park.hidden(true);
     holder.dispose();
+    await handOn();
     expect([waiter.mode, pool.live]).toEqual(["dom", 0]);
     park.hidden(false);
     expect([waiter.mode, pool.live]).toEqual(["webgl", 1]);
@@ -304,27 +382,83 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const lost = attachRenderer({ loadAddon() {} }, () => (made++, gl), true, pool);
     const lostPark = parkWhenHidden(lost, hooksFor([]), { wait: c.wait, pool, now: c.now });
     gl.lose(); // frees the slot; the lost pane must not take it back
+    await handOn();
     expect([lost.mode, lost.waiting, made, pool.live]).toEqual(["dom", false, 1, 0]);
     const refusing = attachRenderer({ loadAddon() { throw new Error("no gl"); } }, fakeWebgl, true, pool);
     const refusedPark = parkWhenHidden(refusing, hooksFor([]), { wait: c.wait, pool, now: c.now });
     attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool).dispose();
+    await handOn();
     expect([refusing.mode, refusing.waiting, lost.mode, pool.live]).toEqual(["dom", false, "dom", 0]);
     lostPark.stop();
     refusedPark.stop();
   });
 
-  test("slot-free listeners stop when asked and hear nothing of a quiet park", () => {
+  test("slot-free listeners stop when asked and hear nothing of a quiet park", async () => {
     const pool = { max: 1, live: 0 };
     let calls = 0;
     const stop = onSlotFree(pool, () => void calls++);
     attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool).dispose();
+    expect(calls).toBe(0); // offered after the current task, not inside the dispose
+    await handOn();
     expect(calls).toBe(1);
     const b = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
     expect(b.park(true)).toBe(true); // a quiet park keeps the freed slot for its caller
+    await handOn();
     expect(calls).toBe(1);
     stop();
     attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool).dispose();
+    await handOn();
     expect(calls).toBe(1);
+  });
+
+  test("panes unmounted together never pass a slot between themselves", async () => {
+    const pool = { max: 1, live: 0 };
+    const c = clock();
+    let made = 0;
+    const make = () => (made++, fakeWebgl());
+    const holder = attachRenderer({ loadAddon() {} }, make, true, pool);
+    const waiter = attachRenderer({ loadAddon() {} }, make, true, pool);
+    const park = parkWhenHidden(waiter, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    park.hidden(false);
+    expect([waiter.waiting, made]).toEqual([true, 1]);
+    // One commit: the holder's cleanup runs first, then the waiter's.
+    holder.dispose();
+    park.stop();
+    waiter.dispose();
+    await handOn();
+    expect([made, pool.live]).toEqual([1, 0]); // no context made for a pane already going
+  });
+
+  test("a released addon's WebGL context is handed back at once, after dispose, and its loss is not a fallback", () => {
+    const pool = { max: 12, live: 0 };
+    const log: string[] = [];
+    let lost: (() => void) | null = null;
+    const addon = () => {
+      const a = fakeWebgl();
+      const gl = { getExtension: (name: string) => (name === "WEBGL_lose_context" ? { loseContext: () => (log.push("lose"), lost?.()) } : null) };
+      return Object.assign(a, {
+        _renderer: { _gl: gl },
+        onContextLoss(l: () => void) {
+          lost = l;
+        },
+        dispose() {
+          log.push("dispose");
+        },
+      });
+    };
+    const choice = attachRenderer({ loadAddon() {} }, addon, true, pool);
+    const reasons: string[] = [];
+    choice.onFallback((r) => reasons.push(r));
+    expect(choice.park()).toBe(true);
+    expect(log).toEqual(["dispose", "lose"]);
+    expect([reasons, choice.wake(), pool.live]).toEqual([[], "webgl", 1]); // not refused: it takes a context again
+    choice.dispose();
+    expect(log).toEqual(["dispose", "lose", "dispose", "lose"]);
+    expect([reasons, pool.live]).toEqual([[], 0]);
+    // An addon without a reachable context (or one that throws) is simply disposed.
+    const odd = attachRenderer({ loadAddon() {} }, () => Object.assign(fakeWebgl(), { _renderer: { _gl: { getExtension() { throw new Error("lost"); } } } }), true, pool);
+    expect(() => odd.dispose()).not.toThrow();
+    expect(pool.live).toBe(0);
   });
 
   test("draws the pending rows now through xterm's own debouncer step, and declines without one", () => {

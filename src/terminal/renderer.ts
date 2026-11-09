@@ -2,7 +2,7 @@
 // plain path if it fails to load or loses its context later. At most twelve panes hold a GPU
 // context at a time, hidden tabs counted while they hold one; the rest draw plain until a slot frees
 // up. A pane hidden for PARK_AFTER_MS gives its context back and takes one again when it is shown,
-// evicting the pane hidden longest when the pool is full (DT-C229). Pure so it can be tested
+// evicting a pane hidden at least that long when the pool is full (DT-C229). Pure so it can be tested
 // without a browser; the pane hands in the real addon factory.
 
 export type RendererMode = "webgl" | "dom";
@@ -56,6 +56,35 @@ export function onSlotFree(pool: GpuPool, fn: () => void): () => void {
   return () => void set.delete(fn);
 }
 
+/** The WebGL context under an addon: xterm's addon keeps it as `_renderer._gl` (undefined if not reachable). */
+type GlInside = { _renderer?: { _gl?: { getExtension?(name: string): { loseContext?(): void } | null } | null } | null };
+const contextOf = (addon: unknown) => {
+  try {
+    return (addon as GlInside | null | undefined)?._renderer?._gl ?? undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Disposes an addon and hands its WebGL context back to the browser at once, rather than at
+ *  garbage collection: Chromium allows about sixteen contexts a page and force-loses the oldest past
+ *  that, which could be a visible pane's (which then stays plain). The context is lost after
+ *  dispose, once the addon's own loss listener is gone. */
+const free = (addon: WebglLike | undefined) => {
+  if (!addon) return;
+  const gl = contextOf(addon);
+  try {
+    addon.dispose();
+  } catch {
+    /* already broken */
+  }
+  try {
+    gl?.getExtension?.("WEBGL_lose_context")?.loseContext?.();
+  } catch {
+    /* already lost */
+  }
+};
+
 const slotFreed = (pool: GpuPool) => {
   for (const fn of [...watchersOf(pool)]) {
     if (pool.live >= pool.max) return;
@@ -86,16 +115,14 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     const had = held;
     if (held) pool.live--;
     held = false;
-    if (had && !quiet) slotFreed(pool);
+    // Offered after the current task: sibling panes unmounted in the same commit give their slots
+    // back first instead of a dying pane's slot going to one of them.
+    if (had && !quiet) queueMicrotask(() => slotFreed(pool));
   };
   const drop = (quiet = false) => {
     const was = addon;
-    addon = undefined;
-    try {
-      was?.dispose();
-    } catch {
-      /* already broken */
-    }
+    addon = undefined; // first: the loss our own release causes is then not read as a fallback
+    free(was);
     release(quiet);
   };
   const load = (): boolean => {
@@ -116,11 +143,7 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
       });
       host.loadAddon(made);
     } catch {
-      try {
-        made?.dispose();
-      } catch {
-        /* already broken */
-      }
+      free(made);
       refused = true;
       return false;
     }
@@ -212,21 +235,29 @@ export type ParkHooks = {
   redraw(mode: RendererMode): void;
   /** The pane gave its context back: it draws plain now. */
   parked(): void;
+  /** True while the program holds the screen in synchronized output (xterm draws nothing then). */
+  held?(): boolean;
+  /** Calls `fn` once, later, when synchronized output has ended; returns the cancel. */
+  whenFree?(fn: () => void): () => void;
 };
 
-type Parker = { hiddenSince: number | null; holds(): boolean; evict(): void };
+type Parker = { hiddenSince: number | null; after: number; holds(): boolean; evict(): void };
 const parkersOf = new WeakMap<GpuPool, Set<Parker>>();
 
 /** DT-C229: parks `choice` once the pane has been hidden for `after` ms. On show, a parked pane, or
- *  one drawing plain only because the pool was full, takes a GPU context again, evicting the pane
- *  hidden longest when the pool is full, and repaints before the frame is drawn (the pane calls
- *  `hidden(false)` from a layout effect). A visible pane still waiting takes the next slot freed. */
+ *  one drawing plain only because the pool was full, takes a GPU context again and repaints before
+ *  the frame is drawn (the pane calls `hidden(false)` from a layout effect). With the pool full it
+ *  evicts the pane hidden longest, but only one hidden at least its own `after` (it would park
+ *  anyway); otherwise it draws plain and takes the next slot freed. While the program holds the
+ *  screen in synchronized output the take waits for it to end, so the new context's first frame is
+ *  not blank. */
 export function parkWhenHidden(
   choice: Pick<RendererChoice, "park" | "wake" | "mode" | "waiting">,
   hooks: ParkHooks,
   { after = PARK_AFTER_MS, wait = realWait, pool = gpuPool, now = Date.now }: { after?: number; wait?: Wait; pool?: GpuPool; now?: () => number } = {},
 ) {
   let cancel: (() => void) | null = null;
+  let pending: (() => void) | null = null;
   let parked = false;
   let hidden = false;
   let parkers = parkersOf.get(pool);
@@ -236,19 +267,33 @@ export function parkWhenHidden(
     cancel?.();
     cancel = null;
   };
+  const stopPending = () => {
+    pending?.();
+    pending = null;
+  };
   const park = (quiet: boolean) => {
     stopWaiting();
     if (!choice.park(quiet)) return;
     parked = true;
     hooks.parked();
   };
-  const me: Parker = { hiddenSince: null, holds: () => choice.mode === "webgl", evict: () => park(true) };
+  const me: Parker = { hiddenSince: null, after, holds: () => choice.mode === "webgl", evict: () => park(true) };
   all.add(me);
   const take = () => {
+    if (pending) return;
+    if (hooks.whenFree && hooks.held?.()) {
+      hooks.resume();
+      pending = hooks.whenFree(() => {
+        pending = null;
+        if (!hidden) take();
+      });
+      return;
+    }
     if (pool.live >= pool.max) {
+      const t = now();
       let victim: Parker | null = null;
       for (const p of all) {
-        if (p === me || p.hiddenSince === null || !p.holds()) continue;
+        if (p === me || p.hiddenSince === null || t - p.hiddenSince < p.after || !p.holds()) continue;
         if (victim === null || p.hiddenSince < (victim.hiddenSince as number)) victim = p;
       }
       victim?.evict();
@@ -267,6 +312,7 @@ export function parkWhenHidden(
     hidden(on: boolean) {
       hidden = on;
       if (on) {
+        stopPending();
         me.hiddenSince ??= now();
         cancel ??= wait(() => {
           cancel = null;
@@ -280,6 +326,7 @@ export function parkWhenHidden(
     },
     stop() {
       stopWaiting();
+      stopPending();
       stopSlots();
       all.delete(me);
     },
