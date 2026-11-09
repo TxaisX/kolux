@@ -21,6 +21,9 @@ pub const EXIT_EVENT: &str = "terminal-exit";
 pub const SCREEN_EVENT: &str = "terminal-screen-request";
 /// Lines kept per terminal for `kolux terminal read` (CLI-024); older ones are dropped.
 pub const LOG_LINES: usize = 2000;
+/// P2 perf (DT-C228): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
+/// (up to `PENDING_CAP` each) would otherwise let one pane hold ~32 MB.
+pub const LOG_BYTES: usize = 1024 * 1024;
 /// Fix-term 786: the most a log keeps of a line that has not ended yet.
 const PENDING_CAP: usize = 16 * 1024;
 /// The most one paste may carry. Files are written through `file_write`, which has its own limit.
@@ -586,10 +589,13 @@ pub fn diagnostics_text(head: &[(&str, String)], screen: &[String], home: Option
 
 /// CLI-024: a terminal's output by line, each line numbered with a cursor that only grows, so a
 /// reader carries on from where it left off. Escape sequences are stripped; `\r` overwrites keep
-/// the last version of the line. Bounded to `LOG_LINES`: the oldest lines go when it is full.
+/// the last version of the line. Bounded to `LOG_LINES` and `LOG_BYTES`: the oldest lines go when
+/// either is passed (the newest line always stays).
 #[derive(Default, Debug)]
 pub struct OutputLog {
     lines: std::collections::VecDeque<String>,
+    /// The text bytes in `lines`.
+    bytes: usize,
     /// The cursor of the first kept line; 1 until something was dropped.
     oldest: u64,
     /// Bytes since the last line break: a prompt, a progress line, a question. Bytes, not text,
@@ -736,11 +742,7 @@ impl OutputLog {
             let line = raw.trim_end_matches(['\n', '\r']);
             // A carriage return redraws the line from its start: keep what was drawn last.
             let line = last_drawing(line);
-            if self.lines.is_empty() && self.oldest == 0 {
-                self.oldest = 1;
-            }
-            self.lines.push_back(strip_ansi(line));
-            self.trim();
+            self.add_line(strip_ansi(line));
         }
         self.pending.drain(..start);
         // A line that never ends (binary output, a progress bar drawn with CR alone) is cut into lines
@@ -752,17 +754,24 @@ impl OutputLog {
             };
             let rest = self.pending.split_off(at);
             let raw = String::from_utf8_lossy(&std::mem::replace(&mut self.pending, rest)).into_owned();
-            if self.lines.is_empty() && self.oldest == 0 {
-                self.oldest = 1;
-            }
-            self.lines.push_back(strip_ansi(last_drawing(&raw)));
-            self.trim();
+            self.add_line(strip_ansi(last_drawing(&raw)));
         }
     }
 
+    fn add_line(&mut self, line: String) {
+        if self.lines.is_empty() && self.oldest == 0 {
+            self.oldest = 1;
+        }
+        self.bytes += line.len();
+        self.lines.push_back(line);
+        self.trim();
+    }
+
     fn trim(&mut self) {
-        while self.lines.len() > LOG_LINES {
-            self.lines.pop_front();
+        while self.lines.len() > LOG_LINES || (self.bytes > LOG_BYTES && self.lines.len() > 1) {
+            if let Some(gone) = self.lines.pop_front() {
+                self.bytes -= gone.len();
+            }
             self.oldest += 1;
             self.dropped = true;
         }
@@ -2609,6 +2618,41 @@ mod tests {
         assert_eq!(log.read(Some(13), None).lines[0].text, "line oneline two");
         log.push(b"\x1b[2;1Hrow two\x1b[;1Hrow one\n");
         assert_eq!(log.read(Some(14), None).lines[0].text, "row tworow one");
+    }
+
+    /// P2 perf (DT-C228): long lines are held to `LOG_BYTES` as well as `LOG_LINES`; the cursor keeps
+    /// counting every line and a reader behind the kept lines is told some were dropped (CLI-024).
+    #[test]
+    fn perf_the_line_log_keeps_to_its_byte_budget_and_its_cursor() {
+        let mut log = OutputLog::default();
+        let mut line = vec![b'x'; PENDING_CAP];
+        line.extend_from_slice(b"\r\n");
+        for _ in 0..LOG_LINES {
+            log.push(&line);
+            assert!(log.bytes <= LOG_BYTES, "{} bytes kept", log.bytes);
+        }
+        assert_eq!(log.bytes, log.lines.iter().map(String::len).sum::<usize>());
+        let kept = LOG_BYTES / PENDING_CAP;
+        assert_eq!(log.lines.len(), kept, "64 lines of 16 KB fit in 1 MB");
+        assert_eq!(log.cursor(), LOG_LINES as u64, "the cursor counts every line");
+        let r = log.read(Some(5), None);
+        assert_eq!((r.oldest, r.cursor, r.dropped, r.lines.len()), (LOG_LINES as u64 - kept as u64 + 1, LOG_LINES as u64, true, kept));
+        assert_eq!(r.lines[0].cursor, r.oldest);
+        let r = log.read(Some(LOG_LINES as u64 - 1), None);
+        assert_eq!((r.dropped, r.lines.len(), r.lines[0].cursor), (false, 1, LOG_LINES as u64), "a reader that kept up loses nothing");
+        // Short lines are held to the line cap, as before.
+        let mut short = OutputLog::default();
+        for i in 0..LOG_LINES + 3 {
+            short.push(format!("{i}\n").as_bytes());
+        }
+        assert_eq!((short.lines.len(), short.cursor()), (LOG_LINES, LOG_LINES as u64 + 3));
+        // A line that never ends is cut into lines that count against the budget too.
+        let mut big = OutputLog::default();
+        big.push(b"a\n");
+        for _ in 0..(LOG_BYTES / PENDING_CAP + 2) {
+            big.push(&vec![b'y'; PENDING_CAP]);
+        }
+        assert!(big.bytes <= LOG_BYTES && !big.lines.is_empty() && big.dropped);
     }
 
     #[test]
