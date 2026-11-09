@@ -46,7 +46,7 @@ test("EDIT-029: the text of a page reaches the text layer (select and copy), rea
   expect(text.items.map((i) => ("str" in i ? i.str : "")).join("")).toBe("Hello PDF");
   // the layer itself takes a stream of the same content: the call the viewer makes exists on the page
   expect(typeof page.streamTextContent).toBe("function");
-  await doc.destroy();
+  await doc.loadingTask.destroy();
 }, 20000);
 
 test("EDIT-029: the annotations of a page come through; a link is a web address, a place in the file, or nothing runnable", async () => {
@@ -59,7 +59,7 @@ test("EDIT-029: the annotations of a page come through; a link is a web address,
   const script = links.find((a) => !a.url && !a.dest);
   expect(script).toBeTruthy();
   expect(notes.some((a) => a.subtype === "Text" && a.contentsObj?.str === "A sticky note")).toBe(true);
-  await doc.destroy();
+  await doc.loadingTask.destroy();
 }, 20000);
 
 test("EDIT-029: an internal link, explicit or named, resolves to a page and a height; a bad one resolves to nothing", async () => {
@@ -72,7 +72,7 @@ test("EDIT-029: an internal link, explicit or named, resolves to a page and a he
   expect(await destinationSpot(doc, [{ num: 999, gen: 0 }, { name: "Fit" }])).toBeNull();
   expect(await destinationSpot(doc, [7, { name: "Fit" }])).toEqual({ page: 8, top: null });
   expect(await destinationSpot(doc, [])).toBeNull();
-  await doc.destroy();
+  await doc.loadingTask.destroy();
 }, 20000);
 
 test("EDIT-029: a destination height (from the page bottom) becomes how far down the page, held to 0..1", () => {

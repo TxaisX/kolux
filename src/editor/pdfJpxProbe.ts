@@ -25,6 +25,6 @@ export async function drawnImage(base: string | null): Promise<{ width: number; 
     for (let i = 0; i < image.data.length; i += channels) seen.add(Array.from(image.data.subarray(i, i + channels)).join(","));
     return { width: image.width, height: image.height, colours: seen.size };
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
 }
