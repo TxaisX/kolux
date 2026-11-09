@@ -30,9 +30,10 @@ export function deferred<P extends object>(load: () => Promise<{ default: Compon
 type Idle = (f: () => void) => unknown;
 
 /**
- * Reads the code of the surfaces marked for it at the first idle moment (DT-C230): the editor and the
- * browser pane, and the settings page, the plan sheet and the tab menu, which have no placeholder and
- * would draw nothing for a beat on their first open. Nothing else is read ahead: the goal is a lighter
+ * Reads the code of the surfaces marked for it at the first idle moment (DT-C230): the editor, the
+ * browser pane and the chooser pane (a new pane, where keys typed before its code arrives would reach
+ * the old one), and the settings page, the plan sheet, the help sheet and the tab menu, which have no
+ * placeholder and would draw nothing for a beat on their first open. Nothing else is read ahead: the goal is a lighter
  * app, so every other surface loads on its first open, behind DT-C142's placeholder for a full page.
  * Called once, after the window is drawn and shown; a failure is left alone (the surface's own
  * import() reports it when it is drawn).

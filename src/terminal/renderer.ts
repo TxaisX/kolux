@@ -188,6 +188,10 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
 /** DT-C229: how long a pane stays hidden before its GPU context goes back to the pool. */
 export const PARK_AFTER_MS = 30_000;
 
+/** DT-C229: how long a reveal waits for synchronized output to end before it goes ahead anyway (just
+ *  past xterm's own 1 s limit on it), so a program that never ends it never keeps the pane plain. */
+export const SYNC_WAIT_MS = 1_100;
+
 type RenderService = {
   _handleIntersectionChange?: (e: { isIntersecting: boolean; intersectionRatio: number }) => void;
   _renderDebouncer?: { _animationFrame?: number; _innerRefresh?: () => void };
@@ -279,16 +283,23 @@ export function parkWhenHidden(
   };
   const me: Parker = { hiddenSince: null, after, holds: () => choice.mode === "webgl", evict: () => park(true) };
   all.add(me);
-  const take = () => {
+  const take = (force = false) => {
     if (pending) return;
-    if (hooks.whenFree && hooks.held?.()) {
+    if (!force && hooks.whenFree && hooks.held?.()) {
       hooks.resume();
-      pending = hooks.whenFree(() => {
-        pending = null;
-        if (!hidden) take();
-      });
+      const go = (forced: boolean) => () => {
+        stopPending();
+        if (!hidden) take(forced);
+      };
+      const offFree = hooks.whenFree(go(false));
+      const offLate = wait(go(true), SYNC_WAIT_MS);
+      pending = () => {
+        offFree();
+        offLate();
+      };
       return;
     }
+    let evicted = false;
     if (pool.live >= pool.max) {
       const t = now();
       let victim: Parker | null = null;
@@ -296,11 +307,18 @@ export function parkWhenHidden(
         if (p === me || p.hiddenSince === null || t - p.hiddenSince < p.after || !p.holds()) continue;
         if (victim === null || p.hiddenSince < (victim.hiddenSince as number)) victim = p;
       }
-      victim?.evict();
+      if (victim) {
+        victim.evict();
+        evicted = true;
+      }
     }
     hooks.resume();
     parked = false;
-    hooks.redraw(choice.wake());
+    const mode = choice.wake();
+    // Still plain after a quiet eviction (the slot went elsewhere meanwhile, or this pane cannot take
+    // one): the evicted slot is offered to the waiting panes after all.
+    if (evicted && mode === "dom") queueMicrotask(() => slotFreed(pool));
+    hooks.redraw(mode);
   };
   const stopSlots = onSlotFree(pool, () => {
     if (!hidden && choice.waiting) take();

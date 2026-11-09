@@ -672,7 +672,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             subs.forEach((s) => s.dispose());
             subs = [];
           };
-          // It ends in a write (the program's own end) or on xterm's timeout, which repaints.
+          // It ends in a write (the program's own end) or on xterm's timeout, which repaints; parkWhenHidden
+          // goes ahead anyway after SYNC_WAIT_MS.
           const check = () => {
             if (term.modes.synchronizedOutputMode) return;
             off();
@@ -913,6 +914,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // rewritten the line ends and bracketed the whole paste once, and the next chunk waits for this
         // promise. The scroll-to-bottom mirrors what xterm does on user input.
         if (term.options.scrollOnUserInput !== false) term.scrollToBottom();
+        blink.poke(); // DT-C231: a paste is input
         const landed = write(text);
         // TERM-103: a paste burst fills the glyph atlas with one-off runs; start it fresh afterwards.
         if (text.length > 2048) choice.clearGlyphs();

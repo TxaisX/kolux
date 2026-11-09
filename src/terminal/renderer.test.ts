@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, onSlotFree, parkWhenHidden, PARK_AFTER_MS, renderNowHook, resumeHook, watchResume, type ParkHooks, type RendererMode, type WebglLike } from "./renderer";
+import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, onSlotFree, parkWhenHidden, PARK_AFTER_MS, renderNowHook, resumeHook, SYNC_WAIT_MS, watchResume, type ParkHooks, type RendererMode, type WebglLike } from "./renderer";
 
 /** Lets the slot hand-on (queued as a microtask) run. */
 const handOn = () => Promise.resolve();
@@ -343,6 +343,67 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     park.hidden(false);
     park.stop(); // and on unmount
     expect([frees.length, choice.mode]).toEqual([0, "dom"]);
+    c.pass(SYNC_WAIT_MS); // its late timer went with it
+    expect(choice.mode).toBe("dom");
+  });
+
+  test("a program that never ends synchronized output keeps the reveal waiting no longer than SYNC_WAIT_MS", () => {
+    const pool = { max: 12, live: 0 };
+    const c = clock();
+    const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const log: string[] = [];
+    const frees: Array<() => void> = [];
+    const hooks: ParkHooks = {
+      ...hooksFor([], log),
+      held: () => true,
+      whenFree: (fn) => {
+        frees.push(fn);
+        return () => void frees.splice(frees.indexOf(fn), 1);
+      },
+    };
+    const park = parkWhenHidden(choice, hooks, { wait: c.wait, pool, now: c.now });
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS);
+    park.hidden(false);
+    c.pass(SYNC_WAIT_MS - 1);
+    expect([choice.mode, log]).toEqual(["dom", ["parked", "resume"]]);
+    c.pass(1);
+    expect([choice.mode, log, frees.length]).toEqual(["webgl", ["parked", "resume", "resume", "redraw webgl"], 0]);
+    expect(SYNC_WAIT_MS).toBe(1_100);
+    park.stop();
+  });
+
+  test("a pane that evicts but still cannot draw on the GPU offers the evicted slot to a waiting pane", async () => {
+    const pool = { max: 2, live: 0 };
+    const c = clock();
+    let loads = 0;
+    const flaky = attachRenderer(
+      {
+        loadAddon() {
+          if (++loads > 1) throw new Error("no gl"); // its second context is refused
+        },
+      },
+      fakeWebgl,
+      true,
+      pool,
+    );
+    const fPark = parkWhenHidden(flaky, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    const old = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const oPark = parkWhenHidden(old, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    fPark.hidden(true);
+    c.pass(PARK_AFTER_MS); // flaky parks
+    const x = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool); // takes its slot
+    const w = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool); // visible, waiting
+    const wPark = parkWhenHidden(w, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    wPark.hidden(false);
+    oPark.hidden(true);
+    c.skew(PARK_AFTER_MS); // old would park anyway
+    fPark.hidden(false); // evicts old quietly, then its own load is refused
+    expect([flaky.mode, old.mode, w.mode, pool.live]).toEqual(["dom", "dom", "dom", 1]);
+    await handOn();
+    expect([w.mode, pool.live]).toEqual(["webgl", 2]); // the slot was not lost to the quiet eviction
+    for (const p of [fPark, oPark, wPark]) p.stop();
+    x.dispose();
   });
 
   test("with every slot held by a visible pane, the revealed pane draws plain and takes the next slot freed", async () => {

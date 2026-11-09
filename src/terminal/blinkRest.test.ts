@@ -78,3 +78,19 @@ test("a cursor set not to blink never blinks, and re-reading the setting keeps a
   c.pass(BLINK_REST_MS);
   expect(set[set.length - 1]).toBe(true); // stopped: nothing changes after unmount
 });
+
+test("turning the setting back on after a rest blinks at once, for a fresh 5 s", () => {
+  const c = clock();
+  const set: boolean[] = [];
+  const blink = blinkRest((b) => set.push(b), { wait: c.wait, now: c.now });
+  blink.want(true);
+  c.pass(BLINK_REST_MS); // rests
+  blink.want(false);
+  c.pass(60_000);
+  blink.want(true);
+  expect(set).toEqual([true, false, false, true]);
+  c.pass(BLINK_REST_MS - 1);
+  expect(set[set.length - 1]).toBe(true);
+  c.pass(1);
+  expect(set[set.length - 1]).toBe(false);
+});

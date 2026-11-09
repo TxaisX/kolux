@@ -40,6 +40,11 @@ export function blinkRest(set: (blink: boolean) => void, { after = BLINK_REST_MS
   return {
     /** The user's cursor-blink setting; called again whenever the pane's options are re-read. */
     want(on: boolean) {
+      // Turned on just now: it starts blinking, with a fresh rest period.
+      if (on && !wanted) {
+        resting = false;
+        last = now();
+      }
       wanted = on;
       if (on) arm();
       else stop();

@@ -61,10 +61,10 @@ test("DT-C230: without an idle callback the marked surfaces are read 1.5 s after
   expect(read).not.toContain("other");
 });
 
-test("DT-C230: the editor, the browser pane and the surfaces with no placeholder are the ones read first", () => {
+test("DT-C230: the editor, the browser pane, the chooser pane and the surfaces with no placeholder are the ones read first", () => {
   const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
   const marks = (rel: string) => [...nodeFs.readFileSync(new URL(rel, import.meta.url), "utf8").matchAll(/const (\w+) = deferred\(.*\{ prefetch: true \}/g)].map((m) => m[1]);
   expect(marks("./panes.tsx")).toEqual(["EditorPane", "BrowserPane"]);
-  expect(marks("./pages.tsx")).toEqual(["PlanSheet", "SettingsPage"]);
+  expect(marks("./pages.tsx")).toEqual(["PlanSheet", "SettingsPage", "HelpSheet", "ChooserPane"]);
   expect(marks("../shell/window/Dialogs.tsx")).toEqual(["TabMenu"]);
 });
