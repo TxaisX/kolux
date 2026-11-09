@@ -118,20 +118,22 @@ try {
     await sleep(1500);
   });
   await step("start an agent seat", async () => {
-    await click("button.newtab");
-    await waitFor("the New tab menu", () => exists('[role="menu"][aria-label="New tab"]'), 6000);
-    const items = await evalJs(`[...document.querySelectorAll('[role="menu"][aria-label="New tab"] [role="menuitem"]')].map(b => b.textContent.trim())`);
-    await clickWhere('[role="menu"][aria-label="New tab"] [role="menuitem"]', "/./");
-    await waitFor("a second chooser or pane", async () => (await shown("section.pane")) >= 1, 15000);
-    const agents = await evalJs(`[...document.querySelectorAll(${JSON.stringify(seat)})].map(b => b.textContent.trim()).filter(t => t && !/^Terminal$/.test(t))`);
-    if (agents.length) {
-      await clickWhere(seat, `/^\\s*${agents[0].replace(/[^\w ]/g, ".")}\\s*$/`);
-      const start = "section.pane.chooser button.btn.primary";
-      await waitFor("Start", () => evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some(b => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
-      await clickWhere(start, "/^\\s*Start\\s*$/");
-      await sleep(6000);
-    }
-    return `menu: ${items.join(" / ")}; agents offered: ${agents.join(", ") || "none"}`;
+    // The old New tab button is gone: a pane's header has a "New session" plus that opens the agent menu,
+    // and the new session joins that pane's cell (same path as smoke.mjs newTab).
+    const term = '[data-testid="terminal-pane"]';
+    // Agent rows carry data-testid="new-session-item-<agent id>"; their text also holds the exe and a shortcut,
+    // so they are picked by test id, never by label.
+    const agentRow = '[data-testid="new-session-menu"] [data-testid^="new-session-item-"]:not([disabled])';
+    const before = await shown(term);
+    await app.focusPane(term, 0, ".xterm-helper-textarea");
+    await click(`${term}.focused [data-testid="pane-new-session"]`);
+    await waitFor("the New session menu", () => exists('[data-testid="new-session-menu"]'), 6000);
+    const ids = await evalJs(`[...document.querySelectorAll(${JSON.stringify(agentRow)})].map(b => b.dataset.testid)`);
+    if (!ids.length) throw new Error("the New session menu offers no agent");
+    await click(`[data-testid="${ids[0]}"]`);
+    await waitFor("the new session's pane", async () => (await shown(term)) > before, 15000);
+    await sleep(6000);
+    return `agents offered: ${ids.map((i) => i.replace("new-session-item-", "")).join(", ")}; started: ${ids[0].replace("new-session-item-", "")}`;
   });
   await step("font list", async () => `${(await invoke("list_fonts")).length} families`);
   await step("resource sample", async () => {

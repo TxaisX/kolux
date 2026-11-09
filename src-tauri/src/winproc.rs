@@ -124,8 +124,8 @@ mod tests {
         let new = ["Command", "::new("].concat();
         let bad = format!("fn a() {{\n    let c = std::process::{new}\"x\");\n}}\n// {new}\"z\") in a comment\n#[cfg(test)]\nmod tests {{\n    fn t() {{ {new}\"y\"); }}\n}}\n");
         assert_eq!(unhidden_spawns("x.rs", &bad), vec![2], "a test module and a comment are not production spawns");
-        let spaced = format!("fn a() {{\n    let c = Command\n        ::new(\"x\");\n}}\n");
-        assert_eq!(unhidden_spawns("x.rs", &spaced), vec![2], "a constructor spaced onto the next line is seen");
+        let spaced = "fn a() {\n    let c = Command\n        ::new(\"x\");\n}\n";
+        assert_eq!(unhidden_spawns("x.rs", spaced), vec![2], "a constructor spaced onto the next line is seen");
         let flagged = format!("fn a() {{\n    let mut c = {new}\"x\");\n    c.creation_flags(0x0800_0000);\n}}\n");
         assert!(unhidden_spawns("x.rs", &flagged).is_empty());
         let helper = format!("fn a() {{\n    let mut c = {new}\"x\");\n    crate::winproc::quiet(&mut c);\n}}\n");
