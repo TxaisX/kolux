@@ -1,782 +1,83 @@
-﻿cargo :    Compiling windows-link v0.2.1
-At line:1 char:95
-+ ... ew-target'; cargo test --no-fail-fast -- browser recovery tray webvie ...
-+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (   Compiling windows-link v0.2.1:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-   Compiling cfg-if v1.0.5
-   Compiling siphasher v1.0.4
-   Compiling itoa v1.0.19
-   Compiling writeable v0.6.4
-   Compiling litemap v0.8.3
-   Compiling memchr v2.8.3
-   Compiling utf_types v1.0.0
-   Compiling serde_core v1.0.229
-   Compiling icu_normalizer_data v2.4.0
-   Compiling icu_properties_data v2.4.0
-   Compiling bytes v1.12.1
-   Compiling equivalent v1.0.3
-   Compiling zerofrom v0.1.8
-   Compiling thiserror v2.0.21
-   Compiling zmij v1.0.23
-   Compiling windows-sys v0.61.2
-   Compiling yoke v0.8.4
-   Compiling phf_shared v0.13.1
-   Compiling log v0.4.35
-   Compiling utf8_iter v1.1.0
-   Compiling num-conv v0.2.2
-   Compiling time-core v0.1.9
-   Compiling powerfmt v0.2.1
-   Compiling base64 v0.23.1
-   Compiling typeid v1.0.3
-   Compiling fnv v1.0.7
-   Compiling regex-syntax v0.8.11
-   Compiling phf_generator v0.13.1
-   Compiling zerovec v0.11.9
-   Compiling http v1.5.0
-   Compiling zerotrie v0.2.5
-   Compiling aho-corasick v1.1.5
-   Compiling web-time v1.1.0
-   Compiling lock_api v0.4.14
-   Compiling parking_lot_core v0.9.12
-   Compiling alloc-no-stdlib v3.0.0
-   Compiling phf_codegen v0.13.1
-   Compiling phf_macros v0.13.1
-   Compiling string_cache_codegen v0.6.1
-   Compiling parking_lot v0.12.5
-   Compiling alloc-stdlib v0.3.0
-   Compiling quick-xml v0.42.0
-   Compiling semver v1.0.28
-   Compiling dunce v1.0.5
-   Compiling serde_json v1.0.154
-   Compiling tinystr v0.8.5
-   Compiling potential_utf v0.1.6
-   Compiling brotli-decompressor v6.3.1
-   Compiling icu_locale_core v2.4.0
-   Compiling icu_collections v2.4.0
-   Compiling string_cache v0.9.0
-   Compiling getrandom v0.4.3
-   Compiling anyhow v1.0.104
-   Compiling web_atoms v0.2.6
-   Compiling serde_spanned v1.1.3
-   Compiling form_urlencoded v1.2.2
-   Compiling uuid v1.29.2
-   Compiling toml v1.2.1+spec-1.1.0
-   Compiling selectors v0.38.0
-   Compiling phf v0.13.1
-   Compiling stable_deref_trait v1.2.1
-   Compiling ctor v1.0.13
-   Compiling icu_provider v2.4.0
-   Compiling brotli v9.1.1
-   Compiling glob v0.3.4
-   Compiling regex-automata v0.4.18
-   Compiling icu_normalizer v2.4.0
-   Compiling icu_properties v2.4.0
-   Compiling cssparser v0.37.0
-   Compiling time v0.3.55
-   Compiling indexmap v2.14.2
-   Compiling cfb v0.14.0
-   Compiling idna_adapter v1.2.2
-   Compiling idna v1.1.0
-   Compiling jsonptr v0.7.1
-   Compiling erased-serde v0.4.11
-   Compiling markup5ever v0.39.0
-   Compiling url v2.5.8
-   Compiling windows-result v0.4.1
-   Compiling html5ever v0.39.0
-   Compiling windows-strings v0.5.1
-   Compiling schemars v0.8.22
-   Compiling serde-untagged v0.1.9
-   Compiling json-patch v4.2.0
-   Compiling cargo_metadata v0.19.2
-   Compiling plist v1.10.3
-   Compiling infer v0.22.0
-   Compiling serde v1.0.229
-   Compiling dom_query v0.28.0
-   Compiling serde_with v3.24.0
-   Compiling smallvec v1.16.5
-   Compiling regex v1.13.1
-   Compiling foldhash v0.2.0
-   Compiling pin-project-lite v0.2.17
-   Compiling winapi-util v0.1.11
-   Compiling urlpattern v0.6.0
-   Compiling hashbrown v0.17.1
-   Compiling same-file v1.0.6
-   Compiling windows-core v0.62.2
-   Compiling walkdir v2.5.0
-   Compiling option-ext v0.2.0
-   Compiling winreg v0.56.0
-   Compiling rustc_version v0.4.1
-   Compiling windows-threading v0.2.1
-   Compiling percent-encoding v2.3.2
-   Compiling embed-resource v3.0.12
-   Compiling tauri-utils v2.10.2
-   Compiling windows-future v0.3.2
-   Compiling dirs-sys v0.5.0
-   Compiling windows-collections v0.3.2
-   Compiling windows-numerics v0.3.1
-   Compiling bitflags v2.13.2
-   Compiling once_cell v1.21.4
-   Compiling heck v0.5.0
-   Compiling mio v1.2.4
-   Compiling socket2 v0.6.5
-   Compiling dirs v7.0.0
-   Compiling tauri-winres v0.3.7
-   Compiling windows v0.62.2
-   Compiling libc v0.2.191
-   Compiling cargo_toml v1.0.1
-   Compiling deranged v0.5.9
-   Compiling time-macros v0.2.32
-   Compiling tokio v1.54.1
-   Compiling futures-core v0.3.34
-   Compiling raw-window-handle v0.6.2
-   Compiling crc32fast v1.5.4
-   Compiling tracing-core v0.1.36
-   Compiling dpi v0.1.2
-   Compiling webview2-com-sys v0.39.1
-   Compiling windows-version v0.1.7
-   Compiling winnow v1.0.5
-   Compiling tracing v0.1.44
-   Compiling crossbeam-utils v0.8.23
-   Compiling toml_datetime v1.1.3+spec-1.1.0
-   Compiling toml_writer v1.2.0+spec-1.1.0
-   Compiling scopeguard v1.2.0
-   Compiling crossbeam-channel v0.5.17
-   Compiling flate2 v1.1.11
-   Compiling toml_parser v1.1.5+spec-1.1.0
-   Compiling getrandom v0.2.17
-   Compiling rand_core v0.6.4
-   Compiling png v0.18.1
-   Compiling sha2 v0.10.9
-   Compiling rand_chacha v0.3.1
-   Compiling ico v0.6.0
-   Compiling keyboard-types v0.8.3
-   Compiling http-body v1.1.0
-   Compiling rand_core v0.10.1
-   Compiling unicode-segmentation v1.13.3
-   Compiling slab v0.4.12
-   Compiling futures-task v0.3.34
-   Compiling rand v0.8.8
-   Compiling softbuffer v0.4.8
-   Compiling phf_shared v0.11.3
-   Compiling futures-util v0.3.34
-   Compiling try-lock v0.2.5
-   Compiling tower-service v0.3.3
-   Compiling want v0.3.2
-   Compiling serialize-to-javascript v0.1.2
-   Compiling muda v0.20.0
-   Compiling phf_generator v0.11.3
-   Compiling getrandom v0.3.4
-   Compiling httparse v1.10.1
-   Compiling window-vibrancy v0.8.1
-   Compiling schannel v0.1.30
-   Compiling mime v0.3.18
-   Compiling typenum v1.20.1
-   Compiling atomic-waker v1.1.2
-   Compiling zeroize v1.9.1
-   Compiling phf_codegen v0.11.3
-   Compiling sync_wrapper v1.0.2
-   Compiling futures-channel v0.3.34
-   Compiling windows-registry v0.6.1
-   Compiling native-tls v0.2.18
-   Compiling cpufeatures v0.3.1
-   Compiling ipnet v2.12.2
-   Compiling tower-layer v0.3.3
-   Compiling unicode_names2_generator v4.0.0
-   Compiling tray-icon v0.25.1
-   Compiling winapi v0.3.9
-   Compiling http-body-util v0.1.5
-   Compiling hybrid-array v0.4.15
-   Compiling hyper v1.12.0
-   Compiling tower v0.5.3
-   Compiling tokio-native-tls v0.3.1
-   Compiling futures-sink v0.3.34
-   Compiling cookie v0.18.2
-   Compiling tokio-util v0.7.20
-   Compiling unicode_names2 v4.0.0
-   Compiling tower-http v0.6.11
-   Compiling crypto-common v0.2.2
-   Compiling hyper-util v0.1.21
-   Compiling block-buffer v0.12.1
-   Compiling thiserror v1.0.69
-   Compiling constant_time_eq v0.6.1
-   Compiling chacha20 v0.10.2
-   Compiling rustls-pki-types v1.15.1
-   Compiling lazy_static v1.5.1
-   Compiling hyper-tls v0.6.0
-   Compiling typed-path v0.13.0
-   Compiling const-oid v0.10.2
-   Compiling jiff-tzdb v0.1.9
-   Compiling fastrand v2.5.0
-   Compiling digest v0.11.3
-   Compiling jiff-tzdb-platform v0.1.3
-   Compiling reqwest v0.13.5
-   Compiling tempfile v3.27.0
-   Compiling filedescriptor v0.8.3
-   Compiling winreg v0.10.1
-   Compiling shared_library v0.1.9
-   Compiling phf v0.11.3
-   Compiling rand v0.10.3
-   Compiling libsqlite3-sys v0.39.1
-   Compiling zip v9.5.0
-   Compiling nix v0.28.0
-   Compiling rfd v0.17.2
-   Compiling serial2 v0.2.39
-   Compiling hashlink v0.12.2
-   Compiling shell-words v1.1.1
-   Compiling fallible-iterator v0.3.0
-   Compiling fallible-streaming-iterator v0.1.9
-   Compiling downcast-rs v1.2.1
-   Compiling minisign-verify v0.3.0
-   Compiling bitflags v1.3.2
-   Compiling jiff-core v0.1.4
-   Compiling portable-pty v0.9.0
-   Compiling sha2 v0.11.1
-   Compiling toml_edit v0.25.19+spec-1.1.0
-   Compiling tauri-plugin v2.7.2
-   Compiling tauri-build v2.7.4
-   Compiling tauri-codegen v2.7.4
-   Compiling rusqlite v0.41.1
-   Compiling jiff v0.2.41
-   Compiling tauri v2.12.5
-   Compiling tauri-macros v2.7.4
-   Compiling tauri-plugin-fs v2.7.1
-   Compiling tauri-plugin-updater v2.14.1
-   Compiling tauri-plugin-notification v2.8.0
-   Compiling tauri-plugin-dialog v2.8.4
-   Compiling kolux-rs v0.1.0 (G:\Dev\kolux-rs-lanes\perf-webview\src-tauri)
-   Compiling tao v0.37.2
-   Compiling tauri-winrt-notification v0.8.1
-   Compiling trash v5.3.0
-   Compiling notify-rust v4.19.0
-   Compiling webview2-com v0.39.1
-   Compiling wry v0.57.1
-   Compiling tauri-runtime v2.12.2
-   Compiling tauri-runtime-wry v2.12.3
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 8m 13s
-     Running unittests src\lib.rs 
-(G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\kolux_rs_lib-add08ad70017e094.exe)
+cargo test --no-fail-fast -- browser recovery tray webview cli  (lane perf-webview, commit 603431ff, test env, 2026-11-09)
+Summary lines and the lane's own t_perf_webview tests; compile output and the other per-test lines left out.
 
-running 376 tests
-test browser::agent_tests::brow037_the_picker_scripts_queue_picks_and_can_be_taken_out ... ok
-test browser::agent_tests::brow042_the_registry_keeps_one_row_per_tab_and_orders_by_last_shown ... ok
-test browser::cli::tests::a_page_error_becomes_a_fail_and_a_stale_reference_asks_for_a_new_snapshot ... ok
-test browser::certs::tests::brow024_fingerprint_ignores_line_breaks_and_tells_certificates_apart ... ok
-test browser::certs::tests::brow024_no_approval_without_a_pending_challenge_for_that_site ... ok
-test browser::certs::tests::brow024_the_engine_is_told_allow_only_for_an_approved_local_certificate_and_cancel_otherwise ... ok
-test browser::certs::tests::brow024_a_different_bad_certificate_is_refused_again_and_trust_can_be_revoked ... ok
-test browser::certs::tests::brow024_approval_covers_one_local_host_and_port_and_no_other_tab_or_port ... ok
-test browser::certs::tests::brow024_public_hosts_and_lookalikes_are_never_offered ... ok
-test browser::certs::tests::brow024_the_app_command_trusts_only_a_waiting_challenge_and_revokes_per_origin ... ok
-test browser::cli::tests::a_page_opened_a_moment_ago_answers_to_page_before_its_pane_reports_it ... ok
-test browser::agent_tests::brow042_the_worktrees_tab_on_screen_else_its_last_seen_else_a_clear_refusal ... ok
-test browser::cli::tests::brow044_tab_and_profile_commands_check_their_flags_and_need_no_page ... ok
-test browser::cli::tests::brow049_050_emulation_state_is_per_tab_and_goes_with_the_tab ... ok
-test browser::cli::tests::brow048_cookie_and_storage_commands_check_their_flags_and_the_page_answers_them ... ok
-test browser::cli::tests::cli047_capture_print_and_download_reach_the_page_instead_of_being_refused ... ok
-test browser::cli::tests::brow044_tab_rows_follow_the_worktree_and_all_means_every_tab ... ok
-test browser::cli::tests::brow049_050_check_wants_what_the_log_and_emulation_commands_need ... ok
-test browser::cli::tests::readable_answers ... ok
-test browser::cli::tests::cli047_pictures_are_the_visible_page_or_the_whole_layout_and_sizes_are_decoded_bytes ... ok
-test browser::cli::tests::check_wants_the_flags_each_command_lives_on ... ok
-test browser::cli::tests::every_browser_command_takes_worktree_page_and_a_unique_wire_name ... ok
-test browser::cli::tests::cli046_cli047_sideways_scroll_empty_password_capture_formats_and_an_honest_wait_timeout ... ok
-test browser::cli::tests::cli047_cookie_flags_as_the_card_types_them_and_a_finite_expiry_from_zero ... ok
-test browser::cli::tests::exec_lines_split_like_a_shell_and_text_goes_in_pieces ... ok
-test browser::cli::tests::cli047_storage_area_words_keep_an_empty_value_and_reach_the_plain_commands ... ok
-test browser::cli::tests::exec_runs_browser_commands_only_and_never_another_exec ... ok
-test browser::cli::tests::orch061_lease_commands_check_their_flags_and_name_the_holder ... ok
-test browser::cli::tests::wildcard_matches_addresses_the_way_wait_url_means ... ok
-test browser::cli::tests::cli047_capture_paths_stay_inside_the_worktree_and_never_overwrite ... ok
-test browser::cli::tests::the_driver_script_carries_the_request_and_every_command_word ... ok
-test browser::cookies::tests::brow028_sites_are_replaced_as_a_whole_in_the_files_order ... ok
-test browser::cookies::tests::after612_replacing_a_site_takes_both_kinds_and_nothing_of_a_look_alike ... ok
-test browser::cookies::tests::after612_host_only_and_domain_cookies_reach_the_engine_as_different_domains ... ok
-test browser::cookies::tests::brow030_installed_browsers_are_named_from_their_program_file_alone ... ok
-test browser::crash::tests::t286b_interface_and_unknown_child_crashes_are_crashes ... ok
-test browser::cookies::tests::brow028_the_file_must_be_a_non_empty_json_list_and_bad_entries_are_skipped_and_named ... ok
-test browser::cli::tests::with_no_browser_tab_every_command_fails_clearly_and_nothing_opens ... ok
-test browser::cookies::tests::brow028_a_cookies_txt_file_is_read_with_httponly_lines_comments_and_crlf ... ok
-test browser::cookies::tests::brow028_malformed_cookies_txt_lines_are_counted_and_named_by_line_never_by_value ... ok
-test browser::cookies::tests::brow029_google_sign_ins_are_left_out_youtube_is_kept ... ok
-test browser::cookies::tests::brow029_no_decryption_key_is_asked_for_google_rows_alone ... ok
-test browser::crash::tests::t286b_only_the_newest_five_are_kept ... ok
-test browser::cli::tests::t656_extra_headers_and_credentials_reach_only_pages_on_their_own_site ... ok
-test browser::cookies::tests::after612_a_stray_run_of_dots_keeps_one_and_a_bare_host_stays_bare ... ok
-test browser::crash::tests::t286b_shutdown_exits_and_kills_are_not_crashes ... ok
-test browser::crash::tests::t286b_the_record_carries_memory_and_the_faulting_module ... ok
-test browser::crash::tests::t286b_the_memory_reading_comes_from_the_system ... ok
-test browser::crash::tests::t286b_the_same_crash_from_other_views_merges_into_one_record ... ok
-test browser::downloads::tests::app070_only_a_successful_answer_gives_the_download_a_size ... ok
-test browser::downloads::tests::clashes_ignore_case_where_the_file_system_does_and_stop_after_a_bound ... ok
-test browser::downloads::tests::cli047_an_armed_path_is_taken_once_by_its_own_tab_and_goes_stale ... ok
-test browser::downloads::tests::numbered_names_follow_the_browser_convention ... ok
-test browser::downloads::tests::names_are_made_safe_and_empty_ones_fall_back ... ok
-test browser::downloads::tests::registry_tracks_running_downloads_per_tab ... ok
-test browser::downloads::tests::t734_the_registry_keeps_recent_ended_downloads_and_never_drops_a_running_one ... ok
-test browser::downloads::tests::t734_an_end_with_no_file_lands_on_its_own_address_not_the_newest_download ... ok
-test browser::drag::tests::t319c_a_call_without_a_number_is_accepted ... ok
-test browser::downloads::tests::windows_device_names_are_rewritten_on_windows_only ... ok
-test browser::downloads::tests::two_downloads_starting_together_under_one_name_stay_apart ... ok
-test browser::drag::tests::t319c_a_drag_started_lets_pages_through_and_an_end_gives_them_back ... ok
-test browser::drag::tests::t319c_a_renewed_drag_outlives_the_older_timer ... ok
-test browser::drag::tests::t319c_a_numbered_call_that_is_not_newer_is_ignored ... ok
-test browser::drag::tests::t319c_a_job_run_after_a_late_start_disables_and_one_run_after_the_end_enables ... ok
-test browser::drag::tests::t319c_a_silent_drag_is_given_back_by_its_dead_man_timer ... ok
-test browser::drag::tests::t319c_an_end_that_reaches_the_back_end_first_leaves_pages_enabled ... ok
-test browser::drag::tests::t319c_an_ended_drag_is_not_ended_twice_by_its_timer ... ok
-test browser::drag::tests::t319c_only_a_web_view_container_is_ever_disabled ... ok
-test browser::drag::tests::t319c_the_dead_man_wait_outlasts_the_front_end_renewal ... ok
-test browser::downloads::tests::written_reads_the_partial_file_until_the_final_one_exists ... ok
-test browser::drag::tests::t319c_the_last_main_thread_job_wins_whatever_order_the_jobs_run_in ... ok
-test browser::handler::tests::after21_a_handler_is_known_only_from_the_shell_s_own_answers ... ok
-test browser::handler::tests::after21_only_web_and_mail_schemes_are_asked_about ... ok
-test browser::downloads::tests::second_copy_gets_a_suffix_and_the_first_is_intact ... ok
-test browser::engine::tests::t607_a_frame_of_koluxs_own_address_is_refused_and_an_ordinary_frame_loads ... ok
-test browser::helpers::tests::brow043_only_an_explicit_on_value_switches_the_sweep_off ... ok
-test browser::helpers::tests::brow043_an_unreadable_process_does_not_stop_the_rest ... ok
-test browser::engine::tests::t607b_the_dev_servers_loopback_addresses_are_refused_in_a_development_build ... ok
-test browser::helpers::tests::brow043_a_crashed_runs_helper_is_closed_at_start ... ok
-test browser::helpers::tests::brow043_a_reused_or_ended_id_is_never_closed ... ok
-test browser::helpers::tests::brow043_quit_stops_this_runs_helpers_that_still_run_as_recorded ... ok
-test browser::engine::tests::t607_every_tab_and_every_popup_hooks_the_frame_rule ... ok
-test browser::helpers::tests::brow043_the_system_reads_a_running_process ... ok
-test browser::helpers::tests::brow043_this_runs_and_a_live_runs_helpers_are_left_alone ... ok
-test browser::history::tests::documents_rank_by_their_path_and_keep_their_file_name ... ok
-test browser::history::tests::github_sits_on_top_after_several_visits ... ok
-test browser::history::tests::site_start_beats_site_inside_beats_title_beats_elsewhere ... ok
-test browser::holder::tests::t272d_a_chord_from_another_splits_page_is_dropped_and_the_typed_page_keeps_its_own ... ok
-test browser::holder::tests::t272d_a_closed_tab_is_no_longer_a_holder ... ok
-test browser::history::tests::typed_scheme_and_www_are_ignored_and_matching_is_case_blind ... ok
-test browser::holder::tests::t272d_engine_another_key_does_not_back_the_chord ... ok
-test browser::history::tests::list_is_short_and_blank_pages_are_not_kept ... ok
-test browser::holder::tests::t272d_engine_a_press_older_than_the_window_backs_nothing ... ok
-test browser::history::tests::visit_bonus_has_a_ceiling_and_never_lowers ... ok
-test browser::holder::tests::t272d_engine_an_unwatched_page_cannot_be_judged ... ok
-test browser::holder::tests::t272d_engine_a_chord_with_no_real_key_in_that_page_is_dropped ... ok
-test browser::holder::tests::t272d_engine_key_names_map_to_virtual_keys ... ok
-test browser::holder::tests::t272d_engine_app_shortcuts_need_their_own_key ... ok
-test browser::holder::tests::t272d_engine_keeps_only_the_newest_presses ... ok
-test browser::holder::tests::t272d_engine_mouse_chords_without_a_key_are_left_to_the_earlier_checks ... ok
-test browser::holder::tests::t272d_engine_one_press_backs_one_chord ... ok
-test browser::holder::tests::t272d_engine_only_key_downs_count ... ok
-test browser::holder::tests::t272d_the_page_whose_container_holds_the_keyboard_is_the_holder ... ok
-test browser::holder::tests::t272d_engine_reading_wins_and_focus_reading_is_the_fallback ... ok
-test browser::lease::tests::a_lease_whose_holder_terminal_closed_is_freed_for_the_next_holder ... ok
-test browser::lease::tests::releasing_hands_back_the_pages_still_open_for_closing ... ok
-test browser::lease::tests::two_holders_asking_for_one_placement_only_one_holds_it ... ok
-test browser::holder::tests::t272d_no_reading_drops_nothing ... ok
-test browser::lease::tests::names_are_trimmed_and_bounded ... ok
-test browser::lease::tests::placing_without_a_lease_is_refused_and_prune_drops_closed_pages ... ok
-test browser::notices::tests::after719_a_keyed_notice_replaces_its_older_self ... ok
-test browser::notices::tests::after719_a_notice_raised_while_the_pane_is_built_waits_and_drains_in_order ... ok
-test browser::notices::tests::after719_closing_the_tab_drops_what_it_held_and_a_rebuild_starts_empty ... ok
-test browser::notices::tests::after719_opening_again_keeps_what_is_already_held ... ok
-test browser::notices::tests::after719_a_tab_not_being_built_sends_at_once ... ok
-test browser::notices::tests::after719_a_pane_that_never_says_it_is_up_stops_holding_after_the_limit ... ok
-test browser::notices::tests::after719_the_list_is_capped_and_the_oldest_goes ... ok
-test browser::pdf::tests::edit018_an_existing_file_is_kept_unless_the_caller_says_so ... ok
-test browser::pdf::tests::edit018_a_note_with_no_title_is_named_untitled ... ok
-test browser::history::tests::history_survives_a_round_trip_and_a_bad_file ... ok
-test browser::pdf::tests::edit018_the_printed_page_may_load_nothing_from_outside ... ok
-test browser::pdf::tests::edit018_the_target_must_be_absolute_pdf_in_a_real_folder ... ok
-test browser::helpers::tests::brow043_records_survive_the_file ... ok
-test browser::permissions::tests::after285_a_page_that_is_not_a_preview_is_answered_as_before ... ok
-test browser::permissions::tests::after285_every_request_from_a_preview_is_denied ... ok
-test browser::permissions::tests::brow032_a_refused_camera_names_the_camera ... ok
-test browser::permissions::tests::brow032_an_unknown_permission_is_named_by_its_raw_kind ... ok
-test browser::permissions::tests::brow032_autoplay_and_downloads_keep_the_engine_s_own_handling ... ok
-test browser::picture::tests::brow038_a_saved_name_is_letters_digits_and_dashes_only ... ok
-test browser::picture::tests::brow038_the_page_size_comes_from_the_css_viewport_and_a_missing_one_is_refused ... ok
-test browser::crash::tests::t286b_report_writes_a_scrubbed_record_and_merges_the_next_view ... ok
-test browser::picture::tests::brow038_the_picture_goes_to_the_front_end_in_camel_case ... ok
-test browser::popup::tests::brow015_a_sized_request_is_a_popup_window_and_waits_for_the_openers_first_load ... ok
-test browser::popup::tests::brow015_long_origins_are_trimmed_from_the_left_so_the_domain_stays ... ok
-test browser::pdf::tests::edit018_a_page_that_will_not_open_leaves_nothing_and_a_bad_target_opens_nothing ... ok
-test browser::popup::tests::brow015_plain_http_is_not_secure_except_to_this_computer ... ok
-test browser::picture::tests::brow038_a_png_is_decoded_checked_and_saved_without_overwriting ... ok
-test browser::popup::tests::brow015_popups_stay_linked_to_their_tab_and_close_with_it ... ok
-test browser::popup::tests::brow015_the_strip_is_the_origin_alone_never_path_query_or_sign_in ... ok
-test browser::popup::tests::brow015_the_title_bar_puts_the_strip_before_the_page_title ... ok
-test browser::popup::tests::brow032_a_popup_is_answered_by_its_opener_tabs_permission_rules ... ok
-test browser::popup::tests::brow026_fedcm_joins_the_one_disable_features_list_once ... ok
-test browser::popup::tests::t657_a_page_request_acts_only_on_the_engines_word_in_either_order ... ok
-test browser::ports::tests::brow067_candidates_are_the_printed_local_addresses_that_listen_ranked ... ok
-test browser::picture::tests::brow038_a_picture_past_the_size_cap_is_refused_before_it_is_decoded ... ok
-test browser::ports::tests::brow067_listening_ports_are_read_from_netstat_and_lsof ... ok
-test browser::popup::tests::t657_a_window_the_user_did_not_start_is_refused_and_one_they_did_passes ... ok
-test browser::ports::tests::t726_the_shared_table_shows_an_ipv6_only_dev_server_and_skips_udp ... ok
-test browser::preview::tests::after285_a_preview_frame_loads_only_from_its_own_folder ... ok
-test browser::preview::tests::app015_a_rebuilt_window_forgets_every_allowed_folder_but_keeps_the_documents_opened ... ok
-test browser::preview::tests::brow039_a_document_gets_a_loopback_address_and_the_address_names_the_document ... ok
-test browser::preview::tests::brow040_a_preview_tab_follows_its_own_files_offers_an_outside_address_once_and_drops_the_rest ... ok
-test browser::pdf::tests::edit018_overwrite_replaces_when_the_caller_says_so ... ok
-test browser::preview::tests::brow040_a_preview_reads_only_its_own_document_until_the_folder_is_allowed ... ok
-test browser::preview::tests::t659_a_percent_before_a_multi_byte_character_does_not_panic ... ok
-test browser::preview::tests::brow040_a_file_past_the_ceiling_is_explained_not_served ... ok
-test browser::preview::tests::brow039_a_preview_serves_its_folder_and_nothing_outside_it ... ok
-test browser::preview::tests::brow040_a_link_or_junction_inside_the_folder_leads_nowhere_outside_it ... ok
-test browser::preview::tests::brow040_parent_steps_roots_prefixes_backslashes_and_nul_are_refused_before_the_join ... ok
-test browser::pdf::tests::edit018_the_hidden_page_is_closed_on_every_error_path ... ok
-test browser::pdf::tests::edit018_export_writes_the_pdf_closes_the_page_and_cleans_up ... ok
-test browser::ports::tests::app070_only_listening_printed_ports_are_asked_and_through_the_near_client ... ok
-test browser::profiles::tests::after153_a_profile_in_use_waits_for_its_last_tab_to_close ... ok
-test browser::profiles::tests::brow025_native_mode_is_the_profile_s_choice_and_the_default_spoofs ... ok
-test browser::profiles::tests::brow025_only_the_sign_in_hosts_get_the_firefox_identity ... ok
-test browser::profiles::tests::brow025_the_identity_is_desktop_firefox_for_this_platform_and_hints_go ... ok
-test browser::preview::tests::t733_an_allowed_folder_can_be_taken_back_and_allowed_again ... ok
-test browser::profiles::tests::brow045_the_default_leads_the_list_and_cannot_go ... ok
-test browser::profiles::tests::after153_a_path_outside_the_profiles_root_is_refused ... ok
-test browser::profiles::tests::brow045_tabs_move_between_profiles_and_a_deleted_profile_frees_them ... ok
-test browser::profiles::tests::row_954d_a_fresh_open_in_a_profile_is_what_a_rebuild_then_keeps ... ok
-test browser::profiles::tests::row_954e_a_saved_row_naming_a_deleted_profile_rebuilds_in_the_default_and_is_cleared ... ok
-test browser::preview::tests::t659_a_document_outside_every_open_folder_is_not_previewed_and_its_folder_not_allowed ... ok
-test browser::profiles::tests::row_977_a_restore_never_reads_another_tabs_row ... ok
-test browser::profiles::tests::row_977_a_restored_tab_comes_back_in_its_saved_live_profile ... ok
-test browser::proxy::tests::row939_a_default_folder_tab_passes_the_window_string_itself ... ok
-test browser::preview::tests::t659_a_request_addressed_to_another_host_name_is_refused ... ok
-test browser::preview::tests::t659_a_token_worked_out_from_the_folder_path_reaches_nothing ... ok
-test browser::profiles::tests::row_954c_a_rebuilt_tab_keeps_its_saved_profile_and_a_new_tab_does_not_inherit_one ... ok
-test browser::profiles::tests::row_977_a_restored_tab_whose_profile_is_gone_opens_in_the_default_with_a_notice ... ok
-test browser::profiles::tests::row_954d_a_fresh_default_open_clears_a_reused_ids_stale_profile_for_every_rebuild ... ok
-test browser::proxy::tests::row939_a_path_query_or_fragment_refuses ... ok
-test browser::proxy::tests::row939_a_host_the_switch_cannot_state_refuses_instead_of_going_direct ... ok
-test browser::proxy::tests::row939_a_different_string_for_a_folder_refuses_and_the_record_stays ... ok
-test browser::proxy::tests::row939_a_proxy_in_the_base_is_replaced_not_doubled ... ok
-test browser::profiles::tests::after153_deleting_a_profile_removes_its_data_folder_and_only_that ... ok
-test browser::proxy::tests::row939_a_proxy_with_credentials_refuses_and_never_echoes_them ... ok
-test browser::proxy::tests::row939_no_proxy_leaves_the_base_alone ... ok
-test browser::proxy::tests::row939_the_default_folder_is_the_windows_string ... ok
-test browser::preview::tests::t659_only_a_worktree_whose_git_file_points_back_into_the_project_counts ... ok
-test browser::proxy::tests::row939_the_default_port_is_the_schemes_and_stated ... ok
-test browser::proxy::tests::row939_a_saved_proxy_is_one_switch_after_the_base_arguments ... ok
-test browser::proxy::tests::row939_tab_setup_refuses_credentials_on_every_os_and_hands_the_builder_the_proxy_of_address ... ok
-test browser::proxy::tests::row939_the_first_open_of_a_folder_is_recorded_and_the_same_string_opens ... ok
-test browser::proxy::tests::row939b_odd_host_shapes_refuse_instead_of_going_direct ... ok
-test browser::proxy::tests::row939b_port_zero_refuses ... ok
-test browser::selfclose::tests::row_954b_a_tab_rebuilt_twice_in_ten_seconds_is_left_closed ... ok
-test browser::selfclose::tests::row_954c_a_missed_probe_with_the_container_gone_is_a_self_close ... ok
-test browser::selfclose::tests::row_954c_a_destroyed_engine_does_not_mark_the_rebuilt_one ... ok
-test browser::selfclose::tests::row_954b_old_rebuilds_age_out_of_the_window ... ok
-test browser::selfclose::tests::row_954b_the_first_two_close_requests_in_ten_seconds_rebuild_the_tab ... ok
-test browser::selfclose::tests::row_954c_a_page_closing_every_5_1_seconds_is_left_closed_within_a_minute ... ok
-test browser::selfclose::tests::row_954c_a_rebuild_never_takes_the_keyboard_and_a_users_open_does ... ok
-test browser::profiles::tests::brow045_the_store_survives_a_round_trip ... ok
-test browser::selfclose::tests::row_954c_a_tab_left_closed_stays_closed_until_retry ... ok
-test browser::selfclose::tests::row_954c_only_the_users_retry_or_a_fresh_tab_resets_the_record ... ok
-test browser::selfclose::tests::row_954c_retry_starts_the_record_over ... ok
-test browser::selfclose::tests::row_954c_the_engine_remembers_its_own_container ... ok
-test browser::selfclose::tests::row_954c_rebuilds_older_than_five_minutes_do_not_count_toward_the_long_limit ... ok
-test browser::selfclose::tests::row_954c_register_resets_for_fresh_and_retry_but_not_for_an_automatic_rebuild ... ok
-test browser::selfclose::tests::row_954c_the_second_detector_for_the_same_destroy_is_ignored ... ok
-test browser::selfclose::tests::row_954d_an_unknown_rebuild_word_is_an_automatic_rebuild_not_a_fresh_open ... ok
-test browser::selfclose::tests::row_977_a_restore_neither_counts_toward_the_cap_nor_clears_the_loop_record ... ok
-test browser::selfclose::tests::row_977_restore_is_its_own_word_and_not_a_loop_guard_rebuild ... ok
-test browser::selfclose::tests::row_978_a_tab_opened_hidden_and_a_restore_never_take_the_keyboard ... ok
-test browser::session::tests::active_spared_and_empty_worktrees_are_left_alone ... ok
-test browser::session::tests::back_and_forward_walk_the_trail_when_the_engine_cannot ... ok
-test browser::session::tests::oldest_hidden_worktrees_give_up_their_pages_past_the_budget ... ok
-test browser::session::tests::trail_has_a_ceiling ... ok
+     Running unittests src\lib.rs
+running 592 tests
+test browser::suspend::tests::t_perf_webview_a_repeated_hide_keeps_the_timer_it_has ... ok
 test browser::suspend::tests::t_perf_webview_a_hide_is_due_until_the_tab_is_shown_or_hidden_again ... ok
-test browser::session::tests::trail_follows_loads_back_forward_and_reloads ... ok
+test browser::suspend::tests::t_perf_webview_a_page_from_this_machine_is_never_suspended ... ok
 test browser::suspend::tests::t_perf_webview_brow021_exemptions_keep_a_page_awake ... ok
-test browser::t074_tests::app070_a_failed_probe_is_split_into_the_connection_and_the_handshake ... ok
-test browser::t074_tests::brow008_the_probe_tells_the_engines_error_page_from_a_page_and_from_silence ... ok
-test browser::t074_tests::brow033_the_proxy_setting_is_empty_for_the_system_proxy_an_http_or_socks5_address_or_refused_unquoted ... ok
-test browser::t074_tests::brow008_the_failure_kind_names_what_failed ... ok
-test browser::session::tests::save_round_trip ... ok
-test browser::t074_tests::brow008_the_https_switch_changes_the_scheme_only_and_never_for_local_or_https ... ok
-test browser::t074_tests::app070_a_public_only_probe_never_reaches_this_machine ... ok
-test browser::t074_tests::row_954d_a_probe_the_engine_refused_to_send_is_no_answer_so_the_container_is_checked ... ok
-test browser::t074_tests::t074_the_diagnosis_serialises_for_the_pane ... ok
-test browser::t074_tests::t657_link_requests_a_page_sent_on_its_own_use_up_nothing ... ok
-test browser::t074_tests::brow049_050_the_page_script_records_logs_holds_requests_and_answers_dialogs ... ok
-test browser::t074_tests::t657_a_burst_of_menu_picks_that_open_tabs_is_capped_by_the_family_allowance ... ok
-test browser::profiles::tests::after153_a_link_out_of_the_root_is_not_followed ... ok
-test browser::session::tests::load_tidies_gone_worktrees_bad_marks_and_older_builds ... ok
-test browser::t074_tests::t657_a_query_field_cannot_turn_a_pick_into_something_the_allowance_skips ... ok
-test browser::t074_tests::t657_windows_links_and_menus_wait_for_the_engines_word_and_app_scripts_run_quietly ... ok
-test browser::t074_tests::t661_no_capability_reaches_a_page_so_only_koluxs_own_ui_can_trust_a_certificate ... ok
-test browser::tests::brow001_tab_labels_and_addresses ... ok
-test browser::tests::brow005_toolbar_actions_run_as_page_script ... ok
-test browser::tests::brow012_zoom_stays_inside_the_engine_limits ... ok
-test browser::tests::brow014_a_modded_link_opens_as_a_tab_behind_or_in_front ... ok
-test browser::tests::brow007_find_runs_the_engine_find_with_the_text_quoted ... ok
-test browser::tests::brow011_the_loading_surface_is_the_pane_colour_and_opaque ... ok
-test browser::tests::brow016_a_window_storm_opens_a_handful_of_tabs_and_the_allowance_comes_back ... ok
-test browser::tests::brow017_a_right_click_and_a_menu_pick_arrive_as_menu_navigations ... ok
-test browser::tests::chords_pressed_inside_the_page_arrive_as_a_blocked_navigation ... ok
-test browser::tests::brow018_an_app_shortcut_pressed_in_the_page_arrives_as_a_key_navigation ... ok
-test browser::tests::brow023_the_site_icon_is_a_small_image_from_a_web_address ... ok
-test browser::tests::fix1_b_a_reloading_page_starts_one_icon_fetch_per_address ... ok
-test browser::tests::fix1_a_link_navigations_take_from_the_same_allowance_as_new_windows ... ok
-test browser::selfclose::tests::wait_until_free_returns_once_the_label_frees_and_gives_up_otherwise ... ok
-test browser::tests::fix1_c_a_public_page_never_points_the_icon_fetch_at_this_machine_or_network ... ok
-test browser::tests::fix1_c_every_redirect_hop_is_checked_again ... ok
-test browser::tests::fix2_b_a_public_name_that_resolves_to_this_machine_is_never_asked ... ok
-test browser::t074_tests::t661_the_system_browser_is_never_opened_on_a_pages_word_and_a_click ... ok
-test browser::tests::fix2_c_a_tab_has_one_icon_fetch_at_a_time ... ok
-test browser::tests::fix2_b_the_public_lookup_keeps_only_public_addresses ... ok
-test browser::tests::fix2_c_ipv4_compatible_addresses_and_a_trailing_dot_are_caught ... ok
-test browser::tests::fix2_b_a_redirect_off_the_pages_own_host_goes_through_the_public_lookup ... ok
-test browser::tests::fix3_3_a_redirect_off_the_pages_host_is_handed_on_under_the_hop_rule ... ok
-test browser::tests::fix2_a_a_hidden_tab_opens_nothing_sends_no_chord_and_leaves_the_allowance ... ok
-test browser::tests::fix3_1_a_public_pages_own_name_goes_through_the_public_lookup_on_any_port ... ok
-test browser::tests::fix4_1_focus_app_ok_allows_a_focused_window_and_refuses_an_unfocused_one ... ok
-test browser::tests::fix3_3_translation_and_reserved_ranges_are_local ... ok
-test browser::tests::fix4_2_a_local_page_reaches_no_other_port_of_its_host ... ok
-test browser::tests::fix4_3_the_far_request_gets_only_what_is_left ... ok
-test browser::tests::fix4_2_a_same_host_redirect_to_another_port_is_never_followed ... ok
-test browser::tests::row954_a_tab_page_cannot_close_its_own_tab ... ok
-test browser::tests::row954b_only_tab_views_hear_their_close_request ... ok
-test browser::tests::row_954d_a_rebuild_leaves_the_pending_cli_profile_for_the_new_tab ... ok
-test browser::tests::fix1_b_the_icon_fetch_stops_reading_past_the_limit ... ok
-test browser::tests::row_954f_browser_open_records_its_engine_only_once_the_page_exists ... ok
-test browser::tests::row_977_a_restore_leaves_the_pending_cli_profile_for_the_new_tab ... ok
-test browser::tests::t195_the_test_exe_links_the_web_view_path_and_loads ... ok
-test browser::tests::row_979_browser_open_clears_the_stale_row_before_its_first_fallible_step ... ok
-test browser::tests::row_954f_browser_open_waits_for_a_closing_pages_label_before_building ... ok
-test browser::tests::t272c_a_storm_in_one_tab_leaves_real_clicks_in_another_tab_alone ... ok
-test browser::tests::t272c_popups_blocked_shows_only_for_a_shown_tab_and_a_web_address ... ok
-test browser::tests::t272c_a_self_copying_page_shares_one_allowance_across_its_family ... ok
-test browser::tests::t272c_unpromised_late_and_reopened_tabs ... ok
-test browser::tests::t323e_system_proxy_decision_rows ... ok
-test browser::tests::t323d_the_diagnosis_under_a_proxy_is_skipped_not_probed ... ok
-test browser::tests::t323c_with_a_saved_proxy_no_icon_fetch_goes_direct ... ok
-test browser::tests::t323e_an_empty_setting_with_a_system_proxy_makes_no_direct_request ... ok
-test browser::tests::t500_a_tab_never_opens_an_origin_tauri_counts_as_the_apps_own ... ok
-test browser::tests::two_tab_creates_close_together_each_open_in_their_own_profile ... ok
-test browser::tower::tests::row959_one_screen_centres_it_and_a_lone_coordinate_is_no_corner ... ok
-test browser::tower::tests::row959_a_second_screen_places_the_window_at_its_corner_maximised ... ok
-test lifecycle::tests::app006_the_quit_deadline_covers_the_final_save_and_the_webview_wait ... ok
-test menu::tests::app_015_a_new_window_request_opens_web_and_mail_addresses_in_the_browser_and_denies_the_rest ... ok
-test browser::tests::t323d_with_a_saved_proxy_no_head_goes_direct ... ok
-test browser::tower::tests::row959_the_size_stays_sane ... ok
-test browser::wake::tests::brow010_a_long_jump_of_the_clock_across_one_tick_is_a_wake ... ok
-test menu::tests::app_015_a_web_address_goes_to_the_browser_and_nothing_else_loads_in_the_window ... ok
-test orchestration::restart::tests::workers_live_at_a_quit_come_back_cut_short_with_an_unknown_outcome_and_recovery_steps ... ok
-test resources::recovery::tests::row939_a_tab_on_the_windows_folder_matches_its_string_exactly_when_the_proxy_is_unchanged ... ok
-test browser::tower::tests::row959_the_label_and_page_match_the_capability_and_the_page_that_draws_the_tower ... ok
-test resources::recovery::tests::row939_the_last_good_copy_of_the_settings_names_the_proxy_when_the_file_is_corrupt ... ok
-test resources::recovery::tests::row954c_a_builder_is_judged_by_its_own_statement ... ok
-test resources::recovery::tests::row954d_a_destructured_builder_is_judged_by_its_own_statement ... ok
-test resources::recovery::tests::row954d_the_tab_builders_links_must_be_in_order_inside_browser_open ... ok
-test resources::recovery::tests::row944_a_missing_settings_file_gives_the_window_the_proxy_of_the_last_good_copy ... ok
-test resources::recovery::tests::row955_the_scan_pairs_each_builder_not_each_file ... ok
-test resources::recovery::tests::row955_the_window_string_never_equals_what_an_argless_window_passes ... ok
-test browser::tests::row939_an_unreadable_settings_file_is_an_error_not_no_proxy ... ok
-test browser::tests::row939b_a_missing_settings_file_with_a_proxy_in_the_last_good_copy_refuses_everything ... ok
-test resources::recovery::tests::row939_the_window_carries_the_proxy_saved_in_its_profile ... ok
-test browser::history::tests::retitle_and_trim ... ok
-test resources::recovery::tests::t183_a_heartbeat_ends_the_reload_the_breaker_stops_loops_and_sleep_restarts_the_budget ... ok
-test resources::recovery::tests::t183_a_run_without_a_clean_exit_is_a_crash_and_its_fatal_line_is_the_summary ... ok
-test resources::recovery::tests::t183_a_stalled_page_is_reloaded_once_retried_once_then_the_user_is_asked ... ok
-test resources::recovery::tests::row789_a_truncated_settings_file_and_the_startup_notes_both_reach_the_page_once ... ok
-test resources::recovery::tests::t183_only_a_per_user_install_is_repaired_and_the_steps_go_mildest_first ... ok
-test resources::recovery::tests::row789_a_restored_or_fresh_state_file_is_named_for_the_user_with_where_it_went ... ok
-test resources::recovery::tests::t183_the_prompt_names_the_cause_and_gives_commands_to_copy ... ok
-test resources::recovery::tests::t183_a_damaged_state_file_without_a_good_copy_starts_fresh_and_keeps_the_bytes ... ok
-test resources::recovery::tests::t183_the_safe_graphics_flag_dies_with_the_version_is_ignored_off_windows_and_adds_one_argument ... ok
-test resources::recovery::tests::t183_a_damaged_state_file_that_cannot_be_set_aside_freezes_saving_and_keeps_the_settings ... ok
-test resources::recovery::tests::t183_the_startup_check_names_what_stays_broken_and_runs_nothing_when_all_is_well ... ok
-test resources::recovery::tests::t286b_a_jump_in_the_wall_clock_is_a_wake_and_only_plain_windows_are_nudged ... ok
-test resources::recovery::tests::t183_three_graphics_losses_inside_a_minute_fire_once_and_never_again ... ok
-test resources::recovery::tests::t286b_every_window_is_excused_from_background_throttling_once ... ok
-test resources::recovery::tests::t183_a_damaged_state_file_is_set_aside_and_the_last_good_copy_returns ... ok
-test resources::recovery::tests::t286b_a_late_dump_merges_and_names_the_module_once ... ok
-test resources::recovery::tests::t286b_only_real_crashes_count ... ok
-test resources::recovery::tests::t183_a_zero_byte_state_file_is_missing_not_damaged_and_a_healthy_one_is_left_alone ... ok
-test resources::recovery::tests::t286b_quit_spans_cover_the_quit_and_end_at_the_next_start ... ok
-test browser::profiles::tests::row_954e_edit_saves_only_a_changed_store_and_hands_back_the_save_result ... ok
-test resources::recovery::tests::t286b_seven_interface_crashes_leave_five_reports_and_siblings_merge ... ok
-test resources::recovery::tests::t286b_dumps_become_interface_reports_unless_written_while_quitting ... ok
-test resources::recovery::tests::t324b_a_windows_session_end_is_no_crash_but_a_run_that_just_stops_still_is ... ok
-test resources::recovery::tests::t634_smartscreen_stays_on_in_the_one_string ... ok
-test browser::profiles::tests::row_977_open_tab_restore_ignores_a_handed_over_profile_and_reports_the_notice ... ok
-test browser::profiles::tests::row_979_a_fresh_open_clears_a_stale_row_and_no_other_kind_does ... ok
-test resources::recovery::tests::t286b_the_report_carries_the_last_memory_reading_and_never_disk_space ... ok
-test skill_delete::tests::fix3_start_up_recovery_leaves_everything_alone_and_says_so_while_another_instance_holds_the_lock ... ok
-test skill_delete::tests::fix3_start_up_recovery_under_the_lock_puts_a_hidden_skill_back ... ok
-test tray::tests::app_007_close_hides_only_on_windows_with_the_option_on_and_never_while_quitting ... ok
-test resources::recovery::tests::t183_the_newest_pending_report_prompts_once_and_help_reopens_it_after ... ok
-test tools::tests::t552_a_quit_waits_only_for_its_own_webview2_tree_and_only_so_long ... ok
-test tray::tests::app_007_fix1_close_hides_only_while_a_tray_icon_can_bring_the_window_back ... ok
-test tray::tests::app_007_fix1_the_quit_flag_belongs_to_the_one_close_that_follows_it ... ok
-test tray::tests::app_007_fix2_only_the_main_windows_close_request_is_handled ... ok
-test tray::tests::app_007_fix2_tray_quit_falls_back_to_exit_only_while_its_own_flag_is_still_pending ... ok
-test tray::tests::app_008_dev_copies_show_dev_and_the_branch ... ok
-test tray::tests::app_007_the_close_to_tray_switch_is_offered_only_on_windows_with_an_icon ... ok
-test tray::tests::app_007_the_explanation_shows_once ... ok
-test tray::tests::app_008_dot_lights_only_while_hidden_and_clears_when_shown ... ok
-test tray::tests::app_008_menu_is_open_then_quit ... ok
-test tray::tests::app_008_only_a_released_left_click_on_windows_opens_the_window ... ok
-test tray::tests::app_008_the_icon_gets_an_amber_dot_and_a_dev_marker_only_when_asked ... ok
-test tray::tests::app_008_windows_and_macos_only_and_left_click_opens_on_windows ... ok
-test tray::tests::set_041_the_dot_and_the_dev_corner_stay_on_a_blue_tray_icon ... ok
-test tray::tests::set_041_the_macos_menu_bar_icon_is_on_unless_saved_off ... ok
-test tray::tests::set_041_the_tray_icon_takes_the_chosen_app_icon_colours ... ok
-test tray::tests::app_008_a_dev_copy_reads_its_branch_from_the_checkouts_git_head ... ok
-test tray::tests::stat047_a_minimised_window_takes_the_dot_and_restoring_clears_it ... ok
-test tray::tests::stat048_the_badge_text_caps_large_counts_and_zero_clears ... ok
-test tray::tests::stat048_the_overlay_badge_is_an_amber_disc_with_the_count_in_white ... ok
-test tray::tests::stat_047_fix2_a_ping_with_the_window_back_repaints_the_dot_off ... ok
 test webview_power::tests::t_perf_webview_a_timer_from_an_older_hide_does_nothing ... ok
-test webview_power::tests::t_perf_webview_hide_tells_the_engine_once_and_show_undoes_it ... ok
-test resources::recovery::tests::row955_every_top_level_webview_gets_its_browser_args_from_the_one_source ... ok
 test webview_power::tests::t_perf_webview_memory_goes_low_after_a_minute_away_and_normal_on_show ... ok
-test resources::recovery::tests::t183_a_denied_install_file_is_found_and_repaired_with_icacls ... ok
-test browser::cli::tests::brow049_a_capture_merges_what_the_page_hands_back_and_lists_its_tail ... ok
-test skill_delete::tests::fix3_start_up_recovery_logs_and_still_recovers_when_the_lock_cannot_be_opened ... ok
-test skill_delete::tests::fix4_start_up_recovery_tries_the_lock_once_more_before_going_without_it ... ok
-test scm::tests::fix3_gh_and_the_browser_get_only_the_cleaned_link ... ok
-test browser::tests::fix1_c_the_icon_client_refuses_a_redirect_onto_another_local_host ... ok
-test resources::recovery::tests::t286b_the_store_survives_damage_and_retries_a_locked_file ... ok
-test browser::t074_tests::brow008_a_closed_local_port_is_refused_and_local_and_an_open_one_is_reached ... ok
-test browser::tests::fix3_3_an_icon_fetch_ends_at_its_time_limit ... ok
-test browser::profiles::tests::row_954e_panes_opening_together_never_bring_back_each_others_stale_rows ... ok
-
-test result: ok. 376 passed; 0 failed; 0 ignored; 0 measured; 2585 filtered out; finished in 6.70s
-
-     Running unittests src\bin\kolux-dev.rs 
-(G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\kolux_dev-4d2a04eaf84c8ebf.exe)
-
+test webview_power::tests::t_perf_webview_hide_tells_the_engine_once_and_show_undoes_it ... ok
+test result: ok. 590 passed; 0 failed; 2 ignored; 0 measured; 2389 filtered out; finished in 29.44s
+     Running unittests src\bin\kolux-dev.rs
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running unittests src\main.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\kolux_rs-345471622108242f.exe)
-
+     Running unittests src\main.rs (<target>\debug\deps\kolux_rs-345471622108242f.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-     Running tests\cards_01.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_01-a0a54c933032123d.exe)
-
+     Running tests\cards_01.rs (<target>\debug\deps\cards_01-a0a54c933032123d.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
-
-     Running tests\cards_02.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_02-a27fc6e185d2f2d3.exe)
-
+     Running tests\cards_02.rs (<target>\debug\deps\cards_02-a27fc6e185d2f2d3.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
-
-     Running tests\cards_03.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_03-a173123a5fb92173.exe)
-
+     Running tests\cards_03.rs (<target>\debug\deps\cards_03-a173123a5fb92173.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
-
-     Running tests\cards_04.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_04-8bba57a959bc4725.exe)
-
+     Running tests\cards_04.rs (<target>\debug\deps\cards_04-8bba57a959bc4725.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
-
-     Running tests\cards_05.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_05-0e49df8a149ef66b.exe)
-
+     Running tests\cards_05.rs (<target>\debug\deps\cards_05-0e49df8a149ef66b.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
-
-     Running tests\cards_06.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_06-575b2122e67a0d71.exe)
-
+     Running tests\cards_06.rs (<target>\debug\deps\cards_06-575b2122e67a0d71.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
-
-     Running tests\cards_07.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_07-a770d3db689b998b.exe)
-
-running 1 test
-test acct002_box1_codex_connect_goes_to_browser_step_then_connected_with_the_account_label ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 3.69s
-
-     Running tests\cards_08.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_08-bdeab73a0f627b35.exe)
-
+     Running tests\cards_07.rs (<target>\debug\deps\cards_07-a770d3db689b998b.exe)
+running 2 tests
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 3.64s
+     Running tests\cards_08.rs (<target>\debug\deps\cards_08-bdeab73a0f627b35.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.00s
-
-     Running tests\cards_09.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_09-2ca5cdeaa1d2df57.exe)
-
+     Running tests\cards_09.rs (<target>\debug\deps\cards_09-2ca5cdeaa1d2df57.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
-
-     Running tests\cards_10.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_10-31564ac547566c9a.exe)
-
+     Running tests\cards_10.rs (<target>\debug\deps\cards_10-31564ac547566c9a.exe)
+running 2 tests
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.01s
+     Running tests\cards_11.rs (<target>\debug\deps\cards_11-ad638b9b02374a2a.exe)
 running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.00s
-
-     Running tests\cards_11.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_11-ad638b9b02374a2a.exe)
-
-running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
-
-     Running tests\cards_12.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_12-0cea06381d0fc22d.exe)
-
+     Running tests\cards_12.rs (<target>\debug\deps\cards_12-0cea06381d0fc22d.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
-
-     Running tests\cards_13.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_13-30c3f662c3603c1e.exe)
-
+     Running tests\cards_13.rs (<target>\debug\deps\cards_13-30c3f662c3603c1e.exe)
+running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.01s
+     Running tests\cards_15.rs (<target>\debug\deps\cards_15-ae17cf60fdde423e.exe)
 running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
-
-     Running tests\cards_15.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_15-ae17cf60fdde423e.exe)
-
-running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
-
-     Running tests\cards_17.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_17-0665fd3e3b158056.exe)
-
+     Running tests\cards_17.rs (<target>\debug\deps\cards_17-0665fd3e3b158056.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
-
-     Running tests\cards_19.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_19-8a3039250cdab5f3.exe)
-
+     Running tests\cards_19.rs (<target>\debug\deps\cards_19-8a3039250cdab5f3.exe)
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
-
-     Running tests\cards_19_diag.rs 
-(G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_19_diag-a1b5009577ec0faf.exe)
-
+     Running tests\cards_19_diag.rs
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
-
-     Running tests\cards_20.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_20-40473e82e4c44264.exe)
-
+     Running tests\cards_20.rs (<target>\debug\deps\cards_20-40473e82e4c44264.exe)
+running 18 tests
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.67s
+     Running tests\cards_scratch_root.rs
 running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
-
-     Running tests\cards_scratch_root.rs 
-(G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\cards_scratch_root-8abf6109af32a702.exe)
-
-running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
-
-     Running tests\shim.rs (G:/Dev/kolux-rs-lanes/perf-webview-target\debug\deps\shim-8122f7a22de36e8c.exe)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
-
+     Running tests\shim.rs (<target>\debug\deps\shim-8122f7a22de36e8c.exe)
+running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.09s
    Doc-tests kolux_rs_lib
-
 running 0 tests
-
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
+cargo test exit 0

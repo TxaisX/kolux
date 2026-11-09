@@ -1,12 +1,17 @@
 // perf-webview runtime proofs, run against the dev app launched by wv.mjs. Writes a log and frames under
 // EVID. usage: node proof.mjs all | vis | tab
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const SP = "G:/Temp/claude/b32e31b6df365312/2896fa6b-3a2f-4cd3-a8c5-5fc3ef678205/scratchpad";
+// Where wv.mjs and frames.ps1 live (the harness folder) and where the log and frames go:
+// PERF_WEBVIEW_HARNESS and PERF_WEBVIEW_EVIDENCE, or this file's own folder for both.
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SP = process.env.PERF_WEBVIEW_HARNESS ?? HERE;
 const WV = join(SP, "wv.mjs");
-const EVID = "G:/Dev/kolux-rs-lanes/perf-webview/evidence/perf-webview";
+const EVID = process.env.PERF_WEBVIEW_EVIDENCE ?? HERE;
 const LOG = join(EVID, "runtime-proof.log");
 const PAGE = "http://127.0.0.1:18090/counter.html";
 const TAB = 9901;

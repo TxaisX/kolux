@@ -9,11 +9,11 @@ perf-webview runtime proofs 2026-11-09T20:26:43.879Z pid=26964
 [20:27:47] visibilityState minimised (60 s): "hidden"
 [20:28:53] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37876 ws=63.1MB private=150.2MB"]
 [20:28:54] restore frames:
-t=0ms (captured at 86ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-0-0ms.png
-t=50ms (captured at 162ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-1-50ms.png
-t=120ms (captured at 240ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-2-120ms.png
-t=300ms (captured at 318ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-3-300ms.png
-t=1000ms (captured at 1023ms): mean rgb(0,0,0) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-4-1000ms.png
+t=0ms (captured at 86ms): mean rgb(0,0,0) white=0.0% (frame not kept)
+t=50ms (captured at 162ms): mean rgb(0,0,0) white=0.0% (frame not kept)
+t=120ms (captured at 240ms): mean rgb(0,0,0) white=0.0% (frame not kept)
+t=300ms (captured at 318ms): mean rgb(0,0,0) white=0.0% (frame not kept)
+t=1000ms (captured at 1023ms): mean rgb(0,0,0) white=0.0% (frame not kept)
 [20:28:55] visibilityState restored: "hidden"
 [20:28:56] first paint after restore (rAF within): "no frame in 1000 ms"
 [20:28:56] marker after restore (same page, no reload): "before-minimise"
@@ -44,11 +44,11 @@ perf-webview runtime proofs 2026-11-09T20:33:48.120Z pid=26964
 [20:35:57] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37876 ws=35.3MB private=148.0MB"]
 [20:35:59] restore frames:
 restoring hwnd 2359734
-t=0ms (captured at 106ms): mean rgb(44,45,45) white=4.5% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-0-0ms.png
-t=50ms (captured at 194ms): mean rgb(44,45,45) white=4.5% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-1-50ms.png
-t=120ms (captured at 270ms): mean rgb(37,37,37) white=3.7% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-2-120ms.png
-t=300ms (captured at 350ms): mean rgb(27,27,27) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-3-300ms.png
-t=1000ms (captured at 1053ms): mean rgb(26,26,26) white=0.7% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-4-1000ms.png
+t=0ms (captured at 106ms): mean rgb(44,45,45) white=4.5% (frame not kept)
+t=50ms (captured at 194ms): mean rgb(44,45,45) white=4.5% (frame not kept)
+t=120ms (captured at 270ms): mean rgb(37,37,37) white=3.7% (frame not kept)
+t=300ms (captured at 350ms): mean rgb(27,27,27) white=0.6% (frame not kept)
+t=1000ms (captured at 1053ms): mean rgb(26,26,26) white=0.7% (frame not kept)
 [20:35:59] visibilityState restored: "visible"
 [20:36:00] first paint after restore (rAF within): "1 ms"
 [20:36:00] marker after restore (same page, no reload): "before-minimise"
@@ -66,11 +66,11 @@ perf-webview runtime proofs 2026-11-09T20:38:43.400Z pid=472
 [20:40:53] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37340 ws=198.9MB private=152.4MB"]
 [20:40:55] restore frames:
 restoring hwnd 1904708 (iconic before: True)
-t=0ms (captured at 100ms, PrintWindow ok=True, 1044x788): mean rgb(5,4,5) white=0.0% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-0-0ms.png
-t=50ms (captured at 173ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-1-50ms.png
-t=120ms (captured at 253ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-2-120ms.png
-t=300ms (captured at 331ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-3-300ms.png
-t=1000ms (captured at 1032ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% G:\Dev\kolux-rs-lanes\perf-webview\evidence\perf-webview\restore-frame-4-1000ms.png
+t=0ms (captured at 100ms, PrintWindow ok=True, 1044x788): mean rgb(5,4,5) white=0.0% (frame not kept)
+t=50ms (captured at 173ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+t=120ms (captured at 253ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+t=300ms (captured at 331ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+t=1000ms (captured at 1032ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
 [20:40:55] visibilityState restored: "visible"
 [20:40:55] first paint after restore (rAF within): "17 ms"
 [20:40:55] marker after restore (same page, no reload): "before-minimise"

@@ -35,9 +35,32 @@ Item 4 (DT-C238) only --disable-background-timer-throttling stays
   blank-after-sleep repaint (repaint() in src/recovery/hidden.ts) does not depend on the flags; the
   restore painted within a frame.
 
-Test runs
-  cargo clippy --all-targets -- -D warnings: Finished, exit 0 (final code)
-  cargo test --no-fail-fast -- browser recovery tray webview (test env): lib 376 passed; 0 failed, 377 in all
-    (cargo-test-touched-suites.txt), run before the one-line lib.rs focus fix; the rerun on the final code
-    was stopped by the harness for system memory pressure while compiling.
-  pnpm exec vitest run src/recovery src/terminal: Test Files 111 passed (111), Tests 672 passed (672)
+Test runs (final code, 603431ff)
+  cargo clippy --all-targets -- -D warnings: Finished `dev` profile in 1m 16s, exit 0
+  cargo test --no-fail-fast -- browser recovery tray webview cli (test env, CARGO_BUILD_JOBS=4):
+    lib 590 passed, 0 failed, 2 ignored; integration suites 2 + 2 + 1 + 18 + 1 passed; 0 failed in all; exit 0
+    (cargo-test-touched-suites.txt holds the summary lines)
+  pnpm exec vitest run src/recovery src/terminal src/browser: Test Files 156 passed (156), Tests 994 passed (994), exit 0
+
+Review fixes (F2 to F12, 2026-11-09)
+  F3 terminal throughput while minimised (burst-log.txt; 5 MB from python through the shell into the
+  shown pane, the window minimised; the program's write time is the pane's ack throughput):
+    base (the shown pane trickled at 8 KB/200 ms once document.hidden turned true; measured with a
+    temporary gate that kept the engine's "hidden" off the frame queue): 7.568 s on the first burst after
+    launch, then 13.324 / 13.492 / 13.201 s; visible 2.937 s.
+    lane (the shown pane keeps its full share, stepped by a timer at the frame's rate, frame.ts):
+    1.762 / 1.529 / 1.666 s minimised on fresh panes, 2.492 s on a restored pane; visible 0.859 / 0.866 /
+    1.449 s. Minimised the lane is 5 to 9 times faster than base; not a regression.
+    Caveat: the first burst after an app launch into a restored pane with 10k lines of scrollback was
+    slow in the lane too (7.281 s and 13.218 s), the following bursts were not; the base series above
+    is first-burst 7.568 s then three warm bursts, all slow.
+  F11 long stays out of sight (f11-log.txt; final code, dev build; the page marker window.__perfMarker
+  set before the hide; kolux.log grepped for /no heartbeat|reload/i every minute):
+    minimised 6.5 min (21:26:47 to 21:33:57 UTC): marker survived; 0 of 38 lines match. document.hidden
+    was true at every check but one (21:31:51, false: the window had been shown and hidden to the tray
+    by something outside the harness, visible=False iconic=False at 21:33; the cargo test build running
+    beside it at that minute is the suspect; the marker and the heartbeat were untouched).
+    hidden to the tray 6.5 min (21:35:00 to 21:42:13 UTC, WM_CLOSE with closeToTray on): marker survived;
+    0 of 40 lines match; document.hidden true at all seven checks; visible again (document.hidden
+    false) 3 s after the show.
+  Checks run on the final code are listed under "Test runs" below.
