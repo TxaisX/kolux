@@ -1,0 +1,153 @@
+stress S11 (app footprint (idle, 6 panes, streaming, minimized, 12 panes)) at 2026-11-09T19:40:39.274Z on 2a8c43ec (G:\Dev\kolux-rs-lanes\perf-measure)
+args: S11 --tag run2 --compare evidence/stress-s11-2a8c43ec.json; ran 543 s
+
+=== footprint table (60 s windows, 20 s settle; debug dev build) ===
+
+a) idle, 1 project, 1 shell pane  [panes 1 (1 shown); sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     56.3     14.1        2.04     0.127        0.0        0.0      0.00
+   wv-browser           1.0    120.4     42.7        1.13     0.070        0.0        0.0      0.00
+   renderer             1.0    217.1    168.8        3.38     0.211        0.0        0.0      0.00
+   gpu-process          1.0     87.8    127.1        7.91     0.494       58.9        3.5      7.48
+   utility              2.0     67.3     24.3        0.21     0.013        0.0        0.0      0.00
+   crashpad-handler     1.0     15.2      3.2        0.00     0.000        0.0        0.0      0.00
+   total                7.0    564.1    380.1       14.66     0.916       58.9        3.5      7.48
+   page: JS heap used 66.6 MB (total 71.1 MB), canvases 3, DOM nodes 388
+
+b) 6 shell panes, idle  [panes 6 (6 shown); sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     57.6     16.4        5.54     0.347        0.0        0.0      0.00
+   wv-browser           1.0    125.4     43.6        0.78     0.049        0.0        0.0      0.00
+   renderer             1.0    230.9    182.6        4.42     0.276        0.0        0.0      0.00
+   gpu-process          1.0     94.5    133.0        7.96     0.497       65.1        3.9      7.44
+   utility              2.0     66.8     23.4        0.13     0.008        0.0        0.0      0.00
+   crashpad-handler     1.0     12.5      3.0        0.00     0.000        0.0        0.0      0.00
+   total                7.0    587.7    401.9       18.83     1.177       65.1        3.9      7.44
+   page: JS heap used 70.3 MB (total 77.7 MB), canvases 13, DOM nodes 726
+
+c) 6 panes, each printing ~20 lines/s  [panes 6 (6 shown); sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     59.5     18.4       19.56     1.223        0.0        0.0      0.00
+   wv-browser           1.0    128.7     44.8       15.73     0.983        0.0        0.0      0.00
+   renderer             1.0    292.1    239.8       21.06     1.316        0.0        0.0      0.00
+   gpu-process          1.0     99.2    136.3        9.35     0.585       60.3        4.2      7.97
+   utility              2.0     68.1     24.6        3.75     0.234        0.0        0.0      0.00
+   crashpad-handler     1.0     12.4      2.9        0.00     0.000        0.0        0.0      0.00
+   total                7.0    659.9    466.9       69.46     4.341       60.3        4.2      7.97
+   page: JS heap used 94.7 MB (total 136.1 MB), canvases 13, DOM nodes 726
+
+d) 6 panes idle, window minimized (iconic=True)  [panes 6 (6 shown); sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     60.0     18.6        5.76     0.360        0.0        0.0      0.00
+   wv-browser           1.0    136.2     47.1        1.93     0.121        0.0        0.0      0.00
+   renderer             1.0    254.0    199.7        2.89     0.181        0.0        0.0      0.00
+   gpu-process          1.0    102.4    137.8        0.24     0.015       60.3        5.1      0.00
+   utility              2.0     68.7     25.1        0.38     0.023        0.0        0.0      0.00
+   crashpad-handler     1.0     12.6      3.0        0.00     0.000        0.0        0.0      0.00
+   total                7.0    633.9    431.3       11.20     0.700       60.3        5.1      0.00
+   page: JS heap used 86.5 MB (total 92.0 MB), canvases 13, DOM nodes 725
+
+e) 12 shell panes, idle  [panes 12 (12 shown); sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     61.2     20.9       11.23     0.702        0.0        0.0      0.00
+   wv-browser           1.0    143.1     49.1        1.58     0.099        0.0        0.0      0.00
+   renderer             1.0    283.8    229.6        3.67     0.229        0.0        0.0      0.00
+   gpu-process          1.0    107.0    110.6        0.24     0.015       31.1        3.7      0.00
+   utility              2.0     69.1     25.3        0.46     0.028        0.0        0.0      0.00
+   crashpad-handler     1.0     12.5      2.9        0.00     0.000        0.0        0.0      0.00
+   total                7.0    676.7    438.5       17.18     1.074       31.1        3.7      0.00
+   page: JS heap used 75.2 MB (total 87.5 MB), canvases 25, DOM nodes 1121
+
+compare: BEFORE 2a8c43ec (2026-11-09T19:31:28.115Z) -> NOW 2a8c43ec (2026-11-09T19:40:06.079Z); now minus before
+total app (window + service + web view):
+   a) WS MB 566.3 -> 564.1 (-2.2) | priv MB 371.0 -> 380.1 (+9.1) | CPU %1core 26.66 -> 14.66 (-12.00) | GPU ded MB 52.8 -> 58.9 (+6.1) | JS heap MB 67.4 -> 66.6 (-0.7) | canvases 3 -> 3
+   b) WS MB 589.7 -> 587.7 (-2.0) | priv MB 399.4 -> 401.9 (+2.5) | CPU %1core 39.91 -> 18.83 (-21.08) | GPU ded MB 60.5 -> 65.1 (+4.6) | JS heap MB 70.2 -> 70.3 (+0.1) | canvases 13 -> 13
+   c) WS MB 657.0 -> 659.9 (+2.9) | priv MB 461.5 -> 466.9 (+5.4) | CPU %1core 106.88 -> 69.46 (-37.42) | GPU ded MB 60.5 -> 60.3 (-0.3) | JS heap MB 108.3 -> 94.7 (-13.6) | canvases 13 -> 13
+   d) WS MB 627.6 -> 633.9 (+6.3) | priv MB 422.4 -> 431.3 (+8.9) | CPU %1core 12.35 -> 11.20 (-1.15) | GPU ded MB 59.8 -> 60.3 (+0.5) | JS heap MB 84.5 -> 86.5 (+2.0) | canvases 13 -> 13
+   e) WS MB 669.2 -> 676.7 (+7.4) | priv MB 440.2 -> 438.5 (-1.7) | CPU %1core 18.10 -> 17.18 (-0.92) | GPU ded MB 31.6 -> 31.1 (-0.5) | JS heap MB 77.8 -> 75.2 (-2.6) | canvases 25 -> 25
+
+per process role, before -> now:
+   a) idle, 1 project, 1 shell pane
+      window             WS 56.1 -> 56.3 | priv 14.2 -> 14.1 | cpu 1.57 -> 2.04
+      wv-browser         WS 123.7 -> 120.4 | priv 43.6 -> 42.7 | cpu 0.77 -> 1.13
+      renderer           WS 216.6 -> 217.1 | priv 167.6 -> 168.8 | cpu 6.24 -> 3.38
+      gpu-process        WS 88.1 -> 87.8 | priv 118.1 -> 127.1 | cpu 17.95 -> 7.91
+      utility            WS 67.0 -> 67.3 | priv 24.4 -> 24.3 | cpu 0.13 -> 0.21
+      crashpad-handler   WS 14.8 -> 15.2 | priv 3.2 -> 3.2 | cpu 0.00 -> 0.00
+      total              WS 566.3 -> 564.1 | priv 371.0 -> 380.1 | cpu 26.66 -> 14.66
+   b) 6 shell panes, idle
+      window             WS 57.4 -> 57.6 | priv 16.4 -> 16.4 | cpu 5.52 -> 5.54
+      wv-browser         WS 128.1 -> 125.4 | priv 43.5 -> 43.6 | cpu 1.15 -> 0.78
+      renderer           WS 229.3 -> 230.9 | priv 180.9 -> 182.6 | cpu 9.12 -> 4.42
+      gpu-process        WS 96.2 -> 94.5 | priv 132.3 -> 133.0 | cpu 23.55 -> 7.96
+      utility            WS 66.5 -> 66.8 | priv 23.3 -> 23.4 | cpu 0.54 -> 0.13
+      crashpad-handler   WS 12.3 -> 12.5 | priv 3.0 -> 3.0 | cpu 0.03 -> 0.00
+      total              WS 589.7 -> 587.7 | priv 399.4 -> 401.9 | cpu 39.91 -> 18.83
+   c) 6 panes, each printing ~20 lines/s
+      window             WS 59.4 -> 59.5 | priv 18.4 -> 18.4 | cpu 23.49 -> 19.56
+      wv-browser         WS 130.0 -> 128.7 | priv 45.1 -> 44.8 | cpu 18.56 -> 15.73
+      renderer           WS 287.4 -> 292.1 | priv 236.0 -> 239.8 | cpu 32.49 -> 21.06
+      gpu-process        WS 100.4 -> 99.2 | priv 134.7 -> 136.3 | cpu 28.37 -> 9.35
+      utility            WS 67.6 -> 68.1 | priv 24.4 -> 24.6 | cpu 3.96 -> 3.75
+      crashpad-handler   WS 12.2 -> 12.4 | priv 2.9 -> 2.9 | cpu 0.00 -> 0.00
+      total              WS 657.0 -> 659.9 | priv 461.5 -> 466.9 | cpu 106.88 -> 69.46
+   d) 6 panes idle, window minimized (iconic=True)
+      window             WS 59.7 -> 60.0 | priv 18.6 -> 18.6 | cpu 6.37 -> 5.76
+      wv-browser         WS 130.9 -> 136.2 | priv 45.6 -> 47.1 | cpu 1.21 -> 1.93
+      renderer           WS 252.6 -> 254.0 | priv 198.4 -> 199.7 | cpu 3.51 -> 2.89
+      gpu-process        WS 103.6 -> 102.4 | priv 131.7 -> 137.8 | cpu 0.88 -> 0.24
+      utility            WS 68.4 -> 68.7 | priv 25.1 -> 25.1 | cpu 0.37 -> 0.38
+      crashpad-handler   WS 12.4 -> 12.6 | priv 3.0 -> 3.0 | cpu 0.00 -> 0.00
+      total              WS 627.6 -> 633.9 | priv 422.4 -> 431.3 | cpu 12.35 -> 11.20
+   e) 12 shell panes, idle
+      window             WS 61.0 -> 61.2 | priv 20.9 -> 20.9 | cpu 10.68 -> 11.23
+      wv-browser         WS 131.6 -> 143.1 | priv 46.3 -> 49.1 | cpu 1.90 -> 1.58
+      renderer           WS 287.2 -> 283.8 | priv 233.0 -> 229.6 | cpu 4.39 -> 3.67
+      gpu-process        WS 108.2 -> 107.0 | priv 111.7 -> 110.6 | cpu 0.54 -> 0.24
+      utility            WS 68.8 -> 69.1 | priv 25.4 -> 25.3 | cpu 0.59 -> 0.46
+      crashpad-handler   WS 12.4 -> 12.5 | priv 2.9 -> 2.9 | cpu 0.00 -> 0.00
+      total              WS 669.2 -> 676.7 | priv 440.2 -> 438.5 | cpu 18.10 -> 17.18
+
+json: G:\Dev\kolux-rs-lanes\perf-measure\evidence\stress-s11-2a8c43ec-run2.json
+
+PASS  phase a: 1 panes shown while sampled
+      bar: 1
+      measured: 1
+PASS  phase a: the app's processes were found
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, window, renderer, wv-browser, gpu-process
+PASS  phase b: 6 panes shown while sampled
+      bar: 6
+      measured: 6
+PASS  phase b: the app's processes were found
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, window, renderer, wv-browser, gpu-process
+PASS  6 panes each print the ~20 lines/s stream
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  phase c: 6 panes shown while sampled
+      bar: 6
+      measured: 6
+PASS  phase c: the app's processes were found
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, window, renderer, wv-browser, gpu-process
+PASS  phase d: 6 panes shown while sampled
+      bar: 6
+      measured: 6
+PASS  phase d: the app's processes were found
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, window, renderer, wv-browser, gpu-process
+PASS  phase e: 12 panes shown while sampled
+      bar: 12
+      measured: 12
+PASS  phase e: the app's processes were found
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, window, renderer, wv-browser, gpu-process
+FAIL  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: WM_CLOSE by PostMessage (the page did not answer), exited in 9.4 s; pre-close tree 30 (msedgewebview2.exe x6, conhost.exe x12, powershell.exe x12); survivors 5 (msedgewebview2.exe x5)
+
+notes:
+  - minimize: iconic=True
+
+S11: FAIL
