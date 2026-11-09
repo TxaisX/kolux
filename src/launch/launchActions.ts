@@ -10,7 +10,7 @@ import type { WindowLate } from "../shell/windowLate";
 import { savedArgs } from "../chat/controls";
 import { noteUse } from "../onboarding/features";
 import { gatedSetup, settleSetup } from "../orchestration/workerSetup";
-import { folderName, type Created, type WorkItem } from "../projects/model";
+import { folderName, projectLabel, type Created, type Project, type WorkItem } from "../projects/model";
 import { renameOnFirstPrompt } from "../projects/renameOnWork";
 import { applySetting } from "../projects/settingWrite";
 import { startFields } from "../projects/startArgs";
@@ -96,7 +96,8 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         open: (dir, branch, line, where) => new Promise<void>((done) => late.startSetup(dir, branch, line, where, false, () => done())),
         say: (m) => setupTrouble.push(m),
       });
-      for (const id of new Set(picked.flatMap((a) => (a ? [a.id] : [])))) await pretrust(id, picked.map((a, i) => (a?.id === id ? places[i].cwd : null)));
+      // The "Starting n sessions" toast below would hide a trust line, so it joins the notice bar.
+      for (const id of new Set(picked.flatMap((a) => (a ? [a.id] : [])))) await pretrust(id, picked.map((a, i) => (a?.id === id ? places[i].cwd : null)), (m) => setupTrouble.push(m));
       // SESS-051: each agent's start line comes from the catalogue, prompt route included; a
       // refused line (Hermes past its limit) stops the whole Start before any pane is made.
       const side = picked.filter(Boolean).length >= 2;
@@ -266,14 +267,30 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // pane's folder, else the first in the list.
   // SAFE-023 / SAFE-024: every folder a launch will use (and its main repository) is marked
   // trusted in the agent's own configuration in one write before any agent process starts; best
-  // effort, a failure never stops the launch.
-  const pretrust = async (agent: string, dirs: (string | null)[]) => {
+  // effort, a failure never stops the launch. T-780 follow-up: a folder left unmarked is said once in
+  // the window (the toast, or `tell` for a caller that shows its own notice), never by focus or a window.
+  const pretrust = async (agent: string, dirs: (string | null)[], tell: (line: string) => void = setToast) => {
     const paths = [...new Set(dirs.flatMap((d) => (d === null ? [] : [d, projects.find((p) => p.id === late.projectOf(d))?.path])).filter((p): p is string => typeof p === "string"))];
     if (paths.length === 0) return;
+    const name = agents.find((a) => a.id === agent)?.name ?? agent;
+    const say = (line: string | null) => {
+      const told = `${agent}\n${paths.join("\n")}\n${line}`;
+      if (line !== null && !toldTrust.has(told)) {
+        toldTrust.add(told);
+        tell(line);
+      }
+    };
     try {
       await invoke("trust_folders_cmd", { agent, paths });
     } catch (err) {
-      console.warn(`trust: ${String(err)}`);
+      const reason = String(err);
+      console.warn(`trust: ${reason}`);
+      if (reason !== NOTHING_TO_TRUST) return say(trustNote(name, reason, projects));
+      // Nothing Kolux made was in the batch. A workspace holding a pull request is left out on
+      // purpose, so say so; the project's own folder keeps the agent's prompt without a word.
+      const own = dirs.filter((d): d is string => d !== null);
+      const ds = await Promise.all(own.map((path) => invoke<{ item: string | null } | null>("workspace_details_get", { path }).catch(() => null)));
+      if (ds.some((d) => holdsPullRequest(d?.item))) say(trustNote(name, PR_REASON, projects));
     }
   };
   // GIT-004: a refused commit can be handed to the default agent with the hook's own words.
@@ -319,3 +336,40 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
 }
 
 export type LaunchActions = ReturnType<typeof launchActions>;
+
+/** The back end's answer when a launch's batch held no worktree Kolux made (trust_folders_cmd). */
+const NOTHING_TO_TRUST = "no folders to trust";
+/** The reason the back end gives for a pull request's worktree (trust.rs `not_pre_trusted_why`). */
+const PR_REASON = "not trusted: this worktree holds a pull request's branch, so the agent asks itself";
+/** Each trust line is shown once per window session for an agent and its folders, not on every launch there. */
+const toldTrust = new Set<string>();
+
+/** Whether a workspace's linked item (the details form's link) is a pull request address. */
+export function holdsPullRequest(item: string | null | undefined): boolean {
+  return typeof item === "string" && /^https?:\/\/[^/]+\/[^/]+\/[^/]+\/pull\/\d+\/?$/i.test(item.trim());
+}
+
+const samePath = (a: string, b: string) => {
+  const n = (p: string) => p.replace(/^\\\\\?\\/, "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  return n(a) === n(b);
+};
+
+/**
+ * T-780 follow-up: the window's plain line for a folder Kolux did not mark trusted for `agentName`,
+ * from the reason the back end gave (trust.rs). The agent then asks its own trust question, unless
+ * the user already answered it in that folder, hence "may". Null when there is nothing to say.
+ */
+export function trustNote(agentName: string, reason: string, projects: Pick<Project, "path" | "name" | "displayName">[]): string | null {
+  const lead = `${agentName} may ask whether to trust this workspace`;
+  if (reason === NOTHING_TO_TRUST) return null;
+  if (reason === PR_REASON) return `${lead} because it holds a pull request.`;
+  const main = /^not trusted: the main checkout (.+) is not trusted for \S+ yet, so its worktree .+ keeps the agent's own prompt$/s.exec(reason);
+  if (main) {
+    const p = projects.find((x) => samePath(x.path, main[1]));
+    return `${lead}: you haven't trusted ${p ? projectLabel(p) : folderName(main[1])} in ${agentName} yet.`;
+  }
+  // trust.rs says "is not a git worktree" for any folder git cannot place in a repository with a checkout.
+  const loose = /^not trusted: (.+) is not a git worktree, so it keeps the agent's own prompt$/s.exec(reason);
+  if (loose) return `${lead}: ${folderName(loose[1])} isn't inside a git repository Kolux can check.`;
+  return `${lead}: Kolux couldn't mark it trusted (${reason.replace(/^not trusted: /, "")}).`;
+}

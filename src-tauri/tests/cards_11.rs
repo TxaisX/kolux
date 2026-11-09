@@ -80,6 +80,15 @@ fn with_origin(d: &Path) -> (PathBuf, PathBuf) {
     (w, bare)
 }
 
+/// DT-C229 / T-780: the user's own answer to Claude's trust prompt for `w`, written where Kolux
+/// reads it (the scratch Claude config) in the shape Claude writes it. Git runs a trusted folder's
+/// own hooks and lets it push to a repository on this computer; an untrusted one is refused both.
+fn user_trusted(w: &Path) {
+    let file = kolux_rs_lib::trust::claude_config_file();
+    assert!(norm(&file).starts_with(&norm(scratch_root::root())), "{file:?} is not under the scratch root");
+    kolux_rs_lib::trust::trust_claude(&file, &[w.to_path_buf()]).unwrap();
+}
+
 fn paths(rows: &[Change]) -> Vec<String> {
     rows.iter().map(|c| c.path.clone()).collect()
 }
@@ -246,6 +255,8 @@ fn git004_box1_staged_file_and_a_message_make_exactly_one_new_commit_and_a_clean
 fn git004_box3_a_pre_commit_hook_that_exits_1_blocks_the_commit_and_what_it_printed_comes_back() {
     let d = scratch("g4b3");
     let w = repo(&d, "w");
+    // The hook runs only in a folder the user trusted; an untrusted one is refused before git starts.
+    user_trusted(&w);
     let hook = w.join(".git/hooks/pre-commit");
     std::fs::write(&hook, "#!/bin/sh\necho \"lint: forbidden word found in f.txt\"\nexit 1\n").unwrap();
     write(&w, "f.txt", "hello\n");
@@ -263,6 +274,8 @@ fn git006_box1_and_2_a_new_branch_walks_edit_stage_commit_publish_and_a_rebase_i
     let _lock = STATES.lock().unwrap_or_else(|e| e.into_inner());
     let d = scratch("g6");
     let (w, _bare) = with_origin(&d);
+    // Publishing and force-pushing go to a bare repository on this computer: a trusted folder only.
+    user_trusted(&w);
     g(&w, &["switch", "-q", "-c", "feat"]);
     write(&w, "seed.txt", "seed\nmore\n");
     let edited = status(&w).unwrap(); // edit: changed, nothing staged
@@ -298,6 +311,8 @@ fn git007_box1_two_local_commits_are_two_to_push_and_pushing_brings_the_counts_t
     let _lock = STATES.lock().unwrap_or_else(|e| e.into_inner());
     let d = scratch("g7");
     let (w, bare) = with_origin(&d);
+    // The push goes to a bare repository on this computer: a trusted folder only.
+    user_trusted(&w);
     write(&w, "one.txt", "1\n");
     g(&w, &["add", "."]);
     g(&w, &["commit", "-q", "-m", "one"]);

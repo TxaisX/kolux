@@ -5,8 +5,9 @@ origin record `pr`) holds a stranger's branch, yet SAFE-023 pre-trusted it like 
 
 What changed (trust.rs is a hard-stop file; edited under the review-fix batch clearance)
 - src-tauri/src/trust.rs made_by_kolux: an origin record carrying a non-empty `pr` is left out, so the
-  pre-trust never reaches a pull request's worktree (made from a PR, or one linked later in the details
-  form, which writes the same key); not_pre_trusted_why names the reason for a caller's notice.
+  pre-trust never reaches a pull request's worktree made from a PR. Linking a PR later in the details
+  form writes the same key, so it stops FUTURE trust marks, but it does not remove a mark already
+  written before the link; not_pre_trusted_why names the reason for a caller's notice.
 - src-tauri/src/cli/mod.rs (worker dispatch, SAFE-023 block): an empty pre-trust list reports that
   reason ("not trusted: this worktree holds a pull request's branch, so the agent asks itself" /
   "not trusted: not a worktree Kolux made, so the agent asks itself") instead of calling trust_folders
@@ -26,4 +27,6 @@ Passes after:
   cargo build: Finished; cargo clippy --all-targets -- -D warnings: Finished, no warnings
 
 Decision for Txais: any origin record with `pr` loses the pre-trust, including a worktree the user made
-and only later linked to a PR in the details form; the agent asks its own trust question once there.
+and only later linked to a PR in the details form. Linking later stops FUTURE trust marks only: a mark
+Kolux already wrote for that worktree before the link stays in the agent's file, so the agent asks its
+own trust question there only if the folder was never marked. (Corrected 2026-11-09, T-780 follow-up.)
