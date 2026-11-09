@@ -52,7 +52,7 @@ function manual() {
 }
 
 /** A pane sink that records writes and acks; `hold` keeps each callback until released. */
-function sink(opts: { hidden?: () => boolean; hold?: boolean } = {}) {
+function sink(opts: { hidden?: () => boolean; unseen?: () => boolean; hold?: boolean } = {}) {
   const writes: Uint8Array[] = [];
   const acks: number[] = [];
   const held: (() => void)[] = [];
@@ -66,6 +66,7 @@ function sink(opts: { hidden?: () => boolean; hold?: boolean } = {}) {
       acks.push(n);
     },
     hidden: opts.hidden ?? (() => false),
+    unseen: opts.unseen,
   };
   return {
     frameSink,
@@ -256,4 +257,58 @@ test("T-765: the frame allowance refills at the frame's rate and never banks a l
   expect(b.take(1000)).toBe(100);
   expect(b.share(6)).toBe(16);
   expect(b.share(0)).toBe(100);
+});
+
+test("DT-C236: the shown pane of a minimised window keeps its full share by timer, with no frame to wait for", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler, onVisibility: () => {} });
+  let away = true;
+  const s = sink({ unseen: () => away });
+  const pane = out.pane(s.frameSink);
+  const burst = 5 * FRAME_BYTES;
+  pane.push(new Uint8Array(burst), burst);
+  expect(c.queued()).toBe(0); // no animation frame: none would come
+  expect(c.timers()).toBe(1);
+  c.advance(FRAME_MS);
+  expect(s.all()).toBe(FRAME_BYTES); // a whole frame's bytes a step, not the hidden tab's trickle
+  for (let i = 0; i < 4; i++) c.advance(FRAME_MS);
+  expect(s.all()).toBeGreaterThanOrEqual(burst - 5); // 5 frames' worth in 5 frame times (the budget's rounding keeps a byte or so back)
+  c.advance(FRAME_MS);
+  expect(s.all()).toBe(burst);
+  expect(pane.pending).toBe(0);
+  // Behind another tab in that window: the trickle, as before.
+  const hidden = sink({ hidden: () => true, unseen: () => away });
+  const back = out.pane(hidden.frameSink);
+  back.push(new Uint8Array(100 * 1024), 100 * 1024);
+  c.advance(HIDDEN_MS);
+  expect(hidden.all()).toBe(HIDDEN_BYTES);
+  away = false;
+  pane.push(new Uint8Array(10), 10);
+  expect(c.queued()).toBe(1); // back in sight: the animation frame again
+});
+
+test("DT-C236: a visibility change re-plans a pane that waited on a frame the hidden window never gives", () => {
+  const c = manual();
+  let visibility: (() => void) | null = null;
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler, onVisibility: (f) => (visibility = f) });
+  let away = false;
+  const s = sink({ unseen: () => away });
+  const pane = out.pane(s.frameSink);
+  pane.push(new Uint8Array(1000), 1000);
+  expect(c.queued()).toBe(1);
+  away = true; // the window is minimised: the queued frame would never run
+  visibility!();
+  expect(c.queued()).toBe(0);
+  expect(c.timers()).toBe(1);
+  c.advance(FRAME_MS);
+  expect(s.all()).toBe(1000);
+  pane.push(new Uint8Array(500), 500);
+  expect(c.timers()).toBe(1);
+  away = false; // restored before the timer fired: the frame takes over
+  visibility!();
+  expect(c.timers()).toBe(0);
+  expect(c.queued()).toBe(1);
+  c.frame();
+  expect(s.all()).toBe(1500);
+  expect(pane.pending).toBe(0);
 });

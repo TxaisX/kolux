@@ -772,10 +772,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // T-765: output goes to xterm through the frame queue, one write a frame with the window's
     // others. The acknowledgement is still the write callback's: the reader's unacked window is
     // what pauses a program that runs ahead, so nothing is dropped and the order is the arrival order.
+    // DT-C236: a window minimised or in the tray has no frames; the shown pane keeps its full share
+    // by timer then (nothing is painted), while the panes behind other tabs trickle.
     const output = outputFrames.pane({
       write: (bytes, done) => term.write(bytes, done),
       ack: (bytes) => acks.drew(bytes),
-      hidden: () => isHidden.current || document.hidden,
+      hidden: () => isHidden.current,
+      unseen: () => document.hidden,
     });
     outputRef.current = output;
     let ended = false;

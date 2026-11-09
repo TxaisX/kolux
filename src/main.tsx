@@ -24,7 +24,6 @@ import { showStartFailure } from "./tower/startFailed";
 // is the window shown, so its first visible frame already has the saved colours and font.
 async function start() {
   applyAppearance(cachedAppearance());
-  installWindowBackground(); // DT-C236: the engine's default background follows the body colour
   followSystemMode();
   // T-546-c: the Tower's own window draws only the Tower; the panes, the settings and the layout stay the main window's.
   if (isTowerWindow(location.hash)) {
@@ -33,6 +32,8 @@ async function start() {
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<TowerWindow />);
     return;
   }
+  // DT-C236: the main window's page tells the engine its background (the Tower has its own view and look).
+  installWindowBackground();
   // FIX-4 (council d2 AFTER 8): the App module (and everything it imports) is loaded for the main
   // window only; the Tower window never evaluates it. The load starts now and runs beside the settings read.
   const loadApp = import("./App");

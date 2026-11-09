@@ -21,13 +21,14 @@
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Webview};
 
 /// How long the window stays out of sight before the view is asked to give memory back.
 pub const MEMORY_LOW_AFTER: Duration = Duration::from_secs(60);
 
-/// What the engine is told.
+/// What the engine is told. (Only the Windows engine reads the flag; elsewhere the steps are counted and dropped.)
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(not(windows), allow(dead_code))]
 pub enum Step {
     /// ICoreWebView2Controller::IsVisible.
     Visible(bool),
@@ -107,10 +108,15 @@ pub fn main_hidden(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(MEMORY_LOW_AFTER);
-        let step = SIGHT.lock().ok().and_then(|mut s| s.tick(generation, Instant::now()));
-        if let Some(step) = step {
-            apply(&app, &[step]);
-        }
+        // The tick and its step run together on the main thread, where every show runs too: a show
+        // cannot land between them, so LOW never follows a show.
+        let on_main = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            let step = SIGHT.lock().ok().and_then(|mut s| s.tick(generation, Instant::now()));
+            if let Some(step) = step {
+                apply(&on_main, &[step]);
+            }
+        });
     });
 }
 
@@ -141,8 +147,12 @@ fn apply(app: &AppHandle, steps: &[Step]) {
 /// The page's own background, as the page reports it (`window_background`): the engine's default
 /// background takes it, so a frame the page has not painted yet (right after a restore) shows the
 /// theme colour and never white. None keeps the view transparent, for the blurred-window look.
+/// Only the main window's page is heard: another window (the Tower) has its own view and colours.
 #[tauri::command]
-pub fn window_background(app: AppHandle, rgb: Option<[u8; 3]>) {
+pub fn window_background(app: AppHandle, webview: Webview, rgb: Option<[u8; 3]>) {
+    if webview.label() != "main" {
+        return;
+    }
     let Some(w) = app.get_webview_window("main") else { return };
     #[cfg(windows)]
     let _ = w.with_webview(move |pw| imp::background(&pw.controller(), rgb));

@@ -553,7 +553,8 @@ pub fn run() {
                     if window.is_minimized().unwrap_or(false) {
                         tray::window_minimised(window.app_handle());
                         webview_power::main_hidden(window.app_handle());
-                    } else {
+                    } else if window.is_visible().unwrap_or(false) {
+                        // A resize of a window hidden to the tray (a display change) is no show.
                         webview_power::main_shown(window.app_handle());
                     }
                 }

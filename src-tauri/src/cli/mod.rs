@@ -3684,9 +3684,11 @@ pub fn serve(app: tauri::AppHandle, dir: &Path) -> std::io::Result<()> {
                 }
             };
             let front = || -> Result<(), String> {
-                let w = app.get_webview_window("main").ok_or("the Kolux window is gone")?;
-                let _ = w.unminimize();
-                w.show().and_then(|_| w.set_focus()).map_err(|e| e.to_string())
+                // DT-C236: the one show path, so the engine hears "in sight" before the first frame.
+                if app.get_webview_window("main").is_none() {
+                    return Err("the Kolux window is gone".into());
+                }
+                crate::tray::show_main(&app).map_err(|e| e.to_string())
             };
             dispatch(&request_ctx(&store, &git, &terminals, &notify, &front), req)
         });
