@@ -103,9 +103,8 @@ pub fn shown(v: &Webview, id: u32) {
     super::engine::resume(v);
 }
 
-/// An agent's call is about to reach the tab: a suspended page is resumed first (the hide stays
-/// current, so the page is suspended again later if the agent leaves it alone; `drove` spares it
-/// for DRIVEN_FOR meanwhile).
+/// An agent's call is about to reach the tab: a suspended page is resumed first. It then stays
+/// awake until the tab is next shown and hidden again (a follow-up may re-arm the timer here).
 pub fn driven(app: &AppHandle, id: u32) {
     if let Ok(v) = super::view(app, id) {
         super::engine::resume(&v);

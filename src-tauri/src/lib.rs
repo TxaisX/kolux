@@ -355,8 +355,11 @@ pub fn run() {
             // APP-014: spelling suggestions for the text-field menu (Windows).
             edit_menu::install(app.handle());
             if let Some(w) = app.get_webview_window("main") {
+                let handle = app.handle().clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_secs(5));
+                    // DT-C236: the engine is told the view is in sight before the window shows.
+                    webview_power::main_shown(&handle);
                     let _ = w.show();
                 });
             }
