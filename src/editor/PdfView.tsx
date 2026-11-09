@@ -125,12 +125,12 @@ export default function PdfView({ id, path, root = null, hidden = false, focused
       const lib = await pdfLib();
       const task = lib.getDocument({ ...viewerOptions(new URL(import.meta.env.BASE_URL, document.baseURI).href), data: bytes });
       opened = await task.promise;
-      if (!alive) return void opened.destroy();
+      if (!alive) return void opened.loadingTask.destroy();
       setDoc(opened);
     })().catch((e) => alive && setError(e?.said ? e.message : whyNotOpened(e, name)));
     return () => {
       alive = false;
-      void opened?.destroy();
+      void opened?.loadingTask.destroy();
     };
   }, [path, tries]); // eslint-disable-line react-hooks/exhaustive-deps
   // The tab closing (the pane going away) drops what it kept.
