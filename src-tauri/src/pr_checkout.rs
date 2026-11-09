@@ -151,7 +151,8 @@ fn same_repo(a: &str, b: &str) -> bool {
 /// The settings a branch's push takes, as `git config` gives them: the branch's own push remote,
 /// then the repository's default push remote, then the remote the branch tracks.
 pub fn push_target(worktree: &Path) -> Option<PushTarget> {
-    let branch = run(&["symbolic-ref", "--quiet", "--short", "HEAD"], Some(worktree)).ok().filter(|b| !b.is_empty())?;
+    // The full ref, stripped: `--short` prints `heads/main` when a tag is also called `main` (T-779 review fix 7).
+    let branch = run(&["symbolic-ref", "--quiet", "HEAD"], Some(worktree)).ok().and_then(|r| r.strip_prefix("refs/heads/").map(str::to_string)).filter(|b| !b.is_empty())?;
     let conf = |key: String| run(&["config", "--get", &key], Some(worktree)).ok().filter(|v| !v.is_empty());
     let remote = conf(format!("branch.{branch}.pushRemote")).or_else(|| conf("remote.pushDefault".to_string())).or_else(|| conf(format!("branch.{branch}.remote")))?;
     if remote == "." {

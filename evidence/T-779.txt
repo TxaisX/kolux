@@ -224,3 +224,23 @@ Review fix 6 (independent re-review of 509538cc, 2026-11-09: one blocker, six pu
     test git::tests::t779e_push_addresses_are_resolved_by_git_itself ... FAILED
     test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 0.43s
     error: test failed, to rerun pass `--lib`
+
+Review fix 7 (independent re-review of 0cc3e4e0, 2026-11-09: two push bypasses reproduced)
+  A tag named like the branch made `symbolic-ref --short` print heads/main, hiding branch.main.pushRemote
+  (here and in pr_checkout::push_target): both now strip refs/heads/ from the full ref. A legacy remote file
+  with several URL lines: candidates now resolve with `remote get-url --push --all` first. A name that is no
+  remote gets a plain message (git would take it as a folder).
+  Backstop, since four rounds found address-resolution gaps: an untrusted push now carries
+  protocol.file.allow=never, so git itself refuses a local path or file:// transport however the address was
+  chosen (checked by hand on git 2.43: "transport 'file' not allowed", the receiving hook does not run; the
+  control without it runs the hook). Tested live in t779e_tag_named_branches_..._file_transport_backstop.
+  Left (backlog, nits): remote.<n>.vcs helpers found on PATH (not a program from the folder); git older than
+  2.31 ignores the injected GIT_CONFIG_COUNT pairs (all of T-779's overrides depend on them).
+  GREEN: cargo test --lib -- git:: auto_pr:: scm:: tidy:: pr_checkout:: -> all pass but the Linux-only three;
+     clippy on the changed files: clean.
+  RED (the new test on 0cc3e4e0):
+    test git::tests::t779e_tag_named_branches_legacy_url_lists_and_the_file_transport_backstop ... FAILED
+    thread 'git::tests::t779e_tag_named_branches_legacy_url_lists_and_the_file_transport_backstop' (3928) panicked at src/git.rs:3996:9:
+    the branch's pushRemote behind a tag of the same name
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2925 filtered out; finished in 0.67s
+    error: test failed, to rerun pass `--lib`
