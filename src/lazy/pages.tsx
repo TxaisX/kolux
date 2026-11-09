@@ -3,7 +3,7 @@
 // sheet or the editor into the window's first frame (cycle 3, first load). Every name here is the module's
 // own export, so a caller swaps its import line and nothing else changes: `deferred` keeps the place the
 // element sits in. DT-C230: `prefetch()` reads the settings page and the plan sheet (no placeholder) at the
-// first idle moment and every other surface about ten seconds after start; one opened before that loads then.
+// first idle moment; every other surface here loads the first time it is opened.
 import { createElement, type ComponentProps, type ComponentType } from "react";
 import { deferred } from "./deferred";
 

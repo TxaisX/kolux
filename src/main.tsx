@@ -61,7 +61,7 @@ async function start() {
     requestAnimationFrame(() => {
       void getCurrentWindow().show().catch(() => {});
       // Cycle 3 (first load), DT-C230: the editor, the browser pane and the surfaces with no placeholder are
-      // read in the background now that the first frame is up; every other surface about 10 s later.
+      // read in the background now that the first frame is up; every other surface on its first open.
       prefetch();
     }),
   );

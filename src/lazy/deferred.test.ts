@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { afterEach, expect, test } from "vitest";
 import { installDom, mount, settle } from "../tasks/fakeDom";
 
-const g = globalThis as { requestIdleCallback?: (f: () => void, opts?: { timeout: number }) => void };
+const g = globalThis as { requestIdleCallback?: (f: () => void) => void };
 afterEach(() => {
   delete g.requestIdleCallback;
 });
@@ -25,25 +25,40 @@ test("a screen prefetch has already read draws straight away, with no fallback f
   await m.unmount();
 });
 
-test("DT-C230: prefetch reads the marked surfaces at the first idle moment and every other one about 10 s later", async () => {
-  const { deferred, prefetch, LATE_PREFETCH_MS } = await import("./deferred");
+test("DT-C230: prefetch reads only the marked surfaces, at the first idle moment; the rest load on first open", async () => {
+  const { doc } = installDom();
+  const { deferred, prefetch } = await import("./deferred");
   const read: string[] = [];
-  const mod = (name: string) => () => (read.push(name), Promise.resolve({ default: () => null }));
-  deferred(mod("page"));
+  const mod = (name: string) => () => (read.push(name), Promise.resolve({ default: () => createElement("p", null, name) }));
+  const Page = deferred(mod("page"));
   deferred(mod("dialog"), createElement("p", null, "Loading…"));
   deferred(mod("editor"), undefined, { prefetch: true });
-  const idles: Array<number | undefined> = [];
-  g.requestIdleCallback = (f, opts) => (idles.push(opts?.timeout), f());
+  let idles = 0;
+  g.requestIdleCallback = (f) => (idles++, f());
   const later: Array<{ f: () => void; ms: number }> = [];
   prefetch((f, ms) => void later.push({ f, ms }));
   await settle();
-  expect(read).toEqual(["editor"]);
-  expect(later.map((l) => l.ms)).toEqual([LATE_PREFETCH_MS]);
-  expect(LATE_PREFETCH_MS).toBe(10_000);
+  expect([read, idles, later]).toEqual([["editor"], 1, []]); // nothing scheduled for later
+  const m = await mount(createElement(Page), doc);
+  await settle();
+  expect(read).toEqual(["editor", "page"]); // read when first opened, and only then
+  expect(m.container.textContent).toBe("page");
+  await m.unmount();
+  expect(read).not.toContain("dialog");
+});
+
+test("DT-C230: without an idle callback the marked surfaces are read 1.5 s after the first frame", async () => {
+  const { deferred, prefetch } = await import("./deferred");
+  const read: string[] = [];
+  deferred(() => (read.push("plan"), Promise.resolve({ default: () => null })), undefined, { prefetch: true });
+  deferred(() => (read.push("other"), Promise.resolve({ default: () => null })));
+  const later: Array<{ f: () => void; ms: number }> = [];
+  prefetch((f, ms) => void later.push({ f, ms }));
+  expect(later.map((l) => l.ms)).toEqual([1500]);
   later[0].f();
   await settle();
-  expect(read.filter((r) => r !== "editor").sort()).toEqual(["dialog", "page"]);
-  expect(idles).toEqual([undefined, 5_000]); // the late step waits for an idle moment, at most 5 s
+  expect(read).toContain("plan");
+  expect(read).not.toContain("other");
 });
 
 test("DT-C230: the editor, the browser pane and the surfaces with no placeholder are the ones read first", () => {
