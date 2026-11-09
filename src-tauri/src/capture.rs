@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 use tauri::{Emitter, Manager};
 
 /// Sent to the window when the library changed behind its back.
@@ -159,21 +159,59 @@ pub fn claude_dir() -> Option<PathBuf> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(|h| PathBuf::from(h).join(".claude"))
 }
 
-/// Every session transcript: projects/<folder>/<session>.jsonl and the subagents' beside them.
-fn transcripts(root: &Path) -> Vec<PathBuf> {
+/// A transcript found in a folder listing, with the size and change time the listing gave. On
+/// Windows the listing carries them, so no file is opened to learn them.
+struct Found {
+    path: PathBuf,
+    len: u64,
+    at: Option<SystemTime>,
+}
+
+/// A folder's entries; a folder that could not be listed whole clears `whole` (one that is not
+/// there is listed whole: it has nothing in it).
+fn list(dir: &Path, whole: &mut bool) -> Vec<fs::DirEntry> {
+    match fs::read_dir(dir) {
+        Ok(entries) => entries.filter_map(|e| e.map_err(|_| *whole = false).ok()).collect(),
+        Err(e) => {
+            *whole &= e.kind() == std::io::ErrorKind::NotFound;
+            Vec::new()
+        }
+    }
+}
+
+fn found(e: &fs::DirEntry, path: PathBuf, out: &mut Vec<Found>, whole: &mut bool) {
+    match e.metadata() {
+        Ok(m) => out.push(Found { path, len: m.len(), at: m.modified().ok() }),
+        Err(_) => *whole = false,
+    }
+}
+
+/// Every session transcript: projects/<folder>/<session>.jsonl and the subagents' beside them,
+/// into `out` (emptied first, its room kept). False when a folder could not be listed whole, so a
+/// transcript missing from `out` may still be there.
+fn transcripts(root: &Path, out: &mut Vec<Found>) -> bool {
     let jsonl = |p: &Path| p.extension().is_some_and(|e| e == "jsonl");
-    let mut out = Vec::new();
-    for project in fs::read_dir(root).into_iter().flatten().flatten() {
-        for f in fs::read_dir(project.path()).into_iter().flatten().flatten() {
-            let p = f.path();
+    let mut whole = true;
+    out.clear();
+    for project in list(root, &mut whole) {
+        if !project.file_type().is_ok_and(|t| t.is_dir()) {
+            continue;
+        }
+        for e in list(&project.path(), &mut whole) {
+            let p = e.path();
             if jsonl(&p) {
-                out.push(p);
-            } else if f.file_type().is_ok_and(|t| t.is_dir()) {
-                out.extend(fs::read_dir(p.join("subagents")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| jsonl(p)));
+                found(&e, p, out, &mut whole);
+            } else if e.file_type().is_ok_and(|t| t.is_dir()) {
+                for s in list(&p.join("subagents"), &mut whole) {
+                    let sp = s.path();
+                    if jsonl(&sp) {
+                        found(&s, sp, out, &mut whole);
+                    }
+                }
             }
         }
     }
-    out
+    whole
 }
 
 fn read_span(path: &Path, from: u64, to: u64) -> Option<Vec<u8>> {
@@ -184,39 +222,105 @@ fn read_span(path: &Path, from: u64, to: u64) -> Option<Vec<u8>> {
     Some(buf)
 }
 
+/// A file counts as busy for this long after it last changed: its size is asked for on every poll.
+const HOT: Duration = Duration::from_secs(10 * 60);
+/// Every this often each transcript's size is asked for, busy or not: a folder listing can lag
+/// behind a file a writer holds open, so a quiet file that grows is still caught within this.
+const SWEEP: Duration = Duration::from_secs(30);
+
 #[derive(Default)]
 struct Seen {
     offset: u64,
     calls: HashMap<String, Call>,
+    /// The size and change time the folder listing gave at the last poll.
+    listed: (u64, Option<SystemTime>),
+    /// When the file was last seen to change.
+    changed: Option<Instant>,
+    /// The poll that last listed the file; one no poll lists any more is let go.
+    poll: u64,
+}
+
+/// What the watcher knows between polls.
+#[derive(Default)]
+struct Watch {
+    seen: HashMap<PathBuf, Seen>,
+    polls: u64,
+    swept: Option<Instant>,
+    found: Vec<Found>,
+}
+
+impl Watch {
+    /// One poll at `now` (wall clock `wall`): the publishes added to the transcripts since the last
+    /// one. `size` asks one file for its size; it is asked only of a file that changed in the last
+    /// `HOT`, is new, or whose listing changed, and of every file each `SWEEP`. A file there at the
+    /// first poll is read from its end then, so what was published before Kolux started is not
+    /// replayed.
+    fn poll(&mut self, root: &Path, now: Instant, wall: SystemTime, size: &mut dyn FnMut(&Path) -> Option<u64>) -> Vec<Publish> {
+        let first = self.polls == 0;
+        self.polls += 1;
+        let sweep = self.swept.is_none_or(|t| now.saturating_duration_since(t) >= SWEEP);
+        if sweep {
+            self.swept = Some(now);
+        }
+        let mut found = std::mem::take(&mut self.found);
+        let whole = transcripts(root, &mut found);
+        let mut out = Vec::new();
+        for f in found.drain(..) {
+            let mut fresh = false;
+            let s = if let Some(s) = self.seen.get_mut(&f.path) {
+                s
+            } else {
+                fresh = true;
+                self.seen.entry(f.path.clone()).or_default()
+            };
+            s.poll = self.polls;
+            let listed = (f.len, f.at);
+            let recent = f.at.is_none_or(|m| wall.duration_since(m).map_or(true, |d| d < HOT)) || s.changed.is_some_and(|t| now.saturating_duration_since(t) < HOT);
+            let ask = sweep || fresh || recent || listed != s.listed;
+            s.listed = listed;
+            if !ask {
+                continue;
+            }
+            let Some(len) = size(&f.path) else { continue };
+            if fresh && first {
+                s.offset = len;
+            }
+            if len < s.offset {
+                // rewritten from the start
+                (s.offset, s.calls) = (0, HashMap::new());
+            }
+            if len == s.offset {
+                continue;
+            }
+            s.changed = Some(now);
+            let Some(bytes) = read_span(&f.path, s.offset, len) else { continue };
+            let Some(cut) = bytes.iter().rposition(|&c| c == b'\n') else { continue }; // a line still being written
+            s.offset += cut as u64 + 1;
+            out.extend(scan(&String::from_utf8_lossy(&bytes[..cut]), &mut s.calls));
+        }
+        self.found = found;
+        if whole {
+            let polls = self.polls;
+            self.seen.retain(|_, s| s.poll == polls);
+        }
+        out
+    }
 }
 
 /// Watches the transcripts from now on: files already there are read from their current end, so
 /// publishes made before Kolux started are not replayed.
 /// ponytail: polls every 2 s, and a call made before start whose result lands after it is missed.
+/// A file quiet for 10 minutes whose growth the folder listing does not show yet is caught by the
+/// 30 s sweep instead (DT-C row "transcript polling asks only busy files").
 pub fn start(app: tauri::AppHandle) {
     let Some(root) = claude_dir().map(|d| d.join("projects")) else { return };
     std::thread::spawn(move || {
         let started = artifacts::now_ms();
-        let mut seen: HashMap<PathBuf, Seen> = HashMap::new();
-        let mut first = true;
+        let mut watch = Watch::default();
         loop {
-            for f in transcripts(&root) {
-                let Ok(len) = fs::metadata(&f).map(|m| m.len()) else { continue };
-                let s = seen.entry(f.clone()).or_insert_with(|| Seen { offset: if first { len } else { 0 }, ..Default::default() });
-                if len < s.offset {
-                    *s = Seen::default(); // rewritten from the start
-                }
-                if len == s.offset {
-                    continue;
-                }
-                let Some(bytes) = read_span(&f, s.offset, len) else { continue };
-                let Some(cut) = bytes.iter().rposition(|&c| c == b'\n') else { continue }; // a line still being written
-                s.offset += cut as u64 + 1;
-                for p in scan(&String::from_utf8_lossy(&bytes[..cut]), &mut s.calls) {
-                    keep(&app, p, started);
-                }
+            for p in watch.poll(&root, Instant::now(), SystemTime::now(), &mut |f| fs::metadata(f).ok().map(|m| m.len())) {
+                keep(&app, p, started);
             }
-            first = false;
             std::thread::sleep(POLL);
         }
     });
@@ -240,6 +344,7 @@ fn keep(app: &tauri::AppHandle, p: Publish, started: u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     fn line(v: serde_json::Value) -> String {
         v.to_string() + "\n"
@@ -324,5 +429,66 @@ mod tests {
         assert_eq!(parse_time("2026-09-24T09:56:01.421Z"), Some(1_790_243_761_421));
         assert_eq!(parse_time("2000-02-29T12:00:00.5Z"), Some(951_825_600_500));
         assert_eq!(parse_time("yesterday"), None);
+    }
+
+    /// SKILL-035 at scale: with 2,000 quiet transcripts, a poll between sweeps asks no file for its
+    /// size; a file that grows is still read, a sweep asks every file, and a file that went is let go.
+    #[test]
+    fn skill_035_quiet_transcripts_are_not_asked_for_their_size_between_sweeps() {
+        let t = crate::test_dir::temp("capture-quiet");
+        let root = t.0.join("projects");
+        let hour_ago = SystemTime::now() - Duration::from_secs(3600);
+        let mut files = Vec::new();
+        for i in 0..2000 {
+            let dir = root.join(format!("G--proj-{}", i / 100));
+            let p = if i % 50 == 0 { dir.join(format!("s-{i}")).join("subagents").join("agent.jsonl") } else { dir.join(format!("s-{i}.jsonl")) };
+            fs::create_dir_all(p.parent().unwrap()).unwrap();
+            fs::write(&p, "{}\n").unwrap();
+            fs::File::options().write(true).open(&p).unwrap().set_modified(hour_ago).unwrap();
+            files.push(p);
+        }
+        let asked = std::cell::Cell::new(0usize);
+        let mut size = |p: &Path| {
+            asked.set(asked.get() + 1);
+            fs::metadata(p).ok().map(|m| m.len())
+        };
+        let (mut w, t0, wall) = (Watch::default(), Instant::now(), SystemTime::now());
+        let at = |s: u64| t0 + Duration::from_secs(s);
+        assert!(w.poll(&root, at(0), wall, &mut size).is_empty(), "what was there at start is not replayed");
+        assert_eq!((asked.replace(0), w.seen.len()), (2000, 2000), "the first poll sweeps");
+        assert!(w.poll(&root, at(2), wall, &mut size).is_empty());
+        assert_eq!(asked.replace(0), 0, "no per-file size between sweeps");
+        // a publish lands in one quiet transcript
+        let url = "https://claude.ai/artifact/RtHRJW2CNxVSVEfdBezseR";
+        let page = "G:\\Temp\\page.html";
+        let mut f = fs::OpenOptions::new().append(true).open(&files[7]).unwrap();
+        f.write_all((call("a", "Artifact", serde_json::json!({"file_path": page})) + &result("a", url, page, false)).as_bytes()).unwrap();
+        drop(f);
+        assert_eq!(w.poll(&root, at(4), SystemTime::now(), &mut size).len(), 1, "a grown file is read");
+        assert_eq!(asked.replace(0), 1, "only the grown file is asked");
+        w.poll(&root, at(6), SystemTime::now(), &mut size);
+        assert_eq!(asked.replace(0), 1, "a file that just changed stays busy");
+        w.poll(&root, at(32), SystemTime::now(), &mut size);
+        assert_eq!(asked.replace(0), 2000, "the 30 s sweep asks every file");
+        fs::remove_file(&files[0]).unwrap();
+        w.poll(&root, at(34), SystemTime::now(), &mut size);
+        assert_eq!(w.seen.len(), 1999, "a transcript that went is let go");
+    }
+
+    #[test]
+    fn skill_035_a_transcript_rewritten_shorter_is_read_from_its_start() {
+        let t = crate::test_dir::temp("capture-rewrite");
+        let root = t.0.join("projects");
+        let p = root.join("G--proj").join("s.jsonl");
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(&p, "x".repeat(4000) + "\n").unwrap();
+        let mut size = |p: &Path| fs::metadata(p).ok().map(|m| m.len());
+        let mut w = Watch::default();
+        let t0 = Instant::now();
+        w.poll(&root, t0, SystemTime::now(), &mut size);
+        let url = "https://claude.ai/artifact/RtHRJW2CNxVSVEfdBezseR";
+        let page = "G:\\Temp\\page.html";
+        fs::write(&p, call("a", "Artifact", serde_json::json!({"file_path": page})) + &result("a", url, page, false)).unwrap();
+        assert_eq!(w.poll(&root, t0 + Duration::from_secs(2), SystemTime::now(), &mut size).len(), 1);
     }
 }
