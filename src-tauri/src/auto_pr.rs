@@ -1019,6 +1019,20 @@ mod tests {
         p.to_string_lossy().replace('\\', "/")
     }
 
+    /// Test setup only: a push that prepares the remote's state, made with plain git so the write gate
+    /// (which refuses a push to a repository on this computer from an untrusted folder) is not in the way.
+    fn setup_push(args: &[&str], dir: &Path) {
+        let mut cmd = std::process::Command::new("git");
+        cmd.args(args).current_dir(dir).env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // no console window
+        }
+        let out = cmd.output().unwrap();
+        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    }
+
     fn bare_repo(name: &str, head: &str) -> PathBuf {
         let bare = std::env::temp_dir().join(format!("kolux-rs-autopr-bare-{name}-{}", id()));
         let _ = fs::remove_dir_all(&bare);
@@ -1032,7 +1046,7 @@ mod tests {
         let bare = bare_repo(name, "main");
         let dir = repo(name);
         run(&["remote", "add", "origin", &url(&bare)], Some(&dir)).unwrap();
-        run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "-u", "origin", "main"], &dir);
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
         (dir, bare)
     }
@@ -1343,7 +1357,7 @@ mod tests {
         let (dir, bare) = with_origin("b-odd");
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
-        run(&["push", "-q", "origin", "main:other"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "main:other"], &dir);
         run(&["branch", "--set-upstream-to=origin/other"], Some(&dir)).unwrap();
         fs::write(dir.join("b.txt"), "b\n").unwrap();
         let before = head(&dir);
@@ -1649,7 +1663,7 @@ mod tests {
         // A secret goes up by hand, then the remote branch is moved back before it; this computer's
         // idea of origin/feature (the stale upstream) still includes the secret.
         commit_file(&dir, "deploy.sh", &format!("TOKEN={}\n", fake_token()));
-        run(&["push", "-q", "origin", "feature"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "feature"], &dir);
         run(&["update-ref", "refs/heads/feature", &c1], Some(&bare)).unwrap();
         commit_file(&dir, "more.txt", "fine\n");
         let s = push_step(&dir).unwrap();
@@ -1702,7 +1716,7 @@ mod tests {
         let bare = bare_repo("f-trunk", "trunk");
         let dir = repo("f-trunk");
         run(&["remote", "add", "origin", &url(&bare)], Some(&dir)).unwrap();
-        run(&["push", "-q", "origin", "main:trunk"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "main:trunk"], &dir);
         let before = remote_ref(&bare, "trunk");
         assert!(before.is_some());
         branch(&dir, "TRUNK");
@@ -1768,7 +1782,7 @@ mod tests {
         }
         run(&["checkout", "-q", "feature"], Some(&other)).unwrap();
         commit_file(&other, "theirs.txt", "t\n");
-        run(&["push", "-q", "origin", "feature"], Some(&other)).unwrap();
+        setup_push(&["push", "-q", "origin", "feature"], &other);
         let theirs = remote_ref(&bare, "feature").unwrap();
         // This side adds its own commit.
         commit_file(&dir, "mine.txt", "m\n");
@@ -1991,7 +2005,7 @@ mod tests {
 ");
         // A push that landed while this computer kept its old copy of origin/feature: the branch is
         // linked, nothing is ahead of origin, but the local copy says one commit is.
-        run(&["push", "-q", &url(&bare), &format!("{}:refs/heads/feature", head(&dir))], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", &url(&bare), &format!("{}:refs/heads/feature", head(&dir))], &dir);
         run(&["update-ref", "refs/remotes/origin/feature", &old], Some(&dir)).unwrap();
         assert_eq!(scm::status(&dir).unwrap().ahead, 1, "the premise");
         let s = push_step(&dir).unwrap();
@@ -2012,7 +2026,7 @@ mod tests {
         run(&["config", "push.followTags", "true"], Some(&dir)).unwrap();
         run(&["tag", "-a", "v1", "-m", "a tag message that is never scanned"], Some(&dir)).unwrap();
         // The premise: with that setting an explicit commit-to-branch push does carry the tag.
-        run(&["push", "-q", &url(&elsewhere), &format!("{}:refs/heads/x", head(&dir))], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", &url(&elsewhere), &format!("{}:refs/heads/x", head(&dir))], &dir);
         assert!(run(&["for-each-ref", "refs/tags"], Some(&elsewhere)).unwrap().contains("refs/tags/v1"), "the premise");
         let s = push_step(&dir).unwrap();
         assert_eq!(s.kind, "done", "{s:?}");
@@ -2102,7 +2116,7 @@ mod tests {
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
         // The branch tracks another name: the automatic flow skips it, the manual one accepts it.
-        run(&["push", "-q", "origin", "main:other"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "main:other"], &dir);
         run(&["branch", "--set-upstream-to=origin/other"], Some(&dir)).unwrap();
         fs::write(dir.join("b.txt"), "b\n").unwrap();
         assert_eq!(commit_step(&dir).unwrap().kind, "skipped");

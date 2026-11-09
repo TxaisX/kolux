@@ -3813,11 +3813,18 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("hook");
+        // T-779 S4: the folder's own hook runs only in a trusted folder; this test is about what the hook does.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         commit_file(&dir, "login.ts", "x\n");
         let hook = dir.join(".git").join("hooks").join("pre-push");
         fs::write(&hook, "#!/bin/sh\nprintf '\\033[31mlint: 2 problems in login.ts\\033[0m\\n' >&2\nexit 1\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dir.join(".git").join("hooks").join("pre-push"), fs::Permissions::from_mode(0o755)).unwrap(); // Git for Windows runs it without
+        }
         let out = remote(&dir, "push").unwrap();
         assert!(!out.ok);
         assert_eq!(out.kind, Some("hook"), "{}", out.output);
@@ -3918,10 +3925,17 @@ and more
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("hang");
+        // T-779 S4: the folder's own hook runs only in a trusted folder; this test is about what the hook does.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         commit_file(&dir, "slow.txt", "x\n");
         fs::write(dir.join(".git").join("hooks").join("pre-push"), "#!/bin/sh\nsleep 60\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dir.join(".git").join("hooks").join("pre-push"), fs::Permissions::from_mode(0o755)).unwrap(); // Git for Windows runs it without
+        }
         let out = remote_within(&dir, "push", std::time::Duration::from_secs(1)).unwrap();
         assert!(!out.ok);
         assert_eq!(out.kind, Some("network"), "{}", out.output);
@@ -4085,7 +4099,8 @@ and more
         eprintln!("{report}");
         assert!(argvs.iter().filter(|a| a.starts_with("status ")).count() >= 3, "trace2 log missing: {report}");
         let network = ["fetch", "ls-remote", "remote-", "upload-pack", "credential", "fsmonitor", "http"];
-        assert!(!argvs.iter().any(|a| network.iter().any(|n| a.contains(n))), "a status read went to the network: {report}");
+        // The program-key listing (`config ... --get-regexp`) names key patterns such as ^credential\.; it is a read.
+        assert!(!argvs.iter().filter(|a| !a.starts_with("config ")).any(|a| network.iter().any(|n| a.contains(n))), "a status read went to the network: {report}");
         assert!(took < std::time::Duration::from_secs(20), "{report}");
         let fetched = remote(&dir, "fetch").unwrap();
         assert!(!fetched.ok && !fetched.output.is_empty(), "{fetched:?}");
@@ -4225,6 +4240,8 @@ and more
     #[test]
     fn commit_takes_the_staged_work_and_a_refusing_hook_shows_as_blocked() {
         let repo = temp_repo("commit");
+        // T-779 S4: the folder's own hook runs only in a trusted folder; this test is about what the hook does.
+        crate::git::trust_for_test(&repo);
         fs::write(repo.join("README.md"), "hello\nworld\n").unwrap();
         fs::write(repo.join("later.txt"), "not yet\n").unwrap();
         assert!(commit(&repo, "  ").unwrap_err().contains("message"));

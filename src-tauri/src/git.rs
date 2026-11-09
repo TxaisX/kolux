@@ -121,7 +121,8 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
     let start = existing.and_then(|v| v.to_str()).and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(0);
     // `log.showSignature=false`: a repository's own `log.showSignature=true` with a `gpg.program` of its
     // choosing would run that program on every `log` (review fix 2); Kolux never shows signatures.
-    let mut pairs = vec![("core.fsmonitor", "false"), ("log.showSignature", "false")];
+    // Review fix 4 (B3): `ext::` remotes run a command line of the URL's choosing; Kolux never needs one.
+    let mut pairs = vec![("core.fsmonitor", "false"), ("log.showSignature", "false"), ("protocol.ext.allow", "never")];
     if cfg!(windows) {
         pairs.push(("core.longpaths", "true"));
     }
@@ -148,14 +149,25 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
 /// upload/receive programs (replaced on every run, see `net_overrides`), and the keys that make a
 /// write or a transfer unsafe to run at all in an untrusted folder (a credential helper, a hooks
 /// folder, a merge driver: see `write_access`).
-const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$|^core\.(sshcommand|gitproxy|hookspath)$|^remote\..*\.(uploadpack|receivepack)$|^credential\.(.*\.)?helper$|^merge\..*\.driver$";
+const REPO_PROGRAM_KEYS: &str = r"^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$|^gpg\.([^.]+\.)?program$|^gpg\.ssh\.defaultkeycommand$|^core\.(sshcommand|gitproxy|hookspath)$|^remote\..*\.(uploadpack|receivepack)$|^credential\.(.*\.)?helper$|^merge\..*\.driver$|^core\.alternaterefscommand$|^extensions\.partialclone$|^remote\..*\.promisor$";
 
 /// The keys a USER's own config may set that a folder's keys of the same name would shadow (S4).
 const USER_NET_KEYS: &str = r"^core\.(sshcommand|gitproxy)$";
 
 /// A key whose value is a program git runs on a read, and which a read blanks (see `overrides_for`).
 fn is_program_key(key: &str) -> bool {
-    key.starts_with("filter.") || key.starts_with("diff.") || key.starts_with("gpg.")
+    // Review fix 4: a merge driver is blanked on a read too (merge-tree's forecast would run it), and
+    // `core.alternateRefsCommand` (a program `fetch` and a receiving push run) is blanked on every run.
+    key.starts_with("filter.") || key.starts_with("diff.") || key.starts_with("gpg.") || is_merge_driver_key(key) || key == ALT_REFS
+}
+
+/// Review fix 4 (B5): never needed, so never kept, trusted folder or not.
+const ALT_REFS: &str = "core.alternaterefscommand";
+
+/// Review fix 4 (B3, B4): a partial clone's read can fetch missing objects on its own (lazy fetch), which
+/// runs the folder's credential helper or contacts whatever its promisor remote names.
+fn partial_clone(found: &[(String, String)]) -> bool {
+    found.iter().any(|(k, v)| k == "extensions.partialclone" || (k.starts_with("remote.") && k.ends_with(".promisor") && v.eq_ignore_ascii_case("true")))
 }
 
 /// A key naming a program for a transfer (S4) that is replaced, never just blanked, so the user's own
@@ -244,7 +256,7 @@ fn overrides_for(found: &[(String, String)], access: Access) -> Vec<(String, Str
             continue;
         }
         let Some(driver) = key.rsplit_once('.').map(|(d, _)| d) else { continue };
-        if access == Access::TrustedWrite && !key.starts_with("diff.") {
+        if access == Access::TrustedWrite && !key.starts_with("diff.") && key != ALT_REFS {
             continue;
         }
         if driver.starts_with("filter.") && is_lfs(driver) {
@@ -745,6 +757,12 @@ fn ref_write(args: &[&str]) -> bool {
     }
 }
 
+/// Review fix 4 (B1 and the index should-fix): commands that change nothing a write gate looks at but can
+/// still start a hook (`gc --auto` and maintenance: pre-auto-gc; rm, mv, update-index: post-index-change).
+fn runs_hooks(args: &[&str]) -> bool {
+    matches!(after_options(args).first().copied(), Some("gc" | "maintenance" | "rm" | "mv" | "update-index"))
+}
+
 const COMMIT_HOOKS: [&str; 5] = ["pre-commit", "prepare-commit-msg", "commit-msg", "post-commit", "post-rewrite"];
 const EVERY_RUN_HOOKS: [&str; 3] = ["reference-transaction", "post-index-change", "pre-auto-gc"];
 
@@ -758,6 +776,8 @@ fn hooks_run_by(args: &[&str]) -> Vec<&'static str> {
             hooks.extend(EVERY_RUN_HOOKS);
         }
         Some("push") => hooks.extend(["pre-push", "reference-transaction"]),
+        Some("gc" | "maintenance") => hooks.extend(["pre-auto-gc", "reference-transaction", "post-index-change"]),
+        Some("rm" | "mv" | "update-index") => hooks.extend(EVERY_RUN_HOOKS),
         Some("fetch" | "ls-remote" | "remote" | "clone" | "fetch-pack" | "send-pack" | "update-ref" | "branch" | "tag" | "notes") => hooks.extend(["reference-transaction", "pre-auto-gc"]),
         Some("merge" | "pull" | "rebase" | "cherry-pick" | "revert" | "am" | "stash" | "submodule") => {
             hooks.extend(COMMIT_HOOKS);
@@ -775,33 +795,105 @@ fn hooks_run_by(args: &[&str]) -> Vec<&'static str> {
 
 /// The files in a hooks folder git would run: not a `.sample`, a regular file, and (where the file
 /// system has the bit) executable.
-fn executable_hooks(dir: &Path) -> Vec<String> {
-    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
-    entries
-        .flatten()
-        .take(4096)
-        .filter_map(|e| {
-            let name = e.file_name().to_string_lossy().into_owned();
-            let meta = std::fs::metadata(e.path()).ok()?;
-            if name.ends_with(".sample") || !meta.is_file() {
-                return None;
+/// Whether git would run hook `name` from `dir`: the file (or, on Windows, `name.exe`) exists and, on Unix,
+/// is executable. A `.sample` is never one of these names.
+fn hook_file(dir: &Path, name: &str) -> bool {
+    let mut candidates = vec![dir.join(name)];
+    if cfg!(windows) {
+        candidates.push(dir.join(format!("{name}.exe")));
+    }
+    candidates.iter().any(|p| {
+        let Ok(meta) = std::fs::metadata(p) else { return false };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if meta.permissions().mode() & 0o111 == 0 {
+                return false;
             }
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                if meta.permissions().mode() & 0o111 == 0 {
-                    return None;
-                }
-            }
-            Some(name)
-        })
-        .collect()
+        }
+        meta.is_file()
+    })
 }
 
 /// The first hook a run of `args` would start from any hooks folder the listing found: (hook, folder).
 fn hook_in_the_way(args: &[&str], found: &[(String, String)]) -> Option<(String, String)> {
     let wanted = hooks_run_by(args);
-    found.iter().filter(|(k, _)| k == HOOKS_KEY).find_map(|(_, dir)| executable_hooks(Path::new(dir)).into_iter().find(|n| wanted.contains(&n.as_str())).map(|n| (n, dir.clone())))
+    // Review fix 4 (B6): each hook git would look for is checked by its own path, not by listing the folder:
+    // Git for Windows also runs `<hook>.exe`, and NTFS matches names whatever their case, which `is_file`
+    // follows; a folder of decoys cannot push the real hook past a listing cap.
+    found.iter().filter(|(k, _)| k == HOOKS_KEY).find_map(|(_, dir)| wanted.iter().find(|h| hook_file(Path::new(dir), h)).map(|h| (h.to_string(), dir.clone())))
+}
+
+/// Review fix 4 (B2): why a `push` in `dir` would run a program of the RECEIVING repository, when its push
+/// URL (`git remote get-url --push` applies the folder's insteadOf rules and runs no program) is a
+/// repository on this computer: a receive hook in its hooks folder, its own `core.hooksPath` or
+/// `core.alternateRefsCommand`, or a target that cannot be told (fail closed). None when the push is safe.
+fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
+    let rest = after_options(args);
+    if rest.first() != Some(&"push") {
+        return None;
+    }
+    let remote = rest[1..].iter().copied().find(|a| !a.starts_with('-')).unwrap_or("origin");
+    // A configured remote first (its name may hold a slash: `team/fork`); otherwise the argument is the URL.
+    let out = output_within(base_command(&["remote", "get-url", "--push", remote], Some(dir), &[], &[]), LISTING_LIMIT)?;
+    let url = if out.status.success() {
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    } else if remote.contains(['/', '\\', ':']) || remote == "." || remote == ".." {
+        remote.to_string()
+    } else {
+        return None; // no such remote and not a URL: git refuses the push itself
+    };
+    if !is_local_url(&url) {
+        return None;
+    }
+    let path = url.strip_prefix("file://").unwrap_or(&url);
+    let path = if Path::new(path).is_absolute() { PathBuf::from(path) } else { dir.join(path) };
+    let unsafe_target = |why: &str| Some(format!("{url}: {why}"));
+    let Some(git_dir) = receiving_git_dir(&path) else { return unsafe_target("a repository Kolux could not look inside") };
+    const RECEIVE_HOOKS: [&str; 7] = ["pre-receive", "update", "post-receive", "post-update", "push-to-checkout", "proc-receive", "reference-transaction"];
+    if let Some(h) = RECEIVE_HOOKS.iter().find(|h| hook_file(&git_dir.join("hooks"), h)) {
+        return unsafe_target(&format!("it has its own \"{h}\" hook"));
+    }
+    let config = git_dir.join("config");
+    let listing = ["config", "--includes", "--file", &config.to_string_lossy(), "--get-regexp", r"^core\.(hookspath|alternaterefscommand)$"];
+    match output_within(base_command(&listing, Some(dir), &[], &[]), LISTING_LIMIT) {
+        Some(out) if out.status.success() && !out.stdout.is_empty() => unsafe_target("its own config names a hooks folder or a program"),
+        Some(out) if out.status.success() || out.status.code() == Some(1) => None,
+        _ if !config.exists() => None,
+        _ => unsafe_target("its config could not be read"),
+    }
+}
+
+/// The git dir a push into `path` uses: `path` itself when it is a bare repository, else its `.git`
+/// (a folder, or a `.git` file naming one).
+fn receiving_git_dir(path: &Path) -> Option<PathBuf> {
+    if path.join("HEAD").is_file() && path.join("objects").is_dir() {
+        return Some(path.to_path_buf());
+    }
+    let dot = path.join(".git");
+    if dot.is_dir() {
+        return Some(dot);
+    }
+    let text = std::fs::read_to_string(&dot).ok()?;
+    let target = text.trim().strip_prefix("gitdir:")?.trim();
+    let target = if Path::new(target).is_absolute() { PathBuf::from(target) } else { path.join(target) };
+    target.is_dir().then_some(target)
+}
+
+/// A git URL that names a repository on this computer: `file://`, or a path (git's rule: no `scheme://`
+/// and no `host:path` scp form; a single drive letter before the colon is a Windows path).
+fn is_local_url(url: &str) -> bool {
+    let lower = url.to_ascii_lowercase();
+    if lower.starts_with("file:") {
+        return true;
+    }
+    if let Some(i) = url.find("://") {
+        return !url[..i].chars().all(|c| c.is_ascii_alphanumeric() || "+.-".contains(c)) || i == 0;
+    }
+    match (url.find(':'), url.find(['/', '\\'])) {
+        (Some(c), slash) if slash.is_none_or(|s| c < s) => c == 1 && url.as_bytes()[0].is_ascii_alphabetic(),
+        _ => true,
+    }
 }
 
 /// The plain refusal (DT-C229): what Kolux did not run, why, and what to do about it.
@@ -826,7 +918,7 @@ fn refusal(args: &[&str], dir: &Path, what: &str) -> String {
 fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result<Access, String> {
     let writes = writes_content(args);
     let transfer = network(args);
-    if !writes && !transfer && !ref_write(args) {
+    if !writes && !transfer && !ref_write(args) && !runs_hooks(args) {
         return Ok(Access::Reads);
     }
     if folder_trusted(dir) {
@@ -843,6 +935,9 @@ fn write_access(args: &[&str], dir: &Path, found: &[(String, String)]) -> Result
     if transfer {
         if let Some((key, _)) = found.iter().find(|(k, _)| is_credential_key(k)) {
             return Err(refusal(args, dir, &format!("the folder sets its own credential helper ({key}), a program that is handed your sign-in details on every transfer")));
+        }
+        if let Some(url) = local_push_target(args, dir) {
+            return Err(refusal(args, dir, &format!("the push goes to a repository on this computer that would run a program of its own as it receives ({url})")));
         }
         if let Some((key, _)) = found.iter().find(|(k, _)| is_pack_key(k)) {
             return Err(refusal(args, dir, &format!("the folder names its own program for the other end of a transfer ({key}), which git would run in place of its own")));
@@ -978,11 +1073,17 @@ pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Comma
 /// that writes content or transfers must go through `command_checked`; here it is a bug, and a
 /// debug build stops on it.
 pub(crate) fn command(args: &[&str], cwd: Option<&Path>) -> Command {
-    debug_assert!(cwd.is_none() || !(writes_content(args) || network(args) || ref_write(args)), "git {args:?} writes or transfers: use git::command_checked");
+    debug_assert!(cwd.is_none() || !(writes_content(args) || network(args) || ref_write(args) || runs_hooks(args)), "git {args:?} writes, transfers or runs hooks: use git::command_checked");
     let found = cwd.map(|dir| repo_programs(leading_options(args), dir)).unwrap_or_default();
     let args = guarded(args, &found, Access::Reads);
-    let pairs = overrides_for(&found, Access::Reads);
-    let env = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()).map(|net| net.env).unwrap_or_default();
+    let mut pairs = overrides_for(&found, Access::Reads);
+    let mut env = cwd.and_then(|dir| net_overrides(&found, dir, false).ok()).map(|net| net.env).unwrap_or_default();
+    // Review fix 4 (B3, B4): in an untrusted partial clone a read never fetches on its own (git 2.45+), and
+    // no credential helper runs if one does (an empty value empties git's list of helpers).
+    if partial_clone(&found) && cwd.is_some_and(|dir| !folder_trusted(dir)) {
+        env.push(("GIT_NO_LAZY_FETCH", "1".to_string()));
+        pairs.push(("credential.helper".to_string(), String::new()));
+    }
     base_command(&args, cwd, &pairs, &env)
 }
 
@@ -2655,13 +2756,16 @@ mod tests {
         assert!(ours.iter().any(|(k, v)| k == "GIT_CONFIG_VALUE_0" && v == "false"), "{ours:?}");
         let count = ours.iter().find(|(k, _)| k == "GIT_CONFIG_COUNT").map(|(_, v)| v.clone()).unwrap();
         let n: usize = count.parse().unwrap();
-        assert_eq!(n, if cfg!(windows) { 3 } else { 2 });
+        assert_eq!(n, if cfg!(windows) { 4 } else { 3 });
         // Review fix 2: a repository's own `log.showSignature=true` never runs its gpg program.
         assert!(ours.contains(&("GIT_CONFIG_KEY_1".to_string(), "log.showSignature".to_string())), "{ours:?}");
         assert!(ours.contains(&("GIT_CONFIG_VALUE_1".to_string(), "false".to_string())), "{ours:?}");
+        // Review fix 4 (B3): ext:: remotes are never allowed.
+        assert!(ours.contains(&("GIT_CONFIG_KEY_2".to_string(), "protocol.ext.allow".to_string())), "{ours:?}");
+        assert!(ours.contains(&("GIT_CONFIG_VALUE_2".to_string(), "never".to_string())), "{ours:?}");
         if cfg!(windows) {
-            assert!(ours.contains(&("GIT_CONFIG_KEY_2".to_string(), "core.longpaths".to_string())), "{ours:?}");
-            assert!(ours.contains(&("GIT_CONFIG_VALUE_2".to_string(), "true".to_string())), "{ours:?}");
+            assert!(ours.contains(&("GIT_CONFIG_KEY_3".to_string(), "core.longpaths".to_string())), "{ours:?}");
+            assert!(ours.contains(&("GIT_CONFIG_VALUE_3".to_string(), "true".to_string())), "{ours:?}");
         }
         // The user's shell set two pairs: ours start at slot 2 and the count grows by ours.
         let theirs = injected_config(Some(std::ffi::OsStr::new("2")), &[]);
@@ -3260,6 +3364,18 @@ mod tests {
         script.to_string_lossy().replace('\\', "/")
     }
 
+    /// An executable script that leaves `marker` and exits at once, reading nothing (for programs git waits on).
+    fn exit_script(marker: &Path) -> String {
+        let script = marker.with_extension("exit.sh");
+        fs::write(&script, format!("#!/bin/sh\necho ran >> \"{}\"\nexit 1\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        script.to_string_lossy().replace('\\', "/")
+    }
+
     /// A bare repository holding the history of `dir`, to be a remote for it.
     fn bare_copy(dir: &Path, name: &str) -> PathBuf {
         let bare = std::env::temp_dir().join(format!("kolux-rs-git-{name}-bare-{}", std::process::id()));
@@ -3517,4 +3633,166 @@ mod tests {
             assert!(!ref_write(args), "{args:?}");
         }
     }
+
+    // ---- Review fix 4 (independent review of S4, 2026-11-09) ---------------------------------------------
+
+    /// B1: Kolux's background tidy runs `gc --auto`; a folder's own pre-auto-gc hook must not run with it,
+    /// and unstaging (`rm --cached`) must not run post-index-change. A trusted folder runs them.
+    #[test]
+    fn t779e_gc_and_index_commands_check_the_folders_hooks() {
+        let dir = temp_repo("e-gc");
+        let marker = dir.join("gc-hook-ran.txt");
+        marker_hook(&dir, "pre-auto-gc", &marker);
+        marker_hook(&dir, "post-index-change", &marker);
+        run(&["config", "gc.auto", "1"], Some(&dir)).unwrap();
+        for args in [&["gc", "--auto", "--quiet"][..], &["rm", "--cached", "-q", "README.md"], &["update-index", "--refresh"], &["mv", "README.md", "R.md"]] {
+            let why = refused(args, &dir).unwrap_or_else(|| panic!("{args:?} was not refused"));
+            plain_message(&why, args[0]);
+            assert!(run(args, Some(&dir)).is_err());
+        }
+        assert!(!marker.exists(), "a refused command ran the folder's hook");
+        assert!(crate::tidy::tidy_repo(&dir).is_err() && !marker.exists(), "the tidy pass stops at the gate");
+        trust_for_test(&dir);
+        assert!(refused(&["gc", "--auto", "--quiet"], &dir).is_none());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// B2: a push into a repository on this computer runs THAT repository's receive hooks; from an untrusted
+    /// folder it is refused when the target has one (a bare remote, or `.` itself), and goes ahead when not.
+    #[test]
+    fn t779e_a_push_to_a_local_repository_with_receive_hooks_is_refused() {
+        let dir = temp_repo("e-push");
+        let marker = dir.join("receive-ran.txt");
+        let bare = bare_copy(&dir, "e-push");
+        run(&["remote", "add", "origin", &bare.to_string_lossy()], Some(&dir)).unwrap();
+        run(&["remote", "add", "team/fork", &bare.to_string_lossy()], Some(&dir)).unwrap();
+        fs::write(dir.join("more.txt"), "more\n").unwrap();
+        run(&["add", "-A"], Some(&dir)).unwrap();
+        run(&["commit", "-q", "-m", "more"], Some(&dir)).unwrap();
+        // No receive hook in the bare remote: the push goes through.
+        run(&["push", "-q", "origin", "main"], Some(&dir)).expect("a plain local remote still works");
+        // With one (as a bare repository in a downloaded folder could have): refused, by name or slash name.
+        marker_hook(&bare, "pre-receive", &marker);
+        let hook = bare.join(".git").join("hooks").join("pre-receive");
+        fs::create_dir_all(bare.join("hooks")).unwrap();
+        fs::rename(&hook, bare.join("hooks").join("pre-receive")).unwrap();
+        for remote in ["origin", "team/fork"] {
+            let why = refused(&["push", remote, "main"], &dir).unwrap_or_else(|| panic!("{remote} was not refused"));
+            plain_message(&why, "push");
+            assert!(why.contains("on this computer"), "{why}");
+        }
+        // `.` (the folder itself) with a receive hook of its own.
+        marker_hook(&dir, "post-receive", &marker);
+        assert!(refused(&["push", ".", "HEAD:refs/heads/x"], &dir).is_some());
+        // A target whose own config names a hooks folder.
+        let bare2 = bare_copy(&dir, "e-push2");
+        assert!(plain_git(&["config", "--file", &bare2.join("config").to_string_lossy(), "core.hooksPath", "/x"], &dir).status.success());
+        assert!(refused(&["push", &bare2.to_string_lossy(), "main"], &dir).is_some());
+        assert!(!marker.exists());
+        trust_for_test(&dir);
+        assert!(refused(&["push", "origin", "main"], &dir).is_none());
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&bare);
+        let _ = fs::remove_dir_all(&bare2);
+    }
+
+    #[test]
+    fn t779e_local_urls_are_told_from_remote_ones() {
+        for u in ["/srv/x.git", "./evil.git", ".", "..", "file:///x", "C:/repos/x", r"C:\repos\x", "relative/path"] {
+            assert!(is_local_url(u), "{u}");
+        }
+        for u in ["https://github.com/a/b", "ssh://h/x", "git@github.com:a/b.git", "host:path"] {
+            assert!(!is_local_url(u), "{u}");
+        }
+    }
+
+    /// B3: `ext::` remotes run a command line of the URL's choosing; the folder's own `protocol.ext.allow`
+    /// cannot switch them on under Kolux's git (plain git runs it: the premise).
+    #[test]
+    fn t779e_ext_remotes_never_run_a_command() {
+        let dir = temp_repo("e-ext");
+        let marker = dir.join("ext-ran.txt");
+        let script = exit_script(&marker);
+        run(&["config", "protocol.ext.allow", "always"], Some(&dir)).unwrap();
+        run(&["remote", "add", "evil", &format!("ext::{script} %S")], Some(&dir)).unwrap();
+        let _ = plain_git(&["ls-remote", "evil"], &dir);
+        assert!(marker.exists(), "the premise: plain git runs an ext:: remote's command");
+        fs::remove_file(&marker).unwrap();
+        let _ = run(&["ls-remote", "evil"], Some(&dir));
+        let _ = run(&["fetch", "evil"], Some(&dir));
+        assert!(!marker.exists(), "Kolux's git ran an ext:: command");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// B3, B4: a read in an untrusted partial clone fetches nothing on its own and runs no credential helper.
+    #[test]
+    fn t779e_reads_in_an_untrusted_partial_clone_never_lazy_fetch() {
+        let dir = temp_repo("e-partial");
+        run(&["config", "extensions.partialClone", "origin"], Some(&dir)).unwrap();
+        run(&["config", "remote.origin.promisor", "true"], Some(&dir)).unwrap();
+        let cmd = command(&["show", "HEAD"], Some(&dir));
+        assert!(cmd.get_envs().any(|(k, v)| k == "GIT_NO_LAZY_FETCH" && v.is_some_and(|v| v == "1")));
+        assert!(blanked_keys(&cmd).iter().any(|k| k == "credential.helper"));
+        trust_for_test(&dir);
+        let cmd = command(&["show", "HEAD"], Some(&dir));
+        assert!(!cmd.get_envs().any(|(k, v)| k == "GIT_NO_LAZY_FETCH" && v.is_some()), "a trusted partial clone fetches as usual");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// B5: a folder's own `core.alternateRefsCommand` never runs, trusted or not (plain git runs it on fetch).
+    #[test]
+    fn t779e_the_alternate_refs_command_never_runs() {
+        let dir = temp_repo("e-altrefs");
+        let marker = dir.join("altrefs-ran.txt");
+        let other = temp_repo("e-altrefs-other");
+        fs::write(dir.join(".git").join("objects").join("info").join("alternates"), format!("{}\n", other.join(".git").join("objects").to_string_lossy())).unwrap_or_else(|_| {
+            fs::create_dir_all(dir.join(".git").join("objects").join("info")).unwrap();
+            fs::write(dir.join(".git").join("objects").join("info").join("alternates"), format!("{}\n", other.join(".git").join("objects").to_string_lossy())).unwrap();
+        });
+        run(&["config", "core.alternateRefsCommand", &exit_script(&marker)], Some(&dir)).unwrap();
+        let bare = bare_copy(&other, "e-altrefs");
+        run(&["remote", "add", "o", &bare.to_string_lossy()], Some(&dir)).unwrap();
+        let _ = plain_git(&["fetch", "o"], &dir);
+        assert!(marker.exists(), "the premise: plain git runs core.alternateRefsCommand on fetch");
+        fs::remove_file(&marker).unwrap();
+        let _ = run(&["fetch", "o"], Some(&dir));
+        assert!(!marker.exists(), "Kolux's git ran the folder's core.alternateRefsCommand");
+        trust_for_test(&dir);
+        let _ = run(&["fetch", "o"], Some(&dir));
+        assert!(!marker.exists(), "not even in a trusted folder");
+        for d in [&dir, &other, &bare] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// B6: the hook is found by its own name, not by listing the folder, so thousands of decoys cannot hide
+    /// it; on Windows `<hook>.exe` and any letter case count too (NTFS).
+    #[test]
+    fn t779e_a_hook_among_many_decoys_is_still_found() {
+        let dir = temp_repo("e-decoys");
+        let hooks = dir.join(".git").join("hooks");
+        for n in 0..5000 {
+            fs::write(hooks.join(format!("a{n:05}")), "").unwrap();
+        }
+        let marker = dir.join("decoy-ran.txt");
+        marker_hook(&dir, "pre-commit", &marker);
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some());
+        if cfg!(windows) {
+            fs::rename(hooks.join("pre-commit"), hooks.join("PRE-COMMIT.exe")).unwrap();
+            assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some(), "Git for Windows would run PRE-COMMIT.exe");
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review should-fix: a merge driver of the folder's own is blanked on a read (merge-tree's forecast),
+    /// and kept for a trusted folder's own merge.
+    #[test]
+    fn t779e_merge_drivers_are_blanked_on_reads() {
+        let found = vec![("merge.evil.driver".to_string(), "evil %O %A %B".to_string())];
+        assert!(overrides_for(&found, Access::Reads).iter().any(|(k, v)| k == "merge.evil.driver" && v.is_empty()));
+        assert!(overrides_for(&found, Access::TrustedWrite).is_empty());
+        let alt = vec![("core.alternaterefscommand".to_string(), "x".to_string())];
+        assert!(overrides_for(&alt, Access::TrustedWrite).iter().any(|(k, _)| k == "core.alternaterefscommand"));
+    }
+
 }

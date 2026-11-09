@@ -148,3 +148,40 @@ Review fix 3 (opus-high-review 2026-11-08 re-review of 04da90ee: B1, B2, S1, S2,
       scm_writers.rs, untouched, fails alone on main too); cargo clippy --all-targets -- -D warnings exit 0.
   Window note (Txais 2026-11-08): every git and child spawn in git.rs, scm.rs and auto_pr.rs uses CREATE_NO_WINDOW
       (production already did; the test spawns that lacked it now have it).
+
+Review fix 4 (independent read-only review of S4, 2026-11-09: 6 blockers, 3 should-fix) · 2026-11-09 · cloud Linux
+  B1 gc --auto (Kolux's background tidy) ran the folder's pre-auto-gc hook: gc, maintenance, rm, mv and
+     update-index now get the hook check in an untrusted folder (also the post-index-change should-fix).
+  B2 a push into a local repository ran THAT repository's receive hooks: refused from an untrusted folder when
+     the target has a receive hook, its own core.hooksPath or core.alternateRefsCommand, or cannot be looked
+     into; a plain local remote still works (the auto PR and Source Control tests push to one).
+  B3 ext:: remotes ran a command (also from a read, through lazy fetch): protocol.ext.allow=never on every run.
+  B4 a credential helper ran on a read through lazy fetch: in an untrusted partial clone a read sets
+     GIT_NO_LAZY_FETCH=1 (git 2.45+; the cloud's git 2.43 ignores it) and empties the credential helper list.
+  B5 core.alternateRefsCommand ran on fetch: blanked on every run, trusted or not.
+  B6 hook names (Git for Windows also runs <hook>.exe; NTFS ignores case; a 4096-entry listing cap): each hook
+     is now checked by its own path.
+  Should-fix done: merge drivers blanked on reads (merge-tree); index commands checked (B1).
+  Left (backlog): a hook written mid-command into a git dir that lies inside the worktree (TOCTOU, gitdir: ./g);
+     an incomplete listing lets a pure ref change through without the submodules' hooks checked.
+  Tests that S4 itself broke and were never run (the WIP was not gate-tested), fixed in this commit: three scm
+     hook tests now trust their folder (they test what a hook does); two of them now mark the hook executable
+     on Unix (Git for Windows runs it without the bit); the auto PR fixtures set up their remotes with plain
+     git; the trace test no longer reads the program-key listing (a config read naming ^credential\.) as a
+     network call; injected-config slot count follows the new protocol.ext.allow pair.
+  GREEN: cargo test --lib t779e -> 8 passed. cargo test --lib -- git:: auto_pr:: scm:: tidy:: -> 240 passed,
+     3 failed, all Linux-only and failing before this lane's S4 too: t779b gpg control (git here does not run
+     gpg), scm git014 and staging (C:\Windows paths).
+  RED (the new tests copied onto f7a07019, the pre-fix head):
+    test git::tests::t779e_a_hook_among_many_decoys_is_still_found ... ok
+    test git::tests::t779e_gc_and_index_commands_check_the_folders_hooks ... FAILED
+    test git::tests::t779e_ext_remotes_never_run_a_command ... FAILED
+    test git::tests::t779e_merge_drivers_are_blanked_on_reads ... FAILED
+    test git::tests::t779e_a_push_to_a_local_repository_with_receive_hooks_is_refused ... FAILED
+    test git::tests::t779e_reads_in_an_untrusted_partial_clone_never_lazy_fetch ... FAILED
+    test git::tests::t779e_the_alternate_refs_command_never_runs ... FAILED
+    test result: FAILED. 1 passed; 6 failed; 0 ignored; 0 measured; 2913 filtered out; finished in 0.89s
+    error: test failed, to rerun pass `--lib`
+    (t779e_a_hook_among_many_decoys passes on the old code here: ext4 does not list a folder alphabetically, so
+     the old cap missed nothing; its red run, and the .exe/case half, need Windows.)
+  PENDING on Windows: cargo test --lib t779 and the full suite; red for B6.
