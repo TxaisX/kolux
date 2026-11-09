@@ -119,14 +119,7 @@ pub(crate) fn empty_global_config() -> PathBuf {
 /// program-naming keys (see `repo_programs`), blanked the same way after the fixed pairs.
 pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs: &[(String, String)]) -> Vec<(String, String)> {
     let start = existing.and_then(|v| v.to_str()).and_then(|v| v.trim().parse::<usize>().ok()).unwrap_or(0);
-    // `log.showSignature=false`: a repository's own `log.showSignature=true` with a `gpg.program` of its
-    // choosing would run that program on every `log` (review fix 2); Kolux never shows signatures.
-    // Review fix 4 (B3): `ext::` remotes run a command line of the URL's choosing; Kolux never needs one.
-    let mut pairs = vec![("core.fsmonitor", "false"), ("log.showSignature", "false"), ("protocol.ext.allow", "never")];
-    if cfg!(windows) {
-        pairs.push(("core.longpaths", "true"));
-    }
-    pairs.extend(repo_programs.iter().map(|(k, v)| (k.as_str(), v.as_str())));
+    let pairs = forced_config(repo_programs);
     let mut out = Vec::with_capacity(pairs.len() * 2 + 1);
     for (i, (key, value)) in pairs.iter().enumerate() {
         let slot = start + i;
@@ -135,6 +128,40 @@ pub(crate) fn injected_config(existing: Option<&std::ffi::OsStr>, repo_programs:
     }
     out.push(("GIT_CONFIG_COUNT".to_string(), (start + pairs.len()).to_string()));
     out
+}
+
+/// The config pairs Kolux forces on a run (see `injected_config`), the fixed ones first, then `repo_programs`.
+fn forced_config(repo_programs: &[(String, String)]) -> Vec<(&str, &str)> {
+    // `log.showSignature=false`: a repository's own `log.showSignature=true` with a `gpg.program` of its
+    // choosing would run that program on every `log` (review fix 2); Kolux never shows signatures.
+    // Review fix 4 (B3): `ext::` remotes run a command line of the URL's choosing; Kolux never needs one.
+    let mut pairs = vec![("core.fsmonitor", "false"), ("log.showSignature", "false"), ("protocol.ext.allow", "never")];
+    if cfg!(windows) {
+        pairs.push(("core.longpaths", "true"));
+    }
+    pairs.extend(repo_programs.iter().map(|(k, v)| (k.as_str(), v.as_str())));
+    pairs
+}
+
+/// Review fix 8 (P2-1): the parent's `GIT_CONFIG_PARAMETERS` (git's own carrier for `-c` pairs, which git
+/// reads AFTER the `GIT_CONFIG_COUNT` slots, so a pair in it outranks every slot) with Kolux's pairs appended
+/// in its format (`'key=value'`, single-quoted, space-separated), so Kolux's values win in that list too.
+/// None when the parent set nothing: the slots then stand alone.
+fn config_parameters(existing: Option<&std::ffi::OsStr>, repo_programs: &[(String, String)]) -> Option<String> {
+    let existing = existing?.to_string_lossy().into_owned();
+    let ours = forced_config(repo_programs).iter().map(|(k, v)| format!("'{}'", format!("{k}={v}").replace('\'', "'\\''"))).collect::<Vec<_>>().join(" ");
+    Some(if existing.trim().is_empty() { ours } else { format!("{existing} {ours}") })
+}
+
+/// Review fix 8 (P2-1): the parent's `GIT_ALLOW_PROTOCOL` (a colon-separated allow list that makes git ignore
+/// every `protocol.*.allow` config, Kolux's pairs included) without the transports Kolux switches off in this
+/// run: `ext` always, and each `<name>` whose `protocol.<name>.allow=never` is among the pairs; an empty
+/// list stays set (nothing allowed) when `protocol.allow=never` is. None when the parent set nothing.
+fn allow_protocol(existing: Option<&std::ffi::OsStr>, repo_programs: &[(String, String)]) -> Option<String> {
+    let existing = existing?.to_string_lossy().into_owned();
+    let pairs = forced_config(repo_programs);
+    let never = |name: &str| pairs.iter().any(|(k, v)| *v == "never" && (*k == format!("protocol.{name}.allow") || *k == "protocol.allow"));
+    Some(existing.split(':').filter(|p| !p.is_empty() && !never(p)).collect::<Vec<_>>().join(":"))
 }
 
 /// T-779 (P2A-01, review finding 1): the config keys through which a repository's own config
@@ -807,8 +834,6 @@ fn hooks_run_by(args: &[&str]) -> Vec<&'static str> {
     hooks
 }
 
-/// The files in a hooks folder git would run: not a `.sample`, a regular file, and (where the file
-/// system has the bit) executable.
 /// Whether git would run hook `name` from `dir`: the file (or, on Windows, `name.exe`) exists and, on Unix,
 /// is executable. A `.sample` is never one of these names.
 fn hook_file(dir: &Path, name: &str) -> bool {
@@ -845,15 +870,41 @@ fn hook_in_the_way(args: &[&str], found: &[(String, String)]) -> Option<(String,
 /// remote.pushDefault, the branch's remote, origin) through `git ls-remote --get-url`, which applies insteadOf
 /// and reads legacy remote files and contacts nothing; and every push URL (`--all`) of every listed remote.
 /// A name nothing resolves comes back as itself and counts as a path. A listing that fails refuses.
+///
+/// Review fix 8: a `url.<base>.pushInsteadOf` (or `insteadOf`) rule whose base is local refuses outright, since
+/// `ls-remote --get-url` applies only `insteadOf` (P1-1); a candidate that starts with `-` refuses and every
+/// candidate goes after `--` (P1-2); config values keep their spaces, as git does (`"origin "` is a remote of
+/// its own, P1-3); and a listing git ends with anything but "unset" (exit 1), or that does not finish, refuses
+/// instead of counting as unset (P2-2).
 fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
     let rest = after_options(args);
     if rest.first() != Some(&"push") {
         return None;
     }
-    let listed = |args: &[&str]| -> Option<String> {
-        let out = output_within(base_command(args, Some(dir), &[], &[]), LISTING_LIMIT)?;
-        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
-    };
+    push_gate(rest, dir).err()
+}
+
+/// One listing git of the push gate: Ok(Some(stdout)) when it succeeded, Ok(None) when it ended with
+/// `absent` (what the command means by "nothing there"), Err(what) for any other exit or a timeout.
+fn push_listing(args: &[&str], dir: &Path, absent: Option<i32>) -> Result<Option<String>, String> {
+    let line = || format!("git {}", args.join(" "));
+    let Some(out) = output_within(base_command(args, Some(dir), &[], &[]), LISTING_LIMIT) else { return Err(format!("`{}` did not finish", line())) };
+    match out.status.code() {
+        Some(0) => Ok(Some(String::from_utf8_lossy(&out.stdout).into_owned())),
+        code if code.is_some() && code == absent => Ok(None),
+        Some(code) => Err(format!("`{}` failed (exit {code})", line())),
+        None => Err(format!("`{}` was stopped", line())),
+    }
+}
+
+/// `out` without the one newline git ends a value with; nothing else is stripped (P1-3).
+fn one_line(out: &str) -> String {
+    out.strip_suffix('\n').unwrap_or(out).to_string()
+}
+
+/// See `local_push_target`: Err is the refusal's detail.
+fn push_gate(rest: &[&str], dir: &Path) -> Result<(), String> {
+    let value = |args: &[&str]| -> Result<Option<String>, String> { push_listing(args, dir, Some(1)).map(|v| v.map(|s| one_line(&s))) };
     // The repository argument: `--repo=<r>`, else the first word after the options (after `--` too).
     let mut repo = rest[1..].iter().find_map(|a| a.strip_prefix("--repo=")).map(str::to_string);
     if repo.is_none() {
@@ -865,36 +916,50 @@ fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
         Some(r) => candidates.push(r),
         None => {
             // The full ref, stripped: `--short` prints `heads/main` when a tag is also called `main` (review fix 7).
-            let branch = listed(&["symbolic-ref", "-q", "HEAD"]).and_then(|r| r.trim().strip_prefix("refs/heads/").map(str::to_string)).unwrap_or_default();
+            // A detached HEAD is "unset" (exit 1); a HEAD git cannot read is not, and refuses (P2-2).
+            let branch = value(&["symbolic-ref", "-q", "HEAD"])?.and_then(|r| r.strip_prefix("refs/heads/").map(str::to_string)).unwrap_or_default();
             for key in [format!("branch.{branch}.pushRemote"), "remote.pushDefault".to_string(), format!("branch.{branch}.remote")] {
-                if let Some(v) = listed(&["config", "--get", &key]) {
-                    candidates.push(v.trim().to_string());
+                if let Some(v) = value(&["config", "--get", &key])? {
+                    candidates.push(v);
                 }
             }
             candidates.push("origin".to_string());
         }
     }
+    // P1-1: a rewrite rule to a local base, which git applies to the push address after the gate's own lookups.
+    let rules = push_listing(&["config", "-z", "--get-regexp", r"^url\..*\.(push)?insteadof$"], dir, Some(1))?.unwrap_or_default();
+    for key in rules.split('\0').filter(|r| !r.is_empty()).map(|r| r.split('\n').next().unwrap_or("")) {
+        let base = key.strip_prefix("url.").and_then(|k| k.strip_suffix(".pushinsteadof").or_else(|| k.strip_suffix(".insteadof"))).unwrap_or(key);
+        if is_local_url(base) {
+            return Err(format!("the folder rewrites push addresses to {base} ({key})"));
+        }
+    }
     let mut urls: Vec<String> = Vec::new();
     // Review fix 7: every push URL of a candidate (`get-url --push --all` also reads every URL line of a legacy
-    // remote file and applies pushInsteadOf); a candidate that is no remote at all goes through ls-remote.
+    // remote file and applies pushInsteadOf); a candidate that is no remote at all (exit 2) goes through ls-remote.
     for c in candidates.iter().filter(|c| !c.is_empty()) {
-        if let Some(all) = listed(&["remote", "get-url", "--push", "--all", c]) {
+        if c.starts_with('-') {
+            return Err(format!("the push target {c} would be taken as an option"));
+        }
+        if let Some(all) = push_listing(&["remote", "get-url", "--push", "--all", "--", c], dir, Some(2))? {
             urls.extend(all.lines().map(|l| l.trim().to_string()));
             continue;
         }
-        let Some(url) = listed(&["ls-remote", "--get-url", c]) else { return Some(format!("the address of {c} could not be read")) };
-        let url = url.trim().to_string();
+        let url = one_line(&push_listing(&["ls-remote", "--get-url", "--", c], dir, None)?.unwrap_or_default());
         if url == *c && !c.contains(['/', '\\', ':']) && c != "." && c != ".." {
-            return Some(format!("there is no remote called {c}, so git would take it as a folder on this computer"));
+            return Err(format!("there is no remote called {c}, so git would take it as a folder on this computer"));
         }
         urls.push(url);
     }
-    let Some(remotes) = listed(&["remote"]) else { return Some("the folder's remotes could not be listed".into()) };
-    for remote in remotes.lines().map(str::trim).filter(|r| !r.is_empty()) {
-        let Some(push) = listed(&["remote", "get-url", "--push", "--all", remote]) else { return Some(format!("the push address of remote {remote} could not be read")) };
+    let remotes = push_listing(&["remote"], dir, None)?.unwrap_or_default();
+    for remote in remotes.lines().filter(|r| !r.trim().is_empty()) {
+        let push = push_listing(&["remote", "get-url", "--push", "--all", "--", remote], dir, None)?.unwrap_or_default();
         urls.extend(push.lines().map(|l| l.trim().to_string()));
     }
-    urls.into_iter().filter(|u| !u.is_empty()).find(|u| is_local_url(u))
+    match urls.into_iter().filter(|u| !u.is_empty()).find(|u| is_local_url(u)) {
+        Some(url) => Err(url),
+        None => Ok(()),
+    }
 }
 
 /// Where git resolves a relative `core.hooksPath`: the worktree's top level, or the git dir of a bare
@@ -1198,14 +1263,21 @@ fn base_command(args: &[&str], cwd: Option<&Path>, repo_programs: &[(String, Str
         use std::os::unix::process::CommandExt;
         cmd.process_group(0).env("GIT_TERMINAL_PROMPT", "0");
     }
-    // T-779 (P2A-01) and GIT-070: the config Kolux forces (`injected_config`), appended after any
-    // pairs the user's own shell injects the same way; a git older than 2.31 ignores all of it.
-    let existing = std::env::var_os("GIT_CONFIG_COUNT");
-    // An isolated test sees no pair the parent shell injected (see above), so ours start at slot 0.
-    #[cfg(test)]
-    let existing = if ISOLATED.with(|i| i.get()) { None } else { existing };
+    // T-779 (P2A-01) and GIT-070: the config Kolux forces (`injected_config`), in slots after any pairs the
+    // user's own shell injects the same way; a git older than 2.31 ignores all of it. Review fix 8 (P2-1): the
+    // slots alone are not enough. A parent's GIT_CONFIG_PARAMETERS is read after them, so Kolux's pairs are
+    // appended to it as well, and a parent's GIT_ALLOW_PROTOCOL makes git ignore every protocol.*.allow, so
+    // the transports Kolux switches off are taken out of that list. Neither variable is set when the parent
+    // set none. An isolated test sees none of the three (`parent_env`), so ours start at slot 0.
+    let existing = parent_env("GIT_CONFIG_COUNT");
     for (name, value) in injected_config(existing.as_deref(), repo_programs) {
         cmd.env(name, value);
+    }
+    if let Some(parameters) = config_parameters(parent_env("GIT_CONFIG_PARAMETERS").as_deref(), repo_programs) {
+        cmd.env("GIT_CONFIG_PARAMETERS", parameters);
+    }
+    if let Some(allowed) = allow_protocol(parent_env("GIT_ALLOW_PROTOCOL").as_deref(), repo_programs) {
+        cmd.env("GIT_ALLOW_PROTOCOL", allowed);
     }
     // S4: the replacements for a folder's own ssh and proxy commands (see `net_overrides`).
     for (name, value) in net_env {
@@ -1628,7 +1700,7 @@ pub(crate) fn run(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
 }
 
 /// `run` keeping leading spaces, which `git status --porcelain` lines carry meaning in.
-fn run_untrimmed(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
+pub(crate) fn run_untrimmed(args: &[&str], cwd: Option<&Path>) -> Result<String, String> {
     output(args, cwd).map(|o| String::from_utf8_lossy(&o).to_string())
 }
 
@@ -2857,15 +2929,12 @@ mod tests {
         plain.output().unwrap()
     }
 
-    /// A shell line git can run as a filter, textconv or diff program: it leaves `marker` where the
-    /// test can see it and passes the content through.
+    /// A shell line git can run as a filter, textconv, diff, ssh or pack program: it leaves `marker` where
+    /// the test can see it and passes the content through. Plain sh on every platform: git runs these lines
+    /// through its own sh (Git for Windows ships one), and `cmd.exe /c` under that sh is rewritten to
+    /// `cmd.exe C:/`, an interactive cmd that waits on the pipe git holds open (review fix 8).
     fn marker_program(marker: &Path) -> String {
-        let marker = marker.to_string_lossy().replace('\\', "/");
-        if cfg!(windows) {
-            format!("cmd.exe /c echo ran >> \"{marker}\" && cat")
-        } else {
-            format!("echo ran >> \"{marker}\" && cat")
-        }
+        format!("echo ran >> \"{}\" && cat", marker.to_string_lossy().replace('\\', "/"))
     }
 
     /// T-779 (P2A-01, review finding 1): a folder arrives with its own `.git/config` naming a
@@ -3445,6 +3514,18 @@ mod tests {
         bare
     }
 
+    /// A pre-receive hook in the bare repository `payload` that leaves `marker` and rejects the push.
+    fn receive_hook(payload: &Path, marker: &Path) {
+        let hook = payload.join("hooks").join("pre-receive");
+        fs::create_dir_all(hook.parent().unwrap()).unwrap();
+        fs::write(&hook, format!("#!/bin/sh\necho ran >> \"{}\"\nexit 1\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&hook, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
     fn refused(args: &[&str], dir: &Path) -> Option<String> {
         write_refusal(args, Some(dir))
     }
@@ -3813,24 +3894,12 @@ mod tests {
         }
     }
 
-    /// Review fix 7: a tag named like the branch, and a legacy remote file with two URL lines; and the
-    /// backstop: whatever the address resolution misses, git itself refuses a local transport for an
-    /// untrusted push (the receiving repository's hook never runs).
+    /// Review fix 7: a tag named like the branch, and a legacy remote file with two URL lines.
     #[test]
-    fn t779e_tag_named_branches_legacy_url_lists_and_the_file_transport_backstop() {
+    fn t779e_tag_named_branches_and_legacy_url_lists() {
         let base = temp_repo("e-p7-src");
         let payload = bare_copy(&base, "e-p7-payload");
         let p = payload.to_string_lossy().replace('\\', "/");
-        let marker = base.join("p7-ran.txt");
-        fs::write(payload.join("hooks").join("pre-receive"), format!("#!/bin/sh\necho ran >> \"{}\"\nexit 1\n", marker.to_string_lossy().replace('\\', "/"))).unwrap_or_else(|_| {
-            fs::create_dir_all(payload.join("hooks")).unwrap();
-            fs::write(payload.join("hooks").join("pre-receive"), format!("#!/bin/sh\necho ran >> \"{}\"\nexit 1\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
-        });
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(payload.join("hooks").join("pre-receive"), fs::Permissions::from_mode(0o755)).unwrap();
-        }
         // A tag called main hides branch.main.pushRemote from `symbolic-ref --short`.
         let d1 = temp_repo("e-p7-1");
         run(&["tag", "main"], Some(&d1)).unwrap();
@@ -3845,16 +3914,178 @@ mod tests {
         // No such remote: a plain message.
         let d3 = temp_repo("e-p7-3");
         assert!(refused(&["push", "origin", "main"], &d3).unwrap().contains("no remote called origin"));
-        // The backstop, live: the command Kolux would build for an untrusted push refuses the file transport.
-        let mut cmd = command_checked(&["push", "https://example.invalid/a.git", "main"], Some(&d3)).unwrap();
-        assert!(blanked_keys(&cmd).iter().any(|k| k == "protocol.file.allow"));
-        cmd.args([p.as_str(), "HEAD:refs/heads/x"]);
-        let out = cmd.output().unwrap();
-        assert!(!out.status.success(), "the push went through");
-        assert!(!marker.exists(), "the receiving repository's hook ran");
         for d in [&base, &payload, &d1, &d2, &d3] {
             let _ = fs::remove_dir_all(d);
         }
+    }
+
+    /// Review fix 7's backstop, live (review fix 8, P1-4): the command Kolux builds for an untrusted push to a
+    /// remote origin is run AFTER origin's address has been switched to a local payload repository (what any
+    /// resolution the gate misses comes down to). git itself refuses the file transport and the payload's
+    /// hook never runs. The control, the same push with every pair but the backstop's, does run the hook.
+    #[test]
+    fn t779e_the_file_transport_backstop_holds_when_the_address_changes_after_the_check() {
+        let base = temp_repo("e-p8-src");
+        let payload = bare_copy(&base, "e-p8-payload");
+        let marker = base.join("p8-ran.txt");
+        receive_hook(&payload, &marker);
+        let dir = temp_repo("e-p8");
+        run(&["remote", "add", "origin", "https://example.invalid/a.git"], Some(&dir)).unwrap();
+        let args = ["push", "origin", "HEAD:refs/heads/x"];
+        let mut cmd = command_checked(&args, Some(&dir)).unwrap();
+        assert!(plain_git(&["config", "remote.origin.url", &payload.to_string_lossy()], &dir).status.success());
+        let out = cmd.output().unwrap();
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(!out.status.success(), "the push went through");
+        assert!(err.contains("transport 'file' not allowed"), "git did not refuse the transport: {err}");
+        assert!(!marker.exists(), "the receiving repository's hook ran");
+        // The control: without the backstop pair the receiving hook runs, so this test is red without it.
+        let found = repo_programs(leading_options(&args), &dir);
+        let pairs: Vec<(String, String)> = overrides_for(&found, Access::Reads).into_iter().chain([("push.recurseSubmodules".to_string(), "no".to_string())]).collect();
+        let out = base_command(&args, Some(&dir), &pairs, &[]).output().unwrap();
+        assert!(!out.status.success(), "the pre-receive hook exits 1");
+        assert!(marker.exists(), "the control: without the backstop the receiving repository's hook runs: {}", String::from_utf8_lossy(&out.stderr));
+        for d in [&base, &payload, &dir] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 8 (P1-1): a `pushInsteadOf` rule to a local base is applied by the push alone (`ls-remote
+    /// --get-url` does not apply it), so the rule itself refuses, for a remote and for a URL argument alike;
+    /// an `insteadOf` rule the same way; a rule to a remote base is fine.
+    #[test]
+    fn t779e_a_rewrite_rule_to_a_local_address_refuses_the_push() {
+        let base = temp_repo("e-p8-rw-src");
+        let payload = bare_copy(&base, "e-p8-rw-payload");
+        let p = payload.to_string_lossy().replace('\\', "/");
+        let dir = temp_repo("e-p8-rw");
+        run(&["config", &format!("url.{p}.pushInsteadOf"), "https://example.invalid/"], Some(&dir)).unwrap();
+        // The premise: git's address lookup leaves the rule out; the push would apply it.
+        let shown = plain_git(&["ls-remote", "--get-url", "https://example.invalid/other.git"], &dir);
+        assert_eq!(String::from_utf8_lossy(&shown.stdout).trim(), "https://example.invalid/other.git");
+        // No remote at all: the URL argument is the one route, and only the rule itself tells where it leads.
+        let why = refused(&["push", "https://example.invalid/other.git", "main"], &dir).expect("pushInsteadOf to a local base, URL argument");
+        assert!(why.contains("rewrites push addresses") && why.contains("pushinsteadof"), "{why}");
+        run(&["remote", "add", "origin", "https://example.invalid/a.git"], Some(&dir)).unwrap();
+        assert!(refused(&["push", "origin", "main"], &dir).is_some(), "pushInsteadOf to a local base, remote");
+        run(&["config", "--unset", &format!("url.{p}.pushInsteadOf")], Some(&dir)).unwrap();
+        run(&["config", "url.https://example.invalid/mirror/.pushInsteadOf", "https://example.invalid/"], Some(&dir)).unwrap();
+        assert!(refused(&["push", "origin", "main"], &dir).is_none(), "a rule to a remote base");
+        run(&["config", &format!("url.{p}.insteadOf"), "https://example.invalid/"], Some(&dir)).unwrap();
+        assert!(refused(&["push", "origin", "main"], &dir).unwrap().contains("insteadof"), "insteadOf to a local base");
+        for d in [&base, &payload, &dir] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 8 (P1-2): a push target that begins with `-` (a `remote.pushDefault` of `--heads`, or the word
+    /// after `--`) is never handed to a listing git where it would be read as an option; it is refused, since git
+    /// itself would take the word for a folder.
+    #[test]
+    fn t779e_a_push_target_that_looks_like_an_option_is_refused() {
+        let dir = temp_repo("e-p8-opt");
+        run(&["remote", "add", "origin", "https://example.invalid/a.git"], Some(&dir)).unwrap();
+        assert!(refused(&["push", "--", "--heads", "main"], &dir).is_some_and(|w| w.contains("--heads")), "the word after --");
+        run(&["config", "remote.pushDefault", "--heads"], Some(&dir)).unwrap();
+        let why = refused(&["push"], &dir).expect("an option-like push default");
+        assert!(why.contains("--heads") && why.contains("option"), "{why}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 8 (P1-3): `origin ` (trailing space) is a remote of its own to git. The gate reads the branch's
+    /// push remote as written, so it finds that remote's local address where a trimmed name found origin's.
+    #[test]
+    fn t779e_a_remote_name_keeps_its_spaces() {
+        let base = temp_repo("e-p8-sp-src");
+        let payload = bare_copy(&base, "e-p8-sp-payload");
+        let marker = base.join("sp-ran.txt");
+        receive_hook(&payload, &marker);
+        let dir = temp_repo("e-p8-sp");
+        run(&["remote", "add", "origin", "https://example.invalid/a.git"], Some(&dir)).unwrap();
+        run(&["config", "remote.origin .url", &payload.to_string_lossy()], Some(&dir)).unwrap();
+        run(&["checkout", "-q", "-b", "x"], Some(&dir)).unwrap();
+        run(&["config", "branch.x.pushRemote", "origin "], Some(&dir)).unwrap();
+        run(&["config", "push.default", "current"], Some(&dir)).unwrap();
+        // The premise: plain git pushes to the payload through the remote with the space.
+        assert!(!plain_git(&["push", "-q"], &dir).status.success());
+        assert!(marker.exists(), "the premise: git pushes to the remote `origin `");
+        fs::remove_file(&marker).unwrap();
+        let why = refused(&["push"], &dir).expect("the push remote `origin ` has a local address");
+        assert!(why.contains("on this computer"), "{why}");
+        for d in [&base, &payload, &dir] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 8 (P2-2): a listing the push gate cannot read (a HEAD git cannot follow, where `symbolic-ref`
+    /// fails rather than says "unset") refuses instead of counting as unset; a detached HEAD, which is "unset",
+    /// does not.
+    #[test]
+    fn t779e_a_push_listing_that_fails_refuses() {
+        let dir = temp_repo("e-p8-fail");
+        run(&["remote", "add", "origin", "https://example.invalid/a.git"], Some(&dir)).unwrap();
+        assert!(refused(&["push"], &dir).is_none());
+        assert!(plain_git(&["checkout", "-q", "--detach"], &dir).status.success());
+        assert!(refused(&["push"], &dir).is_none(), "a detached HEAD is no branch, and that is all");
+        fs::write(dir.join(".git").join("HEAD"), "ref: refs/heads/bad..name\n").unwrap();
+        let why = refused(&["push"], &dir).expect("a HEAD git cannot read");
+        assert!(why.contains("symbolic-ref") && why.contains("failed"), "{why}");
+        fs::write(dir.join(".git").join("HEAD"), "ref: refs/heads/main\n").unwrap();
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 8 (P2-1): a parent's GIT_CONFIG_PARAMETERS is read after the GIT_CONFIG_COUNT slots, and a
+    /// parent's GIT_ALLOW_PROTOCOL makes git ignore every protocol.*.allow. Kolux's pairs are appended to the
+    /// first and the transports it switches off are taken out of the second, so neither turns the backstop off.
+    #[test]
+    fn t779_a_parents_own_git_environment_never_outranks_kolux() {
+        use std::ffi::OsStr;
+        let never = vec![("protocol.file.allow".to_string(), "never".to_string())];
+        let read = |env: &[(&str, &str)]| {
+            let mut c = Command::new("git");
+            c.args(["config", "protocol.file.allow"]).env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+            for (k, v) in env {
+                c.env(k, v);
+            }
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                c.creation_flags(0x0800_0000);
+            }
+            String::from_utf8_lossy(&c.output().unwrap().stdout).trim().to_string()
+        };
+        // The premise: the slots alone lose to the parent's list.
+        assert_eq!(read(&[("GIT_CONFIG_PARAMETERS", "'protocol.file.allow=always'"), ("GIT_CONFIG_COUNT", "1"), ("GIT_CONFIG_KEY_0", "protocol.file.allow"), ("GIT_CONFIG_VALUE_0", "never")]), "always");
+        assert_eq!(config_parameters(None, &never), None, "nothing to append to");
+        let appended = config_parameters(Some(OsStr::new("'protocol.file.allow=always'")), &never).unwrap();
+        assert!(appended.starts_with("'protocol.file.allow=always' 'core.fsmonitor=false' ") && appended.ends_with(" 'protocol.file.allow=never'"), "{appended}");
+        assert_eq!(read(&[("GIT_CONFIG_PARAMETERS", &appended)]), "never");
+        let quoted = config_parameters(Some(OsStr::new("")), &[("a.b".to_string(), "it's".to_string())]).unwrap();
+        assert!(quoted.ends_with("'a.b=it'\\''s'"), "{quoted}");
+        assert_eq!(allow_protocol(None, &never), None);
+        assert_eq!(allow_protocol(Some(OsStr::new("file:https:ext")), &never).unwrap(), "https");
+        assert_eq!(allow_protocol(Some(OsStr::new("file:https")), &[]).unwrap(), "file:https", "a trusted run keeps the parent's list but for ext");
+        assert_eq!(allow_protocol(Some(OsStr::new("file:https")), &[("protocol.allow".to_string(), "never".to_string())]).unwrap(), "");
+        // Live: git itself refuses the file transport under the filtered list, and allows it under the parent's.
+        let src = temp_repo("p8-env-src");
+        let dest = std::env::temp_dir().join(format!("kolux-rs-git-p8-env-dest-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dest);
+        let clone = |allow: &str| {
+            let mut c = Command::new("git");
+            c.args(["clone", "-q", &src.to_string_lossy(), &dest.to_string_lossy()]).env("GIT_ALLOW_PROTOCOL", allow);
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                c.creation_flags(0x0800_0000);
+            }
+            let out = c.output().unwrap();
+            (out.status.success(), String::from_utf8_lossy(&out.stderr).to_string())
+        };
+        let (ok, err) = clone(&allow_protocol(Some(OsStr::new("file:https")), &never).unwrap());
+        assert!(!ok && err.contains("transport 'file' not allowed"), "{err}");
+        assert!(clone("file:https").0, "the parent's own list allows it");
+        let _ = fs::remove_dir_all(&dest);
+        let _ = fs::remove_dir_all(&src);
     }
 
     /// Review fix 6: a relative core.hooksPath is resolved against the worktree's top level, as git does, so a
@@ -3997,8 +4228,7 @@ mod tests {
         }
     }
 
-    /// B6: the hook is found by its own name, not by listing the folder, so thousands of decoys cannot hide
-    /// it; on Windows `<hook>.exe` and any letter case count too (NTFS).
+    /// B6 (c): the hook is found by its own name, not by listing the folder, so thousands of decoys cannot hide it.
     #[test]
     fn t779e_a_hook_among_many_decoys_is_still_found() {
         let dir = temp_repo("e-decoys");
@@ -4008,11 +4238,36 @@ mod tests {
         }
         let marker = dir.join("decoy-ran.txt");
         marker_hook(&dir, "pre-commit", &marker);
-        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some());
-        if cfg!(windows) {
-            fs::rename(hooks.join("pre-commit"), hooks.join("PRE-COMMIT.exe")).unwrap();
-            assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some(), "Git for Windows would run PRE-COMMIT.exe");
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some(), "the hook behind 5000 decoys");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// B6 (a): Git for Windows also runs `<hook>.exe` (review fix 8: its own test).
+    #[test]
+    fn t779e_a_hook_with_an_exe_suffix_is_found_on_windows() {
+        if !cfg!(windows) {
+            return;
         }
+        let dir = temp_repo("e-hook-exe");
+        let marker = dir.join("exe-ran.txt");
+        marker_hook(&dir, "pre-commit.exe", &marker);
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some(), "Git for Windows would run pre-commit.exe");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// B6 (b): NTFS matches a hook's name whatever its letter case, and so git runs `PRE-COMMIT` as pre-commit
+    /// (review fix 8: its own test, with plain git as the premise).
+    #[test]
+    fn t779e_a_hook_in_another_letter_case_is_found_on_windows() {
+        if !cfg!(windows) {
+            return;
+        }
+        let dir = temp_repo("e-hook-case");
+        let marker = dir.join("case-ran.txt");
+        marker_hook(&dir, "PRE-COMMIT", &marker);
+        assert!(plain_git(&["commit", "-q", "--allow-empty", "-m", "x"], &dir).status.success());
+        assert!(marker.exists(), "the premise: Git for Windows runs PRE-COMMIT");
+        assert!(refused(&["commit", "-q", "-m", "x"], &dir).is_some(), "Git for Windows would run PRE-COMMIT");
         let _ = fs::remove_dir_all(&dir);
     }
 

@@ -153,7 +153,8 @@ fn same_repo(a: &str, b: &str) -> bool {
 pub fn push_target(worktree: &Path) -> Option<PushTarget> {
     // The full ref, stripped: `--short` prints `heads/main` when a tag is also called `main` (T-779 review fix 7).
     let branch = run(&["symbolic-ref", "--quiet", "HEAD"], Some(worktree)).ok().and_then(|r| r.strip_prefix("refs/heads/").map(str::to_string)).filter(|b| !b.is_empty())?;
-    let conf = |key: String| run(&["config", "--get", &key], Some(worktree)).ok().filter(|v| !v.is_empty());
+    // As written, spaces included: `origin ` is a remote of its own to git (T-779 review fix 8, P1-3).
+    let conf = |key: String| crate::git::run_untrimmed(&["config", "--get", &key], Some(worktree)).ok().map(|v| v.strip_suffix('\n').unwrap_or(&v).to_string()).filter(|v| !v.is_empty());
     let remote = conf(format!("branch.{branch}.pushRemote")).or_else(|| conf("remote.pushDefault".to_string())).or_else(|| conf(format!("branch.{branch}.remote")))?;
     if remote == "." {
         return None;
