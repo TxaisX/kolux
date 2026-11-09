@@ -271,6 +271,11 @@ pub fn item_number(origin: &serde_json::Value) -> Option<u64> {
     origin["issue"].as_u64().or_else(|| origin["pr"].as_str()?.rsplit('/').next()?.parse().ok())
 }
 
+/// T-780 (review, 2026-11-09): the sticky marker `open_pull_request` writes beside `pr`. The details
+/// form and the CLI may clear or replace `pr`, but never this key, so a worktree that once held a
+/// pull request's branch is never pre-trusted again (`trust::made_by_kolux`).
+pub const PR_EVER_KEY: &str = "prEver";
+
 /// Records (or with `None`, forgets) how the workspace at `path` came to be.
 pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>) -> Result<(), String> {
     let mut all = load_origins(store);
@@ -1406,7 +1411,7 @@ pub fn workspace_open_pr(app: tauri::AppHandle, git: State<'_, Git>, store: Stor
     let (mut made, reused) = opened?;
     {
         let store = store.lock().map_err(|e| e.to_string())?;
-        set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": reused, "pr": pr.url })))?;
+        set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": reused, "pr": pr.url, PR_EVER_KEY: true })))?;
         if crate::scm::link_printed(&store, &made.worktree.path, &pr.url) {
             let _ = tauri::Emitter::emit(&app, "settings-saved", ()); // the window's copy of the links is stale otherwise
         }
@@ -5796,6 +5801,30 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         let long = "x".repeat(COMMENT_MAX + 1);
         assert!(save_details(&store, w, "n", "", &long).is_err());
         assert_eq!(details_of(&store, w).name, None, "an over-long comment writes nothing");
+        drop(store);
+    }
+
+    /// T-780 (review, 2026-11-09): the details form keeps what it does not own: who made the
+    /// worktree (`madeBy`) and the sticky pull-request marker, whatever link it clears or sets,
+    /// and it never adds a `madeBy` to a record that has none.
+    #[test]
+    fn t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker() {
+        let profile = temp("t780-keep");
+        let store = Store::open(&profile).unwrap();
+        let w = "C:\\ws\\pr-made";
+        // As open_pull_request records a worktree made from a pull request.
+        set_origin(&store, w, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/12", PR_EVER_KEY: true }))).unwrap();
+        save_details(&store, w, "Review", "", "unlinked").unwrap();
+        let o = origin(&store, w).unwrap();
+        assert_eq!((o["madeBy"].as_str(), o[PR_EVER_KEY].as_bool(), o["pr"].is_null(), o["existingBranch"].as_bool()), (Some("app"), Some(true), true, Some(false)), "{o}");
+        save_details(&store, w, "Review", "#4", "").unwrap();
+        let o = origin(&store, w).unwrap();
+        assert_eq!((o["madeBy"].as_str(), o[PR_EVER_KEY].as_bool(), o["issue"].as_u64()), (Some("app"), Some(true), Some(4)), "{o}");
+        // A record the details form starts itself has no maker and no marker.
+        let u = "C:\\ws\\user-added";
+        save_details(&store, u, "", "https://github.com/o/r/pull/3", "").unwrap();
+        let o = origin(&store, u).unwrap();
+        assert!(o.get("madeBy").is_none() && o.get(PR_EVER_KEY).is_none(), "{o}");
         drop(store);
     }
 

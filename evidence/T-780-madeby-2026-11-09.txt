@@ -1,0 +1,52 @@
+T-780 review fix: made_by_kolux over-accepted origin records (2026-11-09, lane ready-sec-madeby)
+
+WHAT CHANGED
+- src-tauri/src/trust.rs (one cleared edit):
+  - made_by_kolux: a path counts as Kolux-made only when its origin record has a non-empty
+    string `madeBy` (new helper names_its_maker) AND does not hold a pull request.
+  - holds_pull_request: also true when the sticky marker `prEver` (projects::PR_EVER_KEY) is true,
+    so unlinking a pull request in the details form no longer brings the pre-trust back.
+  - Test comment (was "unlinking it brings the pre-trust back") now: linking a pull request to a
+    worktree later stops future trust marks, but does not remove one already written; unlinking it
+    does not bring the pre-trust back. The test's unlinking step now uses save_details and asserts
+    NOT pre-trusted.
+- src-tauri/src/projects.rs:
+  - pub const PR_EVER_KEY = "prEver"; open_pull_request writes `"prEver": true` beside `"pr"`.
+  - save_details (details dialog) and CLI-019 worktree.set were read: both start from the existing
+    record and only set issue/issueUrl/pr/comment, so they keep an existing madeBy and prEver and
+    never add a madeBy. No code change needed there; guard test added.
+- Marker field name: prEver
+
+TESTS (cargo test -j 2 --lib t780, in the worktree, after `. scripts/test-env.ps1`)
+RED (tests written, fix not yet applied):
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... FAILED
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok   (guard: already true before the fix)
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... FAILED
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... FAILED
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+  panicked at src\trust.rs:582:9 (user-added folder with a details record WAS pre-trusted)
+  panicked at src\trust.rs:605:9: left: [main, wt]  right: [wt]  (main checkout with a details record WAS Kolux-made)
+  panicked at src\trust.rs:560:9 (after unlinking the PR the worktree WAS pre-trusted again)
+test result: FAILED. 3 passed; 3 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 2.25s
+
+(b) "a Kolux-made worktree still IS pre-trusted" is covered by t443_only_worktrees_kolux_made_are_trusted_ahead_of_time
+    (green before and after) and by the wt half of t780_details_on_the_main_checkout_never_make_it_kolux_made.
+
+GREEN (fix applied), same command:
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... ok
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... ok
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... ok
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 2.07s
+
+VERIFY (worktree, PowerShell: . scripts/test-env.ps1 ; cd src-tauri ; ...)
+cargo test -j 2 --lib trust::     => exit 0  test result: ok. 13 passed; 0 failed
+cargo test -j 2 --lib projects::  => exit 0  test result: ok. 110 passed; 0 failed
+cargo test -j 2 --lib cli::       => exit 0  test result: ok. 188 passed; 0 failed
+cargo test -j 2 --test cards_10   => exit 0  test result: ok. 40 passed; 0 failed
+cargo test -j 2 --test cards_11   => exit 0  test result: ok. 12 passed; 0 failed
+cargo clippy -j 2 --all-targets -- -D warnings => see below
+cargo clippy -j 2 --all-targets -- -D warnings => exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 7m 06s

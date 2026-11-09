@@ -311,16 +311,24 @@ pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
 /// of each one it creates). Any other folder, the project's own main checkout included, is never
 /// trusted ahead of time and keeps the agent's own trust prompt. T-780 (review finding 2): a
 /// worktree whose record carries a pull request (made from one, or linked to one later) holds
-/// another author's branch, so it is never pre-trusted either, whoever made the folder.
+/// another author's branch, so it is never pre-trusted either, whoever made the folder. Review
+/// 2026-11-09: only a record that names its maker (`madeBy`, written by every Kolux creator) counts;
+/// the details form and the CLI write records for any folder a user names, without one.
 pub fn made_by_kolux(store: &std::sync::Mutex<crate::state::Store>, paths: &[PathBuf]) -> Vec<PathBuf> {
     let Ok(store) = store.lock() else { return Vec::new() };
-    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some_and(|o| !holds_pull_request(&o))).cloned().collect()
+    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some_and(|o| names_its_maker(&o) && !holds_pull_request(&o))).cloned().collect()
+}
+
+/// Whether an origin record was written by a Kolux creator (a non-empty `madeBy`).
+fn names_its_maker(origin: &serde_json::Value) -> bool {
+    origin["madeBy"].as_str().is_some_and(|who| !who.trim().is_empty())
 }
 
 /// Whether a worktree's origin record names a pull request (`pr`), i.e. the branch checked out is
-/// a pull request's, possibly from a stranger's fork.
+/// a pull request's, possibly from a stranger's fork; or ever did (the sticky marker
+/// `projects::PR_EVER_KEY`), since unlinking the pull request does not change the branch.
 fn holds_pull_request(origin: &serde_json::Value) -> bool {
-    origin["pr"].as_str().is_some_and(|url| !url.trim().is_empty())
+    origin["pr"].as_str().is_some_and(|url| !url.trim().is_empty()) || origin[crate::projects::PR_EVER_KEY] == true
 }
 
 /// T-780: why `path` is left out of the pre-trust, for a caller's notice: it holds a pull request's
@@ -534,15 +542,17 @@ mod tests {
     /// T-780 (review finding 2): a worktree Kolux made for a pull request holds a stranger's fork
     /// branch; its record carries the pull request, and that keeps it out of the pre-trust even
     /// though Kolux made the folder and the main checkout is trusted. Linking a pull request to a
-    /// worktree later does the same; unlinking it brings the pre-trust back.
+    /// worktree later stops future trust marks, but does not remove one already written; unlinking
+    /// it does not bring the pre-trust back (the record keeps a sticky marker of the pull request).
     #[test]
     fn t780_a_worktree_holding_a_pull_request_is_never_pre_trusted() {
         let d = temp("t780-pr");
         let (main, wt) = test_repo_with_worktree(&d);
         let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
         let key = wt.to_string_lossy().to_string();
+        let pr_ever = crate::projects::PR_EVER_KEY;
         // Made from a pull request, as projects::open_pull_request records it.
-        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/12" }))).unwrap();
+        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/12", pr_ever: true }))).unwrap();
         assert!(made_by_kolux(&store, std::slice::from_ref(&wt)).is_empty(), "a pull request's branch is not pre-trusted");
         assert_eq!(not_pre_trusted_why(&store, &wt), "not trusted: this worktree holds a pull request's branch, so the agent asks itself");
         let file = d.join(".claude.json");
@@ -550,12 +560,64 @@ mod tests {
         assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)), Err("no folders to trust".to_string()), "nothing is written for a pull request worktree");
         let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
         assert!(doc["projects"].get(claude_key(&wt).unwrap()).is_none(), "{doc}");
-        // The same worktree with the pull request unlinked (details form) is Kolux's own again.
-        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": null }))).unwrap();
-        assert_eq!(made_by_kolux(&store, std::slice::from_ref(&wt)), vec![wt.clone()]);
-        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)).unwrap(), 1);
+        // Unlinking the pull request in the details form clears `pr` but the sticky marker stays,
+        // so the worktree is still not pre-trusted and nothing is written.
+        crate::projects::save_details(&store.lock().unwrap(), &key, "", "", "").unwrap();
+        let o = crate::projects::origin(&store.lock().unwrap(), &key).unwrap();
+        assert!(o["pr"].is_null() && o[crate::projects::PR_EVER_KEY] == true && o["madeBy"] == "app", "{o}");
+        assert!(made_by_kolux(&store, std::slice::from_ref(&wt)).is_empty(), "unlinking the pull request does not bring the pre-trust back");
+        assert_eq!(not_pre_trusted_why(&store, &wt), "not trusted: this worktree holds a pull request's branch, so the agent asks itself");
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)), Err("no folders to trust".to_string()));
         // A folder with no record at all says so.
         assert_eq!(not_pre_trusted_why(&store, &d.join("elsewhere")), "not trusted: not a worktree Kolux made, so the agent asks itself");
+        drop(store);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// T-780 (review finding, 2026-11-09): the details form and the CLI's `worktree.set` write an
+    /// origin record for any folder a user names (a link or a comment), without a `madeBy`. Such a
+    /// record must not make a user-added folder count as Kolux-made, or it would be pre-trusted.
+    #[test]
+    fn t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it() {
+        let d = temp("t780-details");
+        let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
+        let added = d.join("my-own-folder");
+        std::fs::create_dir_all(&added).unwrap();
+        let key = added.to_string_lossy().to_string();
+        crate::projects::save_details(&store.lock().unwrap(), &key, "Mine", "", "a note").unwrap();
+        let o = crate::projects::origin(&store.lock().unwrap(), &key).unwrap();
+        assert!(o.get("madeBy").is_none(), "the details form never adds a madeBy: {o}");
+        assert!(made_by_kolux(&store, std::slice::from_ref(&added)).is_empty(), "a user-added folder with a comment is not Kolux-made");
+        assert_eq!(not_pre_trusted_why(&store, &added), "not trusted: not a worktree Kolux made, so the agent asks itself");
+        let file = d.join(".claude.json");
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&added)), Err("no folders to trust".to_string()));
+        assert!(!file.exists(), "nothing is written");
+        // An empty madeBy is no better than none.
+        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "", "comment": "x" }))).unwrap();
+        assert!(made_by_kolux(&store, std::slice::from_ref(&added)).is_empty());
+        drop(store);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    /// T-780: a Kolux-made worktree stays pre-trusted when its details are edited (the record
+    /// keeps its `madeBy`), while the same edit on the project's main checkout never makes the
+    /// main checkout count as Kolux-made.
+    #[test]
+    fn t780_details_on_the_main_checkout_never_make_it_kolux_made() {
+        let d = temp("t780-details-main");
+        let (main, wt) = test_repo_with_worktree(&d);
+        let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
+        crate::projects::set_origin(&store.lock().unwrap(), &wt.to_string_lossy(), Some(&json!({ "madeBy": "app" }))).unwrap();
+        crate::projects::save_details(&store.lock().unwrap(), &main.to_string_lossy(), "Main", "#7", "the main checkout").unwrap();
+        crate::projects::save_details(&store.lock().unwrap(), &wt.to_string_lossy(), "Work", "#8", "the worktree").unwrap();
+        assert_eq!(made_by_kolux(&store, &[main.clone(), wt.clone()]), vec![wt.clone()], "the main checkout is left out, the Kolux-made worktree stays in");
+        assert_eq!(not_pre_trusted_why(&store, &main), "not trusted: not a worktree Kolux made, so the agent asks itself");
+        let file = d.join(".claude.json");
+        trust_claude(&file, std::slice::from_ref(&main)).unwrap();
+        assert_eq!(trust_for_launch(&store, &file, "claude", &[main.clone(), wt.clone()]).unwrap(), 1);
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(doc["projects"][claude_key(&wt).unwrap()]["hasTrustDialogAccepted"], true);
+        assert_eq!(doc["projects"].as_object().unwrap().len(), 2, "{doc}");
         drop(store);
         let _ = std::fs::remove_dir_all(&d);
     }
