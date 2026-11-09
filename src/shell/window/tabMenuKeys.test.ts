@@ -106,7 +106,7 @@ test("the tab menu wires the hook to its element and loads on first use; the old
   expect(menu).toContain("useTabMenuKeys(tabMenu !== null, tabBox");
   expect(menu).toContain("ref={tabBox}");
   expect(menu).toContain("title={why}");
-  expect(dialogs).toContain("deferred(() => import(\"./TabMenuView\"))");
+  expect(dialogs).toContain("deferred(() => import(\"./TabMenuView\"), undefined, { prefetch: true })"); // DT-C230: read at the first idle moment
   for (const src of [dialogs, grid]) expect(src).not.toMatch(/from "\.\/(TabMenuView|tabMenu|tabMenuKeys)"/);
   expect(dialogs).toContain("closeConfirmLabel(asking.keys.length)");
   expect(store).not.toMatch(/Escape" && setTabMenu/);
