@@ -864,7 +864,8 @@ fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
     match repo {
         Some(r) => candidates.push(r),
         None => {
-            let branch = listed(&["symbolic-ref", "-q", "--short", "HEAD"]).map(|b| b.trim().to_string()).unwrap_or_default();
+            // The full ref, stripped: `--short` prints `heads/main` when a tag is also called `main` (review fix 7).
+            let branch = listed(&["symbolic-ref", "-q", "HEAD"]).and_then(|r| r.trim().strip_prefix("refs/heads/").map(str::to_string)).unwrap_or_default();
             for key in [format!("branch.{branch}.pushRemote"), "remote.pushDefault".to_string(), format!("branch.{branch}.remote")] {
                 if let Some(v) = listed(&["config", "--get", &key]) {
                     candidates.push(v.trim().to_string());
@@ -874,9 +875,19 @@ fn local_push_target(args: &[&str], dir: &Path) -> Option<String> {
         }
     }
     let mut urls: Vec<String> = Vec::new();
+    // Review fix 7: every push URL of a candidate (`get-url --push --all` also reads every URL line of a legacy
+    // remote file and applies pushInsteadOf); a candidate that is no remote at all goes through ls-remote.
     for c in candidates.iter().filter(|c| !c.is_empty()) {
+        if let Some(all) = listed(&["remote", "get-url", "--push", "--all", c]) {
+            urls.extend(all.lines().map(|l| l.trim().to_string()));
+            continue;
+        }
         let Some(url) = listed(&["ls-remote", "--get-url", c]) else { return Some(format!("the address of {c} could not be read")) };
-        urls.push(url.trim().to_string());
+        let url = url.trim().to_string();
+        if url == *c && !c.contains(['/', '\\', ':']) && c != "." && c != ".." {
+            return Some(format!("there is no remote called {c}, so git would take it as a folder on this computer"));
+        }
+        urls.push(url);
     }
     let Some(remotes) = listed(&["remote"]) else { return Some("the folder's remotes could not be listed".into()) };
     for remote in remotes.lines().map(str::trim).filter(|r| !r.is_empty()) {
@@ -1109,8 +1120,10 @@ pub(crate) fn command_checked(args: &[&str], cwd: Option<&Path>) -> Result<Comma
     if access == Access::Reads {
         env = net_overrides(&found, dir, network(&args)).map_err(|what| refusal(&args, dir, &what))?.env;
         // Review fix 6: an untrusted push never pushes submodules (their remotes are not checked).
+        // Review fix 7: and git itself refuses a local path or file:// for it, however the address was chosen.
         if after_options(&args).first() == Some(&"push") {
             pairs.push(("push.recurseSubmodules".to_string(), "no".to_string()));
+            pairs.push(("protocol.file.allow".to_string(), "never".to_string()));
         }
         if !network(&args) {
             no_lazy_fetch(&found, dir, &mut pairs, &mut env);
@@ -3796,6 +3809,50 @@ mod tests {
         assert!(refused(&["push", "--set-upstream", "--", "origin", "main"], &ok).is_none());
         assert!(refused(&["push"], &ok).is_none());
         for d in [&base, &payload, &d1, &d2, &d3, &d4, &d5, &d5b, &ok] {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// Review fix 7: a tag named like the branch, and a legacy remote file with two URL lines; and the
+    /// backstop: whatever the address resolution misses, git itself refuses a local transport for an
+    /// untrusted push (the receiving repository's hook never runs).
+    #[test]
+    fn t779e_tag_named_branches_legacy_url_lists_and_the_file_transport_backstop() {
+        let base = temp_repo("e-p7-src");
+        let payload = bare_copy(&base, "e-p7-payload");
+        let p = payload.to_string_lossy().replace('\\', "/");
+        let marker = base.join("p7-ran.txt");
+        fs::write(payload.join("hooks").join("pre-receive"), format!("#!/bin/sh\necho ran >> \"{}\"\nexit 1\n", marker.to_string_lossy().replace('\\', "/"))).unwrap_or_else(|_| {
+            fs::create_dir_all(payload.join("hooks")).unwrap();
+            fs::write(payload.join("hooks").join("pre-receive"), format!("#!/bin/sh\necho ran >> \"{}\"\nexit 1\n", marker.to_string_lossy().replace('\\', "/"))).unwrap();
+        });
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(payload.join("hooks").join("pre-receive"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        // A tag called main hides branch.main.pushRemote from `symbolic-ref --short`.
+        let d1 = temp_repo("e-p7-1");
+        run(&["tag", "main"], Some(&d1)).unwrap();
+        run(&["remote", "add", "origin", "https://example.invalid/a.git"], Some(&d1)).unwrap();
+        run(&["config", "branch.main.pushRemote", &p], Some(&d1)).unwrap();
+        assert!(refused(&["push"], &d1).is_some(), "the branch's pushRemote behind a tag of the same name");
+        // A legacy remote file with a remote first URL and a local second one.
+        let d2 = temp_repo("e-p7-2");
+        fs::create_dir_all(d2.join(".git").join("remotes")).unwrap();
+        fs::write(d2.join(".git").join("remotes").join("origin"), format!("URL: https://example.invalid/ok.git\nURL: {p}\n")).unwrap();
+        assert!(refused(&["push", "--set-upstream", "--", "origin", "main"], &d2).is_some(), "every URL line of a legacy remote");
+        // No such remote: a plain message.
+        let d3 = temp_repo("e-p7-3");
+        assert!(refused(&["push", "origin", "main"], &d3).unwrap().contains("no remote called origin"));
+        // The backstop, live: the command Kolux would build for an untrusted push refuses the file transport.
+        let mut cmd = command_checked(&["push", "https://example.invalid/a.git", "main"], Some(&d3)).unwrap();
+        assert!(blanked_keys(&cmd).iter().any(|k| k == "protocol.file.allow"));
+        cmd.args([p.as_str(), "HEAD:refs/heads/x"]);
+        let out = cmd.output().unwrap();
+        assert!(!out.status.success(), "the push went through");
+        assert!(!marker.exists(), "the receiving repository's hook ran");
+        for d in [&base, &payload, &d1, &d2, &d3] {
             let _ = fs::remove_dir_all(d);
         }
     }
