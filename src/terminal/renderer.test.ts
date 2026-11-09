@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, parkWhenHidden, PARK_AFTER_MS, resumeHook, watchResume, type RendererMode, type WebglLike } from "./renderer";
+import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, onSlotFree, parkWhenHidden, PARK_AFTER_MS, renderNowHook, resumeHook, watchResume, type ParkHooks, type RendererMode, type WebglLike } from "./renderer";
 
 function fakeWebgl(): WebglLike & { disposed: number; lose: () => void } {
   let lose = () => {};
@@ -119,6 +119,14 @@ test("a heartbeat that skips far ahead means the machine slept: the glyph caches
 });
 
 describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
+  const hooksFor = (redraws: RendererMode[], log: string[] = []): ParkHooks => ({
+    resume: () => void log.push("resume"),
+    redraw: (m) => {
+      log.push(`redraw ${m}`);
+      redraws.push(m);
+    },
+    parked: () => void log.push("parked"),
+  });
   const clock = () => {
     const waits = new Map<number, { fn: () => void; at: number }>();
     let now = 0;
@@ -129,6 +137,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
         waits.set(id, { fn, at: now + ms });
         return () => void waits.delete(id);
       },
+      now: () => now,
       pass(ms: number) {
         now += ms;
         for (const [id, w] of [...waits]) if (w.at <= now) (waits.delete(id), w.fn());
@@ -143,7 +152,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const choice = attachRenderer({ loadAddon: (a) => loaded.push(a) }, () => (made.push(fakeWebgl()), made[made.length - 1]), true, pool);
     const c = clock();
     const redraws: RendererMode[] = [];
-    const park = parkWhenHidden(choice, (m) => redraws.push(m), PARK_AFTER_MS, c.wait);
+    const park = parkWhenHidden(choice, hooksFor(redraws), { wait: c.wait, pool });
     park.hidden(true);
     c.pass(PARK_AFTER_MS - 1);
     expect([made[0].disposed, pool.live, choice.mode]).toEqual([0, 1, "webgl"]); // still held under 30 s
@@ -161,7 +170,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const choice = attachRenderer({ loadAddon() {} }, () => gl, true, pool);
     const c = clock();
     const redraws: RendererMode[] = [];
-    const park = parkWhenHidden(choice, (m) => redraws.push(m), PARK_AFTER_MS, c.wait);
+    const park = parkWhenHidden(choice, hooksFor(redraws), { wait: c.wait, pool });
     park.hidden(true);
     c.pass(10_000);
     park.hidden(false);
@@ -174,14 +183,16 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const hiddenPane = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
     const c = clock();
     const redraws: RendererMode[] = [];
-    const park = parkWhenHidden(hiddenPane, (m) => redraws.push(m), PARK_AFTER_MS, c.wait);
+    const park = parkWhenHidden(hiddenPane, hooksFor(redraws), { wait: c.wait, pool });
     park.hidden(true);
     c.pass(PARK_AFTER_MS);
     const other = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
     expect(other.mode).toBe("webgl");
     park.hidden(false);
-    expect([hiddenPane.mode, redraws]).toEqual(["dom", ["dom"]]); // still redrawn whole, on the plain path
-    other.dispose();
+    expect([hiddenPane.mode, hiddenPane.waiting, redraws]).toEqual(["dom", true, ["dom"]]); // still redrawn whole, on the plain path
+    other.dispose(); // the freed slot goes to the visible pane that was refused for a full pool
+    expect([hiddenPane.mode, redraws, pool.live]).toEqual(["webgl", ["dom", "webgl"], 1]);
+    park.stop();
     hiddenPane.dispose();
     expect(pool.live).toBe(0);
   });
@@ -201,7 +212,7 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     const pool = { max: 12, live: 0 };
     const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
     const c = clock();
-    const park = parkWhenHidden(choice, () => {}, PARK_AFTER_MS, c.wait);
+    const park = parkWhenHidden(choice, hooksFor([]), { wait: c.wait, pool });
     park.hidden(true);
     c.pass(PARK_AFTER_MS);
     choice.dispose();
@@ -211,6 +222,126 @@ describe("DT-C229: a long-hidden pane gives its GPU context back", () => {
     park.stop();
     c.pass(PARK_AFTER_MS);
     expect(pool.live).toBe(0);
+  });
+
+  test("on reveal xterm resumes first, then the context is taken, then the pane repaints; a park reports plain", () => {
+    const pool = { max: 12, live: 0 };
+    const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const c = clock();
+    const log: string[] = [];
+    const park = parkWhenHidden(choice, hooksFor([], log), { wait: c.wait, pool });
+    park.hidden(true);
+    c.pass(PARK_AFTER_MS);
+    expect(log).toEqual(["parked"]); // the pane reports the plain path at once (terminal_diagnostics)
+    park.hidden(false);
+    expect(log).toEqual(["parked", "resume", "redraw webgl"]);
+    park.stop();
+  });
+
+  test("a pane revealed into a full pool evicts the pane hidden longest, never a visible one, and no waiter steals the slot", () => {
+    const pool = { max: 3, live: 0 };
+    const c = clock();
+    const pane = () => {
+      const choice = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+      const log: string[] = [];
+      const park = parkWhenHidden(choice, hooksFor([], log), { wait: c.wait, pool, now: c.now });
+      return { choice, log, park };
+    };
+    const p = pane();
+    const q1 = pane();
+    const q2 = pane();
+    p.park.hidden(true);
+    c.pass(PARK_AFTER_MS); // p parks; its slot goes to a new visible pane
+    const x = pane();
+    const w = pane(); // visible, refused for a full pool
+    expect([x.choice.mode, w.choice.mode, w.choice.waiting, pool.live]).toEqual(["webgl", "dom", true, 3]);
+    q1.park.hidden(true);
+    c.pass(1_000);
+    q2.park.hidden(true);
+    c.pass(1_000);
+    p.park.hidden(false);
+    expect([p.choice.mode, q1.choice.mode, q2.choice.mode, x.choice.mode, w.choice.mode, pool.live]).toEqual(["webgl", "dom", "webgl", "webgl", "dom", 3]);
+    expect([q1.park.parked, q1.log, p.log]).toEqual([true, ["parked"], ["parked", "resume", "redraw webgl"]]);
+    q1.park.hidden(false); // q2 is now the only hidden pane holding a context
+    expect([q1.choice.mode, q2.choice.mode, q2.park.parked]).toEqual(["webgl", "dom", true]);
+    c.pass(PARK_AFTER_MS); // the timers of evicted panes were cancelled: nothing parks twice
+    expect([q2.log, pool.live]).toEqual([["parked"], 3]);
+    for (const t of [p, q1, q2, x, w]) t.park.stop();
+  });
+
+  test("with every slot held by a visible pane, the revealed pane draws plain and takes the next slot freed", () => {
+    const pool = { max: 1, live: 0 };
+    const c = clock();
+    const holder = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const holderPark = parkWhenHidden(holder, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    const late = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const redraws: RendererMode[] = [];
+    const park = parkWhenHidden(late, hooksFor(redraws), { wait: c.wait, pool, now: c.now });
+    park.hidden(false);
+    expect([late.mode, holder.mode, redraws]).toEqual(["dom", "webgl", ["dom"]]);
+    holder.dispose();
+    expect([late.mode, redraws, pool.live]).toEqual(["webgl", ["dom", "webgl"], 1]);
+    park.stop();
+    holderPark.stop();
+  });
+
+  test("a hidden waiter takes a freed slot only when shown; a lost or refused pane never takes one", () => {
+    const pool = { max: 1, live: 0 };
+    const c = clock();
+    const holder = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const waiter = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    const park = parkWhenHidden(waiter, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    park.hidden(true);
+    holder.dispose();
+    expect([waiter.mode, pool.live]).toEqual(["dom", 0]);
+    park.hidden(false);
+    expect([waiter.mode, pool.live]).toEqual(["webgl", 1]);
+    park.stop();
+    waiter.dispose();
+
+    const gl = fakeWebgl();
+    let made = 0;
+    const lost = attachRenderer({ loadAddon() {} }, () => (made++, gl), true, pool);
+    const lostPark = parkWhenHidden(lost, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    gl.lose(); // frees the slot; the lost pane must not take it back
+    expect([lost.mode, lost.waiting, made, pool.live]).toEqual(["dom", false, 1, 0]);
+    const refusing = attachRenderer({ loadAddon() { throw new Error("no gl"); } }, fakeWebgl, true, pool);
+    const refusedPark = parkWhenHidden(refusing, hooksFor([]), { wait: c.wait, pool, now: c.now });
+    attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool).dispose();
+    expect([refusing.mode, refusing.waiting, lost.mode, pool.live]).toEqual(["dom", false, "dom", 0]);
+    lostPark.stop();
+    refusedPark.stop();
+  });
+
+  test("slot-free listeners stop when asked and hear nothing of a quiet park", () => {
+    const pool = { max: 1, live: 0 };
+    let calls = 0;
+    const stop = onSlotFree(pool, () => void calls++);
+    attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool).dispose();
+    expect(calls).toBe(1);
+    const b = attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool);
+    expect(b.park(true)).toBe(true); // a quiet park keeps the freed slot for its caller
+    expect(calls).toBe(1);
+    stop();
+    attachRenderer({ loadAddon() {} }, fakeWebgl, true, pool).dispose();
+    expect(calls).toBe(1);
+  });
+
+  test("draws the pending rows now through xterm's own debouncer step, and declines without one", () => {
+    const cancelled: number[] = [];
+    const rendered: number[] = [];
+    const debouncer = {
+      _animationFrame: 7 as number | undefined,
+      _innerRefresh() {
+        this._animationFrame = undefined;
+        rendered.push(1);
+      },
+    };
+    const hook = renderNowHook({ _core: { _renderService: { _renderDebouncer: debouncer } } }, (id) => void cancelled.push(id));
+    hook?.();
+    expect([cancelled, rendered, debouncer._animationFrame]).toEqual([[7], [1], undefined]);
+    expect(renderNowHook({})).toBeNull();
+    expect(renderNowHook(null)).toBeNull();
   });
 
   test("resumes xterm through its own observer handler when it has one, and declines otherwise", () => {

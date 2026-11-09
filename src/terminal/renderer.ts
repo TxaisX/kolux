@@ -1,8 +1,9 @@
 // Renderer choice for a terminal pane (spec TERM-103): try the GPU path, keep working on the
 // plain path if it fails to load or loses its context later. At most twelve panes hold a GPU
 // context at a time, hidden tabs counted while they hold one; the rest draw plain until a slot frees
-// up. A pane hidden for PARK_AFTER_MS gives its context back and takes one again when it is shown
-// (DT-C229). Pure so it can be tested without a browser; the pane hands in the real addon factory.
+// up. A pane hidden for PARK_AFTER_MS gives its context back and takes one again when it is shown,
+// evicting the pane hidden longest when the pool is full (DT-C229). Pure so it can be tested
+// without a browser; the pane hands in the real addon factory.
 
 export type RendererMode = "webgl" | "dom";
 
@@ -19,13 +20,17 @@ export type RendererHost<A extends WebglLike> = {
 export type RendererChoice = {
   /** The path drawing now (a parked pane draws plain until it is woken). */
   readonly mode: RendererMode;
+  /** True while the pane draws plain only because the pool was full: it may still take a slot. */
+  readonly waiting: boolean;
   /** Fires when a GPU pane has fallen back to the plain path after a context loss. */
   onFallback: (listener: (reason: string) => void) => void;
   /** Throw the glyph caches away (after a paste burst or a system resume); nothing on the plain path. */
   clearGlyphs(): void;
-  /** DT-C229: give the GPU context and its pool slot back (a long-hidden pane); true if one was held. */
-  park(): boolean;
-  /** DT-C229: after park, take a GPU context again when the pool has room; the mode now in force. */
+  /** DT-C229: give the GPU context and its pool slot back (a long-hidden pane); true if one was held.
+   *  `quiet` keeps the freed slot from being offered to waiting panes (the caller takes it itself). */
+  park(quiet?: boolean): boolean;
+  /** DT-C229: after park, or while waiting for a slot, take a GPU context when the pool has room;
+   *  the mode now in force. A pane whose WebGL was refused or lost stays plain. */
   wake(): RendererMode;
   dispose(): void;
 };
@@ -35,6 +40,28 @@ export type GpuPool = { max: number; live: number };
 /** The window's one pool of GPU contexts. Twelve covers a full 12-pane grid; Chromium allows about
  * sixteen per page, so a full grid still draws on the GPU. */
 export const gpuPool: GpuPool = { max: 12, live: 0 };
+
+/** DT-C229: who is told when a slot of a pool frees up (panes drawing plain only because it was full). */
+const slotWatchers = new WeakMap<GpuPool, Set<() => void>>();
+const watchersOf = (pool: GpuPool) => {
+  let set = slotWatchers.get(pool);
+  if (!set) slotWatchers.set(pool, (set = new Set()));
+  return set;
+};
+
+/** Calls `fn` each time a slot of `pool` frees up, until the pool is full again; returns the stop. */
+export function onSlotFree(pool: GpuPool, fn: () => void): () => void {
+  const set = watchersOf(pool);
+  set.add(fn);
+  return () => void set.delete(fn);
+}
+
+const slotFreed = (pool: GpuPool) => {
+  for (const fn of [...watchersOf(pool)]) {
+    if (pool.live >= pool.max) return;
+    fn();
+  }
+};
 
 /** Settings key: `false` draws every terminal plain; absent or `true` lets the GPU path be tried. */
 export const GPU_FIELD = "terminalGpu";
@@ -50,32 +77,41 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
   let addon: A | undefined;
   let held = false;
   // The GPU path is out for good once WebGL refused to load or lost its context; a pool that was
-  // full only means plain for now.
+  // full only means plain for now (`waiting`).
   let refused = !preferGpu;
   let parked = false;
+  let waiting = false;
   let gone = false;
-  const release = () => {
+  const release = (quiet: boolean) => {
+    const had = held;
     if (held) pool.live--;
     held = false;
+    if (had && !quiet) slotFreed(pool);
   };
-  const drop = () => {
+  const drop = (quiet = false) => {
+    const was = addon;
+    addon = undefined;
     try {
-      addon?.dispose();
+      was?.dispose();
     } catch {
       /* already broken */
     }
-    addon = undefined;
-    release();
+    release(quiet);
   };
   const load = (): boolean => {
-    if (refused || gone || pool.live >= pool.max) return false;
+    if (refused || gone) return false;
+    if (pool.live >= pool.max) {
+      waiting = true;
+      return false;
+    }
+    waiting = false;
     let made: A | undefined;
     try {
       made = makeWebgl();
       made.onContextLoss(() => {
         if (addon !== made) return; // an addon already parked or replaced
-        drop();
         refused = true;
+        drop();
         notify("context lost");
       });
       host.loadAddon(made);
@@ -98,18 +134,21 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     get mode(): RendererMode {
       return addon ? "webgl" : "dom";
     },
+    get waiting() {
+      return waiting && !refused && !gone && !addon;
+    },
     onFallback,
     clearGlyphs() {
       addon?.clearTextureAtlas?.();
     },
-    park() {
+    park(quiet = false) {
       if (!addon) return false;
-      drop();
       parked = true;
+      drop(quiet);
       return true;
     },
     wake() {
-      if (parked) {
+      if (!addon && (parked || waiting)) {
         parked = false;
         load();
       }
@@ -117,6 +156,7 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
     },
     dispose() {
       gone = true;
+      waiting = false;
       drop();
     },
   };
@@ -125,18 +165,38 @@ export function attachRenderer<A extends WebglLike>(host: RendererHost<A>, makeW
 /** DT-C229: how long a pane stays hidden before its GPU context goes back to the pool. */
 export const PARK_AFTER_MS = 30_000;
 
-type PausedTerm = { _core?: { _renderService?: { _handleIntersectionChange?: (e: { isIntersecting: boolean; intersectionRatio: number }) => void } } };
+type RenderService = {
+  _handleIntersectionChange?: (e: { isIntersecting: boolean; intersectionRatio: number }) => void;
+  _renderDebouncer?: { _animationFrame?: number; _innerRefresh?: () => void };
+};
+type XtermInside = { _core?: { _renderService?: RenderService } };
+const serviceOf = (term: unknown): RenderService | undefined => (term as XtermInside | null | undefined)?._core?._renderService;
 
 /** xterm pauses drawing while its screen is out of view and resumes from an IntersectionObserver
  *  callback, which comes after the first frame the pane is visible in. A renderer swapped in on
  *  reveal would show that frame blank, so the pane resumes xterm itself (xterm 6's own resume
- *  handler, the same call the observer makes) before refreshing. Null when this xterm has no such
- *  handler: then panes are never parked, which keeps TERM-103's whole frame on reveal. */
+ *  handler, the same call the observer makes; it also measures a cell size never measured while
+ *  the pane was mounted hidden). Null when this xterm has no such handler: then panes are never
+ *  parked, which keeps TERM-103's whole frame on reveal. */
 export function resumeHook(term: unknown): (() => void) | null {
-  const service = (term as PausedTerm)?._core?._renderService;
+  const service = serviceOf(term);
   const resume = service?._handleIntersectionChange;
   if (typeof resume !== "function") return null;
   return () => resume.call(service, { isIntersecting: true, intersectionRatio: 1 });
+}
+
+/** `term.refresh` only asks for the next animation frame. On reveal the pane draws the pending rows
+ *  now instead (xterm 6's own debouncer step, its frame request cancelled), so the frame being
+ *  painted already holds the whole screen. Null when this xterm has no such step: then panes are
+ *  never parked. */
+export function renderNowHook(term: unknown, cancel: (id: number) => void = (id) => globalThis.cancelAnimationFrame?.(id)): (() => void) | null {
+  const debouncer = serviceOf(term)?._renderDebouncer;
+  const inner = debouncer?._innerRefresh;
+  if (!debouncer || typeof inner !== "function") return null;
+  return () => {
+    if (debouncer._animationFrame !== undefined) cancel(debouncer._animationFrame);
+    inner.call(debouncer);
+  };
 }
 
 type Wait = (fn: () => void, ms: number) => () => void;
@@ -145,34 +205,84 @@ const realWait: Wait = (fn, ms) => {
   return () => clearTimeout(t);
 };
 
-/** DT-C229: parks `choice` once the pane has been hidden for `after` ms; on show, a parked pane
- *  takes a GPU context again and `redraw` runs with the mode now in force, before the frame is
- *  drawn (the pane calls `shown` from a layout effect). */
-export function parkWhenHidden(choice: Pick<RendererChoice, "park" | "wake">, redraw: (mode: RendererMode) => void, after = PARK_AFTER_MS, wait: Wait = realWait) {
+export type ParkHooks = {
+  /** Resume xterm's paused drawing (resumeHook); runs before a context is taken. */
+  resume(): void;
+  /** Repaint every row now with `mode` in force (refresh, then renderNowHook) and report the mode. */
+  redraw(mode: RendererMode): void;
+  /** The pane gave its context back: it draws plain now. */
+  parked(): void;
+};
+
+type Parker = { hiddenSince: number | null; holds(): boolean; evict(): void };
+const parkersOf = new WeakMap<GpuPool, Set<Parker>>();
+
+/** DT-C229: parks `choice` once the pane has been hidden for `after` ms. On show, a parked pane, or
+ *  one drawing plain only because the pool was full, takes a GPU context again, evicting the pane
+ *  hidden longest when the pool is full, and repaints before the frame is drawn (the pane calls
+ *  `hidden(false)` from a layout effect). A visible pane still waiting takes the next slot freed. */
+export function parkWhenHidden(
+  choice: Pick<RendererChoice, "park" | "wake" | "mode" | "waiting">,
+  hooks: ParkHooks,
+  { after = PARK_AFTER_MS, wait = realWait, pool = gpuPool, now = Date.now }: { after?: number; wait?: Wait; pool?: GpuPool; now?: () => number } = {},
+) {
   let cancel: (() => void) | null = null;
   let parked = false;
+  let hidden = false;
+  let parkers = parkersOf.get(pool);
+  if (!parkers) parkersOf.set(pool, (parkers = new Set()));
+  const all = parkers;
   const stopWaiting = () => {
     cancel?.();
     cancel = null;
   };
+  const park = (quiet: boolean) => {
+    stopWaiting();
+    if (!choice.park(quiet)) return;
+    parked = true;
+    hooks.parked();
+  };
+  const me: Parker = { hiddenSince: null, holds: () => choice.mode === "webgl", evict: () => park(true) };
+  all.add(me);
+  const take = () => {
+    if (pool.live >= pool.max) {
+      let victim: Parker | null = null;
+      for (const p of all) {
+        if (p === me || p.hiddenSince === null || !p.holds()) continue;
+        if (victim === null || p.hiddenSince < (victim.hiddenSince as number)) victim = p;
+      }
+      victim?.evict();
+    }
+    hooks.resume();
+    parked = false;
+    hooks.redraw(choice.wake());
+  };
+  const stopSlots = onSlotFree(pool, () => {
+    if (!hidden && choice.waiting) take();
+  });
   return {
     get parked() {
       return parked;
     },
     hidden(on: boolean) {
+      hidden = on;
       if (on) {
+        me.hiddenSince ??= now();
         cancel ??= wait(() => {
           cancel = null;
-          parked = choice.park() || parked;
+          park(false);
         }, after);
         return;
       }
+      me.hiddenSince = null;
       stopWaiting();
-      if (!parked) return;
-      parked = false;
-      redraw(choice.wake());
+      if (parked || choice.waiting) take();
     },
-    stop: stopWaiting,
+    stop() {
+      stopWaiting();
+      stopSlots();
+      all.delete(me);
+    },
   };
 }
 

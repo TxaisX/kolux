@@ -29,7 +29,7 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, onHeartbeat, parkWhenHidden, resumeHook, watchResume, type RendererMode } from "./renderer";
+import { attachRenderer, onHeartbeat, parkWhenHidden, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
@@ -641,13 +641,18 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     setRenderer(choice.mode);
     choice.onFallback(() => setRenderer("dom"));
     fit.fit();
-    // DT-C229: only where xterm can be resumed at once on reveal; elsewhere the context is kept.
+    // DT-C229: only where xterm can be resumed and drawn at once on reveal; elsewhere the context is kept.
     const resume = resumeHook(term);
-    if (resume) {
-      parking.current = parkWhenHidden(choice, (mode) => {
-        resume(); // xterm draws in this frame's animation step, not after the observer's late callback
-        term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
-        setRenderer(mode);
+    const renderNow = renderNowHook(term);
+    if (resume && renderNow) {
+      parking.current = parkWhenHidden(choice, {
+        resume, // xterm draws now, not after the observer's late callback; measures the cell size first
+        redraw: (mode) => {
+          term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
+          renderNow(); // in this frame, not the next one
+          setRenderer(mode);
+        },
+        parked: () => setRenderer("dom"), // terminal_diagnostics reports the path really drawing
       });
       parking.current.hidden(isHidden.current);
     }
