@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 
 pub const PROVIDERS: [&str; 2] = ["claude", "codex"];
 const KEY_TRACKING: &str = "token_tracking";
@@ -51,19 +51,56 @@ pub struct Saved {
     pub error: Option<String>,
 }
 
-/// One reply's counts before bucketing.
-#[derive(Clone, Serialize, Deserialize)]
+/// One reply's counts before bucketing. The text is shared, not copied: every session, model and
+/// folder name is held once (see `interned`), so a long transcript costs its counts, not its names.
+#[derive(Clone)]
 pub struct Turn {
     at: u64,
-    session: String,
-    model: String,
-    cwd: String,
+    session: Arc<str>,
+    model: Arc<str>,
+    cwd: Arc<str>,
     input: u64,
     output: u64,
     cache_read: u64,
     cache_write: u64,
     cache_write_1h: u64,
     reasoning: u64,
+}
+
+/// What makes a reply or token event the same one in several files (a fork, a copy, a resumed
+/// session): its key text as a 128-bit FNV-1a hash. It is kept on disk, so it is a fixed function,
+/// never the standard library's hasher, which may change between Rust releases.
+type Key = u128;
+fn key(text: &str) -> Key {
+    hash(text.as_bytes())
+}
+fn hash(bytes: &[u8]) -> Key {
+    bytes.iter().fold(0x6c62_272e_07bb_0142_62b8_2175_6295_c58d_u128, |h, b| (h ^ u128::from(*b)).wrapping_mul(0x0000_0000_0100_0000_0000_0000_0000_013b))
+}
+
+/// The one shared copy of a name. Names nothing holds any more are let go after each scan.
+fn interned(text: &str) -> Arc<str> {
+    let mut pool = names().lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(a) = pool.get(text) {
+        return a.clone();
+    }
+    let a: Arc<str> = Arc::from(text);
+    pool.insert(a.clone());
+    a
+}
+fn names() -> &'static Mutex<HashSet<Arc<str>>> {
+    static NAMES: std::sync::OnceLock<Mutex<HashSet<Arc<str>>>> = std::sync::OnceLock::new();
+    NAMES.get_or_init(Default::default)
+}
+fn let_go_of_unused_names() {
+    names().lock().unwrap_or_else(|e| e.into_inner()).retain(|a| Arc::strong_count(a) > 1);
+}
+/// `interned`, skipping the shared pool while a file keeps naming the same thing.
+fn shared(last: &mut Option<Arc<str>>, text: &str) -> Arc<str> {
+    match last {
+        Some(a) if &**a == text => a.clone(),
+        _ => last.insert(interned(text)).clone(),
+    }
 }
 
 fn n(v: &Value, key: &str) -> u64 {
@@ -75,22 +112,46 @@ fn s<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
 fn stem(name: &str) -> String {
     Path::new(name).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
 }
-fn records(text: &str) -> impl Iterator<Item = Value> + '_ {
-    text.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()).filter(Value::is_object)
+
+/// The local day of a time. A log's replies come in time order, so the day just found usually
+/// holds the next one too: its bounds are kept and a time inside them needs no time-zone lookup.
+struct Days<'z> {
+    tz: &'z jiff::tz::TimeZone,
+    /// The last day found, as [start, end) in UTC milliseconds.
+    last: Option<(i64, i64, jiff::civil::Date)>,
+}
+
+impl Days<'_> {
+    fn of(&mut self, at: u64) -> Option<jiff::civil::Date> {
+        let ms = i64::try_from(at).ok()?;
+        if let Some((start, end, day)) = self.last {
+            if start <= ms && ms < end {
+                return Some(day);
+            }
+        }
+        let zoned = jiff::Timestamp::from_millisecond(ms).ok()?.to_zoned(self.tz.clone());
+        let day = zoned.date();
+        let start = zoned.start_of_day().ok().map(|z| z.timestamp().as_millisecond());
+        let end = day.tomorrow().ok().and_then(|d| d.to_zoned(self.tz.clone()).ok()).and_then(|z| z.start_of_day().ok()).map(|z| z.timestamp().as_millisecond());
+        // a bound that cannot be worked out keeps nothing, so the next time is looked up afresh
+        self.last = start.zip(end).filter(|(s, e)| *s <= ms && ms < *e).map(|(s, e)| (s, e, day));
+        Some(day)
+    }
 }
 
 /// Adds turns into buckets keyed by local day, session, model, folder and prompt-size band.
-fn bucket(turns: impl IntoIterator<Item = Turn>, tz: &jiff::tz::TimeZone) -> Vec<Row> {
-    let mut rows: HashMap<(String, String, String, String, u8), Row> = HashMap::new();
+fn bucket<'a>(turns: impl IntoIterator<Item = &'a Turn>, tz: &jiff::tz::TimeZone) -> Vec<Row> {
+    let mut rows: HashMap<(jiff::civil::Date, &'a str, &'a str, &'a str, u8), Row> = HashMap::new();
+    let mut days = Days { tz, last: None };
     for t in turns {
         if t.input + t.output + t.cache_read + t.cache_write == 0 {
             continue;
         }
-        let Some(day) = i64::try_from(t.at).ok().and_then(|ms| jiff::Timestamp::from_millisecond(ms).ok()).map(|ts| ts.to_zoned(tz.clone()).date().to_string()) else { continue };
+        let Some(day) = days.of(t.at) else { continue };
         let prompt = t.input + t.cache_read + t.cache_write;
         // Bands match the published price steps: 100k (Haiku 5.5), 200k, 272k (OpenAI long context).
         let band = if prompt > 272_000 { 3 } else if prompt > 200_000 { 2 } else if prompt > 100_000 { 1 } else { 0 };
-        let r = rows.entry((day.clone(), t.session.clone(), t.model.clone(), t.cwd.clone(), band)).or_insert_with(|| Row { day, session: t.session, model: t.model, cwd: t.cwd, band, ..Row::default() });
+        let r = rows.entry((day, &*t.session, &*t.model, &*t.cwd, band)).or_insert_with(|| Row { band, ..Row::default() });
         r.input += t.input;
         r.output += t.output;
         r.cache_read += t.cache_read;
@@ -99,139 +160,304 @@ fn bucket(turns: impl IntoIterator<Item = Turn>, tz: &jiff::tz::TimeZone) -> Vec
         r.reasoning += t.reasoning;
         r.last = r.last.max(t.at);
     }
-    let mut out: Vec<Row> = rows.into_values().collect();
+    let mut out: Vec<Row> = rows
+        .into_iter()
+        .map(|((day, session, model, cwd, _), r)| Row { day: day.to_string(), session: session.into(), model: model.into(), cwd: cwd.into(), ..r })
+        .collect();
     out.sort_by(|a, b| (&a.day, a.last).cmp(&(&b.day, b.last)));
     out
 }
 
-/// One Claude Code transcript's replies by message id, the last piece written winning, so the
-/// streamed pieces of one reply are merged into one.
-fn claude_file(name: &str, text: &str) -> Vec<(String, Turn)> {
-    let mut turns: HashMap<String, Turn> = HashMap::new();
-    for (i, v) in records(text).enumerate() {
-        let Some(usage) = v.get("message").and_then(|m| m.get("usage")).filter(|u| u.is_object()) else { continue };
-        let Some(at) = s(&v, "timestamp").and_then(crate::capture::parse_time) else { continue };
-        let msg = &v["message"];
-        let id = s(msg, "id").or_else(|| s(&v, "requestId")).or_else(|| s(&v, "uuid")).map(String::from).unwrap_or_else(|| format!("{name}:{i}"));
-        let split = usage.get("cache_creation").filter(|c| c.is_object());
-        let lifetimes = split.map(|c| n(c, "ephemeral_5m_input_tokens") + n(c, "ephemeral_1h_input_tokens")).unwrap_or(0);
-        let cache_write = if usage.get("cache_creation_input_tokens").is_some_and(Value::is_u64) { n(usage, "cache_creation_input_tokens") } else { lifetimes };
-        let output = n(usage, "output_tokens");
-        let thinking = usage.get("output_tokens_details").map(|d| n(d, "thinking_tokens")).unwrap_or(0);
-        turns.insert(
-            id,
-            Turn {
-                at,
-                session: s(&v, "sessionId").map(String::from).unwrap_or_else(|| stem(name)),
-                model: s(msg, "model").unwrap_or("unknown").into(),
-                cwd: s(&v, "cwd").unwrap_or_default().into(),
+/// What reading a log so far has left behind: how far it was read, the replies found, and what a
+/// later line needs from the earlier ones. A log only grows, so the next read starts where this one
+/// stopped (USAGE-016); one that was written over is read again from the start (see `reads_on`).
+struct FileScan {
+    /// Size, change time and creation time when it was last read.
+    len: u64,
+    at: Option<std::time::SystemTime>,
+    created: Option<std::time::SystemTime>,
+    /// Bytes taken so far: the end of the last whole line.
+    offset: u64,
+    /// A hash of the last `TAIL` bytes before `offset` (fewer near the start): a log written over
+    /// in place no longer has them there, so it is read again from the start.
+    tail: u64,
+    /// JSON records taken so far: a reply with no id of its own is keyed by its place.
+    records: usize,
+    /// Codex: the session, model and folder the latest lines named, and the latest running total.
+    session: Option<Arc<str>>,
+    model: Arc<str>,
+    cwd: Arc<str>,
+    prev: Option<Value>,
+    turns: Vec<(Key, Turn)>,
+}
+
+impl FileScan {
+    fn new() -> FileScan {
+        FileScan { len: 0, at: None, created: None, offset: 0, tail: tail_hash(&[]), records: 0, session: None, model: interned("unknown"), cwd: interned(""), prev: None, turns: Vec::new() }
+    }
+
+    /// Takes whole lines from `bytes`, which start at `offset`. A last line with no line end is
+    /// taken only when it already reads as a whole record (a writer mid-line leaves a piece that
+    /// does not); the rest waits for the next read. False when the text is not UTF-8, as a whole
+    /// read of the file would fail.
+    fn take(&mut self, provider: &str, name: &str, bytes: &[u8]) -> bool {
+        let cut = bytes.iter().rposition(|&c| c == b'\n').map_or(0, |i| i + 1);
+        let rest = &bytes[cut..];
+        let whole_rest = !rest.is_empty() && std::str::from_utf8(rest).ok().and_then(|t| serde_json::from_str::<Value>(t).ok()).is_some_and(|v| v.is_object());
+        let end = if whole_rest { bytes.len() } else { cut };
+        let Ok(text) = std::str::from_utf8(&bytes[..end]) else { return false };
+        if provider == "claude" {
+            self.claude_lines(name, text);
+        } else {
+            self.codex_lines(name, text);
+        }
+        self.offset += end as u64;
+        true
+    }
+
+    /// The records in `text`, numbered on from the ones already taken.
+    fn records(&mut self, text: &str) -> Vec<(usize, Value)> {
+        let from = self.records;
+        let out: Vec<(usize, Value)> = text.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()).filter(Value::is_object).enumerate().map(|(i, v)| (from + i, v)).collect();
+        self.records += out.len();
+        out
+    }
+
+    /// Claude Code: replies by message id, the last piece written winning, so the streamed pieces
+    /// of one reply are merged into one.
+    fn claude_lines(&mut self, name: &str, text: &str) {
+        let mut at: HashMap<Key, usize> = self.turns.iter().enumerate().map(|(i, (k, _))| (*k, i)).collect();
+        let (mut session, mut model, mut cwd) = (None, None, None);
+        let mut fallback = None::<String>;
+        for (i, v) in self.records(text) {
+            let Some(usage) = v.get("message").and_then(|m| m.get("usage")).filter(|u| u.is_object()) else { continue };
+            let Some(when) = s(&v, "timestamp").and_then(crate::capture::parse_time) else { continue };
+            let msg = &v["message"];
+            let id = match s(msg, "id").or_else(|| s(&v, "requestId")).or_else(|| s(&v, "uuid")) {
+                Some(id) => key(id),
+                None => key(&format!("{name}:{i}")),
+            };
+            let split = usage.get("cache_creation").filter(|c| c.is_object());
+            let lifetimes = split.map(|c| n(c, "ephemeral_5m_input_tokens") + n(c, "ephemeral_1h_input_tokens")).unwrap_or(0);
+            let cache_write = if usage.get("cache_creation_input_tokens").is_some_and(Value::is_u64) { n(usage, "cache_creation_input_tokens") } else { lifetimes };
+            let output = n(usage, "output_tokens");
+            let thinking = usage.get("output_tokens_details").map(|d| n(d, "thinking_tokens")).unwrap_or(0);
+            let turn = Turn {
+                at: when,
+                session: match s(&v, "sessionId") {
+                    Some(id) => shared(&mut session, id),
+                    None => shared(&mut session, fallback.get_or_insert_with(|| stem(name))),
+                },
+                model: shared(&mut model, s(msg, "model").unwrap_or("unknown")),
+                cwd: shared(&mut cwd, s(&v, "cwd").unwrap_or_default()),
                 input: n(usage, "input_tokens"),
                 output,
                 cache_read: n(usage, "cache_read_input_tokens"),
                 cache_write,
                 cache_write_1h: split.map(|c| n(c, "ephemeral_1h_input_tokens")).unwrap_or(0).min(cache_write),
                 reasoning: thinking.min(output),
-            },
-        );
+            };
+            match at.get(&id) {
+                Some(&i) => self.turns[i].1 = turn,
+                None => {
+                    at.insert(id, self.turns.len());
+                    self.turns.push((id, turn));
+                }
+            }
+        }
     }
-    turns.into_iter().collect()
-}
 
-/// One Codex session log's token events, keyed by their time and running total. An event counts by
-/// its own last-turn figures, and only when the running total moved, so a repeated event adds
-/// nothing and the first event of a resumed session is not taken as its whole history. Cached input
-/// is part of Codex's input count.
-fn codex_file(name: &str, text: &str) -> Vec<(String, Turn)> {
-    let mut turns = Vec::new();
-    let (mut session, mut model, mut cwd) = (None::<String>, "unknown".to_string(), String::new());
-    let mut prev: Option<Value> = None;
-    for (i, v) in records(text).enumerate() {
-        let Some(p) = v.get("payload").filter(|p| p.is_object()) else { continue };
-        if let Some(m) = s(p, "model") {
-            model = m.into();
-        }
-        if let Some(c) = s(p, "cwd") {
-            cwd = c.into();
-        }
-        if session.is_none() {
-            session = s(p, "session_id").or_else(|| if i == 0 { s(p, "id") } else { None }).map(String::from);
-        }
-        let Some(info) = p.get("info").filter(|x| x.is_object()) else { continue };
-        let Some(total) = info.get("total_token_usage").filter(|x| x.is_object()) else { continue };
-        if prev.as_ref() == Some(total) {
-            continue;
-        }
-        let last = match (info.get("last_token_usage").filter(|x| x.is_object()), &prev) {
-            (Some(l), _) => l.clone(),
-            // no last-turn figures: the step since the previous running total
-            (None, Some(before)) => serde_json::json!({
-                "input_tokens": n(total, "input_tokens").saturating_sub(n(before, "input_tokens")),
-                "cached_input_tokens": n(total, "cached_input_tokens").saturating_sub(n(before, "cached_input_tokens")),
-                "output_tokens": n(total, "output_tokens").saturating_sub(n(before, "output_tokens")),
-                "reasoning_output_tokens": n(total, "reasoning_output_tokens").saturating_sub(n(before, "reasoning_output_tokens")),
-            }),
-            (None, None) => {
-                prev = Some(total.clone());
+    /// Codex: token events, keyed by their time and running total. An event counts by its own
+    /// last-turn figures, and only when the running total moved, so a repeated event adds nothing
+    /// and the first event of a resumed session is not taken as its whole history. Cached input is
+    /// part of Codex's input count.
+    fn codex_lines(&mut self, name: &str, text: &str) {
+        let mut fallback = None::<Arc<str>>;
+        for (i, v) in self.records(text) {
+            let Some(p) = v.get("payload").filter(|p| p.is_object()) else { continue };
+            if let Some(m) = s(p, "model") {
+                if *self.model != *m {
+                    self.model = interned(m);
+                }
+            }
+            if let Some(c) = s(p, "cwd") {
+                if *self.cwd != *c {
+                    self.cwd = interned(c);
+                }
+            }
+            if self.session.is_none() {
+                self.session = s(p, "session_id").or_else(|| if i == 0 { s(p, "id") } else { None }).map(interned);
+            }
+            let Some(info) = p.get("info").filter(|x| x.is_object()) else { continue };
+            let Some(total) = info.get("total_token_usage").filter(|x| x.is_object()) else { continue };
+            if self.prev.as_ref() == Some(total) {
                 continue;
             }
-        };
-        prev = Some(total.clone());
-        let Some(stamp) = s(&v, "timestamp") else { continue };
-        let Some(at) = crate::capture::parse_time(stamp) else { continue };
-        let (input, output) = (n(&last, "input_tokens"), n(&last, "output_tokens"));
-        let cached = n(&last, "cached_input_tokens").min(input);
-        let turn = Turn {
-            at,
-            session: session.clone().unwrap_or_else(|| stem(name)),
-            model: model.clone(),
-            cwd: cwd.clone(),
-            input: input - cached,
-            output,
-            cache_read: cached,
-            cache_write: 0,
-            cache_write_1h: 0,
-            reasoning: n(&last, "reasoning_output_tokens").min(output),
-        };
-        turns.push((format!("{stamp}|{total}"), turn));
+            let last = match (info.get("last_token_usage").filter(|x| x.is_object()), &self.prev) {
+                (Some(l), _) => l.clone(),
+                // no last-turn figures: the step since the previous running total
+                (None, Some(before)) => serde_json::json!({
+                    "input_tokens": n(total, "input_tokens").saturating_sub(n(before, "input_tokens")),
+                    "cached_input_tokens": n(total, "cached_input_tokens").saturating_sub(n(before, "cached_input_tokens")),
+                    "output_tokens": n(total, "output_tokens").saturating_sub(n(before, "output_tokens")),
+                    "reasoning_output_tokens": n(total, "reasoning_output_tokens").saturating_sub(n(before, "reasoning_output_tokens")),
+                }),
+                (None, None) => {
+                    self.prev = Some(total.clone());
+                    continue;
+                }
+            };
+            self.prev = Some(total.clone());
+            let Some(stamp) = s(&v, "timestamp") else { continue };
+            let Some(at) = crate::capture::parse_time(stamp) else { continue };
+            let (input, output) = (n(&last, "input_tokens"), n(&last, "output_tokens"));
+            let cached = n(&last, "cached_input_tokens").min(input);
+            let session = match &self.session {
+                Some(id) => id.clone(),
+                None => fallback.get_or_insert_with(|| interned(&stem(name))).clone(),
+            };
+            let turn = Turn {
+                at,
+                session,
+                model: self.model.clone(),
+                cwd: self.cwd.clone(),
+                input: input - cached,
+                output,
+                cache_read: cached,
+                cache_write: 0,
+                cache_write_1h: 0,
+                reasoning: n(&last, "reasoning_output_tokens").min(output),
+            };
+            self.turns.push((key(&format!("{stamp}|{total}")), turn));
+        }
     }
-    turns
 }
 
 /// USAGE-016 / USAGE-017: files in credit order, oldest first. A reply or token event that several
 /// files hold, as a fork, a copy or a resumed session carries the earlier ones, counts once, for the
-/// first file that holds it; once that file is gone the next copy carries it.
-fn merge<'a>(files: impl IntoIterator<Item = &'a [(String, Turn)]>) -> Vec<Turn> {
+/// first file that holds it; once that file is gone the next copy carries it. The turns are
+/// bucketed where they lie, never copied.
+fn merged<'a>(files: impl IntoIterator<Item = &'a [(Key, Turn)]>) -> impl Iterator<Item = &'a Turn> {
     let mut seen = HashSet::new();
-    files.into_iter().flatten().filter(|(k, _)| seen.insert(k.clone())).map(|(_, t)| t.clone()).collect()
+    files.into_iter().flatten().filter(move |(k, _)| seen.insert(*k)).map(|(_, t)| t)
+}
+
+#[cfg(test)]
+fn parsed(provider: &str, files: &[(String, String)]) -> Vec<FileScan> {
+    files
+        .iter()
+        .map(|(name, text)| {
+            let mut f = FileScan::new();
+            assert!(f.take(provider, name, text.as_bytes()));
+            f
+        })
+        .collect()
 }
 
 /// Claude Code transcripts, as (file name, text), in credit order.
 #[cfg(test)]
 pub fn claude_rows(files: &[(String, String)], tz: &jiff::tz::TimeZone) -> Vec<Row> {
-    let parsed: Vec<_> = files.iter().map(|(name, text)| claude_file(name, text)).collect();
-    bucket(merge(parsed.iter().map(Vec::as_slice)), tz)
+    let parsed = parsed("claude", files);
+    bucket(merged(parsed.iter().map(|f| f.turns.as_slice())), tz)
 }
 
 /// Codex session logs, as (file name, text), in credit order.
 #[cfg(test)]
 pub fn codex_rows(files: &[(String, String)], tz: &jiff::tz::TimeZone) -> Vec<Row> {
-    let parsed: Vec<_> = files.iter().map(|(name, text)| codex_file(name, text)).collect();
-    bucket(merge(parsed.iter().map(Vec::as_slice)), tz)
+    let parsed = parsed("codex", files);
+    bucket(merged(parsed.iter().map(|f| f.turns.as_slice())), tz)
 }
 
-/// USAGE-016: what each log file held at its last read (size and change time), so a file unchanged
-/// since is not read again and the results of files that did not change are kept. It is kept in a
+/// USAGE-016: how far each log file was read and what it held, so a file unchanged since is not
+/// read again and one that grew is read only from where the last read stopped. It is kept in a
 /// file in Kolux's data folder too, so the first scan after a restart reads only what changed.
 #[derive(Default)]
-pub struct Cache(HashMap<PathBuf, Seen>);
-/// A file's size, change time and keyed turns at its last read.
-type Seen = (u64, Option<std::time::SystemTime>, Vec<(String, Turn)>);
+pub struct Cache {
+    files: HashMap<PathBuf, FileScan>,
+    /// Bytes the latest scan read (the tests check it).
+    #[cfg_attr(not(test), allow(dead_code))]
+    bytes_read: u64,
+}
 
-/// The scan memory as kept on disk, with the format mark so an older one is read afresh.
-#[derive(Serialize, Deserialize)]
+/// The format the scan memory is kept in on disk (3: logs read on from where they stopped, names
+/// kept once per file; 4: each file's creation time and the hash of the bytes before where its
+/// read stopped). A memory in any other format is thrown away and every log read afresh.
+/// The kept Codex keys hash the event's `total_token_usage` as serde_json prints it, which keeps
+/// the log's field order only with serde_json's `preserve_order` feature (Cargo.toml): turning
+/// that feature off changes every Codex key, so it needs a new format number.
+const KEPT_FORMAT: u32 = 4;
+
+/// The scan memory as kept on disk. Each file lists the names its replies use once, and each
+/// reply points at them: (key high half, key low half, time, session, model, folder, counts).
+#[derive(Deserialize)]
 struct Kept {
     format: u32,
-    files: Vec<(PathBuf, Seen)>,
+    files: Vec<KeptFile>,
+}
+type KeptTurn = (u64, u64, u64, u32, u32, u32, [u64; 6]);
+#[derive(Deserialize)]
+struct KeptFile {
+    path: PathBuf,
+    len: u64,
+    at: Option<std::time::SystemTime>,
+    created: Option<std::time::SystemTime>,
+    offset: u64,
+    tail: u64,
+    records: usize,
+    names: Vec<String>,
+    /// Codex: the session, model and folder (as places in `names`) and the latest running total.
+    state: (Option<u32>, u32, u32, Option<Value>),
+    turns: Vec<KeptTurn>,
+}
+#[derive(Serialize)]
+struct KeptFileOut<'a> {
+    path: &'a Path,
+    len: u64,
+    at: Option<std::time::SystemTime>,
+    created: Option<std::time::SystemTime>,
+    offset: u64,
+    tail: u64,
+    records: usize,
+    names: Vec<&'a str>,
+    state: (Option<u32>, u32, u32, &'a Option<Value>),
+    turns: Vec<KeptTurn>,
+}
+
+impl<'a> KeptFileOut<'a> {
+    fn of(path: &'a Path, f: &'a FileScan) -> KeptFileOut<'a> {
+        let mut places: HashMap<&'a str, u32> = HashMap::new();
+        let mut names: Vec<&'a str> = Vec::new();
+        let mut place = |t: &'a str| *places.entry(t).or_insert_with(|| {
+            names.push(t);
+            names.len() as u32 - 1
+        });
+        let state = (f.session.as_deref().map(&mut place), place(&f.model), place(&f.cwd), &f.prev);
+        let turns = f
+            .turns
+            .iter()
+            .map(|(k, t)| ((k >> 64) as u64, *k as u64, t.at, place(&t.session), place(&t.model), place(&t.cwd), [t.input, t.output, t.cache_read, t.cache_write, t.cache_write_1h, t.reasoning]))
+            .collect();
+        KeptFileOut { path, len: f.len, at: f.at, created: f.created, offset: f.offset, tail: f.tail, records: f.records, names, state, turns }
+    }
+}
+
+impl KeptFile {
+    /// None when a place points outside the file's names (a damaged memory).
+    fn into_scan(self) -> Option<(PathBuf, FileScan)> {
+        let names: Vec<Arc<str>> = self.names.iter().map(|t| interned(t)).collect();
+        let at = |i: u32| names.get(i as usize).cloned();
+        let (session, model, cwd, prev) = self.state;
+        let session = match session {
+            Some(i) => Some(at(i)?),
+            None => None,
+        };
+        let mut turns = Vec::with_capacity(self.turns.len());
+        for (hi, lo, when, s, m, c, [input, output, cache_read, cache_write, cache_write_1h, reasoning]) in self.turns {
+            let turn = Turn { at: when, session: at(s)?, model: at(m)?, cwd: at(c)?, input, output, cache_read, cache_write, cache_write_1h, reasoning };
+            turns.push(((u128::from(hi) << 64) | u128::from(lo), turn));
+        }
+        Some((self.path, FileScan { len: self.len, at: self.at, created: self.created, offset: self.offset, tail: self.tail, records: self.records, session, model: at(model)?, cwd: at(cwd)?, prev, turns }))
+    }
 }
 
 fn kept_file(profile: &Path, provider: &str) -> PathBuf {
@@ -241,19 +467,103 @@ fn kept_file(profile: &Path, provider: &str) -> PathBuf {
 impl Cache {
     /// What an earlier run kept; empty when it is missing, damaged or in another format.
     pub fn load(path: &Path) -> Cache {
-        let kept = std::fs::read_to_string(path).ok().and_then(|t| serde_json::from_str::<Kept>(&t).ok());
-        Cache(kept.filter(|k| k.format == FORMAT).map(|k| k.files.into_iter().collect()).unwrap_or_default())
+        let kept = std::fs::read(path).ok().and_then(|b| serde_json::from_slice::<Kept>(&b).ok()).filter(|k| k.format == KEPT_FORMAT);
+        let files = kept.and_then(|k| k.files.into_iter().map(KeptFile::into_scan).collect::<Option<HashMap<_, _>>>());
+        Cache { files: files.unwrap_or_default(), bytes_read: 0 }
     }
 
+    /// Kolux's own memory, not an agent's settings: written to a temporary file that then takes the
+    /// old one's place, so a crash leaves the old memory or the new one, never half of either. It
+    /// is only a speed-up, so it is not read back and keeps no backup.
     pub fn save(&self, path: &Path) -> Result<(), String> {
-        let kept = Kept { format: FORMAT, files: self.0.iter().map(|(p, s)| (p.clone(), s.clone())).collect() };
-        crate::trust::write_whole(path, &serde_json::to_string(&kept).map_err(|e| e.to_string())?)
+        use serde::ser::{SerializeStruct, Serializer};
+        struct Files<'a>(&'a HashMap<PathBuf, FileScan>);
+        impl Serialize for Files<'_> {
+            fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.collect_seq(self.0.iter().map(|(p, f)| KeptFileOut::of(p, f)))
+            }
+        }
+        let fail = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| fail(&e))?;
+        }
+        let tmp = path.with_extension("json.tmp");
+        let written = (|| -> Result<(), String> {
+            let mut out = std::io::BufWriter::new(std::fs::File::create(&tmp).map_err(|e| fail(&e))?);
+            let mut ser = serde_json::Serializer::new(&mut out);
+            let mut kept = (&mut ser).serialize_struct("Kept", 2).map_err(|e| fail(&e))?;
+            kept.serialize_field("format", &KEPT_FORMAT).map_err(|e| fail(&e))?;
+            kept.serialize_field("files", &Files(&self.files)).map_err(|e| fail(&e))?;
+            kept.end().map_err(|e| fail(&e))?;
+            // on disk before it takes the old one's place, so a power cut cannot leave an empty memory
+            out.into_inner().map_err(|e| fail(e.error()))?.sync_all().map_err(|e| fail(&e))
+        })();
+        if let Err(e) = written.and_then(|()| std::fs::rename(&tmp, path).map_err(|e| fail(&e))) {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(e);
+        }
+        Ok(())
     }
 }
 
-fn caches() -> &'static Mutex<HashMap<String, Cache>> {
-    static CACHES: std::sync::OnceLock<Mutex<HashMap<String, Cache>>> = std::sync::OnceLock::new();
+/// One provider's scan memory while Kolux runs, and when it was last written to disk.
+struct Held {
+    cache: Cache,
+    file: PathBuf,
+    /// Something was read or went since the copy on disk was written.
+    dirty: bool,
+    saved: Option<std::time::Instant>,
+    /// An earlier version's backup beside the memory is gone (or was never there).
+    backup_gone: bool,
+}
+
+/// The copy on disk is written at most this often, and once more as Kolux quits. It only saves
+/// reading the logs again after a restart, so a crash costs at most this much re-reading.
+const SAVE_EVERY: std::time::Duration = std::time::Duration::from_secs(5 * 60);
+
+impl Held {
+    /// Writes the memory when something changed and the last write is `SAVE_EVERY` old (or none was made yet).
+    fn save_if_due(&mut self) {
+        if self.dirty && self.saved.is_none_or(|t| t.elapsed() >= SAVE_EVERY) {
+            self.save();
+        }
+    }
+
+    fn save(&mut self) {
+        if self.cache.save(&self.file).is_ok() {
+            self.dirty = false;
+            if !self.backup_gone {
+                // Earlier versions kept a full backup beside the memory on every save; it is not needed.
+                let mut backup = self.file.clone().into_os_string();
+                backup.push(".bak-kolux");
+                let _ = std::fs::remove_file(backup);
+                self.backup_gone = true;
+            }
+        }
+        self.saved = Some(std::time::Instant::now());
+    }
+}
+
+fn caches() -> &'static Mutex<HashMap<String, Held>> {
+    static CACHES: std::sync::OnceLock<Mutex<HashMap<String, Held>>> = std::sync::OnceLock::new();
     CACHES.get_or_init(Default::default)
+}
+
+/// As Kolux quits: the scan memory that changed since its last save is written. A scan still
+/// running is waited for up to 2 s; past that the save is skipped, which costs only a re-read.
+pub fn save_at_quit() {
+    let until = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    let mut all = loop {
+        match caches().try_lock() {
+            Ok(all) => break all,
+            Err(std::sync::TryLockError::Poisoned(e)) => break e.into_inner(),
+            Err(std::sync::TryLockError::WouldBlock) if std::time::Instant::now() < until => std::thread::sleep(std::time::Duration::from_millis(20)),
+            Err(std::sync::TryLockError::WouldBlock) => return,
+        }
+    };
+    for held in all.values_mut().filter(|h| h.dirty) {
+        held.save();
+    }
 }
 
 /// Scans in flight, by provider. A request for one already running waits for it and reads its result.
@@ -342,9 +652,9 @@ fn roots(store: &Store, provider: &str, profile: Option<&Path>) -> Vec<PathBuf> 
 }
 
 /// Reads one provider's logs, any depth, oldest file first so an original keeps the credit for
-/// what its forks copied. A file unchanged since the last scan is taken from `cache`. Gives the
-/// rows and how many files were read. None of the folders being there is a failure, so saved
-/// figures stay.
+/// what its forks copied. A file unchanged since the last scan is taken from `cache`, and one that
+/// grew is read only from where the last read stopped. Gives the rows and how many files were
+/// read. None of the folders being there is a failure, so saved figures stay.
 fn scan(roots: &[PathBuf], provider: &str, cache: &mut Cache) -> Result<(Vec<Row>, usize), String> {
     let present: Vec<&PathBuf> = roots.iter().filter(|r| r.is_dir()).collect();
     if present.is_empty() {
@@ -356,24 +666,66 @@ fn scan(roots: &[PathBuf], provider: &str, cache: &mut Cache) -> Result<(Vec<Row
     }
     let mut files: Vec<(PathBuf, std::fs::Metadata)> = paths.into_iter().filter_map(|p| std::fs::metadata(&p).ok().map(|m| (p, m))).collect();
     files.sort_by_cached_key(|(p, m)| (m.created().or_else(|_| m.modified()).ok(), p.clone()));
-    let (mut read, mut order, mut next) = (0, Vec::new(), HashMap::new());
+    let (mut read, mut bytes_read, mut order, mut next) = (0, 0, Vec::new(), HashMap::new());
     for (p, m) in files {
-        let (len, at) = (m.len(), m.modified().ok());
-        let turns = match cache.0.remove(&p) {
-            Some((l, a, t)) if (l, a) == (len, at) => t,
-            _ => {
-                let Ok(text) = std::fs::read_to_string(&p) else { continue };
-                read += 1;
+        let (len, at, created) = (m.len(), m.modified().ok(), m.created().ok());
+        let scanned = match cache.files.remove(&p) {
+            Some(f) if (f.len, f.at, f.created) == (len, at, created) => f,
+            before => {
+                // Read on from where the last read stopped when the file only grew; else from the start.
+                let mut read_on = before.filter(|f| f.created == created && len > f.len && at >= f.at).and_then(|f| {
+                    let from = f.offset - f.offset.min(TAIL);
+                    let bytes = read_from(&p, from, len)?;
+                    reads_on(&f, &bytes, from).then_some((f, bytes, from))
+                });
+                if read_on.is_none() {
+                    let Some(bytes) = read_from(&p, 0, len) else { continue };
+                    read_on = Some((FileScan::new(), bytes, 0));
+                }
+                let Some((mut f, bytes, from)) = read_on else { continue };
+                let new = &bytes[(f.offset - from) as usize..];
                 let name = p.file_name().unwrap_or_default().to_string_lossy().into_owned();
-                if provider == "claude" { claude_file(&name, &text) } else { codex_file(&name, &text) }
+                if !f.take(provider, &name, new) {
+                    continue;
+                }
+                read += 1;
+                bytes_read += new.len() as u64;
+                let end = (f.offset - from) as usize;
+                f.tail = tail_hash(&bytes[end - end.min(TAIL as usize)..end]);
+                (f.len, f.at, f.created) = (len, at, created);
+                f
             }
         };
         order.push(p.clone());
-        next.insert(p, (len, at, turns));
+        next.insert(p, scanned);
     }
-    let turns = merge(order.iter().filter_map(|p| next.get(p)).map(|(_, _, t)| t.as_slice()));
-    cache.0 = next;
-    Ok((bucket(turns, &jiff::tz::TimeZone::system()), read))
+    let rows = bucket(merged(order.iter().filter_map(|p| next.get(p)).map(|f| f.turns.as_slice())), &jiff::tz::TimeZone::system());
+    *cache = Cache { files: next, bytes_read };
+    Ok((rows, read))
+}
+
+/// How many bytes before where a read stopped are checked before reading on from there.
+const TAIL: u64 = 64;
+
+fn tail_hash(bytes: &[u8]) -> u64 {
+    hash(bytes) as u64
+}
+
+/// True when `bytes`, read from `from` (`TAIL` bytes before `f.offset`, fewer near the start), still
+/// begin with the bytes the last read ended on: the log grew and was not written over.
+fn reads_on(f: &FileScan, bytes: &[u8], from: u64) -> bool {
+    let k = (f.offset - from) as usize;
+    bytes.len() >= k && tail_hash(&bytes[..k]) == f.tail
+}
+
+/// A file's bytes from `from` up to `to`.
+fn read_from(path: &Path, from: u64, to: u64) -> Option<Vec<u8>> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut f = std::fs::File::open(path).ok()?;
+    f.seek(SeekFrom::Start(from)).ok()?;
+    let mut buf = Vec::new();
+    f.take(to.saturating_sub(from)).read_to_end(&mut buf).ok()?;
+    Some(buf)
 }
 
 #[derive(Serialize)]
@@ -411,7 +763,8 @@ fn set_tracking(store: &Store, provider: &str, on: bool) -> Result<(), String> {
 }
 
 /// Rescans one provider and saves the result; a failed scan keeps the last good rows and says why.
-/// The scan memory starts from the copy kept on disk and is kept again when a file was read or went.
+/// The scan memory starts from the copy kept on disk; that copy is written again when a file was
+/// read or went, at most every `SAVE_EVERY`, and as Kolux quits.
 pub fn rescan(store: &Mutex<Store>, provider: &str) {
     let (dirs, profile) = match store.lock() {
         Ok(s) => (roots(&s, provider, Some(&s.dir())), s.dir()),
@@ -419,12 +772,17 @@ pub fn rescan(store: &Mutex<Store>, provider: &str) {
     };
     let result = {
         let mut all = caches().lock().unwrap_or_else(|e| e.into_inner());
-        let cache = all.entry(provider.to_string()).or_insert_with(|| Cache::load(&kept_file(&profile, provider)));
-        let had = cache.0.len();
-        let result = scan(&dirs, provider, cache);
-        if result.as_ref().is_ok_and(|(_, read)| *read > 0) || cache.0.len() != had {
-            let _ = cache.save(&kept_file(&profile, provider));
+        let held = all.entry(provider.to_string()).or_insert_with(|| {
+            let file = kept_file(&profile, provider);
+            Held { cache: Cache::load(&file), file, dirty: false, saved: None, backup_gone: false }
+        });
+        let had = held.cache.files.len();
+        let result = scan(&dirs, provider, &mut held.cache);
+        if result.as_ref().is_ok_and(|(_, read)| *read > 0) || held.cache.files.len() != had {
+            held.dirty = true;
         }
+        held.save_if_due();
+        let_go_of_unused_names();
         result.map(|(rows, _)| rows)
     };
     let Ok(s) = store.lock() else { return };
@@ -557,6 +915,24 @@ mod tests {
         let local = claude_rows(&[file("s.jsonl", &lines)], &east);
         assert_eq!(local.len(), 1);
         assert_eq!(local[0].day, "2026-03-02");
+    }
+
+    #[test]
+    fn days_found_from_kept_bounds_match_a_lookup_for_every_time_across_clock_changes() {
+        let mut zones = 0;
+        for name in ["America/New_York", "Australia/Lord_Howe", "Asia/Kolkata", "UTC"] {
+            let Ok(tz) = TimeZone::get(name) else { continue };
+            zones += 1;
+            let mut days = Days { tz: &tz, last: None };
+            // every 17 minutes through a spring and an autumn clock change, forwards then back
+            let from = jiff::Timestamp::from_second(1_772_000_000).unwrap().as_millisecond();
+            let times: Vec<u64> = (0..25_000).map(|i| (from + i * 17 * 60_000) as u64).collect();
+            for &at in times.iter().chain(times.iter().rev()) {
+                let direct = jiff::Timestamp::from_millisecond(at as i64).unwrap().to_zoned(tz.clone()).date();
+                assert_eq!(days.of(at), Some(direct), "{name} at {at}");
+            }
+        }
+        assert!(zones >= 3, "the time-zone database is there");
     }
 
     #[test]
@@ -694,8 +1070,11 @@ mod tests {
         std::fs::write(&kept, "{ not json").unwrap();
         assert_eq!(scan(std::slice::from_ref(&root), "claude", &mut Cache::load(&kept)).unwrap().1, 2);
         std::fs::write(&kept, r#"{"format":1,"files":[]}"#).unwrap();
-        assert!(Cache::load(&kept).0.is_empty());
-        assert!(Cache::load(&t.0.join("missing.json")).0.is_empty());
+        assert!(Cache::load(&kept).files.is_empty());
+        assert!(Cache::load(&t.0.join("missing.json")).files.is_empty());
+        // a memory in the format before logs were read on from where they stopped is rebuilt, not misread
+        std::fs::write(&kept, r#"{"format":2,"files":[["x.jsonl",[1,null,[]]]]}"#).unwrap();
+        assert!(Cache::load(&kept).files.is_empty());
     }
 
     // Row 193 (audit-a193-2): the tracking choices blob that no longer reads is kept aside, so the
@@ -806,5 +1185,222 @@ mod tests {
         assert!(parse_saved(r#"{"scannedAt":1,"rows":[],"error":null}"#).is_none(), "no format mark: thrown away");
         let now = serde_json::to_string(&Saved { format: FORMAT, scanned_at: 2, ..Saved::default() }).unwrap();
         assert_eq!(parse_saved(&now).map(|s| s.scanned_at), Some(2));
+    }
+
+    fn sorted(mut rows: Vec<Row>) -> Vec<Row> {
+        rows.sort_by(|a, b| (&a.day, &a.session, &a.model, &a.cwd, a.band).cmp(&(&b.day, &b.session, &b.model, &b.cwd, b.band)));
+        rows
+    }
+    fn lines(lines: &[Value]) -> String {
+        lines.iter().map(|l| l.to_string() + "\n").collect()
+    }
+    fn append(path: &Path, text: &str) {
+        use std::io::Write;
+        std::fs::OpenOptions::new().append(true).open(path).unwrap().write_all(text.as_bytes()).unwrap();
+    }
+    /// The same folder read with no memory at all.
+    fn full(root: &Path, provider: &str) -> Vec<Row> {
+        sorted(scan(&[root.to_path_buf()], provider, &mut Cache::default()).unwrap().0)
+    }
+
+    #[test]
+    fn usage_016_a_grown_log_is_read_only_from_where_the_last_read_stopped() {
+        let t = temp("grown");
+        let root = t.0.join("projects");
+        let one = root.join("p").join("one.jsonl");
+        let u = |i: u64| json!({ "input_tokens": i, "output_tokens": 1, "cache_creation_input_tokens": 2 });
+        std::fs::create_dir_all(one.parent().unwrap()).unwrap();
+        std::fs::write(&one, lines(&[reply("m1", "2026-03-01T09:00:00Z", u(10)), reply("m2", "2026-03-01T09:01:00Z", u(20))])).unwrap();
+        write(&root.join("p").join("two.jsonl"), &[reply("m3", "2026-03-01T09:00:00Z", u(5))]);
+        let mut cache = Cache::default();
+        assert_eq!(scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap().1, 2);
+        // a new reply, a later streamed piece of m2 that must replace the first, and a reply with no id
+        let more = lines(&[reply("m4", "2026-03-02T09:00:00Z", u(40)), reply("m2", "2026-03-01T09:01:05Z", u(25)), json!({ "timestamp": "2026-03-02T10:00:00Z", "message": { "usage": u(7) } })]);
+        append(&one, &more);
+        let (rows, read) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!((read, cache.bytes_read), (1, more.len() as u64), "only the appended bytes are read");
+        assert_eq!(sorted(rows), full(&root, "claude"), "the same figures as a whole read");
+        // half a line waits for the rest; the figures do not move until it is whole
+        let next = reply("m5", "2026-03-02T11:00:00Z", u(80)).to_string() + "\n";
+        let (head, tail) = next.split_at(next.len() / 2);
+        append(&one, head);
+        let (rows, _) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!(total(&rows), 11 + 26 + 6 + 41 + 8);
+        append(&one, tail);
+        let (rows, read) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!((read, cache.bytes_read), (1, next.len() as u64), "the piece left over is read once more with its end");
+        assert_eq!(total(&rows), 11 + 26 + 6 + 41 + 8 + 81);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+        // a log written over with less is read again from the start
+        std::fs::write(&one, lines(&[reply("m1", "2026-03-01T09:00:00Z", u(10))])).unwrap();
+        let (rows, _) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!(total(&rows), 11 + 6);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+    }
+
+    #[test]
+    fn usage_017_a_grown_codex_log_keeps_its_session_model_and_running_total() {
+        let t = temp("grown-codex");
+        let root = t.0.join("sessions");
+        let log = root.join("2026").join("rollout-a.jsonl");
+        std::fs::create_dir_all(log.parent().unwrap()).unwrap();
+        let meta = json!({ "timestamp": "2026-03-01T09:00:00Z", "type": "meta", "payload": { "session_id": "cx-1", "cwd": "C:/work/app", "model": "codex-model-y" } });
+        std::fs::write(&log, lines(&[meta, event("2026-03-01T09:01:00Z", counts(100, 40, 10, 1), counts(100, 40, 10, 1))])).unwrap();
+        let mut cache = Cache::default();
+        scan(std::slice::from_ref(&root), "codex", &mut cache).unwrap();
+        // a repeated running total adds nothing; a new one without last-turn figures counts its step
+        let no_last = json!({ "timestamp": "2026-03-01T09:03:00Z", "type": "event", "payload": { "info": { "total_token_usage": counts(400, 100, 40, 4) } } });
+        let more = lines(&[event("2026-03-01T09:02:00Z", counts(100, 40, 10, 1), counts(100, 40, 10, 1)), json!({ "timestamp": "2026-03-01T09:02:30Z", "payload": { "model": "codex-model-z" } }), no_last]);
+        append(&log, &more);
+        let (rows, read) = scan(std::slice::from_ref(&root), "codex", &mut cache).unwrap();
+        assert_eq!((read, cache.bytes_read), (1, more.len() as u64));
+        assert_eq!(sorted(rows.clone()), full(&root, "codex"));
+        assert_eq!(total(&rows), 70 + 270);
+        assert!(rows.iter().all(|r| r.session == "cx-1" && r.cwd == "C:/work/app"));
+        assert_eq!(rows.iter().filter(|r| r.model == "codex-model-z").map(|r| r.input + r.cache_read).sum::<u64>(), 300);
+    }
+
+    #[test]
+    fn usage_016_a_restart_reads_on_from_the_kept_place_and_the_memory_is_written_whole() {
+        let t = temp("kept-place");
+        let root = t.0.join("projects");
+        let one = root.join("p").join("one.jsonl");
+        std::fs::create_dir_all(one.parent().unwrap()).unwrap();
+        std::fs::write(&one, lines(&[reply("m1", "2026-03-01T09:00:00Z", json!({ "input_tokens": 10, "output_tokens": 1 }))])).unwrap();
+        let profile = t.0.join("profile");
+        let kept = profile.join("token-scan-claude.json");
+        // an older version's full backup beside the memory goes with the first save
+        std::fs::create_dir_all(&profile).unwrap();
+        std::fs::write(profile.join("token-scan-claude.json.bak-kolux"), "old").unwrap();
+        let mut held = Held { cache: Cache::default(), file: kept.clone(), dirty: false, saved: None, backup_gone: false };
+        scan(std::slice::from_ref(&root), "claude", &mut held.cache).unwrap();
+        held.dirty = true;
+        held.save_if_due();
+        assert!(!held.dirty && kept.is_file());
+        assert!(!profile.join("token-scan-claude.json.bak-kolux").exists());
+        assert!(!profile.join("token-scan-claude.json.tmp").exists(), "no temporary file is left");
+        let offset = std::fs::metadata(&one).unwrap().len();
+        // within SAVE_EVERY a change waits for the next due save (or the quit)
+        let written = std::fs::read(&kept).unwrap();
+        append(&one, &lines(&[reply("m2", "2026-03-01T09:05:00Z", json!({ "input_tokens": 100, "output_tokens": 0 }))]));
+        scan(std::slice::from_ref(&root), "claude", &mut held.cache).unwrap();
+        held.dirty = true;
+        held.save_if_due();
+        assert!(held.dirty && std::fs::read(&kept).unwrap() == written, "not written again before SAVE_EVERY");
+        // a new run starts from the kept place: only the reply added since is read
+        let mut after = Cache::load(&kept);
+        let (rows, read) = scan(std::slice::from_ref(&root), "claude", &mut after).unwrap();
+        assert_eq!((read, after.bytes_read), (1, std::fs::metadata(&one).unwrap().len() - offset));
+        assert_eq!(total(&rows), 111);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+    }
+
+    #[test]
+    fn usage_016_a_log_written_over_in_place_is_read_again_from_its_start() {
+        let t = temp("written-over");
+        let root = t.0.join("projects");
+        let one = root.join("p").join("one.jsonl");
+        std::fs::create_dir_all(one.parent().unwrap()).unwrap();
+        let u = |i: u64| json!({ "input_tokens": i, "output_tokens": 1 });
+        let later = |s: u64| std::fs::File::options().write(true).open(&one).unwrap().set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(s)).unwrap();
+        let first = lines(&[reply("m1", "2026-03-01T09:00:00Z", u(10)), reply("m2", "2026-03-01T09:01:00Z", u(20))]);
+        std::fs::write(&one, &first).unwrap();
+        let mut cache = Cache::default();
+        scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        // the same size and a newer change time: other figures in as many bytes
+        let same = lines(&[reply("m1", "2026-03-01T09:00:00Z", u(30)), reply("m2", "2026-03-01T09:01:00Z", u(40))]);
+        assert_eq!(same.len(), first.len());
+        std::fs::write(&one, &same).unwrap();
+        later(10);
+        let (rows, read) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!((read, cache.bytes_read), (1, same.len() as u64), "read again whole");
+        assert_eq!(total(&rows), 31 + 41);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+        // cut to nothing, then written past its old size: same file, so the same creation time
+        let regrown = lines(&[reply("m7", "2026-03-02T09:00:00Z", u(70)), reply("m8", "2026-03-02T09:01:00Z", u(80)), reply("m9", "2026-03-02T09:02:00Z", u(90))]);
+        assert!(regrown.len() > same.len());
+        std::fs::write(&one, "").unwrap();
+        std::fs::write(&one, &regrown).unwrap();
+        later(20);
+        let (rows, read) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!((read, cache.bytes_read), (1, regrown.len() as u64), "the bytes before the old end changed: read again whole");
+        assert_eq!(total(&rows), 71 + 81 + 91);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+        // a file made anew under the same name (another creation time) is read from the start too
+        cache.files.get_mut(&one).unwrap().created = Some(std::time::UNIX_EPOCH);
+        append(&one, &lines(&[reply("m10", "2026-03-02T10:00:00Z", u(5))]));
+        let (rows, read) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!((read, cache.bytes_read), (1, std::fs::metadata(&one).unwrap().len()));
+        assert_eq!(total(&rows), 71 + 81 + 91 + 6);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+        // and a plain append after all that is read on from where the read stopped
+        let more = lines(&[reply("m11", "2026-03-02T11:00:00Z", u(8))]);
+        append(&one, &more);
+        let (rows, _) = scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        assert_eq!(cache.bytes_read, more.len() as u64);
+        assert_eq!(sorted(rows), full(&root, "claude"));
+    }
+
+    #[test]
+    fn usage_016_an_old_backup_goes_on_the_first_save_that_lands() {
+        let t = temp("backup-later");
+        let profile = t.0.join("profile");
+        std::fs::create_dir_all(&profile).unwrap();
+        let backup = profile.join("token-scan-claude.json.bak-kolux");
+        std::fs::write(&backup, "old").unwrap();
+        // the memory's place is taken by a folder, so the first save fails and the backup stays
+        let kept = profile.join("token-scan-claude.json");
+        std::fs::create_dir_all(kept.join("in-the-way")).unwrap();
+        let mut held = Held { cache: Cache::default(), file: kept.clone(), dirty: true, saved: None, backup_gone: false };
+        held.save();
+        assert!(held.dirty && backup.exists());
+        std::fs::remove_dir_all(&kept).unwrap();
+        held.save();
+        assert!(!held.dirty && kept.is_file() && !backup.exists());
+    }
+
+    /// Before/after timing, run by hand: `cargo test --lib token_usage::tests::bench -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn bench_rescan_of_200_logs_with_one_grown() {
+        let t = temp("bench");
+        let root = t.0.join("projects");
+        let line = |f: usize, i: usize| reply(&format!("m{f}-{i}"), "2026-03-01T09:00:00Z", json!({ "input_tokens": i, "output_tokens": 1, "cache_read_input_tokens": 1000 })).to_string() + "\n";
+        for f in 0..200 {
+            let dir = root.join(format!("p{}", f % 10));
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join(format!("s{f}.jsonl")), (0..500).map(|i| line(f, i)).collect::<String>()).unwrap();
+        }
+        let grown = root.join("p0").join("s0.jsonl");
+        let kept = t.0.join("profile").join("token-scan-claude.json");
+        let mut cache = Cache::default();
+        let start = std::time::Instant::now();
+        scan(std::slice::from_ref(&root), "claude", &mut cache).unwrap();
+        let first = start.elapsed();
+        cache.save(&kept).unwrap();
+        let text = std::fs::read_to_string(&kept).unwrap();
+        append(&grown, &line(0, 9999));
+        // before: the grown file read whole, and the memory saved through the agent-config writer
+        let mut whole = Cache { files: cache.files.drain().filter(|(p, _)| *p != grown).collect(), bytes_read: 0 };
+        let start = std::time::Instant::now();
+        scan(std::slice::from_ref(&root), "claude", &mut whole).unwrap();
+        crate::trust::write_whole(&kept, &text).unwrap();
+        let before = start.elapsed();
+        append(&grown, &line(0, 10_000));
+        // after: only the appended line is read, and no save (it waits for SAVE_EVERY or the quit)
+        let start = std::time::Instant::now();
+        scan(std::slice::from_ref(&root), "claude", &mut whole).unwrap();
+        let after = start.elapsed();
+        let start = std::time::Instant::now();
+        whole.save(&kept).unwrap();
+        let save = start.elapsed();
+        let start = std::time::Instant::now();
+        let rows = bucket(merged(whole.files.values().map(|f| f.turns.as_slice())), &jiff::tz::TimeZone::system());
+        let bucketing = start.elapsed();
+        println!(
+            "BENCH 200 logs x 500 replies: first scan {first:?}; rescan with one grown: before (whole file re-read + safe writer) {before:?}, after (appended bytes only, no save) {after:?}, of which bucketing {bucketing:?} ({} rows); one plain save {save:?}; memory {} bytes",
+            rows.len(),
+            std::fs::metadata(&kept).unwrap().len()
+        );
     }
 }
