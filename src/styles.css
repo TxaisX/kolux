@@ -1397,6 +1397,8 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .onb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--working); }
 @media (prefers-reduced-motion: no-preference) { .onb-dot { animation: onb-pulse 1.4s ease-in-out infinite; } }
 @keyframes onb-pulse { 50% { opacity: 0.3; } }
+/* DT-C239: the pulse rests after 10 s with no input (src/chrome/pulseRest.ts); an animation frame is drawn on every refresh while it runs */
+.onb-tiles.resting .onb-dot { animation: none; }
 .onb-work { display: flex; flex-direction: column; gap: 12px; }
 .onb-folder { align-self: flex-start; }
 .onb-or { font-size: 12px; color: var(--fg-faint); }
@@ -1560,6 +1562,7 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .tour-arrow.top, .tour-arrow.bottom { margin-left: 0; }
 .tour-ring { position: fixed; z-index: calc(var(--z-tour) - 1); border: 2px solid var(--line-focus); border-radius: 8px; pointer-events: none; animation: tour-pulse 1.4s ease-in-out infinite; }
 @keyframes tour-pulse { 50% { opacity: 0.35; } }
+.tour-ring.resting { animation: none; } /* DT-C239 */
 @media (prefers-reduced-motion: reduce) { .tour-ring { animation: none; } }
 /* SESS-018: the New session page fills the workspace area (8 px gutter, like the grid). */
 .sheet-wrap { position: absolute; inset: 8px; z-index: var(--z-sheet); display: flex; }

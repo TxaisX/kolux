@@ -4,6 +4,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { markGuide, type GuideRecord } from "./guide";
+import { usePulseRest } from "../chrome/pulseRest";
 import { features, hasUsed, noteUse } from "./features";
 import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
 
@@ -42,6 +43,8 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   const revealed = useRef<number | null>(null);
   const next = nextShown(present, at);
   const back = prevShown(present, at);
+  // DT-C239: the ring's pulse rests after a while with no input (a running animation draws a frame on every refresh).
+  const [ringRest, ring] = usePulseRest<HTMLDivElement>(!!tour.ring);
 
   // Follow the target every frame (frames stop by themselves while the window is hidden); state
   // changes only when something moved. A target gone for good moves on, or ends the tour.
@@ -117,7 +120,7 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   const arrow = geo?.p.side ? (geo.p.side === "bottom" || geo.p.side === "top" ? { left: Math.max(14, Math.min(geo.t.left + geo.t.width / 2 - geo.p.left, (box.current?.offsetWidth ?? 320) - 14)) } : { top: Math.max(14, Math.min(geo.t.top + geo.t.height / 2 - geo.p.top, (box.current?.offsetHeight ?? 140) - 14)) }) : null;
   return (
     <>
-      {tour.ring && geo && <div className="tour-ring" style={{ left: geo.t.left - 4, top: geo.t.top - 4, width: geo.t.width + 8, height: geo.t.height + 8 }} aria-hidden="true" />}
+      {tour.ring && geo && <div ref={ring} className={ringRest ? "tour-ring resting" : "tour-ring"} style={{ left: geo.t.left - 4, top: geo.t.top - 4, width: geo.t.width + 8, height: geo.t.height + 8 }} aria-hidden="true" />}
       <div ref={box} className="tour" role="dialog" aria-modal="false" aria-label={`${tour.name} tour`} data-tour={tour.id} style={geo ? { left: geo.p.left, top: geo.p.top, ...(geo.p.width ? { width: geo.p.width } : {}) } : { visibility: "hidden", left: 0, top: 0 }}>
         {arrow && <span className={`tour-arrow ${geo!.p.side}`} style={arrow} aria-hidden="true" />}
         <h3>{w.title}</h3>
