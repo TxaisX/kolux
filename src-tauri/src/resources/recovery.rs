@@ -699,10 +699,15 @@ pub fn repaint(win: &tauri::WebviewWindow) {
     }
 }
 
-/// APP-017: hidden windows are excused from the engine's background throttling, so status keeps
-/// arriving while minimised. WebView2 has no per-view switch (Tauri's backgroundThrottling covers
-/// macOS only), so these are Chromium switches passed as browser arguments.
-pub const UNTHROTTLED: [&str; 3] = ["--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"];
+/// APP-017 (DT-C229): hidden windows are excused from the engine's throttling of background timers,
+/// so the 2 s heartbeat, the reload watch and the status timers keep running while minimised.
+/// WebView2 has no per-view switch (Tauri's backgroundThrottling covers macOS only), so this is a
+/// Chromium switch passed as a browser argument. Only this one: `--disable-renderer-backgrounding`
+/// (a hidden renderer kept at foreground process priority) and `--disable-backgrounding-occluded-windows`
+/// (a covered window treated as visible) cost CPU and GPU while out of sight and nothing in the page
+/// needs them. Since DT-C228 the main view is told when it is out of sight, so a covered or minimised
+/// page holds its updates (src/recovery/hidden.ts) and replays them on the first visible frame.
+pub const UNTHROTTLED: [&str; 1] = ["--disable-background-timer-throttling"];
 
 /// The browser arguments every window gets: the config's own (or wry's defaults), the throttling
 /// exemption, and safe graphics when it is on; each switch once. T-319-b (BROW-026): the engine's
@@ -2103,6 +2108,11 @@ mod tests {
         assert!(a.starts_with(BASE_ARGS), "the base string stays: {a}");
         for s in UNTHROTTLED {
             assert_eq!(a.split_whitespace().filter(|x| *x == s).count(), 1, "{s} once");
+        }
+        // DT-C229: the timer exemption alone; renderer backgrounding and occlusion stay the engine's.
+        assert_eq!(UNTHROTTLED, ["--disable-background-timer-throttling"]);
+        for gone in ["--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"] {
+            assert!(!a.split_whitespace().any(|x| x == gone), "{gone} is no longer passed: {a}");
         }
         let safe = browser_args(None, true);
         assert!(safe.contains(SAFE_ARG) && safe.contains(UNTHROTTLED[0]));
