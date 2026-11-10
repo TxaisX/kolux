@@ -36,3 +36,9 @@ Nothing. Mermaid was the one item held back (elkjs licence); Txais approved it a
 ## Not done
 
 - Runtime check of the PDF viewer in the running app (open, scroll, select text, follow a link, close the tab, open the JPX fixture `src/editor/testdata/jpx.pdf`). The unit and layer tests pass on pdfjs 6; a by-eye check is still worth doing before the next release.
+
+## Later on 2026-11-09
+
+The 0.1.11 release lane merged into `main` after this table was written, and the slimdown work landed on top
+(see `kolux-slimdown-2026-11-09.md`). CI on GitHub stayed green through each of those merges. The gate table
+above was not re-run by hand on the merged result.
