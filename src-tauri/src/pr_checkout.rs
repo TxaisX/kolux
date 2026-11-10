@@ -293,7 +293,8 @@ pub fn open(git: &Git, place: &Place, project: &Project, pr: &PrHead, fork: Opti
         (false, false) => None,
     };
     let worktree = git.worktrees(repo)?.into_iter().find(|w| crate::projects::same_folder(Path::new(&w.path), &dest)).ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
-    Ok((Created { worktree, base: format!("pull request #{}", pr.number), note, warnings }, reuse))
+    // T-780: a pull request's branch is never Kolux's own; its record carries the marker anyway.
+    Ok((Created { worktree, base: format!("pull request #{}", pr.number), note, warnings, own: false }, reuse))
 }
 
 #[cfg(test)]

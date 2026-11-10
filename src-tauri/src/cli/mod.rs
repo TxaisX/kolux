@@ -986,14 +986,15 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             } else {
                 calling_worktree(ctx, &project, &req.cwd)?
             };
-            let made = projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None)?;
             // The calling terminal, when the runtime vouches for it; a shell outside Kolux records none.
             let terminal = caller(ctx, req).ok().flatten();
             let pane_key = terminal.as_ref().and(req.pane.as_ref()).map(|p| p.key.clone());
             let origin = json!({ "madeBy": "cli", "parent": parent, "cwd": req.cwd, "issue": issue, "comment": text("comment"), "terminal": terminal, "paneKey": pane_key });
+            // T-780: the record goes in with the creation, so a worktree whose checkout is not on
+            // origin (a fork's pull request branch) carries its marker from the first write.
+            let made = projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None, Some(origin.clone()))?;
             {
                 let store = ctx.store.lock().map_err(|e| e.to_string())?;
-                projects::set_origin(&store, &made.worktree.path, Some(&origin))?;
                 // PROJ-047: the sidebar nests it under its parent.
                 if let Some(p) = &parent {
                     projects::set_parent(&store, &made.worktree.path, Some(p))?;
@@ -3559,7 +3560,7 @@ fn worker_start_as(ctx: &Ctx, req: &Request, coordinator: Option<String>) -> Res
         let project = pick_project(ctx, text("repo").as_deref(), &req.cwd)?;
         let parent = if placement == NEW_CHILD { pick_worktree(ctx, "current", &req.cwd).ok().filter(|(p, _)| p.id == project.id).map(|(_, w)| w.path) } else { None };
         let wt = match text("name") {
-            Some(name) => projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None)?.worktree,
+            Some(name) => projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None, None)?.worktree,
             None => projects::create_fresh(ctx.git, ctx.store, &project.id)?,
         };
         let wt = match text("displayName") {
@@ -5542,6 +5543,20 @@ mod tests {
         std::fs::create_dir_all(&repo).unwrap();
         git(&["init", "-q", "-b", "main"], &repo);
         git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "one"], &repo);
+        // T-780 (round 3): a worktree is pre-trusted only when its checkout is on an origin branch,
+        // so the repo has an origin holding main, and a fork holding a stranger's commit.
+        let origin_remote = dir.join("origin.git");
+        git(&["init", "-q", "--bare", "-b", "main", &origin_remote.to_string_lossy()], &dir);
+        git(&["remote", "add", "origin", &origin_remote.to_string_lossy()], &repo);
+        git(&["push", "-q", "origin", "main"], &repo);
+        let fork = dir.join("fork.git");
+        git(&["init", "-q", "--bare", "-b", "main", &fork.to_string_lossy()], &dir);
+        git(&["remote", "add", "fork", &fork.to_string_lossy()], &repo);
+        git(&["checkout", "-q", "-b", "theirs"], &repo);
+        git(&["-c", "user.name=s", "-c", "user.email=s@s", "commit", "-q", "--allow-empty", "-m", "a commit by a stranger"], &repo);
+        git(&["push", "-q", "fork", "theirs"], &repo);
+        git(&["checkout", "-q", "main"], &repo);
+        git(&["branch", "-D", "theirs"], &repo);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
         projects::add_project(&git_, &store.lock().unwrap(), &repo).unwrap();
@@ -5745,6 +5760,34 @@ mod tests {
             let made = bad.data["worktree"]["path"].as_str().unwrap().to_string();
             dispatch(&ctx, &req("worktree.rm", &repo, json!({ "worktree": format!("path:{made}"), "force": true }))).unwrap();
             dispatch(&ctx, &req("worktree.rm", &repo, json!({ "worktree": format!("path:{}", wt.display()), "force": true }))).unwrap();
+            // T-780 (round 3, c): a worker started with --name and --base-branch fork/theirs checks out a
+            // stranger's commit, found on no origin branch: its first record carries the marker, it is
+            // not pre-trusted, and Claude's config gets no entry for it.
+            let foreign = dispatch(&ctx, &req("orchestration.worker-start", &repo, json!({ "spec": "review a stranger's work", "agent": "claude", "worktree": "new-top-level", "name": "stranger", "baseBranch": "fork/theirs", "setup": "skip", "timeoutMs": "1" }))).unwrap_err();
+            assert_eq!(foreign.code, "timeout", "{}", foreign.message);
+            let fwt = PathBuf::from(foreign.data["worktree"]["path"].as_str().unwrap());
+            assert!(fwt.join(".git").exists());
+            assert!(foreign.data["trust"].as_str().is_some_and(|t| t.contains("pull request")), "{}", foreign.data["trust"]);
+            let rec = projects::origin(&store.lock().unwrap(), &fwt.to_string_lossy()).unwrap();
+            assert_eq!((rec["madeBy"].as_str(), rec[projects::PR_EVER_KEY].as_bool()), (Some("app"), Some(true)), "{rec}");
+            assert!(crate::trust::made_by_kolux(&store, std::slice::from_ref(&fwt)).is_empty());
+            let conf: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join(".claude.json")).unwrap()).unwrap();
+            assert!(conf["projects"].get(crate::trust::claude_key(&fwt).unwrap()).is_none(), "the fork's worktree was not written into Claude's trust: {}", conf["projects"]);
+            // `worktree create` with the same base: the CLI's own record, with the marker in it from the start.
+            let two = dispatch(&ctx, &req("worktree.create", &repo, json!({ "name": "stranger two", "baseBranch": "fork/theirs", "setup": "skip" }))).unwrap();
+            let two_path = PathBuf::from(two["path"].as_str().unwrap());
+            let rec = projects::origin(&store.lock().unwrap(), &two_path.to_string_lossy()).unwrap();
+            assert_eq!((rec["madeBy"].as_str(), rec[projects::PR_EVER_KEY].as_bool()), (Some("cli"), Some(true)), "{rec}");
+            assert!(crate::trust::made_by_kolux(&store, std::slice::from_ref(&two_path)).is_empty());
+            // the same two paths on origin's main stay Kolux's own
+            let own = dispatch(&ctx, &req("worktree.create", &repo, json!({ "name": "own", "baseBranch": "origin/main", "setup": "skip" }))).unwrap();
+            let own_path = PathBuf::from(own["path"].as_str().unwrap());
+            let rec = projects::origin(&store.lock().unwrap(), &own_path.to_string_lossy()).unwrap();
+            assert_eq!((rec["madeBy"].as_str(), rec.get(projects::PR_EVER_KEY)), (Some("cli"), None), "{rec}");
+            assert_eq!(crate::trust::made_by_kolux(&store, std::slice::from_ref(&own_path)), vec![own_path.clone()]);
+            for p in [&fwt, &two_path, &own_path] {
+                dispatch(&ctx, &req("worktree.rm", &repo, json!({ "worktree": format!("path:{}", p.display()), "force": true }))).unwrap();
+            }
         } else {
             assert!(out.message.contains("not installed"));
         }

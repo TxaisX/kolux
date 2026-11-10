@@ -1,0 +1,406 @@
+T-780 review fix: made_by_kolux over-accepted origin records (2026-11-09, lane ready-sec-madeby)
+
+WHAT CHANGED
+- src-tauri/src/trust.rs (one cleared edit):
+  - made_by_kolux: a path counts as Kolux-made only when its origin record has a non-empty
+    string `madeBy` (new helper names_its_maker) AND does not hold a pull request.
+  - holds_pull_request: also true when the sticky marker `prEver` (projects::PR_EVER_KEY) is true,
+    so unlinking a pull request in the details form no longer brings the pre-trust back.
+  - Test comment (was "unlinking it brings the pre-trust back") now: linking a pull request to a
+    worktree later stops future trust marks, but does not remove one already written; unlinking it
+    does not bring the pre-trust back. The test's unlinking step now uses save_details and asserts
+    NOT pre-trusted.
+- src-tauri/src/projects.rs:
+  - pub const PR_EVER_KEY = "prEver"; open_pull_request writes `"prEver": true` beside `"pr"`.
+  - save_details (details dialog) and CLI-019 worktree.set were read: both start from the existing
+    record and only set issue/issueUrl/pr/comment, so they keep an existing madeBy and prEver and
+    never add a madeBy. No code change needed there; guard test added.
+- Marker field name: prEver
+
+TESTS (cargo test -j 2 --lib t780, in the worktree, after `. scripts/test-env.ps1`)
+RED (tests written, fix not yet applied):
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... FAILED
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok   (guard: already true before the fix)
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... FAILED
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... FAILED
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+  panicked at src\trust.rs:582:9 (user-added folder with a details record WAS pre-trusted)
+  panicked at src\trust.rs:605:9: left: [main, wt]  right: [wt]  (main checkout with a details record WAS Kolux-made)
+  panicked at src\trust.rs:560:9 (after unlinking the PR the worktree WAS pre-trusted again)
+test result: FAILED. 3 passed; 3 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 2.25s
+
+(b) "a Kolux-made worktree still IS pre-trusted" is covered by t443_only_worktrees_kolux_made_are_trusted_ahead_of_time
+    (green before and after) and by the wt half of t780_details_on_the_main_checkout_never_make_it_kolux_made.
+
+GREEN (fix applied), same command:
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... ok
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... ok
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... ok
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 2.07s
+
+VERIFY (worktree, PowerShell: . scripts/test-env.ps1 ; cd src-tauri ; ...)
+cargo test -j 2 --lib trust::     => exit 0  test result: ok. 13 passed; 0 failed
+cargo test -j 2 --lib projects::  => exit 0  test result: ok. 110 passed; 0 failed
+cargo test -j 2 --lib cli::       => exit 0  test result: ok. 188 passed; 0 failed
+cargo test -j 2 --test cards_10   => exit 0  test result: ok. 40 passed; 0 failed
+cargo test -j 2 --test cards_11   => exit 0  test result: ok. 12 passed; 0 failed
+cargo clippy -j 2 --all-targets -- -D warnings => see below
+cargo clippy -j 2 --all-targets -- -D warnings => exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 7m 06s
+
+================================================================================
+REVIEW FOLLOW-UP (APPROVE WITH CHANGES on 0fe4de49), same lane, 2026-11-09
+================================================================================
+P2-1  save_details now sets prEver before clearing/replacing a non-null, non-blank `pr`, so legacy
+      records (pr set, no marker) also stay out of the pre-trust after an unlink. CLI-019 worktree.set
+      never touches `pr` (it sets only issue/issueUrl/comment), so it needed no change: the pr it
+      leaves in place keeps holds_pull_request true, and a later details unlink marks it.
+P2-2  New projects::from_foreign_remote(git, repo, &Created): true when the ref the worktree was made
+      from resolves (git rev-parse --symbolic-full-name) to refs/remotes/<x>/... with x != origin, or
+      the new worktree's branch tracks a remote other than origin (git config branch.<b>.remote).
+      New projects::note_foreign_base(store, git, project, &Created) merges "prEver": true into the
+      record when that is true. Called after the origin record is written in: workspace_open_branch,
+      workspace_create, create_fresh_workspace (fresh/creature names, incl. a saved fork base), and
+      CLI worktree.create (cli/mod.rs). NOT covered (said so in the report): a same-repo PR branch
+      reused after its PR-made worktree was removed (the fork remote is origin itself); a branch
+      checked out detached from a fork SHA; a fork remote named "origin".
+      Finding while testing: open_branch_workspace("fork/theirs") is refused by branch_taken
+      ("there is no branch fork/theirs"); the fork branch enters by its short name ("theirs", Git
+      makes the local branch track the fork) or by a hand-made tracking branch, both covered.
+P3-1  trust::holds_pull_request fails safe: `pr` counts when not null and not a blank string
+      (numbers, objects, true all count); prEver counts when present and neither null nor false.
+Test  t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it keeps the non-git folder;
+      a new test covers a hand-made linked worktree of a trusted main checkout.
+
+RED (tests written; behaviour lines stubbed: note_foreign_base returned early, save_details marker
+     off, holds_pull_request on the previous one-liner, made_by_kolux without names_its_maker):
+  cargo test -j 2 --lib t780
+test trust::tests::t780_holds_pull_request_fails_safe ... FAILED                                   (P3-1, panicked trust.rs:627)
+test projects::tests::t780_unlinking_a_legacy_pull_request_record_marks_it_sticky ... FAILED       (P2-1, panicked projects.rs:5878)
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... FAILED   (names_its_maker stubbed out)
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... FAILED           (names_its_maker stubbed out)
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... ok
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+test projects::tests::t780_a_worktree_on_another_remotes_branch_is_never_pre_trusted ... FAILED    (P2-2, projects.rs:5930 left: Null right: true; from_foreign_remote itself was already true)
+test result: FAILED. 4 passed; 5 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 2.82s
+  cargo test -j 2 --lib t780_a_worktree_the_user_made_by_hand   (same stubs, c963a26a logic for made_by_kolux)
+test trust::tests::t780_a_worktree_the_user_made_by_hand_gets_no_trust_mark_from_a_details_record ... FAILED (panicked trust.rs:619)
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3033 filtered out; finished in 1.18s
+
+GREEN (stubs removed, fixes in place):  cargo test -j 2 --lib t780
+test trust::tests::t780_holds_pull_request_fails_safe ... ok
+test projects::tests::t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker ... ok
+test projects::tests::t780_unlinking_a_legacy_pull_request_record_marks_it_sticky ... ok
+test trust::tests::t780_a_details_record_on_a_user_added_folder_does_not_pre_trust_it ... ok
+test trust::tests::t780_a_worktree_the_user_made_by_hand_gets_no_trust_mark_from_a_details_record ... ok
+test trust::tests::t780_a_worktree_holding_a_pull_request_is_never_pre_trusted ... ok
+test trust::tests::t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is ... ok
+test trust::tests::t780_details_on_the_main_checkout_never_make_it_kolux_made ... ok
+test trust::tests::t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt ... ok
+test projects::tests::t780_a_worktree_on_another_remotes_branch_is_never_pre_trusted ... ok
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 39.27s
+
+VERIFY (follow-up commit), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri:
+cargo test -j 2 --lib trust::     exit 0   test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 3019 filtered out; finished in 20.80s
+cargo test -j 2 --lib projects::  exit 101 test result: FAILED. 111 passed; 1 failed  (projects::branch_prefix_async_tests::branch_prefix_check_is_an_async_command_that_matches_the_sync_one, load-flaky, untouched by this change)
+  rerun alone:                    exit 0   test result: ok. 1 passed; 0 failed; finished in 0.99s
+  rerun projects:: whole:         exit 0   test result: ok. 112 passed; 0 failed; 0 ignored; 0 measured; 2922 filtered out; finished in 101.95s
+cargo test -j 2 --lib cli::       exit 0   test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2846 filtered out; finished in 46.36s
+cargo test -j 2 --test cards_10   exit 0   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.96s
+cargo test -j 2 --test cards_11   exit 0   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 26.35s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 19s
+
+================================================================================
+T-780 review round 3 (2026-11-09, lane ready-sec-madeby, base 426ff7d6)
+================================================================================
+
+Findings fixed (review of 426ff7d6):
+  P1-A  CLI `orchestration.worker-start` with --name never called note_foreign_base: a fork
+        branch checked out through it was pre-trusted.
+  P1-B  name-based detection (`rev-parse --symbolic-full-name <base>` + the branch's upstream)
+        missed a local branch tracking the fork, a bare sha, `fork/theirs~0` and any other rev
+        expression that resolves to a stranger's commit.
+  P2    from_foreign_remote treated any git error as "not foreign" (fail-open).
+  P3    the plain record was written first and the marker added in a second write, so a crash
+        or a concurrent reader between the two saw a clean record; git ran under the store lock.
+  P3    workspace_from_item's issue path never marked at all.
+
+Design (content-based, fail-safe, one write):
+  projects::head_is_on_origin(dir) -> bool    (projects.rs ~312)
+      `git rev-parse --verify HEAD^{commit}` then
+      `git for-each-ref --contains <sha> --format=%(refname) refs/remotes/origin/`,
+      both through crate::git::run_within with READ_TIMEOUT (30 s). True only when at least one
+      `refs/remotes/origin/<name>` line comes back. A git error, a timeout, a malformed sha, no
+      `origin` remote, an empty listing: all false. It is called in the git-only creation layer
+      (create_workspace_until, open_branch_workspace_until), inside repo_turn, with no store lock
+      held (T-442-b kept).
+  Created.own: bool  (#[serde(skip)], never sent to the window)
+      set from head_is_on_origin by the two creation functions above; pr_checkout::open sets it
+      false by construction (a pull request's head is never Kolux's own).
+  projects::record_made(store, project, made, origin)    (projects.rs ~328)
+      the single writer of a fresh madeBy record. When !made.own it puts `"prEver": true` into the
+      record BEFORE the one set_origin call, then note_seen. There is no window with a clean
+      record on disk.
+  projects::note_seen no longer writes `{madeBy:"app"}`; it only maintains the seen list. A
+      caller that wants a record goes through record_made and so through the own check.
+  projects::set_origin carries an existing `prEver: true` over onto any rewritten object record
+      (belt for save_details, the CLI issue/comment edit and any future writer).
+  from_foreign_remote and note_foreign_base deleted.
+  create_named / create_named_until gained `origin: Option<serde_json::Value>` so the caller's
+      record (CLI madeBy "cli" with parent/cwd/issue, the app's issue link) is the first and only
+      write. open_named_until added for the open-branch path (same shape).
+
+Every creation path and how it decides the marker:
+  workspace_create (window, blank or with issue)        -> create_named_until -> record_made(own)
+  workspace_from_item (window, from an issue)           -> create_named           -> record_made(own)
+  workspace_open_branch (window, existing branch)       -> open_named_until       -> record_made(own)
+  workspace_create_fresh (window)                       -> create_fresh_from -> create_fresh_workspace -> record_made(own)
+  CLI worktree.create (with or without --base-branch)   -> create_named(origin=cli record) -> record_made(own)
+  CLI orchestration.worker-start --name [--base-branch] -> create_named          -> record_made(own)
+  CLI orchestration.worker-start (no --name)            -> create_fresh -> create_fresh_from -> record_made(own)
+  hooks.rs test helper                                  -> create_fresh_from     -> record_made(own)
+  workspace_open_pr (window, pull request)              -> pr_checkout::open (own=false) then its
+                                                           own set_origin with `prEver: true` (unchanged, already correct)
+  Remaining set_origin callers (save_details, CLI issue/comment edit, forget_origin) rewrite or
+  remove existing records; set_origin keeps the marker on a rewrite. No path writes a fresh madeBy
+  record without going through record_made.
+
+Accepted costs (frozen by the coordinator, 2026-11-09):
+  - A repo whose canonical remote is not named `origin` never gets pre-trust: its worktrees are all
+    marked prEver and Claude/Codex ask their own "trust this folder?" question. Correct, just slower.
+  - A worktree started from unpushed local commits (HEAD not reachable from any origin/* ref) is
+    not pre-trusted either, even though the commits are the user's own. Same effect: the agent asks.
+  - Any git failure or timeout during the check costs pre-trust, never grants it.
+  - The CLI test fixture had to gain a bare `origin` remote so its own-branch cases stay pre-trusted.
+
+Tests (projects.rs tests t780_*, cli.rs test create_and_remove_a_worktree_from_the_command_line):
+  a. t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted
+       base = local branch `theirs-local` tracking fork/theirs -> record madeBy app + prEver true,
+       made_by_kolux empty, not_pre_trusted_why mentions the pull request.
+  b. t780_a_fork_commit_as_base_is_never_pre_trusted
+       base = the fork commit's sha, then `fork/theirs~0` (rev expression), then create_fresh_from
+       with the sha -> all marked.
+  c. (CLI) create_and_remove_a_worktree_from_the_command_line
+       orchestration.worker-start --name stranger --base-branch fork/theirs through dispatch():
+       trust text says "pull request", record madeBy app + prEver true, made_by_kolux empty, no
+       entry for the folder in .claude.json; worktree.create "stranger two" on fork/theirs -> madeBy
+       cli + prEver true; worktree.create "own" on origin/main -> madeBy cli, no prEver, pre-trusted.
+  d. t780_a_checkout_on_origin_is_still_pre_trusted
+       base origin/main and an existing branch whose HEAD is on origin -> no marker, pre-trusted.
+  e. t780_without_proof_of_origin_the_worktree_is_marked
+       no `origin` remote; a folder that is not a git repo; a branch one commit ahead of origin ->
+       all marked (fail-safe).
+  f. t780_the_first_record_already_carries_the_marker
+       note_seen writes no record; record_made with own=false writes madeBy and prEver in one
+       set_origin; save_details and set_origin keep the marker; forget then own=true writes clean.
+
+RED (426ff7d6 logic temporarily re-applied by re-edit: own = true, note_seen writing madeBy,
+set_origin without carry-over, name-based fail-open note_foreign_base called only where 426ff7d6
+called it; restored afterwards by copying the saved GREEN files back; no stash, no checkout):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_the_first_record_already_carries_the_marker ... FAILED   (src\projects.rs:6133)
+    test projects::tests::t780_without_proof_of_origin_the_worktree_is_marked ... FAILED   (src\projects.rs:6090)
+    test projects::tests::t780_a_fork_commit_as_base_is_never_pre_trusted ... FAILED   (src\projects.rs:6024)
+    test projects::tests::t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted ... FAILED   (src\projects.rs:5996)
+    test projects::tests::t780_a_checkout_on_origin_is_still_pre_trusted ... ok   (regression guard: passes under both)
+    test result: FAILED. 10 passed; 4 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 6.73s   exit=101
+  cargo test -j 2 --lib create_and_remove_a_worktree_from_the_command_line
+    test cli::tests::create_and_remove_a_worktree_from_the_command_line ... FAILED
+    panicked at src\cli\mod.rs:5762:13  (the worker-start --name fork/theirs worktree was pre-trusted: P1-A)
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3037 filtered out; finished in 32.14s   exit=101
+
+GREEN (restored files; `grep -c "// RED"` = 0, no note_foreign_base / from_foreign_remote left):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_the_first_record_already_carries_the_marker ... ok
+    test projects::tests::t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted ... ok
+    test projects::tests::t780_a_fork_commit_as_base_is_never_pre_trusted ... ok
+    test projects::tests::t780_without_proof_of_origin_the_worktree_is_marked ... ok
+    test projects::tests::t780_a_checkout_on_origin_is_still_pre_trusted ... ok
+    test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 9.09s   exit=0
+  cargo test -j 2 --lib create_and_remove_a_worktree_from_the_command_line
+    test cli::tests::create_and_remove_a_worktree_from_the_command_line ... ok
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3037 filtered out; finished in 35.92s   exit=0
+
+Not covered by a test: the Tauri command wrappers themselves (workspace_create, workspace_from_item,
+workspace_open_branch) take State<> arguments and are exercised through the helpers they call
+(create_named_until, create_named, open_named_until); workspace_open_pr is unchanged.
+
+VERIFY (round 3 commit), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri:
+cargo test -j 2 --lib t780         exit 0   test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 8.23s
+cargo test -j 2 --lib trust::      exit 0   test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 3023 filtered out; finished in 2.45s
+cargo test -j 2 --lib projects::   exit 101 test result: FAILED. 115 passed; 1 failed  (proj068_records_follow_a_workspace_moved_outside_kolux_and_a_quiet_refresh_keeps_the_order:
+  the test called note_seen to get a madeBy record, which note_seen no longer writes; it now calls record_made like the create commands do)
+  rerun after the test fix:        exit 0   test result: ok. 116 passed; 0 failed; 0 ignored; 0 measured; 2922 filtered out; finished in 50.79s
+cargo test -j 2 --lib cli::        exit 0   test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2850 filtered out; finished in 42.62s
+cargo test -j 2 --lib automations:: exit 0  test result: ok. 82 passed; 0 failed; 1 ignored; 0 measured; 2955 filtered out; finished in 3.47s
+cargo test -j 2 --test cards_10    exit 0   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.34s
+cargo test -j 2 --test cards_11    exit 0   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.14s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 39.91s
+  rerun after the test fix:        exit 0   Finished `dev` profile [unoptimized + debuginfo] target(s) in 28.21s
+
+================================================================================
+T-780 review round 4 (2026-11-09, lane ready-sec-madeby, base fd6c917a; APPROVE WITH CHANGES)
+================================================================================
+
+1. P2, pull request heads under refs/remotes/origin/ (reviewer repro: `remote.origin.fetch =
+   +refs/pull/*/head:refs/remotes/origin/pr/*`, `git worktree add ../wt pr/12` -> own:true).
+   projects::head_is_on_origin now reads `git config --get-all remote.origin.fetch` (run_within,
+   READ_TIMEOUT) through origin_fetch_destinations(): a ref counts only when it falls under the
+   destination of a refspec whose source is `refs/heads/*`, `refs/heads/<dir>/*` or one exact
+   `refs/heads/<name>`, AND under the destination of no refspec with any other source. Fail-safe:
+   None (= no proof) when the config cannot be read, holds no branch refspec, a destination lies
+   outside refs/remotes/, a side has two `*`, the two sides disagree on `*`, or a negative refspec is
+   not a plain `^refs/...` pattern. Negative refspecs that are plain ref patterns are skipped (they
+   only remove sources), and a refspec without a destination (FETCH_HEAD only) is skipped.
+   `for-each-ref --contains <sha> --format=%(refname)` is now listed without a pattern and filtered
+   by those destinations; a doubtful ref (an empty `*` match on a foreign pattern) is excluded.
+   Extra accepted cost: a remote whose branch refspec writes outside refs/remotes/ (a mirror layout)
+   gets no pre-trust.
+2. P3, replacement refs: `--no-replace-objects` goes before every git subcommand the check runs
+   (config, rev-parse, for-each-ref). Verified by hand first: with `git replace -f <origin/main>
+   <child of the stranger's commit>` a plain `for-each-ref --contains <stranger>` lists
+   refs/remotes/origin/main; with --no-replace-objects it lists nothing.
+3. P3, set_origin carry-over: the marker is carried when `!was[prEver].is_null() && was[prEver] !=
+   false`, the same test trust::holds_pull_request applies.
+4. P3, recheck at launch (trust.rs, the only trust.rs change this round besides its test fixture):
+   - made_by_kolux: unchanged record filter (madeBy present, no pull request), now run in a block
+     that releases the store lock, then every surviving path is filtered again by
+     projects::head_is_on_origin(path). A Kolux-made worktree whose checkout is not on origin any
+     more (a fork branch checked out by hand, an unpushed commit) is dropped, so trust_for_launch,
+     trust_folders_cmd, the automations launch and the CLI worker-start (all of which go through
+     made_by_kolux) write nothing for it.
+   - not_pre_trusted_why: a Kolux-made record whose checkout fails the recheck gets the same text as
+     a pull request worktree ("not trusted: this worktree holds a pull request's branch, so the
+     agent asks itself"); git runs after the store lock is released.
+   - test fixture test_repo_with_worktree (cfg(test), shared with claude_accounts tests): the repo
+     now pushes main to a bare origin.git beside it, so its worktree is on origin's branch; the push
+     uses plain git because Kolux's runner refuses a local-path push from an untrusted folder.
+   - test t780_unlinking_a_legacy_pull_request_record_marks_it_sticky (projects.rs): its last
+     made_by_kolux assertion on a path that is no git worktree was replaced by the record check
+     (the launch filter now also wants a real checkout on origin).
+
+Tests added (red on the fd6c917a logic, green after):
+  t780_a_pull_request_head_fetched_under_origin_is_no_proof (projects.rs): bare origin gets the
+     stranger's commit at refs/pull/12/head; the repo gets the pull refspec and fetches; a local
+     pr/12 tracking origin/pr/12 is opened as a branch -> own false, prEver true, not pre-trusted;
+     `origin/pr/12` named as a base is refused by base_available before any checkout (it fetches
+     `origin pr/12`, a branch origin does not have), so the head's commit id is used as the base ->
+     marked; origin/main still own; only-pull-refspec, no-refspec and refs/mirror destinations ->
+     no proof; the usual refspec plus `^refs/heads/wip/*` plus `refs/tags/v1` -> proof.
+  t780_a_replaced_object_cannot_fake_the_proof (projects.rs): `git replace -f <origin/main> <child
+     of the stranger's commit>`; asserts a plain --contains is fooled, then create_named on the
+     stranger's sha -> own false, prEver true, not pre-trusted.
+  t780_set_origin_keeps_every_marker_shape_the_trust_check_honours (projects.rs): true, 1, "yes",
+     {} survive a rewrite as true; null and false leave no marker.
+  t780_the_launch_rechecks_the_checkout_against_origin (trust.rs): Kolux-made worktree on origin ->
+     pre-trusted; an extra commit in it -> made_by_kolux empty, not_pre_trusted_why = pull request
+     text, trust_for_launch Err("no folders to trust"), .claude.json holds the user's entry only;
+     `git checkout --detach origin/main` -> trust_for_launch writes 1 again.
+
+RED (fd6c917a logic temporarily re-applied by re-edit: check counts any ref under
+refs/remotes/origin/ with replacements honoured, carry-over only for the literal true, no recheck in
+made_by_kolux / not_pre_trusted_why; the fixture change kept; restored by copying the saved GREEN
+files back, no stash, no checkout):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_a_pull_request_head_fetched_under_origin_is_no_proof ... FAILED   (src\projects.rs:6208, `assert!(!opened.own)`: item 1)
+    test projects::tests::t780_a_replaced_object_cannot_fake_the_proof ... FAILED   (src\projects.rs:6265, `assert!(!made.own)`: item 2)
+    test projects::tests::t780_set_origin_keeps_every_marker_shape_the_trust_check_honours ... FAILED   (src\projects.rs:6285: item 3)
+    test trust::tests::t780_the_launch_rechecks_the_checkout_against_origin ... FAILED   (src\trust.rs:745, made_by_kolux still lists the drifted worktree: item 4)
+    test result: FAILED. 14 passed; 4 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 13.35s   exit=101
+
+GREEN (restored files; `grep -c "// RED"` = 0 in projects.rs and trust.rs):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_a_pull_request_head_fetched_under_origin_is_no_proof ... ok
+    test projects::tests::t780_a_replaced_object_cannot_fake_the_proof ... ok
+    test projects::tests::t780_set_origin_keeps_every_marker_shape_the_trust_check_honours ... ok
+    test trust::tests::t780_the_launch_rechecks_the_checkout_against_origin ... ok
+    test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 13.90s   exit=0
+
+VERIFY (round 4 commit), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri
+(claude_accounts:: added because its trust tests share the changed fixture):
+cargo test -j 2 --lib t780             exit 0  test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 15.17s
+cargo test -j 2 --lib trust::          exit 0  test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 3026 filtered out; finished in 4.56s
+cargo test -j 2 --lib projects::       exit 0  test result: ok. 119 passed; 0 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 64.08s
+cargo test -j 2 --lib cli::            exit 0  test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2854 filtered out; finished in 50.24s
+cargo test -j 2 --lib automations::    exit 0  test result: ok. 82 passed; 0 failed; 1 ignored; 0 measured; 2959 filtered out; finished in 3.59s
+cargo test -j 2 --lib claude_accounts:: exit 0 test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 2988 filtered out; finished in 5.09s
+cargo test -j 2 --test cards_10        exit 0  test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.34s
+cargo test -j 2 --test cards_11        exit 0  test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.80s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 36.78s
+
+T-780 review round 5 (2026-11-09, lane ready-sec-madeby, base f2d73d04; APPROVE WITH CHANGES)
+================================================================================
+
+1. P2, case folding (NTFS): reproduced by hand first: origin branch `PR/x` fetched loose, then the
+   refspec `+refs/pull/*/head:refs/remotes/origin/pr/*` added and fetched -> for-each-ref lists
+   `refs/remotes/origin/PR/12`. head_is_on_origin now lowercases the other refspecs' destinations
+   and the ref before comparing them (the branch side stays exact: a looser match there would only
+   widen the proof).
+2. P3, symbolic refs: for-each-ref runs with `--format=%(refname)%00%(symref)`; a line whose symref
+   is non-empty (refs/remotes/origin/HEAD after `git remote set-head origin pr/12`) is ignored, as is
+   a line without the NUL separator. The target is listed on its own line anyway.
+3. P3, grafts: reproduced by hand: `.git/info/grafts` with `<origin main> <stranger>` makes
+   `git --no-replace-objects for-each-ref --contains <stranger>` list refs/remotes/origin/main.
+   git::run_within takes no extra environment and adding one means timeout plumbing in git.rs (out
+   of scope), so GIT_GRAFT_FILE is NOT set. Instead the new projects::settled() reads
+   `rev-parse --git-dir --git-path info/grafts` (same run_within/READ_TIMEOUT read path,
+   --no-replace-objects); `--git-path info/grafts` honours GIT_GRAFT_FILE (checked by hand), and
+   while that file exists (or its existence cannot be read) there is no proof. Accepted cost: a repo
+   that still uses the deprecated graft file gets no pre-trust.
+4. P3, operation in progress: settled() also refuses proof when the worktree's git dir (from the
+   same rev-parse call) holds MERGE_HEAD, CHERRY_PICK_HEAD, REVERT_HEAD, rebase-merge or
+   rebase-apply (exists, or existence unreadable).
+5. Coordinator decision ACCEPTED and documented: doc comments on head_is_on_origin (projects.rs) and
+   not_pre_trusted_why (trust.rs): the check decides only whether Kolux writes a NEW trust mark; a
+   mark already written stays (nothing revoked); refs the user's own fetches/config put under
+   refs/remotes/origin/ through origin's branch refspecs count as origin's. Wording: a drifted
+   Kolux-made checkout (no pull request recorded) now reads "not trusted: this worktree's checkout
+   isn't on one of origin's branches, so the agent asks itself"; the pull request text stays for
+   real PR records. The window's notice is unaffected (trust_folders_cmd answers "no folders to
+   trust"; only the CLI worker-start prints not_pre_trusted_why).
+   t780_the_launch_rechecks_the_checkout_against_origin now asserts the new text and that a mark
+   written earlier stays after a second drift.
+6. P3: trust_folders_cmd is `#[tauri::command(async)]` (same pattern as bulk.rs
+   workspace_remove_many); name and arguments unchanged, `pnpm check` invoke-contract OK.
+7. P3: the fixture's plain `git push` Command in test_repo_with_worktree sets
+   `creation_flags(0x0800_0000)` under cfg(windows), 4 lines after the Command::new.
+8. SKIPPED: removing the second head_is_on_origin on the CLI negative path needs a new or changed
+   trust.rs API (the record checks names_its_maker / holds_pull_request are private to trust.rs),
+   and trust.rs edits are frozen to items 5-7 this round. Cost: one extra bounded set of git reads
+   on a worker start whose worktree is not pre-trusted.
+
+Tests added (projects.rs), red on the f2d73d04 logic (tests added first, code unchanged), green after:
+  t780_a_pull_request_head_in_a_folder_of_another_case_is_no_proof (item 1; asserts on Windows that
+     for-each-ref really lists refs/remotes/origin/PR/12)
+  t780_a_symbolic_ref_is_no_proof (item 2)
+  t780_a_graft_file_cannot_fake_the_proof (item 3; asserts --no-replace-objects is fooled first)
+  t780_an_operation_in_progress_is_no_proof (item 4; `merge --no-commit --no-ff fork/theirs` in a
+     worktree on origin/main, HEAD unchanged -> no proof; `merge --abort` -> proof again)
+
+RED (round-5 tests on the f2d73d04 code):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_a_graft_file_cannot_fake_the_proof ... FAILED   (src\projects.rs:6361 "a graft makes no proof")
+    test projects::tests::t780_a_symbolic_ref_is_no_proof ... FAILED   (src\projects.rs:6338)
+    test projects::tests::t780_an_operation_in_progress_is_no_proof ... FAILED   (src\projects.rs:6381 "a merge in progress is no proof")
+    test projects::tests::t780_a_pull_request_head_in_a_folder_of_another_case_is_no_proof ... FAILED   (src\projects.rs:6319; the PR/12 precondition above it passed)
+    test result: FAILED. 18 passed; 4 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 15.23s   exit=101
+GREEN:
+  cargo test -j 2 --lib t780
+    test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 17.11s   exit=0
+
+VERIFY (round 5), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri:
+cargo test -j 2 --lib t780              exit 0  test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 15.94s
+cargo test -j 2 --lib trust::           exit 0  test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 3030 filtered out; finished in 5.89s
+cargo test -j 2 --lib projects::        exit 0  test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 57.03s
+cargo test -j 2 --lib cli::             exit 0  test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2858 filtered out; finished in 46.13s
+cargo test -j 2 --lib claude_accounts:: exit 0  test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 2992 filtered out; finished in 5.26s
+cargo test -j 2 --lib automations::     exit 0  test result: ok. 82 passed; 0 failed; 1 ignored; 0 measured; 2963 filtered out; finished in 3.48s
+cargo test -j 2 --test cards_10         exit 0  test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.37s
+cargo test -j 2 --test cards_11         exit 0  test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.61s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 39.71s
+pnpm check (repo root)                  exit 0  invoke-contract: OK; last suite 5 pass, 0 fail
