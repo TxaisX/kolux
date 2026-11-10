@@ -195,6 +195,37 @@ Today's run file: `evidence/stress-s11-bd74cb9a-release-r10-before.{txt,json}` (
 
 **Not done.** The optional utility-process cut (step 4) was not attempted: the two utility processes hold 19.9 MB private together at one pane, and their sub-types were not identified in the turns left.
 
+## Round 11: the engine's helper processes and the per-pane shell (no code change)
+
+**What was asked.** Two places not yet tried: (A) the WebView2 helper processes, read by `--type` / `--utility-sub-type` from each process's command line, and which of them Kolux could do without; (B) the per-pane shell subtree (ConPTY host, wrappers, profile loading). Only cuts that leave the product identical for the user. Measured on the release build of 9db6926b (product code unchanged since bd74cb9a) with WebView2 runtime 157.0.4341.42; the listings are in `evidence/stress-r11-processes-9db6926b.txt`.
+
+**Per process (3 panes + 1 browser tab on a local page; private MB / working set MB; the 1-pane figures from listing A in brackets where they differ).**
+
+| Process | `--type` / sub-type | Private / WS MB | Needed? |
+|---|---|---|---|
+| kolux.exe (window; the terminal service runs inside it) | | 14.1 / 40.6 | Yes. |
+| msedgewebview2 browser | (none) | 47.4 / 129.9 | Yes: the engine itself; one per data folder, and every default-profile tab shares the window's. |
+| crashpad-handler | `crashpad-handler` | 3.3 / 18.5 | Kept. It is the engine's crash reporter; no WebView2-documented switch turns it off, and 3 MB is under the run-to-run band. |
+| gpu-process | `gpu-process` | 105.6 / 92.9 (98.8 to 128 over the listings) | Yes: `--disable-gpu` is already the safe-graphics fallback (APP-043) and costs CPU and smoothness; there is no supported in-process-GPU mode for WebView2. |
+| utility: network service | `network.mojom.NetworkService`, sandbox none | 13.3 / 42.9 | Kept. Folding it into the browser process is a Chromium-internal feature, not a WebView2-documented switch, saves only the process baseline (a few MB) and makes a network-stack crash a whole-engine crash. |
+| utility: storage service | `storage.mojom.StorageService` | 7.6 / 20.1 | Kept, same reasoning; it holds cookies and site storage for the embedded tabs. |
+| utility: audio service | `audio.mojom.AudioService` | 8.3 / 24.9 | Not present until a page plays sound (absent in listings A and B; appeared in C only after the oscillator started). Nothing to cut. |
+| renderer (the app's page) | `renderer`, client id 5 | 86.3 / 138.7 (77 at 1 pane) | Yes. |
+| renderer (the tab) | `renderer`, client id 6 | 21.9 / 53.1 awake; 22.8 / 0 after 90 s hidden | Yes; one per tab by site isolation. |
+| spare renderer | | none | Nothing to cut: the engine runs no warm spare renderer here (two webviews, two renderers), so `SpareRendererForSitePerProcess` is already off in effect. |
+| conhost.exe, one per pane | `--headless` | 1.4 / 8.1 | Yes: ConPTY's console host; every pseudo console has one, and there is no API to run without it. |
+| powershell.exe, one per pane | `-NoLogo -NoExit -EncodedCommand <preamble>` | 54.7 / 72.3 | Yes: it is the user's shell. |
+
+Every helper carries the same one `--disable-features=FedCm,msPdfOOUI,msWebOOUI` list plus `--disable-background-timer-throttling`: the composition in `resources/recovery.rs` (`browser_args` + `fedcm_off`) reaches every process as intended, and no stray second list appears.
+
+**(A) Helper processes: nothing shipped.** The utility processes are the network and storage services (20.9 MB private together), which is what round 10 left unidentified. The three Chromium features that would merge them into the browser process (`NetworkServiceInProcess`, `StorageServiceOutOfProcess`, `AudioServiceOutOfProcess`) are not on Microsoft's WebView2 browser-flags list, which says outright that production apps should not rely on flags (Kolux already carries three documented ones: the wry pair and `disable-background-timer-throttling`); each would save only a process baseline of a few MB while widening the blast radius of a crash in that service (today a network-service crash restarts the service; in-process it would take the engine down and go through APP-043's recovery). One documented candidate was A/B-probed live: `--enable-features=msWebView2SimulateMemoryPressureWhenInactive` ("simulates memory pressure for an inactive WebView"), appended through `STRESS_EXTRA_BROWSER_ARGS` and confirmed on all 12 helper command lines. With the tab hidden 90 s the tab renderer sat at 22.8 MB private / 0 MB working set with and without it (listings A and B), because DT-C237's suspend plus the engine's give-back already empty the hidden renderer; the flag changes nothing measurable, so it is not added. `--disable-site-isolation-trials` and `--renderer-process-limit` would merge tab renderers but weaken the isolation between embedded sites (logins) and were not tried. Crashpad: no documented switch; 3 MB.
+
+**(B) Per-pane shell: nothing shipped.** A pane is exactly two processes: the shell and one `conhost.exe --headless` (ConPTY's host, 1.4 MB private; its 8 MB working set is mostly shared system pages). There is no `cmd /c` wrapper and no extra OpenConsole: `shell_commands` starts the shell binary directly with `-NoLogo`, and the `-NoExit -EncodedCommand` is the shell_marks preamble (UTF-8 console encodings and the OSC 133 prompt markers), which runs inside the same process. The user's profile loads as it does in Windows Terminal (`-NoProfile` is test-only, `without_profile`), and removing it would change the prompt, modules and aliases the user sees, so it stays. Windows PowerShell 5.1 at 54.7 MB private per pane is the shell's own footprint; the owner's "shells: 7 processes 131 MB" is consistent with three such panes plus their hosts and one cmd.
+
+**Live check (release exe, listing C).** A tab on a local page loaded and set a cookie; a WebAudio oscillator started from a click sent over CDP and reported `running t=2.82`; the tab was hidden behind the terminal tab for 8 s and shown again, and `document.cookie` read `probe=<same value>` before and after; the app closed by its own path with 0 survivors in each of the three runs.
+
+**Not run.** S11 (`--release --repeat 3 --tag release-r11-after`) was not repeated: no product code changed in this round, so the r10-before file on bd74cb9a is already the measurement of this build, and a second run would only show the run-to-run band.
+
 ## Evidence
 
 - `evidence/stress-s11-70d06457-release-before.{txt,json}`, `evidence/stress-s11-fc333a52-release-after.{txt,json}`,
@@ -211,3 +242,4 @@ Today's run file: `evidence/stress-s11-bd74cb9a-release-r10-before.{txt,json}` (
 - Round 8: `evidence/stress-s13-85858f08.txt` (the watched-then-left case sleeping and waking on the lane build); `evidence/stress-s13-068dd246.txt` (14 of 14 on main after both lanes merged).
 - Round 9: `evidence/stress-s14-85858f08.txt` (pane moves, 0 restarts, first cut) and `evidence/stress-s14-f0d2384e.txt` (same run on the review fixes: 0 restarts, 7 of 7), `evidence/stress-s14-1d837961.txt` (same run after main with DT-C247 was merged in: 0 restarts, 7 of 7), `evidence/stress-s14-73586f78.txt` (same run on the second review's fixes: 0 restarts, 7 of 7), `evidence/stress-s14-a93c7d3d.txt` (same run on the third review's fixes: 0 restarts, 7 of 7).
 - Round 10: `evidence/stress-s11-bd74cb9a-release-r10-before.{txt,json}` (release S11 on today's main, 3 runs; no code change, see the Round 10 table for the fair compare).
+- Round 11: `evidence/stress-r11-processes-9db6926b.txt` (per-process listings with `--type` / `--utility-sub-type` and private MB: 1 pane + 1 tab awake and hidden, the same with the memory-pressure flag, 3 panes + 1 tab with audio and the cookie check; no code change).
