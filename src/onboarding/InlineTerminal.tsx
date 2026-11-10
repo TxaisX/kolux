@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import TerminalPane from "../terminal/TerminalPane";
-import { decodeOutput, type ExitEvent } from "../terminal/codec";
+import { chunkBytes, type ExitEvent } from "../terminal/codec";
 import { onTerminalOutput, onTerminalExit } from "../terminal/outputBus";
 import { createTyper, type Typer } from "./cliInstall";
 
@@ -28,7 +28,7 @@ export default function InlineTerminal({ command, onExit, height = 220 }: { comm
       onTerminalOutput((e) => {
         if (id.current === null || e.id !== id.current) return;
         try {
-          typer.current?.output(decoder.decode(decodeOutput(e.data), { stream: true }));
+          typer.current?.output(decoder.decode(chunkBytes(e), { stream: true }));
         } catch {
           // an undecodable chunk is not prompt text
         }

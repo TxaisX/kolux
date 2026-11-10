@@ -16,6 +16,7 @@ mod flood;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
 mod output_channel;
+mod output_frame;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
@@ -940,8 +941,9 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
         let app = app.clone();
         output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
             // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
-            if let Err(batch) = send_to_readers(&app, output_batch::OutputBatch { items }) {
-                let _ = app.emit(OUTPUT_EVENT, batch);
+            // Raw output (DT-C246): on the channel the batch is one binary frame, no base64 and no JSON.
+            if !OUTPUT_READERS.send_raw(|| output_frame::encode(&items), |label| app.get_webview(label).is_some()) {
+                let _ = app.emit(OUTPUT_EVENT, output_batch::OutputBatch { items });
             }
         }))
     })
@@ -1192,7 +1194,8 @@ impl Terminals {
         let mut prs = crate::scm::PrScan::default();
         (
             Box::new(move |chunk: &[u8]| {
-                let data = base64::engine::general_purpose::STANDARD.encode(chunk);
+                // DT-C246: the bytes as read; the batch frames them for the channel, the event base64-encodes them.
+                let data = chunk.to_vec();
                 // T-792: `take_chunk` masks the history file's copy before it takes any lock.
                 // ORCH-057: the count is taken under the registry lock with the snapshot tail, so a snapshot
                 // holds exactly the chunks whose count is not past its own.

@@ -18,12 +18,6 @@ export function resyncGate() {
   };
 }
 
-/** How many bytes a base64 chunk carries, without decoding it (a dropped chunk is still acknowledged). */
-export function base64Bytes(data: string): number {
-  const pad = data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0;
-  return Math.floor((data.length * 3) / 4) - pad;
-}
-
 /** Clears the pane's screen and scrollback, then draws the snapshot's bytes. */
 export function applySnapshot(term: { reset(): void; write(data: Uint8Array): void }, bytes: Uint8Array) {
   term.reset();

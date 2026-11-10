@@ -1,6 +1,6 @@
 // DT-C243: one batched output event is handed to readers one chunk at a time, in order.
 import { describe, expect, it, vi } from "vitest";
-import type { OutputEvent } from "./codec";
+import { chunkBytes, type OutputEvent } from "./codec";
 import { eachChunk, fanOut, onTerminalOutput, type OutputBatch } from "./outputBus";
 
 const chunk = (id: number, seq: number, data = "ZQ=="): OutputEvent => ({ id, data, pane: id * 10, generation: 1, seq });
@@ -67,13 +67,46 @@ describe("the output channel", () => {
   });
 });
 
+// DT-C246: an output batch arrives on the channel as one binary frame; readers see its chunks with their bytes.
+describe("a raw frame on the output channel", () => {
+  it("fans the frame's chunks out as bytes, in order, and leaves an unreadable buffer out", async () => {
+    const { fromChannel } = await import("./outputBus");
+    const seen: string[] = [];
+    const stop = await onTerminalOutput((c) => seen.push(`${c.id}:${new TextDecoder().decode(c.bytes)}:${c.seq}`));
+    const frame = new Uint8Array([
+      0x4b, 1, 2, 0, 0, 0,
+      7, 0, 0, 0, 1, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0x68, 0x69,
+      8, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0x21,
+    ]).buffer;
+    fanOut(fromChannel(frame));
+    fanOut(fromChannel(new Uint8Array([1, 2, 3]).buffer));
+    fanOut(fromChannel({ items: [], exit: { id: 7 } }));
+    stop();
+    expect(seen).toEqual(["7:hi:1", "8:!:2"]);
+  });
+
+  // Review of DT-C246: once Tauri falls back to postMessage, a raw body is a plain array of numbers; a view is taken too.
+  it("reads a frame that arrives as a number array or as a view, not only as an ArrayBuffer", async () => {
+    const { fromChannel } = await import("./outputBus");
+    const seen: string[] = [];
+    const stop = await onTerminalOutput((c) => seen.push(`${c.id}:${new TextDecoder().decode(chunkBytes(c))}`));
+    const frame = [0x4b, 1, 1, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0x68, 0x69];
+    fanOut(fromChannel(frame));
+    const padded = new Uint8Array([9, 9, 9, ...frame, 9]);
+    fanOut(fromChannel(padded.subarray(3, 3 + frame.length)));
+    fanOut(fromChannel({ items: [{ id: 7, data: "IQ==", seq: 3 }] }));
+    stop();
+    expect(seen).toEqual(["7:hi", "7:hi", "7:!"]);
+  });
+});
+
 // DT-C244 review: a terminal's end note comes on the same channel after its output, and readers get it in that order.
 describe("the end note on the output channel", () => {
   it("delivers a large last batch to the output readers before the exit reaches the exit readers", async () => {
     const { onTerminalExit } = await import("./outputBus");
     const log: string[] = [];
     const big = "A".repeat(300 * 1024);
-    const stopOut = await onTerminalOutput((c) => log.push(`out ${c.id} ${c.data.length}`));
+    const stopOut = await onTerminalOutput((c) => log.push(`out ${c.id} ${c.data?.length}`));
     const stopExit = await onTerminalExit<{ id: number }>((e) => log.push(`exit ${e.payload.id}`));
     fanOut({ items: [chunk(4, 1, big)] });
     fanOut({ items: [], exit: { id: 4, code: 0 } });

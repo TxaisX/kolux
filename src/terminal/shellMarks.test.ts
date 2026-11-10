@@ -103,6 +103,17 @@ describe("Gate (ACCT-047)", () => {
     expect(g.dropped).toBe(5);
     expect(new TextDecoder().decode(g.release()!)).toBe("6789");
   });
+
+  it("DT-C246 review: holds its own copy of a small chunk, not a view that pins the whole frame", () => {
+    const g = new Gate(true);
+    const batch = new Uint8Array(64 * 1024);
+    batch.set(bytes("motd"), 500);
+    expect(g.push(batch.subarray(500, 504), false)).toBeNull();
+    const held = (g as unknown as { held: Uint8Array[] }).held;
+    expect(held).toHaveLength(1);
+    expect(held[0].buffer).not.toBe(batch.buffer);
+    expect(new TextDecoder().decode(g.release()!)).toBe("motd");
+  });
 });
 
 describe("Startup (ACCT-047)", () => {

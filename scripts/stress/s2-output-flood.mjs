@@ -47,8 +47,15 @@ const ECHO_PROBE_JS = `(() => {
   bus.probe = (batch) => {
     const t = performance.now();
     for (const it of batch.items || []) {
-      if (typeof it.data !== "string" || it.data.length > 512) continue;
-      const text = atob(it.data);
+      // DT-C246: a chunk from the channel's frame carries its bytes; one from the event carries base64 text.
+      let text;
+      if (it.bytes) {
+        if (it.bytes.length > 384) continue;
+        text = new TextDecoder().decode(it.bytes);
+      } else {
+        if (typeof it.data !== "string" || it.data.length > 512) continue;
+        text = atob(it.data);
+      }
       if (text.includes("ECHO-READY")) window.__echoReady = true;
       for (const m of text.matchAll(/\\[E(\\d+)\\]/g)) if (!window.__echoAt.has(m[0])) window.__echoAt.set(m[0], t);
     }

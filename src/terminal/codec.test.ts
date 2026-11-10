@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { chunkBytes, decodeOutput, endedLabel, forPane } from "./codec";
+import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane } from "./codec";
 
 test("base64 output chunks decode to the exact PTY bytes, including a split multi-byte character", () => {
   // "é" is C3 A9 in UTF-8; the Rust side may cut a chunk between the two bytes.
@@ -44,4 +44,10 @@ test("DT-C245 the decode gives the same bytes whichever path the engine has, and
   for (const b of all) bin += String.fromCharCode(b);
   expect([...decodeOutput(btoa(bin))]).toEqual([...all]);
   expect(() => decodeOutput("%%%")).toThrow();
+});
+
+test("chunkLength counts base64 bytes exactly for padding 0, 1 and 2 and the empty string", () => {
+  for (const text of ["", "a", "ab", "abc", "abcd", "hello world"]) {
+    expect(chunkLength({ data: btoa(text) } as never)).toBe(text.length);
+  }
 });

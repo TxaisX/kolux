@@ -8,18 +8,39 @@
 //! old one, a web view that is gone is dropped before each send, and so is a channel whose send fails.
 //! When no live channel takes a message the caller sends it as the event instead.
 
+//!
+//! Raw output (DT-C246): an output batch goes as one binary frame (output_frame.rs), which the page gets as
+//! an `ArrayBuffer`; the end note stays a JSON message on the same channel. Tauri numbers a channel's
+//! messages and the page hands them over in that order, whichever path (direct script or fetch) each took.
+
 use std::sync::Mutex;
 
-/// Something one message (already JSON) can be handed to; false means the reader is gone.
+/// One channel message: JSON text, or bytes the page receives as an `ArrayBuffer`.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Body {
+    Json(String),
+    Raw(Vec<u8>),
+}
+
+impl From<Body> for tauri::ipc::InvokeResponseBody {
+    fn from(b: Body) -> Self {
+        match b {
+            Body::Json(s) => Self::Json(s),
+            Body::Raw(v) => Self::Raw(v),
+        }
+    }
+}
+
+/// Something one message can be handed to; false means the reader is gone.
 pub(crate) trait Reader: Clone + Send {
-    fn send(&self, json: String) -> bool;
+    fn send(&self, body: Body) -> bool;
     /// Tells two subscriptions of one web view apart.
     fn key(&self) -> u32;
 }
 
 impl Reader for tauri::ipc::Channel {
-    fn send(&self, json: String) -> bool {
-        tauri::ipc::Channel::send(self, tauri::ipc::InvokeResponseBody::Json(json)).is_ok()
+    fn send(&self, body: Body) -> bool {
+        tauri::ipc::Channel::send(self, body.into()).is_ok()
     }
     fn key(&self) -> u32 {
         self.id()
@@ -52,22 +73,43 @@ impl<R: Reader> Readers<R> {
     /// web view is gone or whose send fails are dropped. Gives `message` back when no reader took it, so
     /// the caller sends it the old way instead. The list lock is not held while sending.
     pub(crate) fn send<B: serde::Serialize>(&self, message: B, alive: impl Fn(&str) -> bool) -> Result<(), B> {
-        let readers: Vec<R> = {
-            let mut list = self.list.lock().unwrap_or_else(|e| e.into_inner());
-            list.retain(|(label, _)| alive(label));
-            list.iter().map(|(_, r)| r.clone()).collect()
-        };
+        let readers = self.live(alive);
         if readers.is_empty() {
             return Err(message);
         }
-        let Ok(mut json) = serde_json::to_string(&message) else {
+        let Ok(json) = serde_json::to_string(&message) else {
             return Err(message);
         };
+        if self.hand(&readers, Body::Json(json)) {
+            Ok(())
+        } else {
+            Err(message)
+        }
+    }
+
+    /// DT-C246: hands the frame `encode` makes (bytes the page gets as an `ArrayBuffer`) to every live reader,
+    /// like `send`; `encode` runs only when there is a reader. False when no reader took it: the caller still
+    /// holds the chunks and sends them the old way.
+    pub(crate) fn send_raw(&self, encode: impl FnOnce() -> Vec<u8>, alive: impl Fn(&str) -> bool) -> bool {
+        let readers = self.live(alive);
+        !readers.is_empty() && self.hand(&readers, Body::Raw(encode()))
+    }
+
+    /// The readers whose web view `alive` still finds; the rest are dropped. The lock is not held after.
+    fn live(&self, alive: impl Fn(&str) -> bool) -> Vec<R> {
+        let mut list = self.list.lock().unwrap_or_else(|e| e.into_inner());
+        list.retain(|(label, _)| alive(label));
+        list.iter().map(|(_, r)| r.clone()).collect()
+    }
+
+    /// Gives `body` to each of `readers` (the last takes it, the others a copy), dropping those whose send
+    /// fails; true when at least one took it.
+    fn hand(&self, readers: &[R], mut body: Body) -> bool {
         let (mut took, mut failed) = (false, Vec::new());
         let last = readers.len() - 1;
         for (i, r) in readers.iter().enumerate() {
-            let body = if i == last { std::mem::take(&mut json) } else { json.clone() };
-            if r.send(body) {
+            let one = if i == last { std::mem::replace(&mut body, Body::Raw(Vec::new())) } else { body.clone() };
+            if r.send(one) {
                 took = true;
             } else {
                 failed.push(r.key());
@@ -76,11 +118,7 @@ impl<R: Reader> Readers<R> {
         if !failed.is_empty() {
             self.list.lock().unwrap_or_else(|e| e.into_inner()).retain(|(_, r)| !failed.contains(&r.key()));
         }
-        if took {
-            Ok(())
-        } else {
-            Err(message)
-        }
+        took
     }
 }
 
@@ -99,8 +137,11 @@ mod tests {
         key: u32,
     }
     impl Reader for Probe {
-        fn send(&self, json: String) -> bool {
-            self.got.lock().unwrap().push(json);
+        fn send(&self, body: Body) -> bool {
+            self.got.lock().unwrap().push(match body {
+                Body::Json(s) => s,
+                Body::Raw(v) => format!("raw:{}", v.len()),
+            });
             self.alive
         }
         fn key(&self) -> u32 {
@@ -138,13 +179,31 @@ mod tests {
         let r = Readers::new();
         let a = probe(true);
         r.set("main", a.clone());
-        let big = "x".repeat(64 * 1024);
-        assert!(r.send(serde_json::json!({ "items": [{ "data": big }] }), all).is_ok());
+        // DT-C246: the output is a raw frame, the end note JSON; both on the one channel, in that order.
+        assert!(r.send_raw(|| vec![b'K'; 300 * 1024], all));
         assert!(r.send(serde_json::json!({ "items": [], "exit": { "id": 1 } }), all).is_ok());
         let got = a.got.lock().unwrap();
         assert_eq!(got.len(), 2);
-        assert!(got[0].contains(&big));
+        assert_eq!(got[0], format!("raw:{}", 300 * 1024));
         assert!(got[1].contains("\"exit\""));
+    }
+
+    #[test]
+    fn dt_c246_a_raw_frame_reaches_every_reader_and_is_refused_when_none_takes_it() {
+        let r = Readers::new();
+        let (a, b) = (probe(true), probe(true));
+        r.set("main", a.clone());
+        r.set("other", b.clone());
+        assert!(r.send_raw(|| vec![1, 2, 3], all));
+        assert_eq!(*a.got.lock().unwrap(), vec!["raw:3"]);
+        assert_eq!(*b.got.lock().unwrap(), vec!["raw:3"]);
+        // Without a reader the frame is never built (review: the encode is a copy of every chunk).
+        let none: Readers<Probe> = Readers::new();
+        assert!(!none.send_raw(|| unreachable!("encoded with no reader"), all));
+        let dead = Readers::new();
+        dead.set("broken", probe(false));
+        assert!(!dead.send_raw(|| vec![4, 5, 6], all), "the only reader failed: the caller sends the event instead");
+        assert_eq!(dead.len(), 0);
     }
 
     #[test]
