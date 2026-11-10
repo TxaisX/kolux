@@ -145,6 +145,16 @@ Three findings came out of it:
 
 What the stand-in leaves unproven: that real Claude Code sends the same hooks in the same order; that `claude --resume <id>` restores a real conversation; how much a real idle session holds, and so how much sleep frees; and how the window behaves with real agents' output.
 
+## Round 8: terminal replies are not typing (DT-C247)
+
+Round 7's second finding, isolated and fixed. Kolux kept one "last typed into" time per terminal and set it on every write to the PTY. xterm writes more than the user's keys: when a program turns focus reporting on (ConPTY does so at start), every focus change sends a focus-in or focus-out report, and a program's cursor-position, device-attributes, mode and colour queries get their answers the same way. So the click away from a finished agent's pane was "typing after the agent finished", agent sleep refused that pane for good, and its quiet timer restarted at every focus change. Only an agent that finished while the user was elsewhere could sleep.
+
+Bytes alone cannot tell a reply from a key (the cursor-position answer `ESC [ 1;2 R` is Shift+F3), so the pane tells them apart at the source: xterm's core raises its user-input event right before onData for keys, pastes, composed text and mouse reports, and not for its own answers. The pane reads that mark and sends an answer as an automatic write, which reaches the program unchanged but counts as neither typing for sleep nor as "the user typed" for the limit-stop resume and the command line's send. The same bytes reach the program in the same order as before; terminal behaviour (typing, paste, IME, mouse, focus-dependent programs) is untouched. The window's own "unsent draft" rule reads the chat message box, not terminal writes, and was never affected.
+
+**S13, release build, the watched-then-left case (new).** A's turn finishes with its tab in front, the run then switches to D's tab and types a draft there, then to V's tab, and leaves it. On the lane's release build (`evidence/stress-s13-85858f08.txt`, 1489 s) A's turn finished at +935 s with its tab in front and the focus left it 20 s later; A slept 6.4 min after the finish (poll granularity 15 s), its stand-in process was gone, and the app tree fell from 21 processes, 3233 MB working set / 2877 MB private to 18 processes, 2565 / 2213 MB (-664 MB private; A had held 647 / 623 MB). V (finished, in the tab in front), D (finished, then a draft typed without Enter) and B (busy, a tool call running) were still alive 9 min after A finished. Wake started Claude again with `--resume` and A's own session id (resumed true, SessionStart resume hook exit 0), and the woken agent held its memory again. 13 of 14 checks passed; the one failure is the pre-existing TERM-016 check (Move to Tab restarts the agents as fresh sessions), which belongs to the tab-move lane and was failing before this lane. The harness no longer needs its `--late` delay (A and V finishing after the last click), which had hidden the bug.
+
+**Harness safety.** Every stress profile now pins `CLAUDE_CONFIG_DIR` and `CODEX_HOME` in the agent env settings to the run's scratch folders (lib.mjs seedProfile), not only S13, since a pane's environment takes the user's registry values over the app's.
+
 ## Evidence
 
 - `evidence/stress-s11-70d06457-release-before.{txt,json}`, `evidence/stress-s11-fc333a52-release-after.{txt,json}`,
@@ -158,3 +168,4 @@ What the stand-in leaves unproven: that real Claude Code sends the same hooks in
   `evidence/stress-s12-70d06457-r7-before.{txt,json}`, `evidence/stress-s12-92185e2e-r7-final.{txt,json}`
   (the before/after compare is at the end of each final file), `evidence/stress-s13-92185e2e.txt` (agent sleep and
   wake) and `evidence/stress-s13-92185e2e-early-finish.txt` (the run where A never slept).
+- Round 8: `evidence/stress-s13-85858f08.txt` (the watched-then-left case sleeping and waking on the lane build).

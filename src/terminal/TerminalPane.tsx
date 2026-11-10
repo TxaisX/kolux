@@ -33,6 +33,7 @@ import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowH
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
+import { AUTO, trackInputSource } from "./inputSource";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
@@ -803,7 +804,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // TERM-071: writes go one after another (terminal_write is async, so two in flight could land out
     // of order); a chunked paste then reaches the program in order, and a key typed during it waits its turn.
     let chain: Promise<unknown> = Promise.resolve();
-    const write = (data: string, only?: number): Promise<unknown> | void => {
+    // TERM-123 (DT-C247): `auto` marks the terminal's own answer to the program (never typed by the user), which
+    // the terminal service lets through without counting it as typing; see inputSource.ts.
+    const write = (data: string, only?: number, { auto = false }: { auto?: boolean } = {}): Promise<unknown> | void => {
       const id = idRef.current;
       if (only !== undefined && only !== id) return;
       // Council D2 MERGE 31 (2): Ctrl+C or Esc during a paste drops what has not gone yet; the key itself still goes.
@@ -824,12 +827,17 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             setFlash("The terminal changed before the drop landed; nothing was typed");
             return;
           }
-          return invoke("terminal_write", { id, data, generation: serviceRef.current?.generation ?? null });
+          return invoke("terminal_write", { id, data, generation: serviceRef.current?.generation ?? null, auto });
         })
         .catch((e) => setFlash(`Typing could not reach the program (${explainError(String(e))})`)));
     };
+    // TERM-123 (DT-C247): onData carries the user's keys, pastes and mouse reports, and also xterm's own focus,
+    // cursor-position, device-attributes, mode and colour answers; the core marks which is which right before
+    // each onData, and only the user's own go in as typing (an agent whose pane the focus left can then sleep).
+    const inputSource = trackInputSource(term);
     term.onData((data) => {
-      write(yenToBackslash(currentInput(), data)); // SET-025: a Japanese keyboard's Yen key types a backslash when asked
+      const auto = !inputSource.take();
+      write(yenToBackslash(currentInput(), data), undefined, { auto }); // SET-025: a Japanese keyboard's Yen key types a backslash when asked
     });
     const bellOnce = bellGate(); // T-125-b: one note per burst of bells
     term.onBell(() => {
@@ -842,7 +850,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     for (const prefix of [">", "<", "=", "?"] as const)
       term.parser.registerCsiHandler({ prefix, final: "u" }, (params) => {
         const reply = kitty.apply(prefix, params.map((p) => (typeof p === "number" ? p : p[0])), onAlt());
-        if (reply) void write(reply);
+        if (reply) void write(reply, undefined, AUTO);
         return true;
       });
     term.parser.registerEscHandler({ final: "c" }, () => {
@@ -854,7 +862,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // refused is said once per session in the header.
     term.parser.registerOscHandler(52, (data) => {
       const d = decideOsc52(parseOsc52(data), clipboardOk.current && currentInput().osc52, !isHidden.current);
-      if (d.reply) void write(d.reply);
+      if (d.reply) void write(d.reply, undefined, AUTO);
       if (d.notice) sayOnce(d.notice.key, d.notice.text, setFlash);
       if (d.write !== undefined) navigator.clipboard.writeText(d.write).catch((e) => sayOnce("osc52-unconfirmed", `A program's copy to the clipboard could not be confirmed (${e instanceof Error ? e.message : String(e)})`, setFlash));
       return true;
@@ -1371,6 +1379,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       el.removeEventListener("mousedown", pokeBlink);
       term.textarea?.removeEventListener("focus", pokeBlink);
       blinkInput.dispose();
+      inputSource.dispose();
       blink.stop();
       unwatchPointer();
       screenChange.dispose();
