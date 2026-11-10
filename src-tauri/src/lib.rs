@@ -674,6 +674,7 @@ pub fn run() {
             projects::workspace_rename, projects::workspace_details_get, projects::workspace_details_save,
             projects::workspace_sleep,
             agent_sleep::agent_pane_sleep,
+            agent_sleep::agent_pane_unsleep,
             projects::visibility_get,
             projects::visibility_set,
             projects::visibility_root_add,

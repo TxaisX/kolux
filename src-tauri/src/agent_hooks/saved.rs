@@ -279,7 +279,7 @@ pub fn resumable(earlier: Vec<Row>, live: impl IntoIterator<Item = Row>) -> Vec<
 }
 
 /// The record written at the last quit or sleep; another version or a damaged one reads as none.
-fn record(store: &crate::state::Store) -> Vec<Row> {
+pub fn record(store: &crate::state::Store) -> Vec<Row> {
     store.get(RESUMABLE_KEY).ok().flatten().and_then(|t| serde_json::from_str::<Saved>(&t).ok()).filter(|s| s.version == VERSION).map(|s| s.rows).unwrap_or_default()
 }
 
@@ -340,7 +340,7 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
 /// the caller then ends nothing. Only after the record is written does the pane's live row go and the
 /// save get rewritten without it.
 pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time::Duration) -> Result<Row, String> {
-    let live_row = LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned();
+    let live_row = live_row(pane_key);
     // STAT-024: the row's state reads done while background tasks run on; the session itself knows.
     let monitoring = crate::status::SESSIONS.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).is_some_and(Session::monitoring);
     let row = sleep_record(live_row, monitoring, now_ms(), idle, record(store), |rows| store.set(RESUMABLE_KEY, &serialize(rows)).map_err(|e| e.to_string()))?;
@@ -354,6 +354,26 @@ pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time
         eprintln!("kolux-rs: the agents' status could not be saved: {e}");
     }
     Ok(row)
+}
+
+/// TERM-123: the pane's live row as the hooks last left it, for agent sleep's own checks.
+pub fn live_row(pane_key: u32) -> Option<Row> {
+    LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned()
+}
+
+/// TERM-123: the window did not end the pane after `at_pane_sleep` (its state changed meanwhile), so the
+/// row goes back among the live ones and the save is rewritten with it; the record stays, as workspace
+/// sleep's does (the next event or the quit rewrites it).
+pub fn unsleep(store: &crate::state::Store, row: Row) {
+    let rows: Vec<Row> = {
+        let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
+        let live = live.get_or_insert_with(HashMap::new);
+        live.entry(row.pane_key).or_insert(row);
+        live.values().cloned().collect()
+    };
+    if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
+        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+    }
 }
 
 /// The record `at_pane_sleep` writes through `write`, from the pane's live row and the record so far;

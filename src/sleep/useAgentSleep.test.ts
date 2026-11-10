@@ -107,7 +107,10 @@ test("T-817 TERM-123 (review F4): the decision is re-made against the latest sta
     terminal_kill: () => null,
   });
   await expect(sleepCheck(() => w2.deps, IDLE_MS, r2.invoke, clock, settled)).resolves.toEqual([]);
-  expect(r2.calls.map((c) => c[0])).toEqual(["agent_pane_sleep"]);
+  expect(r2.calls).toEqual([
+    ["agent_pane_sleep", { paneKey: 1, idleMinutes: 30 }],
+    ["agent_pane_unsleep", { paneKey: 1, session: "s" }], // N2: the live row the record took goes back; no kill
+  ]);
   expect(w2.s.panes[0].asleep).toBeUndefined();
   expect(w2.s.running[1]).toBe(true);
   // During the call: the pane was restarted on another terminal. The new terminal is never the one ended.
@@ -120,7 +123,7 @@ test("T-817 TERM-123 (review F4): the decision is re-made against the latest sta
     terminal_kill: () => null,
   });
   await expect(sleepCheck(() => w3.deps, IDLE_MS, r3.invoke, clock, settled)).resolves.toEqual([]);
-  expect(r3.calls.map((c) => c[0])).toEqual(["agent_pane_sleep"]);
+  expect(r3.calls.map((c) => c[0])).toEqual(["agent_pane_sleep", "agent_pane_unsleep"]);
   expect(w3.s.panes[0].asleep).toBeUndefined();
 });
 
@@ -138,7 +141,7 @@ test("T-817 TERM-123: a Rust refusal, a stale terminal id or an unsent draft lea
   const w2 = world();
   const r2 = rust({ agent_pane_sleep: () => ({ terminal: 40, session: "s" }), terminal_kill: () => null });
   await expect(sleepCheck(() => w2.deps, IDLE_MS, r2.invoke, clock, settled)).resolves.toEqual([]);
-  expect(r2.calls.map((c) => c[0])).toEqual(["agent_pane_sleep"]);
+  expect(r2.calls.map((c) => c[0])).toEqual(["agent_pane_sleep", "agent_pane_unsleep"]);
   // F3: text in the pane's message box, kept or too long to keep, keeps the pane awake (no Rust call at all).
   keepDraft(1, "x".repeat(70 * 1024));
   const w3 = world();

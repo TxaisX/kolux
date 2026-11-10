@@ -67,7 +67,11 @@ export async function sleepCheck(latest: () => SleepDeps, idleMs: number, invoke
     // or changed state; only the very pane and terminal that were checked may be ended.
     const d2 = latest();
     const p2 = d2.panes.find((p) => p.key === key);
-    if (!p2 || p2.asleep || d2.ptys.current[key] !== before || got.terminal !== before || sleepRefusal(p2, viewOf(d2, key, visibleDoc()), now(), idleMs) !== null) continue;
+    if (!p2 || p2.asleep || d2.ptys.current[key] !== before || got.terminal !== before || sleepRefusal(p2, viewOf(d2, key, visibleDoc()), now(), idleMs) !== null) {
+      // The Rust side moved the pane's live status row into the record; the pane stays, so the row comes back.
+      await invoke("agent_pane_unsleep", { paneKey: key, session: got.session }).catch(() => {});
+      continue;
+    }
     const asleep = asleepNow(now(), d2.stamp[key]?.at, got.session);
     d2.setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, asleep } : p)));
     delete d2.ptys.current[key];

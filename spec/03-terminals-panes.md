@@ -1900,7 +1900,10 @@ Rules: experimental switch, off on a fresh profile and when its key is missing; 
   reported, a fork's parent id, or an id guessed from the session list); when in doubt the pane
   stays awake. The window's decision is re-made against the latest state right before the Rust
   side is asked and again before anything ends; the Rust side re-checks the switch, the terminal,
-  the foreground, the quiet time and the live status row itself. Sleep saves the session first (the
+  the foreground, the quiet time and the live status row itself, and refuses when the terminal was
+  typed into after the turn finished (a draft typed into the agent's own prompt, or into an editor the
+  agent opened, makes no output); a pane the window then leaves awake gets its live status row back
+  (`agent_pane_unsleep`). Sleep saves the session first (the
   way workspace sleep does) and hands back the recorded session id; a failed save ends nothing. Only
   that pane's process tree ends, after the pane's view has unmounted; its kept output is replayed on
   Wake. One check a minute at most, only while the switch is on; no per-pane timers; a check far

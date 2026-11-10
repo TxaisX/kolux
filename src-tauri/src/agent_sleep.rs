@@ -12,7 +12,11 @@
 //! agent and nothing else in front of it, the terminal has neither printed nor been typed into for the
 //! delay (text typed straight into the agent, or an editor the agent opened, is invisible to the
 //! window's message box), and the live status row is a finished turn, at least the delay old, with no
-//! background tasks going (saved::sleep_record). Any refusal means nothing is recorded and nothing ends.
+//! background tasks going (saved::sleep_record), and nobody typed into the terminal after that turn
+//! finished (a draft typed into the agent's own prompt, or into an editor the agent opened, makes no
+//! output; a typed-then-deleted draft keeps the pane awake until the next turn, the safe direction).
+//! Any refusal means nothing is recorded and nothing ends. When the window then does not end the pane
+//! after all (its state changed in between), `agent_pane_unsleep` puts the live row back.
 
 use crate::foreground::Front;
 use serde_json::Value;
@@ -72,6 +76,21 @@ pub fn quiet_enough(quiet: Option<Duration>, idle: Duration) -> Result<(), Strin
     }
 }
 
+/// Typing after the turn finished is an unsent draft the window cannot see: `input` is how long ago the
+/// terminal was last typed into (`Terminals::input_for`, none when never), `finished` how long ago the
+/// live row entered its state. Kolux's own writes (a delivered prompt, an answered permission) come
+/// before the next state change, so they never count as typing after it.
+pub fn untouched_since_finish(input: Option<Duration>, finished: Duration) -> Result<(), String> {
+    match input {
+        Some(i) if i < finished => Err("the pane was typed into after the agent finished".into()),
+        _ => Ok(()),
+    }
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
 /// What a sleep answers: the terminal the window ends, and the session id recorded for Wake.
 #[derive(Debug, PartialEq, serde::Serialize)]
 pub struct Slept {
@@ -93,8 +112,21 @@ pub fn agent_pane_sleep(terminals: tauri::State<'_, crate::terminal::Terminals>,
     }
     let idle = idle_delay(idle_minutes, &settings, cfg!(debug_assertions));
     quiet_enough(terminals.still_for(id), idle)?;
+    let Some(live) = crate::hooks::agent_hooks::saved::live_row(pane_key) else { return Err("no status is known for this pane yet".into()) };
+    untouched_since_finish(terminals.input_for(id), Duration::from_millis(now_ms().saturating_sub(live.at)))?;
     let row = crate::hooks::agent_hooks::saved::at_pane_sleep(&store, pane_key, idle)?;
     Ok(Slept { terminal: id, session: row.session_id.unwrap_or_default() })
+}
+
+/// The window checked again after `agent_pane_sleep` answered and found the pane changed (another state,
+/// another terminal), so it ended nothing: the recorded row goes back among the live ones.
+#[tauri::command]
+pub fn agent_pane_unsleep(store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, pane_key: u32, session: String) -> Result<(), String> {
+    let store = store.lock().map_err(|e| e.to_string())?;
+    let row = crate::hooks::agent_hooks::saved::record(&store).into_iter().find(|r| r.pane_key == pane_key && r.session_id.as_deref() == Some(session.as_str()));
+    let Some(row) = row else { return Err("no recorded sleep for this pane".into()) };
+    crate::hooks::agent_hooks::saved::unsleep(&store, row);
+    Ok(())
 }
 
 #[cfg(test)]
@@ -158,6 +190,16 @@ mod tests {
         assert!(quiet_enough(Some(Duration::from_secs(3)), 30 * MIN).is_err(), "text typed straight into the agent's own box counts as activity");
         assert_eq!(quiet_enough(Some(30 * MIN), 30 * MIN), Ok(()), "exactly the delay counts");
         assert_eq!(quiet_enough(Some(31 * MIN), 30 * MIN), Ok(()));
+    }
+
+    #[test]
+    fn t817_review_n1_typing_into_the_terminal_after_the_turn_finished_is_an_unsent_draft() {
+        let finished = 40 * MIN;
+        assert_eq!(untouched_since_finish(Some(10 * MIN), finished), Err("the pane was typed into after the agent finished".to_string()), "a draft typed into the agent's own prompt, or into an editor it opened, makes no output");
+        assert!(untouched_since_finish(Some(Duration::from_secs(1)), finished).is_err());
+        assert_eq!(untouched_since_finish(Some(45 * MIN), finished), Ok(()), "typed before the turn finished: the prompt that started it");
+        assert_eq!(untouched_since_finish(Some(finished), finished), Ok(()), "Kolux's own write lands before the state change it causes");
+        assert_eq!(untouched_since_finish(None, finished), Ok(()), "never typed");
     }
 
     #[test]

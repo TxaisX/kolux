@@ -58,6 +58,21 @@ Review fixes (independent review 2026-11-09, findings F1-F10; second commit on t
 - F9: tickSkipped(gap, tickMs) = gap > 3 × tick; the baseline resets every tick. Test: agentSleep.test.ts "review F9".
 - F10: wakePane keeps a per-key in-flight set (mousedown + focus + click fire together).
 
+Re-review (2026-11-09, verdict MERGE AFTER FIXES; third commit on the lane)
+- N1: agent_pane_sleep refuses when the terminal was typed into after the live row entered its state: new
+  Terminals::input_for(id) (last_input.elapsed(), None when never typed) and the pure helper untouched_since_finish(input,
+  finished) -> Err "the pane was typed into after the agent finished" when input < finished. Kolux's own writes come before the
+  state change they cause, so they never count; a typed-then-deleted draft keeps the pane awake until the next turn. saved.rs
+  (hard-stop) gained `live_row(pane_key)` (3 lines) and `record` became pub. Test: cargo test --lib t817 "review n1" (typed
+  after finish refused; typed 1 s ago refused; typed before finish ok; at the same instant ok; never typed ok).
+- N2: when the window's post-call guard skips the kill, it calls the new command `agent_pane_unsleep(pane_key, session)`, which
+  finds the recorded row and puts it back among the live rows, rewriting the saved status (saved::unsleep, 11 lines; the
+  record itself stays, as workspace sleep's does). Tests: src/sleep/useAgentSleep.test.ts "review F4" and the stale-id test
+  assert the unsleep call after a skipped kill.
+- Gates for this commit: cargo clippy --all-targets -- -D warnings -> Finished `dev` profile in 25.27s, exit 0; cargo test --lib
+  t817 -> ok. 9 passed; cargo test --lib agent_hooks -> ok. 151 passed; cargo test --lib terminal -> ok. 117 passed; tsc clean;
+  vitest src/sleep src/chat -> 34 files / 371 tests passed; pnpm check -> exit 0 (guide marker unchanged, settings.md untouched).
+
 Gates (run in the lane's checkout; cargo with the lane's own target folder)
 - pnpm exec tsc --noEmit -p tsconfig.json → no output (clean)
 - VITEST_MAX_WORKERS=2 pnpm exec vitest run src/sleep src/settings src/shell src/i18n src/terminal src/chat

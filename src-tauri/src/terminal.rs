@@ -1435,6 +1435,13 @@ impl Terminals {
         inner.marks.get(&id).map(|m| [Some(m.started), m.last_output, m.last_input].into_iter().flatten().max().unwrap_or(m.started).elapsed())
     }
 
+    /// TERM-123: how long since the program in `id` was last typed into through `write`; `None` when it
+    /// never was (or for a shell or a gone session).
+    pub fn input_for(&self, id: u32) -> Option<std::time::Duration> {
+        let inner = self.inner.lock().ok()?;
+        inner.marks.get(&id).and_then(|m| m.last_input).map(|t| t.elapsed())
+    }
+
     /// ORCH-058: ends every session started in `dir` or a folder under it, each with the processes
     /// it started, and waits up to three seconds for them to be shown gone, so the folder can be
     /// deleted. A record with no process behind it (stale) is swept and never counts as stuck.
