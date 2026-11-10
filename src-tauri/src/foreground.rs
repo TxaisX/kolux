@@ -39,6 +39,12 @@ pub fn found(id: u32) -> Option<&'static str> {
     FOUND.lock().ok()?.as_ref()?.get(&id).and_then(|f| f.agent())
 }
 
+/// TERM-123: the last answer for terminal `id` as it was found, agent or not; none when the poll has
+/// not answered for it.
+pub fn found_front(id: u32) -> Option<Front> {
+    FOUND.lock().ok()?.as_ref()?.get(&id).copied()
+}
+
 /// Stores `front` for terminal `id`; true when it changed (a terminal seen first as a shell is
 /// not a change). Terminals not in `live` are forgotten.
 pub fn note(id: u32, front: Front, live: &[u32]) -> bool {

@@ -339,9 +339,11 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
 /// has no live row with a session id, or when the record cannot be written: the error says why, and
 /// the caller then ends nothing. Only after the record is written does the pane's live row go and the
 /// save get rewritten without it.
-pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32) -> Result<Row, String> {
+pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time::Duration) -> Result<Row, String> {
     let live_row = LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned();
-    let row = sleep_record(live_row, record(store), |rows| store.set(RESUMABLE_KEY, &serialize(rows)).map_err(|e| e.to_string()))?;
+    // STAT-024: the row's state reads done while background tasks run on; the session itself knows.
+    let monitoring = crate::status::SESSIONS.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).is_some_and(Session::monitoring);
+    let row = sleep_record(live_row, monitoring, now_ms(), idle, record(store), |rows| store.set(RESUMABLE_KEY, &serialize(rows)).map_err(|e| e.to_string()))?;
     let kept: Vec<Row> = {
         let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
         let live = live.get_or_insert_with(HashMap::new);
@@ -355,10 +357,22 @@ pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32) -> Result<Row, 
 }
 
 /// The record `at_pane_sleep` writes through `write`, from the pane's live row and the record so far;
-/// the reasons a pane is not recorded, in plain words. Kept apart from the store so a failing write can
-/// be tested (agent_sleep.rs).
-pub fn sleep_record(live_row: Option<Row>, earlier: Vec<Row>, write: impl FnOnce(&[Row]) -> Result<(), String>) -> Result<Row, String> {
+/// the reasons a pane is not recorded, in plain words. The live row is checked here too, not only in the
+/// window (whose decision may be a minute old): the turn must be finished (done or idle) with no
+/// background tasks going, and the state must be at least `idle` old at `now`. Kept apart from the store
+/// so a failing write can be tested (agent_sleep.rs).
+pub fn sleep_record(live_row: Option<Row>, monitoring: bool, now: u64, idle: std::time::Duration, earlier: Vec<Row>, write: impl FnOnce(&[Row]) -> Result<(), String>) -> Result<Row, String> {
     let Some(row) = live_row else { return Err("no status is known for this pane yet".into()) };
+    if !matches!(row.state.as_str(), "done" | "idle") {
+        return Err(format!("the agent's turn is not finished ({})", row.state));
+    }
+    if monitoring {
+        return Err("background tasks are still going".into());
+    }
+    let since = now.saturating_sub(row.at);
+    if since < idle.as_millis() as u64 {
+        return Err(format!("the agent changed state {} s ago, less than the delay", since / 1000));
+    }
     let Some(id) = row.session_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) else { return Err("the agent has not reported a session that can be resumed".into()) };
     let mut rows = earlier;
     rows.retain(|r| r.session_id.as_deref() != Some(id));

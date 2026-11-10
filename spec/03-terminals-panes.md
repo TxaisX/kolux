@@ -1890,22 +1890,36 @@ User sees: an agent pane that finished its turn and sat untouched past the delay
   save memory · idle N min" with a Wake button in place of its terminal; Wake, a click, focusing or
   typing in the pane starts the same agent again in the same folder resuming the same session.
 Rules: experimental switch, off on a fresh profile and when its key is missing; idle time default
-  30 minutes (5 to 240); idle time counts from the agent's last state change, not its last output;
-  a finished turn (done or idle) makes the agent eligible. Never eligible: the agent is working,
-  waiting on a question or a permission, the message box holds unsent text, the pane is the focused
-  pane of a visible window, a program other than the agent is in front, or no resumable session id
-  is known; when in doubt the pane stays awake. Sleep saves the session first (the way workspace
-  sleep does); a failed save ends nothing. Only that pane's process tree ends; its kept output is
-  replayed on Wake. One check a minute at most, only while the switch is on; no per-pane timers.
-  Wake takes the restored-tab resume path and no other; a failed start keeps the tab and says why.
+  30 minutes (5 to 240, held on both sides); idle time counts from the latest of the agent's last
+  state change and the terminal's last output or typed input, so text typed straight into the agent
+  (invisible to Kolux's message box) counts as activity; a finished turn (done or idle) makes the
+  agent eligible. Never eligible: the agent is working, waiting on a question or a permission, has
+  background tasks going, the message box holds unsent text (kept or too long to keep), the pane is
+  drawn in a visible window (focused or not), a program other than the agent is in front (another
+  agent, a shell, or a foreground that cannot be told), or no resumable session id is known (none
+  reported, a fork's parent id, or an id guessed from the session list); when in doubt the pane
+  stays awake. The window's decision is re-made against the latest state right before the Rust
+  side is asked and again before anything ends; the Rust side re-checks the switch, the terminal,
+  the foreground, the quiet time and the live status row itself. Sleep saves the session first (the
+  way workspace sleep does) and hands back the recorded session id; a failed save ends nothing. Only
+  that pane's process tree ends, after the pane's view has unmounted; its kept output is replayed on
+  Wake. One check a minute at most, only while the switch is on; no per-pane timers; a check far
+  past its minute (the machine slept) is skipped. Wake resumes the recorded session on the
+  restored-tab resume line and no other: the launch line and the opening prompt never run again,
+  the idle clock restarts, one wake per pane at a time; a refused start keeps the pane asleep and
+  says why. A sleeping pane is not saved with the layout: after a restart it comes back as a plain
+  shell like every agent tab (DT-C27), so there is nothing to wake; the recorded session stays in
+  the agent's own list.
 Acceptance:
   - [x] With the flag off (the default), finished idle agents are never put to sleep. (T-817:
         `src/sleep/agentSleep.test.ts` "switch is off when its key is missing", the check's timer
         is not set while the switch is off in `src/sleep/useAgentSleep.ts`; the Rust command
         refuses while the switch is off, `cargo test --lib t817`)
   - [ ] If the owner revives it: a session idle for 30 minutes since its last state change sleeps,
-      and opening it restores it. (Rules proven by unit tests, `src/sleep/agentSleep.test.ts`;
-      the live sleep and wake in the running app are not yet proven: see `evidence/T-817.txt`)
+      and opening it restores it. (Rules proven by unit tests, `src/sleep/agentSleep.test.ts`,
+      `src/sleep/useAgentSleep.test.ts` (the check's re-checks, the kill after unmount, Wake and a
+      refused Wake), `cargo test --lib t817` (the Rust re-checks); the live sleep and wake in the
+      running app are not yet proven: see `evidence/T-817.txt`)
 Compat: an old profile's own sleep switch had another key and is never read (HID-028).
 Decision: Txais 2026-11-09, DT-C242: build it, off by default (was H: default skip).
 Source: D-03-123

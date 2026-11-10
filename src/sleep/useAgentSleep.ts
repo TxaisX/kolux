@@ -1,88 +1,139 @@
 // TERM-123 / HID-028 (T-817): the window side of agent sleep. One check a minute while the switch is on
-// (none at all while it is off); each due pane is first recorded on the Rust side (agent_pane_sleep: the
-// session is saved the way workspace sleep saves it), then marked asleep (its terminal unmounts, which
-// ends only that pane's process tree), then its terminal is ended once more by id for good measure. A
-// failed record leaves the pane as it was. Wake takes the restored-tab path and no other: the agent's
-// start line with its resume form (agent_start_line, as main.tsx asks at start), the pane's key marked
-// restored so the terminal replays its kept output and a failed start keeps the tab with its reason.
-import { invoke } from "@tauri-apps/api/core";
+// (nothing at all while it is off): every pane due for sleep is checked again against the latest state
+// right before the Rust side is asked (the check awaits in between, so an earlier decision may be stale),
+// the Rust side records the session and returns the terminal to end and the session id it recorded, the
+// pane is marked asleep (its terminal unmounts, which ends that pane's Job object), and the terminal is
+// ended by id once the unmount has committed, so no "[process ended]" lands in the dying view. A tick far
+// past its interval (the machine slept) is skipped. Wake starts the recorded session on the restored-tab
+// resume line; when the Rust side refuses, the pane stays asleep and a toast says why (nothing is spawned,
+// so the launch line's prompt never runs again). After a wake the idle clock restarts.
+import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import type { Pane } from "../App";
 import type { AgentState } from "../projects/rows";
 import type { TurnInfo } from "../status/useAgentStatus";
-import { draftOf } from "../chat/composer";
-import { asleepNow, dueForSleep, sleepOn, timing, wokenFields, type PaneView, type StartLine } from "./agentSleep";
+import { hasUnsent } from "../chat/composer";
+import { asleepNow, idleMinutes, sleepOn, sleepRefusal, tickSkipped, timing, wokenFields, type PaneView, type Slept, type StartLine } from "./agentSleep";
 
+export type Stamp = { at: number; interrupted: boolean };
 export type SleepDeps = {
   panes: Pane[];
   setPanes: Dispatch<SetStateAction<Pane[]>>;
   hook: Record<number, AgentState>;
-  stamp: Record<number, { at: number; interrupted: boolean }>;
+  stamp: Record<number, Stamp>;
+  setStamp: Dispatch<SetStateAction<Record<number, Stamp>>>;
   turn: Record<number, TurnInfo>;
   running: Record<number, boolean>;
   setRunning: Dispatch<SetStateAction<Record<number, boolean>>>;
-  focused: number;
-  winFocused: boolean;
   inView: (key: number) => boolean;
   settings: Record<string, unknown> | null;
   restoredKeys: MutableRefObject<Set<number>>;
   ptys: MutableRefObject<Record<number, number>>;
+  setToast: (text: string) => void;
 };
 
-/** The sleep check and Wake. `wakePane(key)` starts the sleeping pane's agent again on its resume line. */
+export type Invoke = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+
+/** What the check sees of pane `key` right now. */
+export function viewOf(d: SleepDeps, key: number, visibleDoc: boolean): PaneView {
+  return {
+    state: d.hook[key],
+    changedAt: d.stamp[key]?.at,
+    running: d.running[key],
+    ask: d.turn[key]?.ask,
+    monitoring: d.turn[key]?.monitoring,
+    draft: hasUnsent(key),
+    visible: visibleDoc && d.inView(key),
+  };
+}
+
+const visibleDoc = () => typeof document === "undefined" || document.visibilityState === "visible";
+/** After the pane's re-render has committed and its terminal unmounted (well past React's commit of the state set). */
+const afterCommit = () => new Promise<void>((r) => setTimeout(r, 50));
+
+/** One check: puts every pane that may sleep to sleep. `latest` is read afresh at every step, so a pane that
+ *  changed while an earlier pane was being handled is seen as it is now; the Rust side checks again too. */
+export async function sleepCheck(latest: () => SleepDeps, idleMs: number, invoke: Invoke = tauriInvoke, now: () => number = Date.now, settle: () => Promise<void> = afterCommit): Promise<number[]> {
+  const slept: number[] = [];
+  const keys = latest().panes.map((p) => p.key);
+  for (const key of keys) {
+    const d = latest();
+    const pane = d.panes.find((p) => p.key === key);
+    if (!pane || sleepRefusal(pane, viewOf(d, key, visibleDoc()), now(), idleMs) !== null) continue;
+    const before = d.ptys.current[key];
+    const got = await invoke<Slept>("agent_pane_sleep", { paneKey: key, idleMinutes: idleMinutes(d.settings ?? {}) }).catch(() => null);
+    if (got === null) continue;
+    // Stale guard: while the Rust side was asked, the pane may have gone, restarted (another terminal id)
+    // or changed state; only the very pane and terminal that were checked may be ended.
+    const d2 = latest();
+    const p2 = d2.panes.find((p) => p.key === key);
+    if (!p2 || p2.asleep || d2.ptys.current[key] !== before || got.terminal !== before || sleepRefusal(p2, viewOf(d2, key, visibleDoc()), now(), idleMs) !== null) continue;
+    const asleep = asleepNow(now(), d2.stamp[key]?.at, got.session);
+    d2.setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, asleep } : p)));
+    delete d2.ptys.current[key];
+    d2.setRunning((r) => {
+      const { [key]: _gone, ...rest } = r;
+      return rest;
+    });
+    slept.push(key);
+    // The unmounting TerminalPane kills its terminal itself (killsOnUnmount); this makes sure of it after the
+    // commit, when no view listens to that terminal any more.
+    await settle();
+    await invoke("terminal_kill", { id: got.terminal }).catch(() => {});
+  }
+  return slept;
+}
+
+/** Wake pane `key`: the recorded session on the restored-tab resume line. A refusal keeps the pane asleep. */
+export async function wakeOnce(d: SleepDeps, key: number, invoke: Invoke = tauriInvoke, now: () => number = Date.now): Promise<boolean> {
+  const p = d.panes.find((x) => x.key === key);
+  if (!p?.asleep) return false;
+  let line: StartLine;
+  try {
+    line = await invoke<StartLine>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.asleep.session });
+  } catch (e) {
+    d.setToast(`The sleeping agent did not wake: ${String(e)}`);
+    return false;
+  }
+  d.restoredKeys.current.add(key);
+  d.setPanes((ps) => ps.map((x) => (x.key === key ? wokenFields(x, line) : x)));
+  // The idle clock restarts at the wake; the old "done" stamp would put the pane back to sleep within a minute.
+  d.setStamp((s) => ({ ...s, [key]: { at: now(), interrupted: false } }));
+  return true;
+}
+
 export function useAgentSleep(deps: SleepDeps) {
-  // The check reads the latest window state through a ref, so the interval is set once per switch/delay change.
   const latest = useRef(deps);
   latest.current = deps;
   const on = deps.settings !== null && sleepOn(deps.settings);
   const { idleMs, tickMs } = timing(deps.settings ?? {});
   useEffect(() => {
-    if (!on) return; // the switch is off: no timer, nothing runs
+    if (!on) return;
     let busy = false;
-    const check = async () => {
-      if (busy) return;
+    let lastTick = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      const gap = now - lastTick;
+      lastTick = now;
+      if (busy || tickSkipped(gap, tickMs)) return;
       busy = true;
-      try {
-        const d = latest.current;
-        const view = (key: number): PaneView => ({
-          state: d.hook[key],
-          changedAt: d.stamp[key]?.at,
-          running: d.running[key],
-          ask: d.turn[key]?.ask,
-          monitoring: d.turn[key]?.monitoring,
-          draft: draftOf(key),
-          focusedInView: d.focused === key && d.winFocused && document.visibilityState === "visible" && d.inView(key),
-        });
-        for (const key of dueForSleep(d.panes, view, Date.now(), idleMs)) {
-          const pane = latest.current.panes.find((p) => p.key === key);
-          if (!pane || pane.asleep) continue;
-          // Save first; any refusal (no session, a plain shell in front, the record not written) ends nothing.
-          const id = await invoke<number>("agent_pane_sleep", { paneKey: key }).catch(() => null);
-          if (id === null) continue;
-          const asleep = asleepNow(Date.now(), latest.current.stamp[key]?.at);
-          latest.current.setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, asleep } : p)));
-          delete latest.current.ptys.current[key];
-          latest.current.setRunning((r) => {
-            const { [key]: _gone, ...rest } = r;
-            return rest;
-          });
-          await invoke("terminal_kill", { id }).catch(() => {}); // the unmount ends it too; a second end of a gone terminal is nothing
-        }
-      } finally {
+      void sleepCheck(() => latest.current, idleMs).finally(() => {
         busy = false;
-      }
+      });
     };
-    const timer = setInterval(() => void check(), tickMs);
+    const timer = setInterval(tick, tickMs);
     return () => clearInterval(timer);
   }, [on, idleMs, tickMs]);
-
+  // One wake per pane at a time: a click on the placeholder fires mousedown, focus and click together.
+  const waking = useRef(new Set<number>());
   const wakePane = async (key: number) => {
-    const d = latest.current;
-    const p = d.panes.find((x) => x.key === key);
-    if (!p?.asleep) return;
-    const line = await invoke<StartLine>("agent_start_line", { id: p.agentId, extra: [], prompt: "", restore: true, session: p.session ?? null }).catch(() => null);
-    d.restoredKeys.current.add(key); // the terminal mounts as a restored tab: kept output replayed, a failed start keeps the tab with its reason
-    d.setPanes((ps) => ps.map((x) => (x.key === key ? wokenFields(x, line) : x)));
+    if (waking.current.has(key)) return;
+    waking.current.add(key);
+    try {
+      await wakeOnce(latest.current, key);
+    } finally {
+      waking.current.delete(key);
+    }
   };
   return { wakePane };
 }

@@ -2,7 +2,7 @@
 // the switch off when the key is missing or an old profile's own switch is set, the timing with the switch
 // off and in a release build, and Wake's fields coming from the restored-tab start line.
 import { expect, test } from "vitest";
-import { asleepNow, clampIdleMinutes, dueForSleep, idleMinutes, idleShown, minutesFromText, sleepOn, sleepRefusal, testFast, timing, wokenFields, type Asleep, type PaneView } from "./agentSleep";
+import { asleepNow, clampIdleMinutes, dueForSleep, idleMinutes, idleShown, minutesFromText, sleepOn, sleepRefusal, testFast, tickSkipped, timing, wokenFields, type Asleep, type PaneView } from "./agentSleep";
 
 const MIN = 60_000;
 const NOW = 10_000_000;
@@ -11,7 +11,7 @@ const IDLE_MS = 30 * MIN;
 /** A plain agent pane with a resumable session, as the check sees it. */
 const agentPane = (over: Record<string, unknown> = {}) => ({ key: 1, kind: undefined, seats: undefined, agent: "claude", agentId: "claude", program: "claude", session: "s-1", forkOf: undefined, asleep: undefined, ...over }) as never;
 /** A finished, unfocused, long-idle view: the one case that may sleep. */
-const ready = (over: Partial<PaneView> = {}): PaneView => ({ state: "done", changedAt: NOW - IDLE_MS - 1, running: true, ask: undefined, monitoring: undefined, draft: "", focusedInView: false, ...over });
+const ready = (over: Partial<PaneView> = {}): PaneView => ({ state: "done", changedAt: NOW - IDLE_MS - 1, running: true, ask: undefined, monitoring: undefined, draft: false, visible: false, ...over });
 
 test("T-817 TERM-123: a finished agent pane, idle past the delay, unfocused and without a draft may sleep", () => {
   expect(sleepRefusal(agentPane(), ready(), NOW, IDLE_MS)).toBeNull();
@@ -31,11 +31,11 @@ test("T-817 TERM-123: never while the agent waits on a question or a permission"
 });
 
 test("T-817 TERM-123: never while the message box holds unsent text", () => {
-  expect(sleepRefusal(agentPane(), ready({ draft: "half a thought" }), NOW, IDLE_MS)).toBe("unsent draft");
+  expect(sleepRefusal(agentPane(), ready({ draft: true }), NOW, IDLE_MS)).toBe("unsent draft");
 });
 
-test("T-817 TERM-123: never the focused pane of a visible window", () => {
-  expect(sleepRefusal(agentPane(), ready({ focusedInView: true }), NOW, IDLE_MS)).toBe("focused");
+test("T-817 TERM-123: never a pane drawn in a visible window, focused or not", () => {
+  expect(sleepRefusal(agentPane(), ready({ visible: true }), NOW, IDLE_MS)).toBe("visible");
 });
 
 test("T-817 TERM-123: never a pane whose agent is not the running program (a plain shell, an ended agent, another command)", () => {
@@ -62,7 +62,7 @@ test("T-817 TERM-123: the idle clock counts from the agent's last state change, 
 
 test("T-817 TERM-123: dueForSleep lists only the panes that may sleep, in pane order", () => {
   const panes = [agentPane({ key: 1 }), agentPane({ key: 2 }), agentPane({ key: 3, session: undefined }), agentPane({ key: 4 })];
-  const views: Record<number, PaneView> = { 1: ready({ focusedInView: true }), 2: ready(), 3: ready(), 4: ready() };
+  const views: Record<number, PaneView> = { 1: ready({ visible: true }), 2: ready(), 3: ready(), 4: ready() };
   expect(dueForSleep(panes, (k) => views[k], NOW, IDLE_MS)).toEqual([2, 4]);
 });
 
@@ -102,17 +102,33 @@ test("T-817 TERM-123: the check runs once a minute on the saved delay; a release
   expect(timing({ agentSleep: true, agentSleepTestFast: true }, true)).toEqual({ idleMs: 20_000, tickMs: 5_000 }); // development only
 });
 
-test("T-817 TERM-123: Wake takes the restored-tab start line (resume form) and clears the sleep; a missing line keeps the pane and marks it not resumed", () => {
-  const p: { program: string | null; args: string[]; env: [string, string][]; asleep?: Asleep } = { program: "claude", args: ["--old"], env: [], asleep: { since: 1, idleMin: 30 } };
-  expect(wokenFields(p, { args: ["--resume", "s-1"], program: "claude", env: [["A", "1"]], resumed: true })).toEqual({ program: "claude", args: ["--resume", "s-1"], env: [["A", "1"]], asleep: undefined, resumed: true });
+test("T-817 TERM-123 (review F1, F5): Wake takes the restored-tab start line, drops the opening prompt and the launch args, and resumes the recorded session", () => {
+  const p: { program: string | null; args: string[]; env: [string, string][]; typed?: string; session?: string; asleep?: Asleep } = { program: "claude", args: ["--old", "do the task"], env: [], typed: "do the task", session: "s-guess", asleep: { since: 1, idleMin: 30, session: "s-1" } };
+  const woken = wokenFields(p, { args: ["--resume", "s-1"], program: "claude", env: [["A", "1"]], resumed: true });
+  expect(woken).toEqual({ program: "claude", args: ["--resume", "s-1"], env: [["A", "1"]], asleep: undefined, typed: undefined, session: "s-1", resumed: true });
+  expect(woken.typed).toBeUndefined(); // Pane.tsx onPty would re-type p.typed into the new terminal
   expect(wokenFields(p, { args: [], program: null, env: [], resumed: false }).program).toBe("claude"); // an unknown program keeps the pane's own
-  expect(wokenFields(p, null)).toEqual({ ...p, asleep: undefined, resumed: false });
+  expect(wokenFields({ program: "claude", args: [], env: [], session: "s-2" }, { args: [], program: null, env: [], resumed: false }).session).toBe("s-2"); // no recorded id: the pane's own stays
+});
+
+test("T-817 TERM-123 (review F3, F5, F7): any drawn pane of a visible document stays awake, so does a guessed session id and a draft too long to keep", () => {
+  expect(sleepRefusal(agentPane(), ready({ visible: true }), NOW, IDLE_MS)).toBe("visible");
+  expect(sleepRefusal(agentPane({ sessionListed: true }), ready(), NOW, IDLE_MS)).toBe("no resumable session");
+  expect(sleepRefusal(agentPane(), ready({ draft: true }), NOW, IDLE_MS)).toBe("unsent draft"); // hasUnsent covers the over-limit case
+  expect(asleepNow(NOW, NOW - 31 * MIN, "s-9").session).toBe("s-9");
+});
+
+test("T-817 TERM-123 (review F9): a tick far past its interval (the machine slept) is skipped", () => {
+  expect(tickSkipped(MIN, MIN)).toBe(false);
+  expect(tickSkipped(MIN * 2.5, MIN)).toBe(false);
+  expect(tickSkipped(MIN * 3 + 1, MIN)).toBe(true);
+  expect(tickSkipped(45 * MIN, MIN)).toBe(true);
 });
 
 test("T-817 TERM-123: the placeholder's idle count starts at the minutes before sleep and keeps moving", () => {
-  const a = asleepNow(NOW, NOW - 31 * MIN);
-  expect(a).toEqual({ since: NOW, idleMin: 31 });
+  const a = asleepNow(NOW, NOW - 31 * MIN, "s-1");
+  expect(a).toEqual({ since: NOW, idleMin: 31, session: "s-1" });
   expect(idleShown(a, NOW)).toBe(31);
   expect(idleShown(a, NOW + 9 * MIN)).toBe(40);
-  expect(asleepNow(NOW, undefined).idleMin).toBe(0);
+  expect(asleepNow(NOW, undefined, "s-1").idleMin).toBe(0);
 });

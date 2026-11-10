@@ -544,9 +544,11 @@ User does: turns on "Agent sleep" in Settings > General > Experimental and sets 
 User sees: agents left idle past the chosen delay (30 minutes unless changed) are put to sleep to
   free up memory; the pane shows a placeholder with Wake (TERM-123 has the rules).
 Rules: experimental switch (`agentSleep`, only a saved true is on); the delay (`agentSleepIdleMinutes`)
-  is held between 5 and 240 minutes: below 5 saves as 5, above 240 as 240, missing reads as 30. A
-  development build may read a test-only `agentSleepTestFast` key (20-second delay) so the sleep can
-  be watched; a release build never reads it, so users cannot go below 5 minutes.
+  is held between 5 and 240 minutes: below 5 saves as 5, above 240 as 240, missing reads as 30; the
+  Rust side holds the delay the window sends between the same bounds before it checks the terminal
+  and the status row against it. A development build may read a test-only `agentSleepTestFast` key
+  (20-second delay, on both sides) so the sleep can be watched; a release build never reads it, so
+  users cannot go below 5 minutes.
 Acceptance:
   - [x] Fresh profile → agent sleep is off and an agent idle for longer than 30 minutes keeps
         running. (T-817: `sleepOn({})` is false and no timer is set while off,
