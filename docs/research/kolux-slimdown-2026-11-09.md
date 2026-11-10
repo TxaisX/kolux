@@ -73,19 +73,24 @@ Round 2:
 
 ## Left over
 
-- `scripts/evidence/app-launch.mjs` still uses the main window handle when it moves the window and when it
-  sends close; same trap as above. Harmless while the app is not minimised.
-- Pulse-rest review notes (P3): tests do not cover cancel, the 2 s fallback or the hook wiring; the tour
-  ring does not wake on an auto-advanced step; one render of stale pulsing on wake; a comment and the
-  decision wording could be tighter; the wheel listener is not passive.
-- TourPanel runs an animation-frame loop while a tour is open; worth resting too.
+Marked [fixed] below: done in the perf-followups lane on 2026-11-09.
+
+- [fixed] `scripts/evidence/app-launch.mjs` used the main window handle when it moved the window and when it sent
+  close; same trap as above. Both now find the visible "Tauri Window" titled "Kolux" of the app's pid, with the
+  helper shared with `scripts/stress/lib.mjs` (one definition, in `app-launch.mjs`).
+- [fixed] Pulse-rest review notes (P3): tests now cover cancel, the 2 s fallback and the hook wiring; the tour ring
+  wakes when the tour moves on by itself; no stale resting frame on a new run; the input listeners are passive;
+  the comment and DT-C239 wording are tighter.
+- [fixed] TourPanel ran an animation-frame loop for as long as a tour was open; it now rests after 30 calm frames
+  and wakes on resize, scroll, layout changes, transitions and input (`src/onboarding/followLoop.ts`).
 - Optional: about 3 % of a core in the GPU process was seen once while minimised right after opening tabs.
   Not reproduced under the fixed benchmark; card it only if it shows up again.
 - GitHub reports one moderate Dependabot alert: the Linux-only glib crate, which cannot move until the
   Tauri GTK stack does.
-- From the round 1 token-scan review (P3, plausible): the stored Codex usage keys hash a JSON value's printed
-  form, whose key order depends on serde_json's `preserve_order` feature. If that feature flips, old keys stop
-  matching and some usage could be counted twice once.
+- [fixed] From the round 1 token-scan review (P3, plausible): the stored Codex usage keys hashed a JSON value's
+  printed form, whose key order depends on serde_json's `preserve_order` feature. The key now writes the running
+  total in Codex's own field order (unknown fields after, by name), so it no longer depends on the feature and
+  equals the stored keys for real Codex logs; a test pins one key.
 
 ## Evidence
 

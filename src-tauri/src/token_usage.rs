@@ -78,6 +78,41 @@ fn hash(bytes: &[u8]) -> Key {
     bytes.iter().fold(0x6c62_272e_07bb_0142_62b8_2175_6295_c58d_u128, |h, b| (h ^ u128::from(*b)).wrapping_mul(0x0000_0000_0100_0000_0000_0000_0000_013b))
 }
 
+/// The fields of a Codex running total, in the order Codex writes them (older logs lack the cache-write one).
+const CODEX_TOTAL_FIELDS: [&str; 6] = ["input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
+
+/// The key of a Codex token event: its time and running total. The total is written out here in a fixed
+/// order (Codex's own, then any field this list does not know, by name), never by printing the parsed JSON,
+/// whose field order depends on serde_json's `preserve_order` feature. For a log in Codex's order the text is
+/// exactly what that feature printed before, so the keys already kept on disk stay equal.
+fn codex_key(stamp: &str, total: &Value) -> Key {
+    let mut text = format!("{stamp}|{{");
+    let mut first = true;
+    let mut put = |name: &str, value: &Value| {
+        if !first {
+            text.push(',');
+        }
+        first = false;
+        text.push_str(&Value::String(name.to_string()).to_string());
+        text.push(':');
+        text.push_str(&value.to_string());
+    };
+    if let Some(fields) = total.as_object() {
+        for name in CODEX_TOTAL_FIELDS {
+            if let Some(v) = fields.get(name) {
+                put(name, v);
+            }
+        }
+        let mut extra: Vec<_> = fields.iter().filter(|(k, _)| !CODEX_TOTAL_FIELDS.contains(&k.as_str())).collect();
+        extra.sort_by(|a, b| a.0.cmp(b.0));
+        for (name, v) in extra {
+            put(name, v);
+        }
+    }
+    text.push('}');
+    key(&text)
+}
+
 /// The one shared copy of a name. Names nothing holds any more are let go after each scan.
 fn interned(text: &str) -> Arc<str> {
     let mut pool = names().lock().unwrap_or_else(|e| e.into_inner());
@@ -328,7 +363,7 @@ impl FileScan {
                 cache_write_1h: 0,
                 reasoning: n(&last, "reasoning_output_tokens").min(output),
             };
-            self.turns.push((key(&format!("{stamp}|{total}")), turn));
+            self.turns.push((codex_key(stamp, total), turn));
         }
     }
 }
@@ -382,9 +417,9 @@ pub struct Cache {
 /// The format the scan memory is kept in on disk (3: logs read on from where they stopped, names
 /// kept once per file; 4: each file's creation time and the hash of the bytes before where its
 /// read stopped). A memory in any other format is thrown away and every log read afresh.
-/// The kept Codex keys hash the event's `total_token_usage` as serde_json prints it, which keeps
-/// the log's field order only with serde_json's `preserve_order` feature (Cargo.toml): turning
-/// that feature off changes every Codex key, so it needs a new format number.
+/// The kept Codex keys hash the event's time and `total_token_usage` written in a fixed field order
+/// (`codex_key`), so they do not depend on serde_json's `preserve_order` feature; changing that text
+/// would change every kept key and needs a new format number.
 const KEPT_FORMAT: u32 = 4;
 
 /// The scan memory as kept on disk. Each file lists the names its replies use once, and each
@@ -951,6 +986,34 @@ mod tests {
     }
     fn counts(input: u64, cached: u64, output: u64, reasoning: u64) -> Value {
         json!({ "input_tokens": input, "cached_input_tokens": cached, "output_tokens": output, "reasoning_output_tokens": reasoning, "total_tokens": input + output })
+    }
+
+    #[test]
+    fn codex_keys_are_fixed_by_the_numbers_not_by_the_printed_field_order() {
+        let stamp = "2026-03-01T09:01:00Z";
+        let text = r#"{"input_tokens":1200,"cached_input_tokens":200,"cache_write_input_tokens":0,"output_tokens":300,"reasoning_output_tokens":30,"total_tokens":1500}"#;
+        let ordered: Value = serde_json::from_str(text).unwrap();
+        // What the kept memory holds for a log in Codex's own order: the hash of that printed text (this is the
+        // text serde_json printed with `preserve_order`, before the key was written out by hand).
+        let kept = key(&format!("{stamp}|{text}"));
+        assert_eq!(codex_key(stamp, &ordered), kept);
+        assert_eq!(kept, 0xd3a4_7e60_4991_94cd_989b_ed51_70e3_8911_u128, "the key a kept memory holds for this event");
+        // The same numbers written in another field order are the same event.
+        let shuffled: Value = serde_json::from_str(r#"{"total_tokens":1500,"reasoning_output_tokens":30,"output_tokens":300,"cache_write_input_tokens":0,"cached_input_tokens":200,"input_tokens":1200}"#).unwrap();
+        assert_eq!(codex_key(stamp, &shuffled), kept);
+        // Older logs have no cache-write field; the key reads the fields that are there, in Codex's order.
+        let old_text = r#"{"input_tokens":1200,"cached_input_tokens":200,"output_tokens":300,"reasoning_output_tokens":30,"total_tokens":1500}"#;
+        let old_log: Value = serde_json::from_str(old_text).unwrap();
+        assert_eq!(codex_key(stamp, &old_log), key(&format!("{stamp}|{old_text}")));
+        assert_ne!(codex_key(stamp, &old_log), kept);
+        // A field this build does not know is part of the key, after the known ones, by name.
+        let extra_a: Value = serde_json::from_str(r#"{"zeta":1,"input_tokens":5,"alpha":2}"#).unwrap();
+        let extra_b: Value = serde_json::from_str(r#"{"alpha":2,"input_tokens":5,"zeta":1}"#).unwrap();
+        assert_eq!(codex_key(stamp, &extra_a), codex_key(stamp, &extra_b));
+        assert_eq!(codex_key(stamp, &extra_a), key(&format!(r#"{stamp}|{{"input_tokens":5,"alpha":2,"zeta":1}}"#)));
+        // A different time or different numbers are a different event.
+        assert_ne!(codex_key("2026-03-01T09:01:01Z", &ordered), kept);
+        assert_ne!(codex_key(stamp, &counts(1200, 200, 300, 31)), kept);
     }
 
     #[test]

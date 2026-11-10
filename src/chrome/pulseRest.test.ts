@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PULSE_REST_MS, WAKE_EVENTS, nextCycleEnd, pulseRest } from "./pulseRest";
 
 // A hand-driven clock and timer list, so the rest is checked without real waiting.
@@ -22,12 +22,16 @@ function rig() {
     t = end;
   };
   const listeners = new Map<string, Set<() => void>>();
+  const options: unknown[] = [];
   const input = {
-    addEventListener: (e: string, f: () => void) => void (listeners.get(e) ?? listeners.set(e, new Set()).get(e)!).add(f),
+    addEventListener: (e: string, f: () => void, o?: unknown) => {
+      options.push(o);
+      (listeners.get(e) ?? listeners.set(e, new Set()).get(e)!).add(f);
+    },
     removeEventListener: (e: string, f: () => void) => void listeners.get(e)?.delete(f),
   } as unknown as Window;
   const fire = (e: string) => listeners.get(e)?.forEach((f) => f());
-  return { wait, advance, input, fire, listeners, now: () => t };
+  return { wait, advance, input, fire, listeners, options, now: () => t };
 }
 
 describe("pulseRest (DT-C239)", () => {
@@ -88,7 +92,89 @@ describe("pulseRest (DT-C239)", () => {
   });
 });
 
+describe("pulseRest cancel and listener options", () => {
+  it("every wake listener is passive and captures (a wheel listener must never hold up scrolling)", () => {
+    const r = rig();
+    const stop = pulseRest(() => {}, (then) => (then(), () => {}), { input: r.input, wait: r.wait, now: r.now });
+    expect(r.options).toHaveLength(WAKE_EVENTS.length);
+    for (const o of r.options) expect(o).toMatchObject({ capture: true, passive: true });
+    stop();
+  });
+
+  it("stopping while the rest waits for the cycle end cancels that wait, so the pulse never flips afterwards", () => {
+    const r = rig();
+    const seen: boolean[] = [];
+    let cancelled = 0;
+    let finish: (() => void) | null = null;
+    const stop = pulseRest((on) => seen.push(on), (then) => ((finish = then), () => void cancelled++), { input: r.input, wait: r.wait, now: r.now });
+    r.advance(PULSE_REST_MS);
+    expect(finish).not.toBeNull();
+    stop();
+    expect(cancelled).toBe(1);
+    r.fire("keydown");
+    r.advance(PULSE_REST_MS * 3);
+    expect(seen).toEqual([true]);
+  });
+});
+
 describe("nextCycleEnd", () => {
+  afterEach(() => vi.useRealTimers());
+
+  // An element whose animation runs and whose listener list can be inspected.
+  function animated() {
+    const handlers = new Set<() => void>();
+    const el = {
+      getAnimations: () => [{ playState: "running" }],
+      addEventListener: (_: string, f: () => void) => void handlers.add(f),
+      removeEventListener: (_: string, f: () => void) => void handlers.delete(f),
+    } as unknown as HTMLElement;
+    return { el, handlers };
+  }
+
+  it("falls back after 2 s when no animationiteration comes, and lets go of the listener", () => {
+    vi.useFakeTimers();
+    const { el, handlers } = animated();
+    let n = 0;
+    nextCycleEnd(el, () => n++);
+    expect(handlers.size).toBe(1);
+    vi.advanceTimersByTime(1999);
+    expect(n).toBe(0);
+    vi.advanceTimersByTime(1);
+    expect(n).toBe(1);
+    expect(handlers.size).toBe(0);
+    vi.advanceTimersByTime(60_000);
+    expect(n).toBe(1);
+  });
+
+  it("the iteration event beats the fallback, once, and clears the fallback timer", () => {
+    vi.useFakeTimers();
+    const { el, handlers } = animated();
+    let n = 0;
+    nextCycleEnd(el, () => n++);
+    [...handlers][0]();
+    expect(n).toBe(1);
+    expect(handlers.size).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("the cancel drops the listener and the timer without calling through", () => {
+    vi.useFakeTimers();
+    const { el, handlers } = animated();
+    let n = 0;
+    const cancel = nextCycleEnd(el, () => n++);
+    cancel();
+    expect(handlers.size).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(60_000);
+    expect(n).toBe(0);
+  });
+
+  it("paused animations (e.g. a hidden element) count as not running: calls through at once", () => {
+    let n = 0;
+    nextCycleEnd({ getAnimations: () => [{ playState: "paused" }] } as unknown as HTMLElement, () => n++);
+    expect(n).toBe(1);
+  });
+
   it("calls through at once when nothing animates (no element, or reduced motion)", () => {
     let n = 0;
     nextCycleEnd(null, () => n++);

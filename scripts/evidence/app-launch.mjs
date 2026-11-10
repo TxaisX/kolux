@@ -44,6 +44,38 @@ export const killAll = async (list) => {
 };
 export const alive = async (pid) => (await ps(`if (Get-Process -Id ${pid} -ErrorAction SilentlyContinue) { 'alive' } else { 'gone' }`)) === "alive";
 
+// The app's own window. Not Process.MainWindowHandle: once the window is minimised that names tao's hidden "Tao Thread Event Target"
+// window instead (the first visible unowned window in z-order), so a restore or a nudge sent there never reached the app and phase d's
+// window stayed minimised for the rest of the run (measured 2026-11-09). The main window is the visible "Tauri Window" titled "Kolux".
+export const WIN_PS = `Add-Type -TypeDefinition @"
+using System; using System.Text; using System.Runtime.InteropServices;
+public static class V11 {
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  public static IntPtr AppWindow(uint pid) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows((h, l) => {
+      uint p; GetWindowThreadProcessId(h, out p);
+      if (p != pid || !IsWindowVisible(h)) return true;
+      var c = new StringBuilder(64); GetClassName(h, c, 64); var t = new StringBuilder(64); GetWindowText(h, t, 64);
+      if (c.ToString() == "Tauri Window" && t.ToString() == "Kolux") { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
+}
+"@`;
+/** PowerShell: after WIN_PS, `$h` is the app's window for `pid`, retried for up to `tries` x 500 ms (zero when it never shows). */
+export const waitAppWindow = (pid, tries = 20) =>
+  `$h = [IntPtr]::Zero; for ($i = 0; $i -lt ${tries} -and $h -eq [IntPtr]::Zero; $i++) { $h = [V11]::AppWindow(${pid}); if ($h -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 500 } }`;
+
 // Second-screen rule: dev windows go to the screen at X=-1920 when it is there. Council FIX-1 (FIX-SOON 2):
 // --offscreen moves the window at run time to -32000,-32000 (0x0015 = keep size, keep z-order, do not
 // activate), on any number of screens, so nothing about the window is compiled into the debug exe.
@@ -52,7 +84,8 @@ export const moveScript = (pid, offscreen) => {
   const [x, y, flags, screens] = offscreen ? [...OFFSCREEN_AT, "0x0015", ""] : [-1920, 0, "0x0005", "if ([System.Windows.Forms.Screen]::AllScreens.Count -lt 2) { 'one screen'; exit }"];
   return `Add-Type -AssemblyName System.Windows.Forms; ${screens}
      Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h,IntPtr a,int x,int y,int cx,int cy,uint f);' -Name W -Namespace U
-     $h = [IntPtr]::Zero; for ($i = 0; $i -lt 20 -and $h -eq [IntPtr]::Zero; $i++) { $h = (Get-Process -Id ${pid}).MainWindowHandle; if ($h -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 500 } }
+     ${WIN_PS}
+     ${waitAppWindow(pid)}
      if ($h -eq [IntPtr]::Zero) { 'no window handle' } else { [U.W]::SetWindowPos($h,[IntPtr]::Zero,${x},${y},0,0,${flags}) | Out-Null; '${offscreen ? "moved off-screen" : "moved"}' }`;
 };
 
@@ -286,7 +319,9 @@ export function createApp(opts) {
       how = "WM_CLOSE by PostMessage (the page did not answer)";
       await ps(
         `Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);' -Name M -Namespace U
-         [U.M]::PostMessage((Get-Process -Id ${pid}).MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null`,
+         ${WIN_PS}
+         ${waitAppWindow(pid, 1)}
+         if ($h -ne [IntPtr]::Zero) { [U.M]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null }`,
       ).catch(() => {});
     }
     const gone = await waitFor("the app to exit", async () => !(await alive(pid)), 30000, 500).catch(() => false);
