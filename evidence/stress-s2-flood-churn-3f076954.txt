@@ -1,0 +1,125 @@
+stress S2 flood churn (DT-C245): before (e2d0665a, DOM and S2_GPU=1) and after (3f076954, DOM, full rebuild), all --release on <lane>
+args: S2 --release --temp <temp> --cdp 9271 --port 1471 (GPU run: S2_GPU=1, --skip-build); three runs follow
+
+===== before-dom
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T10:34:47.474Z on e2d0665a (<lane>)
+args: S2 --release --temp <temp> --cdp 9271 --port 1471; ran 880 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 13 ms, max 23 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 117 ms, p95 160 ms, max 265 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 108 s (3.7 MB/s total)
+PASS  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 524 MB
+      measured: peak 1159 MB (+636); 25 samples
+PASS  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 616 MB (+92)
+PASS  pane shows its final line (END-<k>) after the flood
+      bar: 8 of 8 panes
+      measured: 8 of 8
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.9 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - renderers of the shown panes: "dom,dom,dom,dom,dom,dom,dom,dom,dom"
+  - all 8 flood commands typed in 2.9 s
+  - page allocations over 20 s of flood (sampling heap profiler, collected objects kept): 1682 MB; floods running at the end 8 of 8; top: (anon) App-CsJRBY1k.js:102 393 MB; createRow App-CsJRBY1k.js:26 371 MB; (anon) App-CsJRBY1k.js:30 245 MB; (V8 API) :-1 164 MB; _sync App-CsJRBY1k.js:25 158 MB; copyFrom App-CsJRBY1k.js:28 154 MB; (anon) App-CsJRBY1k.js:104 78 MB; (anon) App-CsJRBY1k.js:28 46 MB
+  - page main thread over the flood (111 s, CDP Performance.getMetrics): task 106.0 s (95% busy), script 38.2 s, layout 8.5 s, style 5.7 s; JS heap used 17 -> 80 MB
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 1s:0/8done:723MB 24s:0/8done:899MB 46s:0/8done:880MB 68s:0/8done:886MB 90s:0/8done:1096MB
+  - memory per process role, MB (working set / private bytes): conhost x9 before 72/12 peak 72/13 after 72/12; git x? before 0/0 peak 2/1 after 0/0; kolux x1 before 42/16 peak 57/31 after 45/18; node x1 before 42/20 peak 422/202 after 42/20; powershell x9 before 655/500 peak 665/502 after 657/496; wv-browser x1 before 123/43 peak 139/52 after 135/48; wv-crashpad-handler x1 before 10/2 peak 18/3 after 12/3; wv-gpu-process x1 before 86/104 peak 87/105 after 83/100; wv-renderer x1 before 201/150 peak 809/763 after 273/222; wv-utility x2 before 61/21 peak 66/24 after 66/24
+  - page JS heap (performance.memory.usedJSHeapSize), MB: before 20, peak 198, 10 s after 69
+  - pane 1 flood accepted its last byte at 1794306864001; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: PASS
+
+===== before-gpu
+stress S2 (Output flood (8 panes x ~50 MB), WebGL panes) at 2026-11-10T10:38:25.883Z on e2d0665a (<lane>)
+args: S2 --release --skip-build --temp <temp> --cdp 9271 --port 1471; ran 127 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 16 ms, max 16 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 104 ms, p95 151 ms, max 165 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 86 s (4.7 MB/s total)
+PASS  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 526 MB
+      measured: peak 1039 MB (+512); 20 samples
+PASS  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 634 MB (+108)
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - echo probe: installed
+  - renderers of the shown panes: "webgl,webgl,webgl,webgl,webgl,webgl,webgl,webgl,webgl"
+  - all 8 flood commands typed in 2.7 s
+  - page allocations over 20 s of flood (sampling heap profiler, collected objects kept): 1818 MB; floods running at the end 8 of 8; top: (anon) App-CsJRBY1k.js:102:14575 470 MB; resolve App-CsJRBY1k.js:35:11267 308 MB; (anon) App-CsJRBY1k.js:30:23383 229 MB; (V8 API) :-1:-1 202 MB; _sync App-CsJRBY1k.js:25:1174 143 MB; copyFrom App-CsJRBY1k.js:28:24632 142 MB; (anon) App-CsJRBY1k.js:104:57154 94 MB; matchAll :-1:-1 54 MB
+  - page main thread over the flood (88 s, CDP Performance.getMetrics): task 84.7 s (96% busy), script 33.4 s, layout 1.4 s, style 1.7 s; JS heap used 28 -> 70 MB
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 1s:0/8done:729MB 23s:0/8done:896MB 44s:0/8done:979MB 66s:0/8done:873MB
+  - memory per process role, MB (working set / private bytes): conhost x9 before 72/13 peak 73/13 after 72/12; kolux x1 before 41/14 peak 57/31 after 44/18; node x1 before 42/20 peak 418/202 after 42/20; powershell x9 before 653/498 peak 663/500 after 655/494; wv-browser x1 before 123/42 peak 138/52 after 137/49; wv-crashpad-handler x1 before 10/2 peak 18/3 after 12/3; wv-gpu-process x1 before 104/139 peak 110/143 after 108/124; wv-renderer x1 before 187/132 peak 666/609 after 267/205; wv-utility x2 before 62/21 peak 66/24 after 66/24
+  - page JS heap (performance.memory.usedJSHeapSize), MB: before 33, peak 369, 10 s after 73
+  - final lines not read back: WebGL panes draw on a canvas (the done files above prove every byte was accepted)
+  - pane 1 flood accepted its last byte at 1794307086932; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: PASS
+
+===== after-dom
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T10:51:40.989Z on 3f076954 (<lane>)
+args: S2 --release --temp <temp> --cdp 9271 --port 1471; ran 721 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 13 ms, max 13 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 107 ms, p95 162 ms, max 190 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 100 s (4.0 MB/s total)
+PASS  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 520 MB
+      measured: peak 1104 MB (+584); 23 samples
+PASS  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 645 MB (+125)
+PASS  pane shows its final line (END-<k>) after the flood
+      bar: 8 of 8 panes
+      measured: 8 of 8
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - renderers of the shown panes: "dom,dom,dom,dom,dom,dom,dom,dom,dom"
+  - page engine: Edg/157.0.0.0; native base64 decode true
+  - all 8 flood commands typed in 3.0 s
+  - page allocations over 20 s of flood (sampling heap profiler, collected objects kept): 1568 MB; floods running at the end 8 of 8; top: (anon) App-CmWsFLzM.js:102:14581 326 MB; createRow App-CmWsFLzM.js:26:11412 303 MB; (anon) App-CmWsFLzM.js:30:23383 202 MB; (V8 API) :-1:-1 179 MB; copyFrom App-CmWsFLzM.js:28:24632 166 MB; _sync App-CmWsFLzM.js:25:1174 165 MB; (anon) App-CmWsFLzM.js:104:57190 102 MB; (anon) App-CmWsFLzM.js:28:120729 46 MB
+  - page main thread over the flood (103 s, CDP Performance.getMetrics): task 99.3 s (96% busy), script 38.9 s, layout 8.7 s, style 5.9 s; JS heap used 17 -> 48 MB
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 2s:0/8done:714MB 24s:0/8done:1047MB 46s:0/8done:991MB 68s:0/8done:1056MB 91s:0/8done:998MB
+  - memory per process role, MB (working set / private bytes): conhost x10 before 72/13 peak 76/13 after 79/13; git x1 before 0/0 peak 3/1 after 3/1; kolux x1 before 41/14 peak 56/29 after 45/18; node x1 before 42/20 peak 422/203 after 42/20; powershell x9 before 653/498 peak 663/500 after 656/495; wv-browser x1 before 123/42 peak 140/52 after 136/48; wv-crashpad-handler x1 before 10/2 peak 18/3 after 12/3; wv-gpu-process x1 before 86/103 peak 86/103 after 83/99; wv-renderer x1 before 198/147 peak 745/697 after 304/251; wv-utility x2 before 61/21 peak 66/24 after 66/24
+  - page JS heap (performance.memory.usedJSHeapSize), MB: before 20, peak 272, 10 s after 73
+  - pane 1 flood accepted its last byte at 1794307878500; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: PASS
