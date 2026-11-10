@@ -1163,6 +1163,14 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         setStatus({ kind: "starting" });
         early = []; // DT-C248 review 2: output arriving while the service is asked again is held for the bind
         void (async () => {
+          // DT-C248 review 3: what the terminal printed while the tab waited for Try again was not queued; the
+          // running terminal's snapshot redraws it and sets the floor, so the bind draws only what comes after.
+          const snap = await invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
+          if (!alive) return;
+          if (snap) {
+            resync.took(snap.id, snap);
+            applySnapshot(term, decodeOutput(snap.data));
+          }
           const back = await reattach(tauriService, number, serviceRef.current);
           if (!alive) return;
           if (back.kind === "refused" || back.kind === "timeout") {

@@ -1133,7 +1133,6 @@ impl Terminals {
         if inner.superseded(pane_key, ticket) {
             return Err(SUPERSEDED.to_string());
         }
-        let displaced = inner.displaced(pane_key).map(|old| inner.take_session(old));
         let history = pane_key.and_then(|k| log_dir.as_deref().and_then(|d| History::open(d, k)));
         let label = program.clone().unwrap_or_else(|| "shell".to_string());
         let exit_app = app;
@@ -1228,6 +1227,11 @@ impl Terminals {
             }
             None => PtySession::spawn_first(commands, cols.max(2), rows.max(1), on_output, on_exit)?.into(),
         };
+        // DT-C248 review 3: the terminal an older start left mapped to the key is taken out only now, once the
+        // new session exists: a start that failed above returns with the lock and leaves it running (taking it
+        // earlier closed its PTY under the registry lock on that path, the Row 784 hazard, and dropped a
+        // service terminal without ending it). It is ended below, after the lock is let go.
+        let displaced = inner.displaced(pane_key).map(|old| inner.take_session(old));
         inner.sessions.insert(id, session);
         inner.flow.insert(id, flow);
         if let Some(d) = &log_dir {
@@ -1504,6 +1508,7 @@ impl Terminals {
     pub fn reap_pane(&self, pane_key: u32) -> Option<u32> {
         let (id, taken) = {
             let mut inner = self.inner.lock().ok()?;
+            inner.tickets.remove(&pane_key); // review 3: the closed key's start count goes with it
             let id = *inner.panes.get(&pane_key)?;
             if !inner.sessions.contains_key(&id) || inner.ended.contains(&id) {
                 return None;
@@ -2487,16 +2492,48 @@ mod tests {
         t.fake_session(7, "C:/w", None);
         t.inner.lock().unwrap().panes.insert(3, 7);
         t.inner.lock().unwrap().panes.insert(4, 8); // pane 4's session is gone
+        t.spawn_ticket(3);
+        t.spawn_ticket(4);
         assert_eq!(t.reap_pane(3), Some(7), "the running terminal is ended and named");
         assert!(!t.inner.lock().unwrap().sessions.contains_key(&7), "it is out of the registry");
+        assert!(!t.inner.lock().unwrap().tickets.contains_key(&3), "review 3: the closed key's start count goes with it");
         assert_eq!(t.reap_pane(3), None, "a second close finds nothing");
         assert_eq!(t.attached(3), None, "the key is unmapped");
         assert_eq!(t.reap_pane(4), None, "a key whose terminal is gone");
+        assert!(!t.inner.lock().unwrap().tickets.contains_key(&4), "review 3: so does a key with nothing running");
         assert_eq!(t.reap_pane(5), None, "a key that never started anything");
         t.fake_session(9, "C:/w", None);
         t.inner.lock().unwrap().panes.insert(6, 9);
         t.inner.lock().unwrap().ended.insert(9);
         assert_eq!(t.reap_pane(6), None, "an ended terminal is left to its waiter");
+    }
+
+    /// DT-C248 review 3: `spawn` takes the terminal an older start left mapped to the key out of the registry
+    /// only once the new session exists, and ends it after the lock is let go. Taken earlier, a start that
+    /// failed at `spawn_first` returned with the lock still held and dropped what it took: a PTY closed under
+    /// the registry lock (Row 784) and a service terminal dropped without `kill`, so it leaked. `spawn` needs
+    /// a running app (an AppHandle for its handlers and paths), which a unit test has none of, so the order is
+    /// pinned at the source: the take comes after the only fallible step and right before the insert, and the
+    /// end comes after the lock is dropped.
+    #[test]
+    fn dt_c248_review_3_the_displaced_terminal_is_taken_after_the_new_session_exists_and_ended_unlocked() {
+        let src = include_str!("terminal.rs");
+        let spawn = src.find("pub fn spawn(&self, app: AppHandle").expect("spawn");
+        let body = &src[spawn..];
+        let end = body.find("fn handlers(&self").expect("the next method");
+        let body = &body[..end];
+        let at = |needle: &str| body.find(needle).unwrap_or_else(|| panic!("{needle} in spawn"));
+        let refused = at("return Err(SUPERSEDED.to_string())");
+        let fallible = at("PtySession::spawn_first(commands, cols.max(2), rows.max(1), on_output, on_exit)?");
+        let taken = at("let displaced = inner.displaced(pane_key).map(|old| inner.take_session(old));");
+        let inserted = at("inner.sessions.insert(id, session);");
+        let unlocked = at("drop(inner);");
+        let ended = at("end_taken(taken);");
+        assert!(refused < fallible, "a superseded start is refused before any process");
+        assert!(fallible < taken && taken < inserted, "the displaced terminal is taken once the new session exists, right before it is registered");
+        assert!(inserted < unlocked && unlocked < ended, "and ended only after the registry lock is let go");
+        assert_eq!(body.matches("inner.take_session(").count(), 1, "nothing else is taken out under the lock in spawn");
+        assert!(!body[taken..unlocked].contains('?'), "no fallible step follows the take while the lock is held");
     }
 
     /// APP-052: a pane gets its terminal back only from the run that started it: attached while the

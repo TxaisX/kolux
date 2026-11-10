@@ -109,3 +109,20 @@ describe("DT-C248 review 2: a terminal that no view owns is ended", () => {
     expect(branch.indexOf("if (!alive) return;")).toBeLessThan(branch.indexOf("fail(err);"));
   });
 });
+
+// DT-C248 review 3: Try again redraws the gap it was not listening through.
+describe("DT-C248 review 3: Try again redraws what the running terminal printed while the tab waited", () => {
+  it("retryRestore fetches the live snapshot, sets the floor and redraws it before it asks the service to bind", () => {
+    const at = pane.indexOf("// DT-C248 review 3: what the terminal printed while the tab waited for Try again");
+    expect(at).toBeGreaterThan(-1);
+    const branch = pane.slice(at, at + 700);
+    const fetched = branch.indexOf('invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number })');
+    const floored = branch.indexOf("resync.took(snap.id, snap);");
+    const drawn = branch.indexOf("applySnapshot(term, decodeOutput(snap.data));");
+    const bound = branch.indexOf("await reattach(tauriService, number, serviceRef.current)");
+    expect(fetched).toBeGreaterThan(-1);
+    expect(fetched).toBeLessThan(floored);
+    expect(floored).toBeLessThan(drawn);
+    expect(drawn).toBeLessThan(bound);
+  });
+});
