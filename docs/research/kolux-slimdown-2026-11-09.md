@@ -11,7 +11,9 @@ Goal (Txais): make Kolux much lighter on RAM, CPU and GPU without losing quality
 | 12 terminals + 3 browser tabs in the background (window on screen) | about 700 MB in use, 14 to 18 % CPU | about 560 MB, 5 to 8 % |
 | First-run wizard or a tour left open | GPU process at 21 % of a core | 0.3 % |
 | 1 or 6 idle terminals | 4.3 % / 8.9 % CPU | 3.8 % / 5.4 % |
-| 6 terminals streaming output | about 73 % CPU | about 75 % (unchanged, within noise) |
+| 6 terminals streaming output | about 59 to 73 % CPU | 25 % (overnight round 3) |
+| Typing in a terminal while 8 others flood output | echo p95 2.7 s | 0.1 s (round 3) |
+| An idle Claude Code session in a tab you are not looking at | about 0.9 GB each | 0 while asleep, if Agent sleep is on (round 3, off by default) |
 
 Release builds, median of 3 runs, same machine, before = `70d06457`, after = `fc333a52` (the product code
 has not changed since). "In use" is working set: the memory Windows actually keeps in RAM for Kolux.
@@ -62,6 +64,23 @@ Round 2:
   at tao's hidden event window, so the benchmark's restore never reached the app. The helpers now find the
   visible window titled "Kolux".
 
+Round 3 (overnight, 2026-11-09 to 11-10, each lane reviewed independently before merge):
+
+- **Streaming output (DT-C243):** terminal output crosses to the web view once per 16 ms frame window for
+  every pane together, not once per chunk, and a trickle is acknowledged every 250 ms instead of every 50 ms.
+  The profile showed the cost was the message traffic (about 120 script calls and 97 acknowledgements a second),
+  not Rust or drawing. S11 phase c, release, 3 runs each: 59.4 % to 25.1 % of a core; renderer 21.3 to 9.1 %,
+  web view browser 15.2 to 3.9 %. S2 flood: typing echo p95 2,706 ms to 97 ms, 8 floods finish in 110 s
+  instead of 415 s. A lone chunk after quiet still goes at once; no wakeups when nothing prints.
+- **Agent sleep (TERM-123, HID-028, DT-C242), off by default:** Settings > General > Experimental. A finished
+  agent pane that is out of sight, untouched and idle for the chosen delay (30 minutes, 5 to 240) saves its
+  session, ends only its own process tree and shows Wake, which resumes that session. It never sleeps a pane
+  that is working, waiting on the user, running background tasks, visible, or typed into since its turn
+  finished. Two review rounds found and fixed: the opening prompt re-sent on Wake, a failed Wake restarting
+  the task, unsent text in the agent's own prompt, and a stale decision; the Rust side re-checks everything.
+  The live sleep and wake with a signed-in agent is not yet proven in the running app (no scratch login).
+- **Follow-ups:** the items marked [fixed] under Left over.
+
 ## Findings
 
 | Finding | Status |
@@ -92,9 +111,15 @@ Marked [fixed] below: done in the perf-followups lane on 2026-11-09.
   total in Codex's own field order (unknown fields after, by name), so it no longer depends on the feature and
   equals the stored keys for real Codex logs; a test pins one key.
 
+- Large output floods still raise memory: S2 (8 panes x 50 MB) peaks about +3 GB and holds +1.5 GB 10 s
+  later (before round 3: +4.2 / +2.4 GB; it was already failing on 2026-10-25). The scrollback and history path
+  is the next lever.
+- Agent sleep: prove the live sleep and wake with a signed-in agent (a dev build has a 20-second test delay).
+
 ## Evidence
 
 - `evidence/stress-s11-70d06457-release-before.{txt,json}`, `evidence/stress-s11-fc333a52-release-after.{txt,json}`,
   `evidence/stress-s11-release-compare.txt` (the phase f "after" column in that file was measured with the
   broken restore; use the Findings row above for f).
 - `evidence/perf-idle/` for the pulse rest.
+- `evidence/stress-s11-a6352702-stream-compare.md`, `evidence/stress-s2-*` and `evidence/T-817.txt` for round 3.
