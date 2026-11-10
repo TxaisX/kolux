@@ -27,7 +27,7 @@ type Bus = {
   readers: Set<Reader>;
   exits: Set<ExitReader>;
   subscribed: Promise<void> | null;
-  /** Probes (scripts/prove/live-flood.mjs) set this to count channel batches and time their hand-out. */
+  /** Probes (the live-flood proof script) set this to count channel batches and time their hand-out. */
   probe?: (batch: OutputBatch, ms: number) => void;
 };
 const bus: Bus = ((globalThis as { __koluxOutputBus?: Bus }).__koluxOutputBus ??= {
