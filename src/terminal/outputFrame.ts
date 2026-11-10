@@ -33,5 +33,6 @@ export function decodeFrame(buf: ArrayBuffer): { items: OutputEvent[] } | undefi
     items.push({ id, bytes: new Uint8Array(buf, at, len), pane: hasPane ? pane : null, generation, seq });
     at += len;
   }
+  if (at !== buf.byteLength) return undefined; // bytes after the last chunk: not a frame this reader knows
   return { items };
 }

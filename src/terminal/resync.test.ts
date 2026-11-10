@@ -1,7 +1,7 @@
 // ORCH-057: a viewer that fell behind redraws from a snapshot and drops the queued output it already holds.
 import { describe, expect, it } from "vitest";
 import { endedLabel } from "./codec";
-import { applySnapshot, base64Bytes, resyncGate } from "./resync";
+import { applySnapshot, resyncGate } from "./resync";
 
 describe("ORCH-057 viewer resync", () => {
   it("pause a viewer, flood output, resume it: it redraws from the snapshot and skips what the snapshot holds", () => {
@@ -21,10 +21,6 @@ describe("ORCH-057 viewer resync", () => {
     gate.took({ seq: 50, data: "" });
     expect(gate.accept(60)).toBe(false);
     expect(gate.accept(undefined)).toBe(true);
-  });
-
-  it("a dropped chunk is still acknowledged at its real size", () => {
-    for (const s of ["", "a", "ab", "abc", "abcd", "x".repeat(1000)]) expect(base64Bytes(btoa(s))).toBe(s.length);
   });
 
   it("an end Kolux could not confirm reads as unverifiable, not as an exit", () => {

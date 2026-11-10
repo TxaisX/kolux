@@ -12,6 +12,8 @@
 import type { Agent } from "../chrome/VendorMark";
 import { titleOwner } from "../status/titleOwner";
 
+import { heldBytes } from "./codec";
+
 export type Mark = { kind: "prompt" } | { kind: "start" } | { kind: "end"; code: number | null } | { kind: "title"; text: string };
 
 const ESC = 0x1b;
@@ -117,8 +119,9 @@ export class Gate {
       out.set(chunk, held.length);
       return out;
     }
-    this.held.push(chunk);
-    this.heldBytes += chunk.length;
+    const kept = heldBytes(chunk); // held up to seconds: not a view that pins the whole frame
+    this.held.push(kept);
+    this.heldBytes += kept.length;
     while (this.heldBytes > this.cap && this.held.length > 1) {
       const gone = this.held.shift()!;
       this.heldBytes -= gone.length;

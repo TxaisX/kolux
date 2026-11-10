@@ -32,6 +32,15 @@ export function chunkBytes(chunk: { data?: string; bytes?: Uint8Array }): Uint8A
   return bytes;
 }
 
+/**
+ * `bytes` for a reader that keeps them past this turn (a hidden pane's queue, the startup gate). A small view
+ * over a frame's buffer would pin the whole batch (up to 192 KB) for as long as it is held, so one that is less
+ * than a quarter of its buffer is copied; anything larger, or a chunk with its own buffer, is handed back as is.
+ */
+export function heldBytes(bytes: Uint8Array): Uint8Array {
+  return bytes.byteLength * 4 < bytes.buffer.byteLength ? bytes.slice() : bytes;
+}
+
 /** How many bytes a chunk carries, without decoding base64 (a dropped chunk is still acknowledged). */
 export function chunkLength(chunk: { data?: string; bytes?: Uint8Array }): number {
   if (chunk.bytes) return chunk.bytes.length;

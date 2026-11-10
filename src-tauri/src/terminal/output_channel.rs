@@ -87,11 +87,12 @@ impl<R: Reader> Readers<R> {
         }
     }
 
-    /// DT-C246: hands `frame` (bytes the page gets as an `ArrayBuffer`) to every live reader, like `send`.
-    /// False when no reader took it: the caller still holds the chunks and sends them the old way.
-    pub(crate) fn send_raw(&self, frame: Vec<u8>, alive: impl Fn(&str) -> bool) -> bool {
+    /// DT-C246: hands the frame `encode` makes (bytes the page gets as an `ArrayBuffer`) to every live reader,
+    /// like `send`; `encode` runs only when there is a reader. False when no reader took it: the caller still
+    /// holds the chunks and sends them the old way.
+    pub(crate) fn send_raw(&self, encode: impl FnOnce() -> Vec<u8>, alive: impl Fn(&str) -> bool) -> bool {
         let readers = self.live(alive);
-        !readers.is_empty() && self.hand(&readers, Body::Raw(frame))
+        !readers.is_empty() && self.hand(&readers, Body::Raw(encode()))
     }
 
     /// The readers whose web view `alive` still finds; the rest are dropped. The lock is not held after.
@@ -179,7 +180,7 @@ mod tests {
         let a = probe(true);
         r.set("main", a.clone());
         // DT-C246: the output is a raw frame, the end note JSON; both on the one channel, in that order.
-        assert!(r.send_raw(vec![b'K'; 300 * 1024], all));
+        assert!(r.send_raw(|| vec![b'K'; 300 * 1024], all));
         assert!(r.send(serde_json::json!({ "items": [], "exit": { "id": 1 } }), all).is_ok());
         let got = a.got.lock().unwrap();
         assert_eq!(got.len(), 2);
@@ -193,14 +194,15 @@ mod tests {
         let (a, b) = (probe(true), probe(true));
         r.set("main", a.clone());
         r.set("other", b.clone());
-        assert!(r.send_raw(vec![1, 2, 3], all));
+        assert!(r.send_raw(|| vec![1, 2, 3], all));
         assert_eq!(*a.got.lock().unwrap(), vec!["raw:3"]);
         assert_eq!(*b.got.lock().unwrap(), vec!["raw:3"]);
+        // Without a reader the frame is never built (review: the encode is a copy of every chunk).
         let none: Readers<Probe> = Readers::new();
-        assert!(!none.send_raw(vec![9, 9], all));
+        assert!(!none.send_raw(|| unreachable!("encoded with no reader"), all));
         let dead = Readers::new();
         dead.set("broken", probe(false));
-        assert!(!dead.send_raw(vec![4, 5, 6], all), "the only reader failed: the caller sends the event instead");
+        assert!(!dead.send_raw(|| vec![4, 5, 6], all), "the only reader failed: the caller sends the event instead");
         assert_eq!(dead.len(), 0);
     }
 

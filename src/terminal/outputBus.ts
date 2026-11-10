@@ -55,17 +55,25 @@ export function fanOut(batch: OutputBatch | undefined): void {
   if (batch && bus.probe) bus.probe(batch, performance.now() - t);
 }
 
+/** What a raw body can arrive as: an `ArrayBuffer` from the engine's own protocol; a plain array of numbers
+ *  once Tauri has fallen back to postMessage (it stays there for the page's life); a view, to be safe. */
+export type ChannelMessage = OutputBatch | ArrayBuffer | ArrayBufferView | number[];
+
 /** One channel message as the readers see it: a frame's chunks, or the end note as sent. */
-export function fromChannel(message: OutputBatch | ArrayBuffer): OutputBatch | undefined {
-  if (!(message instanceof ArrayBuffer)) return message;
-  const batch = decodeFrame(message);
+export function fromChannel(message: ChannelMessage): OutputBatch | undefined {
+  let buf: ArrayBuffer;
+  if (message instanceof ArrayBuffer) buf = message;
+  else if (Array.isArray(message)) buf = new Uint8Array(message).buffer;
+  else if (ArrayBuffer.isView(message)) buf = (message.buffer as ArrayBuffer).slice(message.byteOffset, message.byteOffset + message.byteLength);
+  else return message;
+  const batch = decodeFrame(buf);
   if (!batch) console.error("terminal output: a frame from the window process could not be read; its chunks are lost");
   return batch;
 }
 
 function subscribe(): Promise<void> {
   try {
-    const channel = new Channel<OutputBatch | ArrayBuffer>();
+    const channel = new Channel<ChannelMessage>();
     channel.onmessage = (m) => fanOut(fromChannel(m));
     // A window process without the command keeps sending the events, which every reader also listens to.
     return invoke("terminal_output_subscribe", { channel }).then(

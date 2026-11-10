@@ -942,7 +942,7 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
         output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
             // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
             // Raw output (DT-C246): on the channel the batch is one binary frame, no base64 and no JSON.
-            if !OUTPUT_READERS.send_raw(output_frame::encode(&items), |label| app.get_webview(label).is_some()) {
+            if !OUTPUT_READERS.send_raw(|| output_frame::encode(&items), |label| app.get_webview(label).is_some()) {
                 let _ = app.emit(OUTPUT_EVENT, output_batch::OutputBatch { items });
             }
         }))

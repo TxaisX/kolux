@@ -4,7 +4,6 @@
 // terminal that printed it), decides where Open goes, what a Stop sends back and what a failed scan
 // leaves on screen.
 
-import { decodeOutput as bytesOf } from "../terminal/codec";
 
 export type PortRow = {
   port: number;
@@ -89,16 +88,6 @@ export const afterScan = (prev: PortsView, got: { rows: PortRow[] } | { error: s
 export const ownCount = (rows: readonly PortRow[]): number => rows.filter((r) => !r.external).length;
 
 const text = new TextDecoder();
-/** Terminal output arrives base64 encoded; the text, or empty when it is not text. T-765: every pane's output
- * passes through here, so it uses the pane's own byte decode (a callback per byte cost ~30x and starved the window). */
-export function decodeOutput(data: string): string {
-  try {
-    return text.decode(bytesOf(data));
-  } catch {
-    return "";
-  }
-}
-
 /** DT-C245: a chunk's text for the address scan, or empty when it cannot hold an address: no "://" can be
  * in bytes that carry no ":", so most of a flood is never turned into text. */
 export function addressText(bytes: Uint8Array): string {

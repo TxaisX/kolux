@@ -28,6 +28,7 @@ test("DT-C246 a frame from the window process decodes to its chunks, in order, a
 test("DT-C246 a frame that is not whole, or not a frame, delivers nothing rather than wrong chunks", () => {
   expect(decodeFrame(new Uint8Array(FRAME.slice(0, FRAME.length - 1)).buffer)).toBeUndefined();
   expect(decodeFrame(new Uint8Array(FRAME.slice(0, 20)).buffer)).toBeUndefined();
+  expect(decodeFrame(new Uint8Array([...FRAME, 0]).buffer), "trailing bytes").toBeUndefined();
   expect(decodeFrame(new Uint8Array([0x4b, 2, 0, 0, 0, 0]).buffer)).toBeUndefined();
   expect(decodeFrame(new Uint8Array([0x4a, 1, 0, 0, 0, 0]).buffer)).toBeUndefined();
   expect(decodeFrame(new Uint8Array([0x4b, 1, 0, 0, 0, 0]).buffer)).toEqual({ items: [] });

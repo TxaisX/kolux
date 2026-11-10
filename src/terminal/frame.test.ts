@@ -312,3 +312,28 @@ test("DT-C236: a visibility change re-plans a pane that waited on a frame the hi
   expect(s.all()).toBe(1500);
   expect(pane.pending).toBe(0);
 });
+
+test("DT-C246 review: a chunk waiting in a hidden pane's queue does not pin the frame it was a view over", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler });
+  const s = sink({ hidden: () => true });
+  const q = out.pane(s.frameSink);
+  const batch = new Uint8Array(64 * 1024); // one frame from the window process, many panes' chunks in it
+  batch.set(enc("hidden pane"), 1000);
+  q.push(batch.subarray(1000, 1011), 11, 1);
+  q.flushNow();
+  expect(s.writes).toHaveLength(1);
+  expect(text(s.writes[0])).toBe("hidden pane");
+  expect(s.writes[0].buffer).not.toBe(batch.buffer);
+  // a chunk that is most of its buffer is kept as is: nothing to gain from a copy
+  const own = enc("whole chunk");
+  q.push(own, own.length, 2);
+  q.flushNow();
+  expect(s.writes[1].buffer).toBe(own.buffer);
+  // a shown pane draws the chunk within a frame: its view is kept, no copy per chunk of a flood
+  const shown = sink();
+  const v = out.pane(shown.frameSink);
+  v.push(batch.subarray(1000, 1011), 11, 3);
+  v.flushNow();
+  expect(shown.writes[0].buffer).toBe(batch.buffer);
+});

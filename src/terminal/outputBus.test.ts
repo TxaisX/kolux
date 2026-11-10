@@ -1,6 +1,6 @@
 // DT-C243: one batched output event is handed to readers one chunk at a time, in order.
 import { describe, expect, it, vi } from "vitest";
-import type { OutputEvent } from "./codec";
+import { chunkBytes, type OutputEvent } from "./codec";
 import { eachChunk, fanOut, onTerminalOutput, type OutputBatch } from "./outputBus";
 
 const chunk = (id: number, seq: number, data = "ZQ=="): OutputEvent => ({ id, data, pane: id * 10, generation: 1, seq });
@@ -83,6 +83,20 @@ describe("a raw frame on the output channel", () => {
     fanOut(fromChannel({ items: [], exit: { id: 7 } }));
     stop();
     expect(seen).toEqual(["7:hi:1", "8:!:2"]);
+  });
+
+  // Review of DT-C246: once Tauri falls back to postMessage, a raw body is a plain array of numbers; a view is taken too.
+  it("reads a frame that arrives as a number array or as a view, not only as an ArrayBuffer", async () => {
+    const { fromChannel } = await import("./outputBus");
+    const seen: string[] = [];
+    const stop = await onTerminalOutput((c) => seen.push(`${c.id}:${new TextDecoder().decode(chunkBytes(c))}`));
+    const frame = [0x4b, 1, 1, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0x68, 0x69];
+    fanOut(fromChannel(frame));
+    const padded = new Uint8Array([9, 9, 9, ...frame, 9]);
+    fanOut(fromChannel(padded.subarray(3, 3 + frame.length)));
+    fanOut(fromChannel({ items: [{ id: 7, data: "IQ==", seq: 3 }] }));
+    stop();
+    expect(seen).toEqual(["7:hi", "7:hi", "7:!"]);
   });
 });
 

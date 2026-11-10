@@ -19,6 +19,8 @@
 // What the queue does not do is decide what is drawn: the reader's own window (512 KB unacked) is
 // what stops a program that runs ahead, so a slow frame delays output instead of losing it.
 
+import { heldBytes } from "./codec";
+
 export type FrameSink = {
   /** Hand these bytes to xterm; call `done` once it has parsed them. */
   write(bytes: Uint8Array, done: () => void): void;
@@ -174,7 +176,10 @@ export function frameOutputs(options: Options = {}) {
         this.sink.ack(ack);
         return;
       }
-      this.parts.push({ bytes, ack, seq });
+      // A shown pane drains within a frame or two, so its chunks stay views over the batch they came in
+      // (DT-C246, no copy); a hidden pane trickles and holds them for seconds, up to FLOW_HIGH bytes deep,
+      // where a small view would pin its whole 192 KB batch, so those are copied.
+      this.parts.push({ bytes: this.offScreen() ? heldBytes(bytes) : bytes, ack, seq });
       this.bytes += bytes.length;
       waiting.add(this);
       this.plan();
