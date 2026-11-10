@@ -332,3 +332,75 @@ cargo test -j 2 --lib claude_accounts:: exit 0 test result: ok. 54 passed; 0 fai
 cargo test -j 2 --test cards_10        exit 0  test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.34s
 cargo test -j 2 --test cards_11        exit 0  test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.80s
 cargo clippy -j 2 --all-targets -- -D warnings  exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 36.78s
+
+T-780 review round 5 (2026-11-09, lane ready-sec-madeby, base f2d73d04; APPROVE WITH CHANGES)
+================================================================================
+
+1. P2, case folding (NTFS): reproduced by hand first: origin branch `PR/x` fetched loose, then the
+   refspec `+refs/pull/*/head:refs/remotes/origin/pr/*` added and fetched -> for-each-ref lists
+   `refs/remotes/origin/PR/12`. head_is_on_origin now lowercases the other refspecs' destinations
+   and the ref before comparing them (the branch side stays exact: a looser match there would only
+   widen the proof).
+2. P3, symbolic refs: for-each-ref runs with `--format=%(refname)%00%(symref)`; a line whose symref
+   is non-empty (refs/remotes/origin/HEAD after `git remote set-head origin pr/12`) is ignored, as is
+   a line without the NUL separator. The target is listed on its own line anyway.
+3. P3, grafts: reproduced by hand: `.git/info/grafts` with `<origin main> <stranger>` makes
+   `git --no-replace-objects for-each-ref --contains <stranger>` list refs/remotes/origin/main.
+   git::run_within takes no extra environment and adding one means timeout plumbing in git.rs (out
+   of scope), so GIT_GRAFT_FILE is NOT set. Instead the new projects::settled() reads
+   `rev-parse --git-dir --git-path info/grafts` (same run_within/READ_TIMEOUT read path,
+   --no-replace-objects); `--git-path info/grafts` honours GIT_GRAFT_FILE (checked by hand), and
+   while that file exists (or its existence cannot be read) there is no proof. Accepted cost: a repo
+   that still uses the deprecated graft file gets no pre-trust.
+4. P3, operation in progress: settled() also refuses proof when the worktree's git dir (from the
+   same rev-parse call) holds MERGE_HEAD, CHERRY_PICK_HEAD, REVERT_HEAD, rebase-merge or
+   rebase-apply (exists, or existence unreadable).
+5. Coordinator decision ACCEPTED and documented: doc comments on head_is_on_origin (projects.rs) and
+   not_pre_trusted_why (trust.rs): the check decides only whether Kolux writes a NEW trust mark; a
+   mark already written stays (nothing revoked); refs the user's own fetches/config put under
+   refs/remotes/origin/ through origin's branch refspecs count as origin's. Wording: a drifted
+   Kolux-made checkout (no pull request recorded) now reads "not trusted: this worktree's checkout
+   isn't on one of origin's branches, so the agent asks itself"; the pull request text stays for
+   real PR records. The window's notice is unaffected (trust_folders_cmd answers "no folders to
+   trust"; only the CLI worker-start prints not_pre_trusted_why).
+   t780_the_launch_rechecks_the_checkout_against_origin now asserts the new text and that a mark
+   written earlier stays after a second drift.
+6. P3: trust_folders_cmd is `#[tauri::command(async)]` (same pattern as bulk.rs
+   workspace_remove_many); name and arguments unchanged, `pnpm check` invoke-contract OK.
+7. P3: the fixture's plain `git push` Command in test_repo_with_worktree sets
+   `creation_flags(0x0800_0000)` under cfg(windows), 4 lines after the Command::new.
+8. SKIPPED: removing the second head_is_on_origin on the CLI negative path needs a new or changed
+   trust.rs API (the record checks names_its_maker / holds_pull_request are private to trust.rs),
+   and trust.rs edits are frozen to items 5-7 this round. Cost: one extra bounded set of git reads
+   on a worker start whose worktree is not pre-trusted.
+
+Tests added (projects.rs), red on the f2d73d04 logic (tests added first, code unchanged), green after:
+  t780_a_pull_request_head_in_a_folder_of_another_case_is_no_proof (item 1; asserts on Windows that
+     for-each-ref really lists refs/remotes/origin/PR/12)
+  t780_a_symbolic_ref_is_no_proof (item 2)
+  t780_a_graft_file_cannot_fake_the_proof (item 3; asserts --no-replace-objects is fooled first)
+  t780_an_operation_in_progress_is_no_proof (item 4; `merge --no-commit --no-ff fork/theirs` in a
+     worktree on origin/main, HEAD unchanged -> no proof; `merge --abort` -> proof again)
+
+RED (round-5 tests on the f2d73d04 code):
+  cargo test -j 2 --lib t780
+    test projects::tests::t780_a_graft_file_cannot_fake_the_proof ... FAILED   (src\projects.rs:6361 "a graft makes no proof")
+    test projects::tests::t780_a_symbolic_ref_is_no_proof ... FAILED   (src\projects.rs:6338)
+    test projects::tests::t780_an_operation_in_progress_is_no_proof ... FAILED   (src\projects.rs:6381 "a merge in progress is no proof")
+    test projects::tests::t780_a_pull_request_head_in_a_folder_of_another_case_is_no_proof ... FAILED   (src\projects.rs:6319; the PR/12 precondition above it passed)
+    test result: FAILED. 18 passed; 4 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 15.23s   exit=101
+GREEN:
+  cargo test -j 2 --lib t780
+    test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 17.11s   exit=0
+
+VERIFY (round 5), worktree, PowerShell, after `. scripts/test-env.ps1`, in src-tauri:
+cargo test -j 2 --lib t780              exit 0  test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 3024 filtered out; finished in 15.94s
+cargo test -j 2 --lib trust::           exit 0  test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 3030 filtered out; finished in 5.89s
+cargo test -j 2 --lib projects::        exit 0  test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 57.03s
+cargo test -j 2 --lib cli::             exit 0  test result: ok. 188 passed; 0 failed; 0 ignored; 0 measured; 2858 filtered out; finished in 46.13s
+cargo test -j 2 --lib claude_accounts:: exit 0  test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 2992 filtered out; finished in 5.26s
+cargo test -j 2 --lib automations::     exit 0  test result: ok. 82 passed; 0 failed; 1 ignored; 0 measured; 2963 filtered out; finished in 3.48s
+cargo test -j 2 --test cards_10         exit 0  test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.37s
+cargo test -j 2 --test cards_11         exit 0  test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.61s
+cargo clippy -j 2 --all-targets -- -D warnings  exit 0  Finished `dev` profile [unoptimized + debuginfo] target(s) in 39.71s
+pnpm check (repo root)                  exit 0  invoke-contract: OK; last suite 5 pass, 0 fail

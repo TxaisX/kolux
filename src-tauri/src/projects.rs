@@ -306,9 +306,15 @@ pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>)
 
 /// T-780 (review round 3, 2026-11-09): positive proof that the worktree at `dir` holds Kolux's
 /// own code: its HEAD commit is reachable from at least one branch of the `origin` remote. Run
-/// right after the checkout, before its first record, outside the store lock (T-442-b). Anything
-/// short of that proof (no `origin`, HEAD only on a fork or a local branch, a git error or a
-/// timeout) is false, and the worktree then counts as foreign: the agent asks about trust itself.
+/// right after the checkout, before its first record, outside the store lock (T-442-b), and again
+/// at each launch (`trust::made_by_kolux`). Anything short of that proof (no `origin`, HEAD only on
+/// a fork or a local branch, a merge, cherry-pick, revert or rebase under way, a graft file in
+/// effect, a git error or a timeout) is false, and the worktree then counts as foreign: the agent
+/// asks about trust itself.
+/// What it decides (round 5, coordinator decision): only whether Kolux writes a NEW trust mark. A
+/// mark already written into an agent's config stays (one trust answer covers the folder, as in
+/// Claude's own model); nothing is revoked. Refs that the user's own manual fetches or config put
+/// under `refs/remotes/origin/` through origin's branch refspecs are trusted as origin's.
 /// Accepted cost: a user whose canonical remote is not named `origin` loses the pre-trust.
 pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
     // Review round 4 (P2): "under refs/remotes/origin/" is not proof by itself. A fetch refspec such
@@ -322,8 +328,35 @@ pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
     if sha.len() < 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
         return false;
     }
-    let Ok(refs) = crate::git::run_within(&["--no-replace-objects", "for-each-ref", "--contains", sha, "--format=%(refname)"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
-    refs.lines().map(str::trim).any(|r| r.starts_with("refs/remotes/") && branches.iter().any(|p| refspec_side_matches(p, r, false)) && !others.iter().any(|p| refspec_side_matches(p, r, true)))
+    if !settled(dir) {
+        return false;
+    }
+    // Round 5 (P3): a symbolic ref (`refs/remotes/origin/HEAD`, which `git remote set-head` can point
+    // anywhere) is no proof of its own; its target is listed itself. Round 5 (P2): on a case-folding
+    // file system a fetched ref lands in an existing folder of another case (`origin/pr/12` read
+    // back as `origin/PR/12`), so the other refspecs' destinations are compared ignoring ASCII case.
+    let Ok(refs) = crate::git::run_within(&["--no-replace-objects", "for-each-ref", "--contains", sha, "--format=%(refname)%00%(symref)"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let others: Vec<String> = others.iter().map(|p| p.to_ascii_lowercase()).collect();
+    refs.lines()
+        .filter_map(|line| line.split_once('\0').filter(|(_, symref)| symref.trim().is_empty()).map(|(r, _)| r.trim()))
+        .any(|r| r.starts_with("refs/remotes/") && branches.iter().any(|p| refspec_side_matches(p, r, false)) && !others.iter().any(|p| refspec_side_matches(p, &r.to_ascii_lowercase(), true)))
+}
+
+/// Round 5 (P3): whether the checkout at `dir` is only what HEAD says. No merge, cherry-pick, revert
+/// or rebase is under way (their working tree already holds the other side's files), and no graft
+/// file is in effect (`info/grafts`, or `GIT_GRAFT_FILE`, which `--git-path` honours): grafts rewrite
+/// parents even under `--no-replace-objects`. Kolux's git runner takes no extra environment, so the
+/// graft file is refused rather than switched off. Unreadable = not settled.
+fn settled(dir: &Path) -> bool {
+    let Ok(paths) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--git-dir", "--git-path", "info/grafts"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let mut lines = paths.lines().map(str::trim);
+    let (Some(git_dir), Some(grafts), None) = (lines.next(), lines.next(), lines.next()) else { return false };
+    if git_dir.is_empty() || grafts.is_empty() {
+        return false;
+    }
+    let git_dir = dir.join(git_dir);
+    let in_effect = |p: &Path| p.symlink_metadata().is_ok() || !matches!(p.try_exists(), Ok(false));
+    !in_effect(&dir.join(grafts)) && !["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"].iter().any(|f| in_effect(&git_dir.join(f)))
 }
 
 /// Where `origin`'s fetch refspecs put its branches (a source of `refs/heads/*`, `refs/heads/<dir>/*`
@@ -6290,6 +6323,101 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         }
         drop(store);
         let _ = fs::remove_dir_all(profile);
+    }
+
+    /// T-780 round 5 helper: a worktree detached at `at`, beside the fixture's repository.
+    fn t780_detached(repo: &Path, root: &Path, name: &str, at: &str) -> PathBuf {
+        let wt = root.join(name);
+        git_in(repo, &["worktree", "add", "-q", "--detach", &wt.to_string_lossy(), at]);
+        wt
+    }
+
+    /// T-780 (round 5 review, P2): on NTFS a fetched pull request head lands in an existing folder of
+    /// another case: with origin's branch `PR/x` fetched first, `refs/remotes/origin/pr/12` is listed
+    /// as `refs/remotes/origin/PR/12`, which the branch destination covers and the pull destination
+    /// only covers ignoring case.
+    #[test]
+    fn t780_a_pull_request_head_in_a_folder_of_another_case_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780case");
+        git_in(&repo, &["push", "-q", "origin", "main:PR/x"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        git_in(&repo, &["push", "-q", "origin", "fork/theirs:refs/pull/12/head"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        let theirs = rev(&repo, "fork/theirs");
+        let listed = String::from_utf8(Command::new("git").args(["for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        #[cfg(windows)]
+        assert!(listed.contains("refs/remotes/origin/PR/12"), "the pull head is listed in the branch folder's case: {listed:?}");
+        let wt = t780_detached(&repo, &root, "case-wt", &theirs);
+        assert!(!head_is_on_origin(&wt), "a pull request head is no proof in any case: {listed:?}");
+        let own = t780_detached(&repo, &root, "case-own", "origin/main");
+        assert!(head_is_on_origin(&own), "origin's branch still proves itself");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 5 review, P3): a symbolic ref is no proof of its own (`git remote set-head origin
+    /// pr/12` makes `refs/remotes/origin/HEAD` point at a pull request head); its target is listed itself.
+    #[test]
+    fn t780_a_symbolic_ref_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780sym");
+        git_in(&repo, &["push", "-q", "origin", "fork/theirs:refs/pull/12/head"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        git_in(&repo, &["remote", "set-head", "origin", "pr/12"]);
+        let wt = t780_detached(&repo, &root, "sym-wt", &rev(&repo, "fork/theirs"));
+        assert!(!head_is_on_origin(&wt), "refs/remotes/origin/HEAD -> pr/12 is no branch of origin's");
+        git_in(&repo, &["remote", "set-head", "origin", "main"]);
+        let own = t780_detached(&repo, &root, "sym-own", "origin/main");
+        assert!(head_is_on_origin(&own), "origin/main itself still counts");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 5 review, P3): `info/grafts` rewrites parents even under `--no-replace-objects`;
+    /// while a graft file is in effect there is no proof at all.
+    #[test]
+    fn t780_a_graft_file_cannot_fake_the_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780gr");
+        let (main_sha, theirs) = (rev(&repo, "origin/main"), rev(&repo, "fork/theirs"));
+        let wt = t780_detached(&repo, &root, "graft-wt", &theirs);
+        let own = t780_detached(&repo, &root, "graft-own", "origin/main");
+        let grafts = repo.join(".git").join("info").join("grafts");
+        fs::create_dir_all(grafts.parent().unwrap()).unwrap();
+        fs::write(&grafts, format!("{main_sha} {theirs}\n")).unwrap();
+        let fooled = String::from_utf8(Command::new("git").args(["--no-replace-objects", "for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        assert!(fooled.contains("refs/remotes/origin/main"), "the graft fools --no-replace-objects: {fooled:?}");
+        assert!(!head_is_on_origin(&wt), "a graft makes no proof");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while a graft file is in effect");
+        fs::remove_file(&grafts).unwrap();
+        assert!(head_is_on_origin(&own));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 5 review, P3): HEAD on origin proves nothing while a merge, cherry-pick, revert or
+    /// rebase is under way: the working tree already holds the other side's files.
+    #[test]
+    fn t780_an_operation_in_progress_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780op");
+        let wt = t780_detached(&repo, &root, "op-wt", "origin/main");
+        assert!(head_is_on_origin(&wt));
+        git_in(&wt, &["merge", "-q", "--no-commit", "--no-ff", "fork/theirs"]);
+        assert!(wt.join("theirs.txt").exists(), "the fork's file is in the working tree");
+        assert_eq!(rev(&wt, "HEAD"), rev(&repo, "origin/main"), "HEAD itself is still origin's");
+        assert!(!head_is_on_origin(&wt), "a merge in progress is no proof");
+        git_in(&wt, &["merge", "--abort"]);
+        assert!(head_is_on_origin(&wt), "after the abort the proof holds again");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
     }
 
     /// after-list row 882: a refused read of the folder flags or the saved setup must not leave the
