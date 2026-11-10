@@ -389,3 +389,27 @@ export function onHeartbeat(fn: () => void, timers: { every: (fn: () => void, ms
     }
   };
 }
+
+type SelectionInside = { _core?: { _selectionService?: { refresh?: (linux?: boolean) => void; readonly hasSelection?: boolean } } };
+
+/**
+ * DT-C245: xterm asks its selection to redraw on every line a program scrolls, selection or not, and the plain
+ * renderer answers each ask by rebuilding every row on screen, so a flood rebuilt each pane's rows twice a frame.
+ * This lets an ask through only while there is a selection, or once after it went away (to wipe its highlight).
+ * Null when this xterm has no such service: then nothing changes. Returns the undo.
+ */
+export function quietSelection(term: unknown): (() => void) | null {
+  const service = (term as SelectionInside | null | undefined)?._core?._selectionService;
+  const refresh = service?.refresh;
+  if (!service || typeof refresh !== "function" || typeof service.hasSelection !== "boolean") return null;
+  let shown = false;
+  service.refresh = function (this: unknown, linux?: boolean) {
+    const has = service.hasSelection === true;
+    if (!has && !shown) return;
+    shown = has;
+    refresh.call(service, linux);
+  };
+  return () => {
+    service.refresh = refresh;
+  };
+}

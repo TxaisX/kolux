@@ -29,11 +29,11 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, onHeartbeat, parkWhenHidden, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
+import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
-import { decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
+import { chunkBytes, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
 import { notePrinted } from "../browser/preview";
@@ -653,6 +653,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const choice = attachRenderer<WebglAddon>(term, () => new WebglAddon(), gpu && preferGpu(currentInput().gpu, probeGpu())); // SET-022: the GPU setting (automatic, on, off)
     setRenderer(choice.mode);
     choice.onFallback(() => setRenderer("dom"));
+    quietSelection(term); // DT-C245: no selection redraw per scrolled line while nothing is selected
     fit.fit();
     // DT-C229: only where xterm can be resumed and drawn at once on reveal; elsewhere the context is kept.
     const resume = resumeHook(term);
@@ -1005,7 +1006,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // ORCH-057: already in the snapshot this pane redrew from; acknowledged unread so the reader's count stays true
           if (e.id === idRef.current && !resync.accept(e.seq)) return acks.drew(base64Bytes(e.data));
           const draw = () => {
-            const bytes = decodeOutput(e.data);
+            const bytes = chunkBytes(e); // DT-C245: shared with the other readers of this chunk
             const marks = scanner.feed(bytes);
             for (const m of marks) noteIdentity(reduceIdentity(identityNow, m));
             const ready = marks.some((m) => m.kind === "prompt");

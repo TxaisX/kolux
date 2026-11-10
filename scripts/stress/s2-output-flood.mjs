@@ -2,10 +2,14 @@
 // p95 <= 250 ms during the flood, memory bounded, the final line of every pane shows.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TERM, addProjectAndOpen, appMemMB, fmt, memByRole, gitInit, installProbe, pageErrors, paneText, seedProfile, slash, snapshot, stats, typeInto } from "./lib.mjs";
+import { TERM, addProjectAndOpen, appMemMB, fmt, memByRole, gitInit, installProbe, pageErrors, paneText, perfSession, seedProfile, slash, snapshot, stats, typeInto } from "./lib.mjs";
 
-export const title = "Output flood (8 panes x ~50 MB)";
-export const seed = seedProfile;
+// S2_GPU=1: the panes draw on WebGL, as a user's do with the GPU setting on automatic. The screen is a canvas
+// then, so the echo is timed from the token reaching the page (the output bus probe) plus two frames, and the
+// final lines are not read back from the screen (the done files still prove every byte was accepted).
+const GPU = process.env.S2_GPU === "1";
+export const title = `Output flood (8 panes x ~50 MB)${GPU ? ", WebGL panes" : ""}`;
+export const seed = (app, settings = {}) => seedProfile(app, GPU ? { terminalGpu: true, ...settings } : settings);
 const FLOODERS = 8;
 const LINES = 500_000; // x 100 bytes = ~50 MB per pane
 const FLOOD_BUDGET_S = 600;
@@ -34,20 +38,41 @@ process.stdin.on("data", (d) => { for (const b of d) { if (b === 3) process.exit
 process.stdout.write("ECHO-READY\\r\\n");
 `;
 
+// GPU mode: the output bus probe notes when each echo token reaches the page. Only short chunks are decoded
+// (an echo token or the ready line is a few bytes; a flood chunk is kilobytes), so the probe adds little work to the flood.
+const ECHO_PROBE_JS = `(() => {
+  const bus = window.__koluxOutputBus;
+  if (!bus) return "no output bus";
+  window.__echoAt = new Map();
+  bus.probe = (batch) => {
+    const t = performance.now();
+    for (const it of batch.items || []) {
+      if (typeof it.data !== "string" || it.data.length > 512) continue;
+      const text = atob(it.data);
+      if (text.includes("ECHO-READY")) window.__echoReady = true;
+      for (const m of text.matchAll(/\\[E(\\d+)\\]/g)) if (!window.__echoAt.has(m[0])) window.__echoAt.set(m[0], t);
+    }
+  };
+  return "installed";
+})()`;
+
 // In the page: type one character into pane `idx`'s input field and wait for the token the echo program answers with.
 const echoScript = (idx, count, gap) => `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
   const pane = [...document.querySelectorAll(${JSON.stringify(TERM)})].filter((e) => e.offsetParent !== null)[${idx}];
-  const ta = pane.querySelector(".xterm-helper-textarea"), rows = pane.querySelector(".xterm-rows");
+  const ta = pane.querySelector(".xterm-helper-textarea"), rows = ${GPU} ? null : pane.querySelector(".xterm-rows");
   window.__echoN = window.__echoN || 0;
   const out = [];
   for (let i = 0; i < ${count}; i++) {
     const token = "[E" + (window.__echoN + 1) + "]";
     const ms = await new Promise((resolve) => {
       const t0 = performance.now();
-      const done = (v) => { obs.disconnect(); clearTimeout(to); resolve(v); };
-      const obs = new MutationObserver(() => { if (rows.textContent.includes(token)) done(performance.now() - t0); });
-      obs.observe(rows, { subtree: true, childList: true, characterData: true });
+      let poll = 0;
+      const done = (v) => { obs?.disconnect(); clearInterval(poll); clearTimeout(to); resolve(v); };
+      const obs = rows ? new MutationObserver(() => { if (rows.textContent.includes(token)) done(performance.now() - t0); }) : null;
+      if (obs) obs.observe(rows, { subtree: true, childList: true, characterData: true });
+      else poll = setInterval(() => { if (window.__echoAt.has(token)) { clearInterval(poll); frame().then(frame).then(() => done(performance.now() - t0)); } }, 2);
       const to = setTimeout(() => done(-1), 5000);
       ta.value = "x";
       ta.dispatchEvent(new InputEvent("input", { data: "x", inputType: "insertText", bubbles: true }));
@@ -77,8 +102,9 @@ export async function run({ launch, checks }) {
   for (let i = 0; i < FLOODERS + 1; i++) await app.waitFor(`pane ${i + 1}'s input field`, async () => (await app.evalJs(`!!([...document.querySelectorAll(${JSON.stringify(TERM)})].filter((e) => e.offsetParent !== null)[${i}]?.querySelector(".xterm-helper-textarea"))`)), 20000);
   await app.sleep(4000); // the shells reach their prompts
   const echoPane = FLOODERS;
+  if (GPU) checks.note(`echo probe: ${await app.evalJs(ECHO_PROBE_JS)}`);
   await typeInto(app, echoPane, `node '${slash(join(files, "echo.js"))}'`);
-  await app.waitFor("the echo program", async () => (await paneText(app, echoPane))?.includes("ECHO-READY"), 30000, 500);
+  await app.waitFor("the echo program", async () => (GPU ? await app.evalJs("!!window.__echoReady") : (await paneText(app, echoPane))?.includes("ECHO-READY")), 30000, 500);
   const idle = await app.evalJs(echoScript(echoPane, 30, 100));
   const idleStats = stats(idle.filter((v) => v >= 0));
   checks.add("echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)", "p95 <= 250 ms (the same bar as under flood)", `p50 ${fmt(idleStats.p50)} ms, p95 ${fmt(idleStats.p95)} ms, max ${fmt(idleStats.max)} ms; ${idle.filter((v) => v < 0).length} lost`, idleStats.p95 <= 250 && !idle.includes(-1));
@@ -91,6 +117,11 @@ export async function run({ launch, checks }) {
   const rolePeak = {};
   const heap = { base: await jsHeapMB(), peak: -1 };
   const doneFile = (k) => join(files, `done-${k}`);
+  // Which renderer each shown pane draws with: a WebGL pane's screen holds a canvas, a plain one draws rows as elements.
+  checks.note(`renderers of the shown panes: ${JSON.stringify(await app.evalJs(`[...document.querySelectorAll(${JSON.stringify(TERM)})].filter((e) => e.offsetParent !== null).map((p) => p.querySelector(".xterm-screen canvas") ? "webgl" : p.querySelector(".xterm-rows") ? "dom" : "?").join(",")`))}`);
+  checks.note(`page engine: ${await app.evalJs(`navigator.userAgent.split(" ").find((x) => x.startsWith("Edg/")) +"; native base64 decode " + (typeof Uint8Array.fromBase64 === "function")`)}`);
+  const perf = await perfSession(app.cdpPort).catch((e) => (checks.note(`perf session: ${e.message}`), null));
+  const m0 = await perf?.metrics();
   const t0 = Date.now();
   for (let k = 0; k < FLOODERS; k++) await typeInto(app, k, `node '${slash(join(files, "flood.js"))}' ${k} '${slash(doneFile(k))}'`);
   const tStart = Date.now();
@@ -127,6 +158,13 @@ export async function run({ launch, checks }) {
   if (flooding.frozen) {
     checks.add("echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)", "p95 <= 250 ms", `FROZEN: ${flooding.frozen}`, false);
   }
+  // Page allocation over 20 s of the flood (short-lived garbage included), taken after the echo samples so it does not slow them.
+  const busy = Array.from({ length: FLOODERS }, (_, k) => !existsSync(doneFile(k))).filter(Boolean).length;
+  if (perf && busy === FLOODERS) {
+    const a = await perf.allocations(20000).catch((e) => ({ err: e.message }));
+    const busyAfter = Array.from({ length: FLOODERS }, (_, k) => !existsSync(doneFile(k))).filter(Boolean).length;
+    checks.note(a.err ? `allocation sample failed: ${a.err}` : `page allocations over 20 s of flood (sampling heap profiler, collected objects kept): ${a.totalMB.toFixed(0)} MB; floods running at the end ${busyAfter} of ${FLOODERS}; top: ${a.top.join("; ")}`);
+  } else checks.note(`allocation sample skipped: ${FLOODERS - busy} of ${FLOODERS} floods already done after the echo samples`);
   const floodStats = stats(flooding.frozen ? [] : flooding.filter((v) => v >= 0));
   const stillRunning = Array.from({ length: FLOODERS }, (_, k) => !existsSync(doneFile(k))).filter(Boolean).length;
   if (!flooding.frozen) checks.add("echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)", "p95 <= 250 ms", `p50 ${fmt(floodStats.p50)} ms, p95 ${fmt(floodStats.p95)} ms, max ${fmt(floodStats.max)} ms; ${(flooding.frozen ? [] : flooding).filter((v) => v < 0).length} keys never echoed within 5 s; ${stillRunning} of ${FLOODERS} floods still running when sampling ended`, floodStats.p95 <= 250 && !flooding.includes(-1));
@@ -137,6 +175,13 @@ export async function run({ launch, checks }) {
     /* judged below */
   }
   const tDone = Date.now();
+  const m1 = await perf?.metrics().catch(() => null);
+  if (m0 && m1) {
+    const d = perf.diff(m0, m1);
+    const span = (tDone - t0) / 1000;
+    checks.note(`page main thread over the flood (${span.toFixed(0)} s, CDP Performance.getMetrics): task ${d.TaskDuration.toFixed(1)} s (${((100 * d.TaskDuration) / span).toFixed(0)}% busy), script ${d.ScriptDuration.toFixed(1)} s, layout ${d.LayoutDuration.toFixed(1)} s, style ${d.RecalcStyleDuration.toFixed(1)} s; JS heap used ${(m0.JSHeapUsedSize / 1048576).toFixed(0)} -> ${(m1.JSHeapUsedSize / 1048576).toFixed(0)} MB`);
+  }
+  perf?.close();
   finished = true;
   await sampler;
   const secs = (tDone - tStart) / 1000;
@@ -156,7 +201,7 @@ export async function run({ launch, checks }) {
   // The final line: the bytes were accepted (done file); the screen has to show them too.
   const missing = [];
   let frozenEnd = null;
-  for (let k = 0; k < FLOODERS; k++) {
+  for (let k = 0; k < (GPU ? 0 : FLOODERS); k++) {
     let ok = false;
     for (let i = 0; i < 60 && !ok && !frozenEnd; i++) {
       try {
@@ -169,7 +214,8 @@ export async function run({ launch, checks }) {
     if (!ok) missing.push(k + 1);
   }
   if (frozenEnd) checks.note(frozenEnd);
-  checks.add("pane shows its final line (END-<k>) after the flood", "8 of 8 panes", `${FLOODERS - missing.length} of ${FLOODERS}${missing.length ? `; missing in pane(s) ${missing.join(", ")}` : ""}`, missing.length === 0);
+  if (GPU) checks.note("final lines not read back: WebGL panes draw on a canvas (the done files above prove every byte was accepted)");
+  else checks.add("pane shows its final line (END-<k>) after the flood", "8 of 8 panes", `${FLOODERS - missing.length} of ${FLOODERS}${missing.length ? `; missing in pane(s) ${missing.join(", ")}` : ""}`, missing.length === 0);
   const errs = await pageErrors(app).catch((e) => [`page unreachable: ${e.message.slice(0, 80)}`]);
   checks.add("page errors during the run", "0", `${errs.length}${errs.length ? `: ${[...new Set(errs)].slice(0, 5).join(" || ")}` : ""}`, errs.length === 0);
   const stamp = existsSync(doneFile(0)) ? readFileSync(doneFile(0), "utf8") : "never";

@@ -89,6 +89,7 @@ export function newApp(opts, name) {
   makeTemp(temp);
   const app = createApp({ root: opts.root, port: opts.port, cdp: opts.cdp, identifier: IDENTIFIER, temp, suffix: ".stress", offscreen: true, buildMinutes: 25, log: (...a) => console.log(" ", ...a) });
   app.temp = temp;
+  app.cdpPort = opts.cdp;
   app.cdpTimeoutMs = 120000; // a page that does not answer in 2 minutes counts as frozen
   app.buildKind = "debug dev build (pnpm tauri dev: the web view loads the vite dev server)";
   if (opts.release) useReleaseBuild(app, opts);
@@ -304,6 +305,65 @@ export const paneText = (app, index, sel = TERM) =>
 export async function typeInto(app, index, text, sel = TERM) {
   await app.focusPane(sel, index, ".xterm-helper-textarea");
   await app.cdp("insert", text, "enter");
+}
+
+// ---------- page CPU and allocation over a window (S2) ----------
+// One CDP session held open on the main page: Performance metrics (cumulative task, script, layout and style
+// time) read at two points give the page's main-thread work between them; the sampling heap profiler, told to
+// keep objects the GCs collected, gives what was allocated in a window (short-lived garbage included) and
+// which functions allocated it. Opened beside cdp.mjs's one-shot connections, never instead of them.
+export async function perfSession(port) {
+  const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
+  const target = targets.find((t) => t.type === "page" && /localhost:14\d\d|tauri\.localhost/.test(t.url));
+  if (!target) throw new Error("perfSession: no main page target");
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((r, j) => {
+    ws.onopen = r;
+    ws.onerror = j;
+  });
+  let id = 0;
+  const waiting = new Map();
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.id && waiting.has(m.id)) {
+      waiting.get(m.id)(m);
+      waiting.delete(m.id);
+    }
+  };
+  const send = (method, params = {}) =>
+    new Promise((r) => {
+      const i = ++id;
+      waiting.set(i, r);
+      ws.send(JSON.stringify({ id: i, method, params }));
+    });
+  await send("Performance.enable", { timeDomain: "threadTicks" });
+  const metrics = async () => Object.fromEntries(((await send("Performance.getMetrics")).result?.metrics ?? []).map((m) => [m.name, m.value]));
+  return {
+    metrics,
+    /** Seconds of each duration metric between two metrics() readings. */
+    diff: (a, b) => Object.fromEntries(["TaskDuration", "ScriptDuration", "LayoutDuration", "RecalcStyleDuration"].map((k) => [k, (b[k] ?? 0) - (a[k] ?? 0)])),
+    async allocations(ms) {
+      await send("HeapProfiler.enable");
+      await send("HeapProfiler.startSampling", { samplingInterval: 32768, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+      await new Promise((r) => setTimeout(r, ms));
+      const prof = (await send("HeapProfiler.stopSampling")).result?.profile;
+      await send("HeapProfiler.disable");
+      const byFn = new Map();
+      let total = 0;
+      const walk = (n) => {
+        const self = n.selfSize ?? 0;
+        total += self;
+        const f = n.callFrame;
+        const k = `${f.functionName || "(anon)"} ${(f.url || "").split("/").pop()}:${f.lineNumber}:${f.columnNumber}`;
+        if (self) byFn.set(k, (byFn.get(k) ?? 0) + self);
+        for (const c of n.children ?? []) walk(c);
+      };
+      if (prof?.head) walk(prof.head);
+      const top = [...byFn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${(v / 1048576).toFixed(0)} MB`);
+      return { totalMB: total / 1048576, top };
+    },
+    close: () => ws.close(),
+  };
 }
 
 // ---------- app footprint (S11) ----------

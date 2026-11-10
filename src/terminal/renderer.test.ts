@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, onSlotFree, parkWhenHidden, PARK_AFTER_MS, renderNowHook, resumeHook, SYNC_WAIT_MS, watchResume, type ParkHooks, type RendererMode, type WebglLike } from "./renderer";
+import { attachRenderer, GPU_FIELD, gpuOn, onHeartbeat, onSlotFree, parkWhenHidden, PARK_AFTER_MS, quietSelection, renderNowHook, resumeHook, SYNC_WAIT_MS, watchResume, type ParkHooks, type RendererMode, type WebglLike } from "./renderer";
 
 /** Lets the slot hand-on (queued as a microtask) run. */
 const handOn = () => Promise.resolve();
@@ -580,4 +580,35 @@ test("every pane's resume watch rides one window-level heartbeat that runs only 
   const offC = onHeartbeat(() => {}, timers);
   expect(live.size).toBe(1);
   offC();
+});
+
+describe("DT-C245 quietSelection", () => {
+  const fake = () => {
+    const calls: Array<boolean | undefined> = [];
+    const service = { hasSelection: false, refresh: (linux?: boolean) => void calls.push(linux) };
+    return { term: { _core: { _selectionService: service } }, service, calls };
+  };
+  test("a scroll with nothing selected asks for no redraw; a selection, and its removal, still do", () => {
+    const { term, service, calls } = fake();
+    const undo = quietSelection(term);
+    expect(undo).not.toBeNull();
+    service.refresh();
+    service.refresh();
+    expect(calls).toEqual([]);
+    service.hasSelection = true;
+    service.refresh(true);
+    service.refresh();
+    expect(calls).toEqual([true, undefined]);
+    service.hasSelection = false;
+    service.refresh(); // wipes the highlight once
+    service.refresh();
+    expect(calls.length).toBe(3);
+    undo?.();
+    service.refresh();
+    expect(calls.length).toBe(4);
+  });
+  test("an xterm without the service is left alone", () => {
+    expect(quietSelection({})).toBeNull();
+    expect(quietSelection({ _core: { _selectionService: { refresh() {} } } })).toBeNull();
+  });
 });
