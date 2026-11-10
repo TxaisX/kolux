@@ -1,4 +1,5 @@
 // Stress runner: node scripts/stress/run.mjs <S1..S8|S10|S11|all> [--minutes 30 for S8] [--port 1440 --cdp 9260 --temp G:/Temp/stress]
+// --release runs the shipped build (pnpm tauri build --no-bundle, built once per run) instead of the debug dev build; --skip-build reuses the release exe already built.
 // Each scenario launches the app from this checkout (scripts/evidence/app-launch.mjs: scratch homes, hidden off-screen window,
 // own identifier), measures, closes it, clears its scratch folder, prints PASS / FAIL and writes
 // evidence/stress-<scenario>-<short sha>.txt with every threshold beside what was measured.
@@ -20,12 +21,12 @@ const opt = (name, fallback) => {
   return i >= 0 && args[i + 1] !== undefined ? args[i + 1] : fallback;
 };
 const want = (args.find((a) => /^(S(1[01]|[1-9])|all)$/i.test(a)) ?? "").toUpperCase();
-const opts = { root, port: Number(opt("port", "1440")), cdp: Number(opt("cdp", "9260")), temp: opt("temp", "G:/Temp/stress").replace(/\\/g, "/") };
+const opts = { root, port: Number(opt("port", "1440")), cdp: Number(opt("cdp", "9260")), temp: opt("temp", "G:/Temp/stress").replace(/\\/g, "/"), release: args.includes("--release"), skipBuild: args.includes("--skip-build") };
 
 const modules = { S1: "./s1-pane-churn.mjs", S2: "./s2-output-flood.mjs", S3: "./s3-many-projects.mjs", S4: "./s4-corrupt-state.mjs", S5: "./s5-hard-kill.mjs", S6: "./s6-unicode-ansi.mjs", S7: "./s7-editor-big-files.mjs", S8: "./s8-soak.mjs", S10: "./s10-git-load.mjs", S11: "./s11-footprint.mjs" };
 const list = want === "ALL" ? Object.keys(modules) : modules[want] ? [want] : null;
 if (!list) {
-  console.error("usage: node scripts/stress/run.mjs <S1..S8|S10|S11|all> [--port 1440] [--cdp 9260] [--temp G:/Temp/stress]");
+  console.error("usage: node scripts/stress/run.mjs <S1..S8|S10|S11|all> [--port 1440] [--cdp 9260] [--temp G:/Temp/stress] [--release [--skip-build]]");
   process.exit(2);
 }
 
