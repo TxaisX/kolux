@@ -1,0 +1,8 @@
+﻿silent run: pid 43140 on hidden desktop 'kolux-silent-run', started 2026-11-09T18:25:38
+command: pnpm smoke -- --port 1441 --cdp 9271 --temp G:\Temp\smoke-ready-int
+sanity: the enumeration sees 28 visible windows in total on the user's desktop (so an empty result is a real zero)
+watch: 3212 samples of the user's desktop, 1379 processes seen in the run's tree
+visible windows of the run on the user's desktop: 0
+samples where the foreground window belonged to the run: 0
+positive control, visible titled windows of the run on the hidden desktop: 14 -> 27516|Kolux; 40084|Kolux; 35172|Kolux; 9280|Kolux; 37512|Kolux; 17832|Kolux; 30744|Kolux; 30716|Kolux; 6912|Kolux; 41228|Kolux; 40692|Kolux; 12632|Kolux; 32088|Kolux; 43684|Kolux
+SILENT: True
