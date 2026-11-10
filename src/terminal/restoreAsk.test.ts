@@ -42,14 +42,15 @@ test("C24-R1-01: the layout keeps the key of a tab that could not reattach, so i
 });
 
 test("C24-R1-01: the pane branches on restored, keeps the tab with a reason and a Try again, and never fails it", () => {
-  const at = pane.indexOf("if (!keepsTab(back, restored))");
+  // DT-C248 review: a pane remounted in another cell (moved) keeps its tab the same way.
+  const at = pane.indexOf("if (!keepsTab(back, restored || moved))");
   expect(at).toBeGreaterThan(-1);
   const branch = pane.slice(at, at + 700);
   expect(branch).toContain("setRestoreAsk(back.reason)");
   expect(branch).toContain("restoreFailed.current?.()");
   // The drop path is still there for a fresh tab, and only for it.
   expect(branch).toContain("fail(back.reason)");
-  expect(branch.indexOf("keepsTab(back, restored)")).toBeLessThan(branch.indexOf("fail(back.reason)"));
+  expect(branch.indexOf("keepsTab(back, restored || moved)")).toBeLessThan(branch.indexOf("fail(back.reason)"));
   // The body notice offers the retry and the close, and the retry asks the service again.
   expect(pane).toContain("This tab's terminal did not come back");
   expect(pane).toContain("Try again");

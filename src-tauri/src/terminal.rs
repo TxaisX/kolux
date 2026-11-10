@@ -1617,6 +1617,19 @@ impl Terminals {
         (inner.sessions.contains_key(&id) && !inner.ended.contains(&id)).then_some(id)
     }
 
+    /// DT-C248 review: the running terminal of pane `pane_key` as a snapshot (ORCH-057): its newest
+    /// output and the output count it covers. A pane remounted in another cell redraws from it and drops
+    /// the output events it already holds by count, instead of drawing them twice. None when the pane has
+    /// no running terminal; the saved history file is for that case.
+    pub fn live_snapshot(&self, pane_key: u32) -> Option<Snapshot> {
+        let mut inner = self.inner.lock().ok()?;
+        let id = *inner.panes.get(&pane_key)?;
+        if !inner.sessions.contains_key(&id) || inner.ended.contains(&id) {
+            return None;
+        }
+        Some(inner.snaps.entry(id).or_default().snapshot())
+    }
+
     /// Row 211: the process generation of session `id` (changes on every spawn, respawn or adoption of that id), None for an unknown id.
     pub fn process_generation(&self, id: u32) -> Option<u64> {
         self.inner.lock().ok()?.process_gen.get(&id).copied()
@@ -1916,6 +1929,15 @@ pub fn attach_answer(ours: u64, running: Option<u32>, asked: u64) -> Attach {
 pub fn terminal_attach(terminals: tauri::State<'_, Terminals>, pane_key: u32, generation: u64) -> Attach {
     terminals.wait_linked(LINK_WAIT);
     attach_answer(self::generation(), terminals.attached(pane_key), generation)
+}
+
+/// DT-C248 review: what a pane still running a terminal redraws from when it is remounted in another cell:
+/// the terminal's newest output with the count it covers (`Terminals::live_snapshot`); None when nothing runs
+/// for the pane. Async for the same reason as `terminal_attach`.
+#[tauri::command(async)]
+pub fn terminal_live_history(terminals: tauri::State<'_, Terminals>, pane_key: u32) -> Option<Snapshot> {
+    terminals.wait_linked(LINK_WAIT);
+    terminals.live_snapshot(pane_key)
 }
 
 /// TERM-115: async for the same reason as `terminal_write`: starting a console host can take a
@@ -2291,6 +2313,25 @@ mod tests {
         }
         assert_eq!(trim_history(line, line.len()), line);
         assert_eq!(std::str::from_utf8(trim_history(line, 3)).unwrap(), "end");
+    }
+
+    /// DT-C248 review: a pane remounted in another cell redraws from its running terminal's snapshot, whose
+    /// count matches the output events, so the chunks the replay already holds are dropped by count; a pane
+    /// whose terminal ended or never was gets none and falls back to the saved file.
+    #[test]
+    fn dt_c248_a_live_terminal_hands_its_snapshot_to_the_pane_by_key() {
+        let t = Terminals::default();
+        t.fake_session(7, "C:/w", None);
+        t.inner.lock().unwrap().panes.insert(3, 7);
+        t.inner.lock().unwrap().panes.insert(4, 8); // pane 4's session is gone
+        let seq = t.inner.lock().unwrap().snaps.entry(7).or_default().push(b"first line\r\nsecond\r\n");
+        let snap = t.live_snapshot(3).expect("a running terminal gives a snapshot");
+        assert_eq!(snap.seq, seq, "the count matches the newest output event's");
+        assert_eq!(base64::engine::general_purpose::STANDARD.decode(&snap.data).unwrap(), b"first line\r\nsecond\r\n");
+        assert_eq!(t.live_snapshot(4), None, "a pane whose terminal is gone");
+        assert_eq!(t.live_snapshot(5), None, "a pane that never started anything");
+        t.inner.lock().unwrap().ended.insert(7);
+        assert_eq!(t.live_snapshot(3), None, "an ended terminal is not redrawn from");
     }
 
     /// APP-052: a pane gets its terminal back only from the run that started it: attached while the

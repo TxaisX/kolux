@@ -208,6 +208,22 @@ export class Startup {
   }
 }
 
+/** SESS-032 / DT-C248 review: the command a pane types at its first prompt. Only a shell pane types one
+ *  (an agent's opening prompt is handed over by Rust once, agent_prompt_send), and only on a fresh start:
+ *  a pane remounted in another cell (`moved`) keeps the shell that already ran it, so the dev-server tab's
+ *  command, Open in terminal's `cd` and the like never run a second time (a pending Startup also holds pastes). */
+export function startupCommand(agent: Agent, typed: string | undefined, moved: boolean): string | undefined {
+  return agent === "shell" && !moved ? typed : undefined;
+}
+
+/** DT-C248 review: the identity a pane starts from. A pane remounted in another cell is the same program
+ *  mid-run, so it starts from what the window last heard of it (`before`), not from IDLE: an IDLE report at
+ *  mount would read as the prompt coming back (board/chip.ts promptReturned) and mute the hooks of an agent
+ *  started by hand in a shell tab, and a scanner starting from IDLE would never report the real return. */
+export function seededIdentity(moved: boolean, before: Identity | undefined): Identity {
+  return moved && before ? before : IDLE;
+}
+
 /** TERM-058: the agent a window title names, when it does: only by the marks the agent itself prints (STAT-033, titleOwner), never a name inside the task text; marks that conflict name nobody. */
 export function agentFromTitle(title: string): Exclude<Agent, "shell"> | null {
   const { owners, unknown } = titleOwner(title);
@@ -261,8 +277,8 @@ export const TITLE_PACE_MS = 200;
 export function identityPacer(apply: (id: Identity) => void, wait: (fn: () => void, ms: number) => () => void = (fn, ms) => {
   const t = setTimeout(fn, ms);
   return () => clearTimeout(t);
-}) {
-  let shown: Identity = IDLE;
+}, start: Identity = IDLE) {
+  let shown: Identity = start;
   let pending: Identity | null = null;
   let cancel: (() => void) | null = null;
   const flush = () => {

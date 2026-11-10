@@ -51,15 +51,28 @@ describe("DT-C248: movedKeys names the panes React will unmount and mount again"
 });
 
 describe("DT-C248: the hand-over mark lives from the layout change to the next mount", () => {
-  it("is seen by the unmount and taken once by the new mount", () => {
+  it("is seen by the unmount and by the new mount, and taken once the new mount binds its terminal", () => {
     handOver([5]);
     expect(handedOver(5)).toBe(true);
     expect(handedOver(4)).toBe(false);
     expect(handedOver(undefined)).toBe(false);
+    expect(handedOver(5)).toBe(true); // the new mount reads it at mount without taking it
+    expect(takeOver(5)).toBe(true); // ...and takes it when its terminal id is bound
+    expect(handedOver(5)).toBe(false);
+    expect(takeOver(5)).toBe(false); // a later mount of the key starts plain (a close and reopen)
+    expect(takeOver(undefined)).toBe(false);
+  });
+
+  it("a mount unmounted before it bound its terminal passes the mark on (dev double mount, a second move mid-attach)", () => {
+    handOver([5]);
+    // mount B: reads the mark, is unmounted before its attach answers; its cleanup sees the mark still set
+    expect(handedOver(5)).toBe(true);
+    const bSawAtCleanup = handedOver(5);
+    expect(bSawAtCleanup).toBe(true); // so B's late attach answer does not kill the terminal either
+    // mount C of the same key: reads the mark, attaches, binds its id
+    expect(handedOver(5)).toBe(true);
     expect(takeOver(5)).toBe(true);
     expect(handedOver(5)).toBe(false);
-    expect(takeOver(5)).toBe(false); // a second mount of the key starts plain (dev double mount, or a later close and reopen)
-    expect(takeOver(undefined)).toBe(false);
   });
 
   it("a close cancels the mark, so a stale one never keeps a closed tab's terminal alive", () => {

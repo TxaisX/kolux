@@ -10,7 +10,9 @@
 // then attach to the terminal the service still runs). The PTY, the program and its session stay.
 //
 // A key is handed over only when its group really changes, and a close takes the key back, so a pane
-// that is closed never skips the reap because of a stale mark.
+// that is closed never skips the reap because of a stale mark. The new mount reads the mark when it
+// mounts and takes it only once its terminal id is bound (takeOver), so a mount that is unmounted
+// before then (StrictMode's double mount, a second move during the first attach) passes it on.
 
 import { groupOf } from "./grid";
 
@@ -36,7 +38,10 @@ export function handedOver(key: number | undefined): boolean {
   return key !== undefined && moving.has(key);
 }
 
-/** The new mount of the pane takes the hand-over: true once, then the key is plain again. */
+/** The mount that bound the terminal to its view takes the hand-over: true once, then the key is plain again.
+ *  Review of DT-C248: the mark is taken when the new mount has its terminal id, not when it mounts, so a
+ *  mount that never gets that far (the dev double mount, a second move while the first is still attaching)
+ *  leaves the mark for the mount after it, and the terminal is never reaped between them. */
 export function takeOver(key: number | undefined): boolean {
   if (key === undefined || !moving.has(key)) return false;
   moving.delete(key);

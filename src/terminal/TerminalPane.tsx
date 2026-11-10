@@ -7,7 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
-import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
+import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
@@ -42,7 +42,7 @@ import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./histo
 import { claimsClick } from "./linkClick";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";
-import { fromThisService, orphanOf, reattach, type Attach, type Reattached, type ServiceInfo } from "./reattach";
+import { fromThisService, needsSize, orphanOf, reattach, type Attach, type Reattached, type ServiceInfo } from "./reattach";
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
@@ -162,6 +162,9 @@ type Props = {
   notice?: PaneNotice | null;
   /** TERM-106: the pane came back from the saved layout; what it printed before is shown first. */
   restored?: boolean;
+  /** DT-C248 review: what the window last heard of this pane's program (its tab's identity), so a pane
+   *  remounted in another cell starts from it instead of reporting IDLE for a program still running. */
+  identityBefore?: Identity;
   /** TERM-075: the setting "Programs can copy to the clipboard" (OSC 52); on unless turned off. */
   clipboardFromPrograms?: boolean;
   /** TERM-107 (T-066-c): false when the restored agent's start line carries no resume form. */
@@ -266,7 +269,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -368,7 +371,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // ACCT-050: the agent the user started by hand in this shell, as Rust recognises it.
   const [found, setFound] = useState<Agent | null>(null);
   // TERM-058: the running program as the shell's marks describe it (shellMarks.ts); the tab follows it too.
-  const [live, setLive] = useState<Identity>(IDLE);
+  // DT-C248 review: a pane remounted in another cell (handover.ts) starts from what the window last heard,
+  // so its mount-time report changes nothing there (an IDLE report would read as the prompt coming back).
+  const [live, setLive] = useState<Identity>(() => seededIdentity(handedOver(number), identityBefore));
   const identity = useRef(onIdentity);
   identity.current = onIdentity;
   useEffect(() => {
@@ -691,13 +696,18 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     }
 
     let alive = true;
+    // DT-C248 review: whether this mount was unmounted on its way to another cell (read once, at cleanup),
+    // so a start or attach answer that lands after the unmount leaves the terminal to the next mount.
+    let handed = false;
     let profileRows: number | null = null; // ACCT-059: the memory profile's rows, once known
     // C26-R3-01: the drawing this pane belongs to, so an unmount that hands the terminals to the next drawing
     // (a re-draw of the window, not a closed tab) leaves them running.
     const gen = windowGeneration.current;
     // DT-C248 (TERM-016 / TERM-054): this mount follows a move to another cell: the pane before it left
-    // its terminal running, so this one replays the saved output and takes the terminal back, as after a reload.
-    const moved = takeOver(number);
+    // its terminal running, so this one replays its output and takes the terminal back, as after a reload.
+    // The mark is read here and taken once the id is bound (handover.ts takeOver), so a mount that ends
+    // before then (the dev double mount, a second move mid-attach) passes it on.
+    const moved = handedOver(number);
     // A late-loading font must not leave a live session drawn in the fallback face: once the chosen
     // font is ready, re-measure and rebuild the glyphs.
     if (document.fonts?.ready) {
@@ -873,10 +883,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const gate = new Gate(wrapped);
     // SESS-032 (T-163): an agent pane's opening prompt is handed over by Rust exactly once
     // (agent_prompt_send, from App.tsx's onPty); only a shell pane types its startup command here.
-    const startup = new Startup(agent === "shell" ? typed : undefined, wrapped);
-    let identityNow: Identity = IDLE;
+    // DT-C248 review: a pane remounted in another cell keeps the shell that already typed it (startupCommand).
+    const startup = new Startup(startupCommand(agent, typed, moved), wrapped);
+    // DT-C248 review: a remounted pane's scanner starts from the identity the window already has (`live` is
+    // the mount's seeded state), so the prompt coming back after the move is still reported as a change.
+    let identityNow: Identity = live;
     // A title-only change is paced (shellMarks.identityPacer); running and agent changes go at once.
-    const pacer = identityPacer(setLive);
+    const pacer = identityPacer(setLive, undefined, live);
     const noteIdentity = (next: Identity) => {
       if (next === identityNow) return;
       identityNow = next;
@@ -1007,9 +1020,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         onTerminalOutput((e) => {
           // APP-052: output from a replaced run of the terminal service is dropped, never drawn.
           if (!fromThisService(e.generation, serviceRef.current)) return;
-          // ORCH-057: already in the snapshot this pane redrew from; acknowledged unread so the reader's count stays true
-          if (e.id === idRef.current && !resync.accept(e.seq)) return acks.drew(chunkLength(e));
           const draw = () => {
+            // ORCH-057: already in the snapshot this pane redrew from; acknowledged unread so the reader's count stays true.
+            // DT-C248 review: the same for a chunk queued while a moved pane replayed (the replay holds it).
+            if (!resync.accept(e.seq)) return acks.drew(chunkLength(e));
             const bytes = chunkBytes(e); // DT-C245: shared with the other readers of this chunk
             const marks = scanner.feed(bytes);
             for (const m of marks) noteIdentity(reduceIdentity(identityNow, m));
@@ -1026,7 +1040,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             notePrinted(openRef.current.cwd, bytes); // T-242 (BROW-067): printed dev-server addresses
             sawOutput();
           };
-          if (idRef.current === null && forPane(e, null, number)) draw();
+          // DT-C248 review: a pane with a replay due (moved, or back from the saved layout) holds its chunks
+          // until the id is bound, after the replay, so nothing is drawn before, and then again inside, it.
+          if (idRef.current === null && !(moved || restored) && forPane(e, null, number)) draw();
           else mine(e.id, draw);
         }),
         // CLI-024: the app asks for the frame as it looks now; the rows on screen go back by id.
@@ -1090,10 +1106,15 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // (ACCT-046) prints no mark: neither is held.
           if (back !== null || !printsMarks(ran)) openGate();
           if (!alive) {
-            if (killsOnUnmount(gen) && !handedOver(number)) invoke("terminal_kill", { id }).catch(() => {});
+            // DT-C248: a pane unmounted on its way to another cell leaves the terminal to the next mount.
+            if (killsOnUnmount(gen) && !handed) invoke("terminal_kill", { id }).catch(() => {});
             return;
           }
           idRef.current = id;
+          takeOver(number); // DT-C248: the hand-over ends here, with the terminal bound to this view
+          // DT-C248 review: a terminal taken back is sized to its old view; the observer fired during the
+          // replay while the id was unknown, so the size goes now, once.
+          if (needsSize(back)) resize();
           if (keepInView) {
             const follow = term.onWriteParsed(() => term.scrollToLine(viewTop(term.buffer.active, term.rows)));
             const stop = term.onKey(() => {
@@ -1156,7 +1177,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // APP-052: read once the service linked, which first adds what a kept terminal printed with no window open.
           await tauriService.info().catch(() => null);
           if (!alive) return;
-          const saved = await invoke<string>("terminal_history", { paneKey: number }).catch(() => "");
+          // DT-C248 review: a terminal still running for the pane gives its newest output with the count it
+          // covers (ORCH-057 snapshot), so the chunks it emits during the replay, held above, are dropped by
+          // count instead of drawn a second time; the saved file is for a terminal that is gone.
+          const snap = await invoke<Snapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
+          if (!alive) return;
+          if (snap) resync.took(snap);
+          const saved = snap?.data ?? (await invoke<string>("terminal_history", { paneKey: number }).catch(() => ""));
           if (!alive) return;
           const text = replay(saved);
           if (text) {
@@ -1172,7 +1199,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // to answer, up to a hard limit; no answer or too old a service fails the pane in plain words.
         // A pane without a key (nothing saved for it) has no terminal to ask for.
         const back = number === undefined ? null : await reattach(tauriService, number, serviceRef.current);
-        const orphan = orphanOf(back, alive);
+        const orphan = orphanOf(back, alive, handed);
         if (orphan !== null) invoke("terminal_kill", { id: orphan }).catch(() => {});
         if (!alive) return;
         if (back !== null) {
@@ -1181,7 +1208,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             // cannot hand its terminal back: it says why and offers Try again, and the layout keeps its
             // key, so the saved output is not pruned at the next start. A fresh tab with no terminal to
             // take back is still a session that failed to start (SESS-024).
-            if (!keepsTab(back, restored)) {
+            // DT-C248 review: a moved pane that cannot take its terminal back keeps its tab too (the program runs on).
+            if (!keepsTab(back, restored || moved)) {
               fail(back.reason);
               return;
             }
@@ -1392,7 +1420,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       unlisteners.forEach((u) => u());
       const id = idRef.current;
       // DT-C248: a pane on its way to another cell leaves its terminal to the mount that follows (handover.ts).
-      if (id !== null && killsOnUnmount(gen) && !handedOver(number)) invoke("terminal_kill", { id }).catch(() => {});
+      handed = handedOver(number);
+      if (id !== null && killsOnUnmount(gen) && !handed) invoke("terminal_kill", { id }).catch(() => {});
       parking.current?.stop();
       parking.current = null;
       choice.dispose();
@@ -1401,6 +1430,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       clearTimeout(readyWait);
       output.dispose();
       outputRef.current = null;
+      // DT-C248 review: what this view drew but has not yet acknowledged goes out before the hand-over,
+      // so the reader's unacked window is not left short for the next mount.
+      if (handed) acks.flush();
       acks.stop();
       term.dispose();
       delete (el as DevHost).__koluxTerm;
