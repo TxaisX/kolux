@@ -1,5 +1,5 @@
-stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T09:12:01.699Z on 4e1ba06d (G:\Dev\kolux-rs-lanes\flood-mem)
-args: S2 --release --port 1452 --cdp 9272 --temp G:/Temp/stress/floodmem; ran 725 s
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T09:12:01.699Z on 4e1ba06d (<lane>)
+args: S2 --release --port 1452 --cdp 9272 --temp <temp>; ran 725 s
 
 PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
       bar: p95 <= 250 ms (the same bar as under flood)
