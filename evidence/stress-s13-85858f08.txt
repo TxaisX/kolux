@@ -1,5 +1,6 @@
 stress S13 (agent sleep, live on the release build with a Claude Code stand-in (an agent watched to its finish and then left sleeps, wakes on resume; not when visible, typed in or busy)) at 2026-11-10T17:03:45.074Z on 85858f08 (<lane>)
 args: S13 --release --port 1446 --cdp 9266 --temp <temp>; ran 1489 s
+note (review, same day): the "tab was in front" check below read A's tab state once the finish was seen (within 500 ms of it), not at the finish itself; the harness label now says "with its tab still in front right after". Results unchanged.
 
 +887 s  build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); built in 14.7 min; exe 26.4 MB, modified 2026-11-10T16:53:39.248Z
 +887 s  Claude Code is a STAND-IN (node script holding 600 MB, running Kolux's installed hooks; no network, no account), not Claude Code

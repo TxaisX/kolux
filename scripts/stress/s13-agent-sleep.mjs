@@ -196,11 +196,13 @@ export async function run(ctx) {
   await pressTabIn(app, P.V.key, tabOf.A);
   await app.sleep(800);
   const finishedA = await app.waitFor("A's turn to finish while its tab is in front", async () => readLog(app).find((e) => e.finished && e.pid === P.A.pid) ?? null, 90_000, 500).catch(() => null);
-  const aShownAtFinish = (await paneKeys(app)).find((p) => p.key === P.A.key)?.shown === true;
+  // Read once the finish has been seen (within the poll's 500 ms), not at the finish itself: it says A's tab was still
+  // in front right after the turn finished, and nothing switched tabs between pressing A's tab and this read.
+  const aShownAfterFinish = (await paneKeys(app)).find((p) => p.key === P.A.key)?.shown === true;
   await app.sleep(1500);
   const leftA = Date.now();
-  log(`pane A: turn finished ${finishedA ? `at +${fmt((finishedA.t - t0) / 1000, 0)} s` : "never"} with its tab in front (shown ${aShownAtFinish}, page ${await docVisible(app)}); switching to D's tab now, so the focus leaves A after it finished`);
-  checks.add("A's turn finished while its tab was in front, and the focus left it afterwards (the watched-then-left case, DT-C247)", "finished, shown, then left", `finished ${!!finishedA}, shown ${aShownAtFinish}, left ${finishedA ? fmt((leftA - finishedA.t) / 1000, 1) : "-"} s after`, !!finishedA && aShownAtFinish && leftA > finishedA.t);
+  log(`pane A: turn finished ${finishedA ? `at +${fmt((finishedA.t - t0) / 1000, 0)} s` : "never"}; its tab still in front right after (shown ${aShownAfterFinish}, page ${await docVisible(app)}); switching to D's tab now, so the focus leaves A after it finished`);
+  checks.add("A's turn finished with its tab still in front right after, and the focus left it afterwards (the watched-then-left case, DT-C247)", "finished, shown right after, then left", `finished ${!!finishedA}, shown right after ${aShownAfterFinish}, left ${finishedA ? fmt((leftA - finishedA.t) / 1000, 1) : "-"} s after`, !!finishedA && aShownAfterFinish && leftA > finishedA.t);
 
   // ---- D: text typed into its terminal after its turn finished, Enter never pressed ----
   await pressTabIn(app, P.V.key, tabOf.D);

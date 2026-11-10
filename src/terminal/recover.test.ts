@@ -67,3 +67,20 @@ describe("screenLines", () => {
     expect(screenLines(buf, 2)).toEqual(["head-tail", "last"]);
   });
 });
+
+describe("DT-C247: a reply held before the terminal connects", () => {
+  it("is sent as a reply, typed keys as typing, in order, neighbours of one kind joined", () => {
+    const held = new HeldKeys(64);
+    held.push("[1;1R", true); // the console's opening cursor query, answered before the id is known
+    held.push("a");
+    held.push("b");
+    held.push("[O", true);
+    const sent: [string, boolean][] = [];
+    held.drain((d, auto) => sent.push([d, auto]));
+    expect(sent).toEqual([
+      ["[1;1R", true],
+      ["ab", false],
+      ["[O", true],
+    ]);
+  });
+});

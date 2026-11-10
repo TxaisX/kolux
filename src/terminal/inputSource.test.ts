@@ -4,7 +4,11 @@
 // @vitest-environment node
 import { expect, test } from "vitest";
 import { Terminal } from "@xterm/xterm";
-import { AUTO, trackInputSource } from "./inputSource";
+// @ts-expect-error vitest runs on Node; the app's browser tsconfig has no Node types.
+import { readFileSync } from "node:fs";
+import { AUTO, autoSender, trackInputSource } from "./inputSource";
+import { hookColourMode, modeReport } from "./colourMode";
+import { DA1_WINDOWS, XTVERSION_REPLY, hookQueries } from "./queries";
 
 /** A terminal with the tracker on it and every onData payload recorded with its verdict. */
 function tracked() {
@@ -75,4 +79,35 @@ test("without the core event every payload reads as typed (the old behaviour: an
 
 test("the pane's own answers carry the auto flag the write command reads", () => {
   expect(AUTO).toEqual({ auto: true });
+});
+
+test("the pane's own answers (DA1, XTVERSION, the dark-or-light answer and the unprompted mode report) go out as automatic", async () => {
+  const term = new Terminal({ allowProposedApi: true });
+  const sent: [string, boolean][] = [];
+  // the pane's write, as the pane calls it: (data, only, { auto })
+  const write = (data: string, _only: undefined, opts: { auto?: boolean } = {}) => void sent.push([data, opts.auto === true]);
+  const send = autoSender(write);
+  let dark = true;
+  const mode = hookColourMode(term, send, () => dark);
+  const queries = hookQueries(term, send, { windows: true, holdVersion: () => false });
+  await new Promise<void>((done) => term.write("\x1b[c\x1b[>q\x1b[?996n\x1b[?2031h", () => done()));
+  dark = false;
+  mode.changed();
+  expect(sent).toEqual([
+    [DA1_WINDOWS, true],
+    [XTVERSION_REPLY, true],
+    [modeReport(true), true],
+    [modeReport(false), true],
+  ]);
+  mode.dispose();
+  queries.dispose();
+});
+
+test("the pane wires its own answers through the automatic sender, not the bare write", () => {
+  const src = readFileSync(new URL("./TerminalPane.tsx", import.meta.url), "utf8");
+  expect(src).toMatch(/hookColourMode\(term, sendAuto,/);
+  expect(src).toMatch(/hookQueries\(term, sendAuto,/);
+  expect(src).not.toMatch(/hook(ColourMode|Queries)\(term, write,/);
+  expect(src).toMatch(/held\.push\(data, auto\)/);
+  expect(src).toMatch(/held\.drain\(\(d, a\) => write\(d, undefined, \{ auto: a \}\)\)/);
 });

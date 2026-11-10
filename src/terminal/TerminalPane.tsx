@@ -33,7 +33,7 @@ import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowH
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
-import { AUTO, trackInputSource } from "./inputSource";
+import { AUTO, autoSender, trackInputSource } from "./inputSource";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
@@ -817,7 +817,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         return;
       }
       if (id === null) {
-        if (!held.push(data)) setFlash("Keys typed before the shell started were dropped past 16 KB");
+        if (!held.push(data, auto)) setFlash("Keys typed before the shell started were dropped past 16 KB");
         return;
       }
       return (chain = chain
@@ -1109,7 +1109,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           const queued = early ?? [];
           early = null;
           for (const h of queued) if (h.id === id) h.run();
-          held.drain(write);
+          held.drain((d, a) => write(d, undefined, { auto: a }));
           if (held.dropped > 0) setFlash(`${held.dropped} characters typed before the shell started were dropped`);
           if (isFocused.current) term.focus();
         } catch (err) {
@@ -1230,8 +1230,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // SET-003: open terminals follow a theme change without being reopened.
     // ORCH-057: dark-or-light is the palette's own brightness (the app's mode only when it cannot be read);
     // capability queries get the Windows answer, and a hidden Grok pane holds back only its version answers.
-    const mode = hookColourMode(term, write, () => paletteIsDark(term.options.theme?.background) ?? currentDark());
-    const queries = hookQueries(term, write, { windows: navigator.userAgent.includes("Windows"), holdVersion: () => isHidden.current && isGrok(program) });
+    // DT-C247: these answers are the pane's, not the user's: sent as automatic, so they are not typing.
+    const sendAuto = autoSender(write);
+    const mode = hookColourMode(term, sendAuto, () => paletteIsDark(term.options.theme?.background) ?? currentDark());
+    const queries = hookQueries(term, sendAuto, { windows: navigator.userAgent.includes("Windows"), holdVersion: () => isHidden.current && isGrok(program) });
     const recolour = () => {
       term.options.theme = currentTerminal();
       Object.assign(term.options, termFont());

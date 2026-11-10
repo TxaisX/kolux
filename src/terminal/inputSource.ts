@@ -45,3 +45,9 @@ export function trackInputSource(term: Terminal): InputSource {
 
 /** The writes the pane itself answers a program with (the keyboard-protocol query, the OSC 52 read-back): automatic too. */
 export const AUTO = { auto: true } as const;
+
+/** The pane's own answers to a program (ORCH-057 capability queries, the TERM-098 dark-or-light report, the
+ *  keyboard-protocol and OSC 52 answers) go through the pane's write as automatic: never typing. */
+export function autoSender(write: (data: string, only: undefined, opts: typeof AUTO) => unknown): (data: string) => void {
+  return (data) => void write(data, undefined, AUTO);
+}
