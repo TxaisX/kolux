@@ -1,0 +1,116 @@
+stress S13 (agent sleep, live on the release build with a Claude Code stand-in (sleeps when unseen, wakes on resume; not when visible, typed in or busy)) at 2026-11-10T15:53:39.366Z on 92185e2e (<lane>)
+args: S13 --release --skip-build --hold 7 --port 1461 --cdp 9281 --temp <temp>/fpsleep3; ran 598 s
+
++3 s  build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 26.4 MB, modified 2026-11-10T13:38:50.482Z
++3 s  Claude Code is a STAND-IN (node script holding 600 MB, running Kolux's installed hooks; no network, no account), not Claude Code
++10 s  pane A: key 4, stand-in pid 32920, mode finished, session 0b351853-351f-4a6a-b4d7-9c9de381b21b, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown true
++14 s  pane D: key 5, stand-in pid 2004, mode finished, session 43e8f388-1d1c-4538-b308-7844898ee950, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown true
++19 s  pane B: key 6, stand-in pid 32628, mode busy, session 03734646-3566-48b5-b4e8-30d19661b5c7, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown true
++44 s  pane V: key 7, stand-in pid 37712, mode finished, session adf2609f-128e-4eae-846c-de534dffc70e, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown false
++50 s  Move to Tab on A: moved; stand-in pid 32920 alive: false
++52 s  Move to Tab on D: moved; stand-in pid 2004 alive: false
++54 s  Move to Tab on B: moved; stand-in pid 32628 alive: false
++57 s  Move to Tab on V: moved; stand-in pid 37712 alive: false
++63 s  FINDING: moving the panes restarted 4 agent(s) as fresh sessions (no --resume): pid 39716 session d1435090-cf76-483c-a6a3-a73014936dab; pid 34852 session 4a674c00-dfbc-40ed-b57f-c390f5d17a03; pid 38836 session 254843a0-66b5-417e-ba5b-c3a0737d781c; pid 44616 session 36b571d6-5aca-4fdf-8c9d-50137e77e5b4
++68 s  the one strip: ["Terminal 3×","Claude×","Claude×","Claude×","Claude× *"]; tab of each pane: {"A":1,"D":2,"B":3,"V":4}; panes now: A key 4 pid 39716 finished session d1435090-cf76-483c-a6a3-a73014936dab (restarted); D key 5 pid 34852 finished session 4a674c00-dfbc-40ed-b57f-c390f5d17a03 (restarted); B key 6 pid 38836 busy session 254843a0-66b5-417e-ba5b-c3a0737d781c (restarted); V key 7 pid 44616 finished session 36b571d6-5aca-4fdf-8c9d-50137e77e5b4 (restarted)
++68 s  hook runs: 39716:SessionStart=0, 39716:UserPromptSubmit=0, 39716:Stop=0, 34852:SessionStart=0, 34852:UserPromptSubmit=0, 34852:Stop=0, 38836:SessionStart=0, 38836:UserPromptSubmit=0, 38836:PreToolUse=0, 44616:SessionStart=0, 44616:UserPromptSubmit=0, 44616:Stop=0
++69 s  pane D: typed "a draft I have not sent yet" into its terminal, no Enter
++70 s  in front: V true; behind: A true, D true, B true; page visible
++72 s  stand-in A pid 39716: working set 648 MB, private 623 MB
++72 s  stand-in D pid 34852: working set 648 MB, private 623 MB
++72 s  stand-in B pid 38836: working set 648 MB, private 623 MB
++72 s  stand-in V pid 44616: working set 648 MB, private 623 MB
++72 s  app tree (window, web view, terminal service, consoles, stand-ins): 21 processes, working set 3237 MB, private 2890 MB
++87 s  asleep panes 0; alive A true D true B true V true; page visible
++520 s  asleep panes 0; alive A true D true B true V true; page visible
++536 s  asleep panes 0; alive A true D true B true V true; page visible
++536 s  diagnosis, A still awake: Rust side refused: the pane was typed into after the agent finished
++569 s  wake by bringing its tab forward (the placeholder wakes on focus): no new stand-in start
++593 s  A after wake: ; SessionStart(resume) hook exit undefined; placeholders now 0
++593 s  woken stand-in pid undefined: working set n/a MB, private n/a MB
+
+stand-in log (scratch folder standin.log, JSON lines):
+  {"t":1794325430737,"pid":32920,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","session":"0b351853-351f-4a6a-b4d7-9c9de381b21b","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325431848,"pid":32920,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325431942,"pid":32920,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325433523,"pid":32920,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794325433523,"pid":32920,"finished":true}
+  {"t":1794325435177,"pid":2004,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","session":"43e8f388-1d1c-4538-b308-7844898ee950","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325436268,"pid":2004,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325436333,"pid":2004,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325437911,"pid":2004,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794325437911,"pid":2004,"finished":true}
+  {"t":1794325439717,"pid":32628,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"busy","session":"03734646-3566-48b5-b4e8-30d19661b5c7","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325440822,"pid":32628,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325440885,"pid":32628,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325440948,"pid":32628,"hook":"PreToolUse","status":0,"out":"{}","err":""}
+  {"t":1794325444213,"pid":37712,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","session":"adf2609f-128e-4eae-846c-de534dffc70e","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325445305,"pid":37712,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325445371,"pid":37712,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325446991,"pid":37712,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794325446992,"pid":37712,"finished":true}
+  {"t":1794325469164,"pid":39716,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","session":"d1435090-cf76-483c-a6a3-a73014936dab","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325470243,"pid":39716,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325470363,"pid":39716,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325471596,"pid":34852,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","session":"4a674c00-dfbc-40ed-b57f-c390f5d17a03","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325471935,"pid":39716,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794325471936,"pid":39716,"finished":true}
+  {"t":1794325472684,"pid":34852,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325472748,"pid":34852,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325473997,"pid":38836,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"busy","session":"254843a0-66b5-417e-ba5b-c3a0737d781c","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325474324,"pid":34852,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794325474324,"pid":34852,"finished":true}
+  {"t":1794325475100,"pid":38836,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325475176,"pid":38836,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325475253,"pid":38836,"hook":"PreToolUse","status":0,"out":"{}","err":""}
+  {"t":1794325476402,"pid":44616,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","session":"36b571d6-5aca-4fdf-8c9d-50137e77e5b4","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794325477502,"pid":44616,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794325477567,"pid":44616,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794325479166,"pid":44616,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794325479166,"pid":44616,"finished":true}
+
+FAIL  Move to Tab keeps each agent running (TERM-016)
+      bar: 0 restarts
+      measured: 4 restart(s)
+PASS  the four panes under test run the modes asked
+      bar: A,D,V finished; B busy
+      measured: A=finished D=finished B=busy V=finished
+PASS  the stand-ins ran Kolux's installed hook script for each event (SessionStart, UserPromptSubmit, then Stop or PreToolUse)
+      bar: 12 runs, all exit 0
+      measured: 12/12 exit 0
+PASS  layout: V is the tab in front, A, D and B are tabs behind it
+      bar: V shown, A/D/B hidden
+      measured: {"A":false,"D":false,"B":false,"V":true}
+FAIL  A (finished, behind a tab, untouched) sleeps: the placeholder shows and its process is gone
+      bar: 1 asleep placeholder, A's pid gone
+      measured: 0 placeholder(s) [], A pid alive
+FAIL  A's memory is freed when it sleeps
+      bar: app tree private bytes fall by about A's 623 MB
+      measured: A held 648 MB working set / 623 MB private; app tree private 2890 -> n/a MB (-n/a MB), working set 3237 -> n/a MB; A in the stand-in list after: false
+PASS  V (finished, in the tab in front) stays awake
+      bar: pid alive
+      measured: alive; held to 8.1 min after A finished, 7.8 min after D was typed in; delay 5 min, check every 60 s
+PASS  D (finished, then typed into without Enter, behind a tab) stays awake
+      bar: pid alive
+      measured: alive; held to 8.1 min after A finished, 7.8 min after D was typed in; delay 5 min, check every 60 s
+PASS  B (busy: a tool call still running, behind a tab) stays awake
+      bar: pid alive
+      measured: alive; held to 8.1 min after A finished, 7.8 min after D was typed in; delay 5 min, check every 60 s
+FAIL  Wake starts Claude again with --resume and A's own session id
+      bar: --resume d1435090-cf76-483c-a6a3-a73014936dab
+      measured: no start
+FAIL  the woken pane shows the resumed session and Kolux heard it (SessionStart resume hook exit 0)
+      bar: banner with (resumed), hook 0
+      measured: ; hook undefined
+FAIL  the woken agent is a live process again (holds its memory again)
+      bar: alive, about 600 MB
+      measured: pid undefined: n/a MB working set
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 20 (msedgewebview2.exe x6, conhost.exe x5, powershell.exe x1, cmd.exe x4, node.exe x4); survivors 0 (none)
+
+notes:
+  - diagnosis, A still awake after the hold: Rust side refused: the pane was typed into after the agent finished
+  - Claude Code was a stand-in (scripts/prove/agent-sleep-standin.cjs): it proves Kolux's side (hooks heard, rules applied, process ended, memory freed, resume line). It does not prove that real Claude Code reports the same hook events, that `claude --resume <id>` restores a real conversation, or the memory a real session holds.
+
+S13: FAIL

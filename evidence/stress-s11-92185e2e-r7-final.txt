@@ -1,0 +1,424 @@
+stress S11 (app footprint (idle, 6 panes, streaming, 12 panes, minimized, hidden browser tabs)) at 2026-11-10T14:51:51.481Z on 92185e2e (<lane>)
+args: S11 --release --skip-build --repeat 3 --tag r7-final --port 1453 --cdp 9273 --temp <temp>/fpfinal --compare <lane>/evidence/stress-s11-70d06457-r7-before.json; ran 2051 s
+
+=== footprint table (60 s windows, 20 s settle, hidden phases 70 s after the hide; 3 run(s), medians with min-max) ===
+build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 26.4 MB, modified 2026-11-10T13:38:50.482Z
+
+a) idle, 1 project, 1 shell pane  [panes 1 (1 shown); visibility visible x3; first-run wizard closed; sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     39.8     12.3        1.53     0.096        0.0        0.0      0.00
+   wv-browser           1.0    125.5     40.6        1.63     0.102        0.0        0.0      0.00
+   renderer             1.0    121.9     69.7        0.62     0.039        0.0        0.0      0.00
+   gpu-process          1.0     84.6    107.7        0.13     0.008       48.8        3.0      0.01
+   utility              2.0     61.6     20.0        0.27     0.017        0.0        0.0      0.00
+   crashpad-handler     1.0     14.3      3.1        0.00     0.000        0.0        0.0      0.00
+   total                7.0    448.7    253.7        4.40     0.275       48.8        3.0      0.01
+   total min-max over 3 repeats: WS 446.8-450.0 MB | priv 253.3-253.9 MB | CPU 3.81-5.33 % of a core | GPU ded 48.6-49.2 MB | GPU eng 0.01-0.01 %
+   page: JS heap used 17.4 MB (total 19.8 MB), canvases 3, DOM nodes 437
+
+b) 6 shell panes, idle  [panes 6 (6 shown); visibility visible x3; first-run wizard closed; sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     40.8     13.3        1.47     0.092        0.0        0.0      0.00
+   wv-browser           1.0    128.7     40.9        1.02     0.064        0.0        0.0      0.00
+   renderer             1.0    133.2     78.8        1.42     0.089        0.0        0.0      0.00
+   gpu-process          1.0     91.2    116.2        0.16     0.010       54.3        3.3      0.01
+   utility              2.0     61.9     19.9        0.27     0.017        0.0        0.0      0.00
+   crashpad-handler     1.0     12.6      2.9        0.00     0.000        0.0        0.0      0.00
+   total                7.0    468.7    272.6        4.47     0.280       54.3        3.3      0.01
+   total min-max over 3 repeats: WS 466.9-469.7 MB | priv 271.4-272.7 MB | CPU 3.80-4.72 % of a core | GPU ded 54.1-55.9 MB | GPU eng 0.01-0.01 %
+   page: JS heap used 20.2 MB (total 22.2 MB), canvases 13, DOM nodes 775
+
+c) 6 panes, each printing ~20 lines/s  [panes 6 (6 shown); visibility visible x3; first-run wizard closed; sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     42.4     15.1        4.67     0.292        0.0        0.0      0.00
+   wv-browser           1.0    129.6     41.7        4.63     0.289        0.0        0.0      0.00
+   renderer             1.0    175.1    116.8       10.65     0.666        0.0        0.0      0.00
+   gpu-process          1.0     97.0    114.5        6.95     0.434       48.7        4.0      1.36
+   utility              2.0     62.3     20.4        0.99     0.062        0.0        0.0      0.00
+   crashpad-handler     1.0     12.5      2.9        0.00     0.000        0.0        0.0      0.00
+   total                7.0    519.2    311.4       27.84     1.740       48.7        4.0      1.36
+   total min-max over 3 repeats: WS 518.3-519.6 MB | priv 310.6-311.9 MB | CPU 26.36-28.29 % of a core | GPU ded 47.1-49.2 MB | GPU eng 0.46-1.51 %
+   page: JS heap used 45.7 MB (total 67.2 MB), canvases 13, DOM nodes 775
+
+d) 12 panes idle, window minimized (iconic=True)  [panes 12 (12 shown); visibility hidden x3; first-run wizard closed; sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     44.4     17.1        1.18     0.074        0.0        0.0      0.00
+   wv-browser           1.0     56.6     46.1        1.29     0.080        0.0        0.0      0.00
+   renderer             1.0     65.6    114.1        1.07     0.067        0.0        0.0      0.00
+   gpu-process          1.0     32.8    112.4        0.03     0.002       46.3        2.3      0.00
+   utility              2.0     24.8     21.5        0.35     0.022        0.0        0.0      0.00
+   crashpad-handler     1.0     12.6      2.9        0.00     0.000        0.0        0.0      0.00
+   total                7.0    237.1    314.3        3.78     0.236       46.3        2.3      0.00
+   total min-max over 3 repeats: WS 232.1-242.8 MB | priv 314.0-315.6 MB | CPU 3.62-4.02 % of a core | GPU ded 46.3-46.4 MB | GPU eng 0.00-0.00 %
+   page: JS heap used 35.5 MB (total 39.9 MB), canvases 25, DOM nodes 1170
+
+   d) early sample, 10-20 s after the hide (before the give-back timers)  [panes 12 (12 shown); visibility hidden x3; first-run wizard closed; sampled 8 s, 5 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     44.2     17.1        0.97     0.061        0.0        0.0      0.00
+   wv-browser           1.0    144.8     46.4        0.78     0.049        0.0        0.0      0.00
+   renderer             1.0    168.3    115.1        1.36     0.085        0.0        0.0      0.00
+   gpu-process          1.0     96.6    112.9        0.00     0.000       46.3        2.8      0.00
+   utility              2.0     64.1     21.2        0.19     0.012        0.0        0.0      0.00
+   crashpad-handler     1.0     12.6      2.9        0.00     0.000        0.0        0.0      0.00
+   total                7.0    531.3    316.1        3.31     0.207       46.3        2.8      0.00
+   total min-max over 3 repeats: WS 529.4-531.9 MB | priv 315.1-318.3 MB | CPU 3.12-3.69 % of a core | GPU ded 46.3-46.4 MB | GPU eng 0.00-0.00 %
+   page: canvases 25
+
+e) 12 shell panes, idle  [panes 12 (12 shown); visibility visible x3; first-run wizard closed; sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     44.2     17.2        2.06     0.129        0.0        0.0      0.00
+   wv-browser           1.0    130.7     42.6        1.21     0.075        0.0        0.0      0.00
+   renderer             1.0    176.3    116.0        1.90     0.119        0.0        0.0      0.00
+   gpu-process          1.0    106.6    130.1        0.30     0.018       60.7        3.2      0.01
+   utility              2.0     63.3     21.2        0.29     0.018        0.0        0.0      0.00
+   crashpad-handler     1.0     12.7      3.0        0.00     0.000        0.0        0.0      0.00
+   total                7.0    534.4    331.9        5.63     0.352       60.7        3.2      0.01
+   total min-max over 3 repeats: WS 533.2-534.6 MB | priv 328.5-333.3 MB | CPU 5.60-5.71 % of a core | GPU ded 59.2-60.7 MB | GPU eng 0.01-0.01 %
+   page: JS heap used 45.9 MB (total 50.6 MB), canvases 25, DOM nodes 1171
+
+f) 12 shell panes + 3 hidden browser tabs  [panes 12 (12 shown); visibility visible x3; first-run wizard closed; sampled 58 s, 30 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     45.8     17.6        1.85     0.116        0.0        0.0      0.00
+   wv-browser           1.0     89.0     58.2        1.04     0.065        0.0        0.0      0.00
+   renderer             4.0    155.8    178.2        1.71     0.107        0.0        0.0      0.00
+   gpu-process          1.0     54.5    126.1        0.27     0.017       80.5        3.4      0.01
+   utility              2.0     22.9     21.5        0.48     0.030        0.0        0.0      0.00
+   crashpad-handler     1.0     12.7      3.0        0.00     0.000        0.0        0.0      0.00
+   total               10.0    383.2    403.9        5.44     0.340       80.5        3.4      0.01
+   total min-max over 3 repeats: WS 379.9-383.8 MB | priv 401.5-409.5 MB | CPU 5.25-5.66 % of a core | GPU ded 80.5-80.5 MB | GPU eng 0.01-0.01 %
+   page: JS heap used 37.7 MB (total 43.0 MB), canvases 25, DOM nodes 1351
+
+   f) early sample, 10-20 s after the hide (before the give-back timers)  [panes 12 (12 shown); visibility visible x3; first-run wizard closed; sampled 8 s, 5 ticks, 16 logical cores]
+   process            count    WS MB  priv MB  CPU %1core  CPU %all  GPUded MB  GPUshr MB  GPUeng %
+   window               1.0     46.1     17.8        1.75     0.110        0.0        0.0      0.00
+   wv-browser           1.0     87.7     61.8        1.55     0.097        0.0        0.0      0.00
+   renderer             4.0    297.3    192.1        2.34     0.146        0.0        0.0      0.00
+   gpu-process          1.0     54.0    129.3        0.20     0.012       80.5        3.6      0.01
+   utility              2.0     20.4     22.0        0.97     0.061        0.0        0.0      0.00
+   crashpad-handler     1.0     12.7      2.9        0.00     0.000        0.0        0.0      0.00
+   total               10.0    517.8    425.9        7.80     0.487       80.5        3.6      0.01
+   total min-max over 3 repeats: WS 517.0-522.2 MB | priv 425.4-427.0 MB | CPU 4.11-7.96 % of a core | GPU ded 80.5-80.5 MB | GPU eng 0.01-0.01 %
+   page: canvases 25
+   hidden tab page ticks/s (3 tabs, one bracket per repeat; about 1.00 awake, 0 suspended): 10-20 s after the hide [0.96 1.02 0.96] [1.05 0.99 0.99] [0.97 0.97 0.97]; in the main window [0.00 0.00 0.00] [0.00 0.00 0.00] [0.00 0.00 0.00]
+   page targets in the web view while sampled: 4, 4, 4
+   per process in the last repeat (pid, role, WS MB, private MB, CPU % of a core, GPU ded MB):
+        43236 gpu-process     54.5   126.1   0.29    80.5
+        30912 renderer       126.9   114.5   2.09     n/a
+        23280 renderer        11.0    23.6   0.00     n/a
+        19196 renderer        10.6    23.5   0.00     n/a
+        23896 renderer        10.2    20.6   0.00     n/a
+
+compare (medians; before x3, now x3, [min-max] beside each when repeated): BEFORE 70d06457 (2026-11-10T14:17:35.194Z, release) -> NOW 92185e2e (2026-11-10T14:51:46.047Z, release); now minus before
+total app (window + service + web view):
+   a) WS MB 451.0 [450.3-451.5] -> 448.7 [446.8-450.0] (-2.3) | priv MB 252.0 [250.5-256.7] -> 253.7 [253.3-253.9] (+1.7) | CPU %1core 4.18 [3.96-5.22] -> 4.40 [3.81-5.33] (+0.22) | GPU ded MB 42.9 [42.2-46.0] -> 48.8 [48.6-49.2] (+5.9) | GPU eng % 0.06 [0.05-0.07] -> 0.01 [0.01-0.01] (-0.05) | JS heap MB 18.2 -> 17.4 (-0.8) | canvases 3 -> 3 | visibility visible x3 -> visible x3
+   b) WS MB 473.1 [472.8-486.6] -> 468.7 [466.9-469.7] (-4.5) | priv MB 274.6 [269.5-275.7] -> 272.6 [271.4-272.7] (-2.0) | CPU %1core 6.00 [5.63-7.62] -> 4.47 [3.80-4.72] (-1.53) | GPU ded MB 47.9 [46.6-49.8] -> 54.3 [54.1-55.9] (+6.3) | GPU eng % 0.03 [0.00-0.04] -> 0.01 [0.01-0.01] (-0.03) | JS heap MB 20.3 -> 20.2 (-0.1) | canvases 13 -> 13 | visibility visible x3 -> visible x3
+   c) WS MB 534.3 [533.7-550.7] -> 519.2 [518.3-519.6] (-15.0) | priv MB 329.4 [326.8-332.2] -> 311.4 [310.6-311.9] (-17.9) | CPU %1core 59.28 [51.53-60.51] -> 27.84 [26.36-28.29] (-31.44) | GPU ded MB 47.1 [42.3-48.1] -> 48.7 [47.1-49.2] (+1.5) | GPU eng % 1.76 [1.04-2.00] -> 1.36 [0.46-1.51] (-0.40) | JS heap MB 38.2 -> 45.7 (+7.4) | canvases 13 -> 13 | visibility visible x3 -> visible x3
+   d) WS MB 542.7 [538.1-555.7] -> 237.1 [232.1-242.8] (-305.6) | priv MB 335.8 [330.0-355.4] -> 314.3 [314.0-315.6] (-21.5) | CPU %1core 10.30 [9.84-10.60] -> 3.78 [3.62-4.02] (-6.52) | GPU ded MB 57.1 [55.9-73.9] -> 46.3 [46.3-46.4] (-10.8) | GPU eng % 0.00 [0.00-0.00] -> 0.00 [0.00-0.00] (+0.00) | JS heap MB 24.7 -> 35.5 (+10.8) | canvases 25 -> 25 | visibility visible x3 -> hidden x3
+      early (10-20 s after the hide): WS MB 553.2 -> 531.3 (-21.8) | priv MB 341.4 -> 316.1 (-25.3) | CPU %1core 9.72 -> 3.31 (-6.42) | GPU ded MB 55.9 -> 46.3 (-9.6)
+   e) WS MB 534.8 [531.7-548.9] -> 534.4 [533.2-534.6] (-0.4) | priv MB 330.7 [327.3-336.9] -> 331.9 [328.5-333.3] (+1.2) | CPU %1core 10.74 [10.61-11.68] -> 5.63 [5.60-5.71] (-5.11) | GPU ded MB 56.7 [53.0-59.0] -> 60.7 [59.2-60.7] (+4.0) | GPU eng % 0.03 [0.02-0.03] -> 0.01 [0.01-0.01] (-0.02) | JS heap MB 39.7 -> 45.9 (+6.2) | canvases 25 -> 25 | visibility visible x3 -> visible x3
+   f) WS MB 729.6 [729.0-732.0] -> 383.2 [379.9-383.8] (-346.4) | priv MB 405.1 [400.1-405.7] -> 403.9 [401.5-409.5] (-1.3) | CPU %1core 11.94 [11.30-12.69] -> 5.44 [5.25-5.66] (-6.50) | GPU ded MB 77.5 [77.5-78.7] -> 80.5 [80.5-80.5] (+3.0) | GPU eng % 0.03 [0.02-0.03] -> 0.01 [0.01-0.01] (-0.02) | JS heap MB 26.7 -> 37.7 (+11.0) | canvases 25 -> 25 | visibility visible x3 -> visible x3
+      early (10-20 s after the hide): WS MB 738.5 -> 517.8 (-220.7) | priv MB 416.7 -> 425.9 (+9.2) | CPU %1core 10.13 -> 7.80 (-2.33) | GPU ded MB 80.7 -> 80.5 (-0.2)
+
+per process role, before -> now (medians):
+   a) idle, 1 project, 1 shell pane
+      window             WS 41.1 -> 39.8 | priv 14.0 -> 12.3 | cpu 1.18 -> 1.53 | gpu ded 0.0 -> 0.0
+      wv-browser         WS 125.6 -> 125.5 | priv 41.0 -> 40.6 | cpu 1.37 -> 1.63 | gpu ded 0.0 -> 0.0
+      renderer           WS 123.3 -> 121.9 | priv 70.9 -> 69.7 | cpu 1.29 -> 0.62 | gpu ded 0.0 -> 0.0
+      gpu-process        WS 84.8 -> 84.6 | priv 102.0 -> 107.7 | cpu 0.46 -> 0.13 | gpu ded 42.9 -> 48.8
+      utility            WS 61.6 -> 61.6 | priv 20.1 -> 20.0 | cpu 0.32 -> 0.27 | gpu ded 0.0 -> 0.0
+      crashpad-handler   WS 14.2 -> 14.3 | priv 3.1 -> 3.1 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
+      total              WS 451.0 -> 448.7 | priv 252.0 -> 253.7 | cpu 4.18 -> 4.40 | gpu ded 42.9 -> 48.8
+   b) 6 shell panes, idle
+      window             WS 42.3 -> 40.8 | priv 15.9 -> 13.3 | cpu 3.72 -> 1.47 | gpu ded 0.0 -> 0.0
+      wv-browser         WS 128.5 -> 128.7 | priv 41.0 -> 40.9 | cpu 0.86 -> 1.02 | gpu ded 0.0 -> 0.0
+      renderer           WS 135.9 -> 133.2 | priv 82.4 -> 78.8 | cpu 1.15 -> 1.42 | gpu ded 0.0 -> 0.0
+      gpu-process        WS 91.6 -> 91.2 | priv 108.8 -> 116.2 | cpu 0.29 -> 0.16 | gpu ded 47.9 -> 54.3
+      utility            WS 61.9 -> 61.9 | priv 20.0 -> 19.9 | cpu 0.24 -> 0.27 | gpu ded 0.0 -> 0.0
+      crashpad-handler   WS 12.4 -> 12.6 | priv 3.0 -> 2.9 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
+      total              WS 473.1 -> 468.7 | priv 274.6 -> 272.6 | cpu 6.00 -> 4.47 | gpu ded 47.9 -> 54.3
+   c) 6 panes, each printing ~20 lines/s
+      window             WS 43.9 -> 42.4 | priv 18.5 -> 15.1 | cpu 12.46 -> 4.67 | gpu ded 0.0 -> 0.0
+      wv-browser         WS 131.1 -> 129.6 | priv 43.6 -> 41.7 | cpu 13.69 -> 4.63 | gpu ded 0.0 -> 0.0
+      renderer           WS 185.9 -> 175.1 | priv 128.0 -> 116.8 | cpu 20.87 -> 10.65 | gpu ded 0.0 -> 0.0
+      gpu-process        WS 96.9 -> 97.0 | priv 113.2 -> 114.5 | cpu 8.33 -> 6.95 | gpu ded 47.1 -> 48.7
+      utility            WS 63.3 -> 62.3 | priv 21.3 -> 20.4 | cpu 3.38 -> 0.99 | gpu ded 0.0 -> 0.0
+      crashpad-handler   WS 12.4 -> 12.5 | priv 2.9 -> 2.9 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
+      total              WS 534.3 -> 519.2 | priv 329.4 -> 311.4 | cpu 59.28 -> 27.84 | gpu ded 47.1 -> 48.7
+   d) 12 panes idle, window minimized (iconic=True)
+      window             WS 46.4 -> 44.4 | priv 22.0 -> 17.1 | cpu 6.62 -> 1.18 | gpu ded 0.0 -> 0.0
+      wv-browser         WS 136.9 -> 56.6 | priv 46.0 -> 46.1 | cpu 1.34 -> 1.29 | gpu ded 0.0 -> 0.0
+      renderer           WS 169.2 -> 65.6 | priv 108.2 -> 114.1 | cpu 1.85 -> 1.07 | gpu ded 0.0 -> 0.0
+      gpu-process        WS 111.7 -> 32.8 | priv 134.2 -> 112.4 | cpu 0.16 -> 0.03 | gpu ded 57.1 -> 46.3
+      utility            WS 64.8 -> 24.8 | priv 22.6 -> 21.5 | cpu 0.35 -> 0.35 | gpu ded 0.0 -> 0.0
+      crashpad-handler   WS 12.5 -> 12.6 | priv 2.9 -> 2.9 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
+      total              WS 542.7 -> 237.1 | priv 335.8 -> 314.3 | cpu 10.30 -> 3.78 | gpu ded 57.1 -> 46.3
+   e) 12 shell panes, idle
+      window             WS 46.3 -> 44.2 | priv 21.9 -> 17.2 | cpu 6.57 -> 2.06 | gpu ded 0.0 -> 0.0
+      wv-browser         WS 132.1 -> 130.7 | priv 44.1 -> 42.6 | cpu 1.26 -> 1.21 | gpu ded 0.0 -> 0.0
+      renderer           WS 172.2 -> 176.3 | priv 111.5 -> 116.0 | cpu 2.25 -> 1.90 | gpu ded 0.0 -> 0.0
+      gpu-process        WS 106.5 -> 106.6 | priv 126.4 -> 130.1 | cpu 0.37 -> 0.30 | gpu ded 56.7 -> 60.7
+      utility            WS 64.4 -> 63.3 | priv 22.3 -> 21.2 | cpu 0.43 -> 0.29 | gpu ded 0.0 -> 0.0
+      crashpad-handler   WS 12.6 -> 12.7 | priv 3.0 -> 3.0 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
+      total              WS 534.8 -> 534.4 | priv 330.7 -> 331.9 | cpu 10.74 -> 5.63 | gpu ded 56.7 -> 60.7
+   f) 12 shell panes + 3 hidden browser tabs
+      window             WS 48.0 -> 45.8 | priv 22.4 -> 17.6 | cpu 6.94 -> 1.85 | gpu ded 0.0 -> 0.0
+      wv-browser         WS 159.9 -> 89.0 | priv 58.7 -> 58.2 | cpu 1.96 -> 1.04 | gpu ded 0.0 -> 0.0
+      renderer           WS 333.0 -> 155.8 | priv 169.9 -> 178.2 | cpu 2.04 -> 1.71 | gpu ded 0.0 -> 0.0
+      gpu-process        WS 111.3 -> 54.5 | priv 126.5 -> 126.1 | cpu 0.38 -> 0.27 | gpu ded 77.5 -> 80.5
+      utility            WS 64.1 -> 22.9 | priv 21.6 -> 21.5 | cpu 0.78 -> 0.48 | gpu ded 0.0 -> 0.0
+      crashpad-handler   WS 12.6 -> 12.7 | priv 3.0 -> 3.0 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
+      total              WS 729.6 -> 383.2 | priv 405.1 -> 403.9 | cpu 11.94 -> 5.44 | gpu ded 77.5 -> 80.5
+
+json: <lane>\evidence\stress-s11-92185e2e-r7-final.json
+
+PASS  phase a: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
+      bar: absent
+      measured: absent
+PASS  phase a: the page is in sight (visibilityState visible) while sampled (repeat 1/3)
+      bar: visible
+      measured: visible
+PASS  phase a: 1 panes shown while sampled (repeat 1/3)
+      bar: 1
+      measured: 1
+PASS  phase a: the app's processes were found (repeat 1/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, wv-browser, window, renderer, gpu-process
+PASS  phase b: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
+      bar: absent
+      measured: absent
+PASS  phase b: the page is in sight (visibilityState visible) while sampled (repeat 1/3)
+      bar: visible
+      measured: visible
+PASS  phase b: 6 panes shown while sampled (repeat 1/3)
+      bar: 6
+      measured: 6
+PASS  phase b: the app's processes were found (repeat 1/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, wv-browser, window, renderer, gpu-process
+PASS  6 panes each print the ~20 lines/s stream (repeat 1/3)
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  phase c: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
+      bar: absent
+      measured: absent
+PASS  phase c: the page is in sight (visibilityState visible) while sampled (repeat 1/3)
+      bar: visible
+      measured: visible
+PASS  phase c: 6 panes shown while sampled (repeat 1/3)
+      bar: 6
+      measured: 6
+PASS  phase c: the app's processes were found (repeat 1/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, wv-browser, window, renderer, gpu-process
+PASS  phase e: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
+      bar: absent
+      measured: absent
+PASS  phase e: the page is in sight (visibilityState visible) while sampled (repeat 1/3)
+      bar: visible
+      measured: visible
+PASS  phase e: 12 panes shown while sampled (repeat 1/3)
+      bar: 12
+      measured: 12
+PASS  phase e: the app's processes were found (repeat 1/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, wv-browser, window, renderer, gpu-process
+PASS  phase d: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
+      bar: absent
+      measured: absent
+PASS  phase d: 12 panes shown while sampled (repeat 1/3)
+      bar: 12
+      measured: 12
+PASS  phase d: the app's processes were found (repeat 1/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, crashpad-handler, wv-browser, window, renderer, gpu-process
+PASS  phase f: 3 browser tabs open and hidden behind a terminal tab (repeat 1/3)
+      bar: 3 tabs, all hidden
+      measured: 3 tabs, hidden
+PASS  phase f: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
+      bar: absent
+      measured: absent
+PASS  phase f: the page is in sight (visibilityState visible) while sampled (repeat 1/3)
+      bar: visible
+      measured: visible
+PASS  phase f: 12 panes shown while sampled (repeat 1/3)
+      bar: 12
+      measured: 12
+PASS  phase f: the app's processes were found (repeat 1/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: renderer, utility, crashpad-handler, wv-browser, window, gpu-process
+PASS  app closes by its own path and leaves no process behind (repeat 1/3)
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 33 (msedgewebview2.exe x9, conhost.exe x12, powershell.exe x12); survivors 0 (none)
+PASS  phase a: no first-run wizard open (.onb-backdrop absent) (repeat 2/3)
+      bar: absent
+      measured: absent
+PASS  phase a: the page is in sight (visibilityState visible) while sampled (repeat 2/3)
+      bar: visible
+      measured: visible
+PASS  phase a: 1 panes shown while sampled (repeat 2/3)
+      bar: 1
+      measured: 1
+PASS  phase a: the app's processes were found (repeat 2/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, gpu-process, crashpad-handler, wv-browser, renderer
+PASS  phase b: no first-run wizard open (.onb-backdrop absent) (repeat 2/3)
+      bar: absent
+      measured: absent
+PASS  phase b: the page is in sight (visibilityState visible) while sampled (repeat 2/3)
+      bar: visible
+      measured: visible
+PASS  phase b: 6 panes shown while sampled (repeat 2/3)
+      bar: 6
+      measured: 6
+PASS  phase b: the app's processes were found (repeat 2/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, gpu-process, crashpad-handler, wv-browser, renderer
+PASS  6 panes each print the ~20 lines/s stream (repeat 2/3)
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  phase c: no first-run wizard open (.onb-backdrop absent) (repeat 2/3)
+      bar: absent
+      measured: absent
+PASS  phase c: the page is in sight (visibilityState visible) while sampled (repeat 2/3)
+      bar: visible
+      measured: visible
+PASS  phase c: 6 panes shown while sampled (repeat 2/3)
+      bar: 6
+      measured: 6
+PASS  phase c: the app's processes were found (repeat 2/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, gpu-process, crashpad-handler, wv-browser, renderer
+PASS  phase e: no first-run wizard open (.onb-backdrop absent) (repeat 2/3)
+      bar: absent
+      measured: absent
+PASS  phase e: the page is in sight (visibilityState visible) while sampled (repeat 2/3)
+      bar: visible
+      measured: visible
+PASS  phase e: 12 panes shown while sampled (repeat 2/3)
+      bar: 12
+      measured: 12
+PASS  phase e: the app's processes were found (repeat 2/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, gpu-process, crashpad-handler, wv-browser, renderer
+PASS  phase d: no first-run wizard open (.onb-backdrop absent) (repeat 2/3)
+      bar: absent
+      measured: absent
+PASS  phase d: 12 panes shown while sampled (repeat 2/3)
+      bar: 12
+      measured: 12
+PASS  phase d: the app's processes were found (repeat 2/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, gpu-process, crashpad-handler, wv-browser, renderer
+PASS  phase f: 3 browser tabs open and hidden behind a terminal tab (repeat 2/3)
+      bar: 3 tabs, all hidden
+      measured: 3 tabs, hidden
+PASS  phase f: no first-run wizard open (.onb-backdrop absent) (repeat 2/3)
+      bar: absent
+      measured: absent
+PASS  phase f: the page is in sight (visibilityState visible) while sampled (repeat 2/3)
+      bar: visible
+      measured: visible
+PASS  phase f: 12 panes shown while sampled (repeat 2/3)
+      bar: 12
+      measured: 12
+PASS  phase f: the app's processes were found (repeat 2/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, renderer, window, gpu-process, crashpad-handler, wv-browser
+PASS  app closes by its own path and leaves no process behind (repeat 2/3)
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 33 (msedgewebview2.exe x9, conhost.exe x12, powershell.exe x12); survivors 0 (none)
+PASS  phase a: no first-run wizard open (.onb-backdrop absent) (repeat 3/3)
+      bar: absent
+      measured: absent
+PASS  phase a: the page is in sight (visibilityState visible) while sampled (repeat 3/3)
+      bar: visible
+      measured: visible
+PASS  phase a: 1 panes shown while sampled (repeat 3/3)
+      bar: 1
+      measured: 1
+PASS  phase a: the app's processes were found (repeat 3/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, wv-browser, renderer, gpu-process, crashpad-handler
+PASS  phase b: no first-run wizard open (.onb-backdrop absent) (repeat 3/3)
+      bar: absent
+      measured: absent
+PASS  phase b: the page is in sight (visibilityState visible) while sampled (repeat 3/3)
+      bar: visible
+      measured: visible
+PASS  phase b: 6 panes shown while sampled (repeat 3/3)
+      bar: 6
+      measured: 6
+PASS  phase b: the app's processes were found (repeat 3/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, wv-browser, renderer, gpu-process, crashpad-handler
+PASS  6 panes each print the ~20 lines/s stream (repeat 3/3)
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  phase c: no first-run wizard open (.onb-backdrop absent) (repeat 3/3)
+      bar: absent
+      measured: absent
+PASS  phase c: the page is in sight (visibilityState visible) while sampled (repeat 3/3)
+      bar: visible
+      measured: visible
+PASS  phase c: 6 panes shown while sampled (repeat 3/3)
+      bar: 6
+      measured: 6
+PASS  phase c: the app's processes were found (repeat 3/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, wv-browser, renderer, gpu-process, crashpad-handler
+PASS  phase e: no first-run wizard open (.onb-backdrop absent) (repeat 3/3)
+      bar: absent
+      measured: absent
+PASS  phase e: the page is in sight (visibilityState visible) while sampled (repeat 3/3)
+      bar: visible
+      measured: visible
+PASS  phase e: 12 panes shown while sampled (repeat 3/3)
+      bar: 12
+      measured: 12
+PASS  phase e: the app's processes were found (repeat 3/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, wv-browser, renderer, gpu-process, crashpad-handler
+PASS  phase d: no first-run wizard open (.onb-backdrop absent) (repeat 3/3)
+      bar: absent
+      measured: absent
+PASS  phase d: 12 panes shown while sampled (repeat 3/3)
+      bar: 12
+      measured: 12
+PASS  phase d: the app's processes were found (repeat 3/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: utility, window, wv-browser, renderer, gpu-process, crashpad-handler
+PASS  phase f: 3 browser tabs open and hidden behind a terminal tab (repeat 3/3)
+      bar: 3 tabs, all hidden
+      measured: 3 tabs, hidden
+PASS  phase f: no first-run wizard open (.onb-backdrop absent) (repeat 3/3)
+      bar: absent
+      measured: absent
+PASS  phase f: the page is in sight (visibilityState visible) while sampled (repeat 3/3)
+      bar: visible
+      measured: visible
+PASS  phase f: 12 panes shown while sampled (repeat 3/3)
+      bar: 12
+      measured: 12
+PASS  phase f: the app's processes were found (repeat 3/3)
+      bar: window + web view renderer (the terminal service is not started by default since DT-C27; it is listed when present)
+      measured: renderer, utility, window, wv-browser, gpu-process, crashpad-handler
+PASS  no repeat needed a second attempt (a discarded attempt is listed in the JSON)
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 33 (msedgewebview2.exe x9, conhost.exe x12, powershell.exe x12); survivors 0 (none)
+
+notes:
+  - browser-tab page: http://<lan-ip>:61230
+  - minimize (repeat 1/3): iconic=True
+  - after the restore (repeat 1/3): document.visibilityState = visible
+  - phase f (repeat 1/3): hidden tab page ticks/s 10-20 s after the hide [0.96 1.02 0.96], in the main window [0.00 0.00 0.00] (about 1 awake, 0 suspended)
+  - minimize (repeat 2/3): iconic=True
+  - after the restore (repeat 2/3): document.visibilityState = visible
+  - phase f (repeat 2/3): hidden tab page ticks/s 10-20 s after the hide [1.05 0.99 0.99], in the main window [0.00 0.00 0.00] (about 1 awake, 0 suspended)
+  - minimize (repeat 3/3): iconic=True
+  - after the restore (repeat 3/3): document.visibilityState = visible
+  - phase f (repeat 3/3): hidden tab page ticks/s 10-20 s after the hide [0.97 0.97 0.97], in the main window [0.00 0.00 0.00] (about 1 awake, 0 suspended)
+
+S11: PASS

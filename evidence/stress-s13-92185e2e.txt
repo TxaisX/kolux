@@ -1,0 +1,120 @@
+stress S13 (agent sleep, live on the release build with a Claude Code stand-in (sleeps when unseen, wakes on resume; not when visible, typed in or busy)) at 2026-11-10T16:05:51.524Z on 92185e2e (<lane>)
+args: S13 --release --skip-build --hold 7 --port 1461 --cdp 9281 --temp <temp>/fpsleep4; ran 629 s
+
++3 s  build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 26.4 MB, modified 2026-11-10T13:38:50.482Z
++3 s  Claude Code is a STAND-IN (node script holding 600 MB, running Kolux's installed hooks; no network, no account), not Claude Code
++10 s  pane A: key 4, stand-in pid 39760, mode finished, session c7226402-9a57-482b-badd-855eb238e1e5, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown true
++14 s  pane D: key 5, stand-in pid 24252, mode finished, session 000c76bc-2508-4ff1-8738-9e91def91c5c, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown true
++19 s  pane B: key 6, stand-in pid 36660, mode busy, session b2cde45a-fe4f-452f-be6c-c72631254ff0, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown true
++43 s  pane V: key 7, stand-in pid 28380, mode finished, session aee4dfd1-bdf0-4205-a058-0695d4bc9672, argv ["--permission-mode","auto","--model","opus","--effort","medium"], banner shown false
++49 s  Move to Tab on A: moved; stand-in pid 39760 alive: false
++52 s  Move to Tab on D: moved; stand-in pid 24252 alive: false
++54 s  Move to Tab on B: moved; stand-in pid 36660 alive: false
++57 s  Move to Tab on V: moved; stand-in pid 28380 alive: false
++63 s  FINDING: moving the panes restarted 4 agent(s) as fresh sessions (no --resume): pid 26944 session 5ad816b7-874c-426c-b0d3-05ebfee916f2; pid 43236 session c731f9b0-e0cd-4546-88ab-b8950c486938; pid 44156 session 8c2614b5-83d6-43d5-b0e9-451295c3cc31; pid 29248 session 29ae1428-59a9-467d-a0c2-78d377d0d3ee
++68 s  the one strip: ["Terminal 3×","Claude×","Claude×","Claude×","Claude× *"]; tab of each pane: {"A":1,"D":2,"B":3,"V":4}; panes now: A key 4 pid 26944 finished session 5ad816b7-874c-426c-b0d3-05ebfee916f2 (restarted); D key 5 pid 43236 finished session c731f9b0-e0cd-4546-88ab-b8950c486938 (restarted); B key 6 pid 44156 busy session 8c2614b5-83d6-43d5-b0e9-451295c3cc31 (restarted); V key 7 pid 29248 finished session 29ae1428-59a9-467d-a0c2-78d377d0d3ee (restarted)
++69 s  pane D: typed "a draft I have not sent yet" into its terminal, no Enter
++70 s  in front: V true; behind: A true, D true, B true; page visible
++132 s  hook runs: 26944:SessionStart=0, 26944:UserPromptSubmit=0, 43236:SessionStart=0, 43236:UserPromptSubmit=0, 43236:Stop=0, 44156:SessionStart=0, 44156:UserPromptSubmit=0, 44156:PreToolUse=0, 29248:SessionStart=0, 29248:UserPromptSubmit=0, 26944:Stop=0, 29248:Stop=0
++132 s  A finished 55 s after D was typed in (after the last click); V finished too
++133 s  stand-in A pid 26944: working set 647 MB, private 622 MB
++133 s  stand-in D pid 43236: working set 647 MB, private 622 MB
++133 s  stand-in B pid 44156: working set 647 MB, private 622 MB
++133 s  stand-in V pid 29248: working set 646 MB, private 622 MB
++133 s  app tree (window, web view, terminal service, consoles, stand-ins): 22 processes, working set 3218 MB, private 2853 MB
++149 s  asleep panes 0; alive A true D true B true V true; page visible
++489 s  asleep panes 1 (Asleep to save memory · idle 6 minWake starts the same agent again where it left off.Wake); alive A false D true B true V true; page visible
++493 s  A slept 6.1 min after its turn finished (poll granularity 15 s)
++493 s  app tree after A slept: 18 processes, working set 2567 MB, private 2214 MB (before 3218 / 2853 MB)
++602 s  asleep panes 1 (Asleep to save memory · idle 6 minWake starts the same agent again where it left off.Wake); alive A false D true B true V true; page visible
++617 s  asleep panes 1 (Asleep to save memory · idle 6 minWake starts the same agent again where it left off.Wake); alive A false D true B true V true; page visible
++620 s  wake by the Wake button: stand-in pid 28600, argv ["--permission-mode","auto","--model","opus","--effort","medium","--resume","5ad816b7-874c-426c-b0d3-05ebfee916f2"], session 5ad816b7-874c-426c-b0d3-05ebfee916f2, resumed true
++624 s  A after wake: Claude Code stand-in (agent-sleep proof; not Claude Code) | session 5ad816b7-874c-426c-b0d3-05ebfee916f2, mode finished, holding 600 MB | > stand-in task; SessionStart(resume) hook exit 0; placeholders now 0
++624 s  woken stand-in pid 28600: working set 647 MB, private 623 MB
+
+stand-in log (scratch folder standin.log, JSON lines):
+  {"t":1794326131666,"pid":39760,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","finishMs":1500,"session":"c7226402-9a57-482b-badd-855eb238e1e5","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326132774,"pid":39760,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326132853,"pid":39760,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326134455,"pid":39760,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794326134455,"pid":39760,"finished":true}
+  {"t":1794326136115,"pid":24252,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","finishMs":1500,"session":"000c76bc-2508-4ff1-8738-9e91def91c5c","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326137243,"pid":24252,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326137332,"pid":24252,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326138934,"pid":24252,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794326138934,"pid":24252,"finished":true}
+  {"t":1794326140556,"pid":36660,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"busy","finishMs":1500,"session":"b2cde45a-fe4f-452f-be6c-c72631254ff0","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326141679,"pid":36660,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326141767,"pid":36660,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326141843,"pid":36660,"hook":"PreToolUse","status":0,"out":"{}","err":""}
+  {"t":1794326145093,"pid":28380,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","finishMs":1500,"session":"aee4dfd1-bdf0-4205-a058-0695d4bc9672","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326146189,"pid":28380,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326146265,"pid":28380,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326147857,"pid":28380,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794326147857,"pid":28380,"finished":true}
+  {"t":1794326169675,"pid":26944,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","finishMs":75000,"session":"5ad816b7-874c-426c-b0d3-05ebfee916f2","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326170786,"pid":26944,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326170850,"pid":26944,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326172134,"pid":43236,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","finishMs":1500,"session":"c731f9b0-e0cd-4546-88ab-b8950c486938","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326173249,"pid":43236,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326173312,"pid":43236,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326174541,"pid":44156,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"busy","finishMs":1500,"session":"8c2614b5-83d6-43d5-b0e9-451295c3cc31","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326174902,"pid":43236,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794326174902,"pid":43236,"finished":true}
+  {"t":1794326175621,"pid":44156,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326175709,"pid":44156,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326175786,"pid":44156,"hook":"PreToolUse","status":0,"out":"{}","err":""}
+  {"t":1794326177027,"pid":29248,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium"],"mode":"finished","finishMs":75000,"session":"29ae1428-59a9-467d-a0c2-78d377d0d3ee","resumed":false,"heldMB":600,"configInScratch":true}
+  {"t":1794326178118,"pid":29248,"hook":"SessionStart","status":0,"out":"{}","err":""}
+  {"t":1794326178237,"pid":29248,"hook":"UserPromptSubmit","status":0,"out":"{}","err":""}
+  {"t":1794326245940,"pid":26944,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794326245941,"pid":26944,"finished":true}
+  {"t":1794326253343,"pid":29248,"hook":"Stop","status":0,"out":"{}","err":""}
+  {"t":1794326253343,"pid":29248,"finished":true}
+  {"t":1794326741640,"pid":28600,"start":true,"argv":["--permission-mode","auto","--model","opus","--effort","medium","--resume","5ad816b7-874c-426c-b0d3-05ebfee916f2"],"mode":"finished","finishMs":1500,"session":"5ad816b7-874c-426c-b0d3-05ebfee916f2","resumed":true,"heldMB":600,"configInScratch":true}
+  {"t":1794326742740,"pid":28600,"hook":"SessionStart","status":0,"out":"{}","err":""}
+
+FAIL  Move to Tab keeps each agent running (TERM-016)
+      bar: 0 restarts
+      measured: 4 restart(s)
+PASS  the four panes under test run the modes asked
+      bar: A,D,V finished; B busy
+      measured: A=finished D=finished B=busy V=finished
+PASS  layout: V is the tab in front, A, D and B are tabs behind it
+      bar: V shown, A/D/B hidden
+      measured: {"A":false,"D":false,"B":false,"V":true}
+PASS  the stand-ins ran Kolux's installed hook script for each event (SessionStart, UserPromptSubmit, then Stop or PreToolUse)
+      bar: 12 runs, all exit 0
+      measured: 12/12 exit 0
+PASS  A (finished, behind a tab, untouched) sleeps: the placeholder shows and its process is gone
+      bar: 1 asleep placeholder, A's pid gone
+      measured: 1 placeholder(s) [Asleep to save memory · idle 6 minWake starts the same agent again where it left off.Wake], A pid gone
+PASS  A's memory is freed when it sleeps
+      bar: app tree private bytes fall by about A's 622 MB
+      measured: A held 647 MB working set / 622 MB private; app tree private 2853 -> 2214 MB (-639 MB), working set 3218 -> 2567 MB; A in the stand-in list after: false
+PASS  V (finished, in the tab in front) stays awake
+      bar: pid alive
+      measured: alive; held to 8.2 min after A finished, 9.1 min after D was typed in; delay 5 min, check every 60 s
+PASS  D (finished, then typed into without Enter, behind a tab) stays awake
+      bar: pid alive
+      measured: alive; held to 8.2 min after A finished, 9.1 min after D was typed in; delay 5 min, check every 60 s
+PASS  B (busy: a tool call still running, behind a tab) stays awake
+      bar: pid alive
+      measured: alive; held to 8.2 min after A finished, 9.1 min after D was typed in; delay 5 min, check every 60 s
+PASS  Wake starts Claude again with --resume and A's own session id
+      bar: --resume 5ad816b7-874c-426c-b0d3-05ebfee916f2
+      measured: ["--permission-mode","auto","--model","opus","--effort","medium","--resume","5ad816b7-874c-426c-b0d3-05ebfee916f2"]
+PASS  the woken pane shows the resumed session and Kolux heard it (SessionStart resume hook exit 0)
+      bar: banner with (resumed), hook 0
+      measured: Claude Code stand-in (agent-sleep proof; not Claude Code) | session 5ad816b7-874c-426c-b0d3-05ebfee916f2, mode finished, holding 600 MB | > stand-in task; hook 0
+PASS  the woken agent is a live process again (holds its memory again)
+      bar: alive, about 600 MB
+      measured: pid 28600: 647 MB working set
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 20 (msedgewebview2.exe x6, conhost.exe x5, powershell.exe x1, cmd.exe x4, node.exe x4); survivors 0 (none)
+
+notes:
+  - Claude Code was a stand-in (scripts/prove/agent-sleep-standin.cjs): it proves Kolux's side (hooks heard, rules applied, process ended, memory freed, resume line). It does not prove that real Claude Code reports the same hook events, that `claude --resume <id>` restores a real conversation, or the memory a real session holds.
+
+S13: FAIL
