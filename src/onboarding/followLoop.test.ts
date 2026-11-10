@@ -82,6 +82,26 @@ describe("restingLoop", () => {
     c.frames(10);
     expect(c.queued()).toBe(0);
   });
+
+  it("a wake from inside measure (a reveal click) keeps one frame chain, so measure runs once per frame", () => {
+    const c = clock();
+    let measures = 0;
+    const loop = restingLoop(
+      () => {
+        measures++;
+        if (measures === 1) loop.wake();
+        return true;
+      },
+      { raf: c.raf, caf: c.caf },
+    );
+    loop.wake();
+    for (let i = 0; i < 5; i++) {
+      c.frames(1);
+      expect(c.queued()).toBe(1);
+    }
+    expect(measures).toBe(5);
+    loop.stop();
+  });
 });
 
 describe("wakeOnChange", () => {

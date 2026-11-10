@@ -26,7 +26,8 @@ export function restingLoop(
     if (measure()) calm = 0;
     else calm++;
     if (ended) return; // measure may have ended the loop (a tour that moved on)
-    if (calm < idle) frame = raf(frameFn);
+    // A wake() during measure (a reveal click) may have queued the next frame already: keep one chain only.
+    if (calm < idle && !frame) frame = raf(frameFn);
   };
   return {
     /** Look now and keep looking until things are calm again. Cheap to call often: one frame is queued at most. */
@@ -51,7 +52,18 @@ type Target = Pick<EventTarget, "addEventListener" | "removeEventListener">;
 
 /** Events on the window that can move a target; the loop wakes on each. Passive and captured, so scrolls inside
  *  any panel count too and none of them can hold up scrolling. */
-export const WAKE_ON = ["resize", "scroll", "transitionend", "animationend", "pointerup", "keyup", "click", "focusin"] as const;
+export const WAKE_ON = [
+  "resize",
+  "scroll",
+  "transitionrun",
+  "transitionend",
+  "animationstart",
+  "animationend",
+  "pointerup",
+  "keyup",
+  "click",
+  "focusin",
+] as const;
 
 /** Wakes `wake` on everything in WAKE_ON, on a drag (a pointer move with a button held), on the page coming
  *  back from hidden, and on layout changes (`watch`: the nodes whose size or children are observed; changes
