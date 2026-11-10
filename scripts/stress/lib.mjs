@@ -1,9 +1,12 @@
 // Shared pieces of the stress scenarios: the app (scripts/evidence/app-launch.mjs is the one launcher), process and
 // memory snapshots, in-page probes, statistics and the result record. A scenario returns checks; run.mjs writes them.
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { DatabaseSync } from "node:sqlite";
+import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createApp } from "../evidence/app-launch.mjs";
+import { createApp, waitFor as waitUntil } from "../evidence/app-launch.mjs";
 
 export const TERM = "section.pane[data-agent]";
 // In-page helper (S-02): `button.newtab` and its "New tab" menu are gone (owner change 2026-11-06), and from 10 panes on the grid is a tab strip
@@ -87,7 +90,80 @@ export function newApp(opts, name) {
   const app = createApp({ root: opts.root, port: opts.port, cdp: opts.cdp, identifier: IDENTIFIER, temp, suffix: ".stress", offscreen: true, buildMinutes: 25, log: (...a) => console.log(" ", ...a) });
   app.temp = temp;
   app.cdpTimeoutMs = 120000; // a page that does not answer in 2 minutes counts as frozen
+  app.buildKind = "debug dev build (pnpm tauri dev: the web view loads the vite dev server)";
+  if (opts.release) useReleaseBuild(app, opts);
   return app;
+}
+
+// ---------- --release: the shipped build, not the debug dev build ----------
+// `pnpm tauri build --no-bundle` (cargo --release, the front end bundled by vite build, no installer) with the stress identifier compiled in
+// (a release exe takes its identifier, and so its profile folder, from the config it was built with, as the dev exe does). The same scratch
+// homes and CDP port as the dev launch (scripts/evidence/app-launch.mjs appEnv is not exported, so it is repeated here from app.paths).
+// The exe is built once per run.mjs process; --skip-build reuses the one already in the target folder.
+const releaseBuilt = new Map();
+const releaseExe = (root) => join(process.env.CARGO_TARGET_DIR ? resolve(process.env.CARGO_TARGET_DIR) : join(root, "src-tauri", "target"), "release", "kolux-rs.exe");
+async function buildRelease(app, opts) {
+  const exe = releaseExe(opts.root);
+  if (!releaseBuilt.has(exe)) {
+    releaseBuilt.set(
+      exe,
+      (async () => {
+        if (opts.skipBuild) {
+          if (!existsSync(exe)) throw new Error(`--skip-build: no release exe at ${exe}`);
+          return `reused the exe already built`;
+        }
+        const cfg = join(app.temp, "tauri.release.json");
+        writeFileSync(cfg, JSON.stringify({ identifier: IDENTIFIER }));
+        const logFile = join(opts.temp, "tauri-build-release.log");
+        const out = openSync(logFile, "w");
+        console.log(`  building release: pnpm tauri build --no-bundle (identifier ${IDENTIFIER}; log ${logFile})`);
+        const t0 = Date.now();
+        const child = spawn(`pnpm tauri build --no-bundle --config "${cfg}"`, { cwd: opts.root, shell: true, windowsHide: true, stdio: ["ignore", out, out], env: { ...process.env, CARGO_BUILD_JOBS: process.env.CARGO_BUILD_JOBS ?? "4" } });
+        const code = await new Promise((done) => child.on("exit", (c) => done(c ?? -1)));
+        if (code !== 0 || !existsSync(exe)) throw new Error(`release build failed (exit ${code}); see ${logFile}`);
+        return `built in ${((Date.now() - t0) / 60000).toFixed(1)} min`;
+      })(),
+    );
+  }
+  return releaseBuilt.get(exe);
+}
+function useReleaseBuild(app, opts) {
+  const exe = releaseExe(opts.root);
+  const P = app.paths;
+  const env = () => ({ ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${opts.cdp}`, CLAUDE_CONFIG_DIR: P.claudeConfig, CODEX_HOME: P.codexHome, TEMP: P.appTemp, TMP: P.appTemp, USERPROFILE: P.userHome, HOME: P.userHome, KOLUX_KEYBINDINGS_HOME: P.userHome, APPDATA: P.roaming, LOCALAPPDATA: P.local, CARGO_HOME: process.env.CARGO_HOME ?? join(homedir(), ".cargo"), RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(homedir(), ".rustup") });
+  const start = async () => {
+    const out = openSync(join(app.temp, "app.log"), "a");
+    const child = spawn(exe, [], { cwd: join(opts.root, "src-tauri"), windowsHide: true, stdio: ["ignore", out, out], env: env() });
+    child.on("error", (e) => console.log(`  WARN release start: ${e.message}`));
+    if (!child.pid) throw new Error("the release app has no pid");
+    await app.pageUp(120_000);
+    // The window process by its exe path (never a window title); the terminal service is not the window.
+    const want = exe.replace(/'/g, "''");
+    const found = await waitUntil(
+      "the app process",
+      async () => {
+        const line = await app.ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux-rs.exe'" | Where-Object { $_.ExecutablePath -eq '${want}' -and [string]$_.CommandLine -notlike '*--terminal-service*' } | Select-Object -First 1; if ($p) { $p.ProcessId }`);
+        return /^\d+$/.test(line) ? line : null;
+      },
+      30000,
+      1000,
+    );
+    app.pid = Number(found);
+    app.exePath = exe;
+    console.log(`  app pid ${app.pid} (${exe}); window: ${await app.moveWindow(app.pid)}`);
+  };
+  app.launch = async ({ prepare } = {}) => {
+    await prepare?.();
+    mkdirSync(P.claudeConfig, { recursive: true });
+    writeFileSync(join(P.claudeConfig, ".kolux-rs-scratch"), "");
+    mkdirSync(P.codexHome, { recursive: true });
+    mkdirSync(P.local, { recursive: true });
+    app.buildNote = await buildRelease(app, opts);
+    const st = statSync(exe);
+    app.buildKind = `release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); ${app.buildNote}; exe ${(st.size / 1048576).toFixed(1)} MB, modified ${st.mtime.toISOString()}`;
+    await start();
+  };
+  app.relaunch = start;
 }
 export const seedProfile = (app, settings = {}) => () => {
   rmSync(app.paths.profile, { recursive: true, force: true });
@@ -263,14 +339,33 @@ export async function footprint(app, windowS = 60, intervalS = 2) {
     };
   }
   if (!j.gpuRows) console.log(`  warn: no GPU counter rows this window (${String(j.gpuErr ?? "").slice(0, 200)})`);
-  return { cores, gpuRows: j.gpuRows ?? 0, gpuErr: j.gpuErr ?? "", perRole, ticks: ticks.length, seconds: ticks.length > 1 ? (ticks[ticks.length - 1].t - ticks[0].t) / 1000 : 0 };
+  // Per process (every pid seen in the window): the same numbers as perRole, so a phase with several web views shows each one's renderer.
+  const pids = new Map();
+  for (let i = 0; i < ticks.length; i++) {
+    for (const p of ticks[i].procs) {
+      if (!pids.has(p.pid)) pids.set(p.pid, { pid: p.pid, role: p.role, n: 0, ws: 0, priv: 0, cpu100: 0 });
+      const q = pids.get(p.pid);
+      q.n++;
+      q.ws += p.ws;
+      q.priv += p.priv;
+    }
+  }
+  for (let i = 1; i < ticks.length; i++) {
+    const prev = new Map(ticks[i - 1].procs.map((p) => [p.pid, p]));
+    for (const p of ticks[i].procs) if (prev.has(p.pid)) pids.get(p.pid).cpu100 += Math.max(0, p.cpu100ns - prev.get(p.pid).cpu100ns);
+  }
+  const spanS = ticks.length > 1 ? (ticks[ticks.length - 1].t - ticks[0].t) / 1000 : 0;
+  const procs = [...pids.values()]
+    .map((q) => ({ pid: q.pid, role: q.role, wsMB: q.ws / q.n / MB, privMB: q.priv / q.n / MB, cpuCorePct: spanS > 0 ? (q.cpu100 / 1e7 / spanS) * 100 : NaN, gpuDedMB: j.gpuRows && gpuByPid[String(q.pid)] ? gpuByPid[String(q.pid)].ded / MB : NaN, ticks: q.n }))
+    .sort((a, b) => (a.role < b.role ? -1 : a.role > b.role ? 1 : b.privMB - a.privMB));
+  return { cores, gpuRows: j.gpuRows ?? 0, gpuErr: j.gpuErr ?? "", perRole, procs, ticks: ticks.length, seconds: ticks.length > 1 ? (ticks[ticks.length - 1].t - ticks[0].t) / 1000 : 0 };
 }
 
 // The page's own numbers: JS heap, canvases (a WebGL context is one canvas), pane and xterm element counts.
 export const PAGE_STATS_JS = `(() => {
   const m = performance.memory || {};
   const q = (s) => document.querySelectorAll(s).length;
-  return { jsHeapUsedMB: (m.usedJSHeapSize || 0) / 1048576, jsHeapTotalMB: (m.totalJSHeapSize || 0) / 1048576, canvases: q("canvas"), panes: q("section.pane[data-agent]"), shownPanes: [...document.querySelectorAll("section.pane[data-agent]")].filter((e) => e.offsetParent !== null).length, domNodes: document.getElementsByTagName("*").length };
+  return { jsHeapUsedMB: (m.usedJSHeapSize || 0) / 1048576, jsHeapTotalMB: (m.totalJSHeapSize || 0) / 1048576, canvases: q("canvas"), panes: q("section.pane[data-agent]"), shownPanes: [...document.querySelectorAll("section.pane[data-agent]")].filter((e) => e.offsetParent !== null).length, domNodes: document.getElementsByTagName("*").length, visibility: document.visibilityState, wizard: document.querySelector(".onb-backdrop") !== null };
 })()`;
 
 // Minimize / restore the app's window (Win32 ShowWindow: 6 = SW_MINIMIZE, 9 = SW_RESTORE). Returns whether the window is iconic after.
@@ -280,3 +375,41 @@ export const showWindow = (app, cmd) =>
      $h = (Get-Process -Id ${app.pid}).MainWindowHandle
      [K11.W]::ShowWindow($h, ${cmd}) | Out-Null; Start-Sleep -Milliseconds 800; "iconic=" + [K11.W]::IsIconic($h)`,
   );
+
+// Bring the minimized window back so the page is in sight again. A plain SW_RESTORE does not do it here: the window sits off-screen and
+// the app learns "in sight" from a focus or a resize it never gets (document.visibilityState stays hidden for good, measured on the
+// release build). SW_SHOWNA then SW_SHOWNORMAL does deliver it, without moving the window.
+const WIN_PS = `Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+public static class V11 {
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+}
+"@`;
+export const restoreWindow = (app) =>
+  app.ps(`${WIN_PS}
+     $h = (Get-Process -Id ${app.pid}).MainWindowHandle
+     [V11]::ShowWindow($h, 8) | Out-Null; [V11]::ShowWindow($h, 1) | Out-Null; Start-Sleep -Milliseconds 800; "iconic=" + [V11]::IsIconic($h)`);
+// Fallback when that is not enough (after a long stay hidden it is not): the app learns "in sight" from a resize, and a restore to the
+// same size sends none. So the restored window is put on screen at a size 40 px smaller (that resize brings the page back; measured on the
+// release build), then back to its own size w x h; the caller moves it off-screen again.
+export const nudgeWindow = (app, w = 1200, h = 800) =>
+  app.ps(`${WIN_PS}
+     $h = (Get-Process -Id ${app.pid}).MainWindowHandle
+     [V11]::ShowWindow($h, 9) | Out-Null; Start-Sleep -Milliseconds 1200; [V11]::SetWindowPos($h, [IntPtr]::Zero, 100, 100, ${w - 40}, ${h - 40}, 0x0044) | Out-Null; Start-Sleep -Milliseconds 700
+     [V11]::SetWindowPos($h, [IntPtr]::Zero, 100, 100, ${w}, ${h}, 0x0044) | Out-Null; Start-Sleep -Milliseconds 700; "on screen ${w}x${h} via ${w - 40}x${h - 40}, iconic=" + [V11]::IsIconic($h)`);
+
+// A fresh profile opens the first-run wizard (src-tauri/src/onboarding.rs: kv key "onboarding", record with no closedAt); its dots pulse
+// forever over a blurred backdrop, which alone costs 20+ % of a core in the GPU process, so an idle measurement must never include it.
+// The profile gets the record a closed wizard leaves (outcome "dismissed"), written into the same state.db the app opens.
+export function seedOnboardingDone(profileDir) {
+  const db = new DatabaseSync(join(profileDir, "state.db"));
+  try {
+    db.exec("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);");
+    const rec = JSON.stringify({ version: 7, step: 3, closedAt: Date.now(), outcome: "dismissed" });
+    db.prepare("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)").run("onboarding", rec);
+  } finally {
+    db.close();
+  }
+}
