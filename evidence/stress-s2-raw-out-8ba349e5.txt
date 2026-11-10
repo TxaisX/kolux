@@ -111,7 +111,7 @@ notes:
 S2: PASS
 
 ===== fixed (lane raw-out + review fixes)
-stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T12:45:25.365Z on bf95d184 (<lane>)
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T12:45:25.365Z on bf95d184 + review fixes, committed as 9710f66d (<lane>)
 args: S2 --release --temp <temp> --cdp 9272 --port 1472; ran 704 s
 
 PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)

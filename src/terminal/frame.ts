@@ -186,6 +186,8 @@ export function frameOutputs(options: Options = {}) {
     }
 
     wake(): void {
+      // A pane hidden after its chunks were queued copies them now, so the trickle does not pin their batches.
+      if (this.offScreen()) for (const p of this.parts) p.bytes = heldBytes(p.bytes);
       if (this.parts.length) this.plan();
     }
 
