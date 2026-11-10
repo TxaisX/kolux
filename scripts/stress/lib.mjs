@@ -330,37 +330,54 @@ export const PAGE_STATS_JS = `(() => {
   return { jsHeapUsedMB: (m.usedJSHeapSize || 0) / 1048576, jsHeapTotalMB: (m.totalJSHeapSize || 0) / 1048576, canvases: q("canvas"), panes: q("section.pane[data-agent]"), shownPanes: [...document.querySelectorAll("section.pane[data-agent]")].filter((e) => e.offsetParent !== null).length, domNodes: document.getElementsByTagName("*").length, visibility: document.visibilityState, wizard: document.querySelector(".onb-backdrop") !== null };
 })()`;
 
-// Minimize / restore the app's window (Win32 ShowWindow: 6 = SW_MINIMIZE, 9 = SW_RESTORE). Returns whether the window is iconic after.
-export const showWindow = (app, cmd) =>
-  app.ps(
-    `Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h,int c); [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);' -Name W -Namespace K11
-     $h = (Get-Process -Id ${app.pid}).MainWindowHandle
-     [K11.W]::ShowWindow($h, ${cmd}) | Out-Null; Start-Sleep -Milliseconds 800; "iconic=" + [K11.W]::IsIconic($h)`,
-  );
-
-// Bring the minimized window back so the page is in sight again. A plain SW_RESTORE does not do it here: the window sits off-screen and
-// the app learns "in sight" from a focus or a resize it never gets (document.visibilityState stays hidden for good, measured on the
-// release build). SW_SHOWNA then SW_SHOWNORMAL does deliver it, without moving the window.
+// The app's own window. Not Process.MainWindowHandle: once the window is minimised that names tao's hidden "Tao Thread Event Target"
+// window instead (the first visible unowned window in z-order), so a restore or a nudge sent there never reached the app and phase d's
+// window stayed minimised for the rest of the run (measured 2026-11-09). The main window is the visible "Tauri Window" titled "Kolux".
 const WIN_PS = `Add-Type -TypeDefinition @"
-using System; using System.Runtime.InteropServices;
+using System; using System.Text; using System.Runtime.InteropServices;
 public static class V11 {
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
   [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  public static IntPtr AppWindow(uint pid) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows((h, l) => {
+      uint p; GetWindowThreadProcessId(h, out p);
+      if (p != pid || !IsWindowVisible(h)) return true;
+      var c = new StringBuilder(64); GetClassName(h, c, 64); var t = new StringBuilder(64); GetWindowText(h, t, 64);
+      if (c.ToString() == "Tauri Window" && t.ToString() == "Kolux") { found = h; return false; }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
 }
 "@`;
+const mainWindow = (app) => `${WIN_PS}
+     $h = [V11]::AppWindow(${app.pid}); if ($h -eq [IntPtr]::Zero) { throw "no Kolux window for pid ${app.pid}" }`;
+
+// Minimize / restore the app's window (Win32 ShowWindow: 6 = SW_MINIMIZE, 9 = SW_RESTORE). Returns whether the window is iconic after.
+export const showWindow = (app, cmd) =>
+  app.ps(`${mainWindow(app)}
+     [V11]::ShowWindow($h, ${cmd}) | Out-Null; Start-Sleep -Milliseconds 800; "iconic=" + [V11]::IsIconic($h)`);
+
+// Bring the minimised window back without activating it (SW_SHOWNA, then SW_SHOWNORMAL): it returns to where it was, off-screen, and
+// the restore's resize tells the app the view is in sight again.
 export const restoreWindow = (app) =>
-  app.ps(`${WIN_PS}
-     $h = (Get-Process -Id ${app.pid}).MainWindowHandle
+  app.ps(`${mainWindow(app)}
      [V11]::ShowWindow($h, 8) | Out-Null; [V11]::ShowWindow($h, 1) | Out-Null; Start-Sleep -Milliseconds 800; "iconic=" + [V11]::IsIconic($h)`);
-// Fallback when that is not enough (after a long stay hidden it is not): the app learns "in sight" from a resize, and a restore to the
-// same size sends none. So the restored window is put on screen at a size 40 px smaller (that resize brings the page back; measured on the
-// release build), then back to its own size w x h; the caller moves it off-screen again.
+// Fallback when the page still reports hidden: the window is put on screen at a size 40 px smaller (a resize the app hears), then back
+// to its own size w x h, then off-screen again.
 export const nudgeWindow = (app, w = 1200, h = 800) =>
-  app.ps(`${WIN_PS}
-     $h = (Get-Process -Id ${app.pid}).MainWindowHandle
+  app.ps(`${mainWindow(app)}
      [V11]::ShowWindow($h, 9) | Out-Null; Start-Sleep -Milliseconds 1200; [V11]::SetWindowPos($h, [IntPtr]::Zero, 100, 100, ${w - 40}, ${h - 40}, 0x0044) | Out-Null; Start-Sleep -Milliseconds 700
-     [V11]::SetWindowPos($h, [IntPtr]::Zero, 100, 100, ${w}, ${h}, 0x0044) | Out-Null; Start-Sleep -Milliseconds 700; "on screen ${w}x${h} via ${w - 40}x${h - 40}, iconic=" + [V11]::IsIconic($h)`);
+     [V11]::SetWindowPos($h, [IntPtr]::Zero, 100, 100, ${w}, ${h}, 0x0044) | Out-Null; Start-Sleep -Milliseconds 700
+     [V11]::SetWindowPos($h, [IntPtr]::Zero, -32000, -32000, 0, 0, 0x0015) | Out-Null; "on screen ${w}x${h} via ${w - 40}x${h - 40} and off again, iconic=" + [V11]::IsIconic($h)`);
 
 // A fresh profile opens the first-run wizard (src-tauri/src/onboarding.rs: kv key "onboarding", record with no closedAt); its dots pulse
 // forever over a blurred backdrop, which alone costs 20+ % of a core in the GPU process, so an idle measurement must never include it.

@@ -311,7 +311,8 @@ async function onePass(ctx, rep, server) {
 
   writeFileSync(stopFile, "stop\n"); // the streams end on their own
   await app.sleep(4000);
-  // e before d: a window restored from a minimize stayed hidden for the web view on this off-screen setup, so e would have sampled a view nobody sees.
+  // e before d, so e never depends on a restore. (A restore once looked unreliable here: the old helpers sent it to tao's hidden event window,
+  // which Process.MainWindowHandle names once the app's window is minimised, so the window stayed minimised. lib.mjs now finds the right one.)
   // d is therefore the same 12 panes, minimized (it was 6 panes when it came before e).
   await growTo(12);
   await measure("e", "12 shell panes, idle", 12);
