@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRAFT_LIMIT, HISTORY_LIMIT, MAX_LINES, asksInTerminal, draftOf, enqueue, forwardsToBox, harmless, keepDraft, keyAction, linesFor, nearBottom, remember, sendSteps, stepHistory, typeSteps } from "./composer";
+import { DRAFT_LIMIT, HISTORY_LIMIT, MAX_LINES, asksInTerminal, draftOf, enqueue, forwardsToBox, harmless, hasUnsent, keepDraft, keyAction, linesFor, nearBottom, remember, sendSteps, stepHistory, typeSteps } from "./composer";
 import { capPending, combine, sentIn, type ChatItem } from "./model";
 
 describe("message box (CHAT-017, T-327)", () => {
@@ -48,6 +48,12 @@ describe("message box (CHAT-017, T-327)", () => {
     expect(draftOf(7)).toBe("");
     keepDraft(9, "x".repeat(DRAFT_LIMIT + 1));
     expect(draftOf(9)).toBe("");
+    // T-817: text too long to keep is still unsent text; an emptied box is not.
+    expect(hasUnsent(9)).toBe(true);
+    expect(hasUnsent(8)).toBe(true);
+    expect(hasUnsent(7)).toBe(false);
+    keepDraft(9, "");
+    expect(hasUnsent(9)).toBe(false);
   });
 
   it("printable keys and Backspace elsewhere in the pane go to the box; shortcuts do not", () => {

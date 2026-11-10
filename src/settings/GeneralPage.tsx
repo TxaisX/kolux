@@ -18,6 +18,7 @@ import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy
 import { ResetButton } from "./SafetyRules";
 import CliCard from "./CliCard";
 import { LINKS_IN_KOLUX_FIELD, linksOpenInKolux } from "../chat/chatLinks";
+import ExperimentalCard from "./ExperimentalCard";
 
 /** A row of buttons that behaves as one radio group. */
 export function Segmented<T extends string>({ label, options, value, onPick, off = [] }: { label: string; options: Array<{ id: T; label: string }>; value: T; onPick: (v: T) => void; off?: T[] }) {
@@ -350,6 +351,7 @@ export default function GeneralPage() {
       {settings && <LinksCard settings={settings} onSave={save} />}
       {settings && <OpenInCard settings={settings} onSave={save} />}
       {settings && <ProxyCard settings={settings} onSave={save} />}
+      {settings && <ExperimentalCard settings={settings} onSave={save} />}
       <CliCard />
       <DiagnosticsCard />
       <PrivacyCard />

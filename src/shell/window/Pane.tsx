@@ -37,6 +37,7 @@ import { openInBrowser } from "../../browser/openIn";
 
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
+const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
@@ -48,7 +49,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     liveRef, muteRef, setGuess, setLiveIds, setHook, setPanes, exitedPrompt, afterSetup, noticed, report, runTabs,
     dragging, setDropHint, shown, equalizePanes, gridCount, moveOutToTab, zoomed, classic, expandPane, names,
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
-    splitPane, rememberLineup, panes, activeDir,
+    splitPane, rememberLineup, panes, activeDir, wakePane,
   } = useWindow();
   if (p.kind === "browser") {
     return (
@@ -131,6 +132,8 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
   }
   // A restored tab that kept its kind but lost its data is a placeholder, never a live terminal (UX lane A, shell.md row 12).
   if (p.kind) return <LostPane kind={p.kind} hidden={!terminals || p.key !== active} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
+  // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
+  if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={!board && p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
   return (
     <TerminalPane
       key={p.key}

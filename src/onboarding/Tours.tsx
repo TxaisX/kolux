@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { markGuide, type GuideRecord } from "./guide";
 import { usePulseRest } from "../chrome/pulseRest";
+import { restingLoop, wakeOnChange } from "./followLoop";
 import { features, hasUsed, noteUse } from "./features";
 import { actionWord, autoStarts, FOCUSED_SPLIT, GRID_TRIES, gaveUp, gridStarts, lookAt, START_GRID, nextShown, ownerOff, place, prevShown, progress, REPLAY_TOUR, replayOf, stepWords, targetsOf, TOURS, tourFeature, type Placed, type Rect, type Tour, type TourId, type TourStep, type Want } from "./tour";
 
@@ -44,16 +45,17 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   const next = nextShown(present, at);
   const back = prevShown(present, at);
   // DT-C239: the ring's pulse rests after a while with no input (a running animation draws a frame on every refresh).
-  const [ringRest, ring] = usePulseRest<HTMLDivElement>(!!tour.ring);
+  // `at` wakes it when the tour moves on by itself (its target went away), not only on input.
+  const [ringRest, ring] = usePulseRest<HTMLDivElement>(!!tour.ring, at);
 
-  // Follow the target every frame (frames stop by themselves while the window is hidden); state
-  // changes only when something moved. A target gone for good moves on, or ends the tour.
+  // Follow the target while anything changes (a frame loop that rests after IDLE_FRAMES calm frames and wakes on
+  // resize, scroll, layout changes and input; see followLoop.ts); state changes only when something moved.
+  // A target gone for good moves on, or ends the tour.
   useLayoutEffect(() => {
-    let frame = 0;
     let key = "";
     let missing = 0;
-    const tick = () => {
-      frame = requestAnimationFrame(tick);
+    // True while something changed or must be looked at again next frame.
+    const measure = (): boolean => {
       const el = stepEl(step);
       if (!el) {
         // ONB-033: a step whose target is behind a hidden control clicks that control once (the sidebar's toggle).
@@ -61,10 +63,12 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
           revealed.current = at;
           shown(step.reveal)?.click();
         }
-        if (++missing < 10) return;
-        cancelAnimationFrame(frame);
+        if (++missing < 10) return true;
+        loop.stop();
         const n = nextShown(tour.steps.map((s) => !!stepEl(s)), at);
-        return n === null ? onEnd("lost") : onAt(n);
+        if (n === null) onEnd("lost");
+        else onAt(n);
+        return false;
       }
       missing = 0;
       const t = el.getBoundingClientRect();
@@ -76,17 +80,19 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
       const sidebar = sb && sb.width > 0 && sb.height > 0 ? { left: sb.left, top: sb.top, width: sb.width, height: sb.height } : null;
       const p = place(t, { width: Math.min(320, window.innerWidth - 32), height: box.current?.offsetHeight ?? 140 }, b, step.side, panes, sidebar);
       const k = [t.left, t.top, t.width, t.height, p.left, p.top, p.side].map(String).join();
-      if (k !== key) {
-        key = k;
-        setGeo({ t: { left: t.left, top: t.top, width: t.width, height: t.height }, p });
-      }
+      if (k === key) return false;
+      key = k;
+      setGeo({ t: { left: t.left, top: t.top, width: t.width, height: t.height }, p });
+      return true;
     };
-    tick();
-    const wake = () => !document.hidden && tick();
-    document.addEventListener("visibilitychange", wake);
+    const loop = restingLoop(measure);
+    measure(); // before the first paint, as the card must not show unplaced
+    loop.wake();
+    const target = stepEl(step);
+    const unwake = wakeOnChange(loop.wake, { watch: target ? [target] : [], root: document.body });
     return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener("visibilitychange", wake);
+      loop.stop();
+      unwake();
     };
   }, [tour, at]); // eslint-disable-line react-hooks/exhaustive-deps
 

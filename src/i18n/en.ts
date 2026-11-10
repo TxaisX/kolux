@@ -23,6 +23,13 @@ export const EN = {
   "connect.claude": "Connect opens Claude's sign-in page in your browser once and keeps a key that lasts a year.",
   "connect.codex": "Connect adds a ChatGPT account in a Codex home of Kolux's own; your Codex folder stays as it is.",
   "onboarding.connect.wait": "Connect an AI above to continue, or choose “I’ll do this later”.",
+  "sleep.asleep": "Asleep to save memory · idle {count} min",
+  "sleep.asleep.hint": "Wake starts the same agent again where it left off.",
+  "sleep.wake": "Wake",
+  "sleep.settings.card": "Experimental",
+  "sleep.settings.switch": "Agent sleep",
+  "sleep.settings.detail": "Off: nothing changes. On: an agent pane that finished its turn and sat untouched for the chosen time is put to sleep: its session is saved and its program ends, which frees memory. The pane stays in place and Wake brings the same agent back where it left off. A pane that is working, waiting on you, holds unsent text or is the one you are looking at never sleeps.",
+  "sleep.settings.minutes": "Idle minutes before sleep",
 } as const;
 
 export type TextKey = keyof typeof EN;

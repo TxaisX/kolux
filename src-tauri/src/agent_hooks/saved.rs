@@ -279,7 +279,7 @@ pub fn resumable(earlier: Vec<Row>, live: impl IntoIterator<Item = Row>) -> Vec<
 }
 
 /// The record written at the last quit or sleep; another version or a damaged one reads as none.
-fn record(store: &crate::state::Store) -> Vec<Row> {
+pub fn record(store: &crate::state::Store) -> Vec<Row> {
     store.get(RESUMABLE_KEY).ok().flatten().and_then(|t| serde_json::from_str::<Saved>(&t).ok()).filter(|s| s.version == VERSION).map(|s| s.rows).unwrap_or_default()
 }
 
@@ -330,6 +330,75 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
     if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
         eprintln!("kolux-rs: the agents' status could not be saved: {e}");
     }
+}
+
+/// TERM-123 / HID-028 (T-817): before one pane's agent is put to sleep, its live row joins the record
+/// of agents to resume, keyed by its provider session as `at_sleep` keys it. The row stays whatever
+/// its state (a finished turn is what makes a pane eligible, and the pane itself wakes it), so this
+/// does not go through `resumable`, which keeps only unfinished agents. Nothing changes when the pane
+/// has no live row with a session id, or when the record cannot be written: the error says why, and
+/// the caller then ends nothing. Only after the record is written does the pane's live row go and the
+/// save get rewritten without it.
+pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32, idle: std::time::Duration) -> Result<Row, String> {
+    let live_row = live_row(pane_key);
+    // STAT-024: the row's state reads done while background tasks run on; the session itself knows.
+    let monitoring = crate::status::SESSIONS.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).is_some_and(Session::monitoring);
+    let row = sleep_record(live_row, monitoring, now_ms(), idle, record(store), |rows| store.set(RESUMABLE_KEY, &serialize(rows)).map_err(|e| e.to_string()))?;
+    let kept: Vec<Row> = {
+        let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
+        let live = live.get_or_insert_with(HashMap::new);
+        live.remove(&pane_key);
+        live.values().cloned().collect()
+    };
+    if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
+        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+    }
+    Ok(row)
+}
+
+/// TERM-123: the pane's live row as the hooks last left it, for agent sleep's own checks.
+pub fn live_row(pane_key: u32) -> Option<Row> {
+    LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned()
+}
+
+/// TERM-123: the window did not end the pane after `at_pane_sleep` (its state changed meanwhile), so the
+/// row goes back among the live ones and the save is rewritten with it; the record stays, as workspace
+/// sleep's does (the next event or the quit rewrites it).
+pub fn unsleep(store: &crate::state::Store, row: Row) {
+    let rows: Vec<Row> = {
+        let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
+        let live = live.get_or_insert_with(HashMap::new);
+        live.entry(row.pane_key).or_insert(row);
+        live.values().cloned().collect()
+    };
+    if let Err(e) = store.set(SAVED_KEY, &serialize(&rows)) {
+        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+    }
+}
+
+/// The record `at_pane_sleep` writes through `write`, from the pane's live row and the record so far;
+/// the reasons a pane is not recorded, in plain words. The live row is checked here too, not only in the
+/// window (whose decision may be a minute old): the turn must be finished (done or idle) with no
+/// background tasks going, and the state must be at least `idle` old at `now`. Kept apart from the store
+/// so a failing write can be tested (agent_sleep.rs).
+pub fn sleep_record(live_row: Option<Row>, monitoring: bool, now: u64, idle: std::time::Duration, earlier: Vec<Row>, write: impl FnOnce(&[Row]) -> Result<(), String>) -> Result<Row, String> {
+    let Some(row) = live_row else { return Err("no status is known for this pane yet".into()) };
+    if !matches!(row.state.as_str(), "done" | "idle") {
+        return Err(format!("the agent's turn is not finished ({})", row.state));
+    }
+    if monitoring {
+        return Err("background tasks are still going".into());
+    }
+    let since = now.saturating_sub(row.at);
+    if since < idle.as_millis() as u64 {
+        return Err(format!("the agent changed state {} s ago, less than the delay", since / 1000));
+    }
+    let Some(id) = row.session_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) else { return Err("the agent has not reported a session that can be resumed".into()) };
+    let mut rows = earlier;
+    rows.retain(|r| r.session_id.as_deref() != Some(id));
+    rows.push(row.clone());
+    write(&rows).map_err(|e| format!("the session could not be recorded: {e}"))?;
+    Ok(row)
 }
 
 /// Called as Kolux quits, before the terminals are ended.

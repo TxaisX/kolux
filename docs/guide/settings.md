@@ -84,6 +84,12 @@ The address is sealed in the system keyring (see [Secrets](safety.md#secrets)); 
 
 The update check goes through the saved proxy. If the setting cannot be used, the check stops and says so instead of going around the proxy.
 
+### Experimental
+
+Switches for features that are still being tried out. Each is off on a fresh profile.
+
+**Agent sleep** (off): an agent pane that finished its turn and sat untouched for **Idle minutes before sleep** (30 unless you change it; 5 to 240) is put to sleep to free memory: its session is saved, its program ends and the pane shows "Asleep to save memory" with a **Wake** button. Wake, a click, focusing or typing in the pane starts the same agent again where it left off. A pane that is working, waiting on you, holds unsent text, was typed in or printed something within the delay, or is on screen never sleeps. After you restart Kolux a sleeping pane comes back as a plain shell, like every agent tab; the session itself is still in the agent's own list. With the switch off nothing changes.
+
 ### Diagnostics
 
 Three buttons gather a report for troubleshooting. Keys, passwords and tokens are replaced with `[masked]`. Nothing is sent anywhere; you copy the report yourself. See [Troubleshooting](troubleshooting.md).
@@ -322,4 +328,4 @@ Each project has two settings: "New workspaces start from" (blank means the defa
 
 The mouse wheel scrolls long menus, pickers and sheets, including the lists inside dialogs. Over such a surface the wheel moves the nearest part, working outward from the pointer, that can still scroll that way. When nothing in the menu can move, the wheel does nothing, so the page behind it does not jump. Ctrl+wheel (zoom) and sideways scrolling are left alone, and a list that sits inline on a page still scrolls its page.
 
-<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/ShortcutsPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx at c758ad33 -->
+<!-- verified against: src/settings/pages.ts, src/settings/GeneralPage.tsx, src/settings/AppearancePage.tsx, src/settings/AgentsPage.tsx, src-tauri/src/agents.rs, src/settings/GitPage.tsx, src/settings/NotificationsPage.tsx, src/settings/privacy.ts, src/settings/RepoPage.tsx, src/keys/actions.ts, src/terminal/pin.ts, src/terminal/remove.ts, src/terminal/closing.ts, src/terminal/text.ts, src/settings/SettingsPage.tsx, src/settings/TerminalPage.tsx, src/settings/ShortcutsPage.tsx, src/settings/search.ts, src/settings/zoom.ts, src/keys/terminalPolicy.ts, src/chrome/chromeItems.ts, src-tauri/src/keybindings.rs, src-tauri/src/pty.rs, src/terminal/TerminalPane.tsx, src/terminal/paste.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src/settings/editorPrefs.ts, src/settings/openIn.ts, src/settings/proxy.ts, src/settings/importSchemes.ts, src/settings/menuWheel.ts, src/main.tsx, src/settings/ExperimentalCard.tsx, src/sleep/agentSleep.ts, src/sleep/useAgentSleep.ts at ef86e019 -->
