@@ -332,6 +332,41 @@ pub fn at_sleep(store: &crate::state::Store, paths: &[String]) {
     }
 }
 
+/// TERM-123 / HID-028 (T-817): before one pane's agent is put to sleep, its live row joins the record
+/// of agents to resume, keyed by its provider session as `at_sleep` keys it. The row stays whatever
+/// its state (a finished turn is what makes a pane eligible, and the pane itself wakes it), so this
+/// does not go through `resumable`, which keeps only unfinished agents. Nothing changes when the pane
+/// has no live row with a session id, or when the record cannot be written: the error says why, and
+/// the caller then ends nothing. Only after the record is written does the pane's live row go and the
+/// save get rewritten without it.
+pub fn at_pane_sleep(store: &crate::state::Store, pane_key: u32) -> Result<Row, String> {
+    let live_row = LIVE.lock().unwrap_or_else(|p| p.into_inner()).as_ref().and_then(|m| m.get(&pane_key)).cloned();
+    let row = sleep_record(live_row, record(store), |rows| store.set(RESUMABLE_KEY, &serialize(rows)).map_err(|e| e.to_string()))?;
+    let kept: Vec<Row> = {
+        let mut live = LIVE.lock().unwrap_or_else(|p| p.into_inner());
+        let live = live.get_or_insert_with(HashMap::new);
+        live.remove(&pane_key);
+        live.values().cloned().collect()
+    };
+    if let Err(e) = store.set(SAVED_KEY, &serialize(&kept)) {
+        eprintln!("kolux-rs: the agents' status could not be saved: {e}");
+    }
+    Ok(row)
+}
+
+/// The record `at_pane_sleep` writes through `write`, from the pane's live row and the record so far;
+/// the reasons a pane is not recorded, in plain words. Kept apart from the store so a failing write can
+/// be tested (agent_sleep.rs).
+pub fn sleep_record(live_row: Option<Row>, earlier: Vec<Row>, write: impl FnOnce(&[Row]) -> Result<(), String>) -> Result<Row, String> {
+    let Some(row) = live_row else { return Err("no status is known for this pane yet".into()) };
+    let Some(id) = row.session_id.as_deref().map(str::trim).filter(|s| !s.is_empty()) else { return Err("the agent has not reported a session that can be resumed".into()) };
+    let mut rows = earlier;
+    rows.retain(|r| r.session_id.as_deref() != Some(id));
+    rows.push(row.clone());
+    write(&rows).map_err(|e| format!("the session could not be recorded: {e}"))?;
+    Ok(row)
+}
+
 /// Called as Kolux quits, before the terminals are ended.
 pub fn at_quit(store: &crate::state::Store) {
     let earlier: Vec<Row> = record(store);

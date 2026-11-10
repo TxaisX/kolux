@@ -84,6 +84,12 @@ The address is sealed in the system keyring (see [Secrets](safety.md#secrets)); 
 
 The update check goes through the saved proxy. If the setting cannot be used, the check stops and says so instead of going around the proxy.
 
+### Experimental
+
+Switches for features that are still being tried out. Each is off on a fresh profile.
+
+**Agent sleep** (off): an agent pane that finished its turn and sat untouched for **Idle minutes before sleep** (30 unless you change it; 5 to 240) is put to sleep to free memory: its session is saved, its program ends and the pane shows "Asleep to save memory" with a **Wake** button. Wake, a click, focusing or typing in the pane starts the same agent again where it left off. A pane that is working, waiting on you, holds unsent text or is the one you are looking at never sleeps. With the switch off nothing changes.
+
 ### Diagnostics
 
 Three buttons gather a report for troubleshooting. Keys, passwords and tokens are replaced with `[masked]`. Nothing is sent anywhere; you copy the report yourself. See [Troubleshooting](troubleshooting.md).

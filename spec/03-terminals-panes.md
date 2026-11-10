@@ -1884,18 +1884,30 @@ Decision: H: default skip.
 Source: D-03-039
 
 ### TERM-123 · Agent hibernation
-Tier: H · Pushed: — · State at 0.15.0: hidden
-User does: would see idle agents put to sleep after 30 minutes.
-User sees: behind an experimental flag, off by default.
-Rules: idle time default 30 minutes; sleeping sessions restore when opened; idle time counts from
-  the agent's last state change, not its last update; a finished Claude turn makes the agent
-  eligible for sleep.
+Tier: H · Pushed: — · State at 0.15.0: hidden · State now: experimental, off by default (T-817)
+User does: turns on "Agent sleep" in Settings > General > Experimental and sets the idle minutes.
+User sees: an agent pane that finished its turn and sat untouched past the delay shows "Asleep to
+  save memory · idle N min" with a Wake button in place of its terminal; Wake, a click, focusing or
+  typing in the pane starts the same agent again in the same folder resuming the same session.
+Rules: experimental switch, off on a fresh profile and when its key is missing; idle time default
+  30 minutes (5 to 240); idle time counts from the agent's last state change, not its last output;
+  a finished turn (done or idle) makes the agent eligible. Never eligible: the agent is working,
+  waiting on a question or a permission, the message box holds unsent text, the pane is the focused
+  pane of a visible window, a program other than the agent is in front, or no resumable session id
+  is known; when in doubt the pane stays awake. Sleep saves the session first (the way workspace
+  sleep does); a failed save ends nothing. Only that pane's process tree ends; its kept output is
+  replayed on Wake. One check a minute at most, only while the switch is on; no per-pane timers.
+  Wake takes the restored-tab resume path and no other; a failed start keeps the tab and says why.
 Acceptance:
-  - [ ] With the flag off (the default), finished idle agents are never put to sleep.
+  - [x] With the flag off (the default), finished idle agents are never put to sleep. (T-817:
+        `src/sleep/agentSleep.test.ts` "switch is off when its key is missing", the check's timer
+        is not set while the switch is off in `src/sleep/useAgentSleep.ts`; the Rust command
+        refuses while the switch is off, `cargo test --lib t817`)
   - [ ] If the owner revives it: a session idle for 30 minutes since its last state change sleeps,
-      and opening it restores it.
-Compat: —
-Decision: H: default skip.
+      and opening it restores it. (Rules proven by unit tests, `src/sleep/agentSleep.test.ts`;
+      the live sleep and wake in the running app are not yet proven: see `evidence/T-817.txt`)
+Compat: an old profile's own sleep switch had another key and is never read (HID-028).
+Decision: Txais 2026-11-09, DT-C242: build it, off by default (was H: default skip).
 Source: D-03-123
 
 ### TERM-124 · Standalone terminal window
@@ -2021,5 +2033,5 @@ Source: D-03-136
 - TERM-117 · Freeze report and render diagnostics · dev-only internal breadcrumbs · H: default skip
 - TERM-127 · Deprecated terminal stop command · hidden and deprecated, not in help · H: default skip
 - TERM-039 · Switch a pane between chat and terminal view · hidden behind the native chat flag, off by default · H: default skip
-- TERM-123 · Agent hibernation · hidden behind an experimental flag, off by default · H: default skip
+- TERM-123 · Agent hibernation · experimental switch in Settings > General, off by default · DT-C242: built (T-817)
 - TERM-124 · Standalone terminal window · hidden, nothing in the grid opens it · H: default skip

@@ -25,6 +25,13 @@ const pack = {
   "connect.claude": "Se connecter ouvre une fois la page de connexion de Claude dans votre navigateur et conserve une clé valable un an.",
   "connect.codex": "Se connecter ajoute un compte ChatGPT dans un dossier Codex propre à Kolux ; votre dossier Codex reste inchangé.",
   "onboarding.connect.wait": "Connectez une IA ci-dessus pour continuer, ou utilisez le bouton de gauche pour le faire plus tard.",
+  "sleep.asleep": "En veille pour libérer de la mémoire · inactif {count} min",
+  "sleep.asleep.hint": "Réveiller relance le même agent là où il s’était arrêté.",
+  "sleep.wake": "Réveiller",
+  "sleep.settings.card": "Expérimental",
+  "sleep.settings.switch": "Veille des agents",
+  "sleep.settings.detail": "Désactivé : rien ne change. Activé : un volet d’agent qui a fini son tour et n’a pas été touché pendant le délai choisi est mis en veille : sa session est enregistrée et son programme se termine, ce qui libère de la mémoire. Le volet reste en place et Réveiller ramène le même agent là où il s’était arrêté. Un volet qui travaille, attend votre réponse, contient un texte non envoyé ou est celui que vous regardez ne se met jamais en veille.",
+  "sleep.settings.minutes": "Minutes d’inactivité avant la veille",
 } satisfies Record<TextKey, string>;
 
 export default pack;

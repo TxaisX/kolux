@@ -1,6 +1,7 @@
 mod folder_projects;
 mod repo_scan;
 mod activity;
+mod agent_sleep;
 pub mod agents;
 mod app_look;
 pub mod artifacts;
@@ -672,6 +673,7 @@ pub fn run() {
             projects::workspace_hide,
             projects::workspace_rename, projects::workspace_details_get, projects::workspace_details_save,
             projects::workspace_sleep,
+            agent_sleep::agent_pane_sleep,
             projects::visibility_get,
             projects::visibility_set,
             projects::visibility_root_add,

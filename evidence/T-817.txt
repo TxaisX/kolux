@@ -1,0 +1,58 @@
+T-817 · Agent sleep (TERM-123, HID-028), experimental and off by default · lane agent-sleep · 2026-11-09
+
+Decision: Txais 2026-11-09 "Build it, off by default" (DT-C242).
+
+What was built
+- Settings > General > "Experimental" card: "Agent sleep" switch (agentSleep; off on a fresh profile and when the key is
+  missing; only a saved true is on) and "Idle minutes before sleep" (agentSleepIdleMinutes; 30; held 5..240 before it is saved).
+- One check a minute while the switch is on (no timer at all while off; no per-pane timers): src/sleep/useAgentSleep.ts.
+- Eligibility (src/sleep/agentSleep.ts sleepRefusal): agent pane, not asleep, resumable session id (resumeId), program running,
+  a hook state is known, not permission/waiting/open ask, finished (done or idle), no background tasks, no unsent draft,
+  not the focused pane of a visible window, last state change older than the delay. Anything else: awake.
+- Sleep: Rust `agent_pane_sleep` re-checks the switch, the pane's terminal and the agent in front of it, records the session
+  (saved::at_pane_sleep, keyed by session like workspace sleep; a failed write is an Err and nothing ends), returns the terminal
+  id; the window then marks the pane asleep (its terminal unmounts, which ends only that pane's Job object), drops its pty entry
+  and running flag, and ends the terminal by id. Placeholder: "Asleep to save memory · idle N min" + Wake (src/sleep/AsleepPane.tsx).
+- Wake: agent_start_line { restore: true, session } (the same call main.tsx makes for a restored tab), the key added to
+  restoredKeys so the terminal remounts as a restored tab (kept output replayed, a failed start keeps the tab with its reason).
+- Docs: TERM-123 and HID-028 cards (state, rules, acceptance ticks with proof), DECISIONS.md DT-C242 (+ the two "skip" rows
+  updated), docs/guide/settings.md "Experimental", PLAN.md T-817, STATE-history line.
+
+Gates (run in G:\Dev\kolux-rs-lanes\agent-sleep, CARGO_TARGET_DIR=G:/Dev/kolux-rs-lanes/agent-sleep-target)
+- pnpm exec tsc --noEmit -p tsconfig.json → no output (clean)
+- VITEST_MAX_WORKERS=2 pnpm exec vitest run src/sleep src/settings src/shell src/i18n
+    Test Files  145 passed (145)
+         Tests  762 passed (762)
+  src/sleep/agentSleep.test.ts covers: every never-sleep case (working/queued/blocked/interrupted, permission/waiting/open ask,
+  background tasks, unsent draft, focused pane, shell or ended program, program not running or still starting, not a terminal,
+  no resumable session or a fork's parent id, already asleep, not idle long enough, no state yet), the clamp (4→5, 0→5, 241→240,
+  missing→30, "3"→5, "300"→240), the switch off when missing / wrong type / old keys, timing (release build ignores the
+  test-only fast key, no sub-5 delay), wokenFields (Wake uses the resume line), the placeholder's idle count.
+- cargo clippy --all-targets -- -D warnings → Finished `dev` profile ... in 2m 22s; clippy exit 0
+- cargo test --lib t817 → test result: ok. 5 passed; 0 failed (switch off on a fresh profile and old keys ignored; terminal with an
+  agent in front required; sleep_record keeps a finished row and replaces the same session; no session → nothing written;
+  failed save → Err "the session could not be recorded: disk full", nothing ends)
+- cargo test --lib agent_hooks → test result: ok. 151 passed; 0 failed (saved.rs neighbours unchanged)
+- pnpm check → tsc, license-check, plan-check OK, glossary-check OK; guide-check asks for the marker move after the
+  settings.md edit is committed (done in the follow-up commit).
+
+Runtime proof
+- Not run. A live sleep needs an agent that reports a finished turn with a resumable session id through the hook listener
+  (DT-C240 per-pane tokens). No Claude or Codex login exists in a scratch profile and the owner's credentials may not be used;
+  the repo has no stand-in agent that speaks the hook protocol, and writing one plus a dev build of the app did not fit the
+  lane's turn budget. The development-only `agentSleepTestFast: true` setting (20 s delay, 5 s check; never read by a release
+  build) is in place for that proof: start the dev app with a scratch profile, open an agent, let a turn finish, unfocus the
+  pane, and watch the placeholder appear within about 25 s, then Wake.
+
+Reused
+- saved.rs record/serialize/Row and the agentResumable/agentStatusSaved keys (workspace sleep's saved sessions, STAT-037).
+- Terminals::attached / Terminals::program (foreground detection) and terminal_kill (the pane's Job object).
+- The restored-tab resume path: agent_start_line { restore: true }, restoredKeys, TerminalPane's restored replay, failedPane
+  and restoreAsk ("cannot reattach" reason + Try again).
+- useDraft + the DelayField pattern for the clamped minutes box; the General page's conn-card layout; the i18n EN + packs.
+- draftOf (chat/composer.ts), resumeId (sessions/ownership.ts), the status records hook/stamp/turn/running/winFocused/inView.
+
+Did not fit
+- `resumable()` keeps only unfinished rows, but a finished turn must be sleep-eligible: at_pane_sleep records the pane's row
+  without that filter (sleep_record), keyed by session id as before.
+- No Experimental settings page exists in the rebuild (SET-044), so the switch lives in an "Experimental" card on General.

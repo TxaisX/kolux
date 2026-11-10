@@ -19,6 +19,7 @@ export const INDEX: Entry[] = [
   { page: "general", section: "links", title: "Links", words: "links url open browser kolux system" },
   { page: "general", section: "cli", title: "Command line", words: "command line cli kolux shell command install path register" },
   { page: "general", section: "proxy", title: "Network proxy", words: "proxy network http https socks bypass firewall corporate http1" },
+  { page: "general", section: "experimental", title: "Experimental", words: "experimental agent sleep asleep hibernate hibernation idle memory wake" },
   { page: "appearance", section: "language", title: "Language", words: "locale translate " + LANGUAGES.map((l) => l.name).join(" "), fold: "interface" },
   { page: "appearance", section: "interface", title: "Mode", words: "dark light system night day theme", fold: "interface" },
   { page: "appearance", section: "zoom", title: "Zoom", words: "size bigger smaller scale text larger magnify", fold: "interface" },

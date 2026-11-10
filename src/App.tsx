@@ -57,6 +57,7 @@ import { useBrowserChords } from "./browser/useBrowserChords";
 import { useRestoredStatus } from "./status/useRestoredStatus";
 import { useNotificationClick } from "./status/notificationClick";
 import { useGone } from "./status/gone";
+import { useAgentSleep } from "./sleep/useAgentSleep";
 import { useWorkspaceActions } from "./projects/useWorkspaces";
 import { useWizard } from "./onboarding/useWizard";
 import { hooksOn } from "./onboarding/hooksOn";
@@ -66,7 +67,7 @@ import { hearStates, setHooksOn } from "./chat/send";
 export type ShellTarget = { dir: string | null; branch: string | null };
 
 /** A pane with `seats` is a chooser (SESS-007): nothing runs in it until Start. */
-export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "browser" | "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
+export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes it (sleep/agentSleep.ts). */ asleep?: { since: number; idleMin: number }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "browser" | "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
 
 /** Columns for a pane count: 1, side by side for 2, two rows for 3-4, then three across. */
 /** `initial`: the settings read before the first frame (main.tsx), so the first screen is right at once. */
@@ -208,6 +209,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   const { noticed, panesRef } = useAgentEvents({ panes, setPanes, titles, settings, inView, setToast, tabName, setCrew, setTurn, setStale, hookRef, setHook, stamp, setStamp, setContext, unreadPanes, setUnreadPanes, winFocused, markDir, muted: muteRef });
   useRestoredStatus({ panes, hookRef, setHook, setStale, setCrew, setTurn });
   useGone({ panes, running, hook, setHook, setTurn, setCrew }); // STAT-031 / T-275: gone agents stop reporting
+  const sleep = useAgentSleep({ panes, setPanes, hook, stamp, turn, running, setRunning: store.setRunning, focused, winFocused, inView, settings, restoredKeys: tail.restoredKeys, ptys }); // TERM-123 (T-817): agent sleep, only while its switch is on
   // STAT-044 / C26-R2-01: a clicked notification takes the same jump as the rail, the Inbox and the
   // needs-you key: the pane's workspace, the Terminals screen, its tab, the sidebar row scrolled to it,
   // and it leaves Settings or a full page first, or the window would come forward onto the page the
@@ -218,7 +220,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
     ...state, ...plumb, ...chrome, ...start, ...chords, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
-    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, prRows, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
+    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, prRows, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
   };
   Object.assign(w, bag);
   // T-699 (DT-C135): the right sidebar as the left one's setter sees it (shell/window/narrow.ts nextLeft).

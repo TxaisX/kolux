@@ -25,6 +25,13 @@ const pack = {
   "connect.claude": "「接続」を押すと、ブラウザーで Claude のサインインページが一度開き、1 年間有効なキーが保存されます。",
   "connect.codex": "「接続」を押すと、Kolux 専用の Codex ホームに ChatGPT アカウントが追加されます。お使いの Codex フォルダはそのまま変わりません。",
   "onboarding.connect.wait": "続けるには上で AI をつなぐか、左のボタンであとで設定してください。",
+  "sleep.asleep": "メモリ節約のためスリープ中 · {count} 分アイドル",
+  "sleep.asleep.hint": "「起こす」で同じエージェントを中断したところから再開します。",
+  "sleep.wake": "起こす",
+  "sleep.settings.card": "試験的な機能",
+  "sleep.settings.switch": "エージェントのスリープ",
+  "sleep.settings.detail": "オフ: 何も変わりません。オン: 応答を終えて選んだ時間のあいだ触られなかったエージェントのペインをスリープさせます。セッションを保存してプログラムを終了し、メモリを空けます。ペインはそのまま残り、「起こす」で同じエージェントが中断したところから戻ります。作業中、あなたの返事を待っている、未送信の文章がある、いま見ているペインはスリープしません。",
+  "sleep.settings.minutes": "スリープまでのアイドル時間（分）",
 } satisfies Record<TextKey, string>;
 
 export default pack;
