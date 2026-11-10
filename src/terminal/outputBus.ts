@@ -8,27 +8,55 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { OutputEvent } from "./codec";
 
 export const OUTPUT_EVENT = "terminal-output";
+export const EXIT_EVENT = "terminal-exit";
 
-/** What one `terminal-output` event carries. */
-export type OutputBatch = { items: OutputEvent[] };
+/** What one `terminal-output` event carries; on the output channel a terminal's end note comes as `exit`. */
+export type OutputBatch = { items: OutputEvent[]; exit?: unknown };
 
-// Flood memory (DT-C244): the window process sends output through one channel per page once the page has
-// subscribed, and the event only while no page has. An event runs in the page as a script with the whole
-// batch written into it, and under an 8-pane flood the heap kept those scripts' text (1.4 GB); a channel
-// hands a large batch over as a response the page parses. Every reader of this page shares the one channel.
-const readers = new Set<(chunk: OutputEvent) => void>();
-let subscribed: Promise<void> | null = null;
+type Reader = (chunk: OutputEvent) => void;
+type ExitReader = (exit: unknown) => void;
 
-/** Hands one channel batch to every reader of this page, each in the batch's order. */
+// Flood memory (DT-C244): the window process sends output, and each terminal's end note after its last
+// output, through one channel per page once the page has subscribed, and the events only while no page has.
+// An event runs in the page as a script with the whole batch written into it, and under an 8-pane flood the
+// heap kept those scripts' text (1.4 GB); a channel hands a large batch over as a response the page parses.
+// Every reader of this page shares the one channel. The state lives on the window so a hot-reloaded copy of
+// this file keeps feeding the readers an older copy registered. One failed fetch of a channel message stalls
+// the channel (Tauri delivers its messages in order); that risk is accepted and noted in DT-C244.
+type Bus = {
+  readers: Set<Reader>;
+  exits: Set<ExitReader>;
+  subscribed: Promise<void> | null;
+  /** Probes (scripts/prove/live-flood.mjs) set this to count channel batches and time their hand-out. */
+  probe?: (batch: OutputBatch, ms: number) => void;
+};
+const bus: Bus = ((globalThis as { __koluxOutputBus?: Bus }).__koluxOutputBus ??= {
+  readers: new Set(),
+  exits: new Set(),
+  subscribed: null,
+});
+
+/** Hands one channel message to this page: its chunks to every output reader, then its end note, if any. */
 export function fanOut(batch: OutputBatch | undefined): void {
-  for (const reader of [...readers]) eachChunk(batch, reader);
+  const t = bus.probe ? performance.now() : 0;
+  for (const reader of [...bus.readers]) eachChunk(batch, reader);
+  if (batch?.exit !== undefined) {
+    for (const reader of [...bus.exits]) {
+      try {
+        reader(batch.exit);
+      } catch (err) {
+        console.error("terminal exit: a reader failed", err);
+      }
+    }
+  }
+  if (batch && bus.probe) bus.probe(batch, performance.now() - t);
 }
 
 function subscribe(): Promise<void> {
   try {
     const channel = new Channel<OutputBatch>();
     channel.onmessage = fanOut;
-    // A window process without the command keeps sending the event, which every reader also listens to.
+    // A window process without the command keeps sending the events, which every reader also listens to.
     return invoke("terminal_output_subscribe", { channel }).then(
       () => undefined,
       () => undefined,
@@ -38,22 +66,36 @@ function subscribe(): Promise<void> {
   }
 }
 
-/** Calls `onChunk` once per chunk, in the order the window process read them, until the returned function runs. */
-export function onTerminalOutput(onChunk: (chunk: OutputEvent) => void): Promise<UnlistenFn> {
-  const reader = (chunk: OutputEvent) => onChunk(chunk);
-  readers.add(reader);
-  subscribed ??= subscribe();
-  return Promise.all([listen<OutputBatch>(OUTPUT_EVENT, (e) => eachChunk(e.payload, onChunk)), subscribed]).then(
-    ([unlisten]) =>
+function join<T>(set: Set<T>, reader: T, unlisten: Promise<UnlistenFn>): Promise<UnlistenFn> {
+  set.add(reader);
+  bus.subscribed ??= subscribe();
+  return Promise.all([unlisten, bus.subscribed]).then(
+    ([off]) =>
       () => {
-        readers.delete(reader);
-        unlisten();
+        set.delete(reader);
+        off();
       },
     (err) => {
-      readers.delete(reader);
+      set.delete(reader);
       throw err;
     },
   );
+}
+
+/** Calls `onChunk` once per chunk, in the order the window process read them, until the returned function runs. */
+export function onTerminalOutput(onChunk: (chunk: OutputEvent) => void): Promise<UnlistenFn> {
+  const reader: Reader = (chunk) => onChunk(chunk);
+  return join(bus.readers, reader, listen<OutputBatch>(OUTPUT_EVENT, (e) => eachChunk(e.payload, onChunk)));
+}
+
+/**
+ * Calls `onExit` once per terminal end note, after that terminal's output already read, until the returned
+ * function runs. It gets `{ payload }`, the shape a `terminal-exit` event listener got. Each end note comes
+ * either on the channel or as the event, never both.
+ */
+export function onTerminalExit<T>(onExit: (e: { payload: T }) => void): Promise<UnlistenFn> {
+  const reader: ExitReader = (exit) => onExit({ payload: exit as T });
+  return join(bus.exits, reader, listen<T>(EXIT_EVENT, (e) => onExit({ payload: e.payload })));
 }
 
 /**

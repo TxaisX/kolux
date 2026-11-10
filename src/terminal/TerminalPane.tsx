@@ -35,7 +35,7 @@ import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
 import { decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
-import { onTerminalOutput } from "./outputBus";
+import { onTerminalOutput, onTerminalExit } from "./outputBus";
 import { notePrinted } from "../browser/preview";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
 import { claimsClick } from "./linkClick";
@@ -1035,7 +1035,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         listen<{ terminal: number; agent: string | null }>("pane-agent", (e) =>
           mine(e.payload.terminal, () => setFound(foundAgent(e.payload.agent))),
         ),
-        listen<ExitEvent>("terminal-exit", (e) =>
+        onTerminalExit<ExitEvent>((e) =>
           mine(e.payload.id, () => {
             ended = true;
             openGate(); // whatever a shell printed before dying is shown with its exit

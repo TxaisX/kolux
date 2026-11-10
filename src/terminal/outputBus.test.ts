@@ -66,3 +66,21 @@ describe("the output channel", () => {
     expect(b).toEqual([1, 2, 3]);
   });
 });
+
+// DT-C244 review: a terminal's end note comes on the same channel after its output, and readers get it in that order.
+describe("the end note on the output channel", () => {
+  it("delivers a large last batch to the output readers before the exit reaches the exit readers", async () => {
+    const { onTerminalExit } = await import("./outputBus");
+    const log: string[] = [];
+    const big = "A".repeat(300 * 1024);
+    const stopOut = await onTerminalOutput((c) => log.push(`out ${c.id} ${c.data.length}`));
+    const stopExit = await onTerminalExit<{ id: number }>((e) => log.push(`exit ${e.payload.id}`));
+    fanOut({ items: [chunk(4, 1, big)] });
+    fanOut({ items: [], exit: { id: 4, code: 0 } });
+    fanOut({ items: [chunk(5, 1)], exit: { id: 5, code: 0 } });
+    stopOut();
+    stopExit();
+    fanOut({ items: [], exit: { id: 6, code: 0 } });
+    expect(log).toEqual([`out 4 ${big.length}`, "exit 4", "out 5 4", "exit 5"]);
+  });
+});

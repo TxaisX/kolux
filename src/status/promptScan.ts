@@ -5,7 +5,7 @@
 // A pane restored from the saved layout tells Rust its old output ends at attach time, so a prompt
 // only in restored scrollback never marks it waiting; a terminal that ended drops its scan memory.
 import { invokeNamed, type CommandName } from "../ipc/commands";
-import { listen } from "@tauri-apps/api/event";
+import { onTerminalExit } from "../terminal/outputBus";
 import { useEffect, type MutableRefObject } from "react";
 
 export const SCAN_EVERY_MS = 1500;
@@ -50,7 +50,7 @@ export function usePromptScan(ptys: MutableRefObject<Record<number, number>>, re
   useEffect(() => {
     const scan = promptScanner((cmd, args) => invokeNamed(cmd, args));
     const timer = window.setInterval(() => void scan.pass(ptys.current, restored.current), SCAN_EVERY_MS);
-    const off = listen<{ id: number }>("terminal-exit", (e) => void scan.ended(e.payload.id));
+    const off = onTerminalExit<{ id: number }>((e) => void scan.ended(e.payload.id));
     return () => {
       window.clearInterval(timer);
       off.then((f) => f()).catch(() => undefined);
