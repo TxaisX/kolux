@@ -124,6 +124,9 @@ The page has three sections, all open at first: Interface, Terminal, and Window 
 | Tint | -180 to 180 degrees, default 0. Not available on Classic | |
 | Saturation | 0 to 160 percent, default 100. Not available on Classic | |
 | Depth | -3 to 6, default 0. Not available on Classic | |
+| Finish | Flat (the default) or Glass and metal. Glass and metal turns the panels see-through over a soft glow and gives edges a metal lip; terminals and editors keep a solid ground, and dim text is brightened where it needs it to stay readable | `appFinish` |
+| Metal colour | With Glass and metal: Steel, Silver, Graphite, Gold, Copper, Rose gold, Emerald, Sapphire or Amethyst, or any colour from the picker. Default Steel | `appFinishTint` |
+| Strength | With Glass and metal: 0 to 100 percent, default 60. More strength means more see-through panels and a stronger glow | `appFinishStrength` |
 | App font | Any installed font; default is the built-in font. Suggestions follow as you type; Up and Down move through them and Enter picks one | `appFont` |
 | Editor font | Same as the terminal font, or any installed font | `editorFont` |
 

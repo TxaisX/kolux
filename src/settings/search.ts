@@ -25,6 +25,7 @@ export const INDEX: Entry[] = [
   { page: "appearance", section: "zoom", title: "Zoom", words: "size bigger smaller scale text larger magnify", fold: "interface" },
   { page: "appearance", section: "theme", title: "Colour theme", words: "color colors accent palette contrast hue swatch", fold: "interface" },
   { page: "appearance", section: "custom-themes", title: "Custom themes", words: "custom theme themes create edit import export colour color", fold: "interface", parent: "theme" },
+  { page: "appearance", section: "finish", title: "Finish", words: "finish glass glassy metal metallic see-through translucent frosted glow steel silver gold copper colour color strength", fold: "interface" },
   { page: "appearance", section: "fonts", title: "Fonts", words: "font typeface app editor family text", fold: "interface" },
   { page: "appearance", section: "terminal-font", title: "Terminal font", words: "terminal font size typeface family weight", fold: "terminal" },
   { page: "appearance", section: "terminal-colours", title: "Terminal colours", words: "terminal color colors scheme ansi console import warp ghostty", fold: "terminal" },
