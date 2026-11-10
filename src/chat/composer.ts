@@ -56,13 +56,19 @@ export function stepHistory(history: readonly string[], at: number, dir: "older"
 }
 
 const drafts = new Map<number, string>();
+/** Panes whose box holds text past DRAFT_LIMIT: not kept, but still unsent (TERM-123 keeps such a pane awake). */
+const oversize = new Set<number>();
 const histories = new Map<number, string[]>();
 /** CHAT-017: the unsent draft of pane `key` (kept across tab switches and terminal reconnects). */
 export const draftOf = (key: number) => drafts.get(key) ?? "";
 export function keepDraft(key: number, text: string) {
   if (!text || text.length > DRAFT_LIMIT) drafts.delete(key);
   else drafts.set(key, text);
+  if (text.length > DRAFT_LIMIT) oversize.add(key);
+  else oversize.delete(key);
 }
+/** TERM-123: whether pane `key`'s box holds unsent text, a kept draft or one too long to keep. */
+export const hasUnsent = (key: number) => drafts.has(key) || oversize.has(key);
 export const historyOf = (key: number) => histories.get(key) ?? [];
 export const addHistory = (key: number, text: string) => histories.set(key, remember(historyOf(key), text));
 

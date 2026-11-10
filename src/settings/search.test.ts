@@ -4,7 +4,7 @@ import { hideRule, INDEX, MAX_SEARCH, searchRepos, searchSettings } from "./sear
 
 // Where each page draws its sections (SettingsPage wraps the pages that have no sections of their own).
 const SOURCES: Record<string, string[]> = {
-  general: ["GeneralPage.tsx", "CliCard.tsx"],
+  general: ["GeneralPage.tsx", "CliCard.tsx", "ExperimentalCard.tsx"],
   appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
   accounts: ["SettingsPage.tsx", "ConnectGrid.tsx", "AgentCredentials.tsx"],
   agents: ["AgentsPage.tsx"],
@@ -105,7 +105,7 @@ describe("search all settings (SET-007)", () => {
   it("every section a page draws is indexed, so a search can find it and never hides it (UX-audit)", () => {
     // The Claude page also draws cards from a list (data-section={id}); its fixed ones are checked here. Repo pages are not searched pages.
     const drawn: Record<string, string[]> = {
-      general: ["GeneralPage.tsx", "CliCard.tsx"],
+      general: ["GeneralPage.tsx", "CliCard.tsx", "ExperimentalCard.tsx"],
       appearance: ["AppearancePage.tsx", "CustomThemeEditor.tsx"],
       accounts: ["SettingsPage.tsx", "AgentCredentials.tsx"],
       agents: ["AgentsPage.tsx"],

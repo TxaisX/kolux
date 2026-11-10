@@ -25,6 +25,13 @@ const pack = {
   "connect.claude": "点击“连接”会在浏览器中打开一次 Claude 的登录页面，并保存一个有效期为一年的密钥。",
   "connect.codex": "点击“连接”会在 Kolux 专属的 Codex 目录中添加一个 ChatGPT 账户；你的 Codex 文件夹保持不变。",
   "onboarding.connect.wait": "请先在上方连接一个 AI 才能继续，或用左侧的按钮稍后再设置。",
+  "sleep.asleep": "已休眠以节省内存 · 空闲 {count} 分钟",
+  "sleep.asleep.hint": "点“唤醒”会让同一个 AI 从停下的地方继续。",
+  "sleep.wake": "唤醒",
+  "sleep.settings.card": "实验功能",
+  "sleep.settings.switch": "AI 休眠",
+  "sleep.settings.detail": "关闭：一切照旧。开启：一个已完成回答、并在所选时间内未被触碰的 AI 窗格会进入休眠：保存会话并结束其程序，从而释放内存。窗格留在原处，点“唤醒”同一个 AI 会从停下的地方回来。正在工作、等待你回答、有未发送文字或你正在查看的窗格永不休眠。",
+  "sleep.settings.minutes": "休眠前的空闲分钟数",
 } satisfies Record<TextKey, string>;
 
 export default pack;

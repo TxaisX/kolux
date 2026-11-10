@@ -25,6 +25,13 @@ const pack = {
   "connect.claude": "Conectar abre una vez la página de inicio de sesión de Claude en tu navegador y guarda una clave que dura un año.",
   "connect.codex": "Conectar añade una cuenta de ChatGPT en un directorio de Codex propio de Kolux; tu carpeta de Codex no cambia.",
   "onboarding.connect.wait": "Conecta una IA arriba para continuar, o usa el botón de la izquierda para hacerlo más tarde.",
+  "sleep.asleep": "Dormido para ahorrar memoria · inactivo {count} min",
+  "sleep.asleep.hint": "Despertar inicia de nuevo el mismo agente donde lo dejó.",
+  "sleep.wake": "Despertar",
+  "sleep.settings.card": "Experimental",
+  "sleep.settings.switch": "Suspensión de agentes",
+  "sleep.settings.detail": "Apagado: nada cambia. Encendido: un panel de agente que terminó su turno y quedó sin tocar durante el tiempo elegido se duerme: su sesión se guarda y su programa termina, lo que libera memoria. El panel sigue en su sitio y Despertar devuelve el mismo agente donde lo dejó. Un panel que está trabajando, espera tu respuesta, tiene texto sin enviar o es el que estás mirando nunca se duerme.",
+  "sleep.settings.minutes": "Minutos inactivo antes de dormir",
 } satisfies Record<TextKey, string>;
 
 export default pack;

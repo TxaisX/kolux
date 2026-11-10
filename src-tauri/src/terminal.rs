@@ -897,6 +897,9 @@ fn id_of(handle: &str) -> Option<u32> {
 struct Mark {
     started: Instant,
     last_output: Option<Instant>,
+    /// TERM-123: when the terminal was last typed into through `write`, so a user typing in a TUI that
+    /// does not echo still counts as activity.
+    last_input: Option<Instant>,
     /// The program the session runs (ORCH-013 tells agents from other programs by it).
     program: String,
     /// The agent the program is credited as (`claude`, `codex`), none for another program.
@@ -1136,7 +1139,7 @@ impl Terminals {
         }
         if is_program {
             let agent = program.as_deref().and_then(crate::tools::credited_program);
-            inner.marks.insert(id, Mark { started: Instant::now(), last_output: None, program: program.unwrap_or_default().trim().to_string(), agent, pane: pane_key, home_env, cwd: chat_cwd });
+            inner.marks.insert(id, Mark { started: Instant::now(), last_output: None, last_input: None, program: program.unwrap_or_default().trim().to_string(), agent, pane: pane_key, home_env, cwd: chat_cwd });
         }
         if let Some(dir) = cwd {
             inner.dirs.insert(id, dir);
@@ -1275,7 +1278,15 @@ impl Terminals {
     /// write itself (which blocks for as long as the program takes to read, ~12 KB/s into ConPTY)
     /// runs under that writer's own lock, so other panes' ack, resize and kill never wait on it.
     pub fn write(&self, id: u32, data: &str) -> Result<(), String> {
-        let writer = self.inner.lock().map_err(|e| e.to_string())?.sessions.get(&id).ok_or("no such terminal")?.writer()?;
+        let writer = {
+            let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
+            let writer = inner.sessions.get(&id).ok_or("no such terminal")?.writer()?;
+            // TERM-123: typing is activity, echoed or not.
+            if let Some(m) = inner.marks.get_mut(&id) {
+                m.last_input = Some(Instant::now());
+            }
+            writer
+        };
         crate::pty::write_shared(&writer, data.as_bytes())
     }
 
@@ -1416,6 +1427,21 @@ impl Terminals {
         inner.marks.get(&id).map(|m| m.last_output.unwrap_or(m.started).elapsed())
     }
 
+    /// TERM-123: how long the program in `id` has neither printed nor been typed into (since it started,
+    /// when neither has happened), for agent sleep; `quiet_for` above counts output only. `None` for a
+    /// shell or a gone session.
+    pub fn still_for(&self, id: u32) -> Option<std::time::Duration> {
+        let inner = self.inner.lock().ok()?;
+        inner.marks.get(&id).map(|m| [Some(m.started), m.last_output, m.last_input].into_iter().flatten().max().unwrap_or(m.started).elapsed())
+    }
+
+    /// TERM-123: how long since the program in `id` was last typed into through `write`; `None` when it
+    /// never was (or for a shell or a gone session).
+    pub fn input_for(&self, id: u32) -> Option<std::time::Duration> {
+        let inner = self.inner.lock().ok()?;
+        inner.marks.get(&id).and_then(|m| m.last_input).map(|t| t.elapsed())
+    }
+
     /// ORCH-058: ends every session started in `dir` or a folder under it, each with the processes
     /// it started, and waits up to three seconds for them to be shown gone, so the folder can be
     /// deleted. A record with no process behind it (stale) is swept and never counts as stuck.
@@ -1533,7 +1559,7 @@ impl Terminals {
         inner.dirs.insert(id, dir.to_string());
         inner.logs.insert(id, Arc::new(Mutex::new(OutputLog { written: Some(long_ago), ..OutputLog::default() })));
         if let Some(program) = program {
-            inner.marks.insert(id, Mark { started: long_ago, last_output: Some(long_ago), program: program.into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
+            inner.marks.insert(id, Mark { started: long_ago, last_output: Some(long_ago), last_input: None, program: program.into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
         }
     }
 
@@ -1682,7 +1708,7 @@ impl Terminals {
                 }
                 if let Some(p) = program.filter(|_| is_program) {
                     let agent = crate::tools::credited_program(&p);
-                    inner.marks.insert(id, Mark { started: Instant::now(), last_output: None, program: p, agent, pane, home_env: Vec::new(), cwd: cwd.clone() });
+                    inner.marks.insert(id, Mark { started: Instant::now(), last_output: None, last_input: None, program: p, agent, pane, home_env: Vec::new(), cwd: cwd.clone() });
                 }
                 if let Some(d) = cwd {
                     inner.dirs.insert(id, d);
@@ -3004,7 +3030,7 @@ mod tests {
                 inner.dirs.insert(id, dir.to_string_lossy().into_owned());
                 inner.logs.insert(id, Arc::new(Mutex::new(OutputLog { written: Some(long_ago), ..OutputLog::default() })));
             }
-            inner.marks.insert(7, Mark { started: long_ago, last_output: Some(long_ago), program: "claude".into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
+            inner.marks.insert(7, Mark { started: long_ago, last_output: Some(long_ago), last_input: None, program: "claude".into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
         }
         // No stamp: the marked, settled session is not taken.
         crate::cli::expect_stamp("dispatch-term-test");
