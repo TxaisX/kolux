@@ -8,8 +8,7 @@
 // source (openai/codex, Apache-2.0; see PROVENANCE.md), compared without spacing, colours or
 // cursor moves so a wrapped or coloured line still matches.
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { onTerminalOutput } from "../terminal/outputBus";
+import { onTerminalOutput, onTerminalExit } from "../terminal/outputBus";
 
 /** The fixed phrase every Codex "could not refresh your sign-in" message starts with, spacing removed. */
 export const PHRASE = "accesstokencouldnotberefreshed";
@@ -95,7 +94,7 @@ export function startCodexSignInScan(): () => void {
       const account = scan.feed(e.id, e.data, Date.now());
       if (account) invoke("codex_account_sign_in_printed", { id: account }).catch(() => {});
     }),
-    listen<{ id: number }>("terminal-exit", (e) => scan.forget(e.payload.id)),
+    onTerminalExit<{ id: number }>((e) => scan.forget(e.payload.id)),
   ];
   return () => offs.forEach((o) => void o.then((u) => u()).catch(() => {}));
 }

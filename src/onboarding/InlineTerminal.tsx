@@ -4,10 +4,9 @@
 // can look again. The pane closes its shell when this panel goes away, so no installer runs unseen.
 import { useEffect, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import TerminalPane from "../terminal/TerminalPane";
 import { decodeOutput, type ExitEvent } from "../terminal/codec";
-import { onTerminalOutput } from "../terminal/outputBus";
+import { onTerminalOutput, onTerminalExit } from "../terminal/outputBus";
 import { createTyper, type Typer } from "./cliInstall";
 
 const decoder = new TextDecoder();
@@ -36,7 +35,7 @@ export default function InlineTerminal({ command, onExit, height = 220 }: { comm
       }),
     );
     // Exits from any other terminal are ignored.
-    watch(listen<ExitEvent>("terminal-exit", (e) => id.current !== null && e.payload.id === id.current && exit.current()));
+    watch(onTerminalExit<ExitEvent>((e) => id.current !== null && e.payload.id === id.current && exit.current()));
     return () => {
       live = false;
       typer.current?.stop();

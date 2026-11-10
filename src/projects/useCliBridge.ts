@@ -10,6 +10,7 @@ import type { CliFile, CliWorkspace } from "./model";
 import { startTail } from "./startArgs";
 import { withHintedSession } from "../terminal/layout";
 import { invoke } from "@tauri-apps/api/core";
+import { onTerminalExit } from "../terminal/outputBus";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import type { WindowState } from "../shell/windowStore";
@@ -61,7 +62,7 @@ export function useCliBridge({ activeDir, activeRef, agents, dropPane, focused, 
       if (typedInRunTab(runTabs.current, focusedNow.current, inside)) runTabs.current = touchRunTab(runTabs.current, focusedNow.current);
     };
     document.addEventListener("keydown", typed, true);
-    const off = listen<{ id: number; code?: number | null; session?: string }>("terminal-exit", (e) => {
+    const off = onTerminalExit<{ id: number; code?: number | null; session?: string }>((e) => {
       const key = paneOfTerminal(ptys.current, e.payload.id);
       if (key === null) return;
       const printed = e.payload.session; // T-066-d: the id an id-only agent printed in its own resume hint; it wins over a listed guess (T-066-e), a hook's id is never replaced

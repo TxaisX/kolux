@@ -235,15 +235,29 @@ export async function snapshot(app, pid = app.pid) {
      $want = @([int]${pid}); $i = 0; $rows = @()
      while ($i -lt $want.Count) { $p = $want[$i]; $i++
        foreach ($c in $all) { if ($c.ParentProcessId -eq $p -and $want -notcontains [int]$c.ProcessId) { $want += [int]$c.ProcessId } } }
-     $all | Where-Object { $want -contains [int]$_.ProcessId } | ForEach-Object { "$($_.ProcessId)|$($_.Name)|$($_.ParentProcessId)|$($_.WorkingSetSize)|$($_.HandleCount)|$($_.ThreadCount)|$($_.CreationDate)" }`,
+     $all | Where-Object { $want -contains [int]$_.ProcessId } | ForEach-Object { $t = ''; if ([string]$_.CommandLine -match '--type=(\\S+)') { $t = $Matches[1] }; "$($_.ProcessId)|$($_.Name)|$($_.ParentProcessId)|$($_.WorkingSetSize)|$($_.HandleCount)|$($_.ThreadCount)|$($_.CreationDate)|$($_.PrivatePageCount)|$t" }`,
   );
   return out
     .split(/\r?\n/)
     .filter(Boolean)
     .map((l) => {
-      const [p, name, ppid, ws, handles, threads, created] = l.split("|");
-      return { pid: Number(p), name, ppid: Number(ppid), ws: Number(ws), handles: Number(handles), threads: Number(threads), created };
+      const [p, name, ppid, ws, handles, threads, created, priv, type] = l.split("|");
+      return { pid: Number(p), name, ppid: Number(ppid), ws: Number(ws), handles: Number(handles), threads: Number(threads), created, priv: Number(priv), role: procRole(name, type) };
     });
+}
+// What a process is to the app: the window (kolux.exe), a web view process by its --type (the browser process has none),
+// or its own name (conhost, powershell, node).
+const procRole = (name, type) => (name === "kolux.exe" ? "kolux" : name === "msedgewebview2.exe" ? `wv-${type || "browser"}` : name.replace(/\.exe$/, ""));
+// Working set and private bytes (Win32_Process PrivatePageCount) summed per role, in MB: { role: { n, wsMB, privMB } }.
+export function memByRole(snap) {
+  const r = {};
+  for (const p of snap) {
+    const e = (r[p.role] ??= { n: 0, wsMB: 0, privMB: 0 });
+    e.n++;
+    e.wsMB += p.ws / 1048576;
+    e.privMB += (p.priv || 0) / 1048576;
+  }
+  return r;
 }
 const UI_PROCS = new Set(["kolux.exe", "msedgewebview2.exe"]);
 // The app's own memory: the app process and its web view processes (shells and what they run are not the app).

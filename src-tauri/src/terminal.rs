@@ -15,6 +15,7 @@ pub mod session_id;
 mod flood;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
+mod output_channel;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
@@ -938,9 +939,35 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
     OUTPUT_BATCH.get_or_init(|| {
         let app = app.clone();
         output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
-            let _ = app.emit(OUTPUT_EVENT, output_batch::OutputBatch { items });
+            // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
+            if let Err(batch) = send_to_readers(&app, output_batch::OutputBatch { items }) {
+                let _ = app.emit(OUTPUT_EVENT, batch);
+            }
         }))
     })
+}
+
+/// Flood memory (DT-C244): one output channel per web view (output_channel.rs).
+static OUTPUT_READERS: output_channel::Readers<tauri::ipc::Channel> = output_channel::Readers::new();
+
+/// Flood memory (DT-C244): hands `message` to every live subscribed web view, or gives it back when none took it.
+fn send_to_readers<B: serde::Serialize>(app: &AppHandle, message: B) -> Result<(), B> {
+    OUTPUT_READERS.send(message, |label| app.get_webview(label).is_some())
+}
+
+/// Flood memory (DT-C244): the calling web view gets terminal output through `channel` from now on, in
+/// place of the `terminal-output` event and of any channel it subscribed before, and each terminal's end
+/// note on the same channel after that terminal's last output (`{ items: [], exit }`), in place of `terminal-exit`.
+#[tauri::command]
+pub(crate) fn terminal_output_subscribe(webview: tauri::Webview, channel: tauri::ipc::Channel) {
+    OUTPUT_READERS.set(webview.label(), channel);
+}
+
+/// Flood memory (DT-C244): an end note on the output channel; `items` is empty so an output reader skips it.
+#[derive(serde::Serialize)]
+struct ExitMessage {
+    items: [u8; 0],
+    exit: ExitPayload,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -1244,7 +1271,13 @@ impl Terminals {
                 // DT-C243: output already read and waiting for its frame window goes before the end note.
                 // Bytes the pump reads after this still follow the end note, as they did before batching.
                 output_batch(&exit_app).flush_now();
-                let _ = exit_app.emit(EXIT_EVENT, ExitPayload { id, code, outcome: outcome_of(code), session });
+                // Flood memory (DT-C244): a large last batch reaches the page by a fetch, so an end note sent as an
+                // event could run first; on the channel it keeps its place after that output. The event only
+                // when no web view took it, so no reader sees one end twice.
+                let exit = ExitPayload { id, code, outcome: outcome_of(code), session };
+                if let Err(m) = send_to_readers(&exit_app, ExitMessage { items: [], exit }) {
+                    let _ = exit_app.emit(EXIT_EVENT, m.exit);
+                }
             }),
         )
     }

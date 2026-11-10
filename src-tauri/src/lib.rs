@@ -632,6 +632,7 @@ pub fn run() {
             terminal::terminal_resize,
             terminal::terminal_ack,
             terminal::terminal_memory_profile,
+            terminal::terminal_output_subscribe,
             terminal::terminal_kill,
             terminal::terminal_next_input_source,
             terminal::terminal_layout,

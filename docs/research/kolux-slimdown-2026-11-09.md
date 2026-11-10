@@ -111,10 +111,14 @@ Marked [fixed] below: done in the perf-followups lane on 2026-11-09.
   total in Codex's own field order (unknown fields after, by name), so it no longer depends on the feature and
   equals the stored keys for real Codex logs; a test pins one key.
 
-- Large output floods still raise memory: S2 (8 panes x 50 MB) peaks about +3 GB and holds +1.5 GB 10 s
+- [fixed in round 4, DT-C244] Large output floods raised memory: S2 (8 panes x 50 MB) peaks about +3 GB and holds +1.5 GB 10 s
   later (before round 3: +4.2 / +2.4 GB; it was already failing on 2026-10-25). The scrollback and history path
   is the next lever.
 - Agent sleep: prove the live sleep and wake with a signed-in agent (a dev build has a 20-second test delay).
+
+## Round 4: output floods (DT-C244)
+
+S2 (eight panes x 50 MB) failed on memory: about +2.3 to +2.9 GB at the peak and +1.4 GB ten seconds later. Measured per process, only the web view renderer grew, and inside it the page's JS heap climbed at the rate of the base64 output (about 12 MB a second, to 1.4 GB) and was freed only by a forced full collection. Every Tauri event runs in the page as a new script with the batch written into it as text, and the web view kept those strings. Output now reaches each page through one IPC channel that every reader of the page shares; a large batch arrives as a fetched response the page parses, and the event is used only while no page has subscribed. S2 (release) now passes: peak +573 MB (bar 1024), ten seconds after +96 MB (bar 512), renderer peak 719 MB instead of 2451 MB, JS heap peak 176 MB instead of 1414 MB, typing latency under the flood p95 168 ms (bar 250), all eight floods finish in 106 s and show their last line. A review then moved each terminal's end note onto the same channel after its last output (a large last batch is fetched, so an exit sent as an event could overtake it), dropped closed web views' channels by label, and serialized each message once; S2 on that code: peak +497 MB, ten seconds after +97 MB, renderer peak 666 MB, JS heap peak 219 MB, echo p95 168 ms, floods 104 s, 8 of 8 last lines. Evidence: `evidence/stress-s2-b687223d.txt` (final), `evidence/stress-s2-4e1ba06d.txt` (first fix); the before figures are in DT-C244.
 
 ## Evidence
 

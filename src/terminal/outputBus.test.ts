@@ -1,7 +1,7 @@
 // DT-C243: one batched output event is handed to readers one chunk at a time, in order.
 import { describe, expect, it, vi } from "vitest";
 import type { OutputEvent } from "./codec";
-import { eachChunk, type OutputBatch } from "./outputBus";
+import { eachChunk, fanOut, onTerminalOutput, type OutputBatch } from "./outputBus";
 
 const chunk = (id: number, seq: number, data = "ZQ=="): OutputEvent => ({ id, data, pane: id * 10, generation: 1, seq });
 
@@ -37,5 +37,50 @@ describe("eachChunk", () => {
     eachChunk(undefined, () => calls++);
     eachChunk({ id: 1, data: "YQ==" } as unknown as OutputBatch, () => calls++);
     expect(calls).toBe(0);
+  });
+});
+
+// DT-C244: output comes through one channel per page; every reader gets each batch, and an unsubscribed reader none.
+vi.mock("@tauri-apps/api/core", () => ({
+  Channel: class {
+    onmessage: (b: unknown) => void = () => {};
+  },
+  invoke: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
+
+describe("the output channel", () => {
+  it("subscribes the page once and fans each batch out to every reader, in order", async () => {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const a: number[] = [];
+    const b: number[] = [];
+    const stopA = await onTerminalOutput((c) => a.push(c.seq ?? 0));
+    const stopB = await onTerminalOutput((c) => b.push(c.seq ?? 0));
+    expect(vi.mocked(invoke).mock.calls.filter(([cmd]) => cmd === "terminal_output_subscribe")).toHaveLength(1);
+    fanOut({ items: [chunk(1, 1), chunk(2, 2)] });
+    stopA();
+    fanOut({ items: [chunk(1, 3)] });
+    stopB();
+    fanOut({ items: [chunk(1, 4)] });
+    expect(a).toEqual([1, 2]);
+    expect(b).toEqual([1, 2, 3]);
+  });
+});
+
+// DT-C244 review: a terminal's end note comes on the same channel after its output, and readers get it in that order.
+describe("the end note on the output channel", () => {
+  it("delivers a large last batch to the output readers before the exit reaches the exit readers", async () => {
+    const { onTerminalExit } = await import("./outputBus");
+    const log: string[] = [];
+    const big = "A".repeat(300 * 1024);
+    const stopOut = await onTerminalOutput((c) => log.push(`out ${c.id} ${c.data.length}`));
+    const stopExit = await onTerminalExit<{ id: number }>((e) => log.push(`exit ${e.payload.id}`));
+    fanOut({ items: [chunk(4, 1, big)] });
+    fanOut({ items: [], exit: { id: 4, code: 0 } });
+    fanOut({ items: [chunk(5, 1)], exit: { id: 5, code: 0 } });
+    stopOut();
+    stopExit();
+    fanOut({ items: [], exit: { id: 6, code: 0 } });
+    expect(log).toEqual([`out 4 ${big.length}`, "exit 4", "out 5 4", "exit 5"]);
   });
 });
