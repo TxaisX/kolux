@@ -1241,8 +1241,8 @@ impl Terminals {
                 if let Some(d) = &exit_dir {
                     crate::diag::write(d, &format!("terminal {id} exited ({code:?})"));
                 }
-                // DT-C243: output still waiting for its frame window goes before the end note, so the window
-                // never learns of the end ahead of the last line.
+                // DT-C243: output already read and waiting for its frame window goes before the end note.
+                // Bytes the pump reads after this still follow the end note, as they did before batching.
                 output_batch(&exit_app).flush_now();
                 let _ = exit_app.emit(EXIT_EVENT, ExitPayload { id, code, outcome: outcome_of(code), session });
             }),

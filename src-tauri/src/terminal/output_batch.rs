@@ -10,8 +10,13 @@
 //! which the web view's own frame queue (frame.ts) already spends aligning the draw. Order is kept
 //! across panes, no byte is dropped, and each chunk keeps its own count (`seq`), so a snapshot resync
 //! (ORCH-057) still drops exactly the chunks it holds. `flush_now` empties the queue on the caller's
-//! thread, for the exit note that must not overtake the last output. A queue past `FLUSH_BYTES` (a
-//! flood) goes without waiting for the window, so one event never grows past a few reads.
+//! thread, for the exit note that should not overtake output already read. A queue past `FLUSH_BYTES`
+//! (a flood) goes without waiting for the window, so one event never grows past a few reads.
+//!
+//! The flusher is one thread. When it is not running (it could not start, or it ended), `push` sends
+//! on its own thread instead, one event per chunk as before this change, so output never stops. A
+//! sender that panics loses that one batch and is noted once; the flusher goes on.
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -59,38 +64,83 @@ pub(crate) struct Batcher {
     /// Held from taking a batch to the end of its send, by the flusher and by `flush_now` alike, so two
     /// sends never run at once and the events keep arrival order.
     send: Mutex<()>,
+    /// True while the flusher thread runs. False: `push` sends on its own thread.
+    flusher: AtomicBool,
+    /// Batches lost to a panicking sender (the first is noted on stderr).
+    sink_panics: AtomicUsize,
     window: Duration,
     cap: usize,
     sink: Sink,
 }
 
+/// Clears the flusher flag when the thread ends, however it ends.
+struct Alive<'a>(&'a AtomicBool);
+impl Drop for Alive<'_> {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
 impl Batcher {
     /// Starts the flusher thread; `sink` sends one batch (never empty).
     pub(crate) fn new(window: Duration, cap: usize, sink: Sink) -> Arc<Batcher> {
-        let b = Arc::new(Batcher { queue: Mutex::new(Queue::default()), wake: Condvar::new(), send: Mutex::new(()), window, cap, sink });
-        let flusher = b.clone();
-        // A thread that cannot start leaves `push` sending on its own thread (the `due` check below).
-        let started = std::thread::Builder::new().name("terminal-output-batch".into()).spawn(move || flusher.run()).is_ok();
-        if !started {
-            lock(&b.queue).due = Some(Instant::now());
+        Self::build(window, cap, sink, true)
+    }
+
+    fn build(window: Duration, cap: usize, sink: Sink, threaded: bool) -> Arc<Batcher> {
+        let b = Arc::new(Batcher {
+            queue: Mutex::new(Queue::default()),
+            wake: Condvar::new(),
+            send: Mutex::new(()),
+            flusher: AtomicBool::new(false),
+            sink_panics: AtomicUsize::new(0),
+            window,
+            cap,
+            sink,
+        });
+        if threaded {
+            // Set before the spawn so a push that lands first waits for the thread rather than sending
+            // past it; the thread's own guard clears it if the thread ends.
+            b.flusher.store(true, Ordering::SeqCst);
+            let flusher = b.clone();
+            let started = std::thread::Builder::new().name("terminal-output-batch".into()).spawn(move || flusher.run()).is_ok();
+            if !started {
+                b.flusher.store(false, Ordering::SeqCst);
+            }
         }
         b
     }
 
-    /// Queues one chunk. The first after a quiet moment is due now; the rest of the window waits for its end.
+    /// Queues one chunk. The first after a quiet moment is due now; the rest of the window waits for its
+    /// end. Without a running flusher the chunk is sent here, at once.
     pub(crate) fn push(&self, item: OutputItem) {
+        let len = item.data.len();
         let mut q = lock(&self.queue);
-        q.bytes += item.data.len();
+        q.bytes += len;
         q.items.push(item);
+        // The flusher is woken only when this push changed what it waits for: it set the due time, or it
+        // took the queue over the byte cap. Pushes within a window otherwise leave it sleeping.
+        let mut wake = false;
         if q.due.is_none() {
             let now = Instant::now();
             q.due = Some(match q.last_sent {
                 Some(t) if now < t + self.window => t + self.window,
                 _ => now,
             });
+            wake = true;
+        }
+        if q.bytes >= self.cap && q.bytes - len < self.cap {
+            wake = true;
         }
         drop(q);
-        self.wake.notify_one();
+        if !self.flusher.load(Ordering::SeqCst) {
+            let _sending = lock(&self.send);
+            self.send_taken(Instant::now());
+            return;
+        }
+        if wake {
+            self.wake.notify_one();
+        }
     }
 
     /// Sends everything queued, on this thread, before returning (the exit path).
@@ -106,6 +156,7 @@ impl Batcher {
     }
 
     fn run(&self) {
+        let _alive = Alive(&self.flusher);
         loop {
             let mut q = lock(&self.queue);
             loop {
@@ -125,7 +176,8 @@ impl Batcher {
         }
     }
 
-    /// Takes the queue and hands it to the sink; the caller holds `send`.
+    /// Takes the queue and hands it to the sink; the caller holds `send`. A sender that panics loses
+    /// this batch only.
     fn send_taken(&self, now: Instant) {
         let items = {
             let mut q = lock(&self.queue);
@@ -137,7 +189,13 @@ impl Batcher {
             q.last_sent = Some(now);
             std::mem::take(&mut q.items)
         };
-        (self.sink)(items);
+        let count = items.len();
+        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (self.sink)(items))).is_err() {
+            let before = self.sink_panics.fetch_add(1, Ordering::SeqCst);
+            if before == 0 {
+                eprintln!("terminal output: the sender panicked; {count} chunk(s) of one event lost, output goes on");
+            }
+        }
     }
 }
 
@@ -290,5 +348,52 @@ mod tests {
         assert_eq!(second.iter().filter(|i| i.id == 2).count(), 2, "the quiet pane's chunks ride in the same event");
         let quiet: Vec<u64> = second.iter().filter(|i| i.id == 2).map(|i| i.seq).collect();
         assert_eq!(quiet, vec![5, 11]);
+    }
+
+    #[test]
+    fn a_sender_that_panics_loses_one_batch_and_the_flusher_goes_on() {
+        let sent: Sent = Arc::default();
+        let log = sent.clone();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let n = calls.clone();
+        let b = Batcher::new(
+            Duration::from_millis(20),
+            usize::MAX,
+            Box::new(move |items| {
+                if n.fetch_add(1, Ordering::SeqCst) == 0 {
+                    panic!("the first send fails");
+                }
+                log.lock().unwrap().push((Instant::now(), items));
+            }),
+        );
+        b.push(item(1, 1, "lost"));
+        let give_up = Instant::now() + Duration::from_secs(5);
+        while calls.load(Ordering::SeqCst) < 1 && Instant::now() < give_up {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        std::thread::sleep(Duration::from_millis(30));
+        assert!(b.flusher.load(Ordering::SeqCst), "the flusher survived the panic");
+        b.push(item(1, 2, "after"));
+        b.push(item(2, 3, "other"));
+        wait_until(&sent, 1);
+        assert_eq!(flat(&sent), vec![item(1, 2, "after"), item(2, 3, "other")], "later chunks still arrive, in order");
+        assert_eq!(b.sink_panics.load(Ordering::SeqCst), 1);
+        b.flush_now();
+        assert_eq!(b.pending(), 0);
+    }
+
+    #[test]
+    fn without_a_flusher_thread_every_push_sends_on_its_own_thread() {
+        let sent: Sent = Arc::default();
+        let log = sent.clone();
+        let b = Batcher::build(Duration::from_millis(5_000), usize::MAX, Box::new(move |items| log.lock().unwrap().push((Instant::now(), items))), false);
+        b.push(item(1, 1, "a"));
+        b.push(item(1, 2, "b"));
+        b.push(item(2, 1, "c"));
+        let got = sent.lock().unwrap();
+        assert_eq!(got.len(), 3, "one event per chunk, sent before push returned");
+        assert_eq!(b.pending(), 0);
+        drop(got);
+        assert_eq!(flat(&sent), vec![item(1, 1, "a"), item(1, 2, "b"), item(2, 1, "c")]);
     }
 }

@@ -1,5 +1,5 @@
-stress S11 (app footprint (idle, 6 panes, streaming, 12 panes, minimized, hidden browser tabs)) at 2026-11-10T06:30:21.012Z on e0b10640 (G:\Dev\kolux-rs-lanes\perf-stream)
-args: S11 --release --repeat 3 --tag stream-before --temp G:/Temp/stress/perf-stream --port 1442 --cdp 9262; ran 2891 s
+stress S11 (app footprint (idle, 6 panes, streaming, 12 panes, minimized, hidden browser tabs)) at 2026-11-10T06:30:21.012Z on e0b10640 (<lane>)
+args: S11 --release --repeat 3 --tag stream-before --temp <temp> --port 1442 --cdp 9262; ran 2891 s
 
 === footprint table (60 s windows, 20 s settle, hidden phases 70 s after the hide; 3 run(s), medians with min-max) ===
 build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); built in 14.4 min; exe 26.4 MB, modified 2026-11-10T05:56:31.413Z
@@ -108,7 +108,7 @@ f) 12 shell panes + 3 hidden browser tabs  [panes 12 (12 shown); visibility visi
         36392 renderer        10.9    21.5   0.00     n/a
          2852 renderer        10.7    21.3   0.00     n/a
 
-json: G:\Dev\kolux-rs-lanes\perf-stream\evidence\stress-s11-e0b10640-stream-before.json
+json: <lane>\evidence\stress-s11-e0b10640-stream-before.json
 
 PASS  phase a: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
       bar: absent

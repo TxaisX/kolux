@@ -16,9 +16,18 @@ export function onTerminalOutput(onChunk: (chunk: OutputEvent) => void): Promise
   return listen<OutputBatch>(OUTPUT_EVENT, (e) => eachChunk(e.payload, onChunk));
 }
 
-/** One batch's chunks, in order; an older or malformed payload (no `items`) delivers nothing. */
+/**
+ * One batch's chunks, in order; an older or malformed payload (no `items`) delivers nothing. A reader that
+ * throws on one chunk loses that chunk only: the rest of the batch (other panes' output among it) still goes.
+ */
 export function eachChunk(batch: OutputBatch | undefined, onChunk: (chunk: OutputEvent) => void): void {
   const items = batch?.items;
   if (!Array.isArray(items)) return;
-  for (const chunk of items) onChunk(chunk);
+  for (const chunk of items) {
+    try {
+      onChunk(chunk);
+    } catch (err) {
+      console.error("terminal output: a reader failed on one chunk; the rest of the batch still goes", err);
+    }
+  }
 }

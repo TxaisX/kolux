@@ -1,5 +1,5 @@
-stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T07:50:09.975Z on a6352702 (G:\Dev\kolux-rs-lanes\perf-stream)
-args: S2 --release --skip-build --temp G:/Temp/stress/perf-stream --port 1442 --cdp 9262; ran 156 s
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T07:50:09.975Z on a6352702 (<lane>)
+args: S2 --release --skip-build --temp <temp> --port 1442 --cdp 9262; ran 156 s
 
 PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
       bar: p95 <= 250 ms (the same bar as under flood)

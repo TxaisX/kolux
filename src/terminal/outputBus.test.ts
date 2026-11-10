@@ -1,5 +1,5 @@
 // DT-C243: one batched output event is handed to readers one chunk at a time, in order.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { OutputEvent } from "./codec";
 import { eachChunk, type OutputBatch } from "./outputBus";
 
@@ -17,6 +17,18 @@ describe("eachChunk", () => {
     const seen: OutputEvent[] = [];
     eachChunk({ items: [{ id: 7, data: "YQ==", pane: 3, generation: 42, seq: 1001 }] }, (c) => seen.push(c));
     expect(seen).toEqual([{ id: 7, data: "YQ==", pane: 3, generation: 42, seq: 1001 }]);
+  });
+
+  it("a reader that throws on one chunk loses that chunk only; the rest of the batch still goes", () => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    const seen: number[] = [];
+    eachChunk({ items: [chunk(1, 1), chunk(2, 1), chunk(3, 1)] }, (c) => {
+      if (c.id === 2) throw new Error("bad chunk");
+      seen.push(c.id);
+    });
+    expect(seen).toEqual([1, 3]);
+    expect(quiet).toHaveBeenCalledTimes(1);
+    quiet.mockRestore();
   });
 
   it("delivers nothing for an empty batch or a payload without items", () => {

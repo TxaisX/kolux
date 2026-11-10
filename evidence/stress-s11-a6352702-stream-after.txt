@@ -1,5 +1,5 @@
-stress S11 (app footprint (idle, 6 panes, streaming, 12 panes, minimized, hidden browser tabs)) at 2026-11-10T07:46:40.376Z on a6352702 (G:\Dev\kolux-rs-lanes\perf-stream)
-args: S11 --release --skip-build --repeat 3 --tag stream-after --compare evidence/stress-s11-e0b10640-stream-before.json --temp G:/Temp/stress/perf-stream --port 1442 --cdp 9262; ran 2018 s
+stress S11 (app footprint (idle, 6 panes, streaming, 12 panes, minimized, hidden browser tabs)) at 2026-11-10T07:46:40.376Z on a6352702 (<lane>)
+args: S11 --release --skip-build --repeat 3 --tag stream-after --compare evidence/stress-s11-e0b10640-stream-before.json --temp <temp> --port 1442 --cdp 9262; ran 2018 s
 
 === footprint table (60 s windows, 20 s settle, hidden phases 70 s after the hide; 3 run(s), medians with min-max) ===
 build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 26.4 MB, modified 2026-11-10T07:11:27.805Z
@@ -169,7 +169,7 @@ per process role, before -> now (medians):
       crashpad-handler   WS 16.3 -> 16.3 | priv 3.0 -> 3.0 | cpu 0.00 -> 0.00 | gpu ded 0.0 -> 0.0
       total              WS 391.2 -> 385.1 | priv 411.0 -> 405.8 | cpu 5.39 -> 5.69 | gpu ded 80.5 -> 80.5
 
-json: G:\Dev\kolux-rs-lanes\perf-stream\evidence\stress-s11-a6352702-stream-after.json
+json: <lane>\evidence\stress-s11-a6352702-stream-after.json
 
 PASS  phase a: no first-run wizard open (.onb-backdrop absent) (repeat 1/3)
       bar: absent
