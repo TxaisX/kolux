@@ -543,19 +543,19 @@ User does: turns on "Agent sleep" in Settings > General > Experimental and sets 
   minutes to wait.
 User sees: agents left idle past the chosen delay (30 minutes unless changed) are put to sleep to
   free up memory; the pane shows a placeholder with Wake (TERM-123 has the rules).
-Rules: experimental switch (`agentSleep`, only a saved true is on); the delay (`agentSleepIdleMinutes`)
+Rules: experimental switch (only a saved true is on); the delay
   is held between 5 and 240 minutes: below 5 saves as 5, above 240 as 240, missing reads as 30; the
   Rust side holds the delay the window sends between the same bounds before it checks the terminal
-  and the status row against it. A development build may read a test-only `agentSleepTestFast` key
+  and the status row against it. A development build may read a test-only fast key
   (20-second delay, on both sides) so the sleep can be watched; a release build never reads it, so
   users cannot go below 5 minutes.
 Acceptance:
   - [x] Fresh profile → agent sleep is off and an agent idle for longer than 30 minutes keeps
-        running. (T-817: `sleepOn({})` is false and no timer is set while off,
-        `src/sleep/agentSleep.test.ts`; `cargo test --lib t817` "switch is off on a fresh profile")
+        running. (T-817: an empty profile reads as off and no timer is set while off,
+        agent sleep unit tests; Rust tests t817 "switch is off on a fresh profile")
   - [x] If revived: enter a delay below the lower bound → the saved delay is raised to that bound.
-        (T-817: `clampIdleMinutes(4)` is 5 and `minutesFromText("3")` saves 5, the box then shows
-        the stored 5; `src/sleep/agentSleep.test.ts`, `src/settings/ExperimentalCard.tsx`)
+        (T-817: a delay of 4 is held at 5 and typing 3 saves 5, the box then shows the stored 5;
+        agent sleep unit tests)
 Compat: old profiles may hold the sleep switch under its old key; it is ignored (the new key has
   another name, so it is never read; tested in both languages).
 Decision: Txais 2026-11-09, DT-C242: build it, off by default (was H: default skip)

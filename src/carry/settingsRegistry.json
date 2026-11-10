@@ -100,6 +100,9 @@
     "workspaceNesting",
     "xaiApiKey",
     "httpProxyHttp1",
-    "contextCap200k"
+    "contextCap200k",
+    "agentSleep",
+    "agentSleepIdleMinutes",
+    "agentSleepTestFast"
   ]
 }

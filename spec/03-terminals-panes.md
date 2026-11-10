@@ -1903,7 +1903,7 @@ Rules: experimental switch, off on a fresh profile and when its key is missing; 
   the foreground, the quiet time and the live status row itself, and refuses when the terminal was
   typed into after the turn finished (a draft typed into the agent's own prompt, or into an editor the
   agent opened, makes no output); a pane the window then leaves awake gets its live status row back
-  (`agent_pane_unsleep`). Sleep saves the session first (the
+  (the unsleep command). Sleep saves the session first (the
   way workspace sleep does) and hands back the recorded session id; a failed save ends nothing. Only
   that pane's process tree ends, after the pane's view has unmounted; its kept output is replayed on
   Wake. One check a minute at most, only while the switch is on; no per-pane timers; a check far
@@ -1915,14 +1915,13 @@ Rules: experimental switch, off on a fresh profile and when its key is missing; 
   the agent's own list.
 Acceptance:
   - [x] With the flag off (the default), finished idle agents are never put to sleep. (T-817:
-        `src/sleep/agentSleep.test.ts` "switch is off when its key is missing", the check's timer
-        is not set while the switch is off in `src/sleep/useAgentSleep.ts`; the Rust command
-        refuses while the switch is off, `cargo test --lib t817`)
+        the agent sleep unit test "switch is off when its key is missing", the check's timer
+        is not set while the switch is off; the Rust command refuses while the switch is off,
+        Rust tests t817)
   - [ ] If the owner revives it: a session idle for 30 minutes since its last state change sleeps,
-      and opening it restores it. (Rules proven by unit tests, `src/sleep/agentSleep.test.ts`,
-      `src/sleep/useAgentSleep.test.ts` (the check's re-checks, the kill after unmount, Wake and a
-      refused Wake), `cargo test --lib t817` (the Rust re-checks); the live sleep and wake in the
-      running app are not yet proven: see `evidence/T-817.txt`)
+      and opening it restores it. (Rules proven by the agent sleep unit tests (the check's re-checks, the kill after unmount, Wake
+      and a refused Wake) and Rust tests t817 (the Rust re-checks); the live sleep and wake in the
+      running app are not yet proven: see the T-817 evidence file)
 Compat: an old profile's own sleep switch had another key and is never read (HID-028).
 Decision: Txais 2026-11-09, DT-C242: build it, off by default (was H: default skip).
 Source: D-03-123
