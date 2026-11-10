@@ -320,6 +320,11 @@ pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>)
 /// folder, refuses the proof outright). A one-off `git fetch <url> X:refs/remotes/origin/y` typed by
 /// the user is accepted: it names the destination by hand, a deliberate act no config can tell
 /// apart from origin's own fetch.
+/// Also accepted as the user's own actions (final round, 2026-11-09): refs a remote left behind
+/// under `refs/remotes/origin/` after it was removed, or after a case twin of origin was renamed
+/// (only the config is read, and its refs stay until pruned), and tracking refs written by a push to
+/// `remote.origin.pushurl` or a `pushInsteadOf` address (a push updates origin's tracking refs with
+/// what the user pushed, wherever the push went).
 /// Accepted cost: a user whose canonical remote is not named `origin` loses the pre-trust.
 pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
     // Review round 4 (P2): "under refs/remotes/origin/" is not proof by itself. A fetch refspec such
@@ -366,11 +371,15 @@ pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
 /// see. So either folder holding any entry, or one that cannot be listed, is not settled; an empty
 /// or missing folder is fine. Both paths come from the same `rev-parse` (`--git-path` resolves them
 /// in the common dir, also from a linked worktree).
+/// Final round (P3-1b): no remote hides in a worktree's own config (`worktree_configs_clear`).
 fn settled(dir: &Path) -> bool {
-    let Ok(paths) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--git-dir", "--git-path", "info/grafts", "--git-path", "remotes", "--git-path", "branches"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let Ok(paths) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--git-dir", "--git-path", "info/grafts", "--git-path", "remotes", "--git-path", "branches", "--git-common-dir"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
     let mut lines = paths.lines().map(str::trim);
-    let (Some(git_dir), Some(grafts), Some(remotes), Some(branches), None) = (lines.next(), lines.next(), lines.next(), lines.next(), lines.next()) else { return false };
-    if [git_dir, grafts, remotes, branches].iter().any(|p| p.is_empty()) {
+    let (Some(git_dir), Some(grafts), Some(remotes), Some(branches), Some(common), None) = (lines.next(), lines.next(), lines.next(), lines.next(), lines.next(), lines.next()) else { return false };
+    if [git_dir, grafts, remotes, branches, common].iter().any(|p| p.is_empty()) {
+        return false;
+    }
+    if !worktree_configs_clear(dir, &dir.join(common)) {
         return false;
     }
     let git_dir = dir.join(git_dir);
@@ -383,6 +392,43 @@ fn settled(dir: &Path) -> bool {
         },
     };
     !legacy_remote(&dir.join(remotes)) && !legacy_remote(&dir.join(branches)) && !in_effect(&dir.join(grafts)) && !["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "SQUASH_MSG", "AUTO_MERGE", "MERGE_MSG"].iter().any(|f| in_effect(&git_dir.join(f)))
+}
+
+/// T-780 gaps (final round, P3-1b): with `extensions.worktreeConfig` on, each worktree also reads
+/// its own `config.worktree`, and a linked worktree never sees the others' (the main checkout's
+/// `<common>/config.worktree`, the rest under `<common>/worktrees/*/`). A remote defined there still
+/// fetches into the shared refs, out of `origin_fetch_destinations`' sight. So with the extension on,
+/// any `remote.*` key in any of those files is not clear; a missing file is fine, and a file or
+/// folder that cannot be read, or an extension value git cannot read, is not clear. `--list` (rather
+/// than a key pattern) so that "no remote key" and "unreadable" stay apart; `--includes` so a file
+/// it includes counts too.
+fn worktree_configs_clear(dir: &Path, common: &Path) -> bool {
+    let not_found = |e: &std::io::Error| e.kind() == std::io::ErrorKind::NotFound;
+    let Ok(on) = crate::git::run_within(&["--no-replace-objects", "config", "--type=bool", "--default=false", "--get", "extensions.worktreeConfig"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    match on.trim() {
+        "false" => return true,
+        "true" => {}
+        _ => return false,
+    }
+    let mut files = vec![common.join("config.worktree")];
+    match fs::read_dir(common.join("worktrees")) {
+        Ok(entries) => {
+            for entry in entries {
+                let Ok(entry) = entry else { return false };
+                files.push(entry.path().join("config.worktree"));
+            }
+        }
+        Err(e) if not_found(&e) => {}
+        Err(_) => return false,
+    }
+    files.iter().all(|file| match file.symlink_metadata() {
+        Err(e) => not_found(&e),
+        Ok(_) => {
+            let path = file.to_string_lossy();
+            crate::git::run_within(&["--no-replace-objects", "config", "-z", "--includes", "--file", &path, "--list"], Some(dir), crate::git::READ_TIMEOUT)
+                .is_ok_and(|text| !text.split('\0').any(|entry| entry.trim_start().to_ascii_lowercase().starts_with("remote.")))
+        }
+    })
 }
 
 /// Where `origin`'s fetch refspecs put its branches (a source of `refs/heads/*`, `refs/heads/<dir>/*`
@@ -429,8 +475,11 @@ fn origin_fetch_destinations(dir: &Path) -> Option<(Vec<String>, Vec<String>)> {
         let is_branches = src.strip_prefix("refs/heads/").is_some_and(|rest| !rest.is_empty() && (!rest.contains('*') || rest == "*" || rest.ends_with("/*")));
         if is_branches {
             branches.push(dst.to_string());
-        } else {
+        } else if dst.is_ascii() {
             others.push(dst.to_string());
+        } else {
+            // Final round (P3-3): only ASCII case is folded when these are compared; not read.
+            return None;
         }
     }
     if branches.is_empty() {
@@ -441,7 +490,7 @@ fn origin_fetch_destinations(dir: &Path) -> Option<(Vec<String>, Vec<String>)> {
 
 /// Gaps (A): where another remote's fetch refspec `spec` writes, lowercased as a full-ref pattern.
 /// `Some(None)` for a refspec that writes no ref (a negative one, or one without a destination);
-/// None, and so no proof, for a destination with more than one `*`, which this code does not read.
+/// None, and so no proof, for a destination with more than one `*` or one that is not pure ASCII.
 /// git completes a destination without `refs/` (`remotes/origin/x` is `refs/remotes/origin/x`), so
 /// such a destination is read with `refs/` in front; a wider exclusion is the safe side.
 fn foreign_destination(spec: &str) -> Option<Option<String>> {
@@ -454,7 +503,8 @@ fn foreign_destination(spec: &str) -> Option<Option<String>> {
     if dst.is_empty() {
         return Some(None);
     }
-    if dst.matches('*').count() > 1 {
+    // Final round (P3-3): the comparison folds ASCII case only, so anything else is not read.
+    if !dst.is_ascii() || dst.matches('*').count() > 1 {
         return None;
     }
     Some(Some(if dst.starts_with("refs/") { dst } else { format!("refs/{dst}") }))
@@ -6605,6 +6655,57 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         for d in cleanup.into_iter().chain([repo]) {
             let _ = fs::remove_dir_all(d);
         }
+    }
+
+    /// T-780 gaps (final round, P3-1b): with `extensions.worktreeConfig` on, a remote defined in the
+    /// main checkout's `config.worktree` is invisible to a linked worktree's config read, yet its
+    /// fetch writes the shared refs. Any `remote.*` key in any worktree's `config.worktree` refuses.
+    #[test]
+    fn t780_a_remote_in_another_worktrees_config_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780wtcfg");
+        // The worktrees come first: `git worktree add` copies the current config.worktree.
+        let theirs = rev(&repo, "fork/theirs");
+        let wt = t780_detached(&repo, &root, "wtcfg-wt", &theirs);
+        let own = t780_detached(&repo, &root, "wtcfg-own", "origin/main");
+        git_in(&repo, &["config", "extensions.worktreeConfig", "true"]);
+        git_in(&repo, &["config", "--worktree", "remote.wtfork.url", &cleanup[2].to_string_lossy()]);
+        git_in(&repo, &["config", "--worktree", "remote.wtfork.fetch", "+refs/heads/*:refs/remotes/origin/wt/*"]);
+        git_in(&repo, &["fetch", "-q", "wtfork"]);
+        assert_eq!(rev(&repo, "refs/remotes/origin/wt/theirs"), theirs);
+        let hidden = Command::new("git").args(["config", "--get-regexp", r"^remote\.wtfork\."]).current_dir(&wt).output().unwrap();
+        assert!(!hidden.status.success(), "the linked worktree does not see the main checkout's remote");
+        assert!(!head_is_on_origin(&wt), "a remote in another worktree's config makes no proof");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while any config.worktree holds a remote");
+        git_in(&repo, &["config", "--worktree", "--remove-section", "remote.wtfork"]);
+        assert!(head_is_on_origin(&own), "no remote left in a config.worktree");
+        git_in(&wt, &["config", "--worktree", "remote.other.url", "https://example.invalid/x.git"]);
+        assert!(!head_is_on_origin(&own), "a linked worktree's config.worktree counts too");
+        git_in(&repo, &["config", "extensions.worktreeConfig", "false"]);
+        assert!(head_is_on_origin(&own), "with the extension off git reads no config.worktree");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 gaps (final round, P3-3): a fetch destination that is not pure ASCII is refused, since
+    /// the case-folding comparison only folds ASCII; another remote's and origin's own alike.
+    #[test]
+    fn t780_a_destination_that_is_not_ascii_is_no_proof() {
+        assert_eq!(foreign_destination("+refs/heads/*:refs/remotes/Fork/*"), Some(Some("refs/remotes/fork/*".to_string())));
+        assert_eq!(foreign_destination("+refs/heads/*:refs/remotes/or\u{130}gin/*"), None);
+        assert_eq!(foreign_destination("+refs/heads/*:refs/remotes/\u{212A}/*"), None);
+        let repo = temp_repo("t780ascii");
+        git_in(&repo, &["remote", "add", "origin", "https://example.invalid/o.git"]);
+        assert!(origin_fetch_destinations(&repo).is_some());
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr\u{130}/*"]);
+        assert!(origin_fetch_destinations(&repo).is_none(), "origin's own non-branch destination");
+        git_in(&repo, &["config", "--unset", "remote.origin.fetch", "pull"]);
+        assert!(origin_fetch_destinations(&repo).is_some());
+        git_in(&repo, &["remote", "add", "fork", "https://example.invalid/f.git"]);
+        git_in(&repo, &["config", "--replace-all", "remote.fork.fetch", "+refs/heads/*:refs/remotes/\u{130}/*"]);
+        assert!(origin_fetch_destinations(&repo).is_none(), "another remote's destination");
+        let _ = fs::remove_dir_all(repo);
     }
 
     /// T-780 gaps (C): a forged `objects/info/commit-graph` can make origin's tip claim a stranger's
