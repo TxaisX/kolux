@@ -168,6 +168,33 @@ Bytes alone cannot tell a reply from a key (the cursor-position answer `ESC [ 1;
 
 **Measured (new S14, release build, `evidence/stress-s14-85858f08.txt`).** Four stand-in Claude panes and one PowerShell pane, each in a cell of its own, then Move to Tab on two of them, one tab dropped on another cell's tab, one tab dropped on another cell's body, and Move to Tab on the shell: 0 stand-in restarts (S13 on main: 4 of 4 per run), all four stand-in processes alive at the end, every moved pane still showing its session banner in the expected cell, the shell's process unchanged and a command typed into it after the move answered. 7 of 7 checks pass. What S14 does not cover: real Claude Code's redraw after the replay (a stand-in prints and waits), and a move made within the first moments of a pane's start (the terminal is still being started; that pane restarts as before). Still open: a pane asleep, an editor or a browser is handed over like any other key (harmless, nothing takes it, and a close cancels it).
 
+## Round 10: release re-measure of today's main, phases e and f (no code change)
+
+**What was asked.** Measure S11 on the release build of main as of 2026-11-10 (bd74cb9a, every round above merged), explain the memory increase reported for phase e (12 idle visible panes) and phase f (12 panes + 3 hidden browser tabs), and fix it only if the fix keeps full quality.
+
+**Whole-app totals per phase (S11, release build, 3 runs each, medians; WS = working set, priv = private, CPU = % of one core, GPU = dedicated graphics memory, all MB).** The first 70d06457 column is the round 1 "before" file, whose phase d and f ran with the broken restore (see Findings: the window stayed minimised, so f sat at a different point of the hide/give-back cycle). The second 70d06457 column is the same commit measured with the fixed harness in round 7 and is the fair baseline. fc333a52 is round 1's "after" (also broken-restore in d and f).
+
+| Phase | 70d06457 round 1 | 70d06457 fixed harness | fc333a52 | bd74cb9a (today) | today vs fixed 70d06457 |
+|---|---|---|---|---|---|
+| a) 1 pane | 454.0 / 252.1 / 4.27 / 41.9 | 451.0 / 252.0 / 4.18 / 42.9 | 453.0 / 252.9 / 3.80 / 49.6 | 450.2 / 252.9 / 4.10 / 48.2 | WS -0.8, priv +0.9, CPU -0.1, GPU +5.3 |
+| b) 6 panes idle | 474.0 / 267.5 / 8.89 / 48.8 | 473.1 / 274.6 / 6.00 / 47.9 | 476.0 / 268.4 / 5.38 / 53.1 | 470.8 / 273.5 / 4.37 / 52.7 | WS -2.3, priv -1.1, CPU -1.6, GPU +4.8 |
+| c) 6 panes streaming | 543.0 / 337.4 / 73.45 / 48.0 | 534.3 / 329.4 / 59.28 / 47.1 | 551.1 / 338.4 / 75.26 / 47.7 | 521.2 / 314.1 / 25.97 / 49.2 | WS -13.1, priv -15.3, CPU -33.3, GPU +2.1 |
+| d) 12 panes minimised | 544.0 / 331.5 / 13.23 / 55.8 | 542.7 / 335.8 / 10.30 / 57.1 | 226.1 / 322.5 / 5.09 / 46.3 | 246.9 / 314.3 / 3.73 / 46.3 | WS -295.8, priv -21.5, CPU -6.6, GPU -10.8 |
+| e) 12 panes visible | 535.6 / 330.6 / 14.17 / 56.0 | 534.8 / 330.7 / 10.74 / 56.7 | 557.9 / 348.6 / 7.46 / 59.3 | 535.6 / 330.6 / 5.41 / 60.7 | WS +0.8, priv -0.1, CPU -5.3, GPU +4.0 |
+| f) 12 panes + 3 hidden tabs | 718.0 / 383.1 / 13.94 / 56.5 | 729.6 / 405.1 / 11.94 / 77.5 | 238.9 / 431.9 / 12.96 / 87.7 | 377.3 / 405.7 / 5.26 / 80.5 | WS -352.3, priv +0.6, CPU -6.7, GPU +3.0 |
+
+Today's run file: `evidence/stress-s11-bd74cb9a-release-r10-before.{txt,json}` (its built-in compare block is against the round 1 file, so its f row shows +22.6 MB private and +24 MB GPU; read the table above instead).
+
+**Phase e: no increase.** Private memory is 330.6 MB today against 330.7 (fixed baseline) and 330.6 (round 1 file); working set is the same to 1 MB; CPU is half. The page's JS heap is 45 MB against 40 MB (the 12 hidden-pane terminals keep their replay snapshot and the hand-over bookkeeping from rounds 7 to 9), all inside the renderer's unchanged private total. The only move is +4 MB of dedicated graphics memory in the GPU process (60.7 against 56.7), which is the same offset phase a already shows with one pane (48.2 against 42.9), so it is not per pane and not caused by the 12-pane view.
+
+**Phase f: the reported increase was the round 1 baseline file.** Against the fair baseline today's f is +0.6 MB private, +3.0 MB graphics, -352 MB working set and half the CPU; against the round 1 "after" (fc333a52) it is -26 MB private and -7 MB graphics. The round 1 "before" had its f phase measured with the broken restore (the Findings row above), which is why a compare against it reads as +22.6 MB private / +24 MB graphics. Browser-tab sleep (DT-C237) and the hidden tabs' give-back are working as in round 7: renderer private 178.6 against 169.9 (+8.7, the 3 sleeping tab renderers hold the same +8 MB they did at 92185e2e), GPU process private 126.3 against 126.5.
+
+**The +3 to +5 MB graphics offset, probed and not attributable.** It is present from fc333a52 on (49.6 at one pane) and in every phase, so it comes from round 1. Three live A/B probes on today's release exe, one pane each, 30 s windows, were run to pin it: (1) the engine's default background switched back to transparent at runtime (as before DT-C236's opaque default) and then opaque again: 43.9 MB transparent against 45.4 / 44.4 MB opaque; (2) the two switches DT-C229 dropped (`--disable-renderer-backgrounding`, `--disable-backgrounding-occluded-windows`) restored through `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`: 45.4 MB; (3) the renderer heap ceiling off (`KOLUX_RENDERER_HEAP_MB=off`, the platform default as before DT-C233): 48.3 MB. All three sit inside the run-to-run band of today's unchanged build at one pane (45.4 to 48.3 MB over the 3 S11 repeats; the fixed baseline's band was 42.2 to 46.0), so none of the three round 1 changes explains the offset, and the offset itself (about 3 MB at the band edges) is smaller than one run's spread. No fix is made: nothing in Kolux's code was shown to cause it, and the candidate reversals cost real savings (the opaque background removes a per-frame composite; the dropped switches let hidden panes idle; the heap ceiling bounds the renderer) for no measured gain.
+
+**Harness.** `scripts/stress/lib.mjs` `useReleaseBuild` now appends `STRESS_EXTRA_BROWSER_ARGS` (if set) to the engine's extra browser arguments after the debugging-port switch, so an A/B of a browser switch is one env var on an unchanged exe. Default behaviour is unchanged.
+
+**Not done.** The optional utility-process cut (step 4) was not attempted: the two utility processes hold 19.9 MB private together at one pane, and their sub-types were not identified in the turns left.
+
 ## Evidence
 
 - `evidence/stress-s11-70d06457-release-before.{txt,json}`, `evidence/stress-s11-fc333a52-release-after.{txt,json}`,
@@ -183,3 +210,4 @@ Bytes alone cannot tell a reply from a key (the cursor-position answer `ESC [ 1;
   wake) and `evidence/stress-s13-92185e2e-early-finish.txt` (the run where A never slept).
 - Round 8: `evidence/stress-s13-85858f08.txt` (the watched-then-left case sleeping and waking on the lane build); `evidence/stress-s13-068dd246.txt` (14 of 14 on main after both lanes merged).
 - Round 9: `evidence/stress-s14-85858f08.txt` (pane moves, 0 restarts, first cut) and `evidence/stress-s14-f0d2384e.txt` (same run on the review fixes: 0 restarts, 7 of 7), `evidence/stress-s14-1d837961.txt` (same run after main with DT-C247 was merged in: 0 restarts, 7 of 7), `evidence/stress-s14-73586f78.txt` (same run on the second review's fixes: 0 restarts, 7 of 7), `evidence/stress-s14-a93c7d3d.txt` (same run on the third review's fixes: 0 restarts, 7 of 7).
+- Round 10: `evidence/stress-s11-bd74cb9a-release-r10-before.{txt,json}` (release S11 on today's main, 3 runs; no code change, see the Round 10 table for the fair compare).

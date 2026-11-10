@@ -131,7 +131,7 @@ async function buildRelease(app, opts) {
 function useReleaseBuild(app, opts) {
   const exe = releaseExe(opts.root);
   const P = app.paths;
-  const env = () => ({ ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${opts.cdp}`, CLAUDE_CONFIG_DIR: P.claudeConfig, CODEX_HOME: P.codexHome, TEMP: P.appTemp, TMP: P.appTemp, USERPROFILE: P.userHome, HOME: P.userHome, KOLUX_KEYBINDINGS_HOME: P.userHome, APPDATA: P.roaming, LOCALAPPDATA: P.local, CARGO_HOME: process.env.CARGO_HOME ?? join(homedir(), ".cargo"), RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(homedir(), ".rustup") });
+  const env = () => ({ ...process.env, WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: [`--remote-debugging-port=${opts.cdp}`, process.env.STRESS_EXTRA_BROWSER_ARGS].filter(Boolean).join(" "), CLAUDE_CONFIG_DIR: P.claudeConfig, CODEX_HOME: P.codexHome, TEMP: P.appTemp, TMP: P.appTemp, USERPROFILE: P.userHome, HOME: P.userHome, KOLUX_KEYBINDINGS_HOME: P.userHome, APPDATA: P.roaming, LOCALAPPDATA: P.local, CARGO_HOME: process.env.CARGO_HOME ?? join(homedir(), ".cargo"), RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(homedir(), ".rustup") });
   const start = async () => {
     const out = openSync(join(app.temp, "app.log"), "a");
     const child = spawn(exe, [], { cwd: join(opts.root, "src-tauri"), windowsHide: true, stdio: ["ignore", out, out], env: env() });
