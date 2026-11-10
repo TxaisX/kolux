@@ -193,11 +193,11 @@ function compareLines(before, now) {
 // ---------- a page on this machine's network address for the embedded browser tabs (no internet) ----------
 // The tab suspension (DT-C237) spares loopback pages, so the page is served on the machine's own non-loopback IPv4 address (bound to that
 // address only). It counts its own timer ticks: the page asks /tick?id=<tab> once a second; a suspended page stops asking.
-function lanAddress() {
+export function lanAddress() {
   for (const list of Object.values(networkInterfaces())) for (const a of list ?? []) if (a.family === "IPv4" && !a.internal && !a.address.startsWith("169.254.")) return a.address;
   return null;
 }
-async function startPageServer() {
+export async function startPageServer() {
   const host = lanAddress() ?? "127.0.0.1";
   const hits = new Map(); // tab id -> [ms of each tick]
   const html = `<!doctype html><meta charset="utf-8"><title>bench page</title><body style="font:16px sans-serif;background:#fff;color:#111"><h1>bench page</h1><p>A small static page for the footprint benchmark.</p><script>const id = new URLSearchParams(location.search).get("id");setInterval(() => fetch("/tick?id=" + id).catch(() => {}), 1000);</script>`;

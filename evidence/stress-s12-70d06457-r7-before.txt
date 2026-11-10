@@ -1,0 +1,114 @@
+stress S12 (everyday footprint (6 shells with light output, 3 hidden browser tabs, window shown, then minimised)) at 2026-11-10T15:04:51.193Z on 70d06457 (<lane>)
+args: S12 --release --skip-build --repeat 3 --tag r7-before --port 1453 --cdp 9273 --temp <temp>/fpbefore12; ran 764 s
+
+=== everyday footprint (60 s windows, 20 s settle, minimised 120 s; 3 run(s)) ===
+build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 25.7 MB, modified 2026-11-10T13:39:10.724Z
+
+v) window shown (off-screen, not minimised): 6 shells with light output, 3 hidden browser tabs  [3 run(s), medians; visibility visible, visible, visible; page JS heap 20.2 MB; canvases 13; app CPU 29.03 % of a core]
+   role                 count    WS MB  priv MB   min-max WS | priv
+   window                 1.0     44.1     16.7   44-44 | 17-18
+   wv-browser             1.0    146.2     56.4   145-146 | 56-57
+   renderer               4.0    316.3    162.4   313-319 | 160-165
+   gpu-process            1.0     96.1    106.8   96-96 | 107-108
+   utility                2.0     63.1     20.7   63-63 | 21-21
+   crashpad-handler       1.0     13.3      3.1   13-13 | 3-3
+   app total             10.0    679.3    366.2   675-682 | 365-370
+   shells                 6.0    439.5    329.4   439-440 | 329-330
+   console hosts          6.0     48.4      8.2   48-48 | 8-8
+   workload (ticker)      6.0    270.7    120.7   255-278 | 120-121
+   Kolux total           22.0   1167.2    704.7   1162-1169 | 702-707
+   with workload         28.0   1437.9    825.4   1425-1440 | 823-828
+   hidden browser tab page ticks/s per repeat (about 1 awake, 0 suspended): [0.99 1.01 0.99] [1.01 1.00 1.00] [1.01 1.00 1.00]
+
+m) window minimised 120 s (sampled 60-120 s after the hide)  [3 run(s), medians; visibility visible, visible, visible; page JS heap 23.7 MB; canvases 13; app CPU 9.68 % of a core]
+   role                 count    WS MB  priv MB   min-max WS | priv
+   window                 1.0     44.1     17.4   44-44 | 17-18
+   wv-browser             1.0    148.8     56.8   147-149 | 57-57
+   renderer               4.0    324.6    170.8   322-328 | 167-174
+   gpu-process            1.0     97.1    106.9   97-98 | 106-107
+   utility                2.0     63.7     21.2   64-64 | 21-21
+   crashpad-handler       1.0     12.6      2.9   13-13 | 3-3
+   app total             10.0    691.1    374.7   687-695 | 373-379
+   shells                 6.0    439.2    328.8   438-439 | 328-330
+   console hosts          6.0     48.3      8.1   48-48 | 8-8
+   workload (ticker)      6.0    271.6    120.3   256-279 | 120-120
+   Kolux total           22.0   1178.6    712.6   1173-1182 | 709-716
+   with workload         28.0   1450.3    832.9   1438-1452 | 829-836
+   hidden browser tab page ticks/s per repeat (about 1 awake, 0 suspended): [1.00 1.00 1.00] [1.01 1.00 1.00] [1.00 1.00 1.00]
+
+json: evidence/stress-s12-70d06457-r7-before.json
+
+PASS  6 panes each run the light ticker (repeat 1/3)
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  3 browser tabs open and hidden behind a terminal tab (repeat 1/3)
+      bar: 3, hidden
+      measured: 3, hidden
+PASS  phase v: 6 shells and 6 console hosts found (repeat 1/3)
+      bar: 6 + 6
+      measured: 6.0 + 6.0
+PASS  phase v: the page is visible while sampled (repeat 1/3)
+      bar: visible
+      measured: visible
+PASS  phase m: 6 shells and 6 console hosts found (repeat 1/3)
+      bar: 6 + 6
+      measured: 6.0 + 6.0
+PASS  phase m: the window was minimised (repeat 1/3)
+      bar: iconic=True
+      measured: iconic=True
+PASS  app closes by its own path and leaves no process behind (repeat 1/3)
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 24 (msedgewebview2.exe x9, conhost.exe x6, powershell.exe x6, node.exe x3); survivors 0 (none)
+PASS  6 panes each run the light ticker (repeat 2/3)
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  3 browser tabs open and hidden behind a terminal tab (repeat 2/3)
+      bar: 3, hidden
+      measured: 3, hidden
+PASS  phase v: 6 shells and 6 console hosts found (repeat 2/3)
+      bar: 6 + 6
+      measured: 6.0 + 6.0
+PASS  phase v: the page is visible while sampled (repeat 2/3)
+      bar: visible
+      measured: visible
+PASS  phase m: 6 shells and 6 console hosts found (repeat 2/3)
+      bar: 6 + 6
+      measured: 6.0 + 6.0
+PASS  phase m: the window was minimised (repeat 2/3)
+      bar: iconic=True
+      measured: iconic=True
+PASS  app closes by its own path and leaves no process behind (repeat 2/3)
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.2 s; pre-close tree 26 (msedgewebview2.exe x9, conhost.exe x6, powershell.exe x6, node.exe x5); survivors 0 (none)
+PASS  6 panes each run the light ticker (repeat 3/3)
+      bar: 6 of 6
+      measured: 6 of 6
+PASS  3 browser tabs open and hidden behind a terminal tab (repeat 3/3)
+      bar: 3, hidden
+      measured: 3, hidden
+PASS  phase v: 6 shells and 6 console hosts found (repeat 3/3)
+      bar: 6 + 6
+      measured: 6.0 + 6.0
+PASS  phase v: the page is visible while sampled (repeat 3/3)
+      bar: visible
+      measured: visible
+PASS  phase m: 6 shells and 6 console hosts found (repeat 3/3)
+      bar: 6 + 6
+      measured: 6.0 + 6.0
+PASS  phase m: the window was minimised (repeat 3/3)
+      bar: iconic=True
+      measured: iconic=True
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.3 s; pre-close tree 24 (msedgewebview2.exe x9, conhost.exe x6, powershell.exe x6, node.exe x3); survivors 0 (none)
+
+notes:
+  - browser-tab page: this machine's network address
+  - minimise (repeat 1/3): iconic=True
+  - phase m (repeat 1/3): page visibility visible
+  - minimise (repeat 2/3): iconic=True
+  - phase m (repeat 2/3): page visibility visible
+  - minimise (repeat 3/3): iconic=True
+  - phase m (repeat 3/3): page visibility visible
+
+S12: PASS

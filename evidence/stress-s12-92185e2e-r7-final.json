@@ -1,0 +1,1585 @@
+{
+ "schema": 1,
+ "sha": "92185e2e",
+ "when": "2026-11-10T15:17:40.933Z",
+ "window_s": 60,
+ "settle_s": 20,
+ "hidden_s": 120,
+ "repeat": 3,
+ "build": "release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 26.4 MB, modified 2026-11-10T13:38:50.482Z",
+ "buildKind": "release",
+ "phases": [
+  {
+   "id": "v",
+   "title": "window shown (off-screen, not minimised): 6 shells with light output, 3 hidden browser tabs",
+   "repeats": 3,
+   "rows": {
+    "window": {
+     "n": 1,
+     "wsMB": 42.65455729166667,
+     "privMB": 14.123828125
+    },
+    "wv-browser": {
+     "n": 1,
+     "wsMB": 146.513671875,
+     "privMB": 56.56640625
+    },
+    "renderer": {
+     "n": 4,
+     "wsMB": 312.84453125,
+     "privMB": 158.69505208333334
+    },
+    "gpu-process": {
+     "n": 1,
+     "wsMB": 97.62434895833333,
+     "privMB": 110.778125
+    },
+    "utility": {
+     "n": 2,
+     "wsMB": 63.21848958333333,
+     "privMB": 20.687630208333335
+    },
+    "crashpad-handler": {
+     "n": 1,
+     "wsMB": 13.360677083333334,
+     "privMB": 3.040625
+    },
+    "app total": {
+     "n": 10,
+     "wsMB": 676.6260416666667,
+     "privMB": 363.84283854166665
+    },
+    "shells": {
+     "n": 6,
+     "wsMB": 439.51953125,
+     "privMB": 329.76953125
+    },
+    "console hosts": {
+     "n": 6,
+     "wsMB": 48.85546875,
+     "privMB": 8.10546875
+    },
+    "workload (ticker)": {
+     "n": 6,
+     "wsMB": 270.70703125,
+     "privMB": 120.447265625
+    },
+    "Kolux total": {
+     "n": 22,
+     "wsMB": 1164.356640625,
+     "privMB": 701.5479166666667
+    },
+    "with workload": {
+     "n": 28,
+     "wsMB": 1435.7080729166667,
+     "privMB": 822.0412760416666
+    }
+   },
+   "spread": {
+    "window": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      42.596875,
+      42.90442708333333
+     ],
+     "privMB": [
+      14.076302083333333,
+      14.2703125
+     ]
+    },
+    "wv-browser": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      144.89361979166668,
+      147.315234375
+     ],
+     "privMB": [
+      56.416927083333334,
+      56.608072916666664
+     ]
+    },
+    "renderer": {
+     "n": [
+      4,
+      4
+     ],
+     "wsMB": [
+      307.82200520833334,
+      314.93203125
+     ],
+     "privMB": [
+      156.66302083333332,
+      159.175390625
+     ]
+    },
+    "gpu-process": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      97.28138020833333,
+      98.269921875
+     ],
+     "privMB": [
+      110.37278645833334,
+      112.45520833333333
+     ]
+    },
+    "utility": {
+     "n": [
+      2,
+      2
+     ],
+     "wsMB": [
+      63.10885416666667,
+      63.22252604166667
+     ],
+     "privMB": [
+      20.595833333333335,
+      20.71328125
+     ]
+    },
+    "crashpad-handler": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      12.690885416666667,
+      13.368489583333334
+     ],
+     "privMB": [
+      2.9989583333333334,
+      3.05546875
+     ]
+    },
+    "app total": {
+     "n": [
+      10,
+      10
+     ],
+     "wsMB": [
+      671.1125,
+      676.883984375
+     ],
+     "privMB": [
+      363.35572916666666,
+      364.09466145833335
+     ]
+    },
+    "shells": {
+     "n": [
+      6,
+      6
+     ],
+     "wsMB": [
+      439.08203125,
+      442.10546875
+     ],
+     "privMB": [
+      329.599609375,
+      332.306640625
+     ]
+    },
+    "console hosts": {
+     "n": [
+      6,
+      6
+     ],
+     "wsMB": [
+      48.390625,
+      48.87109375
+     ],
+     "privMB": [
+      8.1015625,
+      8.11328125
+     ]
+    },
+    "workload (ticker)": {
+     "n": [
+      6,
+      6
+     ],
+     "wsMB": [
+      259.990234375,
+      278.087890625
+     ],
+     "privMB": [
+      120.169921875,
+      120.802734375
+     ]
+    },
+    "Kolux total": {
+     "n": [
+      22,
+      22
+     ],
+     "wsMB": [
+      1162.0890625,
+      1165.0010416666667
+     ],
+     "privMB": [
+      701.2385416666666,
+      704.5028645833333
+     ]
+    },
+    "with workload": {
+     "n": [
+      28,
+      28
+     ],
+     "wsMB": [
+      1424.346875,
+      1440.176953125
+     ],
+     "privMB": [
+      821.9951822916667,
+      824.6727864583333
+     ]
+    }
+   },
+   "cpuCorePct": 25.36813290541816,
+   "page": {
+    "visibility": "visible, visible, visible",
+    "jsHeapUsedMB": 20.19594383239746,
+    "canvases": 13
+   },
+   "tabRates": [
+    [
+     0.5207615371655255,
+     0.5667110845624838,
+     0.5973441161604558
+    ],
+    [
+     0.5363902468927679,
+     0.5670411181437832,
+     0.5976919893947985
+    ],
+    [
+     0.5214244087967365,
+     0.5674324448670367,
+     0.5981044689139036
+    ]
+   ]
+  },
+  {
+   "id": "m",
+   "title": "window minimised 120 s (sampled 60-120 s after the hide)",
+   "repeats": 3,
+   "rows": {
+    "window": {
+     "n": 1,
+     "wsMB": 42.733333333333334,
+     "privMB": 14.146354166666667
+    },
+    "wv-browser": {
+     "n": 1,
+     "wsMB": 148.25169270833334,
+     "privMB": 56.16236979166667
+    },
+    "renderer": {
+     "n": 4,
+     "wsMB": 152.63880208333333,
+     "privMB": 159.27591145833333
+    },
+    "gpu-process": {
+     "n": 1,
+     "wsMB": 99.24010416666667,
+     "privMB": 108.53125
+    },
+    "utility": {
+     "n": 2,
+     "wsMB": 63.30520833333333,
+     "privMB": 20.568489583333335
+    },
+    "crashpad-handler": {
+     "n": 1,
+     "wsMB": 12.729427083333333,
+     "privMB": 2.89609375
+    },
+    "app total": {
+     "n": 10,
+     "wsMB": 518.3466145833333,
+     "privMB": 361.66588541666664
+    },
+    "shells": {
+     "n": 6,
+     "wsMB": 439.078125,
+     "privMB": 329.12890625
+    },
+    "console hosts": {
+     "n": 6,
+     "wsMB": 48.85546875,
+     "privMB": 8.0859375
+    },
+    "workload (ticker)": {
+     "n": 6,
+     "wsMB": 271.55859375,
+     "privMB": 120.1328125
+    },
+    "Kolux total": {
+     "n": 22,
+     "wsMB": 1008.3739583333333,
+     "privMB": 698.9106770833333
+    },
+    "with workload": {
+     "n": 28,
+     "wsMB": 1282.8584635416667,
+     "privMB": 819.3208333333333
+    }
+   },
+   "spread": {
+    "window": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      42.60703125,
+      42.95546875
+     ],
+     "privMB": [
+      13.956901041666667,
+      14.244401041666666
+     ]
+    },
+    "wv-browser": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      146.67721354166667,
+      148.43020833333333
+     ],
+     "privMB": [
+      55.983072916666664,
+      56.543359375
+     ]
+    },
+    "renderer": {
+     "n": [
+      4,
+      4
+     ],
+     "wsMB": [
+      151.95924479166666,
+      154.753515625
+     ],
+     "privMB": [
+      158.740625,
+      159.47369791666668
+     ]
+    },
+    "gpu-process": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      98.4609375,
+      100.020703125
+     ],
+     "privMB": [
+      107.97916666666667,
+      109.00390625
+     ]
+    },
+    "utility": {
+     "n": [
+      2,
+      2
+     ],
+     "wsMB": [
+      63.16575520833333,
+      63.330989583333334
+     ],
+     "privMB": [
+      20.540234375,
+      20.60703125
+     ]
+    },
+    "crashpad-handler": {
+     "n": [
+      1,
+      1
+     ],
+     "wsMB": [
+      12.627083333333333,
+      12.734505208333333
+     ],
+     "privMB": [
+      2.882552083333333,
+      2.91171875
+     ]
+    },
+    "app total": {
+     "n": [
+      10,
+      10
+     ],
+     "wsMB": [
+      518.0294270833333,
+      520.2451822916667
+     ],
+     "privMB": [
+      361.0854166666667,
+      361.6958333333333
+     ]
+    },
+    "shells": {
+     "n": [
+      6,
+      6
+     ],
+     "wsMB": [
+      438.66015625,
+      441.171875
+     ],
+     "privMB": [
+      328.953125,
+      331.125
+     ]
+    },
+    "console hosts": {
+     "n": [
+      6,
+      6.5
+     ],
+     "wsMB": [
+      48.37109375,
+      51.9765625
+     ],
+     "privMB": [
+      8.0859375,
+      8.6015625
+     ]
+    },
+    "workload (ticker)": {
+     "n": [
+      6,
+      6
+     ],
+     "wsMB": [
+      260.798828125,
+      278.89453125
+     ],
+     "privMB": [
+      119.7734375,
+      120.41015625
+     ]
+    },
+    "Kolux total": {
+     "n": [
+      22,
+      22.5
+     ],
+     "wsMB": [
+      1005.0606770833333,
+      1011.2998697916667
+     ],
+     "privMB": [
+      698.6401041666667,
+      700.8768229166667
+     ]
+    },
+    "with workload": {
+     "n": [
+      28,
+      28.5
+     ],
+     "wsMB": [
+      1265.8595052083333,
+      1287.2684895833333
+     ],
+     "privMB": [
+      818.7729166666667,
+      820.6502604166667
+     ]
+    }
+   },
+   "cpuCorePct": 9.82063126803132,
+   "page": {
+    "visibility": "visible, visible, visible",
+    "jsHeapUsedMB": 22.148334503173828,
+    "canvases": 13
+   },
+   "tabRates": [
+    [
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0
+    ]
+   ]
+  }
+ ],
+ "runs": [
+  [
+   {
+    "id": "v",
+    "title": "window shown (off-screen, not minimised): 6 shells with light output, 3 hidden browser tabs",
+    "rows": {
+     "window": {
+      "n": 1,
+      "wsMB": 42.65455729166667,
+      "privMB": 14.076302083333333
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 147.315234375,
+      "privMB": 56.56640625
+     },
+     "renderer": {
+      "n": 4,
+      "wsMB": 312.84453125,
+      "privMB": 156.66302083333332
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 98.269921875,
+      "privMB": 112.45520833333333
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 63.10885416666667,
+      "privMB": 20.595833333333335
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.690885416666667,
+      "privMB": 2.9989583333333334
+     },
+     "app total": {
+      "n": 10,
+      "wsMB": 676.883984375,
+      "privMB": 363.35572916666666
+     },
+     "shells": {
+      "n": 6,
+      "wsMB": 439.08203125,
+      "privMB": 329.76953125
+     },
+     "console hosts": {
+      "n": 6,
+      "wsMB": 48.390625,
+      "privMB": 8.11328125
+     },
+     "workload (ticker)": {
+      "n": 6,
+      "wsMB": 259.990234375,
+      "privMB": 120.802734375
+     },
+     "Kolux total": {
+      "n": 22,
+      "wsMB": 1164.356640625,
+      "privMB": 701.2385416666666
+     },
+     "with workload": {
+      "n": 28,
+      "wsMB": 1424.346875,
+      "privMB": 822.0412760416666
+     }
+    },
+    "cpuCorePct": 25.937950628304602,
+    "page": {
+     "jsHeapUsedMB": 19.767765045166016,
+     "jsHeapTotalMB": 22.807086944580078,
+     "canvases": 13,
+     "panes": 6,
+     "shownPanes": 6,
+     "domNodes": 955,
+     "visibility": "visible",
+     "wizard": false
+    },
+    "tabRates": [
+     0.5207615371655255,
+     0.5667110845624838,
+     0.5973441161604558
+    ],
+    "procs": [
+     {
+      "pid": 11324,
+      "role": "crashpad-handler",
+      "wsMB": 12.690885416666667,
+      "privMB": 2.9989583333333334,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 26108,
+      "role": "gpu-process",
+      "wsMB": 98.269921875,
+      "privMB": 112.45520833333333,
+      "cpuCorePct": 11.882639222687633,
+      "gpuDedMB": 68.43717447916667,
+      "ticks": 30
+     },
+     {
+      "pid": 31408,
+      "role": "renderer",
+      "wsMB": 144.96822916666667,
+      "privMB": 89.77838541666667,
+      "cpuCorePct": 8.315165144544393,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 16912,
+      "role": "renderer",
+      "wsMB": 57.30455729166667,
+      "privMB": 24.558203125,
+      "cpuCorePct": 0.08046934010849413,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 43136,
+      "role": "renderer",
+      "wsMB": 55.836848958333334,
+      "privMB": 21.577473958333332,
+      "cpuCorePct": 0.2682311336949804,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 26652,
+      "role": "renderer",
+      "wsMB": 54.73489583333333,
+      "privMB": 20.748958333333334,
+      "cpuCorePct": 0.08046934010849413,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 34884,
+      "role": "utility",
+      "wsMB": 42.77291666666667,
+      "privMB": 13.103645833333333,
+      "cpuCorePct": 0.8583396278239372,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 24396,
+      "role": "utility",
+      "wsMB": 20.3359375,
+      "privMB": 7.4921875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 39816,
+      "role": "window",
+      "wsMB": 42.65455729166667,
+      "privMB": 14.076302083333333,
+      "cpuCorePct": 2.3067877497768317,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 30932,
+      "role": "wv-browser",
+      "wsMB": 147.315234375,
+      "privMB": 56.56640625,
+      "cpuCorePct": 2.1458490695598433,
+      "gpuDedMB": null,
+      "ticks": 30
+     }
+    ]
+   },
+   {
+    "id": "m",
+    "title": "window minimised 120 s (sampled 60-120 s after the hide)",
+    "rows": {
+     "window": {
+      "n": 1,
+      "wsMB": 42.60703125,
+      "privMB": 13.956901041666667
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 148.43020833333333,
+      "privMB": 56.543359375
+     },
+     "renderer": {
+      "n": 4,
+      "wsMB": 151.95924479166666,
+      "privMB": 158.740625
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 99.24010416666667,
+      "privMB": 109.00390625
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 63.16575520833333,
+      "privMB": 20.568489583333335
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.627083333333333,
+      "privMB": 2.882552083333333
+     },
+     "app total": {
+      "n": 10,
+      "wsMB": 518.0294270833333,
+      "privMB": 361.6958333333333
+     },
+     "shells": {
+      "n": 6,
+      "wsMB": 438.66015625,
+      "privMB": 329.12890625
+     },
+     "console hosts": {
+      "n": 6,
+      "wsMB": 48.37109375,
+      "privMB": 8.0859375
+     },
+     "workload (ticker)": {
+      "n": 6,
+      "wsMB": 260.798828125,
+      "privMB": 120.41015625
+     },
+     "Kolux total": {
+      "n": 22,
+      "wsMB": 1005.0606770833333,
+      "privMB": 698.9106770833333
+     },
+     "with workload": {
+      "n": 28,
+      "wsMB": 1265.8595052083333,
+      "privMB": 819.3208333333333
+     }
+    },
+    "cpuCorePct": 10.514479940947247,
+    "page": {
+     "jsHeapUsedMB": 22.27346420288086,
+     "jsHeapTotalMB": 25.521930694580078,
+     "canvases": 13,
+     "panes": 6,
+     "shownPanes": 6,
+     "domNodes": 954,
+     "visibility": "visible",
+     "wizard": false
+    },
+    "tabRates": [
+     0,
+     0,
+     0
+    ],
+    "procs": [
+     {
+      "pid": 11324,
+      "role": "crashpad-handler",
+      "wsMB": 12.627083333333333,
+      "privMB": 2.882552083333333,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 26108,
+      "role": "gpu-process",
+      "wsMB": 99.24010416666667,
+      "privMB": 109.00390625,
+      "cpuCorePct": 1.2606646867972466,
+      "gpuDedMB": 67.85546875,
+      "ticks": 30
+     },
+     {
+      "pid": 31408,
+      "role": "renderer",
+      "wsMB": 146.94270833333334,
+      "privMB": 91.55533854166667,
+      "cpuCorePct": 4.908545482636088,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 16912,
+      "role": "renderer",
+      "wsMB": 1.61875,
+      "privMB": 24.471744791666666,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 43136,
+      "role": "renderer",
+      "wsMB": 1.7904947916666667,
+      "privMB": 22.108463541666666,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 26652,
+      "role": "renderer",
+      "wsMB": 1.6072916666666666,
+      "privMB": 20.605078125,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 34884,
+      "role": "utility",
+      "wsMB": 42.82981770833333,
+      "privMB": 13.076302083333333,
+      "cpuCorePct": 0.563275711122174,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 24396,
+      "role": "utility",
+      "wsMB": 20.3359375,
+      "privMB": 7.4921875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 39816,
+      "role": "window",
+      "wsMB": 42.60703125,
+      "privMB": 13.956901041666667,
+      "cpuCorePct": 2.0921669270252177,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 30932,
+      "role": "wv-browser",
+      "wsMB": 148.43020833333333,
+      "privMB": 56.543359375,
+      "cpuCorePct": 1.689827133366522,
+      "gpuDedMB": null,
+      "ticks": 30
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "v",
+    "title": "window shown (off-screen, not minimised): 6 shells with light output, 3 hidden browser tabs",
+    "rows": {
+     "window": {
+      "n": 1,
+      "wsMB": 42.596875,
+      "privMB": 14.123828125
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 144.89361979166668,
+      "privMB": 56.416927083333334
+     },
+     "renderer": {
+      "n": 4,
+      "wsMB": 314.93203125,
+      "privMB": 159.175390625
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 97.62434895833333,
+      "privMB": 110.37278645833334
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 63.21848958333333,
+      "privMB": 20.71328125
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 13.360677083333334,
+      "privMB": 3.040625
+     },
+     "app total": {
+      "n": 10,
+      "wsMB": 676.6260416666667,
+      "privMB": 363.84283854166665
+     },
+     "shells": {
+      "n": 6,
+      "wsMB": 439.51953125,
+      "privMB": 329.599609375
+     },
+     "console hosts": {
+      "n": 6,
+      "wsMB": 48.85546875,
+      "privMB": 8.10546875
+     },
+     "workload (ticker)": {
+      "n": 6,
+      "wsMB": 270.70703125,
+      "privMB": 120.447265625
+     },
+     "Kolux total": {
+      "n": 22,
+      "wsMB": 1165.0010416666667,
+      "privMB": 701.5479166666667
+     },
+     "with workload": {
+      "n": 28,
+      "wsMB": 1435.7080729166667,
+      "privMB": 821.9951822916667
+     }
+    },
+    "cpuCorePct": 24.81265772802966,
+    "page": {
+     "jsHeapUsedMB": 20.375849723815918,
+     "jsHeapTotalMB": 23.06076717376709,
+     "canvases": 13,
+     "panes": 6,
+     "shownPanes": 6,
+     "domNodes": 955,
+     "visibility": "visible",
+     "wizard": false
+    },
+    "tabRates": [
+     0.5363902468927679,
+     0.5670411181437832,
+     0.5976919893947985
+    ],
+    "procs": [
+     {
+      "pid": 480,
+      "role": "crashpad-handler",
+      "wsMB": 13.360677083333334,
+      "privMB": 3.040625,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 41076,
+      "role": "gpu-process",
+      "wsMB": 97.62434895833333,
+      "privMB": 110.37278645833334,
+      "cpuCorePct": 11.829602224930898,
+      "gpuDedMB": 69.09309895833333,
+      "ticks": 30
+     },
+     {
+      "pid": 7216,
+      "role": "renderer",
+      "wsMB": 148.77408854166666,
+      "privMB": 93.31067708333333,
+      "cpuCorePct": 7.028017648371645,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 6036,
+      "role": "renderer",
+      "wsMB": 56.983463541666666,
+      "privMB": 23.21328125,
+      "cpuCorePct": 0.026824494841113152,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 37060,
+      "role": "renderer",
+      "wsMB": 54.95911458333333,
+      "privMB": 21.995833333333334,
+      "cpuCorePct": 0.10729797936445261,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 27784,
+      "role": "renderer",
+      "wsMB": 54.21536458333333,
+      "privMB": 20.655598958333332,
+      "cpuCorePct": 0.24142045357001835,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 12976,
+      "role": "utility",
+      "wsMB": 42.852473958333334,
+      "privMB": 13.225390625,
+      "cpuCorePct": 0.7779103503922814,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 42492,
+      "role": "utility",
+      "wsMB": 20.366015625,
+      "privMB": 7.487890625,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 32880,
+      "role": "window",
+      "wsMB": 42.596875,
+      "privMB": 14.123828125,
+      "cpuCorePct": 1.9313636285601468,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 28640,
+      "role": "wv-browser",
+      "wsMB": 144.89361979166668,
+      "privMB": 56.416927083333334,
+      "cpuCorePct": 2.870220947999107,
+      "gpuDedMB": null,
+      "ticks": 30
+     }
+    ]
+   },
+   {
+    "id": "m",
+    "title": "window minimised 120 s (sampled 60-120 s after the hide)",
+    "rows": {
+     "window": {
+      "n": 1,
+      "wsMB": 42.733333333333334,
+      "privMB": 14.146354166666667
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 146.67721354166667,
+      "privMB": 55.983072916666664
+     },
+     "renderer": {
+      "n": 4,
+      "wsMB": 154.753515625,
+      "privMB": 159.47369791666668
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 100.020703125,
+      "privMB": 107.97916666666667
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 63.330989583333334,
+      "privMB": 20.60703125
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.729427083333333,
+      "privMB": 2.89609375
+     },
+     "app total": {
+      "n": 10,
+      "wsMB": 520.2451822916667,
+      "privMB": 361.0854166666667
+     },
+     "shells": {
+      "n": 6,
+      "wsMB": 439.078125,
+      "privMB": 328.953125
+     },
+     "console hosts": {
+      "n": 6.5,
+      "wsMB": 51.9765625,
+      "privMB": 8.6015625
+     },
+     "workload (ticker)": {
+      "n": 6,
+      "wsMB": 271.55859375,
+      "privMB": 120.1328125
+     },
+     "Kolux total": {
+      "n": 22.5,
+      "wsMB": 1011.2998697916667,
+      "privMB": 698.6401041666667
+     },
+     "with workload": {
+      "n": 28.5,
+      "wsMB": 1282.8584635416667,
+      "privMB": 818.7729166666667
+     }
+    },
+    "cpuCorePct": 9.82063126803132,
+    "page": {
+     "jsHeapUsedMB": 21.964855194091797,
+     "jsHeapTotalMB": 24.766334533691406,
+     "canvases": 13,
+     "panes": 6,
+     "shownPanes": 6,
+     "domNodes": 954,
+     "visibility": "visible",
+     "wizard": false
+    },
+    "tabRates": [
+     0,
+     0,
+     0
+    ],
+    "procs": [
+     {
+      "pid": 480,
+      "role": "crashpad-handler",
+      "wsMB": 12.729427083333333,
+      "privMB": 2.89609375,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 41076,
+      "role": "gpu-process",
+      "wsMB": 100.020703125,
+      "privMB": 107.97916666666667,
+      "cpuCorePct": 1.0464607088885836,
+      "gpuDedMB": 67.53515625,
+      "ticks": 30
+     },
+     {
+      "pid": 7216,
+      "role": "renderer",
+      "wsMB": 149.53958333333333,
+      "privMB": 93.81614583333334,
+      "cpuCorePct": 4.64199237532628,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 6036,
+      "role": "renderer",
+      "wsMB": 1.61484375,
+      "privMB": 23.237369791666666,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 37060,
+      "role": "renderer",
+      "wsMB": 1.96875,
+      "privMB": 21.845052083333332,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 27784,
+      "role": "renderer",
+      "wsMB": 1.6303385416666667,
+      "privMB": 20.575130208333334,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 12976,
+      "role": "utility",
+      "wsMB": 42.940364583333334,
+      "privMB": 13.13046875,
+      "cpuCorePct": 0.42931721390300864,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 42492,
+      "role": "utility",
+      "wsMB": 20.390625,
+      "privMB": 7.4765625,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 32880,
+      "role": "window",
+      "wsMB": 42.733333333333334,
+      "privMB": 14.146354166666667,
+      "cpuCorePct": 1.9319274625635388,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 28640,
+      "role": "wv-browser",
+      "wsMB": 146.67721354166667,
+      "privMB": 55.983072916666664,
+      "cpuCorePct": 1.7709335073499106,
+      "gpuDedMB": null,
+      "ticks": 30
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "id": "v",
+    "title": "window shown (off-screen, not minimised): 6 shells with light output, 3 hidden browser tabs",
+    "rows": {
+     "window": {
+      "n": 1,
+      "wsMB": 42.90442708333333,
+      "privMB": 14.2703125
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 146.513671875,
+      "privMB": 56.608072916666664
+     },
+     "renderer": {
+      "n": 4,
+      "wsMB": 307.82200520833334,
+      "privMB": 158.69505208333334
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 97.28138020833333,
+      "privMB": 110.778125
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 63.22252604166667,
+      "privMB": 20.687630208333335
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 13.368489583333334,
+      "privMB": 3.05546875
+     },
+     "app total": {
+      "n": 10,
+      "wsMB": 671.1125,
+      "privMB": 364.09466145833335
+     },
+     "shells": {
+      "n": 6,
+      "wsMB": 442.10546875,
+      "privMB": 332.306640625
+     },
+     "console hosts": {
+      "n": 6,
+      "wsMB": 48.87109375,
+      "privMB": 8.1015625
+     },
+     "workload (ticker)": {
+      "n": 6,
+      "wsMB": 278.087890625,
+      "privMB": 120.169921875
+     },
+     "Kolux total": {
+      "n": 22,
+      "wsMB": 1162.0890625,
+      "privMB": 704.5028645833333
+     },
+     "with workload": {
+      "n": 28,
+      "wsMB": 1440.176953125,
+      "privMB": 824.6727864583333
+     }
+    },
+    "cpuCorePct": 25.36813290541816,
+    "page": {
+     "jsHeapUsedMB": 20.19594383239746,
+     "jsHeapTotalMB": 22.309961318969727,
+     "canvases": 13,
+     "panes": 6,
+     "shownPanes": 6,
+     "domNodes": 955,
+     "visibility": "visible",
+     "wizard": false
+    },
+    "tabRates": [
+     0.5214244087967365,
+     0.5674324448670367,
+     0.5981044689139036
+    ],
+    "procs": [
+     {
+      "pid": 43988,
+      "role": "crashpad-handler",
+      "wsMB": 13.368489583333334,
+      "privMB": 3.05546875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 36120,
+      "role": "gpu-process",
+      "wsMB": 97.28138020833333,
+      "privMB": 110.778125,
+      "cpuCorePct": 11.986845040932259,
+      "gpuDedMB": 69.05110677083333,
+      "ticks": 30
+     },
+     {
+      "pid": 24024,
+      "role": "renderer",
+      "wsMB": 147.26432291666666,
+      "privMB": 92.05924479166667,
+      "cpuCorePct": 8.366656941321846,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 18000,
+      "role": "renderer",
+      "wsMB": 55.215755208333334,
+      "privMB": 24.427213541666667,
+      "cpuCorePct": 0.05363241629052465,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 31964,
+      "role": "renderer",
+      "wsMB": 52.86158854166667,
+      "privMB": 21.514583333333334,
+      "cpuCorePct": 0.05363241629052465,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 33068,
+      "role": "renderer",
+      "wsMB": 52.48033854166667,
+      "privMB": 20.694010416666668,
+      "cpuCorePct": 0.16089724887157394,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 2636,
+      "role": "utility",
+      "wsMB": 42.817447916666666,
+      "privMB": 13.191927083333333,
+      "cpuCorePct": 0.6704052036315581,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 34696,
+      "role": "utility",
+      "wsMB": 20.405078125,
+      "privMB": 7.495703125,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 11412,
+      "role": "window",
+      "wsMB": 42.90442708333333,
+      "privMB": 14.2703125,
+      "cpuCorePct": 1.6089724887157395,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 27532,
+      "role": "wv-browser",
+      "wsMB": 146.513671875,
+      "privMB": 56.608072916666664,
+      "cpuCorePct": 2.467091149364134,
+      "gpuDedMB": null,
+      "ticks": 30
+     }
+    ]
+   },
+   {
+    "id": "m",
+    "title": "window minimised 120 s (sampled 60-120 s after the hide)",
+    "rows": {
+     "window": {
+      "n": 1,
+      "wsMB": 42.95546875,
+      "privMB": 14.244401041666666
+     },
+     "wv-browser": {
+      "n": 1,
+      "wsMB": 148.25169270833334,
+      "privMB": 56.16236979166667
+     },
+     "renderer": {
+      "n": 4,
+      "wsMB": 152.63880208333333,
+      "privMB": 159.27591145833333
+     },
+     "gpu-process": {
+      "n": 1,
+      "wsMB": 98.4609375,
+      "privMB": 108.53125
+     },
+     "utility": {
+      "n": 2,
+      "wsMB": 63.30520833333333,
+      "privMB": 20.540234375
+     },
+     "crashpad-handler": {
+      "n": 1,
+      "wsMB": 12.734505208333333,
+      "privMB": 2.91171875
+     },
+     "app total": {
+      "n": 10,
+      "wsMB": 518.3466145833333,
+      "privMB": 361.66588541666664
+     },
+     "shells": {
+      "n": 6,
+      "wsMB": 441.171875,
+      "privMB": 331.125
+     },
+     "console hosts": {
+      "n": 6,
+      "wsMB": 48.85546875,
+      "privMB": 8.0859375
+     },
+     "workload (ticker)": {
+      "n": 6,
+      "wsMB": 278.89453125,
+      "privMB": 119.7734375
+     },
+     "Kolux total": {
+      "n": 22,
+      "wsMB": 1008.3739583333333,
+      "privMB": 700.8768229166667
+     },
+     "with workload": {
+      "n": 28,
+      "wsMB": 1287.2684895833333,
+      "privMB": 820.6502604166667
+     }
+    },
+    "cpuCorePct": 8.93455079332372,
+    "page": {
+     "jsHeapUsedMB": 22.148334503173828,
+     "jsHeapTotalMB": 26.51848602294922,
+     "canvases": 13,
+     "panes": 6,
+     "shownPanes": 6,
+     "domNodes": 954,
+     "visibility": "visible",
+     "wizard": false
+    },
+    "tabRates": [
+     0,
+     0,
+     0
+    ],
+    "procs": [
+     {
+      "pid": 43988,
+      "role": "crashpad-handler",
+      "wsMB": 12.734505208333333,
+      "privMB": 2.91171875,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 36120,
+      "role": "gpu-process",
+      "wsMB": 98.4609375,
+      "privMB": 108.53125,
+      "cpuCorePct": 0.8049144858850197,
+      "gpuDedMB": 67.8125,
+      "ticks": 30
+     },
+     {
+      "pid": 24024,
+      "role": "renderer",
+      "wsMB": 147.44947916666666,
+      "privMB": 91.57890625,
+      "cpuCorePct": 4.507521120956111,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 18000,
+      "role": "renderer",
+      "wsMB": 1.603125,
+      "privMB": 24.417057291666666,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 31964,
+      "role": "renderer",
+      "wsMB": 1.90078125,
+      "privMB": 22.525,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 33068,
+      "role": "renderer",
+      "wsMB": 1.6854166666666666,
+      "privMB": 20.754947916666666,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 2636,
+      "role": "utility",
+      "wsMB": 42.87552083333333,
+      "privMB": 13.055859375,
+      "cpuCorePct": 0.3756267600796758,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 34696,
+      "role": "utility",
+      "wsMB": 20.4296875,
+      "privMB": 7.484375,
+      "cpuCorePct": 0,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 11412,
+      "role": "window",
+      "wsMB": 42.95546875,
+      "privMB": 14.244401041666666,
+      "cpuCorePct": 1.797642351809877,
+      "gpuDedMB": null,
+      "ticks": 30
+     },
+     {
+      "pid": 27532,
+      "role": "wv-browser",
+      "wsMB": 148.25169270833334,
+      "privMB": 56.16236979166667,
+      "cpuCorePct": 1.4488460745930354,
+      "gpuDedMB": null,
+      "ticks": 30
+     }
+    ]
+   }
+  ]
+ ]
+}
