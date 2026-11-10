@@ -9,6 +9,7 @@
 // cursor moves so a wrapped or coloured line still matches.
 import { invoke } from "@tauri-apps/api/core";
 import { onTerminalOutput, onTerminalExit } from "../terminal/outputBus";
+import { chunkBytes } from "../terminal/codec";
 
 /** The fixed phrase every Codex "could not refresh your sign-in" message starts with, spacing removed. */
 export const PHRASE = "accesstokencouldnotberefreshed";
@@ -16,20 +17,9 @@ export const TAIL_BYTES = 2048;
 const CARRY = 64;
 export const REPORT_EVERY_MS = 60_000;
 
-/** Decodes only the end of a base64 chunk: at most TAIL_BYTES (+2) bytes, whatever the chunk size. */
-export function tailBytes(base64: string): Uint8Array {
-  const chars = Math.ceil(TAIL_BYTES / 3) * 4;
-  // A padded base64 string is a whole number of 4-character groups, so a cut on a group boundary
-  // from the end decodes cleanly.
-  const cut = base64.length > chars ? base64.slice(base64.length - chars) : base64;
-  try {
-    const bin = atob(cut);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  } catch {
-    return new Uint8Array();
-  }
+/** Only the end of a chunk: at most TAIL_BYTES, whatever the chunk size (DT-C246: a view, no copy). */
+export function tailBytes(bytes: Uint8Array): Uint8Array {
+  return bytes.length > TAIL_BYTES ? bytes.subarray(bytes.length - TAIL_BYTES) : bytes;
 }
 
 /** Terminal text without escape sequences, control characters or spacing, lower-cased. */
@@ -65,11 +55,11 @@ export class CodexSignInScan {
     return this.windows.get(terminal)?.length ?? 0;
   }
 
-  /** One output chunk; answers the account to flag, or null. */
-  feed(terminal: number, base64: string, now: number): string | null {
+  /** One output chunk's bytes; answers the account to flag, or null. */
+  feed(terminal: number, bytes: Uint8Array, now: number): string | null {
     const account = this.accounts.get(terminal);
     if (!account) return null;
-    const text = (this.windows.get(terminal) ?? "") + plain(this.decoder.decode(tailBytes(base64)));
+    const text = (this.windows.get(terminal) ?? "") + plain(this.decoder.decode(tailBytes(bytes)));
     const hit = text.includes(PHRASE);
     this.windows.set(terminal, hit ? "" : text.slice(-CARRY));
     if (!hit) return null;
@@ -91,7 +81,7 @@ export function watchCodexSignIn(terminal: number, account: string | null) {
 export function startCodexSignInScan(): () => void {
   const offs = [
     onTerminalOutput((e) => {
-      const account = scan.feed(e.id, e.data, Date.now());
+      const account = scan.feed(e.id, chunkBytes(e), Date.now());
       if (account) invoke("codex_account_sign_in_printed", { id: account }).catch(() => {});
     }),
     onTerminalExit<{ id: number }>((e) => scan.forget(e.payload.id)),

@@ -33,7 +33,7 @@ import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowH
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
-import { chunkBytes, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
+import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
 import { notePrinted } from "../browser/preview";
@@ -54,7 +54,7 @@ import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, m
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
 import { hookQueries, isGrok, paletteIsDark } from "./queries";
-import { applySnapshot, base64Bytes, resyncGate, type Snapshot } from "./resync";
+import { applySnapshot, resyncGate, type Snapshot } from "./resync";
 import { folderName } from "../projects/model";
 import { withoutRules } from "../launch/seats";
 import { modelOf } from "../settings/routing";
@@ -1004,7 +1004,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // APP-052: output from a replaced run of the terminal service is dropped, never drawn.
           if (!fromThisService(e.generation, serviceRef.current)) return;
           // ORCH-057: already in the snapshot this pane redrew from; acknowledged unread so the reader's count stays true
-          if (e.id === idRef.current && !resync.accept(e.seq)) return acks.drew(base64Bytes(e.data));
+          if (e.id === idRef.current && !resync.accept(e.seq)) return acks.drew(chunkLength(e));
           const draw = () => {
             const bytes = chunkBytes(e); // DT-C245: shared with the other readers of this chunk
             const marks = scanner.feed(bytes);

@@ -1,0 +1,105 @@
+stress S2 raw output (DT-C246): before = main 8ba349e5 as is (a detached checkout of that commit), after = lane raw-out on top of
+8ba349e5 (output batches cross the channel as one binary frame instead of base64 text in JSON). Both --release, full rebuild,
+DOM panes, same PC, back to back, one at a time.
+args: S2 --release --temp <temp> --cdp 9272 --port 1472
+
+                         before (main)      after (raw-out)
+allocations per 20 s     1494 MB            1577 MB   (+6%; the flood ran 10% faster, so the sample covers more output:
+                                                        per MB of output about 18.7 -> 17.9 MB, -4%)
+main thread busy         96% (103 s)        94% (95 s)
+echo under flood         p50 102 / p95 182  p50 98 / p95 132 ms   (max 193 -> 182)
+floods (8 x 50 MB)       100 s (4.0 MB/s)   92 s (4.4 MB/s)
+app peak over pre-flood  +485 MB            +339 MB
+10 s after the floods    +118 MB            +80 MB
+renderer peak ws/priv    648/599 MB         501/451 MB
+page JS heap peak        248 MB             124 MB
+END lines                8 of 8             8 of 8
+page errors              0                  0
+Stop rule: allocations and busy time are not cut by 15%, so the round ends here with this evidence (DT-C246).
+Allocation sites that changed: "(V8 API)" 185 MB (the JSON parse and base64 decode of each batch) and xterm copyFrom 171 MB
+are gone from the top eight; the frame decoder (codec chunk, function i) appears at 145 MB: one chunk object and one
+Uint8Array view per chunk, plus the two 64-bit reads. The rest of the churn is xterm's row building and viewport sync.
+
+===== before (main 8ba349e5)
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T12:00:54.861Z on 8ba349e5 (<lane>)
+args: S2 --release --temp <temp> --cdp 9272 --port 1472; ran 866 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 14 ms, max 15 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 102 ms, p95 182 ms, max 193 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 100 s (4.0 MB/s total)
+PASS  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 516 MB
+      measured: peak 1001 MB (+485); 24 samples
+PASS  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 634 MB (+118)
+PASS  pane shows its final line (END-<k>) after the flood
+      bar: 8 of 8 panes
+      measured: 8 of 8
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 4.0 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - renderers of the shown panes: "dom,dom,dom,dom,dom,dom,dom,dom,dom"
+  - page engine: Edg/157.0.0.0; native base64 decode true
+  - all 8 flood commands typed in 2.8 s
+  - page allocations over 20 s of flood (sampling heap profiler, collected objects kept): 1494 MB; floods running at the end 8 of 8; top: (anon) App-CmWsFLzM.js:102:14581 334 MB; (anon) App-CmWsFLzM.js:30:23383 204 MB; createRow App-CmWsFLzM.js:26:11412 202 MB; (V8 API) :-1:-1 185 MB; copyFrom App-CmWsFLzM.js:28:24632 171 MB; _sync App-CmWsFLzM.js:25:1174 167 MB; (anon) App-CmWsFLzM.js:104:57190 102 MB; (anon) App-CmWsFLzM.js:28:120729 48 MB
+  - page main thread over the flood (103 s, CDP Performance.getMetrics): task 98.4 s (96% busy), script 38.8 s, layout 8.5 s, style 5.7 s; JS heap used 17 -> 59 MB
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 1s:0/8done:725MB 23s:0/8done:937MB 44s:0/8done:944MB 66s:0/8done:996MB 88s:0/8done:936MB
+  - memory per process role, MB (working set / private bytes): conhost x9 before 72/13 peak 80/14 after 72/12; git x? before 0/0 peak 7/2 after 0/0; kolux x1 before 42/14 peak 59/34 after 45/19; node x1 before 42/20 peak 422/203 after 42/20; powershell x9 before 654/499 peak 663/500 after 656/495; wv-browser x1 before 122/41 peak 140/52 after 136/48; wv-crashpad-handler x1 before 10/2 peak 18/3 after 12/3; wv-gpu-process x1 before 86/103 peak 125/130 after 83/97; wv-renderer x1 before 195/144 peak 648/599 after 292/240; wv-utility x2 before 60/21 peak 65/25 after 65/24
+  - page JS heap (performance.memory.usedJSHeapSize), MB: before 21, peak 248, 10 s after 73
+  - pane 1 flood accepted its last byte at 1794312030127; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: PASS
+
+===== after (lane raw-out)
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T11:45:05.073Z on 8ba349e5 (<lane>)
+args: S2 --release --temp <temp> --cdp 9272 --port 1472; ran 859 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 14 ms, max 14 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 98 ms, p95 132 ms, max 182 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 92 s (4.4 MB/s total)
+PASS  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 517 MB
+      measured: peak 856 MB (+339); 20 samples
+PASS  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 598 MB (+80)
+PASS  pane shows its final line (END-<k>) after the flood
+      bar: 8 of 8 panes
+      measured: 8 of 8
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 4.0 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - renderers of the shown panes: "dom,dom,dom,dom,dom,dom,dom,dom,dom"
+  - page engine: Edg/157.0.0.0; native base64 decode true
+  - all 8 flood commands typed in 3.1 s
+  - page allocations over 20 s of flood (sampling heap profiler, collected objects kept): 1577 MB; floods running at the end 8 of 8; top: (anon) App-C52OtJXf.js:102:14581 365 MB; createRow App-C52OtJXf.js:26:11412 335 MB; (anon) App-C52OtJXf.js:30:23383 224 MB; scroll App-C52OtJXf.js:28:39090 184 MB; _sync App-C52OtJXf.js:25:1174 184 MB; i codec-mqcA4sxV.js:0:100 145 MB; (anon) App-C52OtJXf.js:28:120729 50 MB; feed Ring-5mY4I7nF.js:1:21281 27 MB
+  - page main thread over the flood (95 s, CDP Performance.getMetrics): task 89.4 s (94% busy), script 38.0 s, layout 8.8 s, style 6.0 s; JS heap used 17 -> 43 MB
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 2s:0/8done:729MB 25s:0/8done:823MB 48s:0/8done:834MB 72s:0/8done:840MB
+  - memory per process role, MB (working set / private bytes): conhost x9 before 72/13 peak 79/13 after 72/12; git x? before 0/0 peak 5/2 after 0/0; kolux x1 before 42/15 peak 54/27 after 45/19; node x1 before 42/20 peak 418/202 after 42/20; powershell x9 before 654/499 peak 664/501 after 656/495; wv-browser x1 before 123/42 peak 139/52 after 137/49; wv-crashpad-handler x1 before 10/2 peak 18/3 after 12/3; wv-gpu-process x1 before 86/101 peak 88/104 after 84/95; wv-renderer x1 before 195/144 peak 501/451 after 253/200; wv-utility x2 before 62/21 peak 66/24 after 66/24
+  - page JS heap (performance.memory.usedJSHeapSize), MB: before 20, peak 124, 10 s after 69
+  - pane 1 flood accepted its last byte at 1794311082439; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: PASS

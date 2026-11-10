@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import { CodexSignInScan, plain, TAIL_BYTES, tailBytes, REPORT_EVERY_MS } from "./codexSignInScan";
 
-const b64 = (s: string) => btoa(s);
+// DT-C246: chunks reach the scan as bytes.
+const b64 = (s: string) => new TextEncoder().encode(s);
 // The wording Codex prints when its sign-in can no longer be refreshed (public source in PROVENANCE.md).
 const ERROR = "Your access token could not be refreshed because your refresh token has expired. Please log out and sign in again.";
 
@@ -50,7 +51,7 @@ test("only the last bytes of a big chunk are read, and the carried window stays 
   s.watch(1, "c1");
   // The phrase sits before the tail of a large chunk: not read (the scan is bounded).
   expect(s.feed(1, b64(ERROR + "x".repeat(TAIL_BYTES * 4)), 0)).toBeNull();
-  expect(tailBytes(b64("y".repeat(TAIL_BYTES * 10))).length).toBeLessThanOrEqual(TAIL_BYTES + 3);
+  expect(tailBytes(b64("y".repeat(TAIL_BYTES * 10))).length).toBe(TAIL_BYTES);
   expect(s.carried(1)).toBeLessThanOrEqual(64);
   // ...while the phrase at the end of a large chunk is caught.
   expect(s.feed(1, b64("x".repeat(TAIL_BYTES * 4) + ERROR), 0)).toBe("c1");

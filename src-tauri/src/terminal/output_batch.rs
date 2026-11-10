@@ -22,14 +22,19 @@ use std::time::{Duration, Instant};
 
 /// One frame at 60 Hz: the most a chunk waits here.
 pub(crate) const WINDOW: Duration = Duration::from_millis(16);
-/// Queued base64 bytes past which the batch goes at once.
-pub(crate) const FLUSH_BYTES: usize = 256 * 1024;
+/// Queued output bytes past which the batch goes at once (DT-C246: raw bytes; the same volume as the
+/// 256 KB of base64 text it was before).
+pub(crate) const FLUSH_BYTES: usize = 192 * 1024;
 
-/// One chunk of program output, base64 so split multi-byte characters survive the trip.
+/// One chunk of program output: the PTY's own bytes (DT-C246), so a multi-byte character split across two
+/// chunks survives the trip and is reassembled by xterm's decoder. On the channel the bytes go as they are
+/// (output_frame.rs); in the `terminal-output` event, the fallback when no page has subscribed, they go as
+/// base64 text, the only shape JSON has for bytes.
 #[derive(serde::Serialize, Clone, Debug, PartialEq)]
 pub(crate) struct OutputItem {
     pub id: u32,
-    pub data: String,
+    #[serde(serialize_with = "as_base64")]
+    pub data: Vec<u8>,
     /// TERM-098: the pane's own key, so output that arrives before the pane has learned its
     /// terminal id (the shell's first frame and its cursor question) is not dropped.
     pub pane: Option<u32>,
@@ -39,6 +44,11 @@ pub(crate) struct OutputItem {
     /// ORCH-057: the session's output count after this chunk; a viewer that redrew from a snapshot drops
     /// the chunks it already holds (seq not past the snapshot's).
     pub seq: u64,
+}
+
+fn as_base64<S: serde::Serializer>(data: &[u8], s: S) -> Result<S::Ok, S::Error> {
+    use base64::Engine as _;
+    s.serialize_str(&base64::engine::general_purpose::STANDARD.encode(data))
 }
 
 /// What one `terminal-output` event carries: the chunks of a frame window, in arrival order.
@@ -217,7 +227,7 @@ mod tests {
     }
 
     fn item(id: u32, seq: u64, text: &str) -> OutputItem {
-        OutputItem { id, data: text.to_string(), pane: Some(id * 10), generation: 1, seq }
+        OutputItem { id, data: text.as_bytes().to_vec(), pane: Some(id * 10), generation: 1, seq }
     }
 
     fn wait_until(sent: &Sent, batches: usize) {
@@ -229,6 +239,12 @@ mod tests {
 
     fn flat(sent: &Sent) -> Vec<OutputItem> {
         sent.lock().unwrap().iter().flat_map(|(_, b)| b.clone()).collect()
+    }
+
+    #[test]
+    fn dt_c246_in_the_event_fallback_a_chunk_is_still_base64_text() {
+        let json = serde_json::to_string(&OutputBatch { items: vec![OutputItem { id: 3, data: b"ko\xc3".to_vec(), pane: None, generation: 2, seq: 9 }] }).unwrap();
+        assert_eq!(json, r#"{"items":[{"id":3,"data":"a2/D","pane":null,"generation":2,"seq":9}]}"#);
     }
 
     #[test]

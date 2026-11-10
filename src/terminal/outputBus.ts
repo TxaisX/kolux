@@ -6,6 +6,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { OutputEvent } from "./codec";
+import { decodeFrame } from "./outputFrame";
 
 export const OUTPUT_EVENT = "terminal-output";
 export const EXIT_EVENT = "terminal-exit";
@@ -23,6 +24,8 @@ type ExitReader = (exit: unknown) => void;
 // Every reader of this page shares the one channel. The state lives on the window so a hot-reloaded copy of
 // this file keeps feeding the readers an older copy registered. One failed fetch of a channel message stalls
 // the channel (Tauri delivers its messages in order); that risk is accepted and noted in DT-C244.
+// Raw output (DT-C246): an output batch arrives as an ArrayBuffer holding one binary frame (outputFrame.ts),
+// an end note as the JSON object it was; the channel keeps the two kinds in the order they were sent.
 type Bus = {
   readers: Set<Reader>;
   exits: Set<ExitReader>;
@@ -52,10 +55,18 @@ export function fanOut(batch: OutputBatch | undefined): void {
   if (batch && bus.probe) bus.probe(batch, performance.now() - t);
 }
 
+/** One channel message as the readers see it: a frame's chunks, or the end note as sent. */
+export function fromChannel(message: OutputBatch | ArrayBuffer): OutputBatch | undefined {
+  if (!(message instanceof ArrayBuffer)) return message;
+  const batch = decodeFrame(message);
+  if (!batch) console.error("terminal output: a frame from the window process could not be read; its chunks are lost");
+  return batch;
+}
+
 function subscribe(): Promise<void> {
   try {
-    const channel = new Channel<OutputBatch>();
-    channel.onmessage = fanOut;
+    const channel = new Channel<OutputBatch | ArrayBuffer>();
+    channel.onmessage = (m) => fanOut(fromChannel(m));
     // A window process without the command keeps sending the events, which every reader also listens to.
     return invoke("terminal_output_subscribe", { channel }).then(
       () => undefined,
