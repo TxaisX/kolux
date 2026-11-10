@@ -15,6 +15,7 @@ pub mod session_id;
 mod flood;
 // Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
 mod output_batch;
+mod output_channel;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
@@ -938,9 +939,23 @@ fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
     OUTPUT_BATCH.get_or_init(|| {
         let app = app.clone();
         output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
-            let _ = app.emit(OUTPUT_EVENT, output_batch::OutputBatch { items });
+            // Flood memory (DT-C244): through each subscribed web view's channel; the event only when none is.
+            let batch = output_batch::OutputBatch { items };
+            if !OUTPUT_READERS.send(batch.clone()) {
+                let _ = app.emit(OUTPUT_EVENT, batch);
+            }
         }))
     })
+}
+
+/// Flood memory (DT-C244): one output channel per web view (output_channel.rs).
+static OUTPUT_READERS: output_channel::Readers<tauri::ipc::Channel<output_batch::OutputBatch>> = output_channel::Readers::new();
+
+/// Flood memory (DT-C244): the calling web view gets terminal output through `channel` from now on, in
+/// place of the `terminal-output` event and of any channel it subscribed before.
+#[tauri::command]
+pub(crate) fn terminal_output_subscribe(webview: tauri::Webview, channel: tauri::ipc::Channel<output_batch::OutputBatch>) {
+    OUTPUT_READERS.set(webview.label(), channel);
 }
 
 #[derive(serde::Serialize, Clone)]

@@ -2,7 +2,7 @@
 // p95 <= 250 ms during the flood, memory bounded, the final line of every pane shows.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TERM, addProjectAndOpen, appMemMB, fmt, gitInit, installProbe, pageErrors, paneText, seedProfile, slash, snapshot, stats, typeInto } from "./lib.mjs";
+import { TERM, addProjectAndOpen, appMemMB, fmt, memByRole, gitInit, installProbe, pageErrors, paneText, seedProfile, slash, snapshot, stats, typeInto } from "./lib.mjs";
 
 export const title = "Output flood (8 panes x ~50 MB)";
 export const seed = seedProfile;
@@ -84,6 +84,12 @@ export async function run({ launch, checks }) {
   checks.add("echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)", "p95 <= 250 ms (the same bar as under flood)", `p50 ${fmt(idleStats.p50)} ms, p95 ${fmt(idleStats.p95)} ms, max ${fmt(idleStats.max)} ms; ${idle.filter((v) => v < 0).length} lost`, idleStats.p95 <= 250 && !idle.includes(-1));
   const before = await snapshot(app);
   const baseMB = appMemMB(before);
+  // Per process role (kolux, wv-browser, wv-renderer, wv-gpu-process, wv-utility, conhost ...): working set and private bytes
+  // before, at their own peak and 10 s after, plus the page's JS heap (performance.memory), so a growth names its process.
+  const jsHeapMB = () => app.evalJs(`performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1`).catch(() => NaN);
+  const roleBase = memByRole(before);
+  const rolePeak = {};
+  const heap = { base: await jsHeapMB(), peak: -1 };
   const doneFile = (k) => join(files, `done-${k}`);
   const t0 = Date.now();
   for (let k = 0; k < FLOODERS; k++) await typeInto(app, k, `node '${slash(join(files, "flood.js"))}' ${k} '${slash(doneFile(k))}'`);
@@ -96,7 +102,15 @@ export async function run({ launch, checks }) {
   const sampler = (async () => {
     while (!finished) {
       try {
-        mem.push(appMemMB(await snapshot(app)));
+        const snap = await snapshot(app);
+        mem.push(appMemMB(snap));
+        for (const [role, v] of Object.entries(memByRole(snap))) {
+          const e = (rolePeak[role] ??= { wsMB: 0, privMB: 0 });
+          e.wsMB = Math.max(e.wsMB, v.wsMB);
+          e.privMB = Math.max(e.privMB, v.privMB);
+        }
+        const h = await jsHeapMB();
+        if (h > heap.peak) heap.peak = h;
         progress.push(`${Math.round((Date.now() - tStart) / 1000)}s:${Array.from({ length: FLOODERS }, (_, k) => existsSync(doneFile(k))).filter(Boolean).length}/${FLOODERS}done:${Math.round(mem[mem.length - 1])}MB`);
       } catch {
         /* a sample missed is a sample missed */
@@ -129,7 +143,13 @@ export async function run({ launch, checks }) {
   checks.add(`all ${FLOODERS} floods finish (each ${LINES} lines, ~${Math.round((LINES * 100) / 1e6)} MB)`, `within ${FLOOD_BUDGET_S} s`, pending === 0 ? `${secs.toFixed(0)} s (${((FLOODERS * LINES * 100) / 1e6 / secs).toFixed(1)} MB/s total)` : `${pending} of ${FLOODERS} still running after ${FLOOD_BUDGET_S} s`, pending === 0);
   checks.note(`flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: ${progress.filter((_, i) => i % 5 === 0).join(" ")}`);
   await app.sleep(10000);
-  const afterMB = appMemMB(await snapshot(app));
+  const afterSnap = await snapshot(app);
+  const afterMB = appMemMB(afterSnap);
+  const roleAfter = memByRole(afterSnap);
+  heap.after = await jsHeapMB();
+  const r0 = (m) => Math.round(m ?? 0);
+  checks.note(`memory per process role, MB (working set / private bytes): ${Object.keys({ ...roleBase, ...rolePeak, ...roleAfter }).sort().map((role) => `${role} x${roleAfter[role]?.n ?? roleBase[role]?.n ?? "?"} before ${r0(roleBase[role]?.wsMB)}/${r0(roleBase[role]?.privMB)} peak ${r0(rolePeak[role]?.wsMB)}/${r0(rolePeak[role]?.privMB)} after ${r0(roleAfter[role]?.wsMB)}/${r0(roleAfter[role]?.privMB)}`).join("; ")}`);
+  checks.note(`page JS heap (performance.memory.usedJSHeapSize), MB: before ${heap.base}, peak ${heap.peak}, 10 s after ${heap.after}`);
   const peak = Math.max(...mem, baseMB);
   checks.add("app memory growth at the peak during the flood (app + web view working set)", `<= ${MEM_PEAK_MB} MB over the pre-flood ${fmt(baseMB)} MB`, `peak ${fmt(peak)} MB (+${fmt(peak - baseMB)}); ${mem.length} samples`, peak - baseMB <= MEM_PEAK_MB);
   checks.add("app memory growth 10 s after the floods ended", `<= ${MEM_AFTER_MB} MB over the pre-flood level`, `${fmt(afterMB)} MB (+${fmt(afterMB - baseMB)})`, afterMB - baseMB <= MEM_AFTER_MB);

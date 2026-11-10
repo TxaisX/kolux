@@ -1,0 +1,36 @@
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T09:12:01.699Z on 4e1ba06d (G:\Dev\kolux-rs-lanes\flood-mem)
+args: S2 --release --port 1452 --cdp 9272 --temp G:/Temp/stress/floodmem; ran 725 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 14 ms, max 14 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 120 ms, p95 168 ms, max 227 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 106 s (3.8 MB/s total)
+PASS  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 543 MB
+      measured: peak 1116 MB (+573); 25 samples
+PASS  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 638 MB (+96)
+PASS  pane shows its final line (END-<k>) after the flood
+      bar: 8 of 8 panes
+      measured: 8 of 8
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 4.0 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - all 8 flood commands typed in 2.8 s
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 1s:0/8done:745MB 23s:0/8done:917MB 44s:0/8done:905MB 66s:0/8done:996MB 88s:0/8done:994MB
+  - memory per process role, MB (working set / private bytes): conhost x9 before 81/13 peak 87/14 after 80/12; git x? before 0/0 peak 3/1 after 0/0; kolux x1 before 42/14 peak 60/33 after 45/18; node x1 before 42/20 peak 412/203 after 42/20; powershell x9 before 663/499 peak 672/501 after 665/495; wv-browser x1 before 126/42 peak 143/51 after 139/47; wv-crashpad-handler x1 before 13/2 peak 22/3 after 16/3; wv-gpu-process x1 before 90/103 peak 122/116 after 87/101; wv-renderer x1 before 202/149 peak 719/668 after 278/222; wv-utility x2 before 69/21 peak 73/24 after 73/24
+  - page JS heap (performance.memory.usedJSHeapSize), MB: before 20, peak 176, 10 s after 69
+  - pane 1 flood accepted its last byte at 1794301898754; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: PASS
