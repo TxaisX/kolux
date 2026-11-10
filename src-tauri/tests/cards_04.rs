@@ -135,7 +135,7 @@ fn post(path: &str, pane: u32, terminal: u32, token: &str, body: &str) -> Reques
     let identity = base64::engine::general_purpose::STANDARD.encode(json!({ "paneKey": pane, "terminal": terminal }).to_string());
     let mut headers = HashMap::new();
     // T-793 (DT-C228): a pane's hook token is the run secret's HMAC for that pane, never the secret itself.
-    headers.insert("x-kolux-token".to_string(), kolux_rs_lib::hooks::pane_token(token, pane, Some(terminal)));
+    headers.insert("x-kolux-token".to_string(), kolux_lib::hooks::pane_token(token, pane, Some(terminal)));
     headers.insert("x-kolux-pane".to_string(), identity);
     Request { path: path.to_string(), headers, body: body.as_bytes().to_vec() }
 }

@@ -85,9 +85,9 @@ fn with_origin(d: &Path) -> (PathBuf, PathBuf) {
 /// own hooks and lets it push to a repository on this computer; an untrusted one is refused both.
 /// Every caller holds the STATES lock, so no two tests write that one file at once.
 fn user_trusted(w: &Path) {
-    let file = kolux_rs_lib::trust::claude_config_file();
+    let file = kolux_lib::trust::claude_config_file();
     assert!(norm(&file).starts_with(&norm(scratch_root::root())), "{file:?} is not under the scratch root");
-    kolux_rs_lib::trust::trust_claude(&file, &[w.to_path_buf()]).unwrap();
+    kolux_lib::trust::trust_claude(&file, &[w.to_path_buf()]).unwrap();
 }
 
 fn paths(rows: &[Change]) -> Vec<String> {

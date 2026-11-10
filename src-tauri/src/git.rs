@@ -630,7 +630,7 @@ fn unreadable_program_key(found: &[(String, String)], dir: &Path) -> Option<Stri
 /// with the reason in `KOLUX_REFUSAL` for anyone who inspects it. `command` returns a Command, not a Result,
 /// so a refusal there has to be one that never runs git.
 fn never_runs(reason: &str) -> Command {
-    let mut cmd = Command::new("kolux-refused-git-read");
+    let mut cmd = crate::winproc::command("kolux-refused-git-read"); // T-816: hidden like every spawn
     cmd.env("KOLUX_REFUSAL", reason);
     cmd
 }
