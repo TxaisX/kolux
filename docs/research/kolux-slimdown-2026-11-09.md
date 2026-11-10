@@ -18,10 +18,22 @@ has not changed since). "In use" is working set: the memory Windows actually kee
 Private memory (what Kolux has reserved) stayed roughly flat; the savings come from Kolux handing pages back
 while out of sight and from cutting idle work.
 
-The 3.85 GB first observed was not reproduced by this benchmark, which counts only Kolux's own processes
-(the window, the terminal service and the web view). Agent programs running inside Kolux's terminals
-(Claude Code, Codex and the rest) are separate processes and are not in these numbers. To see the split, open
-Task Manager's Details tab and sort by name.
+### Where the 3.85 GB goes (measured on the owner's PC, 2026-11-09 evening)
+
+The installed Kolux and every process it started, read with `Win32_Process`, no process touched:
+
+| Part | Processes | Private MB | In use (WS) MB |
+|---|---|---|---|
+| Claude Code sessions in Kolux terminals | 3 | 2,761 | 1,170 |
+| Kolux web view | 6 | 509 | 337 |
+| Kolux window + terminal service | 2 | 172 | 192 |
+| Shells (PowerShell, cmd, conhost) | 7 | 131 | 158 |
+| **Total** | 18 | **3,574** | 1,858 |
+
+So the 3.85 GB is about 80 % agents: each Claude Code session holds about 0.9 GB of its own, which Kolux does
+not control. Kolux's own share is about 0.68 GB reserved and 0.53 GB in use. The remaining large lever
+is agent hibernation (TERM-123 / HID-028: put a session idle for 30 minutes to sleep and resume it when
+opened), which the spec marks "H: default skip"; reviving it is the owner's call.
 
 ## What changed
 
