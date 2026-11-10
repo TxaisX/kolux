@@ -375,7 +375,11 @@ mod tests {
         assert!(b.flusher.load(Ordering::SeqCst), "the flusher survived the panic");
         b.push(item(1, 2, "after"));
         b.push(item(2, 3, "other"));
-        wait_until(&sent, 1);
+        // "after" can leave alone on the leading edge (a slow runner idles past the window), so wait for both chunks.
+        let give_up = Instant::now() + Duration::from_secs(5);
+        while flat(&sent).len() < 2 && Instant::now() < give_up {
+            std::thread::sleep(Duration::from_millis(1));
+        }
         assert_eq!(flat(&sent), vec![item(1, 2, "after"), item(2, 3, "other")], "later chunks still arrive, in order");
         assert_eq!(b.sink_panics.load(Ordering::SeqCst), 1);
         b.flush_now();
