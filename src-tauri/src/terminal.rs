@@ -1319,12 +1319,25 @@ impl Terminals {
     /// write itself (which blocks for as long as the program takes to read, ~12 KB/s into ConPTY)
     /// runs under that writer's own lock, so other panes' ack, resize and kill never wait on it.
     pub fn write(&self, id: u32, data: &str) -> Result<(), String> {
+        self.write_as(id, data, true)
+    }
+
+    /// TERM-123 (DT-C247): the terminal's own answer to the program (a focus report, a cursor-position or
+    /// device-attributes reply, a colour query's answer), which nobody typed: it reaches the program like
+    /// typing but leaves `last_input` alone, so a finished agent whose pane the focus merely left can sleep.
+    pub fn reply(&self, id: u32, data: &str) -> Result<(), String> {
+        self.write_as(id, data, false)
+    }
+
+    fn write_as(&self, id: u32, data: &str, typed: bool) -> Result<(), String> {
         let writer = {
             let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
             let writer = inner.sessions.get(&id).ok_or("no such terminal")?.writer()?;
-            // TERM-123: typing is activity, echoed or not.
-            if let Some(m) = inner.marks.get_mut(&id) {
-                m.last_input = Some(Instant::now());
+            // TERM-123: typing is activity, echoed or not; a terminal reply is not typing.
+            if typed {
+                if let Some(m) = inner.marks.get_mut(&id) {
+                    m.last_input = Some(Instant::now());
+                }
             }
             writer
         };
@@ -2098,12 +2111,19 @@ pub fn terminal_busy(terminals: tauri::State<'_, Terminals>, ids: Vec<u32>) -> V
 /// TERM-115: async, so a pipe write that blocks (a program not reading its input) holds a
 /// runtime worker, never the window's thread; typing elsewhere stays responsive.
 #[tauri::command]
-pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminals>, id: u32, data: String, generation: Option<u64>) -> Result<(), String> {
+pub async fn terminal_write(app: AppHandle, terminals: tauri::State<'_, Terminals>, id: u32, data: String, generation: Option<u64>, auto: Option<bool>) -> Result<(), String> {
     if data.len() > MAX_WRITE {
         return Err(format!("The text is larger than the {MAX_WRITE} bytes a terminal can take at once."));
     }
     // APP-052: typing carries the run of the service it was meant for; a replaced run's typing is refused.
     owns(generation)?;
+    // TERM-123 (DT-C247): `auto` marks the terminal's own reply to the program (xterm's focus, cursor-position,
+    // device-attributes, mode and colour answers; Kolux's keyboard-protocol and OSC 52 answers), which the
+    // window tells apart from a key, a paste or a mouse report at the source. Nobody typed it, so it is
+    // neither typing after a limit stop, nor another writer under a command-line prompt, nor activity for sleep.
+    if auto.unwrap_or(false) {
+        return terminals.reply(id, &data);
+    }
     // STAT-028: Ctrl+C or Escape on its own, while the agent works, marks the coming Stop interrupted.
     if data == "\x03" || data == "\x1b" {
         crate::status::cancel(id);
@@ -3094,6 +3114,29 @@ mod tests {
         let parts: Vec<_> = std::env::split_paths(&path).collect();
         assert_eq!(parts, ["D:\\app", "C:\\old\\kolux", "C:\\Windows"].map(std::path::PathBuf::from));
         assert_eq!(std::env::split_paths(&cli_first(dir, None)).count(), 1);
+    }
+
+    /// TERM-123 (DT-C247): a key typed into an agent's terminal is activity (`input_for` starts counting and
+    /// `still_for` restarts), but the terminal's own reply to the program (a focus report, a cursor-position
+    /// answer) reaches the program without counting as typing, so a finished agent whose pane the focus left
+    /// still reads as untouched since it finished.
+    #[test]
+    fn t123_a_terminal_reply_reaches_the_program_but_is_not_typing() {
+        let t = Terminals::default();
+        t.fake_session(5, "C:\\work", Some("claude"));
+        assert_eq!(t.input_for(5), None, "never typed into");
+        let still = t.still_for(5).expect("an agent session has a still time");
+        assert!(still >= Duration::from_secs(4), "quiet since it started, {still:?}");
+        // The focus leaves the pane (ESC [ O), the program asks where the cursor is and gets its answer.
+        t.reply(5, "\x1b[O").unwrap();
+        t.reply(5, "\x1b[12;1R").unwrap();
+        assert_eq!(t.input_for(5), None, "replies are not typing");
+        assert!(t.still_for(5).unwrap() >= Duration::from_secs(4), "replies do not restart the quiet time");
+        // A real key does both.
+        t.write(5, "x").unwrap();
+        assert!(t.input_for(5).unwrap() < Duration::from_secs(1), "a key counts as typing");
+        assert!(t.still_for(5).unwrap() < Duration::from_secs(1), "a key restarts the quiet time");
+        assert_eq!(t.reply(6, "\x1b[I"), Err("no such terminal".to_string()), "a reply to a gone terminal is refused like a key");
     }
 
     /// cli FIX-7 (council FIX-SOON 1 and 2 on 4dce90d5): the CLI's wait for a worker over a real

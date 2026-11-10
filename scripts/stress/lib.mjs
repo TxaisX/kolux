@@ -166,11 +166,29 @@ function useReleaseBuild(app, opts) {
   };
   app.relaunch = start;
 }
+// Panes take the user's registry environment (HKCU\Environment, laid over the app's own by portable-pty), so a
+// CLAUDE_CONFIG_DIR or CODEX_HOME set there wins over the scratch one the app was started with, and an agent started in
+// a pane would reach the real config folder. The per-agent env setting is applied by Kolux after that, so every stress
+// profile pins both to the run's scratch folders (the same two the scratch-home guard covers), on top of whatever the
+// scenario sets for that agent (its own lines for the same variable are replaced; others, and `command`/`args`, stay).
+const SCRATCH_AGENT_ENV = (app) => ({ claude: { CLAUDE_CONFIG_DIR: app.paths.claudeConfig }, codex: { CODEX_HOME: app.paths.codexHome } });
+export function scratchAgentOptions(app, agentOptions = {}) {
+  const out = { ...agentOptions };
+  for (const [agent, vars] of Object.entries(SCRATCH_AGENT_ENV(app))) {
+    const own = { ...(out[agent] ?? {}) };
+    const kept = String(own.env ?? "")
+      .split(/\r?\n/)
+      .filter((l) => l.trim() && !Object.keys(vars).includes(l.split("=")[0].trim()));
+    own.env = [...Object.entries(vars).map(([k, v]) => `${k}=${v.replace(/\//g, "\\")}`), ...kept].join("\n");
+    out[agent] = own;
+  }
+  return out;
+}
 export const seedProfile = (app, settings = {}) => () => {
   rmSync(app.paths.profile, { recursive: true, force: true });
   mkdirSync(app.paths.profile, { recursive: true });
   // terminalGpu=false: panes draw on the DOM renderer, so their text can be read back from the page.
-  writeFileSync(app.paths.settings, JSON.stringify({ confirmCloseRunning: false, terminalGpu: false, ...settings }, null, 2));
+  writeFileSync(app.paths.settings, JSON.stringify({ confirmCloseRunning: false, terminalGpu: false, ...settings, agentOptions: scratchAgentOptions(app, settings.agentOptions) }, null, 2));
 };
 
 // A throwaway git repo with one commit, added as a project through the sidebar (as scripts/evidence/smoke.mjs does).

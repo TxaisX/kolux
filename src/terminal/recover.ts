@@ -28,26 +28,39 @@ export function watchScale(onChange: () => void, ratio: () => number = () => win
 /** TERM-115: keystrokes typed into a terminal that is still connecting are held, in order, and
  *  sent once it connects; past `cap` bytes the rest is dropped and counted. */
 export class HeldKeys {
-  private parts: string[] = [];
+  /** Held in order, each with whether it is the terminal's own reply (DT-C247: never typing) or typed. */
+  private parts: [string, boolean][] = [];
   private size = 0;
   dropped = 0;
   constructor(private readonly cap = 16_384) {}
   /** True when the keys were held; false when they were dropped past the cap. */
-  push(data: string): boolean {
+  push(data: string, auto = false): boolean {
     if (this.size + data.length > this.cap) {
       this.dropped += data.length;
       return false;
     }
-    this.parts.push(data);
+    this.parts.push([data, auto]);
     this.size += data.length;
     return true;
   }
-  drain(write: (data: string) => void): void {
+  /** Sends what was held in order, neighbours of one kind joined, so a reply held before the shell started
+   *  (the console's opening cursor query, TERM-098) still reaches the program as a reply, not as typing. */
+  drain(write: (data: string, auto: boolean) => void): void {
     if (this.parts.length === 0) return;
-    const all = this.parts.join("");
+    const parts = this.parts;
     this.parts = [];
     this.size = 0;
-    write(all);
+    let [run, auto] = parts[0];
+    for (const [data, a] of parts.slice(1)) {
+      if (a === auto) {
+        run += data;
+        continue;
+      }
+      write(run, auto);
+      run = data;
+      auto = a;
+    }
+    write(run, auto);
   }
 }
 

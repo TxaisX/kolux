@@ -10,7 +10,9 @@
 // HOME, USERPROFILE and CLAUDE_CONFIG_DIR are the stress run's own (lib.mjs newApp), never a real sign-in.
 //
 // One launch, four Claude panes opened from the pane header's "New session" menu, in this order (modes.txt, one line each):
-//   A finished  - left in a background tab: must sleep, its process must end, and Wake must resume its session;
+//   A finished  - watched: its turn finishes while its tab is in front, then the user switches to another tab and leaves it
+//                 there: must sleep, its process must end, and Wake must resume its session (DT-C247: the focus-out report
+//                 xterm sends when the focus leaves a finished agent's pane used to count as typing into it, so it never slept);
 //   D finished  - after its turn finished, text typed into its terminal without Enter, then left in a background tab: must stay awake;
 //   B busy      - a tool call that never ends, in a background tab: must stay awake;
 //   V finished  - the tab left in front (visible): must stay awake.
@@ -21,7 +23,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { addProjectAndOpen, fmt, gitInit, seedOnboardingDone, seedProfile, snapshot } from "./lib.mjs";
 
-export const title = "agent sleep, live on the release build with a Claude Code stand-in (sleeps when unseen, wakes on resume; not when visible, typed in or busy)";
+export const title = "agent sleep, live on the release build with a Claude Code stand-in (an agent watched to its finish and then left sleeps, wakes on resume; not when visible, typed in or busy)";
 
 const argv = process.argv.slice(2);
 const opt = (name, d) => {
@@ -29,7 +31,6 @@ const opt = (name, d) => {
   return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : d;
 };
 const HOLD_MIN = Number(opt("hold", 8));
-const LATE_S = Number(opt("late", 75)); // seconds after a restart that A and V finish their turn
 const unwrap = (v) => (v && typeof v === "object" && "result" in v && v.result && "value" in v.result ? v.result.value : v);
 const STANDIN_SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "prove", "agent-sleep-standin.cjs");
 const PLUS = 'section.pane[data-agent] button.ib[title^="New session"]';
@@ -51,7 +52,8 @@ export const seed = (app) => {
   writeFileSync(join(dir, "modes.txt"), ORDER.map(([, m]) => m).join("\n") + "\n");
   // The app (and the agent search behind the New session menu) finds this claude first on PATH.
   process.env.PATH = `${dir.replace(/\//g, "\\")};${process.env.PATH}`;
-  const base = seedProfile(app, { agentSleep: true, agentSleepIdleMinutes: 5, agentStatusHooks: true, agentOptions: { claude: { command: cmd, env: `CLAUDE_CONFIG_DIR=${app.paths.claudeConfig}` } } });
+  // seedProfile pins CLAUDE_CONFIG_DIR (and CODEX_HOME) in the agent env to this run's scratch folders (lib.mjs).
+  const base = seedProfile(app, { agentSleep: true, agentSleepIdleMinutes: 5, agentStatusHooks: true, agentOptions: { claude: { command: cmd } } });
   return () => {
     base();
     seedOnboardingDone(app.paths.profile);
@@ -156,11 +158,7 @@ export async function run(ctx) {
   // ---- one cell, five tabs: each new session opened in a cell of its own, so A, D, B and V are folded, in that order, into the
   // first cell with the pane menu's Move to Tab (TERM-016: "the program keeps running"); V, moved last, is the tab on top.
   // Should a move restart a pane's agent anyway, the restarted stand-in takes the same mode again (modes.txt is written afresh). ----
-  // A and V (if restarted) finish their turn 75 s after they start, after every click and focus change below: Kolux counts each
-  // write to a pane's terminal as typing, the focus-in/out reports xterm sends when the focus moves included (ConPTY turns focus
-  // reporting on at start), so a pane the focus leaves after its turn finished is "typed into" and never sleeps (FINDING, below).
-  // A finishing while another tab is in front is the case agent sleep is for.
-  writeFileSync(join(standinDir(app), "modes.txt"), ORDER.map(([n, m]) => (n === "A" || n === "V" ? `${m}:${LATE_S}` : m)).join("\n") + "\n");
+  writeFileSync(join(standinDir(app), "modes.txt"), ORDER.map(([, m]) => m).join("\n") + "\n");
   const n1 = starts(app).length;
   for (const [n] of ORDER) {
     const r = await moveToTab(app, P[n].key);
@@ -191,6 +189,21 @@ export async function run(ctx) {
   if (ORDER.some(([n]) => tabOf[n] === undefined)) throw new Error(`a Claude pane has no tab in V's strip: ${JSON.stringify(tabOf)}`);
   checks.add("the four panes under test run the modes asked", "A,D,V finished; B busy", ORDER.map(([n]) => `${n}=${P[n].mode}`).join(" "), ORDER.every(([n, m]) => P[n].mode === m));
 
+  // ---- A, watched: its tab in front until its turn has finished (the user reads the answer), then the user switches away.
+  // The switch moves the focus out of A's terminal, and xterm reports that to the program (ESC [ O; ConPTY turns focus
+  // reporting on at start). DT-C247: that report, and the focus-in before it, used to count as typing into A after it finished,
+  // which held A awake for good; now only the user's own keys, pastes and mouse reports count. ----
+  await pressTabIn(app, P.V.key, tabOf.A);
+  await app.sleep(800);
+  const finishedA = await app.waitFor("A's turn to finish while its tab is in front", async () => readLog(app).find((e) => e.finished && e.pid === P.A.pid) ?? null, 90_000, 500).catch(() => null);
+  // Read once the finish has been seen (within the poll's 500 ms), not at the finish itself: it says A's tab was still
+  // in front right after the turn finished, and nothing switched tabs between pressing A's tab and this read.
+  const aShownAfterFinish = (await paneKeys(app)).find((p) => p.key === P.A.key)?.shown === true;
+  await app.sleep(1500);
+  const leftA = Date.now();
+  log(`pane A: turn finished ${finishedA ? `at +${fmt((finishedA.t - t0) / 1000, 0)} s` : "never"}; its tab still in front right after (shown ${aShownAfterFinish}, page ${await docVisible(app)}); switching to D's tab now, so the focus leaves A after it finished`);
+  checks.add("A's turn finished with its tab still in front right after, and the focus left it afterwards (the watched-then-left case, DT-C247)", "finished, shown right after, then left", `finished ${!!finishedA}, shown right after ${aShownAfterFinish}, left ${finishedA ? fmt((leftA - finishedA.t) / 1000, 1) : "-"} s after`, !!finishedA && aShownAfterFinish && leftA > finishedA.t);
+
   // ---- D: text typed into its terminal after its turn finished, Enter never pressed ----
   await pressTabIn(app, P.V.key, tabOf.D);
   await app.sleep(800);
@@ -210,9 +223,9 @@ export async function run(ctx) {
 
   // ---- the stand-ins ran the hooks Kolux installed (the hook script ends "|| exit 0", so exit 0 says it ran, not that Kolux heard it;
   // what Kolux heard shows later: A's sleep needs the session id from SessionStart, and Wake resumes that id). Nothing touches the
-  // panes from here on: A and V finish while V's tab is in front. ----
+  // panes from here on. ----
   const live = new Set(ORDER.map(([n]) => P[n].pid));
-  await app.waitFor("every stand-in's turn to finish or start its tool", async () => readLog(app).filter((e) => live.has(e.pid) && (e.finished || e.hook === "PreToolUse")).length >= 4, (LATE_S + 60) * 1000, 1000).catch(() => null);
+  await app.waitFor("every stand-in's turn to finish or start its tool", async () => readLog(app).filter((e) => live.has(e.pid) && (e.finished || e.hook === "PreToolUse")).length >= 4, 90_000, 1000).catch(() => null);
   const hookRuns = readLog(app).filter((e) => e.hook && live.has(e.pid));
   log(`hook runs: ${hookRuns.map((e) => `${e.pid}:${e.hook}=${e.status}`).join(", ")}`);
   const failed = hookRuns.filter((e) => e.status !== 0);
@@ -221,7 +234,7 @@ export async function run(ctx) {
   checks.add("the stand-ins ran Kolux's installed hook script for each event (SessionStart, UserPromptSubmit, then Stop or PreToolUse)", `${want} runs, all exit 0`, `${hookRuns.length - failed.length}/${hookRuns.length} exit 0`, hookRuns.length === want && failed.length === 0);
   const finA = readLog(app).find((e) => e.finished && e.pid === P.A.pid)?.t;
   const finV = readLog(app).find((e) => e.finished && e.pid === P.V.pid)?.t;
-  log(`A finished ${finA ? `${fmt((finA - typedD) / 1000, 0)} s after D was typed in (after the last click)` : "never"}; V finished ${finV ? "too" : "never"}`);
+  log(`A finished ${finA ? `${fmt((leftA - finA) / 1000, 0)} s before the focus left its tab` : "never"}; V finished ${finV ? "too" : "never"}`);
 
   const mem0 = await standins(app);
   const tree0 = await treeTotals(app);
@@ -268,7 +281,7 @@ export async function run(ctx) {
   const aliveEnd = await alivePids(app, pids);
   const asleepEnd = await asleepState(app);
   const holdNote = `held to ${fmt((Date.now() - (finA ?? t0)) / 60000, 1)} min after A finished, ${fmt((Date.now() - typedD) / 60000, 1)} min after D was typed in; delay 5 min, check every 60 s`;
-  checks.add("A (finished, behind a tab, untouched) sleeps: the placeholder shows and its process is gone", "1 asleep placeholder, A's pid gone", `${asleepEnd.length} placeholder(s) [${asleepEnd.map((a) => a.text).join(" / ")}], A pid ${aliveEnd[P.A.pid] ? "alive" : "gone"}`, asleepEnd.length === 1 && !aliveEnd[P.A.pid]);
+  checks.add("A (watched to its finish, then left behind a tab, untouched) sleeps: the placeholder shows and its process is gone", "1 asleep placeholder, A's pid gone", `${asleepEnd.length} placeholder(s) [${asleepEnd.map((a) => a.text).join(" / ")}], A pid ${aliveEnd[P.A.pid] ? "alive" : "gone"}`, asleepEnd.length === 1 && !aliveEnd[P.A.pid]);
   const aMem = memOf(mem0, P.A.pid);
   const freed = tree0 && tree1 ? tree0.privMB - tree1.privMB : NaN;
   checks.add("A's memory is freed when it sleeps", `app tree private bytes fall by about A's ${fmt(aMem?.privMB)} MB`, `A held ${fmt(aMem?.wsMB)} MB working set / ${fmt(aMem?.privMB)} MB private; app tree private ${fmt(tree0?.privMB)} -> ${fmt(tree1?.privMB)} MB (-${fmt(freed)} MB), working set ${fmt(tree0?.wsMB)} -> ${fmt(tree1?.wsMB)} MB; A in the stand-in list after: ${!!memOf(mem1 ?? [], P.A.pid)}`, Number.isFinite(freed) && aMem && freed >= aMem.privMB * 0.8);
