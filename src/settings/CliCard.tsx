@@ -1,6 +1,7 @@
 // CLI-008 (T-250-c): Settings > CLI. Shows whether the kolux command is registered for the whole
 // system, registers or removes it, and offers the matching skill for agents once it is registered.
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed } from "../ipc/commands";
 import { useEffect, useState } from "react";
 import { failureText, osOf, SKILL_NAME, viewOf, whereText, type Registration } from "./cliRegister";
 
@@ -17,7 +18,7 @@ export default function CliCard() {
     setNote("");
     setOffer("");
     try {
-      const r = await invoke<Registration>(what === "register" ? "cli_register" : "cli_unregister");
+      const r = await invokeNamed<Registration>(what === "register" ? "cli_register" : "cli_unregister");
       setReg(r);
       if (what === "register") setOffer(await invoke<string>("skills_install_command", { names: [SKILL_NAME] }).catch(() => ""));
     } catch (e) {

@@ -1,0 +1,18 @@
+T-791  Privacy list complete
+Lane ready-tools, on top of 4064d254.
+
+1. src/settings/outbound.ts: 5 rows added or extended (Settings > General > Privacy shows them, evidence/T-791.png):
+   - GitHub's picture host (avatars.githubusercontent.com, avatars.<host> on Enterprise)
+   - each agent's install host (16 hosts) plus the npm registry, winget and PyPI, only on Install in the picker
+   - the npm registry and GitHub (TxaisX/kolux-skills) through npx, only on Install or Update of the skills
+   - the script-CDN row now says the Artifacts page looks in artifacts/ every 3 seconds and imports a changed page, which fetches its scripts from the five CDNs with no click
+   - the pane environment row: CLAUDE_CODE_OAUTH_TOKEN and XAI_API_KEY go to new panes of that agent only; Kolux keeps them sealed and sends them nowhere else
+2. src/privacy/hosts.test.ts (new, 4 tests): reads every .rs file in src-tauri/src (test modules, comments and *_test(s).rs excluded), pulls each https host, and requires the text that covers it in OUTBOUND. Loopback, the kolux-artifact.localhost scheme, git-scm.com (a link text, not a connection), "avatars." and placeholders are listed as not connections. Proof it bites: with `omp.sh` removed from the row the test failed naming the host and file:line; restored.
+
+VERIFY
+  pnpm exec tsc                                   clean (no output)
+  pnpm test src/privacy src/settings              Test Files 96 passed (96), Tests 524 passed (524)
+  vitest related outbound.ts hosts.test.ts        Test Files 69 passed (69), Tests 391 passed (391)
+  vitest run scripts/privacy-audit.test.mjs       Tests 5 passed (5)
+  No Rust changed; cargo not re-run for this task.
+Screenshot: evidence/T-791.png is the dark theme, scratch profile, 1416 x 889 (the off-screen window the harness opens); the viewport is not 1920.

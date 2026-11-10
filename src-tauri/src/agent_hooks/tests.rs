@@ -1259,8 +1259,8 @@ fn t_152_b_2_a_scratch_settings_folder_needs_the_marker_not_only_the_temp_folder
 #[test]
 fn t_152_b_2_test_dev_and_lane_runs_are_fenced_and_the_identifier_matches_the_app() {
     // This is a test build: every profile is fenced, the production one included.
-    assert!(fenced(Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux-rs")));
-    assert!(fenced(Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux-rs.hooks")));
+    assert!(fenced(Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux")));
+    assert!(fenced(Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux.hooks")));
     assert!(fenced(Path::new(r"G:\Temp\hooks-t152b\profile")));
     // The production identifier is the one the app is built with.
     let conf: Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
@@ -1832,12 +1832,12 @@ fn t_152_c_5_a_temp_folder_too_wide_for_scratch_is_refused_and_lane_variables_fe
     assert!(scratch_only(&file, &dir, &away).is_ok());
     // A2: a release build with the production profile is fenced when a lane's app folder variables
     // name another folder, and not when they are unset, empty or name the production profile.
-    let prod = Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux-rs");
+    let prod = Path::new(r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux");
     let none = |_: &str| None;
     assert!(!fenced_by(prod, false, none), "the installed product");
     assert!(fenced_by(prod, false, one_var("KOLUX_APP_DIR", r"G:\Temp\hooks-t152c\profile")));
     assert!(fenced_by(prod, false, one_var("KOLUX_USER_DATA_PATH", r"G:\Temp\hooks-t152c\profile")));
-    assert!(!fenced_by(prod, false, one_var("KOLUX_APP_DIR", r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux-rs")), "a pane of the installed app");
+    assert!(!fenced_by(prod, false, one_var("KOLUX_APP_DIR", r"C:\Users\me\AppData\Roaming\com.txaisxiong.kolux")), "a pane of the installed app");
     assert!(!fenced_by(prod, false, one_var("KOLUX_USER_DATA_PATH", "")), "empty reads as unset");
     assert!(fenced_by(prod, true, none), "a test or debug build");
     assert!(fenced_by(Path::new(r"G:\Temp\x\profile"), false, none), "a lane profile");

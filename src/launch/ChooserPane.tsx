@@ -288,7 +288,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
   const sheetHere = !sheet && win ? gridSheet(win) : null;
   if (sheetHere !== null && sheetHere !== number)
     return (
-      <section className="pane chooser" hidden={hidden} aria-label={`Session ${number} chooser`} onMouseDown={(e) => (e.preventDefault(), onFocus?.())} style={{ alignItems: "center", justifyContent: "center" }}>
+      <section className="pane chooser" data-testid="chooser-pane" hidden={hidden} aria-label={`Session ${number} chooser`} onMouseDown={(e) => (e.preventDefault(), onFocus?.())} style={{ alignItems: "center", justifyContent: "center" }}>
         {closable && (
           <button className="ib" style={{ position: "absolute", top: 6, right: 6 }} onMouseDown={(e) => e.stopPropagation()} onClick={onClose} disabled={busy} aria-label={`Close session ${number}`}>
             <Close size={12} />
@@ -300,7 +300,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
       </section>
     );
   return (
-    <section ref={box} tabIndex={-1} className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "New session" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
+    <section ref={box} tabIndex={-1} data-testid="chooser-pane" className={`pane chooser${sheet ? " sheet" : ""}${focused ? " focused" : ""}`} hidden={hidden} aria-label={sheet ? "New session" : `Session ${number} chooser`} onMouseDown={onFocus} onKeyDown={onSheetKey}>
       {sheet ? (
         <header className="sheet-head">
           <div className="sheet-title">
@@ -489,15 +489,15 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                   </span>
                 )}
                 {!detecting && (
-                  <div className="choices" role="group" aria-label={`Seat ${i + 1}: which AI`}>
+                  <div className="choices" role="group" data-testid={`seat-${i + 1}-agents`} aria-label={`Seat ${i + 1}: which AI`}>
                     {featuredRows(rows).map((a) => (
-                      <button key={a.id} className="btn agent-btn" aria-pressed={shownPick(seats, shown, i) === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => chooseAgent(i, a.id)}>
+                      <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={shownPick(seats, shown, i) === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => chooseAgent(i, a.id)}>
                         <VendorMark agent={markFor(a.id)} size={12} />
                         {a.name}
                         {!a.installed && <span className="agent-btn-note">not installed</span>}
                       </button>
                     ))}
-                    <button className="btn agent-btn" aria-pressed={shownPick(seats, shown, i) === TERMINAL} title="A plain terminal, no AI" onClick={() => chooseAgent(i, TERMINAL)}>
+                    <button className="btn agent-btn" data-testid="seat-agent-terminal" aria-pressed={shownPick(seats, shown, i) === TERMINAL} title="A plain terminal, no AI" onClick={() => chooseAgent(i, TERMINAL)}>
                       <VendorMark agent="shell" size={12} />
                       Terminal
                     </button>
@@ -628,7 +628,7 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
               {pass?.looking ? "Looking…" : "Refresh agents"}
             </button>
           )}
-          <button className="btn primary" disabled={!ready} onClick={() => onStart(seats)} title={ready ? "Start every seat" : !searched ? "Waiting for a search for agents that succeeds" : "Pick an AI and a model (or Terminal) for every seat first"}>
+          <button className="btn primary" data-testid="chooser-start" disabled={!ready} onClick={() => onStart(seats)} title={ready ? "Start every seat" : !searched ? "Waiting for a search for agents that succeeds" : "Pick an AI and a model (or Terminal) for every seat first"}>
             {busy ? "Starting…" : `Start${seats.length > 1 ? ` ${seats.length}` : ""}`}
             {sheet && !busy && (
               <span className="kbd-part sheet-keys" aria-label={launchKeys.join("+")}>

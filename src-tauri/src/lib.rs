@@ -38,6 +38,7 @@ mod groups;
 pub mod hooks;
 mod include;
 mod import;
+mod profile_move;
 // T-043-e: the macOS keychain rule table; the Mac wiring that calls it is T-043-f.
 #[cfg_attr(not(test), allow(dead_code))]
 mod keychain;
@@ -110,6 +111,7 @@ mod update;
 mod visibility;
 mod web_icon;
 mod webview_power;
+pub(crate) mod winproc;
 mod usage_alerts;
 
 use state::Store;
@@ -260,7 +262,13 @@ pub fn run() {
             // launcher owns without breakaway, say) the children would outlive a crash, so that is logged.
             let job_ok = procs::app_job_start();
             let dir = app.path().app_data_dir()?;
+            // T-790: the first start under the new identifier copies the old profile in (never deletes it),
+            // before anything writes into the new folder; what it did is logged once the log has a place.
+            let moved = profile_move::run(&dir);
             diag::set_dir(&dir);
+            if let Some(m) = &moved {
+                diag::write(&dir, &format!("kolux-rs: {}", m.summary()));
+            }
             // T-182 (APP-020, macOS and Linux): the login shell's environment, read in the background.
             login_env::start();
             // T-283 (BROW-043): an earlier run's leftover browser helpers are closed, on a thread of
@@ -408,6 +416,8 @@ pub fn run() {
             }
             let hooks = hooks::serve(app.handle().clone(), &dir)?;
             app.manage(hooks);
+            // T-793 review fix 1 (B4): panes adopted before the listener existed get their endpoint files now.
+            hooks::SURVIVORS.flush(&app.state::<hooks::Hooks>());
             let settings = app.state::<Mutex<Store>>().lock().map(|s| s.settings()).unwrap_or_default();
             let profile = dir.clone();
             std::thread::spawn(move || {
@@ -1066,7 +1076,7 @@ pub fn run() {
                     }
                     diag::write(&dir, "app exit");
                     let _ = std::fs::remove_file(dir.join(cli::FILE));
-                    let _ = std::fs::remove_file(dir.join(hooks::ENDPOINT_FILE));
+                    hooks::remove_endpoint_files(&dir);
                 }
                 // APP-025: an update that finished downloading installs as the app quits.
                 update::install_on_quit(app);

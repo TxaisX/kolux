@@ -65,7 +65,7 @@ pub fn listening() -> Vec<Listening> {
     #[cfg(windows)]
     let text = crate::ports::netstat(false).unwrap_or_default();
     #[cfg(not(windows))]
-    let text = std::process::Command::new("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN"]).output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
+    let text = crate::winproc::command("lsof").args(["-nP", "-iTCP", "-sTCP:LISTEN"]).output().map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default();
     if cfg!(windows) { parse_netstat(&text) } else { parse_lsof(&text) }
 }
 

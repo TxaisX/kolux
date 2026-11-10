@@ -55,6 +55,7 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
         ref={box}
         className="ask"
         role="alertdialog"
+        data-testid="ask-dialog"
         aria-modal="true"
         aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
@@ -66,7 +67,9 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
         }}
       >
         <h2 className="ask-title">{title}</h2>
-        <div className="ask-body">{body}</div>
+        <div className="ask-body" data-testid="ask-body">
+          {body}
+        </div>
         {dontAsk && (
           <label className="check ask-check">
             <input type="checkbox" checked={tick} onChange={(e) => setTick(e.target.checked)} /> Don&apos;t ask again
@@ -79,10 +82,10 @@ export default function Ask({ title, body, confirm, enter = false, dontAsk = fal
             </button>
           ) : (
             <>
-              <button ref={cancel} className="btn" aria-disabled={locked || undefined} onClick={backOut}>
+              <button ref={cancel} className="btn" data-testid="ask-cancel" aria-disabled={locked || undefined} onClick={backOut}>
                 {cancelText}
               </button>
-              <button ref={ok} className={safe ? "btn primary" : "btn danger"} onClick={() => onConfirm(tick)}>
+              <button ref={ok} className={safe ? "btn primary" : "btn danger"} data-testid="ask-confirm" onClick={() => onConfirm(tick)}>
                 {confirm}
               </button>
             </>

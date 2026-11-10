@@ -4,7 +4,7 @@ Kolux keeps everything on the user's machine. There is no account, no sync servi
 
 ## The profile folder
 
-The root is `%APPDATA%\com.txaisxiong.kolux-rs` (`src-tauri/src/resources/recovery.rs:849-851`, `src-tauri/tauri.conf.json:5`). A development or test run can point somewhere else with `KOLUX_APP_DIR` or `KOLUX_USER_DATA_PATH` (`src-tauri/src/cli/mod.rs:48-53`).
+The root is `%APPDATA%\com.txaisxiong.kolux` (`src-tauri/src/resources/recovery.rs:849-851`, `src-tauri/tauri.conf.json:5`). A development or test run can point somewhere else with `KOLUX_APP_DIR` or `KOLUX_USER_DATA_PATH` (`src-tauri/src/cli/mod.rs:48-53`).
 
 | Path | Format | Purpose |
 |---|---|---|
@@ -17,7 +17,8 @@ The root is `%APPDATA%\com.txaisxiong.kolux-rs` (`src-tauri/src/resources/recove
 | `logs/diagnostics-review.txt` | Text | The review copy written by the Diagnostics card. |
 | `terminals.json` | JSON | Terminal service port, token, pid, generation, protocol. |
 | `cli.json` | JSON | CLI loopback port, token, pid. |
-| `agent-hooks-endpoint.txt` | One line, `port token` | What the agent hook scripts read. |
+| `agent-hooks-endpoint.txt` | One line, `port -` | The hook port. It carries no token. |
+| `agent-hooks-endpoint-<terminal>.txt` | One line, `port token` | What one pane's hook scripts read; the token is that pane's own (HMAC of the run secret over its pane key). Swept at start and exit. |
 | `terminals-seen.json` | JSON | How much output the window drew, for reattach. |
 | `agent-hooks-spool.txt` | Text | Events held while Kolux was closed. |
 | `artifacts/` | JSON plus folders | The artifact library and its stored files. |

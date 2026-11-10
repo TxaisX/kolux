@@ -7,7 +7,7 @@ import path from "node:path";
 import { ship, parseArgs } from "./ship.mjs";
 
 const git = (cwd, ...a) => {
-  const r = spawnSync("git", a, { cwd, encoding: "utf8" });
+  const r = spawnSync("git", a, { cwd, encoding: "utf8", windowsHide: true });
   if (r.status !== 0) throw new Error(r.stderr);
   return r.stdout.trim();
 };

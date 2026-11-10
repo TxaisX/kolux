@@ -69,8 +69,9 @@ const FILTER_JS = (names) => `(async () => {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const open = document.querySelector('aside.sidebar button[title="Group and sort the list"]');
   if (!open) return { error: "no filter button" };
-  if (open.getAttribute("aria-pressed") !== "true") open.click();
-  await sleep(300);
+  // S-02: the panel can take seconds to draw with 150 projects, and a toggle test on aria-pressed no longer matches the button: look for the panel itself.
+  if (!document.querySelector("[data-filter-projects]")) open.click();
+  for (let i = 0; i < 300 && !document.querySelector("[data-filter-projects] input[type=checkbox]"); i++) await sleep(50);
   const settle = async (action, want) => {
     const before = count();
     let worst = 0, last = performance.now(), frames = 0, stop = false;
@@ -161,7 +162,7 @@ export async function run({ launch, checks }) {
     checks.add("filtering: longest frame gap while the list changes", `max < ${FRAME_BAR_MS} ms`, gaps.length ? `p50 ${fmt(fg.p50, 1)}, max ${fmt(fg.max, 1)} ms over ${fg.n} changes` : "none", gaps.length > 0 && fg.max < FRAME_BAR_MS);
   }
   const mem = await snapshot(app);
-  checks.note(`app + web view processes: ${mem.filter((p) => /kolux-rs|msedgewebview2/i.test(p.name)).map((p) => `${p.name} ${Math.round(p.ws / 1048576)} MB`).join(", ")}`);
+  checks.note(`app + web view processes: ${mem.filter((p) => /^kolux(-rs)?(\.exe)?$|msedgewebview2/i.test(p.name)).map((p) => `${p.name} ${Math.round(p.ws / 1048576)} MB`).join(", ")}`);
   const errs = await pageErrors(app).catch(() => []);
   checks.add("page errors during the run (this page load)", "0", `${errs.length}${errs.length ? `: ${[...new Set(errs)].slice(0, 5).join(" || ")}` : ""}`, errs.length === 0);
   checks.add("app is still running at the end", "alive", app.pid && (await app.alive(app.pid)) ? "alive" : "GONE", !!(app.pid && (await app.alive(app.pid))));

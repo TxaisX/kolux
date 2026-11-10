@@ -889,7 +889,7 @@ mod tests {
         std::fs::write(ws.join(".mcp.json"), r#"{"mcpServers":{}}"#).unwrap();
         let agent = stand_in(&ws);
         let w = WriterArg { agent: Some("claude".into()), ..Default::default() };
-        let out = ask_with(&w, "Write the message.", &ws, "t606", std::time::Duration::from_secs(20), &|name| (name == "claude").then(|| agent.clone())).unwrap();
+        let out = ask_with(&w, "Write the message.", &ws, "t606", std::time::Duration::from_secs(60), &|name| (name == "claude").then(|| agent.clone())).unwrap();
         let lines: Vec<&str> = out.lines().map(str::trim).collect();
         let ran_in = Path::new(lines[0]);
         assert!(!ran_in.starts_with(&*ws) && ran_in.file_name().is_some_and(|n| n.to_string_lossy().starts_with("kolux-writer-")), "ran in {ran_in:?}; the workspace is {:?}", *ws);
@@ -897,7 +897,7 @@ mod tests {
         assert!(!ran_in.exists(), "the folder goes when the run ends");
         assert!(lines[1].contains("--setting-sources user") && lines[1].contains("--strict-mcp-config"), "{}", lines[1]);
         let cursor = WriterArg { agent: Some("cursor".into()), ..Default::default() };
-        let out = ask_with(&cursor, "Write the message.", &ws, "t606-cursor", std::time::Duration::from_secs(20), &|name| (name == "cursor-agent").then(|| agent.clone())).unwrap();
+        let out = ask_with(&cursor, "Write the message.", &ws, "t606-cursor", std::time::Duration::from_secs(60), &|name| (name == "cursor-agent").then(|| agent.clone())).unwrap();
         assert!(out.lines().nth(1).is_some_and(|l| l.contains("--trust")), "{out}");
     }
 

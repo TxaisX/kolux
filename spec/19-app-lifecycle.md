@@ -136,7 +136,7 @@ Rules: the download starts by itself; the pop-up appears once per version per la
 Acceptance:
   - [x] Let an update download in the background → the pop-up appears once; close it → it does not
         come back this launch. (cards; evidence/cards-APP-025.txt)
-  - [ ] Quit without clicking anything → the next launch runs the new version.
+  - [x] Quit without clicking anything → the next launch runs the new version. (T-785; evidence/T-785.txt, D-2)
   - [x] Click Update now on the pop-up, or Restart to update on the card → "Restart to update?" asks first;
         Cancel leaves everything running, Restart now restarts and the button reads Restarting… until the app ends. (T-675; evidence/T-675.txt)
 Compat: —
@@ -257,7 +257,7 @@ Rules: saves are atomic (written to a fresh file, then swapped in) and happen aw
   overridden, and a saved file that cannot be read counts as an existing install.
 Acceptance:
   - [x] Change a setting and kill the process two seconds later → the setting is there on relaunch. (cards; evidence/cards-APP-048.txt)
-  - [ ] Upgrade from the previous release → layout and sessions are identical.
+  - [x] Upgrade from the previous release → layout and sessions are identical. (T-785; evidence/T-785.txt, D-3)
 Compat: the layout, projects, sessions and settings saved in a 0.15.0 profile must carry over into
   the rebuild.
 Source: D-19-048

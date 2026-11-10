@@ -4,13 +4,13 @@
 // Inbox and Board show it like any hook event; a pane whose hooks report a state is left to them.
 // A pane restored from the saved layout tells Rust its old output ends at attach time, so a prompt
 // only in restored scrollback never marks it waiting; a terminal that ended drops its scan memory.
-import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, type MutableRefObject } from "react";
 
 export const SCAN_EVERY_MS = 1500;
 
-export type Call = (cmd: string, args: Record<string, unknown>) => Promise<unknown>;
+export type Call = (cmd: CommandName, args: Record<string, unknown>) => Promise<unknown>;
 
 /** The scan memory of one window: which terminal each pane was last scanned on. */
 export function promptScanner(call: Call) {
@@ -48,7 +48,7 @@ export function promptScanner(call: Call) {
 /** Mounted once by App: scans every pane's screen every SCAN_EVERY_MS. */
 export function usePromptScan(ptys: MutableRefObject<Record<number, number>>, restored: MutableRefObject<Set<number>>): void {
   useEffect(() => {
-    const scan = promptScanner((cmd, args) => invoke(cmd, args));
+    const scan = promptScanner((cmd, args) => invokeNamed(cmd, args));
     const timer = window.setInterval(() => void scan.pass(ptys.current, restored.current), SCAN_EVERY_MS);
     const off = listen<{ id: number }>("terminal-exit", (e) => void scan.ended(e.payload.id));
     return () => {

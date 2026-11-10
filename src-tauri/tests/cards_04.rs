@@ -3,11 +3,11 @@
 //! hook documentation; everything is in memory (no config file of any tool is read or written).
 
 use base64::Engine;
-use kolux_rs_lib::hooks::{answer, claude_change, codex_change, install_claude_hooks, reply_body, Request};
-use kolux_rs_lib::status::{quiet_check, report, Agent, Session};
+use kolux_lib::hooks::{answer, claude_change, codex_change, install_claude_hooks, reply_body, Request};
+use kolux_lib::status::{quiet_check, report, Agent, Session};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use kolux_rs_lib::status::LIMIT_RESETS_AT;
+use kolux_lib::status::LIMIT_RESETS_AT;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
@@ -134,7 +134,8 @@ fn stat026_box2_a_teammates_permission_raises_needs_you_and_going_idle_clears_it
 fn post(path: &str, pane: u32, terminal: u32, token: &str, body: &str) -> Request {
     let identity = base64::engine::general_purpose::STANDARD.encode(json!({ "paneKey": pane, "terminal": terminal }).to_string());
     let mut headers = HashMap::new();
-    headers.insert("x-kolux-token".to_string(), token.to_string());
+    // T-793 (DT-C240): a pane's hook token is the run secret's HMAC for that pane, never the secret itself.
+    headers.insert("x-kolux-token".to_string(), kolux_lib::hooks::pane_token(token, pane, Some(terminal)));
     headers.insert("x-kolux-pane".to_string(), identity);
     Request { path: path.to_string(), headers, body: body.as_bytes().to_vec() }
 }

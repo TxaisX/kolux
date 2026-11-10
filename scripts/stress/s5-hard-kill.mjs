@@ -3,7 +3,7 @@
 // app relaunches, and the panes it restores are the panes the settings on disk describe.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { TERM, addProjectAndOpen, gitInit, installProbe, pageErrors, seedProfile } from "./lib.mjs";
+import { NEW_TERMINAL_JS, TERM, addProjectAndOpen, gitInit, installProbe, pageErrors, seedProfile } from "./lib.mjs";
 
 export const title = "Hard kill during layout saves (10 times)";
 export const seed = seedProfile;
@@ -14,16 +14,14 @@ const KILLS = 10;
 // changes writes nothing, which an earlier version of this script ran into).
 const CHURN_JS = `(() => {
   window.__churn = { stop: false, ops: 0 };
+  ${NEW_TERMINAL_JS}
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const panes = () => [...document.querySelectorAll(${JSON.stringify(TERM)})];
   (async () => {
     while (!window.__churn.stop) {
       try {
         if (panes().length < 8 && (panes().length < 3 || window.__churn.ops % 3 !== 2)) {
-          document.querySelector("button.newtab").click();
-          let item = null;
-          for (let i = 0; i < 50 && !item; i++) { await sleep(10); item = [...document.querySelectorAll('[role="menu"][aria-label="New tab"] [role="menuitem"]')].find((x) => /^\\s*Terminal(\\s|$)/.test((x.querySelector(".name") ?? x).textContent || "")); }
-          item?.click();
+          await newTerminal(sleep);
         } else {
           panes()[panes().length - 1]?.querySelector('button[title^="Close pane"]')?.click();
           await sleep(30);
@@ -109,7 +107,7 @@ export async function run({ launch, checks, opts }) {
     const tree = await app.treeOf(pid);
     // The hard kill: this app's own pid and its descendants, nothing else.
     await app.run("taskkill", ["/PID", String(pid), "/T", "/F"]).catch(() => {});
-    await app.treeGone([{ pid, name: "kolux-rs.exe", created: undefined }, ...tree]).catch(() => {});
+    await app.treeGone([{ pid, name: "kolux.exe", created: undefined }, ...tree]).catch(() => {});
     // tauri dev takes its vite down some seconds after the app dies; end that tree now so the relaunch never races it.
     if (app.dev?.pid) await app.run("taskkill", ["/PID", String(app.dev.pid), "/T", "/F"]).catch(() => {});
     for (let i = 0; i < 20 && (await fetch("http://localhost:" + opts.port + "/").then((r) => r.ok, () => false)); i++) await app.sleep(500);

@@ -1,0 +1,56 @@
+stress S4 (Corrupt state (settings, state.db, read-only profile)) at 2026-11-08T16:15:35.983Z on 78987726 (G:\Dev\kolux-rs-lanes\ready-tools)
+args: S4 --port 1423 --cdp 9263 --temp G:/Temp/stress/ready-tools-T-813; ran 115 s
+
+PASS  case A (truncated settings.json (cut to its first half)): the app starts and shows its page
+      bar: page up
+      measured: up in 9.2 s
+PASS  case A (truncated settings.json (cut to its first half)): settings are not wiped (stressMarker still reads "keep-me")
+      bar: get_settings.stressMarker === "keep-me"
+      measured: stressMarker "keep-me", 9 keys
+PASS  case A (truncated settings.json (cut to its first half)): the corrupt bytes are kept (in settings.json or a .corrupt copy), never overwritten
+      bar: one file holds the truncated bytes exactly
+      measured: settings.json.corrupt-1794154475850; files now: agent-hooks-endpoint.txt, browser-helpers.json, cli.json, crash-dumps-seen.json, memory-last.json, settings.json, settings.json.bak, settings.json.corrupt-1794154475850, skill-op.lock, state.db, state.db-shm, state.db-wal, state.db.bak
+PASS  case A (truncated settings.json (cut to its first half)): a last good copy (.bak) is on disk
+      bar: settings.json.bak parses and holds the marker
+      measured: yes
+FAIL  case A (truncated settings.json (cut to its first half)): a notice tells the user
+      bar: a notice / toast / alert that names the damage (the always-present shortcut banner does not count)
+      measured: NOTHING about the damage on screen after 10 s
+PASS  case B (garbage state.db (4 KB of noise, wal/shm removed)): the app starts and shows its page
+      bar: page up
+      measured: up in 3.6 s
+PASS  case B (garbage state.db (4 KB of noise, wal/shm removed)): settings are not wiped (stressMarker still reads "keep-me")
+      bar: get_settings.stressMarker === "keep-me"
+      measured: stressMarker "keep-me", 9 keys
+PASS  case B (garbage state.db (4 KB of noise, wal/shm removed)): the damaged state.db is set aside, not deleted
+      bar: a state.db.damaged-<stamp> file exists
+      measured: state.db.damaged-1794154484
+PASS  case B (garbage state.db (4 KB of noise, wal/shm removed)): settings.json is untouched by a bad state.db
+      bar: same keys and values as before (only the test save's stressRound may differ)
+      measured: identical apart from stressRound
+FAIL  case B (garbage state.db (4 KB of noise, wal/shm removed)): a notice tells the user
+      bar: a notice / toast / alert that names the damage (the always-present shortcut banner does not count)
+      measured: NOTHING about the damage on screen after 10 s
+PASS  case C (profile folder that refuses new files and writes (deny ACL for the current user)): the app starts and shows its page
+      bar: page up
+      measured: up in 3.8 s
+PASS  case C (profile folder that refuses new files and writes (deny ACL for the current user)): settings are not wiped (stressMarker still reads "keep-me")
+      bar: get_settings.stressMarker === "keep-me"
+      measured: stressMarker "keep-me", 9 keys
+PASS  case C (profile folder that refuses new files and writes (deny ACL for the current user)): settings.json keeps every key and value
+      bar: same keys and values as before (only the test save's stressRound may differ)
+      measured: identical apart from stressRound
+PASS  case C (profile folder that refuses new files and writes (deny ACL for the current user)): the folder is repaired (APP-021) and the save lands, or the save is refused with a reason
+      bar: deny entry gone and the save lands, or the save is refused
+      measured: deny entry gone (repaired); save saved
+FAIL  case C (profile folder that refuses new files and writes (deny ACL for the current user)): a notice tells the user
+      bar: a notice / toast / alert that names the damage (the always-present shortcut banner does not count)
+      measured: NOTHING about the damage on screen after 10 s
+
+notes:
+  - golden profile: browser-helpers.json, crash-dumps-seen.json, memory-last.json, settings.json, settings.json.bak, skill-op.lock, state.db, state.db-shm, state.db-wal; settings.json 327 bytes
+  - case C acl right after the deny: G:\Temp\stress\ready-tools-T-813\s4\home\AppData\Roaming\com.txaisxiong.kolux-rs.stress TxaisX\XiongT:(OI)(CI)(DENY)(WD,AD,WEA,DC,WA) S-1-5-21-3183308034-2968228786-2434996503-830841024:(I)(OI)(CI)(M) S-1-5-21-3345849068-1621676835-3876831534-1003:(I)(OI)(CI)(M) S-1-5-21-4038351606-1521650012-238002
+  - case C acl while running: G:\Temp\stress\ready-tools-T-813\s4\home\AppData\Roaming\com.txaisxiong.kolux-rs.stress TxaisX\XiongT:(OI)(CI)(F) Successfully processed 1 files; Failed processing 0 files 
+  - case C save result: saved; files now: agent-hooks-endpoint.txt, browser-helpers.json, cli.json, crash-dumps-seen.json, memory-last.json, settings.json, settings.json.bak, skill-op.lock, state.db, state.db-shm, state.db-wal, state.db.bak
+
+S4: FAIL

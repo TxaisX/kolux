@@ -6,11 +6,11 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::cli::{dispatch, envelope, parse, Ctx, Fail, Request};
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::orchestration::{self as o, Mail, Mode, Peer};
-use kolux_rs_lib::state::Store;
-use kolux_rs_lib::terminal::Terminals;
+use kolux_lib::cli::{dispatch, envelope, parse, Ctx, Fail, Request};
+use kolux_lib::git::Git;
+use kolux_lib::orchestration::{self as o, Mail, Mode, Peer};
+use kolux_lib::state::Store;
+use kolux_lib::terminal::Terminals;
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
@@ -248,7 +248,7 @@ fn quiet_git(dir: &Path, args: &[&str]) {
 
 #[test]
 fn cli018_box3_a_prompt_without_an_agent_goes_to_the_default_agent() {
-    use kolux_rs_lib::{agents::agent_list, projects};
+    use kolux_lib::{agents::agent_list, projects};
     let dir = scratch("cli018-b3");
     let repo = dir.join("repo");
     std::fs::create_dir_all(&repo).unwrap();

@@ -12,7 +12,7 @@ The release script picks the next version as **one patch above the higher of** t
 
 Do not hand-edit versions in the working tree. The release checkout is the source of the published build.
 
-Tags and releases are named `v<version>`. The installer file is `Kolux RS_<version>_x64-setup.exe`; the download URL replaces the spaces with dots.
+Tags and releases are named `v<version>`. The installer file is `Kolux_<version>_x64-setup.exe`; the download URL replaces the spaces with dots.
 
 ## Before you release
 
@@ -107,11 +107,11 @@ A release has three assets:
 
 | Asset | Purpose |
 |---|---|
-| `Kolux RS_<version>_x64-setup.exe` | The NSIS installer |
-| `Kolux RS_<version>_x64-setup.exe.sig` | The minisign signature |
+| `Kolux_<version>_x64-setup.exe` | The NSIS installer |
+| `Kolux_<version>_x64-setup.exe.sig` | The minisign signature |
 | `latest.json` | The update manifest the app reads |
 
-`latest.json` points at `https://github.com/TxaisX/kolux/releases/download/v<version>/Kolux.RS_<version>_x64-setup.exe` and carries the signature and publication date.
+`latest.json` points at `https://github.com/TxaisX/kolux/releases/download/v<version>/Kolux_<version>_x64-setup.exe` and carries the signature and publication date.
 
 ## The installer
 

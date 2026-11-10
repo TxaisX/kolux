@@ -14,6 +14,7 @@
 // edges), and files dropped in from the desktop are copied there; each of these undoes too.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { ChevronDown, Close, EyeOff, FolderPlus, Funnel, Plus, Refresh, Rocket, Search } from "../chrome/icons";
 import { clampMenu, useMenuKeys } from "./menuNav";
@@ -81,7 +82,7 @@ const inside = insideDir; // T-224-b: Windows paths compare without case, and on
 export const tops = (paths: string[]) => paths.filter((p) => p !== DRAFT && !paths.some((q) => q !== p && inside(p, q)));
 /** The call that undoes an action, and the one that does it again. Each path whose entry was
  *  recorded goes back with that identity, so the command refuses a later file at the same path. */
-export function undoOf(op: Op): [string, Record<string, unknown>] {
+export function undoOf(op: Op): [CommandName, Record<string, unknown>] {
   switch (op.kind) {
     case "create":
       // A folder the action made is only removed while it is still empty: anything dropped in since
@@ -97,7 +98,7 @@ export function undoOf(op: Op): [string, Record<string, unknown>] {
       return ["fs_move", { moves: op.moves.map(([from, to]) => [to, parentOf(from)]) }];
   }
 }
-export function redoOf(op: Op): [string, Record<string, unknown>] {
+export function redoOf(op: Op): [CommandName, Record<string, unknown>] {
   switch (op.kind) {
     case "create":
       return ["fs_restore", { paths: [op.path] }];
@@ -504,11 +505,11 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
       if (ok.length) setAt(ok[0][1]);
     }, fail);
   };
-  const replay = (from: typeof done, to: typeof done, call: (op: Op) => [string, Record<string, unknown>]) => {
+  const replay = (from: typeof done, to: typeof done, call: (op: Op) => [CommandName, Record<string, unknown>]) => {
     const op = from.current.pop();
     if (!op) return;
     const [cmd, args] = call(op);
-    invoke<Gone[] | Placed[] | Made | null>(cmd, args).then(
+    invokeNamed<Gone[] | Placed[] | Made | null>(cmd, args).then(
       (res) => {
         // A refusal (the path now holds a different entry) is final: the step is dropped, not put
         // back to retry, so one changed file cannot jam the whole undo history (C24-R3-01).
@@ -931,6 +932,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         ref={box}
         tabIndex={0}
         role="tree"
+        data-testid="explorer-tree"
         aria-label={`Files of ${name}`}
         aria-multiselectable
         aria-activedescendant={index >= 0 ? `ex-row-${index}` : undefined}
@@ -951,6 +953,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
                 key={r.node.path}
                 id={`ex-row-${i}`}
                 role="treeitem"
+                data-testid="explorer-row"
                 aria-level={r.depth + 1}
                 aria-expanded={dir ? isOpen : undefined}
                 aria-selected={sel.has(r.node.path)}

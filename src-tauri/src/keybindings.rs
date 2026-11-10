@@ -183,14 +183,14 @@ pub fn keybindings_show(app: tauri::AppHandle, store: tauri::State<'_, std::sync
 fn show_command(path: &Path, reveal: bool) -> std::process::Command {
     #[cfg(windows)]
     {
-        let mut c = std::process::Command::new("explorer.exe");
+        let mut c = crate::winproc::command("explorer.exe");
         // explorer takes "/select,<path>" as one argument.
         c.arg(if reveal { format!("/select,{}", path.display()) } else { path.display().to_string() });
         c
     }
     #[cfg(target_os = "macos")]
     {
-        let mut c = std::process::Command::new("open");
+        let mut c = crate::winproc::command("open");
         if reveal {
             c.arg("-R");
         }
@@ -199,7 +199,7 @@ fn show_command(path: &Path, reveal: bool) -> std::process::Command {
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let mut c = std::process::Command::new("xdg-open");
+        let mut c = crate::winproc::command("xdg-open");
         c.arg(if reveal { path.parent().unwrap_or(path) } else { path });
         c
     }

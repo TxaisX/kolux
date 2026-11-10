@@ -24,7 +24,7 @@ const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(process.ar
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = Number(process.env.PROVE_CDP || 9333);
 const BASE = process.env.PROVE_BASE || 'G:/Temp/live-installed';
-const EXE = process.env.PROVE_EXE || join(process.env.LOCALAPPDATA, 'Kolux RS', 'kolux-rs.exe');
+const EXE = process.env.PROVE_EXE || join(process.env.LOCALAPPDATA, 'Kolux', 'kolux.exe');
 const REAL = process.env.PROVE_REAL === '1';
 const PIDFILE = join(BASE, 'app.pid');
 const CLOSE_REAL = process.env.PROVE_CLOSE_REAL === '1';
@@ -39,7 +39,7 @@ export const run = (file, a, opt = {}) =>
 /**
  * True when this process is itself running inside a Kolux terminal.
  *
- * start/stop close every kolux-rs window, so running them from a Kolux terminal kills the app, the
+ * start/stop close every Kolux app window (kolux.exe, or kolux-rs.exe before T-790), so running them from a Kolux terminal kills the app, the
  * terminal service under it, and the proof, taking the caller's own session with it. A proof is
  * started from a plain Windows Terminal or PowerShell window instead, which is why this guard exists
  * rather than a comment.
@@ -47,7 +47,7 @@ export const run = (file, a, opt = {}) =>
  * The pane marker is the first and reliable check: every terminal Kolux starts carries KOLUX_APP_DIR
  * in its own environment (terminal.rs, CLI-007), and every child inherits it. That survives the
  * restarts this guard is about, which the parent walk does not: a pane taken back from a previous
- * copy (SESS), or a shell an agent re-parented, has no kolux-rs.exe left in its ancestry. The walk
+ * copy (SESS), or a shell an agent re-parented, has no kolux.exe left in its ancestry. The walk
  * stays as the fallback for an older pane that predates the marker.
  *
  * Only PROVE_REAL=1 needs this guard (see the refusal below): a scratch-home proof runs as a
@@ -61,7 +61,7 @@ async function insideKoluxTerminal() {
     `for ($i = 0; $i -lt 12; $i++) {`,
     `  $x = Get-CimInstance Win32_Process -Filter "ProcessId=$p" -ErrorAction SilentlyContinue`,
     `  if (-not $x) { break }`,
-    `  if ($x.Name -match '^kolux-rs\\.exe$') { 'yes'; break }`,
+    `  if ($x.Name -match '^kolux(-rs)?\\.exe$') { 'yes'; break }`, // T-790: kolux.exe, or kolux-rs.exe before it
     `  $p = $x.ParentProcessId`,
     `  if (-not $p -or $p -eq 0) { break }`,
     `}`,
@@ -104,7 +104,7 @@ export function prepareHome(fresh = true) {
     temp: join(BASE, 'tmp'),
     claude: join(BASE, 'tmp', 'claude-config'),
     codex: join(BASE, 'tmp', 'codex-home'),
-    profile: join(home, 'AppData', 'Roaming', 'com.txaisxiong.kolux-rs'),
+    profile: join(home, 'AppData', 'Roaming', 'com.txaisxiong.kolux'),
   };
   for (const d of [paths.home, paths.roaming, paths.local, paths.temp, paths.claude, paths.codex]) mkdirSync(d, { recursive: true });
   mkdirSync(join(BASE, 'shots'), { recursive: true });
@@ -128,6 +128,8 @@ export function launch(paths, { keep = false } = {}) {
     CODEX_HOME: paths.codex,
   });
   for (const k of ['KOLUX_TERMINAL_SERVICE', 'KOLUX_DEV_REPO_ROOT', 'KOLUX_CLI_COMMAND', 'KOLUX_RELEASE_CHECKOUT', 'KOLUX_APP_DIR', 'KOLUX_USER_DATA_PATH', 'CARGO_TARGET_DIR']) delete env[k];
+  // nowin-allow: this starts the installed Kolux app itself (a GUI with its own window) for a live proof
+  // run by hand on Txais's PC; windowsHide would hide the app's own window, not a console.
   const child = spawn(EXE, [], { env, detached: true, stdio: 'ignore', windowsHide: false });
   child.unref();
   return child.pid;
@@ -223,8 +225,8 @@ export async function ready(page) {
 /** The profile folder this harness runs its copy on: the scratch home, or the real one with PROVE_REAL=1. */
 export function profileDir() {
   return REAL
-    ? join(process.env.APPDATA ?? '', 'com.txaisxiong.kolux-rs')
-    : join(BASE, 'home', 'AppData', 'Roaming', 'com.txaisxiong.kolux-rs');
+    ? join(process.env.APPDATA ?? '', 'com.txaisxiong.kolux')
+    : join(BASE, 'home', 'AppData', 'Roaming', 'com.txaisxiong.kolux');
 }
 
 /** The pid of the copy running on this profile, from its own startup file; 0 when none is running. */
@@ -249,15 +251,15 @@ export async function closeRunning() {
   const n = await run('powershell', ['-NoProfile', '-Command', `
     $mine = '${dir}'
     $targets = @()${pid ? ` + ${pid}` : ''}
-    $svc = @(Get-CimInstance Win32_Process -Filter "Name='kolux-rs.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '--terminal-service' -and $_.CommandLine -like "*$mine*" })
+    $svc = @(Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '--terminal-service' -and $_.CommandLine -like "*$mine*" })
     $targets += @($svc | ForEach-Object { $_.ParentProcessId })
-    $alive = @($targets | Sort-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | Where-Object { $_.ProcessName -eq 'kolux-rs' -and $_.MainWindowHandle -ne 0 })
+    $alive = @($targets | Sort-Object -Unique | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | Where-Object { $_.ProcessName -in @('kolux', 'kolux-rs') -and $_.MainWindowHandle -ne 0 })
     foreach ($p in $alive) { $p.CloseMainWindow() | Out-Null }
     $end = (Get-Date).AddSeconds(30)
     while ((Get-Date) -lt $end -and @($alive | Where-Object { -not $_.HasExited }).Count -gt 0) { Start-Sleep -Milliseconds 300 }
     @($alive | Where-Object { -not $_.HasExited }).Count
   `]).then((r) => Number(r.stdout.trim())).catch(() => -1);
-  if (n > 0) throw new Error(`${n} kolux-rs window process(es) still run after a graceful close; use PROVE_KILL=1 to force`);
+  if (n > 0) throw new Error(`${n} kolux-rs window process(es) (kolux or kolux-rs) still run after a graceful close; use PROVE_KILL=1 to force`);
   if (n === 0) await sleep(1500);
   return n;
 }
@@ -278,7 +280,7 @@ if (isMain && (cmd === 'start' || cmd === 'stop') && REAL && (await insideKoluxT
 if (isMain && cmd === 'start') {
   const fresh = process.env.PROVE_HOME !== 'keep';
   const paths = prepareHome(fresh);
-  if (process.env.PROVE_KILL === '1') await run('taskkill', ['/IM', 'kolux-rs.exe', '/T', '/F']).catch(() => {});
+  if (process.env.PROVE_KILL === '1') await run('taskkill', ['/IM', 'kolux.exe', '/T', '/F']).catch(() => {});
   await closeRunning();
   const pid = launch(paths);
   writeFileSync(PIDFILE, String(pid));

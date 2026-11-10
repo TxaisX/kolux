@@ -151,8 +151,10 @@ fn same_repo(a: &str, b: &str) -> bool {
 /// The settings a branch's push takes, as `git config` gives them: the branch's own push remote,
 /// then the repository's default push remote, then the remote the branch tracks.
 pub fn push_target(worktree: &Path) -> Option<PushTarget> {
-    let branch = run(&["symbolic-ref", "--quiet", "--short", "HEAD"], Some(worktree)).ok().filter(|b| !b.is_empty())?;
-    let conf = |key: String| run(&["config", "--get", &key], Some(worktree)).ok().filter(|v| !v.is_empty());
+    // The full ref, stripped: `--short` prints `heads/main` when a tag is also called `main` (T-779 review fix 7).
+    let branch = run(&["symbolic-ref", "--quiet", "HEAD"], Some(worktree)).ok().and_then(|r| r.strip_prefix("refs/heads/").map(str::to_string)).filter(|b| !b.is_empty())?;
+    // As written, spaces included: `origin ` is a remote of its own to git (T-779 review fix 8, P1-3).
+    let conf = |key: String| crate::git::run_untrimmed(&["config", "--get", &key], Some(worktree)).ok().map(|v| v.strip_suffix('\n').unwrap_or(&v).to_string()).filter(|v| !v.is_empty());
     let remote = conf(format!("branch.{branch}.pushRemote")).or_else(|| conf("remote.pushDefault".to_string())).or_else(|| conf(format!("branch.{branch}.remote")))?;
     if remote == "." {
         return None;
@@ -291,7 +293,8 @@ pub fn open(git: &Git, place: &Place, project: &Project, pr: &PrHead, fork: Opti
         (false, false) => None,
     };
     let worktree = git.worktrees(repo)?.into_iter().find(|w| crate::projects::same_folder(Path::new(&w.path), &dest)).ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
-    Ok((Created { worktree, base: format!("pull request #{}", pr.number), note, warnings }, reuse))
+    // T-780: a pull request's branch is never Kolux's own; its record carries the marker anyway.
+    Ok((Created { worktree, base: format!("pull request #{}", pr.number), note, warnings, own: false }, reuse))
 }
 
 #[cfg(test)]

@@ -2,8 +2,8 @@
 //! Needs `pty` and `agents` public in lib.rs. The shell is a real one; it runs with the scratch
 //! home the lane's environment gives the test process.
 
-use kolux_rs_lib::agents::CATALOGUE;
-use kolux_rs_lib::pty::{shell_commands, start_dir, PtySession};
+use kolux_lib::agents::CATALOGUE;
+use kolux_lib::pty::{shell_commands, start_dir, PtySession};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -145,14 +145,14 @@ fn term045_box1_a_shell_running_a_program_is_busy_and_an_idle_shell_is_not() {
     assert!(sh.until(40, |s| s.text().contains(&leaf)), "the prompt names the folder: {:?}", sh.text());
     let pid = sh.session.pid().expect("the shell has a process id");
     // idle: the prompt is up and nothing runs under it (given a moment for start-up work to settle)
-    let idle = sh.until(15, |_| kolux_rs_lib::procs::has_children(pid) == Some(false));
-    assert!(idle, "an idle shell has no program of its own: {:?}", kolux_rs_lib::procs::has_children(pid));
+    let idle = sh.until(15, |_| kolux_lib::procs::has_children(pid) == Some(false));
+    assert!(idle, "an idle shell has no program of its own: {:?}", kolux_lib::procs::has_children(pid));
     // busy: a long-running program (stands in for a dev server) is started in the shell
     let cmd: &[u8] = if cfg!(windows) { b"ping -n 60 127.0.0.1\r" } else { b"sleep 60\n" };
     sh.session.write(cmd).unwrap();
-    let busy = sh.until(30, |_| kolux_rs_lib::procs::has_children(pid) == Some(true));
-    assert!(busy, "a shell running a program is busy: {:?}", kolux_rs_lib::procs::has_children(pid));
-    kolux_rs_lib::procs::kill_tree(pid);
+    let busy = sh.until(30, |_| kolux_lib::procs::has_children(pid) == Some(true));
+    assert!(busy, "a shell running a program is busy: {:?}", kolux_lib::procs::has_children(pid));
+    kolux_lib::procs::kill_tree(pid);
     sh.session.kill();
     let _ = std::fs::remove_dir_all(&ws);
 }
@@ -166,7 +166,7 @@ fn git(dir: &std::path::Path, args: &[&str]) {
 /// TERM-022 boxes 1-2: what the pane header's chip reads, in the shape the window receives.
 #[test]
 fn term022_the_head_the_chip_reads_is_the_branch_a_detached_commit_or_nothing() {
-    use kolux_rs_lib::scm::head_of;
+    use kolux_lib::scm::head_of;
     let repo = workspace("term022-repo");
     git(&repo, &["init", "-q", "-b", "main"]);
     git(&repo, &["commit", "-q", "--allow-empty", "-m", "first"]);
@@ -211,9 +211,9 @@ fn term017_box2_text_printed_in_one_session_never_shows_in_another() {
     assert!(!printed(&a.text(), mb), "B's text reached A: {:?}", a.text());
     assert!(!printed(&b.text(), ma), "A's text reached B: {:?}", b.text());
     // a pane remounted by a move asks for its terminal by pane key and is handed the one still running, never a fresh one
-    let back = kolux_rs_lib::terminal::attach_answer(5, Some(42), 5);
+    let back = kolux_lib::terminal::attach_answer(5, Some(42), 5);
     assert_eq!((back.state, back.id), ("attached", Some(42)));
-    assert_eq!(kolux_rs_lib::terminal::attach_answer(5, None, 5).state, "fresh");
+    assert_eq!(kolux_lib::terminal::attach_answer(5, None, 5).state, "fresh");
     a.session.kill();
     b.session.kill();
     let _ = std::fs::remove_dir_all(&wa);
@@ -223,8 +223,8 @@ fn term017_box2_text_printed_in_one_session_never_shows_in_another() {
 // ---------------------------------------------------------------- TERM-105 and TERM-125
 
 use base64::Engine as _;
-use kolux_rs_lib::pty::link::{missed, row_tail};
-use kolux_rs_lib::pty::service::{write_endpoint, Client, Config, Endpoint, Service};
+use kolux_lib::pty::link::{missed, row_tail};
+use kolux_lib::pty::service::{write_endpoint, Client, Config, Endpoint, Service};
 use serde_json::json;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -243,8 +243,8 @@ impl Host {
             port: listener.local_addr().unwrap().port(),
             token: format!("cards03-{}", std::process::id()),
             pid: std::process::id(),
-            generation: kolux_rs_lib::terminal::generation(),
-            protocol: kolux_rs_lib::terminal::PROTOCOL,
+            generation: kolux_lib::terminal::generation(),
+            protocol: kolux_lib::terminal::PROTOCOL,
         };
         write_endpoint(dir, &ep).unwrap();
         let service = Service::default();
@@ -397,10 +397,10 @@ fn term105_box1_a_build_running_at_quit_goes_on_and_its_output_continues_in_the_
 /// MIRROR src-tauri/src/cli.rs:3673 (send_once): the `Look` built from the terminal and the `write` callback are rebuilt here around the real driver.
 #[test]
 fn term125_box1_send_enter_types_the_text_and_submits_it() {
-    use kolux_rs_lib::orchestration::sendonce::{drive, Look, Outcome, Send};
+    use kolux_lib::orchestration::sendonce::{drive, Look, Outcome, Send};
     let parse = |line: &str| {
         let words: Vec<String> = line.split(' ').map(String::from).collect();
-        kolux_rs_lib::cli::parse(&words).1.expect("the flags parse").expect("a command").args
+        kolux_lib::cli::parse(&words).1.expect("the flags parse").expect("a command").args
     };
     let run = |tag: &str, flags: &str| -> (bool, Vec<&'static str>, Outcome, String) {
         let ws = workspace(tag);

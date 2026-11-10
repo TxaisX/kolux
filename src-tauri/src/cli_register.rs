@@ -548,7 +548,7 @@ impl Links for RealLinks {
         std::fs::remove_file(at)
     }
     fn elevated(&self, shell: &str) -> Result<(), String> {
-        let mut child = std::process::Command::new("osascript").args(osascript_args(shell)).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("cannot start osascript: {e}"))?;
+        let mut child = crate::winproc::command("osascript").args(osascript_args(shell)).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("cannot start osascript: {e}"))?;
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(600);
         loop {
             match child.try_wait() {
@@ -840,7 +840,7 @@ mod tests {
     #[test]
     fn cli007_an_installed_copy_registers_the_bin_folder_beside_the_app() {
         let d = scratch("installed");
-        let app = d.join(if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" });
+        let app = d.join(if cfg!(windows) { "kolux.exe" } else { "kolux" });
         std::fs::write(&app, "").unwrap();
         // A development build: no bin folder, so the CLI is the program's own folder.
         assert_eq!(folder_and_exe_of(app.clone(), None).unwrap(), (d.to_path_buf(), app.clone()));

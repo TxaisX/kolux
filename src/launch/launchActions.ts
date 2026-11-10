@@ -10,7 +10,7 @@ import type { WindowLate } from "../shell/windowLate";
 import { savedArgs } from "../chat/controls";
 import { noteUse } from "../onboarding/features";
 import { gatedSetup, settleSetup } from "../orchestration/workerSetup";
-import { folderName, type Created, type WorkItem } from "../projects/model";
+import { folderName, projectLabel, type Created, type Project, type WorkItem } from "../projects/model";
 import { renameOnFirstPrompt } from "../projects/renameOnWork";
 import { applySetting } from "../projects/settingWrite";
 import { startFields } from "../projects/startArgs";
@@ -69,6 +69,16 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     const inGrid = panes.some((p) => p.key === key);
     setLaunching(true);
     const kept: NewPlace[] = [];
+    // T-780 follow-up: the "Starting n sessions" toast would hide a trust line, so the Start gathers
+    // its lines for the notice bar until it knows how it ended. Only a line actually shown counts as
+    // said; one that arrives after the end is a toast of its own.
+    const trustLines: [string, () => void][] = [];
+    let seatsSettled = false;
+    const seatTell: TrustTell = (line, shown) => {
+      if (!seatsSettled) return void trustLines.push([line, shown]);
+      setToast(line);
+      shown();
+    };
     try {
       const picked = seats.map((s) => (s.agent === TERMINAL ? null : agents.find((a) => a.id === s.agent && a.installed) ?? null));
       const missing = seats.find((s, i) => s.agent !== TERMINAL && !picked[i]);
@@ -96,7 +106,7 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
         open: (dir, branch, line, where) => new Promise<void>((done) => late.startSetup(dir, branch, line, where, false, () => done())),
         say: (m) => setupTrouble.push(m),
       });
-      for (const id of new Set(picked.flatMap((a) => (a ? [a.id] : [])))) await pretrust(id, picked.map((a, i) => (a?.id === id ? places[i].cwd : null)));
+      for (const id of new Set(picked.flatMap((a) => (a ? [a.id] : [])))) await pretrust(id, picked.map((a, i) => (a?.id === id ? places[i].cwd : null)), seatTell);
       // SESS-051: each agent's start line comes from the catalogue, prompt route included; a
       // refused line (Hermes past its limit) stops the whole Start before any pane is made.
       const side = picked.filter(Boolean).length >= 2;
@@ -134,8 +144,13 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       setActiveDir(made[0].cwd);
       setFocused(made[0].key);
       setRefresh((n) => n + 1);
-      setNotice(setupTrouble.length ? setupTrouble.join(" ") : null);
+      seatsSettled = true;
+      const said = [...setupTrouble, ...trustLines.map(([line]) => line)];
+      setNotice(said.length ? said.join(" ") : null);
+      for (const [, shown] of trustLines) shown();
     } catch (err) {
+      // Trust lines gathered so far were never shown: they stay unsaid, so the next launch says them.
+      seatsSettled = true;
       // A seat that failed leaves the earlier seats' new workspaces behind: refresh the sidebar so they show, and say so.
       if (kept.length) setRefresh((n) => n + 1);
       setNotice(failureNote(err, kept.length));
@@ -266,15 +281,45 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
   // pane's folder, else the first in the list.
   // SAFE-023 / SAFE-024: every folder a launch will use (and its main repository) is marked
   // trusted in the agent's own configuration in one write before any agent process starts; best
-  // effort, a failure never stops the launch.
-  const pretrust = async (agent: string, dirs: (string | null)[]) => {
+  // effort, a failure never stops the launch. T-780 follow-up: a folder left unmarked is said once in
+  // the window (the toast, or `tell` for a caller that shows its own notice), never by focus or a window.
+  const toastTell: TrustTell = (line, shown) => {
+    setToast(line);
+    shown();
+  };
+  const pretrust = async (agent: string, dirs: (string | null)[], tell: TrustTell = toastTell) => {
     const paths = [...new Set(dirs.flatMap((d) => (d === null ? [] : [d, projects.find((p) => p.id === late.projectOf(d))?.path])).filter((p): p is string => typeof p === "string"))];
     if (paths.length === 0) return;
     try {
       await invoke("trust_folders_cmd", { agent, paths });
     } catch (err) {
-      console.warn(`trust: ${String(err)}`);
+      const reason = String(err);
+      console.warn(`trust: ${reason}`);
+      const told = `${agent}\n${paths.join("\n")}\n${reason}`;
+      if (toldTrust.has(told)) return;
+      // Not awaited: the lookups below only shape the line, and the agent's start never waits on them.
+      void trustLine(agent, reason, dirs).then((line) => {
+        if (line !== null && !toldTrust.has(told)) tell(line, () => toldTrust.add(told));
+      });
     }
+  };
+  // The line for a refused pre-trust. "no folders to trust" means nothing Kolux made was in the
+  // batch: a workspace holding a pull request is left out on purpose, so that is said; the
+  // project's own folder keeps the agent's prompt without a word. Claude's trust goes into the
+  // active managed account's file when one is in use (trust.rs `trust_for_launch`), so the line
+  // names that account; Codex has one file, so its line names Codex alone.
+  const trustLine = async (agent: string, reason: string, dirs: (string | null)[]): Promise<string | null> => {
+    const name = agents.find((a) => a.id === agent)?.name ?? agent;
+    if (reason === NOTHING_TO_TRUST) {
+      const own = dirs.filter((d): d is string => d !== null);
+      const ds = await Promise.all(own.map((path) => invoke<{ item: string | null } | null>("workspace_details_get", { path }).catch(() => null)));
+      return ds.some((d) => holdsPullRequest(d?.item)) ? trustNote(name, PR_REASON, projects) : null;
+    }
+    const managed =
+      agent === "claude" &&
+      reason.startsWith(MAIN_REASON) &&
+      (await invoke<{ active: string | null; keyMode: boolean }>("claude_accounts").then((v) => v.active !== null && !v.keyMode, () => false));
+    return trustNote(name, reason, projects, managed);
   };
   // GIT-004: a refused commit can be handed to the default agent with the hook's own words.
   // GIT-019 (T-313-b): the fix recipe may name its own agent and extra start arguments.
@@ -319,3 +364,45 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
 }
 
 export type LaunchActions = ReturnType<typeof launchActions>;
+
+/** The back end's answer when a launch's batch held no worktree Kolux made (trust_folders_cmd). */
+const NOTHING_TO_TRUST = "no folders to trust";
+/** The reason the back end gives for a pull request's worktree (trust.rs `not_pre_trusted_why`). */
+const PR_REASON = "not trusted: this worktree holds a pull request's branch, so the agent asks itself";
+/** How trust.rs begins the reason for a worktree whose main checkout the user has not trusted. */
+const MAIN_REASON = "not trusted: the main checkout ";
+/** Each trust line is shown once per window session for an agent and its folders, not on every launch there. */
+const toldTrust = new Set<string>();
+/** Shows a trust line; `shown` marks it said, called only once the line is really on screen. */
+type TrustTell = (line: string, shown: () => void) => void;
+
+/** Whether a workspace's linked item (the details form's link) is a pull request address. */
+export function holdsPullRequest(item: string | null | undefined): boolean {
+  return typeof item === "string" && /^https?:\/\/[^/]+\/[^/]+\/[^/]+\/pull\/\d+\/?$/i.test(item.trim());
+}
+
+const samePath = (a: string, b: string) => {
+  const n = (p: string) => p.replace(/^\\\\\?\\/, "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  return n(a) === n(b);
+};
+
+/**
+ * T-780 follow-up: the window's plain line for a folder Kolux did not mark trusted for `agentName`,
+ * from the reason the back end gave (trust.rs). The agent then asks its own trust question, unless
+ * the user already answered it in that folder, hence "may". Null when there is nothing to say.
+ * `managedAccount`: the trust is read from a managed account's own file, so the line names that account.
+ */
+export function trustNote(agentName: string, reason: string, projects: Pick<Project, "path" | "name" | "displayName">[], managedAccount = false): string | null {
+  const lead = `${agentName} may ask whether to trust this workspace`;
+  if (reason === NOTHING_TO_TRUST) return null;
+  if (reason === PR_REASON) return `${lead} because it holds a pull request.`;
+  const main = /^not trusted: the main checkout (.+) is not trusted for \S+ yet, so its worktree .+ keeps the agent's own prompt$/s.exec(reason);
+  if (main) {
+    const p = projects.find((x) => samePath(x.path, main[1]));
+    return `${lead}: you haven't trusted ${p ? projectLabel(p) : folderName(main[1])} in ${managedAccount ? `this ${agentName} account` : agentName} yet.`;
+  }
+  // trust.rs says "is not a git worktree" for any folder git cannot place in a repository with a checkout.
+  const loose = /^not trusted: (.+) is not a git worktree, so it keeps the agent's own prompt$/s.exec(reason);
+  if (loose) return `${lead}: ${folderName(loose[1])} isn't inside a git repository Kolux can check.`;
+  return `${lead}: Kolux couldn't mark it trusted (${reason.replace(/^not trusted: /, "")}).`;
+}

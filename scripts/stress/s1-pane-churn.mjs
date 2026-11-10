@@ -1,15 +1,16 @@
 // S1 pane churn: open 40 terminals and close them all, 5 rounds. Bars: no pane host process left behind, the app's memory
 // after round 5 within 15% of its memory after round 1, no page error.
 import { join } from "node:path";
-import { PANE_PROCS, TERM, addProjectAndOpen, appMemMB, fmt, gitInit, installProbe, pageErrors, paneProcs, seedProfile, snapshot, stats } from "./lib.mjs";
+import { NEW_TERMINAL_JS, PANE_PROCS, TERM, addProjectAndOpen, appMemMB, fmt, gitInit, installProbe, pageErrors, paneProcs, seedProfile, snapshot, stats } from "./lib.mjs";
 
 export const title = "Pane churn (40 panes x 5 rounds)";
 export const seed = seedProfile;
 const ROUNDS = 5;
 const PANES = 40;
 
-// In the page: open terminals through "New tab > Terminal" until `target` exist; returns the ms each open took.
+// In the page: open terminals with the window's New terminal tab key (Mod+T) until `target` exist; returns the ms each open took.
 const openScript = (target) => `(async () => {
+  ${NEW_TERMINAL_JS}
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const count = () => document.querySelectorAll(${JSON.stringify(TERM)}).length;
   const times = [];
@@ -17,13 +18,9 @@ const openScript = (target) => `(async () => {
   while (count() < ${target}) {
     if (performance.now() - t00 > 240000) return { error: "opening stalled at " + count(), times };
     const before = count(), t0 = performance.now();
-    document.querySelector("button.newtab").click();
-    let item = null;
-    for (let i = 0; i < 100 && !item; i++) { await sleep(20); item = [...document.querySelectorAll('[role="menu"][aria-label="New tab"] [role="menuitem"]')].find((x) => /^\\s*Terminal(\\s|$)/.test((x.querySelector(".name") ?? x).textContent || "")); }
-    if (!item) return { error: "no Terminal item in the New tab menu at " + before, times };
-    item.click();
+    await newTerminal(sleep);
     for (let i = 0; i < 500 && count() === before; i++) await sleep(20);
-    if (count() === before) return { error: "a New tab click added no pane at " + before + " (toast: " + (document.querySelector(".toast")?.textContent ?? "none") + ")", times };
+    if (count() === before) return { error: "the New terminal tab key added no pane at " + before + " (toast: " + (document.querySelector(".toast")?.textContent ?? "none") + ")", times };
     times.push(Math.round(performance.now() - t0));
   }
   return { count: count(), times };
@@ -63,6 +60,7 @@ export async function run({ launch, checks }) {
   const rounds = [];
   for (let r = 1; r <= ROUNDS; r++) {
     const opened = await app.evalJs(openScript(PANES));
+    if (!Array.isArray(opened?.times)) throw new Error("the open script gave no timings: " + JSON.stringify(opened).slice(0, 300));
     const peakSnap = await snapshot(app);
     for (const p of paneProcs(peakSnap)) seen.set(`${p.pid}|${p.created}`, p);
     const opens = stats(opened.times);
@@ -86,7 +84,7 @@ export async function run({ launch, checks }) {
         app.evalJs(`({ panes: document.querySelectorAll(${JSON.stringify(TERM)}).length, menuOpen: !!document.querySelector('[role="menu"]'), dialog: (document.querySelector('[role="alertdialog"]')?.textContent ?? "").slice(0, 120), notice: [...document.querySelectorAll('.notice, .toast, [role="alert"], [role="status"]')].map((e) => e.textContent.trim().slice(0, 100)).filter(Boolean) })`).catch((e) => `ERR ${e.message.slice(0, 100)}`),
         app.sleep(15000).then(() => "NO ANSWER in 15 s"),
       ]);
-      const procs = (await snapshot(app)).filter((p) => /kolux-rs|msedgewebview2/.test(p.name)).map((p) => `${p.name}#${p.pid} threads ${p.threads}`).join(", ");
+      const procs = (await snapshot(app)).filter((p) => /^kolux(-rs)?(\.exe)?$|msedgewebview2/.test(p.name)).map((p) => `${p.name}#${p.pid} threads ${p.threads}`).join(", ");
       checks.note(`stall in round ${r}: page probe after ${((Date.now() - t1) / 1000).toFixed(1)} s = ${JSON.stringify(probe)}; ${procs}`);
       break;
     }

@@ -48,7 +48,7 @@ pub fn bundled_skills() -> Vec<(&'static str, &'static str)> {
 pub const FILE: &str = "cli.json";
 /// The event the front end gets when the CLI made or removed a workspace.
 pub const EVENT: &str = "cli-workspace";
-const DATA_DIR: &str = "com.txaisxiong.kolux-rs";
+const DATA_DIR: &str = "com.txaisxiong.kolux";
 /// The environment value that tells the CLI which running app opened its terminal (CLI-007).
 pub const APP_DIR_ENV: &str = "KOLUX_APP_DIR";
 
@@ -345,18 +345,21 @@ fn status_exit(r: &Value) -> i32 {
 fn launch_app() -> Result<(), Fail> {
     let exe = match std::env::var_os("KOLUX_APP_EXECUTABLE").filter(|e| !e.is_empty()) {
         Some(e) => PathBuf::from(e),
-        None => {
-            // CLI-006: an installed CLI sits in the install's bin folder, one level below the app.
-            let me = std::env::current_exe().map_err(|e| Fail::new("launch_failed", e.to_string()))?;
-            let name = if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" };
-            let beside = me.with_file_name(name);
-            match me.parent().and_then(Path::parent).map(|p| p.join(name)) {
-                Some(up) if !beside.is_file() && up.is_file() => up,
-                _ => beside,
-            }
-        }
+        None => app_program(&std::env::current_exe().map_err(|e| Fail::new("launch_failed", e.to_string()))?),
     };
     app_command(&exe).spawn().map(drop).map_err(|e| Fail::new("launch_failed", format!("could not start Kolux from {}: {e}", exe.display())))
+}
+
+/// The app program for the CLI at `me`. CLI-006: an installed CLI sits in the install's bin folder, one level
+/// below the app. T-790: both are named `kolux` now (bin\kolux.exe and kolux.exe), so a program of that name
+/// next to `me` that is `me` itself is never taken for the app.
+fn app_program(me: &Path) -> PathBuf {
+    let name = if cfg!(windows) { "kolux.exe" } else { "kolux" };
+    let beside = me.with_file_name(name);
+    match me.parent().and_then(Path::parent).map(|p| p.join(name)) {
+        Some(up) if (beside == me || !beside.is_file()) && up.is_file() => up,
+        _ => beside,
+    }
 }
 
 /// The app's command line for `launch_app`. T-595 (CLI-011, R01-cli.4): it runs in the app's own
@@ -949,6 +952,8 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
         None
     };
     let req = by_id.as_ref().unwrap_or(req);
+    // T-793 (DT-C240): a pane may only act on its own terminal unless it is a coordinator.
+    scoped(ctx, req)?;
     let a = &req.args;
     let text = |k: &str| a[k].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
     match req.command.as_str() {
@@ -981,14 +986,15 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
             } else {
                 calling_worktree(ctx, &project, &req.cwd)?
             };
-            let made = projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None)?;
             // The calling terminal, when the runtime vouches for it; a shell outside Kolux records none.
             let terminal = caller(ctx, req).ok().flatten();
             let pane_key = terminal.as_ref().and(req.pane.as_ref()).map(|p| p.key.clone());
             let origin = json!({ "madeBy": "cli", "parent": parent, "cwd": req.cwd, "issue": issue, "comment": text("comment"), "terminal": terminal, "paneKey": pane_key });
+            // T-780: the record goes in with the creation, so a worktree whose checkout is not on
+            // origin (a fork's pull request branch) carries its marker from the first write.
+            let made = projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None, Some(origin.clone()))?;
             {
                 let store = ctx.store.lock().map_err(|e| e.to_string())?;
-                projects::set_origin(&store, &made.worktree.path, Some(&origin))?;
                 // PROJ-047: the sidebar nests it under its parent.
                 if let Some(p) = &parent {
                     projects::set_parent(&store, &made.worktree.path, Some(p))?;
@@ -1098,6 +1104,168 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
 
 /// How long a terminal command waits for the window to act on it.
 const PANE_WAIT: Duration = Duration::from_secs(15);
+
+
+/// T-793 / DT-C240: the pane a terminal command acts on. `Some(None)` is a command that names no
+/// pane at all; `None` is a command that is not a terminal command.
+fn pane_target(req: &Request) -> Option<Option<String>> {
+    let c = req.command.as_str();
+    let named = req.args["terminal"].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
+    if TERM.iter().any(|(_, w, _)| *w == c) {
+        // terminal read, send and wait act on the caller's own terminal unless told otherwise.
+        return Some(named.or_else(|| req.pane.as_ref().map(|p| p.handle.clone())));
+    }
+    match c {
+        // Review fix 1 (B3): `close --tab` closes every pane of the tab whatever `--terminal` says, so it
+        // names no single pane.
+        "terminal.close" if req.args["tab"] == true => Some(None),
+        // Review fix 3 (A1): `worktree rm` stops every terminal under the worktree, like `terminal close
+        // --worktree`, so it names no single pane.
+        "worktree.rm" => Some(None),
+        "terminal.show" | "terminal.split" | "terminal.rename" | "terminal.switch" | "terminal.close" => Some(named),
+        _ => None,
+    }
+}
+
+/// A command that starts a program in a pane the caller has no dispatch for: `terminal create` or
+/// `terminal split` with a non-blank `--command` (without one the new pane is a plain shell the
+/// caller can already type into); review fix 2 (N2) `worktree create` with a non-blank `--agent` or
+/// `--prompt` (the window opens an agent tab for it); and the automations whose run opens an agent
+/// tab, or types its prompt into an idle agent pane (`automations create`, `edit` that sets the
+/// prompt or the provider, `run`).
+fn starts_program(req: &Request) -> bool {
+    let set = |k: &str| req.args[k].as_str().is_some_and(|c| !c.trim().is_empty());
+    match req.command.as_str() {
+        "terminal.create" | "terminal.split" => set("command"),
+        "worktree.create" => set("agent") || set("prompt"),
+        "automations.create" | "automations.run" => true,
+        // Review fix 3 (A3): an edit that changes when or where the automation runs, or the command its
+        // precheck runs, starts an agent (or that command) at the next fire as surely as `run` does.
+        "automations.edit" => {
+            // (Turning one off, `--disabled`, starts nothing and stays allowed.)
+            ["prompt", "provider", "trigger", "time", "day", "timezone", "workspace", "repo", "workspaceMode", "precheck"].iter().any(|k| set(k))
+                || req.args["enabled"] == true
+                || !req.args["reuseSession"].is_null()
+        }
+        _ => false,
+    }
+}
+
+/// Review fix 2 (N1): `orchestration reset --tasks` or `--all` wipes the dispatch list, so a worker
+/// that ran it would stop being one. `--messages` leaves the dispatches alone.
+fn resets_dispatches(req: &Request) -> bool {
+    req.command == RESET && (req.args["tasks"] == true || req.args["all"] == true)
+}
+
+/// T-793 / DT-C240: a request that carries a pane may only target its own pane, unless the caller
+/// is a coordinator. `me` is the terminal the pane key proves (`caller`); a call that proves no
+/// pane is not scoped here (it has no identity to scope by, and the same-user limit in DT-C240
+/// says why that is the edge of this check). A coordinator is a pane that is no worker: no dispatch of
+/// this run was ever made to it, finished or not (review fix 1: a worker that settles its own dispatch
+/// stays a worker; after a restart the old run's dispatches name no pane, so survivors count as
+/// coordinators). A worker that started
+/// workers of its own may still drive those. A worker naming no pane at all (`terminal close
+/// --worktree` or `--tab`, which close a whole worktree's or tab's panes) is refused too.
+pub fn pane_scope(req: &Request, me: Option<&str>, dispatches: &[Value]) -> Result<(), Fail> {
+    use crate::orchestration::terminal_of;
+    let Some(me) = me else { return Ok(()) };
+    let (spawns, resets) = (starts_program(req), resets_dispatches(req));
+    let target = match pane_target(req) {
+        Some(t) => t,
+        None if spawns || resets => None,
+        None => return Ok(()),
+    };
+    if !spawns && !resets && target.as_deref() == Some(me) {
+        return Ok(());
+    }
+    // Review fix 3 (A2): a row that points back up its own sender's chain (a worker dispatching to its
+    // coordinator, or further up) grants nothing and demotes nobody: it is left out of every check here.
+    let dispatches = &dispatches_in_order(dispatches);
+    let worker = dispatches.iter().any(|d| terminal_of(d).as_deref() == Some(me));
+    if !worker {
+        return Ok(());
+    }
+    if resets {
+        return Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so it cannot reset tasks: that wipes the dispatch list and would turn it into a coordinator (a worker may still run orchestration reset --messages)"),
+            data: json!({ "caller": me }),
+        });
+    }
+    if spawns {
+        // Review fix 1 (B2): a pane started with a command runs outside every scope (it carries no
+        // dispatch), so a worker could use it to reach any terminal. Only a coordinator starts programs.
+        return Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so `{}` cannot start a program or agent in a new pane: ask the coordinator that started it to run that command", req.command.replace('.', " ")),
+            data: json!({ "caller": me }),
+        });
+    }
+    let mine = |t: &str| {
+        let n = me.strip_prefix("term-").and_then(|n| n.parse::<u64>().ok());
+        n.is_some() && dispatches.iter().any(|d| d["fromTerminal"].as_u64() == n && terminal_of(d).as_deref() == Some(t))
+    };
+    match target {
+        Some(t) if mine(&t) => Ok(()),
+        Some(t) => Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so this command cannot act on {t}: a worker's terminal commands work on its own terminal, and only the coordinator that started a terminal (or a pane that is no worker) may drive it"),
+            data: json!({ "caller": me, "target": t }),
+        }),
+        None => Err(Fail {
+            code: "pane_scope",
+            message: format!("{me} is a worker, so this command cannot act on every terminal of a worktree or tab: name its own terminal with --terminal {me} and leave --tab off"),
+            data: json!({ "caller": me }),
+        }),
+    }
+}
+
+/// The dispatch rows in the order they were made, without those that point back up their sender's own
+/// chain: a row `{terminal: T, fromTerminal: F}` is dropped when, following only EARLIER kept rows from F
+/// to the pane that dispatched it (and on up), the walk reaches T. The first row of a pair always wins.
+fn dispatches_in_order(dispatches: &[Value]) -> Vec<Value> {
+    use crate::orchestration::terminal_of;
+    let mut kept: Vec<Value> = Vec::with_capacity(dispatches.len());
+    for d in dispatches {
+        let (Some(to), Some(from)) = (terminal_of(d), d["fromTerminal"].as_u64().map(|n| format!("term-{n}"))) else {
+            kept.push(d.clone());
+            continue;
+        };
+        let mut at = from;
+        let mut seen = std::collections::HashSet::new();
+        let mut cyclic = at == to;
+        while !cyclic && seen.insert(at.clone()) {
+            let Some(up) = kept.iter().find(|k| terminal_of(k).as_deref() == Some(at.as_str())).and_then(|k| k["fromTerminal"].as_u64()) else { break };
+            at = format!("term-{up}");
+            cyclic = at == to;
+        }
+        if !cyclic {
+            kept.push(d.clone());
+        }
+    }
+    kept
+}
+
+/// The scope check as `dispatch` runs it: only a terminal command that carries a pane needs the
+/// dispatches, so every other command never loads them.
+fn scoped(ctx: &Ctx, req: &Request) -> Result<(), Fail> {
+    scoped_with(ctx, req, &|k| ctx.terminals.by_key(k))
+}
+
+/// `scoped` with the terminal behind a pane key given, so a test can stand a pane in.
+fn scoped_with(ctx: &Ctx, req: &Request, by_key: &dyn Fn(&str) -> Option<String>) -> Result<(), Fail> {
+    if req.pane.is_none() || (pane_target(req).is_none() && !starts_program(req) && !resets_dispatches(req)) {
+        return Ok(());
+    }
+    // Review fix 3 (A4): a pane key that does not prove the caller (a mismatched `from`) is refused,
+    // never treated as a call with no pane.
+    let me = caller_with(req, by_key)?;
+    if me.is_none() {
+        return Ok(());
+    }
+    let dispatches = load_list(&*ctx.store.lock().map_err(|e| e.to_string())?, DISPATCHES_KEY)?;
+    pane_scope(req, me.as_deref(), &dispatches)
+}
 
 fn no_terminal(h: &str) -> Fail {
     Fail { code: "not_found", message: format!("no open terminal is {h}"), data: json!({ "hint": format!("{} terminal list prints the handles", crate::orchestration::CLI) }) }
@@ -3392,7 +3560,7 @@ fn worker_start_as(ctx: &Ctx, req: &Request, coordinator: Option<String>) -> Res
         let project = pick_project(ctx, text("repo").as_deref(), &req.cwd)?;
         let parent = if placement == NEW_CHILD { pick_worktree(ctx, "current", &req.cwd).ok().filter(|(p, _)| p.id == project.id).map(|(_, w)| w.path) } else { None };
         let wt = match text("name") {
-            Some(name) => projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None)?.worktree,
+            Some(name) => projects::create_named(ctx.git, ctx.store, &project.id, &name, text("baseBranch").as_deref(), None, None)?.worktree,
             None => projects::create_fresh(ctx.git, ctx.store, &project.id)?,
         };
         let wt = match text("displayName") {
@@ -3426,10 +3594,13 @@ fn worker_start_as(ctx: &Ctx, req: &Request, coordinator: Option<String>) -> Res
     // SAFE-023: a worktree Kolux made is trusted before the agent starts (never the main checkout or
     // a folder made elsewhere, T-443); best effort, a failure never stops the worker.
     let mine = crate::trust::made_by_kolux(ctx.store, &[PathBuf::from(&worktree.path)]);
-    let trusted = match crate::trust::trust_folders(&ctx.claude_config, &agent_id, &mine) {
-        Ok(_) if mine.is_empty() => json!("not trusted: not a worktree Kolux made, so the agent asks itself"),
-        Ok(_) => json!(true),
-        Err(e) => json!(format!("not trusted: {e}")),
+    let trusted = if mine.is_empty() {
+        json!(crate::trust::not_pre_trusted_why(ctx.store, Path::new(&worktree.path)))
+    } else {
+        match crate::trust::trust_folders(&ctx.claude_config, &agent_id, &mine) {
+            Ok(_) => json!(true),
+            Err(e) => json!(format!("not trusted: {e}")),
+        }
     };
     let since = Instant::now();
     // cli FIX-4 (council AFTER 4): the window runs the new worktree's setup script unless the
@@ -5374,6 +5545,20 @@ mod tests {
         std::fs::create_dir_all(&repo).unwrap();
         git(&["init", "-q", "-b", "main"], &repo);
         git(&["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "one"], &repo);
+        // T-780 (round 3): a worktree is pre-trusted only when its checkout is on an origin branch,
+        // so the repo has an origin holding main, and a fork holding a stranger's commit.
+        let origin_remote = dir.join("origin.git");
+        git(&["init", "-q", "--bare", "-b", "main", &origin_remote.to_string_lossy()], &dir);
+        git(&["remote", "add", "origin", &origin_remote.to_string_lossy()], &repo);
+        git(&["push", "-q", "origin", "main"], &repo);
+        let fork = dir.join("fork.git");
+        git(&["init", "-q", "--bare", "-b", "main", &fork.to_string_lossy()], &dir);
+        git(&["remote", "add", "fork", &fork.to_string_lossy()], &repo);
+        git(&["checkout", "-q", "-b", "theirs"], &repo);
+        git(&["-c", "user.name=s", "-c", "user.email=s@s", "commit", "-q", "--allow-empty", "-m", "a commit by a stranger"], &repo);
+        git(&["push", "-q", "fork", "theirs"], &repo);
+        git(&["checkout", "-q", "main"], &repo);
+        git(&["branch", "-D", "theirs"], &repo);
         let git_ = Git::detect().unwrap();
         let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
         projects::add_project(&git_, &store.lock().unwrap(), &repo).unwrap();
@@ -5508,6 +5693,8 @@ mod tests {
         let claude_installed = crate::agents::agent_list().iter().any(|a| a.id == "claude" && a.installed);
         // SET-028: the light tier was given Sonnet at low effort in settings, so the worker runs on it.
         store.lock().unwrap().save_settings(&json!({ "modelRouting": { "claude": { "light": { "model": "sonnet", "effort": "low" } } } })).unwrap();
+        // T-780: the user accepted the main checkout in Claude already; only then is a worktree of it pre-trusted.
+        crate::trust::trust_claude(&ctx.claude_config, std::slice::from_ref(&repo)).unwrap();
         let start = json!({ "spec": "add a test", "agent": "claude", "tier": "light", "worktree": "new-top-level", "setup": "inherit", "timeoutMs": "1" });
         let out = dispatch(&ctx, &req("orchestration.worker-start", &repo, start.clone())).unwrap_err();
         if claude_installed {
@@ -5520,11 +5707,11 @@ mod tests {
             assert!(out.data["setupNote"].as_str().is_some_and(|n| n.contains("setup script")), "cli FIX-7: the receipt says what the window does about setup");
             let wt = PathBuf::from(out.data["worktree"]["path"].as_str().unwrap());
             assert!(wt.join(".git").exists());
-            // SAFE-023: the new worktree is trusted before the start; the main checkout is not (T-443).
+            // SAFE-023: the new worktree is trusted before the start, because its main checkout already was (T-443, T-780).
             assert_eq!(out.data["trust"], true, "{}", out.data["trust"]);
             let conf: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join(".claude.json")).unwrap()).unwrap();
             assert_eq!(conf["projects"][crate::trust::claude_key(&wt).unwrap()]["hasTrustDialogAccepted"], true);
-            assert!(conf["projects"].get(crate::trust::claude_key(&repo).unwrap()).is_none(), "the main checkout keeps Claude's own prompt");
+            assert_eq!(conf["projects"][crate::trust::claude_key(&repo).unwrap()]["hasTrustDialogAccepted"], true, "T-780: the user's own acceptance of the main checkout is what let the worktree be pre-trusted");
             let ev = events.lock().unwrap();
             let n = ev.len();
             assert_eq!(ev[n - 2]["kind"], "created");
@@ -5575,6 +5762,34 @@ mod tests {
             let made = bad.data["worktree"]["path"].as_str().unwrap().to_string();
             dispatch(&ctx, &req("worktree.rm", &repo, json!({ "worktree": format!("path:{made}"), "force": true }))).unwrap();
             dispatch(&ctx, &req("worktree.rm", &repo, json!({ "worktree": format!("path:{}", wt.display()), "force": true }))).unwrap();
+            // T-780 (round 3, c): a worker started with --name and --base-branch fork/theirs checks out a
+            // stranger's commit, found on no origin branch: its first record carries the marker, it is
+            // not pre-trusted, and Claude's config gets no entry for it.
+            let foreign = dispatch(&ctx, &req("orchestration.worker-start", &repo, json!({ "spec": "review a stranger's work", "agent": "claude", "worktree": "new-top-level", "name": "stranger", "baseBranch": "fork/theirs", "setup": "skip", "timeoutMs": "1" }))).unwrap_err();
+            assert_eq!(foreign.code, "timeout", "{}", foreign.message);
+            let fwt = PathBuf::from(foreign.data["worktree"]["path"].as_str().unwrap());
+            assert!(fwt.join(".git").exists());
+            assert!(foreign.data["trust"].as_str().is_some_and(|t| t.contains("pull request")), "{}", foreign.data["trust"]);
+            let rec = projects::origin(&store.lock().unwrap(), &fwt.to_string_lossy()).unwrap();
+            assert_eq!((rec["madeBy"].as_str(), rec[projects::PR_EVER_KEY].as_bool()), (Some("app"), Some(true)), "{rec}");
+            assert!(crate::trust::made_by_kolux(&store, std::slice::from_ref(&fwt)).is_empty());
+            let conf: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join(".claude.json")).unwrap()).unwrap();
+            assert!(conf["projects"].get(crate::trust::claude_key(&fwt).unwrap()).is_none(), "the fork's worktree was not written into Claude's trust: {}", conf["projects"]);
+            // `worktree create` with the same base: the CLI's own record, with the marker in it from the start.
+            let two = dispatch(&ctx, &req("worktree.create", &repo, json!({ "name": "stranger two", "baseBranch": "fork/theirs", "setup": "skip" }))).unwrap();
+            let two_path = PathBuf::from(two["path"].as_str().unwrap());
+            let rec = projects::origin(&store.lock().unwrap(), &two_path.to_string_lossy()).unwrap();
+            assert_eq!((rec["madeBy"].as_str(), rec[projects::PR_EVER_KEY].as_bool()), (Some("cli"), Some(true)), "{rec}");
+            assert!(crate::trust::made_by_kolux(&store, std::slice::from_ref(&two_path)).is_empty());
+            // the same two paths on origin's main stay Kolux's own
+            let own = dispatch(&ctx, &req("worktree.create", &repo, json!({ "name": "own", "baseBranch": "origin/main", "setup": "skip" }))).unwrap();
+            let own_path = PathBuf::from(own["path"].as_str().unwrap());
+            let rec = projects::origin(&store.lock().unwrap(), &own_path.to_string_lossy()).unwrap();
+            assert_eq!((rec["madeBy"].as_str(), rec.get(projects::PR_EVER_KEY)), (Some("cli"), None), "{rec}");
+            assert_eq!(crate::trust::made_by_kolux(&store, std::slice::from_ref(&own_path)), vec![own_path.clone()]);
+            for p in [&fwt, &two_path, &own_path] {
+                dispatch(&ctx, &req("worktree.rm", &repo, json!({ "worktree": format!("path:{}", p.display()), "force": true }))).unwrap();
+            }
         } else {
             assert!(out.message.contains("not installed"));
         }
@@ -5754,13 +5969,31 @@ mod tests {
     /// folder, so Windows can still delete or rename that worktree and nothing planted there is loaded.
     #[test]
     fn cli011_open_starts_the_app_in_its_own_folder_not_the_callers() {
-        let app = std::env::temp_dir().join("kolux-t595-app").join(if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" });
+        let app = std::env::temp_dir().join("kolux-t595-app").join(if cfg!(windows) { "kolux.exe" } else { "kolux" });
         let cmd = app_command(&app);
         assert_eq!(cmd.get_current_dir(), app.parent());
         assert_ne!(cmd.get_current_dir(), Some(std::env::current_dir().unwrap().as_path()), "the caller's folder");
         assert_eq!(cmd.get_args().count(), 0);
         // A relative program (a test's KOLUX_APP_EXECUTABLE) keeps the caller's folder: moving would change the file it names.
-        assert_eq!(app_command(Path::new("kolux-rs")).get_current_dir(), None);
+        assert_eq!(app_command(Path::new("kolux")).get_current_dir(), None);
+    }
+
+    /// T-790: the installed layout has the command line at bin\kolux.exe and the app at kolux.exe, the same
+    /// name; `kolux open` starts the app, never the command line again.
+    #[test]
+    fn t790_the_app_program_is_never_the_command_line_itself() {
+        let dir = std::env::temp_dir().join(format!("kolux-t790-layout-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let name = if cfg!(windows) { "kolux.exe" } else { "kolux" };
+        std::fs::create_dir_all(dir.join("bin")).unwrap();
+        std::fs::write(dir.join(name), "").unwrap();
+        std::fs::write(dir.join("bin").join(name), "").unwrap();
+        assert_eq!(app_program(&dir.join("bin").join(name)), dir.join(name), "installed: the app one level up");
+        // A development layout: the command line has its own name, the app sits beside it.
+        let cli = dir.join(if cfg!(windows) { "kolux-cli.exe" } else { "kolux-cli" });
+        std::fs::write(&cli, "").unwrap();
+        assert_eq!(app_program(&cli), dir.join(name), "beside it");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// CLI-011 box 2: every `app.open` asks the window forward, exactly once, and answers ready
@@ -7825,6 +8058,379 @@ mod tests {
         dispatch(&ctx, &req(json!({ "files": [md, "x.txt"] }))).unwrap();
         assert_eq!(told.lock().unwrap().as_slice(), &[json!({ "emit": "open-files", "payload": null })]);
         assert_eq!(crate::lifecycle::take_open(), vec![md.to_string()], "only the markdown file was queued");
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- T-793 / DT-C240: a pane may only target its own pane, unless it is a coordinator.
+
+    fn worker(id: &str, terminal: u32, from: u32, status: &str) -> Value {
+        json!({ "id": id, "runtime": std::process::id(), "runId": "run-1", "status": status, "terminal": terminal, "fromTerminal": from })
+    }
+
+    fn pane_req(command: &str, pane: Option<(&str, &str)>, args: Value) -> Request {
+        Request { id: "r".into(), token: String::new(), command: command.into(), cwd: String::new(), args, pane: pane.map(|(h, k)| Pane { handle: h.into(), key: k.into() }), cli: String::new(), arrived: None }
+    }
+
+    #[test]
+    fn t793_a_worker_pane_targeting_another_pane_is_refused() {
+        // term-1 coordinates; term-2 and term-3 are its workers.
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        for command in ["terminal.send", "terminal.read", "terminal.wait", "terminal.show", "terminal.split", "terminal.rename", "terminal.switch", "terminal.close"] {
+            let req = pane_req(command, Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+            let e = pane_scope(&req, Some("term-2"), &ds).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command}: {}", e.message);
+            assert!(e.message.contains("term-2") && e.message.contains("term-3"), "{}", e.message);
+        }
+        // The coordinator's own pane too: a worker cannot send into term-1.
+        let req = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-1", "text": "x" }));
+        assert_eq!(pane_scope(&req, Some("term-2"), &ds).unwrap_err().code, "pane_scope");
+    }
+
+    #[test]
+    fn t793_the_same_request_from_a_coordinator_passes() {
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        for command in ["terminal.send", "terminal.read", "terminal.wait", "terminal.show", "terminal.split", "terminal.rename", "terminal.switch", "terminal.close"] {
+            let req = pane_req(command, Some(("term-1", "key-1")), json!({ "terminal": "term-3", "text": "x" }));
+            pane_scope(&req, Some("term-1"), &ds).unwrap_or_else(|e| panic!("{command}: {}", e.message));
+        }
+        // A pane with no dispatch at all (a person's own terminal) is no worker either.
+        let req = pane_req("terminal.send", Some(("term-9", "key-9")), json!({ "terminal": "term-3", "text": "x" }));
+        pane_scope(&req, Some("term-9"), &ds).unwrap();
+    }
+
+    /// Review fix 1 (B1): a worker cannot become a coordinator by settling its own dispatch. Each route
+    /// that settles it (worker-abandon, task-update to ready, the done report) leaves the pane a worker.
+    #[test]
+    fn t793_b1_a_worker_that_settles_its_own_dispatch_is_still_a_worker() {
+        let send_to_3 = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+        // worker-abandon on its own dispatch (orchestration::abandon has no caller check).
+        let mut ds = vec![worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        let mut tasks: Vec<Value> = vec![];
+        crate::orchestration::abandon(&mut tasks, &mut ds, "d-1", Some("run-1"), 1).unwrap();
+        assert_eq!(ds[0]["status"], "abandoned");
+        assert_eq!(pane_scope(&send_to_3, Some("term-2"), &ds).unwrap_err().code, "pane_scope");
+        // every other way a dispatch settles reads the same: the pane that ran it stays a worker.
+        for status in ["completed", "failed", "stopped", "abandoned", "released"] {
+            let ds = [worker("d-1", 2, 1, status), worker("d-2", 3, 1, "running")];
+            assert_eq!(pane_scope(&send_to_3, Some("term-2"), &ds).unwrap_err().code, "pane_scope", "{status}");
+        }
+        // the coordinator that started it is unaffected.
+        let from_1 = pane_req("terminal.send", Some(("term-1", "key-1")), json!({ "terminal": "term-3", "text": "x" }));
+        pane_scope(&from_1, Some("term-1"), &ds).unwrap();
+    }
+
+    #[test]
+    fn t793_a_worker_keeps_its_own_pane_and_the_workers_it_started() {
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 4, 2, "running")];
+        let own = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-2", "text": "x" }));
+        pane_scope(&own, Some("term-2"), &ds).unwrap();
+        // terminal read, send and wait with no --terminal mean the caller's own pane.
+        for command in ["terminal.send", "terminal.read", "terminal.wait"] {
+            pane_scope(&pane_req(command, Some(("term-2", "key-2")), json!({ "text": "x" })), Some("term-2"), &ds).unwrap();
+        }
+        // ...but a handle the call claims is not the one its key proves: that is another pane.
+        let e = pane_scope(&pane_req("terminal.send", Some(("term-3", "key-2")), json!({ "text": "x" })), Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope");
+        // term-2 started term-4, so it drives it (a nested coordinator).
+        let sub = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-4", "text": "x" }));
+        pane_scope(&sub, Some("term-2"), &ds).unwrap();
+        // ...and term-4, a worker one level down, cannot drive its parent.
+        let up = pane_req("terminal.send", Some(("term-4", "key-4")), json!({ "terminal": "term-2", "text": "x" }));
+        assert_eq!(pane_scope(&up, Some("term-4"), &ds).unwrap_err().code, "pane_scope");
+    }
+
+    /// Review fix 1 (B2): a worker cannot start a program in a pane of its own (split or create with a
+    /// command), because a new pane carries no pane key a scope check could hold it to.
+    #[test]
+    fn t793_b2_a_worker_cannot_start_a_program_through_split_or_create() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let me = Some(("term-2", "key-2"));
+        for (command, args) in [
+            ("terminal.split", json!({ "terminal": "term-2", "command": "calc.exe" })),
+            ("terminal.split", json!({ "command": "calc.exe" })),
+            ("terminal.create", json!({ "command": "calc.exe" })),
+            ("terminal.create", json!({ "worktree": "current", "command": "  powershell -c x " })),
+        ] {
+            let e = pane_scope(&pane_req(command, me, args.clone()), Some("term-2"), &ds).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command} {args}: {}", e.message);
+        }
+        // Without a program they only open a shell, which is what a worker may still do.
+        for (command, args) in [("terminal.split", json!({ "terminal": "term-2" })), ("terminal.create", json!({})), ("terminal.create", json!({ "command": "   " }))] {
+            pane_scope(&pane_req(command, me, args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{command} {args}: {}", e.message));
+        }
+        // A coordinator starts programs as before.
+        for (command, args) in [("terminal.split", json!({ "terminal": "term-3", "command": "claude" })), ("terminal.create", json!({ "command": "claude" }))] {
+            pane_scope(&pane_req(command, Some(("term-1", "key-1")), args), Some("term-1"), &ds).unwrap();
+        }
+    }
+
+    /// Review fix 1 (B3): `terminal close --terminal <own> --tab` closes every pane of the tab, so a
+    /// worker may not use it; a plain close of its own pane stays allowed.
+    #[test]
+    fn t793_b3_a_worker_cannot_close_the_whole_tab_around_its_own_pane() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let me = Some(("term-2", "key-2"));
+        let e = pane_scope(&pane_req("terminal.close", me, json!({ "terminal": "term-2", "tab": true })), Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope", "{}", e.message);
+        for args in [json!({ "terminal": "term-2" }), json!({ "terminal": "term-2", "tab": false })] {
+            pane_scope(&pane_req("terminal.close", me, args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{args}: {}", e.message));
+        }
+        // A coordinator closes tabs as before.
+        pane_scope(&pane_req("terminal.close", Some(("term-1", "key-1")), json!({ "terminal": "term-1", "tab": true })), Some("term-1"), &ds).unwrap();
+    }
+
+    #[test]
+    fn t793_a_worker_cannot_close_a_whole_worktree_and_listing_stays_open() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let sweep = pane_req("terminal.close", Some(("term-2", "key-2")), json!({ "worktree": "current" }));
+        let e = pane_scope(&sweep, Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope", "{}", e.message);
+        pane_scope(&sweep, Some("term-1"), &ds).unwrap();
+        for command in ["terminal.list", "terminal.create", "worktree.create", "orchestration.send"] {
+            pane_scope(&pane_req(command, Some(("term-2", "key-2")), json!({ "terminal": "term-3" })), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{command}: {}", e.message));
+        }
+    }
+
+    #[test]
+    fn t793_through_the_store_a_pane_the_runtime_cannot_prove_is_not_scoped_and_a_proven_worker_is() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")]).unwrap();
+        // term-1 is the coordinator (key-1), term-2 a worker (key-2).
+        let by_key = |k: &str| match k {
+            "key-1" => Some("term-1".to_string()),
+            "key-2" => Some("term-2".to_string()),
+            _ => None,
+        };
+        let go = |pane: Option<(&str, &str)>, target: &str| scoped_with(&ctx, &pane_req("terminal.send", pane, json!({ "terminal": target, "text": "x" })), &by_key);
+        assert_eq!(go(Some(("term-2", "key-2")), "term-3").unwrap_err().code, "pane_scope");
+        go(Some(("term-2", "key-2")), "term-2").unwrap();
+        go(Some(("term-1", "key-1")), "term-3").unwrap();
+        // A key the runtime never gave proves no one, so there is nobody to scope.
+        go(Some(("term-2", "guessed")), "term-3").unwrap();
+        // No pane at all (a shell outside Kolux that sends none) is not scoped either.
+        go(None, "term-3").unwrap();
+        // A dispatch id in --terminal is turned into its handle first (by_dispatch), so the
+        // check sees the terminal it will really act on.
+        let ds = load_list(&store.lock().unwrap(), DISPATCHES_KEY).unwrap();
+        let named = by_dispatch(&pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "d-2", "text": "x" })), &ds).unwrap().unwrap();
+        assert_eq!(named.args["terminal"], "term-3");
+        assert_eq!(scoped_with(&ctx, &named, &by_key).unwrap_err().code, "pane_scope");
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    /// Review fix 1 (nit 1): the refusal is reached through `dispatch` itself, so deleting `scoped(ctx, req)?;` from it
+    /// turns this red.
+    #[test]
+    fn t793_dispatch_refuses_a_worker_pane_that_targets_another_pane() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-dispatch-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let here = dir.to_string_lossy().into_owned();
+        for (id, key) in [(1, "key-1"), (2, "key-2"), (3, "key-3")] {
+            terminals.fake_session(id, &here, None);
+            terminals.fake_key(id, key);
+        }
+        let ctx = Ctx { claude_config: dir.join(".claude.json"), git: &git_, store: &store, terminals: &terminals, notify: &notify, front: &|| Ok(()) };
+        save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running")]).unwrap();
+        // term-2 is a worker; its key proves it, and term-3 is not its own pane.
+        for command in ["terminal.send", "terminal.read", "terminal.close"] {
+            let req = pane_req(command, Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x" }));
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command}: {}", e.message);
+        }
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A runtime with `term-1` (a coordinator), `term-2` (worker of dispatch d-1) and `term-3`, each with its key.
+    fn fix2_ctx<'a>(dir: &std::path::Path, git_: &'a Git, store: &'a Mutex<Store>, terminals: &'a Terminals, notify: &'a (dyn Fn(Value) + Sync)) -> Ctx<'a> {
+        let here = dir.to_string_lossy().into_owned();
+        for (id, key) in [(1, "key-1"), (2, "key-2"), (3, "key-3")] {
+            terminals.fake_session(id, &here, None);
+            terminals.fake_key(id, key);
+        }
+        save_list(&store.lock().unwrap(), DISPATCHES_KEY, &[worker("d-1", 2, 1, "running")]).unwrap();
+        Ctx { claude_config: dir.join(".claude.json"), git: git_, store, terminals, notify, front: &|| Ok(()) }
+    }
+
+    /// Review fix 3 (A1): `worktree rm` stops every terminal under the worktree, so a worker may not run it;
+    /// a coordinator may.
+    #[test]
+    fn t793_fix3_a_worker_cannot_remove_a_worktree() {
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 1, "running")];
+        let rm = |who: (&str, &str)| pane_req("worktree.rm", Some(who), json!({ "worktree": "name:sibling", "force": true }));
+        let e = pane_scope(&rm(("term-2", "key-2")), Some("term-2"), &ds).unwrap_err();
+        assert_eq!(e.code, "pane_scope", "{}", e.message);
+        pane_scope(&rm(("term-1", "key-1")), Some("term-1"), &ds).unwrap();
+    }
+
+    /// Review fix 3 (A2): a worker that dispatches back up to its own coordinator gains nothing from the row:
+    /// it still cannot drive the coordinator, and the coordinator does not become a worker.
+    #[test]
+    fn t793_fix3_a_dispatch_back_up_the_chain_grants_and_demotes_nothing() {
+        // term-1 started term-2; term-2 started term-3; then term-2 and term-3 dispatch back up to term-1.
+        let ds = [worker("d-1", 2, 1, "running"), worker("d-2", 3, 2, "running"), worker("d-3", 1, 2, "running"), worker("d-4", 1, 3, "running")];
+        let send = |who: &str, to: &str| pane_req("terminal.send", Some((who, "k")), json!({ "terminal": to, "text": "x" }));
+        assert_eq!(pane_scope(&send("term-2", "term-1"), Some("term-2"), &ds).unwrap_err().code, "pane_scope");
+        assert_eq!(pane_scope(&send("term-3", "term-1"), Some("term-3"), &ds).unwrap_err().code, "pane_scope");
+        // term-1 is still a coordinator: it may drive anyone, start programs and reset.
+        pane_scope(&send("term-1", "term-3"), Some("term-1"), &ds).unwrap();
+        pane_scope(&pane_req("orchestration.reset", Some(("term-1", "k")), json!({ "tasks": true })), Some("term-1"), &ds).unwrap();
+        // The worker still drives the worker it started itself.
+        pane_scope(&send("term-2", "term-3"), Some("term-2"), &ds).unwrap();
+        // A plain downward chain is untouched by the filter.
+        assert_eq!(dispatches_in_order(&ds[..2]).len(), 2);
+        assert_eq!(dispatches_in_order(&ds).len(), 2);
+    }
+
+    /// Review fix 3 (A3): an automation edit that changes when or where it runs, or its precheck command,
+    /// starts an agent (or that command) at the next fire; a worker may still rename one or turn it off.
+    #[test]
+    fn t793_fix3_a_worker_cannot_schedule_or_redirect_an_automation() {
+        let ds = [worker("d-1", 2, 1, "running")];
+        let edit = |args: Value| pane_req("automations.edit", Some(("term-2", "key-2")), args);
+        for args in [
+            json!({ "id": "a", "trigger": "* * * * *" }),
+            json!({ "id": "a", "enabled": true }),
+            json!({ "id": "a", "workspace": "path:/x" }),
+            json!({ "id": "a", "repo": "/x" }),
+            json!({ "id": "a", "workspaceMode": "new-per-run" }),
+            json!({ "id": "a", "precheck": "sh evil.sh" }),
+            json!({ "id": "a", "reuseSession": true }),
+            json!({ "id": "a", "time": "09:00" }),
+        ] {
+            assert_eq!(pane_scope(&edit(args.clone()), Some("term-2"), &ds).map_err(|e| e.code), Err("pane_scope"), "{args}");
+        }
+        for args in [json!({ "id": "a", "name": "renamed" }), json!({ "id": "a", "disabled": true }), json!({ "id": "a", "enabled": false })] {
+            pane_scope(&edit(args.clone()), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{args}: {}", e.message));
+        }
+    }
+
+    /// Review fix 3 (A4): a request whose pane key does not prove the `from` it names is refused, never
+    /// treated as one with no pane (which is not scoped).
+    #[test]
+    fn t793_fix3_a_pane_that_does_not_prove_its_from_is_refused() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix3-from-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        let req = pane_req("terminal.send", Some(("term-2", "key-2")), json!({ "terminal": "term-3", "text": "x", "from": "term-1" }));
+        assert!(dispatch(&ctx, &req).is_err(), "a worker claiming to be term-1 must not reach term-3");
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 2 (N1): a worker may not reset the dispatch list (`--tasks`, `--all`): that would turn it into a coordinator.
+    #[test]
+    fn t793_fix2_dispatch_refuses_orchestration_reset_from_a_worker() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-reset-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        for scope in ["tasks", "all"] {
+            let req = pane_req("orchestration.reset", Some(("term-2", "key-2")), json!({ scope: true }));
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "--{scope}: {}", e.message);
+            assert!(e.message.contains("term-2") && e.message.contains("reset"), "{}", e.message);
+            // Nothing was wiped: term-2 is still a worker.
+            assert_eq!(load_list(&store.lock().unwrap(), DISPATCHES_KEY).unwrap().len(), 1, "--{scope} wiped the dispatch list");
+        }
+        // The coordinator may reset; a worker may still clear its mail (--messages leaves the dispatch list alone).
+        let ds = [worker("d-1", 2, 1, "running")];
+        pane_scope(&pane_req("orchestration.reset", Some(("term-2", "key-2")), json!({ "messages": true })), Some("term-2"), &ds).unwrap();
+        for scope in ["tasks", "all"] {
+            pane_scope(&pane_req("orchestration.reset", Some(("term-1", "key-1")), json!({ scope: true })), Some("term-1"), &ds).unwrap();
+        }
+        let req = pane_req("orchestration.reset", Some(("term-1", "key-1")), json!({ "tasks": true }));
+        dispatch(&ctx, &req).unwrap_or_else(|e| panic!("coordinator reset: {}", e.message));
+        assert!(load_list(&store.lock().unwrap(), DISPATCHES_KEY).unwrap().is_empty());
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 2 (N2): `worktree create` with an agent or a prompt opens an agent tab in a new pane, so a worker may not run it.
+    #[test]
+    fn t793_fix2_dispatch_refuses_a_worker_worktree_create_that_starts_an_agent() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-wt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        for args in [json!({ "name": "x", "agent": "claude" }), json!({ "name": "x", "prompt": "do it" }), json!({ "name": "x", "agent": "claude", "prompt": "do it" })] {
+            let req = pane_req("worktree.create", Some(("term-2", "key-2")), args.clone());
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{args}: {}", e.message);
+            assert!(e.message.contains("term-2"), "{}", e.message);
+        }
+        // No agent, no prompt (or blank ones): no program starts, so a worker may go on; and a coordinator may start one.
+        let ds = [worker("d-1", 2, 1, "running")];
+        for args in [json!({ "name": "x" }), json!({ "name": "x", "agent": " ", "prompt": "" })] {
+            pane_scope(&pane_req("worktree.create", Some(("term-2", "key-2")), args), Some("term-2"), &ds).unwrap();
+        }
+        pane_scope(&pane_req("worktree.create", Some(("term-1", "key-1")), json!({ "name": "x", "agent": "claude", "prompt": "go" })), Some("term-1"), &ds).unwrap();
+        drop(ctx);
+        drop(store);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Review fix 2 (item 3): an automation run opens an agent tab (or types its prompt into an idle agent pane), so a worker may not
+    /// create one, change what it says, or run one; reading, pausing and removing them are not program starts.
+    #[test]
+    fn t793_fix2_dispatch_refuses_worker_automations_that_start_an_agent() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-t793-fix2-auto-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let git_ = Git::detect().unwrap();
+        let store = Mutex::new(Store::open(&dir.join("data")).unwrap());
+        let notify = |_: Value| {};
+        let terminals = Terminals::default();
+        let ctx = fix2_ctx(&dir, &git_, &store, &terminals, &notify);
+        let refused = [
+            ("automations.create", json!({ "name": "n", "prompt": "p", "trigger": "hourly" })),
+            ("automations.edit", json!({ "id": "auto-1", "prompt": "new" })),
+            ("automations.edit", json!({ "id": "auto-1", "provider": "codex" })),
+            ("automations.run", json!({ "id": "auto-1" })),
+        ];
+        for (command, args) in refused {
+            let req = pane_req(command, Some(("term-2", "key-2")), args);
+            let e = dispatch(&ctx, &req).unwrap_err();
+            assert_eq!(e.code, "pane_scope", "{command}: {}", e.message);
+        }
+        let ds = [worker("d-1", 2, 1, "running")];
+        for (command, args) in [("automations.list", json!({})), ("automations.show", json!({ "id": "auto-1" })), ("automations.runs", json!({ "id": "auto-1" })), ("automations.remove", json!({ "id": "auto-1" })), ("automations.edit", json!({ "id": "auto-1", "name": "renamed" }))] {
+            pane_scope(&pane_req(command, Some(("term-2", "key-2")), args), Some("term-2"), &ds).unwrap_or_else(|e| panic!("{command}: {}", e.message));
+        }
+        for command in ["automations.create", "automations.run"] {
+            pane_scope(&pane_req(command, Some(("term-1", "key-1")), json!({ "id": "auto-1", "prompt": "p" })), Some("term-1"), &ds).unwrap();
+        }
         drop(ctx);
         drop(store);
         let _ = std::fs::remove_dir_all(&dir);

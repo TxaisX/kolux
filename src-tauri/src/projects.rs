@@ -44,6 +44,13 @@ pub struct Created {
     pub note: Option<String>,
     /// GIT-067: include-file and shared-folder entries that could not be brought along.
     pub warnings: Vec<String>,
+    /// T-780 (review round 3, 2026-11-09): true only when `head_is_on_origin` proved, right after
+    /// the checkout and before any record was written, that the new worktree's HEAD is on a branch
+    /// of the `origin` remote. False means "not proven" (a fork's commit, a local-only commit, no
+    /// origin, a git error, a timeout), and `record_made` then writes the sticky pull-request
+    /// marker so `trust::made_by_kolux` never pre-trusts it. Never sent to the window.
+    #[serde(skip)]
+    pub own: bool,
 }
 
 /// GIT-067: creations in one repository take turns; a failed one hands the turn on at once.
@@ -271,14 +278,263 @@ pub fn item_number(origin: &serde_json::Value) -> Option<u64> {
     origin["issue"].as_u64().or_else(|| origin["pr"].as_str()?.rsplit('/').next()?.parse().ok())
 }
 
-/// Records (or with `None`, forgets) how the workspace at `path` came to be.
+/// T-780 (review, 2026-11-09): the sticky marker `open_pull_request` writes beside `pr`. The details
+/// form and the CLI may clear or replace `pr`, but never this key, so a worktree that once held a
+/// pull request's branch is never pre-trusted again (`trust::made_by_kolux`).
+pub const PR_EVER_KEY: &str = "prEver";
+
+/// Records (or with `None`, forgets) how the workspace at `path` came to be. T-780 (round 3): a
+/// record that holds the sticky marker `PR_EVER_KEY` keeps it through every rewrite, so no later
+/// writer (the details form, the CLI's `worktree set`, a link to an issue) can bring the pre-trust
+/// back; only forgetting the workspace (`None`) drops it.
 pub fn set_origin(store: &Store, path: &str, origin: Option<&serde_json::Value>) -> Result<(), String> {
     let mut all = load_origins(store);
+    let key = name_key(path);
     match origin {
-        Some(o) => all.insert(name_key(path), o.clone()),
-        None => all.remove(&name_key(path)),
+        Some(o) => {
+            let mut o = o.clone();
+            // The carry-over honours every marker shape `trust::holds_pull_request` honours: present, not null, not false.
+            if o.is_object() && all.get(&key).is_some_and(|was| !was[PR_EVER_KEY].is_null() && was[PR_EVER_KEY] != false) {
+                o[PR_EVER_KEY] = true.into();
+            }
+            all.insert(key, o)
+        }
+        None => all.remove(&key),
     };
     store.set(ORIGINS_KEY, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
+}
+
+/// T-780 (review round 3, 2026-11-09): positive proof that the worktree at `dir` holds Kolux's
+/// own code: its HEAD commit is reachable from at least one branch of the `origin` remote. Run
+/// right after the checkout, before its first record, outside the store lock (T-442-b), and again
+/// at each launch (`trust::made_by_kolux`). Anything short of that proof (no `origin`, HEAD only on
+/// a fork or a local branch, a merge, cherry-pick, revert or rebase under way, a graft file in
+/// effect, a git error or a timeout) is false, and the worktree then counts as foreign: the agent
+/// asks about trust itself.
+/// What it decides (round 5, coordinator decision): only whether Kolux writes a NEW trust mark. A
+/// mark already written into an agent's config stays (one trust answer covers the folder, as in
+/// Claude's own model); nothing is revoked. Refs that the user's own manual fetches or config put
+/// under `refs/remotes/origin/` through origin's branch refspecs are trusted as origin's.
+/// Gaps (A, 2026-11-09): a ref another CONFIGURED remote writes there is not (its destinations are
+/// left out, and a remote named `origin` in another case, which on NTFS writes into origin's own
+/// folder, refuses the proof outright). A one-off `git fetch <url> X:refs/remotes/origin/y` typed by
+/// the user is accepted: it names the destination by hand, a deliberate act no config can tell
+/// apart from origin's own fetch.
+/// Also accepted as the user's own actions (final round, 2026-11-09): refs a remote left behind
+/// under `refs/remotes/origin/` after it was removed, or after a case twin of origin was renamed
+/// (only the config is read, and its refs stay until pruned), and tracking refs written by a push to
+/// `remote.origin.pushurl` or a `pushInsteadOf` address (a push updates origin's tracking refs with
+/// what the user pushed, wherever the push went).
+/// Accepted cost: a user whose canonical remote is not named `origin` loses the pre-trust.
+pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
+    // Review round 4 (P2): "under refs/remotes/origin/" is not proof by itself. A fetch refspec such
+    // as `+refs/pull/*/head:refs/remotes/origin/pr/*` (a common setting) puts strangers' pull request
+    // heads there too. Only a ref that origin's BRANCH refspecs write, and no other refspec does, counts.
+    let Some((branches, others)) = origin_fetch_destinations(dir) else { return false };
+    // Review round 4 (P3): `--no-replace-objects` reads commits as they are; a replacement ref
+    // (`git replace`) could otherwise make origin's tip read as a descendant of a stranger's commit.
+    let Ok(sha) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--verify", "HEAD^{commit}"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let sha = sha.trim();
+    if sha.len() < 40 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        return false;
+    }
+    if !settled(dir) {
+        return false;
+    }
+    // Round 5 (P3): a symbolic ref (`refs/remotes/origin/HEAD`, which `git remote set-head` can point
+    // anywhere) is no proof of its own; its target is listed itself. Round 5 (P2): on a case-folding
+    // file system a fetched ref lands in an existing folder of another case (`origin/pr/12` read
+    // back as `origin/PR/12`), so the other refspecs' destinations are compared ignoring ASCII case.
+    // Gaps (C): a forged `objects/info/commit-graph` can give origin's tip any parent (and any
+    // generation) for `--contains`, even under `--no-replace-objects`; the walk reads the commits.
+    let Ok(refs) = crate::git::run_within(&["--no-replace-objects", "-c", "core.commitGraph=false", "for-each-ref", "--contains", sha, "--format=%(refname)%00%(symref)"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let others: Vec<String> = others.iter().map(|p| p.to_ascii_lowercase()).collect();
+    refs.lines()
+        .filter_map(|line| line.split_once('\0').filter(|(_, symref)| symref.trim().is_empty()).map(|(r, _)| r.trim()))
+        .any(|r| r.starts_with("refs/remotes/") && branches.iter().any(|p| refspec_side_matches(p, r, false)) && !others.iter().any(|p| refspec_side_matches(p, &r.to_ascii_lowercase(), true)))
+}
+
+/// Round 5 (P3): whether the checkout at `dir` is only what HEAD says. No merge, cherry-pick, revert
+/// or rebase is under way (their working tree already holds the other side's files), and no graft
+/// file is in effect (`info/grafts`, or `GIT_GRAFT_FILE`, which `--git-path` honours): grafts rewrite
+/// parents even under `--no-replace-objects`. Kolux's git runner takes no extra environment, so the
+/// graft file is refused rather than switched off. Unreadable = not settled.
+/// Gaps (B, 2026-11-09): `merge --squash` leaves `SQUASH_MSG` and `cherry-pick -n` leaves
+/// `AUTO_MERGE` and `MERGE_MSG` with HEAD unmoved, so those count as operations under way too
+/// (`MERGE_MSG` as well, so the check does not lean on one marker alone; a commit or reset removes
+/// all three). Only HEAD and in-progress operations are judged, never uncommitted content: a
+/// `git checkout <rev> -- .` leaves no marker and is not caught. A clean-tree check was rejected,
+/// since every ordinary edit before a launch would then lose the pre-trust.
+/// Gaps (legacy remotes, 2026-11-09): git still reads a remote from a file in the common git dir's
+/// `remotes/` or `branches/` folder when the config does not define it, and a `Pull:` line there can
+/// write under `refs/remotes/origin/` without any config entry `origin_fetch_destinations` could
+/// see. So either folder holding any entry, or one that cannot be listed, is not settled; an empty
+/// or missing folder is fine. Both paths come from the same `rev-parse` (`--git-path` resolves them
+/// in the common dir, also from a linked worktree).
+/// Final round (P3-1b): no remote hides in a worktree's own config (`worktree_configs_clear`).
+fn settled(dir: &Path) -> bool {
+    let Ok(paths) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--git-dir", "--git-path", "info/grafts", "--git-path", "remotes", "--git-path", "branches", "--git-common-dir"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let mut lines = paths.lines().map(str::trim);
+    let (Some(git_dir), Some(grafts), Some(remotes), Some(branches), Some(common), None) = (lines.next(), lines.next(), lines.next(), lines.next(), lines.next(), lines.next()) else { return false };
+    if [git_dir, grafts, remotes, branches, common].iter().any(|p| p.is_empty()) {
+        return false;
+    }
+    if !worktree_configs_clear(dir, &dir.join(common)) {
+        return false;
+    }
+    let git_dir = dir.join(git_dir);
+    let in_effect = |p: &Path| p.symlink_metadata().is_ok() || !matches!(p.try_exists(), Ok(false));
+    let legacy_remote = |p: &Path| match p.symlink_metadata() {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
+        _ => match fs::read_dir(p) {
+            Ok(mut entries) => entries.next().is_some(),
+            Err(_) => true,
+        },
+    };
+    !legacy_remote(&dir.join(remotes)) && !legacy_remote(&dir.join(branches)) && !in_effect(&dir.join(grafts)) && !["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "SQUASH_MSG", "AUTO_MERGE", "MERGE_MSG"].iter().any(|f| in_effect(&git_dir.join(f)))
+}
+
+/// T-780 gaps (final round, P3-1b): with `extensions.worktreeConfig` on, each worktree also reads
+/// its own `config.worktree`, and a linked worktree never sees the others' (the main checkout's
+/// `<common>/config.worktree`, the rest under `<common>/worktrees/*/`). A remote defined there still
+/// fetches into the shared refs, out of `origin_fetch_destinations`' sight. So with the extension on,
+/// any `remote.*` key in any of those files is not clear; a missing file is fine, and a file or
+/// folder that cannot be read, or an extension value git cannot read, is not clear. `--list` (rather
+/// than a key pattern) so that "no remote key" and "unreadable" stay apart; `--includes` so a file
+/// it includes counts too.
+fn worktree_configs_clear(dir: &Path, common: &Path) -> bool {
+    let not_found = |e: &std::io::Error| e.kind() == std::io::ErrorKind::NotFound;
+    let Ok(on) = crate::git::run_within(&["--no-replace-objects", "config", "--type=bool", "--default=false", "--get", "extensions.worktreeConfig"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    match on.trim() {
+        "false" => return true,
+        "true" => {}
+        _ => return false,
+    }
+    let mut files = vec![common.join("config.worktree")];
+    match fs::read_dir(common.join("worktrees")) {
+        Ok(entries) => {
+            for entry in entries {
+                let Ok(entry) = entry else { return false };
+                files.push(entry.path().join("config.worktree"));
+            }
+        }
+        Err(e) if not_found(&e) => {}
+        Err(_) => return false,
+    }
+    files.iter().all(|file| match file.symlink_metadata() {
+        Err(e) => not_found(&e),
+        Ok(_) => {
+            let path = file.to_string_lossy();
+            crate::git::run_within(&["--no-replace-objects", "config", "-z", "--includes", "--file", &path, "--list"], Some(dir), crate::git::READ_TIMEOUT)
+                .is_ok_and(|text| !text.split('\0').any(|entry| entry.trim_start().to_ascii_lowercase().starts_with("remote.")))
+        }
+    })
+}
+
+/// Where `origin`'s fetch refspecs put its branches (a source of `refs/heads/*`, `refs/heads/<dir>/*`
+/// or one exact `refs/heads/<name>`) and where they put everything else, both as full-ref patterns.
+/// None, and so no proof, when the config cannot be read, holds no branch refspec, or holds one this
+/// code does not understand (a destination outside `refs/remotes/`, a second `*`, a negative refspec
+/// that is not a plain ref pattern). A refspec without a destination fetches to FETCH_HEAD only.
+/// Gaps (A, 2026-11-09): every remote's fetch refspecs are read in one go. A remote whose name is
+/// `origin` in another ASCII case is None (on NTFS its refs land in origin's own folder), and every
+/// other remote's destinations join the second list, lowercased, so a remote fetching into
+/// `refs/remotes/origin/` proves nothing either.
+fn origin_fetch_destinations(dir: &Path) -> Option<(Vec<String>, Vec<String>)> {
+    // `-z`: each entry is `key\nvalue\0`, so no remote name or value can be misread across lines.
+    let text = crate::git::run_within(&["--no-replace-objects", "config", "-z", "--get-regexp", r"^remote\..*\.fetch$"], Some(dir), crate::git::READ_TIMEOUT).ok()?;
+    let (mut branches, mut others) = (Vec::new(), Vec::new());
+    for entry in text.split('\0').filter(|e| !e.trim().is_empty()) {
+        // A fetch key without a value is a config git itself refuses to fetch with: no proof.
+        let (key, value) = entry.split_once('\n')?;
+        let name = key.trim().strip_prefix("remote.")?.strip_suffix(".fetch")?;
+        let line = value.trim();
+        if name != "origin" {
+            if name.eq_ignore_ascii_case("origin") {
+                return None;
+            }
+            others.extend(foreign_destination(line)?);
+            continue;
+        }
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(negative) = line.strip_prefix('^') {
+            // A negative refspec only removes sources from a fetch; it writes nothing.
+            if negative.starts_with("refs/") && !negative.contains(':') && negative.matches('*').count() <= 1 {
+                continue;
+            }
+            return None;
+        }
+        let spec = line.strip_prefix('+').unwrap_or(line);
+        let Some((src, dst)) = spec.split_once(':') else { continue };
+        let (stars_src, stars_dst) = (src.matches('*').count(), dst.matches('*').count());
+        if src.is_empty() || dst.is_empty() || stars_src > 1 || stars_dst > 1 || stars_src != stars_dst || !dst.starts_with("refs/remotes/") {
+            return None;
+        }
+        let is_branches = src.strip_prefix("refs/heads/").is_some_and(|rest| !rest.is_empty() && (!rest.contains('*') || rest == "*" || rest.ends_with("/*")));
+        if is_branches {
+            branches.push(dst.to_string());
+        } else if dst.is_ascii() {
+            others.push(dst.to_string());
+        } else {
+            // Final round (P3-3): only ASCII case is folded when these are compared; not read.
+            return None;
+        }
+    }
+    if branches.is_empty() {
+        return None;
+    }
+    Some((branches, others))
+}
+
+/// Gaps (A): where another remote's fetch refspec `spec` writes, lowercased as a full-ref pattern.
+/// `Some(None)` for a refspec that writes no ref (a negative one, or one without a destination);
+/// None, and so no proof, for a destination with more than one `*` or one that is not pure ASCII.
+/// git completes a destination without `refs/` (`remotes/origin/x` is `refs/remotes/origin/x`), so
+/// such a destination is read with `refs/` in front; a wider exclusion is the safe side.
+fn foreign_destination(spec: &str) -> Option<Option<String>> {
+    if spec.is_empty() || spec.starts_with('^') {
+        return Some(None);
+    }
+    let spec = spec.strip_prefix('+').unwrap_or(spec);
+    let Some((_, dst)) = spec.split_once(':') else { return Some(None) };
+    let dst = dst.trim().to_ascii_lowercase();
+    if dst.is_empty() {
+        return Some(None);
+    }
+    // Final round (P3-3): the comparison folds ASCII case only, so anything else is not read.
+    if !dst.is_ascii() || dst.matches('*').count() > 1 {
+        return None;
+    }
+    Some(Some(if dst.starts_with("refs/") { dst } else { format!("refs/{dst}") }))
+}
+
+/// Whether one side of a fetch refspec (an exact ref, or a pattern with one `*`) covers `refname`.
+/// `star_may_be_empty` widens a pattern so a doubtful ref is excluded rather than counted.
+fn refspec_side_matches(pattern: &str, refname: &str, star_may_be_empty: bool) -> bool {
+    match pattern.split_once('*') {
+        None => pattern == refname,
+        Some((pre, suf)) => {
+            let fits = refname.len() >= pre.len() + suf.len() && refname.starts_with(pre) && refname.ends_with(suf);
+            fits && (star_may_be_empty || refname.len() > pre.len() + suf.len())
+        }
+    }
+}
+
+/// T-780 (review round 3): the one place a worktree Kolux just made gets its first record. `origin`
+/// is the caller's record (`madeBy` and its details); when the checkout was not proven to be on
+/// `origin` (`Created::own`), the sticky marker `PR_EVER_KEY` goes into that same first write, so
+/// there is never a record without it for `trust::made_by_kolux` to read. Then the worktree is
+/// marked seen (PROJ-041). Every creation path (composer, CLI, agent-first launches, branch open,
+/// issue links) comes through here.
+pub fn record_made(store: &Store, project: &Project, made: &Created, origin: serde_json::Value) -> Result<(), String> {
+    let mut origin = if origin.is_object() { origin } else { serde_json::json!({}) };
+    if !made.own {
+        origin[PR_EVER_KEY] = true.into();
+    }
+    set_origin(store, &made.worktree.path, Some(&origin))?;
+    note_seen(store, project, &made.worktree.path)
 }
 
 fn load_map(store: &Store, key: &str) -> serde_json::Map<String, serde_json::Value> {
@@ -303,12 +559,10 @@ fn save_seen<'a>(store: &Store, project: &Project, keys: impl IntoIterator<Item 
     store.set(SEEN_KEY, &serde_json::Value::Object(all).to_string()).map_err(|e| e.to_string())
 }
 
-/// A worktree Kolux itself just made is never offered as new (PROJ-041), and its record makes it
-/// managed wherever it sits (PROJ-044); a more detailed origin written by the caller is kept.
+/// A worktree Kolux itself just made is never offered as new (PROJ-041). T-780 (round 3): this
+/// writes no origin record any more; the record, `madeBy` included, comes from `record_made`,
+/// which decides the trust marker first. A path with no record is never pre-trusted (fail-safe).
 pub fn note_seen(store: &Store, project: &Project, path: &str) -> Result<(), String> {
-    if origin(store, path).is_none() {
-        set_origin(store, path, Some(&serde_json::json!({ "madeBy": "app" })))?;
-    }
     match seen_of(store, project) {
         Some(mut seen) => {
             seen.insert(name_key(path));
@@ -1059,7 +1313,9 @@ pub fn create_workspace_until(git: &Git, place: &Place, project: &Project, typed
         .into_iter()
         .find(|w| same_folder(Path::new(&w.path), &dest))
         .ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
-    Ok(Created { worktree, base: from, note, warnings })
+    // T-780: decided here, before any record exists and with no store lock held.
+    let own = head_is_on_origin(&dest);
+    Ok(Created { worktree, base: from, note, warnings, own })
 }
 
 /// Every workspace folder name and branch in use across all registered projects (SESS-023 and
@@ -1254,8 +1510,9 @@ pub fn create_fresh_workspace<S: std::ops::Deref<Target = Store>>(git: &Git, loc
         let store = lock()?;
         pick_name(&store, &retired_scope(place, project), taken, seed)
     };
-    let made = create_workspace(git, place, project, &name, base)?.worktree;
-    note_seen(&*lock()?, project, &made.path)?;
+    let created = create_workspace(git, place, project, &name, base)?;
+    record_made(&*lock()?, project, &created, serde_json::json!({ "madeBy": "app" }))?;
+    let made = created.worktree;
     // PROJ-039: Kolux invented this name, so the first work may rename the branch to fit it.
     mark_suggested(&*lock()?, &made.path, true)?;
     Ok(made)
@@ -1340,7 +1597,17 @@ pub fn open_branch_workspace_until(git: &Git, place: &Place, project: &Project, 
         return Err(undo_create(git, repo, &dest, None));
     }
     let worktree = git.worktrees(repo)?.into_iter().find(|w| same_folder(Path::new(&w.path), &dest)).ok_or_else(|| "the worktree was created but Git does not list it".to_string())?;
-    Ok(Created { worktree, base: branch.to_string(), note: None, warnings })
+    // T-780: decided here, before any record exists and with no store lock held.
+    let own = head_is_on_origin(&dest);
+    Ok(Created { worktree, base: branch.to_string(), note: None, warnings, own })
+}
+
+/// `open_branch_workspace_until` plus the worktree's first record (T-780: the trust marker is
+/// decided in that first write). `workspace_open_branch` is this with the composer's nesting.
+pub fn open_named_until(git: &Git, store: &Mutex<Store>, project: &Project, place: &Place, branch: &str, folder: Option<&str>, overtaken: &dyn Fn() -> bool) -> Result<Created, String> {
+    let made = open_branch_workspace_until(git, place, project, branch, folder, overtaken)?;
+    record_made(&*store.lock().map_err(|e| e.to_string())?, project, &made, serde_json::json!({ "madeBy": "app", "existingBranch": true }))?;
+    Ok(made)
 }
 
 /// The branches a workspace can be opened on (PROJ-030): local ones, then remote ones by their
@@ -1361,16 +1628,11 @@ pub fn workspace_branches(store: StoreState<'_>, project_id: String) -> Result<V
 #[allow(clippy::too_many_arguments)]
 pub fn workspace_open_branch(git: State<'_, Git>, store: StoreState<'_>, project_id: String, branch: String, folder: Option<String>, parent: Option<String>, ticket: Option<u64>, active_folder: Option<String>) -> Result<Created, String> {
     let (project, place) = locked_place(&store, &project_id)?;
-    let made = open_branch_workspace_until(&git, &place, &project, &branch, folder.as_deref(), &|| dropped(ticket));
+    let made = open_named_until(&git, &store, &project, &place, &branch, folder.as_deref(), &|| dropped(ticket));
     if let Some(t) = ticket {
         settle_create(t);
     }
     let mut made = made?;
-    {
-        let store = store.lock().map_err(|e| e.to_string())?;
-        set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": true })))?;
-        note_seen(&store, &project, &made.worktree.path)?;
-    }
     nest_under(&git, &store, &project, &mut made, parent.as_deref(), active_folder.as_deref())?;
     let _ = crate::activity::touch(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path); // PROJ-051
     Ok(made)
@@ -1406,7 +1668,7 @@ pub fn workspace_open_pr(app: tauri::AppHandle, git: State<'_, Git>, store: Stor
     let (mut made, reused) = opened?;
     {
         let store = store.lock().map_err(|e| e.to_string())?;
-        set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": reused, "pr": pr.url })))?;
+        set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": reused, "pr": pr.url, PR_EVER_KEY: true })))?;
         if crate::scm::link_printed(&store, &made.worktree.path, &pr.url) {
             let _ = tauri::Emitter::emit(&app, "settings-saved", ()); // the window's copy of the links is stale otherwise
         }
@@ -1484,8 +1746,8 @@ pub fn workspace_from_item(app: tauri::AppHandle, git: State<'_, Git>, store: St
         return workspace_open_pr(app, git, store, project.id, item.number, None, None, None, None, None);
     }
     let issue = crate::pr_checkout::issue(&crate::scm::gh_program()?, Path::new(&project.path), item.number)?;
-    let made = create_named(&git, &store, &project.id, &issue.title, None, None)?;
-    set_origin(&*store.lock().map_err(|e| e.to_string())?, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "issue": issue.number, "issueUrl": issue.url })))?;
+    // T-780: the issue link rides in the first record, so the trust marker is decided with it.
+    let made = create_named(&git, &store, &project.id, &issue.title, None, None, Some(serde_json::json!({ "madeBy": "app", "issue": issue.number, "issueUrl": issue.url })))?;
     Ok(made)
 }
 
@@ -2094,6 +2356,11 @@ pub fn save_details(store: &Store, path: &str, name: &str, item: &str, comment: 
     let n = name.trim();
     set_name(store, path, if n.is_empty() { None } else { Some(n) })?;
     let mut o = origin(store, path).filter(serde_json::Value::is_object).unwrap_or_else(|| serde_json::json!({}));
+    // T-780 (review P2-1): a pull request once linked leaves its sticky marker, records written
+    // before the marker existed included, so clearing or replacing `pr` never restores pre-trust.
+    if !o["pr"].is_null() && !matches!(o["pr"].as_str(), Some(u) if u.trim().is_empty()) {
+        o[PR_EVER_KEY] = true.into();
+    }
     o["issue"] = serde_json::Value::Null;
     o["issueUrl"] = serde_json::Value::Null;
     o["pr"] = serde_json::Value::Null;
@@ -2181,16 +2448,19 @@ fn locked_place(store: &Mutex<Store>, project_id: &str) -> Result<(Project, Plac
 
 /// Makes a workspace in a registered project and keeps the typed name (the sidebar's Create and
 /// `kolux-dev worktree create` both come through here). `branch` (the composer's Advanced) names
-/// the branch in place of the name (SESS-037).
-pub fn create_named(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>) -> Result<Created, String> {
-    create_named_until(git, store, project_id, name, base, branch, &|| false)
+/// the branch in place of the name (SESS-037). `origin` is the caller's record for the new
+/// worktree (its `madeBy` and details), `{ "madeBy": "app" }` when None; T-780: it is written once,
+/// by `record_made`, with the trust marker decided in that same write.
+pub fn create_named(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>, origin: Option<serde_json::Value>) -> Result<Created, String> {
+    create_named_until(git, store, project_id, name, base, branch, origin, &|| false)
 }
 
 /// `create_named` with the overtaken checks of `create_workspace_until` (PROJ-020).
-pub fn create_named_until(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>, overtaken: &dyn Fn() -> bool) -> Result<Created, String> {
+#[allow(clippy::too_many_arguments)]
+pub fn create_named_until(git: &Git, store: &Mutex<Store>, project_id: &str, name: &str, base: Option<&str>, branch: Option<&str>, origin: Option<serde_json::Value>, overtaken: &dyn Fn() -> bool) -> Result<Created, String> {
     let (project, place) = locked_place(store, project_id)?;
     let mut made = create_workspace_until(git, &place, &project, non_blank(branch).unwrap_or(name), base, overtaken)?;
-    note_seen(&*store.lock().map_err(|e| e.to_string())?, &project, &made.worktree.path)?;
+    record_made(&*store.lock().map_err(|e| e.to_string())?, &project, &made, origin.unwrap_or_else(|| serde_json::json!({ "madeBy": "app" })))?;
     let typed = name.trim();
     if typed != made.worktree.branch.as_deref().unwrap_or_default() {
         let store = store.lock().map_err(|e| e.to_string())?;
@@ -2204,7 +2474,10 @@ pub fn create_named_until(git: &Git, store: &Mutex<Store>, project_id: &str, nam
 #[tauri::command(async)]
 #[allow(clippy::too_many_arguments)]
 pub fn workspace_create(git: State<'_, Git>, store: StoreState<'_>, project_id: String, name: String, base: Option<String>, branch: Option<String>, parent: Option<String>, ticket: Option<u64>, issue: Option<crate::pr_checkout::Linkable>, active_folder: Option<String>, suggested: Option<bool>) -> Result<Created, String> {
-    let made = create_named_until(&git, &store, &project_id, &name, base.as_deref(), branch.as_deref(), &|| dropped(ticket));
+    // SESS-036: linked to the issue the composer named it from (the `issue:` selector finds it);
+    // T-780: the link rides in the first record, where the trust marker is decided.
+    let origin = issue.map(|i| serde_json::json!({ "madeBy": "app", "issue": i.number, "issueUrl": i.url }));
+    let made = create_named_until(&git, &store, &project_id, &name, base.as_deref(), branch.as_deref(), origin, &|| dropped(ticket));
     if let Some(t) = ticket {
         settle_create(t);
     }
@@ -2215,10 +2488,6 @@ pub fn workspace_create(git: State<'_, Git>, store: StoreState<'_>, project_id: 
         // PROJ-039 (T-107-d): a name the composer suggested and the user left alone may be renamed by the first work.
         if suggested == Some(true) && branch.is_none() {
             mark_suggested(&store, &made.worktree.path, true)?;
-        }
-        if let Some(i) = issue {
-            // SESS-036: linked to the issue the composer named it from (the `issue:` selector finds it)
-            set_origin(&store, &made.worktree.path, Some(&serde_json::json!({ "madeBy": "app", "issue": i.number, "issueUrl": i.url })))?;
         }
         find_project(&store, &project_id)?
     };
@@ -3975,10 +4244,10 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         store.save_settings(&settings).unwrap();
         let project = add_project(&git, &store, &repo).unwrap();
         let store = Mutex::new(store);
-        let made = create_named(&git, &store, &project.id, "Fix login", None, Some("feat/x")).unwrap().worktree;
+        let made = create_named(&git, &store, &project.id, "Fix login", None, Some("feat/x"), None).unwrap().worktree;
         assert_eq!(made.branch.as_deref(), Some("feat-x"));
         assert_eq!(made.name.as_deref(), Some("Fix login"));
-        let plain = create_named(&git, &store, &project.id, "Fix login", None, None).unwrap().worktree;
+        let plain = create_named(&git, &store, &project.id, "Fix login", None, None, None).unwrap().worktree;
         assert_eq!(plain.branch.as_deref(), Some("fix-login"));
         assert_eq!(plain.name.as_deref(), Some("Fix login"));
     }
@@ -4757,13 +5026,14 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         let project = add_project(&git, &store, &repo).unwrap();
         let place = nested(&temp("ws068"));
         let a = create_workspace(&git, &place, &project, "alpha", None).unwrap().worktree.path;
-        let b = create_workspace(&git, &place, &project, "beta", None).unwrap().worktree.path;
+        let made_b = create_workspace(&git, &place, &project, "beta", None).unwrap();
+        let b = made_b.worktree.path.clone();
         let c = create_workspace(&git, &place, &project, "gamma", None).unwrap().worktree.path;
         set_name(&store, &b, Some("Beta work")).unwrap();
         reparent(&git, &store, &project, &b, Some(&a)).unwrap();
         reparent(&git, &store, &project, &c, Some(&b)).unwrap();
         save_workspace_note(&store, &b, "half done").unwrap();
-        note_seen(&store, &project, &b).unwrap(); // what the create commands record: made by Kolux
+        record_made(&store, &project, &made_b, serde_json::json!({ "madeBy": "app" })).unwrap(); // what the create commands record (T-780: one write, marker decided by record_made)
         assert!(unseen(&git, &store, &project).unwrap().is_empty());
         let key = |p: &Path| name_key(&p.to_string_lossy());
         let paths = |l: &[Worktree]| l.iter().map(|w| name_key(&w.path)).collect::<Vec<_>>();
@@ -5797,6 +6067,665 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         assert!(save_details(&store, w, "n", "", &long).is_err());
         assert_eq!(details_of(&store, w).name, None, "an over-long comment writes nothing");
         drop(store);
+    }
+
+    /// T-780 (review, 2026-11-09): the details form keeps what it does not own: who made the
+    /// worktree (`madeBy`) and the sticky pull-request marker, whatever link it clears or sets,
+    /// and it never adds a `madeBy` to a record that has none.
+    #[test]
+    fn t780_save_details_keeps_made_by_and_the_sticky_pull_request_marker() {
+        let profile = temp("t780-keep");
+        let store = Store::open(&profile).unwrap();
+        let w = "C:\\ws\\pr-made";
+        // As open_pull_request records a worktree made from a pull request.
+        set_origin(&store, w, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/12", PR_EVER_KEY: true }))).unwrap();
+        save_details(&store, w, "Review", "", "unlinked").unwrap();
+        let o = origin(&store, w).unwrap();
+        assert_eq!((o["madeBy"].as_str(), o[PR_EVER_KEY].as_bool(), o["pr"].is_null(), o["existingBranch"].as_bool()), (Some("app"), Some(true), true, Some(false)), "{o}");
+        save_details(&store, w, "Review", "#4", "").unwrap();
+        let o = origin(&store, w).unwrap();
+        assert_eq!((o["madeBy"].as_str(), o[PR_EVER_KEY].as_bool(), o["issue"].as_u64()), (Some("app"), Some(true), Some(4)), "{o}");
+        // A record the details form starts itself has no maker and no marker.
+        let u = "C:\\ws\\user-added";
+        save_details(&store, u, "", "https://github.com/o/r/pull/3", "").unwrap();
+        let o = origin(&store, u).unwrap();
+        assert!(o.get("madeBy").is_none() && o.get(PR_EVER_KEY).is_none(), "{o}");
+        drop(store);
+    }
+
+    /// T-780 (review P2-1): a record written before the sticky marker existed (`pr` set, no
+    /// marker) gets the marker when the details form clears or replaces its pull request, so the
+    /// unlink never restores the pre-trust.
+    #[test]
+    fn t780_unlinking_a_legacy_pull_request_record_marks_it_sticky() {
+        let profile = temp("t780-legacy");
+        let store = Mutex::new(Store::open(&profile).unwrap());
+        let w = profile.join("legacy-pr").to_string_lossy().to_string();
+        set_origin(&store.lock().unwrap(), &w, Some(&serde_json::json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/1" }))).unwrap();
+        save_details(&store.lock().unwrap(), &w, "", "", "").unwrap();
+        let o = origin(&store.lock().unwrap(), &w).unwrap();
+        assert!(o["pr"].is_null() && o[PR_EVER_KEY] == true, "{o}");
+        assert!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&w)]).is_empty(), "a legacy pull request record stays out of the pre-trust after the unlink");
+        // Replacing the pull request with an issue marks it too.
+        let w2 = profile.join("legacy-pr-2").to_string_lossy().to_string();
+        set_origin(&store.lock().unwrap(), &w2, Some(&serde_json::json!({ "madeBy": "app", "pr": "https://github.com/o/r/pull/2" }))).unwrap();
+        save_details(&store.lock().unwrap(), &w2, "", "#9", "").unwrap();
+        let o = origin(&store.lock().unwrap(), &w2).unwrap();
+        assert!(o["pr"].is_null() && o["issue"] == 9 && o[PR_EVER_KEY] == true, "{o}");
+        // A record that never held a pull request gets no marker from a details save.
+        let w3 = profile.join("plain").to_string_lossy().to_string();
+        set_origin(&store.lock().unwrap(), &w3, Some(&serde_json::json!({ "madeBy": "app", "pr": "" }))).unwrap();
+        save_details(&store.lock().unwrap(), &w3, "", "", "").unwrap();
+        assert!(origin(&store.lock().unwrap(), &w3).unwrap().get(PR_EVER_KEY).is_none(), "a blank pr is no pull request (round 4: the launch filter also wants a real checkout on origin, see trust::tests)");
+        drop(store);
+    }
+
+    /// T-780 (round 3): a repo with an `origin` holding `main` and `ours`, and a `fork` remote
+    /// holding `theirs`, a commit found nowhere on origin. Returns (store, project, repo, root,
+    /// folders to remove).
+    fn t780_fixture(tag: &str) -> (Mutex<Store>, Project, PathBuf, PathBuf, Vec<PathBuf>) {
+        let git = Git::detect().unwrap();
+        let profile = temp(&format!("{tag}-profile"));
+        let store = Store::open(&profile).unwrap();
+        let origin_remote = temp(&format!("{tag}-origin"));
+        git_in(&origin_remote, &["init", "-q", "--bare", "-b", "main"]);
+        let fork = temp(&format!("{tag}-fork"));
+        git_in(&fork, &["init", "-q", "--bare", "-b", "main"]);
+        let repo = temp_repo(&format!("{tag}-repo"));
+        git_in(&repo, &["remote", "add", "origin", &origin_remote.to_string_lossy()]);
+        git_in(&repo, &["remote", "add", "fork", &fork.to_string_lossy()]);
+        git_in(&repo, &["push", "-q", "origin", "main"]);
+        git_in(&repo, &["branch", "ours"]);
+        git_in(&repo, &["push", "-q", "origin", "ours"]);
+        git_in(&repo, &["branch", "-D", "ours"]);
+        // The stranger's branch carries a commit of its own, so its HEAD is on no origin branch.
+        git_in(&repo, &["checkout", "-q", "-b", "theirs"]);
+        fs::write(repo.join("theirs.txt"), "from a fork").unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "a commit by a stranger"]);
+        git_in(&repo, &["push", "-q", "fork", "theirs"]);
+        git_in(&repo, &["checkout", "-q", "main"]);
+        git_in(&repo, &["branch", "-D", "theirs"]);
+        let root = temp(&format!("{tag}-root"));
+        let mut settings = store.settings();
+        settings["branchPrefix"] = serde_json::json!("none");
+        settings[WORKSPACES_DIR_SETTING] = serde_json::json!(root.to_string_lossy());
+        store.save_settings(&settings).unwrap();
+        let project = add_project(&git, &store, &repo).unwrap();
+        (Mutex::new(store), project, repo, root.clone(), vec![profile, origin_remote, fork, root])
+    }
+
+    fn t780_record(store: &Mutex<Store>, path: &str) -> serde_json::Value {
+        origin(&store.lock().unwrap(), path).expect("the worktree has a record")
+    }
+
+    fn t780_pre_trusted(store: &Mutex<Store>, path: &str) -> bool {
+        crate::trust::made_by_kolux(store, &[PathBuf::from(path)]) == vec![PathBuf::from(path)]
+    }
+
+    /// T-780 (round 3, a): the composer's base is a local branch that tracks the fork (what a
+    /// `git checkout theirs` leaves behind). `workspace_create` comes through `create_named_until`;
+    /// `workspace_open_branch` through `open_named_until`. Both first records carry the marker.
+    #[test]
+    fn t780_a_base_that_is_a_local_branch_tracking_the_fork_is_never_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780a");
+        git_in(&repo, &["branch", "--track", "by-hand", "fork/theirs"]);
+        assert_eq!(git.upstream_of(&repo, "by-hand").as_deref(), Some("fork/theirs"));
+        let made = create_named(&git, &store, &project.id, "from by-hand", Some("by-hand"), None, None).unwrap();
+        assert!(!made.own, "HEAD is the fork's commit, found on no origin branch");
+        let rec = t780_record(&store, &made.worktree.path);
+        assert_eq!((rec["madeBy"].as_str(), rec[PR_EVER_KEY].as_bool()), (Some("app"), Some(true)), "{rec}");
+        assert!(!t780_pre_trusted(&store, &made.worktree.path), "a fork's code is never pre-trusted");
+        // the branch opened as it is (Open branch in the composer)
+        let (project2, place) = locked_place(&store, &project.id).unwrap();
+        let opened = open_named_until(&git, &store, &project2, &place, "by-hand", Some("opened-by-hand"), &|| false).unwrap();
+        assert!(!opened.own);
+        assert_eq!(t780_record(&store, &opened.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &opened.worktree.path));
+        // the fork's branch by its short name (Git makes the tracking branch itself)
+        let short = open_named_until(&git, &store, &project2, &place, "theirs", None, &|| false).unwrap();
+        assert_eq!(t780_record(&store, &short.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &short.worktree.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, b): the base names the fork's commit directly, by sha or as a rev expression
+    /// (`fork/theirs~0`), and so no ref name gives it away; the content check still marks it.
+    #[test]
+    fn t780_a_fork_commit_as_base_is_never_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780b");
+        let sha = rev(&repo, "fork/theirs");
+        let by_sha = create_named(&git, &store, &project.id, "from sha", Some(&sha), None, None).unwrap();
+        assert!(!by_sha.own);
+        assert_eq!(t780_record(&store, &by_sha.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &by_sha.worktree.path));
+        let by_rev = create_named(&git, &store, &project.id, "from rev", Some("fork/theirs~0"), None, None).unwrap();
+        assert_eq!(t780_record(&store, &by_rev.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &by_rev.worktree.path));
+        // the agent-first launch with a saved base (AUTO-005) goes the same way
+        let fresh = create_fresh_from(&git, &store, &project.id, Some("fork/theirs")).unwrap();
+        assert_eq!(t780_record(&store, &fresh.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &fresh.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, d): a checkout whose HEAD is on an origin branch is Kolux's own, however the
+    /// base was spelled: `origin/main`, the local `main`, no base at all (the agent-first launch),
+    /// an issue-linked record, or an existing origin branch opened as it is. No marker, pre-trusted.
+    #[test]
+    fn t780_a_checkout_on_origin_is_still_pre_trusted() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780d");
+        let made = [
+            create_named(&git, &store, &project.id, "from origin main", Some("origin/main"), None, None).unwrap().worktree.path,
+            create_named(&git, &store, &project.id, "from local main", Some("main"), None, None).unwrap().worktree.path,
+            create_named(&git, &store, &project.id, "linked", None, None, Some(serde_json::json!({ "madeBy": "app", "issue": 7, "issueUrl": "https://github.com/o/r/issues/7" }))).unwrap().worktree.path,
+            create_fresh_from(&git, &store, &project.id, None).unwrap().path,
+        ];
+        for path in &made {
+            let rec = t780_record(&store, path);
+            assert_eq!(rec["madeBy"], "app", "{rec}");
+            assert!(rec.get(PR_EVER_KEY).is_none(), "no marker on Kolux's own code: {rec}");
+            assert!(t780_pre_trusted(&store, path), "{path}");
+        }
+        assert_eq!(t780_record(&store, &made[2])["issue"], 7, "the issue link rides in the first record");
+        let (project2, place) = locked_place(&store, &project.id).unwrap();
+        let ours = open_named_until(&git, &store, &project2, &place, "ours", None, &|| false).unwrap();
+        assert!(ours.own);
+        let rec = t780_record(&store, &ours.worktree.path);
+        assert_eq!((rec["madeBy"].as_str(), rec["existingBranch"].as_bool(), rec.get(PR_EVER_KEY)), (Some("app"), Some(true), None), "{rec}");
+        assert!(t780_pre_trusted(&store, &ours.worktree.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, e): without positive proof the worktree is marked: no `origin` remote at
+    /// all, a HEAD with a local commit no origin branch has yet, and `head_is_on_origin` itself on
+    /// a folder that is no git checkout (what a git error looks like).
+    #[test]
+    fn t780_without_proof_of_origin_the_worktree_is_marked() {
+        let git = Git::detect().unwrap();
+        // no origin remote
+        let profile = temp("t780e-profile");
+        let store = Store::open(&profile).unwrap();
+        let repo = temp_repo("t780e-repo");
+        let root = temp("t780e-root");
+        let mut settings = store.settings();
+        settings["branchPrefix"] = serde_json::json!("none");
+        settings[WORKSPACES_DIR_SETTING] = serde_json::json!(root.to_string_lossy());
+        store.save_settings(&settings).unwrap();
+        let project = add_project(&git, &store, &repo).unwrap();
+        let store = Mutex::new(store);
+        let made = create_named(&git, &store, &project.id, "no origin", None, None, None).unwrap();
+        assert!(!made.own);
+        let rec = t780_record(&store, &made.worktree.path);
+        assert_eq!((rec["madeBy"].as_str(), rec[PR_EVER_KEY].as_bool()), (Some("app"), Some(true)), "{rec}");
+        assert!(!t780_pre_trusted(&store, &made.worktree.path), "no origin: fail-safe");
+        let fresh = create_fresh_from(&git, &store, &project.id, None).unwrap();
+        assert_eq!(t780_record(&store, &fresh.path)[PR_EVER_KEY], true);
+        assert!(!head_is_on_origin(&profile), "not a git folder: no proof");
+        drop(store);
+        for d in [profile, repo, root] {
+            let _ = fs::remove_dir_all(d);
+        }
+        // an origin, but HEAD carries a commit origin does not have yet
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780e2");
+        git_in(&repo, &["checkout", "-q", "-b", "ahead"]);
+        fs::write(repo.join("local.txt"), "not pushed").unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "local only"]);
+        git_in(&repo, &["checkout", "-q", "main"]);
+        assert!(head_is_on_origin(&repo), "main itself is on origin");
+        let ahead = create_named(&git, &store, &project.id, "from ahead", Some("ahead"), None, None).unwrap();
+        assert!(!ahead.own);
+        assert!(!head_is_on_origin(Path::new(&ahead.worktree.path)));
+        assert_eq!(t780_record(&store, &ahead.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &ahead.worktree.path), "accepted cost: unpushed work is not pre-trusted");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 3, f): the marker is in the first record written, never added by a second
+    /// write: `record_made` puts it into the one `set_origin` it makes; `note_seen` on its own
+    /// writes no record at all (so no `madeBy` ever exists without the marker); and `set_origin`
+    /// keeps the marker through every later rewrite of the record.
+    #[test]
+    fn t780_the_first_record_already_carries_the_marker() {
+        let profile = temp("t780f");
+        let store = Store::open(&profile).unwrap();
+        let project = project_at("p780f", &profile);
+        let wt = profile.join("wt").to_string_lossy().into_owned();
+        let worktree = Worktree { name: None, branch: Some("x".into()), head: String::new(), is_main: false, path: wt.clone(), parent: None, locked: None, hidden: false, kind: String::new(), source: None, made_by: None, number: None, comment: None };
+        // the seen mark alone leaves no record
+        note_seen(&store, &project, &wt).unwrap();
+        assert!(origin(&store, &wt).is_none(), "note_seen writes no madeBy");
+        // the first and only write of a foreign worktree's record holds madeBy and the marker
+        let foreign = Created { worktree: worktree.clone(), base: "x".into(), note: None, warnings: vec![], own: false };
+        let before = store.get(ORIGINS_KEY).unwrap();
+        record_made(&store, &project, &foreign, serde_json::json!({ "madeBy": "cli", "comment": "c" })).unwrap();
+        let rec = origin(&store, &wt).unwrap();
+        assert_eq!((rec["madeBy"].as_str(), rec["comment"].as_str(), rec[PR_EVER_KEY].as_bool()), (Some("cli"), Some("c"), Some(true)), "{rec}");
+        assert_ne!(before, store.get(ORIGINS_KEY).unwrap());
+        let store = Mutex::new(store);
+        assert!(crate::trust::made_by_kolux(&store, &[PathBuf::from(&wt)]).is_empty());
+        let store = store.into_inner().unwrap();
+        // every rewrite keeps it: a bare madeBy, the details form
+        set_origin(&store, &wt, Some(&serde_json::json!({ "madeBy": "app" }))).unwrap();
+        assert_eq!(origin(&store, &wt).unwrap()[PR_EVER_KEY], true, "set_origin keeps the sticky marker");
+        save_details(&store, &wt, "", "", "note").unwrap();
+        assert_eq!(origin(&store, &wt).unwrap()[PR_EVER_KEY], true);
+        // forgetting the workspace drops it; a new worktree at that path starts clean
+        set_origin(&store, &wt, None).unwrap();
+        let own = Created { worktree, base: "x".into(), note: None, warnings: vec![], own: true };
+        record_made(&store, &project, &own, serde_json::json!({ "madeBy": "app" })).unwrap();
+        let rec = origin(&store, &wt).unwrap();
+        assert_eq!((rec["madeBy"].as_str(), rec.get(PR_EVER_KEY)), (Some("app"), None), "{rec}");
+        drop(store);
+        let _ = fs::remove_dir_all(profile);
+    }
+
+    /// T-780 (round 4 review, P2): `remote.origin.fetch = +refs/pull/*/head:refs/remotes/origin/pr/*`
+    /// (a common setting) puts strangers' pull request heads under refs/remotes/origin/ too. Only a
+    /// ref written by a refspec that fetches origin's branches, and by no other refspec, is proof.
+    #[test]
+    fn t780_a_pull_request_head_fetched_under_origin_is_no_proof() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780pr");
+        git_in(&repo, &["push", "-q", "origin", "fork/theirs:refs/pull/12/head"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        assert_eq!(rev(&repo, "origin/pr/12"), rev(&repo, "fork/theirs"));
+        // what `git worktree add ../wt pr/12` leaves behind: a local pr/12 tracking origin/pr/12
+        git_in(&repo, &["branch", "--track", "pr/12", "origin/pr/12"]);
+        let (project2, place) = locked_place(&store, &project.id).unwrap();
+        let opened = open_named_until(&git, &store, &project2, &place, "pr/12", Some("pr-12"), &|| false).unwrap();
+        assert!(!opened.own, "a pull request head under refs/remotes/origin/pr/ is none of origin's branches");
+        assert_eq!(t780_record(&store, &opened.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &opened.worktree.path));
+        // `origin/pr/12` named as the base is refused before any checkout (`base_available` fetches
+        // `origin pr/12`, a branch origin does not have); the head's commit id gets through, and is marked.
+        let refused = create_named(&git, &store, &project.id, "from pr ref", Some("origin/pr/12"), None, None).unwrap_err();
+        assert!(refused.contains("not a branch, tag or commit"), "{refused}");
+        let based = create_named(&git, &store, &project.id, "from pr head", Some(&rev(&repo, "origin/pr/12")), None, None).unwrap();
+        assert!(!based.own);
+        assert_eq!(t780_record(&store, &based.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &based.worktree.path));
+        // origin's own branch still proves itself beside the extra refspec
+        let own = create_named(&git, &store, &project.id, "still own", Some("origin/main"), None, None).unwrap();
+        assert!(own.own);
+        assert!(t780_record(&store, &own.worktree.path).get(PR_EVER_KEY).is_none());
+        assert!(t780_pre_trusted(&store, &own.worktree.path));
+        // no refspec that fetches branches, or no refspec at all: no proof, whatever the refs say
+        git_in(&repo, &["config", "--unset-all", "remote.origin.fetch"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        assert!(!head_is_on_origin(Path::new(&own.worktree.path)), "only a pull request refspec");
+        git_in(&repo, &["config", "--unset-all", "remote.origin.fetch"]);
+        assert!(!head_is_on_origin(Path::new(&own.worktree.path)), "no fetch refspec");
+        // a refspec this code does not read (a destination outside refs/remotes/) is no proof either
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/heads/*:refs/mirror/origin/*"]);
+        assert!(!head_is_on_origin(Path::new(&own.worktree.path)), "a destination outside refs/remotes/");
+        // the usual refspec, plus a negative one and one without a destination: proof again
+        git_in(&repo, &["config", "--unset-all", "remote.origin.fetch"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "^refs/heads/wip/*"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "refs/tags/v1"]);
+        assert!(head_is_on_origin(Path::new(&own.worktree.path)));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 4 review, P3): a replacement ref (`git replace`) can make origin's tip read as
+    /// a descendant of a stranger's commit, which fools a plain `--contains`; the proof reads
+    /// objects as they are.
+    #[test]
+    fn t780_a_replaced_object_cannot_fake_the_proof() {
+        let git = Git::detect().unwrap();
+        let (store, project, repo, _root, cleanup) = t780_fixture("t780rp");
+        let main_sha = rev(&repo, "origin/main");
+        let theirs = rev(&repo, "fork/theirs");
+        // a child of the stranger's commit, then origin/main's tip is told to read as that child
+        git_in(&repo, &["checkout", "-q", "--detach", "fork/theirs"]);
+        fs::write(repo.join("more.txt"), "more from the fork").unwrap();
+        git_in(&repo, &["add", "."]);
+        git_in(&repo, &["commit", "-q", "-m", "a second commit by a stranger"]);
+        let child = rev(&repo, "HEAD");
+        git_in(&repo, &["checkout", "-q", "main"]);
+        git_in(&repo, &["replace", "-f", &main_sha, &child]);
+        let fooled = String::from_utf8(Command::new("git").args(["for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        assert!(fooled.contains("refs/remotes/origin/main"), "the graft fools a plain --contains: {fooled:?}");
+        let made = create_named(&git, &store, &project.id, "grafted", Some(&theirs), None, None).unwrap();
+        assert!(!made.own, "the proof reads objects as they are, replacements aside");
+        assert_eq!(t780_record(&store, &made.worktree.path)[PR_EVER_KEY], true);
+        assert!(!t780_pre_trusted(&store, &made.worktree.path));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 4 review, P3): the carry-over keeps every marker shape `trust::holds_pull_request`
+    /// honours (present, not null, not false), not only the literal `true`.
+    #[test]
+    fn t780_set_origin_keeps_every_marker_shape_the_trust_check_honours() {
+        let profile = temp("t780-shapes");
+        let store = Store::open(&profile).unwrap();
+        for (i, marker) in [serde_json::json!(true), serde_json::json!(1), serde_json::json!("yes"), serde_json::json!({})].into_iter().enumerate() {
+            let w = format!("C:\\ws\\shape-{i}");
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", PR_EVER_KEY: marker }))).unwrap();
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", "comment": "rewritten" }))).unwrap();
+            let rec = origin(&store, &w).unwrap();
+            assert_eq!(rec[PR_EVER_KEY], true, "shape {i}: {rec}");
+        }
+        for (i, absent) in [serde_json::Value::Null, serde_json::json!(false)].into_iter().enumerate() {
+            let w = format!("C:\\ws\\free-{i}");
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", PR_EVER_KEY: absent }))).unwrap();
+            set_origin(&store, &w, Some(&serde_json::json!({ "madeBy": "app", "comment": "rewritten" }))).unwrap();
+            let rec = origin(&store, &w).unwrap();
+            assert!(rec.get(PR_EVER_KEY).is_none(), "shape {i}: {rec}");
+        }
+        drop(store);
+        let _ = fs::remove_dir_all(profile);
+    }
+
+    /// T-780 round 5 helper: a worktree detached at `at`, beside the fixture's repository.
+    fn t780_detached(repo: &Path, root: &Path, name: &str, at: &str) -> PathBuf {
+        let wt = root.join(name);
+        git_in(repo, &["worktree", "add", "-q", "--detach", &wt.to_string_lossy(), at]);
+        wt
+    }
+
+    /// T-780 (round 5 review, P2): on NTFS a fetched pull request head lands in an existing folder of
+    /// another case: with origin's branch `PR/x` fetched first, `refs/remotes/origin/pr/12` is listed
+    /// as `refs/remotes/origin/PR/12`, which the branch destination covers and the pull destination
+    /// only covers ignoring case.
+    #[test]
+    fn t780_a_pull_request_head_in_a_folder_of_another_case_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780case");
+        git_in(&repo, &["push", "-q", "origin", "main:PR/x"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        git_in(&repo, &["push", "-q", "origin", "fork/theirs:refs/pull/12/head"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        let theirs = rev(&repo, "fork/theirs");
+        let listed = String::from_utf8(Command::new("git").args(["for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        #[cfg(windows)]
+        assert!(listed.contains("refs/remotes/origin/PR/12"), "the pull head is listed in the branch folder's case: {listed:?}");
+        let wt = t780_detached(&repo, &root, "case-wt", &theirs);
+        assert!(!head_is_on_origin(&wt), "a pull request head is no proof in any case: {listed:?}");
+        let own = t780_detached(&repo, &root, "case-own", "origin/main");
+        assert!(head_is_on_origin(&own), "origin's branch still proves itself");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 5 review, P3): a symbolic ref is no proof of its own (`git remote set-head origin
+    /// pr/12` makes `refs/remotes/origin/HEAD` point at a pull request head); its target is listed itself.
+    #[test]
+    fn t780_a_symbolic_ref_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780sym");
+        git_in(&repo, &["push", "-q", "origin", "fork/theirs:refs/pull/12/head"]);
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr/*"]);
+        git_in(&repo, &["fetch", "-q", "origin"]);
+        git_in(&repo, &["remote", "set-head", "origin", "pr/12"]);
+        let wt = t780_detached(&repo, &root, "sym-wt", &rev(&repo, "fork/theirs"));
+        assert!(!head_is_on_origin(&wt), "refs/remotes/origin/HEAD -> pr/12 is no branch of origin's");
+        git_in(&repo, &["remote", "set-head", "origin", "main"]);
+        let own = t780_detached(&repo, &root, "sym-own", "origin/main");
+        assert!(head_is_on_origin(&own), "origin/main itself still counts");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 5 review, P3): `info/grafts` rewrites parents even under `--no-replace-objects`;
+    /// while a graft file is in effect there is no proof at all.
+    #[test]
+    fn t780_a_graft_file_cannot_fake_the_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780gr");
+        let (main_sha, theirs) = (rev(&repo, "origin/main"), rev(&repo, "fork/theirs"));
+        let wt = t780_detached(&repo, &root, "graft-wt", &theirs);
+        let own = t780_detached(&repo, &root, "graft-own", "origin/main");
+        let grafts = repo.join(".git").join("info").join("grafts");
+        fs::create_dir_all(grafts.parent().unwrap()).unwrap();
+        fs::write(&grafts, format!("{main_sha} {theirs}\n")).unwrap();
+        let fooled = String::from_utf8(Command::new("git").args(["--no-replace-objects", "for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        assert!(fooled.contains("refs/remotes/origin/main"), "the graft fools --no-replace-objects: {fooled:?}");
+        assert!(!head_is_on_origin(&wt), "a graft makes no proof");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while a graft file is in effect");
+        fs::remove_file(&grafts).unwrap();
+        assert!(head_is_on_origin(&own));
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 (round 5 review, P3): HEAD on origin proves nothing while a merge, cherry-pick, revert or
+    /// rebase is under way: the working tree already holds the other side's files.
+    #[test]
+    fn t780_an_operation_in_progress_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780op");
+        let wt = t780_detached(&repo, &root, "op-wt", "origin/main");
+        assert!(head_is_on_origin(&wt));
+        git_in(&wt, &["merge", "-q", "--no-commit", "--no-ff", "fork/theirs"]);
+        assert!(wt.join("theirs.txt").exists(), "the fork's file is in the working tree");
+        assert_eq!(rev(&wt, "HEAD"), rev(&repo, "origin/main"), "HEAD itself is still origin's");
+        assert!(!head_is_on_origin(&wt), "a merge in progress is no proof");
+        git_in(&wt, &["merge", "--abort"]);
+        assert!(head_is_on_origin(&wt), "after the abort the proof holds again");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 gaps (A, 2026-11-09): on NTFS a second remote named `Origin` fetches into origin's own
+    /// folder (`refs/remotes/Origin/theirs` is read back as `refs/remotes/origin/theirs`). While a
+    /// remote named like origin in another case is configured there is no proof at all.
+    #[test]
+    fn t780_a_remote_named_origin_in_another_case_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780twin");
+        git_in(&repo, &["remote", "add", "Origin", &cleanup[2].to_string_lossy()]);
+        git_in(&repo, &["fetch", "-q", "Origin"]);
+        let theirs = rev(&repo, "fork/theirs");
+        let listed = String::from_utf8(Command::new("git").args(["for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        #[cfg(windows)]
+        assert!(listed.contains("refs/remotes/origin/theirs"), "the twin's ref lands in origin's folder: {listed:?}");
+        let wt = t780_detached(&repo, &root, "twin-wt", &theirs);
+        assert!(!head_is_on_origin(&wt), "a case twin of origin makes no proof: {listed:?}");
+        let own = t780_detached(&repo, &root, "twin-own", "origin/main");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while the twin is configured");
+        git_in(&repo, &["config", "--remove-section", "remote.Origin"]);
+        assert!(head_is_on_origin(&own), "without the twin origin's branch proves itself again");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 gaps (A): another remote whose fetch refspec writes under `refs/remotes/origin/` (in any
+    /// case) is no proof; only that remote's destinations are left out, origin's branches still count.
+    #[test]
+    fn t780_another_remote_fetching_under_origin_is_no_proof() {
+        for (tag, dst) in [("t780under", "refs/remotes/origin/fork/*"), ("t780under2", "refs/remotes/ORIGIN/up/*")] {
+            let (store, _project, repo, root, cleanup) = t780_fixture(tag);
+            git_in(&repo, &["config", "--replace-all", "remote.fork.fetch", &format!("+refs/heads/*:{dst}")]);
+            git_in(&repo, &["fetch", "-q", "fork"]);
+            let theirs = rev(&repo, "fork/theirs");
+            assert_eq!(rev(&repo, &dst.replace('*', "theirs")), theirs, "{dst}");
+            let wt = t780_detached(&repo, &root, "under-wt", &theirs);
+            assert!(!head_is_on_origin(&wt), "{dst}: another remote's ref under origin is no proof");
+            let own = t780_detached(&repo, &root, "under-own", "origin/main");
+            assert!(head_is_on_origin(&own), "{dst}: origin/main itself still counts");
+            drop(store);
+            for d in cleanup.into_iter().chain([repo]) {
+                let _ = fs::remove_dir_all(d);
+            }
+        }
+    }
+
+    /// T-780 gaps (B): `merge --squash` and `cherry-pick -n` put the fork's files in the working
+    /// tree with HEAD still on origin; their leftovers (`SQUASH_MSG`, `AUTO_MERGE`) refuse the proof.
+    /// `checkout <rev> -- .` leaves no marker and stays accepted (uncommitted content is not judged).
+    #[test]
+    fn t780_a_squash_or_a_picked_change_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780sq");
+        for (name, args) in [("squash", ["merge", "-q", "--squash", "fork/theirs"]), ("pick", ["cherry-pick", "-n", "fork/theirs", ""])] {
+            let args: Vec<&str> = args.into_iter().filter(|a| !a.is_empty()).collect();
+            let wt = t780_detached(&repo, &root, &format!("{name}-wt"), "origin/main");
+            assert!(head_is_on_origin(&wt), "{name}");
+            git_in(&wt, &args);
+            assert!(wt.join("theirs.txt").exists(), "{name}: the fork's file is in the working tree");
+            assert_eq!(rev(&wt, "HEAD"), rev(&repo, "origin/main"), "{name}: HEAD itself is still origin's");
+            assert!(!head_is_on_origin(&wt), "{name}: no proof");
+            git_in(&wt, &["reset", "-q", "--hard"]);
+            assert!(head_is_on_origin(&wt), "{name}: after a reset the proof holds again");
+        }
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 gaps (C) helper: rewrites a SHA-1 commit-graph file so `child` claims `parent` as its
+    /// parent, with a generation above it. Git does not check the file's checksum on a normal read.
+    fn t780_forge_parent(graph: &Path, child: &str, parent: &str) {
+        let b = fs::read(graph).unwrap();
+        assert_eq!((&b[..4], b[5]), (&b"CGPH"[..], 1), "a SHA-1 commit-graph");
+        let be32 = |at: usize| u32::from_be_bytes(b[at..at + 4].try_into().unwrap());
+        let chunk = |id: &[u8]| (0..=b[6] as usize).map(|i| 8 + 12 * i).find(|&at| &b[at..at + 4] == id).map(|at| u64::from_be_bytes(b[at + 4..at + 12].try_into().unwrap()) as usize).expect("chunk");
+        let (oidf, oidl, cdat) = (chunk(b"OIDF"), chunk(b"OIDL"), chunk(b"CDAT"));
+        let count = be32(oidf + 255 * 4) as usize;
+        let index = |sha: &str| (0..count).find(|i| b[oidl + 20 * i..oidl + 20 * i + 20].iter().map(|x| format!("{x:02x}")).collect::<String>() == sha).expect("in the graph");
+        let (at, parent_index) = (cdat + 36 * index(child), index(parent) as u32);
+        let level_and_date = (be32(at + 28) & 3) | (9 << 2);
+        let mut forged = b.clone();
+        forged[at + 20..at + 24].copy_from_slice(&parent_index.to_be_bytes());
+        forged[at + 24..at + 28].copy_from_slice(&0x7000_0000u32.to_be_bytes());
+        forged[at + 28..at + 32].copy_from_slice(&level_and_date.to_be_bytes());
+        let mut perms = fs::metadata(graph).unwrap().permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+        fs::set_permissions(graph, perms).unwrap();
+        fs::write(graph, forged).unwrap();
+    }
+
+    /// T-780 gaps (legacy remotes, 2026-11-09): git still honours a remote defined by a file in the
+    /// common git dir's `remotes/` (or `branches/`) folder, outside the config, and its `Pull:` line
+    /// can write under `refs/remotes/origin/`. While either folder holds anything there is no proof.
+    #[test]
+    fn t780_a_legacy_remotes_file_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780legacy");
+        let remotes = repo.join(".git").join("remotes");
+        fs::create_dir_all(&remotes).unwrap();
+        fs::write(remotes.join("legacy"), format!("URL: {}\nPull: refs/heads/*:refs/remotes/origin/*\n", cleanup[2].display())).unwrap();
+        git_in(&repo, &["fetch", "-q", "legacy"]);
+        let theirs = rev(&repo, "fork/theirs");
+        assert_eq!(rev(&repo, "refs/remotes/origin/theirs"), theirs, "git honours the legacy remotes file");
+        let wt = t780_detached(&repo, &root, "legacy-wt", &theirs);
+        assert!(!head_is_on_origin(&wt), "a legacy remote's ref under origin is no proof");
+        let own = t780_detached(&repo, &root, "legacy-own", "origin/main");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while a legacy remote file exists");
+        fs::remove_file(remotes.join("legacy")).unwrap();
+        assert!(head_is_on_origin(&own), "an empty remotes folder is no obstacle");
+        let branches = repo.join(".git").join("branches");
+        fs::create_dir_all(&branches).unwrap();
+        fs::write(branches.join("legacy"), format!("{}#theirs\n", cleanup[2].display())).unwrap();
+        assert!(!head_is_on_origin(&own), "a legacy branches file refuses the proof too");
+        fs::remove_file(branches.join("legacy")).unwrap();
+        assert!(head_is_on_origin(&own), "an empty branches folder is no obstacle");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 gaps (final round, P3-1b): with `extensions.worktreeConfig` on, a remote defined in the
+    /// main checkout's `config.worktree` is invisible to a linked worktree's config read, yet its
+    /// fetch writes the shared refs. Any `remote.*` key in any worktree's `config.worktree` refuses.
+    #[test]
+    fn t780_a_remote_in_another_worktrees_config_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780wtcfg");
+        // The worktrees come first: `git worktree add` copies the current config.worktree.
+        let theirs = rev(&repo, "fork/theirs");
+        let wt = t780_detached(&repo, &root, "wtcfg-wt", &theirs);
+        let own = t780_detached(&repo, &root, "wtcfg-own", "origin/main");
+        git_in(&repo, &["config", "extensions.worktreeConfig", "true"]);
+        git_in(&repo, &["config", "--worktree", "remote.wtfork.url", &cleanup[2].to_string_lossy()]);
+        git_in(&repo, &["config", "--worktree", "remote.wtfork.fetch", "+refs/heads/*:refs/remotes/origin/wt/*"]);
+        git_in(&repo, &["fetch", "-q", "wtfork"]);
+        assert_eq!(rev(&repo, "refs/remotes/origin/wt/theirs"), theirs);
+        let hidden = Command::new("git").args(["config", "--get-regexp", r"^remote\.wtfork\."]).current_dir(&wt).output().unwrap();
+        assert!(!hidden.status.success(), "the linked worktree does not see the main checkout's remote");
+        assert!(!head_is_on_origin(&wt), "a remote in another worktree's config makes no proof");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while any config.worktree holds a remote");
+        git_in(&repo, &["config", "--worktree", "--remove-section", "remote.wtfork"]);
+        assert!(head_is_on_origin(&own), "no remote left in a config.worktree");
+        git_in(&wt, &["config", "--worktree", "remote.other.url", "https://example.invalid/x.git"]);
+        assert!(!head_is_on_origin(&own), "a linked worktree's config.worktree counts too");
+        git_in(&repo, &["config", "extensions.worktreeConfig", "false"]);
+        assert!(head_is_on_origin(&own), "with the extension off git reads no config.worktree");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
+    }
+
+    /// T-780 gaps (final round, P3-3): a fetch destination that is not pure ASCII is refused, since
+    /// the case-folding comparison only folds ASCII; another remote's and origin's own alike.
+    #[test]
+    fn t780_a_destination_that_is_not_ascii_is_no_proof() {
+        assert_eq!(foreign_destination("+refs/heads/*:refs/remotes/Fork/*"), Some(Some("refs/remotes/fork/*".to_string())));
+        assert_eq!(foreign_destination("+refs/heads/*:refs/remotes/or\u{130}gin/*"), None);
+        assert_eq!(foreign_destination("+refs/heads/*:refs/remotes/\u{212A}/*"), None);
+        let repo = temp_repo("t780ascii");
+        git_in(&repo, &["remote", "add", "origin", "https://example.invalid/o.git"]);
+        assert!(origin_fetch_destinations(&repo).is_some());
+        git_in(&repo, &["config", "--add", "remote.origin.fetch", "+refs/pull/*/head:refs/remotes/origin/pr\u{130}/*"]);
+        assert!(origin_fetch_destinations(&repo).is_none(), "origin's own non-branch destination");
+        git_in(&repo, &["config", "--unset", "remote.origin.fetch", "pull"]);
+        assert!(origin_fetch_destinations(&repo).is_some());
+        git_in(&repo, &["remote", "add", "fork", "https://example.invalid/f.git"]);
+        git_in(&repo, &["config", "--replace-all", "remote.fork.fetch", "+refs/heads/*:refs/remotes/\u{130}/*"]);
+        assert!(origin_fetch_destinations(&repo).is_none(), "another remote's destination");
+        let _ = fs::remove_dir_all(repo);
+    }
+
+    /// T-780 gaps (C): a forged `objects/info/commit-graph` can make origin's tip claim a stranger's
+    /// commit as its parent for `--contains`; the proof reads commits with the graph switched off.
+    #[test]
+    fn t780_a_forged_commit_graph_cannot_fake_the_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780cg");
+        let (main_sha, theirs) = (rev(&repo, "origin/main"), rev(&repo, "fork/theirs"));
+        let wt = t780_detached(&repo, &root, "cg-wt", &theirs);
+        let own = t780_detached(&repo, &root, "cg-own", "origin/main");
+        git_in(&repo, &["-c", "commitGraph.generationVersion=1", "commit-graph", "write", "--reachable"]);
+        t780_forge_parent(&repo.join(".git").join("objects").join("info").join("commit-graph"), &main_sha, &theirs);
+        let fooled = String::from_utf8(Command::new("git").args(["--no-replace-objects", "for-each-ref", "--contains", &theirs, "--format=%(refname)", "refs/remotes/origin/"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        assert!(fooled.contains("refs/remotes/origin/main"), "the forged graph fools --contains: {fooled:?}");
+        assert!(!head_is_on_origin(&wt), "a forged commit-graph makes no proof");
+        assert!(head_is_on_origin(&own), "origin/main itself still counts");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
     }
 
     /// after-list row 882: a refused read of the folder flags or the saved setup must not leave the

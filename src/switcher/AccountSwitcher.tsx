@@ -6,6 +6,7 @@
 // Settings > Accounts & keys, where accounts are still added, signed in again and removed.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
 import { activeOf, buttonText, groupsOf, pickAccount, watchEscape, type ClaudeSwitchView, type CodexSwitchView, type Group, type Provider } from "./accounts";
 import { openSettings } from "../settings/pages";
@@ -51,7 +52,7 @@ export function useAccountSwitcher(): { groups: Group[]; active: { claude: strin
       const group = groups.find((g) => g.provider === provider);
       if (!group) return null;
       try {
-        await pickAccount((command, args) => invoke(command, args), group, id);
+        await pickAccount((command, args) => invokeNamed(command, args), group, id);
         return null;
       } catch (e) {
         return String(e);

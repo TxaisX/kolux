@@ -51,7 +51,7 @@ export function failures(byLicense) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  const byLicense = JSON.parse(execSync('pnpm licenses list --json --long', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
+  const byLicense = JSON.parse(execSync('pnpm licenses list --json --long', { windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
   const bad = failures(byLicense);
   console.log(`license-check: ${Object.values(byLicense).flat().length} packages, ${Object.keys(byLicense).length} licenses`);
   if (bad.length) { console.error('not allowed:\n' + bad.join('\n')); process.exit(1); }

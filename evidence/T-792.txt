@@ -1,0 +1,67 @@
+T-792 · Mask on disk too (P2b-04, P2b-07, P2b-08) · lane ready-sec · 2026-11-08
+
+What changed
+- src-tauri/src/diag.rs write_capped: every kolux.log line goes through diag::scrub as it is written (P2b-07).
+- src-tauri/src/diag.rs scrub_word: a bare JWT (three base64url parts joined by dots, starting eyJ, 20+ chars) is a token by shape, like the vendor prefixes and AKIA/ASIA ids (P2b-08). A closing quote after trailing punctuation no longer hides the shape.
+- src-tauri/src/terminal.rs History::append: each UTF-8 chunk is masked before it reaches <profile>/history/<key>.log; a chunk that is not whole UTF-8 is written as it came (P2b-04). terminal_history_append uses the same path.
+- Not a hard-stop file: trust.rs and hooks.rs untouched by this task.
+
+The auditor's Node mask test (p2b-mask-test.txt lines 18 and 48; the script itself is not in the repo) reproduced as Rust assertions
+- line 18 input : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+  line 18 output: [masked]
+- line 48 input : error from pane: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c rejected
+  line 48 output: error from pane: [masked] rejected
+- also asserted: a quoted JWT with a trailing comma keeps its quote and comma; "eyJust", "eyJ.dot", "e.y.J" stay; scrub([masked]) == [masked].
+
+Three new cases (gate: cargo test diag terminal)
+- diag::tests::t792_a_bare_jwt_is_masked_alone_and_inside_a_sentence
+- diag::tests::t792_kolux_log_is_masked_when_written (write(dir, "... ANTHROPIC_API_KEY=sk-ant-DISKSECRET... and <JWT> seen") -> file holds "ANTHROPIC_API_KEY=[masked] and [masked] seen")
+- terminal::tests::t792_pane_history_is_masked_on_disk (export line and ANSI-wrapped JWT masked in the history file, a non-UTF-8 chunk written raw, History.size == bytes on disk)
+Fails before (pre-fix run): test result: FAILED. 0 passed; 3 failed
+
+Gates
+- cargo test --lib diag     -> test result: ok. 18 passed; 0 failed
+- cargo test --lib terminal -> test result: ok. 111 passed; 0 failed
+- cargo clippy --all-targets -- -D warnings -> Finished `dev` profile, no warnings
+- cargo build -> Finished `dev` profile
+- pnpm exec tsc --noEmit -p . -> exit 0 (no TS changed; vitest related not needed)
+
+Limits (best effort, same as the mask elsewhere)
+- A token split across two PTY read chunks is not caught by the history writer.
+- Restored scrollback after a restart shows [masked] where the secret was printed; the live pane is unchanged.
+
+Review fix 2026-11-08 (opus-high-review BLOCK findings 3, 4, 5)
+- Finding 3, a chunk cut inside a character: History::append wrote the whole chunk raw when it was not whole
+  UTF-8, so a secret in the readable part of a chunk cut mid-character reached the disk unmasked.
+  Fix: diag::scrub_bytes masks every valid UTF-8 stretch and writes the invalid bytes and the cut-off tail as
+  they came (nothing dropped, nothing altered beyond the mask); History::append uses it.
+- Finding 4, ESC inside a word: scrub split words at whitespace only, so a coloured value swallowed the colour
+  reset after it ("TOKEN=abc\x1b[0m" -> "TOKEN=[masked]", the reset gone) and a coloured name
+  ("\x1b[31mTOKEN=abc") was never seen as TOKEN=. Fix: an escape sequence (ESC, 0x1b) ends a word in scrub
+  (the sequence itself passes through, never masked, mask_next survives it) and ends a value in masked;
+  escape_len knows a CSI sequence (ESC [ params final) and ESC + one char, a cut-short sequence is kept whole.
+- Finding 5, mask work under the registry lock: the pane output handler called book_chunk -> History::append
+  -> scrub while holding out_registry.lock(). Fix: the handler runs diag::scrub_bytes before the lock and
+  passes the masked bytes into book_chunk(id, chunk, on_disk, is_program); History::append_masked writes
+  them without further work. terminal/flood.rs (the stress harness) does the same.
+
+Gate: cargo test --lib -- diag:: terminal::
+  new: diag::tests::t792_an_escape_sequence_ends_a_word_and_a_cut_chunk_still_masks_its_whole_part
+       scrub("\x1b[31mTOKEN=abc123\x1b[0m") == "\x1b[31mTOKEN=[masked]\x1b[0m"
+       scrub("\x1b[2K$ export ANTHROPIC_API_KEY=sk-ant-ESCSECRET12345678\x1b[0m\r\n") keeps the reset
+       scrub("Authorization: Bearer \x1b[1mabc.def\x1b[0m done") masks the coloured value only
+       ESC + one char, a bare trailing ESC, a cut-short CSI; masked("abc\x1b[0m,") == "[masked]\x1b[0m,"
+       idempotent; a line with sequences and nothing to mask comes back unchanged
+       scrub_bytes(b"TOKEN=aaaa \xff\xfe TOKEN=bbbb \xe2\x82") == b"TOKEN=[masked] \xff\xfe TOKEN=[masked] \xe2\x82"
+  extended: terminal::tests::t792_pane_history_is_masked_on_disk
+       "$ export OPENAI_API_KEY=sk-proj-CUTSECRET1234567890 " + E2 82 (a three-byte char cut after two bytes)
+       -> on disk "OPENAI_API_KEY=[masked] " + E2 82; the earlier 0xff 0xfe chunk still raw; size == bytes written
+Fails before (probe: whitespace-only split, no ESC cut in masked, scrub_bytes writing a non-UTF-8 chunk raw):
+  test diag::tests::t792_an_escape_sequence_ends_a_word_and_a_cut_chunk_still_masks_its_whole_part ... FAILED
+    left: "\u{1b}[31mTOKEN=[masked]"   right: "\u{1b}[31mTOKEN=[masked]\u{1b}[0m"
+  test terminal::tests::t792_pane_history_is_masked_on_disk ... FAILED (src\terminal.rs:2110, CUTSECRET on disk)
+  test result: FAILED. 0 passed; 2 failed
+Passes after:
+  test result: ok. 60 passed; 0 failed (diag::, terminal::)
+  cargo build: Finished; cargo clippy --all-targets -- -D warnings: Finished, no warnings
+Not a hard-stop file: trust.rs and hooks.rs untouched by this fix.

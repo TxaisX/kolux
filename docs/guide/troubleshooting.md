@@ -45,7 +45,7 @@ For one terminal, a pane's menu has "Copy terminal diagnostics". It is masked th
 
 ## The log
 
-Kolux keeps a log at `logs\kolux.log` in its data folder, `%APPDATA%\com.txaisxiong.kolux-rs`. It records:
+Kolux keeps a log at `logs\kolux.log` in its data folder, `%APPDATA%\com.txaisxiong.kolux`. It records:
 
 - when the app starts and exits;
 - when terminal sessions start and end;
@@ -54,7 +54,7 @@ Kolux keeps a log at `logs\kolux.log` in its data folder, `%APPDATA%\com.txaisxi
 
 A crash in a background thread ends only that thread. A crash in the main thread is fatal and is logged first. When the log passes 512 KB it moves aside as `kolux.<number>.log`; the oldest copies are deleted once the total passes 2 MB. The log never leaves your computer, and it is scrubbed when included in a report.
 
-The browser engine keeps its own data in `%LOCALAPPDATA%\com.txaisxiong.kolux-rs\EBWebView`.
+The browser engine keeps its own data in `%LOCALAPPDATA%\com.txaisxiong.kolux\EBWebView`.
 
 ## After a quit or a crash
 
@@ -99,4 +99,4 @@ If `kolux` runs a different app than you expect, you may have the older Kolux on
 
 Use "Send feedback" in Settings, General, Privacy. It opens a new issue page on GitHub in your browser, with a version and platform footer. Paste your diagnostics there; the app submits nothing by itself.
 
-<!-- verified against: src-tauri/src/diag.rs, src/terminal/errors.ts, src/terminal/TerminalPane.tsx, src/terminal/history.ts, src/terminal/layout.ts, src-tauri/src/cli/mod.rs, src-tauri/src/projects.rs, src-tauri/src/procs.rs, src/settings/GeneralPage.tsx, src/settings/privacy.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src-tauri/src/pty.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs, src-tauri/src/orchestration.rs, src-tauri/src/agents.rs at c2ef69fc -->
+<!-- verified against: src-tauri/src/diag.rs, src/terminal/errors.ts, src/terminal/TerminalPane.tsx, src/terminal/history.ts, src/terminal/layout.ts, src-tauri/src/cli/mod.rs, src-tauri/src/projects.rs, src-tauri/src/procs.rs, src/settings/GeneralPage.tsx, src/settings/privacy.ts, src-tauri/src/agent_hooks/mod.rs, src-tauri/src/agent_hooks/vendors.rs, src-tauri/src/pty.rs, src-tauri/src/skills.rs, src-tauri/src/onboarding.rs, src-tauri/src/orchestration.rs, src-tauri/src/agents.rs at c758ad33 -->

@@ -27,7 +27,7 @@ const M = `H${stamp}-OUTPUT-END`;
 const M2 = `M2-${Math.random().toString(36).slice(2, 8)}`;
 const NOTE = "restored after a restart";
 const ROOT = `${LIVE_BASE}/run-TERM-106`.replaceAll("\\", "/").toLowerCase();
-const ps = (cmd) => execFileSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8" }).trim();
+const ps = (cmd) => execFileSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8", windowsHide: true }).trim();
 const services = () => {
   const out = ps(`Get-CimInstance Win32_Process -Filter "CommandLine like '%--terminal-service%'" | ForEach-Object { "$($_.ProcessId)|$($_.ParentProcessId)|$($_.CommandLine)" }`);
   return out.split(/\r?\n/).filter(Boolean).map((l) => {

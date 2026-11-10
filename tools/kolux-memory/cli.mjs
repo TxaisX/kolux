@@ -41,7 +41,7 @@ const HELP = `Kolux memory: a local record of what every agent worked on
 
 The database is built on this machine from local sources only. It is never
 committed and it is different on every machine. Default database:
-  %APPDATA%\\com.txaisxiong.kolux-rs\\memory\\kolux-memory.db`;
+  %APPDATA%\\com.txaisxiong.kolux\\memory\\kolux-memory.db`;
 
 function dbPath(o) {
   return resolve(o.db || defaults().db);

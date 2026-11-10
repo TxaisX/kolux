@@ -3,7 +3,7 @@
 //! JSON-RPC replies (shapes from Codex's public app-server documentation); nothing real is started.
 #![cfg(windows)]
 
-use kolux_rs_lib::codex_usage::{read_account, Window};
+use kolux_lib::codex_usage::{read_account, Window};
 use std::path::{Path, PathBuf};
 
 fn folder(name: &str) -> PathBuf {

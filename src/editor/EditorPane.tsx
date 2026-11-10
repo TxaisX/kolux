@@ -760,7 +760,7 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
     );
   };
   return (
-    <section style={tocShown ? (tocVar(tocWidth) as CSSProperties) : undefined} className={`pane editor${focused ? " focused" : ""}${tocShown ? " toc-open" : ""}${railShown ? " rail-open" : ""}`} hidden={hidden} aria-label={`${name} pane`} onMouseDown={onFocus} onKeyDownCapture={onKeys} onPasteCapture={pastePicture} data-kind="editor" data-key={id}>
+    <section style={tocShown ? (tocVar(tocWidth) as CSSProperties) : undefined} className={`pane editor${focused ? " focused" : ""}${tocShown ? " toc-open" : ""}${railShown ? " rail-open" : ""}`} hidden={hidden} aria-label={`${name} pane`} data-testid="editor-pane" onMouseDown={onFocus} onKeyDownCapture={onKeys} onPasteCapture={pastePicture} data-kind="editor" data-key={id}>
       <header className="pane-head">
         <span className="agent-mark" title="File">
           <FileIcon name={name} size={13} />

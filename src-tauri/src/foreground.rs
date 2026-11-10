@@ -292,7 +292,7 @@ mod imp {
             let line = raw.split(|b| *b == 0).filter(|p| !p.is_empty()).map(String::from_utf8_lossy).collect::<Vec<_>>().join(" ");
             return (!line.is_empty()).then_some(line);
         }
-        let out = std::process::Command::new("ps").args(["-o", "command=", "-p", &pid.to_string()]).output().ok()?;
+        let out = crate::winproc::command("ps").args(["-o", "command=", "-p", &pid.to_string()]).output().ok()?;
         let line = String::from_utf8_lossy(&out.stdout).trim().to_string();
         (out.status.success() && !line.is_empty()).then_some(line)
     }

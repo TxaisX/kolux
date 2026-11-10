@@ -648,7 +648,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("kolux-rs-onb-bin-{}", std::process::id()));
         let bin = dir.join("bin");
         std::fs::create_dir_all(&bin).unwrap();
-        std::fs::write(dir.join(if cfg!(windows) { "kolux-rs.exe" } else { "kolux-rs" }), "").unwrap();
+        std::fs::write(dir.join(if cfg!(windows) { "kolux.exe" } else { "kolux" }), "").unwrap();
         for f in [if cfg!(windows) { "kolux.exe" } else { "kolux" }, "kolux.cmd"] {
             std::fs::write(bin.join(f), "").unwrap();
         }

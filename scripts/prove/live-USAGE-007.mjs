@@ -11,7 +11,7 @@ import { runCli, allPaneBuffers } from "./live-cli-common.mjs";
 
 const STANDIN = ["echo ARGV: %*", "echo CWD: %CD%", "echo IDENT: %KOLUX_HOOK_IDENTITY%", ":again", "set /p L=", "echo GOT: %L%", "goto again"];
 const PROMPT_WORDS = "The usage limit has reset. Please continue where you left off.";
-const IDENTIFIER = "com.txaisxiong.kolux-rs.prove";
+const IDENTIFIER = "com.txaisxiong.kolux.prove";
 
 const post = (port, path, headers, body) =>
   new Promise((resolve, reject) => {
@@ -24,15 +24,15 @@ const post = (port, path, headers, body) =>
     req.end(data);
   });
 
-/** The hook server's "<port> <token>" file somewhere under the scratch roaming folder. */
-function endpointFile(roaming) {
+/** The pane's own "<port> <token>" file somewhere under the scratch roaming folder (T-793: the shared file carries no token). */
+function endpointFile(roaming, terminal) {
   const stack = [roaming];
   while (stack.length) {
     const d = stack.pop();
     for (const e of existsSync(d) ? readdirSync(d, { withFileTypes: true }) : []) {
       const p = `${d}/${e.name}`;
       if (e.isDirectory()) stack.push(p);
-      else if (e.name === "agent-hooks-endpoint.txt") return p;
+      else if (e.name === `agent-hooks-endpoint-${terminal}.txt`) return p;
     }
   }
   return null;
@@ -52,7 +52,7 @@ export async function run007(ctx, mode, { check, log }) {
   }
   log(`pane identity: paneKey=${who?.paneKey} terminal=${who?.terminal}`);
   check("setup: the Claude pane's hook identity is known", !!who?.paneKey && !!who?.terminal, `identity ${who ? "decoded" : "missing"}`);
-  const file = endpointFile(app.paths.roaming);
+  const file = endpointFile(app.paths.roaming, who?.terminal);
   const [port, token] = file ? readFileSync(file, "utf8").trim().split(/\s+/) : [];
   log(`hook endpoint file found: ${!!file}; port=${port}`);
   check("setup: the hook server endpoint is known", !!port && !!token, `port=${port}`);

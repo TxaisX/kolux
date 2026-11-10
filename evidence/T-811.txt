@@ -1,0 +1,20 @@
+T-811  Two timeouts and the 17 variable-name invoke calls
+Lane ready-tools, on top of 9fbea3c4.
+
+1. src/editor/editPlacement.test.ts: the 60-paragraph "repro (b)" test now has a 20_000 ms timeout.
+2. src-tauri/src/scm_writers.rs: both t606 asks (claude and cursor) use 60 s instead of 20 s.
+   Finding: the 20 s was not the cause. Under Git for Windows' PATH the test script's bare `find /c /v ""` is GNU find, which walks the whole C: drive; the 60 s still ran out when I ran it alone (60.37 s FAIL). The stand-in script now calls %SystemRoot%\System32\find.exe by path; t606 passes in 0.31 s.
+3. src/ipc/commands.ts (new): NAMED_COMMANDS (36 names), type CommandName, invokeNamed(name, args). The 16 call sites that passed a variable to invoke now take a CommandName and go through invokeNamed, so the type checker keeps their names in the list:
+   AllChangesPane (baseCall, sidesCall), Explorer (undoOf, redoOf, replay), AgentPicker, ProjectsPanel (cardDo), RecoveryMount (choose), sessions/files, CliCard, RepoSetup (write), SettingsPage, skillBarStore, promptScan, switcher/accounts and AccountSwitcher, ClaudePill, paneFigures.
+4. scripts/invoke-contract.mjs reads NAMED_COMMANDS and checks every name against generate_handler! (new export `listed`).
+   Before: invoke-contract: 751 invoke calls by name against 473 registered commands (17 pass a name in a variable, not checked)
+   After:  invoke-contract: 787 invoke calls by name against 473 registered commands (36 of them named in src/ipc/commands.ts; 0 pass a name in a variable, not checked)
+           invoke-contract: OK
+Tests: src/ipc/commands.test.ts (new), scripts/invoke-contract.test.mjs (new case: map checked, a misspelt mapped name fails, dynamic count 0).
+
+VERIFY (VITEST_MAX_WORKERS=2, a cargo clippy build running alongside the full pnpm test):
+  pnpm exec tsc                       clean
+  pnpm test                           Test Files  863 passed (863) / Tests  6375 passed (6375)
+  cargo clippy --all-targets -- -D warnings   Finished `dev` profile, EXIT=0
+  cargo test                          test result: ok. 2947 passed; 0 failed; 6 ignored (lib); every other target ok
+Note: the first full cargo test, run while pnpm test ran, failed tools::tests::row961_a_probe_with_more_output_than_the_pipe_holds_is_not_reported_hung (8 s probe limit, load); it passes alone (0.64 s) and in the second full run.

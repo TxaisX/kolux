@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TERM, addProjectAndOpen, fmt, installProbe, pageErrors, paneText, seedProfile, slash, stats, typeInto } from "./lib.mjs";
+import { TERM, addProjectAndOpen, fmt, installProbe, pageErrors, paneText, seedProfile, slash, stats, typeInto, openDiffFromCli } from "./lib.mjs";
 import { BIG, buildRepo } from "./s10-repo.mjs";
 
 export const title = "Git under load (50k files, 200 commits ahead)";
@@ -37,7 +37,7 @@ const DIAG_JS = `(() => {
 const unwrap = (v) => (v && typeof v === "object" && "result" in v && v.result && "value" in v.result ? v.result.value : v);
 const slotStatus = () => {
   try {
-    return execFileSync(process.execPath, [SLOT, "status"], { encoding: "utf8", timeout: 15000 }).trim().split(/\r?\n/).join(" | ");
+    return execFileSync(process.execPath, [SLOT, "status"], { encoding: "utf8", timeout: 15000, windowsHide: true }).trim().split(/\r?\n/).join(" | ");
   } catch (e) {
     return `slot status failed: ${e.message.slice(0, 80)}`;
   }
@@ -219,15 +219,8 @@ export async function run({ launch, checks }) {
   let diffKind = null;
   await step("D diff of the big file", async () => {
     await app.focusPane(TERM, 1, ".xterm-helper-textarea");
-    await app.click("button.newtab");
-    await app.sleep(400);
-    await app.evalJs(`(() => { const it = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find((x) => /Changed file diff/.test(x.textContent)); if (it) it.click(); return it ? "ok" : null; })()`);
-    await app.waitFor("the changed file picker", () => app.exists('[role="dialog"][aria-label="Open a changed file"] .picker-input'), 15000, 200);
-    await app.focusField('[role="dialog"][aria-label="Open a changed file"] .picker-input');
-    await app.cdp("insert", BIG, "");
-    await app.waitFor(`the picker lists ${BIG}`, async () => unwrap(await app.evalJs(`[...document.querySelectorAll('[role="dialog"][aria-label="Open a changed file"] *')].some(e => e.children.length === 0 && e.textContent.includes(${JSON.stringify(BIG)}))`)), 30000, 200);
     await app.evalJs(`(() => { const S = window.__s10; S.start("diffState"); S.watch("diffState"); return "ok"; })()`);
-    await app.cdp("key", "Enter", "0");
+    await openDiffFromCli(app, REPO, BIG);
     const ms = await poll(() => app.evalJs(`window.__s10.read("diffState")`), 90000);
     diffKind = unwrap(await app.evalJs(`(() => { const ask = [...document.querySelectorAll(".notice.md-banner")].find((e) => /large/i.test(e.textContent)); return ask ? "asked" : document.querySelector(".diff-body .cm-line") ? "drawn" : "nothing"; })()`));
     const shellShown = unwrap(await app.evalJs(`[...document.querySelectorAll(${JSON.stringify(TERM)})].filter((e) => e.offsetParent !== null).length`));

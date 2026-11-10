@@ -1,5 +1,5 @@
 // S11 footprint: what the app itself costs, per phase, so a fix lane can re-run this AFTER and diff against a BEFORE file.
-// "The app" = the window kolux-rs.exe, the detached terminal service kolux-rs.exe (--terminal-service; only present with
+// "The app" = the window kolux.exe, the detached terminal service kolux.exe (--terminal-service; only present with
 // KOLUX_TERMINAL_SERVICE=1 since DT-C27, so normally absent and the panes' ptys live in the window process) and every msedgewebview2.exe
 // under the window. Shells, conhost and agents in the panes are NOT the app. Per process role it records working set MB, private MB,
 // CPU (% of one core and % of the whole machine, averaged over the window) and GPU process memory; per phase also the page's JS heap,

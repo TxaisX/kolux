@@ -2,12 +2,12 @@
 // update (so it keeps going when the Skills page or its dialog is closed), feeds the pure rules in
 // skillBar.ts and runs the fade timer. The clock, the timers and the app calls are injected so a
 // test can drive it with fake timers; the module-level `skillBar` is the one the app uses.
-import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { IDLE, barItem, barReduce, nextChange, settle, type BarItem, type BarRun } from "./skillBar";
 import type { UpdateStatus } from "./updateNotice";
 
 export type Clock = { now: () => number; setTimeout: (fn: () => void, ms: number) => unknown; clearTimeout: (id: unknown) => void };
-export type Call = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+export type Call = <T>(cmd: CommandName, args?: Record<string, unknown>) => Promise<T>;
 export type View = { run: BarRun; status: UpdateStatus | null; item: BarItem | null };
 
 /** Raised when the user clicks the item: whoever owns the Skills page shows it and the details dialog. */
@@ -139,4 +139,4 @@ export function createSkillBar(call: Call, clock: Clock = realClock, show: () =>
   };
 }
 
-export const skillBar = createSkillBar((cmd, args) => invoke(cmd, args));
+export const skillBar = createSkillBar((cmd, args) => invokeNamed(cmd, args));

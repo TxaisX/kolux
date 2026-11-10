@@ -31,7 +31,7 @@ pub fn get() -> &'static [(String, String)] {
 /// script that hangs never holds anything up).
 pub fn read(shell: &std::path::Path, limit: Duration) -> Option<Vec<(String, String)>> {
     use std::io::Read as _;
-    let mut child = std::process::Command::new(shell)
+    let mut child = crate::winproc::command(shell)
         .args(["-l", "-c", &format!("printf '%s\n' {ENV_MARK}; env")])
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())

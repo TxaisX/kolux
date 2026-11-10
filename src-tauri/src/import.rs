@@ -576,7 +576,7 @@ mod tests {
     /// An application-data folder holding an empty profile.
     fn profile(tag: &str) -> (crate::test_dir::TempDir, PathBuf) {
         let root = crate::test_dir::temp(tag);
-        let profile = root.join("com.txaisxiong.kolux-rs");
+        let profile = root.join("com.txaisxiong.kolux");
         fs::create_dir_all(&profile).unwrap();
         (root, profile)
     }

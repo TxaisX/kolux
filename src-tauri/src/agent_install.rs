@@ -817,7 +817,7 @@ pub async fn agents_install(id: String) -> Result<AgentInfo, String> {
 
 /// The profile folder kolux.log lives in (`KOLUX_APP_DIR` when a scratch run sets it).
 fn log_dir() -> Option<PathBuf> {
-    std::env::var_os("KOLUX_APP_DIR").filter(|v| !v.is_empty()).map(PathBuf::from).or_else(|| crate::resources::recovery::profile_dir("com.txaisxiong.kolux-rs"))
+    std::env::var_os("KOLUX_APP_DIR").filter(|v| !v.is_empty()).map(PathBuf::from).or_else(|| crate::resources::recovery::profile_dir("com.txaisxiong.kolux"))
 }
 
 fn log(line: &str) {

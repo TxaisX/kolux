@@ -1,0 +1,69 @@
+T-785 evidence: scratch update rig (D-1..D-4) on the scratch identity Kolux Proof RS (com.txaisxiong.kolux-proof-rs)
+Run 2026-11-08 on lane ready-identity. Scratch minisign key and loopback feed only; no real install, profile or release key was touched.
+
+## Gates
+$ cd src-tauri && cargo test --lib update::
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 2926 filtered out; finished in 0.07s
+$ cd src-tauri && cargo clippy --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3m 49s
+done 0
+
+## Builds (feed baked in at compile time through KOLUX_RS_RELEASE_ENDPOINT=http://127.0.0.1:9377/latest.json)
+$ node scripts/prove/update-rig.mjs build proof-rs 0.1.0
+20:39:41 build: Kolux Proof RS 0.1.0 (com.txaisxiong.kolux-proof-rs), feed http://127.0.0.1:9377/latest.json
+20:57:16 build: G:\Temp\ready-identity-rig\build\Kolux Proof RS_0.1.0_x64-setup.exe (12448522 bytes), signed; version resource says 0.1.0
+$ node scripts/prove/update-rig.mjs build proof-rs 0.1.1
+20:57:23 build: Kolux Proof RS 0.1.1 (com.txaisxiong.kolux-proof-rs), feed http://127.0.0.1:9377/latest.json
+21:13:11 build: G:\Temp\ready-identity-rig\build\Kolux Proof RS_0.1.1_x64-setup.exe (12447716 bytes), signed; version resource says 0.1.1
+
+## The four runs
+$ node scripts/prove/update-rig.mjs prove-785
+21:23:03 feed: http://127.0.0.1:9377/latest.json serving Kolux Proof RS_0.1.1_x64-setup.exe
+21:23:04 uninstall: exit 0; install folder still has uninstall.exe
+21:23:07 install: Kolux Proof RS_0.1.0_x64-setup.exe -> G:\Temp\ready-identity-rig\install; kolux-rs.exe version 0.1.0
+21:23:07 launch: G:\Temp\ready-identity-rig\install\kolux-rs.exe pid 48836
+21:23:19 quit: pid 48836 ended after the window close
+21:23:20 refusal: download cut mid-file: PASS popup not shown; backend: error decoding response body; exe after quit 0.1.0; feed hits GET /latest.json, GET /Kolux Proof RS_0.1.1_x64-setup.exe, GET /Kolux Proof RS_0.1.1_x64-setup.exe
+21:23:20 launch: G:\Temp\ready-identity-rig\install\kolux-rs.exe pid 50124
+21:23:23 quit: pid 50124 ended after the window close
+21:23:24 refusal: file cut short, sent whole: PASS popup not shown; backend: The signature verification failed; exe after quit 0.1.0; feed hits GET /latest.json, GET /Kolux Proof RS_0.1.1_x64-setup.exe, GET /Kolux Proof RS_0.1.1_x64-setup.exe
+21:23:24 launch: G:\Temp\ready-identity-rig\install\kolux-rs.exe pid 27480
+21:23:26 quit: pid 27480 ended after the window close
+21:23:27 refusal: manifest signed with the wrong key: PASS popup not shown; backend: The signature was created with a different key than the one provided; exe after quit 0.1.0; feed hits GET /latest.json, GET /Kolux Proof RS_0.1.1_x64-setup.exe, GET /Kolux Proof RS_0.1.1_x64-setup.exe
+21:23:27 launch: G:\Temp\ready-identity-rig\install\kolux-rs.exe pid 33544
+21:23:32 D-4: pop-up "A new Kolux version is out on GitHub. Version 0.1.1. Later Update now" with the app on 0.1.0 (exe 0.1.0)
+21:23:32 D-4: answered the restart question with "Restart now"
+21:23:36 D-4 Restart to update: PASS before 0.1.0, after 0.1.1 (page says 0.1.1); came back as pid 10676 without a hand
+21:23:38 quit: pid 10676 ended after the window close
+21:23:39 uninstall: exit 0; install folder still has uninstall.exe
+21:23:41 install: Kolux Proof RS_0.1.0_x64-setup.exe -> G:\Temp\ready-identity-rig\install; kolux-rs.exe version 0.1.0
+21:23:41 launch: G:\Temp\ready-identity-rig\install\kolux-rs.exe pid 41856
+21:23:47 D-2: pop-up "A new Kolux version is out on GitHub. Version 0.1.1. Later Update now" left alone; workspace {"layout":"2","panes":["shell","shell"],"projects":[]}; app 0.1.0 (exe 0.1.0)
+21:23:49 quit: pid 41856 ended after the window close
+21:23:58 D-2 install on quit: PASS exe before quit 0.1.0, after quit 0.1.1; app did not restart itself (running copies: 0)
+21:23:58 launch: G:\Temp\ready-identity-rig\install\kolux-rs.exe pid 35016
+21:24:02 D-3 layout and panes identical: PASS before {"layout":"2","panes":["shell","shell"],"projects":[]} after {"layout":"2","panes":["shell","shell"],"projects":[]}; now 0.1.1 (exe 0.1.1)
+21:24:03 quit: pid 35016 ended after the window close
+21:24:03 profile used by the scratch app: G:\Temp\ready-identity-rig\home\AppData\Roaming\com.txaisxiong.kolux-proof-rs
+21:24:03 result: 6/6 passed
+21:24:03 log: G:\Temp\ready-identity-rig\logs\prove-785.txt
+
+## Clean up
+$ node scripts/prove/update-rig.mjs clean
+21:24:59 uninstall: exit 0; install folder still has uninstall.exe
+21:24:59 clean: removed C:\Users\XiongT\AppData\Roaming\com.txaisxiong.kolux-proof-rs
+21:24:59 clean: removed G:\Temp\ready-identity-rig\home\AppData\Roaming\com.txaisxiong.kolux-proof-rs
+21:24:59 clean: removed G:\Temp\ready-identity-rig\home\AppData\Local\com.txaisxiong.kolux-proof-rs
+21:25:00 clean: user PATH no longer holds G:\Temp\ready-identity-rig\install\bin
+user PATH before the runs and after clean: identical (diff of HKCU\Environment Path printed nothing)
+
+## Reading the runs
+D-1 (the download is checked): the cut-mid-file download, the cut-short file and the wrong-key manifest each ended with no pop-up, the old 0.1.0 exe untouched after quit, and a plain error from the backend.
+D-2: pop-up left alone, quit without clicking: the new version installs after the quit and the app does not restart itself.
+D-3: the same layout (2 panes, two shells) after the quit-install.
+D-4: Update now asks 'Restart to update?', Restart now; the app returned by itself on 0.1.1.
+
+Note: the first proof runs stopped on the rig, not on the app, and the rig was fixed before the run above: the restart is now answered
+through its "Restart to update?" question, the project is added through Add project > type a path, Terminal is picked from the seat's
+button row, and D-2 waits for the new version to be in place before it counts running copies. The first build also died once with a
+linker 0xc0000142 (too many builds at once on this PC) and was simply rerun.

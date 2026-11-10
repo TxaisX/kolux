@@ -5,7 +5,7 @@
 // marker the program prints, the terminal's own report agrees, and known widths give the known column), the pane still works.
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { TERM, addProjectAndOpen, fmt, gitInit, installProbe, pageErrors, paneText, seedProfile, slash, snapshot, stats, typeInto } from "./lib.mjs";
+import { NEW_TERMINAL_JS, TERM, addProjectAndOpen, fmt, gitInit, installProbe, pageErrors, paneText, seedProfile, slash, snapshot, stats, typeInto } from "./lib.mjs";
 
 export const title = "Unicode and ANSI torture (one pane)";
 export const seed = seedProfile;
@@ -156,7 +156,7 @@ export async function run({ launch, checks, opts }) {
     if (!r.cursor?.cursor) checks.note(name + ": no cursor drawn after the payload: " + JSON.stringify({ ...r.cursor, markerHtml: undefined }) + "; after the echo: " + JSON.stringify(r.cursorAfterEcho ? { cursor: r.cursorAfterEcho.cursor, prefix: r.cursorAfterEcho.prefix, markerRow: r.cursorAfterEcho.markerRow } : null));
     if (!r.done || !r.alive) await revive(app, r, name);
     const snap = await snapshot(app).catch(() => []);
-    r.procAlive = snap.some((q) => q.name === "kolux-rs.exe");
+    r.procAlive = snap.some((q) => q.name === "kolux.exe");
     const allErrs = await pageErrors(app).catch(() => ["unreachable"]);
     const errList = allErrs.slice(errSeen).filter((e) => !/xterm.js: Parsing error/.test(String(e)));
     errSeen = allErrs.length;
@@ -182,9 +182,7 @@ export async function run({ launch, checks, opts }) {
       await app.sleep(800);
       await app.evalJs(`(() => { const d = document.querySelector('[role="alertdialog"] .btn-row'); if (d) [...d.querySelectorAll("button")].find((x) => /danger|primary/.test(x.className))?.click(); })()`).catch(() => {});
       await app.sleep(800);
-      await app.click("button.newtab").catch(() => {});
-      await app.sleep(500);
-      await app.evalJs(`(() => { const it = [...document.querySelectorAll('[role="menu"][aria-label="New tab"] [role="menuitem"]')].find((x) => /^\\s*Terminal(\\s|$)/.test((x.querySelector(".name") ?? x).textContent || "")); it?.click(); return !!it; })()`).catch(() => {});
+      await app.evalJs(`(async () => { ${NEW_TERMINAL_JS} return !!(await newTerminal((ms) => new Promise((r) => setTimeout(r, ms)))); })()`).catch(() => {});
       await app.waitFor("a fresh terminal pane", async () => (await app.shown(TERM)) >= 1 && (await app.exists(`${TERM} .xterm-helper-textarea`)), 30000, 500).catch(() => {});
       await app.sleep(4000);
     }

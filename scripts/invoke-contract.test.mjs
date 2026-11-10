@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { check, invoked, registered } from "./invoke-contract.mjs";
+import { check, invoked, listed, registered } from "./invoke-contract.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LIB = `fn run() {
@@ -54,6 +54,14 @@ describe("invoke contract", () => {
     expect(found.names.map((n) => n.name)).toEqual(["one", "two"]);
     expect(found.names.map((n) => n.line)).toEqual([1, 2]);
     expect(found.dynamic).toBe(2);
+  });
+
+  it("T-811: a name held in src/ipc/commands.ts is checked too, and no call passes a bare variable", () => {
+    expect(check(ROOT).dynamic).toBe(0);
+    expect(check(ROOT).mapped).toBeGreaterThan(30);
+    const map = (names) => ({ "src/ipc/commands.ts": `export const NAMED_COMMANDS = [\n${names}\n] as const;\nexport const invokeNamed = (name, args) => invoke(name, args);\n` });
+    expect(listed(map('  "app_info", "update_check",')["src/ipc/commands.ts"]).map((n) => n.name)).toEqual(["app_info", "update_check"]);
+    expect(check(repo(map('  "app_info",\n  "app_inof",')))).toMatchObject({ unknown: ["app_inof (src/ipc/commands.ts:3)"], dynamic: 0, mapped: 2 });
   });
 
   it("does not check test files: they invoke made-up names on purpose", () => {

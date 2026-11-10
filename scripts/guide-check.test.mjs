@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { check, gitIn, readMarker, stripMarker } from "./guide-check.mjs";
 
-const run = (dir, ...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8" }).trim();
+const run = (dir, ...args) => execFileSync("git", args, { cwd: dir, encoding: "utf8", windowsHide: true }).trim();
 
 /** A throwaway repository with one guide page, committed, and its marker pointing at that commit. */
 function repo(body = "# Page\n\nText.\n") {

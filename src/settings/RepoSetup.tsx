@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clearLeft, failLeft, keepLeft, takeLeft, useLeaveSave } from "./leave";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed, type CommandName } from "../ipc/commands";
 import { choiceOptions, choiceSave, runsNote, scriptSave, trustedWords, trustNote, type RepoSetup } from "./setupChoice";
 
 export interface SetupActions {
@@ -172,8 +173,8 @@ export default function RepoSetupSection({ path }: { path: string }) {
       .catch((e) => setNotice(String(e)));
   }, [path]);
   useEffect(load, [load]);
-  const write = (cmd: string, args: Record<string, unknown>) =>
-    invoke(cmd, { path, ...args })
+  const write = (cmd: CommandName, args: Record<string, unknown>) =>
+    invokeNamed(cmd, { path, ...args })
       .then(load)
       .catch((e) => setNotice(String(e)));
   if (!setup) return notice ? <p className="conn-detail warn" role="alert">{notice}</p> : null;

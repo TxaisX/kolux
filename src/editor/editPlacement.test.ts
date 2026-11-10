@@ -69,7 +69,7 @@ describe("repro (b): wrapped paragraphs the rich view respells", () => {
         expect(typed(body, edit(paras, n, f))).toBe(edit(paras, n, f));
       }
     }
-  });
+  }, 20_000);
   it("the 839-byte case stays under 8 KB and still lands right", () => {
     const paras = wrapped(7);
     const body = paras.join("\n\n") + "\n";

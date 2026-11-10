@@ -17,7 +17,7 @@ export const run = (file, a, options = {}) =>
   new Promise((resolve, reject) => {
     execFile(file, a, { windowsHide: true, maxBuffer: 1 << 24, ...options }, (err, stdout, stderr) => (err ? reject(Object.assign(err, { stdout, stderr })) : resolve({ stdout, stderr })));
   });
-export const ps = (script) => run("powershell", ["-NoProfile", "-NonInteractive", "-Command", script]).then((r) => r.stdout.trim());
+export const ps = (script) => run("powershell", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script]).then((r) => r.stdout.trim());
 
 export async function waitFor(what, probe, ms = 15000, every = 250) {
   const end = Date.now() + ms;
@@ -306,7 +306,7 @@ export function createApp(opts) {
   const app = {
     cdpTimeoutMs: 0,
     pid: null,
-    exePath: null, // the built kolux-rs.exe inside this checkout, learned from the first launch
+    exePath: null, // the built kolux.exe inside this checkout, learned from the first launch
     dev: null, // the `pnpm tauri dev` child in launch mode
     vite: null, // a vite started here for a relaunch, when tauri dev took its own down
     paths,
@@ -434,7 +434,7 @@ export function createApp(opts) {
     const found = await waitFor(
       "the app process",
       async () => {
-        const line = await ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux-rs.exe'" | Where-Object { $_.ExecutablePath -like '${exe}*' } | Select-Object -First 1; if ($p) { "$($p.ProcessId)|$($p.ExecutablePath)" }`);
+        const line = await ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" | Where-Object { $_.ExecutablePath -like '${exe}*' } | Select-Object -First 1; if ($p) { "$($p.ProcessId)|$($p.ExecutablePath)" }`);
         return line.includes("|") ? line : null;
       },
       30000,
@@ -495,7 +495,7 @@ export function createApp(opts) {
     // Cleanup only: a shell or stand-in still running from the temp folder that no tree covered. Its names are
     // fixed and this script's own ancestors (the cmd and pnpm chain that ran it carries --temp too) are skipped.
     const left = await ps(
-      `$names = @('kolux-rs.exe','powershell.exe','pwsh.exe','cmd.exe','conhost.exe','OpenConsole.exe','ping.exe','curl.exe')
+      `$names = @('kolux.exe','powershell.exe','pwsh.exe','cmd.exe','conhost.exe','OpenConsole.exe','ping.exe','curl.exe')
        $all = Get-CimInstance Win32_Process; $mine = @(); $p = $PID; while ($p -and $mine -notcontains $p) { $mine += $p; $p = ($all | Where-Object ProcessId -eq $p).ParentProcessId }
        $all | Where-Object { $names -contains $_.Name -and $_.CommandLine -like '*${TEMP.replace(/'/g, "''")}*' -and $mine -notcontains $_.ProcessId } | ForEach-Object { "$($_.ProcessId) $($_.Name)" }`,
     ).catch(() => "");

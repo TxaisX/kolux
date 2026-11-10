@@ -9,11 +9,27 @@ import { fileURLToPath } from "node:url";
 import { createApp, waitFor as waitUntil } from "../evidence/app-launch.mjs";
 
 export const TERM = "section.pane[data-agent]";
+// In-page helper (S-02): `button.newtab` and its "New tab" menu are gone (owner change 2026-11-06), and from 10 panes on the grid is a tab strip
+// with no pane header buttons. The window's own key for "New terminal tab" (Mod+T, tab.newTerminal) works at every count. Paste NEW_TERMINAL_JS
+// into a page script, then await newTerminal(); it returns true once the key event was sent (the caller waits for the pane).
+export const NEW_TERMINAL_JS = `async function newTerminal(sleep) {
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "t", code: "KeyT", ctrlKey: true, bubbles: true, cancelable: true }));
+  await sleep(0);
+  return true;
+}`;
+// S-02: the New tab menu's "Changed file diff" picker is gone, and so is the Source Control sidebar (T-644). What still opens a file's diff tab
+// from outside is the command line's event: `kolux diff` makes the backend emit "cli-workspace" with kind "file-diff"; the same event is emitted here
+// through the page's IPC, so the window's own handler (useCliBridge) selects the folder and opens the diff.
+export async function openDiffFromCli(app, repo, name, staged = false) {
+  const dir = repo.replace(/\//g, "\\");
+  const payload = { kind: "file-diff", path: `${dir}\\${name}`, staged, worktree: dir, branch: null };
+  await app.evalJs(`window.__TAURI_INTERNALS__.invoke("plugin:event|emit", { event: "cli-workspace", payload: ${JSON.stringify(payload)} }).then(() => true)`);
+}
 export const SHELL = 'section.pane[data-agent="shell"]';
 export const SHELL_NAMES = new Set(["powershell.exe", "pwsh.exe", "cmd.exe"]);
 // Host processes a terminal pane leaves behind when it is not cleaned up.
 export const PANE_PROCS = new Set(["powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe", "OpenConsole.exe"]);
-export const IDENTIFIER = "com.txaisxiong.kolux-rs.stress";
+export const IDENTIFIER = "com.txaisxiong.kolux.stress";
 export const TEMP_MARKER = ".kolux-rs-stress-temp";
 export const slash = (p) => p.replace(/\\/g, "/");
 
@@ -85,7 +101,7 @@ export function newApp(opts, name) {
 // homes and CDP port as the dev launch (scripts/evidence/app-launch.mjs appEnv is not exported, so it is repeated here from app.paths).
 // The exe is built once per run.mjs process; --skip-build reuses the one already in the target folder.
 const releaseBuilt = new Map();
-const releaseExe = (root) => join(process.env.CARGO_TARGET_DIR ? resolve(process.env.CARGO_TARGET_DIR) : join(root, "src-tauri", "target"), "release", "kolux-rs.exe");
+const releaseExe = (root) => join(process.env.CARGO_TARGET_DIR ? resolve(process.env.CARGO_TARGET_DIR) : join(root, "src-tauri", "target"), "release", "kolux.exe");
 async function buildRelease(app, opts) {
   const exe = releaseExe(opts.root);
   if (!releaseBuilt.has(exe)) {
@@ -126,7 +142,7 @@ function useReleaseBuild(app, opts) {
     const found = await waitUntil(
       "the app process",
       async () => {
-        const line = await app.ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux-rs.exe'" | Where-Object { $_.ExecutablePath -eq '${want}' -and [string]$_.CommandLine -notlike '*--terminal-service*' } | Select-Object -First 1; if ($p) { $p.ProcessId }`);
+        const line = await app.ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" | Where-Object { $_.ExecutablePath -eq '${want}' -and [string]$_.CommandLine -notlike '*--terminal-service*' } | Select-Object -First 1; if ($p) { $p.ProcessId }`);
         return /^\d+$/.test(line) ? line : null;
       },
       30000,
@@ -165,26 +181,48 @@ export async function gitInit(app, dir, name = "stress") {
   await g(["add", "."]);
   await g(["commit", "-q", "-m", "stress"]);
 }
+// The Add project dialog opens from the sidebar's "kolux-add-project" window event (what the plus button, the setup guide and
+// the Automations page all fire), so the helper does not depend on where the layout puts the button. Its "Type a path" link
+// (button[data-add-by-path]) leads to the folder field. S-01: the old .sb-foot button no longer exists.
+export const ADD_PROJECT_EVENT = "kolux-add-project";
 export const CHOOSER = "section.pane.chooser";
-// Same path as scripts/evidence/smoke.mjs: the sidebar's "Add project" button, its "type a path" link, the folder field, then the launch
-// chooser (a new project opens the chooser, not a shell) where Terminal is picked in seat 1 and Start pressed.
-export async function addProjectAndOpen(app, repo) {
-  await app.waitFor("the sidebar", () => app.exists('aside.sidebar button[aria-label="Add project"]'), 30000);
-  await app.click('aside.sidebar button[aria-label="Add project"]');
-  await app.waitFor("the add-by-path link", () => app.exists("button[data-add-by-path]"), 5000);
+// A fresh profile opens the first-run guide over the grid: close it (Close, then Skip in its question) so clicks reach the app.
+export async function dismissFirstRun(app) {
+  const any = '[role="dialog"], [role="alertdialog"]';
+  for (let t = 0; t < 10 && (await app.exists(any)); t++) {
+    const asked = await app.evalJs(`[...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Skip") && /Skip setup\\?/.test(document.body.innerText)`);
+    if (asked) await app.clickWhere("button", "/^\\s*Skip\\s*$/");
+    else if (await app.exists('[role="dialog"] button[aria-label="Close setup"]')) await app.click('[role="dialog"] button[aria-label="Close setup"]');
+    else await app.cdp("key", "Escape");
+    await app.sleep(800);
+  }
+}
+export async function openAddByPath(app) {
+  await app.waitFor("the app shell", () => app.exists("aside.sidebar"), 60000);
+  await dismissFirstRun(app);
+  await app.evalJs(`(window.dispatchEvent(new CustomEvent(${JSON.stringify(ADD_PROJECT_EVENT)})), true)`);
+  await app.waitFor("the add-by-path item", () => app.exists("button[data-add-by-path]"), 10000);
   await app.click("button[data-add-by-path]");
   await app.waitFor("the project folder field", () => app.exists('input[aria-label="project folder"]'), 5000);
-  await app.focusField('input[aria-label="project folder"]');
-  await app.cdp("insert", repo, "enter");
-  await app.waitFor("the launch chooser", async () => (await app.shown(CHOOSER)) >= 1, 30000);
+}
+// A new project opens the launch chooser, not a shell: seat 1's "Terminal" button (a92dae95 replaced the seat dropdown with a row
+// of agent buttons), then Start, once the agent search has finished and enabled it. The way a user would.
+export async function startTerminalFromChooser(app) {
   const seat = `${CHOOSER} [role="group"][aria-label="Seat 1: which AI"] button`;
   const isTerminal = (extra = "") => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(seat)})].some(b => /^\\s*Terminal\\s*$/.test(b.textContent)${extra})`);
   await app.waitFor("the chooser's Terminal choice", () => isTerminal(), 30000);
   await app.clickWhere(seat, "/^\\s*Terminal\\s*$/");
   await app.waitFor("Terminal picked in seat 1", () => isTerminal(' && b.getAttribute("aria-pressed") === "true"'), 5000);
   const start = `${CHOOSER} button.btn.primary`;
-  await app.waitFor("the chooser's Start button", () => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some(b => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
+  await app.waitFor("the chooser's Start button", () => app.evalJs(`[...document.querySelectorAll(${JSON.stringify(start)})].some((b) => !b.disabled && /^\\s*Start\\s*$/.test(b.textContent))`), 60000);
   await app.clickWhere(start, "/^\\s*Start\\s*$/");
+}
+export async function addProjectAndOpen(app, repo) {
+  await openAddByPath(app);
+  await app.focusField('input[aria-label="project folder"]');
+  await app.cdp("insert", repo, "enter");
+  await app.waitFor("the launch chooser", async () => (await app.shown(CHOOSER)) >= 1, 30000);
+  await startTerminalFromChooser(app);
   await app.waitFor("the first shell pane", async () => (await app.shown(TERM)) >= 1, 30000);
   await app.waitFor("the first pane's input field", () => app.exists(`${TERM} .xterm-helper-textarea`), 30000);
 }
@@ -207,7 +245,7 @@ export async function snapshot(app, pid = app.pid) {
       return { pid: Number(p), name, ppid: Number(ppid), ws: Number(ws), handles: Number(handles), threads: Number(threads), created };
     });
 }
-const UI_PROCS = new Set(["kolux-rs.exe", "msedgewebview2.exe"]);
+const UI_PROCS = new Set(["kolux.exe", "msedgewebview2.exe"]);
 // The app's own memory: the app process and its web view processes (shells and what they run are not the app).
 export const appMemMB = (snap) => snap.filter((p) => UI_PROCS.has(p.name)).reduce((a, p) => a + p.ws, 0) / 1048576;
 export const handlesOf = (snap) => snap.filter((p) => UI_PROCS.has(p.name)).reduce((a, p) => a + p.handles, 0);
@@ -255,7 +293,7 @@ export async function typeInto(app, index, text, sel = TERM) {
 }
 
 // ---------- app footprint (S11) ----------
-// The app's own processes only: the window kolux-rs.exe, the detached terminal service kolux-rs.exe and every msedgewebview2.exe
+// The app's own processes only: the window kolux.exe, the detached terminal service kolux.exe and every msedgewebview2.exe
 // under the window. Shells, conhost and agents are not the app. Private bytes = Win32_Process PrivatePageCount.
 const FOOTPRINT_PS = fileURLToPath(new URL("./footprint-sample.ps1", import.meta.url));
 export const FOOTPRINT_ROLES = ["window", "service", "wv-browser", "renderer", "gpu-process", "utility", "crashpad-handler"];

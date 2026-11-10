@@ -1,6 +1,6 @@
 # Samples the app's own processes (the window, the detached terminal service when there is one, every msedgewebview2.exe under the
 # window) for -WindowS seconds and prints one JSON document on stdout. Read-only: it never touches a process.
-# The process set is found once by Win32_Process (the window's descendants, plus a --terminal-service kolux-rs.exe whose command line
+# The process set is found once by Win32_Process (the window's descendants, plus a --terminal-service kolux.exe whose command line
 # holds -ServiceMatch, so another Kolux such as the installed one is never sampled); then every -IntervalS seconds each pid is read
 # through System.Diagnostics.Process (WorkingSet64, PrivateMemorySize64 = private bytes, TotalProcessorTime). GPU process memory and
 # engine utilization come from one Get-Counter job running beside the loop (the counters are slow, so they are not read per tick).
@@ -19,7 +19,7 @@ $job = Start-Job -ArgumentList $WindowS, $gpuStep -ScriptBlock {
 
 function Get-Role($p) {
   $cmd = [string]$p.CommandLine
-  if ($p.Name -eq 'kolux-rs.exe') { if ($cmd -like '*--terminal-service*') { return 'service' } else { return 'window' } }
+  if ($p.Name -eq 'kolux.exe') { if ($cmd -like '*--terminal-service*') { return 'service' } else { return 'window' } }
   if ($cmd -match '--type=(\S+)') { return $Matches[1] }
   return 'wv-browser'
 }
@@ -33,12 +33,12 @@ while ($i -lt $want.Count) {
   foreach ($c in $all) { if ($c.ParentProcessId -eq $q -and -not $want.Contains([int]$c.ProcessId)) { $want.Add([int]$c.ProcessId) } }
 }
 foreach ($c in $all) {
-  if ($c.Name -eq 'kolux-rs.exe' -and ([string]$c.CommandLine) -like '*--terminal-service*' -and ([string]$c.CommandLine).Replace('\', '/') -like "*$($ServiceMatch.Replace('\', '/'))*" -and -not $want.Contains([int]$c.ProcessId)) { $want.Add([int]$c.ProcessId) }
+  if ($c.Name -eq 'kolux.exe' -and ([string]$c.CommandLine) -like '*--terminal-service*' -and ([string]$c.CommandLine).Replace('\', '/') -like "*$($ServiceMatch.Replace('\', '/'))*" -and -not $want.Contains([int]$c.ProcessId)) { $want.Add([int]$c.ProcessId) }
 }
 $roles = @{}
 foreach ($p in $all) {
   if (-not $want.Contains([int]$p.ProcessId)) { continue }
-  if ($p.Name -ne 'kolux-rs.exe' -and $p.Name -ne 'msedgewebview2.exe') { continue } # shells, conhost and agents are not the app
+  if ($p.Name -ne 'kolux.exe' -and $p.Name -ne 'msedgewebview2.exe') { continue } # shells, conhost and agents are not the app
   $roles[[int]$p.ProcessId] = Get-Role $p
 }
 

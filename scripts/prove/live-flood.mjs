@@ -7,7 +7,7 @@
 // tasks, and a second CDP socket that times a trivial evaluate every 200 ms: a 1 s main-thread block shows as a slow answer).
 //   node scripts/prove/live-flood.mjs
 // Run only when 57 has said "published" AND 49's live-verify t13 is done: one dev app at a time.
-// Isolation: identifier com.txaisxiong.kolux-rs.flood1, vite 1490, CDP 9310, scratch root G:/Temp/live-flood/run,
+// Isolation: identifier com.txaisxiong.kolux.flood1, vite 1490, CDP 9310, scratch root G:/Temp/live-flood/run,
 // cargo target G:/Temp/live-verify-t5/target. HOME/USERPROFILE/APPDATA/CLAUDE_CONFIG_DIR all point into the scratch root
 // (createApp), so the real ~/.claude is never read. PIDs 3392 and 34868 belong to other sessions: never touched.
 // Results: G:/Temp/live-flood/table.md, one row appended as each scenario finishes; run.log next to it.
@@ -24,7 +24,7 @@ process.env.PROVE_CDP ||= "9310";
 process.env.CARGO_TARGET_DIR ||= "G:/Temp/live-verify-t5/target";
 const PORT = process.env.PROVE_PORT;
 const CDPP = process.env.PROVE_CDP;
-const IDENT = "com.txaisxiong.kolux-rs.flood1";
+const IDENT = "com.txaisxiong.kolux.flood1";
 const OUT = "G:/Temp/live-flood";
 const SHOTS = `${OUT}/shots`;
 const TEMP = `${OUT}/run`;

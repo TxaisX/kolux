@@ -3,6 +3,7 @@
 // follows the "agent-install-progress" event. The rules live in pickerRules.ts; AgentPickerView only draws.
 import { createElement, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { invokeNamed } from "../ipc/commands";
 import { listen } from "@tauri-apps/api/event";
 import type { AgentInfo } from "./PlusMenu";
 import {
@@ -104,7 +105,7 @@ export default function AgentPicker({ agents, onChanged, level }: { agents: Agen
     setStarting(true);
     setProgress(queueAll(ids));
     try {
-      const results = await invoke<InstallResult[]>(INSTALL_MANY, { ids });
+      const results = await invokeNamed<InstallResult[]>(INSTALL_MANY, { ids });
       const list = mergeResults(latest.current, results);
       if (live.current) {
         setProgress((p) => afterBatch(p, results));

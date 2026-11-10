@@ -18,7 +18,7 @@ const MARKER_LINE = /^<!--\s*verified against:(.*)\s+at\s+([0-9a-f]{7,40})\s*-->
 export function gitIn(root) {
   return (args) => {
     try {
-      return execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+      return execFileSync("git", args, { windowsHide: true, cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
     } catch {
       return null;
     }

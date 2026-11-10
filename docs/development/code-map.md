@@ -24,13 +24,13 @@ This page is the map of the repository. It names the files that matter for commo
 
 ## Rust
 
-The crate is `kolux-rs`, library `kolux_rs_lib`, in `src-tauri/`.
+The crate is `kolux`, library `kolux_lib`, in `src-tauri/`. The command-line program is the crate's `kolux-cli` binary (`src/bin/kolux-cli.rs`); the installer ships it as `bin\kolux.exe`, so the app and the command never share a file name (T-790).
 
 | Module | Responsibility |
 |---|---|
 | `src/main.rs` | Process dispatch: terminal service, uninstall PATH repair, agent install, desktop app |
 | `src/lib.rs` | Tauri setup, command registration, startup, exit, background loops |
-| `src/bin/kolux.rs` | The shipped `kolux` CLI binary, gated on `release-cli` |
+| `src/bin/kolux-cli.rs` | The shipped command-line binary (installed as `bin\kolux.exe`), gated on `release-cli` |
 | `src/bin/kolux-dev.rs` | The development CLI binary |
 | `src/cli/` | Parser, command group handlers, local CLI server, `cli_register` |
 | `src/terminal.rs` | Window-side terminal registry, `terminal_*` commands, reattach, generations |

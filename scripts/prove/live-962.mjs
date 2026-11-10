@@ -29,7 +29,7 @@ const win = (p) => p.replaceAll("/", "\\");
 const BIN = `${LIVE_BASE}/standin-962-${RUN}`;
 const CALLS = `${LIVE_BASE}/standin-962-${RUN}-calls.log`;
 const HANG = 3600 + RUN; // unique ping count, so the pid check finds only this stand-in's child
-const ps = (cmd) => execFileSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8" }).trim();
+const ps = (cmd) => execFileSync("powershell", ["-NoProfile", "-Command", cmd], { encoding: "utf8", windowsHide: true }).trim();
 const stand = () => ps(`Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.Name -match '^(cmd|ping|findstr)\\.exe$' -and $_.CommandLine -match 'standin-962|ping -n ${HANG}' } | ForEach-Object { "$($_.ProcessId):$($_.Name)" }`).split(/\r?\n/).filter(Boolean);
 const clock = (d = new Date()) => d.toTimeString().slice(0, 8) + "." + String(d.getMilliseconds()).padStart(3, "0").slice(0, 2);
 

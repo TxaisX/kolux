@@ -122,7 +122,7 @@ export function mergeGate(headTasks, lanes) {
 export function readLanes(root = ROOT) {
   const lanes = new Map();
   const git = (args) => execFileSync('git', args,
-    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 });
+    { windowsHide: true, cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 << 20 });
   let refs = [];
   try {
     refs = git(['for-each-ref', '--format=%(refname:short)', 'refs/heads/lane/']).split(/\r?\n/).filter(Boolean);

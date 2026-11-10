@@ -4,8 +4,8 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::procs::{alive, wait_gone};
-use kolux_rs_lib::pty::{shell_commands, PtySession};
+use kolux_lib::procs::{alive, wait_gone};
+use kolux_lib::pty::{shell_commands, PtySession};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -63,7 +63,7 @@ fn fixture(part: &str) -> (serde_json::Map<String, serde_json::Value>, Vec<Strin
 fn app048_child_writer() {
     let Ok(dir) = std::env::var("CARDS19_WRITER_DIR") else { return };
     let dir = PathBuf::from(dir);
-    let store = kolux_rs_lib::state::Store::open(&dir).expect("store opens");
+    let store = kolux_lib::state::Store::open(&dir).expect("store opens");
     for part in ["setting", "layout"] {
         let (set, remove) = fixture(part);
         store.patch_settings(&set, &remove).expect("the patch is written");
@@ -78,7 +78,7 @@ fn app048_child_writer() {
 fn app048_box1_a_setting_and_the_layout_are_there_after_the_process_is_killed_two_seconds_later() {
     let dir = scratch("app048");
     {
-        let s = kolux_rs_lib::state::Store::open(&dir).unwrap();
+        let s = kolux_lib::state::Store::open(&dir).unwrap();
         s.save_settings(&serde_json::json!({ "theme": "classic", "zoom": 1.25 })).unwrap();
     }
     let exe = std::env::current_exe().unwrap();
@@ -98,7 +98,7 @@ fn app048_box1_a_setting_and_the_layout_are_there_after_the_process_is_killed_tw
     child.kill().expect("hard kill");
     child.wait().unwrap();
 
-    let s = kolux_rs_lib::state::Store::open(&dir).unwrap();
+    let s = kolux_lib::state::Store::open(&dir).unwrap();
     let got = s.try_settings().expect("settings.json reads whole after the kill");
     assert_eq!(got["needsStrip"], serde_json::json!(false), "the changed setting is there");
     assert_eq!(got["savedLayout"], fixture("layout").0["savedLayout"], "the layout is there, identical");
@@ -126,7 +126,7 @@ fn app048_box2_a_profile_written_by_the_previous_release_reads_back_identical() 
     }
     let before: std::collections::BTreeSet<String> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
 
-    let s = kolux_rs_lib::state::Store::open(&dir).expect("today's code opens the old database");
+    let s = kolux_lib::state::Store::open(&dir).expect("today's code opens the old database");
     s.stamp_look(); // lib.rs does this right after Store::open (row 785)
     let settings = s.try_settings().expect("today's code reads the old settings.json");
     assert_eq!(settings["savedLayout"], expected["settings"]["savedLayout"], "the saved layout (panes, open editor tabs, group, colour, pinned, session) reads back identical");

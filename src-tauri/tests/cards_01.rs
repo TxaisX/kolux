@@ -1,9 +1,9 @@
 //! PROJ-001: choosing folders adds exactly those as projects; an already-registered folder adds no row.
 //! Needs `git`, `projects` and `state` public in lib.rs.
 
-use kolux_rs_lib::git::Git;
-use kolux_rs_lib::projects::{add_project, create_workspace, list_workspaces, load_projects, place_from, resolve_base, Place, Project};
-use kolux_rs_lib::state::Store;
+use kolux_lib::git::Git;
+use kolux_lib::projects::{add_project, create_workspace, list_workspaces, load_projects, place_from, resolve_base, Place, Project};
+use kolux_lib::state::Store;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -115,7 +115,7 @@ fn proj025_box1_a_folder_elsewhere_with_nesting_on_puts_a_inside_app_there() {
     {
         let far = Project { id: "far".into(), name: "app".into(), path: "C:\\repos\\app".into(), workspaces_dir: None, base: None, display_name: None };
         let place = place_from(&far, &serde_json::json!({ "workspacesDir": "D:\\ws", "workspacesLayout": "nested" }));
-        assert_eq!(kolux_rs_lib::projects::workspace_path(&place, &far, "a"), PathBuf::from("D:\\ws\\app\\a"));
+        assert_eq!(kolux_lib::projects::workspace_path(&place, &far, "a"), PathBuf::from("D:\\ws\\app\\a"));
     }
     remove_workspace(&git, &app, &path, false).unwrap();
     drop(store);
@@ -242,7 +242,7 @@ fn remove_workspace(_git: &Git, project: &Project, path: &str, _force: bool) -> 
 
 #[test]
 fn proj045_box2_the_group_by_choice_patched_into_the_settings_is_still_there_after_a_reopen() {
-    use kolux_rs_lib::state::patched;
+    use kolux_lib::state::patched;
     let profile = scratch("p45-profile");
     for choice in ["none", "project", "status", "pr"] {
         {
@@ -258,8 +258,8 @@ fn proj045_box2_the_group_by_choice_patched_into_the_settings_is_still_there_aft
 }
 
 // ---- PROJ-077: the command line, from the words typed to the answer printed.
-use kolux_rs_lib::cli::{dispatch, envelope, parse, Ctx, Request};
-use kolux_rs_lib::terminal::Terminals;
+use kolux_lib::cli::{dispatch, envelope, parse, Ctx, Request};
+use kolux_lib::terminal::Terminals;
 use serde_json::{json, Value};
 use std::sync::Mutex;
 
@@ -370,7 +370,7 @@ fn proj063_box2_backend_half_a_branch_switched_inside_the_workspace_folder_lists
 
 #[test]
 fn proj070_box1_a_workspace_with_an_unsaved_change_lists_it_and_a_delete_without_force_is_refused() {
-    use kolux_rs_lib::projects::{remove_check, removal_refused};
+    use kolux_lib::projects::{remove_check, removal_refused};
     let git = Git::detect().unwrap();
     let profile = scratch("p70-profile");
     let store = Store::open(&profile).unwrap();

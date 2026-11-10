@@ -3,8 +3,8 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::status::{report, Agent};
-use kolux_rs_lib::trust::{claude_config_file, claude_key, trust_folders};
+use kolux_lib::status::{report, Agent};
+use kolux_lib::trust::{claude_config_file, claude_key, trust_folders};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
@@ -21,15 +21,41 @@ fn scratch(tag: &str) -> PathBuf {
     d
 }
 
-fn folders(dir: &Path, names: &[&str]) -> Vec<PathBuf> {
-    names
+/// Real git in a scratch folder; panics on failure.
+fn git(dir: &Path, args: &[&str]) {
+    assert!(norm(dir).starts_with(&norm(scratch_root::root())), "git would run outside the scratch root: {dir:?}");
+    let out = std::process::Command::new("git").args(args).current_dir(dir).output().unwrap();
+    assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+}
+
+/// T-780: a launch pre-trusts only worktrees of a main checkout the user already trusted in the
+/// same agent file. A repository at `dir/main` with one commit, one linked worktree per name
+/// (`dir/<name>`), and the user's own acceptance of `main` (Claude's trust answer, in the shape
+/// Claude writes it) put into `file` with `extra` beside it. Returns the worktrees and the bytes
+/// `file` holds before Kolux touches it.
+fn trusted_main_with_worktrees(dir: &Path, file: &Path, names: &[&str], extra: Value) -> (Vec<PathBuf>, Vec<u8>) {
+    let main = dir.join("main");
+    std::fs::create_dir_all(&main).unwrap();
+    git(&main, &["init", "-q", "-b", "main"]);
+    std::fs::write(main.join("README.md"), "hello\n").unwrap();
+    git(&main, &["add", "."]);
+    git(&main, &["-c", "user.email=card@example.invalid", "-c", "user.name=Card Tester", "commit", "-q", "-m", "first"]);
+    let wts: Vec<PathBuf> = names
         .iter()
         .map(|n| {
-            let p = dir.join(n);
-            std::fs::create_dir_all(&p).unwrap();
-            p
+            let wt = dir.join(n);
+            git(&main, &["worktree", "add", "-q", "-b", &format!("kolux-{}", n.to_lowercase()), &wt.to_string_lossy()]);
+            wt
         })
-        .collect()
+        .collect();
+    let mut seed = extra;
+    if !seed["projects"].is_object() {
+        seed["projects"] = json!({});
+    }
+    seed["projects"][claude_key(&main).unwrap()] = json!({ "hasTrustDialogAccepted": true });
+    let bytes = serde_json::to_vec_pretty(&seed).unwrap();
+    std::fs::write(file, &bytes).unwrap();
+    (wts, bytes)
 }
 
 fn doc(file: &Path) -> Value {
@@ -44,8 +70,8 @@ fn safe023_box2_launching_again_in_the_same_folder_leaves_the_trust_file_byte_fo
     assert!(norm(&resolved).starts_with(&norm(scratch_root::root())), "{resolved:?} is not under the scratch root");
     assert!(resolved.ends_with(".claude.json"));
     let file = d.join(".claude.json");
-    std::fs::write(&file, r#"{"userID":"u1","projects":{"G:/Elsewhere":{"hasTrustDialogAccepted":true,"allowedTools":["Bash"]}}}"#).unwrap();
-    let wt = folders(&d, &["Fresh-Worktree"]);
+    let seed = json!({ "userID": "u1", "projects": { "G:/Elsewhere": { "hasTrustDialogAccepted": true, "allowedTools": ["Bash"] } } });
+    let (wt, _) = trusted_main_with_worktrees(&d, &file, &["Fresh-Worktree"], seed);
 
     assert_eq!(trust_folders(&file, "claude", &wt).unwrap(), 1, "first launch records the folder");
     let key = claude_key(&wt[0]).unwrap();
@@ -63,7 +89,7 @@ fn safe023_box2_launching_again_in_the_same_folder_leaves_the_trust_file_byte_fo
     assert_eq!(std::fs::read_dir(&d).unwrap().count(), siblings, "no backup or temp file appeared");
 
     let after = doc(&file);
-    assert_eq!(after["projects"].as_object().unwrap().len(), 2, "no duplicate entry");
+    assert_eq!(after["projects"].as_object().unwrap().len(), 3, "no duplicate entry: the other project, the trusted main checkout and the worktree");
     assert_eq!(after["projects"]["G:/Elsewhere"]["allowedTools"], json!(["Bash"]), "every other project and setting kept");
     assert_eq!(after["userID"], "u1");
     assert!(norm(&file).starts_with(&norm(scratch_root::root())), "the file written lies under the scratch root");
@@ -73,17 +99,19 @@ fn safe023_box2_launching_again_in_the_same_folder_leaves_the_trust_file_byte_fo
 fn safe024_box1_six_worktrees_are_covered_by_one_call_and_one_write() {
     let d = scratch("b1");
     let file = d.join(".claude.json");
-    let wts = folders(&d, &["w1", "w2", "w3", "w4", "w5", "w6"]);
+    let (wts, seed) = trusted_main_with_worktrees(&d, &file, &["w1", "w2", "w3", "w4", "w5", "w6"], json!({}));
     assert_eq!(trust_folders(&file, "claude", &wts).unwrap(), 6, "one call records all six");
     let projects = doc(&file)["projects"].as_object().unwrap().clone();
-    assert_eq!(projects.len(), 6);
+    assert_eq!(projects.len(), 7, "the six worktrees beside the main checkout the user trusted");
     for w in &wts {
         assert_eq!(projects[&claude_key(w).unwrap()]["hasTrustDialogAccepted"], true);
     }
-    // One write: the file was made once and nothing was replaced, so no backup of an older version exists.
+    // One write: every save keeps the bytes it replaced as the backup, so a backup that still holds
+    // the user's own file, untouched by any earlier worktree entry, means the six went down together.
     let mut names: Vec<String> = std::fs::read_dir(&d).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().to_string()).collect();
     names.sort();
-    assert!(names.iter().all(|n| !n.ends_with(".bak-kolux")), "{names:?}");
+    assert_eq!(names.iter().filter(|n| n.ends_with(".bak-kolux")).count(), 1, "{names:?}");
+    assert_eq!(std::fs::read(d.join(".claude.json.bak-kolux")).unwrap(), seed, "the one write replaced the user's own file");
     assert!(norm(&file).starts_with(&norm(scratch_root::root())), "the file written lies under the scratch root");
 }
 
@@ -97,8 +125,8 @@ fn safe024_box2_thirteen_folders_are_refused_before_any_path_is_worked_out() {
     assert!(err.contains("12") && err.contains("13"), "{err}");
     assert!(!err.contains("never-made"), "no folder path was looked at: {err}");
     assert!(!file.exists(), "a refused batch writes nothing");
-    // Twelve is the most that goes through.
-    let twelve = folders(&d, &["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]);
+    // Twelve is the most that goes through (worktrees of a main checkout the user trusted).
+    let (twelve, _) = trusted_main_with_worktrees(&d, &file, &["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"], json!({}));
     assert_eq!(trust_folders(&file, "claude", &twelve).unwrap(), 12);
     assert!(norm(&file).starts_with(&norm(scratch_root::root())), "the file written lies under the scratch root");
 }
@@ -142,7 +170,7 @@ fn safe001_box2_a_shell_permission_carries_no_plan() {
 // SAFE-009..012: the hook's real answer (hooks::reply_body) fed PreToolUse payloads. Every command
 // below is only ever a string handed to the matcher; nothing is run.
 
-use kolux_rs_lib::hooks::reply_body;
+use kolux_lib::hooks::reply_body;
 
 fn pre_tool(tool: &str, command: &str) -> Vec<u8> {
     json!({ "hook_event_name": "PreToolUse", "session_id": "cards", "tool_name": tool, "cwd": scratch_root::root().join("safe10").join("work").to_string_lossy().as_ref(), "tool_input": { "command": command } }).to_string().into_bytes()
@@ -381,7 +409,7 @@ fn safe014_box6_harmless_lookalikes_and_text_that_is_only_printed_run() {
     must_run("Bash", &["sudo -u root ls build", "timeout 5 ls", "nice -n 10 echo hi", "powershell -ExecutionPolicy Bypass -Command \"Write-Host hi\"", "rd /s/q build", "echo \"rm -rf /\"", "echo 'rm -rf /'"]);
 }
 
-use kolux_rs_lib::protected_custom::{listen, protected_attempts};
+use kolux_lib::protected_custom::{listen, protected_attempts};
 
 /// Pauses `command` through the hook (cwd names the test, so parallel tests keep their rows apart) and returns the kept command text.
 fn kept(cwd: &str, call: &str, command: &str) -> String {
@@ -414,7 +442,7 @@ fn safe019_box2_a_mysql_short_password_flag_a_token_flag_and_a_postgres_url_with
     for (i, (cmd, secret)) in cases.iter().enumerate() {
         let shown = kept("G:/Dev/cards-safe019b", &format!("c{i}"), cmd);
         assert!(!shown.contains(secret.as_str()), "{secret} leaked: {shown}");
-        assert!(shown.contains(kolux_rs_lib::protected::HIDDEN), "marked hidden: {shown}");
+        assert!(shown.contains(kolux_lib::protected::HIDDEN), "marked hidden: {shown}");
     }
     let page = serde_json::to_string(&protected_attempts().into_iter().filter(|a| a.worktree == "G:/Dev/cards-safe019b").collect::<Vec<_>>()).unwrap();
     assert!(cases.iter().all(|(_, s)| !page.contains(s.as_str())), "{page}");
@@ -449,10 +477,10 @@ fn safe015_box2_master_switch_off_means_no_protected_command_asks() {
 }
 
 // ---- SAFE-021 / SAFE-022 (batch 4): only fake path strings; no opener, no explorer, no network is ever called ----
-use kolux_rs_lib::artifacts::open_external;
-use kolux_rs_lib::fence::{check, Fence};
-use kolux_rs_lib::links::{fence as file_fence, fence_key, host_path, launchable, program_like, refuse_host};
-use kolux_rs_lib::state::Store;
+use kolux_lib::artifacts::open_external;
+use kolux_lib::fence::{check, Fence};
+use kolux_lib::links::{fence as file_fence, fence_key, host_path, launchable, program_like, refuse_host};
+use kolux_lib::state::Store;
 use std::collections::HashSet;
 
 const OTHER_MACHINES: [&str; 9] = [

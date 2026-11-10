@@ -3,7 +3,7 @@
 
 mod scratch_root;
 
-use kolux_rs_lib::files::{read_text, stamp_of, text_hash, write_checked};
+use kolux_lib::files::{read_text, stamp_of, text_hash, write_checked};
 use std::path::{Path, PathBuf};
 
 /// A fresh folder under the scratch root; refuses to run when the agent homes are not redirected there.
@@ -62,7 +62,7 @@ fn edit003_box4_kolux_save_leaves_a_stable_stamp_that_an_outside_rewrite_changes
 
 // ---- batch 2: EDIT-034 explorer file operations (scratch root edit12b) ----
 
-use kolux_rs_lib::fsops::{copy_into, create, restore, trash_each};
+use kolux_lib::fsops::{copy_into, create, restore, trash_each};
 
 fn scratch_b(tag: &str) -> PathBuf {
     let d = scratch_root::root().join("edit12b").join(format!("{tag}-{}", std::process::id()));
@@ -137,7 +137,7 @@ fn edit034_box3_a_dropped_folder_onto_one_that_holds_the_same_name_arrives_under
 
 // ---- batch 3: EDIT-045 (fence) and EDIT-053 (nothing launches) -------------------------------
 
-use kolux_rs_lib::{fence, links};
+use kolux_lib::{fence, links};
 
 fn scratch_c(tag: &str) -> PathBuf {
     let d = scratch_root::root().join("edit12c").join(format!("{tag}-{}", std::process::id()));
