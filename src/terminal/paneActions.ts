@@ -511,6 +511,11 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)), setToast); // EDIT-031: a new note never typed in goes with its tab
     late.exitedPrompt.current = onClose(late.exitedPrompt.current, keys);
     cancelHandOver(keys); // DT-C248: a closing tab reaps its terminal even if a move was marked for it
+    // DT-C248 review 2: a tab closed while its terminal was still on its way back to its view (moved, or back
+    // from the saved layout) has no id yet to kill by; the close ends what still runs for the key. Here and
+    // not in the pane's unmount: the key leaves the layout with the close, so no later mount can own that
+    // terminal, while the dev double mount and a second move unmount a pane whose next mount takes it.
+    keys.forEach((k) => void invoke("terminal_reap_pane", { paneKey: k }).catch(() => {}));
     keys.forEach((k) => delete ptys.current[k]);
     keys.forEach((k) => (runTabs.current = forgetRunTab(runTabs.current, k)));
     keys.forEach(forgetView); // T-102-b: a closed tab's kept editor state goes with it

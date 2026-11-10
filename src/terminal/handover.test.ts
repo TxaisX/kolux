@@ -3,6 +3,8 @@ import { cancelHandOver, handOver, handedOver, movedKeys, takeOver } from "./han
 import { moveToTab } from "../shell/tidy";
 import { dropCell, dropTab } from "./rearrange";
 import { splitTabOut } from "./tabSplit";
+import actions from "./paneActions.ts?raw";
+import pane from "./TerminalPane.tsx?raw";
 
 const p = (key: number, group = key, cwd = "/r") => ({ key, group, cwd });
 
@@ -80,5 +82,30 @@ describe("DT-C248: the hand-over mark lives from the layout change to the next m
     cancelHandOver([1]);
     expect(handedOver(1)).toBe(false);
     expect(handedOver(2)).toBe(true);
+  });
+});
+
+// DT-C248 review 2: the two leaks the mark alone left, pinned at their source.
+describe("DT-C248 review 2: a terminal that no view owns is ended", () => {
+  it("a tab closed before its moved or restored pane bound its terminal reaps by pane key, from the close (not the unmount)", () => {
+    // The close path: the key leaves the layout, so no later mount can own the terminal; the unmount
+    // cannot tell that apart from the dev double mount or a second move, whose next mount takes it.
+    const close = actions.indexOf("const dropPanes = (keys: number[]) => {");
+    expect(close).toBeGreaterThan(-1);
+    const body = actions.slice(close, close + 1500);
+    expect(body).toContain("cancelHandOver(keys)");
+    expect(body).toContain('invoke("terminal_reap_pane", { paneKey: k })');
+    expect(body.indexOf("cancelHandOver(keys)")).toBeLessThan(body.indexOf("terminal_reap_pane"));
+    // and the unmount still reaps by id only
+    expect(pane).toContain("if (id !== null && killsOnUnmount(gen) && !handed) invoke(\"terminal_kill\", { id })");
+    expect(pane).not.toContain('terminal_reap_pane');
+  });
+
+  it("a start refused for a view already gone (Rust refuses the older of two starts for one pane) never fails the tab the new view shows", () => {
+    const at = pane.indexOf("// DT-C248 review 2: a start that failed for a view already gone");
+    expect(at).toBeGreaterThan(-1);
+    const branch = pane.slice(at, at + 400);
+    expect(branch).toContain("if (!alive) return;");
+    expect(branch.indexOf("if (!alive) return;")).toBeLessThan(branch.indexOf("fail(err);"));
   });
 });

@@ -56,7 +56,7 @@ import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, m
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
 import { hookQueries, isGrok, paletteIsDark } from "./queries";
-import { applySnapshot, resyncGate, type Snapshot } from "./resync";
+import { applySnapshot, resyncGate, type LiveSnapshot, type Snapshot } from "./resync";
 import { folderName } from "../projects/model";
 import { withoutRules } from "../launch/seats";
 import { modelOf } from "../settings/routing";
@@ -780,7 +780,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         invoke<Snapshot | null>("terminal_ack", { id, bytes })
           .then((snap) => {
             if (!snap || !alive || idRef.current !== id) return;
-            resync.took(snap);
+            resync.took(id, snap);
             // T-765: what is still queued and the snapshot holds goes; what came after it still draws.
             output.dropUpTo(snap.seq);
             applySnapshot(term, decodeOutput(snap.data));
@@ -1031,7 +1031,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           const draw = () => {
             // ORCH-057: already in the snapshot this pane redrew from; acknowledged unread so the reader's count stays true.
             // DT-C248 review: the same for a chunk queued while a moved pane replayed (the replay holds it).
-            if (!resync.accept(e.seq)) return acks.drew(chunkLength(e));
+            if (!resync.accept(e.id, e.seq)) return acks.drew(chunkLength(e));
             const bytes = chunkBytes(e); // DT-C245: shared with the other readers of this chunk
             const marks = scanner.feed(bytes);
             for (const m of marks) noteIdentity(reduceIdentity(identityNow, m));
@@ -1138,6 +1138,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           if (held.dropped > 0) setFlash(`${held.dropped} characters typed before the shell started were dropped`);
           if (isFocused.current) term.focus();
         } catch (err) {
+          // DT-C248 review 2: a start that failed for a view already gone (a move while it ran: Rust refuses
+          // the older start once the new view asked for its own) must not fail the tab the new view shows.
+          if (!alive) return;
           fail(err);
         }
       };
@@ -1158,6 +1161,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         if (!alive || number === undefined) return;
         setRestoreAsk(null);
         setStatus({ kind: "starting" });
+        early = []; // DT-C248 review 2: output arriving while the service is asked again is held for the bind
         void (async () => {
           const back = await reattach(tauriService, number, serviceRef.current);
           if (!alive) return;
@@ -1188,9 +1192,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // DT-C248 review: a terminal still running for the pane gives its newest output with the count it
           // covers (ORCH-057 snapshot), so the chunks it emits during the replay, held above, are dropped by
           // count instead of drawn a second time; the saved file is for a terminal that is gone.
-          const snap = await invoke<Snapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
+          // Review 2: the floor is that terminal's; a terminal started in this view later counts from zero.
+          const snap = await invoke<LiveSnapshot | null>("terminal_live_history", { paneKey: number }).catch(() => null);
           if (!alive) return;
-          if (snap) resync.took(snap);
+          if (snap) resync.took(snap.id, snap);
           const saved = snap?.data ?? (await invoke<string>("terminal_history", { paneKey: number }).catch(() => ""));
           if (!alive) return;
           const text = replay(saved);
@@ -1224,6 +1229,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             setStatus({ kind: "failed", error: back.reason });
             setRestoreAsk(back.reason);
             restoreFailed.current?.();
+            early = null; // DT-C248 review 2: nothing binds until Try again; what arrives meanwhile is not queued without limit
             return;
           }
           serviceRef.current = back.service;

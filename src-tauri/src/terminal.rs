@@ -109,6 +109,10 @@ struct Inner {
     flow: HashMap<u32, Arc<Flow>>,
     /// APP-052: the newest session each window pane started, so a pane takes it back after a webview reload.
     panes: HashMap<u32, u32>,
+    /// DT-C248 review 2: the newest start asked for each pane key (`spawn_ticket`). A start still on its
+    /// way when the pane asked for another (a pane moved while its spawn ran) is refused at the lock, and
+    /// the newest start ends an older terminal still mapped to the key, so one terminal runs per pane.
+    tickets: HashMap<u32, u64>,
     /// ORCH-057: each session's output count and raw tail, for a viewer's resync.
     snaps: HashMap<u32, Snap>,
     /// Row 211: which process each session id holds now; a new number every time an id starts (a reused id too).
@@ -120,6 +124,58 @@ struct Inner {
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|p| p.into_inner())
 }
+
+/// What `Inner::take_session` hands out, ended by `end_taken` once the registry lock is let go.
+type Taken = (Option<Session>, Option<Arc<Mutex<History>>>);
+
+/// Ends a session taken out of the registry. Called with the registry lock let go: the teardown
+/// (ClosePseudoConsole) may wait on the pump, which needs the registry (Row 784).
+fn end_taken((gone, hist): Taken) {
+    // P2 perf: a history write the pump counted before the kill finishes before kill returns, and
+    // the file handle goes with it.
+    if let Some(h) = hist {
+        drop(lock(&h));
+    }
+    if let Some(mut s) = gone {
+        s.kill();
+    }
+}
+
+impl Inner {
+    /// Takes session `id` and everything registered under it out, to be ended with `end_taken`.
+    fn take_session(&mut self, id: u32) -> Taken {
+        self.dirs.remove(&id);
+        self.marks.remove(&id);
+        self.keys.remove(&id);
+        let hist = self.hist.remove(&id);
+        // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
+        // waiter, which keeps an automation run's tail and then drops it; `read` already refuses it).
+        self.owned.remove(&id);
+        self.snaps.remove(&id);
+        if let Some(f) = self.flow.remove(&id) {
+            f.release();
+        }
+        (self.sessions.remove(&id), hist)
+    }
+
+    /// DT-C248 review 2: is a start for `pane_key` that carries `ticket` one the pane has since asked past?
+    /// A start without a key or a ticket is never refused.
+    fn superseded(&self, pane_key: Option<u32>, ticket: Option<u64>) -> bool {
+        match (pane_key, ticket) {
+            (Some(k), Some(t)) => self.tickets.get(&k).is_some_and(|newest| *newest != t),
+            _ => false,
+        }
+    }
+
+    /// DT-C248 review 2: the terminal still running for `pane_key`, which the start now under way displaces.
+    fn displaced(&self, pane_key: Option<u32>) -> Option<u32> {
+        let id = *self.panes.get(&pane_key?)?;
+        (self.sessions.contains_key(&id) && !self.ended.contains(&id)).then_some(id)
+    }
+}
+
+/// DT-C248 review 2: the error a superseded start gets (the pane's view has since asked for another start).
+pub const SUPERSEDED: &str = "Another start for this pane came after this one.";
 
 /// One chunk of session `id`'s output taken in; returns its output count (ORCH-057). Under the
 /// registry lock only the count, the snapshot tail, the screen bits and the last-output time are
@@ -498,6 +554,14 @@ impl Snap {
 /// ORCH-057: what a viewer that fell behind redraws from (base64 bytes); output events up to `seq` are in it.
 #[derive(serde::Serialize, Debug, PartialEq)]
 pub struct Snapshot {
+    pub seq: u64,
+    pub data: String,
+}
+
+/// DT-C248 review: a running terminal's snapshot with the terminal it belongs to, for a pane redrawing from it.
+#[derive(serde::Serialize, Debug, PartialEq)]
+pub struct LiveHistory {
+    pub id: u32,
     pub seq: u64,
     pub data: String,
 }
@@ -1018,7 +1082,7 @@ impl Terminals {
     /// Starts a pane. With no `program` it runs the user's shell; with one (an agent such as
     /// `claude`) it runs that program directly with `args`, in `cwd`.
     #[allow(clippy::too_many_arguments)]
-    pub fn spawn(&self, app: AppHandle, cols: u16, rows: u16, cwd: Option<String>, program: Option<String>, args: Vec<String>, own_env: Vec<(String, String)>, env: Vec<(String, String)>, pane_key: Option<u32>, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) -> Result<u32, String> {
+    pub fn spawn(&self, app: AppHandle, cols: u16, rows: u16, cwd: Option<String>, program: Option<String>, args: Vec<String>, own_env: Vec<(String, String)>, env: Vec<(String, String)>, pane_key: Option<u32>, ticket: Option<u64>, shell: Option<(String, Vec<String>)>, per_worktree_history: bool) -> Result<u32, String> {
         // TERM-115: a pane's Ctrl+C must reach its program. Windows hands "ignore Ctrl+C" down to
         // every child a process starts, and this app is itself started with CREATE_NEW_PROCESS_GROUP
         // (by `kolux-dev`, and by the dev runner), so its shells never saw the interrupt: the pty got
@@ -1062,6 +1126,14 @@ impl Terminals {
             None => vec![None; commands.len()],
         };
         let (mut inner, id) = self.claim_id()?;
+        // DT-C248 review 2: the work above (a folder check, a shell search, an account's sign-in) can take a
+        // while, and a pane moved meanwhile asked for another start (its new view saw no terminal yet): the
+        // older start stops here, before any process, and the newest ends a terminal still mapped to the key
+        // (one that finished before it did), so a pane never has two.
+        if inner.superseded(pane_key, ticket) {
+            return Err(SUPERSEDED.to_string());
+        }
+        let displaced = inner.displaced(pane_key).map(|old| inner.take_session(old));
         let history = pane_key.and_then(|k| log_dir.as_deref().and_then(|d| History::open(d, k)));
         let label = program.clone().unwrap_or_else(|| "shell".to_string());
         let exit_app = app;
@@ -1176,6 +1248,9 @@ impl Terminals {
             inner.dirs.insert(id, dir);
         }
         drop(inner);
+        if let Some(taken) = displaced {
+            end_taken(taken);
+        }
         if let Some((link, sid)) = flush {
             link.flush(sid);
         }
@@ -1406,32 +1481,38 @@ impl Terminals {
 
     /// Ends one session. Its exit event follows from the waiter thread.
     pub fn kill(&self, id: u32) -> Result<(), String> {
-        let hist;
-        let gone = {
+        let taken = {
             let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
-            inner.dirs.remove(&id);
-            inner.marks.remove(&id);
-            inner.keys.remove(&id);
-            hist = inner.hist.remove(&id);
-            // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
-            // waiter, which keeps an automation run's tail and then drops it; `read` already refuses it).
-            inner.owned.remove(&id);
-            inner.snaps.remove(&id);
-            if let Some(f) = inner.flow.remove(&id) {
-                f.release();
-            }
-            inner.sessions.remove(&id)
+            inner.take_session(id)
         };
-        // P2 perf: a history write the pump counted before the kill finishes before kill returns, and
-        // the file handle goes with it.
-        if let Some(h) = hist {
-            drop(lock(&h));
-        }
-        // Row 784: the teardown (ClosePseudoConsole) may wait on the pump, which needs the registry.
-        if let Some(mut s) = gone {
-            s.kill();
-        }
+        end_taken(taken);
         Ok(())
+    }
+
+    /// DT-C248 review 2: a start for pane `pane_key` is about to be asked for; the number it carries into
+    /// `spawn`, where a start the pane has since asked past is refused.
+    pub fn spawn_ticket(&self, pane_key: u32) -> u64 {
+        let mut inner = lock(&self.inner);
+        let t = inner.tickets.entry(pane_key).or_default();
+        *t += 1;
+        *t
+    }
+
+    /// DT-C248 review 2: ends the terminal still running for pane `pane_key`, if any, and names it. For a
+    /// pane closed while its terminal was still on its way back to a new view (moved, or back from the saved
+    /// layout), which has no id to kill by; the key leaves the layout with the close, so no view can own it.
+    pub fn reap_pane(&self, pane_key: u32) -> Option<u32> {
+        let (id, taken) = {
+            let mut inner = self.inner.lock().ok()?;
+            let id = *inner.panes.get(&pane_key)?;
+            if !inner.sessions.contains_key(&id) || inner.ended.contains(&id) {
+                return None;
+            }
+            inner.panes.remove(&pane_key);
+            (id, inner.take_session(id))
+        };
+        end_taken(taken);
+        Some(id)
     }
 
     /// ACCT-054: the pane drew `bytes` more of session `id`'s output. ORCH-057: when the reader gave up
@@ -1634,13 +1715,16 @@ impl Terminals {
     /// output and the output count it covers. A pane remounted in another cell redraws from it and drops
     /// the output events it already holds by count, instead of drawing them twice. None when the pane has
     /// no running terminal; the saved history file is for that case.
-    pub fn live_snapshot(&self, pane_key: u32) -> Option<Snapshot> {
+    /// Review 2: the answer names the terminal, so the pane keeps the count floor for that id only; a
+    /// start in the same view afterwards (a restart, or a reattach that answered fresh) counts from zero.
+    pub fn live_snapshot(&self, pane_key: u32) -> Option<LiveHistory> {
         let mut inner = self.inner.lock().ok()?;
         let id = *inner.panes.get(&pane_key)?;
         if !inner.sessions.contains_key(&id) || inner.ended.contains(&id) {
             return None;
         }
-        Some(inner.snaps.entry(id).or_default().snapshot())
+        let Snapshot { seq, data } = inner.snaps.entry(id).or_default().snapshot();
+        Some(LiveHistory { id, seq, data })
     }
 
     /// Row 211: the process generation of session `id` (changes on every spawn, respawn or adoption of that id), None for an unknown id.
@@ -1948,9 +2032,18 @@ pub fn terminal_attach(terminals: tauri::State<'_, Terminals>, pane_key: u32, ge
 /// the terminal's newest output with the count it covers (`Terminals::live_snapshot`); None when nothing runs
 /// for the pane. Async for the same reason as `terminal_attach`.
 #[tauri::command(async)]
-pub fn terminal_live_history(terminals: tauri::State<'_, Terminals>, pane_key: u32) -> Option<Snapshot> {
+pub fn terminal_live_history(terminals: tauri::State<'_, Terminals>, pane_key: u32) -> Option<LiveHistory> {
     terminals.wait_linked(LINK_WAIT);
     terminals.live_snapshot(pane_key)
+}
+
+/// DT-C248 review 2: a tab closed while its terminal was still on its way back to its view (moved, or back
+/// from the saved layout) has no id to kill by; the close ends whatever still runs for the key. Async for
+/// the same reason as `terminal_attach`.
+#[tauri::command(async)]
+pub fn terminal_reap_pane(terminals: tauri::State<'_, Terminals>, pane_key: u32) -> Option<u32> {
+    terminals.wait_linked(LINK_WAIT);
+    terminals.reap_pane(pane_key)
 }
 
 /// TERM-115: async for the same reason as `terminal_write`: starting a console host can take a
@@ -1972,6 +2065,9 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     if env.as_ref().is_some_and(|e| e.iter().any(|(k, v)| k.len() > MAX_SPAWN_ENV_KEY || v.len() > MAX_SPAWN_ENV_VALUE)) {
         return Err("An environment entry is too large for a launch.".to_string());
     }
+    // DT-C248 review 2: taken first, so the order the pane's views asked in decides which start runs
+    // (`Terminals::spawn`), whatever the order the work below finishes in.
+    let ticket = pane_key.map(|k| terminals.spawn_ticket(k));
     // TERM-040: `cwd` is the workspace folder; `start` may ask for a folder relative to it.
     let cwd = cwd.map(|w| start_dir(&w, start.as_deref()));
     // ACCT-023: a resumed Codex pane runs on the account it began on, or not at all.
@@ -2067,7 +2163,7 @@ pub async fn terminal_spawn(app: AppHandle, terminals: tauri::State<'_, Terminal
     // session once the spawn succeeded (cli.rs fix8_d).
     // T-690: the run this pane belongs to, read before the environment is handed over.
     let run = crate::automations::run_in(&env_own);
-    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, shell, per_worktree_history))?;
+    let id = crate::cli::spawn_stamped(crate::cli::dispatch_in(&env_own), || terminals.spawn(app.clone(), cols, rows, cwd, program, args, env_own, env, pane_key, ticket, shell, per_worktree_history))?;
     // AUTO-012: an automation run dispatched to this worktree for this agent is followed here.
     if let Some(dir) = dir {
         crate::automations::follow(&app, |s| crate::automations::claim(s, id, pane_key, &dir, agent, run.as_deref(), crate::automations::now_ms()));
@@ -2346,12 +2442,61 @@ mod tests {
         t.inner.lock().unwrap().panes.insert(4, 8); // pane 4's session is gone
         let seq = t.inner.lock().unwrap().snaps.entry(7).or_default().push(b"first line\r\nsecond\r\n");
         let snap = t.live_snapshot(3).expect("a running terminal gives a snapshot");
+        assert_eq!(snap.id, 7, "review 2: the answer names the terminal the count floor is for");
         assert_eq!(snap.seq, seq, "the count matches the newest output event's");
         assert_eq!(base64::engine::general_purpose::STANDARD.decode(&snap.data).unwrap(), b"first line\r\nsecond\r\n");
         assert_eq!(t.live_snapshot(4), None, "a pane whose terminal is gone");
         assert_eq!(t.live_snapshot(5), None, "a pane that never started anything");
         t.inner.lock().unwrap().ended.insert(7);
         assert_eq!(t.live_snapshot(3), None, "an ended terminal is not redrawn from");
+    }
+
+    /// DT-C248 review 2: a pane moved while its start was still on its way asks for another start from its
+    /// new view. Tickets are taken in the order the views asked: the older start is refused at the lock
+    /// (no process), whatever order the two reach it in, and the newest start ends a terminal an older
+    /// one left mapped to the key, so one terminal runs per pane and it is the newest view's.
+    #[test]
+    fn dt_c248_review_2_the_newest_start_asked_for_a_pane_wins() {
+        let t = Terminals::default();
+        let first = t.spawn_ticket(3);
+        let second = t.spawn_ticket(3);
+        assert_eq!((first, second), (1, 2), "tickets count up per pane key");
+        assert_eq!(t.spawn_ticket(4), 1, "another pane's count is its own");
+        let inner = t.inner.lock().unwrap();
+        assert!(inner.superseded(Some(3), Some(first)), "the older start is refused");
+        assert!(!inner.superseded(Some(3), Some(second)), "the newest start runs");
+        assert!(!inner.superseded(Some(5), Some(1)), "a pane that never asked twice is not refused");
+        assert!(!inner.superseded(None, None), "a start without a pane key is never refused");
+        assert!(!inner.superseded(Some(3), None), "a start without a ticket (a caller that takes none) is never refused");
+        drop(inner);
+        // the older start finished first and mapped its terminal: the newest start displaces it
+        t.fake_session(7, "C:/w", None);
+        t.inner.lock().unwrap().panes.insert(3, 7);
+        assert_eq!(t.inner.lock().unwrap().displaced(Some(3)), Some(7), "a terminal still running for the key goes");
+        t.inner.lock().unwrap().ended.insert(7);
+        assert_eq!(t.inner.lock().unwrap().displaced(Some(3)), None, "an ended one has nothing to end");
+        assert_eq!(t.inner.lock().unwrap().displaced(Some(4)), None, "a key with no terminal");
+        assert_eq!(t.inner.lock().unwrap().displaced(None), None, "no key, nothing displaced");
+    }
+
+    /// DT-C248 review 2: a tab closed while its terminal was still on its way back to its view has no id
+    /// to kill by; the close ends what still runs for the key, once, and leaves the key unmapped.
+    #[test]
+    fn dt_c248_review_2_a_closed_pane_reaps_the_terminal_still_running_for_its_key() {
+        let t = Terminals::default();
+        t.fake_session(7, "C:/w", None);
+        t.inner.lock().unwrap().panes.insert(3, 7);
+        t.inner.lock().unwrap().panes.insert(4, 8); // pane 4's session is gone
+        assert_eq!(t.reap_pane(3), Some(7), "the running terminal is ended and named");
+        assert!(!t.inner.lock().unwrap().sessions.contains_key(&7), "it is out of the registry");
+        assert_eq!(t.reap_pane(3), None, "a second close finds nothing");
+        assert_eq!(t.attached(3), None, "the key is unmapped");
+        assert_eq!(t.reap_pane(4), None, "a key whose terminal is gone");
+        assert_eq!(t.reap_pane(5), None, "a key that never started anything");
+        t.fake_session(9, "C:/w", None);
+        t.inner.lock().unwrap().panes.insert(6, 9);
+        t.inner.lock().unwrap().ended.insert(9);
+        assert_eq!(t.reap_pane(6), None, "an ended terminal is left to its waiter");
     }
 
     /// APP-052: a pane gets its terminal back only from the run that started it: attached while the
