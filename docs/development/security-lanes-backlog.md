@@ -1,5 +1,12 @@
 # Security lanes backlog (held out of 0.1.11)
 
+> **Status, 2026-11-10: these lanes shipped in 0.1.11 after all.** The 2026-11-08 decision below was
+> overtaken the next day: `lane/ready-sec-2` (T-779 push gate, T-780, T-792, T-793), `lane/ready-sec-madeby`
+> (T-780 trust fix, rounds 1 to 5) and `lane/ready-sec-gaps` were merged into the 0.1.11 integration lane on
+> 2026-11-09 (`1e125a8`, `650aba8`, `468ed51`), and all three merges are in the commit 0.1.11 was built from
+> (`acb3081`). The changelog's "Safer in folders you downloaded" is this work. The rest of this page is the
+> record as it stood on 2026-11-09; its to-do list was not re-checked for this note.
+
 Txais, 2026-11-08: the two security lanes are **not** in 0.1.11. They stay on their own branches
 and are worked from this list. 0.1.11 is `lane/ready-int` plus `lane/ready-identity` (T-790),
 `lane/ready-nowin` (T-816) and `lane/ready-smoke` only.

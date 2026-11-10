@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/TxaisX/kolux/security/advisories/new
+    about: Do not open a public issue. Report it privately here; the security policy says what to include.
+  - name: Troubleshooting guide
+    url: https://github.com/TxaisX/kolux/blob/main/docs/guide/troubleshooting.md
+    about: Fixes for common problems, and how to produce a safe diagnostics report.

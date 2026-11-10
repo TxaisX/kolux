@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in Kolux broke or behaved in a way you did not expect.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting. Do not paste real keys, tokens, cookies or private repository contents here.
+        For a security problem, do not open an issue: follow the [security policy](https://github.com/TxaisX/kolux/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Kolux version
+      description: From Help, About.
+      placeholder: 0.1.11
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: For example Windows 11 24H2. Settings, System, About shows it.
+    validations:
+      required: true
+  - type: textarea
+    id: did
+    attributes:
+      label: What you did
+      description: The steps, in order, from a point someone else can start from.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: Include the exact words of any message Kolux showed.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics report
+      description: >-
+        Settings, General, Diagnostics, Copy diagnostics. It masks keys, tokens and passwords.
+        "Write a review copy and open it" lets you read the report before you share it.
+        If the problem involves a terminal, the pane menu also has Copy terminal diagnostics.
+      render: text

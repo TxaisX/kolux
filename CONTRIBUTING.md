@@ -2,9 +2,13 @@
 
 Kolux is in early alpha. Bug reports and feedback are welcome. Code changes are considered case by case, so open an issue before you start a substantial one.
 
+## Test the alpha
+
+Nobody outside the project has tested Kolux yet. The README has a ten-minute path under [Help test the alpha](README.md#help-test-the-alpha); send what you find as an [alpha test report](https://github.com/TxaisX/kolux/issues/new?template=alpha-test.yml), even if nothing broke.
+
 ## Report a bug
 
-Open an [issue](https://github.com/TxaisX/kolux/issues) with:
+Open a [bug report](https://github.com/TxaisX/kolux/issues/new?template=bug.yml). The form asks for:
 
 - the version, from Help, About;
 - your Windows version;

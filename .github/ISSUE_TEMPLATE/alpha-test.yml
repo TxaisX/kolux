@@ -1,0 +1,83 @@
+name: Alpha test report
+description: You installed Kolux on your own PC and tried it. Say how it went, including "nothing broke".
+title: "Alpha test: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Nobody outside the project has tested Kolux yet, so every one of these reports is read.
+        The steps are in the README under [Help test the alpha](https://github.com/TxaisX/kolux#help-test-the-alpha).
+        Do not paste real keys, tokens, cookies or private repository contents here.
+  - type: input
+    id: version
+    attributes:
+      label: Kolux version
+      description: From Help, About.
+      placeholder: 0.1.11
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: For example Windows 11 24H2. Settings, System, About shows it.
+    validations:
+      required: true
+  - type: dropdown
+    id: installer
+    attributes:
+      label: What Windows said about the installer
+      description: The installer is not code-signed yet, so Windows may warn or block.
+      options:
+        - It installed with no warning
+        - SmartScreen warned, and Run anyway worked
+        - Smart App Control blocked it
+        - Something else (say what below)
+    validations:
+      required: true
+  - type: input
+    id: agents
+    attributes:
+      label: Which AIs you connected
+      placeholder: Claude Code, Codex
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: First-run setup
+      options:
+        - I finished all four steps
+        - I got stuck (say where below)
+        - I skipped it
+    validations:
+      required: true
+  - type: textarea
+    id: agents-working
+    attributes:
+      label: Two agents at once
+      description: >-
+        Did both start? Did the Board and the Inbox show the right state (working, needs you, done) for each?
+        Did Review changes show what the agent changed?
+    validations:
+      required: true
+  - type: textarea
+    id: stuck
+    attributes:
+      label: Where you got stuck or confused
+      description: The first thing you did not understand is the most useful one. Write "nowhere" if it all made sense.
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: What you liked, what you would not use, what you expected to find and did not.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics report (if something broke)
+      description: >-
+        Settings, General, Diagnostics, Copy diagnostics. It masks keys, tokens and passwords.
+        "Write a review copy and open it" lets you read the report before you share it.
+      render: text
