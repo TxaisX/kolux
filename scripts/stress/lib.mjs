@@ -101,7 +101,7 @@ export function newApp(opts, name) {
 // homes and CDP port as the dev launch (scripts/evidence/app-launch.mjs appEnv is not exported, so it is repeated here from app.paths).
 // The exe is built once per run.mjs process; --skip-build reuses the one already in the target folder.
 const releaseBuilt = new Map();
-const releaseExe = (root) => join(process.env.CARGO_TARGET_DIR ? resolve(process.env.CARGO_TARGET_DIR) : join(root, "src-tauri", "target"), "release", "kolux-rs.exe");
+const releaseExe = (root) => join(process.env.CARGO_TARGET_DIR ? resolve(process.env.CARGO_TARGET_DIR) : join(root, "src-tauri", "target"), "release", "kolux.exe");
 async function buildRelease(app, opts) {
   const exe = releaseExe(opts.root);
   if (!releaseBuilt.has(exe)) {
@@ -142,7 +142,7 @@ function useReleaseBuild(app, opts) {
     const found = await waitUntil(
       "the app process",
       async () => {
-        const line = await app.ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux-rs.exe'" | Where-Object { $_.ExecutablePath -eq '${want}' -and [string]$_.CommandLine -notlike '*--terminal-service*' } | Select-Object -First 1; if ($p) { $p.ProcessId }`);
+        const line = await app.ps(`$p = Get-CimInstance Win32_Process -Filter "Name='kolux.exe'" | Where-Object { $_.ExecutablePath -eq '${want}' -and [string]$_.CommandLine -notlike '*--terminal-service*' } | Select-Object -First 1; if ($p) { $p.ProcessId }`);
         return /^\d+$/.test(line) ? line : null;
       },
       30000,
