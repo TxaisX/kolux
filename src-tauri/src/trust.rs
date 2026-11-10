@@ -216,19 +216,122 @@ pub fn trust_codex(file: &Path, paths: &[PathBuf]) -> Result<usize, String> {
 /// ponytail: Claude and Codex; Cursor and Copilot keep their trust in files whose shape no public
 /// source describes, so they get nothing and their own prompt stays with the user (DT-C17).
 pub fn trust_folders(claude_config: &Path, agent: &str, paths: &[PathBuf]) -> Result<usize, String> {
-    match agent {
-        "claude" => trust_claude(claude_config, paths),
-        "codex" => trust_codex(&codex_config_file(), paths),
-        _ => Ok(0),
+    trust_folders_in(claude_config, &codex_config_file(), agent, paths)
+}
+
+/// `trust_folders` with Codex's file named too (tests keep it out of `CODEX_HOME`).
+///
+/// N-03 (T-780): a worktree inherits only an answer the user already gave. Each folder is
+/// pre-trusted only when its main checkout (the repository the worktree shares its `.git` with)
+/// already carries the user's trust for `agent` in that same file; a folder whose main checkout
+/// the user never accepted, or that is no git worktree at all, keeps the agent's own prompt. When
+/// nothing in the batch qualifies the error says which folder and why, so a caller's notice can
+/// repeat it.
+pub(crate) fn trust_folders_in(claude_config: &Path, codex_config: &Path, agent: &str, paths: &[PathBuf]) -> Result<usize, String> {
+    let file = match agent {
+        "claude" => claude_config,
+        "codex" => codex_config,
+        _ => return Ok(0),
+    };
+    if paths.len() > MAX_PER_LAUNCH {
+        return Err(format!("at most {MAX_PER_LAUNCH} folders can be trusted per launch, not {}", paths.len()));
     }
+    let mut allowed = Vec::with_capacity(paths.len());
+    let mut refused: Option<String> = None;
+    for path in paths {
+        match main_checkout(path) {
+            Some(main) if carries_trust(file, agent, &main) => allowed.push(path.clone()),
+            Some(main) => {
+                refused.get_or_insert_with(|| format!("not trusted: the main checkout {} is not trusted for {agent} yet, so its worktree {} keeps the agent's own prompt", main.display(), path.display()));
+            }
+            None => {
+                refused.get_or_insert_with(|| format!("not trusted: {} is not a git worktree, so it keeps the agent's own prompt", path.display()));
+            }
+        }
+    }
+    if allowed.is_empty() {
+        if let Some(why) = refused {
+            return Err(why);
+        }
+    }
+    match agent {
+        "claude" => trust_claude(file, &allowed),
+        _ => trust_codex(file, &allowed),
+    }
+}
+
+/// The main checkout `worktree` belongs to: the folder holding the `.git` directory all its
+/// worktrees share (the folder itself for a main checkout). None for anything that is not a git
+/// worktree with a checkout, a bare repository included.
+pub(crate) fn main_checkout(worktree: &Path) -> Option<PathBuf> {
+    let common = crate::git::run(&["rev-parse", "--path-format=absolute", "--git-common-dir"], Some(worktree)).ok()?;
+    let common = PathBuf::from(common.trim());
+    if common.file_name()? != ".git" {
+        return None;
+    }
+    // Git answers with forward slashes; the real path on disk reads as the user knows it.
+    Some(PathBuf::from(real_path(common.parent()?).ok()?))
+}
+
+/// Whether `file` already holds the user's trust in `folder` for `agent`, in the shape that
+/// agent itself writes; an unreadable or unparsable file carries none.
+fn carries_trust(file: &Path, agent: &str, folder: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(file) else { return false };
+    match agent {
+        "claude" => {
+            let Ok(key) = claude_key(folder) else { return false };
+            serde_json::from_str::<Value>(&text).map(|doc| doc["projects"][key]["hasTrustDialogAccepted"] == json!(true)).unwrap_or(false)
+        }
+        "codex" => {
+            let Ok(key) = codex_key(folder) else { return false };
+            text.parse::<toml_edit::DocumentMut>().ok().and_then(|doc| Some(doc.get("projects")?.get(&key)?.get("trust_level")?.as_str()? == "trusted")).unwrap_or(false)
+        }
+        _ => false,
+    }
+}
+
+/// A repository with one commit at `dir/main` and a worktree of it at `dir/wt`, for tests here and
+/// in `claude_accounts`.
+#[cfg(test)]
+pub(crate) fn test_repo_with_worktree(dir: &Path) -> (PathBuf, PathBuf) {
+    let (main, wt) = (dir.join("main"), dir.join("wt"));
+    std::fs::create_dir_all(&main).unwrap();
+    crate::git::run(&["init", "-q", "-b", "main"], Some(&main)).unwrap();
+    crate::git::run(&["config", "user.email", "test@example.com"], Some(&main)).unwrap();
+    crate::git::run(&["config", "user.name", "Kolux test"], Some(&main)).unwrap();
+    std::fs::write(main.join("README.md"), "hello
+").unwrap();
+    crate::git::run(&["add", "."], Some(&main)).unwrap();
+    crate::git::run(&["commit", "-q", "-m", "first"], Some(&main)).unwrap();
+    crate::git::run(&["worktree", "add", "-q", "-b", "kolux-wt", &wt.to_string_lossy()], Some(&main)).unwrap();
+    (main, wt)
 }
 
 /// SAFE-023 (T-443): the folders of `paths` that are worktrees Kolux made itself (it keeps a record
 /// of each one it creates). Any other folder, the project's own main checkout included, is never
-/// trusted ahead of time and keeps the agent's own trust prompt.
+/// trusted ahead of time and keeps the agent's own trust prompt. T-780 (review finding 2): a
+/// worktree whose record carries a pull request (made from one, or linked to one later) holds
+/// another author's branch, so it is never pre-trusted either, whoever made the folder.
 pub fn made_by_kolux(store: &std::sync::Mutex<crate::state::Store>, paths: &[PathBuf]) -> Vec<PathBuf> {
     let Ok(store) = store.lock() else { return Vec::new() };
-    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some()).cloned().collect()
+    paths.iter().filter(|p| crate::projects::origin(&store, &p.to_string_lossy()).is_some_and(|o| !holds_pull_request(&o))).cloned().collect()
+}
+
+/// Whether a worktree's origin record names a pull request (`pr`), i.e. the branch checked out is
+/// a pull request's, possibly from a stranger's fork.
+fn holds_pull_request(origin: &serde_json::Value) -> bool {
+    origin["pr"].as_str().is_some_and(|url| !url.trim().is_empty())
+}
+
+/// T-780: why `path` is left out of the pre-trust, for a caller's notice: it holds a pull request's
+/// branch, or Kolux has no record of making it.
+pub fn not_pre_trusted_why(store: &std::sync::Mutex<crate::state::Store>, path: &Path) -> &'static str {
+    let holds_pr = store.lock().ok().and_then(|s| crate::projects::origin(&s, &path.to_string_lossy())).is_some_and(|o| holds_pull_request(&o));
+    if holds_pr {
+        "not trusted: this worktree holds a pull request's branch, so the agent asks itself"
+    } else {
+        "not trusted: not a worktree Kolux made, so the agent asks itself"
+    }
 }
 
 /// The window's pre-trust before a launch: only the Kolux-made worktrees among `paths` are trusted.
@@ -410,21 +513,100 @@ mod tests {
     #[test]
     fn t443_only_worktrees_kolux_made_are_trusted_ahead_of_time() {
         let d = temp("made");
-        let (made, main, other) = (d.join("wt-made"), d.join("main"), d.join("elsewhere"));
-        for f in [&made, &main, &other] {
-            std::fs::create_dir_all(f).unwrap();
-        }
+        let (main, made) = test_repo_with_worktree(&d);
+        let other = d.join("elsewhere");
+        std::fs::create_dir_all(&other).unwrap();
         let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
         crate::projects::set_origin(&store.lock().unwrap(), &made.to_string_lossy(), Some(&json!({ "madeBy": "app" }))).unwrap();
         let picked = made_by_kolux(&store, &[made.clone(), main.clone(), other.clone()]);
         assert_eq!(picked, vec![made.clone()], "the main checkout and a folder made elsewhere are left out");
         let file = d.join(".claude.json");
-        assert_eq!(trust_folders(&file, "claude", &picked).unwrap(), 1);
+        // T-780: the user accepted the main checkout themselves; Kolux adds only the worktree.
+        trust_claude(&file, std::slice::from_ref(&main)).unwrap();
+        assert_eq!(trust_folders_in(&file, &d.join("config.toml"), "claude", &picked).unwrap(), 1);
         let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
         assert_eq!(doc["projects"][claude_key(&made).unwrap()]["hasTrustDialogAccepted"], true);
-        assert!(doc["projects"].get(claude_key(&main).unwrap()).is_none());
+        assert_eq!(doc["projects"].as_object().unwrap().len(), 2, "the user's own entry and the worktree, nothing else: {doc}");
         assert!(doc["projects"].get(claude_key(&other).unwrap()).is_none());
         drop(store);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+    /// T-780 (review finding 2): a worktree Kolux made for a pull request holds a stranger's fork
+    /// branch; its record carries the pull request, and that keeps it out of the pre-trust even
+    /// though Kolux made the folder and the main checkout is trusted. Linking a pull request to a
+    /// worktree later does the same; unlinking it brings the pre-trust back.
+    #[test]
+    fn t780_a_worktree_holding_a_pull_request_is_never_pre_trusted() {
+        let d = temp("t780-pr");
+        let (main, wt) = test_repo_with_worktree(&d);
+        let store = std::sync::Mutex::new(crate::state::Store::open(&d.join("profile")).unwrap());
+        let key = wt.to_string_lossy().to_string();
+        // Made from a pull request, as projects::open_pull_request records it.
+        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": "https://github.com/o/r/pull/12" }))).unwrap();
+        assert!(made_by_kolux(&store, std::slice::from_ref(&wt)).is_empty(), "a pull request's branch is not pre-trusted");
+        assert_eq!(not_pre_trusted_why(&store, &wt), "not trusted: this worktree holds a pull request's branch, so the agent asks itself");
+        let file = d.join(".claude.json");
+        trust_claude(&file, std::slice::from_ref(&main)).unwrap();
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)), Err("no folders to trust".to_string()), "nothing is written for a pull request worktree");
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert!(doc["projects"].get(claude_key(&wt).unwrap()).is_none(), "{doc}");
+        // The same worktree with the pull request unlinked (details form) is Kolux's own again.
+        crate::projects::set_origin(&store.lock().unwrap(), &key, Some(&json!({ "madeBy": "app", "existingBranch": false, "pr": null }))).unwrap();
+        assert_eq!(made_by_kolux(&store, std::slice::from_ref(&wt)), vec![wt.clone()]);
+        assert_eq!(trust_for_launch(&store, &file, "claude", std::slice::from_ref(&wt)).unwrap(), 1);
+        // A folder with no record at all says so.
+        assert_eq!(not_pre_trusted_why(&store, &d.join("elsewhere")), "not trusted: not a worktree Kolux made, so the agent asks itself");
+        drop(store);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn t780_a_worktree_is_pre_trusted_only_when_its_main_checkout_already_is() {
+        let d = temp("t780-main");
+        let (main, wt) = test_repo_with_worktree(&d);
+        let (claude, codex) = (d.join(".claude.json"), d.join("config.toml"));
+        std::fs::write(&claude, "{}").unwrap();
+        // The user never accepted the main checkout in Claude: Kolux adds nothing and says why.
+        let err = trust_folders_in(&claude, &codex, "claude", std::slice::from_ref(&wt)).unwrap_err();
+        assert!(err.contains("not trusted") && err.contains(&real_path(&main).unwrap()), "{err}");
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&claude).unwrap()).unwrap();
+        assert!(doc["projects"].get(claude_key(&wt).unwrap()).is_none(), "the worktree is not pre-trusted: {doc}");
+        // The user accepts the main checkout (what Claude Code writes on its own prompt): now the
+        // worktree Kolux made from it inherits that answer.
+        assert_eq!(trust_claude(&claude, std::slice::from_ref(&main)).unwrap(), 1);
+        assert_eq!(trust_folders_in(&claude, &codex, "claude", std::slice::from_ref(&wt)).unwrap(), 1);
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&claude).unwrap()).unwrap();
+        assert_eq!(doc["projects"][claude_key(&wt).unwrap()]["hasTrustDialogAccepted"], true);
+        // Codex keeps its own answer: trust in Claude's file says nothing about Codex's.
+        let err = trust_folders_in(&claude, &codex, "codex", std::slice::from_ref(&wt)).unwrap_err();
+        assert!(err.contains("not trusted"), "{err}");
+        assert!(!codex.exists(), "no Codex file is made for a refused pre-trust");
+        assert_eq!(trust_codex(&codex, std::slice::from_ref(&main)).unwrap(), 1);
+        assert_eq!(trust_folders_in(&claude, &codex, "codex", std::slice::from_ref(&wt)).unwrap(), 1);
+        let toml: toml_edit::DocumentMut = std::fs::read_to_string(&codex).unwrap().parse().unwrap();
+        assert_eq!(toml["projects"][codex_key(&wt).unwrap().as_str()]["trust_level"].as_str(), Some("trusted"), "{toml}");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn t780_a_folder_that_is_no_worktree_and_a_mixed_batch_keep_the_agents_own_prompt() {
+        let d = temp("t780-mixed");
+        let (main, wt) = test_repo_with_worktree(&d);
+        let plain = d.join("plain");
+        std::fs::create_dir_all(&plain).unwrap();
+        let (claude, codex) = (d.join(".claude.json"), d.join("config.toml"));
+        // Not a git worktree at all: nothing to inherit from, so nothing is written.
+        let err = trust_folders_in(&claude, &codex, "claude", std::slice::from_ref(&plain)).unwrap_err();
+        assert!(err.contains("not a git worktree"), "{err}");
+        assert!(!claude.exists());
+        // A mixed batch trusts the worktrees whose main checkout is trusted and drops the rest.
+        trust_claude(&claude, std::slice::from_ref(&main)).unwrap();
+        assert_eq!(trust_folders_in(&claude, &codex, "claude", &[plain.clone(), wt.clone()]).unwrap(), 1);
+        let doc: Value = serde_json::from_str(&std::fs::read_to_string(&claude).unwrap()).unwrap();
+        assert_eq!(doc["projects"][claude_key(&wt).unwrap()]["hasTrustDialogAccepted"], true);
+        assert!(doc["projects"].get(claude_key(&plain).unwrap()).is_none());
+        // The main checkout itself is its own main: already trusted means nothing new to add.
+        assert_eq!(trust_folders_in(&claude, &codex, "claude", std::slice::from_ref(&main)).unwrap(), 0);
         let _ = std::fs::remove_dir_all(&d);
     }
 }

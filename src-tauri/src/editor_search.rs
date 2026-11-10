@@ -294,29 +294,31 @@ fn wsl_error_line(stderr: &str) -> Option<&str> {
     })
 }
 
+/// T-779 (review finding 6): built through `git::command`, so this git runs with the same guards
+/// as every other (no fsmonitor, no repository-named programs, no prompt window). T-816: `git::command`
+/// sets CREATE_NO_WINDOW itself, so no console flashes up for a search either.
 fn git_command(root: &Path, a: &Ask) -> Command {
-    let mut cmd = crate::winproc::command("git");
-    cmd.args(["-c", "core.quotepath=off", "grep", "-z", "-n", "--column", "-I", "--no-color", "--untracked"]);
+    let mut args: Vec<String> = ["-c", "core.quotepath=off", "grep", "-z", "-n", "--column", "-I", "--no-color", "--untracked"].iter().map(|s| s.to_string()).collect();
     if !a.match_case {
-        cmd.arg("-i");
+        args.push("-i".into());
     }
     if a.whole_word {
-        cmd.arg("-w");
+        args.push("-w".into());
     }
-    cmd.arg(if a.regex { "-E" } else { "-F" });
-    cmd.args(["-e", &a.query, "--"]);
+    args.push(if a.regex { "-E" } else { "-F" }.into());
+    args.extend(["-e".to_string(), a.query.clone(), "--".to_string()]);
     let inc = split_patterns(&a.include);
     if inc.is_empty() {
-        cmd.arg(".");
+        args.push(".".into());
     }
     for p in inc {
-        cmd.arg(format!(":(glob)**/{p}"));
+        args.push(format!(":(glob)**/{p}"));
     }
     for p in split_patterns(&a.exclude) {
-        cmd.arg(format!(":(glob,exclude)**/{p}"));
+        args.push(format!(":(glob,exclude)**/{p}"));
     }
-    cmd.current_dir(root);
-    cmd
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    crate::git::command(&refs, Some(root))
 }
 
 /// Runs a search command, collecting hits until the cap or the time limit.

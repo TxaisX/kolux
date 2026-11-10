@@ -918,7 +918,7 @@ mod tests {
         let d = temp_dir("ignored");
         fs::write(d.join("a.txt"), "x").unwrap();
         assert!(ignored_in(&d).is_empty());
-        let git = |args: &[&str]| crate::git::command(args, Some(&d)).output().map(|o| o.status.success()).unwrap_or(false);
+        let git = |args: &[&str]| crate::git::command_checked(args, Some(&d)).unwrap().output().map(|o| o.status.success()).unwrap_or(false);
         if !git(&["init", "-q"]) {
             return; // no git on this machine: nothing more to prove
         }

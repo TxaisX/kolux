@@ -1,0 +1,210 @@
+T-779 review fix 8 (review of fix 7: the local-push gate in src-tauri/src/git.rs) - 2026-11-09
+Lane ready-sec-2, worktree G:\Dev\kolux-rs-lanes\ready-sec-2, start c0fea821, git 2.55.0.windows.3, builder Claude Fable 5.1.
+
+== Probes with plain git (G:\Temp\ready-sec-2-fix8, throwaway) ==
+$ GIT_CONFIG_PARAMETERS="'protocol.file.allow=always'" GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=protocol.file.allow GIT_CONFIG_VALUE_0=never git config protocol.file.allow
+always                                   <- the parent's PARAMETERS list beats Kolux's COUNT slots (P2-1)
+$ GIT_CONFIG_PARAMETERS="'protocol.file.allow=always' 'protocol.file.allow=never'" git config protocol.file.allow
+never                                    <- appending Kolux's pairs to the list wins
+$ GIT_ALLOW_PROTOCOL=file git -c protocol.file.allow=never clone -q bare c1 ; clone exit=0 exists=yes   <- the env var makes git ignore the config (P2-1)
+$ git config branch.main.pushRemote 'origin ' ; git config --get branch.main.pushRemote | od -c  -> "o r i g i n  \n"  (the space is kept by git, P1-3)
+$ git config 'remote.origin .url' <path>; git remote  -> lists "origin" and "origin " as two remotes
+$ git remote get-url --push --all -- origin ; git ls-remote --get-url -- origin ; git ls-remote --get-url -- -q  -> "--" is accepted by both; "-q" prints -q (P1-2)
+$ git config --get nosuch.key ; exit 1   | git symbolic-ref -q HEAD (detached) ; exit 1   | corrupt HEAD "ref: refs/heads/bad..name": symbolic-ref exit 128 while remote/config/ls-remote still exit 0 (P2-2)
+$ git config -z --get-regexp '^url\..*\.(push)?insteadof$'  -> "url./tmp/x.pushinsteadof\nhttps://gh/\0" ; no match exit 1 (P1-1)
+$ sh -c "cmd.exe /c echo ran >> m && cat" </dev/null  -> m holds the cmd.exe banner + prompt (cmd started interactively: /c became C:/); "cmd.exe //c" and plain "echo ran >> m && cat" write "ran" (task 7)
+
+== RED run (old code restored temporarily: fix-7 local_push_target body from c0fea821, listing-based executable_hooks from 6ff3d6a7^, protocol.file.allow=never pair removed) ==
+$ cargo test -j 2 --lib t779e
+test git::tests::t779e_a_hook_with_an_exe_suffix_is_found_on_windows ... FAILED
+test git::tests::t779e_a_hook_in_another_letter_case_is_found_on_windows ... FAILED
+test git::tests::t779e_a_push_target_that_looks_like_an_option_is_refused ... FAILED
+test git::tests::t779e_a_hook_among_many_decoys_is_still_found ... FAILED
+test git::tests::t779e_a_rewrite_rule_to_a_local_address_refuses_the_push ... FAILED
+test git::tests::t779e_a_push_listing_that_fails_refuses ... FAILED
+test git::tests::t779e_the_file_transport_backstop_holds_when_the_address_changes_after_the_check ... FAILED
+test git::tests::t779e_a_remote_name_keeps_its_spaces ... FAILED
+test result: FAILED. 12 passed; 8 failed; 0 ignored; 0 measured; 3015 filtered out; finished in 12.24s
+exit 101
+-- assert lines (panic messages):
+at src\git.rs:4318:9:
+Git for Windows would run pre-commit.exe
+at src\git.rs:4334:9:
+Git for Windows would run PRE-COMMIT
+at src\git.rs:4052:9:
+the word after --
+at src\git.rs:4305:9:
+the hook behind 5000 decoys
+at src\git.rs:4033:9:
+Kolux did not run `git push` in G:\Temp\kolux-rs-git-e-p8-rw-33080: the push could go to a repository on this computer (G:/Temp/kolux-rs-git-e-p8-rw-payload-bare-33080a.git), which runs programs of its own as it receives, and the folder is not trusted. Trust the folder (open an agent in it and accept its trust prompt), then try again.
+at src\git.rs:4095:44:
+a HEAD git cannot read
+at src\git.rs:4000:9:
+assertion failed: blanked_keys(&cmd).iter().any(|k| k == "protocol.file.allow")
+at src\git.rs:4077:44:
+the push remote `origin ` has a local address
+-- red run 2 (P1-1 test re-ordered so no remote can catch the URL argument; P1-4 pre-check removed so the live assert is the one that fails):
+$ cargo test -j 2 --lib -- t779e_the_file_transport_backstop t779e_a_rewrite_rule
+test git::tests::t779e_a_rewrite_rule_to_a_local_address_refuses_the_push ... FAILED
+test git::tests::t779e_the_file_transport_backstop_holds_when_the_address_changes_after_the_check ... FAILED
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 3033 filtered out; finished in 2.20s
+exit 101
+at src\git.rs:4031:89:
+pushInsteadOf to a local base, URL argument
+at src\git.rs:4004:9:
+git did not refuse the transport: To G:\Temp\kolux-rs-git-e-p8-payload-bare-35464
+ ! [remote rejected] HEAD -> x (pre-receive hook declined)
+
+== Restore after the red runs ==
+$ diff <saved green git.rs> src-tauri/src/git.rs   -> only the two intended test tweaks (P1-1 test order, P1-4 pre-check dropped); grep -c "RED PROOF" = 0
+$ git diff --stat
+ src-tauri/src/git.rs         | 387 +++++++++++++++++++++++++++++++++++--------
+ src-tauri/src/pr_checkout.rs |   3 +-
+ 2 files changed, 323 insertions(+), 67 deletions(-)
+
+== GREEN run (fix in place) ==
+$ cd src-tauri; cargo test -j 2 --lib git::
+test result: ok. 80 passed; 0 failed; 0 ignored; 0 measured; 2955 filtered out; finished in 28.21s
+$ cargo test -j 2 --lib t779
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 23.77s
+$ cargo clippy -j 2 --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 06s
+clippy exit 0
+New/rewritten tests, all green above and red in the red runs:
+  P1-1 t779e_a_rewrite_rule_to_a_local_address_refuses_the_push · P1-2 t779e_a_push_target_that_looks_like_an_option_is_refused
+  P1-3 t779e_a_remote_name_keeps_its_spaces · P1-4 t779e_the_file_transport_backstop_holds_when_the_address_changes_after_the_check
+  P2-1 t779_a_parents_own_git_environment_never_outranks_kolux (red = the live premise inside it: slots alone print 'always'; the helpers do not exist on the old code)
+  P2-2 t779e_a_push_listing_that_fails_refuses · task 7 t779d_a_folders_own_transfer_programs_never_run (passes in 28 s with the whole git:: set; hung before)
+  B6 t779e_a_hook_with_an_exe_suffix_is_found_on_windows, t779e_a_hook_in_another_letter_case_is_found_on_windows, t779e_a_hook_among_many_decoys_is_still_found
+
+== Full suite: . scripts/test-env.ps1; cd src-tauri; cargo test -j 2 --no-fail-fast  (exit 101) ==
+unittests src\lib.rs (target\debug\deps\kolux_rs_lib-9016cb49db62ddd8.exe) test result: ok. 3029 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 400.11s
+unittests src\bin\kolux-dev.rs (target\debug\deps\kolux_dev-2b5162deba15fc9f.exe) test result: ok. 0 passed; 0 failed; finished in 0.00s
+unittests src\main.rs (target\debug\deps\kolux_rs-45ad55dd652373d7.exe) test result: ok. 0 passed; 0 failed; finished in 0.00s
+tests\cards_01.rs (target\debug\deps\cards_01-5021b25d1027f1c5.exe) test result: ok. 11 passed; 0 failed; finished in 4.96s
+tests\cards_02.rs (target\debug\deps\cards_02-57214081e0e2fb0b.exe) test result: ok. 15 passed; 0 failed; finished in 10.83s
+tests\cards_03.rs (target\debug\deps\cards_03-a978fe5fc69a6771.exe) test result: ok. 8 passed; 0 failed; finished in 7.94s
+tests\cards_04.rs (target\debug\deps\cards_04-f3591d161b1cbea1.exe) test result: ok. 14 passed; 0 failed; finished in 0.00s
+tests\cards_05.rs (target\debug\deps\cards_05-417943306b8e3dec.exe) test result: ok. 11 passed; 0 failed; finished in 0.07s
+tests\cards_06.rs (target\debug\deps\cards_06-c5626a8767054dee.exe) test result: ok. 3 passed; 0 failed; finished in 0.27s
+tests\cards_07.rs (target\debug\deps\cards_07-e7ae234a307c4f9b.exe) test result: ok. 20 passed; 0 failed; finished in 9.71s
+tests\cards_08.rs (target\debug\deps\cards_08-de97825edc136672.exe) test result: ok. 35 passed; 0 failed; finished in 40.03s
+tests\cards_09.rs (target\debug\deps\cards_09-e820a8e6777b23f7.exe) test result: ok. 19 passed; 0 failed; finished in 0.85s
+tests\cards_10.rs (target\debug\deps\cards_10-7bf0c1248623e27d.exe) test result: FAILED. 37 passed; 3 failed; finished in 1.35s
+tests\cards_11.rs (target\debug\deps\cards_11-f9225b2e5b154269.exe) test result: FAILED. 9 passed; 3 failed; finished in 10.79s
+tests\cards_12.rs (target\debug\deps\cards_12-4f1ed51865b5efd4.exe) test result: ok. 14 passed; 0 failed; finished in 10.99s
+tests\cards_13.rs (target\debug\deps\cards_13-ee430b1f42f61f36.exe) test result: ok. 3 passed; 0 failed; finished in 0.00s
+tests\cards_15.rs (target\debug\deps\cards_15-d2da2e4046645c70.exe) test result: ok. 5 passed; 0 failed; finished in 0.05s
+tests\cards_17.rs (target\debug\deps\cards_17-4b9cc650a2fc0db0.exe) test result: ok. 6 passed; 0 failed; finished in 8.04s
+tests\cards_19.rs (target\debug\deps\cards_19-b6384f8cde3861ca.exe) test result: ok. 4 passed; 0 failed; finished in 2.09s
+tests\cards_19_diag.rs (target\debug\deps\cards_19_diag-f9a5cf8d0ad4df8e.exe) test result: ok. 1 passed; 0 failed; finished in 1.55s
+tests\cards_20.rs (target\debug\deps\cards_20-6f1f3ac7147ab271.exe) test result: ok. 18 passed; 0 failed; finished in 16.57s
+tests\cards_scratch_root.rs (target\debug\deps\cards_scratch_root-a9a4dee7b990558c.exe) test result: ok. 5 passed; 0 failed; finished in 0.00s
+tests\shim.rs (target\debug\deps\shim-15782c5f9c9b2f96.exe) test result: ok. 3 passed; 0 failed; finished in 0.13s
+test result: ok. 0 passed; 0 failed; finished in 0.00s 
+Failures (all pre-existing, the other agent's lane): cards_11 git004_box3, git006_box1_and_2, git007_box1 (untrusted scratch folder refused: own pre-commit hook; push to a local origin.git, the fix-7 gate's refusal with the same message as at c0fea821); cards_10 safe023_box2, safe024_box1, safe024_box2 ("not trusted: ... is not a git worktree"). t606 passed under the scratch env; row961 passed.
+
+==================================================================================================
+== T-779 fix 8 follow-up (review of f8bd6241 = BLOCK): P1 config_parameters split form, P3 a/b/c ==
+==================================================================================================
+P1 (confirmed by plain git, probe in a throwaway repo G:\Temp\ready-sec-2-fix8b\r, git 2.55.0.windows.3):
+  git config 'filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean' x ; .gitattributes: * filter=a
+  -- old one-word form: GIT_CONFIG_PARAMETERS="'filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean='" git status --short
+     -> ../pwn.txt WRITTEN (git split the word at the first '=' and set filter.a.clean to the program)
+  -- split form:        GIT_CONFIG_PARAMETERS="'filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean'=''" git status --short
+     -> ls ../pwn.txt: No such file or directory
+     git config --show-scope --get-regexp filter  ->  command	filter.a.clean=echo PWNED >> ../pwn.txt; cat #.clean    (the full odd key, empty value)
+     git config --get filter.a.clean  -> exit 1
+  Fix (git.rs config_parameters): each forced pair is written `'key'='value'`, key and value sq-quoted on their own
+  (sq(s) = ' + s.replace(', '\'') + '). Doc comment says why the one-word form is unsafe.
+  Test: t779_a_forced_key_with_an_equals_sign_stays_one_key
+   - unit: the word for the odd key ends with `'<odd key>'=''`; a key with a quote (filter.it's.clean) round-trips;
+     `git config --show-scope --get-regexp '^filter\.a'` under the word shows exactly `command<TAB><odd key>`; `--get filter.a.clean` exits 1
+   - premise: plain git under the OLD word writes the marker on `git status --short`
+   - live wiring (new): PARENT_ENV_FOR_TEST thread-local (tests only) makes parent_env answer GIT_CONFIG_PARAMETERS="" under
+     ISOLATED, so base_command appends Kolux's pairs; `command(["status","--short"])` carries the split word; `run(status)`
+     leaves no marker. (Wiring test was feasible: one thread-local, read only under #[cfg(test)] + ISOLATED.)
+P3 (a) is_local_url: a single alphabetic char (any alphabet) before ':' is a drive -> local. Probe: `git ls-remote 'ä:/x'` ->
+    "fatal: 'ä:/x' does not appear to be a git repository" (git took it as a path). Test t779e_local_urls_are_told_from_remote_ones
+    now has ä:/x, Ω:x, d: local; ab:/x, äb:/x, host:path remote.
+P3 (b) push_gate remotes loop: `r.is_empty()` (no trim). No test can create a whitespace-only remote name, so no red for this one.
+P3 (c) choice: the rewrite-rule listing runs with `--show-scope`; scope local/worktree -> "the folder rewrites push addresses to
+    <base> (<key>)"; any other scope -> "your own git settings (<scope> config) rewrite push addresses to <base> (<key>)". Still refuses
+    (fail-safe). Test t779e_a_rewrite_rule_to_a_local_address_refuses_the_push: new tail puts the rule in the user's global config
+    (GLOBAL_FOR_TEST under ISOLATED) and asserts the message names the user's settings and not the folder.
+
+== RED (old code restored temporarily, marked RED PROOF; cargo test -j 2 --lib t779) ==
+test git::tests::t779_a_parents_own_git_environment_never_outranks_kolux ... FAILED
+test git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key ... FAILED
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... FAILED
+test git::tests::t779e_a_rewrite_rule_to_a_local_address_refuses_the_push ... FAILED
+test result: FAILED. 50 passed; 4 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 37.25s
+  git.rs:4156 (parents_own): 'protocol.file.allow=always' 'core.fsmonitor=false' ... 'protocol.file.allow=never'   (one-word form)
+  git.rs:4033 (forced_key, unit): 'core.fsmonitor=false' ... 'filter.a.clean=echo PWNED >> "...pwn.txt"; cat #.clean='   (one-word form)
+  git.rs:4261 (local_urls): ä:/x
+  git.rs:4003 (rewrite_rule): "...(the folder rewrites push addresses to G:/Temp/kolux-rs-git-e-p8-rw-payload-bare-30340 (...))"
+     for a rule that sits in the user's global config
+== RED 2 (same old code, the two unit asserts of forced_key taken out so the live assert speaks; --exact) ==
+thread 'git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key' panicked at src\git.rs:4071:9:
+Kolux's git ran the folder's program through GIT_CONFIG_PARAMETERS
+test result: FAILED. 0 passed; 1 failed
+== RESTORE == cp of the saved green copy; grep -c 'RED PROOF' = 0; cmp: identical to green copy; CRLF kept.
+== GREEN (cargo test -j 2 --lib t779) ==
+test git::tests::t779_a_parents_own_git_environment_never_outranks_kolux ... ok
+test git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key ... ok
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... ok
+test git::tests::t779e_a_rewrite_rule_to_a_local_address_refuses_the_push ... ok
+test result: ok. 54 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 31.30s
+== GATES (after restore) ==
+cargo clippy -j 2 --all-targets -- -D warnings: Finished, exit 0
+cargo test -j 2 --lib git:: -> test result: ok. 81 passed; 0 failed; 0 ignored (was 80: +1 new test)
+cargo test -j 2 --lib t779 -> 54 passed (was 53: +1 new test)
+Full suite skipped on the coordinator's instruction (run after merge).
+
+==================================================================================================
+== T-779 fix 8 follow-up 2 (re-review of cf8439d6: pre-existing P1 unreadable key, P3 flaky, P3 drive rule) ==
+==================================================================================================
+P1: parse_listing read keys with String::from_utf8_lossy. A key in bytes that are not valid text
+  (`[filter "a\xff"] clean = <program>` + `.gitattributes` `* filter=a\xff`) was blanked under the U+FFFD
+  spelling (a key that does not exist) and the real key stayed live. The environment carries text only, so the
+  key cannot be blanked at all. Fix: parse_listing splits key/value on bytes, a key that fails from_utf8 is
+  recorded once as kolux.listing-unreadable (value = lossy key); unreadable_program_key(found, dir) gives the
+  refusal for an untrusted folder; command_checked returns Err(refusal) (so run/output refuse with the DT-C229
+  message), command() returns never_runs(reason): a process whose program does not exist (`kolux-refused-git-read`,
+  env KOLUX_REFUSAL=<reason>), so the 4 direct spawners (files.rs, scm_watch.rs, editor_search.rs, newproject.rs)
+  get a spawn error and nothing runs in the folder. A trusted folder runs as before. Applies to every family the
+  listing covers (one listing, REPO_PROGRAM_KEYS: filter/diff/merge/gpg/credential/hooks/pack/...): the check is on
+  the key bytes, before any family logic.
+  Test: t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run
+    premise: plain git with GIT_CONFIG_KEY_0=filter.a<U+FFFD>.clean blanked runs the program on `diff` (marker written)
+    Kolux: run(diff) -> Err containing "not readable text", "filter.a", ".clean" (plain_message shape);
+           command(diff).output() -> Err (never started); marker absent; listing carries kolux.listing-unreadable;
+           trust_for_test(dir) -> run(diff) Ok.
+P3 flaky: t779_a_forced_key_with_an_equals_sign_stays_one_key now uses `diff` (re-hashes the changed file every
+  time) for the premise, the negative check, and the live Kolux check, with a positive control (old word, plain git,
+  marker written) right before the live negative. Other new marker tests use push hooks (deterministic) or `diff`.
+P3 drive rule: is_local_url before the first ':' follows Git for Windows' has_dos_drive_prefix: one ASCII byte, or
+  one to four high-bit bytes -> local. Test t779e_local_urls_are_told_from_remote_ones: local now also 1:x, _:x, ää:x,
+  €:x, 😀:x; remote also 😀a:x, ääa:x (plus ab:/x, äb:/x, host:path).
+
+== RED (old parse_listing lossy read and old single-letter drive rule restored temporarily, marked RED PROOF) ==
+cargo test -j 2 --lib -- not_valid_text local_urls_are_told
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... FAILED
+test git::tests::t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run ... FAILED
+thread 'git::tests::t779e_local_urls_are_told_from_remote_ones' panicked at src\git.rs:4349:13:
+1:x
+thread 'git::tests::t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run' panicked at src\git.rs:4150:9:
+Kolux's git ran the program under a key it could not blank
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 3035 filtered out
+== RESTORE == cp of the saved green copy; cmp: identical to green copy; RED PROOF marks: 0
+== GREEN: three consecutive `cargo test -j 2 --lib t779` runs ==
+run 1: test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 37.91s
+run 2: test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 27.78s
+run 3: test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2982 filtered out; finished in 27.80s
+test git::tests::t779_a_program_key_that_is_not_valid_text_refuses_the_untrusted_run ... ok
+test git::tests::t779_a_forced_key_with_an_equals_sign_stays_one_key ... ok
+test git::tests::t779e_local_urls_are_told_from_remote_ones ... ok
+== GATES ==
+cargo clippy -j 2 --all-targets -- -D warnings: Finished `dev` profile [unoptimized + debuginfo] target(s) in 31.52s, exit 0
+cargo test -j 2 --lib git:: -> test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 2955 filtered out; finished in 30.57s (was 81: +1 new test)
+Full suite skipped on the coordinator's instruction (run after merge).

@@ -412,6 +412,8 @@ pub fn run() {
             }
             let hooks = hooks::serve(app.handle().clone(), &dir)?;
             app.manage(hooks);
+            // T-793 review fix 1 (B4): panes adopted before the listener existed get their endpoint files now.
+            hooks::SURVIVORS.flush(&app.state::<hooks::Hooks>());
             let settings = app.state::<Mutex<Store>>().lock().map(|s| s.settings()).unwrap_or_default();
             let profile = dir.clone();
             std::thread::spawn(move || {
@@ -1057,7 +1059,7 @@ pub fn run() {
                     }
                     diag::write(&dir, "app exit");
                     let _ = std::fs::remove_file(dir.join(cli::FILE));
-                    let _ = std::fs::remove_file(dir.join(hooks::ENDPOINT_FILE));
+                    hooks::remove_endpoint_files(&dir);
                 }
                 // APP-025: an update that finished downloading installs as the app quits.
                 update::install_on_quit(app);

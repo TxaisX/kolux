@@ -5,7 +5,7 @@
 //! Reading status never touches the network: the ahead / behind counts come from the refs git
 //! already has, so an unpublished branch is not checked against the remote over and over.
 
-use crate::git::{command, native, output, run, Git};
+use crate::git::{command, command_checked, native, output, run, Git};
 
 #[path = "scm_watch.rs"]
 pub mod watch;
@@ -581,7 +581,7 @@ struct NetOut {
 fn git_network(args: &[&str], worktree: &Path, limit: Option<std::time::Duration>) -> Result<NetOut, String> {
     use std::io::Read;
     use std::process::Stdio;
-    let mut child = command(args, Some(worktree)).envs(crate::git::NO_PROMPT).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let mut child = command_checked(args, Some(worktree))?.envs(crate::git::NO_PROMPT).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
     // Each pipe is read on its own thread into a shared buffer; the channel says it reached its end.
     let drain = |mut r: Box<dyn Read + Send>| {
         let (tx, rx) = std::sync::mpsc::channel();
@@ -2634,7 +2634,7 @@ pub fn stage(worktree: &Path, paths: &[String], on: bool) -> Result<(), String> 
 
 /// Runs git with the paths on its standard input, NUL separated; git's own words when it fails.
 fn piped(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), String> {
-    let mut child = command(args, Some(worktree)).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let mut child = command_checked(args, Some(worktree))?.stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
     let input = paths.iter().map(|p| format!("{p}\0")).collect::<String>();
     child.stdin.take().ok_or("git has no input")?.write_all(input.as_bytes()).map_err(|e| e.to_string())?;
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
@@ -2698,7 +2698,7 @@ fn with_paths(worktree: &Path, args: &[&str], paths: &[String]) -> Result<(), St
     let mut all = vec!["--literal-pathspecs"];
     all.extend_from_slice(args);
     all.extend_from_slice(&["--pathspec-from-file=-", "--pathspec-file-nul"]);
-    let mut child = command(&all, Some(worktree)).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let mut child = command_checked(&all, Some(worktree))?.stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
     let input = paths.iter().map(|p| format!("{p}\0")).collect::<String>();
     child.stdin.take().ok_or("git has no input")?.write_all(input.as_bytes()).map_err(|e| e.to_string())?;
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
@@ -2738,7 +2738,7 @@ pub fn commit(worktree: &Path, message: &str) -> Result<CommitOutcome, String> {
     if message.trim().is_empty() {
         return Err("a commit needs a message".into());
     }
-    let mut child = command(&["commit", "--quiet", "-F", "-"], Some(worktree)).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+    let mut child = command_checked(&["commit", "--quiet", "-F", "-"], Some(worktree))?.stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
     child.stdin.take().ok_or("git has no input")?.write_all(message.as_bytes()).map_err(|e| e.to_string())?;
     let out = child.wait_with_output().map_err(|e| e.to_string())?;
     let output = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr)).trim().to_string();
@@ -3169,11 +3169,14 @@ mod tests {
         run(&["init", "-q", "--bare", "-b", "main"], Some(&origin)).unwrap();
         let url = origin.to_string_lossy().replace('\\', "/");
         let a = temp_repo("git008-a");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&a);
         run(&["remote", "add", "origin", &url], Some(&a)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&a)).unwrap();
         let b = std::env::temp_dir().join(format!("kolux-rs-scm-git008-b-{}", std::process::id()));
         let _ = fs::remove_dir_all(&b);
         run(&["clone", "-q", &url, &b.to_string_lossy()], None).unwrap();
+        crate::git::trust_for_test(&b); // the second clone pushes too
         run(&["config", "user.email", "test@example.com"], Some(&b)).unwrap();
         run(&["config", "user.name", "Kolux test"], Some(&b)).unwrap();
         fs::write(b.join("theirs.txt"), "theirs\n").unwrap();
@@ -3187,7 +3190,7 @@ mod tests {
         assert!(run(&["config", "--get", "pull.rebase"], Some(&a)).is_err() && run(&["config", "--get", "pull.ff"], Some(&a)).is_err());
         let config_before = fs::read_to_string(a.join(".git").join("config")).unwrap();
         // The real git's own words for the split are read as no-policy...
-        let real = command(&["pull"], Some(&a)).output().unwrap();
+        let real = command_checked(&["pull"], Some(&a)).unwrap().output().unwrap();
         let said = format!("{}{}", String::from_utf8_lossy(&real.stdout), String::from_utf8_lossy(&real.stderr));
         assert!(!real.status.success(), "a split pull with no policy fails: {said}");
         assert_eq!(failure_kind(&said, false), "no-policy", "{said}");
@@ -3575,6 +3578,8 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("pr");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -3644,6 +3649,8 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("pr-nopush");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -3705,6 +3712,8 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("hist");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -3813,11 +3822,18 @@ mod tests {
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("hook");
+        // T-779 S4: the folder's own hook runs only in a trusted folder; this test is about what the hook does.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         commit_file(&dir, "login.ts", "x\n");
         let hook = dir.join(".git").join("hooks").join("pre-push");
         fs::write(&hook, "#!/bin/sh\nprintf '\\033[31mlint: 2 problems in login.ts\\033[0m\\n' >&2\nexit 1\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dir.join(".git").join("hooks").join("pre-push"), fs::Permissions::from_mode(0o755)).unwrap(); // Git for Windows runs it without
+        }
         let out = remote(&dir, "push").unwrap();
         assert!(!out.ok);
         assert_eq!(out.kind, Some("hook"), "{}", out.output);
@@ -3918,10 +3934,17 @@ and more
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("hang");
+        // T-779 S4: the folder's own hook runs only in a trusted folder; this test is about what the hook does.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         commit_file(&dir, "slow.txt", "x\n");
         fs::write(dir.join(".git").join("hooks").join("pre-push"), "#!/bin/sh\nsleep 60\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(dir.join(".git").join("hooks").join("pre-push"), fs::Permissions::from_mode(0o755)).unwrap(); // Git for Windows runs it without
+        }
         let out = remote_within(&dir, "push", std::time::Duration::from_secs(1)).unwrap();
         assert!(!out.ok);
         assert_eq!(out.kind, Some("network"), "{}", out.output);
@@ -3960,6 +3983,8 @@ and more
         fs::create_dir_all(&bare).unwrap();
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let dir = temp_repo("pushed");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         assert_eq!(state(&dir), Some(("synced", 0)));
@@ -4003,6 +4028,8 @@ and more
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let bare_url = bare.to_string_lossy().replace('\\', "/");
         let dir = temp_repo("remote");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "origin", &bare_url], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
@@ -4028,6 +4055,7 @@ and more
         let other = std::env::temp_dir().join(format!("kolux-rs-scm-other-{}", std::process::id()));
         let _ = fs::remove_dir_all(&other);
         run(&["clone", "-q", &bare_url, &other.to_string_lossy()], None).unwrap();
+        crate::git::trust_for_test(&other); // the second clone pushes too
         run(&["config", "user.email", "test@example.com"], Some(&other)).unwrap();
         run(&["config", "user.name", "Kolux test"], Some(&other)).unwrap();
         commit_file(&other, "main2.txt", "m\n");
@@ -4085,7 +4113,8 @@ and more
         eprintln!("{report}");
         assert!(argvs.iter().filter(|a| a.starts_with("status ")).count() >= 3, "trace2 log missing: {report}");
         let network = ["fetch", "ls-remote", "remote-", "upload-pack", "credential", "fsmonitor", "http"];
-        assert!(!argvs.iter().any(|a| network.iter().any(|n| a.contains(n))), "a status read went to the network: {report}");
+        // The program-key listing (`config ... --get-regexp`) names key patterns such as ^credential\.; it is a read.
+        assert!(!argvs.iter().filter(|a| !a.starts_with("config ")).any(|a| network.iter().any(|n| a.contains(n))), "a status read went to the network: {report}");
         assert!(took < std::time::Duration::from_secs(20), "{report}");
         let fetched = remote(&dir, "fetch").unwrap();
         assert!(!fetched.ok && !fetched.output.is_empty(), "{fetched:?}");
@@ -4103,6 +4132,8 @@ and more
         run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
         let bare_url = bare.to_string_lossy().replace('\\', "/");
         let dir = temp_repo("slashremote");
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; this is the user's own repo.
+        crate::git::trust_for_test(&dir);
         run(&["remote", "add", "team/fork", &bare_url], Some(&dir)).unwrap();
         run(&["push", "-q", "-u", "team/fork", "main"], Some(&dir)).unwrap();
         let st = status(&dir).unwrap();
@@ -4225,6 +4256,8 @@ and more
     #[test]
     fn commit_takes_the_staged_work_and_a_refusing_hook_shows_as_blocked() {
         let repo = temp_repo("commit");
+        // T-779 S4: the folder's own hook runs only in a trusted folder; this test is about what the hook does.
+        crate::git::trust_for_test(&repo);
         fs::write(repo.join("README.md"), "hello\nworld\n").unwrap();
         fs::write(repo.join("later.txt"), "not yet\n").unwrap();
         assert!(commit(&repo, "  ").unwrap_err().contains("message"));
@@ -5579,5 +5612,81 @@ and more
         for p in ["src/main.rs", "README.md", "src/contest.ts", "testing.md", "latest/x.rs"] {
             assert_eq!(kind(p), Kind::Source, "{p}");
         }
+    }
+
+    /// Plain git for test setup (Kolux's `run` refuses write verbs in an untrusted filter repo).
+    fn plain(args: &[&str], dir: &Path) {
+        let mut c = std::process::Command::new("git");
+        c.args(args).current_dir(dir).env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            c.creation_flags(0x0800_0000);
+        }
+        let out = c.output().unwrap();
+        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    }
+
+    /// A repository with one staged file, one modified tracked file, and then (setup done) a
+    /// `filter.evil.clean` in its own config applied to every file; the marker shows a filter run.
+    fn filter_repo(name: &str) -> (PathBuf, PathBuf) {
+        let dir = temp_repo(name);
+        fs::write(dir.join("changed.txt"), "one\n").unwrap();
+        plain(&["add", "changed.txt"], &dir);
+        plain(&["commit", "-q", "-m", "second"], &dir);
+        fs::write(dir.join("changed.txt"), "two\n").unwrap();
+        fs::write(dir.join("staged.txt"), "new\n").unwrap();
+        plain(&["add", "staged.txt"], &dir);
+        fs::write(dir.join("loose.txt"), "loose\n").unwrap();
+        let marker = dir.join("filter-ran.txt");
+        let line = marker.to_string_lossy().replace('\\', "/");
+        let program = if cfg!(windows) { format!("cmd.exe /c echo ran >> \"{line}\" && cat") } else { format!("echo ran >> \"{line}\" && cat") };
+        let mut text = fs::read_to_string(dir.join(".git").join("config")).unwrap();
+        text.push_str(&format!("[filter \"evil\"]\n\tclean = {program}\n"));
+        fs::write(dir.join(".git").join("config"), text).unwrap();
+        fs::create_dir_all(dir.join(".git").join("info")).unwrap();
+        fs::write(dir.join(".git").join("info").join("attributes"), "* filter=evil\n").unwrap();
+        (dir, marker)
+    }
+
+    fn index_list(dir: &Path) -> String {
+        let mut ls = std::process::Command::new("git");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            ls.creation_flags(0x0800_0000); // no console window
+        }
+        let out = ls.args(["ls-files", "-s"]).current_dir(dir).output().unwrap();
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    /// Review fix 3, B1: Stage, Unstage, Discard, Commit and Pull in an untrusted folder that
+    /// names a clean filter each come back with the plain refusal, run nothing and change nothing.
+    #[test]
+    fn t779c_source_control_writes_in_an_untrusted_filter_repo_are_refused() {
+        let (dir, marker) = filter_repo("t779c-refuse");
+        let index = index_list(&dir);
+        let head = run(&["rev-parse", "HEAD"], Some(&dir)).unwrap();
+        let said = |r: Result<(), String>, what: &str| {
+            let why = r.expect_err(what);
+            assert!(why.contains("did not run") && why.contains("Trust the folder"), "{what}: {why}");
+        };
+        said(stage(&dir, &["loose.txt".to_string()], true), "stage");
+        said(stage(&dir, &["staged.txt".to_string()], false), "unstage");
+        said(discard(&dir, "changed", &["changed.txt".to_string()]), "discard changed");
+        said(discard(&dir, "staged", &["staged.txt".to_string()]), "discard staged");
+        let why = commit(&dir, "x").expect_err("commit");
+        assert!(why.contains("did not run") && why.contains("Trust the folder"), "commit: {why}");
+        let why = remote(&dir, "pull").expect_err("pull");
+        assert!(why.contains("did not run") && why.contains("Trust the folder"), "pull: {why}");
+        assert!(!marker.exists(), "a clean filter ran");
+        assert_eq!(index_list(&dir), index, "the index is unchanged");
+        assert_eq!(run(&["rev-parse", "HEAD"], Some(&dir)).unwrap(), head, "no commit was made");
+        assert_eq!(fs::read_to_string(dir.join("changed.txt")).unwrap(), "two\n", "the edit was not discarded");
+        // The control: the same Stage in a trusted folder runs.
+        crate::git::trust_for_test(&dir);
+        stage(&dir, &["loose.txt".to_string()], true).unwrap();
+        assert!(index_list(&dir).contains("loose.txt"));
+        let _ = fs::remove_dir_all(&dir);
     }
 }

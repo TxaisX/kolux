@@ -1,0 +1,246 @@
+T-779 · Hostile-repository guard (P2A-01, N-01) · 2026-11-08 · lane ready-sec
+
+What changed
+  src-tauri/src/git.rs: every git Kolux runs now gets core.fsmonitor=false through the
+  GIT_CONFIG_COUNT / GIT_CONFIG_KEY_n / GIT_CONFIG_VALUE_n slots (git::injected_config). Kolux's
+  pairs are appended after whatever GIT_CONFIG_COUNT the user's environment already carries, so
+  neither the user's pairs nor Kolux's are dropped (the old code skipped core.longpaths entirely
+  when the user had set a count). A folder's own .git/config can no longer name a program that
+  `git status` runs.
+
+Unit gate (git.rs)
+  t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git
+    before the wiring: FAILED ("the repository's core.fsmonitor program ran under Kolux's git")
+    after the wiring:  ok
+  t779_injected_config_appends_after_the_users_own_slots: ok
+  cargo test --lib git::  -> test result: ok. 31 passed; 0 failed
+
+Live add-folder run (scratch dev app, identifier com.txaisxiong.kolux-rs.ready-sec, vite 1424,
+scratch CLAUDE_CONFIG_DIR / CODEX_HOME / KOLUX_APP_DIR under G:\Temp\ready-sec-T-779; the installed
+Kolux and the real profiles were never touched)
+  2026-11-08T15:49:17.838Z fixture G:\Temp\ready-sec-T-779\hostile: .git/config core.fsmonitor = cmd.exe /c echo fsmonitor-hook-ran > "G:\Temp\ready-sec-T-779\fsmonitor-ran.txt"
+  2026-11-08T15:49:18.159Z control, plain git status in the fixture: marker APPEARED (git obeys the folder's config)
+  2026-11-08T15:49:18.160Z launching the scratch app: profile G:\Temp\ready-sec-T-779\home\AppData\Roaming\com.txaisxiong.kolux-rs.ready-sec, CLAUDE_CONFIG_DIR G:\Temp\ready-sec-T-779\tmp\claude-config, CODEX_HOME G:\Temp\ready-sec-T-779\tm
+  2026-11-08T15:49:45.013Z app pid 30964 (G:\Dev\kolux-rs-lanes\ready-sec\src-tauri\target\debug\kolux-rs.exe); window: moved
+  2026-11-08T15:49:45.719Z marker before add: absent
+  2026-11-08T15:49:48.496Z added G:\Temp\ready-sec-T-779\hostile as a project through the sidebar's add-by-path route; waiting 30 s with no further action
+  2026-11-08T15:49:53.512Z t+5s marker absent
+  2026-11-08T15:49:58.529Z t+10s marker absent
+  2026-11-08T15:50:03.545Z t+15s marker absent
+  2026-11-08T15:50:08.558Z t+20s marker absent
+  2026-11-08T15:50:13.567Z t+25s marker absent
+  2026-11-08T15:50:18.577Z t+30s marker absent
+  2026-11-08T15:50:18.852Z projects the app holds: [{"id":"hostile-1794152988868","name":"hostile","path":"G:\\Temp\\ready-sec-T-779\\hostile"}]
+  2026-11-08T15:50:19.838Z scm_status run again on purpose: {"branch":"main","upstream":null,"upstreamRemote":null,"ahead":0,"behind":0,"rewritten":false,"base":"main","head":"445eb9998e6491389a26a48f7383053c7b4a1a6b","staged":[],"changed":
+  2026-11-08T15:50:19.839Z marker after a forced status read: absent
+  2026-11-08T15:50:19.839Z RESULT: PASS, no marker: the folder's core.fsmonitor program never ran under Kolux
+  2026-11-08T15:50:29.332Z app closed: [true,"window close over CDP, exited in 3.1 s; pre-close tree 6 (msedgewebview2.exe x6); survivors 0 (none)"]
+
+Review fix (opus-high-review 2026-11-08, findings 1 and 6) · 2026-11-08
+  Finding 1: core.fsmonitor=false alone left a repository's own filter.<x>.clean running on
+  `status --porcelain=v2` and `diff --numstat -z` (stale index stat, as in a zip-extracted folder),
+  and diff.<x>.textconv on `show`/`diff` of a commit.
+  Fix (git.rs): git::command lists `git config -z --show-scope --get-regexp
+  '^filter\..*\.(clean|smudge|process|required)$|^diff\..*\.(textconv|command)$'` for the folder and
+  blanks every key in the local/worktree scope through further GIT_CONFIG_KEY_n/VALUE_n slots
+  ("" for the programs, "false" for required, so a blanked clean filter does not fail the read).
+  git-lfs's own three standard lines are the one exception (a repository with `git lfs install
+  --local` keeps working). The listing is cached per folder while .git/config and config.worktree
+  (mtime + size) are unchanged, so a status read costs the same git processes as before (T-033-e).
+  Finding 6: editor_search.rs git grep now goes through git::command.
+  Probe facts (git 2.55.0.windows.3, scratch repo G:\Temp\ready-sec-T-779\probe, removed after):
+    plain `git status --porcelain=v2` with stale stat: marker written (clean filter ran)
+    with GIT_CONFIG_KEY_0=filter.evil.clean VALUE_0= (and required=false): exit 0, no marker
+    filter.evil.required=true with a blanked clean and no required override: status dies
+      ("clean filter 'evil' failed"), hence the forced required=false
+    empty diff.<x>.textconv: `git show` says "cannot spawn : No such file or directory" and stops
+      (the program never runs; a repo-local textconv is rare, global ones are untouched)
+  Fails before (command() built with no repository overrides, one-line probe, reverted):
+    test git::tests::t779_a_repositorys_own_textconv_never_runs_under_kolux_git ... FAILED
+    test git::tests::t779_a_repositorys_own_clean_filter_never_runs_under_kolux_git ... FAILED
+    test result: FAILED. 0 passed; 2 failed
+  Passes after:
+    test git::tests::t779_a_repositorys_own_clean_filter_never_runs_under_kolux_git ... ok
+    test git::tests::t779_a_repositorys_own_textconv_never_runs_under_kolux_git ... ok
+    test git::tests::t779_repo_program_overrides_blank_the_repositorys_own_keys_but_not_git_lfs ... ok
+    test git::tests::t779_a_repositorys_own_fsmonitor_program_never_runs_under_kolux_git ... ok
+    test git::tests::t779_injected_config_appends_after_the_users_own_slots ... ok
+
+Review fix 2 (opus-high-review 2026-11-08, blockers: writes, submodules, gpg; nit: includes) · 2026-11-08
+  Writes (Txais, 2026-11-08, DT-C229): reads always blank the folder's own program keys; a write
+  that runs clean/smudge (add, commit, checkout, switch, restore, reset, merge, pull, rebase,
+  cherry-pick, revert, apply, am, stash, worktree add, submodule update/add...) runs the folder's own
+  filters only when the folder is trusted (Claude hasTrustDialogAccepted or Codex trust_level =
+  "trusted", for the folder or its main checkout; read only, trust.rs unchanged). In an untrusted
+  folder with a filter of its own (git-lfs's three standard lines exempt) the write is REFUSED
+  with a message naming the filter and saying to trust the folder; nothing is staged, no filter
+  runs, and auto_pr's commit step reports "Not committed: ..." before it writes anything.
+  Submodules: .git/modules/**/config is listed recursively (nested submodules too) and read for
+  program keys; the files are part of the cache stamp. Probe fact: the child git a parent
+  `status --ignore-submodules=none` starts for a submodule inherits the GIT_CONFIG_* slots, so the
+  blanked key holds there (the submodule test is the oracle).
+  gpg: log.showSignature=false is a fixed pair; gpg.program and gpg.<fmt>.program are blanked for
+  reads. Include nit: include.path / includeIf target files (mtime + size) are in the stamp.
+  Fails before (each fix reverted by a one-line probe in one build, restored after):
+    test git::tests::t779_injected_config_appends_after_the_users_own_slots ... FAILED
+    test git::tests::t779b_a_write_through_the_folders_own_filter_is_refused_unless_the_folder_is_trusted ... FAILED   (unwrap_err on an Ok value: the write went ahead)
+    test git::tests::t779b_git_lfs_and_a_required_only_driver_never_block_a_write_and_trust_follows_the_main_checkout ... FAILED
+    test auto_pr::tests::t652_what_the_commit_would_hold_is_what_gets_scanned ... FAILED
+    test git::tests::t779b_a_submodules_own_clean_filter_never_runs_under_kolux_git ... FAILED   (the submodule's clean filter ran under Kolux's git status)
+    test git::tests::t779b_module_configs_are_found_recursively_and_a_change_refreshes_the_listing ... FAILED
+    test git::tests::t779b_a_repositorys_own_gpg_program_never_runs_under_kolux_git_log ... FAILED   (the repository's gpg program ran under Kolux's git log)
+    test git::tests::t779b_gpg_program_keys_are_blanked_for_reads ... FAILED
+    test git::tests::t779b_included_config_files_are_part_of_the_listing_stamp ... FAILED   (extra.cfg missing from ["config"])
+    test result: FAILED. 0 passed; 9 failed
+  Passes after (git:: editor_search:: auto_pr:: t033e t033g, 125 tests):
+    test git::tests::t779b_a_write_through_the_folders_own_filter_is_refused_unless_the_folder_is_trusted ... ok
+    test git::tests::t779b_git_lfs_and_a_required_only_driver_never_block_a_write_and_trust_follows_the_main_checkout ... ok
+    test git::tests::t779b_a_submodules_own_clean_filter_never_runs_under_kolux_git ... ok
+    test git::tests::t779b_module_configs_are_found_recursively_and_a_change_refreshes_the_listing ... ok
+    test git::tests::t779b_a_repositorys_own_gpg_program_never_runs_under_kolux_git_log ... ok
+    test git::tests::t779b_gpg_program_keys_are_blanked_for_reads ... ok
+    test git::tests::t779b_included_config_files_are_part_of_the_listing_stamp ... ok
+    test auto_pr::tests::t652_what_the_commit_would_hold_is_what_gets_scanned ... ok
+    test result: ok. 125 passed; 0 failed
+  VERIFY: cargo build exit 0; cargo clippy --all-targets -- -D warnings exit 0; no TS changed (tsc not run).
+  Limits (not fixed here): other repo-local program keys (core.sshCommand, core.editor,
+  credential.helper, diff.external, merge drivers, core.hooksPath) are out of scope; managed Claude
+  accounts' own config files are not consulted for trust (conservative: refuses); includeIf
+  conditions are ignored in the stamp (over-inclusive). CORRECTION (review fix 3, S1): "never stale" was wrong for
+  includeIf "onbranch:": that condition depends on HEAD, which the stamp did not include; fixed below.
+
+Review fix 3 (opus-high-review 2026-11-08 re-review of 04da90ee: B1, B2, S1, S2, S3) · 2026-11-08
+  B1  Source Control writes skipped the write gate. scm.rs piped (stage, unstage, discard), with_paths, commit and
+      git_network (pull, sync, rebase), and auto_pr add -A and commit, now use git::command_checked: ONE decision
+      (listing, refusal, blanking) per run, so nothing changes between the check and the run (the auto PR
+      time-of-check gap is closed). git::command() is reads only: a debug_assert panics a write verb sent to it.
+  B2  A submodule git dir not under .git/modules (embedded sub/.git, or a .git file whose gitdir is elsewhere) was
+      missed. The submodule list now comes from the index gitlinks (git ls-files -s -z reads the index and runs no
+      program), resolved through .git files and links; the gitlink set, each .git entry and each submodule HEAD and
+      index are in the stamp. Fail closed: a symlink or junction modules/<name> is followed; a cap hit (256 modules,
+      depth 8) or a listing git did not answer within 30 s marks the listing incomplete: status and diff then run
+      with --ignore-submodules=all and a content write is refused in an untrusted folder. config.worktree is read.
+  S1  includeIf onbranch: the stamp now includes the git dir HEAD, so a branch switch refreshes the listing.
+  S2  include_targets reads only regular files, at most the first 1 MB; the git config --file listings have a
+      30 s limit (the whole process tree is stopped on timeout).
+  S3  A trusted folder keeps its repo-local gpg.program on commit even with no filter named
+      (trusted_write = writes_content && folder_trusted).
+  Nits: gpg.ssh.defaultKeyCommand is in the key list; git-lfs "--skip" smudge and process lines are exempt.
+  Tests (t779c_*): scm stage, unstage, discard, commit and pull in an untrusted filter repo each refuse and change
+      nothing (a trusted control runs); embedded sub/.git, gitdir outside, gitlink added later, config.worktree,
+      linked modules entry, capped walk (sentinel, --ignore-submodules=all, write refused, trusted runs), onbranch
+      switch and back, include target not a regular file or over 1 MB or listing timeout, trusted gpg.program kept.
+  RED (fixes reverted together in a scratch build: command_checked never refuses, no gitlink walk, HEAD out of the
+      stamp, read_small unchecked, trust needs a filter): cargo test --lib t779 -> 10 FAILED, 12 passed:
+      test git::tests::t779c_a_branch_switch_refreshes_an_onbranch_include ... FAILED
+      test git::tests::t779b_a_write_through_the_folders_own_filter_is_refused_unless_the_folder_is_trusted ... FAILED
+      test git::tests::t779c_a_gitlink_added_later_refreshes_the_listing ... FAILED
+      test git::tests::t779c_include_targets_read_only_regular_files_and_only_a_megabyte ... FAILED
+      test git::tests::t779c_a_trusted_folders_gpg_program_survives_a_commit ... FAILED
+      test scm::tests::t779c_source_control_writes_in_an_untrusted_filter_repo_are_refused ... FAILED
+      test git::tests::t779c_a_submodules_config_worktree_is_listed ... FAILED
+      test git::tests::t779c_a_submodule_whose_gitdir_points_outside_the_repository_is_blanked ... FAILED
+      test git::tests::t779c_an_embedded_dot_git_submodules_own_filter_never_runs_under_kolux_git ... FAILED
+      test git::tests::t779c_a_capped_submodule_walk_fails_closed ... FAILED
+      test result: FAILED. 12 passed; 10 failed; 0 ignored; 0 measured; 2960 filtered out; finished in 13.95s
+  GREEN: cargo test --lib t779 -> 22 passed, 0 failed (git:: 50 passed).
+  GATES: cargo test --lib 2975 passed, 1 failed (scm::writers t606, the known 20 s stand-in agent timeout in
+      scm_writers.rs, untouched, fails alone on main too); cargo clippy --all-targets -- -D warnings exit 0.
+  Window note (Txais 2026-11-08): every git and child spawn in git.rs, scm.rs and auto_pr.rs uses CREATE_NO_WINDOW
+      (production already did; the test spawns that lacked it now have it).
+
+Review fix 4 (independent read-only review of S4, 2026-11-09: 6 blockers, 3 should-fix) · 2026-11-09 · cloud Linux
+  B1 gc --auto (Kolux's background tidy) ran the folder's pre-auto-gc hook: gc, maintenance, rm, mv and
+     update-index now get the hook check in an untrusted folder (also the post-index-change should-fix).
+  B2 a push into a local repository ran THAT repository's receive hooks: refused from an untrusted folder when
+     the target has a receive hook, its own core.hooksPath or core.alternateRefsCommand, or cannot be looked
+     into; a plain local remote still works (the auto PR and Source Control tests push to one).
+  B3 ext:: remotes ran a command (also from a read, through lazy fetch): protocol.ext.allow=never on every run.
+  B4 a credential helper ran on a read through lazy fetch: in an untrusted partial clone a read sets
+     GIT_NO_LAZY_FETCH=1 (git 2.45+; the cloud's git 2.43 ignores it) and empties the credential helper list.
+  B5 core.alternateRefsCommand ran on fetch: blanked on every run, trusted or not.
+  B6 hook names (Git for Windows also runs <hook>.exe; NTFS ignores case; a 4096-entry listing cap): each hook
+     is now checked by its own path.
+  Should-fix done: merge drivers blanked on reads (merge-tree); index commands checked (B1).
+  Left (backlog): a hook written mid-command into a git dir that lies inside the worktree (TOCTOU, gitdir: ./g);
+     an incomplete listing lets a pure ref change through without the submodules' hooks checked.
+  Tests that S4 itself broke and were never run (the WIP was not gate-tested), fixed in this commit: three scm
+     hook tests now trust their folder (they test what a hook does); two of them now mark the hook executable
+     on Unix (Git for Windows runs it without the bit); the auto PR fixtures set up their remotes with plain
+     git; the trace test no longer reads the program-key listing (a config read naming ^credential\.) as a
+     network call; injected-config slot count follows the new protocol.ext.allow pair.
+  GREEN: cargo test --lib t779e -> 8 passed. cargo test --lib -- git:: auto_pr:: scm:: tidy:: -> 240 passed,
+     3 failed, all Linux-only and failing before this lane's S4 too: t779b gpg control (git here does not run
+     gpg), scm git014 and staging (C:\Windows paths).
+  RED (the new tests copied onto f7a07019, the pre-fix head):
+    test git::tests::t779e_a_hook_among_many_decoys_is_still_found ... ok
+    test git::tests::t779e_gc_and_index_commands_check_the_folders_hooks ... FAILED
+    test git::tests::t779e_ext_remotes_never_run_a_command ... FAILED
+    test git::tests::t779e_merge_drivers_are_blanked_on_reads ... FAILED
+    test git::tests::t779e_a_push_to_a_local_repository_with_receive_hooks_is_refused ... FAILED
+    test git::tests::t779e_reads_in_an_untrusted_partial_clone_never_lazy_fetch ... FAILED
+    test git::tests::t779e_the_alternate_refs_command_never_runs ... FAILED
+    test result: FAILED. 1 passed; 6 failed; 0 ignored; 0 measured; 2913 filtered out; finished in 0.89s
+    error: test failed, to rerun pass `--lib`
+    (t779e_a_hook_among_many_decoys passes on the old code here: ext4 does not list a folder alphabetically, so
+     the old cap missed nothing; its red run, and the .exe/case half, need Windows.)
+  PENDING on Windows: cargo test --lib t779 and the full suite; red for B6.
+
+Review fix 5 (independent re-review of 6ff3d6a7, 2026-11-09: B2 and B4 still open, reproduced with plain git)
+  B2 the push gate judged the wrong remote (a bare push uses pushDefault/pushRemote), only the first pushurl,
+     the wrong git dir, and only hooks (the receiving repository also runs its filters, fsmonitor and gc with
+     its own config): replaced, as the reviewer advised, by one rule: from an untrusted folder any push is
+     refused when its URL argument or any push URL (--all) of any remote is on this computer; a failed listing
+     refuses. Tests that push to a local bare remote now trust their folder (they stand for the user's repo).
+  B4 promisor=1/yes/on/bare was not seen, and git before 2.45 ignores GIT_NO_LAZY_FETCH: promisor parsed as a
+     git boolean; an untrusted partial clone's read also switches off every protocol by name; the guard now
+     runs on both read paths (command and command_checked; the WIP had it only on command).
+  Should-fix done: maintenance is a transfer; gc and the index commands look inside the folder's own
+     core.hooksPath folder instead of always refusing (husky repos still get the background tidy); a hook
+     named in config (hook.<name>.command) refuses like core.hooksPath. trust_for_test adds to the thread's
+     trusted folders (tests with two clones).
+  GREEN: cargo test --lib -- git:: auto_pr:: scm:: tidy:: -> 250 passed, 3 failed (the Linux-only three).
+  RED (the three new tests on 6ff3d6a7):
+    test git::tests::t779e_gc_looks_inside_the_folders_own_hooks_folder ... FAILED
+    test git::tests::t779e_a_push_that_could_reach_a_local_repository_is_refused ... FAILED
+    test git::tests::t779e_a_partial_clone_read_runs_no_program_on_any_git ... FAILED
+    test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 2921 filtered out; finished in 0.42s
+    error: test failed, to rerun pass `--lib`
+
+Review fix 6 (independent re-review of 509538cc, 2026-11-09: one blocker, six push bypasses reproduced)
+  The push gate still listed only `git remote` and path-shaped words: insteadOf on a missing origin,
+  .git/remotes and .git/branches files, a bare word that is a path, pushDefault/branch remote set to a path,
+  and push.recurseSubmodules reaching a submodule's local remote. Now git resolves every address it could use
+  (ls-remote --get-url for the named repository, or for a bare push for pushRemote, pushDefault, the branch's
+  remote and origin), plus every push URL of every remote; an untrusted push sets push.recurseSubmodules=no.
+  The local-push refusal comes after the hook checks, so a hook refusal still names the hook.
+  Should-fix done: a relative core.hooksPath is read from the worktree's top level (gc from a subfolder).
+  Left as nits (backlog): ~ and /c/ forms of hooksPath; protocols other than the six named on a partial
+  clone's read (ftp, a git-remote-<x> helper on PATH: not a program from the repository).
+  clippy: net_overrides' guards folded into the match (collapsible_match on clippy 1.97).
+  GREEN: cargo test --lib -- git:: auto_pr:: scm:: tidy:: -> 252 passed, 3 failed (the Linux-only three).
+  RED (the two new tests on 509538cc):
+    test git::tests::t779e_a_relative_hooks_path_is_read_from_the_top_level ... FAILED
+    test git::tests::t779e_push_addresses_are_resolved_by_git_itself ... FAILED
+    test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 2923 filtered out; finished in 0.43s
+    error: test failed, to rerun pass `--lib`
+
+Review fix 7 (independent re-review of 0cc3e4e0, 2026-11-09: two push bypasses reproduced)
+  A tag named like the branch made `symbolic-ref --short` print heads/main, hiding branch.main.pushRemote
+  (here and in pr_checkout::push_target): both now strip refs/heads/ from the full ref. A legacy remote file
+  with several URL lines: candidates now resolve with `remote get-url --push --all` first. A name that is no
+  remote gets a plain message (git would take it as a folder).
+  Backstop, since four rounds found address-resolution gaps: an untrusted push now carries
+  protocol.file.allow=never, so git itself refuses a local path or file:// transport however the address was
+  chosen (checked by hand on git 2.43: "transport 'file' not allowed", the receiving hook does not run; the
+  control without it runs the hook). Tested live in t779e_tag_named_branches_..._file_transport_backstop.
+  Left (backlog, nits): remote.<n>.vcs helpers found on PATH (not a program from the folder); git older than
+  2.31 ignores the injected GIT_CONFIG_COUNT pairs (all of T-779's overrides depend on them).
+  GREEN: cargo test --lib -- git:: auto_pr:: scm:: tidy:: pr_checkout:: -> all pass but the Linux-only three;
+     clippy on the changed files: clean.
+  RED (the new test on 0cc3e4e0):
+    test git::tests::t779e_tag_named_branches_legacy_url_lists_and_the_file_transport_backstop ... FAILED
+    thread 'git::tests::t779e_tag_named_branches_legacy_url_lists_and_the_file_transport_backstop' (3928) panicked at src/git.rs:3996:9:
+    the branch's pushRemote behind a tag of the same name
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2925 filtered out; finished in 0.67s
+    error: test failed, to rerun pass `--lib`

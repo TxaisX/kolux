@@ -7,7 +7,7 @@
 //! repository whose `index.lock` exists is left alone (the lock is never deleted), and every read of
 //! the history has a time limit that fails the step instead of passing it.
 
-use crate::git::{command, run, Git, NO_PROMPT};
+use crate::git::{command, command_checked, run, Git, NO_PROMPT};
 use crate::scm::{self, Status};
 use regex::bytes::Regex;
 use std::collections::{BTreeMap, BTreeSet};
@@ -463,17 +463,25 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     if let Some(stop) = precheck(&ctx.st, &ctx.top, "committed")? {
         return Ok(stop);
     }
+    // A folder's own clean filter runs under `add` and `commit` only when the folder is trusted
+    // (DT-C229); in an untrusted one the commit is refused up front, before anything is staged,
+    // never made with the filter skipped.
+    // S4: the commit's own hooks and merge drivers are part of the same check, made before anything is staged.
+    if let Some(why) = crate::git::write_refusal(&["add", "-A"], Some(dir)).or_else(|| crate::git::write_refusal(&["commit", "--quiet", "-m", "x"], Some(dir))) {
+        return Ok(step("failed", format!("Not committed: {}", scrub(&why))));
+    }
     let head_before = head_oid(dir);
     let saved = run(&["write-tree"], Some(dir)).map_err(|e| format!("could not save the staging area first: {e}"))?;
     let fail = |s: AutoStep| Ok(undo(dir, &saved, &head_before, s));
 
-    match run_limited(command(&["add", "-A"], Some(dir)), PUSH_LIMIT) {
+    match command_checked(&["add", "-A"], Some(dir)).and_then(|c| run_limited(c, PUSH_LIMIT)) {
         // A git stopped at the limit may leave its index.lock behind; that is left alone (see `undo`).
         Err(e) => return fail(step("failed", format!("Not committed: {}", scrub(&e)))),
         Ok((false, log)) => return fail(step("failed", format!("Not committed: git add failed: {}", scrub(&crate::git::failure_reason(&log).unwrap_or_else(|| "git gave no reason".into()))))),
         Ok((true, _)) => {}
     }
-    // The authoritative scan: the blobs the commit would hold, after any filter has run.
+    // The authoritative scan: the blobs the commit would hold, after any filter has run (a folder's own
+    // filter runs only in a trusted folder, see above; a user-level or git-lfs one runs as well).
     let hits = match staged_blobs(dir).and_then(|blobs| scan_blobs(dir, &blobs)) {
         Ok(h) => h,
         Err(e) => return fail(step("failed", format!("Not committed: {}", scrub(&e)))),
@@ -483,7 +491,7 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     }
 
     let message = format!("Auto-commit on {} after an agent turn", ctx.branch);
-    let (ok, log) = match run_limited(command(&["commit", "--quiet", "-m", &message], Some(dir)), PUSH_LIMIT) {
+    let (ok, log) = match command_checked(&["commit", "--quiet", "-m", &message], Some(dir)).and_then(|c| run_limited(c, PUSH_LIMIT)) {
         Ok(r) => r,
         Err(e) => {
             // The commit may have landed before Kolux lost sight of git.
@@ -835,7 +843,11 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
         return Ok(step("clean", "Nothing to push yet: the branch has no commits."));
     };
     // What origin has right now, not what this computer last heard.
-    let mut cmd = command(&["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*"], Some(dir));
+    // S4 (DT-C229): a folder's own credential helper, hooks folder or hook stops the transfer in an untrusted folder.
+    let mut cmd = match command_checked(&["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*"], Some(dir)) {
+        Ok(c) => c,
+        Err(why) => return Ok(step("failed", format!("Not pushed: {}", scrub(&why)))),
+    };
     cmd.envs(NO_PROMPT);
     let (ok, listing) = match run_limited(cmd, REMOTE_LIMIT) {
         Ok(r) => r,
@@ -889,7 +901,10 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
     // the commit (push.followTags) and no submodule commits (push.recurseSubmodules), whose
     // messages and files were never scanned.
     let refspec = format!("{oid}:refs/heads/{branch}");
-    let mut cmd = command(&["push", "--no-follow-tags", "--no-recurse-submodules", "--", "origin", &refspec], Some(dir));
+    let mut cmd = match command_checked(&["push", "--no-follow-tags", "--no-recurse-submodules", "--", "origin", &refspec], Some(dir)) {
+        Ok(c) => c,
+        Err(why) => return Ok(step("failed", format!("Not pushed: {}", scrub(&why)))),
+    };
     cmd.envs(NO_PROMPT);
     let (ok, log) = match run_limited(cmd, PUSH_LIMIT) {
         Ok(r) => r,
@@ -1004,6 +1019,20 @@ mod tests {
         p.to_string_lossy().replace('\\', "/")
     }
 
+    /// Test setup only: a push that prepares the remote's state, made with plain git so the write gate
+    /// (which refuses a push to a repository on this computer from an untrusted folder) is not in the way.
+    fn setup_push(args: &[&str], dir: &Path) {
+        let mut cmd = std::process::Command::new("git");
+        cmd.args(args).current_dir(dir).env_remove("GIT_CONFIG_COUNT").env_remove("GIT_CONFIG_PARAMETERS");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // no console window
+        }
+        let out = cmd.output().unwrap();
+        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+    }
+
     fn bare_repo(name: &str, head: &str) -> PathBuf {
         let bare = std::env::temp_dir().join(format!("kolux-rs-autopr-bare-{name}-{}", id()));
         let _ = fs::remove_dir_all(&bare);
@@ -1017,8 +1046,11 @@ mod tests {
         let bare = bare_repo(name, "main");
         let dir = repo(name);
         run(&["remote", "add", "origin", &url(&bare)], Some(&dir)).unwrap();
-        run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "-u", "origin", "main"], &dir);
         run(&["remote", "set-head", "origin", "main"], Some(&dir)).unwrap();
+        // T-779 S4: a push to a repository on this computer needs a trusted folder; the fixture stands for
+        // the user's own repository. Tests of an untrusted folder call `untrust_for_test` after this.
+        crate::git::trust_for_test(&dir);
         (dir, bare)
     }
 
@@ -1328,7 +1360,7 @@ mod tests {
         let (dir, bare) = with_origin("b-odd");
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
-        run(&["push", "-q", "origin", "main:other"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "main:other"], &dir);
         run(&["branch", "--set-upstream-to=origin/other"], Some(&dir)).unwrap();
         fs::write(dir.join("b.txt"), "b\n").unwrap();
         let before = head(&dir);
@@ -1463,6 +1495,7 @@ mod tests {
         let (dir, bare) = with_origin("j-hook");
         branch(&dir, "feature");
         let key = fake_claude_key();
+        crate::git::trust_for_test(&dir); // an untrusted folder's own hooks are refused up front (S4)
         hook(&dir, "pre-commit", &format!("#!/bin/sh\necho \"hook says no {key}\" >&2\nexit 1\n"));
         fs::write(dir.join("ok.txt"), "fine\n").unwrap();
         fs::write(dir.join("README.md"), "changed\n").unwrap();
@@ -1478,18 +1511,38 @@ mod tests {
         cleanup(&[&dir, &bare]);
     }
 
+    /// The scan reads the staged blobs, not the working files, so a clean filter that slips a token
+    /// into the commit is caught. The folder's own filter runs only when the user trusts the folder
+    /// (review fix 2, DT-C229): in an untrusted one the commit is refused up front, naming the filter
+    /// and saying to trust the folder, with nothing staged and nothing committed; it is never made
+    /// with the filter skipped (that would store plaintext where a git-crypt repository wants
+    /// ciphertext).
     #[test]
     fn t652_what_the_commit_would_hold_is_what_gets_scanned() {
         let (dir, bare) = with_origin("j-filter");
+        crate::git::untrust_for_test(); // this test starts in an untrusted folder
         branch(&dir, "feature");
         commit_file(&dir, ".gitattributes", "*.cfg filter=addtoken\n");
-        // A clean filter adds a key to the file on its way into the index; the working file has none.
+        // The folder's own clean filter would add a key to the file on its way into the index.
         run(&["config", "filter.addtoken.clean", &format!("cat; echo TOKEN={}", fake_token())], Some(&dir)).unwrap();
         fs::write(dir.join("app.cfg"), "a=1\n").unwrap();
         let before_head = head(&dir);
+        // Untrusted folder: refused, plainly, before anything is staged.
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "failed", "{s:?}");
+        assert!(s.message.starts_with("Not committed: ") && s.message.contains("addtoken") && s.message.contains("trust"), "{}", s.message);
+        assert_eq!(index_of(&dir), "?? app.cfg", "nothing was staged");
+        assert_eq!(head(&dir), before_head, "nothing was committed");
+        // Trusted folder: the filter runs, and the blob scan catches the token it added.
+        crate::git::trust_for_test(&dir);
         let s = commit_step(&dir).unwrap();
         assert_eq!((s.kind.as_str(), s.files.as_slice()), ("blocked", ["app.cfg".to_string()].as_slice()), "{s:?}");
         assert_eq!(index_of(&dir), "?? app.cfg", "the staging area is as it was");
+        assert_eq!(head(&dir), before_head);
+        // A token in the working file itself is caught the same way.
+        fs::write(dir.join("app.cfg"), format!("a=1\nTOKEN={}\n", fake_token())).unwrap();
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "blocked", "{s:?}");
         assert_eq!(head(&dir), before_head);
         cleanup(&[&dir, &bare]);
     }
@@ -1614,7 +1667,7 @@ mod tests {
         // A secret goes up by hand, then the remote branch is moved back before it; this computer's
         // idea of origin/feature (the stale upstream) still includes the secret.
         commit_file(&dir, "deploy.sh", &format!("TOKEN={}\n", fake_token()));
-        run(&["push", "-q", "origin", "feature"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "feature"], &dir);
         run(&["update-ref", "refs/heads/feature", &c1], Some(&bare)).unwrap();
         commit_file(&dir, "more.txt", "fine\n");
         let s = push_step(&dir).unwrap();
@@ -1667,7 +1720,7 @@ mod tests {
         let bare = bare_repo("f-trunk", "trunk");
         let dir = repo("f-trunk");
         run(&["remote", "add", "origin", &url(&bare)], Some(&dir)).unwrap();
-        run(&["push", "-q", "origin", "main:trunk"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "main:trunk"], &dir);
         let before = remote_ref(&bare, "trunk");
         assert!(before.is_some());
         branch(&dir, "TRUNK");
@@ -1733,7 +1786,7 @@ mod tests {
         }
         run(&["checkout", "-q", "feature"], Some(&other)).unwrap();
         commit_file(&other, "theirs.txt", "t\n");
-        run(&["push", "-q", "origin", "feature"], Some(&other)).unwrap();
+        setup_push(&["push", "-q", "origin", "feature"], &other);
         let theirs = remote_ref(&bare, "feature").unwrap();
         // This side adds its own commit.
         commit_file(&dir, "mine.txt", "m\n");
@@ -1830,6 +1883,11 @@ mod tests {
     #[test]
     fn t652_a_command_that_outlives_its_limit_is_stopped() {
         let mut cmd = if cfg!(windows) { Command::new("ping") } else { Command::new("sleep") };
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // no console window
+        }
         if cfg!(windows) {
             cmd.args(["-n", "8", "127.0.0.1"]);
         } else {
@@ -1843,6 +1901,45 @@ mod tests {
         assert!(ok && out.starts_with("git version"), "{out}");
     }
 
+    /// S4 (DT-C229): the automatic ls-remote and push go through the write gate. In an untrusted
+    /// folder whose own hook or credential helper would run, the step stops with the plain message and
+    /// nothing is sent or run; a trusted folder pushes as before.
+    #[test]
+    fn t779d_the_automatic_push_in_an_untrusted_folder_stops_at_the_gate() {
+        for own in ["hook", "credential", "hookspath"] {
+            let (dir, bare) = with_origin(&format!("s4-{own}"));
+            crate::git::untrust_for_test();
+            branch(&dir, "feature");
+            commit_file(&dir, "a.txt", "a\n");
+            let mark = std::env::temp_dir().join(format!("kolux-rs-autopr-s4-mark-{}-{own}", id()));
+            let _ = fs::remove_file(&mark);
+            match own {
+                "hook" => hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark))),
+                "credential" => {
+                    run(&["config", "credential.helper", "evil-helper"], Some(&dir)).unwrap();
+                }
+                _ => {
+                    run(&["config", "core.hooksPath", "evil-hooks"], Some(&dir)).unwrap();
+                }
+            }
+            let s = push_step(&dir).unwrap();
+            assert_eq!(s.kind, "failed", "{own}: {s:?}");
+            assert!(s.message.starts_with("Not pushed: ") && s.message.contains("not trusted") && s.message.contains("Trust the folder"), "{own}: {s:?}");
+            assert_eq!(remote_ref(&bare, "feature"), None, "{own}: nothing was pushed");
+            assert!(!mark.exists(), "{own}: the folder's own hook ran");
+            // Trusted: the same step goes through.
+            crate::git::trust_for_test(&dir);
+            if own == "hook" {
+                let s = push_step(&dir).unwrap();
+                assert_eq!(s.kind, "done", "{s:?}");
+                assert_eq!(remote_ref(&bare, "feature"), Some(head(&dir)));
+                assert!(mark.exists(), "the trusted folder's own pre-push hook runs");
+            }
+            cleanup(&[&dir, &bare]);
+            let _ = fs::remove_file(&mark);
+        }
+    }
+
     #[test]
     fn t652_a_branch_on_origin_that_lost_its_upstream_is_linked_on_the_next_run_without_pushing() {
         let (dir, bare) = with_origin("p-relink");
@@ -1851,6 +1948,7 @@ mod tests {
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
         // A pre-push hook that leaves a mark, so a push can be told from none.
+        crate::git::trust_for_test(&dir); // an untrusted folder's own hooks are refused up front (S4)
         hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark)));
         let s = push_step(&dir).unwrap();
         assert_eq!(s.kind, "done", "{s:?}");
@@ -1912,7 +2010,7 @@ mod tests {
 ");
         // A push that landed while this computer kept its old copy of origin/feature: the branch is
         // linked, nothing is ahead of origin, but the local copy says one commit is.
-        run(&["push", "-q", &url(&bare), &format!("{}:refs/heads/feature", head(&dir))], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", &url(&bare), &format!("{}:refs/heads/feature", head(&dir))], &dir);
         run(&["update-ref", "refs/remotes/origin/feature", &old], Some(&dir)).unwrap();
         assert_eq!(scm::status(&dir).unwrap().ahead, 1, "the premise");
         let s = push_step(&dir).unwrap();
@@ -1933,7 +2031,7 @@ mod tests {
         run(&["config", "push.followTags", "true"], Some(&dir)).unwrap();
         run(&["tag", "-a", "v1", "-m", "a tag message that is never scanned"], Some(&dir)).unwrap();
         // The premise: with that setting an explicit commit-to-branch push does carry the tag.
-        run(&["push", "-q", &url(&elsewhere), &format!("{}:refs/heads/x", head(&dir))], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", &url(&elsewhere), &format!("{}:refs/heads/x", head(&dir))], &dir);
         assert!(run(&["for-each-ref", "refs/tags"], Some(&elsewhere)).unwrap().contains("refs/tags/v1"), "the premise");
         let s = push_step(&dir).unwrap();
         assert_eq!(s.kind, "done", "{s:?}");
@@ -2023,7 +2121,7 @@ mod tests {
         branch(&dir, "feature");
         commit_file(&dir, "a.txt", "a\n");
         // The branch tracks another name: the automatic flow skips it, the manual one accepts it.
-        run(&["push", "-q", "origin", "main:other"], Some(&dir)).unwrap();
+        setup_push(&["push", "-q", "origin", "main:other"], &dir);
         run(&["branch", "--set-upstream-to=origin/other"], Some(&dir)).unwrap();
         fs::write(dir.join("b.txt"), "b\n").unwrap();
         assert_eq!(commit_step(&dir).unwrap().kind, "skipped");
@@ -2072,6 +2170,11 @@ mod tests {
     #[test]
     fn t652_a_command_with_input_outlives_its_limit_or_answers() {
         let mut cmd = if cfg!(windows) { Command::new("ping") } else { Command::new("sleep") };
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x0800_0000); // no console window
+        }
         if cfg!(windows) {
             cmd.args(["-n", "8", "127.0.0.1"]);
         } else {

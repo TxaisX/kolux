@@ -110,11 +110,14 @@ struct Inner {
 impl Inner {
     /// One chunk of a session's output, taken in: the snapshot tail and count (returned), the line log,
     /// the saved history, the screen-owner bits and the program's last-output time.
-    fn book_chunk(&mut self, id: u32, chunk: &[u8], is_program: bool) -> u64 {
+    /// `on_disk` is the chunk already through `diag::scrub_bytes`, made before the registry lock was taken
+    /// (T-792 review fix, finding 5): the snapshot and line log keep the chunk as it came, the history
+    /// file gets the masked bytes, and no mask work runs under the lock.
+    fn book_chunk(&mut self, id: u32, chunk: &[u8], on_disk: &[u8], is_program: bool) -> u64 {
         let seq = self.snaps.entry(id).or_default().push(chunk);
         self.logs.entry(id).or_default().push(chunk);
         if let Some(h) = self.hist.get_mut(&id) {
-            h.append(chunk);
+            h.append_masked(on_disk);
         }
         if chunk.contains(&0x1b) {
             let prev = self.owned.get(&id).copied().unwrap_or(0);
@@ -368,7 +371,16 @@ impl History {
         Some(History { path, size, file: None })
     }
 
+    /// T-792 (P2b-04): what reaches the disk goes through the diagnostics mask first. A chunk cut
+    /// inside a character has its whole part masked and the cut bytes written as they came (review
+    /// fix, finding 3); a token split across two chunks is not caught here, the same best effort the
+    /// mask gives everywhere else.
     fn append(&mut self, chunk: &[u8]) {
+        self.append_masked(&crate::diag::scrub_bytes(chunk));
+    }
+
+    /// `chunk` already masked (`diag::scrub_bytes`), written as it is.
+    fn append_masked(&mut self, chunk: &[u8]) {
         use std::io::Write as _;
         if self.file.is_none() {
             self.file = std::fs::OpenOptions::new().create(true).append(true).open(&self.path).ok();
@@ -1100,9 +1112,12 @@ impl Terminals {
         (
             Box::new(move |chunk: &[u8]| {
                 let data = base64::engine::general_purpose::STANDARD.encode(chunk);
+                // T-792: the history file's copy is masked here, before the lock, so the mask's work never
+                // holds every other pane's output up.
+                let on_disk = crate::diag::scrub_bytes(chunk);
                 // ORCH-057: the count is taken under the registry lock with the snapshot tail, so a snapshot
                 // holds exactly the chunks whose count is not past its own.
-                let seq = out_registry.lock().map(|mut i| i.book_chunk(id, chunk, is_program)).unwrap_or(0);
+                let seq = out_registry.lock().map(|mut i| i.book_chunk(id, chunk, &on_disk, is_program)).unwrap_or(0);
                 let _ = out_app.emit(OUTPUT_EVENT, OutputPayload { id, data, pane: pane_key, generation: generation(), seq });
                 if let Some(dir) = link_dir.as_deref() {
                     for url in prs.feed(chunk) {
@@ -1459,6 +1474,12 @@ impl Terminals {
         }
     }
 
+    /// T-793 review fix 1: the pane secret `key` for a fake session, so a test can send a request as that pane.
+    #[cfg(any(test, feature = "test-fakes"))]
+    pub fn fake_key(&self, id: u32, key: &str) {
+        self.inner.lock().unwrap().keys.insert(id, key.to_string());
+    }
+
     /// APP-052: the session window pane `pane_key` started in this run, if it still runs.
     pub fn attached(&self, pane_key: u32) -> Option<u32> {
         let inner = self.inner.lock().ok()?;
@@ -1573,6 +1594,8 @@ impl Terminals {
                 inner.next_id = inner.next_id.max(id);
                 inner.fresh_incarnation(id);
                 let pane = as_u32(&meta["pane"]);
+                // T-793 review fix 1 (B4): the survivor keeps its old environment, so its endpoint file is written again (hooks.rs, Survivors).
+                crate::hooks::SURVIVORS.adopt(pane, as_u32(&meta["id"]), || app.try_state::<crate::hooks::Hooks>().map(|h| h.inner().clone()));
                 let program = meta["program"].as_str().map(str::trim).filter(|p| !p.is_empty()).map(str::to_string);
                 let is_program = program.as_deref().is_some_and(|p| !is_shell_program(p));
                 let cwd = meta["cwd"].as_str().map(str::to_string);
@@ -2091,6 +2114,31 @@ mod tests {
         crate::shell_marks::apply(&mut zsh, &own);
         assert!(own.join("zsh").join(".zshrc").is_file(), "a hook file that went missing is written again on the next pane start");
         let _ = std::fs::remove_dir_all(base.parent().unwrap());
+    }
+
+    /// T-792 (P2b-04): what a pane printed reaches its history file through the diagnostics mask.
+    #[test]
+    fn t792_pane_history_is_masked_on_disk() {
+        let dir = std::env::temp_dir().join(format!("kolux-rs-term-t792-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut h = History::open(&dir, 7).unwrap();
+        h.append(b"$ export ANTHROPIC_API_KEY=sk-ant-HISTSECRET1234567890\r\n");
+        h.append("\u{1b}[32mok\u{1b}[0m eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\r\n".as_bytes());
+        // Not UTF-8 (two invalid bytes): the invalid bytes are written as they came.
+        h.append(&[0xff, 0xfe, b'r', b'a', b'w', b'\n']);
+        // Review fix (finding 3): a chunk cut inside a character (the first two bytes of a three-byte
+        // one) still has its whole part masked; the cut bytes are written as they came.
+        h.append(b"$ export OPENAI_API_KEY=sk-proj-CUTSECRET1234567890 \xe2\x82");
+        let on_disk = std::fs::read(history_file(&dir, 7)).unwrap();
+        let text = String::from_utf8_lossy(&on_disk);
+        assert!(!text.contains("HISTSECRET") && !text.contains("SflKxwRJ") && !text.contains("CUTSECRET"), "{text}");
+        assert!(text.contains("ANTHROPIC_API_KEY=[masked]\r\n") && text.contains("ok\u{1b}[0m [masked]\r\n"), "{text}");
+        assert!(text.contains("OPENAI_API_KEY=[masked] "), "{text}");
+        assert_eq!(&on_disk[on_disk.len() - 2..], &[0xe2, 0x82], "the cut bytes close the file as they came");
+        let before_cut = on_disk.len() - b"$ export OPENAI_API_KEY=[masked] \xe2\x82".len();
+        assert_eq!(&on_disk[before_cut - 6..before_cut], &[0xff, 0xfe, b'r', b'a', b'w', b'\n']);
+        assert_eq!(h.size, on_disk.len() as u64, "the cap counts the bytes written");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// ACCT-053: the redraw buffer of a restored pane never starts inside a wide character. A tail with a
