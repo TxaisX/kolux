@@ -47,3 +47,29 @@ VERIFY (PowerShell: . scripts/test-env.ps1 ; cd src-tauri ; each with -j 2; all 
   cargo test --test cards_10   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.01s
   cargo test --test cards_11   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 21.40s
   cargo clippy --all-targets -- -D warnings   Finished `dev` profile [unoptimized + debuginfo] target(s) in 3m 59s (no warnings)
+
+Legacy remotes gap (coordinator follow-up, same day)
+Confirmed on git 2.55.0.windows.3 first: a `.git/remotes/fork` file with `URL: <fork>` and
+`Pull: refs/heads/*:refs/remotes/origin/*`, no config entry, `git fetch fork` prints the "nominated
+for removal" warning and writes `* [new branch] theirs -> origin/theirs`. `--git-path remotes` and
+`--git-path branches` resolve to the common git dir from a linked worktree too.
+Fix: settled() takes both paths from its existing rev-parse (one git read) and refuses when either
+folder holds any entry or cannot be listed; a missing or empty folder is fine.
+Test projects::tests::t780_a_legacy_remotes_file_is_no_proof (remote named `legacy`, since a config
+remote of the same name wins over the file): asserts git honours the file
+(refs/remotes/origin/theirs == fork/theirs), then the fork's commit is refused, origin/main is
+refused while the file exists (accepted cost) and proven once the folder is empty; a `branches/`
+entry refuses the same way.
+RED  (`cargo test -j 2 --lib t780_a_legacy`, code unchanged):
+  test projects::tests::t780_a_legacy_remotes_file_is_no_proof ... FAILED
+  panicked at src\projects.rs:6580:9: a legacy remote's ref under origin is no proof
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 3078 filtered out; finished in 2.94s
+GREEN / VERIFY (same session setup, each -j 2, all exit 0)
+  cargo test --lib t780_a_legacy  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3078 filtered out; finished in 3.82s
+  cargo test --lib t780        test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 3052 filtered out; finished in 23.47s
+  cargo test --lib projects::  test result: ok. 128 passed; 0 failed; 0 ignored; 0 measured; 2951 filtered out; finished in 86.91s
+  cargo test --lib trust::     test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 3063 filtered out; finished in 6.67s
+  cargo test --lib winproc     test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 3076 filtered out; finished in 0.16s
+  cargo test --test cards_10   test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.60s
+  cargo test --test cards_11   test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.98s
+  cargo clippy --all-targets -- -D warnings   Finished `dev` profile [unoptimized + debuginfo] target(s) in 41.08s (no warnings)

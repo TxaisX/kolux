@@ -360,16 +360,29 @@ pub(crate) fn head_is_on_origin(dir: &Path) -> bool {
 /// all three). Only HEAD and in-progress operations are judged, never uncommitted content: a
 /// `git checkout <rev> -- .` leaves no marker and is not caught. A clean-tree check was rejected,
 /// since every ordinary edit before a launch would then lose the pre-trust.
+/// Gaps (legacy remotes, 2026-11-09): git still reads a remote from a file in the common git dir's
+/// `remotes/` or `branches/` folder when the config does not define it, and a `Pull:` line there can
+/// write under `refs/remotes/origin/` without any config entry `origin_fetch_destinations` could
+/// see. So either folder holding any entry, or one that cannot be listed, is not settled; an empty
+/// or missing folder is fine. Both paths come from the same `rev-parse` (`--git-path` resolves them
+/// in the common dir, also from a linked worktree).
 fn settled(dir: &Path) -> bool {
-    let Ok(paths) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--git-dir", "--git-path", "info/grafts"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
+    let Ok(paths) = crate::git::run_within(&["--no-replace-objects", "rev-parse", "--git-dir", "--git-path", "info/grafts", "--git-path", "remotes", "--git-path", "branches"], Some(dir), crate::git::READ_TIMEOUT) else { return false };
     let mut lines = paths.lines().map(str::trim);
-    let (Some(git_dir), Some(grafts), None) = (lines.next(), lines.next(), lines.next()) else { return false };
-    if git_dir.is_empty() || grafts.is_empty() {
+    let (Some(git_dir), Some(grafts), Some(remotes), Some(branches), None) = (lines.next(), lines.next(), lines.next(), lines.next(), lines.next()) else { return false };
+    if [git_dir, grafts, remotes, branches].iter().any(|p| p.is_empty()) {
         return false;
     }
     let git_dir = dir.join(git_dir);
     let in_effect = |p: &Path| p.symlink_metadata().is_ok() || !matches!(p.try_exists(), Ok(false));
-    !in_effect(&dir.join(grafts)) && !["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "SQUASH_MSG", "AUTO_MERGE", "MERGE_MSG"].iter().any(|f| in_effect(&git_dir.join(f)))
+    let legacy_remote = |p: &Path| match p.symlink_metadata() {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
+        _ => match fs::read_dir(p) {
+            Ok(mut entries) => entries.next().is_some(),
+            Err(_) => true,
+        },
+    };
+    !legacy_remote(&dir.join(remotes)) && !legacy_remote(&dir.join(branches)) && !in_effect(&dir.join(grafts)) && !["MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "SQUASH_MSG", "AUTO_MERGE", "MERGE_MSG"].iter().any(|f| in_effect(&git_dir.join(f)))
 }
 
 /// Where `origin`'s fetch refspecs put its branches (a source of `refs/heads/*`, `refs/heads/<dir>/*`
@@ -6562,6 +6575,36 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         perms.set_readonly(false);
         fs::set_permissions(graph, perms).unwrap();
         fs::write(graph, forged).unwrap();
+    }
+
+    /// T-780 gaps (legacy remotes, 2026-11-09): git still honours a remote defined by a file in the
+    /// common git dir's `remotes/` (or `branches/`) folder, outside the config, and its `Pull:` line
+    /// can write under `refs/remotes/origin/`. While either folder holds anything there is no proof.
+    #[test]
+    fn t780_a_legacy_remotes_file_is_no_proof() {
+        let (store, _project, repo, root, cleanup) = t780_fixture("t780legacy");
+        let remotes = repo.join(".git").join("remotes");
+        fs::create_dir_all(&remotes).unwrap();
+        fs::write(remotes.join("legacy"), format!("URL: {}\nPull: refs/heads/*:refs/remotes/origin/*\n", cleanup[2].display())).unwrap();
+        git_in(&repo, &["fetch", "-q", "legacy"]);
+        let theirs = rev(&repo, "fork/theirs");
+        assert_eq!(rev(&repo, "refs/remotes/origin/theirs"), theirs, "git honours the legacy remotes file");
+        let wt = t780_detached(&repo, &root, "legacy-wt", &theirs);
+        assert!(!head_is_on_origin(&wt), "a legacy remote's ref under origin is no proof");
+        let own = t780_detached(&repo, &root, "legacy-own", "origin/main");
+        assert!(!head_is_on_origin(&own), "accepted cost: no proof while a legacy remote file exists");
+        fs::remove_file(remotes.join("legacy")).unwrap();
+        assert!(head_is_on_origin(&own), "an empty remotes folder is no obstacle");
+        let branches = repo.join(".git").join("branches");
+        fs::create_dir_all(&branches).unwrap();
+        fs::write(branches.join("legacy"), format!("{}#theirs\n", cleanup[2].display())).unwrap();
+        assert!(!head_is_on_origin(&own), "a legacy branches file refuses the proof too");
+        fs::remove_file(branches.join("legacy")).unwrap();
+        assert!(head_is_on_origin(&own), "an empty branches folder is no obstacle");
+        drop(store);
+        for d in cleanup.into_iter().chain([repo]) {
+            let _ = fs::remove_dir_all(d);
+        }
     }
 
     /// T-780 gaps (C): a forged `objects/info/commit-graph` can make origin's tip claim a stranger's
