@@ -13,6 +13,8 @@ use tauri::{AppHandle, Emitter, Manager};
 pub mod session_id;
 #[cfg(test)]
 mod flood;
+// Perf stream (DT-C243): output goes to the window one event per frame window, every pane's chunks together.
+mod output_batch;
 
 pub const OUTPUT_EVENT: &str = "terminal-output";
 pub const EXIT_EVENT: &str = "terminal-exit";
@@ -923,19 +925,19 @@ pub struct PaneRun {
     pub cwd: Option<String>,
 }
 
-/// One chunk of program output, base64 so split multi-byte characters survive the trip.
-#[derive(serde::Serialize, Clone)]
-struct OutputPayload {
-    id: u32,
-    data: String,
-    /// TERM-098: the pane's own key, so output that arrives before the pane has learned its
-    /// terminal id (the shell's first frame and its cursor question) is not dropped.
-    pane: Option<u32>,
-    /// APP-052: the run of the terminal service that wrote it; a window drops chunks from a replaced run.
-    generation: u64,
-    /// ORCH-057: the session's output count after this chunk; a viewer that redrew from a snapshot drops
-    /// the chunks it already holds (seq not past the snapshot's).
-    seq: u64,
+/// Perf stream (DT-C243): the one batcher every session's output goes through, made on the first
+/// chunk with the app it sends to. One `terminal-output` event per frame window carries every pane's
+/// chunks of that window (output_batch.rs), where there was one event, and one script run in the
+/// web view, per chunk.
+static OUTPUT_BATCH: std::sync::OnceLock<Arc<output_batch::Batcher>> = std::sync::OnceLock::new();
+
+fn output_batch(app: &AppHandle) -> &'static Arc<output_batch::Batcher> {
+    OUTPUT_BATCH.get_or_init(|| {
+        let app = app.clone();
+        output_batch::Batcher::new(output_batch::WINDOW, output_batch::FLUSH_BYTES, Box::new(move |items| {
+            let _ = app.emit(OUTPUT_EVENT, output_batch::OutputBatch { items });
+        }))
+    })
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -1165,7 +1167,7 @@ impl Terminals {
                 // ORCH-057: the count is taken under the registry lock with the snapshot tail, so a snapshot
                 // holds exactly the chunks whose count is not past its own.
                 let seq = take_chunk(&out_registry, id, chunk, is_program);
-                let _ = out_app.emit(OUTPUT_EVENT, OutputPayload { id, data, pane: pane_key, generation: generation(), seq });
+                output_batch(&out_app).push(output_batch::OutputItem { id, data, pane: pane_key, generation: generation(), seq });
                 if let Some(dir) = link_dir.as_deref() {
                     for url in prs.feed(chunk) {
                         let linked = out_app.state::<Mutex<crate::state::Store>>().lock().is_ok_and(|s| crate::scm::link_printed(&s, dir, &url));
@@ -1236,6 +1238,9 @@ impl Terminals {
                 if let Some(d) = &exit_dir {
                     crate::diag::write(d, &format!("terminal {id} exited ({code:?})"));
                 }
+                // DT-C243: output still waiting for its frame window goes before the end note, so the window
+                // never learns of the end ahead of the last line.
+                output_batch(&exit_app).flush_now();
                 let _ = exit_app.emit(EXIT_EVENT, ExitPayload { id, code, outcome: outcome_of(code), session });
             }),
         )
