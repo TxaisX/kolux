@@ -11,8 +11,9 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { openInBrowser } from "../browser/openIn";
 import { restoreFocus } from "../shell/paletteCaps";
 import { watchEscape } from "../switcher/accounts";
+import { chunkBytes } from "../terminal/codec";
 import { onTerminalOutput } from "../terminal/outputBus";
-import { PrintedUrls, afterScan, capNote, decodeOutput, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
+import { PrintedUrls, addressText, afterScan, capNote, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
 import "./ports.css";
 
 type Props = { active: string | null; workspaces: string[] };
@@ -37,7 +38,7 @@ export default function PortsItem({ active, workspaces }: Props) {
 
   // The addresses dev servers print are picked up from every terminal's output, each bound to the terminal that printed it.
   useEffect(() => {
-    const off = onTerminalOutput((e) => printed.record(decodeOutput(e.data), e.id));
+    const off = onTerminalOutput((e) => printed.record(addressText(chunkBytes(e)), e.id)); // DT-C245: decoded once for every reader
     return () => void off.then((f) => f());
   }, [printed]);
 

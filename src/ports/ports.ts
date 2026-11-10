@@ -99,6 +99,17 @@ export function decodeOutput(data: string): string {
   }
 }
 
+/** DT-C245: a chunk's text for the address scan, or empty when it cannot hold an address: no "://" can be
+ * in bytes that carry no ":", so most of a flood is never turned into text. */
+export function addressText(bytes: Uint8Array): string {
+  if (bytes.length < 7 || !bytes.includes(58)) return "";
+  try {
+    return text.decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
 /** MIRROR: src-tauri/src/ports.rs MAX_EXTERNAL_ROWS. The scan keeps this many external rows and drops the rest without a count. */
 export const EXTERNAL_ROW_CAP = 12;
 

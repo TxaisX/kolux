@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { PrintedUrls, afterScan, capNote, decodeOutput, rowKey, openAddress, openWhere, ownCount, stopArgs, stopNote, urlsIn, type PortRow } from "./ports";
+import { PrintedUrls, addressText, afterScan, capNote, decodeOutput, rowKey, openAddress, openWhere, ownCount, stopArgs, stopNote, urlsIn, type PortRow } from "./ports";
 import { decodeOutput as paneDecode } from "../terminal/codec";
 
 const row = (port: number, addr = "127.0.0.1", external = false, terminal: number | null = 7): PortRow => ({ port, addr, pid: 1, external, started: "", terminal: external ? null : terminal });
@@ -97,4 +97,12 @@ test("the scan's silent cut of external rows is announced once the cap is reache
   expect(capNote([row(1), ...ext(11)])).toBeNull();
   expect(capNote([row(1), ...ext(12)])).toContain("first 12 external ports");
   expect(rowKey({ port: 80, pid: 4 })).toBe("80-4");
+});
+
+test("DT-C245 the address scan turns only chunks that can hold an address into text", () => {
+  const enc = (t: string) => new TextEncoder().encode(t);
+  expect(addressText(enc("ready on http://localhost:5173/ é"))).toBe("ready on http://localhost:5173/ é");
+  expect(addressText(enc("x".repeat(98) + "\n"))).toBe("");
+  expect(addressText(enc("a:b"))).toBe("");
+  expect(urlsIn(addressText(enc("\x1b[32mLocal:\x1b[0m http://127.0.0.1:3000")))).toEqual([[3000, "http://127.0.0.1:3000"]]);
 });
