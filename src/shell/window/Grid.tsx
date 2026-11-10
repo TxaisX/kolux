@@ -64,8 +64,9 @@ export default function Grid() {
           </div>
         </div>
       )}
-      {/* TERM-017: cells are keyed by group and panes by key, and a split only inserts, so a
-          pane's terminal is never remounted (never respawned) by a layout change. */}
+      {/* TERM-017: cells are keyed by group and panes by key, and a split only inserts, so a split or a close
+          never remounts a pane. A pane that changes cell is remounted (React cannot move it between parents);
+          DT-C248 hands its key over first (terminal/handover.ts), so the new mount keeps the running terminal. */}
       {cells.map((c) => {
         // VIEW-015: on the Agents screen the picked session is the one shown, whatever tab its cell had in front.
         const mine = agentsScreen && c.panes.some((p) => p.key === selected);

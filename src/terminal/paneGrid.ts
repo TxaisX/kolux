@@ -4,6 +4,7 @@
 // A plain function: it holds no hooks.
 import { stripOn } from "../settings/general";
 import { moveToTab, tidyWeights } from "../shell/tidy";
+import { handOver, movedKeys } from "./handover";
 import { sameDir } from "../workspaces";
 import { DIVIDER_DONE, DRAG_ATTR, dragWeights, gapAt, tracks } from "./dividers";
 import { cellsOf, columnsFor, rowsFor, zoomedGroup } from "./grid";
@@ -26,10 +27,12 @@ export function paneGrid({ activeDir, activeTab, dragRef, panes, setActiveTab, s
   // TERM-035: Equalize drops the dragged weights of this folder's grid, so every column and row is the same size again.
   // TERM-008: Equalize also tidies: every dragged size of this folder goes, whatever the pane count was when it was dragged.
   const equalizePanes = () => setWeights((w) => tidyWeights(w, activeDir ?? null));
-  // TERM-016: Move to Tab folds a pane into the cell beside it; only its group changes, so the session and its run stay.
+  // TERM-016: Move to Tab folds a pane into the cell beside it. The pane changes cell, so React draws it anew
+  // (DT-C248): its key is handed over first, so the new pane takes the running terminal back instead of starting one.
   const moveOutToTab = (key: number) => {
     const r = moveToTab(panes, key);
     if (!r) return;
+    handOver(movedKeys(panes, r.panes));
     setPanes(r.panes);
     setActiveTab((m) => ({ ...m, [r.group]: key }));
     setFocused(key);

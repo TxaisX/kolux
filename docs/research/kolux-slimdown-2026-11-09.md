@@ -145,6 +145,14 @@ Three findings came out of it:
 
 What the stand-in leaves unproven: that real Claude Code sends the same hooks in the same order; that `claude --resume <id>` restores a real conversation; how much a real idle session holds, and so how much sleep frees; and how the window behaves with real agents' output.
 
+## Round 8: pane moves keep the program (DT-C248)
+
+**Why Move to Tab restarted the agent.** The grid draws one element per cell, keyed by the cell's group, and the panes inside it, keyed by pane. A pane whose group changes (Move to Tab, a tab dragged onto another cell or onto a tab there, a cell folded into another, Split Right / Down on a tab's menu, and dragging the first tab of a strip along its own strip, which renumbers the cell) therefore moves to a different parent element, which React cannot do: it unmounts the pane and mounts a new one with the same key. The unmount reaped the pane's terminal, the mount asked the terminal service for the pane's terminal, found none, and started a fresh one. The service already had what was needed: it keeps each pane's terminal by pane key for a window reload (APP-052) and a transcript of its output on disk (TERM-106), and a reloaded pane replays that transcript and attaches to the running terminal.
+
+**Fix.** Before the window applies a layout that changes a pane's cell, it hands the pane's key over (`src/terminal/handover.ts`). The unmounting pane leaves its terminal running, and the new mount of that key takes the hand-over: it replays the saved output into its new view and attaches to the same terminal, the reload path. The PTY, the process and the agent's session are the same ones, so no `--resume` fallback was needed on any in-window move. A key is handed over only when its cell really changes, and a close takes the mark back, so a closed tab still reaps its terminal. All four layout paths (Move to Tab, tab drops, cell drops, Split out of a tab) use the same two lines.
+
+**Measured (new S14, release build, `evidence/stress-s14-85858f08.txt`).** Four stand-in Claude panes and one PowerShell pane, each in a cell of its own, then Move to Tab on two of them, one tab dropped on another cell's tab, one tab dropped on another cell's body, and Move to Tab on the shell: 0 stand-in restarts (S13 on main: 4 of 4 per run), all four stand-in processes alive at the end, every moved pane still showing its session banner in the expected cell, the shell's process unchanged and a command typed into it after the move answered. 7 of 7 checks pass. What S14 does not cover: real Claude Code's redraw after the replay, and a move made within the first moments of a pane's start (the terminal is still being started; that pane restarts as before).
+
 ## Evidence
 
 - `evidence/stress-s11-70d06457-release-before.{txt,json}`, `evidence/stress-s11-fc333a52-release-after.{txt,json}`,
@@ -158,3 +166,4 @@ What the stand-in leaves unproven: that real Claude Code sends the same hooks in
   `evidence/stress-s12-70d06457-r7-before.{txt,json}`, `evidence/stress-s12-92185e2e-r7-final.{txt,json}`
   (the before/after compare is at the end of each final file), `evidence/stress-s13-92185e2e.txt` (agent sleep and
   wake) and `evidence/stress-s13-92185e2e-early-finish.txt` (the run where A never slept).
+- Round 8: `evidence/stress-s14-85858f08.txt` (pane moves, 0 restarts).

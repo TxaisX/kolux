@@ -31,6 +31,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { attachRenderer, onHeartbeat, parkWhenHidden, quietSelection, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
+import { handedOver, takeOver } from "./handover";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
@@ -694,6 +695,9 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // C26-R3-01: the drawing this pane belongs to, so an unmount that hands the terminals to the next drawing
     // (a re-draw of the window, not a closed tab) leaves them running.
     const gen = windowGeneration.current;
+    // DT-C248 (TERM-016 / TERM-054): this mount follows a move to another cell: the pane before it left
+    // its terminal running, so this one replays the saved output and takes the terminal back, as after a reload.
+    const moved = takeOver(number);
     // A late-loading font must not leave a live session drawn in the fallback face: once the chosen
     // font is ready, re-measure and rebuild the glyphs.
     if (document.fonts?.ready) {
@@ -1086,7 +1090,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
           // (ACCT-046) prints no mark: neither is held.
           if (back !== null || !printsMarks(ran)) openGate();
           if (!alive) {
-            if (killsOnUnmount(gen)) invoke("terminal_kill", { id }).catch(() => {});
+            if (killsOnUnmount(gen) && !handedOver(number)) invoke("terminal_kill", { id }).catch(() => {});
             return;
           }
           idRef.current = id;
@@ -1148,7 +1152,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // onData: the terminal's own answers to the shell's start-up questions go through onData.
         let keepInView = false;
         let replayedOld = false;
-        if (restored) {
+        if (restored || moved) {
           // APP-052: read once the service linked, which first adds what a kept terminal printed with no window open.
           await tauriService.info().catch(() => null);
           if (!alive) return;
@@ -1387,7 +1391,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       observer.disconnect();
       unlisteners.forEach((u) => u());
       const id = idRef.current;
-      if (id !== null && killsOnUnmount(gen)) invoke("terminal_kill", { id }).catch(() => {});
+      // DT-C248: a pane on its way to another cell leaves its terminal to the mount that follows (handover.ts).
+      if (id !== null && killsOnUnmount(gen) && !handedOver(number)) invoke("terminal_kill", { id }).catch(() => {});
       parking.current?.stop();
       parking.current = null;
       choice.dispose();
