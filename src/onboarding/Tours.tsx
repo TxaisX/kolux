@@ -44,7 +44,8 @@ function TourPanel({ tour, at, onAt, onEnd }: { tour: Tour; at: number; onAt: (i
   const next = nextShown(present, at);
   const back = prevShown(present, at);
   // DT-C239: the ring's pulse rests after a while with no input (a running animation draws a frame on every refresh).
-  const [ringRest, ring] = usePulseRest<HTMLDivElement>(!!tour.ring);
+  // `at` wakes it when the tour moves on by itself (its target went away), not only on input.
+  const [ringRest, ring] = usePulseRest<HTMLDivElement>(!!tour.ring, at);
 
   // Follow the target every frame (frames stop by themselves while the window is hidden); state
   // changes only when something moved. A target gone for good moves on, or ends the tour.
