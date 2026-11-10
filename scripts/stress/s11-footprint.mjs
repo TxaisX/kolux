@@ -71,8 +71,8 @@ const median = (v) => {
   const m = a.length >> 1;
   return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
 };
-const lo = (v) => Math.min(...v.filter(Number.isFinite));
-const hi = (v) => Math.max(...v.filter(Number.isFinite));
+const lo = (v) => (v.some(Number.isFinite) ? Math.min(...v.filter(Number.isFinite)) : NaN);
+const hi = (v) => (v.some(Number.isFinite) ? Math.max(...v.filter(Number.isFinite)) : NaN);
 const METRICS = ["n", "wsMB", "privMB", "cpuCorePct", "cpuTotalPct", "gpuDedMB", "gpuSharedMB", "gpuCommitMB", "gpuEngPct", "handles", "threads"];
 const PAGE_METRICS = ["jsHeapUsedMB", "jsHeapTotalMB", "canvases", "panes", "shownPanes", "domNodes"];
 // Median and min/max of one sampled window across the repeats: { fp (same shape as footprint()), spread: {role: {metric: [min, max]}} }.
@@ -202,9 +202,13 @@ async function startPageServer() {
   const hits = new Map(); // tab id -> [ms of each tick]
   const html = `<!doctype html><meta charset="utf-8"><title>bench page</title><body style="font:16px sans-serif;background:#fff;color:#111"><h1>bench page</h1><p>A small static page for the footprint benchmark.</p><script>const id = new URLSearchParams(location.search).get("id");setInterval(() => fetch("/tick?id=" + id).catch(() => {}), 1000);</script>`;
   const server = createServer((req, res) => {
+    // Only this machine may ask: the address is on the local network for the length of the run, so other hosts get 403.
+    const peer = (req.socket.remoteAddress ?? "").replace(/^::ffff:/, "");
+    if (peer !== host && peer !== "127.0.0.1") return void res.writeHead(403).end();
     const u = new URL(req.url ?? "/", "http://x");
     if (u.pathname === "/tick") {
-      const id = u.searchParams.get("id") ?? "?";
+      const id = u.searchParams.get("id") ?? "";
+      if (!/^r\d{1,3}t[0-2]$/.test(id)) return void res.writeHead(400).end(); // only the bench tabs' ids, so the map cannot grow
       if (!hits.has(id)) hits.set(id, []);
       hits.get(id).push(Date.now());
       res.writeHead(204).end();
@@ -379,6 +383,7 @@ export async function run(ctx) {
   const server = await startPageServer();
   checks.note(`browser-tab page: ${server.base}${server.exemptLoopback ? " (no non-loopback address found: the page is exempt from suspension)" : ""}`);
   const runs = [];
+  const discarded = []; // attempts thrown away and redone: kept in the JSON and shown as a check
   try {
     for (let rep = 1; rep <= REPEAT; rep++) {
       if (rep > 1) {
@@ -396,6 +401,7 @@ export async function run(ctx) {
         } catch (e) {
           if (attempt === 1) {
             // One pass that could not hold its own conditions (window state) is thrown away and redone on a fresh launch; the note keeps the reason.
+            discarded.push({ repeat: rep, attempt, message: e.message.slice(0, 300), checks: checks.list.slice(mark) });
             checks.list.length = mark;
             checks.note(`repeat ${rep}/${REPEAT}: attempt 1 discarded (${e.message.slice(0, 160)}); redone on a fresh launch`);
             await ctx.app.closeApp().catch(() => ctx.app.forceStop());
@@ -411,8 +417,9 @@ export async function run(ctx) {
   } finally {
     server.close();
   }
+  checks.add("no repeat needed a second attempt (a discarded attempt is listed in the JSON)", "0", discarded.length, discarded.length === 0, discarded.length > 0);
   const phases = aggregate(runs);
-  const doc = { sha, when: new Date().toISOString(), window_s: WINDOW_S, settle_s: SETTLE_S, settle_hidden_s: SETTLE_HIDDEN_S, early_at_s: EARLY_AT_S, early_s: EARLY_S, repeat: runs.length, repeat_asked: REPEAT, build: ctx.buildKind, buildKind: /^release/.test(ctx.buildKind) ? "release" : "debug", phases, runs: runs.map((r) => r.map(({ id, title: t, fp, page, early, tabs }) => ({ id, title: t, fp, page, early, tabs }))) };
+  const doc = { schema: 2, discarded, sha, when: new Date().toISOString(), window_s: WINDOW_S, settle_s: SETTLE_S, settle_hidden_s: SETTLE_HIDDEN_S, early_at_s: EARLY_AT_S, early_s: EARLY_S, repeat: runs.length, repeat_asked: REPEAT, build: ctx.buildKind, buildKind: /^release/.test(ctx.buildKind) ? "release" : "debug", phases, runs: runs.map((r) => r.map(({ id, title: t, fp, page, early, tabs }) => ({ id, title: t, fp, page, early, tabs }))) };
   mkdirSync(join(opts.root, "evidence"), { recursive: true });
   const jsonFile = join(opts.root, "evidence", `stress-s11-${sha}${ctx.fileTag}.json`);
   writeFileSync(jsonFile, JSON.stringify(doc, null, 1));
