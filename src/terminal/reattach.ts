@@ -44,9 +44,17 @@ export async function reattach(service: Service, paneKey: number, known: Service
 }
 
 /** after-list #378 (ACCT-063): the terminal a reattach took back for a pane that closed while it waited; the pane kills it,
- *  as it kills a terminal it just started after closing, so nothing keeps running that no tab shows. */
-export function orphanOf(back: Reattached | null, alive: boolean): number | null {
-  return !alive && back?.kind === "attached" ? back.id : null;
+ *  as it kills a terminal it just started after closing, so nothing keeps running that no tab shows.
+ *  DT-C248: a pane unmounted on its way to another cell (`handed`) leaves it to the mount that follows instead. */
+export function orphanOf(back: Reattached | null, alive: boolean, handed = false): number | null {
+  return !alive && !handed && back?.kind === "attached" ? back.id : null;
+}
+
+/** DT-C248 review: a terminal taken back is sized to the view it had; the new view sends its size once the
+ *  id is bound (resize() cannot while it is unknown, and the observer fired during the replay). A started
+ *  terminal was spawned at the view's size and needs none. */
+export function needsSize(back: Reattached | null): boolean {
+  return back?.kind === "attached";
 }
 
 /** Whether an output chunk comes from the run of the service this pane's terminal belongs to; a chunk without a generation, or a pane not yet bound to a run, passes. */

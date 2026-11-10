@@ -51,6 +51,7 @@ import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./account
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
 import { MAX_PANES, blocking, canExpand, cellsOf, columnsFor, groupOf, insertBefore, resizePlan, splitIndex, toggleZoom } from "./grid";
 import { closeOne, pinQuestion, stripOrderOf } from "./pin";
+import { cancelHandOver, handOver, movedKeys } from "./handover";
 import { dropCell, dropTab, type Zone } from "./rearrange";
 import { classify, shellInAgentPane } from "./remove";
 import { returnTab } from "./tabClose";
@@ -509,6 +510,12 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     discardDraftsOf(panes.filter((p) => gone.has(p.key))); // EDIT-004: a tab closed on purpose keeps no draft
     trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)), setToast); // EDIT-031: a new note never typed in goes with its tab
     late.exitedPrompt.current = onClose(late.exitedPrompt.current, keys);
+    cancelHandOver(keys); // DT-C248: a closing tab reaps its terminal even if a move was marked for it
+    // DT-C248 review 2: a tab closed while its terminal was still on its way back to its view (moved, or back
+    // from the saved layout) has no id yet to kill by; the close ends what still runs for the key. Here and
+    // not in the pane's unmount: the key leaves the layout with the close, so no later mount can own that
+    // terminal, while the dev double mount and a second move unmount a pane whose next mount takes it.
+    keys.forEach((k) => void invoke("terminal_reap_pane", { paneKey: k }).catch(() => {}));
     keys.forEach((k) => delete ptys.current[k]);
     keys.forEach((k) => (runTabs.current = forgetRunTab(runTabs.current, k)));
     keys.forEach(forgetView); // T-102-b: a closed tab's kept editor state goes with it
@@ -531,22 +538,27 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   const dropPane = (key: number) => dropPanes([key]);
 
   // TERM-054: a tab dropped on a tab or a cell; TERM-015: a cell dropped on another cell. A drop that
-  // would leave the layout as it is returns nothing, so nothing happens.
+  // would leave the layout as it is returns nothing, so nothing happens. DT-C248: a pane that lands in
+  // another cell is drawn anew by React; its key is handed over first so its terminal keeps running.
   const dropTabOn = (key: number, target: Parameters<typeof dropTab>[2]) => {
     const r = dropTab(panes, key, target);
     if (!r) return;
+    handOver(movedKeys(panes, r.panes));
     setPanes(r.panes);
     setActiveTab((m) => ({ ...m, [r.group]: key }));
     setFocused(key);
   };
   const dropCellOn = (group: number, target: { group: number; zone: Zone }) => {
     const next = dropCell(panes, group, target);
-    if (next) setPanes(next);
+    if (!next) return;
+    handOver(movedKeys(panes, next));
+    setPanes(next);
   };
   // TERM-049: Split Right / Down on a tab's menu moves the tab into a cell of its own.
   const splitTab = (key: number, dir: "right" | "down") => {
     const r = splitTabOut(panes, key, dir);
     if (!r) return;
+    handOver(movedKeys(panes, r.panes)); // DT-C248: the tab moves to a cell of its own; its terminal stays
     setStacked((st) => ({ ...st, [activeDir ?? ""]: r.stack }));
     setPanes(r.panes);
     setActiveTab((m) => ({ ...m, [key]: key }));

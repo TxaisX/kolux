@@ -1,0 +1,47 @@
+stress S14 (pane moves keep the program running: Move to Tab and tab drags with Claude Code stand-ins and a shell (DT-C248)) at 2026-11-10T16:41:00.189Z on 85858f08 + the DT-C248 work tree (<lane>)
+args: S14 --release --skip-build --port 1465 --cdp 9285 --temp <temp>/tabmove; ran 73 s
+
++3 s  build: release build (pnpm tauri build --no-bundle: the web view loads the bundled front end); reused the exe already built; exe 26.4 MB, modified 2026-11-10T16:37:27.401Z
++3 s  Claude Code is a STAND-IN (node script running Kolux's installed hooks, a tool call that never ends; no network, no account), not Claude Code
++11 s  shell pane: key 3, processes [44392]
++13 s  pane A: key 4, stand-in pid 42052, session 1a7593bf-2cd3-4194-9733-7b34381b195e, banner shown true
++16 s  pane B: key 5, stand-in pid 20176, session 366b329b-bc03-48d5-91f4-a1dcc70285eb, banner shown true
++20 s  pane C: key 6, stand-in pid 14416, session fb622038-7c96-4c0e-a35c-f7fe0c1135a9, banner shown true
++44 s  pane D: key 7, stand-in pid 28772, session 0b5bc4ad-8a5b-431b-9067-351e06083cea, banner shown false
++47 s  cells before any move: [[3],[4],[5],[6],[7]]
++48 s  Move to Tab on D: moved
++51 s  Move to Tab D: stand-in alive {"28772":true}; new stand-in starts since the moves began: 0; banner still on screen {"D":true}; cell of each {"D":3}; cells [[3],[4],[5],[6,7]]
++51 s  Move to Tab on B: moved
++54 s  Move to Tab B: stand-in alive {"20176":true}; new stand-in starts since the moves began: 0; banner still on screen {"B":true}; cell of each {"B":1}; cells [[3],[4,5],[6,7]]
++54 s  drag B's tab onto D's tab: dropped
++57 s  tab drag onto a tab (B): stand-in alive {"20176":true}; new stand-in starts since the moves began: 0; banner still on screen {"B":true}; cell of each {"B":2}; cells [[3],[4],[6,7,5]]
++58 s  drag D's tab onto A's cell: dropped
++60 s  tab drag onto a cell (D): stand-in alive {"28772":true}; new stand-in starts since the moves began: 0; banner still on screen {"D":true}; cell of each {"D":1}; cells [[3],[4,7],[6,5]]
++61 s  Move to Tab on the shell: moved
++65 s  shell processes after the move: [44392]; before: [44392]; alive {"44392":true}
++66 s  typed into the moved shell: shown true, answered true
++67 s  end: stand-in starts since the moves began 0; alive {"14416":true,"20176":true,"28772":true,"42052":true}; cells [[4,7,3],[6,5]]
+
+PASS  Move to Tab keeps the agent running (TERM-016): no stand-in restarted
+      bar: 0 restarts, both pids alive
+      measured: 0 restart(s); pids alive: D true B true
+PASS  a pane moved with Move to Tab still shows its output and sits in the cell beside it
+      bar: banner on screen, in the neighbour's cell
+      measured: banner D true B true; placed D true B true
+PASS  a tab dropped on another cell's tab keeps its agent running (TERM-054)
+      bar: 0 restarts, pid alive, banner kept, lands beside that tab
+      measured: 0 restart(s) in all; B alive true; banner true; placed true
+PASS  a tab dragged onto another cell keeps its agent running (TERM-054)
+      bar: 0 restarts, pid alive, banner kept, lands in that cell
+      measured: 0 restart(s) in all; D alive true; banner true; placed true
+PASS  Move to Tab keeps a plain shell running and answering
+      bar: same shell processes, command answered
+      measured: processes unchanged; answered true
+PASS  no agent restarted anywhere in the run
+      bar: 0 stand-in starts after the panes opened
+      measured: 0; alive at the end: A true B true C true D true
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.5 s; pre-close tree 20 (msedgewebview2.exe x6, conhost.exe x5, powershell.exe x1, cmd.exe x4, node.exe x4); survivors 0 (none)
+
+S14: PASS

@@ -1,6 +1,6 @@
 // APP-052 (T-075): a pane takes its terminal back from the run of the service that owns it, over a fake service.
 import { describe, expect, it } from "vitest";
-import { type Attach, fromThisService, LIMIT_MS, orphanOf, reattach, type ServiceInfo } from "./reattach";
+import { type Attach, fromThisService, LIMIT_MS, needsSize, orphanOf, reattach, type ServiceInfo } from "./reattach";
 
 /** A fake terminal service: `down` failed answers before it comes up, then `info`; attach answers from `answers`. */
 function fake(info: ServiceInfo, answer: Partial<Attach> = {}, down = 0) {
@@ -140,5 +140,20 @@ describe("after-list #378 (ACCT-063): the local terminal a reattach hands back i
   it("nothing is ended when no terminal was handed back", async () => {
     expect(await pane("before-answer", { state: "fresh" })).toEqual([]);
     expect(await pane("after-answer", { state: "fresh" })).toEqual([]);
+  });
+  it("DT-C248: a pane unmounted on its way to another cell leaves the terminal its late answer brings to the next mount", () => {
+    const back = { kind: "attached", id: 7, service: run } as const;
+    expect(orphanOf(back, false, true)).toBeNull();
+    expect(orphanOf(back, false, false)).toBe(7);
+    expect(orphanOf(back, true, true)).toBeNull();
+  });
+});
+
+describe("DT-C248 review: the size goes to a terminal taken back", () => {
+  it("an attached terminal is sized once the id is bound; a started one was spawned at the view's size", () => {
+    expect(needsSize({ kind: "attached", id: 7, service: run })).toBe(true);
+    expect(needsSize({ kind: "fresh", service: run })).toBe(false);
+    expect(needsSize({ kind: "replaced", service: run })).toBe(false);
+    expect(needsSize(null)).toBe(false);
   });
 });

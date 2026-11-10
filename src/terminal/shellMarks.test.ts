@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { agentFromTitle, followedTitle, Gate, identityPacer, IDLE, TITLE_PACE_MS, parseOsc, printsMarks, reduceIdentity, Scanner, shownAgent, Startup, startupText, tabAgent, typedAsIs, type Identity, type Mark } from "./shellMarks";
+import { agentFromTitle, followedTitle, Gate, identityPacer, IDLE, TITLE_PACE_MS, parseOsc, printsMarks, reduceIdentity, Scanner, seededIdentity, shownAgent, Startup, startupCommand, startupText, tabAgent, typedAsIs, type Identity, type Mark } from "./shellMarks";
 
 const enc = new TextEncoder();
 const bytes = (s: string) => enc.encode(s);
@@ -280,5 +280,32 @@ describe("title storm (perf: one render per real change, titles paced)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("DT-C248 review: a pane remounted in another cell", () => {
+  it("does not type its startup command again: the shell that already ran it is the one it takes back", () => {
+    expect(startupCommand("shell", "pnpm dev", false)).toBe("pnpm dev");
+    expect(startupCommand("shell", "pnpm dev", true)).toBeUndefined();
+    expect(startupCommand("claude", "fix the tests", false)).toBeUndefined(); // an agent's prompt goes through Rust once
+    expect(startupCommand("shell", undefined, false)).toBeUndefined();
+    expect(new Startup(startupCommand("shell", "cd /w", true), true).pending).toBe(false);
+  });
+
+  it("starts from the identity the window already has, so its mount-time report is no change", () => {
+    const running: Identity = { running: true, title: "claude", agent: "claude" };
+    expect(seededIdentity(true, running)).toBe(running);
+    expect(seededIdentity(false, running)).toBe(IDLE); // a fresh pane starts idle
+    expect(seededIdentity(true, undefined)).toBe(IDLE); // nothing heard yet
+  });
+
+  it("still reports the prompt coming back after the move: the pacer starts from the seeded identity", () => {
+    const running: Identity = { running: true, title: "claude", agent: "claude" };
+    const applied: Identity[] = [];
+    const pacer = identityPacer((id) => applied.push(id), () => () => {}, running);
+    pacer.note(running);
+    expect(applied).toEqual([]); // the same identity is not reported again
+    pacer.note(IDLE);
+    expect(applied).toEqual([IDLE]); // the return to the prompt is a change from the seeded state
   });
 });

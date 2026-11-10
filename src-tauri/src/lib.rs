@@ -641,6 +641,8 @@ pub fn run() {
             terminal::terminal_host_end,
             terminal::terminal_diagnostics,
             terminal::terminal_history,
+            terminal::terminal_live_history,
+            terminal::terminal_reap_pane,
             terminal::terminal_forget_history,
             terminal::terminal_listed_session,
             terminal::terminal_prune_history,

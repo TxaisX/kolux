@@ -139,6 +139,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       key={p.key}
       hidden={!board && p.key !== active}
       restored={restoredKeys.current.has(p.key)}
+      identityBefore={liveRef.current[p.key]}
       resumed={p.resumed}
       onOpenFile={openFile}
       onOpenLink={openInBrowser}
