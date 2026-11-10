@@ -1,0 +1,34 @@
+stress S2 (Output flood (8 panes x ~50 MB)) at 2026-11-10T07:50:09.975Z on a6352702 (G:\Dev\kolux-rs-lanes\perf-stream)
+args: S2 --release --skip-build --temp G:/Temp/stress/perf-stream --port 1442 --cdp 9262; ran 156 s
+
+PASS  echo latency in a 9th pane with nothing else running (30 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms (the same bar as under flood)
+      measured: p50 12 ms, p95 14 ms, max 15 ms; 0 lost
+PASS  echo latency in a 9th pane while 8 panes flood (60 keys, in-page key to token on screen)
+      bar: p95 <= 250 ms
+      measured: p50 69 ms, p95 97 ms, max 102 ms; 0 keys never echoed within 5 s; 8 of 8 floods still running when sampling ended
+PASS  all 8 floods finish (each 500000 lines, ~50 MB)
+      bar: within 600 s
+      measured: 110 s (3.6 MB/s total)
+FAIL  app memory growth at the peak during the flood (app + web view working set)
+      bar: <= 1024 MB over the pre-flood 542 MB
+      measured: peak 3521 MB (+2980); 26 samples
+FAIL  app memory growth 10 s after the floods ended
+      bar: <= 512 MB over the pre-flood level
+      measured: 2062 MB (+1520)
+PASS  pane shows its final line (END-<k>) after the flood
+      bar: 8 of 8 panes
+      measured: 8 of 8
+PASS  page errors during the run
+      bar: 0
+      measured: 0
+PASS  app closes by its own path and leaves no process behind
+      bar: 0 survivors
+      measured: window close over CDP, exited in 3.9 s; pre-close tree 25 (msedgewebview2.exe x6, conhost.exe x9, powershell.exe x9, node.exe x1); survivors 0 (none)
+
+notes:
+  - all 8 flood commands typed in 3.2 s
+  - flood progress (seconds after start : floods done : app MB), every ~3 s, thinned: 1s:0/8done:774MB 23s:0/8done:1382MB 45s:0/8done:2052MB 67s:0/8done:2703MB 89s:0/8done:3244MB 110s:8/8done:3409MB
+  - pane 1 flood accepted its last byte at 1794296984511; the echo program keeps pane 9 (the key target) running until the app closes
+
+S2: FAIL
