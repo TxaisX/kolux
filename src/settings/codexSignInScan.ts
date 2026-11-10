@@ -9,6 +9,7 @@
 // cursor moves so a wrapped or coloured line still matches.
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { onTerminalOutput } from "../terminal/outputBus";
 
 /** The fixed phrase every Codex "could not refresh your sign-in" message starts with, spacing removed. */
 export const PHRASE = "accesstokencouldnotberefreshed";
@@ -90,8 +91,8 @@ export function watchCodexSignIn(terminal: number, account: string | null) {
 /** Started once by the main-window notice; answers a stop function. */
 export function startCodexSignInScan(): () => void {
   const offs = [
-    listen<{ id: number; data: string }>("terminal-output", (e) => {
-      const account = scan.feed(e.payload.id, e.payload.data, Date.now());
+    onTerminalOutput((e) => {
+      const account = scan.feed(e.id, e.data, Date.now());
       if (account) invoke("codex_account_sign_in_printed", { id: account }).catch(() => {});
     }),
     listen<{ id: number }>("terminal-exit", (e) => scan.forget(e.payload.id)),

@@ -7,11 +7,11 @@
 // folder), happens in ports.rs; a refusal comes back as the note under the title, and a Stop that
 // ended nothing (the program was already gone, or still runs but left the port) says so there too.
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { openInBrowser } from "../browser/openIn";
 import { restoreFocus } from "../shell/paletteCaps";
 import { watchEscape } from "../switcher/accounts";
+import { onTerminalOutput } from "../terminal/outputBus";
 import { PrintedUrls, afterScan, capNote, decodeOutput, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
 import "./ports.css";
 
@@ -37,7 +37,7 @@ export default function PortsItem({ active, workspaces }: Props) {
 
   // The addresses dev servers print are picked up from every terminal's output, each bound to the terminal that printed it.
   useEffect(() => {
-    const off = listen<{ id: number; data: string }>("terminal-output", (e) => printed.record(decodeOutput(e.payload.data), e.payload.id));
+    const off = onTerminalOutput((e) => printed.record(decodeOutput(e.data), e.id));
     return () => void off.then((f) => f());
   }, [printed]);
 

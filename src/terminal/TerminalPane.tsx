@@ -33,7 +33,9 @@ import { attachRenderer, onHeartbeat, parkWhenHidden, renderNowHook, resumeHook,
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
-import { decodeOutput, endedLabel, forPane, type ExitEvent, type OutputEvent } from "./codec";
+import { decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
+// DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
+import { onTerminalOutput } from "./outputBus";
 import { notePrinted } from "../browser/preview";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
 import { claimsClick } from "./linkClick";
@@ -997,20 +999,20 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         ...(await Promise.all([
         // TERM-098: a chunk tagged with this pane's key is drawn at once, before terminal_spawn answers;
         // anything else that arrives first is held until the id is known and replayed then.
-        listen<OutputEvent>("terminal-output", (e) => {
+        onTerminalOutput((e) => {
           // APP-052: output from a replaced run of the terminal service is dropped, never drawn.
-          if (!fromThisService(e.payload.generation, serviceRef.current)) return;
+          if (!fromThisService(e.generation, serviceRef.current)) return;
           // ORCH-057: already in the snapshot this pane redrew from; acknowledged unread so the reader's count stays true
-          if (e.payload.id === idRef.current && !resync.accept(e.payload.seq)) return acks.drew(base64Bytes(e.payload.data));
+          if (e.id === idRef.current && !resync.accept(e.seq)) return acks.drew(base64Bytes(e.data));
           const draw = () => {
-            const bytes = decodeOutput(e.payload.data);
+            const bytes = decodeOutput(e.data);
             const marks = scanner.feed(bytes);
             for (const m of marks) noteIdentity(reduceIdentity(identityNow, m));
             const ready = marks.some((m) => m.kind === "prompt");
             const out = gate.push(bytes, ready);
             // Held bytes are acknowledged at once: flow control counts what the pane took, not what it shows yet.
             // T-765: drawn bytes go through the frame queue, which acknowledges them when xterm has parsed them.
-            if (out) output.push(out, bytes.length, e.payload.seq);
+            if (out) output.push(out, bytes.length, e.seq);
             else acks.drew(bytes.length);
             if (ready) {
               clearTimeout(readyWait);
@@ -1019,8 +1021,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
             notePrinted(openRef.current.cwd, bytes); // T-242 (BROW-067): printed dev-server addresses
             sawOutput();
           };
-          if (idRef.current === null && forPane(e.payload, null, number)) draw();
-          else mine(e.payload.id, draw);
+          if (idRef.current === null && forPane(e, null, number)) draw();
+          else mine(e.id, draw);
         }),
         // CLI-024: the app asks for the frame as it looks now; the rows on screen go back by id.
         listen<{ id: number; request: string }>("terminal-screen-request", (e) => {
