@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, sta
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createApp, waitFor as waitUntil } from "../evidence/app-launch.mjs";
+import { createApp, waitFor as waitUntil, WIN_PS } from "../evidence/app-launch.mjs";
 
 export const TERM = "section.pane[data-agent]";
 // In-page helper (S-02): `button.newtab` and its "New tab" menu are gone (owner change 2026-11-06), and from 10 panes on the grid is a tab strip
@@ -368,34 +368,7 @@ export const PAGE_STATS_JS = `(() => {
   return { jsHeapUsedMB: (m.usedJSHeapSize || 0) / 1048576, jsHeapTotalMB: (m.totalJSHeapSize || 0) / 1048576, canvases: q("canvas"), panes: q("section.pane[data-agent]"), shownPanes: [...document.querySelectorAll("section.pane[data-agent]")].filter((e) => e.offsetParent !== null).length, domNodes: document.getElementsByTagName("*").length, visibility: document.visibilityState, wizard: document.querySelector(".onb-backdrop") !== null };
 })()`;
 
-// The app's own window. Not Process.MainWindowHandle: once the window is minimised that names tao's hidden "Tao Thread Event Target"
-// window instead (the first visible unowned window in z-order), so a restore or a nudge sent there never reached the app and phase d's
-// window stayed minimised for the rest of the run (measured 2026-11-09). The main window is the visible "Tauri Window" titled "Kolux".
-const WIN_PS = `Add-Type -TypeDefinition @"
-using System; using System.Text; using System.Runtime.InteropServices;
-public static class V11 {
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
-  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);
-  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
-  public delegate bool EnumProc(IntPtr h, IntPtr l);
-  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
-  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);
-  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
-  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
-  public static IntPtr AppWindow(uint pid) {
-    IntPtr found = IntPtr.Zero;
-    EnumWindows((h, l) => {
-      uint p; GetWindowThreadProcessId(h, out p);
-      if (p != pid || !IsWindowVisible(h)) return true;
-      var c = new StringBuilder(64); GetClassName(h, c, 64); var t = new StringBuilder(64); GetWindowText(h, t, 64);
-      if (c.ToString() == "Tauri Window" && t.ToString() == "Kolux") { found = h; return false; }
-      return true;
-    }, IntPtr.Zero);
-    return found;
-  }
-}
-"@`;
+// WIN_PS (the V11 helper: AppWindow(pid) finds the app's real window) now lives in scripts/evidence/app-launch.mjs, shared with moveScript and gracefulClose there.
 const mainWindow = (app) => `${WIN_PS}
      $h = [V11]::AppWindow(${app.pid}); if ($h -eq [IntPtr]::Zero) { throw "no Kolux window for pid ${app.pid}" }`;
 
