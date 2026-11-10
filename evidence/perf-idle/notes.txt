@@ -1,0 +1,26 @@
+perf-idle (lane/perf-idle, from main fc333a52), 2026-11-09. Debug dev build (pnpm tauri dev), window off-screen as in S11, fresh
+stress profile (terminalGpu auto). Tools in tools/ (driver launches the app via scripts/stress/lib.mjs; ab.mjs alternates variants).
+
+What drew frames while idle
+- Trace (diag.mjs, 10 s idle, 1 pane): ~3,360 DrawAndSwap / Graphics.Pipeline.Draw events in 10 s, AnimationHost::TickAnimations
+  1,780, no FireAnimationFrame (no rAF loop). document.getAnimations(): 3 running "onb-pulse" animations on SPAN.onb-dot.
+- The S11 fresh profile leaves the first-run wizard open (screenshot idle-*-before-*.png): a card over a blurred backdrop
+  (backdrop-filter: blur(3px)) with three "at work" dots pulsing forever (onb-pulse 1.4s infinite).
+
+A/B method: one running app, variants switched live by an injected <style> over CDP, 3 s settle, 20 or 30 s sample of the
+web view's gpu-process CPU (TotalProcessorTime delta, % of one core) and GPU engine % (\GPU Engine(pid_<gpu>_*) summed),
+rounds alternate every variant 3 times. "before" forces main's infinite pulse back on; "after" is this lane's code;
+"noWizard" hides the wizard (an onboarded user's idle app).
+
+Diagnosis A/B (1 pane, 20 s x3, before the fix; base = main behaviour)
+  base 24.60 % gpuCpu, GPU eng 8.78 | dots paused 0.21, 0.08 | wizard hidden 0.21, 0.01
+  base 21.13, eng 12.09 | blur off, dots on 15.49, eng 1.37 | blur moved to a ::before layer 19.36, eng 11.53
+  => the pulse itself is the cost (a composited opacity animation presents ~60 frames/s); the blur adds GPU engine work only.
+
+Before/after (fixed code; see ab-1pane.txt, ab-6panes.txt; 30 s x3 alternations)
+  1 pane : before 20.77 % gpuCpu / 7.86 % GPU eng / renderer 7.05 % -> after 0.31 / 0.05 / 1.27 (noWizard 0.19 / 0.00 / 1.16)
+  6 panes: before 21.97 % gpuCpu / 10.60 % GPU eng / renderer 7.12 % -> after 0.07 / 0.07 / 1.74 (noWizard 0.17 / 0.01 / 1.46)
+
+Look: wake.txt (fresh launch): resting after 12 s idle; a pointer move restarts the 3 pulses; still pulsing 5 s later; resting
+again at 12 s. Screenshot pixel diff (shots.mjs, 1,232,000 px): after vs before at a cycle start = 84 px, all inside the three
+8x8 dot boxes (edge anti-aliasing of a composited vs non-composited dot); vs before mid-pulse = 180 px, same boxes.

@@ -42,7 +42,7 @@ pub const OTHER_USAGE_EVENT: &str = "claude-usage-of";
 pub const LIMITS_KEY: &str = "claudeRateLimits";
 /// The running Kolux's port and token, read by the script on every run (a pane outlives a restart).
 pub const ENDPOINT_FILE: &str = "agent-hooks-endpoint.txt";
-/// T-793 (DT-C228): each pane's own endpoint file, `agent-hooks-endpoint-<terminal>.txt` beside `ENDPOINT_FILE`, holds that
+/// T-793 (DT-C240): each pane's own endpoint file, `agent-hooks-endpoint-<terminal>.txt` beside `ENDPOINT_FILE`, holds that
 /// pane's port and its own token.
 pub const PANE_ENDPOINT_PREFIX: &str = "agent-hooks-endpoint-";
 /// T-793: what the shared `ENDPOINT_FILE` carries where a token used to be: no pane can post with it.
@@ -365,7 +365,7 @@ pub fn gate(req: &Request, token: &str) -> Option<u16> {
     proven(req, token).is_none().then_some(404)
 }
 
-/// T-793 (DT-C228): HMAC-SHA256 (RFC 2104) over the `sha2` crate already in the tree, so no new dependency.
+/// T-793 (DT-C240): HMAC-SHA256 (RFC 2104) over the `sha2` crate already in the tree, so no new dependency.
 fn hmac_sha256(key: &[u8], msg: &[u8]) -> [u8; 32] {
     use sha2::{Digest, Sha256};
     let mut block = [0u8; 64];
@@ -993,7 +993,7 @@ impl Hooks {
         self.endpoint.with_file_name(format!("{PANE_ENDPOINT_PREFIX}{terminal}.txt"))
     }
 
-    /// The variables a pane's programs (and their hooks) see (COMPAT 5.5; DT-C2 for the identity). T-793 (DT-C228): the
+    /// The variables a pane's programs (and their hooks) see (COMPAT 5.5; DT-C2 for the identity). T-793 (DT-C240): the
     /// token is this pane's own, and the endpoint file the script reads first is this pane's own, written here with the
     /// same port and token as the variables (a failed write leaves the pane on the variables).
     pub fn pane_env(&self, pane_key: u32, terminal: u32) -> Vec<(String, String)> {

@@ -48,6 +48,10 @@ export function mermaidConfig(dark: boolean) {
     securityLevel: "strict" as const, // mermaid itself escapes labels and refuses click handlers
     htmlLabels: false,
     flowchart: { htmlLabels: false },
+    // Mermaid 12 made ELK the default layout and neo/redux the default look. Pin the Mermaid 11 look so no
+    // diagram changes shape or style on upgrade; a diagram's own front matter can still ask for another.
+    layout: "dagre" as const,
+    look: "classic" as const,
     // T-601: a diagram that fails leaves no error picture (with its styles) in the app's own page.
     suppressErrorRendering: true,
     // T-601: what a diagram's own %%{init}%% or front matter may not set. mermaid's own five, plus the theme and the

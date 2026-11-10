@@ -67,7 +67,7 @@ Review fix (opus-high-review 2026-11-08, findings 1 and 6) · 2026-11-08
     test git::tests::t779_injected_config_appends_after_the_users_own_slots ... ok
 
 Review fix 2 (opus-high-review 2026-11-08, blockers: writes, submodules, gpg; nit: includes) · 2026-11-08
-  Writes (Txais, 2026-11-08, DT-C229): reads always blank the folder's own program keys; a write
+  Writes (Txais, 2026-11-08, DT-C241): reads always blank the folder's own program keys; a write
   that runs clean/smudge (add, commit, checkout, switch, restore, reset, merge, pull, rebase,
   cherry-pick, revert, apply, am, stash, worktree add, submodule update/add...) runs the folder's own
   filters only when the folder is trusted (Claude hasTrustDialogAccepted or Codex trust_level =

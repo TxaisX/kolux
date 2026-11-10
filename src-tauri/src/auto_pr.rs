@@ -464,7 +464,7 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
         return Ok(stop);
     }
     // A folder's own clean filter runs under `add` and `commit` only when the folder is trusted
-    // (DT-C229); in an untrusted one the commit is refused up front, before anything is staged,
+    // (DT-C241); in an untrusted one the commit is refused up front, before anything is staged,
     // never made with the filter skipped.
     // S4: the commit's own hooks and merge drivers are part of the same check, made before anything is staged.
     if let Some(why) = crate::git::write_refusal(&["add", "-A"], Some(dir)).or_else(|| crate::git::write_refusal(&["commit", "--quiet", "-m", "x"], Some(dir))) {
@@ -843,7 +843,7 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
         return Ok(step("clean", "Nothing to push yet: the branch has no commits."));
     };
     // What origin has right now, not what this computer last heard.
-    // S4 (DT-C229): a folder's own credential helper, hooks folder or hook stops the transfer in an untrusted folder.
+    // S4 (DT-C241): a folder's own credential helper, hooks folder or hook stops the transfer in an untrusted folder.
     let mut cmd = match command_checked(&["ls-remote", "--symref", "origin", "HEAD", "refs/heads/*"], Some(dir)) {
         Ok(c) => c,
         Err(why) => return Ok(step("failed", format!("Not pushed: {}", scrub(&why)))),
@@ -1513,7 +1513,7 @@ mod tests {
 
     /// The scan reads the staged blobs, not the working files, so a clean filter that slips a token
     /// into the commit is caught. The folder's own filter runs only when the user trusts the folder
-    /// (review fix 2, DT-C229): in an untrusted one the commit is refused up front, naming the filter
+    /// (review fix 2, DT-C241): in an untrusted one the commit is refused up front, naming the filter
     /// and saying to trust the folder, with nothing staged and nothing committed; it is never made
     /// with the filter skipped (that would store plaintext where a git-crypt repository wants
     /// ciphertext).
@@ -1901,7 +1901,7 @@ mod tests {
         assert!(ok && out.starts_with("git version"), "{out}");
     }
 
-    /// S4 (DT-C229): the automatic ls-remote and push go through the write gate. In an untrusted
+    /// S4 (DT-C241): the automatic ls-remote and push go through the write gate. In an untrusted
     /// folder whose own hook or credential helper would run, the step stops with the plain message and
     /// nothing is sent or run; a trusted folder pushes as before.
     #[test]

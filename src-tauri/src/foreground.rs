@@ -80,43 +80,113 @@ fn forget_gone(live: &dyn Fn(u32) -> bool) {
     }
 }
 
-/// The agents in front under `root` in a process table of (pid, parent, name): the first agent on
-/// each line of descent; programs an agent started itself are its own business.
-pub fn front_in(root: u32, table: &[(u32, u32, String)], credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>) -> Front {
-    let mut found: Vec<&'static str> = Vec::new();
-    let mut queue = vec![root];
-    let mut seen = vec![root];
-    while let Some(parent) = queue.pop() {
-        for (pid, ppid, name) in table {
-            if *ppid != parent || seen.contains(pid) {
-                continue;
-            }
-            seen.push(*pid);
-            match credit_of(*pid, name) {
-                Some(a) => {
-                    if !found.contains(&a) {
-                        found.push(a);
-                    }
+/// A process table row: (pid, parent, program file name).
+pub type Row = (u32, u32, String);
+
+/// One process table with its parent -> children index, built once per poll and shared by every
+/// pane (P1 perf: one snapshot and one index per poll, not one per pane).
+pub struct Procs<'a> {
+    rows: &'a [Row],
+    /// Row indices of each parent's children, in table order (so the walk visits them as a scan of
+    /// the table would).
+    children: HashMap<u32, Vec<usize>>,
+    /// Each pid's first row.
+    index: HashMap<u32, usize>,
+}
+
+impl<'a> Procs<'a> {
+    pub fn new(rows: &'a [Row]) -> Self {
+        let mut children: HashMap<u32, Vec<usize>> = HashMap::with_capacity(rows.len());
+        let mut index: HashMap<u32, usize> = HashMap::with_capacity(rows.len());
+        for (i, (pid, ppid, _)) in rows.iter().enumerate() {
+            children.entry(*ppid).or_default().push(i);
+            index.entry(*pid).or_insert(i);
+        }
+        Self { rows, children, index }
+    }
+
+    /// Whether `pid` is in the table.
+    #[cfg(windows)]
+    fn has(&self, pid: u32) -> bool {
+        self.index.contains_key(&pid)
+    }
+
+    /// The agents in front under `root`: the first agent on each line of descent (see `front_in`).
+    pub fn front_under(&self, root: u32, credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>) -> Front {
+        let mut found: Vec<&'static str> = Vec::new();
+        let mut queue = vec![root];
+        let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::from([root]);
+        while let Some(parent) = queue.pop() {
+            let Some(kids) = self.children.get(&parent) else { continue };
+            for &i in kids {
+                let (pid, _, name) = &self.rows[i];
+                if !seen.insert(*pid) {
+                    continue;
                 }
-                None => queue.push(*pid),
+                match credit_of(*pid, name) {
+                    Some(a) => {
+                        if !found.contains(&a) {
+                            found.push(a);
+                        }
+                    }
+                    None => queue.push(*pid),
+                }
             }
         }
+        match found.as_slice() {
+            [] => Front::Shell,
+            [a] => Front::Agent(a),
+            _ => Front::Unknown,
+        }
     }
-    match found.as_slice() {
-        [] => Front::Shell,
-        [a] => Front::Agent(a),
-        _ => Front::Unknown,
+
+    /// `chat::live::front_of` over this indexed table: the root itself when it is an agent, else
+    /// the agents under it. Kept in step with `front_of` (T-050-c).
+    #[cfg_attr(not(any(windows, test)), allow(dead_code))]
+    pub fn front_of(&self, root: u32, credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>) -> Front {
+        if let Some((_, _, name)) = self.index.get(&root).map(|&i| &self.rows[i]) {
+            if let Some(a) = credit_of(root, name) {
+                return Front::Agent(a);
+            }
+        }
+        self.front_under(root, credit_of)
     }
 }
 
+/// The agents in front under `root` in a process table of (pid, parent, name): the first agent on
+/// each line of descent; programs an agent started itself are its own business.
+pub fn front_in(root: u32, table: &[Row], credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>) -> Front {
+    Procs::new(table).front_under(root, credit_of)
+}
+
 /// What process `pid` has in front (Windows: itself when it is an agent Kolux started as the
-/// pane's program, else its descendants; T-050-c).
-#[cfg(windows)]
+/// pane's program, else its descendants; T-050-c). One snapshot; `poll` shares one across panes,
+/// so only the tests ask for one pane.
+#[cfg(all(windows, test))]
 pub fn front(pid: u32, _group: Option<i32>) -> Front {
-    let Some(table) = imp::table() else { return Front::Unknown };
-    let live: std::collections::HashSet<u32> = table.iter().map(|t| t.0).collect();
-    forget_gone(&|p| live.contains(&p));
-    crate::chat::live::front_of(pid, &table, &mut |p, name| credit(p, name, || imp::command_line(p)))
+    fronts(&[(0, Some(pid), None)], &mut imp::table, &mut |p, name| credit(p, name, || imp::command_line(p)), &mut |live| forget_gone(&|p| live.has(p)))
+        .first()
+        .map_or(Front::Unknown, |f| f.1)
+}
+
+/// What every shell (id, pid, group) has in front, from one process table read through `table`
+/// (called at most once, and not at all when no shell has a process). `forget` sees the table so
+/// remembered answers for gone processes can be dropped. Shells with no process are left out.
+#[cfg(windows)]
+fn fronts(
+    shells: &[(u32, Option<u32>, Option<i32>)],
+    table: &mut dyn FnMut() -> Option<Vec<Row>>,
+    credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>,
+    forget: &mut dyn FnMut(&Procs),
+) -> Vec<(u32, Front)> {
+    let panes: Vec<(u32, u32)> = shells.iter().filter_map(|(id, pid, _)| pid.map(|p| (*id, p))).collect();
+    if panes.is_empty() {
+        return Vec::new();
+    }
+    let Some(rows) = table() else { return panes.into_iter().map(|(id, _)| (id, Front::Unknown)).collect() };
+    let procs = Procs::new(&rows);
+    forget(&procs);
+    panes.into_iter().map(|(id, pid)| (id, procs.front_of(pid, credit_of))).collect()
 }
 
 /// What the pane has in front: the leader of its foreground process group, or the pane's own
@@ -139,9 +209,11 @@ pub fn poll(app: &tauri::AppHandle) {
     use tauri::{Emitter, Manager};
     let shells = app.state::<crate::terminal::Terminals>().shells();
     let live: Vec<u32> = shells.iter().map(|s| s.0).collect();
-    for (id, pid, group) in shells {
-        let Some(pid) = pid else { continue };
-        let now = front(pid, group);
+    #[cfg(windows)]
+    let now = fronts(&shells, &mut imp::table, &mut |p, name| credit(p, name, || imp::command_line(p)), &mut |procs| forget_gone(&|p| procs.has(p)));
+    #[cfg(not(windows))]
+    let now: Vec<(u32, Front)> = shells.iter().filter_map(|(id, pid, group)| pid.map(|p| (*id, front(p, *group)))).collect();
+    for (id, now) in now {
         if note(id, now, &live) {
             // T-050-c: the chat looks for a hand-started transcript from this moment.
             crate::chat::live::noted(id, now.agent(), std::time::SystemTime::now());
@@ -254,6 +326,103 @@ mod tests {
         assert_eq!(front_in(10, &same, &mut by_name), Front::Agent("claude"));
         // A parent loop in a broken table ends.
         assert_eq!(front_in(10, &t(&[(10, 11, "a.exe"), (11, 10, "b.exe")]), &mut by_name), Front::Shell);
+    }
+
+    /// The walk as it was before the per-poll index (a linear scan per parent), kept as the reference.
+    fn old_front_in(root: u32, table: &[Row], credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>) -> Front {
+        let mut found: Vec<&'static str> = Vec::new();
+        let mut queue = vec![root];
+        let mut seen = vec![root];
+        while let Some(parent) = queue.pop() {
+            for (pid, ppid, name) in table {
+                if *ppid != parent || seen.contains(pid) {
+                    continue;
+                }
+                seen.push(*pid);
+                match credit_of(*pid, name) {
+                    Some(a) => {
+                        if !found.contains(&a) {
+                            found.push(a);
+                        }
+                    }
+                    None => queue.push(*pid),
+                }
+            }
+        }
+        match found.as_slice() {
+            [] => Front::Shell,
+            [a] => Front::Agent(a),
+            _ => Front::Unknown,
+        }
+    }
+
+    fn old_front_of(root: u32, table: &[Row], credit_of: &mut dyn FnMut(u32, &str) -> Option<&'static str>) -> Front {
+        if let Some((_, _, name)) = table.iter().find(|(pid, _, _)| *pid == root) {
+            if let Some(a) = credit_of(root, name) {
+                return Front::Agent(a);
+            }
+        }
+        old_front_in(root, table, credit_of)
+    }
+
+    #[test]
+    fn perf_the_indexed_walk_answers_as_the_linear_scan_did() {
+        // A small deterministic generator: tables with loops, duplicate pids and agents at depth.
+        let names = ["pwsh.exe", "cmd.exe", "claude.exe", "codex.exe", "git.exe", "node.exe", "gemini.exe"];
+        let mut x: u64 = 0x9E37_79B9_7F4A_7C15;
+        let mut next = |m: u64| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x % m
+        };
+        for _ in 0..400 {
+            let n = 1 + next(40) as usize;
+            let table: Vec<Row> = (0..n).map(|_| (1 + next(30) as u32, next(31) as u32, names[next(names.len() as u64) as usize].to_string())).collect();
+            for root in 0..31 {
+                assert_eq!(front_in(root, &table, &mut by_name), old_front_in(root, &table, &mut by_name), "front_in {root} {table:?}");
+                assert_eq!(Procs::new(&table).front_of(root, &mut by_name), old_front_of(root, &table, &mut by_name), "front_of {root} {table:?}");
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn perf_one_poll_of_four_shells_reads_the_process_table_once() {
+        let table = t(&[
+            (10, 1, "pwsh.exe"),
+            (11, 10, "claude.exe"),
+            (20, 1, "pwsh.exe"),
+            (21, 20, "cmd.exe"),
+            (22, 21, "codex.exe"),
+            (30, 1, "pwsh.exe"),
+            (31, 30, "git.exe"),
+            (40, 1, "pwsh.exe"),
+            (41, 40, "claude.exe"),
+            (42, 40, "codex.exe"),
+        ]);
+        let shells = [(1, Some(10), None), (2, Some(20), None), (3, Some(30), None), (4, Some(40), None), (5, None, None)];
+        let mut reads = 0;
+        let mut forgets = 0;
+        let got = fronts(
+            &shells,
+            &mut || {
+                reads += 1;
+                Some(table.clone())
+            },
+            &mut by_name,
+            &mut |_| forgets += 1,
+        );
+        assert_eq!(reads, 1, "one process table per poll, not one per pane");
+        assert_eq!(forgets, 1);
+        let want: Vec<(u32, Front)> = shells.iter().filter_map(|(id, pid, _)| pid.map(|p| (*id, old_front_of(p, &table, &mut by_name)))).collect();
+        assert_eq!(got, want, "the answers are those of one snapshot per pane");
+        assert_eq!(got, vec![(1, Front::Agent("claude")), (2, Front::Agent("codex")), (3, Front::Shell), (4, Front::Unknown)]);
+        // No shell with a process: no table read at all. A failed read: every pane unknown.
+        let mut reads = 0;
+        assert!(fronts(&[(1, None, None)], &mut || { reads += 1; None }, &mut by_name, &mut |_| {}).is_empty());
+        assert_eq!(reads, 0);
+        assert_eq!(fronts(&shells[..2], &mut || None, &mut by_name, &mut |_| {}), vec![(1, Front::Unknown), (2, Front::Unknown)]);
     }
 
     #[cfg(windows)]

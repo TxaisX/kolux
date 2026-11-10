@@ -80,7 +80,7 @@ fn with_origin(d: &Path) -> (PathBuf, PathBuf) {
     (w, bare)
 }
 
-/// DT-C229 / T-780: the user's own answer to Claude's trust prompt for `w`, written where Kolux
+/// DT-C241 / T-780: the user's own answer to Claude's trust prompt for `w`, written where Kolux
 /// reads it (the scratch Claude config) in the shape Claude writes it. Git runs a trusted folder's
 /// own hooks and lets it push to a repository on this computer; an untrusted one is refused both.
 /// Every caller holds the STATES lock, so no two tests write that one file at once.

@@ -952,7 +952,7 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
         None
     };
     let req = by_id.as_ref().unwrap_or(req);
-    // T-793 (DT-C228): a pane may only act on its own terminal unless it is a coordinator.
+    // T-793 (DT-C240): a pane may only act on its own terminal unless it is a coordinator.
     scoped(ctx, req)?;
     let a = &req.args;
     let text = |k: &str| a[k].as_str().map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
@@ -1106,7 +1106,7 @@ pub fn dispatch(ctx: &Ctx, req: &Request) -> Result<Value, Fail> {
 const PANE_WAIT: Duration = Duration::from_secs(15);
 
 
-/// T-793 / DT-C228: the pane a terminal command acts on. `Some(None)` is a command that names no
+/// T-793 / DT-C240: the pane a terminal command acts on. `Some(None)` is a command that names no
 /// pane at all; `None` is a command that is not a terminal command.
 fn pane_target(req: &Request) -> Option<Option<String>> {
     let c = req.command.as_str();
@@ -1157,9 +1157,9 @@ fn resets_dispatches(req: &Request) -> bool {
     req.command == RESET && (req.args["tasks"] == true || req.args["all"] == true)
 }
 
-/// T-793 / DT-C228: a request that carries a pane may only target its own pane, unless the caller
+/// T-793 / DT-C240: a request that carries a pane may only target its own pane, unless the caller
 /// is a coordinator. `me` is the terminal the pane key proves (`caller`); a call that proves no
-/// pane is not scoped here (it has no identity to scope by, and the same-user limit in DT-C228
+/// pane is not scoped here (it has no identity to scope by, and the same-user limit in DT-C240
 /// says why that is the edge of this check). A coordinator is a pane that is no worker: no dispatch of
 /// this run was ever made to it, finished or not (review fix 1: a worker that settles its own dispatch
 /// stays a worker; after a restart the old run's dispatches name no pane, so survivors count as
@@ -3855,9 +3855,11 @@ pub fn serve(app: tauri::AppHandle, dir: &Path) -> std::io::Result<()> {
                 }
             };
             let front = || -> Result<(), String> {
-                let w = app.get_webview_window("main").ok_or("the Kolux window is gone")?;
-                let _ = w.unminimize();
-                w.show().and_then(|_| w.set_focus()).map_err(|e| e.to_string())
+                // DT-C236: the one show path, so the engine hears "in sight" before the first frame.
+                if app.get_webview_window("main").is_none() {
+                    return Err("the Kolux window is gone".into());
+                }
+                crate::tray::show_main(&app).map_err(|e| e.to_string())
             };
             dispatch(&request_ctx(&store, &git, &terminals, &notify, &front), req)
         });
@@ -8061,7 +8063,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    // ---- T-793 / DT-C228: a pane may only target its own pane, unless it is a coordinator.
+    // ---- T-793 / DT-C240: a pane may only target its own pane, unless it is a coordinator.
 
     fn worker(id: &str, terminal: u32, from: u32, status: &str) -> Value {
         json!({ "id": id, "runtime": std::process::id(), "runId": "run-1", "status": status, "terminal": terminal, "fromTerminal": from })

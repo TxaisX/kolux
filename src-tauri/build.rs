@@ -1,12 +1,19 @@
 // T-195: tauri-build links its Windows resource (with the Common Controls v6 manifest) into bins only, so a test exe
 // that links the web view path fails to load (STATUS_ENTRYPOINT_NOT_FOUND). The manifest is linked into every target
 // instead, from the same XML; the resource keeps the icon and version info.
+// Perf P3: heapType SegmentHeap puts the process on the Windows segment heap (Windows 10 2004+; older builds ignore
+// the element), which keeps less memory committed for a long-running app that allocates and frees a lot.
 const APP_MANIFEST: &str = r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <dependency>
     <dependentAssembly>
       <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*" />
     </dependentAssembly>
   </dependency>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <heapType xmlns="http://schemas.microsoft.com/SMI/2020/WindowsSettings">SegmentHeap</heapType>
+    </windowsSettings>
+  </application>
 </assembly>
 "#;
 

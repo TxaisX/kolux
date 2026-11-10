@@ -625,6 +625,8 @@ pub fn quit_steps(app: &tauri::AppHandle) -> Vec<final_save::Step> {
         // ACCT-025: sign-ins the agents renewed are sealed again, Codex's then Claude's.
         final_save::step("codex sign-in sealed", seal(app.clone(), crate::codex_accounts::sign_in_files)),
         final_save::step("claude sign-in sealed", seal(app.clone(), crate::claude_accounts::sign_in_files)),
+        // USAGE-016: the token scan memory saved between its 5-minute writes (a missed one costs only a re-read).
+        final_save::step("token scan memory", crate::token_usage::save_at_quit),
     ]
 }
 

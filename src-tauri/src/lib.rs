@@ -110,6 +110,7 @@ pub mod trust;
 mod update;
 mod visibility;
 mod web_icon;
+mod webview_power;
 pub(crate) mod winproc;
 mod usage_alerts;
 
@@ -362,8 +363,11 @@ pub fn run() {
             // APP-014: spelling suggestions for the text-field menu (Windows).
             edit_menu::install(app.handle());
             if let Some(w) = app.get_webview_window("main") {
+                let handle = app.handle().clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(std::time::Duration::from_secs(5));
+                    // DT-C236: the engine is told the view is in sight before the window shows.
+                    webview_power::main_shown(&handle);
                     let _ = w.show();
                 });
             }
@@ -545,15 +549,27 @@ pub fn run() {
                 }
             }
             // APP-008 / T-248-d: the window is back on screen, so the tray's attention dot clears.
+            // DT-C236: and the engine learns the view is in sight again (a restore without a resize).
             if let tauri::WindowEvent::Focused(true) = event {
-                if window.label() == "main" {
+                // A focus while minimised (a tab's view created under a minimised window takes it) is
+                // not a show: the view stays out of sight until the restore's resize.
+                if window.label() == "main" && !window.is_minimized().unwrap_or(false) {
                     tray::window_shown(window.app_handle());
+                    webview_power::main_shown(window.app_handle());
                 }
             }
             // STAT-047 / T-248-c: a minimised window is out of sight, so the tray's dot may light.
+            // DT-C236: the engine is told too (wry skips SIZE_MINIMIZED), so document.hidden turns true
+            // and APP-017's hold engages; the restore's resize tells it the view is back.
             if let tauri::WindowEvent::Resized(_) = event {
-                if window.label() == "main" && window.is_minimized().unwrap_or(false) {
-                    tray::window_minimised(window.app_handle());
+                if window.label() == "main" {
+                    if window.is_minimized().unwrap_or(false) {
+                        tray::window_minimised(window.app_handle());
+                        webview_power::main_hidden(window.app_handle());
+                    } else if window.is_visible().unwrap_or(false) {
+                        // A resize of a window hidden to the tray (a display change) is no show.
+                        webview_power::main_shown(window.app_handle());
+                    }
                 }
             }
             // ACCT-055: files dropped in from outside may be copied into the Explorer, nothing else.
@@ -977,6 +993,7 @@ pub fn run() {
             diag::diag_summary, // APP-010: Help > Copy terminal diagnostics
             lifecycle::app_restart, // APP-010: Help > Restart Kolux
             resources::recovery::ui_heartbeat,
+            webview_power::window_background, // DT-C236: the engine's default background follows the theme
             resources::recovery::startup_recovery_notes,
             resources::recovery::graphics_crash_noted,
             resources::recovery::graphics_keep_running,

@@ -1,4 +1,4 @@
-T-793 · Per-pane tokens: hook listener and CLI loopback (P2b-02, P2b-12) · lane ready-sec-2 · 2026-11-08 · decision DT-C228 (Txais, option b)
+T-793 · Per-pane tokens: hook listener and CLI loopback (P2b-02, P2b-12) · lane ready-sec-2 · 2026-11-08 · decision DT-C240 (Txais, option b)
 
 What changed
 - src-tauri/src/hooks.rs (HARD-STOP file; needs the opus-high-review before merge)
@@ -29,7 +29,7 @@ cli
 - t793_a_worker_cannot_close_a_whole_worktree_and_listing_stays_open
 - t793_through_the_store_a_pane_the_runtime_cannot_prove_is_not_scoped_and_a_proven_worker_is (real orchestration store, dispatch id resolved before the check)
 
-Limit (DT-C228 states it): a same-user model, not a sandbox. A process that can read a pane's endpoint file holds that pane's token; a CLI caller that sends no pane or an unprovable key is unidentified and unscoped; terminal list and terminal create have no target and are not scoped; per-pane files are swept at start and exit, not per terminal close.
+Limit (DT-C240 states it): a same-user model, not a sandbox. A process that can read a pane's endpoint file holds that pane's token; a CLI caller that sends no pane or an unprovable key is unidentified and unscoped; terminal list and terminal create have no target and are not scoped; per-pane files are swept at start and exit, not per terminal close.
 
 Gates (lane ready-sec-2, build slot held for all of them)
 - cargo build                                   -> Finished `dev` profile
@@ -58,8 +58,8 @@ Commits on lane/ready-sec-2, one per blocker, each with a test whose red run on 
   red: writes stubbed out (the old behaviour): FAILED, panicked at src\hooks.rs:1753:9, "flush writes the surviving pane's file"
 - Nit 1 151350b0: test t793_dispatch_refuses_a_worker_pane_that_targets_another_pane goes through dispatch(&ctx, ...) with real pane keys (Terminals::fake_key, test only) for terminal send/read/close.
   red: with `scoped(ctx, req)?;` commented out of dispatch: FAILED, panicked at src\cli\mod.rs:8118:42, unwrap_err on an Ok value ({"terminal":"term-3","delivered":["text"],...}: the send went through)
-- Nit 4 (DECISIONS DT-C228 (2)): after a restart the old run's dispatches name no pane, so surviving workers count as coordinators.
-- S1 (Txais, 2026-11-08, "No, allow it"): orchestration worker-stop, worker-read, dispatch --to --inject and worker-start terminal reuse stay UNSCOPED and are not touched. DT-C228 (3) now says they can act on other panes' terminals, including the coordinator's, and adds: every pane can read every pane's token file.
+- Nit 4 (DECISIONS DT-C240 (2)): after a restart the old run's dispatches name no pane, so surviving workers count as coordinators.
+- S1 (Txais, 2026-11-08, "No, allow it"): orchestration worker-stop, worker-read, dispatch --to --inject and worker-start terminal reuse stay UNSCOPED and are not touched. DT-C240 (3) now says they can act on other panes' terminals, including the coordinator's, and adds: every pane can read every pane's token file.
 - docs/architecture/security.md updated to match.
 
 Gates after the fixes (slot held, released after)
@@ -102,7 +102,7 @@ Review fix 3 (independent read-only review 2026-11-09 of fix 2 + every hooks.rs 
   Left as nits (backlog): A5 worktree create's default setup tab (gated by the setup-trust prompt);
      B1 cli::secret() from RandomState rather than a CSPRNG; B2 a closed pane's endpoint file and token stay
      for the run; B3 write_pane_file truncates in place (a reader can see it empty); B4 the shared spool file
-     takes no token (same-user limit, DT-C228 (3)).
+     takes no token (same-user limit, DT-C240 (3)).
   GREEN: cargo test --lib t793 -> 22 passed, 0 failed
   RED (the four fixes reverted, tests unchanged):
     test cli::tests::t793_fix3_a_worker_cannot_remove_a_worktree ... FAILED

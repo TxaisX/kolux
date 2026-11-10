@@ -351,14 +351,24 @@ pub fn window_minimised(app: &tauri::AppHandle) {
     let _ = state.dot.lock().map(|mut d| d.window_minimised());
 }
 
+/// DT-C236: the one way to bring the main window back, for every caller (the tray, tray Quit, the
+/// CLI's `front`, the single-instance knock): the engine hears "in sight" before the window is shown,
+/// so its first frame is drawn in sight and never white; then shown, restored and focused. Err when
+/// the window is gone.
+pub fn show_main(app: &tauri::AppHandle) -> tauri::Result<()> {
+    use tauri::Manager;
+    let Some(w) = app.get_webview_window(MAIN_LABEL) else {
+        return Err(tauri::Error::WebviewNotFound);
+    };
+    crate::webview_power::main_shown(app);
+    w.show()?;
+    let _ = w.unminimize();
+    w.set_focus()
+}
+
 /// Open Kolux from the tray: the main window is shown, restored and focused, and the dot clears.
 pub fn open_window(app: &tauri::AppHandle) {
-    use tauri::Manager;
-    if let Some(w) = app.get_webview_window(MAIN_LABEL) {
-        let _ = w.show();
-        let _ = w.unminimize();
-        let _ = w.set_focus();
-    }
+    let _ = show_main(app);
     window_shown(app);
 }
 
@@ -383,9 +393,7 @@ pub fn quit(app: &tauri::AppHandle) {
     let generation = begin_quit();
     match app.get_webview_window(MAIN_LABEL) {
         Some(w) => {
-            let _ = w.show();
-            let _ = w.unminimize();
-            let _ = w.set_focus();
+            let _ = show_main(app); // DT-C236: in sight first, so the question is seen
             let _ = w.close();
             let app = app.clone();
             std::thread::spawn(move || {
@@ -517,6 +525,7 @@ pub fn on_close_requested(app: &tauri::AppHandle, quitting: bool) -> bool {
     if let Some(w) = app.get_webview_window(MAIN_LABEL) {
         let _ = w.hide();
     }
+    crate::webview_power::main_hidden(app); // DT-C236: the engine learns the view is out of sight
     if let Some(state) = app.try_state::<TrayState>() {
         if let Ok(mut d) = state.dot.lock() {
             d.window_hidden();

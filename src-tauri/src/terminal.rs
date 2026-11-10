@@ -21,6 +21,9 @@ pub const EXIT_EVENT: &str = "terminal-exit";
 pub const SCREEN_EVENT: &str = "terminal-screen-request";
 /// Lines kept per terminal for `kolux terminal read` (CLI-024); older ones are dropped.
 pub const LOG_LINES: usize = 2000;
+/// P2 perf (DT-C235): the most text a terminal's line log keeps, on top of `LOG_LINES`; long lines
+/// (up to `PENDING_CAP` each) would otherwise let one pane hold ~32 MB.
+pub const LOG_BYTES: usize = 1024 * 1024;
 /// Fix-term 786: the most a log keeps of a line that has not ended yet.
 const PENDING_CAP: usize = 16 * 1024;
 /// The most one paste may carry. Files are written through `file_write`, which has its own limit.
@@ -90,12 +93,14 @@ struct Inner {
     keys: HashMap<u32, String>,
     /// CLI-027: sessions whose process has ended, so a close can confirm the program is gone.
     ended: HashSet<u32>,
-    /// CLI-024: what each session wrote, by line, for `kolux terminal read`.
-    logs: HashMap<u32, OutputLog>,
+    /// CLI-024: what each session wrote, by line, for `kolux terminal read`. Each behind its own
+    /// lock (P2 perf): a chunk is counted under the registry and logged outside it.
+    logs: HashMap<u32, Arc<Mutex<OutputLog>>>,
     /// TERM-132: which sessions a program holds (alternate screen, mouse): `ALT | MOUSE` bits.
     owned: HashMap<u32, u8>,
     /// TERM-106: each session's output file, by pane key, replayed when the pane comes back after a restart.
-    hist: HashMap<u32, History>,
+    /// Behind its own lock (P2 perf), so a slow disk on one pane never holds the registry.
+    hist: HashMap<u32, Arc<Mutex<History>>>,
     /// ACCT-054: how far each session's output has run ahead of its pane.
     flow: HashMap<u32, Arc<Flow>>,
     /// APP-052: the newest session each window pane started, so a pane takes it back after a webview reload.
@@ -107,18 +112,45 @@ struct Inner {
     process_count: u64,
 }
 
+/// A lock that a panic elsewhere did not spoil for good.
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+/// One chunk of session `id`'s output taken in; returns its output count (ORCH-057). Under the
+/// registry lock only the count, the snapshot tail, the screen bits and the last-output time are
+/// kept; the line log and the saved history (a file write, now and then a compaction) take the
+/// chunk under the session's own locks once the registry is let go (P2 perf), so other panes'
+/// output, typing, acks and reads never wait on this pane's disk. Both session locks are taken
+/// before the registry is let go: whoever takes the registry after this call (a read, the exit's
+/// tail, a kill) finds the chunk in the log and history, as when all of it ran under the registry.
+/// T-792 (P2b-04): the history file gets the chunk through the diagnostics mask, made here before
+/// any lock is taken (review fix, finding 5), so the mask's work never holds other panes' output up;
+/// the snapshot and line log keep the chunk as it came.
+fn take_chunk(registry: &Mutex<Inner>, id: u32, chunk: &[u8], is_program: bool) -> u64 {
+    let on_disk = crate::diag::scrub_bytes(chunk);
+    let Ok(mut inner) = registry.lock() else { return 0 };
+    let (seq, log, hist) = inner.book_chunk(id, chunk, is_program);
+    let mut log_guard = lock(&log);
+    let mut hist_guard = hist.as_deref().map(lock);
+    drop(inner);
+    log_guard.push(chunk);
+    drop(log_guard);
+    if let Some(h) = &mut hist_guard {
+        h.append_masked(&on_disk);
+    }
+    seq
+}
+
 impl Inner {
-    /// One chunk of a session's output, taken in: the snapshot tail and count (returned), the line log,
-    /// the saved history, the screen-owner bits and the program's last-output time.
-    /// `on_disk` is the chunk already through `diag::scrub_bytes`, made before the registry lock was taken
-    /// (T-792 review fix, finding 5): the snapshot and line log keep the chunk as it came, the history
-    /// file gets the masked bytes, and no mask work runs under the lock.
-    fn book_chunk(&mut self, id: u32, chunk: &[u8], on_disk: &[u8], is_program: bool) -> u64 {
+    /// One chunk of a session's output, counted: the snapshot tail and count, the screen-owner bits
+    /// and the program's last-output time. Returns the count with the session's line log and saved
+    /// history, which `take_chunk` fills outside the registry lock.
+    #[allow(clippy::type_complexity)]
+    fn book_chunk(&mut self, id: u32, chunk: &[u8], is_program: bool) -> (u64, Arc<Mutex<OutputLog>>, Option<Arc<Mutex<History>>>) {
         let seq = self.snaps.entry(id).or_default().push(chunk);
-        self.logs.entry(id).or_default().push(chunk);
-        if let Some(h) = self.hist.get_mut(&id) {
-            h.append_masked(on_disk);
-        }
+        let log = self.logs.entry(id).or_default().clone();
+        let hist = self.hist.get(&id).cloned();
         if chunk.contains(&0x1b) {
             let prev = self.owned.get(&id).copied().unwrap_or(0);
             let now = screen_owner(prev, chunk);
@@ -131,7 +163,7 @@ impl Inner {
                 m.last_output = Some(Instant::now());
             }
         }
-        seq
+        (seq, log, hist)
     }
 
     /// ORCH-059: a session id about to be (re)used starts as a new incarnation: nothing an earlier
@@ -361,6 +393,9 @@ struct History {
     size: u64,
     /// Fix-term 787: kept open between chunks (an open per chunk cost ~1 ms on Windows); dropped for the rewrite.
     file: Option<std::fs::File>,
+    /// Tests: how long each append stalls, standing in for a slow disk.
+    #[cfg(test)]
+    slow: Duration,
 }
 
 impl History {
@@ -368,7 +403,13 @@ impl History {
         std::fs::create_dir_all(dir.join("history")).ok()?;
         let path = history_file(dir, key);
         let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-        Some(History { path, size, file: None })
+        Some(History {
+            path,
+            size,
+            file: None,
+            #[cfg(test)]
+            slow: Duration::ZERO,
+        })
     }
 
     /// T-792 (P2b-04): what reaches the disk goes through the diagnostics mask first. A chunk cut
@@ -382,6 +423,8 @@ impl History {
     /// `chunk` already masked (`diag::scrub_bytes`), written as it is.
     fn append_masked(&mut self, chunk: &[u8]) {
         use std::io::Write as _;
+        #[cfg(test)]
+        std::thread::sleep(self.slow);
         if self.file.is_none() {
             self.file = std::fs::OpenOptions::new().create(true).append(true).open(&self.path).ok();
         }
@@ -559,10 +602,13 @@ pub fn diagnostics_text(head: &[(&str, String)], screen: &[String], home: Option
 
 /// CLI-024: a terminal's output by line, each line numbered with a cursor that only grows, so a
 /// reader carries on from where it left off. Escape sequences are stripped; `\r` overwrites keep
-/// the last version of the line. Bounded to `LOG_LINES`: the oldest lines go when it is full.
+/// the last version of the line. Bounded to `LOG_LINES` and `LOG_BYTES`: the oldest lines go when
+/// either is passed (the newest line always stays).
 #[derive(Default, Debug)]
 pub struct OutputLog {
     lines: std::collections::VecDeque<String>,
+    /// The text bytes in `lines`.
+    bytes: usize,
     /// The cursor of the first kept line; 1 until something was dropped.
     oldest: u64,
     /// Bytes since the last line break: a prompt, a progress line, a question. Bytes, not text,
@@ -709,11 +755,7 @@ impl OutputLog {
             let line = raw.trim_end_matches(['\n', '\r']);
             // A carriage return redraws the line from its start: keep what was drawn last.
             let line = last_drawing(line);
-            if self.lines.is_empty() && self.oldest == 0 {
-                self.oldest = 1;
-            }
-            self.lines.push_back(strip_ansi(line));
-            self.trim();
+            self.add_line(strip_ansi(line));
         }
         self.pending.drain(..start);
         // A line that never ends (binary output, a progress bar drawn with CR alone) is cut into lines
@@ -725,17 +767,24 @@ impl OutputLog {
             };
             let rest = self.pending.split_off(at);
             let raw = String::from_utf8_lossy(&std::mem::replace(&mut self.pending, rest)).into_owned();
-            if self.lines.is_empty() && self.oldest == 0 {
-                self.oldest = 1;
-            }
-            self.lines.push_back(strip_ansi(last_drawing(&raw)));
-            self.trim();
+            self.add_line(strip_ansi(last_drawing(&raw)));
         }
     }
 
+    fn add_line(&mut self, line: String) {
+        if self.lines.is_empty() && self.oldest == 0 {
+            self.oldest = 1;
+        }
+        self.bytes += line.len();
+        self.lines.push_back(line);
+        self.trim();
+    }
+
     fn trim(&mut self) {
-        while self.lines.len() > LOG_LINES {
-            self.lines.pop_front();
+        while self.lines.len() > LOG_LINES || (self.bytes > LOG_BYTES && self.lines.len() > 1) {
+            if let Some(gone) = self.lines.pop_front() {
+                self.bytes -= gone.len();
+            }
             self.oldest += 1;
             self.dropped = true;
         }
@@ -1083,7 +1132,7 @@ impl Terminals {
             inner.panes.insert(k, id);
         }
         if let Some(h) = history {
-            inner.hist.insert(id, h);
+            inner.hist.insert(id, Arc::new(Mutex::new(h)));
         }
         if is_program {
             let agent = program.as_deref().and_then(crate::tools::credited_program);
@@ -1112,12 +1161,10 @@ impl Terminals {
         (
             Box::new(move |chunk: &[u8]| {
                 let data = base64::engine::general_purpose::STANDARD.encode(chunk);
-                // T-792: the history file's copy is masked here, before the lock, so the mask's work never
-                // holds every other pane's output up.
-                let on_disk = crate::diag::scrub_bytes(chunk);
+                // T-792: `take_chunk` masks the history file's copy before it takes any lock.
                 // ORCH-057: the count is taken under the registry lock with the snapshot tail, so a snapshot
                 // holds exactly the chunks whose count is not past its own.
-                let seq = out_registry.lock().map(|mut i| i.book_chunk(id, chunk, &on_disk, is_program)).unwrap_or(0);
+                let seq = take_chunk(&out_registry, id, chunk, is_program);
                 let _ = out_app.emit(OUTPUT_EVENT, OutputPayload { id, data, pane: pane_key, generation: generation(), seq });
                 if let Some(dir) = link_dir.as_deref() {
                     for url in prs.feed(chunk) {
@@ -1136,26 +1183,34 @@ impl Terminals {
                 // Drop the session so the PTY closes and the reader thread can finish. A session
                 // still listed ended by itself: Kolux's own kills take it off the list first.
                 let mut by_itself = false;
-                let mut tail = None;
-                let mut session = None;
+                let mut log = None;
+                let mut hist = None;
+                let mut agent = None;
                 let mut removed = None;
                 if let Ok(mut inner) = registry.lock() {
-                    // AUTO-014: keep the end of a followed run's output before the log goes.
-                    tail = inner.logs.get(&id).map(|l| crate::automations::screen_text(&l.read(None, Some(crate::automations::RUN_OUTPUT_LINES))));
-                    session = inner.marks.get(&id).and_then(|m| m.agent).zip(tail.as_ref()).and_then(|(agent, (text, _))| session_id::hint_session(agent, text));
+                    agent = inner.marks.get(&id).and_then(|m| m.agent);
                     removed = inner.sessions.remove(&id);
                     by_itself = removed.is_some();
                     inner.dirs.remove(&id);
                     inner.marks.remove(&id);
                     inner.keys.remove(&id);
                     inner.ended.insert(id);
-                    inner.logs.remove(&id);
+                    log = inner.logs.remove(&id);
                     inner.owned.remove(&id);
-                    inner.hist.remove(&id);
+                    hist = inner.hist.remove(&id);
                     inner.snaps.remove(&id);
                     if let Some(f) = inner.flow.remove(&id) {
                         f.release();
                     }
+                }
+                // AUTO-014: keep the end of a followed run's output before the log goes. Its lock waits
+                // for a chunk the pump counted before the registry was taken above (P2 perf).
+                let tail = log.map(|l| crate::automations::screen_text(&lock(&l).read(None, Some(crate::automations::RUN_OUTPUT_LINES))));
+                let session = agent.zip(tail.as_ref()).and_then(|(agent, (text, _))| session_id::hint_session(agent, text));
+                // The history file is left alone from here: a write already counted finishes first, and
+                // the file handle goes at once.
+                if let Some(h) = hist {
+                    drop(lock(&h));
                 }
                 // Row 784: the PTY closes here, not under the registry the pump needs.
                 drop(removed);
@@ -1205,13 +1260,15 @@ impl Terminals {
         if !inner.sessions.contains_key(&id) {
             return None;
         }
-        Some(inner.logs.get(&id).map(|l| l.read(cursor, limit)).unwrap_or_else(|| Read { oldest: 1, ..Read::default() }))
+        let log = inner.logs.get(&id).cloned();
+        drop(inner);
+        Some(log.map(|l| lock(&l).read(cursor, limit)).unwrap_or_else(|| Read { oldest: 1, ..Read::default() }))
     }
 
     /// How long session `id` has written nothing (shells included); none when it never wrote.
     pub fn quiet_for(&self, id: u32) -> Option<std::time::Duration> {
-        let inner = self.inner.lock().ok()?;
-        inner.logs.get(&id).and_then(|l| l.written).map(|t| t.elapsed())
+        let log = self.inner.lock().ok()?.logs.get(&id).cloned();
+        log.and_then(|l| lock(&l).written).map(|t| t.elapsed())
     }
 
     /// Council D2 MERGE 31 item 1: the registry lock is held only to find the session's writer; the
@@ -1269,7 +1326,7 @@ impl Terminals {
             (false, false) => "shell",
         };
         out.push(("screen", screen.to_string()));
-        out.push(("lines logged", inner.logs.get(&id).map_or(0, |l| l.lines.len()).to_string()));
+        out.push(("lines logged", inner.logs.get(&id).map_or(0, |l| lock(l).lines.len()).to_string()));
         out.push(("output paused", inner.flow.get(&id).map_or(0, |f| f.pauses()).to_string()));
         Some(out)
     }
@@ -1284,12 +1341,13 @@ impl Terminals {
 
     /// Ends one session. Its exit event follows from the waiter thread.
     pub fn kill(&self, id: u32) -> Result<(), String> {
+        let hist;
         let gone = {
             let mut inner = self.inner.lock().map_err(|e| e.to_string())?;
             inner.dirs.remove(&id);
             inner.marks.remove(&id);
             inner.keys.remove(&id);
-            inner.hist.remove(&id);
+            hist = inner.hist.remove(&id);
             // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
             // waiter, which keeps an automation run's tail and then drops it; `read` already refuses it).
             inner.owned.remove(&id);
@@ -1299,6 +1357,11 @@ impl Terminals {
             }
             inner.sessions.remove(&id)
         };
+        // P2 perf: a history write the pump counted before the kill finishes before kill returns, and
+        // the file handle goes with it.
+        if let Some(h) = hist {
+            drop(lock(&h));
+        }
         // Row 784: the teardown (ClosePseudoConsole) may wait on the pump, which needs the registry.
         if let Some(mut s) = gone {
             s.kill();
@@ -1468,7 +1531,7 @@ impl Terminals {
         inner.fresh_incarnation(id);
         inner.sessions.insert(id, PtySession::fake(Box::new(std::io::sink())).into());
         inner.dirs.insert(id, dir.to_string());
-        inner.logs.insert(id, OutputLog { written: Some(long_ago), ..OutputLog::default() });
+        inner.logs.insert(id, Arc::new(Mutex::new(OutputLog { written: Some(long_ago), ..OutputLog::default() })));
         if let Some(program) = program {
             inner.marks.insert(id, Mark { started: long_ago, last_output: Some(long_ago), program: program.into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
         }
@@ -1604,10 +1667,10 @@ impl Terminals {
                     // after-list 698: without a clean quit's record the saved output's own end says where it stopped.
                     let saved = h.end(crate::pty::link::PROBE);
                     h.append(missed(seen.get(&remote.id).copied(), seq, &tail, &saved));
-                    inner.hist.insert(id, h);
+                    inner.hist.insert(id, Arc::new(Mutex::new(h)));
                 }
                 inner.snaps.insert(id, Snap::seeded(seq, &tail));
-                inner.logs.entry(id).or_default().push(&tail);
+                lock(inner.logs.entry(id).or_default()).push(&tail);
                 let (on_output, on_exit) = self.handlers(app, id, pane, cwd.clone(), is_program, None);
                 link.register(remote.id, on_output, on_exit);
                 taken.push(remote.id);
@@ -1683,7 +1746,7 @@ impl Terminals {
         if let Some(l) = &link {
             l.detach();
         }
-        let mut gone = Vec::new();
+        let (mut gone, mut hists) = (Vec::new(), Vec::new());
         if let Ok(mut inner) = self.inner.lock() {
             let seen: Vec<(u32, u64)> = inner.sessions.iter().filter_map(|(id, s)| if let Session::Remote(r) = s { Some((r.id, inner.snaps.get(id).map_or(0, |n| n.seq))) } else { None }).collect();
             let dir = self.service.dir.lock().ok().and_then(|d| d.clone());
@@ -1692,12 +1755,17 @@ impl Terminals {
             }
             inner.dirs.clear();
             inner.keys.clear();
-            inner.hist.clear();
+            hists.extend(inner.hist.drain().map(|(_, h)| h));
             inner.snaps.clear();
             for (_, f) in inner.flow.drain() {
                 f.release();
             }
             gone.extend(inner.sessions.drain().map(|(_, s)| s));
+        }
+        // P2 perf (TERM-106): a history write the pump counted before the registry was taken lands
+        // before the app goes on to exit; waited for outside the registry, as in `kill`.
+        for h in hists {
+            drop(lock(&h));
         }
         // Row 784: killed after the registry is released (a teardown may wait on the pump).
         for s in gone {
@@ -2369,6 +2437,80 @@ mod tests {
         assert_eq!(t.process_generation(10), Some(other), "another pane is untouched");
     }
 
+    /// P2 perf: a pane whose history write stalls (a slow disk, a compaction) holds no lock another pane
+    /// needs: the other pane's output is counted and logged and its typing goes through meanwhile, and
+    /// the stalled pane's own log is readable. Its output count still runs in order (ORCH-057).
+    #[test]
+    fn perf_a_slow_history_on_one_pane_does_not_hold_up_another() {
+        let t = Terminals::default();
+        let dir = std::env::temp_dir().join(format!("kolux-perf-slowhist-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let dirs = dir.to_string_lossy().into_owned();
+        t.fake_session(1, &dirs, None);
+        t.fake_session(2, &dirs, None);
+        let stall = Duration::from_millis(1500);
+        {
+            let mut inner = t.inner.lock().unwrap();
+            let mut slow = History::open(&dir, 1).unwrap();
+            slow.slow = stall;
+            inner.hist.insert(1, Arc::new(Mutex::new(slow)));
+            inner.hist.insert(2, Arc::new(Mutex::new(History::open(&dir, 2).unwrap())));
+        }
+        let registry = t.inner.clone();
+        let a = std::thread::spawn(move || take_chunk(&registry, 1, b"from a\r\n", false));
+        // Wait until pane 1's write is under way (its history lock is held).
+        let hist_a = t.inner.lock().unwrap().hist[&1].clone();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while hist_a.try_lock().is_ok() {
+            assert!(Instant::now() < deadline, "pane 1's write never started");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let started = Instant::now();
+        assert_eq!(take_chunk(&t.inner, 2, b"from b\r\n", false), 8);
+        assert_eq!(take_chunk(&t.inner, 2, b"more b\r\n", false), 16, "pane 2's count runs on");
+        t.write(2, "typed").unwrap();
+        let read_a = t.read(1, None, None).unwrap();
+        let took = started.elapsed();
+        assert!(took < stall / 3, "pane 2 waited {took:?} on pane 1's disk");
+        assert_eq!(read_a.lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>(), ["from a"], "pane 1's log already has its chunk");
+        assert_eq!(t.read(2, None, None).unwrap().lines.len(), 2);
+        assert_eq!(a.join().unwrap(), 8);
+        assert_eq!(std::fs::read(history_file(&dir, 1)).unwrap(), b"from a\r\n");
+        assert_eq!(std::fs::read(history_file(&dir, 2)).unwrap(), b"from b\r\nmore b\r\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// P2 perf (TERM-106): quitting waits for a history write already under way, so the last output a
+    /// pane counted is on disk when `let_go` returns.
+    #[test]
+    fn perf_let_go_waits_for_a_history_write_under_way() {
+        let t = Terminals::default();
+        let dir = std::env::temp_dir().join(format!("kolux-perf-letgo-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        t.fake_session(1, &dir.to_string_lossy(), None);
+        let stall = Duration::from_millis(400);
+        let hist = {
+            let mut slow = History::open(&dir, 1).unwrap();
+            slow.slow = stall;
+            let hist = Arc::new(Mutex::new(slow));
+            t.inner.lock().unwrap().hist.insert(1, hist.clone());
+            hist
+        };
+        let registry = t.inner.clone();
+        let a = std::thread::spawn(move || take_chunk(&registry, 1, b"last words\r\n", false));
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while hist.try_lock().is_ok() {
+            assert!(Instant::now() < deadline, "the write never started");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        drop(hist);
+        t.let_go();
+        assert_eq!(std::fs::read(history_file(&dir, 1)).unwrap(), b"last words\r\n", "on disk when let_go returns");
+        assert!(t.inner.lock().unwrap().hist.is_empty());
+        assert_eq!(a.join().unwrap(), 12);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// ORCH-059: a closed terminal is gone from every list and lookup at once, and a session opened again
     /// under the same handle starts as a new terminal with none of the old one's state.
     #[test]
@@ -2380,7 +2522,7 @@ mod tests {
             let mut inner = t.inner.lock().unwrap();
             inner.keys.insert(9, "secret-9".into());
             inner.owned.insert(9, ALT | MOUSE);
-            inner.logs.get_mut(&9).unwrap().push(b"old output\r\n");
+            lock(&inner.logs[&9]).push(b"old output\r\n");
             inner.snaps.entry(9).or_default().push(b"old output\r\n");
         }
         let h = handle_of(9);
@@ -2403,12 +2545,12 @@ mod tests {
             let mut inner = t.inner.lock().unwrap();
             inner.ended.insert(9);
             inner.owned.insert(9, ALT);
-            inner.logs.entry(9).or_default().push(b"stale\r\n");
+            lock(inner.logs.entry(9).or_default()).push(b"stale\r\n");
         }
         t.fake_session(9, &dir, None);
         let inner = t.inner.lock().unwrap();
         assert!(!inner.ended.contains(&9) && !inner.owned.contains_key(&9) && !inner.keys.contains_key(&9) && !inner.marks.contains_key(&9) && !inner.snaps.contains_key(&9), "new incarnation");
-        assert_eq!(inner.logs.get(&9).map(|l| l.lines.len()), Some(0), "an empty log");
+        assert_eq!(inner.logs.get(&9).map(|l| lock(l).lines.len()), Some(0), "an empty log");
     }
 
     #[test]
@@ -2565,6 +2707,41 @@ mod tests {
         assert_eq!(log.read(Some(13), None).lines[0].text, "line oneline two");
         log.push(b"\x1b[2;1Hrow two\x1b[;1Hrow one\n");
         assert_eq!(log.read(Some(14), None).lines[0].text, "row tworow one");
+    }
+
+    /// P2 perf (DT-C235): long lines are held to `LOG_BYTES` as well as `LOG_LINES`; the cursor keeps
+    /// counting every line and a reader behind the kept lines is told some were dropped (CLI-024).
+    #[test]
+    fn perf_the_line_log_keeps_to_its_byte_budget_and_its_cursor() {
+        let mut log = OutputLog::default();
+        let mut line = vec![b'x'; PENDING_CAP];
+        line.extend_from_slice(b"\r\n");
+        for _ in 0..LOG_LINES {
+            log.push(&line);
+            assert!(log.bytes <= LOG_BYTES, "{} bytes kept", log.bytes);
+        }
+        assert_eq!(log.bytes, log.lines.iter().map(String::len).sum::<usize>());
+        let kept = LOG_BYTES / PENDING_CAP;
+        assert_eq!(log.lines.len(), kept, "64 lines of 16 KB fit in 1 MB");
+        assert_eq!(log.cursor(), LOG_LINES as u64, "the cursor counts every line");
+        let r = log.read(Some(5), None);
+        assert_eq!((r.oldest, r.cursor, r.dropped, r.lines.len()), (LOG_LINES as u64 - kept as u64 + 1, LOG_LINES as u64, true, kept));
+        assert_eq!(r.lines[0].cursor, r.oldest);
+        let r = log.read(Some(LOG_LINES as u64 - 1), None);
+        assert_eq!((r.dropped, r.lines.len(), r.lines[0].cursor), (false, 1, LOG_LINES as u64), "a reader that kept up loses nothing");
+        // Short lines are held to the line cap, as before.
+        let mut short = OutputLog::default();
+        for i in 0..LOG_LINES + 3 {
+            short.push(format!("{i}\n").as_bytes());
+        }
+        assert_eq!((short.lines.len(), short.cursor()), (LOG_LINES, LOG_LINES as u64 + 3));
+        // A line that never ends is cut into lines that count against the budget too.
+        let mut big = OutputLog::default();
+        big.push(b"a\n");
+        for _ in 0..(LOG_BYTES / PENDING_CAP + 2) {
+            big.push(&vec![b'y'; PENDING_CAP]);
+        }
+        assert!(big.bytes <= LOG_BYTES && !big.lines.is_empty() && big.dropped);
     }
 
     #[test]
@@ -2825,7 +3002,7 @@ mod tests {
             for id in [7, 8] {
                 inner.sessions.insert(id, PtySession::fake(Box::new(std::io::sink())).into());
                 inner.dirs.insert(id, dir.to_string_lossy().into_owned());
-                inner.logs.insert(id, OutputLog { written: Some(long_ago), ..OutputLog::default() });
+                inner.logs.insert(id, Arc::new(Mutex::new(OutputLog { written: Some(long_ago), ..OutputLog::default() })));
             }
             inner.marks.insert(7, Mark { started: long_ago, last_output: Some(long_ago), program: "claude".into(), agent: None, pane: None, home_env: Vec::new(), cwd: None });
         }

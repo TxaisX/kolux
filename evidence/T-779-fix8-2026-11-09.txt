@@ -169,7 +169,7 @@ P1: parse_listing read keys with String::from_utf8_lossy. A key in bytes that ar
   spelling (a key that does not exist) and the real key stayed live. The environment carries text only, so the
   key cannot be blanked at all. Fix: parse_listing splits key/value on bytes, a key that fails from_utf8 is
   recorded once as kolux.listing-unreadable (value = lossy key); unreadable_program_key(found, dir) gives the
-  refusal for an untrusted folder; command_checked returns Err(refusal) (so run/output refuse with the DT-C229
+  refusal for an untrusted folder; command_checked returns Err(refusal) (so run/output refuse with the DT-C241
   message), command() returns never_runs(reason): a process whose program does not exist (`kolux-refused-git-read`,
   env KOLUX_REFUSAL=<reason>), so the 4 direct spawners (files.rs, scm_watch.rs, editor_search.rs, newproject.rs)
   get a spawn error and nothing runs in the folder. A trusted folder runs as before. Applies to every family the

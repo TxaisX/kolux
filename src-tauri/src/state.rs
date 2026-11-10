@@ -26,7 +26,18 @@ pub struct Store {
     /// Row 881: keys whose blob did not read and was not copied aside. Saves to them are refused, so
     /// a registry or list that fell back to defaults cannot overwrite the original blob.
     poisoned: std::sync::Mutex<std::collections::BTreeSet<String>>,
+    /// P3 perf: the last good parse of settings.json with the (modified time, length) it was read
+    /// at, so the many callers on timers do not read and parse the file each time.
+    settings_cache: std::sync::Mutex<Option<(Stamp, serde_json::Value)>>,
 }
+
+/// A file's last-modified time and length, as a settings read saw them.
+type Stamp = (std::time::SystemTime, u64);
+
+/// A file modified this recently is never served from the cache: a second write in the same clock
+/// tick with the same length would leave the stamp as it was (git's "racily clean" case; FAT keeps
+/// times to 2 s).
+const SETTINGS_SETTLE: std::time::Duration = std::time::Duration::from_secs(2);
 
 impl Store {
     /// Opens (or creates) the store under `dir`. Creates the folder and the schema on first use.
@@ -39,7 +50,7 @@ impl Store {
             "PRAGMA journal_mode=WAL;
              CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
         )?;
-        let store = Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default() };
+        let store = Store { conn, settings_path: dir.join("settings.json"), read_failed: AtomicBool::new(false), fallback_notice: std::sync::Mutex::new(None), fallback_told: AtomicBool::new(false), poisoned: Default::default(), settings_cache: Default::default() };
         store.carry_setup_policy();
         Ok(store)
     }
@@ -155,13 +166,43 @@ impl Store {
     /// User settings as JSON. No file and no .bak yet reads as an empty object; a file that is missing beside a .bak, cannot be read or
     /// is not a JSON object is an error, never an empty set (T-441), unless the last good copy
     /// (settings.json.bak) still reads: then that copy is what the user gets (T-075, APP-048).
+    /// P3 perf: a file whose stamp is the one its last good parse was read at, and that has not
+    /// changed in the last `SETTINGS_SETTLE`, is answered from that parse; that is a read that
+    /// worked, so it clears `read_failed` as one from disk would (T-441-b). Saves never use it.
     pub fn try_settings(&self) -> std::io::Result<serde_json::Value> {
+        // Taken before the read: a file changed after this point carries a newer stamp than the
+        // parse is kept under, so the next call reads it again.
+        let stamp = Self::stamp(&self.settings_path);
+        if let Some(stamp) = stamp {
+            let cached = self.settings_cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner).as_ref().filter(|(at, _)| *at == stamp).map(|(_, v)| v.clone());
+            if let Some(v) = cached {
+                self.read_failed.store(false, Ordering::SeqCst);
+                return Ok(v);
+            }
+        }
         let read = self.read_file();
         self.read_failed.store(read.is_err(), Ordering::SeqCst);
+        let mut cache = self.settings_cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        *cache = None;
         Ok(match read? {
             Read::None => serde_json::json!({}),
-            Read::File(_, v) | Read::Backup(v) => v,
+            Read::File(_, v) => {
+                if let Some(stamp) = stamp.filter(|(modified, _)| modified.elapsed().is_ok_and(|age| age >= SETTINGS_SETTLE)) {
+                    *cache = Some((stamp, v.clone()));
+                }
+                v
+            }
+            Read::Backup(v) => v,
         })
+    }
+
+    fn stamp(path: &Path) -> Option<Stamp> {
+        let meta = fs::metadata(path).ok()?;
+        Some((meta.modified().ok()?, meta.len()))
+    }
+
+    fn forget_settings(&self) {
+        *self.settings_cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     }
 
     /// after-list #38: a free `settings.json.corrupt-<ms>[-n]` name, so a second set-aside never replaces the first.
@@ -261,6 +302,7 @@ impl Store {
             fs::rename(&path, &to)?;
             kept.push(to);
         }
+        self.forget_settings();
         self.read_failed.store(false, Ordering::SeqCst);
         Ok(kept)
     }
@@ -320,7 +362,9 @@ impl Store {
         }
         let tmp = self.settings_path.with_extension("json.tmp");
         write_synced(&tmp, &serde_json::to_vec_pretty(&crate::import::without_retired(value.clone()))?)?; // HID-036: never written back
-        fs::rename(&tmp, &self.settings_path)
+        let renamed = fs::rename(&tmp, &self.settings_path);
+        self.forget_settings();
+        renamed
     }
 
     /// Writes only the keys in `set` and drops those in `remove`, over what is on disk now, so a
@@ -633,6 +677,69 @@ mod tests {
         s.save_settings(&serde_json::json!({ "theme": "x" })).unwrap();
         let bak: serde_json::Value = serde_json::from_slice(&fs::read(dir.join("settings.json.bak")).unwrap()).unwrap();
         assert_eq!(bak["defaultAgent"], "codex", "the empty set never replaced the backup");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Sets `path`'s modified time.
+    fn touch(path: &Path, at: std::time::SystemTime) {
+        fs::File::options().write(true).open(path).unwrap().set_modified(at).unwrap();
+    }
+
+    /// P3 perf: settings are parsed once per change of the file, a save or an outside edit is seen
+    /// at once, and a file just written is always read from disk.
+    #[test]
+    fn perf_settings_are_cached_by_stamp_and_an_outside_edit_or_a_save_is_seen() {
+        let dir = temp_dir("settings-cache");
+        let s = Store::open(&dir).unwrap();
+        let file = dir.join("settings.json");
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
+        fs::write(&file, br#"{"theme":"aaaa"}"#).unwrap();
+        touch(&file, old);
+        assert_eq!(s.settings()["theme"], "aaaa");
+        // Same length, same stamp: the cached parse answers (the bytes are not read again).
+        fs::write(&file, br#"{"theme":"bbbb"}"#).unwrap();
+        touch(&file, old);
+        assert_eq!(s.settings()["theme"], "aaaa", "served from the cache");
+        // An outside edit moves the stamp: read again.
+        touch(&file, old + std::time::Duration::from_secs(1));
+        assert_eq!(s.settings()["theme"], "bbbb", "an outside edit is picked up");
+        // A different length with the old stamp is picked up too.
+        fs::write(&file, br#"{"theme":"longer"}"#).unwrap();
+        touch(&file, old + std::time::Duration::from_secs(1));
+        assert_eq!(s.settings()["theme"], "longer");
+        // A save is seen at once, and a file written moments ago is never cached.
+        s.save_settings(&serde_json::json!({ "theme": "cccc" })).unwrap();
+        assert_eq!(s.settings()["theme"], "cccc", "a save drops the cache");
+        let just = fs::metadata(&file).unwrap().modified().unwrap();
+        fs::write(&file, br#"{"theme":"dddd"}"#).unwrap();
+        touch(&file, just);
+        assert_eq!(s.settings()["theme"], "dddd", "a just-written file is read from disk");
+        drop(s);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// T-441-b with the cache: a cached good parse never hides a file that has gone bad since, and
+    /// the save after that failed read is refused until the file reads again.
+    #[test]
+    fn perf_t441b_a_cached_parse_never_hides_a_failed_read() {
+        let dir = temp_dir("settings-cache-441b");
+        let s = Store::open(&dir).unwrap();
+        let file = dir.join("settings.json");
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
+        fs::write(&file, br#"{"theme":"classic"}"#).unwrap();
+        touch(&file, old);
+        assert_eq!(s.settings()["theme"], "classic");
+        fs::write(&file, b"{ half a file").unwrap();
+        touch(&file, old + std::time::Duration::from_secs(1));
+        assert_eq!(s.settings(), serde_json::json!({}), "the bad file reads as defaults");
+        assert!(s.save_settings(&serde_json::json!({ "theme": "x" })).is_err(), "the save is refused");
+        assert_eq!(fs::read(&file).unwrap(), b"{ half a file", "nothing written over it");
+        fs::write(&file, br#"{"theme":"mended"}"#).unwrap();
+        touch(&file, old + std::time::Duration::from_secs(2));
+        assert_eq!(s.settings()["theme"], "mended");
+        s.save_settings(&serde_json::json!({ "theme": "saved" })).unwrap();
+        assert_eq!(s.settings()["theme"], "saved");
         drop(s);
         fs::remove_dir_all(&dir).unwrap();
     }

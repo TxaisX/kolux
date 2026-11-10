@@ -44,9 +44,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 # Codex keeps its trust in config.toml; edits must leave the rest of the file byte for byte.
 toml_edit = "0.25"
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 portable-pty = "0.9"
-base64 = "0.22"
+base64 = "0.23"
 tauri-plugin-dialog = "2"
 # USAGE-009: usage alerts are system notifications, sent from the Rust side.
 tauri-plugin-notification = "2"
@@ -58,7 +58,7 @@ trash = "5"
 reqwest = { version = "0.13", default-features = false, features = ["native-tls", "system-proxy"] }
 unicode_names2 = "4.0.0"
 # SKILL-013: the README lists SHA-256 hashes (sha2 is already in the tree).
-sha2 = "0.10"
+sha2 = "0.11"
 # T-156-b (SAFE-016): the user's own regular-expression rules, built with a size limit (already in the tree).
 regex = "1"
 

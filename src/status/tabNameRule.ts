@@ -7,7 +7,7 @@
 // go through the beat, so they always get through), and a pane whose terminal is gone leaves it.
 // Pure apart from useBeatFrame, so every rule is tested in tabNameRule.test.ts; App.tsx calls it
 // (evidence/hooks-T-124-b-App.tsx.patch).
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { AgentState } from "../projects/rows";
 
 /** Agents whose own titles do not show every state, and which states Kolux names for them. */
@@ -94,6 +94,8 @@ const realTimers: Timers = { every: (fn, ms) => setInterval(fn, ms), stop: (h) =
  * `hidden()` says the window is hidden. */
 export class Beat {
   private listeners = new Map<number, (frame: string) => void>();
+  /** Readers of the frame (useBeatText); they do not keep the timer running, the joined panes do. */
+  private watchers = new Set<() => void>();
   private handle: unknown = null;
   private i = 0;
   constructor(
@@ -127,10 +129,36 @@ export class Beat {
     this.i = (this.i + 1) % FRAMES.length;
     const f = this.frame;
     for (const fn of this.listeners.values()) fn(f);
+    for (const fn of this.watchers) fn();
   }
+  /** useSyncExternalStore's subscribe: told after every frame. */
+  watch = (fn: () => void): (() => void) => {
+    this.watchers.add(fn);
+    return () => this.watchers.delete(fn);
+  };
+  /** useSyncExternalStore's snapshot. */
+  snapshot = (): string => this.frame;
 }
 
 export const sharedBeat = new Beat();
+
+/** Keeps the beat running for the panes in `keys` (the ones whose title animates) without
+ * re-rendering the caller: the frame itself is read where it is drawn, with useBeatText. A pane
+ * missing from `keys` (done, or its terminal gone) leaves. */
+export function useBeatKeys(keys: number[], beat: Beat = sharedBeat): void {
+  const sig = [...keys].sort((a, b) => a - b).join(",");
+  useEffect(() => {
+    const offs = sig ? sig.split(",").map((k) => beat.join(Number(k), () => {})) : [];
+    return () => offs.forEach((off) => off());
+  }, [sig, beat]);
+}
+
+const still = () => () => {};
+
+/** The beat's current frame for one tab label: only a label that animates (`on`) re-renders per frame. */
+export function useBeatText(on: boolean, beat: Beat = sharedBeat): string {
+  return useSyncExternalStore(on ? beat.watch : still, beat.snapshot);
+}
 
 /** The shared beat's frame for the panes in `keys` (the ones whose title animates); every caller
  * reads the same frame, and a pane missing from `keys` (done, or its terminal gone) leaves. */

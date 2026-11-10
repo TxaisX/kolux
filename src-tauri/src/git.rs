@@ -178,7 +178,7 @@ fn allow_protocol(existing: Option<&std::ffi::OsStr>, repo_programs: &[(String, 
 /// program on a log that shows signatures (review fix 2). Only the keys a listing finds are
 /// blanked, so a user's own drivers in their global config stay as they are.
 ///
-/// S4 (DT-C229, Txais 2026-11-08: "Yes, include it"): the same listing also finds the keys through
+/// S4 (DT-C241, Txais 2026-11-08: "Yes, include it"): the same listing also finds the keys through
 /// which a folder names a program for a TRANSFER or a hook: the ssh and proxy commands and the
 /// upload/receive programs (replaced on every run, see `net_overrides`), and the keys that make a
 /// write or a transfer unsafe to run at all in an untrusted folder (a credential helper, a hooks
@@ -237,7 +237,7 @@ const HOOKS_KEY: &str = "kolux.hooks-dir";
 const LFS_LINES: [(&str, &str); 5] = [("clean", "git-lfs clean -- %f"), ("smudge", "git-lfs smudge -- %f"), ("process", "git-lfs filter-process"), ("smudge", "git-lfs smudge --skip -- %f"), ("process", "git-lfs filter-process --skip")];
 
 /// What a git run may do with the repository's own program keys (review fix 2, Txais 2026-11-08,
-/// DT-C229): a read always has them blanked; a write that runs the repository's clean or smudge
+/// DT-C241): a read always has them blanked; a write that runs the repository's clean or smudge
 /// filters (add, commit, checkout, worktree add...) keeps them only in a trusted folder.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Access {
@@ -1051,7 +1051,7 @@ fn is_local_url(url: &str) -> bool {
     }
 }
 
-/// The plain refusal (DT-C229): what Kolux did not run, why, and what to do about it.
+/// The plain refusal (DT-C241): what Kolux did not run, why, and what to do about it.
 fn refusal(args: &[&str], dir: &Path, what: &str) -> String {
     let rest = after_options(args);
     let verb = rest.iter().take(if rest.first() == Some(&"worktree") { 2 } else { 1 }).copied().collect::<Vec<_>>().join(" ");
@@ -1059,7 +1059,7 @@ fn refusal(args: &[&str], dir: &Path, what: &str) -> String {
 }
 
 /// What a run of `args` in `dir` may do with the repository's own program keys, decided from the
-/// keys already listed (DT-C229). A read has them blanked. A write that runs clean or smudge
+/// keys already listed (DT-C241). A read has them blanked. A write that runs clean or smudge
 /// filters (`writes_content`) keeps them in a trusted folder (the folder's own signing program too,
 /// so a trusted commit still signs); in an untrusted folder that names a filter of its own it is
 /// REFUSED instead of run with the filter skipped, because a skipped clean or smudge filter stores
@@ -1171,7 +1171,7 @@ fn user_net_values(cwd: &Path) -> Vec<(String, String)> {
     values
 }
 
-/// S4 (DT-C229): the ssh and proxy commands a folder's own config names (`core.sshCommand`,
+/// S4 (DT-C241): the ssh and proxy commands a folder's own config names (`core.sshCommand`,
 /// `core.gitProxy`) never run. (A folder's own `remote.<name>.uploadpack` or `receivepack` cannot be
 /// replaced, so a transfer in an untrusted folder that sets one is refused: see `is_pack_key`.) Each is REPLACED by what
 /// the user's own config says for it, or git's own default when it says nothing, never just blanked
@@ -3102,7 +3102,7 @@ mod tests {
         (dir, marker)
     }
 
-    /// Review fix 2 (DT-C229, Txais 2026-11-08): a write that runs the folder's own filters is refused
+    /// Review fix 2 (DT-C241, Txais 2026-11-08): a write that runs the folder's own filters is refused
     /// in an untrusted folder, plainly and before anything is staged; reads never run them; a trusted
     /// folder's write runs them.
     #[test]
@@ -3532,7 +3532,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    // ---- S4 (DT-C229, Txais 2026-11-08: "Yes, include it") -----------------------------------------
+    // ---- S4 (DT-C241, Txais 2026-11-08: "Yes, include it") -----------------------------------------
 
     /// A hook of the folder's own that leaves `marker` and lets the command go on.
     fn marker_hook(dir: &Path, name: &str, marker: &Path) {

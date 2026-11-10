@@ -28,9 +28,9 @@ fn old_handler(inner: &Mutex<Inner>, prs: &mut crate::scm::PrScan, id: u32, chun
     inner.lock().map(|mut i| i.snaps.entry(id).or_default().push(chunk)).unwrap();
     std::hint::black_box(prs.feed(chunk));
     let mut inner = inner.lock().unwrap();
-    old_log_push(inner.logs.entry(id).or_default(), chunk);
-    if let Some(h) = inner.hist.get_mut(&id) {
-        h.append(chunk);
+    old_log_push(&mut lock(inner.logs.entry(id).or_default()), chunk);
+    if let Some(h) = inner.hist.get(&id) {
+        lock(h).append(chunk);
     }
     if chunk.contains(&0x1b) {
         let prev = inner.owned.get(&id).copied().unwrap_or(0);
@@ -61,16 +61,14 @@ fn old_log_push(log: &mut OutputLog, chunk: &[u8]) {
 fn new_handler(inner: &Mutex<Inner>, prs: &mut crate::scm::PrScan, id: u32, chunk: &[u8]) -> u64 {
     let data = base64::engine::general_purpose::STANDARD.encode(chunk);
     std::hint::black_box(&data);
-    // T-792 review fix (finding 5): the mask runs before the lock, as the real handler does.
-    let on_disk = crate::diag::scrub_bytes(chunk);
-    let seq = inner.lock().map(|mut i| i.book_chunk(id, chunk, &on_disk, false)).unwrap();
+    let seq = take_chunk(inner, id, chunk, false);
     std::hint::black_box(prs.feed(chunk));
     seq
 }
 
 fn inner_with_history(dir: &std::path::Path, id: u32) -> Mutex<Inner> {
     let mut inner = Inner::default();
-    inner.hist.insert(id, History::open(dir, id).unwrap());
+    inner.hist.insert(id, Arc::new(Mutex::new(History::open(dir, id).unwrap())));
     Mutex::new(inner)
 }
 
@@ -133,13 +131,14 @@ fn after786_retained_bytes_stay_under_the_caps_and_the_stream_is_whole_and_in_or
     let nums: Vec<usize> = kept.lines().map(|l| l[..8].parse().unwrap()).collect();
     assert_eq!(*nums.last().unwrap(), lines - 1, "the newest line is the last one sent");
     assert!(nums.windows(2).all(|w| w[1] == w[0] + 1), "snapshot lines run in order, none missing");
-    let log = i.logs.get(&1).unwrap();
+    let log = lock(&i.logs[&1]);
     assert!(log.lines.len() <= LOG_LINES && log.pending.len() <= PENDING_CAP);
     assert_eq!(log.cursor(), lines as u64);
-    let hist = i.hist.get(&1).unwrap();
+    let hist = lock(&i.hist[&1]);
     assert!(hist.size <= HISTORY_CAP, "{} saved bytes", hist.size);
     assert!(std::fs::metadata(history_file(&dir, 1)).unwrap().len() <= HISTORY_CAP);
     println!("FLOOD retained after {} KB: tail {} B, log {} lines, saved {} B", text.len() / 1024, snap_len(&i), log.lines.len(), hist.size);
+    drop((log, hist));
     drop(i);
     let _ = std::fs::remove_dir_all(&dir);
 }

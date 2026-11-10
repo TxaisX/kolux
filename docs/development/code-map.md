@@ -127,7 +127,7 @@ If you add a screen, update the screen union in `src/chrome/TopBar.tsx`, the pag
 | `STATE.md` | Current counters, what works, open decisions |
 | `DECISIONS.md` | Defaults, strikes, and choices the build follows |
 | `PROVENANCE.md` | Clean-room source log |
-| `evidence/` | Per-task proof output |
+| `evidence/` | Per-task proof output and screenshots |
 | `docs/live-proofs-windows.md` | The installed-build proof run sheet |
 
 These are build records. Read `PLAN.md` and `DECISIONS.md` before changing behaviour that a card already defines. Do not rewrite them to make a change look approved.

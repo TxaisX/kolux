@@ -1,0 +1,4 @@
+idle: {"tiles":"onb-tiles resting","running":0}
+after pointer move: {"tiles":"onb-tiles","running":3}
+5 s later: {"tiles":"onb-tiles","running":3}
+12 s later: {"tiles":"onb-tiles resting","running":0}

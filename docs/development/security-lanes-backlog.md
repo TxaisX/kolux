@@ -56,4 +56,4 @@ control step finds this container's git does not run gpg (it passed on Windows).
 - T-793: A5 `worktree create`'s default setup tab (gated by the setup-trust prompt); B1
   `cli::secret()` uses `RandomState`, not a CSPRNG; B2 a closed pane's endpoint file and token stay for
   the run; B3 `write_pane_file` truncates in place; B4 the shared spool file takes no token
-  (same-user limit, DT-C228 (3)).
+  (same-user limit, DT-C240 (3)).

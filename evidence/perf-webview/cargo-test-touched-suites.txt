@@ -1,0 +1,83 @@
+cargo test --no-fail-fast -- browser recovery tray webview cli  (lane perf-webview, commit 603431ff, test env, 2026-11-09)
+Summary lines and the lane's own t_perf_webview tests; compile output and the other per-test lines left out.
+
+     Running unittests src\lib.rs
+running 592 tests
+test browser::suspend::tests::t_perf_webview_a_repeated_hide_keeps_the_timer_it_has ... ok
+test browser::suspend::tests::t_perf_webview_a_hide_is_due_until_the_tab_is_shown_or_hidden_again ... ok
+test browser::suspend::tests::t_perf_webview_a_page_from_this_machine_is_never_suspended ... ok
+test browser::suspend::tests::t_perf_webview_brow021_exemptions_keep_a_page_awake ... ok
+test webview_power::tests::t_perf_webview_a_timer_from_an_older_hide_does_nothing ... ok
+test webview_power::tests::t_perf_webview_memory_goes_low_after_a_minute_away_and_normal_on_show ... ok
+test webview_power::tests::t_perf_webview_hide_tells_the_engine_once_and_show_undoes_it ... ok
+test result: ok. 590 passed; 0 failed; 2 ignored; 0 measured; 2389 filtered out; finished in 29.44s
+     Running unittests src\bin\kolux-dev.rs
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src\main.rs (<target>\debug\deps\kolux_rs-345471622108242f.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests\cards_01.rs (<target>\debug\deps\cards_01-a0a54c933032123d.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+     Running tests\cards_02.rs (<target>\debug\deps\cards_02-a27fc6e185d2f2d3.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 0.00s
+     Running tests\cards_03.rs (<target>\debug\deps\cards_03-a173123a5fb92173.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+     Running tests\cards_04.rs (<target>\debug\deps\cards_04-8bba57a959bc4725.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+     Running tests\cards_05.rs (<target>\debug\deps\cards_05-0e49df8a149ef66b.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+     Running tests\cards_06.rs (<target>\debug\deps\cards_06-575b2122e67a0d71.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+     Running tests\cards_07.rs (<target>\debug\deps\cards_07-a770d3db689b998b.exe)
+running 2 tests
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 3.64s
+     Running tests\cards_08.rs (<target>\debug\deps\cards_08-bdeab73a0f627b35.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 35 filtered out; finished in 0.00s
+     Running tests\cards_09.rs (<target>\debug\deps\cards_09-2ca5cdeaa1d2df57.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 0.00s
+     Running tests\cards_10.rs (<target>\debug\deps\cards_10-31564ac547566c9a.exe)
+running 2 tests
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.01s
+     Running tests\cards_11.rs (<target>\debug\deps\cards_11-ad638b9b02374a2a.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+     Running tests\cards_12.rs (<target>\debug\deps\cards_12-0cea06381d0fc22d.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+     Running tests\cards_13.rs (<target>\debug\deps\cards_13-30c3f662c3603c1e.exe)
+running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.01s
+     Running tests\cards_15.rs (<target>\debug\deps\cards_15-ae17cf60fdde423e.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+     Running tests\cards_17.rs (<target>\debug\deps\cards_17-0665fd3e3b158056.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+     Running tests\cards_19.rs (<target>\debug\deps\cards_19-8a3039250cdab5f3.exe)
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+     Running tests\cards_19_diag.rs
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+     Running tests\cards_20.rs (<target>\debug\deps\cards_20-40473e82e4c44264.exe)
+running 18 tests
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.67s
+     Running tests\cards_scratch_root.rs
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+     Running tests\shim.rs (<target>\debug\deps\shim-8122f7a22de36e8c.exe)
+running 1 test
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.09s
+   Doc-tests kolux_rs_lib
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+cargo test exit 0

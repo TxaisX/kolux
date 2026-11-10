@@ -20,3 +20,4 @@ src-tauri/release.conf.json
 # OS clutter.
 .DS_Store
 Thumbs.db
+.vitest/

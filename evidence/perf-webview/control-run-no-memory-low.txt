@@ -1,0 +1,21 @@
+(control run: LOW gated off by a temporary file in the harness folder)
+== CONTROL RUN (memory LOW disabled) ==
+[20:38:43] visibilityState shown: "visible"
+[20:38:43] marker set: "before-minimise"
+[20:38:44] renderers before minimise: ["37340 ws=217.1MB private=173.9MB"]
+[20:38:46] visibilityState minimised (1.5 s): "hidden" hidden=true
+[20:39:47] renderers 60 s minimised: ["37340 ws=202.6MB private=156.6MB"]
+[20:39:47] visibilityState minimised (60 s): "hidden"
+[20:40:53] renderers 125 s minimised (memory LOW should be in effect since ~60 s): ["37340 ws=198.9MB private=152.4MB"]
+[20:40:55] restore frames:
+t=0ms (captured at 100ms, PrintWindow ok=True, 1044x788): mean rgb(5,4,5) white=0.0% (frame not kept)
+t=50ms (captured at 173ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+t=120ms (captured at 253ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+t=300ms (captured at 331ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+t=1000ms (captured at 1032ms, PrintWindow ok=True, 1044x788): mean rgb(9,9,9) white=0.6% (frame not kept)
+[20:40:55] visibilityState restored: "visible"
+[20:40:55] first paint after restore (rAF within): "17 ms"
+[20:40:55] marker after restore (same page, no reload): "before-minimise"
+[20:40:59] renderers 3 s after restore (memory NORMAL): ["37340 ws=204.4MB private=157.4MB"]
+
+[exited with code 0]

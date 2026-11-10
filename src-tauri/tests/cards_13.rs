@@ -13,7 +13,7 @@ use std::time::Duration;
 
 const TOKEN: &str = "tok-for-cards-13";
 
-/// T-793 (DT-C228): the hook token of the pane `id_header` names (paneKey 7, terminal 3).
+/// T-793 (DT-C240): the hook token of the pane `id_header` names (paneKey 7, terminal 3).
 fn pane_tok() -> String {
     kolux_lib::hooks::pane_token(TOKEN, 7, Some(3))
 }

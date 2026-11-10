@@ -6,9 +6,11 @@ pub const ENV: &str = "KOLUX_RENDERER_HEAP_MB";
 const GIB: u64 = 1 << 30;
 /// "8 GB or more": a machine sold as 8 GB reports a little under 8 GiB to the OS.
 pub const MIN_RAM: u64 = 7 * GIB + GIB / 2;
-/// Coordinator default (the spec leaves the figures open): 4 GiB from 8 GB of RAM, 8 GiB from 16 GB.
-pub const MID_MB: u64 = 4096;
-pub const BIG_MB: u64 = 8192;
+/// Owner's choice (DT-C233, 2026-11-09; the spec leaves the figures open): 1.5 GiB from 8 GB of RAM, 2 GiB from
+/// 16 GB. The ceiling is not a target and V8 pointer compression caps the heap at 4 GiB anyway; the interface
+/// uses about 170 MB, so this is roughly ten times headroom. KOLUX_RENDERER_HEAP_MB still raises it.
+pub const MID_MB: u64 = 1536;
+pub const BIG_MB: u64 = 2048;
 pub const BIG_RAM: u64 = 15 * GIB;
 /// Above this an override is clamped: the engine does not take a larger old space seriously.
 pub const MAX_MB: u64 = 65_536;
@@ -127,6 +129,7 @@ mod tests {
 
     #[test]
     fn app022_below_8gb_the_default_stays_and_from_8gb_it_rises() {
+        assert_eq!((MID_MB, BIG_MB), (1536, 2048), "DT-C233: the owner's figures");
         assert_eq!(heap_mb(None, Some(4 * GB)), None);
         assert_eq!(heap_mb(None, Some(7 * GB)), None);
         assert_eq!(heap_mb(None, None), None, "unknown RAM is not guessed");

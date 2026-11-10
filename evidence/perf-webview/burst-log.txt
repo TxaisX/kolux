@@ -1,0 +1,111 @@
+2026-11-09T21:12:22.558Z [lane] start; document.hidden=false
+2026-11-09T21:12:22.877Z [lane] opening a terminal: clicked Open a shell
+2026-11-09T21:12:24.487Z [lane] terminal ready: {"cols":57,"rows":42,"lines":42}
+2026-11-09T21:12:25.301Z [lane] minimise: cmd 6 on 3867072 iconic=True
+2026-11-09T21:12:27.917Z [lane] document.hidden while minimised = true
+2026-11-09T21:12:28.012Z [lane] burst: typed
+2026-11-09T21:12:30.033Z [lane] RESULT 5 MB burst minimised (hidden=true): program write time 1.762 s, wall until the file appeared 2.1 s
+2026-11-09T21:12:32.017Z [lane] restore: cmd 9 on 3867072 iconic=False
+2026-11-09T21:12:34.241Z [lane] after restore document.hidden=false pending lines=8770
+2026-11-09T21:13:09.230Z [base] start; document.hidden=false
+2026-11-09T21:13:09.609Z [base] terminal ready: {"cols":57,"rows":42,"lines":42}
+2026-11-09T21:13:10.455Z [base] minimise: cmd 6 on 3801388 iconic=True
+2026-11-09T21:13:13.061Z [base] document.hidden while minimised = false
+2026-11-09T21:13:13.158Z [base] burst: typed
+2026-11-09T21:13:21.290Z [base] RESULT 5 MB burst minimised (hidden=false): program write time 7.568 s, wall until the file appeared 8.2 s
+2026-11-09T21:13:23.139Z [base] restore: cmd 9 on 3801388 iconic=False
+2026-11-09T21:13:25.356Z [base] after restore document.hidden=false pending lines=10042
+2026-11-09T21:14:56.448Z [lane2] start; document.hidden=false
+2026-11-09T21:14:57.714Z [lane2] terminal ready: {"cols":57,"rows":42,"lines":42}
+2026-11-09T21:14:59.686Z [lane2] minimise: cmd 6 on 3932460 iconic=True
+2026-11-09T21:15:03.602Z [lane2] document.hidden while minimised = true
+2026-11-09T21:15:04.801Z [lane2] burst: typed
+2026-11-09T21:15:13.009Z [lane2] RESULT 5 MB burst minimised (hidden=true): program write time 7.281 s, wall until the file appeared 9.4 s
+2026-11-09T21:15:14.983Z [lane2] restore: cmd 9 on 3932460 iconic=False
+2026-11-09T21:15:17.236Z [lane2] after restore document.hidden=false pending lines=10002
+2026-11-09T21:15:45.743Z [lane-visible-fresh] start; document.hidden=false
+2026-11-09T21:15:45.860Z [lane-visible-fresh] new terminal tab (Ctrl+T): sent
+2026-11-09T21:15:48.760Z [lane-visible-fresh] terminal ready: {"cols":57,"rows":42,"lines":10002}
+2026-11-09T21:15:48.761Z [lane-visible-fresh] staying visible
+2026-11-09T21:15:48.860Z [lane-visible-fresh] document.hidden while minimised = false
+2026-11-09T21:15:48.964Z [lane-visible-fresh] burst: typed
+2026-11-09T21:15:49.970Z [lane-visible-fresh] RESULT 5 MB burst minimised (hidden=false): program write time 0.859 s, wall until the file appeared 1.1 s
+2026-11-09T21:15:53.169Z [lane-visible-fresh] after restore document.hidden=false pending lines=10042
+2026-11-09T21:15:53.341Z [lane-min-fresh] start; document.hidden=false
+2026-11-09T21:15:53.435Z [lane-min-fresh] new terminal tab (Ctrl+T): sent
+2026-11-09T21:15:56.352Z [lane-min-fresh] terminal ready: {"cols":57,"rows":42,"lines":10042}
+2026-11-09T21:15:57.163Z [lane-min-fresh] minimise: cmd 6 on 3932460 iconic=True
+2026-11-09T21:15:59.769Z [lane-min-fresh] document.hidden while minimised = true
+2026-11-09T21:15:59.864Z [lane-min-fresh] burst: typed
+2026-11-09T21:16:01.889Z [lane-min-fresh] RESULT 5 MB burst minimised (hidden=true): program write time 1.529 s, wall until the file appeared 2.1 s
+2026-11-09T21:16:03.761Z [lane-min-fresh] restore: cmd 9 on 3932460 iconic=False
+2026-11-09T21:16:05.965Z [lane-min-fresh] after restore document.hidden=false pending lines=8770
+2026-11-09T21:16:06.132Z [lane-min-same] start; document.hidden=false
+2026-11-09T21:16:06.555Z [lane-min-same] terminal ready: {"cols":65,"rows":42,"lines":8770}
+2026-11-09T21:16:07.408Z [lane-min-same] minimise: cmd 6 on 3932460 iconic=True
+2026-11-09T21:16:10.021Z [lane-min-same] document.hidden while minimised = true
+2026-11-09T21:16:10.118Z [lane-min-same] burst: typed
+2026-11-09T21:16:12.134Z [lane-min-same] RESULT 5 MB burst minimised (hidden=true): program write time 1.666 s, wall until the file appeared 2.1 s
+2026-11-09T21:16:13.992Z [lane-min-same] restore: cmd 9 on 3932460 iconic=False
+2026-11-09T21:16:16.195Z [lane-min-same] after restore document.hidden=false pending lines=8770
+2026-11-09T21:16:16.363Z [lane-visible-same] start; document.hidden=false
+2026-11-09T21:16:16.780Z [lane-visible-same] terminal ready: {"cols":65,"rows":42,"lines":8770}
+2026-11-09T21:16:16.781Z [lane-visible-same] staying visible
+2026-11-09T21:16:16.881Z [lane-visible-same] document.hidden while minimised = false
+2026-11-09T21:16:16.986Z [lane-visible-same] burst: typed
+2026-11-09T21:16:17.995Z [lane-visible-same] RESULT 5 MB burst minimised (hidden=false): program write time 0.866 s, wall until the file appeared 1.1 s
+2026-11-09T21:16:21.208Z [lane-visible-same] after restore document.hidden=false pending lines=10042
+2026-11-09T21:18:06.079Z [base-warm-1] start; document.hidden=false
+2026-11-09T21:18:06.815Z [base-warm-1] terminal ready: {"cols":57,"rows":42,"lines":42}
+2026-11-09T21:18:08.010Z [base-warm-1] minimise: cmd 6 on 4915508 iconic=True
+2026-11-09T21:18:10.774Z [base-warm-1] document.hidden while minimised = false
+2026-11-09T21:18:11.074Z [base-warm-1] burst: typed
+2026-11-09T21:18:25.530Z [base-warm-1] RESULT 5 MB burst minimised (hidden=false): program write time 13.324 s, wall until the file appeared 14.8 s
+2026-11-09T21:18:28.562Z [base-warm-1] restore: cmd 9 on 4915508 iconic=False
+2026-11-09T21:18:31.158Z [base-warm-1] after restore document.hidden=false pending lines=10042
+2026-11-09T21:18:36.758Z [base-warm-2] start; document.hidden=false
+2026-11-09T21:18:38.003Z [base-warm-2] terminal ready: {"cols":57,"rows":42,"lines":10042}
+2026-11-09T21:18:39.971Z [base-warm-2] minimise: cmd 6 on 4915508 iconic=True
+2026-11-09T21:18:42.781Z [base-warm-2] document.hidden while minimised = false
+2026-11-09T21:18:42.995Z [base-warm-2] burst: typed
+2026-11-09T21:18:57.006Z [base-warm-2] RESULT 5 MB burst minimised (hidden=false): program write time 13.492 s, wall until the file appeared 14.2 s
+2026-11-09T21:19:00.005Z [base-warm-2] restore: cmd 9 on 4915508 iconic=False
+2026-11-09T21:19:02.553Z [base-warm-2] after restore document.hidden=false pending lines=10042
+2026-11-09T21:19:08.198Z [base-warm-3] start; document.hidden=false
+2026-11-09T21:19:09.098Z [base-warm-3] terminal ready: {"cols":57,"rows":42,"lines":10042}
+2026-11-09T21:19:10.851Z [base-warm-3] minimise: cmd 6 on 4915508 iconic=True
+2026-11-09T21:19:13.653Z [base-warm-3] document.hidden while minimised = false
+2026-11-09T21:19:13.903Z [base-warm-3] burst: typed
+2026-11-09T21:19:27.923Z [base-warm-3] RESULT 5 MB burst minimised (hidden=false): program write time 13.201 s, wall until the file appeared 14.3 s
+2026-11-09T21:19:30.715Z [base-warm-3] restore: cmd 9 on 4915508 iconic=False
+2026-11-09T21:19:33.208Z [base-warm-3] after restore document.hidden=false pending lines=10042
+2026-11-09T21:19:33.612Z [base-visible] start; document.hidden=false
+2026-11-09T21:19:34.507Z [base-visible] terminal ready: {"cols":65,"rows":42,"lines":10042}
+2026-11-09T21:19:34.508Z [base-visible] staying visible
+2026-11-09T21:19:34.766Z [base-visible] document.hidden while minimised = false
+2026-11-09T21:19:35.001Z [base-visible] burst: typed
+2026-11-09T21:19:38.621Z [base-visible] RESULT 5 MB burst minimised (hidden=false): program write time 2.937 s, wall until the file appeared 3.9 s
+2026-11-09T21:19:42.250Z [base-visible] after restore document.hidden=false pending lines=10042
+2026-11-09T21:22:59.384Z [lane-final-1] start; document.hidden=false
+2026-11-09T21:22:59.954Z [lane-final-1] terminal ready: {"cols":57,"rows":42,"lines":42}
+2026-11-09T21:23:01.131Z [lane-final-1] minimise: cmd 6 on 3869256 iconic=True
+2026-11-09T21:23:03.906Z [lane-final-1] document.hidden while minimised = true
+2026-11-09T21:23:04.539Z [lane-final-1] burst: typed
+2026-11-09T21:23:19.345Z [lane-final-1] RESULT 5 MB burst minimised (hidden=true): program write time 13.218 s, wall until the file appeared 15.4 s
+2026-11-09T21:23:21.432Z [lane-final-1] restore: cmd 9 on 3869256 iconic=False
+2026-11-09T21:23:23.712Z [lane-final-1] after restore document.hidden=false pending lines=8770
+2026-11-09T21:23:29.047Z [lane-final-2] start; document.hidden=false
+2026-11-09T21:23:29.602Z [lane-final-2] terminal ready: {"cols":57,"rows":42,"lines":10002}
+2026-11-09T21:23:30.531Z [lane-final-2] minimise: cmd 6 on 3869256 iconic=True
+2026-11-09T21:23:33.158Z [lane-final-2] document.hidden while minimised = true
+2026-11-09T21:23:33.296Z [lane-final-2] burst: typed
+2026-11-09T21:23:36.363Z [lane-final-2] RESULT 5 MB burst minimised (hidden=true): program write time 2.492 s, wall until the file appeared 3.2 s
+2026-11-09T21:23:38.373Z [lane-final-2] restore: cmd 9 on 3869256 iconic=False
+2026-11-09T21:23:40.648Z [lane-final-2] after restore document.hidden=false pending lines=8770
+2026-11-09T21:23:40.911Z [lane-final-visible] start; document.hidden=false
+2026-11-09T21:23:41.476Z [lane-final-visible] terminal ready: {"cols":57,"rows":42,"lines":10002}
+2026-11-09T21:23:41.476Z [lane-final-visible] staying visible
+2026-11-09T21:23:41.619Z [lane-final-visible] document.hidden while minimised = false
+2026-11-09T21:23:41.762Z [lane-final-visible] burst: typed
+2026-11-09T21:23:43.786Z [lane-final-visible] RESULT 5 MB burst minimised (hidden=false): program write time 1.449 s, wall until the file appeared 2.2 s
+2026-11-09T21:23:47.061Z [lane-final-visible] after restore document.hidden=false pending lines=10042

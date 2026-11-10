@@ -3,11 +3,11 @@
 // The card and its header follow design/DESIGN.md section 7: status icon, agent mark, title,
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
 import { trapTab } from "../chrome/dialogFocus";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
-import { followedTitle, Gate, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
+import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity } from "./shellMarks";
 import PaneMenu, { fromKeys, menuKey, paneMenuItems, withChord } from "./PaneMenu";
 import { contextText, sessionMenuActions, type Launch } from "./sessionFork";
 import ForkDialog from "./ForkDialog";
@@ -29,7 +29,7 @@ import { xtermLogger } from "./xtermLogger";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
-import { attachRenderer, watchResume, type RendererMode } from "./renderer";
+import { attachRenderer, onHeartbeat, parkWhenHidden, renderNowHook, resumeHook, watchResume, type RendererMode } from "./renderer";
 import { copySelection } from "./copy";
 import { killsOnUnmount, windowGeneration } from "./paneGeneration";
 import { HeldKeys, screenLines, shouldRefocus, watchScale } from "./recover";
@@ -46,7 +46,8 @@ import { frameOutputs, type FrameOutput } from "./frame";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
-import { currentText, optionsOf, TEXT_EVENT } from "./text";
+import { currentText, optionsOf, paneOptionsOf, scrollbackRows, TEXT_EVENT } from "./text";
+import { blinkRest } from "./blinkRest";
 import { currentInput, INPUT_EVENT, inputOptions, loadLigatures, middlePastes, middleSource, probeGpu, watchPointer } from "./inputWire";
 import { ligaturesOn, preferGpu, yenToBackslash } from "./inputPrefs";
 import { hookColourMode } from "./colourMode";
@@ -103,7 +104,7 @@ export type PaneNotice = { title: string; body: string; primary: string; onPrima
 type Props = {
   /** Kept mounted but not shown: another workspace is in front (PROJ-066). */
   hidden?: boolean;
-  /** TERM-103: false draws plain; true tries the GPU path (six panes at most, the rest plain). */
+  /** TERM-103: false draws plain; true tries the GPU path (twelve panes at most, the rest plain; DT-C229). */
   gpu?: boolean;
   /** VIEW-024: the saved agent's name, shown in the header in place of the program word. */
   name?: string;
@@ -404,6 +405,12 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   const serviceRef = useRef<ServiceInfo | null>(null);
   const isHidden = useRef(hidden);
   isHidden.current = hidden;
+  // DT-C229: a pane hidden for 30 s gives its GPU context back; shown again, it takes one before the
+  // frame is drawn (a layout effect, so the first visible frame is whole: TERM-103).
+  const parking = useRef<ReturnType<typeof parkWhenHidden> | null>(null);
+  useLayoutEffect(() => {
+    parking.current?.hidden(hidden);
+  }, [hidden]);
   // T-765: a tab that comes back catches up at once, without waiting for the next output chunk.
   useEffect(() => {
     outputRef.current?.wake();
@@ -495,6 +502,16 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     applyKoluxUnicode(term); // T-308 / TERM-104: Unicode 16 widths and emoji sequences (xterm alone knows Unicode 6)
     term.open(el);
     termRef.current = term;
+    // DT-C231: a blinking cursor holds steady after a few seconds with no input (each blink redraws the
+    // pane); typing, a click or focus makes it blink again. The setting itself stays the user's.
+    const blink = blinkRest((on) => {
+      if (term.options.cursorBlink !== on) term.options.cursorBlink = on;
+    });
+    blink.want(currentText().blink);
+    const pokeBlink = () => blink.poke();
+    const blinkInput = term.onData(pokeBlink);
+    term.textarea?.addEventListener("focus", pokeBlink);
+    el.addEventListener("mousedown", pokeBlink);
     // TERM-107 (T-566): the first key or click from mount on clears the restored mark; no restore step runs first.
     const pane = box.current;
     const unmark = () => {
@@ -635,8 +652,42 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     setRenderer(choice.mode);
     choice.onFallback(() => setRenderer("dom"));
     fit.fit();
+    // DT-C229: only where xterm can be resumed and drawn at once on reveal; elsewhere the context is kept.
+    const resume = resumeHook(term);
+    const renderNow = renderNowHook(term);
+    if (resume && renderNow) {
+      parking.current = parkWhenHidden(choice, {
+        resume, // xterm draws now, not after the observer's late callback; measures the cell size first
+        redraw: (mode) => {
+          term.refresh(0, Math.max(0, term.rows - 1)); // a renderer swap needs a full repaint
+          renderNow(); // in this frame, not the next one
+          setRenderer(mode);
+        },
+        parked: () => setRenderer("dom"), // terminal_diagnostics reports the path really drawing
+        // A program mid synchronized output: xterm draws nothing until it ends, so the reveal waits.
+        held: () => term.modes.synchronizedOutputMode,
+        whenFree: (fn) => {
+          let subs: Array<{ dispose(): void }> = [];
+          const off = () => {
+            subs.forEach((s) => s.dispose());
+            subs = [];
+          };
+          // It ends in a write (the program's own end) or on xterm's timeout, which repaints; parkWhenHidden
+          // goes ahead anyway after SYNC_WAIT_MS.
+          const check = () => {
+            if (term.modes.synchronizedOutputMode) return;
+            off();
+            fn();
+          };
+          subs = [term.onWriteParsed(check), term.onRender(check)];
+          return off;
+        },
+      });
+      parking.current.hidden(isHidden.current);
+    }
 
     let alive = true;
+    let profileRows: number | null = null; // ACCT-059: the memory profile's rows, once known
     // C26-R3-01: the drawing this pane belongs to, so an unmount that hands the terminals to the next drawing
     // (a re-draw of the window, not a closed tab) leaves them running.
     const gen = windowGeneration.current;
@@ -694,9 +745,11 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       screen = type;
       feel();
     });
-    // ACCT-059: scrollback sized to the machine's memory profile, the same every start.
+    // ACCT-059: scrollback sized to the machine's memory profile, the same every start, but only when
+    // the user has not saved a scrollback of their own (SET-025 wins; see scrollbackRows).
     memoryProfile().then((p) => {
-      if (alive) term.options.scrollback = p.scrollback;
+      profileRows = p.scrollback;
+      if (alive) term.options.scrollback = scrollbackRows(currentText(), profileRows);
     });
     // ACCT-054: output is acknowledged as drawn, in running totals, so the reader pauses the
     // program when this pane falls behind rather than letting the app fall behind with it.
@@ -719,10 +772,13 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // T-765: output goes to xterm through the frame queue, one write a frame with the window's
     // others. The acknowledgement is still the write callback's: the reader's unacked window is
     // what pauses a program that runs ahead, so nothing is dropped and the order is the arrival order.
+    // DT-C236: a window minimised or in the tray has no frames; the shown pane keeps its full share
+    // by timer then (nothing is painted), while the panes behind other tabs trickle.
     const output = outputFrames.pane({
       write: (bytes, done) => term.write(bytes, done),
       ack: (bytes) => acks.drew(bytes),
-      hidden: () => isHidden.current || document.hidden,
+      hidden: () => isHidden.current,
+      unseen: () => document.hidden,
     });
     outputRef.current = output;
     let ended = false;
@@ -812,10 +868,12 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     // (agent_prompt_send, from App.tsx's onPty); only a shell pane types its startup command here.
     const startup = new Startup(agent === "shell" ? typed : undefined, wrapped);
     let identityNow: Identity = IDLE;
+    // A title-only change is paced (shellMarks.identityPacer); running and agent changes go at once.
+    const pacer = identityPacer(setLive);
     const noteIdentity = (next: Identity) => {
       if (next === identityNow) return;
       identityNow = next;
-      setLive(next);
+      pacer.note(next);
     };
     let readyWait: ReturnType<typeof setTimeout> | undefined;
     const openGate = () => {
@@ -859,6 +917,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         // rewritten the line ends and bracketed the whole paste once, and the next chunk waits for this
         // promise. The scroll-to-bottom mirrors what xterm does on user input.
         if (term.options.scrollOnUserInput !== false) term.scrollToBottom();
+        blink.poke(); // DT-C231: a paste is input
         const landed = write(text);
         // TERM-103: a paste burst fills the glyph atlas with one-off runs; start it fresh afterwards.
         if (text.length > 2048) choice.clearGlyphs();
@@ -1171,7 +1230,10 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     window.addEventListener(TERMINAL_EVENT, recolour);
     // SET-022 / SET-025: open terminals follow the text, cursor and history settings.
     const retext = () => {
-      Object.assign(term.options, optionsOf(currentText()), termFont());
+      // ACCT-059 vs SET-025: the settled scrollback in the one assignment (xterm trims on every change).
+      const { cursorBlink, ...settled } = paneOptionsOf(currentText(), profileRows);
+      Object.assign(term.options, settled, termFont());
+      blink.want(cursorBlink === true); // DT-C231: a resting cursor stays steady
       feel();
       settleLigatures();
       resize();
@@ -1281,7 +1343,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       resize();
     };
     const sleep = watchResume(wake);
-    const beat = setInterval(sleep.tick, 5000);
+    const beat = onHeartbeat(sleep.tick); // one window-level 5 s timer for every pane
     const scale = watchScale(wake);
     // TERM-114: the window coming back puts typing in the pane that had it, unless the user
     // clicked somewhere else meanwhile.
@@ -1292,6 +1354,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
 
     return () => {
       alive = false;
+      pacer.stop();
       window.removeEventListener(DIVIDER_DONE, resize);
       window.removeEventListener(TERMINAL_EVENT, recolour);
       window.removeEventListener(TEXT_EVENT, retext);
@@ -1302,13 +1365,17 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       el.removeEventListener("mouseenter", hover);
       el.removeEventListener("mousedown", dragDown);
       el.removeEventListener("mousemove", dragMove);
+      el.removeEventListener("mousedown", pokeBlink);
+      term.textarea?.removeEventListener("focus", pokeBlink);
+      blinkInput.dispose();
+      blink.stop();
       unwatchPointer();
       screenChange.dispose();
       ligatures?.dispose();
       selected.dispose();
       mode.dispose();
       queries.dispose();
-      clearInterval(beat);
+      beat();
       scale.dispose();
       window.removeEventListener("focus", refocus);
       termRef.current = null;
@@ -1318,6 +1385,8 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
       unlisteners.forEach((u) => u());
       const id = idRef.current;
       if (id !== null && killsOnUnmount(gen)) invoke("terminal_kill", { id }).catch(() => {});
+      parking.current?.stop();
+      parking.current = null;
       choice.dispose();
       pasting.detach();
       shots();

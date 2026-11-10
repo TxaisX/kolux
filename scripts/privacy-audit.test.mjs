@@ -73,7 +73,7 @@ const pinnedProblems = (rel, text) => (PINNED[rel] ?? []).filter(([what, n]) => 
 
 test("app070: no network client in the shipped source beyond the connections the statement names", () => {
   // scripts/evidence, scripts/prove and scripts/stress drive a hidden dev build over loopback CDP for proofs and
-  // never ship: tauri.conf.json bundles only ../dist (no resources), package.json is private, nothing in src or src-tauri imports them.
+  // never ship: tauri.conf.json bundles only ../dist and two licence files, package.json is private, nothing in src or src-tauri imports them.
   const harness = ["evidence", "prove", "stress"].map((d) => `${path.sep}scripts${path.sep}${d}${path.sep}`);
   const files = [...walk(path.join(root, "src")), ...walk(path.join(root, "src-tauri/src")), ...walk(path.join(root, "scripts")).filter((f) => !harness.some((h) => f.includes(h)))];
   expect(files.length).toBeGreaterThan(50);
@@ -81,7 +81,8 @@ test("app070: no network client in the shipped source beyond the connections the
   const imports = [...walk(path.join(root, "src")), ...walk(path.join(root, "src-tauri/src"))].filter((f) => /scripts[\\/]+(?:evidence|prove|stress)\b/.test(fs.readFileSync(f, "utf8"))).map((f) => path.relative(root, f));
   expect(imports).toEqual([]);
   const bundle = JSON.parse(fs.readFileSync(path.join(root, "src-tauri/tauri.conf.json"), "utf8")).bundle ?? {};
-  expect(bundle.resources, "bundle.resources").toBeUndefined();
+  // The only resources are the two licence files (THIRD-PARTY-NOTICES.md, EPL-2.0 for elkjs). release.mjs adds the CLI at build time.
+  expect(bundle.resources, "bundle.resources").toEqual({ "../THIRD-PARTY-NOTICES.md": "licenses/THIRD-PARTY-NOTICES.md", "../licenses/EPL-2.0.txt": "licenses/EPL-2.0.txt" });
   expect(bundle.externalBin, "bundle.externalBin").toBeUndefined();
   const found = [];
   for (const f of files) {
