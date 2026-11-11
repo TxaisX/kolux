@@ -15,6 +15,7 @@ import type { Badge } from "../terminal/tabs";
 import { VOCAB } from "../terminal/status";
 import { StatusGlyph } from "../chrome/icons";
 import { capRows, moreLabel, moreTitle, restoreFocus } from "../shell/paletteCaps";
+import { rowKeys } from "../shell/rowKeys";
 
 /** A row the window supplies: its section, what it shows, and what Enter does. `parent` is the
  * project a row belongs to (matched after the row's own text), `dir` the folder it stands for
@@ -265,6 +266,8 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
     [items, projects, lists, query, chips, hasWorktree, extra],
   );
   const rows = useMemo(() => [...pasted, ...found], [pasted, found]);
+  // DT-C268: a row keeps its key while it is in the list, so a change of the list rebuilds only what changed
+  const keys = useMemo(() => rowKeys(rows.map((r) => `${r.section}|${r.label}|${r.hint ?? ""}|${r.parent ?? ""}`)), [rows]);
   const create = paletteCreateName(query);
   const item = create ? workItem(create) : null;
   const repoChips = chips.filter((c) => c.field === "repo");
@@ -343,7 +346,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
           {rows.map((r, i) => {
             const folder = [r.hint, r.parent].filter(Boolean).join(" · ");
             return (
-              <Fragment key={`${r.section}|${r.label}|${r.hint ?? ""}|${r.parent ?? ""}|${i}`}>
+              <Fragment key={keys[i]}>
                 {(i === 0 || rows[i - 1].section !== r.section) && <div className="palette-section">{r.section}</div>}
                 <button role="option" aria-selected={i === cur} aria-disabled={r.off} className={`menu-item${i === cur ? " at" : ""}${r.off ? " off" : ""}`} title={r.off ? "Open a workspace first" : undefined} aria-keyshortcuts={i < 9 ? `Alt+${i + 1}` : undefined} onMouseEnter={() => setAt(i)} onClick={() => go(i)}>
                   {i < 9 && (

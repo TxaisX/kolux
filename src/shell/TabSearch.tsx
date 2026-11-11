@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { onTabSearch, tabSearcher, type TabEntry } from "./findTab";
 import { leaveTabSearch } from "./tabSearchFocus";
+import { rowKeys } from "./rowKeys";
 
 type Props = { tabs: () => TabEntry[] };
 
@@ -9,6 +10,8 @@ export default function TabSearch({ tabs }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<TabEntry[]>([]);
+  // DT-C268: a row keeps its key while it is in the list, so a letter typed rebuilds only what changed
+  const keys = useMemo(() => rowKeys(rows.map((r) => `${r.label}|${r.hint ?? ""}`)), [rows]);
   const [at, setAt] = useState(0);
   const from = useRef<HTMLElement | null>(null); // palette.md row 14: where focus goes back to when the box is dismissed
   const close = () => {
@@ -68,7 +71,7 @@ export default function TabSearch({ tabs }: Props) {
         />
         <div className="picker-list" id="ts-l" role="listbox" aria-label="Open tabs">
           {rows.map((r, i) => (
-            <button key={`${r.label}|${r.hint ?? ""}|${i}`} id={`ts-${i}`} role="option" tabIndex={-1} aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
+            <button key={keys[i]} id={`ts-${i}`} role="option" tabIndex={-1} aria-selected={i === at} className={`menu-item${i === at ? " at" : ""}`} onClick={() => go(r)}>
               <span className="name">{r.label}</span>
               {r.hint && <span className="hint">{r.hint}</span>}
             </button>
