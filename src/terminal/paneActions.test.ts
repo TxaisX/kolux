@@ -13,7 +13,7 @@ function state() {
   const pane = { key: 5, cwd: "C:\\w", branch: null, agent: "shell", program: null, args: [] };
   const s = { panes: [pane], activeDir: "C:\\w", setPage, setScreen, setActiveDir, setFocused, setPanes, nextKey: { current: 9 } } as unknown as WindowState;
   const late = { setReveal: vi.fn() } as unknown as WindowLate;
-  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, late);
+  const a = paneActions(s, {} as never, {} as never, late);
   return { a, setPage, setScreen, setPanes };
 }
 
@@ -38,7 +38,7 @@ test("two start failures in a row remove both panes", () => {
   const setPanes = vi.fn((v: unknown) => (list = typeof v === "function" ? (v as (ps: typeof list) => typeof list)(list) : (v as typeof list)));
   const s = { panes: list, activeDir: "C:\\w", setPanes, setFocused: vi.fn(), setToast: vi.fn(), restoredKeys: { current: new Set() }, cliFailed: { current: {} } } as unknown as WindowState;
   // both callbacks come from the same render, as two failures that land before React draws again
-  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, {} as WindowLate);
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   a.failedPane(5, "not found");
   a.failedPane(6, "not found");
   expect(list.map((p) => p.key)).toEqual([7]);
@@ -54,7 +54,7 @@ test("a command-line split down stacks the split pane's own workspace", () => {
     { key: 5, cwd: "C:\\other", branch: null, agent: "shell", program: null, args: [] },
   ];
   const s = { panes, activeDir: "C:\\front", setPanes: vi.fn(), setFocused: vi.fn(), setStacked, setToast: vi.fn(), cliFailed: { current: {} }, nextKey: { current: 9 } } as unknown as WindowState;
-  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, {} as WindowLate);
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   a.splitPane(5, "down", { ask: "q", command: null });
   expect(stacked).toEqual({ "C:\\front": false, "C:\\other": true });
 });
@@ -71,7 +71,7 @@ test("closing unread tabs drops their marks and the workspace dot only when none
     ptys: { current: {} }, runTabs: { current: {} }, recentTabs: { current: [] }, pinned: new Set(),
   } as unknown as WindowState;
   const late = { exitedPrompt: { current: {} } } as unknown as WindowLate;
-  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, late);
+  const a = paneActions(s, {} as never, {} as never, late);
   a.dropPanes([1, 3]);
   expect([...unread]).toEqual([2]);
   expect(cleared).toEqual(["C:\\b"]); // pane 2 in C:\\a is still unread, so that dot stays
@@ -83,7 +83,7 @@ test("shrinking the pane count moves the focus off a removed chooser tab", () =>
   const panes = [{ key: 1, cwd: "C:\\w", branch: null, agent: "shell", program: null, args: [] }, chooser(2), chooser(3, 2)];
   let focused = 3;
   const s = { panes, activeDir: "C:\\w", setPanes: vi.fn(), setToast: vi.fn(), titles: {}, nextKey: { current: 9 }, setFocused: vi.fn((f: (k: number) => number) => (focused = f(focused))) } as unknown as WindowState;
-  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, {} as WindowLate);
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   a.setCount(1);
   expect(focused).toBe(1);
 });
@@ -96,7 +96,7 @@ test("the palette finds All Changes, the Appearance page and the new shell comma
     panes: [], activeDir: "C:\\\\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: false,
     titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(), setFocused: vi.fn(), setPanes: vi.fn(), nextKey: { current: 9 },
   } as unknown as WindowState;
-  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, {} as WindowLate);
+  const a = paneActions(s, {} as never, {} as never, {} as WindowLate);
   const items = a.paletteItems();
   const top = (q: string) => paletteRows(items, q).map((r) => r.label);
   for (const q of ["changes", "review", "diff", "commit", "stage"]) expect(top(q)).toContain("Open All Changes");
@@ -112,7 +112,7 @@ test("Review changes from a workspace row opens that workspace's All Changes, or
     let list = panes as { key: number; kind?: string; cwd: string | null; group?: number }[];
     const calls = { setActiveDir: vi.fn(), setFocused: vi.fn(), setScreen: vi.fn(), setPage: vi.fn() };
     const s = { panes: list, activeDir: "C:\\\\front", focused: 1, recentDirs: { current: [] }, nextKey: { current: 9 }, setPanes: vi.fn((f: (ps: typeof list) => typeof list) => (list = f(list))), ...calls } as unknown as WindowState;
-    const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, { setReveal: vi.fn() } as unknown as WindowLate);
+    const a = paneActions(s, {} as never, {} as never, { setReveal: vi.fn() } as unknown as WindowLate);
     a.openChangesIn("C:\\\\w", "main");
     return { list, ...calls };
   };

@@ -21,7 +21,6 @@ import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useRenameOnFirstPrompt } from "./projects/renameOnWork";
-import { usePrRows } from "./scm/usePrRows";
 import type { CheckRef } from "./scm/checkCard";
 import { useDesktopDrops } from "./editor/desktopDrops";
 import { sendTargets } from "./editor/notes";
@@ -93,10 +92,10 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
     markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, setTitles, liveIds, muteRef, guess, agentOf, statusOf, setAgents, agentPass, setAgentPass,
     setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, dirty, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
-    setHist, stacked, setStacked, palette, setNotice, setToast
+    setHist, stacked, setStacked, setNotice, setToast
   } = store;
-  const prRows = usePrRows(palette, (dir) => { setScreen("terminals"); select(dir, null); }); // VIEW-043: pull requests found by number or title, with their checks
-  // The rest of the window's state (shell/windowStore.ts), after the pull-request rows.
+  // The rest of the window's state (shell/windowStore.ts). DT-C270: the pull-request rows (VIEW-043) are read by the
+  // palette itself (shell/window/Dialogs.tsx), so the window does not draw again when it opens.
   const tail = useWindowStoreTail({ accountSwitcher, ptys, setNotice }, layout, read);
   const { weights, setWeights, dragRef, sendMenu, nextKey, runPanes, runTabs } = tail;
   const state = { ...store, ...tail };
@@ -124,7 +123,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // The launch and pane actions (launch/launchActions.ts, terminal/paneActions.ts).
   const launchA = launchActions(state, plumb, w);
   const { startIn, runSetup, gateSetup } = launchA;
-  const paneA = paneActions(state, plumb, launchA, { prRows }, w);
+  const paneA = paneActions(state, plumb, launchA, w);
   const { openFile, openDiff, openPreview, splitPane, keyOfHandle, termCreate, termSwitch, termRename, dropPane, closeTab, leavePage, openPane } = paneA;
   // EDIT-039: a file dragged in from the desktop opens here; a folder on the project list is added there.
   useDesktopDrops((path) => openFile(path), setToast);
@@ -220,7 +219,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
     ...state, ...plumb, ...chrome, ...start, ...chords, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
-    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, prRows, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
+    ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
   };
   Object.assign(w, bag);
   // T-699 (DT-C135): the right sidebar as the left one's setter sees it (shell/window/narrow.ts nextLeft).

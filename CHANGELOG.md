@@ -24,6 +24,7 @@ Quicker to answer (measured on a Linux test build; Windows figures will follow):
 - **Typing.** A key's echo is drawn about one frame sooner (about 18 ms instead of 33 ms on the test build), and an echo is no longer held back while other terminals print.
 - **Clicks.** A click redraws only what it concerns. With 16 terminals open, focusing another one used to redraw all of them three times; it now redraws two.
 - **Switching.** Moving between Terminals, Board, Agents and the Inbox, and between the tabs of the right panel, is two to three times quicker (on the test build, the Board paints in about 50 ms where it took about 150). Kolux used to re-apply its whole look each time, and again after every saved setting.
+- **Opening Go to / Run a command** no longer makes the rest of the window work out what to draw again; it opens and closes a few milliseconds sooner.
 - **Typing in Go to / Run a command and in tab search.** Only the rows that change are redrawn as you type; every row used to be rebuilt on each letter.
 - **Screens.** Kolux reads its screens a little at a time after the window shows instead of all at once, and pointing at a button reads what it opens before you click. Settings and each of its pages open at once, the first time too, once the window has been up a moment.
 - **Starting.** The checks that ran before the window could load now run beside it, the backup of Kolux's own state waits ten seconds, and the script read at start is 4 % smaller. Every start writes a timing line to the diagnostics log.

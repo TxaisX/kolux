@@ -191,7 +191,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     setPinned(marks.pinned);
     setTabColors(marks.colors);
   }, [late]);
-  const { palette, setPalette, notice, setNotice, toast, setToast } = useChrome();
+  const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
@@ -204,7 +204,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
-    setHist, stacked, setStacked, palette, setPalette, notice, setNotice, toast, setToast,
+    setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,
   };
 }
 

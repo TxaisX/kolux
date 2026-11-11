@@ -8,7 +8,6 @@ import type { Pane } from "../App";
 import type { WindowState } from "../shell/windowStore";
 import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
 import type { launchActions } from "../launch/launchActions";
-import type { usePrRows } from "../scm/usePrRows";
 import type { WindowLate } from "../shell/windowLate";
 import { forgetRunTab, runPaneKey } from "../automations/runTab";
 import { needsYou } from "../board/chip";
@@ -67,7 +66,7 @@ import { singleFolder } from "../projects/singleFolder";
 /** Other words that find a Settings page in the palette. */
 const SETTINGS_WORDS: Partial<Record<PageId, string>> = { appearance: "theme dark light colours colors font" };
 
-export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
+export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
     accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
     owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
@@ -76,7 +75,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     unreadPanes, setUnreadPanes, markDir
   } = s;
   const { inGitFor, launch, lineupsOf, pretrust, projectFor } = la;
-  const { prRows } = x;
   const addShell = (dir: string | null, branch: string | null) => {
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: dir, branch, agent: "shell", program: null, args: [] }]);
@@ -345,9 +343,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setPage(p.page as Page | null);
     return true;
   };
-  // PROJ-057 / VIEW-037: the palette's rows besides worktrees and projects.
+  // PROJ-057 / VIEW-037: the palette's rows besides worktrees and projects (the pull requests, VIEW-043, are added by the
+  // palette's own surface, shell/window/Dialogs.tsx, which reads them only while it is open).
   const paletteItems = (): PaletteItem[] => [
-    ...prRows,
     ...panes
       .filter((p) => !p.seats && p.kind !== "browser")
       .map((p) => ({
