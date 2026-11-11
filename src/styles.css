@@ -1446,6 +1446,9 @@ button.pick-item:hover, button.pick-item:focus-visible { background: var(--input
 .sheet-project { font-size: 13px; color: var(--fg); }
 .sheet-path { font-size: 12px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sheet-keys { margin-left: 8px; gap: 4px; }
+/* Key caps inside a filled (primary) button: the normal dark cap vanished on the light fill, so
+   draw the cap in the button's own text colour with a faint tint behind it. */
+.btn.primary .kbd { background: color-mix(in srgb, currentColor 10%, transparent); border-color: color-mix(in srgb, currentColor 45%, transparent); color: inherit; }
 .chooser-count.warn { color: var(--warn); }
 /* VIEW-015: the Agents rail, a 268px card in the New look, a flat 240px rail under Classic. */
 .rail { width: 268px; padding: 4px; overflow-y: auto; }
