@@ -524,7 +524,7 @@ mod tests {
     /// on every PATH folder, or on a megabyte read, so they run on a worker instead.
     #[test]
     fn commands_that_may_wait_on_git_or_the_disk_never_run_on_the_window_thread() {
-        for (src, name) in [(include_str!("fsops.rs"), "fs_create"), (include_str!("fsops.rs"), "fs_rename"), (include_str!("agents.rs"), "agent_start_line"), (include_str!("terminal.rs"), "terminal_history")] {
+        for (src, name) in [(include_str!("fsops.rs"), "fs_create"), (include_str!("fsops.rs"), "fs_rename"), (include_str!("agents.rs"), "agent_start_line"), (include_str!("terminal.rs"), "terminal_history"), (include_str!("token_usage.rs"), "token_usage"), (include_str!("activity.rs"), "activity_counts")] {
             let src = src.replace("\r\n", "\n");
             let at = src.find(&format!("pub fn {name}(")).unwrap();
             assert!(src[..at].trim_end().ends_with("#[tauri::command(async)]"), "{name} must be #[tauri::command(async)]");

@@ -61,9 +61,10 @@ fn ms(micros: u64) -> String {
 }
 
 /// Whether a page mark's name goes in the line as it is: short, and nothing that could break the
-/// line or the `name=value` reading (letters, digits, `_`, `-`, `.`).
+/// line or the `name=value` reading (letters, digits, `_`, `-`, `.`, and `:` for the page's
+/// `kx:` prefix).
 fn plain_name(name: &str) -> bool {
-    !name.is_empty() && name.len() <= NAME_MAX && name.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+    !name.is_empty() && name.len() <= NAME_MAX && name.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.' | b':'))
 }
 
 /// The log line for `rust` marks (any order; written in time order) and the page's (`None`: no
@@ -176,13 +177,14 @@ mod tests {
     fn page_marks_that_could_break_the_line_are_left_out_and_counted() {
         let mut page = BTreeMap::new();
         page.insert("ok".to_string(), 1.0);
+        page.insert("kx:entry".to_string(), 0.5);
         page.insert("two\nlines".to_string(), 2.0);
         page.insert("a=b".to_string(), 3.0);
         page.insert("x".repeat(NAME_MAX + 1), 4.0);
         page.insert("nan".to_string(), f64::NAN);
         page.insert("inf".to_string(), f64::INFINITY);
         let l = line(&[], Some(&page));
-        assert_eq!(l, "startup (ms since process start): | page (ms since page start): ok=1.0 (left out: 5)");
+        assert_eq!(l, "startup (ms since process start): | page (ms since page start): kx:entry=0.5 ok=1.0 (left out: 5)");
         let many: BTreeMap<String, f64> = (0..PAGE_MAX + 3).map(|i| (format!("m{i:02}"), i as f64)).collect();
         assert!(line(&[], Some(&many)).ends_with("(left out: 3)"));
     }
@@ -214,6 +216,39 @@ mod tests {
         assert_eq!(joined(text), Err("the start-up checks stopped: state.db could not be read".to_string()));
         let formatted = beside("test-panic-fmt", || -> u8 { panic!("step {} failed", 3) }).unwrap();
         assert_eq!(joined(formatted), Err("the start-up checks stopped: step 3 failed".to_string()));
+    }
+
+    /// The order guarantees of the setup, read from lib.rs as the code is (no window can be built in a test).
+    #[test]
+    fn the_setup_keeps_its_start_up_order_with_the_checks_beside_the_window() {
+        let lib = include_str!("lib.rs").replace("\r\n", "\n");
+        let at = |what: &str| lib.find(what).unwrap_or_else(|| panic!("lib.rs no longer has {what:?}"));
+        let once = |what: &str| assert_eq!(lib.matches(what).count(), 1, "{what:?} appears once");
+        for what in ["profile_move::run(", "startup_check_here(", "prepare_state(", "Store::open(", "backup_after(", "git::Git::detect()"] {
+            once(what);
+        }
+        // APP-001: the single-instance claim comes before everything it guards, the checks included.
+        assert!(at("lifecycle::claim_or_forward(app);") < at("beside(\"startup-checks\""));
+        assert!(at("beside(\"startup-checks\"") < at("tools::guarded_setup(app"), "the checks start before the window is built");
+        // Inside the thread: T-790's copy first, then APP-021's check (it can repair the folder), then APP-049's.
+        assert!(at("profile_move::run(") < at("startup_check_here(") && at("startup_check_here(") < at("prepare_state("));
+        assert!(at("prepare_state(") < at("tools::guarded_setup(app"));
+        // The body waits for them before it writes to the profile, opens the store or starts anything.
+        let join = at("startup_marks::joined(checks?)?");
+        for later in ["diag::write(&dir", "login_env::start()", "startup_scan(&dir)", "cli_register::path_at_start_now(&dir)", "Store::open(&prep.open_dir)", "beside(\"git-detect\"", "browser::helpers::sweep_at_start(&dir)"] {
+            assert!(join < at(later), "{later} must come after the checks are joined");
+        }
+        // APP-053: git is started inside the app's job.
+        assert!(at("procs::app_job_start()") < at("beside(\"git-detect\""));
+        // APP-049: the refresh is started only once the store is open, with the verdict taken at the check.
+        assert!(at("app.manage(Mutex::new(store));") < at("backup_after("));
+        assert!(lib.contains("backup_after(dir.clone(), prep.backup_worthwhile() && !upgrade_kept,"));
+        // The pre-upgrade copy is taken on the checks thread after the state check, so before the store opens.
+        assert!(at("prepare_state(") < at("copy_before_open(") && at("copy_before_open(") < at("tools::guarded_setup(app"));
+        assert!(at("Store::open(&prep.open_dir)") < at("stamp_version("), "the stamp says a version opened the store, so it follows the open");
+        assert!(!lib.contains("recovery::backup_state("), "no full copy on the setup path any more");
+        // The command the page calls is registered.
+        assert!(lib.contains("startup_marks::startup_report,"));
     }
 
     #[test]

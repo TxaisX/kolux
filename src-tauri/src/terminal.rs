@@ -102,6 +102,9 @@ struct Inner {
     logs: HashMap<u32, Arc<Mutex<OutputLog>>>,
     /// TERM-132: which sessions a program holds (alternate screen, mouse): `ALT | MOUSE` bits.
     owned: HashMap<u32, u8>,
+    /// Latency: when each session was last typed into (any session, shells too), so its echo can skip
+    /// the output batch's window (`ECHO_WINDOW`).
+    typed: HashMap<u32, Instant>,
     /// TERM-106: each session's output file, by pane key, replayed when the pane comes back after a restart.
     /// Behind its own lock (P2 perf), so a slow disk on one pane never holds the registry.
     hist: HashMap<u32, Arc<Mutex<History>>>,
@@ -151,6 +154,7 @@ impl Inner {
         // ORCH-059: the screen bits and snapshot go with the handle at once (the log stays for the
         // waiter, which keeps an automation run's tail and then drops it; `read` already refuses it).
         self.owned.remove(&id);
+        self.typed.remove(&id);
         self.snaps.remove(&id);
         if let Some(f) = self.flow.remove(&id) {
             f.release();
@@ -187,9 +191,20 @@ pub const SUPERSEDED: &str = "Another start for this pane came after this one.";
 /// T-792 (P2b-04): the history file gets the chunk through the diagnostics mask, made here before
 /// any lock is taken (review fix, finding 5), so the mask's work never holds other panes' output up;
 /// the snapshot and line log keep the chunk as it came.
+#[cfg(test)]
 fn take_chunk(registry: &Mutex<Inner>, id: u32, chunk: &[u8], is_program: bool) -> u64 {
+    take_chunk_echo(registry, id, chunk, is_program).0
+}
+
+/// Latency: how soon after a keystroke a session's output counts as its echo.
+const ECHO_WINDOW: Duration = Duration::from_millis(150);
+
+/// `take_chunk`, also saying whether the chunk answers typing (the session was typed into within
+/// `ECHO_WINDOW`), read under the same registry lock.
+fn take_chunk_echo(registry: &Mutex<Inner>, id: u32, chunk: &[u8], is_program: bool) -> (u64, bool) {
     let on_disk = crate::diag::scrub_bytes(chunk);
-    let Ok(mut inner) = registry.lock() else { return 0 };
+    let Ok(mut inner) = registry.lock() else { return (0, false) };
+    let echo = inner.typed.get(&id).is_some_and(|t| t.elapsed() < ECHO_WINDOW);
     let (seq, log, hist) = inner.book_chunk(id, chunk, is_program);
     let mut log_guard = lock(&log);
     let mut hist_guard = hist.as_deref().map(lock);
@@ -199,7 +214,7 @@ fn take_chunk(registry: &Mutex<Inner>, id: u32, chunk: &[u8], is_program: bool) 
     if let Some(h) = &mut hist_guard {
         h.append_masked(&on_disk);
     }
-    seq
+    (seq, echo)
 }
 
 impl Inner {
@@ -237,6 +252,7 @@ impl Inner {
         self.ended.remove(&id);
         self.logs.remove(&id);
         self.owned.remove(&id);
+        self.typed.remove(&id);
         self.hist.remove(&id);
         self.snaps.remove(&id);
         if let Some(f) = self.flow.remove(&id) {
@@ -1287,8 +1303,8 @@ impl Terminals {
                 // T-792: `take_chunk` masks the history file's copy before it takes any lock.
                 // ORCH-057: the count is taken under the registry lock with the snapshot tail, so a snapshot
                 // holds exactly the chunks whose count is not past its own.
-                let seq = take_chunk(&out_registry, id, chunk, is_program);
-                output_batch(&out_app).push(output_batch::OutputItem { id, data, pane: pane_key, generation: generation(), seq });
+                let (seq, echo) = take_chunk_echo(&out_registry, id, chunk, is_program);
+                output_batch(&out_app).push_echo(output_batch::OutputItem { id, data, pane: pane_key, generation: generation(), seq }, echo);
                 if let Some(dir) = link_dir.as_deref() {
                     for url in prs.feed(chunk) {
                         let linked = out_app.state::<Mutex<crate::state::Store>>().lock().is_ok_and(|s| crate::scm::link_printed(&s, dir, &url));
@@ -1320,6 +1336,7 @@ impl Terminals {
                     inner.ended.insert(id);
                     log = inner.logs.remove(&id);
                     inner.owned.remove(&id);
+                    inner.typed.remove(&id);
                     hist = inner.hist.remove(&id);
                     inner.snaps.remove(&id);
                     if let Some(f) = inner.flow.remove(&id) {
@@ -1426,6 +1443,7 @@ impl Terminals {
                 if let Some(m) = inner.marks.get_mut(&id) {
                     m.last_input = Some(Instant::now());
                 }
+                inner.typed.insert(id, Instant::now());
             }
             writer
         };
@@ -2754,6 +2772,28 @@ mod tests {
         t.fake_session(9, &dir, Some("claude"));
         assert_ne!(t.process_generation(9), Some(first), "the reused id is a new process");
         assert_eq!(t.process_generation(10), Some(other), "another pane is untouched");
+    }
+
+    /// Latency: output right after typing is marked as an echo (so it may skip the batch window); a
+    /// terminal's own reply, output long after the key, and output after the session ends are not.
+    #[test]
+    fn latency_output_right_after_typing_is_an_echo() {
+        let t = Terminals::default();
+        let dir = std::env::temp_dir().join(format!("kolux-echo-{}", std::process::id()));
+        let dirs = dir.to_string_lossy().into_owned();
+        t.fake_session(1, &dirs, None);
+        assert!(!take_chunk_echo(&t.inner, 1, b"banner\r\n", false).1, "nothing typed yet");
+        t.reply(1, "\x1b[1;1R").unwrap();
+        assert!(!take_chunk_echo(&t.inner, 1, b"x", false).1, "a terminal reply is not typing");
+        t.write(1, "k").unwrap();
+        assert!(take_chunk_echo(&t.inner, 1, b"k", false).1, "the echo of a key");
+        t.inner.lock().unwrap().typed.insert(1, Instant::now() - ECHO_WINDOW);
+        assert!(!take_chunk_echo(&t.inner, 1, b"later", false).1, "long after the key");
+        t.write(1, "k").unwrap();
+        let taken = t.inner.lock().unwrap().take_session(1);
+        end_taken(taken);
+        assert!(!t.inner.lock().unwrap().typed.contains_key(&1), "an ended session's typing goes with it");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// P2 perf: a pane whose history write stalls (a slow disk, a compaction) holds no lock another pane

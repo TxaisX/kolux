@@ -1810,6 +1810,9 @@ pub struct Change {
     pub path: String,
     pub staged: bool,
     pub code: char,
+    /// P2: the old path of a staged rename or copy (code `R` or `C`), as full as `path`; left out otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
 }
 
 /// Parses `git status --porcelain=v1 -z`. A file with staged and unstaged changes gives two
@@ -1823,15 +1826,14 @@ pub fn parse_status(text: &str, worktree: &Path) -> Vec<Change> {
             continue;
         }
         let (x, y) = (b[0] as char, b[1] as char);
-        if x == 'R' || x == 'C' {
-            parts.next(); // the old name follows a rename or a copy
-        }
+        // the old name follows a rename or a copy
+        let from = if x == 'R' || x == 'C' { parts.next().map(|old| worktree.join(native(old)).to_string_lossy().into_owned()) } else { None };
         let path = worktree.join(native(&entry[3..])).to_string_lossy().into_owned();
         if !matches!(x, ' ' | '?' | '!') {
-            list.push(Change { path: path.clone(), staged: true, code: x });
+            list.push(Change { path: path.clone(), staged: true, code: x, from });
         }
         if !matches!(y, ' ' | '!') {
-            list.push(Change { path, staged: false, code: y });
+            list.push(Change { path, staged: false, code: y, from: None });
         }
     }
     list
@@ -2180,11 +2182,11 @@ impl Git {
                 let disk = std::fs::metadata(&c.path).ok().map(|m| format!("{}-{:?}", m.len(), m.modified().ok())).unwrap_or_default();
                 if c.code == '?' {
                     let (lines, binary) = whole_file(&c.path);
-                    return Entry { path: c.path, staged: false, code: c.code, lines, binary, stamp: disk };
+                    return Entry { path: c.path, staged: false, code: c.code, lines, binary, stamp: disk, from: None };
                 }
                 let s = (if c.staged { &staged } else { &unstaged }).get(&rel).cloned().unwrap_or_default();
                 let stamp = if c.staged { s.ids } else { format!("{}|{disk}", s.ids) };
-                Entry { path: c.path, staged: c.staged, code: c.code, lines: s.lines, binary: s.binary, stamp }
+                Entry { path: c.path, staged: c.staged, code: c.code, lines: s.lines, binary: s.binary, stamp, from: c.from }
             })
             .collect())
     }
@@ -2201,6 +2203,9 @@ pub struct Entry {
     pub lines: Option<u64>,
     pub binary: bool,
     pub stamp: String,
+    /// P2: the old path of a staged rename or copy (see `Change::from`); left out otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
 }
 
 #[derive(Clone)]
@@ -2234,7 +2239,7 @@ pub fn base_entries(worktree: &Path, since: &str) -> Result<Vec<Entry>, String> 
             let s = &stats[rel];
             let path = worktree.join(native(rel)).to_string_lossy().into_owned();
             let disk = std::fs::metadata(&path).ok().map(|m| format!("{}-{:?}", m.len(), m.modified().ok())).unwrap_or_default();
-            Entry { path, staged: false, code: s.code, lines: s.lines, binary: s.binary, stamp: format!("{since}:{}|{disk}", s.ids) }
+            Entry { path, staged: false, code: s.code, lines: s.lines, binary: s.binary, stamp: format!("{since}:{}|{disk}", s.ids), from: None }
         })
         .collect();
     let untracked = output(&["ls-files", "--others", "--exclude-standard", "-z"], Some(worktree))?;
@@ -2242,7 +2247,7 @@ pub fn base_entries(worktree: &Path, since: &str) -> Result<Vec<Entry>, String> 
         let path = worktree.join(native(rel)).to_string_lossy().into_owned();
         let disk = std::fs::metadata(&path).ok().map(|m| format!("{}-{:?}", m.len(), m.modified().ok())).unwrap_or_default();
         let (lines, binary) = whole_file(&path);
-        out.push(Entry { path, staged: false, code: '?', lines, binary, stamp: disk });
+        out.push(Entry { path, staged: false, code: '?', lines, binary, stamp: disk, from: None });
     }
     Ok(out)
 }
@@ -2900,6 +2905,25 @@ mod tests {
         let list = parse_status("R  b.txt\0a.txt\0 D gone.txt\0", Path::new("r"));
         let got: Vec<_> = list.iter().map(|c| (c.path.ends_with("b.txt") || c.path.ends_with("gone.txt"), c.staged, c.code)).collect();
         assert_eq!(got, [(true, true, 'R'), (true, false, 'D')]);
+    }
+
+    /// P2: All Changes gets each entry's kind and, for a staged rename, the old path; nothing else
+    /// carries a `from`, and an entry without one serializes as before.
+    #[test]
+    fn change_entries_carry_a_staged_renames_old_path() {
+        let git = Git::detect().unwrap();
+        let repo = temp_repo("renamed");
+        fs::write(repo.join("gone.txt"), "bye\n").unwrap();
+        run(&["add", "gone.txt"], Some(&repo)).unwrap();
+        run(&["commit", "-q", "-m", "two"], Some(&repo)).unwrap();
+        run(&["mv", "README.md", "READ ME.md"], Some(&repo)).unwrap();
+        run(&["rm", "-q", "gone.txt"], Some(&repo)).unwrap();
+        let rel = |p: &str| PathBuf::from(p).strip_prefix(&repo).unwrap().to_string_lossy().into_owned();
+        let got: Vec<_> = git.change_entries(&repo).unwrap().into_iter().map(|e| (rel(&e.path), e.staged, e.code, e.from.as_deref().map(rel))).collect();
+        assert_eq!(got, [("READ ME.md".to_string(), true, 'R', Some("README.md".to_string())), ("gone.txt".to_string(), true, 'D', None)]);
+        let plain = serde_json::to_value(git.change_entries(&repo).unwrap().pop().unwrap()).unwrap();
+        assert!(plain.get("from").is_none(), "{plain}");
+        fs::remove_dir_all(&repo).unwrap();
     }
 
     #[test]

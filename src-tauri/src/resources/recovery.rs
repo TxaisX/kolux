@@ -1,7 +1,7 @@
 //! T-183: Kolux keeps running when its own ground gives way.
 //!
 //! - APP-049: a damaged state file never wipes the setup. The damaged file is set aside first, the
-//!   last good copy (`state.db.bak`, refreshed at every healthy start) takes its place, and when the
+//!   last good copy (`state.db.bak`, refreshed a little after every healthy start) takes its place, and when the
 //!   damaged file can neither be set aside nor read the session runs on a scratch store so nothing
 //!   overwrites it. A zero-byte file is missing, not damaged.
 //! - APP-021: broken folder permissions are found at startup (a write probe in the profile folder,
@@ -197,10 +197,69 @@ pub fn backup_state(dir: &Path) -> Result<(), String> {
     let tmp = dir.join("state.db.bak.tmp");
     let _ = fs::remove_file(&tmp);
     let conn = Connection::open_with_flags(&db, rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE).map_err(|e| e.to_string())?;
+    // PKG-5: the store is open beside it now; a moment's lock (a checkpoint) is waited out, as the store does.
+    conn.busy_timeout(Duration::from_secs(5)).map_err(|e| e.to_string())?;
     let target = tmp.to_string_lossy().replace('\'', "''");
     conn.execute_batch(&format!("VACUUM INTO '{target}'")).map_err(|e| e.to_string())?;
     drop(conn);
     fs::rename(&tmp, dir.join(STATE_BAK)).map_err(|e| e.to_string())
+}
+
+/// How long after start-up the last good copy is refreshed (PKG-5): past the first load, so the
+/// full copy of the file never competes with the window coming up.
+pub const BACKUP_DELAY: Duration = Duration::from_secs(10);
+
+/// APP-049 (PKG-5): `backup_state` on a thread of its own after `delay`, when `worthwhile` (the
+/// start-up check's verdict, taken before the store opened). The store is open by then: VACUUM INTO
+/// reads one consistent snapshot beside it (WAL), and only the store's own writes run at the same
+/// time; the set-aside and restore that need the file to themselves happen before the store opens,
+/// so always before this. A quit that has begun skips it; a quit while it runs ends the process
+/// with the copy still under its temporary name, which the next refresh removes first, so the last
+/// good copy is only ever replaced by a complete one. Returns the thread (for tests).
+pub fn backup_after(dir: PathBuf, worthwhile: bool, delay: Duration) -> Option<std::thread::JoinHandle<()>> {
+    backup_after_with(dir, worthwhile, delay, crate::final_save::quitting)
+}
+
+fn backup_after_with(dir: PathBuf, worthwhile: bool, delay: Duration, quitting: fn() -> bool) -> Option<std::thread::JoinHandle<()>> {
+    if !worthwhile {
+        return None;
+    }
+    std::thread::Builder::new()
+        .name("state-backup".into())
+        .spawn(move || {
+            std::thread::sleep(delay);
+            if quitting() {
+                return;
+            }
+            if let Err(e) = backup_state(&dir) {
+                crate::diag::write(&dir, &format!("the last good copy of state.db could not be refreshed: {e} (APP-049)"));
+            }
+        })
+        .ok()
+}
+
+/// Beside `state.db`: the app version that last opened it, one line. Written after a successful
+/// open, so a start that never got that far still counts as the version change it was.
+pub const VERSION_STAMP: &str = "state.db.version";
+
+/// Whether this start is the first by `version` on this profile: the stamp names another version,
+/// is missing (a first run, or a profile from before the stamp) or cannot be read.
+pub fn version_changed(dir: &Path, version: &str) -> bool {
+    fs::read_to_string(dir.join(VERSION_STAMP)).map_or(true, |s| s.trim() != version)
+}
+
+/// Notes that `version` opened the store in `dir` (tmp + rename, so a torn write reads as changed).
+pub fn stamp_version(dir: &Path, version: &str) -> Result<(), String> {
+    let tmp = dir.join(format!("{VERSION_STAMP}.tmp"));
+    fs::write(&tmp, format!("{version}\n")).and_then(|()| fs::rename(&tmp, dir.join(VERSION_STAMP))).map_err(|e| e.to_string())
+}
+
+/// APP-049 after PKG-5: the one start that still copies before the store opens is the first by a
+/// new app version, so the last good copy holds the previous version's state before this version
+/// changes it (an upgrade's change is the kind `quick_check` cannot see). `None`: no copy taken now
+/// (not worthwhile, or the same version ran last; the delayed refresh covers it).
+pub fn copy_before_open(dir: &Path, worthwhile: bool, version: &str) -> Option<Result<(), String>> {
+    (worthwhile && version_changed(dir, version)).then(|| backup_state(dir))
 }
 
 /// The scratch folder a frozen session runs on.
@@ -1540,6 +1599,96 @@ mod tests {
         assert_eq!(prep.open_dir, dir, "the store opens in the profile");
         assert!(prep.backup_worthwhile());
         assert_eq!(read_layout(&dir).as_deref(), Some("two panes"), "the earlier setup is back");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    // PKG-5: the refresh runs after the store opened, beside it.
+    fn bak_layout(dir: &Path) -> Option<String> {
+        let c = Connection::open_with_flags(dir.join(STATE_BAK), rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        c.query_row("SELECT value FROM kv WHERE key = 'layout'", [], |r| r.get(0)).ok()
+    }
+
+    #[test]
+    fn pkg5_the_delayed_refresh_copies_the_open_store_and_leaves_it_writable() {
+        let dir = temp("pkg5-beside");
+        let store = crate::state::Store::open(&dir).unwrap();
+        store.set("layout", "written while open").unwrap();
+        assert!(dir.join("state.db-wal").exists(), "the write sits in the WAL, as it does in a running app");
+        backup_after_with(dir.clone(), true, Duration::ZERO, || false).unwrap().join().unwrap();
+        assert_eq!(bak_layout(&dir).as_deref(), Some("written while open"), "the copy holds what the open store wrote");
+        assert_eq!(health(&dir.join(STATE_BAK)), Health::Ok);
+        assert!(!dir.join("state.db.bak.tmp").exists());
+        store.set("layout", "after the copy").unwrap();
+        assert_eq!(store.get("layout").unwrap().as_deref(), Some("after the copy"), "the store still writes");
+        drop(store);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pkg5_no_refresh_when_the_start_check_said_not_worthwhile_or_a_quit_has_begun() {
+        let dir = temp("pkg5-skip");
+        seeded(&dir);
+        assert!(backup_after_with(dir.clone(), false, Duration::ZERO, || false).is_none());
+        backup_after_with(dir.clone(), true, Duration::ZERO, || true).unwrap().join().unwrap();
+        assert!(!dir.join(STATE_BAK).exists(), "nothing is copied once the quit has begun");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pkg5_a_refresh_that_fails_or_was_cut_short_never_replaces_the_good_copy() {
+        let dir = temp("pkg5-torn");
+        seeded(&dir);
+        backup_state(&dir).unwrap();
+        // A quit mid-copy leaves the temporary file half written; the live file is then gone (a refresh that fails).
+        fs::write(dir.join("state.db.bak.tmp"), b"half a copy").unwrap();
+        for f in [STATE_FILE, "state.db-wal", "state.db-shm"] {
+            let _ = fs::remove_file(dir.join(f));
+        }
+        backup_after_with(dir.clone(), true, Duration::ZERO, || false).unwrap().join().unwrap();
+        assert_eq!(bak_layout(&dir).as_deref(), Some("two panes"), "the last good copy is untouched");
+        assert!(!dir.join("state.db.bak.tmp").exists(), "the torn temporary file is cleared, never renamed in");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pkg5_same_version_takes_no_copy_before_open() {
+        let dir = temp("pkg5-same");
+        seeded(&dir);
+        stamp_version(&dir, "1.2.3").unwrap();
+        assert!(!version_changed(&dir, "1.2.3"));
+        assert_eq!(copy_before_open(&dir, true, "1.2.3"), None, "the delayed refresh is the only copy");
+        assert!(!dir.join(STATE_BAK).exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pkg5_a_new_version_copies_the_pre_open_bytes_before_the_store_opens() {
+        let dir = temp("pkg5-upgrade");
+        seeded(&dir);
+        stamp_version(&dir, "1.2.2").unwrap();
+        assert_eq!(copy_before_open(&dir, true, "1.2.3"), Some(Ok(())));
+        // the new version opens and changes the store; the copy keeps what the old one left
+        let store = crate::state::Store::open(&dir).unwrap();
+        store.set("layout", "changed by the new version").unwrap();
+        stamp_version(&dir, "1.2.3").unwrap();
+        assert_eq!(bak_layout(&dir).as_deref(), Some("two panes"));
+        assert!(!version_changed(&dir, "1.2.3"), "the next start is an ordinary one");
+        assert_eq!(copy_before_open(&dir, false, "9.9.9"), None, "never when the check said not worthwhile");
+        drop(store);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pkg5_a_missing_or_unreadable_stamp_counts_as_a_new_version() {
+        let dir = temp("pkg5-stamp");
+        seeded(&dir);
+        assert!(version_changed(&dir, "1.2.3"), "first run ever, or a profile from before the stamp");
+        assert_eq!(copy_before_open(&dir, true, "1.2.3"), Some(Ok(())));
+        fs::write(dir.join(VERSION_STAMP), [0xff, 0xfe, 0x00]).unwrap();
+        assert!(version_changed(&dir, "1.2.3"), "bytes that are not text");
+        fs::remove_file(dir.join(VERSION_STAMP)).unwrap();
+        fs::create_dir(dir.join(VERSION_STAMP)).unwrap();
+        assert!(version_changed(&dir, "1.2.3"), "a stamp that cannot be read as a file");
         let _ = fs::remove_dir_all(&dir);
     }
 

@@ -306,7 +306,8 @@ pub fn pr_created() {
     with(|a| a.pr_created());
 }
 
-#[tauri::command]
+// Async: off the window's thread, with the usage page's other first read (`token_usage`).
+#[tauri::command(async)]
 pub fn activity_counts() -> Counts {
     with(|a| a.snapshot(now_ms()))
 }
