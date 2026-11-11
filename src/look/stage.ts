@@ -137,6 +137,9 @@ export function stagePicture(root: Root, vars: Record<string, string>, later: (r
   for (const name of NAMES) root.style.removeProperty?.(name);
   if (!key || !able() || !lights.every((c) => HEX.test(c ?? ""))) return;
   const glow = parseFloat(vars["--glass-glow"]) / 100;
+  // A picture that could not be made or read is forgotten, so the same look asks again the next time it is
+  // applied; otherwise one failure would leave that look on the gradients for as long as the window lives.
+  const failed = () => void (wanted.get(root) === key && wanted.delete(root));
   later(() => {
     if (wanted.get(root) !== key) return; // the look moved on before the window was idle: nothing is made for this one
     const [w, h] = STAGE_SIZE;
@@ -146,18 +149,15 @@ export function stagePicture(root: Root, vars: Record<string, string>, later: (r
     } catch {
       /* no picture: the gradients stay */
     }
-    if (!url) return;
+    if (!url) return failed();
     const src = url;
     const img = new Image();
     img.src = src;
-    void img.decode().then(
-      () => {
-        if (wanted.get(root) !== key) return; // the look changed while this one was being read
-        root.style.setProperty("--glass-stage", `url("${src}")`);
-        root.style.setProperty("--glass-stage-size", `${stretch("100vw", w)} ${stretch("100vh", h)}`);
-      },
-      () => {},
-    );
+    void img.decode().then(() => {
+      if (wanted.get(root) !== key) return; // the look changed while this one was being read
+      root.style.setProperty("--glass-stage", `url("${src}")`);
+      root.style.setProperty("--glass-stage-size", `${stretch("100vw", w)} ${stretch("100vh", h)}`);
+    }, failed);
   });
 }
 
