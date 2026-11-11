@@ -103,6 +103,8 @@ const settle = async () => {
   for (let i = 0; i < 4; i++) await Promise.resolve();
 };
 const PIC = (n: number) => `url("data:image/png;base64,PIC${n}")`;
+/** Stands in for "when the window is idle": at once, or (below) kept until the test lets it run. */
+const now = (run: () => void) => run();
 
 beforeEach(() => {
   waiting = [];
@@ -113,6 +115,7 @@ beforeEach(() => {
   vi.stubGlobal("HTMLImageElement", Picture);
   vi.stubGlobal("Image", Picture);
   vi.stubGlobal("ImageData", class { constructor(public data: Uint8ClampedArray, public width: number, public height: number) { sized.push(data.length, width, height); } });
+  vi.stubGlobal("requestIdleCallback", (run: () => void) => run());
   vi.stubGlobal("document", { documentElement: { dataset: {} }, createElement: () => ({ width: 0, height: 0, getContext: () => pen, toDataURL: () => `data:image/png;base64,PIC${++encoded}` }) });
 });
 afterEach(() => {
@@ -121,7 +124,7 @@ afterEach(() => {
 
 test("DT-C264: the picture goes on the window only once it can be drawn, as --glass-stage with its own size", async () => {
   const r = root();
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   expect([...r.set.keys()], "the gradients draw until then").toEqual([]);
   expect(waiting.length).toBe(1);
   waiting[0].ok();
@@ -136,22 +139,22 @@ test("DT-C264: the picture goes on the window only once it can be drawn, as --gl
 
 test("DT-C264: the same look again draws nothing again", async () => {
   const r = root();
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   waiting[0].ok();
   await settle();
-  stagePicture(r, { ...GLASS });
+  stagePicture(r, { ...GLASS }, now);
   expect(encoded).toBe(1);
   expect(r.set.get("--glass-stage")).toBe(PIC(1));
 });
 
 test("DT-C264: a change of colour or strength takes the old picture off at once, and a picture that arrives late is dropped", async () => {
   const r = root();
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   waiting[0].ok();
   await settle();
-  stagePicture(r, { ...GLASS, "--glass-glow": "90%" });
+  stagePicture(r, { ...GLASS, "--glass-glow": "90%" }, now);
   expect([...r.set.keys()], "the gradients show the new light straight away").toEqual([]);
-  stagePicture(r, { ...GLASS, "--glass-tint": "#d4a23a" });
+  stagePicture(r, { ...GLASS, "--glass-tint": "#d4a23a" }, now);
   expect(waiting.length).toBe(3);
   waiting[1].ok(); // the 90 % picture, now out of date
   await settle();
@@ -163,13 +166,13 @@ test("DT-C264: a change of colour or strength takes the old picture off at once,
 
 test("DT-C264: Flat takes the picture and its size off, and a picture that cannot be read leaves the gradients", async () => {
   const r = root();
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   waiting[0].ok();
   await settle();
-  stagePicture(r, { "--app-bg": "#050405" });
+  stagePicture(r, { "--app-bg": "#050405" }, now);
   expect([...r.set.keys()]).toEqual([]);
   expect(encoded).toBe(1);
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   waiting[1].fail();
   await settle();
   expect([...r.set.keys()]).toEqual([]);
@@ -191,10 +194,40 @@ test("DT-C264: applying a look hands its own values over, and the picture never 
   expect([...r.set.keys()].filter((k) => k.startsWith("--glass-stage"))).toEqual([]);
 });
 
+test("DT-C264: the picture is made when the window is idle, and only for the look still wanted by then", async () => {
+  const r = root();
+  const idle: (() => void)[] = [];
+  const later = (run: () => void) => void idle.push(run);
+  // a drag of the strength slider: five looks before the window is idle once
+  for (const glow of ["60%", "62%", "64%", "66%", "68%"]) stagePicture(r, { ...GLASS, "--glass-glow": glow }, later);
+  expect(encoded, "nothing is drawn while the looks keep coming").toBe(0);
+  expect(idle.length).toBe(5);
+  for (const run of idle) run();
+  expect(encoded, "one picture, for the last look").toBe(1);
+  waiting[0].ok();
+  await settle();
+  expect(r.set.get("--glass-stage")).toBe(PIC(1));
+  // with no idle callback in the web view, a short timer stands in
+  vi.unstubAllGlobals();
+  vi.stubGlobal("HTMLImageElement", Picture);
+  vi.stubGlobal("Image", Picture);
+  vi.stubGlobal("ImageData", class { constructor(public data: Uint8ClampedArray, public width: number, public height: number) {} });
+  vi.stubGlobal("document", { createElement: () => ({ width: 0, height: 0, getContext: () => pen, toDataURL: () => `data:image/png;base64,PIC${++encoded}` }) });
+  vi.useFakeTimers();
+  try {
+    stagePicture(r, { ...GLASS, "--glass-glow": "70%" });
+    expect(encoded).toBe(1);
+    vi.advanceTimersByTime(100);
+    expect(encoded).toBe(2);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("DT-C264: each window root is remembered on its own", async () => {
   const [a, b] = [root(), root()];
-  stagePicture(a, GLASS);
-  stagePicture(b, GLASS);
+  stagePicture(a, GLASS, now);
+  stagePicture(b, GLASS, now);
   expect(waiting.length, "the same look on another root is drawn for that root").toBe(2);
   waiting[0].ok();
   waiting[1].ok();
@@ -206,21 +239,21 @@ test("DT-C264: each window root is remembered on its own", async () => {
 test("DT-C264: where no picture can be made the gradients stay (no canvas, a colour that is not a plain hex, no way to wait)", () => {
   const r = root();
   pen = null;
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   expect(waiting.length).toBe(0);
   expect(r.set.has("--glass-stage")).toBe(false);
   pen = { putImageData: () => {} };
   forgetStage();
-  stagePicture(r, { ...GLASS, "--glass-mate": "rebeccapurple" });
+  stagePicture(r, { ...GLASS, "--glass-mate": "rebeccapurple" }, now);
   expect(waiting.length).toBe(0);
   vi.stubGlobal("HTMLImageElement", class {});
   forgetStage();
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   expect(waiting.length).toBe(0);
   expect(r.set.has("--glass-stage"), "a window that cannot wait for a picture never gets one").toBe(false);
   vi.unstubAllGlobals();
   forgetStage();
-  stagePicture(r, GLASS);
+  stagePicture(r, GLASS, now);
   expect(r.set.has("--glass-stage"), "and neither does a place with no window at all").toBe(false);
 });
 

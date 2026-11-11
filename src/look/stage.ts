@@ -39,51 +39,58 @@ export const stretch = (box: string, n: number): string => `calc(${box} * ${n} /
 
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
-/** How much of a pool's light there is `d` of the way out along its ellipse: straight lines between its stops. */
-function shareAt(stops: readonly (readonly [number, number])[], d: number): number {
-  if (d <= stops[0][1]) return stops[0][0];
-  for (let i = 1; i < stops.length; i++) {
-    const [to, at] = stops[i];
-    const [from, start] = stops[i - 1];
-    if (d <= at) return from + ((to - from) * (d - start)) / (at - start);
+/** How much of a pool's light there is `d` of the way out along its ellipse: straight lines between its
+ *  stops, given flat as share, place, share, place and so on. */
+function shareAt(stops: Float64Array, d: number): number {
+  if (d <= stops[1]) return stops[0];
+  for (let k = 2; k < stops.length; k += 2) {
+    if (d <= stops[k + 1]) return stops[k - 2] + ((stops[k] - stops[k - 2]) * (d - stops[k - 1])) / (stops[k + 1] - stops[k - 1]);
   }
   return 0;
 }
 
 /** The stage as pixels (red, green, blue, opacity; not premultiplied), `w` by `h`, for the stage's lights
  *  (the metal first) and the glow (0 to 1). The same sum glass.css asks the browser for: the wash of the
- *  metal, then each pool over it. */
+ *  metal, then each pool over it. A cell's centre is a point of the window: the first cell's on its left
+ *  (or top) edge, the last one's on the other (`stretch`). Each pool is worked out only over the cells it
+ *  can reach, which is most of the saving: together the four reach under a whole window's worth. */
 export function stagePixels(w: number, h: number, lights: readonly string[], glow: number): Uint8ClampedArray {
-  const out = new Uint8ClampedArray(w * h * 4);
   const inks = [0, 1, 2].map((i) => rgb(lights[i] ?? lights[0]));
-  const wash = glow * WASH;
-  // the last pool listed lies lowest
-  const pools = [...STAGE_POOLS].reverse().map((p) => ({ ...p, ink: inks[p.light], reach: p.stops[p.stops.length - 1][1] }));
-  // a cell's centre is a point of the window: the first on its left (or top) edge, the last on the other (`stretch`)
-  for (let j = 0; j < h; j++) {
-    const v = (j / (h - 1)) * 100;
-    for (let i = 0; i < w; i++) {
-      const u = (i / (w - 1)) * 100;
-      let [r, g, b] = inks[0];
-      let a = wash;
-      for (const p of pools) {
-        const d = Math.hypot((u - p.x) / p.rx, (v - p.y) / p.ry);
-        if (d >= p.reach) continue;
-        const pa = glow * POOL * shareAt(p.stops, d);
-        const sum = pa + a * (1 - pa);
-        if (sum <= 0) continue;
-        r = (p.ink[0] * pa + r * a * (1 - pa)) / sum;
-        g = (p.ink[1] * pa + g * a * (1 - pa)) / sum;
-        b = (p.ink[2] * pa + b * a * (1 - pa)) / sum;
-        a = sum;
+  // every cell starts as the wash (opacity is kept in levels, 0 to 255): one cell written, then copied over the rest
+  const sum = new Float64Array(w * h * 4);
+  sum.set([...inks[0], glow * WASH * 255]);
+  for (let done = 4; done < sum.length; done *= 2) sum.copyWithin(done, 0, Math.min(done, sum.length - done));
+  const clamp = (n: number, top: number) => Math.min(top, Math.max(0, n));
+  // the last pool listed lies lowest, so it goes down first
+  for (const p of [...STAGE_POOLS].reverse()) {
+    const [r, g, b] = inks[p.light];
+    const stops = Float64Array.from(p.stops.flat());
+    const reach = stops[stops.length - 1];
+    const i0 = clamp(Math.floor(((p.x - reach * p.rx) / 100) * (w - 1)), w - 1);
+    const i1 = clamp(Math.ceil(((p.x + reach * p.rx) / 100) * (w - 1)), w - 1);
+    const j0 = clamp(Math.floor(((p.y - reach * p.ry) / 100) * (h - 1)), h - 1);
+    const j1 = clamp(Math.ceil(((p.y + reach * p.ry) / 100) * (h - 1)), h - 1);
+    for (let j = j0; j <= j1; j++) {
+      const dy = ((j / (h - 1)) * 100 - p.y) / p.ry;
+      for (let i = i0; i <= i1; i++) {
+        const dx = ((i / (w - 1)) * 100 - p.x) / p.rx;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= reach * reach) continue;
+        const share = glow * POOL * shareAt(stops, Math.sqrt(d2));
+        const at = (j * w + i) * 4;
+        const over = share * 255;
+        const under = sum[at + 3] * (1 - share);
+        const all = over + under;
+        if (all <= 0) continue;
+        sum[at] = (r * over + sum[at] * under) / all;
+        sum[at + 1] = (g * over + sum[at + 1] * under) / all;
+        sum[at + 2] = (b * over + sum[at + 2] * under) / all;
+        sum[at + 3] = all;
       }
-      const at = (j * w + i) * 4;
-      out[at] = r;
-      out[at + 1] = g;
-      out[at + 2] = b;
-      out[at + 3] = a * 255;
     }
   }
+  const out = new Uint8ClampedArray(w * h * 4);
+  out.set(sum); // rounds each value to the nearest whole level
   return out;
 }
 
@@ -109,37 +116,49 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const NAMES = ["--glass-stage", "--glass-stage-size"] as const;
 let wanted = new WeakMap<object, string>(); // per root: the lights and glow its newest picture is for ("" while flat)
 
+/** When the picture is made: once the window has nothing better to do, so that a start, or a drag of the
+ *  strength slider, never waits on it. The gradients draw until then. */
+const whenIdle = (run: () => void): void => {
+  if (typeof requestIdleCallback === "function") requestIdleCallback(run, { timeout: 400 });
+  else setTimeout(run, 60);
+};
+
 /** Puts the stage's picture on `root` for the look values just written there (`vars`), or takes it off when
  *  those hold no glass. A change of colour or strength takes the old picture off at once, so the
- *  stylesheet's gradients draw the new light straight away; the new picture replaces them once it can be
- *  drawn. Its size goes in a value of its own, because glass.css also names the stage inside a list of
+ *  stylesheet's gradients draw the new light straight away; the new picture is made when the window is
+ *  idle (`later`), only for the look that is still wanted by then, and replaces the gradients once it can
+ *  be drawn. Its size goes in a value of its own, because glass.css also names the stage inside a list of
  *  pictures, where a size cannot travel with it. */
-export function stagePicture(root: Root, vars: Record<string, string>): void {
+export function stagePicture(root: Root, vars: Record<string, string>, later: (run: () => void) => void = whenIdle): void {
   const lights = [vars["--glass-tint"], vars["--glass-mate"], vars["--glass-third"]];
   const key = lights[0] ? [...lights, vars["--glass-glow"]].join(" ") : "";
   if (key === (wanted.get(root) ?? "")) return;
   wanted.set(root, key);
   for (const name of NAMES) root.style.removeProperty?.(name);
   if (!key || !able() || !lights.every((c) => HEX.test(c ?? ""))) return;
-  const [w, h] = STAGE_SIZE;
-  let url: string | null = null;
-  try {
-    url = encode(stagePixels(w, h, lights, parseFloat(vars["--glass-glow"]) / 100), w, h);
-  } catch {
-    /* no picture: the gradients stay */
-  }
-  if (!url) return;
-  const src = url;
-  const img = new Image();
-  img.src = src;
-  void img.decode().then(
-    () => {
-      if (wanted.get(root) !== key) return; // the look changed while this one was being read
-      root.style.setProperty("--glass-stage", `url("${src}")`);
-      root.style.setProperty("--glass-stage-size", `${stretch("100vw", w)} ${stretch("100vh", h)}`);
-    },
-    () => {},
-  );
+  const glow = parseFloat(vars["--glass-glow"]) / 100;
+  later(() => {
+    if (wanted.get(root) !== key) return; // the look moved on before the window was idle: nothing is made for this one
+    const [w, h] = STAGE_SIZE;
+    let url: string | null = null;
+    try {
+      url = encode(stagePixels(w, h, lights, glow), w, h);
+    } catch {
+      /* no picture: the gradients stay */
+    }
+    if (!url) return;
+    const src = url;
+    const img = new Image();
+    img.src = src;
+    void img.decode().then(
+      () => {
+        if (wanted.get(root) !== key) return; // the look changed while this one was being read
+        root.style.setProperty("--glass-stage", `url("${src}")`);
+        root.style.setProperty("--glass-stage-size", `${stretch("100vw", w)} ${stretch("100vh", h)}`);
+      },
+      () => {},
+    );
+  });
 }
 
 /** For tests: forget what was last drawn. */
