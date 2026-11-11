@@ -83,6 +83,20 @@ test("DT-C264: the Inbox's two sheets are the plainest glass: the fill, edge lin
   expect(sheets).not.toMatch(/--glass-(depth|stage|a|b|c)\b|--metal-hi/);
 });
 
+test("DT-C265: a picker is too large to frost: the one blur rule leaves it out, and it is a solid sheet with the glass edges", () => {
+  const bare = css.replace(/\/\*[^]*?\*\//g, "");
+  const rules = bare.split("}").map((r) => r.trim()).filter(Boolean);
+  const blurred = rules.filter((r) => /backdrop-filter/.test(r));
+  expect(blurred.length, "still one blur rule, and the picker's own rule names no blur at all").toBe(1);
+  const frosted = blurred[0].slice(0, blurred[0].indexOf("{")).split(",").map((x) => x.trim());
+  expect(frosted, "a plain menu is frosted, a picker is not").toContain(':root[data-finish="glass"] .menu:not(.note-picker)');
+  expect(frosted.some((x) => /\.menu$/.test(x) || /\.palette|\.note-picker$/.test(x))).toBe(false);
+  const picker = rules.find((r) => r.startsWith(':root[data-finish="glass"] .menu.note-picker {'))!;
+  // its ground is the fill itself, solid: the first of the grounds text is matched to
+  expect(picker).toMatch(/background: var\(--glass-head\);/);
+  expect(picker).toMatch(/box-shadow: var\(--glass-spec\), var\(--glass-float\);/);
+});
+
 // ---- the hand-over, with a canvas and a picture that can be waited for standing in (tests have no window) ----
 type Waiting = { ok: () => void; fail: () => void };
 let waiting: Waiting[] = [];

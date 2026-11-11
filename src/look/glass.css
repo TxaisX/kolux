@@ -174,7 +174,7 @@
    through. Most of it is its own fill (--glass-pop): whatever lies behind (a white PDF page under a dark
    menu, a dark terminal under a light one) can move its ground only that little, which keeps every label
    at 4.5:1 (glass.test.ts). Light mode's dim text sits close to that bar already, so its pops are nearly solid. ---- */
-:root[data-finish="glass"] .menu,
+:root[data-finish="glass"] .menu:not(.note-picker),
 :root[data-finish="glass"] .sb-menu,
 :root[data-finish="glass"] .review-pop,
 :root[data-finish="glass"] .tab-switcher,
@@ -197,3 +197,7 @@
 /* ---- pages laid over the window: nearly solid sheets (large and long-lived, so no blur), the same edges ---- */
 :root[data-finish="glass"] .settings-panel,
 :root[data-finish="glass"] .onb { border-color: var(--glass-line); box-shadow: var(--glass-spec), var(--glass-float); }
+/* DT-C265: a picker (Go to / Run a command, tab search, the file and template pickers) is a menu by its
+   class but a page by its size, 560 by 500. Blurring what lies behind that much cost a frame or two every
+   time one opened, for a twelfth of what it shows. It is a solid sheet with the same edges. */
+:root[data-finish="glass"] .menu.note-picker { background: var(--glass-head); border-color: var(--glass-line); box-shadow: var(--glass-spec), var(--glass-float); }

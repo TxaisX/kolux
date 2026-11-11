@@ -1145,4 +1145,6 @@ What the work was built from: this repository's own code, tests, guide and recor
 
 A board of screenshots of the new look was made for Txais in Claude's own design canvas, from captures of this app's window. It is outside the repository.
 
+To put a number on "as fast as Claude" (DT-C265), Claude Code, the command-line program that was already installed in the cloud container, was started in a pseudo-terminal with an empty home folder and a placeholder key: no account, and no prompt was ever sent. Keys were written to it and the time until it answered was recorded, on its own and running inside a Kolux pane. That is all that was taken from it: how long it takes. None of its code, files, pages or documents was opened or read, and nothing about how it looks or works was copied. The Claude desktop app was still not opened.
+
 Later the same day the cost of drawing the glass was measured and cut (DT-C264). The measuring used this repository's own build in two places: the Linux harness above, and a headless Chromium (the engine WebView2 is built on) loading the built front end with a stand-in for the backend written in the session. The stage picture is worked out from the stylesheet's own gradients; nothing outside the repository was read for it.
