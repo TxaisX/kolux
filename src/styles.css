@@ -279,7 +279,10 @@ input { font: inherit; }
 .sb-new { display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; margin: 4px 8px 8px; border: 1px solid var(--button-border); border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--fg); }
 .sb-new:hover { background: var(--row-selected); }
 /* plus menu: a fixed popover over everything, with a click-away backdrop (SESS-004) */
-.menu-backdrop { position: fixed; inset: 0; z-index: var(--z-page); }
+/* DT-C266: this sheet takes the click outside a menu and draws nothing, yet putting it in the window made
+   WebKit redraw the whole window under it, once when a menu or a picker opened and once when it closed.
+   On a layer of its own there is nothing to draw and nothing under it is drawn again. It is always empty. */
+.menu-backdrop { position: fixed; inset: 0; z-index: var(--z-page); will-change: transform; }
 .menu { position: fixed; z-index: var(--z-menu); min-width: 230px; padding: 6px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 13px; max-height: calc(100vh - 16px); overflow-y: auto; }
 .menu-title { padding: 4px 8px 6px; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .menu-hint { padding: 4px 8px; font-size: 12px; color: var(--fg-faint); }

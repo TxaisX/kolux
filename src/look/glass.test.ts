@@ -14,6 +14,14 @@ const rules: string[] = css
   .split("}")
   .map((r: string) => r.trim())
   .filter(Boolean);
+/** What a rule sets one property to (its last declaration of it, as CSS reads it). */
+const decl = (rule: string, prop: string) => [...rule.slice(rule.indexOf("{") + 1).matchAll(new RegExp(`(?:^|;)\\s*${prop}:([^;]+)`, "g"))].pop()?.[1].replace(/\s+/g, " ").trim();
+/** The rule that opens with this selector (written without the finish it sits under). */
+const ruleFor = (selector: string) => rules.find((r) => r.startsWith(`:root[data-finish="glass"] ${selector} {`) || r.startsWith(`:root[data-finish="glass"] ${selector},`))!;
+const selectorsOf = (rule: string) => rule.slice(0, rule.indexOf("{")).split(",").map((s) => s.trim().replace(':root[data-finish="glass"]', "").trim());
+/** An edge line: one ink, one pixel thick, along the top, the left or the bottom of the box. */
+const STRIP = /^linear-gradient\((var\(--glass-[a-z-]+\)), \1\) (0 0|0 100%) \/ (100% 1px|1px 100%) no-repeat$/;
+const baseCss: string = nodeFs.readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 
 test("DT-C249: nothing saved, or an unknown finish, is the glass look; Flat is kept once chosen and writes none of the glass values", () => {
   expect(readAppearance({}).finish).toBe("glass");
@@ -206,7 +214,8 @@ test("DT-C249: only what floats over live content and is small is blurred; the b
 // that the labels it carries still read at 4.5:1 there, for every theme and both modes.
 test("DT-C249: a frosted pop keeps its labels readable whatever lies behind it", () => {
   const blurred = rules.find((r) => /backdrop-filter/.test(r))!;
-  expect(blurred).toMatch(/background: color-mix\(in srgb, var\(--glass-head\) var\(--glass-pop\), transparent\);/);
+  // its ground is that share of the fill; the only thing over it is the light along its top and left edge
+  expect(decl(blurred, "background")).toBe("var(--glass-glint), color-mix(in srgb, var(--glass-head) var(--glass-pop), transparent)");
   const shares = [...css.matchAll(/--glass-pop: (\d+)%;/g)].map((m) => Number(m[1]) / 100);
   expect(shares.length, "one share for dark, one for light").toBe(2);
   const lightRule = rules.find((r) => r.startsWith(':root[data-finish="glass"][data-mode="light"]'))!;
@@ -284,12 +293,133 @@ test("DT-C249: the stage is never brighter than what text is matched to, and no 
   const panels = rules.filter((r) => r.slice(0, r.indexOf("{")).split(",").some((s) => panel.test(s.trim())));
   expect(panels.length).toBeGreaterThanOrEqual(4);
   for (const r of panels) {
-    const bg = r.match(/background:([^;]+);/)?.[1] ?? "";
-    expect(bg, r.slice(0, 60)).not.toMatch(/--metal-hi|#fff|white|--glass-(a|b|c|tint|mate|third|stage)\b/);
+    // the ground is every layer but the one-pixel edge lines (DT-C266 draws those as strips of background)
+    // (the light inks the strips are drawn in are named here too: as a strip they are an edge and are taken
+    // off above; as a whole layer, or laid on through background-image, they would lighten the ground)
+    const bg = [groundOf(r).join(", "), decl(r, "background-image") ?? ""].join(", ");
+    expect(bg, r.slice(0, 60)).not.toMatch(/--metal-hi|#fff|white|--glass-(a|b|c|tint|mate|third|stage|spec-top|spec-side|bar-ink|foot-ink|key-ink)\b/);
   }
+  // those inks are light, which is why they are named: each is the metal's highlight or white
+  for (const ink of ["spec-top", "spec-side", "bar-ink", "foot-ink", "key-ink"]) expect(css, ink).toMatch(new RegExp(`--glass-${ink}: (color-mix\\(in srgb, var\\(--metal-hi\\)|rgba\\(255, 255, 255)`));
   // a pane's header runs from the fill to the pane's own ground: both grounds text is already matched to
   const head = rules.find((r) => /\.pane-head$/.test(r.slice(0, r.indexOf("{")).trim()))!;
-  expect(head).toMatch(/background: linear-gradient\(180deg, var\(--glass-head\), var\(--pane-bg\)\);/);
+  expect(decl(head, "background")).toBe("var(--glass-glint), linear-gradient(180deg, var(--glass-head), var(--pane-bg))");
+  expect(groundOf(head)).toEqual(["linear-gradient(180deg, var(--glass-head), var(--pane-bg))"]);
+});
+
+/** The layers of a rule's background that are its ground: what is left once the edge lines are taken off. */
+function groundOf(rule: string): string[] {
+  return topLevel(decl(rule, "background") ?? "").filter((layer) => layer && !/^var\(--glass-(rim|glint)\)$/.test(layer) && !STRIP.test(layer));
+}
+
+// DT-C266. WebKit draws each box-shadow layer in a pass of its own the size of the box, and opening anything
+// redraws the whole window, so the finish has no shadow on anything that is always on screen. These hold that,
+// and hold what stands in for each shadow.
+test("DT-C266: the finish throws one shadow, under a sheet that floats, and it is one layer", () => {
+  const FLOATS = [".menu:not(.note-picker)", ".sb-menu", ".review-pop", ".tab-switcher", ".about-panel", ".ask", ".tip-card", ".upd-card", ".upd-pop", ".settings-panel", ".onb", ".menu.note-picker"];
+  const shadowed = rules.filter((r) => /box-shadow:/.test(r) && decl(r, "box-shadow") !== "none");
+  for (const r of shadowed) {
+    expect(decl(r, "box-shadow"), r.slice(0, 70)).toBe("var(--glass-float)");
+    for (const s of selectorsOf(r)) expect(FLOATS, s).toContain(s);
+  }
+  expect(shadowed.flatMap(selectorsOf).sort(), "and each sheet that floats does throw it").toEqual([...FLOATS].sort());
+  const floats = [...css.matchAll(/--glass-float: ([^;]+);/g)].map((m) => m[1]);
+  expect(floats.length, "one for dark, one for light").toBe(2);
+  for (const f of floats) {
+    expect(topLevel(f).length, f).toBe(1);
+    expect(f).not.toMatch(/inset/);
+  }
+  // no other value in the stylesheet is a shadow under another name
+  for (const [, name, value] of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/(--[a-z-]+):\s*([^;]+);/g)) {
+    if (name !== "--glass-float") expect(value, name).not.toMatch(/^(inset\b|-?[0-9.]+(px)? -?[0-9.]+(px)? )/);
+  }
+  // a pane has the flat look's inner line (a shadow) to take off, and the Inbox's sheets take theirs off too
+  expect(baseCss).toMatch(/\n\.pane \{[^}]*box-shadow: inset 0 0 0 1px var\(--line-inner\);/);
+  expect(decl(ruleFor(".pane:not(.glow)"), "box-shadow")).toBe("none");
+});
+
+test("DT-C266: an edge line is a one-pixel strip of background in the edge's own inks", () => {
+  const root = rules.find((r) => r.startsWith(':root[data-finish="glass"] {'))!;
+  const strips = (name: string) => topLevel(root.match(new RegExp(`--glass-${name}:([^;]+);`))![1].replace(/\s+/g, " ").trim());
+  const [rim, glint] = [strips("rim"), strips("glint")];
+  for (const s of rim) expect(s, s).toMatch(STRIP);
+  expect(rim.length).toBe(3);
+  expect(glint, "the glint is the rim's light without its shade").toEqual(rim.slice(0, 2));
+  // every sheet that had the lines as shadows has them as strips, in front of its ground
+  for (const sel of [".grid > .empty", ".sidebar", ".sidebar-wrap:not(.right) > .sidebar:not(.scm)", '#root > [role="alert"]']) expect(topLevel(decl(ruleFor(sel), "background")!)[0], sel).toBe("var(--glass-rim)");
+  for (const sel of [".pane-head", '.rside-tab[aria-selected="true"]', '.tab[aria-selected="true"]', ".menu:not(.note-picker)", ".settings-panel", ".menu.note-picker"]) expect(topLevel(decl(ruleFor(sel), "background")!)[0], sel).toBe("var(--glass-glint)");
+  // the bars and the small controls draw their own single lines the same way
+  for (const sel of [".topbar", ".statusbar"]) expect(STRIP.test(topLevel(decl(ruleFor(sel), "background")!)[0]), sel).toBe(true);
+  for (const sel of [".switcher", ".btn"]) {
+    const r = ruleFor(sel);
+    expect(decl(r, "background-image"), sel).toMatch(/^linear-gradient\((var\(--glass-[a-z-]+\)), \1\)$/);
+    expect([decl(r, "background-size"), decl(r, "background-repeat")], sel).toEqual(["100% 1px", "no-repeat"]);
+  }
+  // the top bar's dark underline is its own border, with the hairline a strip just inside it
+  const bar = ruleFor(".topbar");
+  expect(decl(bar, "border-bottom-color")).toBe("var(--glass-under)");
+  expect(topLevel(decl(bar, "background")!)[1]).toBe("linear-gradient(var(--glass-line), var(--glass-line)) 0 100% / 100% 1px no-repeat");
+});
+
+test("DT-C266: the focused pane is lit by its border and a ring of the metal's light, not by a shadow", () => {
+  const lit = ruleFor(".pane.focused:not(.glow)");
+  expect(decl(lit, "border-color")).toMatch(/var\(--metal-hi\)/);
+  const ring = decl(lit, "outline")!.match(/^([0-9]+)px solid color-mix\(in srgb, var\(--glass-tint\) ([0-9]+)%, transparent\)$/)!;
+  // it lies in the gap between two panes, which is 6px wide unless the user changed it
+  expect(Number(ring[1])).toBeGreaterThanOrEqual(2);
+  expect(Number(ring[1])).toBeLessThanOrEqual(3);
+  expect(baseCss).toMatch(/\n\.grid \{[^}]*gap: var\(--divider-width, 6px\);/);
+  expect(Number(ring[2])).toBeGreaterThanOrEqual(15);
+  expect(lit).not.toMatch(/box-shadow/);
+  // every other pane has no ring, so only one is drawn
+  expect(ruleFor(".pane:not(.glow)")).not.toMatch(/outline/);
+  // where there is no room round the pane there is no ring to spill: a zoomed or classic grid runs edge to edge
+  expect(baseCss).toMatch(/\n\.grid\.zoomed, \.grid\.classic \{ margin: 0;/);
+  const edgeToEdge = ruleFor(".grid.zoomed .pane.focused:not(.glow)");
+  expect(selectorsOf(edgeToEdge)).toEqual([".grid.zoomed .pane.focused:not(.glow)", ".grid.classic .pane.focused:not(.glow)"]);
+  expect(decl(edgeToEdge, "outline")).toBe("none");
+  // and on the Board, whose sides clip what its cards draw outside themselves, the ring lies inside the card
+  expect(baseCss).toMatch(/\n\.board \{[^}]*overflow-y: auto;/);
+  expect(decl(ruleFor(".board .pane.focused:not(.glow)"), "outline-offset")).toBe(`-${ring[1]}px`);
+});
+
+test("DT-C266: what a side card throws on the stage is a dark strip in the gutter under it", () => {
+  // the gutter is the wrapper's own padding: 8px under the card, and 8px beside it on the window's side
+  expect(baseCss).toMatch(/\n\.sidebar-wrap \{[^}]*padding: 8px 0 8px 8px;/);
+  expect(baseCss).toMatch(/\n\.rside \{[^}]*padding: 8px 8px 8px 0;/);
+  expect(baseCss).toMatch(/\n\.rail-wrap\.classic \{ padding: 0; \}/);
+  expect(decl(ruleFor(".sidebar-wrap:not(.right):not(.classic)"), "background")).toBe("var(--glass-cast) 8px 100% / calc(100% - 8px) 8px no-repeat");
+  // the right panel only while the Explorer shows: its other tabs' sheets are short, and a shade at the panel's foot would lie under nothing
+  expect(decl(ruleFor(".rside:has(> .rside-body > .explorer:not([hidden]))"), "background")).toBe("var(--glass-cast) 0 100% / calc(100% - 8px) 8px no-repeat");
+  expect(rules.filter((r) => /var\(--glass-cast\)/.test(r) && !r.startsWith(':root[data-finish="glass"] {')).length, "the two gutters and nowhere else").toBe(2);
+  expect(selectorsOf(ruleFor(".rside:has(> .rside-body > .explorer:not([hidden]))"))).toEqual([".rside:has(> .rside-body > .explorer:not([hidden]))", ".rside:has(> .rside-body > .sidebar-wrap)"]);
+  // those two are the cards that fill the panel's height
+  expect(baseCss).toMatch(/\n\.rside-body > \.explorer \{ width: auto; flex: 1; margin: 0; \}/);
+  expect(baseCss).toMatch(/\n\.rside-body > \.sidebar-wrap\.right \{ flex: 1;/);
+  expect(css).toMatch(/--glass-cast: linear-gradient\(90deg, transparent, var\(--glass-cast-ink\) 36px, var\(--glass-cast-ink\) calc\(100% - 36px\), transparent\);/);
+  const inks = [...css.matchAll(/--glass-cast-ink: rgba\(([0-9]+), ([0-9]+), ([0-9]+), ([0-9.]+)\);/g)];
+  expect(inks.length, "one for dark, one for light").toBe(2);
+  for (const m of inks) {
+    expect(Math.max(Number(m[1]), Number(m[2]), Number(m[3])), "a shade, never a light").toBeLessThanOrEqual(40);
+    expect(Number(m[4])).toBeLessThanOrEqual(0.3);
+  }
+});
+
+test("DT-C266: the sheet that takes the click outside a menu is on a layer of its own and draws nothing, in both finishes", () => {
+  // in the window's own stylesheet, so Flat has it too; nothing to draw, so the layer holds no picture
+  expect(baseCss).toMatch(/\n\.menu-backdrop \{ position: fixed; inset: 0; z-index: var\(--z-page\); will-change: transform; \}/);
+  expect(css, "the finish adds nothing to it").not.toMatch(/menu-backdrop/);
+  // and it is always empty, so there are no children whose place a layer could move
+  const files = import.meta.glob("../**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+  let seen = 0;
+  for (const [file, text] of Object.entries(files)) {
+    if (/\.test\.tsx$/.test(file)) continue;
+    for (const m of text.matchAll(/<div\b[^<>]*?menu-backdrop[^<>]*?(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^<>]*?)*(\/?)>/g)) {
+      seen++;
+      expect(m[1], `${file}: a backdrop with something inside it`).toBe("/");
+    }
+  }
+  expect(seen).toBeGreaterThanOrEqual(25);
 });
 
 test("DT-C249: a pressed control's brushed metal keeps its label readable, at the bright end and the dark end", () => {

@@ -60,22 +60,22 @@ test("DT-C264: a stronger glow is a stronger picture, and no glow is an empty on
   expect(sum(0.9)).toBeGreaterThan(sum(0.25));
 });
 
-test("DT-C264: the Inbox's two sheets are the plainest glass: the fill, edge lines as strips of background in the inks the shadow lines use, no depth and no shadow", () => {
+test("DT-C264: the Inbox's two sheets are the plainest glass: the fill, edge lines as strips of background in the edge's own inks, no depth and no shadow", () => {
   const bare = css.replace(/\/\*[^]*?\*\//g, "");
   const dark = bare.match(/:root\[data-finish="glass"\] \{([^}]*)\}/)![1];
   const light = bare.match(/:root\[data-finish="glass"\]\[data-mode="light"\] \{([^}]*)\}/)![1];
-  // one definition of each line's ink, read by the shadow form and by the strip form
-  expect(dark).toMatch(/--glass-spec: inset 0 1px 0 var\(--glass-spec-top\), inset 1px 0 0 var\(--glass-spec-side\);/);
-  expect(dark).toMatch(/--glass-shade: inset 0 -1px 0 var\(--glass-shade-ink\);/);
+  // one definition of each line's ink, and since DT-C266 one form: the lines are strips everywhere, shadows nowhere
+  expect(dark).not.toMatch(/--glass-(spec|shade):/);
+  for (const ink of ["--glass-spec-top", "--glass-spec-side", "--glass-shade-ink"]) expect(dark, ink).toMatch(new RegExp(`${ink}: [^;]+;`));
   const rim = dark.match(/--glass-rim:([^;]+);/)![1].replace(/\s+/g, " ").trim();
   expect(rim).toBe(
     "linear-gradient(var(--glass-spec-top), var(--glass-spec-top)) 0 0 / 100% 1px no-repeat, " +
       "linear-gradient(var(--glass-spec-side), var(--glass-spec-side)) 0 0 / 1px 100% no-repeat, " +
       "linear-gradient(var(--glass-shade-ink), var(--glass-shade-ink)) 0 100% / 100% 1px no-repeat",
   );
-  // light mode changes the inks, never the two forms, so the two cannot drift apart
+  // light mode changes the inks, never the strips made of them
   for (const ink of ["--glass-spec-top", "--glass-spec-side", "--glass-shade-ink"]) expect(light, ink).toMatch(new RegExp(`${ink}: [^;]+;`));
-  expect(light).not.toMatch(/--glass-(spec|shade|rim):/);
+  expect(light).not.toMatch(/--glass-(spec|shade|rim|glint):/);
   const sheets = bare.split("}").map((r) => r.trim()).find((r) => /\.inbox \.list,\s*:root\[data-finish="glass"\] \.inbox \.detail \{/.test(r))!;
   expect(sheets).toMatch(/background: var\(--glass-rim\), var\(--glass-fill\);/);
   expect(sheets).toMatch(/box-shadow: none;/);
@@ -92,9 +92,10 @@ test("DT-C265: a picker is too large to frost: the one blur rule leaves it out, 
   expect(frosted, "a plain menu is frosted, a picker is not").toContain(':root[data-finish="glass"] .menu:not(.note-picker)');
   expect(frosted.some((x) => /\.menu$/.test(x) || /\.palette|\.note-picker$/.test(x))).toBe(false);
   const picker = rules.find((r) => r.startsWith(':root[data-finish="glass"] .menu.note-picker {'))!;
-  // its ground is the fill itself, solid: the first of the grounds text is matched to
-  expect(picker).toMatch(/background: var\(--glass-head\);/);
-  expect(picker).toMatch(/box-shadow: var\(--glass-spec\), var\(--glass-float\);/);
+  // its ground is the fill itself, solid: the first of the grounds text is matched to. Over it lies only the
+  // light along its top and left edge, a strip of background (DT-C266), and it throws the one floating shadow.
+  expect(picker).toMatch(/background: var\(--glass-glint\), var\(--glass-head\);/);
+  expect(picker).toMatch(/box-shadow: var\(--glass-float\);/);
 });
 
 // ---- the hand-over, with a canvas and a picture that can be waited for standing in (tests have no window) ----

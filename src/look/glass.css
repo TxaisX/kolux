@@ -12,7 +12,7 @@
      --glass-gap    what shows between the panes: the stage on its floor, or nothing when the gaps have a colour of their own
    theme.ts also re-states each text colour that would read worse on a glass ground than it did on the flat look.
 
-   One light, from the top left. Three rules keep this cheap and readable:
+   One light, from the top left. Four rules keep this cheap and readable:
    1. The stage is a still picture: a pool of light in each corner and a thin wash, drawn once. The big
       panels are see-through fills over it. Nothing behind them moves, so they need no blur;
       backdrop-filter is used only on what floats over live content and is small (menus, pops, small
@@ -21,7 +21,14 @@
       the grounds text is matched to (glassGrounds in glass.ts). Anything laid over that moves the ground
       toward --app-bg, never toward the text. Light belongs to edges: a line along the top and left of a
       sheet, a darker one along the bottom. Terminals and editors keep their solid ground.
-   3. Nothing here moves: no transition and no animation, so a click is answered in the frame it lands in. */
+   3. Nothing here moves: no transition and no animation, so a click is answered in the frame it lands in.
+   4. DT-C266: the finish throws one shadow, under a sheet that floats (a menu, a pop, a picker, Settings).
+      Nothing else here has a box-shadow. WebKit draws every shadow layer, a one-pixel inset line as much
+      as a blurred lift, in a pass of its own the size of the box, and a click that opens anything redraws
+      the whole window: the 56 layers this file used to put on the four-pane window made that redraw half
+      again as long as the flat look's. An edge line is a one-pixel strip of background (--glass-rim,
+      --glass-glint), what a side card throws on the stage is a short strip in the gutter under it
+      (--glass-cast), and the focused pane is lit by its border and a ring. glass.test.ts holds this. */
 
 :root[data-finish="glass"] {
   --metal-hi: color-mix(in srgb, var(--glass-tint) 30%, #ffffff);
@@ -52,17 +59,29 @@
   --glass-spec-top: color-mix(in srgb, var(--metal-hi) 42%, transparent);
   --glass-spec-side: color-mix(in srgb, var(--metal-hi) 12%, transparent);
   --glass-shade-ink: color-mix(in srgb, var(--metal-lo) 55%, transparent);
-  --glass-spec: inset 0 1px 0 var(--glass-spec-top), inset 1px 0 0 var(--glass-spec-side);
-  --glass-shade: inset 0 -1px 0 var(--glass-shade-ink);
-  /* DT-C264: the same three lines as one-pixel strips of background, for a sheet so large that drawing them
-     as shadows is felt (the Inbox's two): the light along the top and the left, the shade along the bottom */
+  /* DT-C264, DT-C266: those lines, each a one-pixel strip of background. The rim is a sheet's whole edge:
+     the light along the top and the left, the shade along the bottom. The glint is the light alone, for
+     what has an edge of its own below it (a pane's header, a tab) or throws a shadow there (what floats). */
   --glass-rim:
     linear-gradient(var(--glass-spec-top), var(--glass-spec-top)) 0 0 / 100% 1px no-repeat,
     linear-gradient(var(--glass-spec-side), var(--glass-spec-side)) 0 0 / 1px 100% no-repeat,
     linear-gradient(var(--glass-shade-ink), var(--glass-shade-ink)) 0 100% / 100% 1px no-repeat;
-  /* what a sheet throws on the stage under it, and what a floating one throws */
-  --glass-lift: 0 1px 0 rgba(0, 0, 0, 0.35), 0 18px 36px -18px rgba(0, 0, 0, 0.75);
-  --glass-float: 0 2px 6px rgba(0, 0, 0, 0.3), 0 24px 60px -16px rgba(0, 0, 0, 0.8);
+  --glass-glint:
+    linear-gradient(var(--glass-spec-top), var(--glass-spec-top)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--glass-spec-side), var(--glass-spec-side)) 0 0 / 1px 100% no-repeat;
+  /* a bar's own lines: the light along its top (fainter on the bar at the foot of the window), the dark
+     line under the top bar, the dark inside the top of a recessed track, the light on a button's top */
+  --glass-bar-ink: color-mix(in srgb, var(--metal-hi) 22%, transparent);
+  --glass-foot-ink: color-mix(in srgb, var(--metal-hi) 8%, transparent);
+  --glass-under: rgba(0, 0, 0, 0.4);
+  --glass-track-ink: color-mix(in srgb, var(--metal-lo) 45%, transparent);
+  --glass-key-ink: color-mix(in srgb, var(--metal-hi) 14%, transparent);
+  /* what a side card throws on the stage: a soft dark strip in the gutter under it, fading out toward
+     its two ends */
+  --glass-cast-ink: rgba(0, 0, 0, 0.3);
+  --glass-cast: linear-gradient(90deg, transparent, var(--glass-cast-ink) 36px, var(--glass-cast-ink) calc(100% - 36px), transparent);
+  /* what a floating sheet throws: one layer (rule 4) */
+  --glass-float: 0 24px 60px -16px rgba(0, 0, 0, 0.8);
   /* how much of a frosted pop is its own fill (the rest is what lies behind it, blurred) */
   --glass-pop: 92%;
 }
@@ -71,8 +90,9 @@
   --glass-spec-top: rgba(255, 255, 255, 0.95);
   --glass-spec-side: rgba(255, 255, 255, 0.6);
   --glass-shade-ink: color-mix(in srgb, var(--metal-lo) 8%, transparent);
-  --glass-lift: 0 1px 1px rgba(16, 24, 40, 0.05), 0 16px 32px -18px rgba(16, 24, 40, 0.3);
-  --glass-float: 0 2px 6px rgba(16, 24, 40, 0.08), 0 24px 60px -16px rgba(16, 24, 40, 0.35);
+  --glass-track-ink: color-mix(in srgb, var(--metal-lo) 14%, transparent);
+  --glass-cast-ink: rgba(16, 24, 40, 0.12);
+  --glass-float: 0 24px 60px -16px rgba(16, 24, 40, 0.35);
   --glass-pop: 97%;
 }
 
@@ -103,23 +123,25 @@
   place-self: center;
   flex: none;
   padding: 26px 40px 28px;
-  background: var(--glass-depth), var(--glass-fill);
+  background: var(--glass-rim), var(--glass-depth), var(--glass-fill);
   border: 1px solid var(--glass-line);
   border-radius: 16px;
-  box-shadow: var(--glass-spec), var(--glass-shade), var(--glass-lift);
 }
 
 /* ---- bars: the thinnest sheets ---- */
+/* The top bar's own edge is its hairline over a dark line. The dark line is its border and the hairline a
+   strip just inside it, so both are drawn with the bar and neither is a shadow. */
 :root[data-finish="glass"] .topbar,
 :root[data-finish="glass"] .titlebar {
-  background: var(--glass-depth), var(--glass-fill);
-  border-bottom-color: var(--glass-line);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 22%, transparent), 0 1px 0 rgba(0, 0, 0, 0.4);
+  background:
+    linear-gradient(var(--glass-bar-ink), var(--glass-bar-ink)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--glass-line), var(--glass-line)) 0 100% / 100% 1px no-repeat,
+    var(--glass-depth), var(--glass-fill);
+  border-bottom-color: var(--glass-under);
 }
 :root[data-finish="glass"] .statusbar {
-  background: var(--glass-depth), var(--glass-fill);
+  background: linear-gradient(var(--glass-foot-ink), var(--glass-foot-ink)) 0 0 / 100% 1px no-repeat, var(--glass-depth), var(--glass-fill);
   border-top-color: var(--glass-line);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 8%, transparent);
 }
 :root[data-finish="glass"] .strip { background: none; }
 
@@ -127,27 +149,43 @@
 :root[data-finish="glass"] .sidebar,
 :root[data-finish="glass"] .explorer,
 :root[data-finish="glass"] .rside-body > :not(.explorer):not(.sidebar-wrap) {
-  background: var(--glass-depth), var(--glass-fill);
+  background: var(--glass-rim), var(--glass-depth), var(--glass-fill);
   border-color: var(--glass-line);
-  box-shadow: var(--glass-spec), var(--glass-shade), var(--glass-lift);
 }
-:root[data-finish="glass"] .sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--glass-depth), var(--glass-side); }
+:root[data-finish="glass"] .sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--glass-rim), var(--glass-depth), var(--glass-side); }
 /* The right panel's other tabs draw no card of their own, so their text would sit on the stage: each gets
-   the sheet (its edge drawn inside, so nothing moves). */
-:root[data-finish="glass"] .rside-body > :not(.explorer):not(.sidebar-wrap) { border-radius: 12px; box-shadow: inset 0 0 0 1px var(--glass-line), var(--glass-spec), var(--glass-lift); }
+   the sheet, its hairline an outline drawn inside (so nothing moves, and it follows the corners). */
+:root[data-finish="glass"] .rside-body > :not(.explorer):not(.sidebar-wrap) { border-radius: 12px; outline: 1px solid var(--glass-line); outline-offset: -1px; }
+/* A card stands off the stage: the shade it throws lies in the gutter under it, which its wrapper draws
+   (the wrapper has no ground of its own and carries no text). The Agents rail's classic look has no gutter. */
+:root[data-finish="glass"] .sidebar-wrap:not(.right):not(.classic) { background: var(--glass-cast) 8px 100% / calc(100% - 8px) 8px no-repeat; }
+/* The right panel throws it only while a card that fills it shows (the Explorer, or a wrapped card such as
+   Checks). Its other tabs' sheets are only as tall as what they hold, so a shade at the panel's foot would
+   lie on the stage with nothing over it. */
+:root[data-finish="glass"] .rside:has(> .rside-body > .explorer:not([hidden])),
+:root[data-finish="glass"] .rside:has(> .rside-body > .sidebar-wrap) { background: var(--glass-cast) 0 100% / calc(100% - 8px) 8px no-repeat; }
 :root[data-finish="glass"] .sb-foot,
 :root[data-finish="glass"] .explorer-head { border-color: var(--glass-line); }
 :root[data-finish="glass"] .sb-divider { background: var(--glass-line); }
 :root[data-finish="glass"] .rside-tab { background: var(--glass-well); }
-:root[data-finish="glass"] .rside-tab[aria-selected="true"] { background: var(--glass-fill); border-color: var(--glass-line); box-shadow: var(--glass-spec); }
+:root[data-finish="glass"] .rside-tab[aria-selected="true"] { background: var(--glass-glint), var(--glass-fill); border-color: var(--glass-line); }
 
 /* ---- panes: a solid screen set in a glass bezel; the focused one is lit ---- */
-:root[data-finish="glass"] .pane:not(.glow) { border-color: var(--glass-line); box-shadow: inset 0 0 0 1px var(--line-inner), var(--glass-lift); }
+/* No shadow at all, the flat look's inner line included: the bezel is the border. The focused pane is lit
+   by a brighter border and a ring of the metal's light around it, which is an outline: it follows the
+   corners, moves nothing and costs a fraction of what the glow it replaces did (only this one pane has it). */
+:root[data-finish="glass"] .pane:not(.glow) { border-color: var(--glass-line); box-shadow: none; }
 :root[data-finish="glass"] .pane.focused:not(.glow) {
   border-color: color-mix(in srgb, var(--metal-hi) 52%, var(--line-focus));
-  box-shadow: inset 0 0 0 1px var(--line-inner), 0 0 0 1px color-mix(in srgb, var(--glass-tint) 26%, transparent), 0 0 22px -6px color-mix(in srgb, var(--glass-tint) 60%, transparent), var(--glass-lift);
+  outline: 3px solid color-mix(in srgb, var(--glass-tint) 22%, transparent);
 }
-:root[data-finish="glass"] .pane-head { background: linear-gradient(180deg, var(--glass-head), var(--pane-bg)); box-shadow: var(--glass-spec); }
+/* The ring needs room round the pane. A zoomed or classic grid has none (its panes run edge to edge, so the
+   ring would lie over the bars): there the brighter border alone shows focus, as in the flat look. On the
+   Board the cards touch the board's sides, which cut the ring off, so it is drawn just inside the card. */
+:root[data-finish="glass"] .grid.zoomed .pane.focused:not(.glow),
+:root[data-finish="glass"] .grid.classic .pane.focused:not(.glow) { outline: none; }
+:root[data-finish="glass"] .board .pane.focused:not(.glow) { outline-offset: -3px; }
+:root[data-finish="glass"] .pane-head { background: var(--glass-glint), linear-gradient(180deg, var(--glass-head), var(--pane-bg)); }
 /* DT-C264: the Inbox's two sheets are the largest glass there is and are drawn afresh every time the Inbox
    opens, so they are the plainest: the fill alone with the stage's light coming through it (no depth laid
    over), their edge lines drawn as strips of background, and no shadow thrown (they fill the work area, so
@@ -156,19 +194,22 @@
 :root[data-finish="glass"] .inbox .detail { background: var(--glass-rim), var(--glass-fill); border-color: var(--glass-line); box-shadow: none; }
 
 /* ---- controls: a recessed track, brushed metal on the pressed state (whose text is the brightest ink) ---- */
+/* A track's recess is a dark line inside its top edge, a button's light a line along its top: strips laid
+   over whatever ground the control already has. */
 :root[data-finish="glass"] .switcher,
 :root[data-finish="glass"] .layouts,
-:root[data-finish="glass"] .searchbox { border-color: var(--glass-line); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--metal-lo) 70%, transparent); }
+:root[data-finish="glass"] .searchbox { border-color: var(--glass-line); background-image: linear-gradient(var(--glass-track-ink), var(--glass-track-ink)); background-size: 100% 1px; background-repeat: no-repeat; }
 :root[data-finish="glass"] .switcher button[aria-pressed="true"],
 :root[data-finish="glass"] .layouts button[aria-pressed="true"],
 :root[data-finish="glass"] .topbar-right .bell[aria-pressed="true"] {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--metal-hi) 12%, var(--seg-active)), var(--seg-active) 52%, color-mix(in srgb, var(--metal-lo) 22%, var(--seg-active)));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 30%, transparent), 0 1px 1px rgba(0, 0, 0, 0.35);
+  background:
+    linear-gradient(color-mix(in srgb, var(--metal-hi) 30%, transparent), color-mix(in srgb, var(--metal-hi) 30%, transparent)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--metal-hi) 12%, var(--seg-active)), var(--seg-active) 52%, color-mix(in srgb, var(--metal-lo) 22%, var(--seg-active)));
 }
 :root[data-finish="glass"] .btn,
-:root[data-finish="glass"] .sb-new { border-color: var(--glass-line); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 14%, transparent); }
+:root[data-finish="glass"] .sb-new { border-color: var(--glass-line); background-image: linear-gradient(var(--glass-key-ink), var(--glass-key-ink)); background-size: 100% 1px; background-repeat: no-repeat; }
 :root[data-finish="glass"] .tab { border-color: var(--glass-line); }
-:root[data-finish="glass"] .tab[aria-selected="true"] { border-color: color-mix(in srgb, var(--metal-hi) 34%, transparent); box-shadow: var(--glass-spec); }
+:root[data-finish="glass"] .tab[aria-selected="true"] { background: var(--glass-glint), var(--pane-bg); border-color: color-mix(in srgb, var(--metal-hi) 34%, transparent); }
 
 /* ---- what floats over live content and is small: frosted, so what is behind blurs instead of showing
    through. Most of it is its own fill (--glass-pop): whatever lies behind (a white PDF page under a dark
@@ -183,21 +224,20 @@
 :root[data-finish="glass"] .tip-card,
 :root[data-finish="glass"] .upd-card,
 :root[data-finish="glass"] .upd-pop {
-  background: color-mix(in srgb, var(--glass-head) var(--glass-pop), transparent);
+  background: var(--glass-glint), color-mix(in srgb, var(--glass-head) var(--glass-pop), transparent);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   backdrop-filter: blur(20px) saturate(160%);
   border-color: var(--glass-line);
-  box-shadow: var(--glass-spec), var(--glass-float);
+  box-shadow: var(--glass-float);
 }
-
 /* The page that stands in when the window's drawing fails has no ground of its own: a sheet, so its words
    are never on the bare stage. */
-:root[data-finish="glass"] #root > [role="alert"] { background: var(--glass-depth), var(--glass-fill); border: 1px solid var(--glass-line); border-radius: 14px; box-shadow: var(--glass-spec), var(--glass-lift); }
+:root[data-finish="glass"] #root > [role="alert"] { background: var(--glass-rim), var(--glass-depth), var(--glass-fill); border: 1px solid var(--glass-line); border-radius: 14px; }
 
 /* ---- pages laid over the window: nearly solid sheets (large and long-lived, so no blur), the same edges ---- */
 :root[data-finish="glass"] .settings-panel,
-:root[data-finish="glass"] .onb { border-color: var(--glass-line); box-shadow: var(--glass-spec), var(--glass-float); }
+:root[data-finish="glass"] .onb { background: var(--glass-glint), var(--pane-bg); border-color: var(--glass-line); box-shadow: var(--glass-float); }
 /* DT-C265: a picker (Go to / Run a command, tab search, the file and template pickers) is a menu by its
    class but a page by its size, 560 by 500. Blurring what lies behind that much cost a frame or two every
    time one opened, for a twelfth of what it shows. It is a solid sheet with the same edges. */
-:root[data-finish="glass"] .menu.note-picker { background: var(--glass-head); border-color: var(--glass-line); box-shadow: var(--glass-spec), var(--glass-float); }
+:root[data-finish="glass"] .menu.note-picker { background: var(--glass-glint), var(--glass-head); border-color: var(--glass-line); box-shadow: var(--glass-float); }
