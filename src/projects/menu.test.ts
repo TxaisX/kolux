@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "./singleFolder";
 import { deletePlan, descendants, fileManagerName, groupMenu, projectMenu, rowMenu, type MenuFor } from "./menu";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 const base: MenuFor = { count: 1, isMain: false, asleep: false, deleting: false, platform: "Win32", alt: false, statuses: [{ id: "todo", label: "To do" }], editors: [{ label: "VS Code", command: "code" }] };
 const ids = (o: Partial<MenuFor>) => rowMenu({ ...base, ...o }).map((i) => i.id);

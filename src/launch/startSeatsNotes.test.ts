@@ -1,5 +1,9 @@
 // SESS-025: the handoff notes of a Start are asked for together, and each seat still gets its own note in seat order.
-import { expect, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 const h = vi.hoisted(() => ({ asked: [] as string[], open: 0, most: 0, prompts: [] as string[] }));
 vi.mock("@tauri-apps/api/core", () => ({

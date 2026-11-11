@@ -13,6 +13,10 @@ task needs from the table in part 2, and open only that file.
   hidden, and clicking the folder shows every pane opened there in one grid. Work still goes through a branch and a pull request, so every change has a
   reviewable record. The agent-issued `kolux worktree create` command and the backend PR/branch
   workspace commands still exist; removing them is the next change.
+- **2026-11-11, own folders by default (DT-C273).** Txais: "we do not want our agents to be tripping
+  over each other." "Own folder for each agent" is now on unless a person turns it off, so in a
+  Git project a launch with two or more AI seats gives each its own worktree. Everything below
+  about the choice still holds; only which way Kolux starts has changed.
 - **2026-11-11, own folders as a choice.** One folder per project stays the way Kolux starts, and
   everything in the 2026-11-05 change holds while this choice is off: no launch makes a worktree.
   A person can turn on "Own folder for each agent" in Settings, Git & worktrees. While it is on,

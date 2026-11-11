@@ -2,11 +2,14 @@
 // button follows `closable`, the model row appears once an AI is picked.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
 import ChooserPane, { sheetKey } from "./ChooserPane";
 import type { AgentInfo } from "./PlusMenu";
 import { defaultCopies, pickShape, sheetStart, TERMINAL, type Copies, type SavedShape, type Seat, type Shape } from "./seats";
 import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:\\bin\\claude.exe", docs: true };
 const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(seats.length, inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
@@ -272,6 +275,6 @@ test("DT-C250: the folder choice shows only while own folders are on, and starts
     expect(noGit).toContain("Not a Git project");
     expect(render([{ agent: "claude", model: "opus" }]).split("<input").filter((b) => b.includes('name="copies-2"'))[1], "one seat shares").toContain("checked");
   } finally {
-    setOwnFolders({});
+    setOwnFolders({ [OWN_FOLDERS_FIELD]: false });
   }
 });
