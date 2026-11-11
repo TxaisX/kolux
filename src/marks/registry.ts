@@ -15,6 +15,8 @@ export type VendorMarkEntry = {
   maker: string;
   light: string;
   dark: string;
+  /** Draw the picture this many times larger: for a kit file with a wide empty border (file unchanged, larger on screen). */
+  scale?: number;
 };
 
 export const VENDOR_MARKS: readonly VendorMarkEntry[] = [
@@ -23,7 +25,10 @@ export const VENDOR_MARKS: readonly VendorMarkEntry[] = [
   { id: "claude-agent-teams", name: "Claude Agent Teams", maker: "Anthropic", light: "anthropic-claude-spark.svg", dark: "anthropic-claude-spark.svg" },
   // Cursor's kit names its cube "DARK" when it is the pale one for dark surfaces and "LIGHT" for the dark one for light surfaces.
   { id: "cursor", name: "Cursor", maker: "Anysphere", light: "cursor-cube-for-light.svg", dark: "cursor-cube-for-dark.svg" },
-  { id: "codex", name: "Codex", maker: "OpenAI", light: "openai-blossom-black.svg", dark: "openai-blossom-white.svg" },
+  { id: "codex", name: "Codex", maker: "OpenAI", light: "openai-blossom-black.svg", dark: "openai-blossom-white.svg", scale: 1.9 },
+  // Txais 2026-11-11: the featured agents in the seat picker wear their own kit marks.
+  { id: "opencode", name: "OpenCode", maker: "Anomaly", light: "opencode-logo-for-light.svg", dark: "opencode-logo-for-dark.svg" },
+  { id: "grok", name: "Grok", maker: "SpaceXSI", light: "grok-logomark-for-light.svg", dark: "grok-logomark-for-dark.svg" },
   { id: "copilot", name: "GitHub Copilot", maker: "GitHub", light: "github-copilot-icon-black.svg", dark: "github-copilot-icon-white.svg" },
   { id: "github", name: "GitHub", maker: "GitHub", light: "github-invertocat-black.svg", dark: "github-invertocat-white.svg" },
   { id: "vscode", name: "VS Code", maker: "Microsoft", light: "vscode-icon.svg", dark: "vscode-icon.svg" },
@@ -68,8 +73,6 @@ export const NAME_ONLY: readonly NameOnlyEntry[] = [
   { id: "rovo", name: "Rovo Dev" },
   { id: "hermes", name: "Hermes" },
   { id: "openclaw", name: "OpenClaw" },
-  { id: "opencode", name: "OpenCode" },
-  { id: "grok", name: "Grok" },
   // Providers that appear only in usage views.
   { id: "minimax", name: "MiniMax" },
   // Open-in editors, shells and terminal apps (tool ids).

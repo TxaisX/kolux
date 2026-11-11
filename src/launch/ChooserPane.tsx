@@ -16,6 +16,7 @@ import { Close, Dots } from "../chrome/icons";
 import { openSettings } from "../settings/pages";
 import { launchWarnings, useLaunchUsage } from "../usage/launchWarn";
 import VendorMark from "../chrome/VendorMark";
+import AgentMark from "../marks/AgentMark";
 import { markFor, type AgentInfo } from "./PlusMenu";
 import { canLaunch, type AgentPass } from "./agents";
 import { firstSeatStart, seatStart, type SeatDefault } from "./defaultSeat";
@@ -530,25 +531,25 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
                   </span>
                 )}
                 {!detecting && (
-                  <div className="choices" role="group" data-testid={`seat-${i + 1}-agents`} aria-label={`Seat ${i + 1}: which AI`}>
+                  <div className="agent-grid" role="group" data-testid={`seat-${i + 1}-agents`} aria-label={`Seat ${i + 1}: which AI`}>
                     {featuredRows(rows).map((a) => (
                       <button key={a.id} className="btn agent-btn" data-testid={`seat-agent-${a.id}`} aria-pressed={shownPick(seats, shown, i) === a.id} title={a.installed ? a.name : `${a.name} is not installed. Pick it to install it.`} onClick={() => chooseAgent(i, a.id)}>
-                        <VendorMark agent={markFor(a.id)} size={12} />
-                        {a.name}
+                        <AgentMark id={a.id} size={28} />
+                        <span className="agent-btn-name">{a.name}</span>
                         {!a.installed && <span className="agent-btn-note">not installed</span>}
                       </button>
                     ))}
                     <button className="btn agent-btn" data-testid="seat-agent-terminal" aria-pressed={shownPick(seats, shown, i) === TERMINAL} title="A plain terminal, no AI" onClick={() => chooseAgent(i, TERMINAL)}>
-                      <VendorMark agent="shell" size={12} />
-                      Terminal
+                      <VendorMark agent="shell" size={28} />
+                      <span className="agent-btn-name">Terminal</span>
                     </button>
                     {(() => {
                       const pick = shownPick(seats, shown, i);
                       const other = pick && pick !== TERMINAL && !FEATURED.includes(pick) ? rows.find((x) => x.id === pick) : undefined;
                       return (
                         <button className="btn agent-btn" aria-pressed={!!other} aria-haspopup="dialog" title="Pick any other installed AI program" onClick={() => setOtherFor(i)}>
-                          {other && <VendorMark agent={markFor(other.id)} size={12} />}
-                          {other ? `Other: ${other.name}` : "Other…"}
+                          {other ? <AgentMark id={other.id} size={28} /> : <Dots size={28} />}
+                          <span className="agent-btn-name">{other ? `Other: ${other.name}` : "Other…"}</span>
                         </button>
                       );
                     })()}
