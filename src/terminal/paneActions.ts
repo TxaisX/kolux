@@ -61,7 +61,7 @@ import { splitTabOut } from "./tabSplit";
 import { tabBadge } from "./tabs";
 import { forgetView } from "./viewKeep";
 import { invoke } from "@tauri-apps/api/core";
-import { SINGLE_FOLDER } from "../projects/singleFolder";
+import { singleFolder } from "../projects/singleFolder";
 
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
   const {
@@ -385,7 +385,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
     // VIEW-042: actions on the worktree in front, not runnable while none is open
     // T-798 (P4B-01): both rows are left out while worktrees are off, as their chords and menu items are.
-    ...(SINGLE_FOLDER ? [] : [{
+    ...(singleFolder() ? [] : [{
       section: "Quick actions",
       label: "Delete this workspace",
       needs: "worktree" as const,

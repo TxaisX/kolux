@@ -277,6 +277,7 @@ The shell you pick is tried first. If it will not start (it was uninstalled, or 
 |---|---|---|
 | Branch prefix | Your Git user name (or GitHub login), custom text, or none. Default is your Git user name | `branchPrefix`, `branchPrefixCustom` |
 | Name the branch after the work | On. An agent's first task in a workspace that still has the suggested name renames its branch to a short description of the work. A name you typed, a pushed branch and one with a pull request keep their names. Ask to rename the folder too (on) follows it | `renameBranches`, `autoBranchName` |
+| Own folder for each agent | Off. When on, in a Git project each agent you launch gets a Git worktree of its own on its own branch, made on this computer; the launch chooser offers Own folder for each AI or Same folder for all, and the sidebar lists those folders as workspaces. See [One folder per project](projects-and-worktrees.md#one-folder-per-project) | `agentOwnFolders` |
 | Default compare base | The repository default, or the branch's upstream | `scmSummaryUpstream` |
 | Refresh the base first | Off. When on, it fast-forwards the base branch only | `refreshBaseFirst` |
 | Commit messages written by | Claude Code (default), a custom command with a `{prompt}` placeholder, or Off. An instructions box takes up to 2000 characters | |

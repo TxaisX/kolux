@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
-import { SINGLE_FOLDER } from "./singleFolder";
+import { singleFolder } from "./singleFolder";
 import { dialogWhere, setupMode } from "../launch/launchOrder";
 import { asksBeforeDelete, blocker, commitsNote, deleteTarget, isTextField, keepsAtFirst, pointerDelete, shownChanges, shownCommits, skipsQuestion, type RemoveCheck } from "./deleting";
 import ShortcodeInput from "./ShortcodeInput";
@@ -2240,7 +2240,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       const selected = main !== undefined && isSelected(main);
       // One folder per project: the project row is the folder, and clicking it shows every pane
       // opened in that folder. With worktree creation off, there is no second row to select.
-      const folder = SINGLE_FOLDER && main !== undefined;
+      const folder = singleFolder() && main !== undefined;
       return (
         <div key={p.id}>
           <div
@@ -2274,7 +2274,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className={`ib${settingsFor === p.id ? " on" : ""}`} title="Project settings: its folder and base ref" aria-pressed={settingsFor === p.id} onClick={() => (settingsFor === p.id ? setSettingsFor(null) : openSettings(p))}>
               <Gear />
             </button>
-            {!SINGLE_FOLDER && (
+            {!singleFolder() && (
             <button className={`ib${opening ? " on" : ""}`} title="New workspace: a branch in its own folder" aria-pressed={opening} onClick={() => setCreating(opening ? null : p.id)}>
               <Plus size={13} />
             </button>
@@ -2294,12 +2294,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             />
           )}
           {main && (
-            <div className={`sb-main${SINGLE_FOLDER ? " old-workspaces" : ""}`} onContextMenu={(e) => void openMenu(e, p, main)}>
+            <div className={`sb-main${singleFolder() ? " old-workspaces" : ""}`} onContextMenu={(e) => void openMenu(e, p, main)}>
             <button className={`branch${isSelected(main) ? " sel" : ""}`} onClick={() => show(main)} title={`Show ${main.path}`}>
               <span className={`dot ${infoOf(main).state}${isActive(main) ? " live" : ""}`} role="img" aria-label={infoOf(main).state} data-tip={VOCAB[infoOf(main).state].explain} />
               <span className="name">{worktreeLabel(main)}</span>
               {pushTag(main)}
-              {!SINGLE_FOLDER && liveCount(main)}
+              {!singleFolder() && liveCount(main)}
               <span className="chev">
                 <ChevronDown size={12} />
               </span>
@@ -2358,7 +2358,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
           )}
           {/* One folder per project: the old worktree rows stay in the DOM for saved work and for
               the keyboard, but they do not draw beside the folder row. */}
-          <div className={SINGLE_FOLDER ? "old-workspaces" : undefined}>
+          <div className={singleFolder() ? "old-workspaces" : undefined}>
             {outsideCard({ outside: outsideOf(list), dismissed: dismissedOutside(settings).includes(p.id), collapsed: false, otherRows: others.length }).show && (
               <OutsideCard outside={outsideOf(list)} onDismiss={() => onSetting(OUTSIDE_DISMISSED_SETTING, withDismissed(settings, p.id))} />
             )}
@@ -2506,7 +2506,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
             <button className="ib" title={groupBy === "project" ? "New group: sort projects into folders of their own" : "New group: only while the list is grouped by project (change it under Group and sort)"} aria-label="New group" onClick={newGroup} disabled={groupBy !== "project"}>
               <Box size={13} />
             </button>
-            {!SINGLE_FOLDER && (
+            {!singleFolder() && (
             <button className="ib" title="New workspace: a branch in its own folder" aria-label="New workspace" aria-pressed={creating !== null} onClick={() => (creating === null ? openCreate() : setCreating(null))}>
               <Plus size={13} />
             </button>
@@ -2523,14 +2523,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         {NOT_BUILT ? (
           <div className="sb-tabs" role="tablist">
             <button role="tab" aria-selected="true">
-              {SINGLE_FOLDER ? "Folders" : "Workspaces"}
+              {singleFolder() ? "Folders" : "Workspaces"}
             </button>
             <button role="tab" aria-selected="false" title="Status (not built yet)">
               Status
             </button>
           </div>
         ) : (
-          <h2 className="sb-heading">{SINGLE_FOLDER ? "Folders" : "Workspaces"}</h2>
+          <h2 className="sb-heading">{singleFolder() ? "Folders" : "Workspaces"}</h2>
         )}
 
         {behind && <BehindNote text={behind} refresh={refreshesOnCreate(settings)} onRefresh={(on) => onSetting(REFRESH_SETTING, on)} onDismiss={() => (onSetting(HINT_DISMISSED_SETTING, true), setBehind(null))} />}

@@ -66,6 +66,7 @@ export const INDEX: Entry[] = [
   { page: "terminal", section: "ghostty-import", title: "Ghostty", words: "ghostty import config", parent: "terminal-import" },
   { page: "terminal", section: "warp-import", title: "Warp", words: "warp import theme", parent: "terminal-import" },
   { page: "git", section: "branches", title: "Branch names", words: "branch prefix name worktree auto automatic rename after the work new workspace ai folder" },
+  { page: "git", section: "agent-folders", title: "Where agents work", words: "own folder each agent worktree worktrees copy copies separate isolate isolation same folder project workspace" },
   { page: "git", section: "base", title: "Base branch", words: "base main master default branch" },
   { page: "git", section: "commit-writer", title: "Commit messages", words: "commit message write generate ai summary" },
   { page: "git", section: "ai-recipes", title: "Let AI write Git text", words: "ai write git text branch names pull request titles descriptions source control actions recipe generate fix" },

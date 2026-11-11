@@ -80,7 +80,7 @@ describe("T-055 deleting a workspace with children", () => {
 });
 
 describe("T-798 (P4B-01) worktrees are off", () => {
-  it("is the build-wide default: SINGLE_FOLDER is on, so no menu offers New workspace", () => {
+  it("is the default (one folder per project): no menu offers New workspace", () => {
     expect(projectMenu().map((i) => i.id)).toEqual(["proj:settings", "proj:remove"]);
     expect(ids({ isMain: true })).toEqual(["status", "details", "open-in", "proj:remove"]);
   });

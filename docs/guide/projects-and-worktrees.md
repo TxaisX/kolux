@@ -12,7 +12,7 @@ The project sidebar shows on the Terminals view. Toggle it with Ctrl+B. The head
 | Add project | Clone, open a folder or start a new project. See [Getting started](getting-started.md) |
 | New group | Sort projects into folders of their own. Works only when grouped by Project |
 
-Each project block is one folder row: its name, state dot, current branch, running count, a gear for project settings and Remove. Clicking the row shows every session pane opened in that folder, together in the same terminal grid. Kolux works in one folder per project, so the new-workspace button and the old worktree rows stay hidden; project settings still offers Clean up workspaces for folders made before this change.
+Each project block is one folder row: its name, state dot, current branch, running count, a gear for project settings and Remove. Clicking the row shows every session pane opened in that folder, together in the same terminal grid. Kolux works in one folder per project unless you turn on Own folder for each agent (below), so the new-workspace button and the old worktree rows stay hidden; project settings still offers Clean up workspaces for folders made before this change.
 
 The bottom of the sidebar holds "New session" (start an agent in a new pane in the project folder), Model routing, Help and "Check for updates" (when the sidebar is dragged to its narrowest, that button shows its icon alone; hovering it still says what it does). A gear there lets you add a project by typing its path, or change the folder where old workspaces live. An empty sidebar reads "No projects yet." Projects must be Git repositories; one without Git can start Git from the sidebar.
 
@@ -26,7 +26,9 @@ If a panel breaks, it is replaced by "This panel stopped working and was closed;
 
 Kolux works in one folder per project. Every agent, shell and browser tab you start in a project uses that folder, and Kolux makes no extra copies of your repository. Two agents in the same project can therefore edit the same files, so give each a different task, or launch them one at a time. The launch chooser warns when several AIs would edit the same files.
 
-Earlier versions of Kolux could make an extra working folder on its own branch for each task. The sidebar no longer offers that, and the new-workspace button is gone. Folders those versions made stay on disk and stay hidden in the sidebar. To tidy them, open the project's gear and choose **Clean up workspaces**. **Remove project** (the x on the project row) takes the project out of Kolux after asking; its terminals and editor tabs close, and the folder and its files stay on disk.
+If you would rather keep agents apart, turn on **Own folder for each agent** in Settings, Git & worktrees. It is off by default. With it on, in a Git project each agent you launch gets a folder of its own: a Git worktree on its own branch, made on this computer (nothing goes to GitHub until you push). The launch chooser then offers **Own folder for each AI**, which it picks for two or more seats, or **Same folder for all**; an agent started on its own from the sidebar gets a fresh folder too. The sidebar's heading reads Workspaces, it lists those folders under the project, and the new-workspace button is back. An agent working beside others is told to stay inside its own folder. Outside a Git project there is nothing to copy, so every AI still works in the one folder.
+
+While Own folder for each agent is off, the sidebar does not offer extra working folders and there is no new-workspace button. Folders made while it was on, or by earlier versions of Kolux, stay on disk and stay hidden in the sidebar. To tidy them, open the project's gear and choose **Clean up workspaces**. **Remove project** (the x on the project row) takes the project out of Kolux after asking; its terminals and editor tabs close, and the folder and its files stay on disk.
 
 ## Switching and keys
 

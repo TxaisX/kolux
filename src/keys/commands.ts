@@ -6,12 +6,12 @@ import { actionById, actions, sameAs } from "./actions";
 import { labelOf, type Keymap } from "./keymap";
 import { runCommand } from "./runCommand";
 import type { PaletteItem } from "../projects/WorktreePalette";
-import { SINGLE_FOLDER, WORKTREE_COMMANDS } from "../projects/singleFolder";
+import { singleFolder, WORKTREE_COMMANDS } from "../projects/singleFolder";
 
 /** One palette row per command; the two 1 to 9 commands get a row per digit, and TERM-041's new-tab
  *  commands one per installed agent. The hint is the command's keys, when it has some. */
 /** `note` shows the line the palette says when no open place takes a command (review of PR #16: never silent). */
-export function commandRows(map: Keymap, installed: readonly string[], note?: (text: string) => void, run: (id: string, index?: number) => void = (id, index) => runCommand(id, index, { scope: actionById.get(id)?.scope, unanswered: note }), worktreesOff: boolean = SINGLE_FOLDER): PaletteItem[] {
+export function commandRows(map: Keymap, installed: readonly string[], note?: (text: string) => void, run: (id: string, index?: number) => void = (id, index) => runCommand(id, index, { scope: actionById.get(id)?.scope, unanswered: note }), worktreesOff: boolean = singleFolder()): PaletteItem[] {
   return actions.flatMap((a): PaletteItem[] => {
     if (worktreesOff && WORKTREE_COMMANDS.has(a.id)) return []; // T-798: no row for a command that cannot act while worktrees are off
     if (sameAs[a.id] || (a.id.startsWith("tab.newAgent.") && !installed.includes(a.id.slice("tab.newAgent.".length)))) return []; // T-760: an old id is not a second row

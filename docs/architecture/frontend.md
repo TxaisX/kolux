@@ -130,7 +130,7 @@ The first frame is handled outside React. `index.html` replays a whitelisted set
 
 After the first frame, `prefetch()` loads the rest at idle time or after 1.5 seconds (`src/lazy/deferred.tsx:33-39`, `src/main.tsx:63`). Settings pages split again per page, and mermaid is a separate dynamic import.
 
-The first-load JavaScript budget is 1,490,000 bytes (`scripts/bundle-budget.mjs:18`). It counts the entry script, its preloads, the `App-*` chunk, and their static imports. CSS and on-demand chunks are excluded. CI enforces it after `vite build` (`.github/workflows/ci.yml:68-69`).
+The first-load JavaScript budget is 1,491,000 bytes (`scripts/bundle-budget.mjs:20`). It counts the entry script, its preloads, the `App-*` chunk, and their static imports. CSS and on-demand chunks are excluded. CI enforces it after `vite build` (`.github/workflows/ci.yml:68-69`).
 
 ## Where to change what
 

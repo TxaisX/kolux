@@ -4,11 +4,13 @@
 import { useState } from "react";
 import { useUsageAlerts } from "../usage/alerts";
 import { readLook } from "./general";
+import { setOwnFolders } from "../projects/singleFolder";
 
 export function useAppSettings(initial: Record<string, unknown>) {
   const [settings, setSettings] = useState<Record<string, unknown>>(initial);
   const [settingsRead, setSettingsRead] = useState(false); // USAGE-009: no alert before this is true
   useUsageAlerts(settingsRead ? settings : null);
   const classic = readLook(settings) === "classic";
+  setOwnFolders(settings); // DT-C250: before anything below draws, so one render never mixes the two ways
   return { settings, setSettings, settingsRead, setSettingsRead, classic };
 }

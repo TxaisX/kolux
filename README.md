@@ -21,7 +21,7 @@
   <a href="https://github.com/TxaisX/kolux/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux?label=release" alt="Latest release"></a>
 </p>
 
-Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. Kolux works in one folder per project: every agent you launch there works in that same folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other.
+Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. Kolux works in one folder per project: every agent you launch there works in that same folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other. If you would rather keep them apart, turn on **Own folder for each agent** in Settings, Git & worktrees: each agent then works in its own Git worktree on its own branch.
 
 > **Early alpha.** Kolux is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
 
@@ -39,7 +39,7 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 
 ## What it does
 
-- **Parallel agents in one folder.** Launch a Solo, Pair, Workbench, or Swarm lineup. Every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them.
+- **Parallel agents in one folder, or a folder each.** Launch a Solo, Pair, Workbench, or Swarm lineup. By default every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them. With Own folder for each agent on, each seat gets its own Git worktree and branch instead.
 - **One window.** Terminals, browser tabs, an editor, and diffs sit in the same split layout.
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
