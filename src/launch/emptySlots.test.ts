@@ -2,11 +2,15 @@
 // and the others are empty slots until clicked. Each test uses its own pane keys: the remembered chooser is module state.
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
-import { expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
 import ChooserPane from "./ChooserPane";
 import { gridSheet } from "./emptySlots";
 import { WindowStoreProvider } from "../shell/window/store";
 import type { WindowBag } from "../shell/windowBag";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 type P = { key: number; cwd: string | null; seats?: unknown };
 const chooser = (key: number, cwd = "C:/p"): P => ({ key, cwd, seats: [{}] });

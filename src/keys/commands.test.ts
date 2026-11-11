@@ -2,7 +2,7 @@
 // Commands section lists every action in actions.ts and runs each through the same code its shortcut
 // runs; the commands that had no handler (the audit's five, plus Force Reload and Hard Reload, whose
 // chords nothing in the window answered) now each do something, or are gone.
-import { expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
 import { windowSource as app } from "../shell/windowSource";
 import { actions, actionById, sameAs } from "./actions";
 import { matchEvent, resolve, type KeyLike } from "./keymap";
@@ -14,7 +14,10 @@ import { paletteRows } from "../projects/WorktreePalette";
 import keysSrc from "./useWindowKeys.ts?raw";
 import panelSrc from "../projects/ProjectsPanel.tsx?raw";
 import type { Page } from "../projects/ProjectsPanel";
-import { singleFolder, WORKTREE_COMMANDS, WORKTREES_OFF, worktreesOffNote } from "../projects/singleFolder";
+import { singleFolder, WORKTREE_COMMANDS, WORKTREES_OFF, worktreesOffNote, OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;

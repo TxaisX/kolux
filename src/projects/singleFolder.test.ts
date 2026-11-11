@@ -1,9 +1,11 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defaultCopies, rulesBlock, sheetStart } from "../launch/seats";
 import { projectMenu } from "./menu";
 import { OWN_FOLDERS_FIELD, paletteCreateName, setOwnFolders, singleFolder, worktreesOffNote, WORKTREES_OFF } from "./singleFolder";
 
-afterEach(() => setOwnFolders({}));
+// DT-C273: own folders are the default, so each test starts with the switch saved off.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
+afterEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 describe("T-798 worktrees off", () => {
   it("the palette has nothing to create from typed text while worktrees are off", () => {
@@ -23,18 +25,18 @@ describe("T-798 worktrees off", () => {
 
 // DT-C250: one folder per project is the default; "Own folder for each agent" is a saved choice.
 describe("DT-C250 own folder for each agent", () => {
-  it("is off unless the setting is saved as true", () => {
-    for (const s of [{}, { [OWN_FOLDERS_FIELD]: false }, { [OWN_FOLDERS_FIELD]: "true" }, { [OWN_FOLDERS_FIELD]: 1 }, { [OWN_FOLDERS_FIELD]: "own" }]) {
+  it("DT-C273: is on unless the setting is saved as false", () => {
+    for (const s of [{}, { [OWN_FOLDERS_FIELD]: true }, { [OWN_FOLDERS_FIELD]: "false" }, { [OWN_FOLDERS_FIELD]: 0 }]) {
       setOwnFolders(s);
-      expect(singleFolder(), JSON.stringify(s)).toBe(true);
+      expect(singleFolder(), JSON.stringify(s)).toBe(false);
     }
-    setOwnFolders({ [OWN_FOLDERS_FIELD]: true });
-    expect(singleFolder()).toBe(false);
+    setOwnFolders({ [OWN_FOLDERS_FIELD]: false });
+    expect(singleFolder(), "turning it off brings one folder per project back").toBe(true);
     setOwnFolders({});
-    expect(singleFolder(), "turning it off again brings one folder back").toBe(true);
+    expect(singleFolder(), "a fresh install has own folders").toBe(false);
   });
 
-  it("off (the default): every launch shares the project folder, whatever the last launch chose", () => {
+  it("off: every launch shares the project folder, whatever the last launch chose", () => {
     expect(defaultCopies(1, true)).toBe("shared");
     expect(defaultCopies(5, true)).toBe("shared");
     expect(sheetStart({ shape: "custom", copies: "separate", seats: [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }] }, true).copies).toBe("shared");

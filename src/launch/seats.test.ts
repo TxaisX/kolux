@@ -1,5 +1,9 @@
-import { expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
 import { allReady, clearMissing, defaultCopies, emptySeat, modelArgs, modelsFor, openingPrompt, pickShape, resizeLineup, resizeSeats, ROLE_BRIEFS, rulesBlock, sameForAll, seatReady, sharedWarning, TERMINAL, withoutFailed, withoutRules, saveShape, renameShape, restoreShape, SHAPE_LIMITS, type SavedShape, type Seat, applyLineup, FAST_SETTINGS, lineupAgents, lineupOf, offeredLineup, seatArgs, removeTarget, seatFolder, setDiscovered } from "./seats";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 const claude: Seat = { agent: "claude", model: "opus" };
 const term: Seat = { agent: TERMINAL, model: null };

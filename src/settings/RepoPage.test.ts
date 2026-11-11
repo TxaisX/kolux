@@ -1,8 +1,12 @@
-import { expect, test } from "vitest";
+import { beforeEach, expect, test } from "vitest";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { RepoView, draftSave, outsideChoice, outsideSave } from "./RepoPage";
 import { projectLabel } from "../projects/model";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 test("SET-033: a repository's base branch shows, and the workspaces folder is gone in one-folder mode", () => {
   const p = { id: "p1", name: "app", path: "C:/src/app" };

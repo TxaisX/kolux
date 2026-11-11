@@ -2,7 +2,11 @@
 // The real ProjectsPanel on the small DOM, with the backend mocked.
 import { createElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "./singleFolder";
 import { type FakeDocument, type FakeNode, byLabel, byText, click, find, fire, installDom, mount, settle } from "../tasks/fakeDom";
+
+// DT-C273: own folders are the default now; these tests cover one folder per project.
+beforeEach(() => setOwnFolders({ [OWN_FOLDERS_FIELD]: false }));
 
 const h = vi.hoisted(() => ({ calls: [] as string[], settings: {} as Record<string, unknown> }));
 vi.mock("@tauri-apps/api/core", () => ({

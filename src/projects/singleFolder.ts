@@ -2,14 +2,17 @@
  *  every surface that would make a second folder renders nothing.
  *  DT-C250 (2026-11-10): that is the default, and a person can choose the other way: with "Own folder
  *  for each agent" on (Settings > Git & worktrees), an agent launched beside others gets a Git worktree
- *  of its own on its own branch, and the sidebar lists those folders again. */
+ *  of its own on its own branch, and the sidebar lists those folders again.
+ *  DT-C273 (2026-11-11): own folders are now the default; only a saved `false` keeps one folder per project. */
 export const OWN_FOLDERS_FIELD = "agentOwnFolders";
-let own = false;
-/** The window hands over its settings each time they change; only a saved `true` turns own folders on. */
+/** DT-C273: on unless the setting is saved as `false`. */
+export const ownFoldersOn = (settings: Record<string, unknown>): boolean => settings[OWN_FOLDERS_FIELD] !== false;
+let own = true;
+/** The window hands over its settings each time they change. */
 export const setOwnFolders = (settings: Record<string, unknown>): void => {
-  own = settings[OWN_FOLDERS_FIELD] === true;
+  own = ownFoldersOn(settings);
 };
-/** Whether Kolux works in one folder per project (the default). */
+/** Whether Kolux works in one folder per project (on only when "Own folder for each agent" is turned off). */
 export const singleFolder = (): boolean => !own;
 
 /** T-798 (P4B-01): the commands that make, rename or delete a worktree. While worktrees are off their key chords
