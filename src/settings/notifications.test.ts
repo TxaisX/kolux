@@ -182,3 +182,11 @@ test("T-692 (E1): a stop right after a finish in the same worktree still shows; 
   expect(calls.map(([c, a]) => [c, a.kind])).toEqual([["notify_event", "finish"], ["notify_event", "stop"]]);
   resetPacer();
 });
+
+test("quiet-alert minutes typed past the 600 the app uses are stored as 600, so the box and the alert agree", async () => {
+  const { quietMinutes } = await import("../status/notifyMaster");
+  expect(quietFromText("9999")).toBe(600);
+  expect(quietFromText("1e9")).toBe(600);
+  expect(quietFromText("600")).toBe(600);
+  expect(quietMinutes({ quietMinutes: quietFromText("9999") })).toBe(quietFromText("9999"));
+});

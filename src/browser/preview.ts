@@ -27,11 +27,19 @@ export function isLocalWeb(url: string): boolean {
   }
 }
 
+/** Whether the bytes hold "://" (58, 47, 47). */
+function hasScheme(b: Uint8Array): boolean {
+  for (let i = b.indexOf(58); i >= 0 && i + 2 < b.length; i = b.indexOf(58, i + 1)) if (b[i + 1] === 47 && b[i + 2] === 47) return true;
+  return false;
+}
+
 /** A terminal in `cwd` printed `chunk`: its local web addresses are remembered, newest last.
  *  ponytail: an address split across two output chunks is missed; join chunks if that bites. */
 export function notePrinted(cwd: string | null | undefined, chunk: Uint8Array | string): void {
   if (!cwd) return;
-  const text = typeof chunk === "string" ? chunk : chunk.length < 7 || !chunk.includes(58) ? "" : decoder.decode(chunk);
+  // Most output holds a ":" but no address: the bytes are searched for "://" (ASCII, so never inside a multi-byte
+  // character) and only a chunk that has one is decoded. Called for every output chunk of every pane.
+  const text = typeof chunk === "string" ? chunk : chunk.length < 7 || !hasScheme(chunk) ? "" : decoder.decode(chunk);
   if (!text.includes("://")) return;
   for (const f of findLinks(text)) {
     if (f.kind !== "url" || !isLocalWeb(f.target)) continue;

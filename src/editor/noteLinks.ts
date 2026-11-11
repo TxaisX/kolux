@@ -34,6 +34,17 @@ export const slugOf = (text: string): string =>
     .replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, "")
     .replace(/\s/g, "-");
 
+/** An anchor as the heading slug it names: percent escapes decoded, lower case. An escape that is not UTF-8 (#%E0%A4)
+ *  is kept as written, so it names no heading instead of throwing in the click handler. */
+export function anchorText(slug: string): string {
+  const s = slug.replace(/%(?![0-9a-f]{2})/gi, "%25");
+  try {
+    return decodeURIComponent(s).toLowerCase();
+  } catch {
+    return slug.toLowerCase();
+  }
+}
+
 /** The anchors of a note's headings in order; a repeated heading gets -1, -2 ... like GitHub. */
 export function headingSlugs(md: string): string[] {
   const seen = new Map<string, number>();
@@ -48,7 +59,7 @@ export function headingSlugs(md: string): string[] {
 /** The 1-based line a heading anchor points at, or null. Row 122: every heading the outline sees,
  *  underlined (setext) ones too, numbered the same way as headingSlugs. */
 export function headingLine(md: string, slug: string): number | null {
-  const want = decodeURIComponent(slug.replace(/%(?![0-9a-f]{2})/gi, "%25")).toLowerCase();
+  const want = anchorText(slug);
   const all = outlineAt(md);
   const i = headingSlugs(md).indexOf(want);
   return i < 0 ? null : all[i].line;

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { saveChanged } from "./saveChanged";
 import { invoke } from "@tauri-apps/api/core";
-import { applyBroadcast, createLoadRace, readBroadcast, adoptStored } from "./settingsSync";
+import { applyBroadcast, createLoadRace, readBroadcast, adoptStored, withoutSecrets } from "./settingsSync";
+import { windowSettings } from "./windowSettings";
 import { tidySettings } from "./tidy";
 
 /** Runs `fn` one call at a time, in call order; a failed call does not hold up the next. */
@@ -27,7 +28,13 @@ const saveInTurn = inTurn((patch: Record<string, unknown>) =>
  * back what is stored (T-598: a draft field keeps its typed text). The page follows saves made in
  * any window (SET-035). */
 export function useSettings() {
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  // The page draws at once from the copy the window already holds; its own read replaces that when it lands (a change
+  // made meanwhile is laid over the read, createLoadRace), and every save merges into what is on disk, so a seed that
+  // was a moment old never writes a field the page did not change.
+  const [settings, setSettings] = useState<Record<string, unknown> | null>(() => {
+    const w = windowSettings();
+    return w && tidySettings(withoutSecrets(w));
+  });
   const [error, setError] = useState<string | null>(null);
   const race = useRef(createLoadRace());
   // T-735: the last copy known to be on disk (load, broadcasts, read-backs), never an optimistic change.

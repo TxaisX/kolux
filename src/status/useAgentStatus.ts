@@ -16,7 +16,7 @@ import { folderName } from "../projects/model";
 import { sameDir } from "../workspaces";
 import { newPaceMemory, noteId, paced } from "../notify/pace";
 import { badgeCount } from "../notify/badge";
-import { toAcknowledge } from "../notify/seen";
+import { dirsToClear, forgetAcks, toAcknowledge } from "../notify/seen";
 import { admit, ledger } from "./gone";
 import { claim } from "../sessions/ownership";
 import { finished } from "./finished";
@@ -181,6 +181,7 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
     // STAT-044 "Stay quiet about the worktree you are looking at": only the worktree in view is held back.
     if (!(inView(p.key) && winFocused) && settings[gate] !== false && show()) void raiseNotification(settings, title, body, event).catch(() => {});
     if (!marksUnread(p.key, known, unreadPanes, inView(p.key), winFocused)) return;
+    forgetAcks(ackedRef.current, p.key);
     setUnreadPanes((u) => new Set([...u, p.key]));
     if (p.cwd !== null) markDir(p.cwd, true);
     setToast(title);
@@ -332,16 +333,22 @@ export function useAgentEvents({ panes, setPanes, titles, settings, inView, setT
   }, []);
   // STAT-049 / T-125: the acknowledgements made, by pane and turn stamp, so a future-stamped turn clears once.
   const ackedRef = useRef(new Set<string>());
+  // What the acknowledgement reads, for each unread pane: whether it is in view (`inView` is a new function each
+  // render, closing over the grid, the tab on top, the screen and the workspace in front), whether it has a hook
+  // state and its stamp. The effect runs when any of it, or the window focus, changes; not on every render.
+  const seenInputs = [...unreadPanes].map((k) => `${k}:${inView(k) ? 1 : 0}:${hookRef.current[k] === undefined ? 0 : 1}:${stamp?.[k]?.at ?? ""}`).join(",");
   useEffect(() => {
     // Viewing a marked pane in a focused window clears its mark (STAT-049: a pane with no status yet
-    // keeps being watched; a pane marked unread by hand would stay, none can be yet).
+    // keeps being watched; a pane marked unread by hand would stay, none can be yet). A pane whose program
+    // exited has lost its hook state but keeps its stamp, and a shell has only its stamp: either is a status.
     if (!winFocused || unreadPanes.size === 0) return;
-    const { panes: seen, acks } = toAcknowledge({ unread: unreadPanes, inView, focused: winFocused, manual: new Set(), stampOf: (k) => (hookRef.current[k] === undefined ? undefined : (stamp?.[k]?.at ?? 0)), acked: ackedRef.current });
+    const { panes: seen, acks } = toAcknowledge({ unread: unreadPanes, inView, focused: winFocused, manual: new Set(), stampOf: (k) => (hookRef.current[k] === undefined && stamp?.[k] === undefined ? undefined : (stamp?.[k]?.at ?? 0)), acked: ackedRef.current });
     if (seen.length === 0) return;
     for (const a of acks) ackedRef.current.add(a);
     setUnreadPanes((u) => new Set([...u].filter((k) => !seen.includes(k))));
-    for (const p of panes) if (seen.includes(p.key) && p.cwd !== null) markDir(p.cwd, false);
-  });
+    // a workspace dot stays while another of its panes is still unread
+    for (const d of dirsToClear(panes, unreadPanes, seen)) markDir(d, false);
+  }, [winFocused, seenInputs]);
   useEffect(() => {
     // STAT-048: the taskbar or dock badge counts the workspaces with unseen results; zero clears it.
     void invoke("badge_set", { count: badgeCount(unreadPanes, panes) }).catch(() => {});

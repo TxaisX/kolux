@@ -4,6 +4,8 @@
 // watched and is acknowledged once its status shows up; a turn stamped later than the local clock
 // is acknowledged exactly once (the acknowledgement is remembered by pane and stamp, never by time).
 
+import { sameDir } from "../workspaces";
+
 export type SeenInput = {
   unread: Iterable<number>;
   inView: (key: number) => boolean;
@@ -35,4 +37,24 @@ export function toAcknowledge(i: SeenInput): { panes: number[]; acks: string[] }
     acks.push(ack);
   }
   return { panes, acks };
+}
+
+/** A pane marked unread again by a new note: its earlier acknowledgements go, so looking at it clears the new
+ *  mark (a second bell or an exit keeps the turn stamp of the finish already acknowledged). */
+export function forgetAcks(acked: Set<string>, key: number): void {
+  for (const a of [...acked]) if (a.startsWith(`${key}@`)) acked.delete(a);
+}
+
+/** The workspace folders whose unread dot goes when panes `leaving` stop being unread (looked at, or closed): a
+ *  leaving unread pane's folder, unless another unread pane that stays is in the same folder. */
+export function dirsToClear(panes: ReadonlyArray<{ key: number; cwd: string | null }>, unread: ReadonlySet<number>, leaving: Iterable<number>): string[] {
+  const gone = new Set(leaving);
+  const stays = panes.filter((p) => unread.has(p.key) && !gone.has(p.key) && p.cwd !== null).map((p) => p.cwd as string);
+  const out: string[] = [];
+  for (const p of panes) {
+    if (!gone.has(p.key) || !unread.has(p.key) || p.cwd === null) continue;
+    if (stays.some((d) => sameDir(d, p.cwd)) || out.some((d) => sameDir(d, p.cwd))) continue;
+    out.push(p.cwd);
+  }
+  return out;
 }

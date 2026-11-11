@@ -2,13 +2,13 @@
 // click does nothing (the note stays editable and nothing navigates); Mod+click (Ctrl, or Cmd on
 // macOS) follows the link: an anchor in this note scrolls to its heading, anything else goes to
 // `onLink` with whether Shift was held (Mod+Shift sends a web link to the system browser).
-import { resolveLink, slugOf, type Action } from "./noteLinks";
+import { anchorText, resolveLink, slugOf, type Action } from "./noteLinks";
 
 export type LinkHandler = (a: Action, shift: boolean) => void;
 
 /** The heading element an anchor names: GitHub's slug of its words, repeats numbered -1, -2 ... */
 export function headingEl(page: ParentNode, slug: string): HTMLElement | null {
-  const want = decodeURIComponent(slug.replace(/%(?![0-9a-f]{2})/gi, "%25")).toLowerCase();
+  const want = anchorText(slug);
   const seen = new Map<string, number>();
   for (const h of Array.from(page.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"))) {
     const base = slugOf(h.textContent ?? "");

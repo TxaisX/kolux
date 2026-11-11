@@ -31,22 +31,52 @@ import { matchEvent } from "../keys/keymap";
 import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, searchRepos } from "./search";
 import { useSettled } from "../editor/settledQuery";
 import { useSearchHits } from "./useSearchHits";
+import { pageWarmer, type Loader } from "./pageWarm";
 
-// SET-006: a page loads the first time it is opened, so Settings itself opens quickly.
-const AppearancePage = lazy(() => import("./AppearancePage"));
-const GeneralPage = lazy(() => import("./GeneralPage"));
-const NotificationsPage = lazy(() => import("./NotificationsPage"));
+// SET-006: a page loads the first time it is opened, so Settings itself opens quickly. The loaders are named once so
+// the warm-up (pageWarm.ts) reads the very modules the pages draw.
+const load = {
+  appearance: () => import("./AppearancePage"),
+  general: () => import("./GeneralPage"),
+  notificationsPage: () => import("./NotificationsPage"),
+  notifications: () => import("./NotificationSwitches"),
+  shortcuts: () => import("./ShortcutsPage"),
+  terminal: () => import("./TerminalPage"),
+  git: () => import("./GitPage"),
+  agents: () => import("./AgentsPage"),
+  claude: () => import("./ClaudeSetupPage"),
+  safety: () => import("./SafetyPage"),
+  tokens: () => import("../usage/TokenAnalytics"),
+  activity: () => import("../usage/Activity"),
+};
+const AppearancePage = lazy(load.appearance);
+const GeneralPage = lazy(load.general);
+const NotificationsPage = lazy(load.notificationsPage);
 // STAT-041 / STAT-045: the finish, stopped and quiet-alert switches (T-026-a, T-039-a).
-const Notifications = lazy(() => import("./NotificationSwitches"));
-const ShortcutsPage = lazy(() => import("./ShortcutsPage"));
-const TerminalPage = lazy(() => import("./TerminalPage"));
-const GitPage = lazy(() => import("./GitPage"));
-const AgentsPage = lazy(() => import("./AgentsPage"));
-const ClaudeSetupPage = lazy(() => import("./ClaudeSetupPage"));
+const Notifications = lazy(load.notifications);
+const ShortcutsPage = lazy(load.shortcuts);
+const TerminalPage = lazy(load.terminal);
+const GitPage = lazy(load.git);
+const AgentsPage = lazy(load.agents);
+const ClaudeSetupPage = lazy(load.claude);
 // SAFE-015: the Protected actions section (T-059-b).
-const SafetyPage = lazy(() => import("./SafetyPage"));
-const TokenAnalytics = lazy(() => import("../usage/TokenAnalytics"));
-const Activity = lazy(() => import("../usage/Activity"));
+const SafetyPage = lazy(load.safety);
+const TokenAnalytics = lazy(load.tokens);
+const Activity = lazy(load.activity);
+/** The code each rail page draws with (Accounts is drawn from this chunk's own code). */
+export const PAGE_CODE: Partial<Record<PageId, Loader[]>> = {
+  general: [load.general],
+  appearance: [load.appearance],
+  notifications: [load.notificationsPage, load.notifications],
+  shortcuts: [load.shortcuts],
+  agents: [load.agents],
+  claude: [load.claude],
+  terminal: [load.terminal],
+  git: [load.git],
+  safety: [load.safety],
+  usage: [load.tokens, load.activity],
+};
+const warm = pageWarmer(PAGE_CODE);
 
 /** One small line glyph per page, the way Claude's settings rail does it. Repositories share FolderPlus. */
 const PAGE_ICON: Record<PageId, ComponentType<{ size?: number }>> = {
@@ -311,6 +341,8 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
   const settled = useSettled(query);
   const { hits, folds } = useSearchHits(settled); // SET-007: launch commands and advanced controls count too
   const repoHits = useMemo(() => searchRepos(settled, projects), [settled, projects]);
+  // The other pages' code is read once Settings has drawn, at the first idle moment, so a click finds it there.
+  useEffect(() => warm.rest(), []);
   const go = (p: Page) => {
     setQuery("");
     setPage(p);
@@ -401,7 +433,7 @@ export default function SettingsPage({ onClose, target, n = 0, active = "" }: { 
                 {g.pages.map((p) => {
                   const Glyph = PAGE_ICON[p];
                   return (
-                    <button key={p} className="settings-link" aria-current={!hits && page === p ? "page" : undefined} onClick={() => go(p)}>
+                    <button key={p} className="settings-link" aria-current={!hits && page === p ? "page" : undefined} onPointerEnter={() => warm.page(p)} onFocus={() => warm.page(p)} onClick={() => go(p)}>
                       <Glyph size={14} />
                       <span>{PAGES[p]}</span>
                     </button>

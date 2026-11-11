@@ -192,5 +192,6 @@ export async function raiseNotification(settings: Record<string, unknown>, title
 /** A slider or number box that saves when it is let go: the value to save when the draft differs from what is saved, else null. */
 export const settledValue = (draft: number | null, saved: number): number | null => (draft !== null && draft !== saved ? draft : null);
 
-/** The quiet-alert minutes typed so far: whole minutes from 0, and an empty or unreadable box reads as 0 (off). */
-export const quietFromText = (text: string): number => Math.max(0, Math.floor(Number(text)) || 0);
+/** The quiet-alert minutes typed so far: whole minutes from 0 to 600 (the most the alert uses, notifyMaster.quietMinutes),
+ *  and an empty or unreadable box reads as 0 (off). */
+export const quietFromText = (text: string): number => Math.min(600, Math.max(0, Math.floor(Number(text)) || 0));

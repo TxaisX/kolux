@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { dropPage, livePage, livePages } from "./pages";
 import { chipCommit, forgetPrinted, isLocalWeb, notePrinted, previewHint, previewTitle, printedFor, sameOriginPage, type Candidate } from "./preview";
 
@@ -58,4 +58,21 @@ describe("BROW-067 preview a workspace's running dev server", () => {
     expect(previewHint([c(5173)])).toBe("Preview localhost:5173 in a browser tab");
     expect(previewHint([c(5173), c(3000)])).toContain("2 servers");
   });
+});
+
+it("output with a colon but no address is not decoded; an address in bytes is still found (BROW-067)", () => {
+  const dir = "G:/dev/bytes";
+  const enc = new TextEncoder();
+  const decode = vi.spyOn(TextDecoder.prototype, "decode");
+  notePrinted(dir, enc.encode("error: build failed at src/main.ts:12:4\n"));
+  expect(decode).not.toHaveBeenCalled();
+  expect(printedFor(dir)).toEqual([]);
+  notePrinted(dir, enc.encode("ready → http://localhost:4321/ ✓"));
+  expect(printedFor(dir)).toEqual(["http://localhost:4321/"]);
+  // an address split across two chunks is not joined, as before
+  notePrinted(dir, enc.encode("open http:/"));
+  notePrinted(dir, enc.encode("/localhost:8080/ now"));
+  expect(printedFor(dir)).toEqual(["http://localhost:4321/"]);
+  decode.mockRestore();
+  forgetPrinted(dir);
 });

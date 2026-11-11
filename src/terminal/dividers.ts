@@ -42,8 +42,9 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 export function dragWeights(w: number[], i: number, delta: number, px: number, min = 120): number[] {
   if (px <= 0 || i < 0 || i + 1 >= w.length) return w;
   const unit = px / w.reduce((a, b) => a + b, 0);
-  const floor = min / unit;
   const pair = w[i] + w[i + 1];
+  // a window so small the two tracks hold less than 2 * min px: they meet in the middle, never below zero
+  const floor = Math.min(min / unit, pair / 2);
   const a = Math.min(Math.max(w[i] + delta / unit, floor), Math.max(floor, pair - floor));
   const out = [...w];
   out[i] = round(a);

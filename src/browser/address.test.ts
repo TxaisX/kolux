@@ -42,3 +42,11 @@ test("BROW-003: any other scheme is refused as an invalid address", () => {
   expect(resolveAddress("mailto:someone@example.com")).toMatchObject({ error: expect.stringContaining("mailto:") });
   expect(resolveAddress("https://exa mple.com/")).toMatchObject({ error: expect.stringContaining("invalid address") });
 });
+
+test("BROW-003: a typed IP address or a .localhost name is a local dev server and opens over HTTP, as browsers do", () => {
+  expect(url("192.168.1.20:5173")).toBe("http://192.168.1.20:5173/");
+  expect(url("0.0.0.0:8000/admin")).toBe("http://0.0.0.0:8000/admin");
+  expect(url("10.0.0.5")).toBe("http://10.0.0.5/");
+  expect(url("app.localhost:3000")).toBe("http://app.localhost:3000/");
+  expect(url("1.2.3.4.example.com")).toBe("https://1.2.3.4.example.com/");
+});

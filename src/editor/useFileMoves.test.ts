@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { followMoves } from "./useFileMoves";
+import { describe, expect, it, vi } from "vitest";
+import { discardDraftsOf, followMoves } from "./useFileMoves";
+
+const discarded: string[] = [];
+vi.mock("./drafts", () => ({ drafts: { discard: async (_wt: string, path: string) => void discarded.push(path) }, worktreeOf: (root: string | null, path: string) => root ?? path }));
 
 // EDIT-032 (T-177): the tabs follow a moved file; terminals and untouched tabs keep their identity.
 const tabs = [
@@ -19,5 +22,18 @@ describe("tabs follow moved files", () => {
 
   it("nothing moved returns the same list, so no render is forced", () => {
     expect(followMoves(tabs, [["C:/w/zzz.md", "C:/w/y.md"]])).toBe(tabs);
+  });
+});
+
+describe("closing editor tabs drops their drafts (EDIT-004)", () => {
+  it("a file another open tab still shows keeps its draft: that tab still holds the unsaved text", () => {
+    discarded.length = 0;
+    const closing = [{ key: 1, kind: "editor", path: "C:/w/a.md", cwd: "C:/w" }, { key: 2, kind: "editor", path: "C:/w/b.md", cwd: "C:/w" }];
+    const staying = [{ key: 3, kind: "editor", path: "c:\\W\\A.md", cwd: "C:/w" }, { key: 4, kind: "browser", path: "C:/w/b.md" }];
+    discardDraftsOf(closing, staying);
+    expect(discarded).toEqual(["C:/w/b.md"]);
+    discarded.length = 0;
+    discardDraftsOf(closing);
+    expect(discarded).toEqual(["C:/w/a.md", "C:/w/b.md"]);
   });
 });

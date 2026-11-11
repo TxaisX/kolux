@@ -26,6 +26,7 @@ import type { Action } from "../editor/noteLinks";
 import { trashUnusedNotes } from "../editor/trashUnused";
 import { discardDraftsOf } from "../editor/useFileMoves";
 import { onClose } from "../inbox/exitedPrompt";
+import { dirsToClear } from "../notify/seen";
 import { commandRows } from "../keys/commands";
 import { runCommand } from "../keys/runCommand";
 import { actionById } from "../keys/actions";
@@ -69,7 +70,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
     setCreateRequest, setDeleteRequest, setDirty, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setPicking, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
-    unreadPanes
+    unreadPanes, setUnreadPanes, markDir
   } = s;
   const { inGitFor, launch, lineupsOf, pretrust, projectFor } = la;
   const { prRows } = x;
@@ -283,7 +284,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const fresh: Pane[] = Array.from({ length: add }, () => ({ key: nextKey.current++, cwd: activeDir, branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }));
     const rest = panes.filter((p) => !drop.includes(groupOf(p)));
     setPanes([...rest, ...fresh]);
-    setFocused((f) => (drop.includes(f) ? focusIn(rest, activeDir, f) : f));
+    // `drop` names cells; a cell of two chooser tabs goes whole, so the focus is checked against every pane leaving
+    const leaving = panes.filter((p) => drop.includes(groupOf(p))).map((p) => p.key);
+    setFocused((f) => (leaving.includes(f) ? focusIn(rest, activeDir, f) : f));
   };
 
   // TERM-006: a split opens a shell in the pane's own folder, beside it (right) or under it.
@@ -312,7 +315,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const pane: Pane = { key: nextKey.current++, cwd: src.cwd, branch: src.branch, agent: "shell", program: null, args: [], typed: cli?.command ?? undefined, ask: cli?.ask, ...over };
     // one pane split down becomes a stacked pair; a split right puts the pair side by side again
     const stack = dir === "down" && shown.length === 1;
-    setStacked((st) => ({ ...st, [activeDir ?? ""]: stack }));
+    // the split pane's own workspace: a split from the command line may name a pane in a workspace not in front
+    const dirKey = sameDir(src.cwd, activeDir) ? (activeDir ?? "") : (src.cwd ?? "");
+    setStacked((st) => ({ ...st, [dirKey]: stack }));
     const at = splitIndex(shown.map((c) => c.group), groupOf(src), dir, columnsFor(shown.length + 1, stack));
     setPanes(insertBefore(panes, shown[at]?.panes[0], pane));
     if (!cli) setFocused(pane.key);
@@ -460,7 +465,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const ask = panes.find((p) => p.key === key)?.ask;
     if (ask) cliFailed.current[ask] = error;
     const { panes: rest, batchEmpty } = withoutFailed(panes, key);
-    setPanes(rest);
+    // from the latest list: several panes of one launch can fail before the window draws again, and each
+    // removal must stand (a list from this render would bring the pane that failed first back, dead)
+    setPanes((ps) => withoutFailed(ps, key).panes);
     setFocused((f) => (f === key ? focusIn(rest, activeDir, f) : f));
     setToast(batchEmpty ? `Nothing started: ${error}` : `A session did not start: ${error}`);
   };
@@ -507,7 +514,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // else its right neighbour (left if it was last), never to a tab that is closing.
   const dropPanes = (keys: number[]) => {
     const gone = new Set(keys);
-    discardDraftsOf(panes.filter((p) => gone.has(p.key))); // EDIT-004: a tab closed on purpose keeps no draft
+    // EDIT-004: a tab closed on purpose keeps no draft; a file another open tab still shows keeps its copy
+    discardDraftsOf(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)));
     trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)), setToast); // EDIT-031: a new note never typed in goes with its tab
     late.exitedPrompt.current = onClose(late.exitedPrompt.current, keys);
     cancelHandOver(keys); // DT-C248: a closing tab reaps its terminal even if a move was marked for it
@@ -527,6 +535,11 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setPanes((ps) => ps.filter((p) => !gone.has(p.key)));
     setRunning((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !gone.has(Number(k)))));
     setDirty((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !gone.has(Number(k)))));
+    // TERM-118: a tab closed unread takes its mark along, and its workspace dot when no unread tab stays there
+    if (keys.some((k) => unreadPanes.has(k))) {
+      for (const d of dirsToClear(panes, unreadPanes, keys)) markDir(d, false);
+      setUnreadPanes((u) => new Set([...u].filter((k) => !gone.has(k))));
+    }
     const rest = panes.filter((p) => !gone.has(p.key));
     setFocused((f) => {
       if (!gone.has(f)) return f;

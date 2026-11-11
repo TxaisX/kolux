@@ -74,3 +74,16 @@ describe("missing file toast", () => {
     expect(await missingFileToast("a.md", async () => { throw new Error("ipc"); })).toBeNull();
   });
 });
+
+describe("a broken percent sequence in an anchor", () => {
+  it("Mod+click on #%E0%A4 (not UTF-8) goes nowhere quietly instead of throwing", async () => {
+    const { headingLine } = await import("./noteLinks");
+    const on = vi.fn();
+    heads.forEach((h) => h.scrollIntoView.mockClear());
+    expect(() => followClick(click("#%E0%A4", { ctrlKey: true }), page, NOTE, null, on)).not.toThrow();
+    expect(heads.some((h) => h.scrollIntoView.mock.calls.length > 0)).toBe(false);
+    expect(headingEl(page, "%E0%A4")).toBeNull();
+    expect(() => headingLine("# Intro\n", "%E0%A4")).not.toThrow();
+    expect(headingLine("# Intro\n", "%E0%A4")).toBeNull();
+  });
+});

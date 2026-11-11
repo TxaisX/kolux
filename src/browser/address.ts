@@ -33,7 +33,8 @@ export function resolveAddress(text: string, engine: Engine = DEFAULT_ENGINE): R
   // A scheme is letters then a colon; "localhost:3000" has digits after its colon, so it is a host.
   const scheme = /^([a-z][a-z0-9+.-]*):(?![0-9])/i.exec(t);
   if (scheme) return { error: `invalid address: ${scheme[1]}: is not a web or blank address` };
-  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?([/?#]|$)/i.test(t)) return parse("http://" + t);
+  // An IP address or a *.localhost name is a dev server on this machine or the network; such a server rarely has https.
+  if (/^(localhost|[\w-]+(\.[\w-]+)*\.localhost|\d{1,3}(\.\d{1,3}){3}|\[::1\])(:\d+)?([/?#]|$)/i.test(t)) return parse("http://" + t);
   if (!/\s/.test(t) && /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]|$)/.test(t)) return parse("https://" + t);
   return { url: ENGINES[engine] + encodeURIComponent(t) };
 }

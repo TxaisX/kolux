@@ -23,7 +23,7 @@ import { useAgentStatusState } from "../status/useAgentStatus";
 import { useAccountSwitcher } from "../switcher/AccountSwitcher";
 import type { CodexAccount } from "../terminal/accountChange";
 import { groupOf, type Zoom } from "../terminal/grid";
-import { joinMarks, joinSaved, marksOf, reviveSaved, type Marks, type SavedLayout } from "../terminal/layout";
+import { joinMarks, joinSaved, keyAfter, marksOf, reviveSaved, type Marks, type SavedLayout } from "../terminal/layout";
 import type { PendingSend, PlanDraft } from "../terminal/planReview";
 import type { Zone } from "../terminal/rearrange";
 import type { Identity } from "../terminal/shellMarks";
@@ -215,6 +215,8 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   // C26-R3-01: those tabs now join the saved layout when it lands, so this range keeps the two sets apart
   // instead of terminal_prune_history dropping the wait tabs at the next start.
   const nextKey = useRef(layout ? Math.max(1, ...layout.panes.map((p) => p.key)) + 1 : read ? 2 : 1_000_000);
+  // A late layout (the window was drawn first) comes back in `layout` on the second draw: keys go on past it.
+  nextKey.current = keyAfter(nextKey.current, layout);
   // TERM-106: the tabs that came back from the saved layout replay their saved output first.
   const restoredKeys = useRef(new Set((layout?.panes ?? []).filter((p) => !p.chooser).map((p) => p.key))); // a chooser has no terminal to wait for
   // ORCH-056 (row 219): open prompts read off each pane's screen mark it waiting (src/status/promptScan.ts).

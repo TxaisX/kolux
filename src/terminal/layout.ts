@@ -155,6 +155,13 @@ export function joinSaved<T extends { key: number }>(panes: T[], late: SavedLayo
   return [...panes, ...late.panes.filter((s) => !panes.some((p) => p.key === s.key)).map(reviveSaved)];
 }
 
+/** The next pane key once `late`'s tabs have joined a drawn window: past every saved key as well as `next`, so a tab
+ *  opened after a slow start never takes the key of a tab that came back (two panes would share one terminal). A
+ *  layout written after an earlier slow start holds keys from the wait range itself. */
+export function keyAfter(next: number, late: SavedLayout | null): number {
+  return late ? Math.max(next, ...late.panes.map((p) => p.key + 1)) : next;
+}
+
 /** C26-R3-01: the saved pins and Tab Colours join a window that is already drawn, the same way its tabs do. A
  *  mark the user set during the wait wins over the saved one; a saved mark on a tab the window already has stays. */
 export function joinMarks(live: Marks, late: SavedLayout): { pinned: Set<number>; colors: TabColors } {
