@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import ChooserPane, { sheetKey } from "./ChooserPane";
 import type { AgentInfo } from "./PlusMenu";
 import { defaultCopies, pickShape, sheetStart, TERMINAL, type Copies, type SavedShape, type Seat, type Shape } from "./seats";
+import { OWN_FOLDERS_FIELD, setOwnFolders } from "../projects/singleFolder";
 
 const claude: AgentInfo = { id: "claude", name: "Claude Code", program: "claude", args: [], installed: true, path: "C:\\bin\\claude.exe", docs: true };
 const render = (seats: Seat[], closable = true, inGit = true, copies: Copies = defaultCopies(seats.length, inGit), shape: Shape = "custom", task = "", saved: SavedShape[] = []) =>
@@ -242,4 +243,35 @@ test("SESS-018: the page starts with the project's last count and files choice, 
   expect(none.copies).toBe(defaultCopies(1, true));
   // Separate copies need Git: outside it the shared folder is the only choice.
   expect(sheetStart({ ...last, copies: "separate" }, false).copies).toBe("shared");
+});
+
+// DT-C250: one folder per project is the default; with "Own folder for each agent" on, the chooser offers the choice again.
+test("DT-C250: the folder choice shows only while own folders are on, and starts on own folders for two or more seats in Git", () => {
+  const two: Seat[] = [{ agent: "claude", model: "opus" }, { agent: "claude", model: "opus" }];
+  const off = render(two);
+  expect(off).toContain("Every seat works in this project folder. Kolux does not make extra copies.");
+  expect(off).not.toContain("Own folder for each AI");
+  expect(off, "the shared-folder warning has no button to a choice that is off").not.toContain("Give each its own folder");
+  setOwnFolders({ [OWN_FOLDERS_FIELD]: true });
+  try {
+    const on = render(two);
+    expect(on).not.toContain("Kolux does not make extra copies");
+    expect(on).toContain('role="radiogroup" aria-label="Where the AIs work"');
+    const radios = on.split("<input").filter((b) => b.includes('name="copies-2"'));
+    expect(radios.length).toBe(2);
+    expect(radios[0], "Own folder for each AI is picked for two seats in a Git project").toContain("checked");
+    expect(radios[1]).not.toContain("checked");
+    expect(on, "own folders: nobody shares, so no warning").not.toContain("Several AIs will edit the same files");
+    // Same folder for all, by the user's choice: the warning comes with a way back
+    const shared = render(two, true, true, "shared");
+    expect(shared).toContain("Several AIs will edit the same files");
+    expect(shared).toContain("Give each its own folder");
+    // Outside Git there is nothing to copy: the choice is shown but own folders cannot be picked
+    const noGit = render(two, true, false);
+    expect(noGit.split("<input").find((b) => b.includes('name="copies-2"'))).toContain("disabled");
+    expect(noGit).toContain("Not a Git project");
+    expect(render([{ agent: "claude", model: "opus" }]).split("<input").filter((b) => b.includes('name="copies-2"'))[1], "one seat shares").toContain("checked");
+  } finally {
+    setOwnFolders({});
+  }
 });

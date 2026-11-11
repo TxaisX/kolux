@@ -15,6 +15,7 @@ import { installMenuWheel } from "./settings/menuWheel";
 import { freshShells, LAYOUT_FIELD, restoreAsks, restoreLayout, stillThere, type SavedLayout } from "./terminal/layout";
 import { sessionOrder } from "./sessions/restoreOrder";
 import "./styles.css";
+import "./look/glass.css";
 import { prefetch } from "./lazy/deferred";
 import { isTowerWindow } from "./tower/ownWindow";
 import { showStartFailure } from "./tower/startFailed";

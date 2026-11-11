@@ -13,6 +13,16 @@ task needs from the table in part 2, and open only that file.
   hidden, and clicking the folder shows every pane opened there in one grid. Work still goes through a branch and a pull request, so every change has a
   reviewable record. The agent-issued `kolux worktree create` command and the backend PR/branch
   workspace commands still exist; removing them is the next change.
+- **2026-11-11, own folders as a choice.** One folder per project stays the way Kolux starts, and
+  everything in the 2026-11-05 change holds while this choice is off: no launch makes a worktree.
+  A person can turn on "Own folder for each agent" in Settings, Git & worktrees. While it is on,
+  SESS-014 and SESS-023 apply again. In a Git project a launch gives each AI seat a worktree of
+  its own on its own branch; that is the chooser's pick for two or more seats, and it also offers
+  the same folder for all. An agent started on its own gets a fresh worktree. The sidebar lists
+  workspaces again, with the new-workspace button, the palette create row, the issue/PR start
+  action and the workspaces folder setting, and an agent working beside others is told to stay in
+  its own folder. Automations run in the project folder either way. Git makes the worktrees on
+  this computer; nothing is sent anywhere until a push.
 - **2026-11-06, the strip.** The layout strip keeps "Layout": quick counts 1, 2, 4, 6, 9 and 12
   plus a free field for any count from 1 to 24 (one launch's most seats), so 3, 5, 7 and other
   counts no longer need a split. The Preview button and its dev-server menu are gone, as are the

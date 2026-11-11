@@ -14,7 +14,7 @@ import { paletteRows } from "../projects/WorktreePalette";
 import keysSrc from "./useWindowKeys.ts?raw";
 import panelSrc from "../projects/ProjectsPanel.tsx?raw";
 import type { Page } from "../projects/ProjectsPanel";
-import { SINGLE_FOLDER, WORKTREE_COMMANDS, WORKTREES_OFF, worktreesOffNote } from "../projects/singleFolder";
+import { singleFolder, WORKTREE_COMMANDS, WORKTREES_OFF, worktreesOffNote } from "../projects/singleFolder";
 
 /** Every source file of the window, as text (tests left out). */
 const SOURCES = import.meta.glob(["../**/*.ts", "../**/*.tsx", "!../**/*.test.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
@@ -220,7 +220,7 @@ test("T-798 (P4B-01): worktrees off hides Create, Rename and Delete worktree fro
   expect(worktreesOffNote("workspace.openBoard", true)).toBeNull(); // the rest of the workspace commands still run
   expect(labels(true)).toContain("Go to / Run a command");
   // The build ships with worktrees off, and the window's key switch asks before it acts.
-  expect(SINGLE_FOLDER).toBe(true);
+  expect(singleFolder()).toBe(true);
   expect(labels(true)).toEqual(commandRows(map, [], undefined, () => undefined).map((r) => r.label));
   expect(keysSrc).toContain("worktreesOffNote(hit.id)");
 });

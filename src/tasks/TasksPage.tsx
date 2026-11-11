@@ -9,7 +9,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Refresh, Search } from "../chrome/icons";
-import { SINGLE_FOLDER } from "../projects/singleFolder";
+import { singleFolder } from "../projects/singleFolder";
 import GhBanner, { classify } from "./GhBanner";
 import { emptyReason } from "./emptyState";
 import { taskSource } from "./taskSource";
@@ -521,7 +521,7 @@ export default function TasksPage({ repo, onStart, onResume }: { repo: { dir: st
                   {workLabel(resumeDir(t), t)}
                 </button>
               )}
-              {!SINGLE_FOLDER && t.state === "open" && workItem(t, gh?.host ?? "github.com") && (
+              {!singleFolder() && t.state === "open" && workItem(t, gh?.host ?? "github.com") && (
                 <button
                   className="btn tasks-work"
                   data-work-agent={`${t.kind}-${t.number}`}

@@ -19,6 +19,7 @@ import AppLookCard from "../chrome/AppLookCard";
 import { PERCENT_FIELD, percentMode, type PercentMode } from "../usage/meter";
 import { Segmented } from "./GeneralPage";
 import { CardDensityBody, SidebarLookBody } from "../look/SidebarSettings";
+import { FINISH_LABEL, FinishBody } from "../look/FinishSettings";
 import { applyLanguage, LANGUAGE_FIELD, LANGUAGES, savedLanguage, systemLanguage, type LanguageChoice } from "../language";
 
 /** T-648: the editor for the user's own themes loads when the Colour theme card draws it, not with the page. */
@@ -219,7 +220,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
   const name = (id: string) => schemeOptions(look, true).find((o) => o.id === id)?.name ?? id;
   return (
     <>
-      <Fold id="interface" title="Interface" summary={[MODE_LABEL[look.mode], custom?.name ?? themeLabel(look.theme), look.appFont || "Default font"].join(" · ")} {...fold("interface")}>
+      <Fold id="interface" title="Interface" summary={[MODE_LABEL[look.mode], custom?.name ?? themeLabel(look.theme), ...(look.finish === "glass" ? [FINISH_LABEL.glass] : []), look.appFont || "Default font"].join(" · ")} {...fold("interface")}>
       <section className="conn-card" data-section="interface">
         <h2 className="conn-name">Mode</h2>
         <div className="look-select">
@@ -277,6 +278,9 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
         <Suspense fallback={<p className="conn-detail">Loading the theme editor…</p>}>
           <CustomThemeEditor look={look} onChange={onChange} />
         </Suspense>
+      </section>
+      <section className="conn-card" data-section="finish">
+        <FinishBody look={look} onChange={onChange} />
       </section>
       <section className="conn-card" data-section="fonts">
         <h2 className="conn-name">Fonts</h2>

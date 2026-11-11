@@ -1,6 +1,7 @@
 // The chooser's seats (SESS-007, SESS-013): each seat is one session to start, picked as an AI
 // (or a plain terminal) plus, for an AI, a model. Pure: the pane renders these and App launches
 // them. Nothing is guessed: an AI seat is ready only once its model is picked explicitly.
+import { singleFolder } from "../projects/singleFolder";
 
 /** `agent` is an agent id, "terminal" for a plain shell, or null while unpicked. `model` is a
  * model id, "default" for "the program's own default" (an explicit pick), or null. `title` is
@@ -16,8 +17,9 @@ export const TERMINAL = "terminal";
 export type Copies = "separate" | "shared";
 
 /** SESS-014 (owner change 2026-11-05): every seat works in the project folder. Kolux never makes
- * an automatic copy of the project. */
-export const defaultCopies = (_seatCount: number, _inGit: boolean): Copies => "shared";
+ * an automatic copy of the project. DT-C250: with "Own folder for each agent" on, two or more seats in a
+ * Git project start with a copy each, as they did before that change. */
+export const defaultCopies = (seatCount: number, inGit: boolean): Copies => (!singleFolder() && inGit && seatCount >= 2 ? "separate" : "shared");
 
 /** SESS-014: the shared folder with 2+ seats in a Git project is worth a warning. */
 export const sharedWarning = (copies: Copies, seatCount: number, inGit: boolean): boolean => copies === "shared" && inGit && seatCount >= 2;
@@ -249,11 +251,13 @@ export const RULES_MARK = "--- Kolux: you are working alongside other agents ---
 
 /** SESS-025: the rules every agent of a 2+ seat launch gets after its task. `note` is the path of
  * its own handoff note, made before the agent starts. */
-export function rulesBlock(note: string): string {
+export function rulesBlock(note: string, ownFolder = false): string {
   return [
     RULES_MARK,
-    "Other agents are working on this task alongside you in the same project folder.",
-    "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note.",
+    // DT-C250: an agent given a folder of its own is told to stay in it; one sharing the project folder is told not to make a copy.
+    ...(ownFolder
+      ? ["Other agents are working on this task alongside you at the same time, each in a folder of its own.", "Stay inside your own worktree, the folder you started in. The one file outside it you may write is your handoff note."]
+      : ["Other agents are working on this task alongside you in the same project folder.", "Stay inside that folder; do not make a worktree or a second copy of the project. The one file outside it you may write is your handoff note."]),
     "Make your changes on a branch, commit them, push the branch, and open a pull request. Do not commit to main.",
     `Your handoff note is ${note}. It exists already. Keep it current after each change: the files you added, updated and removed, and what is left to do. Never edit another agent's note.`,
     "Before you say you are done, check how you use every library against its up-to-date documentation.",
@@ -330,8 +334,9 @@ export const seatFolder = (chooser: string | null, project: string | null): stri
 
 /** SESS-018: the New session page starts from this project's previous launch for the count, but
  *  every seat starts blank (SESS-015). Every launch shares the project folder (owner change 2026-11-05). */
-export function sheetStart(last: Lineup | undefined, _inGit: boolean): { seats: Seat[]; copies: Copies } {
+export function sheetStart(last: Lineup | undefined, inGit: boolean): { seats: Seat[]; copies: Copies } {
   const n = Math.min(MAX_SESSIONS, Math.max(1, last?.seats.length ?? 1));
-  const copies: Copies = "shared";
+  // DT-C250: with own folders on, the previous launch's choice comes back (separate copies need Git).
+  const copies: Copies = singleFolder() ? "shared" : last ? (last.copies === "separate" && !inGit ? "shared" : last.copies) : defaultCopies(n, inGit);
   return { seats: Array.from({ length: n }, emptySeat), copies };
 }

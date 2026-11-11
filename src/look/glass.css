@@ -1,0 +1,99 @@
+/* DT-C249: the glass and metal finish. Every rule sits under [data-finish="glass"], which theme.ts puts on
+   the root only while the finish is chosen, so the flat look never reads this file.
+
+   What look/glass.ts hands over:
+     --glass-tint   the metal colour the user picked (#rrggbb)
+     --glass-glow   the glow's strength at its brightest point (a percentage)
+     --glass-fill   a panel's own fill: the surface with the metal's hue in it, part see-through
+     --glass-side   the left sidebar's ground (solid when the sidebar has a look of its own)
+   theme.ts also re-states each text colour that would read worse on a panel than it did on the flat surface.
+
+   Two rules keep this cheap and readable:
+   1. The big panels (bars, sidebars, strip) are see-through fills over a still gradient. Nothing behind
+      them moves, so they need no blur; backdrop-filter is used only on what floats over live content
+      (menus, pops), which is small and short-lived. glass.test.ts holds this.
+   2. A panel that carries text takes its ground only from --glass-fill over the glow, the ground text is
+      matched to (glassGround in glass.ts). Anything laid over that moves the ground away from the text
+      colour's side (toward --app-bg), never toward it. Brighter metal is kept to lines and to pressed
+      controls, whose text is the brightest ink. Terminals and editors keep their solid ground. */
+
+:root[data-finish="glass"] {
+  --metal-hi: color-mix(in srgb, var(--glass-tint) 30%, #ffffff);
+  --metal: color-mix(in srgb, var(--glass-tint) 55%, var(--line-strong));
+  --metal-lo: color-mix(in srgb, var(--glass-tint) 18%, #000000);
+  /* depth on a panel: its far corner falls away toward the window's own ground */
+  --glass-depth: linear-gradient(135deg, transparent 30%, color-mix(in srgb, var(--app-bg) 38%, transparent));
+  /* the lip of a panel: a bright line along the top edge, a dark one along the bottom */
+  --metal-lip: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 34%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--metal-lo) 60%, transparent);
+  --metal-drop: 0 14px 34px -18px rgba(0, 0, 0, 0.7);
+}
+
+/* The glow everything sits over: a thin even wash of the chosen colour, and a pool of it in two opposite
+   corners. The pools are sized so they never overlap, and wash plus pool stay under --glass-glow, which is
+   the brightest point text is matched to. */
+:root[data-finish="glass"] body {
+  background:
+    radial-gradient(ellipse 70vw 85vh at 0% 0%, color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.7), transparent), transparent 70%),
+    radial-gradient(ellipse 60vw 75vh at 100% 100%, color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.7), transparent), transparent 70%),
+    linear-gradient(color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.3), transparent), color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.3), transparent)),
+    var(--app-bg);
+}
+/* Text is never left on the bare glow: the work area and the right panel are glass over it too. */
+:root[data-finish="glass"] .content,
+:root[data-finish="glass"] .rside { background: var(--glass-well); }
+
+/* ---- bars ---- */
+:root[data-finish="glass"] .topbar,
+:root[data-finish="glass"] .titlebar {
+  background: var(--glass-depth), var(--glass-fill);
+  border-bottom-color: var(--metal);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 34%, transparent);
+}
+:root[data-finish="glass"] .statusbar {
+  background: var(--glass-depth), var(--glass-fill);
+  border-top-color: var(--metal);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--metal-lo) 60%, transparent);
+}
+:root[data-finish="glass"] .strip { background: color-mix(in srgb, var(--strip-bg) 55%, transparent); }
+
+/* ---- side panels ---- */
+:root[data-finish="glass"] .sidebar,
+:root[data-finish="glass"] .explorer {
+  background: var(--glass-depth), var(--glass-fill);
+  border-color: var(--metal);
+  box-shadow: var(--metal-lip), var(--metal-drop);
+}
+:root[data-finish="glass"] .sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--glass-depth), var(--glass-side); }
+
+/* ---- panes: a metal frame around a solid screen ---- */
+:root[data-finish="glass"] .pane:not(.glow) { box-shadow: inset 0 0 0 1px var(--line-inner), var(--metal-lip), var(--metal-drop); }
+:root[data-finish="glass"] .pane:not(.focused):not(.glow) { border-color: var(--metal); }
+:root[data-finish="glass"] .pane.focused:not(.glow) { border-color: color-mix(in srgb, var(--metal-hi) 70%, var(--line-focus)); }
+:root[data-finish="glass"] .inbox .list,
+:root[data-finish="glass"] .inbox .detail { border-color: var(--metal); box-shadow: var(--metal-lip), var(--metal-drop); }
+
+/* ---- controls: brushed metal on the pressed state, whose text is the brightest ink ---- */
+:root[data-finish="glass"] .switcher,
+:root[data-finish="glass"] .layouts { border-color: var(--metal); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--metal-lo) 70%, transparent); }
+:root[data-finish="glass"] .switcher button[aria-pressed="true"],
+:root[data-finish="glass"] .layouts button[aria-pressed="true"],
+:root[data-finish="glass"] .topbar-right .bell[aria-pressed="true"] {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--metal-hi) 12%, var(--seg-active)), var(--seg-active) 52%, color-mix(in srgb, var(--metal-lo) 22%, var(--seg-active)));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 30%, transparent), 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+:root[data-finish="glass"] .btn { border-color: var(--metal); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 16%, transparent); }
+:root[data-finish="glass"] .tab[aria-selected="true"] { border-color: var(--metal); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 22%, transparent); }
+
+/* ---- what floats over live content: frosted, so what is behind blurs instead of showing through ---- */
+:root[data-finish="glass"] .menu,
+:root[data-finish="glass"] .sb-menu,
+:root[data-finish="glass"] .tip,
+:root[data-finish="glass"] .review-pop,
+:root[data-finish="glass"] .tab-switcher,
+:root[data-finish="glass"] .about-panel {
+  background: color-mix(in srgb, var(--pane-bg) 84%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  border-color: var(--metal);
+  box-shadow: var(--metal-lip), 0 18px 40px -14px rgba(0, 0, 0, 0.75);
+}

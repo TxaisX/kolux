@@ -6,7 +6,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { workItem, worktreeLabel, type Project, type Worktree } from "./model";
-import { paletteCreateName, SINGLE_FOLDER } from "./singleFolder";
+import { paletteCreateName, singleFolder } from "./singleFolder";
 import { MAX_QUERY, fold, queryWords, scoreText } from "./nav";
 import { sameDir } from "../workspaces";
 import { githubItem, workspaceFor } from "../scm/paste";
@@ -367,7 +367,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
               </Fragment>
             );
           })}
-          {create && !SINGLE_FOLDER && (
+          {create && !singleFolder() && (
             <>
               {rows.length === 0 && <div className="menu-hint">Nothing matches.</div>}
               <button role="option" aria-selected={cur === rows.length} className={`menu-item${cur === rows.length ? " at" : ""}`} onMouseEnter={() => setAt(rows.length)} onClick={() => go(rows.length)}>

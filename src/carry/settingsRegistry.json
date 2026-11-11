@@ -103,6 +103,7 @@
     "contextCap200k",
     "agentSleep",
     "agentSleepIdleMinutes",
-    "agentSleepTestFast"
+    "agentSleepTestFast",
+    "agentOwnFolders"
   ]
 }

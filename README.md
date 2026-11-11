@@ -21,26 +21,44 @@
   <a href="https://github.com/TxaisX/kolux/releases/latest"><img src="https://img.shields.io/github/v/release/TxaisX/kolux?label=release" alt="Latest release"></a>
 </p>
 
-Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. Kolux works in one folder per project: every agent you launch there works in that same folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other.
+Kolux is a Windows desktop app for people who run several AI coding agents at once. It starts Claude Code, Codex, Gemini CLI, and 30+ other agent CLIs in a grid of real terminal panes. Kolux works in one folder per project: every agent you launch there works in that same folder, and Kolux makes no extra copies. Give each agent a different part of the job, because two agents editing the same file can overwrite each other. If you would rather keep them apart, turn on **Own folder for each agent** in Settings, Git & worktrees: each agent then works in its own Git worktree on its own branch.
 
 > **Early alpha.** Kolux is built and used daily on Windows 11, but it has not been tested by outside users yet. Keep your work in Git, expect breaking changes, and report what breaks. [Status](docs/STATUS.md) lists what is verified and what is still open.
 
+<p align="center">
+  <img src="docs/images/needs-you-and-usage.png" width="900" alt="The Kolux window with one Claude Code pane that is waiting for an answer. The words Needs you show on its tab, its header, the Insights panel and the bell, beside today's token and cost figures.">
+</p>
+<p align="center"><sub>Claude Code is waiting for an answer. The same <b>Needs you</b> shows on the tab, the pane, the Insights panel and the bell, beside the token and cost figures.</sub></p>
+
+<p align="center">
+  <img src="docs/images/first-run.png" width="760" alt="The first step of the first-run setup. It reads: Several AIs can work on your files at the same time. Claude, Codex and Grok each take a part of the job, side by side.">
+</p>
+<p align="center"><sub>The first of the four first-run steps. The next three connect an AI, pick a project folder and start a session.</sub></p>
+
+<p align="center"><sub>The screenshots on this page are captures of the app's own window from the project's live test runs; the originals are in <a href="evidence">evidence/</a>.</sub></p>
+
 ## What it does
 
-- **Parallel agents in one folder.** Launch a Solo, Pair, Workbench, or Swarm lineup. Every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them.
+- **Parallel agents in one folder, or a folder each.** Launch a Solo, Pair, Workbench, or Swarm lineup. By default every seat works in your project's folder, and the chooser warns that several AIs will edit the same files, so split the work between them. With Own folder for each agent on, each seat gets its own Git worktree and branch instead.
 - **One window.** Terminals, browser tabs, an editor, and diffs sit in the same split layout.
 - **Status at a glance.** Claude Code, Codex, Gemini CLI, and other agents report their own state through hooks. Working, needs you, stopped, and done use one vocabulary across the pane, Board, Inbox, tray dot, and notifications.
 - **Usage and limits.** Token and cost figures come from local Claude and Codex logs. Weekly plan limits show on the pill and pane gauges where the provider reports them.
 - **Review and ship.** When an agent finishes, press **Review changes** on its Board card or Inbox row. That opens All Changes, where you read every changed file, then stage, commit, push, and pull. Pull-request checks show in the right panel's Checks tab.
 - **Local first.** No telemetry. Keys are sealed with Windows DPAPI. The app talks to GitHub (Releases and API), your Git remotes, and the AI providers you connect; the full list is in Settings, General, Privacy.
 
+## What is different
+
+- **Windows first.** Kolux is built and tested on Windows 11: PowerShell panes on the Windows console, an installer for your own Windows user, and updates whose signature the app checks before it installs them.
+- **Measured, not guessed.** On the project's test PC, build 0.1.11 with 12 terminals open and the window minimised keeps 226 MB in memory and uses 5 % of one processor core, down from 544 MB and 13 %. The runs, the method and the gains that have not shipped yet are in the [footprint report](docs/research/kolux-slimdown-2026-11-09.md).
+- **Sessions outlive the window.** Terminals run in a background service. Close or reload the window and the agents keep working; quit and reopen, and each tab comes back, with Claude Code and Codex resuming their own sessions.
+- **Proof you can read.** More than 6,000 front-end tests and 3,000 Rust tests run on every push, 208 of the 228 must-have acceptance cards pass, and the ones still open are listed in [Status](docs/STATUS.md) rather than left out.
+- **Every line is the project's own.** Kolux is a clean-room rebuild: written from a description of what the user sees, never from another app's code. [PROVENANCE.md](PROVENANCE.md) holds the record.
+
 ## Install
 
-1. Open the [latest release](https://github.com/TxaisX/kolux/releases/latest) and download `Kolux.RS_<version>_x64-setup.exe`.
+1. Open the [latest release](https://github.com/TxaisX/kolux/releases/latest) and download `Kolux_<version>_x64-setup.exe`.
 2. Run the installer. It installs for your Windows user and adds the `kolux` command to your PATH.
 3. Open Kolux. The first-run setup asks you to connect an AI, pick a project folder, and start a session.
-
-> The installer file keeps its `Kolux.RS_…` name for one more release while the install identity moves; the app it installs is Kolux.
 
 **The installer is not code-signed yet.** Kolux is a free alpha and has no Windows code-signing certificate, so Windows treats the installer as from an unknown publisher. What you will see:
 
@@ -70,6 +88,11 @@ Kolux has no telemetry, analytics, or crash upload. Your projects, settings, ter
 
 The full list of outbound connections is in Settings, General, Privacy and in the [safety guide](docs/guide/safety.md).
 
+<p align="center">
+  <img src="docs/images/privacy-connections.png" width="760" alt="Settings, General, Privacy: the list of every connection the app makes, starting with GitHub Releases, your git remotes and the AI providers you connected.">
+</p>
+<p align="center"><sub>Settings, General, Privacy lists every connection the app makes.</sub></p>
+
 ## Documentation
 
 | Read | For |
@@ -91,9 +114,19 @@ The [documentation home](docs/README.md) has the full index.
 
 ## Project
 
-Kolux is in early alpha. The latest build is 0.1.9 (6 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
+Kolux is in early alpha. The latest build is 0.1.11 (10 November 2026). The update feed is this repository's Releases page; installed copies check it automatically. Known gaps and verification status are in [Status](docs/STATUS.md).
 
 Bug reports and feature requests go to [Issues](https://github.com/TxaisX/kolux/issues). If you want to propose a code change, open an issue first so we can agree on scope; read [CONTRIBUTING.md](CONTRIBUTING.md) before you start.
+
+## Help test the alpha
+
+Nobody outside the project has tested Kolux yet, so a report from a PC that is not the author's is the most useful thing you can send. It takes about ten minutes:
+
+1. Install the latest build on Windows 11, and note what Windows says about the unsigned installer.
+2. Go through the first-run setup: connect one AI, pick a project folder that is in Git, and start a session.
+3. Launch two agents on different parts of a small job, and watch the Board and the Inbox while they work.
+4. When one finishes, press **Review changes** and read what it changed.
+5. Open an [alpha test report](https://github.com/TxaisX/kolux/issues/new?template=alpha-test.yml) and say where you got stuck. "Nothing broke" is worth sending too.
 
 ## Build from source
 

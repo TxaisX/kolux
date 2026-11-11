@@ -1,0 +1,28 @@
+name: Feature request
+description: Something Kolux does not do yet, or could do better.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then the change you want. A small, concrete example is more useful than a long specification.
+        Feedback is read, but not every request will be built.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you were trying to do, and what got in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: Who it is for, and what they do today instead
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: The change you want
+    validations:
+      required: true

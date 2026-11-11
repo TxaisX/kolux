@@ -8,6 +8,7 @@ import { CATALOGUE, tidySchemes, type CustomScheme } from "./terminal/schemes";
 import type { CustomTheme } from "./settings/customTheme";
 import { DEFAULT_TINT, STRENGTH_SPAN, sidebarBackground, sidebarLookOf, type SidebarLook } from "./look/sidebar";
 import { paletteIsDark } from "./terminal/queries";
+import { DEFAULT_METAL, GLASS_ICONS, GLASS_SPAN, GLASS_TEXT, ICON_BAR, TEXT_BAR, finishOf, glassGround, glassVars, type Finish } from "./look/glass";
 
 export const classic = {
   // surfaces and lines
@@ -137,7 +138,7 @@ export type TerminalScheme = string;
 export type Mode = "system" | "light" | "dark";
 export const MODES: Mode[] = ["system", "light", "dark"];
 /** `lightTerminal`: in light mode terminals use `lightScheme`; off keeps `terminal` for both. */
-export type Appearance = { theme: ThemeName; tint: number; saturation: number; depth: number; terminal: TerminalScheme; mode: Mode; lightTerminal: boolean; lightScheme: TerminalScheme; custom: CustomScheme[]; appFont: string; editorFont: string; dividerWidth: number; dividerDark: string; dividerLight: string; paneDim: number; termFont: string; termSize: number; termLineHeight: number; termWeight: FontWeight; termWeightBold: FontWeight; screens: ScreenModes; sidebarLook: SidebarLook; sidebarTint: string; sidebarStrength: number; userThemes: CustomTheme[]; userTheme: string };
+export type Appearance = { theme: ThemeName; tint: number; saturation: number; depth: number; terminal: TerminalScheme; mode: Mode; lightTerminal: boolean; lightScheme: TerminalScheme; custom: CustomScheme[]; appFont: string; editorFont: string; dividerWidth: number; dividerDark: string; dividerLight: string; paneDim: number; termFont: string; termSize: number; termLineHeight: number; termWeight: FontWeight; termWeightBold: FontWeight; screens: ScreenModes; sidebarLook: SidebarLook; sidebarTint: string; sidebarStrength: number; userThemes: CustomTheme[]; userTheme: string; finish: Finish; finishTint: string; finishStrength: number };
 /** VIEW-006: a mode of its own for one of the three workspace screens; a screen not listed follows `mode`. */
 export type ScreenModes = Partial<Record<"agents" | "board" | "terminals", Mode>>;
 export const THEMED_SCREENS = ["agents", "board", "terminals"] as const;
@@ -148,8 +149,8 @@ export const WEIGHTS = ["normal", "bold", "100", "200", "300", "400", "500", "60
 export type FontWeight = (typeof WEIGHTS)[number];
 const weightOr = (v: unknown, dflt: FontWeight): FontWeight => (typeof v === "string" && (WEIGHTS as readonly string[]).includes(v) ? (v as FontWeight) : typeof v === "number" && (WEIGHTS as readonly string[]).includes(String(v)) ? (String(v) as FontWeight) : dflt);
 /** The settings fields the appearance lives in. */
-export const FIELD = { theme: "appTheme", tint: "themeTint", saturation: "themeSaturation", depth: "themeDepth", terminal: "terminalScheme", mode: "appearanceMode", lightTerminal: "terminalLightScheme", lightScheme: "terminalSchemeLight", custom: "terminalCustomSchemes", appFont: "appFont", editorFont: "editorFont", dividerWidth: "paneDividerWidth", dividerDark: "paneDividerDark", dividerLight: "paneDividerLight", paneDim: "paneDim", termFont: "terminalFont", termSize: "terminalFontSize", termLineHeight: "terminalLineHeight", termWeight: "terminalFontWeight", termWeightBold: "terminalFontWeightBold", screens: "screenThemes", sidebarLook: "sidebarLook", sidebarTint: "sidebarTint", sidebarStrength: "sidebarTintStrength", userThemes: "customThemes", userTheme: "customThemeActive" } as const;
-export const SPAN = { tint: [-180, 180, 0], saturation: [0, 160, 100], depth: [-3, 6, 0], dividerWidth: [2, 12, 6], paneDim: [30, 100, 100], termSize: [8, 32, 13], termLineHeight: [1, 2, 1], sidebarStrength: STRENGTH_SPAN } as const;
+export const FIELD = { theme: "appTheme", tint: "themeTint", saturation: "themeSaturation", depth: "themeDepth", terminal: "terminalScheme", mode: "appearanceMode", lightTerminal: "terminalLightScheme", lightScheme: "terminalSchemeLight", custom: "terminalCustomSchemes", appFont: "appFont", editorFont: "editorFont", dividerWidth: "paneDividerWidth", dividerDark: "paneDividerDark", dividerLight: "paneDividerLight", paneDim: "paneDim", termFont: "terminalFont", termSize: "terminalFontSize", termLineHeight: "terminalLineHeight", termWeight: "terminalFontWeight", termWeightBold: "terminalFontWeightBold", screens: "screenThemes", sidebarLook: "sidebarLook", sidebarTint: "sidebarTint", sidebarStrength: "sidebarTintStrength", userThemes: "customThemes", userTheme: "customThemeActive", finish: "appFinish", finishTint: "appFinishTint", finishStrength: "appFinishStrength" } as const;
+export const SPAN = { tint: [-180, 180, 0], saturation: [0, 160, 100], depth: [-3, 6, 0], dividerWidth: [2, 12, 6], paneDim: [30, 100, 100], termSize: [8, 32, 13], termLineHeight: [1, 2, 1], sidebarStrength: STRENGTH_SPAN, finishStrength: GLASS_SPAN } as const;
 /** A divider colour is #rrggbb or empty (the window shows through, as DESIGN.md measured). */
 const hexOrEmpty = (v: unknown) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim().toLowerCase() : "");
 
@@ -204,6 +205,10 @@ export function readAppearance(s: Record<string, unknown>): Appearance {
     userThemes,
     // T-648: the custom theme in use, or "" for the built-in one; a name that no longer exists is "".
     userTheme: typeof s[FIELD.userTheme] === "string" && userThemes.some((c) => c.name === s[FIELD.userTheme]) ? (s[FIELD.userTheme] as string) : "",
+    // DT-C249: the flat look until the glass and metal finish is chosen; its colour is #rrggbb or steel.
+    finish: finishOf(s[FIELD.finish]),
+    finishTint: hexOrEmpty(s[FIELD.finishTint]) || DEFAULT_METAL,
+    finishStrength: Math.round(clampNum(s[FIELD.finishStrength], SPAN.finishStrength)),
   };
 }
 
@@ -403,7 +408,9 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
   // The four inks the sidebar's own rules paint text with are floored against the ground, so the
   // guarantee holds on a tinted or terminal ground too. `--fg-label` and `--fg-faint` are the
   // C23-R3-06 token defect and are left as they are.
-  const on = bg.startsWith("#") ? bg : t.surface;
+  // DT-C249: on the glass finish a panel's ground is its fill over the glow, so text is matched to that.
+  const glass = a.finish === "glass" ? glassGround(t, a.finishTint, a.finishStrength) : null;
+  const on = bg.startsWith("#") ? bg : (glass ?? t.surface);
   const readable = (v: string) => floorInk(v, on, SIDEBAR_FLOOR);
   return {
     "--sidebar-bg": bg,
@@ -427,8 +434,24 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
     "--divider-width": a.dividerWidth + "px",
     "--divider": (dark ? a.dividerDark : a.dividerLight) || "transparent",
     "--pane-dim": String(a.paneDim / 100),
+    // DT-C249: what look/glass.css draws the finish from, and each text colour moved as far as it must go
+    // to keep on the glass the ratio it had on the flat surface. Nothing here is written while the finish is flat.
+    ...(glass ? { ...glassVars(a.finishTint, a.finishStrength, t, bg), ...glassInks(t, glass) } : {}),
   };
 };
+
+/** DT-C249: the text and icon colours that read worse on the glass ground than on the flat surface, each moved
+ *  only as far as it takes to read as it did (up to the bar: a colour under the bar on the surface keeps its own ratio). */
+export function glassInks(t: Theme, ground: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [keys, bar] of [[GLASS_TEXT, TEXT_BAR], [GLASS_ICONS, ICON_BAR]] as const) {
+    for (const k of keys) {
+      const need = Math.min(bar, contrast(t[k], t.surface));
+      if (contrast(t[k], ground) < need) out["--" + k] = floorInk(t[k], ground, need);
+    }
+  }
+  return out;
+}
 
 export function themeVars(t: Theme): Record<string, string> {
   const vars: Record<string, string> = { "--ui-font": uiFont, "--mono-font": monoFont };
@@ -477,7 +500,10 @@ export function applyAppearance(a: Appearance, root: StyleHost = document.docume
   last = a;
   lastDark = dark;
   const vars = { ...themeVars(buildTheme(a, dark)), ...appearanceVars(a, dark), "color-scheme": dark ? "dark" : "light" };
-  if (typeof document !== "undefined") document.documentElement.dataset.mode = dark ? "dark" : "light";
+  if (typeof document !== "undefined") {
+    document.documentElement.dataset.mode = dark ? "dark" : "light";
+    document.documentElement.dataset.finish = a.finish; // DT-C249: look/glass.css draws only under "glass"
+  }
   root.style.removeProperty?.("--accent"); // a custom theme's accent must not outlive it; set again just below when the theme has one
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   try {
