@@ -1,4 +1,4 @@
-// TERM-123 / HID-028 (T-817; Txais 2026-11-09: "Build it, off by default"): agent sleep, the rules.
+// TERM-123 / HID-028 (T-817; Txais 2026-11-09: "Build it, off by default"; 2026-11-10: "Default on"): agent sleep, the rules.
 // An agent pane left idle past the chosen delay is put to sleep to free memory. The idle clock counts
 // from the agent's last state change (stamp); a finished turn (done or idle) makes the pane eligible.
 // Never eligible: the agent is working, waiting on a question or a permission, the pane's message box
@@ -23,9 +23,9 @@ export const TICK_MS = 60_000;
 export const TEST_FAST_FIELD = "agentSleepTestFast";
 const FAST = { idleMs: 20_000, tickMs: 5_000 } as const;
 
-/** The switch: only a saved `true` is on; a missing key, another type or an old profile's own sleep key
- *  (HID-028 Compat: it had another name) reads as off. */
-export const sleepOn = (settings: Record<string, unknown>): boolean => settings[SLEEP_ON_FIELD] === true;
+/** The switch: on unless saved `false` (Txais 2026-11-10: "Default on"); a missing key or another type reads
+ *  as on, and an old profile's own sleep key (HID-028 Compat: it had another name) is never read. */
+export const sleepOn = (settings: Record<string, unknown>): boolean => settings[SLEEP_ON_FIELD] !== false;
 
 /** The delay as saved: 30 when missing or unreadable, else held between 5 and 240 (whole minutes). */
 export function clampIdleMinutes(v: unknown): number {
