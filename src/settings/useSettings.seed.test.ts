@@ -115,3 +115,21 @@ test("before the window has read its settings there is no seed: the page waits f
   await page.settle();
   expect(page.now().settings).toEqual({ a: 1 });
 });
+
+test("a read that finds what the seed drew keeps the same copy, so the page is not drawn a second time", async () => {
+  (await import("./windowSettings")).holdWindowSettings({ editorAutoSave: true, diffView: "split", openIn: [{ id: "code" }] });
+  const page = await mount();
+  const seeded = page.now().settings;
+  io.firstRead!({ openIn: [{ id: "code" }], diffView: "split", editorAutoSave: true }); // same values, another key order
+  await page.settle();
+  expect(page.now().settings).toBe(seeded);
+});
+
+test("sameSettings compares values, not key order or identity", async () => {
+  const { sameSettings } = await import("./useSettings");
+  expect(sameSettings({ a: 1, b: [1, { c: "x" }] }, { b: [1, { c: "x" }], a: 1 })).toBe(true);
+  expect(sameSettings({ a: 1 }, { a: 1, b: undefined })).toBe(false);
+  expect(sameSettings({ a: [1, 2] }, { a: [2, 1] })).toBe(false);
+  expect(sameSettings({ a: [] }, { a: {} })).toBe(false);
+  expect(sameSettings({ a: null }, { a: 0 })).toBe(false);
+});

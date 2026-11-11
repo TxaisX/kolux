@@ -17,6 +17,16 @@ export function inTurn<A, R>(fn: (arg: A) => Promise<R>): (arg: A) => Promise<R>
   };
 }
 
+/** True when two settings copies hold the same values (JSON-shaped: what `get_settings` returns), in any key order. */
+export function sameSettings(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const ra = a as Record<string, unknown>;
+  const rb = b as Record<string, unknown>;
+  return ka.length === Object.keys(b).length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && sameSettings(ra[k], rb[k]));
+}
+
 /** Every page's saves share one turn: each reads, merges and writes what is on disk, so two at
  * once (a field's blur, then a switch) would drop the first. Values are tidied on the way in
  * (SET-035), and what the window takes afterwards is what was really stored. */
@@ -48,7 +58,15 @@ export function useSettings() {
     // saveInTurn above keeps real reads, since it reads, merges, writes and reads back.
     const read = () =>
       sharedRead().then(
-        (s) => !gone && ((disk.current = s), setError(null), setSettings(race.current.loaded(s))),
+        (s) => {
+          if (gone) return;
+          disk.current = s;
+          setError(null);
+          // The read usually finds what the seed already drew: keeping the same object lets React skip redrawing the
+          // whole page a few milliseconds after it was drawn (on every visit to a page, the cost of a second draw).
+          const next = race.current.loaded(s);
+          setSettings((cur) => (cur !== null && sameSettings(cur, next) ? cur : next));
+        },
         (e) => !gone && setError(String(e)),
       );
     reread.current = () => (setError(null), void read());
