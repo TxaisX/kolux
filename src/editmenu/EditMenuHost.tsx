@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { detectPlatform } from "../keys/keymap";
 import { useMenuFocus } from "../chrome/dialogFocus";
+import OutOfFlow from "../chrome/OutOfFlow";
 import { fitIn, outsideDismisses } from "../terminal/PaneMenu";
 import { SuggestionGate } from "./suggestionGate";
 import { editMenuItems, fieldKind, type EditAction, type EditItem, type FieldLike } from "./editMenuModel";
@@ -137,7 +138,7 @@ function Menu({ menu, onDismiss, onToast }: { menu: Open; onDismiss: () => void;
   };
   const { items } = menu;
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onClick={outside} onContextMenu={outside} aria-hidden="true" />
       <div ref={box} className="menu edit-menu" role="menu" aria-label="Text menu" style={{ top: menu.y, left: menu.x }}>
         {items.map((it, i) => (
@@ -157,6 +158,6 @@ function Menu({ menu, onDismiss, onToast }: { menu: Open; onDismiss: () => void;
           </Fragment>
         ))}
       </div>
-    </>
+    </OutOfFlow>
   );
 }

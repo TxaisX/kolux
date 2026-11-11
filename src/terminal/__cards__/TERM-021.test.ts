@@ -23,7 +23,9 @@ test("box 1: a permission prompt flips Working to the attention tone in one stat
 
 test("box 2: a finished agent shows the done tone; an idle plain shell shows the neutral tone", () => {
   expect(headerOf("claude", "running", undefined, false, 1000, 2000, "done")).toMatchObject({ word: "Done", tone: "done", needsYou: false });
-  expect(headerOf("claude", "ended", 0, false, 1000, 2000)).toMatchObject({ word: "Done", tone: "done", needsYou: false });
+  expect(headerOf("claude", "running", undefined, false, 1000, 2000, "done")).toMatchObject({ word: "Done", tone: "done", needsYou: false });
+  // DT-C52 (round 3): a program that exited reads Stopped, neutral, as on the Board and in the Inbox
+  expect(headerOf("claude", "ended", 0, false, 1000, 2000)).toMatchObject({ word: "Stopped", tone: "", needsYou: false });
   expect(css).toMatch(/\.pane-head \.status\.done \{ color: var\(--done\); \}/);
   const shell = headerOf("shell", "running", undefined, false, null, 0);
   expect(shell.tone).toBe("");

@@ -270,3 +270,11 @@ test("fix2: a bounded rule still masks a long key name, a long flag and a long p
   const out = scrub(quoted);
   for (const gone of ["Jane", "Doe", "deep", "x.txt"]) expect(out, gone).not.toContain(gone);
 });
+
+test("an xAI (Grok) key, which Kolux itself asks for, is masked wherever it appears", () => {
+  const out = scrub("Grok said: Incorrect API key provided: xai-FAKEfakeFAKEfake1234567890abcd. Try again");
+  expect(out).not.toContain("FAKEfake");
+  expect(out).toContain("[masked]");
+  expect(scrub(out)).toBe(out);
+  expect(scrub("the xai-sdk package")).toBe("the xai-sdk package");
+});

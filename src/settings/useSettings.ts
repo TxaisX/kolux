@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { saveChanged } from "./saveChanged";
 import { invoke } from "@tauri-apps/api/core";
-import { applyBroadcast, createLoadRace, readBroadcast, adoptStored } from "./settingsSync";
+import { applyBroadcast, createLoadRace, readBroadcast, adoptStored, withoutSecrets } from "./settingsSync";
+import { windowSettings } from "./windowSettings";
+import { sharedRead } from "./sharedRead";
 import { tidySettings } from "./tidy";
 
 /** Runs `fn` one call at a time, in call order; a failed call does not hold up the next. */
@@ -13,6 +15,16 @@ export function inTurn<A, R>(fn: (arg: A) => Promise<R>): (arg: A) => Promise<R>
     last = run;
     return run;
   };
+}
+
+/** True when two settings copies hold the same values (JSON-shaped: what `get_settings` returns), in any key order. */
+export function sameSettings(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const ra = a as Record<string, unknown>;
+  const rb = b as Record<string, unknown>;
+  return ka.length === Object.keys(b).length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && sameSettings(ra[k], rb[k]));
 }
 
 /** Every page's saves share one turn: each reads, merges and writes what is on disk, so two at
@@ -27,7 +39,13 @@ const saveInTurn = inTurn((patch: Record<string, unknown>) =>
  * back what is stored (T-598: a draft field keeps its typed text). The page follows saves made in
  * any window (SET-035). */
 export function useSettings() {
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  // The page draws at once from the copy the window already holds; its own read replaces that when it lands (a change
+  // made meanwhile is laid over the read, createLoadRace), and every save merges into what is on disk, so a seed that
+  // was a moment old never writes a field the page did not change.
+  const [settings, setSettings] = useState<Record<string, unknown> | null>(() => {
+    const w = windowSettings();
+    return w && tidySettings(withoutSecrets(w));
+  });
   const [error, setError] = useState<string | null>(null);
   const race = useRef(createLoadRace());
   // T-735: the last copy known to be on disk (load, broadcasts, read-backs), never an optimistic change.
@@ -36,9 +54,19 @@ export function useSettings() {
   const reread = useRef(() => {});
   useEffect(() => {
     let gone = false;
+    // PKG-4: the mount read shares a get_settings already in flight (the window's own start read, other mounts);
+    // saveInTurn above keeps real reads, since it reads, merges, writes and reads back.
     const read = () =>
-      invoke<Record<string, unknown>>("get_settings").then(
-        (s) => !gone && ((disk.current = s), setError(null), setSettings(race.current.loaded(s))),
+      sharedRead().then(
+        (s) => {
+          if (gone) return;
+          disk.current = s;
+          setError(null);
+          // The read usually finds what the seed already drew: keeping the same object lets React skip redrawing the
+          // whole page a few milliseconds after it was drawn (on every visit to a page, the cost of a second draw).
+          const next = race.current.loaded(s);
+          setSettings((cur) => (cur !== null && sameSettings(cur, next) ? cur : next));
+        },
         (e) => !gone && setError(String(e)),
       );
     reread.current = () => (setError(null), void read());

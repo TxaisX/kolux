@@ -21,6 +21,11 @@ export default defineConfig(() => ({
     watch: { ignored: ["**/src-tauri/**"] },
     headers: { "Content-Security-Policy": DEV_CSP },
   },
+  build: {
+    // The vendor marks (src/marks/registry.ts) were inlined as data: URIs, 22 kB of text in the first-load script.
+    // As files they are read with the first icons drawn; everything else keeps Vite's default rule.
+    assetsInlineLimit: (file: string) => (/[\\/]assets[\\/]vendors[\\/]/.test(file) ? false : undefined),
+  },
   test: {
     // LOOP.md section 1: the PC is shared with live agents; never more than two workers.
     maxWorkers: 2,

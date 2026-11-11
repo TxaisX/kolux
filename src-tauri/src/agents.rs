@@ -767,7 +767,9 @@ fn credited_name(stem: &str, packages: bool) -> Option<&'static str> {
 
 /// `restore` (SESS-030) marks a tab brought back after a quit or a crash; `session` is its last
 /// known session id. Both are left out for a plain new tab, which never carries a resume form.
-#[tauri::command]
+// Async: finding the program reads the registry and looks in every PATH folder for each
+// PATHEXT ending, which a slow or network PATH entry turns into a stall of the window's thread.
+#[tauri::command(async)]
 pub fn agent_start_line(store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, id: String, extra: Vec<String>, prompt: String, picked: Option<bool>, restore: Option<bool>, session: Option<String>) -> Result<StartLine, String> {
     let settings = store.lock().map_err(|e| e.to_string())?.settings();
     let start = if restore.unwrap_or(false) { Start::Restore(session.as_deref().map(str::trim).filter(|s| !s.is_empty())) } else { Start::Fresh };

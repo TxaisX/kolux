@@ -316,3 +316,11 @@ describe("loading (EDIT-001)", () => {
     }
   });
 });
+
+it("P10: a binary, oversized or non-UTF-8 file gets no Retry (reading again cannot help); a passing failure does", async () => {
+  const { retryHelps } = await import("./buffers");
+  expect(retryHelps("C:/w/blob.bin is a binary file, so it is not shown as text")).toBe(false);
+  expect(retryHelps("C:/w/big.log is too large to open")).toBe(false);
+  expect(retryHelps("C:/w/x.txt is not UTF-8 text")).toBe(false);
+  expect(retryHelps("The process cannot access the file because it is being used by another process")).toBe(true);
+});

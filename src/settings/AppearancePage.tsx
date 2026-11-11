@@ -109,7 +109,8 @@ function ZoomControl() {
 
 /** SET-018: a font family field; suggestions come from the installed fonts, the whole list when the
  *  field is entered and the best matches once the user types. Applies on pick, Enter or leaving. */
-export function FontField({ label, value, placeholder, onPick }: { label: string; value: string; placeholder: string; onPick: (family: string) => void }) {
+/** `word` is what stands beside the field when the card's own heading already says the rest; the field keeps `label` as its name. */
+export function FontField({ label, word = label, value, placeholder, onPick }: { label: string; word?: string; value: string; placeholder: string; onPick: (family: string) => void }) {
   const [text, setText] = useState(value);
   const [fonts, setFonts] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -129,10 +130,11 @@ export function FontField({ label, value, placeholder, onPick }: { label: string
   useLeaveSave(() => text !== value && commit(text)); // SET-036: changing page or closing keeps what was typed
   return (
     <label className="font-field">
-      <span>{label}</span>
+      <span>{word}</span>
       <input
         type="text"
         role="combobox"
+        aria-label={label}
         aria-expanded={open}
         aria-autocomplete="list"
         aria-controls={open && shown.length > 0 ? `${id}-list` : undefined}
@@ -224,7 +226,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
       <section className="conn-card" data-section="interface">
         <h2 className="conn-name">Mode</h2>
         <div className="look-select">
-          <span>Mode</span>
+          <span>Light or dark</span>
           <Segmented<Mode> label="Mode" options={MODES.map((m) => ({ id: m, label: MODE_LABEL[m] }))} value={look.mode} off={custom ? [...MODES] : []} onPick={(mode) => onChange({ ...look, mode })} />
         </div>
         {custom && <p className="conn-detail" data-note="custom-mode">A custom theme sets its own light or dark look, so these are off while it is on.</p>}
@@ -293,7 +295,7 @@ export function AppearanceView({ look, onChange, windowPart, windowSummary = "",
       <section className="conn-card" data-section="terminal-font">
         <h2 className="conn-name">Terminal font</h2>
         {/* TERM-097: every pane and, unless it has its own font, the editor redraw with these. */}
-        <FontField label="Terminal font" value={look.termFont} placeholder={`Default (${firstFamily(monoFont)})`} onPick={(termFont) => onChange({ ...look, termFont })} />
+        <FontField label="Terminal font" word="Font" value={look.termFont} placeholder={`Default (${firstFamily(monoFont)})`} onPick={(termFont) => onChange({ ...look, termFont })} />
         <label className="look-slider">
           <span>Size</span>
           <input type="range" min={SPAN.termSize[0]} max={SPAN.termSize[1]} step={1} value={look.termSize} onChange={(e) => onChange({ ...look, termSize: Number(e.target.value) })} />

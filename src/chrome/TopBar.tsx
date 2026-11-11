@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ArrowLeft, ArrowRight, Bell, Clock, Close, Mark, Maximize, Minimize, PanelLeft, PanelRight, Restore, Search } from "./icons";
 import { Kbd, useKeymap } from "../keys/KeymapContext";
-import { paletteHint } from "../keys/paletteKey";
+import { usePaletteHint } from "../keys/paletteKey";
 import UsagePill from "../usage/UsagePill";
 import AccountSwitcher from "../switcher/AccountSwitcher";
 import { weeklyOf } from "../usage/claude";
@@ -20,6 +20,11 @@ import { chromeLayout } from "./titleHeader";
 import { t } from "../i18n/lookup";
 import { useSettings } from "../settings/useSettings";
 import { readStatusBar, usagePills } from "./statusItems";
+import { AgentsPanel, Explorer, InboxView, TowerView, WorkspaceBoard } from "../lazy/pages";
+
+/** The surface each control opens, read on hover and focus so the click draws it in its own frame. A screen
+ *  not listed here (Terminals) has nothing to read. */
+const screenWarm: Partial<Record<Screen, () => void>> = { agents: AgentsPanel.warm, board: WorkspaceBoard.warm, tower: TowerView.warm, inbox: InboxView.warm };
 
 /** Artifacts is reached from the sidebar only, so it is not in the top bar's cycle. */
 /** The three switcher screens, and the Inbox behind the bell (STAT-050: its own top-level view).
@@ -53,6 +58,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
   const plan = usePlan();
   const { settings } = useSettings();
   const keymap = useKeymap();
+  const paletteKeys = usePaletteHint(keymap); // Ctrl+K only while it would open the palette from where the focus is
   // The usage items in the status-bar list (Settings > Appearance) switch each provider off here.
   const { claude: claudeOn, codex: codexOn, any: anyPill } = usagePills({
     claudeInstalled: installed.includes("claude"),
@@ -114,7 +120,7 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
       {layout.switcher && (
         <nav className="switcher" aria-label="Screen" data-tauri-drag-region="false">
           {screens.map((s) => (
-            <button key={s.id} aria-pressed={screen === s.id} onClick={() => onScreen(s.id)}>
+            <button key={s.id} aria-pressed={screen === s.id} onPointerEnter={screenWarm[s.id]} onFocus={screenWarm[s.id]} onClick={() => onScreen(s.id)}>
               {s.label}
             </button>
           ))}
@@ -128,15 +134,15 @@ export default function TopBar({ screen, classic = false, sidebarWidth, onScreen
           </button>
         )}
         {/* VIEW-009: while a full page shows, the right sidebar and its control are hidden. */}
-        <button className="ib panel" data-testid="right-sidebar-toggle" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onClick={onToggleRight}>
+        <button className="ib panel" data-testid="right-sidebar-toggle" hidden={fullPage} title={rightOpen ? "Hide the right panel" : "Show the right panel"} aria-pressed={rightOpen} onPointerEnter={Explorer.warm} onFocus={Explorer.warm} onClick={onToggleRight}>
           <PanelRight />
         </button>
         <button className="searchbox" title="Go to a workspace, tab, project or setting, or run a command" onClick={onSearch}>
           <Search />
           <span className="ph">Go to / Run a command</span>
-          <Kbd id="worktree.palette" shown={paletteHint(keymap)} />
+          <Kbd id="worktree.palette" shown={paletteKeys} />
         </button>
-        <button className="ib bell" aria-label={needsYou > 0 ? t(needsYou === 1 ? "inbox.bell.needs.one" : "inbox.bell.needs.many", { count: needsYou }) : "Inbox"} title="Inbox" aria-pressed={screen === "inbox"} onClick={() => onScreen(bellTarget(screen, before.current))}>
+        <button className="ib bell" aria-label={needsYou > 0 ? t(needsYou === 1 ? "inbox.bell.needs.one" : "inbox.bell.needs.many", { count: needsYou }) : "Inbox"} title="Inbox" aria-pressed={screen === "inbox"} onPointerEnter={InboxView.warm} onFocus={InboxView.warm} onClick={() => onScreen(bellTarget(screen, before.current))}>
           <Bell />
           {needsYou > 0 && <span className="bell-count" aria-hidden="true">{needsYou > 99 ? "99+" : needsYou}</span>}
         </button>

@@ -13,11 +13,14 @@
 // Raised to 1,490,000 on 2026-11-03 for merge train 1 (17 UX PRs, 561 bytes over).
 // Raised to 1,491,000 with DT-C250 (own folder for each agent, 950 bytes over): the one-folder switch became a
 // setting, so the worktree branches the build used to drop as dead code are in the first load again.
+// Lowered to 1,442,000 on 2026-11-11 (DT-C253): the feedback dialog, the sidebar's dialogs, the status bar's and
+// layout strip's pop-ups, the tour and the branch-naming helpers load on first open and the agent marks are
+// files, so the first load is 1,427,895 bytes (down from 1,490,950); the ceiling is that plus about 1 %.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const CEILING = 1_491_000;
+export const CEILING = 1_442_000;
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "dist");
 
 /** The first-load chunks of a built `dist` folder, their total size in bytes, and whether it is within `ceiling`. */

@@ -70,6 +70,8 @@ async function crashed() {
   const m = await mount(createElement(ScreenBoundary, null, createElement(Board)), doc);
   unmount = m.unmount;
   expect(m.container.textContent).toContain("Kolux hit a problem");
+  // The box's code is read when the crash screen draws (it is not in the first load); wait for it, as a person's click always does.
+  await act(async () => void (await vi.dynamicImportSettled()));
   return m.container;
 }
 const box = (c: FakeNode) => find(c, (n) => n.localName === "textarea" && n.attrs["aria-label"] === "Your feedback")[0];

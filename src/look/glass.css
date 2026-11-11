@@ -1,99 +1,246 @@
 /* DT-C249: the glass and metal finish. Every rule sits under [data-finish="glass"], which theme.ts puts on
-   the root only while the finish is chosen, so the flat look never reads this file.
+   the root unless Flat is chosen, so the flat look never reads this file.
 
-   What look/glass.ts hands over:
+   What theme.ts and look/glass.ts hand over:
      --glass-tint   the metal colour the user picked (#rrggbb)
-     --glass-glow   the glow's strength at its brightest point (a percentage)
+     --glass-mate, --glass-third   the stage's other two lights, the metal's neighbours on the colour wheel
+     --glass-glow   the light's strength at its brightest point (a percentage)
      --glass-fill   a panel's own fill: the surface with the metal's hue in it, part see-through
      --glass-side   the left sidebar's ground (solid when the sidebar has a look of its own)
-   theme.ts also re-states each text colour that would read worse on a panel than it did on the flat surface.
+     --glass-well   the window's own ground, part see-through: where text used to sit on that ground
+     --glass-head   the fill, solid: a pane's header
+     --glass-gap    what shows between the panes: the stage on its floor, or nothing when the gaps have a colour of their own
+   theme.ts also re-states each text colour that would read worse on a glass ground than it did on the flat look.
 
-   Two rules keep this cheap and readable:
-   1. The big panels (bars, sidebars, strip) are see-through fills over a still gradient. Nothing behind
-      them moves, so they need no blur; backdrop-filter is used only on what floats over live content
-      (menus, pops), which is small and short-lived. glass.test.ts holds this.
-   2. A panel that carries text takes its ground only from --glass-fill over the glow, the ground text is
-      matched to (glassGround in glass.ts). Anything laid over that moves the ground away from the text
-      colour's side (toward --app-bg), never toward it. Brighter metal is kept to lines and to pressed
-      controls, whose text is the brightest ink. Terminals and editors keep their solid ground. */
+   One light, from the top left. Four rules keep this cheap and readable:
+   1. The stage is a still picture: a pool of light in each corner and a thin wash, drawn once. The big
+      panels are see-through fills over it. Nothing behind them moves, so they need no blur;
+      backdrop-filter is used only on what floats over live content and is small (menus, pops, small
+      dialogs, toasts). The scrim behind a dialog and the settings page only dim. glass.test.ts holds this.
+   2. A panel that carries text takes its ground only from --glass-fill (or --glass-well) over the stage,
+      the grounds text is matched to (glassGrounds in glass.ts). Anything laid over that moves the ground
+      toward --app-bg, never toward the text. Light belongs to edges: a line along the top and left of a
+      sheet, a darker one along the bottom. Terminals and editors keep their solid ground.
+   3. Nothing here moves: no transition and no animation, so a click is answered in the frame it lands in.
+   4. DT-C266: the finish throws one shadow, under a sheet that floats (a menu, a pop, a picker, Settings).
+      Nothing else here has a box-shadow. WebKit draws every shadow layer, a one-pixel inset line as much
+      as a blurred lift, in a pass of its own the size of the box, and a click that opens anything redraws
+      the whole window: the 56 layers this file used to put on the four-pane window made that redraw half
+      again as long as the flat look's. An edge line is a one-pixel strip of background (--glass-rim,
+      --glass-glint), what a side card throws on the stage is a short strip in the gutter under it
+      (--glass-cast), and the focused pane is lit by its border and a ring. glass.test.ts holds this. */
 
 :root[data-finish="glass"] {
   --metal-hi: color-mix(in srgb, var(--glass-tint) 30%, #ffffff);
   --metal: color-mix(in srgb, var(--glass-tint) 55%, var(--line-strong));
   --metal-lo: color-mix(in srgb, var(--glass-tint) 18%, #000000);
+  /* the stage's lights, each at a pool's share of the glow, and the wash under them: wash plus one pool is
+     the brightest the stage gets (WASH and POOL in glass.ts) */
+  --glass-a: color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.8), transparent);
+  --glass-b: color-mix(in srgb, var(--glass-mate) calc(var(--glass-glow) * 0.8), transparent);
+  --glass-c: color-mix(in srgb, var(--glass-third) calc(var(--glass-glow) * 0.8), transparent);
+  --glass-wash: color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.2), transparent);
+  /* The stage: a pool of light toward each corner (the metal top left, its neighbours in the others) over
+     a thin even wash of the metal. Each pool has faded out by 70 % of its ellipse, and the ellipses are
+     placed and sized so no two faded pools meet. */
+  --glass-stage:
+    radial-gradient(ellipse 58vw 58vh at 10% 14%, var(--glass-a), color-mix(in srgb, var(--glass-a) 66%, transparent) 26%, color-mix(in srgb, var(--glass-a) 26%, transparent) 50%, transparent 70%),
+    radial-gradient(ellipse 58vw 58vh at 92% 90%, var(--glass-b), color-mix(in srgb, var(--glass-b) 66%, transparent) 26%, color-mix(in srgb, var(--glass-b) 26%, transparent) 50%, transparent 70%),
+    radial-gradient(ellipse 40vw 44vh at 92% 8%, color-mix(in srgb, var(--glass-c) 85%, transparent), color-mix(in srgb, var(--glass-c) 34%, transparent) 40%, transparent 70%),
+    radial-gradient(ellipse 38vw 44vh at 6% 96%, color-mix(in srgb, var(--glass-c) 70%, transparent), color-mix(in srgb, var(--glass-c) 28%, transparent) 40%, transparent 70%),
+    linear-gradient(var(--glass-wash), var(--glass-wash));
+  /* the window's own ground as a picture, for where the stage is drawn again over something else */
+  --glass-floor: linear-gradient(var(--app-bg), var(--app-bg));
   /* depth on a panel: its far corner falls away toward the window's own ground */
   --glass-depth: linear-gradient(135deg, transparent 30%, color-mix(in srgb, var(--app-bg) 38%, transparent));
-  /* the lip of a panel: a bright line along the top edge, a dark one along the bottom */
-  --metal-lip: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 34%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--metal-lo) 60%, transparent);
-  --metal-drop: 0 14px 34px -18px rgba(0, 0, 0, 0.7);
+  /* the edge of a sheet of glass: a hairline the stage shows through, the light it catches along the top
+     and the left, the shade along the bottom */
+  --glass-line: color-mix(in srgb, var(--metal-hi) 22%, transparent);
+  --glass-spec-top: color-mix(in srgb, var(--metal-hi) 42%, transparent);
+  --glass-spec-side: color-mix(in srgb, var(--metal-hi) 12%, transparent);
+  --glass-shade-ink: color-mix(in srgb, var(--metal-lo) 55%, transparent);
+  /* DT-C264, DT-C266: those lines, each a one-pixel strip of background. The rim is a sheet's whole edge:
+     the light along the top and the left, the shade along the bottom. The glint is the light alone, for
+     what has an edge of its own below it (a pane's header, a tab) or throws a shadow there (what floats). */
+  --glass-rim:
+    linear-gradient(var(--glass-spec-top), var(--glass-spec-top)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--glass-spec-side), var(--glass-spec-side)) 0 0 / 1px 100% no-repeat,
+    linear-gradient(var(--glass-shade-ink), var(--glass-shade-ink)) 0 100% / 100% 1px no-repeat;
+  --glass-glint:
+    linear-gradient(var(--glass-spec-top), var(--glass-spec-top)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--glass-spec-side), var(--glass-spec-side)) 0 0 / 1px 100% no-repeat;
+  /* a bar's own lines: the light along its top (fainter on the bar at the foot of the window), the dark
+     line under the top bar, the dark inside the top of a recessed track, the light on a button's top */
+  --glass-bar-ink: color-mix(in srgb, var(--metal-hi) 22%, transparent);
+  --glass-foot-ink: color-mix(in srgb, var(--metal-hi) 8%, transparent);
+  --glass-under: rgba(0, 0, 0, 0.4);
+  --glass-track-ink: color-mix(in srgb, var(--metal-lo) 45%, transparent);
+  --glass-key-ink: color-mix(in srgb, var(--metal-hi) 14%, transparent);
+  /* what a side card throws on the stage: a soft dark strip in the gutter under it, fading out toward
+     its two ends */
+  --glass-cast-ink: rgba(0, 0, 0, 0.3);
+  --glass-cast: linear-gradient(90deg, transparent, var(--glass-cast-ink) 36px, var(--glass-cast-ink) calc(100% - 36px), transparent);
+  /* what a floating sheet throws: one layer (rule 4) */
+  --glass-float: 0 24px 60px -16px rgba(0, 0, 0, 0.8);
+  /* how much of a frosted pop is its own fill (the rest is what lies behind it, blurred) */
+  --glass-pop: 92%;
+}
+:root[data-finish="glass"][data-mode="light"] {
+  --glass-line: color-mix(in srgb, var(--metal-lo) 20%, transparent);
+  --glass-spec-top: rgba(255, 255, 255, 0.95);
+  --glass-spec-side: rgba(255, 255, 255, 0.6);
+  --glass-shade-ink: color-mix(in srgb, var(--metal-lo) 8%, transparent);
+  --glass-track-ink: color-mix(in srgb, var(--metal-lo) 14%, transparent);
+  --glass-cast-ink: rgba(16, 24, 40, 0.12);
+  --glass-float: 0 24px 60px -16px rgba(16, 24, 40, 0.35);
+  --glass-pop: 97%;
 }
 
-/* The glow everything sits over: a thin even wash of the chosen colour, and a pool of it in two opposite
-   corners. The pools are sized so they never overlap, and wash plus pool stay under --glass-glow, which is
-   the brightest point text is matched to. */
-:root[data-finish="glass"] body {
-  background:
-    radial-gradient(ellipse 70vw 85vh at 0% 0%, color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.7), transparent), transparent 70%),
-    radial-gradient(ellipse 60vw 75vh at 100% 100%, color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.7), transparent), transparent 70%),
-    linear-gradient(color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.3), transparent), color-mix(in srgb, var(--glass-tint) calc(var(--glass-glow) * 0.3), transparent)),
-    var(--app-bg);
-}
-/* Text is never left on the bare glow: the work area and the right panel are glass over it too. */
+/* ---- the stage, and where it shows: behind every panel, around the cards and between the panes ---- */
+:root[data-finish="glass"] body { background: var(--glass-stage), var(--app-bg); }
+/* APP-012: with the window blur on, the stage lies over the blurred desktop instead of a solid ground. */
+:root[data-finish="glass"][data-window-blur="on"] body { background: var(--glass-stage), color-mix(in srgb, var(--app-bg) 72%, transparent); }
+/* Text is never left on the bare stage: the work area is glass over it too (and the Tower's own window,
+   which has no work area around it), and so is each tile a pane and its tabs sit in. Between the tiles,
+   and between the Inbox's two sheets, the stage is drawn again: the same picture on its own floor, pinned
+   to the window so it lines up with the one behind everything. */
 :root[data-finish="glass"] .content,
-:root[data-finish="glass"] .rside { background: var(--glass-well); }
+:root[data-finish="glass"] .tower-window,
+:root[data-finish="glass"] .grid .cell { background: var(--glass-well); }
+:root[data-finish="glass"] .grid { background-image: var(--glass-gap); background-attachment: fixed; }
+:root[data-finish="glass"] .grid .cell { border-radius: 14px; }
+:root[data-finish="glass"] .inbox { background: var(--glass-stage), var(--glass-floor); background-attachment: fixed; border-radius: 14px; }
+/* DT-C264: look/stage.ts hands over --glass-stage as one small picture of the same light once it has drawn
+   it, so wherever the stage is drawn it is stretched over the window, centred, and never repeated. The
+   picture comes with its own size (a little over the window's, look/stage.ts says why); the gradients above
+   are the window's size, where being centred changes nothing. */
+:root[data-finish="glass"] body,
+:root[data-finish="glass"][data-window-blur="on"] body,
+:root[data-finish="glass"] .grid,
+:root[data-finish="glass"] .inbox { background-size: var(--glass-stage-size, 100vw 100vh); background-position: 50% 50%; background-repeat: no-repeat; }
+/* An empty workspace is the open stage; what it says stands on a sheet of its own in the middle of it. */
+:root[data-finish="glass"] .grid > .empty {
+  place-self: center;
+  flex: none;
+  padding: 26px 40px 28px;
+  background: var(--glass-rim), var(--glass-depth), var(--glass-fill);
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+}
 
-/* ---- bars ---- */
+/* ---- bars: the thinnest sheets ---- */
+/* The top bar's own edge is its hairline over a dark line. The dark line is its border and the hairline a
+   strip just inside it, so both are drawn with the bar and neither is a shadow. */
 :root[data-finish="glass"] .topbar,
 :root[data-finish="glass"] .titlebar {
-  background: var(--glass-depth), var(--glass-fill);
-  border-bottom-color: var(--metal);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 34%, transparent);
+  background:
+    linear-gradient(var(--glass-bar-ink), var(--glass-bar-ink)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--glass-line), var(--glass-line)) 0 100% / 100% 1px no-repeat,
+    var(--glass-depth), var(--glass-fill);
+  border-bottom-color: var(--glass-under);
 }
 :root[data-finish="glass"] .statusbar {
-  background: var(--glass-depth), var(--glass-fill);
-  border-top-color: var(--metal);
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--metal-lo) 60%, transparent);
+  background: linear-gradient(var(--glass-foot-ink), var(--glass-foot-ink)) 0 0 / 100% 1px no-repeat, var(--glass-depth), var(--glass-fill);
+  border-top-color: var(--glass-line);
 }
-:root[data-finish="glass"] .strip { background: color-mix(in srgb, var(--strip-bg) 55%, transparent); }
+:root[data-finish="glass"] .strip { background: none; }
 
-/* ---- side panels ---- */
+/* ---- side panels: the glass cards ---- */
 :root[data-finish="glass"] .sidebar,
-:root[data-finish="glass"] .explorer {
-  background: var(--glass-depth), var(--glass-fill);
-  border-color: var(--metal);
-  box-shadow: var(--metal-lip), var(--metal-drop);
+:root[data-finish="glass"] .explorer,
+:root[data-finish="glass"] .rside-body > :not(.explorer):not(.sidebar-wrap) {
+  background: var(--glass-rim), var(--glass-depth), var(--glass-fill);
+  border-color: var(--glass-line);
 }
-:root[data-finish="glass"] .sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--glass-depth), var(--glass-side); }
+:root[data-finish="glass"] .sidebar-wrap:not(.right) > .sidebar:not(.scm) { background: var(--glass-rim), var(--glass-depth), var(--glass-side); }
+/* The right panel's other tabs draw no card of their own, so their text would sit on the stage: each gets
+   the sheet, its hairline an outline drawn inside (so nothing moves, and it follows the corners). */
+:root[data-finish="glass"] .rside-body > :not(.explorer):not(.sidebar-wrap) { border-radius: 12px; outline: 1px solid var(--glass-line); outline-offset: -1px; }
+/* A card stands off the stage: the shade it throws lies in the gutter under it, which its wrapper draws
+   (the wrapper has no ground of its own and carries no text). The Agents rail's classic look has no gutter. */
+:root[data-finish="glass"] .sidebar-wrap:not(.right):not(.classic) { background: var(--glass-cast) 8px 100% / calc(100% - 8px) 8px no-repeat; }
+/* The right panel throws it only while a card that fills it shows (the Explorer, or a wrapped card such as
+   Checks). Its other tabs' sheets are only as tall as what they hold, so a shade at the panel's foot would
+   lie on the stage with nothing over it. */
+:root[data-finish="glass"] .rside:has(> .rside-body > .explorer:not([hidden])),
+:root[data-finish="glass"] .rside:has(> .rside-body > .sidebar-wrap) { background: var(--glass-cast) 0 100% / calc(100% - 8px) 8px no-repeat; }
+:root[data-finish="glass"] .sb-foot,
+:root[data-finish="glass"] .explorer-head { border-color: var(--glass-line); }
+:root[data-finish="glass"] .sb-divider { background: var(--glass-line); }
+:root[data-finish="glass"] .rside-tab { background: var(--glass-well); }
+:root[data-finish="glass"] .rside-tab[aria-selected="true"] { background: var(--glass-glint), var(--glass-fill); border-color: var(--glass-line); }
 
-/* ---- panes: a metal frame around a solid screen ---- */
-:root[data-finish="glass"] .pane:not(.glow) { box-shadow: inset 0 0 0 1px var(--line-inner), var(--metal-lip), var(--metal-drop); }
-:root[data-finish="glass"] .pane:not(.focused):not(.glow) { border-color: var(--metal); }
-:root[data-finish="glass"] .pane.focused:not(.glow) { border-color: color-mix(in srgb, var(--metal-hi) 70%, var(--line-focus)); }
+/* ---- panes: a solid screen set in a glass bezel; the focused one is lit ---- */
+/* No shadow at all, the flat look's inner line included: the bezel is the border. The focused pane is lit
+   by a brighter border and a ring of the metal's light just inside it, which is an outline: it follows the
+   corners, moves nothing and costs a fraction of what the glow it replaces did (only this one pane has it). */
+:root[data-finish="glass"] .pane:not(.glow) { border-color: var(--glass-line); box-shadow: none; }
+/* DT-C271: the ring is drawn just inside the pane's edge. Drawn outside it, it reached past the pane, and
+   every move of the focus (a file opening in a new tab, a click on another pane) made the web view draw the
+   whole grid again: about 30 ms a time on the Linux test build. Inside, it changes nothing beyond the pane,
+   cannot spill over the bars or a neighbour, and is not cut off at the Board's sides. */
+:root[data-finish="glass"] .pane.focused:not(.glow) {
+  border-color: color-mix(in srgb, var(--metal-hi) 52%, var(--line-focus));
+  outline: 3px solid color-mix(in srgb, var(--glass-tint) 22%, transparent);
+  outline-offset: -3px;
+}
+/* A zoomed or classic grid runs its panes edge to edge: there the brighter border alone shows focus, as in
+   the flat look. */
+:root[data-finish="glass"] .grid.zoomed .pane.focused:not(.glow),
+:root[data-finish="glass"] .grid.classic .pane.focused:not(.glow) { outline: none; }
+:root[data-finish="glass"] .pane-head { background: var(--glass-glint), linear-gradient(180deg, var(--glass-head), var(--pane-bg)); }
+/* DT-C264: the Inbox's two sheets are the largest glass there is and are drawn afresh every time the Inbox
+   opens, so they are the plainest: the fill alone with the stage's light coming through it (no depth laid
+   over), their edge lines drawn as strips of background, and no shadow thrown (they fill the work area, so
+   nothing lies under them to take one). */
 :root[data-finish="glass"] .inbox .list,
-:root[data-finish="glass"] .inbox .detail { border-color: var(--metal); box-shadow: var(--metal-lip), var(--metal-drop); }
+:root[data-finish="glass"] .inbox .detail { background: var(--glass-rim), var(--glass-fill); border-color: var(--glass-line); box-shadow: none; }
 
-/* ---- controls: brushed metal on the pressed state, whose text is the brightest ink ---- */
+/* ---- controls: a recessed track, brushed metal on the pressed state (whose text is the brightest ink) ---- */
+/* A track's recess is a dark line inside its top edge, a button's light a line along its top: strips laid
+   over whatever ground the control already has. */
 :root[data-finish="glass"] .switcher,
-:root[data-finish="glass"] .layouts { border-color: var(--metal); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--metal-lo) 70%, transparent); }
+:root[data-finish="glass"] .layouts,
+:root[data-finish="glass"] .searchbox { border-color: var(--glass-line); background-image: linear-gradient(var(--glass-track-ink), var(--glass-track-ink)); background-size: 100% 1px; background-repeat: no-repeat; }
 :root[data-finish="glass"] .switcher button[aria-pressed="true"],
 :root[data-finish="glass"] .layouts button[aria-pressed="true"],
 :root[data-finish="glass"] .topbar-right .bell[aria-pressed="true"] {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--metal-hi) 12%, var(--seg-active)), var(--seg-active) 52%, color-mix(in srgb, var(--metal-lo) 22%, var(--seg-active)));
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 30%, transparent), 0 1px 1px rgba(0, 0, 0, 0.35);
+  background:
+    linear-gradient(color-mix(in srgb, var(--metal-hi) 30%, transparent), color-mix(in srgb, var(--metal-hi) 30%, transparent)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--metal-hi) 12%, var(--seg-active)), var(--seg-active) 52%, color-mix(in srgb, var(--metal-lo) 22%, var(--seg-active)));
 }
-:root[data-finish="glass"] .btn { border-color: var(--metal); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 16%, transparent); }
-:root[data-finish="glass"] .tab[aria-selected="true"] { border-color: var(--metal); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 22%, transparent); }
+:root[data-finish="glass"] .btn,
+:root[data-finish="glass"] .sb-new { border-color: var(--glass-line); background-image: linear-gradient(var(--glass-key-ink), var(--glass-key-ink)); background-size: 100% 1px; background-repeat: no-repeat; }
+:root[data-finish="glass"] .tab { border-color: var(--glass-line); }
+:root[data-finish="glass"] .tab[aria-selected="true"] { background: var(--glass-glint), var(--pane-bg); border-color: color-mix(in srgb, var(--metal-hi) 34%, transparent); }
 
-/* ---- what floats over live content: frosted, so what is behind blurs instead of showing through ---- */
-:root[data-finish="glass"] .menu,
+/* ---- what floats over live content and is small: frosted, so what is behind blurs instead of showing
+   through. Most of it is its own fill (--glass-pop): whatever lies behind (a white PDF page under a dark
+   menu, a dark terminal under a light one) can move its ground only that little, which keeps every label
+   at 4.5:1 (glass.test.ts). Light mode's dim text sits close to that bar already, so its pops are nearly solid. ---- */
+:root[data-finish="glass"] .menu:not(.note-picker),
 :root[data-finish="glass"] .sb-menu,
-:root[data-finish="glass"] .tip,
 :root[data-finish="glass"] .review-pop,
 :root[data-finish="glass"] .tab-switcher,
-:root[data-finish="glass"] .about-panel {
-  background: color-mix(in srgb, var(--pane-bg) 84%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
-  border-color: var(--metal);
-  box-shadow: var(--metal-lip), 0 18px 40px -14px rgba(0, 0, 0, 0.75);
+:root[data-finish="glass"] .about-panel,
+:root[data-finish="glass"] .ask,
+:root[data-finish="glass"] .tip-card,
+:root[data-finish="glass"] .upd-card,
+:root[data-finish="glass"] .upd-pop {
+  background: var(--glass-glint), color-mix(in srgb, var(--glass-head) var(--glass-pop), transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-float);
 }
+/* The page that stands in when the window's drawing fails has no ground of its own: a sheet, so its words
+   are never on the bare stage. */
+:root[data-finish="glass"] #root > [role="alert"] { background: var(--glass-rim), var(--glass-depth), var(--glass-fill); border: 1px solid var(--glass-line); border-radius: 14px; }
+
+/* ---- pages laid over the window: nearly solid sheets (large and long-lived, so no blur), the same edges ---- */
+:root[data-finish="glass"] .settings-panel,
+:root[data-finish="glass"] .onb { background: var(--glass-glint), var(--pane-bg); border-color: var(--glass-line); box-shadow: var(--glass-float); }
+/* DT-C265: a picker (Go to / Run a command, tab search, the file and template pickers) is a menu by its
+   class but a page by its size, 560 by 500. Blurring what lies behind that much cost a frame or two every
+   time one opened, for a twelfth of what it shows. It is a solid sheet with the same edges. */
+:root[data-finish="glass"] .menu.note-picker { background: var(--glass-glint), var(--glass-head); border-color: var(--glass-line); box-shadow: var(--glass-float); }

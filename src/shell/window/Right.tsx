@@ -13,9 +13,11 @@ import { FOLDER_TAB_KEY, rememberTab } from "../../sessions/folderTabs";
 import { openSessions } from "../../sessions/openPanes";
 import { saveChanged } from "../../settings/saveChanged";
 import { panesIn } from "../../workspaces";
-import { useWindow } from "./store";
+import { useDeeds, useWindow } from "./store";
+import { useStableFns } from "./stable";
 import { AgentsPanel } from "../../lazy/pages";
-import { Explorer } from "../../lazy/pages";
+// PKG-2: the file tree behind its render comparison (ExplorerMemo.tsx).
+import Explorer from "./ExplorerMemo";
 import { AddProjectRow } from "../../lazy/pages";
 import { ChecksPanel } from "../../lazy/pages";
 import { InsightsPanel } from "../../lazy/pages";
@@ -26,12 +28,16 @@ export default function WindowRight() {
   const {
     right, dragWidth, setDragWidth, sidebarOpen, leftWidth, terminals, fullPage, offeredRight, settings,
     settingsRef, setSettings, setNotice, saveRight, activeDir, projects,
-    projectOf, openFile, setScreen,
+    projectOf, setScreen,
     select, defaultId, openIn, panes, agents, classic, resumeOrFocus, resumeIn, wsKind, cli,
-    runSetup, setRefresh, explorerOpen, explorerFocus, openTerminalIn, showRight, owner, saveSetting, shells,
+    runSetup, setRefresh, explorerOpen, explorerFocus, showRight, owner, saveSetting, shells,
     setActiveDir, setToast, openCheck, openPane, agentOf, statusOf, turn, stamp, running, stale,
   } = useWindow();
   const fit = (w: number) => clampWidth(w, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0);
+  // PKG-2: the file tree runs these from handlers and a key listener only; they keep one identity (stable.ts), so a
+  // window render that changes nothing the tree shows does not redraw it.
+  const { openFile, openTerminalIn: openTerminal } = useDeeds();
+  const files = useStableFns({ close: () => saveRight({ open: false }), wake: () => showRight("explorer") });
   return (
     <RightSidebar tab={right.tab} width={fit(dragWidth ?? right.width)} max={fit(1e4)} hidden={!terminals || !right.open || fullPage} offered={offeredRight} onTab={(tab) => {
       const patch: Record<string, unknown> = { [RIGHT_KEYS.tab]: tab };
@@ -75,7 +81,7 @@ export default function WindowRight() {
           return made;
         }}
       />
-      {activeDir ? <Explorer key={activeDir} root={activeDir} hidden={!explorerOpen} focusAsk={explorerFocus} onOpen={openFile} onClose={() => saveRight({ open: false })} onOpenTerminal={openTerminalIn} onWake={() => showRight("explorer")} /> : explorerOpen && <AddProjectRow />}
+      {activeDir ? <Explorer key={activeDir} root={activeDir} hidden={!explorerOpen} focusAsk={explorerFocus} onOpen={openFile} onClose={files.close} onOpenTerminal={openTerminal} onWake={files.wake} /> : explorerOpen && <AddProjectRow />}
     </RightSidebar>
   );
 }

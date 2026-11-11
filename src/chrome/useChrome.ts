@@ -1,5 +1,5 @@
 // T-543: the window's passing chrome state, moved out of App.tsx as it was: the worktree palette's
-// open flag, the notice line and the toast that clears itself.
+// opener, the notice line and the toast that clears itself.
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -7,9 +7,12 @@ import { helpAction, readSynced, REPORT_CRASH_EVENT, type HelpAction, type MenuB
 import { openExplore, openGuide } from "../onboarding/guide";
 import { requestUpdateCheck } from "../update/bus";
 import { openAbout } from "../shell/about";
+import { setPaletteOpen } from "./paletteOpen";
 
 export function useChrome() {
-  const [palette, setPalette] = useState(false); // PROJ-057 / VIEW-037: the worktree palette is open
+  // PROJ-057 / VIEW-037: opens and closes the worktree palette. DT-C270: whether it is open lives in chrome/paletteOpen.ts,
+  // not here, so opening it does not draw the whole window again.
+  const setPalette = setPaletteOpen;
   const [notice, setNotice] = useState<string | null>(null);
   // A toast is a passing note (SESS-024 "starting 3 sessions"); it clears itself.
   const [toast, setToastText] = useState<string | null>(null);
@@ -21,7 +24,7 @@ export function useChrome() {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     arm();
   };
-  return { palette, setPalette, notice, setNotice, toast, setToast };
+  return { setPalette, notice, setNotice, toast, setToast };
 }
 
 // SET-010 / T-248-b: the chords the system menu owns, as menu_sync last reported them. The Shortcuts page reads

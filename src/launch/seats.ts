@@ -42,6 +42,24 @@ export function countPlan(typed: number, current: number): { n: number; ask: boo
   return { n, ask: n > ASK_ABOVE && n > current };
 }
 
+/** How long typing in the sessions count box pauses before the number is applied. */
+export const COUNT_PAUSE_MS = 600;
+
+/** Runs the last thing handed to `later` once `ms` pass with nothing newer; `cancel` drops it. */
+export function pauseThen(ms: number, timers: { set: (f: () => void, ms: number) => unknown; clear: (t: unknown) => void } = { set: (f, t) => setTimeout(f, t), clear: (t) => clearTimeout(t as ReturnType<typeof setTimeout>) }) {
+  let t: unknown = null;
+  return {
+    later(f: () => void) {
+      if (t !== null) timers.clear(t);
+      t = timers.set(() => ((t = null), f()), ms);
+    },
+    cancel() {
+      if (t !== null) timers.clear(t);
+      t = null;
+    },
+  };
+}
+
 /** A seat's shown pick: the not-yet-startable agent chosen in its dropdown, but only while the seat itself is still empty. */
 export const shownPick = (seats: Seat[], shown: Record<number, string>, i: number): string | null => (seats[i]?.agent === null ? shown[i] : undefined) ?? seats[i]?.agent ?? null;
 

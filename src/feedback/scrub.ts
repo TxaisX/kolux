@@ -76,6 +76,7 @@ const SHAPES = [
   /\bglpat-[A-Za-z0-9_-]{16,}/g, // GitLab
   /\bnpm_[A-Za-z0-9]{16,}/g,
   /\bhf_[A-Za-z0-9]{16,}/g, // Hugging Face
+  /\bxai-[A-Za-z0-9]{20,}/g, // xAI (the Grok card's key)
   /\bxox[abprs]-[A-Za-z0-9-]{8,}/g,
   /\bAKIA[0-9A-Z]{12,}/g,
   /\bAIza[0-9A-Za-z_-]{20,}/g,

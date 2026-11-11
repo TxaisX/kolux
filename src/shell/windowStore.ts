@@ -19,11 +19,12 @@ import { useWorkspaces } from "../projects/useWorkspaces";
 import { openPageAt, startScreen } from "../settings/general";
 import type { SettingsTarget } from "../settings/pages";
 import { useAppSettings } from "../settings/useAppSettings";
+import { saveChanged } from "../settings/saveChanged";
 import { useAgentStatusState } from "../status/useAgentStatus";
 import { useAccountSwitcher } from "../switcher/AccountSwitcher";
 import type { CodexAccount } from "../terminal/accountChange";
 import { groupOf, type Zoom } from "../terminal/grid";
-import { joinMarks, joinSaved, marksOf, reviveSaved, type Marks, type SavedLayout } from "../terminal/layout";
+import { joinMarks, joinSaved, keyAfter, marksOf, reviveSaved, type Marks, type SavedLayout } from "../terminal/layout";
 import type { PendingSend, PlanDraft } from "../terminal/planReview";
 import type { Zone } from "../terminal/rearrange";
 import type { Identity } from "../terminal/shellMarks";
@@ -42,6 +43,11 @@ import type { Gap } from "../terminal/dividers";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isNarrow, nextLeft, type RightAside } from "./window/narrow";
 
+/** The settings key that remembers whether the left sidebar is shown. */
+export const LEFT_OPEN_KEY = "leftSidebarOpen";
+/** The left sidebar at start: shown unless it was hidden when the app last closed. */
+export const leftOpenAtStart = (s: Record<string, unknown>): boolean => s[LEFT_OPEN_KEY] !== false;
+
 export function useWindowStore(initial: Record<string, unknown>, layout: SavedLayout | null, late: SavedLayout | null = null) {
   const keymap = useKeymap();
   const [info, setInfo] = useState<AppInfo | null>(null);
@@ -51,7 +57,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [settingsAt, setSettingsAt] = useState<{ target: SettingsTarget | null; n: number }>({ target: null, n: 0 }); // SET-006: a link's page and section
   const [expanded, setExpanded] = useState<number | null>(null); // VIEW-026: the Board card showing its terminal
   const [zoom, setZoom] = useState<Zoom>({}); // TERM-013: each workspace's expanded cell
-  const [sidebarOpen, setLeftState] = useState(true);
+  const [sidebarOpen, setLeftState] = useState(() => leftOpenAtStart(initial)); // hidden at quit stays hidden, as the right panel does
   // T-699 (DT-C135): every path that opens or toggles the left sidebar (top bar, Ctrl+B, the menu, the palette, the
   // create and rename rows) goes through nextLeft, which in a narrow window closes the right sidebar to make room.
   const rightAside = useRef({} as RightAside); // filled by App.tsx on every render, before any child draws or a key is pressed
@@ -144,6 +150,14 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [agentPass, setAgentPass] = useState<AgentPass>(FIRST_PASS); // SESS-002
   const [shells, setShells] = useState<ShellInfo[]>([]); // SESS-006
   const { settings, setSettings, settingsRead, setSettingsRead, classic } = useAppSettings(initial);
+  // The left sidebar's shown or hidden state is written down when it changes (not at start), like the right panel's.
+  const leftSaved = useRef(sidebarOpen);
+  useEffect(() => {
+    if (leftSaved.current === sidebarOpen) return;
+    leftSaved.current = sidebarOpen;
+    setSettings((s) => ({ ...s, [LEFT_OPEN_KEY]: sidebarOpen }));
+    void saveChanged({}, { [LEFT_OPEN_KEY]: sidebarOpen }).catch(() => {});
+  }, [sidebarOpen]);
   // TERM-026 pane header density from the saved setting; TERM-057 the wheel over the tab strip scrolls it sideways.
   useEffect(() => void applyDensity(settings), [settings]);
   useEffect(() => installTabWheel(), []);
@@ -177,7 +191,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     setPinned(marks.pinned);
     setTabColors(marks.colors);
   }, [late]);
-  const { palette, setPalette, notice, setNotice, toast, setToast } = useChrome();
+  const { setPalette, notice, setNotice, toast, setToast } = useChrome();
   return {
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, boardOpen, setBoardOpen, settingsAt, setSettingsAt, expanded,
     setExpanded, zoom, setZoom, sidebarOpen, setSidebarOpen, rightAside, page, setPage, drafts, setDrafts, explorerFocus, setExplorerFocus, dragWidth,
@@ -190,7 +204,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh,
     deleteRequest, setDeleteRequest, recentDirs, activeRef, createRequest, setCreateRequest, standIns, setStandIns, createName, setCreateName, hist,
-    setHist, stacked, setStacked, palette, setPalette, notice, setNotice, toast, setToast,
+    setHist, stacked, setStacked, setPalette, notice, setNotice, toast, setToast,
   };
 }
 
@@ -215,6 +229,8 @@ export function useWindowStoreTail({ accountSwitcher, ptys, setNotice }: Pick<Wi
   // C26-R3-01: those tabs now join the saved layout when it lands, so this range keeps the two sets apart
   // instead of terminal_prune_history dropping the wait tabs at the next start.
   const nextKey = useRef(layout ? Math.max(1, ...layout.panes.map((p) => p.key)) + 1 : read ? 2 : 1_000_000);
+  // A late layout (the window was drawn first) comes back in `layout` on the second draw: keys go on past it.
+  nextKey.current = keyAfter(nextKey.current, layout);
   // TERM-106: the tabs that came back from the saved layout replay their saved output first.
   const restoredKeys = useRef(new Set((layout?.panes ?? []).filter((p) => !p.chooser).map((p) => p.key))); // a chooser has no terminal to wait for
   // ORCH-056 (row 219): open prompts read off each pane's screen mark it waiting (src/status/promptScan.ts).

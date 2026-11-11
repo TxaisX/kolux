@@ -4,7 +4,7 @@
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
 import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
+import { branchChip, crewLabel, crewLine, foundAgent, headerOf, statusAgent, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
@@ -47,6 +47,7 @@ import { fromThisService, needsSize, orphanOf, reattach, type Attach, type Reatt
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
+import { writeQueue } from "./writeQueue";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
@@ -817,7 +818,18 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const held = new HeldKeys();
     // TERM-071: writes go one after another (terminal_write is async, so two in flight could land out
     // of order); a chunked paste then reaches the program in order, and a key typed during it waits its turn.
-    let chain: Promise<unknown> = Promise.resolve();
+    // PKG-3: one write in flight; what is typed meanwhile goes as one write when it answers (writeQueue.ts).
+    const writes = writeQueue(
+      ({ id, data, auto, only }) => {
+        // TERM-074: the terminal changed (a restart) while the drop waited its turn: nothing is pasted.
+        if (only !== undefined && idRef.current !== only) {
+          setFlash("The terminal changed before the drop landed; nothing was typed");
+          return Promise.resolve();
+        }
+        return invoke("terminal_write", { id, data, generation: serviceRef.current?.generation ?? null, auto });
+      },
+      (e) => setFlash(`Typing could not reach the program (${explainError(String(e))})`),
+    );
     // TERM-123 (DT-C247): `auto` marks the terminal's own answer to the program (never typed by the user), which
     // the terminal service lets through without counting it as typing; see inputSource.ts.
     const write = (data: string, only?: number, { auto = false }: { auto?: boolean } = {}): Promise<unknown> | void => {
@@ -834,16 +846,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         if (!held.push(data, auto)) setFlash("Keys typed before the shell started were dropped past 16 KB");
         return;
       }
-      return (chain = chain
-        .then(() => {
-          // TERM-074: the terminal changed (a restart) while the drop waited its turn: nothing is pasted.
-          if (only !== undefined && idRef.current !== only) {
-            setFlash("The terminal changed before the drop landed; nothing was typed");
-            return;
-          }
-          return invoke("terminal_write", { id, data, generation: serviceRef.current?.generation ?? null, auto });
-        })
-        .catch((e) => setFlash(`Typing could not reach the program (${explainError(String(e))})`)));
+      return writes.write(id, data, auto, only);
     };
     // TERM-123 (DT-C247): onData carries the user's keys, pastes and mouse reports, and also xterm's own focus,
     // cursor-position, device-attributes, mode and colour answers; the core marks which is which right before
@@ -1644,7 +1647,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // TERM-058: a shell pane running an agent the user started by hand reads as that agent's session;
   // the hook's word (pane-agent) beats the title guess, and the title counts only while a command runs.
   const shown: Agent = agent === "shell" && found ? found : shownAgent(agent, creditedLive(launched, live));
-  const header = headerOf(shown, status.kind, status.kind === "ended" ? status.code : undefined, false, finishedAt, now, hook ?? guess ?? undefined);
+  const header = headerOf(statusAgent(shown, launched), status.kind, status.kind === "ended" ? status.code : undefined, false, finishedAt, now, hook ?? guess ?? undefined);
   const { word, tone, glyph, age, needsYou } = header;
   const explain = header.state === "blocked" && stop ? `${stopLine(stop)}.` : header.explain;
   const needs = useRef(onNeedsYou);

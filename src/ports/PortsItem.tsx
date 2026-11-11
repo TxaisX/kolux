@@ -15,6 +15,7 @@ import { chunkBytes } from "../terminal/codec";
 import { onTerminalOutput } from "../terminal/outputBus";
 import { PrintedUrls, addressText, afterScan, capNote, openAddress, openWhere, ownCount, rowKey, stopArgs, stopNote, type PortRow, type PortsView, type StopOutcome } from "./ports";
 import "./ports.css";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 type Props = { active: string | null; workspaces: string[] };
 
@@ -104,7 +105,7 @@ export default function PortsItem({ active, workspaces }: Props) {
         Ports {ownCount(view.rows)}
       </button>
       {open && (
-        <>
+        <OutOfFlow>
           <div className="menu-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />
           <div ref={menu} tabIndex={-1} className="menu ports-menu" role="dialog" aria-label="Ports" style={{ left: Math.max(8, Math.min(rect?.left ?? 8, window.innerWidth - 380)), bottom: Math.max(8, window.innerHeight - (rect?.top ?? 0) + 4), minWidth: 340 }}>
             <div className="menu-title">Ports</div>
@@ -129,7 +130,7 @@ export default function PortsItem({ active, workspaces }: Props) {
             ))}
             {capNote(view.rows) && <div className="sb-hint">{capNote(view.rows)}</div>}
           </div>
-        </>
+        </OutOfFlow>
       )}
     </>
   );

@@ -32,6 +32,7 @@ import { allChangesContext, type LastFocus } from "./allChangesCopy";
 import { clashesOf, withClashes } from "./changeConflicts";
 import { withoutWhitespace } from "./DiffPane";
 import { watchStatus } from "../scm/watch";
+import { remoteOf } from "../scm/LocalOnlyCheck";
 import ChangeTree, { relTo } from "./ChangeTree";
 import { readyStore, SECTION_CHROME, SECTION_GAP, type ReadyStore } from "./sectionWindow";
 import { useReadyStamp, useReadyVersion, useSectionWindow, type Meter } from "./useSectionWindow";
@@ -42,9 +43,9 @@ import { useKeymap } from "../keys/KeymapContext";
 import { withChord } from "../terminal/PaneMenu";
 import { labelOf } from "../keys/keymap";
 import { AC_SPLIT_KEY, AC_TREE_KEY, AC_WHITESPACE_KEY, AC_WRAP_KEY, abortLabel, canCommit, clashWord, isCommitShortcut, type AcLayout, type CommitOutcome, type Status } from "../scm/model";
-import { bulkPaths, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
+import { bulkPaths, commitWait, discardOne, unstagePaths, oneAtATime, remoteButtons, runRemote, stagePaths, treeWidthForKey, TREE_MAX, TREE_MIN, type Say } from "../scm/changesActions";
 
-export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string };
+export type Entry = { path: string; staged: boolean; code: string; lines: number | null; binary: boolean; stamp: string; /** git's two-letter code of an unresolved conflict; such a file is listed first and drawn without a diff (T-227-d). */ clash?: string; /** P2: a staged rename's old path (scm change_entries). */ from?: string };
 /** The base a branch is measured against and the snapshot commit the sides are read from. */
 export type Base = { against: string; since: string; note?: string };
 type BaseChanges = Base & { entries: Entry[] };
@@ -69,7 +70,8 @@ export const estimate = (e: Entry) => {
 };
 /** The word on a section: which side of the index a working-tree change is on, or against the
  * base what became of the file. */
-export const tagOf = (e: Entry, base: boolean) => (e.clash ? "Conflict" : base ? (e.code === "A" ? "Added" : e.code === "D" ? "Deleted" : e.code === "?" ? "Untracked" : "Changed") : e.code === "?" ? "Untracked" : e.staged ? "Staged" : "Unstaged");
+export const tagOf = (e: Entry, base: boolean) =>
+  e.clash ? "Conflict" : base ? (e.code === "A" ? "Added" : e.code === "D" ? "Deleted" : e.code === "?" ? "Untracked" : "Changed") : e.code === "?" ? "Untracked" : `${e.code === "D" ? "Deleted, " : e.code === "R" ? "Renamed, " : ""}${e.staged ? (e.code === "D" || e.code === "R" ? "staged" : "Staged") : e.code === "D" || e.code === "R" ? "unstaged" : "Unstaged"}`;
 /** The call that reads the branch against its base; `known` is the base the last status named. */
 export const baseCall = (root: string, pinned: string | null, status: Status | null): [CommandName, Record<string, unknown>] => ["scm_base_changes", { worktree: root, pinned, known: status?.base ?? null }];
 /** FIX-2: the status read as the tab opens is used only until the watcher's first status lands, so a late answer never replaces a newer one. */
@@ -135,6 +137,14 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   const [turn] = useState(oneAtATime);
   const [pending, setPending] = useState<string | null>(null);
   const [aborting, setAborting] = useState<string | null>(null); // the operation the abort Ask is open for
+  // P10: a repository with no remote says so on Push, Pull and Sync (asked once per folder, as the local-only badge does).
+  const [noRemote, setNoRemote] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void remoteOf(root).then((r) => live && setNoRemote(r === "none"));
+    return () => void (live = false);
+  }, [root]);
+  const [discarding, setDiscarding] = useState<ReturnType<typeof discardOne> | null>(null); // T-061: the Discard question open now
   const reload = useRef<() => void>(() => undefined); // reads the changes again; set by the effect that owns the read
   const { settings, save } = useSettings();
   const [over, setOver] = useState<Partial<AcLayout>>({}); // this tab's toggles over the saved defaults
@@ -266,7 +276,10 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
       }
     });
   const commit = () => {
-    if (turn.busy() || !canCommit(status, message)) return;
+    if (turn.busy()) return;
+    // P10: Ctrl+Enter on a commit that cannot go says why instead of doing nothing.
+    const wait = commitWait(status, message);
+    if (wait || !canCommit(status, message)) return setOutcome({ text: wait ?? "Nothing to commit", bad: true });
     act("Committing", () =>
       invoke<CommitOutcome>("scm_commit", { worktree: root, message }).then(
         (out): Say => {
@@ -296,6 +309,17 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
     },
     [stage, root],
   );
+  // T-061 / T-153-a: Discard asks first, naming what is lost (an untracked file is deleted), then the list reads again.
+  const askDiscard = useCallback((e: Entry) => setDiscarding(discardOne({ rel: relTo(root, e.path), staged: e.staged, code: e.code, from: e.from ? relTo(root, e.from) : null }, latest.current)), [root]);
+  const discard = (d: ReturnType<typeof discardOne>) => {
+    setDiscarding(null);
+    act("Discarding", () =>
+      invoke("scm_discard", { worktree: root, section: d.section, paths: d.paths }).then(
+        () => null,
+        (err): Say => ({ text: `Discard failed: ${String(err)}`, bad: true }),
+      ),
+    );
+  };
   const remote = (id: "push" | "pull" | "sync", label: string) => act(`${id === "sync" ? "Syncing" : id === "push" ? "Pushing" : "Pulling"}`, () => runRemote(call, root, id, label));
   // T-709: runs only from the Ask's confirm; act re-reads the status and the list, so the conflicts clear when it succeeds.
   const abortOp = (op: string) => {
@@ -419,7 +443,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           <button className="btn" disabled={pending !== null || bulkPaths(status, false).length === 0} onClick={() => stage(bulkPaths(status, false), false)} title={pending !== null ? `Waiting for ${pending.toLowerCase()}` : bulkPaths(status, false).length === 0 ? "Nothing to unstage" : "Unstage every staged file"}>
             Unstage all
           </button>
-          {remoteButtons(status).map((b) => (
+          {remoteButtons(status, noRemote).map((b) => (
             <button key={b.id} className="btn" disabled={pending !== null || b.reason !== null} onClick={() => remote(b.id, b.label)} title={b.reason ?? b.label}>
               {b.label}
             </button>
@@ -439,6 +463,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
           </button>
         </div>
       )}
+      {discarding && <Ask title={discarding.title} body={discarding.body} confirm={discarding.confirm} enter onConfirm={() => discard(discarding)} onCancel={() => setDiscarding(null)} />}
       {aborting && status?.operation === aborting && <Ask title={`${abortLabel(aborting)}?`} body={abortLoss(aborting)} confirm={abortLabel(aborting)} onConfirm={() => abortOp(aborting)} onCancel={() => setAborting(null)} />}
       <div className="scm-commit ac-commit" aria-label="Commit">
           {/* C10-R2-01: the commit shortcut is this box's message field alone, so a Ctrl+Enter
@@ -447,7 +472,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
               keystroke is still part of an input-method composition. */}
           <textarea className="field multi" aria-label="Commit message" placeholder={status?.branch ? `Message (Ctrl+Enter to commit on ${status.branch})` : "Message (Ctrl+Enter to commit)"} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={(e) => isCommitShortcut(e.nativeEvent) && (e.preventDefault(), commit())} />
           <div className="ac-commit-row">
-            <button className="btn" disabled={pending !== null || !canCommit(status, message)} onClick={commit} title={status && status.staged.length === 0 ? "Nothing is staged: use Stage all above, or Stage on a file in the Working tree view" : status && status.conflicts.length ? "Conflicts remain" : undefined}>
+            <button className="btn" disabled={pending !== null || !canCommit(status, message)} onClick={commit} title={commitWait(status, message) ?? undefined}>
               Commit{status?.staged.length ? ` ${status.staged.length} staged` : ""}
             </button>
             {status && status.staged.length === 0 && message.trim() !== "" && !outcome && <span className="note">Nothing is staged yet: use Stage all, or Stage on a file in the Working tree view.</span>}
@@ -480,7 +505,7 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
             title="Drag, or press the left and right arrow keys, to resize the file tree"
           />
         )}
-        <AllChangesList entries={entries} root={root} base={base} draw={draw} cache={cache.current} ready={ready} fold={fold} viewed={viewed} hidden={hidden} idPrefix={`ac-${id}`} jumpRef={jumpRef} loaded={loaded.current} onFocusView={focusedView} onGoneView={goneView} onToggleViewed={toggleViewed} onToggleFold={toggleFold} onOpenDiff={onOpenDiff && base === null ? openDiff : undefined} onStage={base === null ? stageEntry : undefined} stageBusy={pending !== null}>
+        <AllChangesList entries={entries} root={root} base={base} draw={draw} cache={cache.current} ready={ready} fold={fold} viewed={viewed} hidden={hidden} idPrefix={`ac-${id}`} jumpRef={jumpRef} loaded={loaded.current} onFocusView={focusedView} onGoneView={goneView} onToggleViewed={toggleViewed} onToggleFold={toggleFold} onOpenDiff={onOpenDiff && base === null ? openDiff : undefined} onStage={base === null ? stageEntry : undefined} onDiscard={base === null ? askDiscard : undefined} stageBusy={pending !== null}>
           {entries === null && !error && <div className="menu-hint">Reading the changes…</div>}
           {base?.note && <div className="menu-hint ac-note">{base.note}</div>}
           {entries && !entries.length && <div className="menu-hint">{base ? `This branch has no changes against ${base.against}.` : "This workspace has no changes."}</div>}
@@ -490,10 +515,10 @@ export default function AllChangesPane({ id, root, hidden = false, focused = fal
   );
 }
 
-type SectionProps = { anchor: string; e: Entry; name: string; root: string; base: Base | null; draw: Draw; cache: Cache; ready: ReadyStore; meter: Meter; loaded: Set<string>; onFocusView: (f: LastFocus) => void; onGoneView: (v: object) => void; viewedStamp: string | undefined; onToggleViewed: (e: Entry) => void; folded: boolean; onToggleFold: (key: string) => void; onOpenDiff?: (path: string, staged: boolean) => void; /** Stages (or, for a staged section, unstages) the file; absent against a base, where there is no index side. */ onStage?: (e: Entry) => void; stageBusy?: boolean };
+type SectionProps = { anchor: string; e: Entry; name: string; root: string; base: Base | null; draw: Draw; cache: Cache; ready: ReadyStore; meter: Meter; loaded: Set<string>; onFocusView: (f: LastFocus) => void; onGoneView: (v: object) => void; viewedStamp: string | undefined; onToggleViewed: (e: Entry) => void; folded: boolean; onToggleFold: (key: string) => void; onOpenDiff?: (path: string, staged: boolean) => void; /** Stages (or, for a staged section, unstages) the file; absent against a base, where there is no index side. */ onStage?: (e: Entry) => void; /** T-061: asks to discard the file's changes; absent against a base. */ onDiscard?: (e: Entry) => void; stageBusy?: boolean };
 
 /** Exported for the render-cost test. */
-export const Section = memo(function Section({ anchor, e, name, root, base, draw, cache, ready, meter, loaded, onFocusView, onGoneView, viewedStamp, onToggleViewed, folded, onToggleFold, onOpenDiff, onStage, stageBusy }: SectionProps) {
+export const Section = memo(function Section({ anchor, e, name, root, base, draw, cache, ready, meter, loaded, onFocusView, onGoneView, viewedStamp, onToggleViewed, folded, onToggleFold, onOpenDiff, onStage, onDiscard, stageBusy }: SectionProps) {
   const key = entryKey(e);
   const box = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -610,10 +635,16 @@ export const Section = memo(function Section({ anchor, e, name, root, base, draw
           {name}
         </span>
         <span className={`preview-tag${e.clash ? " ac-conflict" : ""}`} title={e.clash ? `Unresolved conflict: ${clashWord(e.clash)}` : undefined}>{tagOf(e, base !== null)}</span>
+        {e.code === "R" && e.from && <span className="ac-lines">{`renamed from ${relTo(root, e.from)}`}</span>}
         {e.lines !== null && <span className="ac-lines">{e.lines} changed {e.lines === 1 ? "line" : "lines"}</span>}
         {onStage && !e.clash && (
           <button className="link" onClick={() => onStage(e)} disabled={stageBusy} title={e.staged ? "Unstage this file" : "Stage this file"} aria-label={`${e.staged ? "Unstage" : "Stage"} ${name}`}>
             {e.staged ? "Unstage" : "Stage"}
+          </button>
+        )}
+        {onDiscard && !e.clash && (
+          <button className="link" data-testid="ac-discard-file" onClick={() => onDiscard(e)} disabled={stageBusy} title={e.code === "?" ? "Delete this untracked file" : "Discard this file's changes"} aria-label={`Discard ${name}`}>
+            Discard
           </button>
         )}
         {onOpenDiff && (
@@ -697,6 +728,7 @@ type ListProps = {
   onToggleFold: (key: string) => void;
   onOpenDiff?: (path: string, staged: boolean) => void;
   onStage?: (e: Entry) => void;
+  onDiscard?: (e: Entry) => void;
   stageBusy?: boolean;
   children?: ReactNode;
   /** The scroll offset of the first paint; a tab keeps its own scroll, so only a test sets it. */
@@ -704,7 +736,7 @@ type ListProps = {
 };
 
 /** The scrolling column of sections: only those near the viewport are mounted. */
-export function AllChangesList({ entries, root, base, draw, cache, ready, fold, viewed, hidden, idPrefix, jumpRef, loaded, onFocusView, onGoneView, onToggleViewed, onToggleFold, onOpenDiff, onStage, stageBusy, children, initialTop }: ListProps) {
+export function AllChangesList({ entries, root, base, draw, cache, ready, fold, viewed, hidden, idPrefix, jumpRef, loaded, onFocusView, onGoneView, onToggleViewed, onToggleFold, onOpenDiff, onStage, onDiscard, stageBusy, children, initialTop }: ListProps) {
   const list = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   const top = useRef(0);
@@ -743,7 +775,7 @@ export function AllChangesList({ entries, root, base, draw, cache, ready, fold, 
       <div ref={inner} style={{ flex: "none", display: "flex", flexDirection: "column", gap: SECTION_GAP }}>
         {slice.top > 0 && spacer(slice.top)}
         {(entries ?? []).slice(slice.start, slice.end).map((e, k) => (
-          <Section key={entryKey(e)} anchor={`${idPrefix}-${slice.start + k}`} e={e} name={relTo(root, e.path)} root={root} base={base} draw={draw} cache={cache} ready={ready} meter={meter} loaded={loaded} onFocusView={onFocusView} onGoneView={onGoneView} viewedStamp={viewed[entryKey(e)]} onToggleViewed={onToggleViewed} folded={!!fold[entryKey(e)]} onToggleFold={onToggleFold} onOpenDiff={onOpenDiff} onStage={onStage} stageBusy={stageBusy} />
+          <Section key={entryKey(e)} anchor={`${idPrefix}-${slice.start + k}`} e={e} name={relTo(root, e.path)} root={root} base={base} draw={draw} cache={cache} ready={ready} meter={meter} loaded={loaded} onFocusView={onFocusView} onGoneView={onGoneView} viewedStamp={viewed[entryKey(e)]} onToggleViewed={onToggleViewed} folded={!!fold[entryKey(e)]} onToggleFold={onToggleFold} onOpenDiff={onOpenDiff} onStage={onStage} onDiscard={onDiscard} stageBusy={stageBusy} />
         ))}
         {slice.bottom > 0 && spacer(slice.bottom)}
       </div>

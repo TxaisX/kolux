@@ -46,3 +46,13 @@ test("TERM-010: the grid template is one flexible track per weight", () => {
   expect(templateOf([1, 1])).toBe("minmax(0, 1fr) minmax(0, 1fr)");
   expect(templateOf([1.25, 0.75])).toBe("minmax(0, 1.25fr) minmax(0, 0.75fr)");
 });
+
+test("a divider dragged in a very small window never gives a track a negative size (TERM-010)", () => {
+  // four columns in a 200 px grid: two neighbours hold 100 px, less than twice the 120 px minimum
+  for (const delta of [-500, -10, 0, 10, 500]) {
+    const w = dragWeights([1, 1, 1, 1], 1, delta, 200, 120);
+    expect(w.every((x) => x >= 0)).toBe(true);
+    expect(w[1] + w[2]).toBeCloseTo(2);
+  }
+  expect(templateOf(dragWeights([1, 1, 1, 1], 1, 500, 200, 120))).not.toContain("-");
+});

@@ -7,7 +7,7 @@ test("a tab shows one badge: spinner, question mark, bell or check; an idle shel
   expect(tabBadge("claude", true, false, false)).toBe("working");
   expect(tabBadge("claude", true, true, false)).toBe("permission");
   expect(tabBadge("claude", false, false, true)).toBe("unread");
-  expect(tabBadge("claude", false, false, false)).toBe("done");
+  expect(tabBadge("claude", false, false, false)).toBe("stopped"); // DT-C52: an exited agent's tab is Stopped, as its header
   expect(tabBadge("shell", true, false, false)).toBeNull();
   expect(tabBadge("shell", undefined, false, false)).toBeNull();
   expect(tabBadge("shell", true, false, true)).toBe("unread");

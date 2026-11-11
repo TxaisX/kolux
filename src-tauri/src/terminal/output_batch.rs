@@ -25,6 +25,9 @@ pub(crate) const WINDOW: Duration = Duration::from_millis(16);
 /// Queued output bytes past which the batch goes at once (DT-C246: raw bytes; the same volume as the
 /// 256 KB of base64 text it was before).
 pub(crate) const FLUSH_BYTES: usize = 192 * 1024;
+/// A chunk up to this size from a quiet session (a typed key's echo, a prompt) goes at once even while
+/// other sessions are batching.
+pub(crate) const EXPRESS_MAX: usize = 4 * 1024;
 
 /// One chunk of program output: the PTY's own bytes (DT-C246), so a multi-byte character split across two
 /// chunks survives the trip and is reassembled by xterm's decoder. On the channel the bytes go as they are
@@ -66,6 +69,9 @@ struct Queue {
     /// When the queued items go; None while nothing is queued.
     due: Option<Instant>,
     last_sent: Option<Instant>,
+    /// When each session last had a chunk sent, kept for one window: a session absent here and with
+    /// nothing queued is quiet.
+    sent_by: std::collections::HashMap<u32, Instant>,
 }
 
 pub(crate) struct Batcher {
@@ -122,21 +128,38 @@ impl Batcher {
     }
 
     /// Queues one chunk. The first after a quiet moment is due now; the rest of the window waits for its
-    /// end. Without a running flusher the chunk is sent here, at once.
+    /// end. Without a running flusher the chunk is sent here, at once. (The app pushes with `push_echo`.)
+    #[cfg(test)]
     pub(crate) fn push(&self, item: OutputItem) {
+        self.push_echo(item, false);
+    }
+
+    /// `push` for a chunk that answers typing (`echo`: its session was typed into a moment ago). Such a
+    /// chunk from a quiet session goes at once even while other sessions are batching (see below).
+    pub(crate) fn push_echo(&self, item: OutputItem, echo: bool) {
         let len = item.data.len();
         let mut q = lock(&self.queue);
+        let now = Instant::now();
+        // Latency: for typing, "the first chunk after quiet goes at once" holds per session, so a key's echo
+        // in a quiet pane does not wait out a window another pane's flood set. The whole queue goes with it,
+        // in arrival order (so no session's chunks are ever reordered); a session that is itself streaming
+        // is never quiet, so a flood still goes once per window plus at most one early frame per typing
+        // session. Only echoes: untyped output of many slow panes stays batched (DT-C243).
+        let quiet = echo && len <= EXPRESS_MAX && !q.items.iter().any(|i| i.id == item.id) && q.sent_by.get(&item.id).is_none_or(|t| now >= *t + self.window);
         q.bytes += len;
         q.items.push(item);
         // The flusher is woken only when this push changed what it waits for: it set the due time, or it
         // took the queue over the byte cap. Pushes within a window otherwise leave it sleeping.
         let mut wake = false;
         if q.due.is_none() {
-            let now = Instant::now();
             q.due = Some(match q.last_sent {
                 Some(t) if now < t + self.window => t + self.window,
                 _ => now,
             });
+            wake = true;
+        }
+        if quiet && q.due.is_some_and(|due| due > now) {
+            q.due = Some(now);
             wake = true;
         }
         if q.bytes >= self.cap && q.bytes - len < self.cap {
@@ -197,7 +220,13 @@ impl Batcher {
             q.bytes = 0;
             q.due = None;
             q.last_sent = Some(now);
-            std::mem::take(&mut q.items)
+            let window = self.window;
+            q.sent_by.retain(|_, t| now < *t + window);
+            let items = std::mem::take(&mut q.items);
+            for i in &items {
+                q.sent_by.insert(i.id, now);
+            }
+            items
         };
         let count = items.len();
         if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (self.sink)(items))).is_err() {
@@ -400,6 +429,96 @@ mod tests {
         assert_eq!(b.sink_panics.load(Ordering::SeqCst), 1);
         b.flush_now();
         assert_eq!(b.pending(), 0);
+    }
+
+    /// A steady flood from session 1, one chunk every 2 ms for `ms`, with `echo` chunks from session 2
+    /// pushed at the given offsets; returns what was sent.
+    fn flood_beside(window_ms: u64, ms: u64, quiet_at: &[u64], echo: bool) -> (Vec<(Instant, Vec<OutputItem>)>, Instant) {
+        let (b, sent) = batcher(window_ms, usize::MAX);
+        let start = Instant::now();
+        let mut n = 0u64;
+        let mut quiet = quiet_at.iter().peekable();
+        while start.elapsed() < Duration::from_millis(ms) {
+            b.push(item(1, n, "flood flood flood flood"));
+            n += 1;
+            if quiet.peek().is_some_and(|at| start.elapsed() >= Duration::from_millis(**at)) {
+                quiet.next();
+                b.push_echo(item(2, n, "k"), echo);
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        std::thread::sleep(Duration::from_millis(window_ms * 3));
+        b.flush_now();
+        let got = sent.lock().unwrap().clone();
+        (got, start)
+    }
+
+    #[test]
+    fn latency_a_typed_echo_beside_a_flood_goes_without_waiting_for_the_window() {
+        let window = 200;
+        let (b, sent) = batcher(window, usize::MAX);
+        b.push(item(1, 1, "flood"));
+        wait_until(&sent, 1);
+        b.push(item(1, 2, "flood more"));
+        let at = Instant::now();
+        b.push_echo(item(2, 1, "k"), true);
+        wait_until(&sent, 2);
+        let got = sent.lock().unwrap();
+        assert_eq!(got.len(), 2);
+        assert!(got[1].0 - at < Duration::from_millis(100), "the echo waited {:?}", got[1].0 - at);
+        assert_eq!(got[1].1, vec![item(1, 2, "flood more"), item(2, 1, "k")], "the queue goes with it, in arrival order");
+        drop(got);
+        // The same session typing again within the window is not quiet: it waits like any chunk.
+        b.push_echo(item(2, 2, "kk"), true);
+        std::thread::sleep(Duration::from_millis(50));
+        assert_eq!(sent.lock().unwrap().len(), 2, "a session that just sent is batched");
+        b.flush_now();
+        // Untyped output from a quiet pane stays batched (DT-C243).
+        let (b, sent) = batcher(window, usize::MAX);
+        b.push(item(1, 1, "a"));
+        wait_until(&sent, 1);
+        b.push(item(3, 1, "untyped"));
+        std::thread::sleep(Duration::from_millis(50));
+        assert_eq!(sent.lock().unwrap().len(), 1, "no echo, no early frame");
+        b.flush_now();
+    }
+
+    #[test]
+    fn latency_a_flood_keeps_its_frames_per_window_and_every_session_its_order() {
+        let window = 20;
+        let (alone, alone_start) = flood_beside(window, 400, &[], true);
+        let (untyped, untyped_start) = flood_beside(window, 400, &[50, 150, 250, 350], false);
+        let (typed, typed_start) = flood_beside(window, 400, &[50, 150, 250, 350], true);
+        // The bound follows the time the flood really took: a busy machine can hold the pushing thread
+        // past its 400 ms, and each window of that extra time is one more frame by design.
+        let most = |got: &[(Instant, Vec<OutputItem>)], start: Instant, extra: usize| {
+            let ran = got.last().map_or(Duration::ZERO, |(at, _)| at.saturating_duration_since(start));
+            (ran.as_millis() as usize).max(400) / window as usize + 3 + extra
+        };
+        assert!(alone.len() <= most(&alone, alone_start, 0), "{} frames alone", alone.len());
+        assert!(untyped.len() <= most(&untyped, untyped_start, 0), "{} frames with an untyped quiet pane", untyped.len());
+        assert!(typed.len() <= most(&typed, typed_start, 4), "{} frames with four echoes: at most one early frame each", typed.len());
+        for got in [&alone, &untyped, &typed] {
+            for id in [1u32, 2] {
+                let seqs: Vec<u64> = got.iter().flat_map(|(_, b)| b.iter()).filter(|i| i.id == id).map(|i| i.seq).collect();
+                assert!(seqs.windows(2).all(|w| w[0] < w[1]), "session {id} in order: {seqs:?}");
+            }
+        }
+        assert_eq!(typed.iter().flat_map(|(_, b)| b.iter()).filter(|i| i.id == 2).count(), 4, "nothing dropped");
+    }
+
+    #[test]
+    fn latency_the_end_note_still_follows_the_last_bytes_after_an_echo() {
+        let (b, sent) = batcher(5_000, usize::MAX);
+        b.push(item(1, 1, "lead"));
+        wait_until(&sent, 1);
+        b.push_echo(item(2, 1, "echo"), true);
+        wait_until(&sent, 2);
+        b.push(item(2, 2, "last line"));
+        assert_eq!(b.pending(), 1, "the session's next chunk is batched");
+        b.flush_now();
+        assert_eq!(b.pending(), 0, "flush_now sent it before the end note can go");
+        assert_eq!(flat(&sent), vec![item(1, 1, "lead"), item(2, 1, "echo"), item(2, 2, "last line")]);
     }
 
     #[test]

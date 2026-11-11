@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { beginNote, rows, step, type Io, type Template } from "./templates";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 /** The line shown while the template list is still being read: only once it has taken a moment (the usual answer is
  *  instant and opens the blank note, which should not flash a message), and never once the list is up. */
@@ -60,7 +61,7 @@ export default function TemplatePicker({ root, onOpen, onError, onClose }: Props
     io.make(root, path).then(onOpen, (err) => onError(String(err)));
   };
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onMouseDown={onClose} />
       <div className="menu note-picker" role="dialog" aria-label="Start a note from a template">
         <div
@@ -84,6 +85,6 @@ export default function TemplatePicker({ root, onOpen, onError, onClose }: Props
           ))}
         </div>
       </div>
-    </>
+    </OutOfFlow>
   );
 }

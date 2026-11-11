@@ -7,6 +7,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import { LAYOUT_FIELD, layoutOf, type SavedLayout } from "./terminal/layout";
 import { windowFiles, windowSource } from "./shell/windowSource";
 
+const SOURCES = import.meta.glob(["./main.tsx", "./settings/useSettings.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+
 const h = vi.hoisted(() => ({
   drawn: [] as unknown[],
   answer: (_s: unknown) => {},
@@ -14,14 +16,20 @@ const h = vi.hoisted(() => ({
   texts: [] as unknown[],
   langs: [] as unknown[],
   shown: 0,
+  calls: [] as Array<[string, Record<string, unknown>]>,
+  gate: false, // PKG-4: while set, path_kind answers only once a history removal has been asked
+  forgot: false,
+  release: [] as Array<() => void>,
 }));
 vi.mock("./App", () => ({ default: function App() { return null; } }));
 vi.mock("./tower/TowerWindow", () => ({ default: function TowerWindow() { return null; } }));
 vi.mock("react-dom/client", () => ({ default: { createRoot: () => ({ render: (el: unknown) => void h.drawn.push(el) }) } }));
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (cmd: string, args: Record<string, unknown> = {}) => {
+    h.calls.push([cmd, args]);
     if (cmd === "get_settings") return new Promise((ok, no) => ((h.answer = ok), (h.fail = no)));
-    if (cmd === "path_kind") return Promise.resolve("dir");
+    if (cmd === "terminal_forget_history") (h.forgot = true), h.release.splice(0).forEach((f) => f());
+    if (cmd === "path_kind") return h.gate ? new Promise((ok) => (h.forgot ? ok("dir") : h.release.push(() => ok("dir")))) : Promise.resolve("dir");
     if (cmd === "agent_start_line") return Promise.resolve({ args: ["--resume", String(args.session)], program: "claude", env: [], resumed: true });
     return Promise.resolve(null);
   },
@@ -45,6 +53,10 @@ const appOf = (el: unknown) => (el as El).props.children!.props.children!;
 
 async function boot() {
   h.drawn = [];
+  h.calls = [];
+  h.gate = false;
+  h.forgot = false;
+  h.release = [];
   h.texts = [];
   h.langs = [];
   vi.resetModules();
@@ -110,6 +122,39 @@ test("a timely start draws once, with the saved tabs and read true", async () =>
   const app = appOf(h.drawn[0]);
   expect(app.props.read).toBe(true);
   expect(app.props.layout?.panes.map((p) => p.key)).toEqual([1, 2, 3]);
+});
+
+// PKG-4: one wave before the first draw. The history removals are asked while the folder checks are still
+// unanswered (the checks here answer only after a removal was asked, so a second wave would never finish), and both
+// are done before the window draws (DT-C27: nothing old replays before a pane opens).
+test("a timely start asks the folder checks and the history removals together, and settles both before drawing", async () => {
+  await boot();
+  h.gate = true;
+  h.answer({ [LAYOUT_FIELD]: SAVED });
+  await vi.waitFor(() => expect(h.drawn.length).toBe(1));
+  const names = h.calls.map(([c]) => c);
+  expect(names.filter((c) => c === "terminal_forget_history").length).toBe(3);
+  expect(names.lastIndexOf("terminal_forget_history")).toBeLessThan(names.indexOf("terminal_prune_history")); // the prune still follows
+  expect(names.indexOf("terminal_prune_history")).toBeLessThan(names.indexOf("startup_report"));
+});
+
+// PKG-4: the page's timeline reaches the log once, after show, as plain numbers; the call never fails the start.
+test("after show the page sends its start marks once, as a map of numbers", async () => {
+  await boot();
+  h.answer({});
+  await vi.waitFor(() => expect(h.calls.filter(([c]) => c === "startup_report").length).toBe(1));
+  const [, args] = h.calls.find(([c]) => c === "startup_report")!;
+  const page = args.page as Record<string, number>;
+  for (const name of ["kx:entry", "kx:settings", "kx:app-loaded", "kx:first-render", "kx:shown"]) expect(typeof page[name]).toBe("number");
+  expect(page["kx:entry"]).toBeLessThanOrEqual(page["kx:shown"]);
+  expect(h.shown).toBeGreaterThan(0);
+});
+
+test("the start reads the settings through the shared read, so a mount read joins it", () => {
+  const main = SOURCES["./main.tsx"];
+  expect(main).toMatch(/sharedRead\(\)\.catch/);
+  expect(main).not.toMatch(/invoke<Record<string, unknown>>\("get_settings"\)/);
+  expect(SOURCES["./settings/useSettings.ts"]).toMatch(/const read = \(\) =>\s+(\/\/.*\n\s*)?sharedRead\(\)/);
 });
 
 // src has no node types; the builtin comes through process.getBuiltinModule (as skills/noticeMount.test.ts does).

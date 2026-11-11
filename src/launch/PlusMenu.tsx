@@ -14,6 +14,7 @@ import { watchEscape } from "../switcher/accounts";
 import { restoreFocus } from "../shell/paletteCaps";
 import { menuStep } from "../terminal/LinkActionMenu";
 import VendorMark, { type Agent } from "../chrome/VendorMark";
+import OutOfFlow from "../chrome/OutOfFlow";
 import AgentMark from "../marks/AgentMark";
 import { Kbd, useLabel } from "../keys/KeymapContext";
 import { agents as AGENT_NAMES } from "../keys/actions";
@@ -138,7 +139,7 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
   // With no default the new-agent shortcut opens the first agent listed (SET-027).
   const opens = shown.find((a) => a.id === defaultId) ?? (defaultId === "" ? shown[0] : undefined);
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
       <div className="menu" role="menu" aria-label="New session" data-testid="new-session-menu" style={style} ref={menuBox} onKeyDown={arrows}>
         <div className="menu-title">New session</div>
@@ -279,6 +280,6 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
           Cancel
         </button>
       </div>
-    </>
+    </OutOfFlow>
   );
 }

@@ -297,7 +297,31 @@ pub struct Pushed {
 }
 
 /// GIT-065: None while HEAD is detached. Reads only refs git already has, never the network.
+/// Speed: one `for-each-ref` answers the common case (a branch with an upstream, in sync or ahead)
+/// that took three git runs; `--points-at HEAD` keeps the ahead count to the branches at HEAD, so a
+/// repository with thousands of branches costs the same. No starred row (a detached or unborn HEAD,
+/// or a failed read) and the unpublished case take the step-by-step reading, which gives the answer.
 pub fn pushed(worktree: &Path) -> Option<Pushed> {
+    let listed = run(&["for-each-ref", "--points-at=HEAD", "--format=%(HEAD)%09%(upstream)%09%(upstream:track)", "refs/heads/"], Some(worktree)).ok();
+    let Some(row) = listed.as_deref().and_then(|t| t.lines().find(|l| l.starts_with('*'))) else { return pushed_by_steps(worktree) };
+    let mut f = row.splitn(3, '\t').skip(1);
+    let (upstream, track) = (f.next().unwrap_or(""), f.next().unwrap_or("").trim());
+    // No upstream, or one whose ref is gone (`@{upstream}` does not resolve either): unpublished.
+    if upstream.is_empty() || track == "[gone]" {
+        return pushed_by_steps(worktree);
+    }
+    // `[ahead 2]`, `[behind 1]`, `[ahead 2, behind 1]` or nothing (in sync): the ahead count is `@{upstream}..HEAD`.
+    let ahead = track.trim_matches(['[', ']']).split(", ").find_map(|p| p.strip_prefix("ahead ")).map_or(Some(0), |n| n.parse::<u32>().ok());
+    let path = worktree.display().to_string();
+    Some(match ahead {
+        Some(0) => Pushed { path, state: "synced", count: 0 },
+        Some(count) => Pushed { path, state: "ahead", count },
+        None => Pushed { path, state: "unknown", count: 0 },
+    })
+}
+
+/// GIT-065: `pushed` one question at a time (HEAD's branch, its upstream, the count).
+fn pushed_by_steps(worktree: &Path) -> Option<Pushed> {
     run(&["symbolic-ref", "-q", "HEAD"], Some(worktree)).ok()?;
     let count = |range: &str| run(&["rev-list", "--count", range], Some(worktree)).ok().and_then(|n| n.parse::<u32>().ok());
     let (state, n) = if run(&["rev-parse", "--verify", "-q", "@{upstream}"], Some(worktree)).is_ok() {
@@ -2563,7 +2587,9 @@ pub fn parse_status(text: &str) -> Status {
             continue;
         }
         let (kind, rest) = item.split_at(1);
-        let rest = rest.trim_start();
+        // Exactly the one separating space: an untracked name may itself start with spaces, and a
+        // trimmed one would stage or (git clean) delete another file.
+        let rest = rest.strip_prefix(' ').unwrap_or(rest);
         match kind {
             "?" => st.untracked.push(change(rest, 'U', None)),
             "1" | "2" | "u" => {
@@ -3975,6 +4001,65 @@ and more
         let _ = fs::remove_dir_all(&dir);
     }
 
+    /// Speed: the one-run badge read answers exactly what the step-by-step read does in every state,
+    /// and the common case (an upstream, in sync or ahead) starts fewer git processes.
+    #[test]
+    fn the_sidebar_badge_read_in_one_run_matches_the_step_by_step_read() {
+        let bare = std::env::temp_dir().join(format!("kolux-rs-scm-pushed1-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&bare);
+        fs::create_dir_all(&bare).unwrap();
+        run(&["init", "-q", "--bare", "-b", "main"], Some(&bare)).unwrap();
+        let dir = temp_repo("pushed1");
+        crate::git::trust_for_test(&dir);
+        run(&["remote", "add", "origin", &bare.to_string_lossy().replace('\\', "/")], Some(&dir)).unwrap();
+        run(&["push", "-q", "-u", "origin", "main"], Some(&dir)).unwrap();
+        let same = |d: &Path, what: &str| {
+            let (quick, steps) = (pushed(d), pushed_by_steps(d));
+            assert_eq!(quick, steps, "{what}");
+            quick.map(|p| (p.state, p.count))
+        };
+        let spawned = |d: &Path, f: fn(&Path) -> Option<Pushed>| git_argvs(|| drop(f(d))).len();
+        assert_eq!(same(&dir, "in sync"), Some(("synced", 0)));
+        let (before, after) = (spawned(&dir, pushed_by_steps), spawned(&dir, pushed));
+        println!("PUSHED in sync: {before} git processes before, {after} after");
+        assert!(after < before, "{after} vs {before}");
+        // Other branches at the same commit (one with no upstream) do not confuse the read.
+        run(&["branch", "twin"], Some(&dir)).unwrap();
+        commit_file(&dir, "one.txt", "1\n");
+        commit_file(&dir, "two.txt", "2\n");
+        run(&["branch", "twin2"], Some(&dir)).unwrap();
+        assert_eq!(same(&dir, "ahead"), Some(("ahead", 2)));
+        println!("PUSHED ahead: {} git processes before, {} after", spawned(&dir, pushed_by_steps), spawned(&dir, pushed));
+        run(&["push", "-q"], Some(&dir)).unwrap();
+        run(&["reset", "-q", "--hard", "HEAD~1"], Some(&dir)).unwrap();
+        assert_eq!(same(&dir, "behind"), Some(("synced", 0)), "behind only is nothing to push");
+        commit_file(&dir, "three.txt", "3\n");
+        assert_eq!(same(&dir, "diverged"), Some(("ahead", 1)));
+        // A linked worktree on its own branch with its own upstream state.
+        let linked = std::env::temp_dir().join(format!("kolux-rs-scm-pushed1-wt-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&linked);
+        run(&["worktree", "add", "-q", "-b", "side", &linked.to_string_lossy(), "origin/main"], Some(&dir)).unwrap();
+        run(&["branch", "-q", "--set-upstream-to=origin/main", "side"], Some(&linked)).unwrap();
+        commit_file(&linked, "side.txt", "s\n");
+        assert_eq!(same(&linked, "linked worktree ahead"), Some(("ahead", 1)));
+        assert_eq!(same(&dir, "the main checkout is unchanged by it"), Some(("ahead", 1)));
+        // No upstream: unpublished, counted against the base.
+        run(&["switch", "-q", "-c", "feature"], Some(&dir)).unwrap();
+        commit_file(&dir, "four.txt", "4\n");
+        assert_eq!(same(&dir, "no upstream").map(|s| s.0), Some("unpublished"));
+        // An upstream whose ref is gone reads as unpublished, as before.
+        run(&["branch", "-q", "--set-upstream-to=origin/main", "feature"], Some(&dir)).unwrap();
+        run(&["update-ref", "-d", "refs/remotes/origin/main"], Some(&dir)).unwrap();
+        same(&dir, "gone upstream");
+        run(&["switch", "-q", "--detach"], Some(&dir)).unwrap();
+        assert_eq!(same(&dir, "detached"), None);
+        run(&["switch", "-q", "--orphan", "unborn"], Some(&dir)).unwrap();
+        same(&dir, "unborn branch");
+        let _ = fs::remove_dir_all(&linked);
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&bare);
+    }
+
     #[test]
     fn the_sidebar_badge_counts_unpushed_commits_and_never_calls_an_unreadable_count_synced() {
         let state = |dir: &Path| pushed(dir).map(|p| (p.state, p.count));
@@ -4170,6 +4255,21 @@ and more
         let detached = parse_status("# branch.oid e2b3\0# branch.head (detached)\0");
         assert_eq!(detached, Status { head: Some("e2b3".into()), ..Status::default() });
         assert_eq!(parse_status("# branch.oid (initial)\0# branch.head main\0").head, None);
+    }
+
+    /// An untracked name that starts with a space is listed as it is; read trimmed, discarding it
+    /// ran git clean on the other, unspaced file and deleted that one for good.
+    #[test]
+    fn an_untracked_name_with_a_leading_space_is_kept_whole_and_discards_only_itself() {
+        let repo = temp_repo("lead-space");
+        fs::write(repo.join(" notes.txt"), "spaced\n").unwrap();
+        fs::write(repo.join("notes.txt"), "keep me\n").unwrap();
+        let st = status(&repo).unwrap();
+        assert_eq!(paths(&st.untracked), [" notes.txt", "notes.txt"]);
+        discard(&repo, "untracked", &[" notes.txt".to_string()]).unwrap();
+        assert!(!repo.join(" notes.txt").exists(), "the discarded file is gone");
+        assert_eq!(fs::read_to_string(repo.join("notes.txt")).unwrap(), "keep me\n", "the other file is untouched");
+        let _ = fs::remove_dir_all(&repo);
     }
 
     #[test]

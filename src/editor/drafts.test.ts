@@ -229,3 +229,17 @@ describe("row 199: every dirty buffer is in the draft store before the interface
     expect(acks).toEqual([2]);
   });
 });
+
+describe("a discard while a draft write is on its way", () => {
+  it("the discard wins: the draft being written when the user chose Don't save does not come back", async () => {
+    const r = rig();
+    open(P, "disk\n", "disk\nthrown away\n");
+    r.d.edited(W, P);
+    const writing = r.run(); // the pause ends: the write starts and waits on the disk copy's hash
+    await r.d.discard(W, P); // the tab closes with Don't save meanwhile
+    await writing;
+    for (let i = 0; i < 6; i++) await new Promise((res) => setTimeout(res, 0));
+    expect(r.store.has(P)).toBe(false);
+    expect(await r.d.take(W, P)).toBeNull();
+  });
+});

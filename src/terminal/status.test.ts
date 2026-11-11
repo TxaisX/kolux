@@ -6,7 +6,8 @@ test("a plain shell reads as a terminal with a neutral status; an agent's word i
   expect(headerOf("shell", "ended", 0, false, 0, 0)).toMatchObject({ word: "Ended", tone: "" });
   expect(headerOf("claude", "running", undefined, false, null, 0)).toMatchObject({ word: "Working", tone: "working", needsYou: false });
   expect(headerOf("claude", "running", undefined, true, null, 0)).toMatchObject({ word: "Needs you", tone: "attention", needsYou: true });
-  expect(headerOf("claude", "ended", 0, false, 0, 0)).toMatchObject({ word: "Done", tone: "done", glyph: "check", state: "done" });
+  // DT-C52: an exited agent reads Stopped, as the Board, the Tower and the Inbox say (was Done before round 3)
+  expect(headerOf("claude", "ended", 0, false, 0, 0)).toMatchObject({ word: "Stopped", tone: "", state: "stopped", explain: "Stopped: exited" });
   expect(headerOf("claude", "ended", 2, false, 0, 0)).toMatchObject({ word: "Ended (2)", tone: "" });
   expect(headerOf("claude", "failed", undefined, false, null, 0)).toMatchObject({ word: "Failed", tone: "attention", needsYou: true });
 });
@@ -16,7 +17,8 @@ test("a finished agent shows how long ago: just now, then minutes (TERM-023)", (
   expect(ageLabel(t, t + 59_000)).toBe("just now");
   expect(ageLabel(t, t + 60_000)).toBe("1m ago");
   expect(ageLabel(t, t + 3 * 60_000 + 20_000)).toBe("3m ago");
-  expect(headerOf("claude", "ended", 0, false, t, t + 180_000).age).toBe("3m ago");
+  expect(headerOf("claude", "running", undefined, false, t, t + 180_000, "done").age).toBe("3m ago");
+  expect(headerOf("claude", "ended", 0, false, t, t + 180_000).age).toBe(""); // DT-C52: an exited agent is Stopped, with no finish age
 });
 
 test("the shortcut cycles through every pane that needs you and stays put with none (TERM-030)", () => {
@@ -37,7 +39,7 @@ test("the hooks feed the header while the program still runs: needs you, blocked
   expect(headerOf("claude", "running", undefined, false, null, 0, "working")).toMatchObject({ word: "Working", tone: "working", needsYou: false });
   // The hook never speaks for a shell and never changes an ended program.
   expect(headerOf("shell", "running", undefined, false, null, 0, "permission")).toMatchObject({ word: "Ready", needsYou: false });
-  expect(headerOf("claude", "ended", 0, false, 0, 0, "permission")).toMatchObject({ word: "Done", needsYou: false });
+  expect(headerOf("claude", "ended", 0, false, 0, 0, "permission")).toMatchObject({ word: "Stopped", needsYou: false });
 });
 
 test("the roster label counts agents and those waiting on the user; a line names role, model and state (STAT-026)", () => {
@@ -175,4 +177,18 @@ test("the global needs-you count is the panes waiting that are still open (ux fi
 
 test("DT-C52: the Stopped tip covers a blocked agent whose program still runs and one whose program ended", () => {
   expect(VOCAB.stopped.explain).toBe("Stopped: waiting on a limit or sign-in, or the program has ended.");
+});
+
+test("DT-C52: an agent launched with no vendor mark speaks as an agent in its header, as on the Board", async () => {
+  const { statusAgent } = await import("./status");
+  const { chipOf } = await import("../board/chip");
+  // a catalogue agent run as a shell-class pane (Gemini CLI), program up, no hook yet
+  const agent = statusAgent("shell", "gemini");
+  expect(headerOf(agent, "running", undefined, false, null, 0).word).toBe("Working");
+  expect(chipOf({ agent: "gemini", running: true, stale: false, since: 0 }, 0)?.word).toBe("Working");
+  // a plain shell stays a shell
+  expect(headerOf(statusAgent("shell", null), "running", undefined, false, null, 0).word).toBe("Ready");
+  // exited cleanly: Stopped in the header and on the Board
+  expect(headerOf(agent, "ended", 0, false, null, 0).word).toBe("Stopped");
+  expect(chipOf({ agent: "gemini", running: false, stale: false, since: 0 }, 0)?.word).toBe("Stopped");
 });

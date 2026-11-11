@@ -2,7 +2,7 @@
 // unstage, push, pull and sync. Kept apart from the component so the rules are testable without a
 // page: which paths a bulk stage takes, the buttons the remote offers, what a finished action says,
 // and the guard that lets only one action run at a time (a double click sends one commit).
-import { remoteItems, failureTitle, type ActionOutcome, type Status } from "./model";
+import { discardAsk, remoteItems, failureTitle, type ActionOutcome, type Change, type DiscardAsk, type Section, type Status } from "./model";
 
 /** A line of the tab's notes: `bad` marks a failure. */
 export type Say = { text: string; bad: boolean };
@@ -56,8 +56,20 @@ export async function stagePaths(call: Call, worktree: string, paths: string[], 
 
 export type RemoteButton = { id: "push" | "pull" | "sync"; label: string; reason: string | null };
 
-/** The three remote buttons with their counts; `reason` is why one waits, null when it can go. */
-export const remoteButtons = (s: Status | null): RemoteButton[] => remoteItems(s).filter((i): i is RemoteButton => i.id === "push" || i.id === "pull" || i.id === "sync");
+/** What the remote buttons say when the repository has no remote at all (the wording the Checks tab and the
+ *  local-only badge use), instead of "Branch unpublished", which suggests publishing would help. */
+export const NO_REMOTE = "This repository has no remote, so there is nothing to push to or pull from";
+
+/** The three remote buttons with their counts; `reason` is why one waits, null when it can go. `noRemote`: the
+ *  repository has no remote (auto_pr_remote answered "none"). */
+export const remoteButtons = (s: Status | null, noRemote = false): RemoteButton[] =>
+  remoteItems(s)
+    .filter((i): i is RemoteButton => i.id === "push" || i.id === "pull" || i.id === "sync")
+    .map((b) => (noRemote && b.reason === "Branch unpublished" ? { ...b, reason: NO_REMOTE } : b));
+
+/** Why Commit waits, in the words the commit menu uses (model.commitItems), or null when it can go. */
+export const commitWait = (s: Status | null, message: string): string | null =>
+  s === null ? "Loading" : s.conflicts.length > 0 ? "Resolve the conflicts first" : s.staged.length === 0 ? "Nothing is staged: use Stage all above, or Stage on a file in the Working tree view" : !message.trim() ? "Write a commit message first" : null;
 
 /** What a finished remote action says: done, or the kind of failure with the tail of git's output. */
 export const remoteSay = (label: string, out: ActionOutcome): Say => {
@@ -88,3 +100,14 @@ export const treeWidthForKey = (width: number, key: string): number | null => {
   if (key === "End") return TREE_MAX;
   return null;
 };
+
+/** T-061 / T-153-a: what Discard on one All Changes file asks and sends, worded as the old Source Control panel
+ *  worded it (model.discardAsk): an untracked or newly added file is deleted, a deleted one comes back, anything
+ *  else loses its changes. `rel` is the file's path from the worktree; the status row (for its kind and a rename's
+ *  old name) comes from the last status, else from the entry's own git code. `section` is scm_discard's. */
+export function discardOne(file: { rel: string; staged: boolean; code: string; from?: string | null }, s: Status | null): DiscardAsk & { section: "changed" | "staged" | "untracked" } {
+  const side: Section = file.code === "?" ? "Untracked" : file.staged ? "Staged" : "Changes";
+  const list = !s ? [] : side === "Untracked" ? s.untracked : side === "Staged" ? s.staged : s.changed;
+  const row: Change = list.find((c) => c.path === file.rel) ?? { path: file.rel, status: file.code, from: file.from ?? null };
+  return { ...discardAsk(side, [row], false), section: side === "Changes" ? "changed" : side === "Staged" ? "staged" : "untracked" };
+}

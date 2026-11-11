@@ -6,22 +6,57 @@ import { rowStatus, shellNote } from "../../agents/rail";
 import { Grip, LEFT_KEY, LEFT_MAX, LEFT_MIN, clampLeft } from "../../chrome/RightSidebar";
 import { allSwitchedOff } from "../../launch/agents";
 import { NESTING_KEY } from "../../projects/model";
-import ProjectsPanel from "../../projects/ProjectsPanel";
+// PKG-2: the project list behind its render comparison (ProjectsMemo.tsx).
+import ProjectsPanel from "./ProjectsMemo";
 import { openSettings } from "../../settings/pages";
 import { toggleSkills } from "../../skills/nav";
 import { screenAfterPick, showsProjects } from "./sidebarScreens";
-import { useWindow } from "./store";
+import { useDeeds, useWindow } from "./store";
+import { useStableFns } from "./stable";
+import { useMemo } from "react";
+import type { Page } from "../../projects/ProjectsPanel";
+import type { Project } from "../../projects/model";
 
 export default function WindowSidebar() {
   const {
     screen, sidebarOpen, reveal, openDirs, sources, rowStates, unreadDirs,
-    markDir, settings, saveSetting, activeDir, select, removed, removedAll, agents, defaultId, setDefault,
-    launching, launch, addChooser, newTab, allAgents, agentPass, refreshAgents, page, setPage, refresh,
-    createRequest, createName, deleteRequest, renameRequest, setRenameRequest, startIn, projectAdded,
-    setScreen, setStandIns, startSetup, setProjects, setOwner, setNames, leftWidth, setDragLeft,
+    settings, saveSetting, activeDir, select, agents, defaultId,
+    launching, addChooser, newTab, allAgents, agentPass, page, setPage, refresh,
+    createRequest, createName, deleteRequest, renameRequest, setRenameRequest,
+    setScreen, setProjects, setOwner, setNames, leftWidth, setDragLeft,
     agentsScreen, groups, selected, saved, classic, chipFor, ringOf, footer, setAgentSel, setFocused, addPreset, closePane,
-    workerNames, ptys, wsUnsaved, askWsUnsaved, panes,
+    workerNames, ptys, panes, dirty,
   } = useWindow();
+  // PKG-2: the project list skips a render when nothing it shows changed (projectsProps.ts). What it runs from its
+  // handlers and effects keeps one identity: the window's deeds (store.tsx), and the closures below as callers that
+  // run this render's version (stable.ts useStableFns).
+  const deeds = useDeeds();
+  const act = useStableFns({
+    select: (dir: string, branch: string | null, fresh?: boolean) => {
+      setScreen(screenAfterPick(screen));
+      select(dir, branch, fresh);
+    },
+    nest: (on: boolean) => saveSetting(NESTING_KEY, on),
+    terminal: () => void newTab(null),
+    page: (next: Page) => {
+      // C02-R5-01: the page draws only on Terminals, so the row brings that screen up; the
+      // toggle is guarded by the screen so a stale page cannot close the one being opened.
+      setScreen("terminals");
+      setPage((p) => (screen === "terminals" && p === next ? null : next));
+    },
+    renameTaken: () => setRenameRequest(0),
+    artifacts: () => setScreen("artifacts"),
+    skills: () => toggleSkills(screen, setScreen),
+    index: (list: Project[], dirs: Record<string, string>, typed: Record<string, string>) => {
+      setProjects(list);
+      setOwner(dirs);
+      setNames(typed);
+    },
+  });
+  // EDIT-031: the list calls this while it draws (the delete question names the unsaved files). It reads the panes
+  // and their unsaved marks (App.tsx wsUnsaved), so its identity follows them and the list draws again when they change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const unsavedIn = useMemo(() => (paths: string[]) => deeds.wsUnsaved(paths), [panes, dirty, deeds]);
   return (
     <>
       {showsProjects(screen) && sidebarOpen && (
@@ -31,57 +66,46 @@ export default function WindowSidebar() {
           sessions={sources}
           states={rowStates}
           unread={unreadDirs}
-          onUnread={markDir}
+          onUnread={deeds.markDir}
           settings={settings}
-          onSetting={saveSetting}
+          onSetting={deeds.saveSetting}
           activeDir={activeDir}
-          onSelect={(dir, branch, fresh) => {
-            setScreen(screenAfterPick(screen));
-            select(dir, branch, fresh);
-          }}
-          onRemoved={removed}
-          onRemovedAll={removedAll}
-          onSleep={removedAll}
-          unsavedIn={wsUnsaved}
-          onAskUnsaved={askWsUnsaved}
+          onSelect={act.select}
+          onRemoved={deeds.removed}
+          onRemovedAll={deeds.removedAll}
+          onSleep={deeds.removedAll}
+          unsavedIn={unsavedIn}
+          onAskUnsaved={deeds.askWsUnsaved}
           nest={settings[NESTING_KEY] !== false}
-          onNest={(on) => saveSetting(NESTING_KEY, on)}
+          onNest={act.nest}
           agents={agents}
           defaultId={defaultId}
-          onSetDefault={setDefault}
+          onSetDefault={deeds.setDefault}
           launching={launching}
-          onLaunch={launch}
-          onChoose={addChooser}
-          onTerminal={() => void newTab(null)}
+          onLaunch={deeds.launch}
+          onChoose={deeds.addChooser}
+          onTerminal={act.terminal}
+          onReview={deeds.openChangesIn}
           allOff={allSwitchedOff(allAgents, settings)}
           pass={agentPass}
-          onRefresh={refreshAgents}
+          onRefresh={deeds.refreshAgents}
           page={screen === "terminals" ? page : null}
-          onPage={(next) => {
-            // C02-R5-01: the page draws only on Terminals, so the row brings that screen up; the
-            // toggle is guarded by the screen so a stale page cannot close the one being opened.
-            setScreen("terminals");
-            setPage((p) => (screen === "terminals" && p === next ? null : next));
-          }}
+          onPage={act.page}
           refresh={refresh}
           createRequest={createRequest}
           createName={createName}
           deleteRequest={deleteRequest}
           renameRequest={renameRequest}
-          onRenameTaken={() => setRenameRequest(0)}
-          onStartIn={startIn}
-          onAdded={projectAdded}
+          onRenameTaken={act.renameTaken}
+          onStartIn={deeds.startIn}
+          onAdded={deeds.projectAdded}
           artifactsOn={screen === "artifacts"}
-          onArtifacts={() => setScreen("artifacts")}
+          onArtifacts={act.artifacts}
           skillsOn={screen === "skills"}
-          onSkills={() => toggleSkills(screen, setScreen)}
-          onPending={setStandIns}
-          onSetup={startSetup}
-          onIndex={(list, dirs, typed) => {
-            setProjects(list);
-            setOwner(dirs);
-            setNames(typed);
-          }}
+          onSkills={act.skills}
+          onPending={deeds.setStandIns}
+          onSetup={deeds.startSetup}
+          onIndex={act.index}
         />
       )}
       {showsProjects(screen) && sidebarOpen && (

@@ -772,11 +772,16 @@ pub struct Usage {
 }
 
 /// What opening the page shows at once: the tracking choices and the saved results.
-#[tauri::command]
+// Async: off the window's thread. The store is held only to copy the saved text out; the rows are
+// parsed after it is let go, so a large history never holds up other store users.
+#[tauri::command(async)]
 pub fn token_usage(store: tauri::State<'_, Mutex<Store>>) -> Result<Usage, String> {
-    let s = store.lock().map_err(|e| e.to_string())?;
-    let (claude, codex) = (saved(&s, "claude"), saved(&s, "codex"));
-    let picked = choices(&s);
+    let (claude, codex, picked) = {
+        let s = store.lock().map_err(|e| e.to_string())?;
+        let raw = |p: &str| s.get(&key_saved(p)).ok().flatten();
+        (raw("claude"), raw("codex"), choices(&s))
+    };
+    let (claude, codex) = (claude.and_then(|t| parse_saved(&t)), codex.and_then(|t| parse_saved(&t)));
     let tracking = PROVIDERS.iter().map(|p| (p.to_string(), Value::Bool(tracking_of(picked.get(*p).and_then(Value::as_bool), if *p == "claude" { claude.is_some() } else { codex.is_some() })))).collect();
     Ok(Usage { tracking, claude, codex })
 }

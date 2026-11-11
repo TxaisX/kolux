@@ -32,11 +32,12 @@ pub fn parse_netstat(text: &str) -> Vec<Listening> {
     let mut out = Vec::new();
     for line in text.lines() {
         let f: Vec<&str> = line.split_whitespace().collect();
-        if f.len() < 5 || !f[0].eq_ignore_ascii_case("tcp") || !f[3].eq_ignore_ascii_case("listening") {
+        // The state column is translated on non-English Windows; `listening_row` reads the foreign port.
+        if f.len() < 5 || !f[0].eq_ignore_ascii_case("tcp") || !crate::ports::listening_row(&f) {
             continue;
         }
         let Some(port) = f[1].rsplit(':').next().and_then(|p| p.parse::<u16>().ok()) else { continue };
-        let pid = f[4].parse::<u32>().unwrap_or(0);
+        let pid = f.last().and_then(|p| p.parse::<u32>().ok()).unwrap_or(0);
         if !out.iter().any(|l: &Listening| l.port == port) {
             out.push(Listening { port, pid });
         }
@@ -149,6 +150,12 @@ mod tests {
         assert_eq!(parse_netstat(netstat), vec![Listening { port: 135, pid: 1200 }, Listening { port: 5173, pid: 4321 }]);
         let lsof = "COMMAND PID USER FD TYPE DEVICE SIZE/OFF NODE NAME\nnode    4321 me  23u IPv4 0xabc 0t0 TCP *:5173 (LISTEN)\npostgres 88 me 7u IPv6 0xdef 0t0 TCP [::1]:5432 (LISTEN)\n";
         assert_eq!(parse_lsof(lsof), vec![Listening { port: 5173, pid: 4321 }, Listening { port: 5432, pid: 88 }]);
+    }
+
+    #[test]
+    fn brow067_listening_ports_are_read_from_a_translated_netstat() {
+        let netstat = "  TCP    127.0.0.1:5173         0.0.0.0:0              ABHÖREN         4321\n  TCP    0.0.0.0:3000           0.0.0.0:0              IN ASCOLTO      77\n  TCP    127.0.0.1:52000        127.0.0.1:443          HERGESTELLT     77\n";
+        assert_eq!(parse_netstat(netstat), vec![Listening { port: 5173, pid: 4321 }, Listening { port: 3000, pid: 77 }]);
     }
 
     #[test]

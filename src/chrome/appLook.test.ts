@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { APP_ICONS, appIcon, appLookSummary, applyWindowBlur, blurOn } from "./appLook";
+import { APP_ICONS, appIcon, appLookSummary, applyWindowBlur, blurOn, blurRefused } from "./appLook";
 
 describe("T-301 app icon and window blur (APP-012, SET-041)", () => {
   test("the three icons, in the card's order", () => {
@@ -24,6 +24,19 @@ describe("T-301 app icon and window blur (APP-012, SET-041)", () => {
     applyWindowBlur({ windowBlur: true }, root);
     expect(root.dataset.windowBlur).toBe("on");
     applyWindowBlur({ windowBlur: false }, root);
+    expect(root.dataset.windowBlur).toBeUndefined();
+  });
+  test("the page stays solid where the window has nothing to blur with, and after the window refused the effect", () => {
+    const root = { dataset: {} as DOMStringMap };
+    applyWindowBlur({ windowBlur: true }, root, true);
+    expect(root.dataset.windowBlur, "another system, or a refused effect: never see-through").toBeUndefined();
+    applyWindowBlur({ windowBlur: true }, root, false);
+    expect(root.dataset.windowBlur).toBe("on");
+    applyWindowBlur({ windowBlur: true }, root, true);
+    expect(root.dataset.windowBlur, "a refusal takes the mark back").toBeUndefined();
+    // last, because a refusal holds for the rest of the run
+    blurRefused();
+    applyWindowBlur({ windowBlur: true }, root);
     expect(root.dataset.windowBlur).toBeUndefined();
   });
   test("summary", () => {

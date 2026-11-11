@@ -11,13 +11,12 @@ import { addImages, clipboardNote, MAX_IMAGES, MIME, type Shot } from "./images"
 import { Close } from "../chrome/icons";
 import { closed, issue, NOTE_POS, reduce, restoreFocus, tabTarget, typedText } from "./model";
 
-const EVENT = "kolux-feedback";
+import { FEEDBACK_EVENT as EVENT, requestFeedback, takeParked } from "./request";
+
 const NOTE_MS = 8000;
 
-/** Opens the message box, optionally with some text already above the block; `crash` marks a crash report. */
-export function requestFeedback(text = "", crash = false) {
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: { text, crash } }));
-}
+// Kept so existing importers need no change; new ones should take it from ./request, which does not pull this file.
+export { requestFeedback };
 
 /** The version from the app, the system from the back end; what cannot be read says so. */
 async function readFacts(): Promise<FeedbackFacts> {
@@ -69,12 +68,19 @@ export default function FeedbackDialog() {
   };
 
   useEffect(() => {
-    const on = (e: Event) => {
-      const text = (e as CustomEvent<{ text?: string; crash?: boolean }>).detail?.text ?? "";
-      setCrash((e as CustomEvent<{ crash?: boolean }>).detail?.crash === true);
+    const open = (text: string, crash: boolean) => {
+      setCrash(crash);
       void readFacts().then((facts) => dispatch({ t: "open", facts, text }));
     };
+    const on = (e: Event) => {
+      takeParked();
+      const d = (e as CustomEvent<{ text?: string; crash?: boolean }>).detail;
+      open(d?.text ?? "", d?.crash === true);
+    };
     window.addEventListener(EVENT, on);
+    // The box's code is read when first needed, so the request that asked for it may have gone out before this listener existed.
+    const early = takeParked();
+    if (early) open(early.text, early.crash);
     return () => window.removeEventListener(EVENT, on);
   }, []);
 

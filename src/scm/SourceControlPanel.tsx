@@ -34,6 +34,7 @@ import { DIFF_SPLITS, type DiffSplit } from "./split";
 import { openInBrowser } from "../browser/openIn";
 import { HistoryLoads, acceptHistory, historyFor, type LoadedHistory } from "./history";
 import { LINES_SKIPPED_NOTE, canCommit, changeCount, cutBanner, conflictPrompt, grouped, savedFixAgent, isCommitShortcut, nextStep, remoteItems, summaryLabel, summaryRows, summaryTotal, type ActionOutcome, type Change, type CommitOutcome, type RemoteAction, type Status, type Summary, bulk, rowOrder, rowKeys, selectRows, spanRuns, type RowKey, discardAsk, type DiscardAsk, type Section, mergeActions, mergeLabel, type MergeAction, type MergeInfo, abortLabel, capped, clashWord, CONFLICT_CAP, filesWord, graph, graphLines, commitUrl, explainPrompt, type Commit, type GraphRow, prMismatch, prStateWord, scmGroups, prLooked, prRefreshDelay, PR_STALE_MS, prReason, prRowText, withPr, needsGitHub, type Pr, type PrAnswer, type PrLook, commitItems, failureTitle, discardPlan, fileTree, reviewPrompt, SECTION_CAP, tooManyLine, filterRows, fullPath } from "./model";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 type Props = {
   /** Row 838: a status to show before the first read (tests render without a back end). */
@@ -880,7 +881,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </div>
             </div>
             {commitMenu && (
-              <>
+              <OutOfFlow>
                 <div className="menu-backdrop" onClick={() => setCommitMenu(null)} aria-hidden="true" />
                 <div className="menu" role="menu" aria-label="Commit and" style={{ left: commitMenu.left, top: commitMenu.top, width: 280 }}>
                   <div className="menu-title">Commit and</div>
@@ -902,10 +903,10 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                     </button>
                   ))}
                 </div>
-              </>
+              </OutOfFlow>
             )}
             {menu && (
-              <>
+              <OutOfFlow>
                 <div className="menu-backdrop" onClick={() => setMenu(null)} aria-hidden="true" />
                 <div className="menu" role="menu" aria-label="Remote actions" style={{ left: menu.left, top: menu.top }}>
                   <div className="menu-title">{status?.upstream ? `Remote · ${status.upstream}` : "Remote"}</div>
@@ -941,7 +942,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                     {prItemReason && <span className="reason">{prItemReason}</span>}
                   </button>
                 </div>
-              </>
+              </OutOfFlow>
             )}
             {status?.branch !== undefined && (
               <div className="scm-prrow" data-pr-row>
@@ -1283,7 +1284,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
               </div>
             </details>
             {fileCtx && (
-              <>
+              <OutOfFlow>
                 <div className="menu-backdrop" onClick={() => setFileCtx(null)} aria-hidden="true" />
                 <div className="menu" role="menu" aria-label="File actions" style={{ left: fileCtx.x, top: fileCtx.y }}>
                   <div className="menu-title">{fileCtx.path}</div>
@@ -1308,10 +1309,10 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                   ))}
                   <FileOpenWith dir={dir} path={fileCtx.path} done={() => setFileCtx(null)} onError={(m) => setErrs((e) => ({ ...e, read: m }))} />
                 </div>
-              </>
+              </OutOfFlow>
             )}
             {ctx && (
-              <>
+              <OutOfFlow>
                 <div className="menu-backdrop" onClick={() => setCtx(null)} aria-hidden="true" />
                 <div className="menu" role="menu" aria-label="Commit actions" style={{ left: ctx.x, top: ctx.y }}>
                   <div className="menu-title hash">{ctx.commit.short}</div>
@@ -1335,7 +1336,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                     </button>
                   ))}
                 </div>
-              </>
+              </OutOfFlow>
             )}
             <HandoffNote dir={dir} agents={agents} onHand={onHand} />
           </>

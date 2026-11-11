@@ -21,6 +21,8 @@ import { quitQuestion } from "../closeAsk";
 import { deferred } from "../../lazy/deferred";
 import { closeConfirmLabel } from "./tabMenuStart";
 import { useWindow } from "./store";
+import { setPaletteOpen, usePaletteOpen } from "../../chrome/paletteOpen";
+import { usePrRows } from "../../scm/usePrRows";
 import { SettingsPage } from "../../lazy/pages";
 import { WorkspaceBoard } from "../../lazy/pages";
 import { FolderRenameAsk } from "../../lazy/pages";
@@ -32,53 +34,14 @@ const TabMenu = deferred(() => import("./TabMenuView"), undefined, { prefetch: t
 
 export default function WindowDialogs() {
   const {
-    palette, projects, paletteItems, rowStates, panes, hook, turn, unreadDirs,
-    activeDir, projectOf, setScreen, select, fromItem, projectFor, fromName, setSidebarOpen,
-    setCreateName, setCreateRequest, setPalette, settings, setAsking, asking, dropPanes,
-    guard, quitAsk, quitting, setQuitAsk, reloadAsking, setReloadAsk, switcher,
-    titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt,
-    boardOpen, setBoardOpen, setPanes, setActiveDir, setRefresh, recentDirs,
+    paletteItems, panes, activeDir, setAsking, asking, dropPanes, guard, quitAsk, quitting, setQuitAsk, reloadAsking,
+    setReloadAsk, switcher, titles, tabMenu, settingsOpen, setSettingsOpen, settingsAt, boardOpen, setBoardOpen, setPanes,
+    setActiveDir, setRefresh,
   } = useWindow();
   return (
     <>
       <AboutPanel />
-      {palette && (
-        <WorktreePalette
-          projects={projects}
-          items={paletteItems()}
-          prOf={() => null} /* VIEW-043: the Pull requests rows come from prRows */
-          atOf={(d) => {
-            const row = Object.entries(rowStates).find(([x]) => sameDir(x, d))?.[1];
-            // STAT-024: the radio mark when the folder's working panes only watch background work.
-            const watching = dirMonitoring(panes.filter((p) => sameDir(p.cwd, d)).map((p) => ({ state: hook[p.key], monitoring: turn[p.key]?.monitoring })));
-            const mark = dirMark(row?.state ?? null, [...unreadDirs].some((x) => sameDir(x, d)), watching);
-            return mark ? { mark, since: row?.changed ?? 0 } : null;
-          }}
-          recent={recentDirs.current}
-          scope={[]}
-          hasWorktree={activeDir !== null && projectOf(activeDir) !== null}
-          onWorktree={(w) => {
-            noteUse("palette");
-            setScreen("terminals");
-            select(w.path, w.branch ?? null);
-          }}
-          onCreate={(name, repo) => {
-            noteUse("palette");
-            setScreen("terminals");
-            const item = workItem(name);
-            if (item) return fromItem(item);
-            const pid = repo ?? projectOf(activeDir) ?? projectFor(null);
-            if (pid) return fromName(pid, name);
-            setSidebarOpen(true);
-            setCreateName(name);
-            setCreateRequest((n) => n + 1);
-          }}
-          onClose={() => setPalette(false)}
-          linked={linkedPrs(settings[SCM_LINKED_PR_KEY])}
-          hosts={pasteHosts(linkedPrs(settings[SCM_LINKED_PR_KEY]))}
-          onItem={openInBrowser}
-        />
-      )}
+      <PaletteHost />
       {asking && (
         <Ask
           title={asking.title}
@@ -135,5 +98,58 @@ export default function WindowDialogs() {
       {settingsOpen && <SettingsPage onClose={() => setSettingsOpen(false)} target={settingsAt.target} n={settingsAt.n} active={activeDir ?? ""} />}
       {boardOpen && <WorkspaceBoard onClose={() => setBoardOpen(false)} />}
     </>
+  );
+}
+
+/** PROJ-057 / VIEW-037: Go to / Run a command. DT-C270: it is the only surface that reads whether the palette is
+ *  open (chrome/paletteOpen.ts) or its pull-request rows (VIEW-043, read only while it is open), so opening it draws
+ *  this and nothing else of the window. */
+function PaletteHost() {
+  const {
+    projects, paletteItems, rowStates, panes, hook, turn, unreadDirs, activeDir, projectOf, setScreen, select, fromItem, projectFor,
+    fromName, setSidebarOpen, setCreateName, setCreateRequest, settings, recentDirs,
+  } = useWindow();
+  const open = usePaletteOpen();
+  const prRows = usePrRows(open, (dir) => {
+    setScreen("terminals");
+    select(dir, null);
+  });
+  if (!open) return null;
+  return (
+      <WorktreePalette
+        projects={projects}
+        items={[...prRows, ...paletteItems()]}
+        prOf={() => null} /* VIEW-043: the Pull requests rows come from prRows, above */
+        atOf={(d) => {
+          const row = Object.entries(rowStates).find(([x]) => sameDir(x, d))?.[1];
+          // STAT-024: the radio mark when the folder's working panes only watch background work.
+          const watching = dirMonitoring(panes.filter((p) => sameDir(p.cwd, d)).map((p) => ({ state: hook[p.key], monitoring: turn[p.key]?.monitoring })));
+          const mark = dirMark(row?.state ?? null, [...unreadDirs].some((x) => sameDir(x, d)), watching);
+          return mark ? { mark, since: row?.changed ?? 0 } : null;
+        }}
+        recent={recentDirs.current}
+        scope={[]}
+        hasWorktree={activeDir !== null && projectOf(activeDir) !== null}
+        onWorktree={(w) => {
+          noteUse("palette");
+          setScreen("terminals");
+          select(w.path, w.branch ?? null);
+        }}
+        onCreate={(name, repo) => {
+          noteUse("palette");
+          setScreen("terminals");
+          const item = workItem(name);
+          if (item) return fromItem(item);
+          const pid = repo ?? projectOf(activeDir) ?? projectFor(null);
+          if (pid) return fromName(pid, name);
+          setSidebarOpen(true);
+          setCreateName(name);
+          setCreateRequest((n) => n + 1);
+        }}
+        onClose={() => setPaletteOpen(false)}
+        linked={linkedPrs(settings[SCM_LINKED_PR_KEY])}
+        hosts={pasteHosts(linkedPrs(settings[SCM_LINKED_PR_KEY]))}
+        onItem={openInBrowser}
+      />
   );
 }

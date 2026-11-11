@@ -286,3 +286,13 @@ test("T-796: a plain terminal pick with no folder at all still goes to Add Proje
   expect(started).toEqual([]);
   expect(closes).toEqual([]);
 });
+
+test("a plain terminal pick with no folder starts no AI agent in the folder added next, even with a saved default agent", async () => {
+  const app = await mountWizard({ defaultAgent: "claude" });
+  await app.now().wizardSession("terminal");
+  await app.settle();
+  app.now().projectAdded("C:/new", "main");
+  await app.settle();
+  expect(started).toEqual([]); // the new workspace opens its plain terminal by itself
+  expect(closes).toEqual(["completed"]);
+});

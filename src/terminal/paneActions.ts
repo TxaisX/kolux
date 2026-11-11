@@ -8,7 +8,6 @@ import type { Pane } from "../App";
 import type { WindowState } from "../shell/windowStore";
 import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
 import type { launchActions } from "../launch/launchActions";
-import type { usePrRows } from "../scm/usePrRows";
 import type { WindowLate } from "../shell/windowLate";
 import { forgetRunTab, runPaneKey } from "../automations/runTab";
 import { needsYou } from "../board/chip";
@@ -26,6 +25,7 @@ import type { Action } from "../editor/noteLinks";
 import { trashUnusedNotes } from "../editor/trashUnused";
 import { discardDraftsOf } from "../editor/useFileMoves";
 import { onClose } from "../inbox/exitedPrompt";
+import { dirsToClear } from "../notify/seen";
 import { commandRows } from "../keys/commands";
 import { runCommand } from "../keys/runCommand";
 import { actionById } from "../keys/actions";
@@ -63,16 +63,18 @@ import { forgetView } from "./viewKeep";
 import { invoke } from "@tauri-apps/api/core";
 import { singleFolder } from "../projects/singleFolder";
 
-export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
+/** Other words that find a Settings page in the palette. */
+const SETTINGS_WORDS: Partial<Record<PageId, string>> = { appearance: "theme dark light colours colors font" };
+
+export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, late: WindowLate) {
   const {
     accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
     owner, panes, pinned, ptys, recentDirs, recentTabs, restoredKeys, runPanes, runTabs, running, screen, setActiveDir, setActiveTab, setAgentSel, setAsking, setCreateName,
     setCreateRequest, setDeleteRequest, setDirty, setFocused, setHist, setKept, setKeptSetup, setNotice, setPage, setPanes, setPicking, setRunning, setScreen,
     setSettingsOpen, setSheet, setSidebarOpen, setStacked, setTabColors, setToast, setZoom, settings, settingsOpen, stamp, statusOf, switchAccount, titles,
-    unreadPanes
+    unreadPanes, setUnreadPanes, markDir
   } = s;
   const { inGitFor, launch, lineupsOf, pretrust, projectFor } = la;
-  const { prRows } = x;
   const addShell = (dir: string | null, branch: string | null) => {
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: dir, branch, agent: "shell", program: null, args: [] }]);
@@ -283,7 +285,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const fresh: Pane[] = Array.from({ length: add }, () => ({ key: nextKey.current++, cwd: activeDir, branch: null, agent: "shell", program: null, args: [], seats: [emptySeat()] }));
     const rest = panes.filter((p) => !drop.includes(groupOf(p)));
     setPanes([...rest, ...fresh]);
-    setFocused((f) => (drop.includes(f) ? focusIn(rest, activeDir, f) : f));
+    // `drop` names cells; a cell of two chooser tabs goes whole, so the focus is checked against every pane leaving
+    const leaving = panes.filter((p) => drop.includes(groupOf(p))).map((p) => p.key);
+    setFocused((f) => (leaving.includes(f) ? focusIn(rest, activeDir, f) : f));
   };
 
   // TERM-006: a split opens a shell in the pane's own folder, beside it (right) or under it.
@@ -312,7 +316,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const pane: Pane = { key: nextKey.current++, cwd: src.cwd, branch: src.branch, agent: "shell", program: null, args: [], typed: cli?.command ?? undefined, ask: cli?.ask, ...over };
     // one pane split down becomes a stacked pair; a split right puts the pair side by side again
     const stack = dir === "down" && shown.length === 1;
-    setStacked((st) => ({ ...st, [activeDir ?? ""]: stack }));
+    // the split pane's own workspace: a split from the command line may name a pane in a workspace not in front
+    const dirKey = sameDir(src.cwd, activeDir) ? (activeDir ?? "") : (src.cwd ?? "");
+    setStacked((st) => ({ ...st, [dirKey]: stack }));
     const at = splitIndex(shown.map((c) => c.group), groupOf(src), dir, columnsFor(shown.length + 1, stack));
     setPanes(insertBefore(panes, shown[at]?.panes[0], pane));
     if (!cli) setFocused(pane.key);
@@ -337,9 +343,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setPage(p.page as Page | null);
     return true;
   };
-  // PROJ-057 / VIEW-037: the palette's rows besides worktrees and projects.
+  // PROJ-057 / VIEW-037: the palette's rows besides worktrees and projects (the pull requests, VIEW-043, are added by the
+  // palette's own surface, shell/window/Dialogs.tsx, which reads them only while it is open).
   const paletteItems = (): PaletteItem[] => [
-    ...prRows,
     ...panes
       .filter((p) => !p.seats && p.kind !== "browser")
       .map((p) => ({
@@ -375,12 +381,15 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       },
       () => setToast("That page has closed"),
     ),
-    ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", run: () => openSettings(id) })),
+    ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", keywords: SETTINGS_WORDS[id], run: () => openSettings(id) })),
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
     // T-708: New terminal tab and Search open tabs are their Commands rows (with their keys), no longer second hand-built rows
     ...commandRows(keymap, installedIds, setToast, (id, i) => (id === TAB_SEARCH_ACTION ? openTabSearch() : runCommand(id, i, { scope: actionById.get(id)?.scope, unanswered: setToast }))), // T-611: every command, the unbound ones included, run as its shortcut runs; T-708: Search open tabs from any screen (TERM-053)
     ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)), classic), // T-610 / T-708: every screen; T-756: a page already up closes, as Show Skills does; C12-R5-01: Classic keeps its one view
     { section: "Quick actions", label: "New session", run: () => addChooser() },
+    // The workspace's All Changes (review, stage, commit) without waiting for an agent to finish: the same tab the
+    // Board's Review changes opens, in the focused cell, one per cell.
+    { section: "Quick actions", label: "Open All Changes", keywords: "review changes diff commit stage git", needs: "worktree" as const, run: () => (setPage(null), setScreen("terminals"), void newTab("changes")) },
     // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
     ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
     // VIEW-042: actions on the worktree in front, not runnable while none is open
@@ -460,7 +469,9 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     const ask = panes.find((p) => p.key === key)?.ask;
     if (ask) cliFailed.current[ask] = error;
     const { panes: rest, batchEmpty } = withoutFailed(panes, key);
-    setPanes(rest);
+    // from the latest list: several panes of one launch can fail before the window draws again, and each
+    // removal must stand (a list from this render would bring the pane that failed first back, dead)
+    setPanes((ps) => withoutFailed(ps, key).panes);
     setFocused((f) => (f === key ? focusIn(rest, activeDir, f) : f));
     setToast(batchEmpty ? `Nothing started: ${error}` : `A session did not start: ${error}`);
   };
@@ -507,7 +518,8 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // else its right neighbour (left if it was last), never to a tab that is closing.
   const dropPanes = (keys: number[]) => {
     const gone = new Set(keys);
-    discardDraftsOf(panes.filter((p) => gone.has(p.key))); // EDIT-004: a tab closed on purpose keeps no draft
+    // EDIT-004: a tab closed on purpose keeps no draft; a file another open tab still shows keeps its copy
+    discardDraftsOf(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)));
     trashUnusedNotes(panes.filter((p) => gone.has(p.key)), panes.filter((p) => !gone.has(p.key)), setToast); // EDIT-031: a new note never typed in goes with its tab
     late.exitedPrompt.current = onClose(late.exitedPrompt.current, keys);
     cancelHandOver(keys); // DT-C248: a closing tab reaps its terminal even if a move was marked for it
@@ -527,6 +539,11 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setPanes((ps) => ps.filter((p) => !gone.has(p.key)));
     setRunning((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !gone.has(Number(k)))));
     setDirty((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !gone.has(Number(k)))));
+    // TERM-118: a tab closed unread takes its mark along, and its workspace dot when no unread tab stays there
+    if (keys.some((k) => unreadPanes.has(k))) {
+      for (const d of dirsToClear(panes, unreadPanes, keys)) markDir(d, false);
+      setUnreadPanes((u) => new Set([...u].filter((k) => !gone.has(k))));
+    }
     const rest = panes.filter((p) => !gone.has(p.key));
     setFocused((f) => {
       if (!gone.has(f)) return f;
@@ -632,6 +649,19 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setFocused(k);
     late.setReveal((n) => n + 1);
   };
+  // The sidebar row's Review changes: workspace `dir` comes to the front on Terminals with its All Changes, an open
+  // one focused, else a new one in the cell the focus lands on there (as the Board's Review changes opens it). Shown
+  // without the starter pane a workspace with no tabs would get: All Changes is what was asked for.
+  const openChangesIn = (dir: string, branch: string | null) => {
+    const here = panesIn(panes, dir);
+    const same = here.find((p) => p.kind === "changes");
+    const at = here.find((p) => p.key === focusIn(panes, dir, focused));
+    const key = same?.key ?? nextKey.current++;
+    if (!same) setPanes((ps) => [...ps, { key, cwd: dir, branch: at?.branch ?? branch, group: at ? groupOf(at) : undefined, agent: "shell", program: null, args: [], kind: "changes" }]);
+    showDir(dir);
+    setFocused(key);
+    late.setReveal((n) => n + 1);
+  };
   const addPreset = (id: string) => {
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: activeDir, branch: null, agent: "shell", agentId: id, program: null, args: [], seats: [seatStart(id, seatDefault(settings))] }]);
@@ -641,7 +671,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   return {
     addShell, addChooser, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, openCheck, setCount, expandPane, splitPane, setChooser,
     setSeats, stillThere, step, paletteItems, keyOfHandle, showDir, termCreate, termSwitch, renamePane, termRename, failedPane, restartPane, noticeFor,
-    orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges,
+    orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges, openChangesIn,
     addPreset,
   };
 }

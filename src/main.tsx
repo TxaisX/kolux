@@ -19,11 +19,34 @@ import "./look/glass.css";
 import { prefetch } from "./lazy/deferred";
 import { isTowerWindow } from "./tower/ownWindow";
 import { showStartFailure } from "./tower/startFailed";
+import { sharedRead } from "./settings/sharedRead";
+
+// PKG-4: the page's start-up timeline. Marks are short and stable (ms since performance.timeOrigin); the page sends
+// them once, after `show`, so the diagnostics log holds one line with the Rust marks beside them. Never a reason to
+// stop or slow a start: every step is guarded.
+const mark = (name: string) => {
+  try {
+    performance.mark(`kx:${name}`);
+  } catch {
+    /* no performance timeline: the report simply has fewer marks */
+  }
+};
+function reportMarks() {
+  try {
+    const page: Record<string, number> = {};
+    for (const m of performance.getEntriesByType("mark")) if (m.name.startsWith("kx:")) page[m.name] = Math.round(m.startTime * 10) / 10;
+    // Fire and forget: a backend without the command (an older build) rejects, and nothing changes.
+    void Promise.resolve(invoke("startup_report", { page })).catch(() => {});
+  } catch {
+    /* the report is optional */
+  }
+}
 
 // SET-004: the window starts hidden (tauri.conf.json). The saved look goes on the root first, read
 // from the settings (the last run's copy if they take too long), then the page draws, and only then
 // is the window shown, so its first visible frame already has the saved colours and font.
 async function start() {
+  mark("entry");
   applyAppearance(cachedAppearance());
   followSystemMode();
   // T-546-c: the Tower's own window draws only the Tower; the panes, the settings and the layout stay the main window's.
@@ -45,14 +68,16 @@ async function start() {
   const loadApp = import("./App");
   // FIX-6 (council d2 AFTER 3): the load is awaited much later; a fast failure is already handled by then (the await below still throws).
   loadApp.catch(() => {});
-  const reading = invoke<Record<string, unknown>>("get_settings").catch(() => null);
+  const reading = sharedRead().catch(() => null); // PKG-4: App's mount reads join this one while it is in flight
   const saved = await Promise.race([reading, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+  mark("settings");
   // SET-017 (T-210-c): the bundled language packs are known to the lookup (fetched only when their language is needed).
   registerBundledPacks();
   // SET-022 / SET-025: terminals open with the saved text settings and follow every save.
   followText(saved);
   const first = await settle(saved);
   const { default: App } = await loadApp;
+  mark("app-loaded");
   const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
   // VIEW-107 (T-069-b): App is told whether the saved tabs are back, so a slow start saves no layout over
   // them; C26-R3-01: the key is gone, so one App lives for the window's life and a late restore is handed to
@@ -66,12 +91,15 @@ async function start() {
       </React.StrictMode>,
     );
   draw(first, saved !== null);
+  mark("first-render");
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
       void getCurrentWindow().show().catch(() => {});
+      mark("shown");
       // Cycle 3 (first load), DT-C230: the editor, the browser pane and the surfaces with no placeholder are
       // read in the background now that the first frame is up; every other surface on its first open.
       prefetch();
+      reportMarks();
     }),
   );
   // T-597 (F05-app-shell-launch.2): a start that timed out keeps waiting; when the settings answer, the same
@@ -106,11 +134,17 @@ async function settle(saved: Record<string, unknown> | null): Promise<Settled> {
   let layout = restoreLayout((stamped || saved || {})[LAYOUT_FIELD]);
   if (layout) {
     const dirs = [...new Set([...layout.panes.map((p) => p.cwd), layout.activeDir].filter((d): d is string => d !== null))];
+    // PKG-4: one wave, not two. The folder checks and the history removal start together and both are awaited
+    // before this returns, so DT-C27 still holds (nothing old is replayed before a pane opens). The history of
+    // every saved tab is forgotten, including a tab whose folder turns out to be gone: that tab is dropped and its
+    // file would be pruned next anyway (terminal_forget_history only removes the pane's history file, and
+    // terminal_prune_history removes the files of every key not kept).
+    const forgotten = Promise.all(layout.panes.map((p) => invoke("terminal_forget_history", { paneKey: p.key }).catch(() => {})));
     const kinds = await Promise.all(dirs.map((d) => invoke<string>("path_kind", { path: d }).catch(() => "missing")));
     // DT-C27 (Txais, 2026-11-08): a start is fresh. Agent tabs come back as plain shells (freshShells),
     // and every tab's saved output is removed before any pane opens, so nothing old is replayed.
     layout = freshShells(stillThere(layout, (d) => kinds[dirs.indexOf(d)] !== "missing"));
-    await Promise.all(layout.panes.map((p) => invoke("terminal_forget_history", { paneKey: p.key }).catch(() => {})));
+    await forgotten;
     // TERM-106: the saved output of tabs no longer in the layout is cleaned up in the background.
     void invoke("terminal_prune_history", { keep: layout.panes.map((p) => p.key) }).catch(() => {});
     // SESS-030: an agent tab starts again on its standing start line (permission mode, the user's own

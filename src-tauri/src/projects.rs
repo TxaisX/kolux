@@ -2783,13 +2783,19 @@ fn set_place(store: &Store, dir: &str, flat: bool) -> Result<PlaceInfo, String> 
 /// (COMPAT.md: one Markdown note per worktree, in the project's hidden Kolux folder, named after the
 /// worktree). It is made before the agent starts, holding the headings the agent keeps current; an
 /// existing note is never overwritten, so a relaunch keeps what the last agent wrote.
-// ponytail: the notes sit untracked in the main checkout; add `.kolux/` to the repo's ignore list
-// if they ever clutter its status.
+/// The notes are Kolux's scratch, so the folder ignores itself (a `.gitignore` of `*` inside it, made
+/// only when there is none): they never show as untracked or get staged by "Stage all". The repo's own
+/// ignore files and the rest of `.kolux/` (which may hold files meant to be committed) are left alone.
 pub fn prepare_handoff(repo: &Path, name: &str) -> Result<PathBuf, String> {
     use std::io::Write;
     let file = safe_name(name).ok_or_else(|| format!("{name} cannot name a handoff note"))?;
     let dir = repo.join(".kolux").join("handoffs");
     std::fs::create_dir_all(&dir).map_err(|e| format!("cannot make {}: {e}", dir.display()))?;
+    match std::fs::OpenOptions::new().write(true).create_new(true).open(dir.join(".gitignore")) {
+        Ok(mut f) => f.write_all(b"# Kolux handoff notes are scratch, kept out of git.\n*\n").map_err(|e| e.to_string())?,
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(e) => return Err(format!("cannot write {}: {e}", dir.join(".gitignore").display())),
+    }
     let path = dir.join(format!("{file}.md"));
     let note = format!("# Handoff: {name}\n\n## Files added\n\n## Files updated\n\n## Files removed\n\n## Left to do\n");
     match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
@@ -3455,6 +3461,29 @@ c"), Some("a[31mb c".into()), "control characters drop, a line break is a space"
         let odd = prepare_handoff(&repo, "../escape").unwrap();
         assert_eq!(odd.parent().unwrap(), repo.join(".kolux").join("handoffs"));
         assert!(prepare_handoff(&repo, "///").is_err());
+    }
+
+    /// P10: the notes are Kolux's scratch: they never show as untracked, while the rest of `.kolux/`
+    /// and the user's own ignore files are left as they were.
+    #[test]
+    fn sess025_handoff_notes_never_show_in_git_status() {
+        let repo = temp_repo("handoff-ignored");
+        fs::write(repo.join(".gitignore"), "target/\n").unwrap();
+        git_in(&repo, &["add", ".gitignore"]);
+        git_in(&repo, &["commit", "-q", "-m", "ignore"]);
+        fs::create_dir_all(repo.join(".kolux")).unwrap();
+        fs::write(repo.join(".kolux").join("issue-command"), "echo x\n").unwrap();
+        prepare_handoff(&repo, "gentle-squid").unwrap();
+        prepare_handoff(&repo, "calm-otter").unwrap();
+        let status = String::from_utf8(Command::new("git").args(["status", "--porcelain", "--untracked-files=all"]).current_dir(&repo).output().unwrap().stdout).unwrap();
+        assert!(!status.contains("handoffs"), "{status}");
+        assert!(status.contains(".kolux/issue-command"), "the rest of .kolux/ is the user's to commit: {status}");
+        assert_eq!(fs::read_to_string(repo.join(".gitignore")).unwrap(), "target/\n", "the user's ignore file is untouched");
+        // A .gitignore the user put there is never replaced.
+        fs::write(repo.join(".kolux").join("handoffs").join(".gitignore"), "mine\n").unwrap();
+        prepare_handoff(&repo, "third").unwrap();
+        assert_eq!(fs::read_to_string(repo.join(".kolux").join("handoffs").join(".gitignore")).unwrap(), "mine\n");
+        let _ = fs::remove_dir_all(&repo);
     }
     use std::process::Command;
 

@@ -7,7 +7,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
-import { requestFeedback } from "../feedback/FeedbackDialog";
+import { requestFeedback } from "../feedback/request";
 import { openSettings } from "../settings/pages";
 import { requestUpdateCheck } from "../update/bus";
 import { milestonesShown, openExplore, openGuide, ring } from "./guide";
@@ -15,6 +15,7 @@ import { Ring, useGuideState } from "./Guides";
 import { replayTour, TOURS } from "./tour";
 import { REOPEN_WIZARD } from "./firstRun";
 import { copyDiagnostics, createRestart, helpItems, TOURS_HINT, type RestartState } from "./helpItems";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 export default function HelpSheet({ at, onClose }: { at: { bottom: number; left: number }; onClose: () => void }) {
   const g = useGuideState(true);
@@ -57,7 +58,7 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
     [g.done, restarting],
   );
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onClick={restarting ? undefined : onClose} aria-hidden="true" />
       <div className="menu" role="menu" aria-label="Help" style={at} onKeyDown={(e) => e.key === "Escape" && !restarting && onClose()}>
         {items.map((it, i) => (
@@ -89,6 +90,6 @@ export default function HelpSheet({ at, onClose }: { at: { bottom: number; left:
           </button>
         ))}
       </div>
-    </>
+    </OutOfFlow>
   );
 }

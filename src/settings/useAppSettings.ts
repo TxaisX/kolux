@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useUsageAlerts } from "../usage/alerts";
 import { readLook } from "./general";
 import { setOwnFolders } from "../projects/singleFolder";
+import { holdWindowSettings } from "./windowSettings";
 
 export function useAppSettings(initial: Record<string, unknown>) {
   const [settings, setSettings] = useState<Record<string, unknown>>(initial);
@@ -12,5 +13,6 @@ export function useAppSettings(initial: Record<string, unknown>) {
   useUsageAlerts(settingsRead ? settings : null);
   const classic = readLook(settings) === "classic";
   setOwnFolders(settings); // DT-C250: before anything below draws, so one render never mixes the two ways
+  holdWindowSettings(settingsRead ? settings : null); // a Settings page draws from this copy at once (useSettings); never the placeholder before the first read
   return { settings, setSettings, settingsRead, setSettingsRead, classic };
 }

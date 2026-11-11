@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { openSettings } from "./pages";
+import { onlyWindowState } from "./settingsSync";
 
 // One name for every field in SECRET_KEYS (settingsSync.ts), so the note never says only "a stored key".
 const LABELS: Record<string, string> = {
@@ -76,7 +77,7 @@ export default function KeyLostNotice() {
         .catch(() => {});
     read();
     // Connecting a key again clears its name; the Claude key card and settings saves say so.
-    const offs = [listen("claude-key", read), listen("settings-saved", read)];
+    const offs = [listen("claude-key", read), listen("settings-saved", (e) => onlyWindowState(e?.payload) || read())];
     return () => offs.forEach((o) => void o.then((u) => u()).catch(() => {}));
   }, []);
   const dismiss = () => {

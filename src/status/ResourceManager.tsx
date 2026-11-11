@@ -16,6 +16,7 @@ import { bulkQuestion, bulkReport, leftOver, type Bulk, type BulkKind } from "..
 // T-692: loaded when the panel opens, not with the window; the row is only drawn in this panel.
 const BackgroundSessions = lazy(() => import("../terminal/BackgroundSessions"));
 import { useDialogFocus } from "../chrome/dialogFocus";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 const cols = { gridTemplateColumns: RES_COLUMNS };
 
@@ -153,7 +154,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
   const candidates = data ? cleanupCandidates(data.sessions, tabs, names(), isLoaded, busy) : [];
 
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onClick={onClose} aria-hidden="true" />
       <div ref={box} className="menu res-pop" role="dialog" aria-label="Resource Manager" tabIndex={-1}>
         <div className="res-head">
@@ -250,7 +251,7 @@ export default function ResourceManager({ names, workspaces, loaded, onClose }: 
           </section>
         ))}
       </div>
-    </>
+    </OutOfFlow>
   );
 }
 

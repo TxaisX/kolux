@@ -24,7 +24,7 @@ import { useKeymap } from "../keys/KeymapContext";
 import { useDialogFocus } from "../chrome/dialogFocus";
 import { WindowStore } from "../shell/window/store";
 import { gridSheet } from "./emptySlots";
-import { allReady, countPlan, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
+import { allReady, COUNT_PAUSE_MS, countPlan, pauseThen, MAX_SESSIONS, modelsFor, NOT_GIT, pickShape, QUICK_COUNTS, renameShape, resizeLineup, restoreTeam, sameForAll, saveShape, seatGap, seatReady, SHAPES, sharedWarning, shownPick, TERMINAL, type Copies, type SavedShape, type Seat, type Shape, choiceOf, lineupAgents, type Lineup, LISTED, setDiscovered } from "./seats";
 import { singleFolder } from "../projects/singleFolder";
 
 /** SESS-017: a link to the agent's own documentation, when Kolux knows it (agents.rs `install_page`). */
@@ -254,15 +254,21 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
     onLineup(next.shape, next.seats);
   };
   const applyCount = (e: { currentTarget: HTMLInputElement }) => {
+    typing.cancel();
     const n = e.currentTarget.valueAsNumber;
     if (Number.isFinite(n) && n >= 1 && n !== seats.length) {
       // UX audit F7: a big number is asked about first, and nothing goes past MAX_SESSIONS.
       const plan = countPlan(n, seats.length);
       if (plan.ask) setBigCount(plan.n);
       else recount(plan.n);
-      e.currentTarget.value = String(plan.ask ? seats.length : plan.n);
+      // the number asked about stays in the box while the question is open; Keep puts the count back
+      e.currentTarget.value = String(plan.n);
     } else e.currentTarget.value = String(seats.length);
   };
+  // Typing applies once it pauses (COUNT_PAUSE_MS), so "15" never passes through a one-seat moment and the user does
+  // not have to leave the box to see it take effect.
+  const typing = useRef(pauseThen(COUNT_PAUSE_MS)).current;
+  useEffect(() => () => typing.cancel(), []);
   const onSheetKey = (e: KeyboardEvent) => {
     if (!sheet || e.defaultPrevented) return;
     const what = sheetKey(e, seats, mac, busy);
@@ -425,6 +431,10 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             onChange={(e) => {
               // The spinner and arrow keys step the value: that is a whole number, apply at once.
               if (!(e.nativeEvent as InputEvent).inputType) applyCount(e);
+              else {
+                const box = e.currentTarget;
+                typing.later(() => applyCount({ currentTarget: box }));
+              }
             }}
           />
           <button className="btn" disabled={!anyReady || seats.length < 2} onClick={() => onSeats(sameForAll(seats))} title="Copy the first finished seat's AI and model into every seat">
@@ -437,7 +447,13 @@ export default function ChooserPane({ number, hidden = false, focused = false, a
             <button className="btn" onClick={() => recount(bigCount)}>
               {`Use ${bigCount}`}
             </button>{" "}
-            <button className="btn" onClick={() => setBigCount(null)}>
+            <button
+              className="btn"
+              onClick={() => {
+                setBigCount(null);
+                if (countBox.current) countBox.current.value = String(seats.length);
+              }}
+            >
               {`Keep ${seats.length}`}
             </button>
           </div>

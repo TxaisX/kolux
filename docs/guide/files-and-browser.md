@@ -117,7 +117,7 @@ What the address box understands:
 | You type | Kolux does |
 |---|---|
 | `https://...` or `http://...` | Opens it |
-| `localhost:3000` or `127.0.0.1:5173` | Opens it over http |
+| `localhost:3000`, an IP address such as `127.0.0.1:5173` or `192.168.1.20:5173`, or a name ending in `.localhost` | Opens it over http |
 | `example.com` (looks like a domain, no spaces) | Opens it over https |
 | Anything else | Searches the web with Google |
 | A file path, `file:`, or another kind of link such as `mailto:` | Refuses: "a browser tab opens web pages only (http or https)" |
@@ -169,4 +169,4 @@ The **Grab** button in the browser tab's toolbar ("Grab an element: pick it to s
 
 Ctrl+R reloads the page. "Reload Browser Page (second key)" (Ctrl+Shift+R) is a second key for the same reload, not a separate hard reload.
 
-<!-- verified against: src/editor/EditorPane.tsx, src/editor/DiskBanner.tsx, src/editor/diskChange.ts, src/editor/DiffPane.tsx, src/editor/AllChangesPane.tsx, src/scm/split.ts, src/editor/Explorer.tsx, src/editor/FilePicker.tsx, src/editor/PreviewPane.tsx, src/editor/markdown.ts, src/browser/BrowserPane.tsx, src/browser/address.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/browser/colour.ts, src/browser/browser.css, src/browser/zoom.ts, src/browser/site.ts, src-tauri/src/browser.rs, src-tauri/src/scm.rs at c2ef69fc -->
+<!-- verified against: src/editor/EditorPane.tsx, src/editor/DiskBanner.tsx, src/editor/diskChange.ts, src/editor/DiffPane.tsx, src/editor/AllChangesPane.tsx, src/scm/split.ts, src/editor/Explorer.tsx, src/editor/FilePicker.tsx, src/editor/PreviewPane.tsx, src/editor/markdown.ts, src/browser/BrowserPane.tsx, src/browser/address.ts, src/chrome/LayoutStrip.tsx, src/keys/actions.ts, src/App.tsx, src/browser/colour.ts, src/browser/browser.css, src/browser/zoom.ts, src/browser/site.ts, src-tauri/src/browser.rs, src-tauri/src/scm.rs at bc11a7f1 -->

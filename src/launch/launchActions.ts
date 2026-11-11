@@ -20,7 +20,7 @@ import { resumedFields, type ResumePlan } from "../sessions/resume";
 import { saveChanged } from "../settings/saveChanged";
 import { openDefaultTabs } from "../setup/DefaultTabs";
 import { trustedSetup } from "../setup/TrustPrompt";
-import { cellsOf, freeCell } from "../terminal/grid";
+import { cellsOf, freeCell, MAX_PANES } from "../terminal/grid";
 import type { StartLine } from "../terminal/tabName";
 import { panesIn } from "../workspaces";
 import { paneMark, type AgentInfo } from "./PlusMenu";
@@ -100,6 +100,13 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const separate = !singleFolder() && inGitFor(chooser) && (chooser.copies ?? defaultCopies(seats.length, inGitFor(chooser))) === "separate";
       const makes = separate && picked.some(Boolean);
       if (makes && !pid) throw new Error("Add a project first: an agent needs a project folder to work in.");
+      // SESS-008: the seats that land in the chooser's own grid, with the cells already there (the chooser's own
+      // cell gives its place), stay within MAX_PANES, as a chooser or a split does.
+      const landing = makes ? picked.filter((a) => a === null).length : seats.length;
+      if (cellsOf(panesIn(panes.filter((p) => p.key !== key), place)).length + landing > MAX_PANES) {
+        setNotice(`A workspace holds up to ${MAX_PANES} panes.`);
+        return;
+      }
       const repo = makes && proj ? await invoke<{ mode?: string; wait?: boolean }>("repo_setup_get", { path: proj.path }).catch(() => null) : null;
       const refused = bulkRefusal(proj?.name ?? "This project", setupMode(repo?.mode), makes);
       if (refused) throw new Error(refused);
@@ -128,13 +135,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
       const side = picked.filter(Boolean).length >= 2;
       if (side && !place) throw new Error("Add a project first: agents side by side keep their handoff notes in it.");
       const task = chooser.task ?? "";
-      const prompts: string[] = [];
-      for (const [i, a] of picked.entries()) {
-        const cwd = places[i].cwd ?? "";
-        // A seat in its own folder is named after that folder; seats sharing one are told apart by number.
-        const note = a && side ? await invoke<string>("handoff_note_prepare", { root: place, name: makes ? folderName(cwd) : `${folderName(cwd)}-seat-${i + 1}` }) : null;
-        prompts.push(a ? openingPrompt(seats[i], task, note && rulesBlock(note, makes)) : "");
-      }
+      // A seat in its own folder is named after that folder; seats sharing one are told apart by number. The notes
+      // are made together (the names differ), in seat order; the first one refused stops the Start as before.
+      const notes = await Promise.all(
+        picked.map((a, i) => {
+          const cwd = places[i].cwd ?? "";
+          return a && side ? invoke<string>("handoff_note_prepare", { root: place, name: makes ? folderName(cwd) : `${folderName(cwd)}-seat-${i + 1}` }) : null;
+        }),
+      );
+      const prompts = picked.map((a, i) => (a ? openingPrompt(seats[i], task, notes[i] && rulesBlock(notes[i] as string, makes)) : ""));
       const lines = await Promise.all(picked.map((a, i) => (a ? invoke<StartLine>("agent_start_line", { id: a.id, extra: seatArgs(seats[i]), prompt: prompts[i], picked: true }) : null)));
       const made: Pane[] = seats.map((s, i) => {
         const a = picked[i];
@@ -146,6 +155,13 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
           ? { key: k, cwd, branch, agent: paneMark(a, line), agentId: a.id, program: line.program ?? a.program, args: line.args, env: line.env, title, batch, typed: line.typed ?? undefined }
           : { key: k, cwd, branch, agent: "shell", program: null, args: [], title, batch };
       });
+      // A grid chooser closed while the Start was under way takes the launch with it: nothing lands and the focus
+      // stays where the user put it (it would name a pane that is not there).
+      if (inGrid && !late.panesRef.current.some((p) => p.key === key)) {
+        seatsSettled = true;
+        if (kept.length) setRefresh((n) => n + 1);
+        return;
+      }
       if (pid && picked.some(Boolean)) late.pendingLineup.current[batch] = { pid, lineup: lineupOf(chooser.shape ?? "custom", makes ? "separate" : "shared", seats) };
       // A grid chooser gives its place to the new panes; the New session page adds them (SESS-018).
       setPanes((ps) => (inGrid ? ps.flatMap((p) => (p.key === key ? made : [p])) : [...ps, ...made]));

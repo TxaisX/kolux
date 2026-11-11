@@ -2,7 +2,7 @@
 // the active workspace and tab come back while they still exist.
 import { expect, test } from "vitest";
 import { sessionOrder } from "../sessions/restoreOrder";
-import { freshShells, joinMarks, joinSaved, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
+import { freshShells, joinMarks, joinSaved, keyAfter, layoutOf, marksOf, panesWantingListedSession, restoreAsks, restoreLayout, reviveSaved, stillThere, withHintedSession, withListedSession } from "./layout";
 
 const shell = (key: number, cwd: string | null, extra: Record<string, unknown> = {}) => ({ key, cwd, branch: null, agent: "shell" as const, program: null, args: [], ...extra });
 
@@ -213,6 +213,21 @@ test("c26r301: the saved tabs join a drawn window without dropping the tab opene
   expect(joined[0]).toBe(waiting); // the very same pane object: nothing remounts, so nothing kills its terminal
   expect(joined[2]).toMatchObject({ key: 2, seats: [{ agent: null, model: null }] }); // a saved chooser comes back a chooser
   expect(joinSaved(joined, late).map((p) => p.key)).toEqual([1_000_000, 1, 2]); // adopted twice is still adopted once
+});
+
+// A second slow start: the saved layout already holds keys from the wait range (tabs opened during the first wait).
+// The next tab opened after the join must not take a joined tab's key.
+test("after a late join, the next key is past every saved tab", () => {
+  const late = restoreLayout(JSON.parse(JSON.stringify(layoutOf([shell(1, "C:\\w\\a"), shell(1_000_001, "C:\\w\\a")], {}, 1, "C:\\w\\a", {}))))!;
+  let next = 1_000_000;
+  const waiting = shell(next++, "C:\\w\\b");
+  const keys = joinSaved([waiting], late).map((p) => p.key);
+  next = keyAfter(next, late);
+  expect(keys).not.toContain(next);
+  expect(next).toBe(1_000_002);
+  expect(keyAfter(5, null)).toBe(5);
+  expect(keyAfter(50, late)).toBe(1_000_002);
+  expect(keyAfter(2_000_000, late)).toBe(2_000_000);
 });
 
 // C26-R3-01 (review 060): the saved pins and Tab Colours are part of what a late layout brings. Without them the

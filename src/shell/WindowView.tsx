@@ -13,7 +13,8 @@ import WindowTopBar from "./window/TopBar";
 import { WindowStoreProvider, useWindow } from "./window/store";
 import type { WindowBag } from "./windowBag";
 import { useShowTerminalsOnBrowserOpen } from "./browserOpen";
-import type { CSSProperties } from "react";
+import { useLayoutEffect, type CSSProperties } from "react";
+import { tally } from "./window/stable";
 
 /** The window's drawing, as a plain function App.tsx calls last in its render. */
 export function windowView(w: WindowBag) {
@@ -27,6 +28,7 @@ export function windowView(w: WindowBag) {
 function WindowSurfaces() {
   const { leftWidth, setScreen, setPage } = useWindow();
   useShowTerminalsOnBrowserOpen(setScreen, setPage); // GIT-036: a page asked for in the browser is shown, whatever screen asked
+  useLayoutEffect(() => tally("window")); // PKG-2: the speed harness counts whole-window commits (off unless it asks, stable.ts)
   return (
     <div className="app">
       <Tip />

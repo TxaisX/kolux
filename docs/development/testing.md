@@ -68,7 +68,7 @@ Some tests need a terminal without a real process. The `test-fakes` feature expo
 | `invoke-contract` | Every `invoke("name")` in `src/` is registered in `lib.rs` |
 | memory tests | The local memory tool still works |
 
-`bundle-budget` is CI-only because it needs a `vite build`. It enforces the 1,491,000-byte first-load JavaScript ceiling.
+`bundle-budget` is CI-only because it needs a `vite build`. It enforces the 1,442,000-byte first-load JavaScript ceiling.
 
 The Rust gates are separate:
 

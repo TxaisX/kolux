@@ -3,6 +3,7 @@
 // The list is asked for afresh each time the picker opens, so a failed listing is tried again
 // rather than remembered.
 import { useEffect, useMemo, useRef, useState } from "react";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 export type Pick = { path: string; tag?: string; staged?: boolean };
 export type Listing = { items: Pick[]; capped: boolean; note?: string };
@@ -98,7 +99,7 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
   const tipParts = tip && split({ path: tip.path });
 
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onMouseDown={onClose} />
       <div className="menu note-picker" role="dialog" aria-label={`Open a ${what}`}>
         <input
@@ -168,6 +169,6 @@ export default function FilePicker({ root, what, load, onPick, onClose }: Props)
           <strong>{tipParts.name}</strong>
         </div>
       )}
-    </>
+    </OutOfFlow>
   );
 }

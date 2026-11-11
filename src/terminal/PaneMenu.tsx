@@ -4,6 +4,7 @@
 // an outside click, never on the click that opened it.
 import { Fragment, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { menuRoom, useMenuFocus } from "../chrome/dialogFocus";
+import OutOfFlow from "../chrome/OutOfFlow";
 import { useLabel } from "../keys/KeymapContext";
 
 export type MenuItem = {
@@ -160,7 +161,7 @@ export default function PaneMenu({ style, items, onDismiss, label = "Pane menu",
     if (outsideDismisses(openedAt.current, performance.now())) onDismiss();
   };
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" style={layer ? { zIndex: layer } : undefined} onClick={outside} onContextMenu={outside} aria-hidden="true" />
       <div ref={box} className="menu pane-menu" role="menu" aria-label={label} style={{ ...style, ...(layer ? { zIndex: layer + 1 } : null), overflowY: "auto" }}>
         {items.map((it, i) => (
@@ -179,6 +180,6 @@ export default function PaneMenu({ style, items, onDismiss, label = "Pane menu",
           </Fragment>
         ))}
       </div>
-    </>
+    </OutOfFlow>
   );
 }

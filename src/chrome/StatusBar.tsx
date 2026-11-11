@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory, pollWhileVisible } from "../status/memory";
-import ResourceManager from "../status/ResourceManager";
+import { ResourceManager } from "../lazy/menus";
 import { Chip, Cup, Plug, Shell } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
 import { useMenuFocus } from "./dialogFocus";
@@ -14,6 +14,7 @@ import { KeepAwakeItem, useKeepAwake } from "../launch/KeepAwakeCard";
 import PortsItem from "../ports/PortsItem";
 import SkillBarItem from "../skills/SkillBarItem";
 import { openSettings } from "../settings/pages";
+import OutOfFlow from "./OutOfFlow";
 
 type Props = {
   terminals: number;
@@ -105,7 +106,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
       {shows("ports") && <PortsItem active={active} workspaces={workspaces} />}
       {shows("awake") && <KeepAwakeItem held={awake} />}
       {menu && (
-        <>
+        <OutOfFlow>
           <div className="menu-backdrop" onClick={() => setMenu(null)} onContextMenu={(e) => (e.preventDefault(), setMenu(null))} aria-hidden="true" />
           <div ref={menuBox} className="menu status-menu" role="menu" aria-label="Status bar items" style={menu}>
             <div className="menu-title">Status bar</div>
@@ -128,7 +129,7 @@ export default function StatusBar({ terminals, agents = 0, names = () => ({}), w
               <span className="name">Hide status bar</span>
             </button>
           </div>
-        </>
+        </OutOfFlow>
       )}
     </footer>
   );

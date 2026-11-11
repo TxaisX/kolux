@@ -79,4 +79,12 @@ describe("Ctrl+K", () => {
     expect(paletteHint(win)).toEqual(["Ctrl", "K"]);
     expect(paletteHint(mac)).toEqual(["Cmd", "K"]);
   });
+
+  it("with a terminal or a rich view focused, the box shows the palette's own chord that works there", () => {
+    expect(paletteHint(win, inside(".xterm"))).toEqual(["Ctrl", "Shift", "P"]);
+    expect(paletteHint(win, inside(".md-rich"))).toEqual(["Ctrl", "Shift", "P"]);
+    expect(paletteHint(win, inside(".cm-editor"))).toEqual(["Ctrl", "K"]);
+    const mine = resolve({ keybindings: { "worktree.palette": "Mod+Alt+P" } }, "win32");
+    expect(paletteHint(mine, inside(".xterm"))).toEqual(["Ctrl", "Alt", "P"]);
+  });
 });

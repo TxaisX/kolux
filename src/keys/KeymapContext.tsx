@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { disabledAgents } from "../launch/agents";
+import { onlyWindowState } from "../settings/settingsSync";
 import { defaultsOnly, detectPlatform, labelOf, resolve, type Keymap } from "./keymap";
 import { SEEDED_FIELD, seedFirstLoad } from "./tabKeysSeed";
 
@@ -70,7 +71,7 @@ export function KeymapProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const read = () => void invoke<Record<string, unknown>>("get_settings").then((s) => setIgnore(disabledAgents(s).map((id) => `tab.newAgent.${id}`))).catch(() => {});
     read();
-    const off = listen("settings-saved", read);
+    const off = listen("settings-saved", (e) => onlyWindowState(e?.payload) || read()); // a layout or screen save switches no agent off
     return () => void off.then((u) => u()).catch(() => {});
   }, []);
   const value = useMemo<KeymapState>(() => {

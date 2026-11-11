@@ -14,7 +14,9 @@ import type { AgentState } from "./rows";
 import type { Badge } from "../terminal/tabs";
 import { VOCAB } from "../terminal/status";
 import { StatusGlyph } from "../chrome/icons";
+import OutOfFlow from "../chrome/OutOfFlow";
 import { capRows, moreLabel, moreTitle, restoreFocus } from "../shell/paletteCaps";
+import { rowKeys } from "../shell/rowKeys";
 
 /** A row the window supplies: its section, what it shows, and what Enter does. `parent` is the
  * project a row belongs to (matched after the row's own text), `dir` the folder it stands for
@@ -172,6 +174,9 @@ export function chordRow(e: { altKey: boolean; ctrlKey: boolean; metaKey: boolea
  * built once per open if lists of tens of thousands ever appear. */
 const BUDGET_MS = 40;
 
+/** The palette says so when typed text finds no row, rather than showing an empty list. */
+export const nothingFound = (rows: number, query: string): boolean => rows === 0 && query.trim() !== "";
+
 /** VIEW-038: the rows that match every word. With no query: section order, the one used last first
  * (EDIT-047), then as listed. With one: the worktree linked to a typed number first (EDIT-047), then
  * own-field matches before project-only ones, then exact intent, whole word, start of a word,
@@ -262,6 +267,8 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
     [items, projects, lists, query, chips, hasWorktree, extra],
   );
   const rows = useMemo(() => [...pasted, ...found], [pasted, found]);
+  // DT-C268: a row keeps its key while it is in the list, so a change of the list rebuilds only what changed
+  const keys = useMemo(() => rowKeys(rows.map((r) => `${r.section}|${r.label}|${r.hint ?? ""}|${r.parent ?? ""}`)), [rows]);
   const create = paletteCreateName(query);
   const item = create ? workItem(create) : null;
   const repoChips = chips.filter((c) => c.field === "repo");
@@ -290,7 +297,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
   };
 
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onMouseDown={onClose} />
       <div className="menu note-picker palette" role="dialog" aria-label="Go to / Run a command">
         <input
@@ -340,7 +347,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
           {rows.map((r, i) => {
             const folder = [r.hint, r.parent].filter(Boolean).join(" · ");
             return (
-              <Fragment key={`${r.section}|${r.label}|${r.hint ?? ""}|${r.parent ?? ""}|${i}`}>
+              <Fragment key={keys[i]}>
                 {(i === 0 || rows[i - 1].section !== r.section) && <div className="palette-section">{r.section}</div>}
                 <button role="option" aria-selected={i === cur} aria-disabled={r.off} className={`menu-item${i === cur ? " at" : ""}${r.off ? " off" : ""}`} title={r.off ? "Open a workspace first" : undefined} aria-keyshortcuts={i < 9 ? `Alt+${i + 1}` : undefined} onMouseEnter={() => setAt(i)} onClick={() => go(i)}>
                   {i < 9 && (
@@ -367,9 +374,9 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
               </Fragment>
             );
           })}
+          {nothingFound(rows.length, query) && <div className="menu-hint">Nothing matches.</div>}
           {create && !singleFolder() && (
             <>
-              {rows.length === 0 && <div className="menu-hint">Nothing matches.</div>}
               <button role="option" aria-selected={cur === rows.length} className={`menu-item${cur === rows.length ? " at" : ""}`} onMouseEnter={() => setAt(rows.length)} onClick={() => go(rows.length)}>
                 <span className="name">{item ? `Create workspace from ${item.kind === "pull" ? "pull request" : "issue"} #${item.number}` : `Create workspace “${create}”`}</span>
                 {item ? <span className="picker-folder">{`${item.owner}/${item.repo}, named after its title and linked to it`}</span> : into && <span className="picker-folder">{`in ${into.name}`}</span>}
@@ -378,6 +385,6 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
           )}
         </div>
       </div>
-    </>
+    </OutOfFlow>
   );
 }

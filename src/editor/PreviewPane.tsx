@@ -27,6 +27,7 @@ import { useKeymap } from "../keys/KeymapContext";
 import { withChord } from "../terminal/PaneMenu";
 import { labelOf, matchEvent } from "../keys/keymap";
 import "./editor-extras.css";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 type Props = { id: number; path: string; hidden?: boolean; focused?: boolean; onFocus?: () => void; onClose?: () => void; worktree?: string | null; onLink?: LinkHandler };
 
@@ -221,14 +222,14 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
               <Dots size={12} />
             </button>
             {menu && (
-              <>
+              <OutOfFlow>
                 <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
                 <div ref={menuBox} className="menu diff-menu" role="menu" aria-label="Note actions">
                   <button role="menuitem" className="menu-item" onClick={() => void exportPdf()}>
                     <span className="name">Export to PDF...</span>
                   </button>
                 </div>
-              </>
+              </OutOfFlow>
             )}
           </span>
           <button className="ib" onClick={onClose} title={withChord("Close tab", labelOf(keymap, "tab.close"))} aria-label="Close tab">

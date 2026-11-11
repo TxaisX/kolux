@@ -49,6 +49,7 @@
 
 /* EDIT-037: the explorer's content search. */
 .content-search { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 5px; padding: 8px; font: 12px var(--ui-font); }
+.content-search[hidden] { display: none; } /* the display above would otherwise beat the hidden attribute, and the search would sit over the file list */
 .content-search input { font: 12px var(--ui-font); min-width: 0; background: var(--input-bg); color: var(--fg); border: 1px solid var(--fg-faint); border-radius: 5px; padding: 4px 7px; }
 .content-search input:focus { border-color: var(--fg-muted); outline: 1px solid var(--fg-muted); }
 .content-search .cs-row { display: flex; align-items: center; gap: 3px; }

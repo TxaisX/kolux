@@ -49,6 +49,7 @@ export const diffStart = (p: EditorPrefs) => ({ split: p.diffView === "split", w
 // shortcut router holds it without loading this pane; filled here while a diff tab is open.
 import { diffNav } from "../keys/handles";
 import { useMenuKeys } from "./menuNav";
+import OutOfFlow from "../chrome/OutOfFlow";
 export { diffNav };
 
 type Sides = { original: string; modified: string };
@@ -510,7 +511,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
         <Dots size={12} />
       </button>
       {menu && (
-        <>
+        <OutOfFlow>
           <div className="menu-backdrop" onMouseDown={() => setMenu(false)} />
           <div ref={menuBox} className="menu diff-menu" role="menu">
             <button role="menuitemcheckbox" aria-checked={spaces} className="menu-item" onClick={() => ((touched.current = true), setSpaces((v) => !v))}>
@@ -522,7 +523,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
               <span className="name">Wrap lines</span>
             </button>
           </div>
-        </>
+        </OutOfFlow>
       )}
     </span>
   );
@@ -614,7 +615,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
       {ready && !changes && <div className="notice md-banner" role="status">{against === "head" ? "Nothing uncommitted in this file." : `No ${staged ? "staged" : "unstaged"} changes in this file right now.`}</div>}
       <div ref={host} className="pane-body diff-body" />
       {pop && (
-        <>
+        <OutOfFlow>
           <div className="menu-backdrop" onMouseDown={() => setPop(null)} />
           <div className="diff-note-pop" role="dialog" aria-label={pop.note ? "Edit review note" : "Add review note"} style={{ left: Math.max(8, Math.min(pop.x, window.innerWidth - 336)), top: Math.max(8, Math.min(pop.y + 12, window.innerHeight - 190)) }}>
             <div className="what">{`${pop.note ? "Edit the note on" : "Note on"} ${where({ id: "", path: "", text: "", staged: false, line: pop.line, end: pop.end, side: pop.side === "old" ? "old" : undefined })}`}</div>
@@ -640,7 +641,7 @@ export default function DiffPane({ id, path, staged, root = null, hidden = false
               </button>
             </div>
           </div>
-        </>
+        </OutOfFlow>
       )}
     </Shell>
   );

@@ -11,7 +11,7 @@
 import React from "react";
 import { boundaryMessage } from "./model";
 import { CrashFeedback, ReportButton } from "../crash";
-import { requestFeedback } from "../feedback/FeedbackDialog";
+import { requestFeedback } from "../feedback/request";
 import { Heartbeat } from "./heartbeat";
 
 type Props = { children: React.ReactNode };

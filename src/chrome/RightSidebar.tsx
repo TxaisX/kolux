@@ -13,6 +13,7 @@ import { Component, useEffect, useRef, useState, type ErrorInfo, type KeyboardEv
 import { useMenuFocus } from "./dialogFocus";
 import { menuStep } from "../terminal/LinkActionMenu";
 import { NARROW_PX } from "../shell/window/narrow";
+import OutOfFlow from "./OutOfFlow";
 
 export type RightTab = "explorer" | "insights" | "checks" | "agents" | "attached" | "prchecks";
 export const RIGHT_TABS: { id: RightTab; label: string; hint: string }[] = [
@@ -205,7 +206,7 @@ export default function RightSidebar({ tab, width, max, hidden = false, offered,
         )}
       </div>
       {menu && more.length > 0 && (
-        <>
+        <OutOfFlow>
           <div className="menu-backdrop" onClick={() => setMenu(null)} aria-hidden="true" />
           <div ref={moreMenu} className="menu" role="menu" aria-label="More tabs" style={{ left: menu.x, top: menu.y }}>
             {more.map((t) => (
@@ -224,7 +225,7 @@ export default function RightSidebar({ tab, width, max, hidden = false, offered,
               </button>
             ))}
           </div>
-        </>
+        </OutOfFlow>
       )}
       <div className="rside-body" role="tabpanel" aria-label={tabs.find((t) => t.id === current)?.label}>
         <PanelGuard tab={current ?? ""}>{children}</PanelGuard>

@@ -7,6 +7,7 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { onlyWindowState, readBroadcast } from "../settings/settingsSync";
 
 /** The screen to move to, or null. `seen` is the saved value this window last looked at: a save that
  * left it unchanged (a different setting) never moves the window, and neither does a page being open. */
@@ -40,9 +41,12 @@ export function useWindowSync<S extends string>({ field, valid, screen, page, on
       .catch(() => {});
   }, [ready, field]);
   useEffect(() => {
-    const off = listen("settings-saved", () => {
+    const off = listen("settings-saved", (e) => {
       const c = now.current;
       if (!c.ready) return;
+      // a save of only window state that did not touch this field (a layout write per tab opened) moves no screen
+      const b = readBroadcast(e?.payload);
+      if (b && onlyWindowState(e?.payload) && !(c.field in b.set) && !b.remove.includes(c.field)) return;
       void invoke<Record<string, unknown>>("get_settings")
         .then((s) => {
           const saved = s[c.field];

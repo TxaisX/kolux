@@ -48,7 +48,7 @@ Group headers fold. Pinned rows gather in a "Pinned" section. A project group ha
 
 ## Reviewing changes
 
-When an agent finishes, open the Board and press **Review changes** on its Done card, or open the Inbox (the bell in the top bar), pick the finished row and press **Review changes**. Both open the **All Changes** tab, which lists every changed file of the project in one scroll. Nothing else opens it today: the right panel (Explorer, Insights, Checks, Attached, PR Checks, History) has no changes list, and Ctrl+Shift+G renames the current tab.
+When an agent finishes, open the Board and press **Review changes** on its Done card, or open the Inbox (the bell in the top bar), pick the finished row and press **Review changes**. Both open the **All Changes** tab, which lists every changed file of the project in one scroll. You do not need a finished agent to get there: right-click the project (or a workspace) in the left sidebar and choose **Review changes**, or run "Open All Changes" from Go to / Run a command. The right panel (Explorer, Insights, Checks, Attached, PR Checks, History) has no changes list, and Ctrl+Shift+G renames the current tab.
 
 Inside All Changes:
 
@@ -57,7 +57,7 @@ Inside All Changes:
 | Compare | **Working tree** (what you have not committed yet) or **Branch vs** its base |
 | Inline / Side by side | How each diff is drawn. Wrap long lines and Show whitespace changes sit beside them |
 | File tree | Shows or hides the list of files beside the diffs |
-| Each file | A Viewed checkbox, Stage or Unstage (in the Working tree view), and a button that opens the file as a diff tab |
+| Each file | A Viewed checkbox, Stage or Unstage and Discard (in the Working tree view), and a button that opens the file as a diff tab. Discard asks first and says exactly what will be lost; an untracked file is deleted from disk. A staged delete reads "Deleted, staged" and a staged rename "Renamed, staged" |
 | Stage all, Unstage all | Move every changed file in or out of the next commit |
 | Push, Pull, Sync | Offered when Git allows them; each says why when it is greyed out |
 | Commit box | Type a message and press Ctrl+Enter, or press **Commit**. It commits only what is staged |
@@ -78,17 +78,19 @@ The Tasks page lists the GitHub issues and pull requests of the current project.
 
 ## Quitting and reopening
 
-Terminals do not keep running while Kolux is closed. When you reopen, Kolux restores:
+Terminals do not keep running while Kolux is closed: quitting ends every pane and whatever runs in it. When you reopen, Kolux restores:
 
 - your tabs, pane layout, active workspace and tab, and which pane had focus;
-- the earlier output of each terminal, shown above a new shell with the note "── restored after a restart · the shell below is new ──" (it keeps the last 256 KB per pane);
+- whether the left sidebar was showing, and the right panel's tab;
 - the screen you left: Agents, Board, Terminals, the Inbox or Artifacts.
 
-Agent tabs try to resume their conversation (see below). Browser tabs reopen fresh. A tab whose folder is gone is dropped, and a damaged saved entry is dropped on its own without losing the rest. A tab you closed on purpose does not come back. A slow start never drops saved tabs.
+Every terminal tab, an agent's included, comes back as a new plain shell in its folder, marked "restored". No agent is started or resumed by a restart, and earlier output is not shown again; start the agent in the tab when you want it. Browser tabs reopen fresh. A tab whose folder is gone is dropped, and a damaged saved entry is dropped on its own without losing the rest. A tab you closed on purpose does not come back. A slow start never drops saved tabs.
 
 ### Agent sessions after a restart
 
-A restored agent tab starts the agent again with that agent's own "resume" form added to its start line, so it opens in its earlier conversation. This happens only on a restore, never on a new tab, and never twice. Kolux needs the agent's session ID for this; it learns it from the agent's status hooks (see [Board, Agents and Inbox](board-agents-inbox.md#status-words)). If Kolux holds no session ID, the agent starts at its prompt, and its pane wears the mark "restored without resume" instead of "restored". A session ID with odd characters in it is treated as no ID.
+A restart does not bring an agent's conversation back by itself (see above). The resume form below is what Kolux uses when it does start an agent again for you: when a sleeping agent tab wakes (Agent sleep, in [Settings](settings.md)).
+
+A woken agent tab starts the agent again with that agent's own "resume" form added to its start line, so it opens in its earlier conversation. This happens only on a wake, never on a new tab, and never twice. Kolux needs the agent's session ID for this; it learns it from the agent's status hooks (see [Board, Agents and Inbox](board-agents-inbox.md#status-words)). If Kolux holds no session ID, the agent starts at its prompt, and its pane wears the mark "restored without resume" instead of "restored". A session ID with odd characters in it is treated as no ID.
 
 | Agents | What comes back |
 |---|---|
@@ -101,4 +103,4 @@ Your own extra start arguments, such as a model choice, stay in front of the res
 
 Quitting with unsaved editor text asks "Quit with unsaved changes?" with "Quit without saving" or "Keep working".
 
-<!-- verified against: src/projects/ProjectsPanel.tsx, src/projects/AddProject.tsx, src/projects/singleFolder.ts, src/projects/CleanupDialog.tsx, src/glossary.ts, src/scm/split.ts, src/scm/watch.ts, src-tauri/src/scm_watch.rs, src/scm/model.ts, src/chrome/RightSidebar.tsx, src/terminal/layout.ts, src/keys/actions.ts, src/App.tsx, src-tauri/src/scm.rs, src/tasks/TasksPage.tsx, src/tasks/model.ts, src-tauri/src/github.rs, src-tauri/src/agents.rs, src-tauri/src/terminal_session_id.rs, src-tauri/src/terminal.rs, src/main.tsx, src/shell/useWindowSave.ts, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/settings/GitPage.tsx at 431ffef0 -->
+<!-- verified against: src/projects/ProjectsPanel.tsx, src/projects/AddProject.tsx, src/projects/singleFolder.ts, src/projects/CleanupDialog.tsx, src/glossary.ts, src/scm/split.ts, src/scm/watch.ts, src-tauri/src/scm_watch.rs, src/scm/model.ts, src/chrome/RightSidebar.tsx, src/terminal/layout.ts, src/keys/actions.ts, src/App.tsx, src-tauri/src/scm.rs, src/tasks/TasksPage.tsx, src/tasks/model.ts, src-tauri/src/github.rs, src-tauri/src/agents.rs, src-tauri/src/terminal_session_id.rs, src-tauri/src/terminal.rs, src/main.tsx, src/shell/useWindowSave.ts, src/terminal/TerminalPane.tsx, src/launch/ChooserPane.tsx, src/settings/GitPage.tsx at bc11a7f1 -->

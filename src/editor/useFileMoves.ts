@@ -2,6 +2,7 @@
 // when Explorer moves a file (fileMoved.ts), every editor, diff and preview tab on it follows to the
 // new path; closing editor tabs on purpose discards their unsaved-text drafts.
 import { useEffect } from "react";
+import { keyOf } from "./buffers";
 import { drafts, worktreeOf } from "./drafts";
 import { MOVED_EVENT, movedPath, type Move } from "./fileMoved";
 
@@ -20,9 +21,11 @@ export function followMoves<T extends TabLike>(panes: T[], moves: Move[]): T[] {
   return changed ? out : panes;
 }
 
-/** Drops the drafts of editor tabs the user closed on purpose. */
-export function discardDraftsOf(panes: TabLike[]): void {
-  for (const p of panes) if (p.kind === "editor" && p.path) void drafts.discard(worktreeOf(p.cwd ?? null, p.path), p.path);
+/** Drops the drafts of editor tabs the user closed on purpose. A file an editor tab in `staying` still shows keeps
+ *  its draft: the two tabs share one text, so the unsaved edits are still open there. */
+export function discardDraftsOf(panes: TabLike[], staying: TabLike[] = []): void {
+  const kept = new Set(staying.flatMap((p) => (p.kind === "editor" && p.path ? [keyOf(p.path)] : [])));
+  for (const p of panes) if (p.kind === "editor" && p.path && !kept.has(keyOf(p.path))) void drafts.discard(worktreeOf(p.cwd ?? null, p.path), p.path);
 }
 
 export function useFileMoves<T extends TabLike>(setPanes: (f: (ps: T[]) => T[]) => void): void {

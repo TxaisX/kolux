@@ -3,14 +3,9 @@
 // offers nothing.
 
 import { trapTab } from "../chrome/dialogFocus";
+import { refusedLine, type SetupImport } from "./setupImport";
 
-export type SetupImport = { file: string; setup: string | null; teardown: string | null; refused: string | null };
-
-/** The files that were refused, with why, or null when none was. */
-export function refusedLine(list: SetupImport[]): string | null {
-  const out = list.filter((i) => i.refused).map((i) => `${i.file} was not read: ${i.refused}.`);
-  return out.length ? out.join(" ") : null;
-}
+export { refusedLine, type SetupImport };
 
 export default function ImportSetup({ project, path, list, busy, onImport, onClose }: { project: string; path: string; list: SetupImport[]; busy: boolean; onImport: (file: string) => void; onClose: () => void }) {
   const offers = list.filter((i) => !i.refused);
