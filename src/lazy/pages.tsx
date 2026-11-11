@@ -7,7 +7,7 @@
 // (stage 2), the plan sheet (it carries the Markdown renderer) at 8 s (stage 3); every other surface here loads the first time it is opened. The top bar warms the one a
 // control is about to open (`warm()`) on hover and focus.
 import { createElement, type ComponentProps, type ComponentType } from "react";
-import { deferred } from "./deferred";
+import { ahead, deferred } from "./deferred";
 
 // T-706: what a full-page screen shows while its code is read the first time; everything else draws nothing.
 const loading = createElement("div", { className: "empty", role: "status" }, "Loading…");
@@ -17,6 +17,9 @@ export const PlanSheet = deferred(() => import("../terminal/PlanSheet"), undefin
 
 // Settings, and the two notices that sit on it.
 export const SettingsPage = deferred(() => import("../settings/SettingsPage"), undefined, { warm: 2 }); // DT-C230: no placeholder, 68 kB, so stage 2
+// DT-C252: the Settings pages' own code follows in the last stage, one page per idle moment, so the first
+// visit to a page is as quick as the second.
+ahead(3, () => import("../settings/SettingsPage").then((m) => m.warmPages()));
 export const RoutingPage = deferred(() => import("../settings/RoutingPage"), loading);
 export const SignInNotice = deferred(() => import("../settings/SignInNotice"));
 export const KeyLostNotice = deferred(() => import("../settings/KeyLostNotice"));

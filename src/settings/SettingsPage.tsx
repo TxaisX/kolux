@@ -2,7 +2,7 @@
 // page is AI connections (ACCT-004): the Claude card connects on the 1-year key by default. The
 // Connect grid with install steps is ConnectGrid (ACCT-001, ACCT-003); the Claude account route and
 // the Codex sign-ins came with T-043-b / T-043-c.
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { saveChanged } from "./saveChanged";
 import { invoke } from "@tauri-apps/api/core";
 import { invokeNamed } from "../ipc/commands";
@@ -31,53 +31,45 @@ import { matchEvent } from "../keys/keymap";
 import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, searchRepos } from "./search";
 import { useSettled } from "../editor/settledQuery";
 import { useSearchHits } from "./useSearchHits";
-import { pageWarmer, type Loader } from "./pageWarm";
+import { idleLater, pageWarmer, type Loader } from "./pageWarm";
+import { deferred } from "../lazy/deferred";
 import "./settings.css"; // the Settings pages' own rules arrive with the page, not with the window's first stylesheet
 
-// SET-006: a page loads the first time it is opened, so Settings itself opens quickly. The loaders are named once so
-// the warm-up (pageWarm.ts) reads the very modules the pages draw.
-const load = {
-  appearance: () => import("./AppearancePage"),
-  general: () => import("./GeneralPage"),
-  notificationsPage: () => import("./NotificationsPage"),
-  notifications: () => import("./NotificationSwitches"),
-  shortcuts: () => import("./ShortcutsPage"),
-  terminal: () => import("./TerminalPage"),
-  git: () => import("./GitPage"),
-  agents: () => import("./AgentsPage"),
-  claude: () => import("./ClaudeSetupPage"),
-  safety: () => import("./SafetyPage"),
-  tokens: () => import("../usage/TokenAnalytics"),
-  activity: () => import("../usage/Activity"),
-};
-const AppearancePage = lazy(load.appearance);
-const GeneralPage = lazy(load.general);
-const NotificationsPage = lazy(load.notificationsPage);
+// SET-006: a page loads the first time it is opened, so Settings itself opens quickly. Each page sits behind
+// `deferred` (lazy/deferred.tsx): a page whose code has been read is drawn at once, and one whose code has not is
+// drawn the moment it arrives, never through a suspended lazy(), which React holds back about 300 ms after its
+// empty fallback showed (what a first visit to a page used to cost, however fast the code arrived).
+const AppearancePage = deferred(() => import("./AppearancePage"));
+const GeneralPage = deferred(() => import("./GeneralPage"));
+const NotificationsPage = deferred(() => import("./NotificationsPage"));
 // STAT-041 / STAT-045: the finish, stopped and quiet-alert switches (T-026-a, T-039-a).
-const Notifications = lazy(load.notifications);
-const ShortcutsPage = lazy(load.shortcuts);
-const TerminalPage = lazy(load.terminal);
-const GitPage = lazy(load.git);
-const AgentsPage = lazy(load.agents);
-const ClaudeSetupPage = lazy(load.claude);
+const Notifications = deferred(() => import("./NotificationSwitches"));
+const ShortcutsPage = deferred(() => import("./ShortcutsPage"));
+const TerminalPage = deferred(() => import("./TerminalPage"));
+const GitPage = deferred(() => import("./GitPage"));
+const AgentsPage = deferred(() => import("./AgentsPage"));
+const ClaudeSetupPage = deferred(() => import("./ClaudeSetupPage"));
 // SAFE-015: the Protected actions section (T-059-b).
-const SafetyPage = lazy(load.safety);
-const TokenAnalytics = lazy(load.tokens);
-const Activity = lazy(load.activity);
+const SafetyPage = deferred(() => import("./SafetyPage"));
+const TokenAnalytics = deferred(() => import("../usage/TokenAnalytics"));
+const Activity = deferred(() => import("../usage/Activity"));
 /** The code each rail page draws with (Accounts is drawn from this chunk's own code). */
 export const PAGE_CODE: Partial<Record<PageId, Loader[]>> = {
-  general: [load.general],
-  appearance: [load.appearance],
-  notifications: [load.notificationsPage, load.notifications],
-  shortcuts: [load.shortcuts],
-  agents: [load.agents],
-  claude: [load.claude],
-  terminal: [load.terminal],
-  git: [load.git],
-  safety: [load.safety],
-  usage: [load.tokens, load.activity],
+  general: [GeneralPage.read],
+  appearance: [AppearancePage.read],
+  notifications: [NotificationsPage.read, Notifications.read],
+  shortcuts: [ShortcutsPage.read],
+  agents: [AgentsPage.read],
+  claude: [ClaudeSetupPage.read],
+  terminal: [TerminalPage.read],
+  git: [GitPage.read],
+  safety: [SafetyPage.read],
+  usage: [TokenAnalytics.read, Activity.read],
 };
 const warm = pageWarmer(PAGE_CODE);
+/** DT-C252: every page's code, one page per idle moment; settles when the last has arrived. The window's
+ *  read-ahead calls it in its last stage (lazy/pages.tsx), so a first visit to a page finds its code there. */
+export const warmPages = (): Promise<void> => new Promise<void>((done) => void warm.rest(idleLater, done));
 
 /** One small line glyph per page, the way Claude's settings rail does it. Repositories share FolderPlus. */
 const PAGE_ICON: Record<PageId, ComponentType<{ size?: number }>> = {

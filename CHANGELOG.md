@@ -20,9 +20,9 @@ A glassy look:
 Quicker to answer (measured on a Linux test build; Windows figures will follow):
 - **Typing.** A key's echo is drawn about one frame sooner (about 18 ms instead of 33 ms on the test build), and an echo is no longer held back while other terminals print.
 - **Clicks.** A click redraws only what it concerns. With 16 terminals open, focusing another one used to redraw all of them three times; it now redraws two.
-- **Screens.** Kolux reads its screens a little at a time after the window shows instead of all at once, and pointing at a button reads what it opens before you click. Settings pages open at once after the first.
+- **Screens.** Kolux reads its screens a little at a time after the window shows instead of all at once, and pointing at a button reads what it opens before you click. Settings and each of its pages open at once, the first time too, once the window has been up a moment.
 - **Starting.** The checks that ran before the window could load now run beside it, the backup of Kolux's own state waits ten seconds, and the script read at start is 4 % smaller. Every start writes a timing line to the diagnostics log.
-- **Opening things.** Settings, menus and files no longer wait on an opening animation, and opening a file asks the backend once instead of three times.
+- **Opening things.** Settings, menus and files no longer wait on an opening animation, opening a file asks the backend once instead of three times, and a dialog or screen opened for the first time appears as soon as its code is read instead of about a third of a second later.
 
 New:
 - **Discard** is back in All Changes, behind a question that says exactly what will be lost. Deleted and renamed files say so.

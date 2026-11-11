@@ -59,3 +59,25 @@ test("a read that failed is tried again by the next warm-up", async () => {
   w.page("x");
   expect(a).toHaveBeenCalledTimes(2);
 });
+
+test("the read-ahead is told when the last page has arrived, and at once when there is nothing to read", async () => {
+  const a = vi.fn(async () => ({}));
+  const b = vi.fn(async () => ({}));
+  const w = pageWarmer<"x" | "y">({ x: [a], y: [b] });
+  let idle: (() => void) | null = null;
+  const done = vi.fn();
+  w.rest((f) => ((idle = f), () => (idle = null)), done);
+  const tick = async () => {
+    const f = idle;
+    idle = null;
+    f?.();
+    await new Promise((r) => setTimeout(r, 0));
+  };
+  await tick();
+  expect(done).not.toHaveBeenCalled();
+  await tick();
+  expect(done).toHaveBeenCalledTimes(1);
+  const none = vi.fn();
+  pageWarmer<"x">({}).rest(() => () => {}, none);
+  expect(none).toHaveBeenCalledTimes(1);
+});

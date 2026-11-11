@@ -1,7 +1,7 @@
 // T-706 / DT-C142: a surface whose code prefetch() has already read draws on its first open without
 // suspending, so a full-page screen never flashes its "Loading…" once the window has been up a moment.
 // A file of its own: prefetch() reads every deferred() in the module graph, and pages.test.ts has many.
-import { createElement } from "react";
+import { Component, createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { installDom, mount, settle } from "../tasks/fakeDom";
 
@@ -191,6 +191,92 @@ test("warm() on a module that fails to load does not throw, and the surface stil
   expect(tries).toBe(2);
 });
 
+// Behind lazy() and Suspense, a surface opened before its code was read came about 300 ms after its fallback,
+// however fast the code arrived (React holds content that suspended): Add Project opened in 11 ms while it was
+// in the first load and in 310 ms on its first open behind lazy(). The surface is drawn by a state change now.
+test("a surface opened before its code was read shows its fallback, then itself as soon as the code arrives, read once", async () => {
+  const { doc } = installDom();
+  const { deferred } = await import("./deferred");
+  type Mod = { default: () => ReturnType<typeof createElement> };
+  let give: (m: Mod) => void = () => {};
+  let reads = 0;
+  const S = deferred(() => (reads++, new Promise<Mod>((ok) => (give = ok))), createElement("p", null, "Loading…"));
+  const a = await mount(createElement(S), doc);
+  const b = await mount(createElement(S), doc); // a second place asks for the same code
+  expect(a.container.textContent).toBe("Loading…");
+  give({ default: () => createElement("main", null, "Ready") });
+  await settle();
+  expect(a.container.textContent).toBe("Ready");
+  expect(b.container.textContent).toBe("Ready");
+  expect(reads).toBe(1);
+  const c = await mount(createElement(S), doc); // and a later open draws it at once
+  expect(c.container.textContent).toBe("Ready");
+  await a.unmount();
+  await b.unmount();
+  await c.unmount();
+});
+
+test("read() hands back the same read for a caller that waits for it (the Settings pages' warm-up)", async () => {
+  const { deferred } = await import("./deferred");
+  let reads = 0;
+  const S = deferred(() => (reads++, Promise.resolve({ default: () => null })));
+  await Promise.all([S.read(), S.read()]);
+  await S.read(); // already read: answers without reading again
+  expect(reads).toBe(1);
+  const Bad = deferred(() => Promise.reject<{ default: () => null }>(new Error("offline")));
+  await expect(Bad.read()).rejects.toThrow("offline"); // the warm-up hears about a failed read and leaves it for the click
+});
+
+test("a read that fails is reported by the boundary above, and the next open reads again", async () => {
+  const { doc } = installDom();
+  const { deferred } = await import("./deferred");
+  class Catch extends Component<{ children: ReactNode }, { error: string | null }> {
+    state = { error: null as string | null };
+    static getDerivedStateFromError(e: unknown) {
+      return { error: e instanceof Error ? e.message : String(e) };
+    }
+    render() {
+      return this.state.error ? createElement("p", null, `failed: ${this.state.error}`) : this.props.children;
+    }
+  }
+  let tries = 0;
+  const S = deferred(() => (++tries === 1 ? Promise.reject<{ default: () => ReturnType<typeof createElement> }>(new Error("offline")) : Promise.resolve({ default: () => createElement("main", null, "Ready") })));
+  const a = await mount(createElement(Catch, null, createElement(S)), doc);
+  await settle();
+  expect(a.container.textContent).toBe("failed: offline");
+  await a.unmount();
+  const b = await mount(createElement(Catch, null, createElement(S)), doc);
+  await settle();
+  expect(b.container.textContent).toBe("Ready");
+  expect(tries).toBe(2);
+  await b.unmount();
+});
+
+test("DT-C252: other code marked with ahead() is read once, in its stage, and the stage waits for it", async () => {
+  installDom();
+  const { ahead, deferred, prefetch } = await import("./deferred");
+  const read: string[] = [];
+  let finish: () => void = () => {};
+  ahead(3, () => (read.push("settings pages"), new Promise<void>((done) => (finish = done))));
+  deferred(mod(read, "editor"), undefined, { warm: 3 });
+  deferred(mod(read, "chooser"), undefined, { warm: 1 });
+  const c = clock();
+  const idles: Array<() => void> = [];
+  prefetch(c.later, { idle: (f) => void idles.push(f), now: c.now, busy: () => false });
+  const drain = async () => {
+    for (let n = 0; n < 5 && idles.length; n++) idles.shift()!(), await settle();
+  };
+  await drain();
+  expect(read).toEqual(["chooser"]);
+  await c.advance(8100);
+  await drain();
+  expect(read).toEqual(["chooser", "settings pages"]); // asked for in stage 3; the editor waits until it has arrived
+  finish();
+  await settle();
+  await drain();
+  expect(read).toEqual(["chooser", "settings pages", "editor"]);
+});
+
 test("DT-C230 amended: the stages are the ones named, by source", () => {
   const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
   const marks = (rel: string, stage: string) => [...nodeFs.readFileSync(new URL(rel, import.meta.url), "utf8").matchAll(new RegExp(`const (\\w+) = deferred\\(.*\\{ ${stage} \\}`, "g"))].map((m) => m[1]);
@@ -200,4 +286,6 @@ test("DT-C230 amended: the stages are the ones named, by source", () => {
   expect(marks("./panes.tsx", "warm: 3")).toEqual(["EditorPane", "BrowserPane"]);
   expect(marks("../shell/window/Dialogs.tsx", "prefetch: true")).toEqual(["TabMenu"]); // the tab menu keeps the older spelling: stage 1
   expect(marks("./pages.tsx", "prefetch: true")).toEqual([]);
+  // DT-C252: the Settings pages' own code is read in the last stage too.
+  expect(nodeFs.readFileSync(new URL("./pages.tsx", import.meta.url), "utf8")).toMatch(/ahead\(3, \(\) => import\("\.\.\/settings\/SettingsPage"\)\.then\(\(m\) => m\.warmPages\(\)\)\);/);
 });

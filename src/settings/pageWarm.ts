@@ -6,6 +6,7 @@
 // reaches the window's first load.
 
 export type Loader = () => Promise<unknown>;
+
 /** Runs `f` when the window is idle: requestIdleCallback where there is one, else a short timeout. */
 export type Later = (f: () => void) => () => void;
 
@@ -20,8 +21,8 @@ export const idleLater: Later = (f) => {
 };
 
 /** The warm-up for a set of pages' loaders. `page(id)` reads one page's code now; `rest(later)` reads every page's
- *  code, one page per idle moment (the next is asked for once the one before has arrived), and returns its cancel.
- *  A loader that fails is left for the click to try again. */
+ *  code, one page per idle moment (the next is asked for once the one before has arrived), tells `done` when the
+ *  last one has arrived, and returns its cancel. A loader that fails is left for the click to try again. */
 export function pageWarmer<K extends string>(code: Partial<Record<K, Loader[]>>) {
   const asked = new Set<Loader>();
   const page = (id: K): Promise<unknown> => {
@@ -29,13 +30,13 @@ export function pageWarmer<K extends string>(code: Partial<Record<K, Loader[]>>)
     for (const load of code[id] ?? []) {
       if (asked.has(load)) continue;
       asked.add(load);
-      reads.push(load().catch(() => asked.delete(load)));
+      reads.push(Promise.resolve(load()).catch(() => asked.delete(load)));
     }
     return Promise.all(reads);
   };
   return {
     page: (id: K): void => void page(id),
-    rest: (later: Later = idleLater) => {
+    rest: (later: Later = idleLater, done?: () => void) => {
       const todo = Object.keys(code) as K[];
       let cancel = () => {};
       let stopped = false;
@@ -44,11 +45,14 @@ export function pageWarmer<K extends string>(code: Partial<Record<K, Loader[]>>)
           const id = todo.shift();
           if (id === undefined || stopped) return;
           void page(id).then(() => {
-            if (!stopped && todo.length > 0) next();
+            if (stopped) return;
+            if (todo.length > 0) next();
+            else done?.();
           });
         });
       };
-      next();
+      if (todo.length > 0) next();
+      else done?.();
       return () => {
         stopped = true;
         cancel();
