@@ -501,10 +501,14 @@ export function screenMode(a: Appearance, screen: string, classic: boolean): Mod
   return a.screens[s] ?? a.mode;
 }
 
-/** VIEW-006: the window moved to `screen`; repaint when that screen's mode differs. */
+/** VIEW-006: the window moved to `screen`; the look is put on again only when that screen paints in the
+ *  other mode. DT-C267: it used to be put on again at every move, which rewrote every colour on the window,
+ *  saved the look and had every terminal and editor take its colours again, to change nothing: light or
+ *  dark is the only thing about a look that depends on the screen. */
 export function showScreen(screen: string, classic: boolean): void {
   shown = { screen, classic };
-  if (last) applyAppearance(last);
+  if (!last) return;
+  if (isDark({ ...last, mode: screenMode(last, screen, classic) }) !== lastDark) applyAppearance(last);
 }
 let lastDark: boolean | null = null;
 
@@ -523,9 +527,23 @@ export function followSystemMode(): void {
   });
 }
 
-/** Puts an appearance on the window now and remembers it for the next start's first frame. */
+/** DT-C267: per root, the look last put on it (the appearance and whether it painted dark, as text). */
+let applied = new WeakMap<object, string>();
+/** For tests: forget what was put on, so the next apply writes again. */
+export const forgetApplied = (): void => void (applied = new WeakMap());
+
+/** Puts an appearance on the window now and remembers it for the next start's first frame.
+ *  DT-C267: the same look again on the same root writes nothing. Every save of any setting has each window
+ *  read the settings and put the look on again; when the look had not changed that rewrote every colour on
+ *  the window, saved the look and had every terminal and editor take its colours again, for nothing. */
 export function applyAppearance(a: Appearance, root: StyleHost = document.documentElement): void {
   const dark = isDark({ ...a, mode: screenMode(a, shown.screen, shown.classic) });
+  const look = JSON.stringify([a, dark]);
+  if (applied.get(root) === look) {
+    last = a;
+    return;
+  }
+  applied.set(root, look);
   if (lastDark !== null && lastDark !== dark && typeof document !== "undefined") holdTransitions();
   last = a;
   lastDark = dark;
