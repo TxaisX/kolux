@@ -8,6 +8,7 @@ import { CATALOGUE, tidySchemes, type CustomScheme } from "./terminal/schemes";
 import type { CustomTheme } from "./settings/customTheme";
 import { DEFAULT_TINT, STRENGTH_SPAN, sidebarBackground, sidebarLookOf, type SidebarLook } from "./look/sidebar";
 import { paletteIsDark } from "./terminal/queries";
+import { stagePicture } from "./look/stage";
 import { castOf, DEFAULT_METAL, GLASS_ICONS, GLASS_SPAN, GLASS_TEXT, ICON_BAR, TEXT_BAR, finishOf, glassGrounds, glassVars, type Finish } from "./look/glass";
 
 export const classic = {
@@ -535,6 +536,7 @@ export function applyAppearance(a: Appearance, root: StyleHost = document.docume
   }
   root.style.removeProperty?.("--accent"); // a custom theme's accent must not outlive it; set again just below when the theme has one
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  stagePicture(root, vars); // DT-C264: the glass stage as one picture; never part of `vars`, so never in the saved look
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ vars, appearance: a }));
   } catch {

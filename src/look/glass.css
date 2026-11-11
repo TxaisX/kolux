@@ -49,8 +49,17 @@
   /* the edge of a sheet of glass: a hairline the stage shows through, the light it catches along the top
      and the left, the shade along the bottom */
   --glass-line: color-mix(in srgb, var(--metal-hi) 22%, transparent);
-  --glass-spec: inset 0 1px 0 color-mix(in srgb, var(--metal-hi) 42%, transparent), inset 1px 0 0 color-mix(in srgb, var(--metal-hi) 12%, transparent);
-  --glass-shade: inset 0 -1px 0 color-mix(in srgb, var(--metal-lo) 55%, transparent);
+  --glass-spec-top: color-mix(in srgb, var(--metal-hi) 42%, transparent);
+  --glass-spec-side: color-mix(in srgb, var(--metal-hi) 12%, transparent);
+  --glass-shade-ink: color-mix(in srgb, var(--metal-lo) 55%, transparent);
+  --glass-spec: inset 0 1px 0 var(--glass-spec-top), inset 1px 0 0 var(--glass-spec-side);
+  --glass-shade: inset 0 -1px 0 var(--glass-shade-ink);
+  /* DT-C264: the same three lines as one-pixel strips of background, for a sheet so large that drawing them
+     as shadows is felt (the Inbox's two): the light along the top and the left, the shade along the bottom */
+  --glass-rim:
+    linear-gradient(var(--glass-spec-top), var(--glass-spec-top)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--glass-spec-side), var(--glass-spec-side)) 0 0 / 1px 100% no-repeat,
+    linear-gradient(var(--glass-shade-ink), var(--glass-shade-ink)) 0 100% / 100% 1px no-repeat;
   /* what a sheet throws on the stage under it, and what a floating one throws */
   --glass-lift: 0 1px 0 rgba(0, 0, 0, 0.35), 0 18px 36px -18px rgba(0, 0, 0, 0.75);
   --glass-float: 0 2px 6px rgba(0, 0, 0, 0.3), 0 24px 60px -16px rgba(0, 0, 0, 0.8);
@@ -59,8 +68,9 @@
 }
 :root[data-finish="glass"][data-mode="light"] {
   --glass-line: color-mix(in srgb, var(--metal-lo) 20%, transparent);
-  --glass-spec: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 1px 0 0 rgba(255, 255, 255, 0.6);
-  --glass-shade: inset 0 -1px 0 color-mix(in srgb, var(--metal-lo) 8%, transparent);
+  --glass-spec-top: rgba(255, 255, 255, 0.95);
+  --glass-spec-side: rgba(255, 255, 255, 0.6);
+  --glass-shade-ink: color-mix(in srgb, var(--metal-lo) 8%, transparent);
   --glass-lift: 0 1px 1px rgba(16, 24, 40, 0.05), 0 16px 32px -18px rgba(16, 24, 40, 0.3);
   --glass-float: 0 2px 6px rgba(16, 24, 40, 0.08), 0 24px 60px -16px rgba(16, 24, 40, 0.35);
   --glass-pop: 97%;
@@ -80,6 +90,14 @@
 :root[data-finish="glass"] .grid { background-image: var(--glass-gap); background-attachment: fixed; }
 :root[data-finish="glass"] .grid .cell { border-radius: 14px; }
 :root[data-finish="glass"] .inbox { background: var(--glass-stage), var(--glass-floor); background-attachment: fixed; border-radius: 14px; }
+/* DT-C264: look/stage.ts hands over --glass-stage as one small picture of the same light once it has drawn
+   it, so wherever the stage is drawn it is stretched over the window, centred, and never repeated. The
+   picture comes with its own size (a little over the window's, look/stage.ts says why); the gradients above
+   are the window's size, where being centred changes nothing. */
+:root[data-finish="glass"] body,
+:root[data-finish="glass"][data-window-blur="on"] body,
+:root[data-finish="glass"] .grid,
+:root[data-finish="glass"] .inbox { background-size: var(--glass-stage-size, 100vw 100vh); background-position: 50% 50%; background-repeat: no-repeat; }
 /* An empty workspace is the open stage; what it says stands on a sheet of its own in the middle of it. */
 :root[data-finish="glass"] .grid > .empty {
   place-self: center;
@@ -130,8 +148,12 @@
   box-shadow: inset 0 0 0 1px var(--line-inner), 0 0 0 1px color-mix(in srgb, var(--glass-tint) 26%, transparent), 0 0 22px -6px color-mix(in srgb, var(--glass-tint) 60%, transparent), var(--glass-lift);
 }
 :root[data-finish="glass"] .pane-head { background: linear-gradient(180deg, var(--glass-head), var(--pane-bg)); box-shadow: var(--glass-spec); }
+/* DT-C264: the Inbox's two sheets are the largest glass there is and are drawn afresh every time the Inbox
+   opens, so they are the plainest: the fill alone with the stage's light coming through it (no depth laid
+   over), their edge lines drawn as strips of background, and no shadow thrown (they fill the work area, so
+   nothing lies under them to take one). */
 :root[data-finish="glass"] .inbox .list,
-:root[data-finish="glass"] .inbox .detail { background: var(--glass-depth), var(--glass-fill); border-color: var(--glass-line); box-shadow: var(--glass-spec), var(--glass-shade), var(--glass-lift); }
+:root[data-finish="glass"] .inbox .detail { background: var(--glass-rim), var(--glass-fill); border-color: var(--glass-line); box-shadow: none; }
 
 /* ---- controls: a recessed track, brushed metal on the pressed state (whose text is the brightest ink) ---- */
 :root[data-finish="glass"] .switcher,
