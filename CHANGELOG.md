@@ -1,15 +1,9 @@
 # Changelog
 
-## 0.1.12
+## 0.1.13
 
-Much lighter on your machine:
-- **Agent sleep, on by default.** An agent tab (such as Claude Code) that finished its turn and sat untouched for 30 minutes, out of sight, is put to sleep: its session is saved and its program ends, which frees about 0.7 to 0.9 GB each. Wake brings the same conversation back. A tab that is working, waiting on you, holds unsent text or is the one you are looking at never sleeps. Change the delay or turn it off in Settings › General › Experimental.
-- Six terminals printing output use about 26 % of a CPU core instead of 59 %.
-- Kolux minimised keeps about 300 MB less in memory, and with browser tabs hidden about 350 MB less.
-- Large output floods no longer leave gigabytes of memory held afterwards, and typing stays instant (0.1 s instead of 2.7 s) while other terminals flood.
-
-Smoother:
-- Moving a pane to another tab or cell, or splitting it, no longer restarts the agent or program inside it.
+Agents no longer trip over each other:
+- **Own folder for each agent, on by default.** In a Git project, each agent you launch works in its own copy of the project on its own branch, made on this computer, so two agents never overwrite each other's files. Turn it off in Settings › Git & worktrees to have every agent share the project's folder. If you turned it off before, it stays off.
 
 A glassy look:
 - **Glass is now the look Kolux opens with.** The bars and panels are see-through over still, soft light in a colour you choose (Sapphire to start with), edges catch the light, and the pane you are working in is lit. Terminals and editors keep their solid ground, and text stays as readable as before. Menus and small dialogs are frosted.
@@ -48,6 +42,17 @@ Fixed:
 - A browser tab opens an IP address or a `*.localhost` name over http, as it already did for `localhost`.
 - xAI keys are masked in feedback and crash reports.
 - The left sidebar stays hidden after a restart.
+
+## 0.1.12
+
+Much lighter on your machine:
+- **Agent sleep, on by default.** An agent tab (such as Claude Code) that finished its turn and sat untouched for 30 minutes, out of sight, is put to sleep: its session is saved and its program ends, which frees about 0.7 to 0.9 GB each. Wake brings the same conversation back. A tab that is working, waiting on you, holds unsent text or is the one you are looking at never sleeps. Change the delay or turn it off in Settings › General › Experimental.
+- Six terminals printing output use about 26 % of a CPU core instead of 59 %.
+- Kolux minimised keeps about 300 MB less in memory, and with browser tabs hidden about 350 MB less.
+- Large output floods no longer leave gigabytes of memory held afterwards, and typing stays instant (0.1 s instead of 2.7 s) while other terminals flood.
+
+Smoother:
+- Moving a pane to another tab or cell, or splitting it, no longer restarts the agent or program inside it.
 
 ## 0.1.11
 
