@@ -53,7 +53,8 @@ export const seed = (app) => {
   // The app (and the agent search behind the New session menu) finds this claude first on PATH.
   process.env.PATH = `${dir.replace(/\//g, "\\")};${process.env.PATH}`;
   // seedProfile pins CLAUDE_CONFIG_DIR (and CODEX_HOME) in the agent env to this run's scratch folders (lib.mjs).
-  const base = seedProfile(app, { agentSleep: true, agentSleepIdleMinutes: 5, agentStatusHooks: true, agentOptions: { claude: { command: cmd } } });
+  // No agentSleep key: the switch is on by default (Txais 2026-11-10), so this run proves the default as well.
+  const base = seedProfile(app, { agentSleepIdleMinutes: 5, agentStatusHooks: true, agentOptions: { claude: { command: cmd } } });
   return () => {
     base();
     seedOnboardingDone(app.paths.profile);

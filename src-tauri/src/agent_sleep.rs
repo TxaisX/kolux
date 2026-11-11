@@ -1,9 +1,9 @@
-//! TERM-123 / HID-028 (T-817; Txais 2026-11-09: "Build it, off by default"): agent sleep. An agent
+//! TERM-123 / HID-028 (T-817; Txais 2026-11-09: "Build it, off by default"; 2026-11-10: "Default on"): agent sleep. An agent
 //! pane left idle past the chosen delay is put to sleep to free memory: its session is recorded the
 //! way workspace sleep records it (saved::at_pane_sleep), the window then ends that pane's terminal
 //! and shows a placeholder, and Wake starts the same agent in the same folder resuming the recorded
-//! session through the restored-tab path. The switch (`agentSleep`) is off on a fresh profile and
-//! when the key is missing; the delay (`agentSleepIdleMinutes`, 30 unless changed, held between 5 and
+//! session through the restored-tab path. The switch (`agentSleep`) is on on a fresh profile and
+//! when the key is missing, off only when saved `false`; the delay (`agentSleepIdleMinutes`, 30 unless changed, held between 5 and
 //! 240 minutes here as well as in the window) and the never-sleep rules the window alone can see (a
 //! draft, a drawn pane, a question or permission in its status records) are the window's
 //! (src/sleep/agentSleep.ts). HID-028 Compat: an old profile's sleep switch had another key, so it is
@@ -30,10 +30,10 @@ pub const IDLE_MIN_MINUTES: u32 = 5;
 pub const IDLE_MAX_MINUTES: u32 = 240;
 const FAST_DELAY: Duration = Duration::from_secs(20);
 
-/// The switch: only a saved `true` turns it on; a missing key, another type or an old profile's own
-/// sleep key reads as off.
+/// The switch: on unless saved `false` (Txais 2026-11-10: "Default on"); a missing key or another type
+/// reads as on, and an old profile's own sleep key is never read.
 pub fn sleep_on(settings: &Value) -> bool {
-    settings.get(ON_KEY) == Some(&Value::Bool(true))
+    settings.get(ON_KEY) != Some(&Value::Bool(false))
 }
 
 /// The delay the window asked for, held between 5 and 240 minutes whatever it sent; in a development
@@ -151,11 +151,12 @@ mod tests {
 
     #[test]
     fn t817_hid028_the_switch_is_off_on_a_fresh_profile_and_an_old_profiles_switch_is_ignored() {
-        assert!(!sleep_on(&json!({})), "fresh profile: off");
-        assert!(!sleep_on(&json!({ ON_KEY: "true" })), "only a real true counts");
-        assert!(!sleep_on(&json!({ ON_KEY: 1 })));
-        assert!(!sleep_on(&json!({ "hibernation": true, "agentHibernation": true, "sleepAgents": true, "experimental": { "hibernation": true } })), "HID-028 Compat: an old profile's own sleep switch, whatever its key, is never read");
+        assert!(sleep_on(&json!({})), "fresh profile: on");
+        assert!(sleep_on(&json!({ ON_KEY: "false" })), "only a real false turns it off");
+        assert!(sleep_on(&json!({ ON_KEY: 0 })));
+        assert!(sleep_on(&json!({ "hibernation": false, "agentHibernation": false, "sleepAgents": false, "experimental": { "hibernation": false } })), "HID-028 Compat: an old profile's own sleep switch, whatever its key, is never read");
         assert!(sleep_on(&json!({ ON_KEY: true })));
+        assert!(!sleep_on(&json!({ ON_KEY: false })), "saved off stays off");
     }
 
     #[test]
