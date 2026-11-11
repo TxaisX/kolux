@@ -50,7 +50,7 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 
 - **Windows first.** Kolux is built and tested on Windows 11: PowerShell panes on the Windows console, an installer for your own Windows user, and updates whose signature the app checks before it installs them.
 - **Measured, not guessed.** On the project's test PC, build 0.1.11 with 12 terminals open and the window minimised keeps 226 MB in memory and uses 5 % of one processor core, down from 544 MB and 13 %. The runs, the method and the gains that have not shipped yet are in the [footprint report](docs/research/kolux-slimdown-2026-11-09.md).
-- **Sessions outlive the window.** Terminals run in a background service. Close or reload the window and the agents keep working; quit and reopen, and each tab comes back, with Claude Code and Codex resuming their own sessions.
+- **Your layout comes back.** Quit and reopen, and every project, tab and pane is where you left it, each terminal as a fresh shell in its folder. Nothing keeps running in the background after you quit. An idle agent can be put to sleep to free memory and woken into the same conversation.
 - **Proof you can read.** More than 6,000 front-end tests and 3,000 Rust tests run on every push, 208 of the 228 must-have acceptance cards pass, and the ones still open are listed in [Status](docs/STATUS.md) rather than left out.
 - **Every line is the project's own.** Kolux is a clean-room rebuild: written from a description of what the user sees, never from another app's code. [PROVENANCE.md](PROVENANCE.md) holds the record.
 
@@ -80,7 +80,7 @@ On first launch, a four-step dialog asks you to connect at least one AI, choose 
 
 ## How it works
 
-Kolux is a Tauri 2 app. The window is React and TypeScript; the core is Rust. Each pane is a real PTY running your shell or agent, and a background terminal service lets panes outlive the window. Agents report status through hooks that Kolux installs in the agent's own settings, or through a plugin or extension where the agent supports one. Reports go to a loopback listener that requires a per-run token. There is no Kolux server.
+Kolux is a Tauri 2 app. The window is React and TypeScript; the core is Rust. Each pane is a real PTY running your shell or agent; panes run with the window and end when you quit. Agents report status through hooks that Kolux installs in the agent's own settings, or through a plugin or extension where the agent supports one. Reports go to a loopback listener that requires a per-run token. There is no Kolux server.
 
 ## Privacy
 

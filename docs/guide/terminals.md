@@ -78,7 +78,7 @@ A cell with more than one pane shows a tab strip. Each tab has an icon, a status
 
 | Item | What it does |
 |---|---|
-| Rename tab | Terminals and agents only |
+| Change Title | Renames the tab. Terminals and agents only |
 | Pin tab / Unpin tab | Keeps the tab at the front of the strip (see below) |
 | Close | Closes this tab (Ctrl+W). Greyed out for a pinned tab |
 | Close others | Closes every other tab except pinned ones |

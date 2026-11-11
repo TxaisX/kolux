@@ -117,7 +117,7 @@ What the address box understands:
 | You type | Kolux does |
 |---|---|
 | `https://...` or `http://...` | Opens it |
-| `localhost:3000` or `127.0.0.1:5173` | Opens it over http |
+| `localhost:3000`, an IP address such as `127.0.0.1:5173` or `192.168.1.20:5173`, or a name ending in `.localhost` | Opens it over http |
 | `example.com` (looks like a domain, no spaces) | Opens it over https |
 | Anything else | Searches the web with Google |
 | A file path, `file:`, or another kind of link such as `mailto:` | Refuses: "a browser tab opens web pages only (http or https)" |

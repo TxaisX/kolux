@@ -88,7 +88,7 @@ The update check goes through the saved proxy. If the setting cannot be used, th
 
 Switches for features that are still being tried out. Each is off on a fresh profile.
 
-**Agent sleep** (off): an agent pane that finished its turn and sat untouched for **Idle minutes before sleep** (30 unless you change it; 5 to 240) is put to sleep to free memory: its session is saved, its program ends and the pane shows "Asleep to save memory" with a **Wake** button. Wake, a click, focusing or typing in the pane starts the same agent again where it left off. A pane that is working, waiting on you, holds unsent text, was typed in or printed something within the delay, or is on screen never sleeps. After you restart Kolux a sleeping pane comes back as a plain shell, like every agent tab; the session itself is still in the agent's own list. With the switch off nothing changes.
+**Agent sleep** (on): an agent pane that finished its turn and sat untouched for **Idle minutes before sleep** (30 unless you change it; 5 to 240) is put to sleep to free memory: its session is saved, its program ends and the pane shows "Asleep to save memory" with a **Wake** button. Wake, a click, focusing or typing in the pane starts the same agent again where it left off. A pane that is working, waiting on you, holds unsent text, was typed in or printed something within the delay, or is on screen never sleeps. After you restart Kolux a sleeping pane comes back as a plain shell, like every agent tab; the session itself is still in the agent's own list. With the switch off nothing changes.
 
 ### Diagnostics
 
@@ -124,9 +124,9 @@ The page has three sections, all open at first: Interface, Terminal, and Window 
 | Tint | -180 to 180 degrees, default 0. Not available on Classic | |
 | Saturation | 0 to 160 percent, default 100. Not available on Classic | |
 | Depth | -3 to 6, default 0. Not available on Classic | |
-| Finish | Flat (the default) or Glass and metal. Glass and metal turns the panels see-through over a soft glow and gives edges a metal lip; terminals and editors keep a solid ground, and dim text is brightened where it needs it to stay readable | `appFinish` |
-| Metal colour | With Glass and metal: Steel, Silver, Graphite, Gold, Copper, Rose gold, Emerald, Sapphire or Amethyst, or any colour from the picker. Default Steel | `appFinishTint` |
-| Strength | With Glass and metal: 0 to 100 percent, default 60. More strength means more see-through panels and a stronger glow | `appFinishStrength` |
+| Finish: Panels | Glass and metal (the default) or Flat. Glass and metal makes the bars and panels see-through over soft light in the metal's colour and gives edges a line of light; terminals and editors keep a solid ground, and dim text is brightened where it needs it to stay readable. Flat is the plain look with no light behind it | `appFinish` |
+| Metal colour | With Glass and metal: Steel, Silver, Graphite, Gold, Copper, Rose gold, Emerald, Sapphire or Amethyst, or any colour from the picker. Default Sapphire | `appFinishTint` |
+| Strength | With Glass and metal: 0 to 100 percent, default 60. More strength means more see-through panels and stronger light | `appFinishStrength` |
 | App font | Any installed font; default is the built-in font. Suggestions follow as you type; Up and Down move through them and Enter picks one | `appFont` |
 | Editor font | Same as the terminal font, or any installed font | `editorFont` |
 

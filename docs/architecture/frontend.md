@@ -128,9 +128,9 @@ The first frame is handled outside React. `index.html` replays a whitelisted set
 
 `deferred()` wraps `React.lazy`, caches the module, and renders inside `Suspense` (`src/lazy/deferred.tsx:16-26`). It covers about 40 pages and dialogs (`src/lazy/pages.tsx:14-69`) and six pane bodies (`src/lazy/panes.tsx:9-22`). The terminal pane is not lazy; it is on the first screen.
 
-After the first frame, `prefetch()` loads the rest at idle time or after 1.5 seconds (`src/lazy/deferred.tsx:33-39`, `src/main.tsx:63`). Settings pages split again per page, and mermaid is a separate dynamic import.
+After the first frame, `prefetch()` (`src/lazy/deferred.tsx`, called from `src/main.tsx`) reads the rest in three stages: the chooser pane, help sheet and tab menu at the first idle moment; the Board, Agents, Inbox, Explorer and settings page two seconds later; the plan sheet, editor and browser pane eight seconds after the window shows. The later stages wait while the user is typing or pressing, and a hover or focus on the control that opens a surface reads it at once (`warm()`). Settings pages split again per page, and mermaid is a separate dynamic import.
 
-The first-load JavaScript budget is 1,491,000 bytes (`scripts/bundle-budget.mjs:20`). It counts the entry script, its preloads, the `App-*` chunk, and their static imports. CSS and on-demand chunks are excluded. CI enforces it after `vite build` (`.github/workflows/ci.yml:68-69`).
+The first-load JavaScript budget is 1,442,000 bytes (`CEILING` in `scripts/bundle-budget.mjs`). It counts the entry script, its preloads, the `App-*` chunk, and their static imports. CSS and on-demand chunks are excluded. CI enforces it after `vite build` (`.github/workflows/ci.yml:68-69`).
 
 ## Where to change what
 

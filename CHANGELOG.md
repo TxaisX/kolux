@@ -11,6 +11,36 @@ Much lighter on your machine:
 Smoother:
 - Moving a pane to another tab or cell, or splitting it, no longer restarts the agent or program inside it.
 
+A glassy look:
+- **Glass is now the look Kolux opens with.** The bars and panels are see-through over still, soft light in a colour you choose (Sapphire to start with), edges catch the light, and the pane you are working in is lit. Terminals and editors keep their solid ground, and text stays as readable as before. Menus and small dialogs are frosted.
+- Change the colour and strength, or go back to Flat, in Settings › Appearance › Finish.
+- "Blur the window background" (Windows' own material behind the window) now does something when you turn it on; it stays off unless you choose it.
+- Narrow panes keep their name and their Close button, the command box in the top bar stays on one line, and the Explorer's file list no longer starts halfway down its panel.
+
+Quicker to answer (measured on a Linux test build; Windows figures will follow):
+- **Typing.** A key's echo is drawn about one frame sooner (about 18 ms instead of 33 ms on the test build), and an echo is no longer held back while other terminals print.
+- **Clicks.** A click redraws only what it concerns. With 16 terminals open, focusing another one used to redraw all of them three times; it now redraws two.
+- **Screens.** Kolux reads its screens a little at a time after the window shows instead of all at once, and pointing at a button reads what it opens before you click. Settings pages open at once after the first.
+- **Starting.** The checks that ran before the window could load now run beside it, the backup of Kolux's own state waits ten seconds, and the script read at start is 4 % smaller. Every start writes a timing line to the diagnostics log.
+- **Opening things.** Settings, menus and files no longer wait on an opening animation, and opening a file asks the backend once instead of three times.
+
+New:
+- **Discard** is back in All Changes, behind a question that says exactly what will be lost. Deleted and renamed files say so.
+- **Review changes** in a project's right-click menu, and "Open All Changes" in Go to / Run a command: you no longer need a finished agent to reach your changes.
+
+Fixed:
+- The top bar no longer shows Ctrl+K while a terminal has focus, where Ctrl+K clears the pane; it shows Ctrl+Shift+P there.
+- Unread marks that never cleared: an agent that exited out of view, a bell in a hidden tab, a second note on a turn you had already seen.
+- An agent whose program exited reads Stopped everywhere; its header used to say Done.
+- Discarding an untracked file whose name starts with a space could delete a different file.
+- Ports and Preview were empty on a Windows set to a language other than English.
+- A lineup's handoff notes no longer show up as untracked files in your repository.
+- Several sessions failing to start at once left a dead pane; dragging a divider in a very small window could collapse the grid; a tab opened after a slow start could share a terminal with a restored tab.
+- First run: choosing "Plain terminal" no longer starts your default AI agent in the folder you add next.
+- A browser tab opens an IP address or a `*.localhost` name over http, as it already did for `localhost`.
+- xAI keys are masked in feedback and crash reports.
+- The left sidebar stays hidden after a restart.
+
 ## 0.1.11
 
 **Kolux RS is now Kolux.** The app has a new name. Your settings, projects and shortcuts move over by themselves on the first start after the update.

@@ -1134,3 +1134,13 @@ The session that builds Kolux did not open the repository. It started a separate
 What the building session received, and so has seen: the names of the 16 top-level folders and 17 root files with file counts; shares of source, tests, documentation, configuration and media; a yes/no list of which policy and process files exist; 40 documentation file titles; the kinds of thing `.gitignore` leaves out; and counts of commit author addresses by class. No code, no code structure below the top level, no function, component or package names.
 
 Nothing from it was written into Kolux's code. The commits of this branch up to `ea971901` (the glass and metal finish, DT-C249; own folder for each agent, DT-C250) were made before the look. What follows from it is advice to Txais, in conversation, on which kinds of file Kolux's public repository should carry. The clone and the reader's scratch copies of the policy files were deleted from the session's machine afterwards.
+
+## 2026-11-11 · An audit, a speed pass and the glass default (cloud session): no outside source
+
+Txais asked a cloud session to audit the repository, to simulate how a user would use the app, to fix what it found, to give the app a glassy look and to make it "as fast as Claude". The session coordinated other agents: one planned and built the look, others read the code for defects, drove the app, or built one speed change each.
+
+What the work was built from: this repository's own code, tests, guide and records, and nothing else. The app was run on Linux for the first time, from this repository's source (the Rust side compiles there; the Windows-only parts were read, not run), in a window on a virtual display, and driven through the WebDriver interface of the system's own web view; what the agents saw was Kolux's own window. Stand-in agent programs for those runs were shell scripts written in the session. Every agent was given section 0 of LOOP.md's rule in writing before it started, and the repository's guard hook was in force throughout.
+
+"As fast as Claude" names the Claude desktop app as the bar for how prompt the app should feel. Nothing was read from that app: it was not opened, and no code, page or document of it was looked at. No agent was asked to read any other app's source or pages, and the coordinating session read none; public documentation of the libraries Kolux is built on, which LOOP.md allows, may have been consulted by an agent for an API. The glass look has no outside source: it was designed on screenshots of this app's own window, and its first form is DT-C249's.
+
+A board of screenshots of the new look was made for Txais in Claude's own design canvas, from captures of this app's window. It is outside the repository.
