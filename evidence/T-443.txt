@@ -1,8 +1,0 @@
-T-443 text proof (2026-10-13, lane reliability)
-trust::tests::t443_only_worktrees_kolux_made_are_trusted_ahead_of_time: of a Kolux-made worktree, the project's main
-checkout and a folder made elsewhere, only the Kolux-made one is picked and written to .claude.json.
-cli::tests::create_and_remove_a_worktree_from_the_command_line: orchestration worker-start trusts its new worktree
-(trust: true) and no longer writes the main checkout into .claude.json.
-
-test trust::tests::t443_only_worktrees_kolux_made_are_trusted_ahead_of_time ... ok
-test cli::tests::create_and_remove_a_worktree_from_the_command_line ... ok

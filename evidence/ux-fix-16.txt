@@ -1,7 +1,0 @@
-ux fix 16: SET-010 box 1, a custom chord on a default's chord flags both rows Conflicts
-Repro test: src/settings/shortcutRows.test.ts "SET-010 box 1: a custom chord on a default's chord flags both rows Conflicts and lists them under Conflicting"
-FAIL (before): AssertionError: expected [ 'Modified' ] to deeply equal [ 'Modified', 'Conflicts' ]
-PASS (after): shortcutRows.test.ts 9 passed (incl. the no-conflict control test)
-Changed expectation: src/keys/userWins.test.ts clashes now [{ chord: "Mod+P", ids: ["view.tasks", "worktree.quickOpen"] }]
-Gates: tsc --noEmit clean; vitest run src/settings src/keys 68 files / 358 tests pass; plan-check: OK
-Live check skipped (coordinator).

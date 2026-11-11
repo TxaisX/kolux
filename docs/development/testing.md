@@ -63,7 +63,7 @@ Some tests need a terminal without a real process. The `test-fakes` feature expo
 |---|---|
 | `tsc` | The TypeScript types |
 | `license-check` | Every npm package has an allowed license |
-| `plan-check` | `PLAN.md` covers the spec cards according to their tiers, and the `STATE.md` counters are current |
+| `plan-check` | The plan covers the spec cards according to their tiers, and the status counters are current. The plan and the spec are in the private companion repository, so the check skips itself where they are not present |
 | `workflow-check` | The CI workflow keeps its four shards, release gate, and result job |
 | `invoke-contract` | Every `invoke("name")` in `src/` is registered in `lib.rs` |
 | memory tests | The local memory tool still works |
@@ -77,7 +77,7 @@ cargo clippy --all-targets -- -D warnings
 cargo deny check
 ```
 
-`cargo deny` checks the Rust license allow-list, denies wildcard dependencies, and enforces the advisory policy in `deny.toml`. The spec firewall (`scripts/firewall-check.ps1 -Baseline`) checks that the clean-room spec prose stays code-free.
+`cargo deny` checks the Rust license allow-list, denies wildcard dependencies, and enforces the advisory policy in `deny.toml`. The spec firewall, which checks that the clean-room spec prose stays code-free, runs where the spec is: in the private companion repository.
 
 The docs builder is a manual gate today:
 
@@ -99,7 +99,7 @@ It fails if an opted-in Markdown page has a stale HTML twin. It is not wired int
 |---|---|---|
 | `test` | Ubuntu, four shards | Vitest |
 | `checks` | Ubuntu | tsc, license, plan, workflow, invoke-contract, Vite build, bundle budget |
-| `rust` | Windows | Rust tests under scratch homes, clippy, cargo-deny, spec firewall |
+| `rust` | Windows | Rust tests under scratch homes, clippy, cargo-deny |
 | `bundle` | Windows, on dispatch or tag | NSIS installer build, artifact upload |
 | `result` | Ubuntu | Fails if a required job failed |
 
@@ -111,7 +111,7 @@ The rule is: wait for the event you are checking, never widen a fixed timeout. A
 
 ## Evidence
 
-Visible changes need a screenshot from the app's own window, not the desktop. The evidence scripts use the WebView2 debugging port and save into `evidence/<task-id>.png` or `evidence/<task-id>.txt`.
+Visible changes need a screenshot from the app's own window, not the desktop. The evidence scripts use the WebView2 debugging port and save into `evidence/<task-id>.png` or `evidence/<task-id>.txt`; those files belong to the private companion repository and are ignored here.
 
 A spec card is not done because the code compiles. It is done when its acceptance boxes are ticked with evidence. Live proofs that need the installed build are listed in `docs/live-proofs-windows.md`.
 

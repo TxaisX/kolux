@@ -1,15 +1,0 @@
-T-146-a live check, 2026-10-12, lane accounts (port 1421), window 1416 x 889
-
-1. Fresh settings: the right sidebar is open at 300 px on Explorer; with no workspace it says
-   "Open a workspace to browse its files.". Added a throwaway repo G:Tempaccounts-146epo
-   and opened master: Explorer lists src and readme.md. evidence/T-146-a-1-explorer-tab.png
-2. Real mouse click on the Source Control tab, then a real mouse drag of the left edge 340 px
-   left: width 640 px, settings.json rightSidebarTab "scm", rightSidebarWidth 640.
-   evidence/T-146-a-2-scm-640.png (first shot showed the hidden Explorer still painting under
-   Source Control; fixed with a [hidden] rule, then re-checked: display none).
-3. Ctrl+L: sidebar hidden, rightSidebarOpen false. Restarted the app: still hidden. Ctrl+L: back
-   at 640 px on Source Control. Ctrl+Shift+E: Explorer tab shown, keyboard in the tree.
-   evidence/T-146-a-3-after-restart-explorer.png
-4. Throwaway repo removed, lane projects back to [], settings.json back to {"theme":"classic"};
-   no orphan processes. One vitest run inside the gate script failed once while cargo test ran
-   beside it and passed on three reruns (load flake, not this change).

@@ -1,6 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; (scratch env: CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:/Temp/cards-v3/) pnpm exec vitest run --reporter=verbose src/terminal/__cards__/USAGE-001.test.ts
-box 1: src/terminal/__cards__/USAGE-001.test.ts::box 1: a greyed 0% until the first report, then a tinted figure that grows with the conversation — pass; no reading: class "gauge none", 0%, hover "nothing received yet"; readings 20k/90k/150k/190k of 200k -> 10% plain, 45%, 75% warn, 95% danger
-box 2: src/terminal/__cards__/USAGE-001.test.ts::box 2: beyond 90% of the window the ring and the number go red — pass; 93% gauge danger + ring danger; exactly 90% stays warn
-box 3: src/terminal/__cards__/USAGE-001.test.ts::box 3: two Claude panes at different fill levels each show their own figure — pass; pane 1 20% plain, pane 2 92% danger; a newer reading in pane 1 changes only pane 1
-MIRROR src/App.tsx:3203 (context={context[p.key] ? contextFill(...) : null}); readings go through real takeReading, the gauge is the real ContextGauge
-Test Files  3 passed (3) / Tests  7 passed (7) (run together with USAGE-004 and USAGE-023)

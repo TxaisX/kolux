@@ -1,5 +1,0 @@
-box 1: src/launch/ChooserPane.test.ts::"SESS-015: three blank seats keep Start disabled and show the no-guessing caption; Same for all waits for a finished seat" — pnpm exec vitest run src/launch/ChooserPane.test.ts src/launch/seats.test.ts src/launch/__cards__ --reporter=verbose (scratch env G:\Temp\cards-v3) — Test Files 4 passed (4) / Tests 41 passed (41)
-  (three {agent:null,model:null} seats rendered: Start button carries disabled, caption "Kolux never picks an AI or a model for you" present; sheetStart/emptySeat make every seat blank: seats.ts:278)
-box 2: src/launch/seats.test.ts::"SESS-015: Same for all copies the first finished seat's AI and model, keeps titles, and does nothing while no seat is finished" + the ChooserPane test above — same command — same pass line
-  (sameForAll on [partial, finished, blank-with-title] -> all seats get claude/opus, titles kept, allReady(result) true so Start enables; Same for all button disabled until a seat is finished)
-  glue not run live: the Same for all click -> onSeats(sameForAll(seats)) ChooserPane.tsx:326 and the re-render.

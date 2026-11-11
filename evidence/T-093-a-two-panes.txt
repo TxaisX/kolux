@@ -1,2 +1,0 @@
-typed T in the right pane: "TRxfn main() { / TRxfn main() { markers=4"
-after one Mod+S: "TRxfn main() { / TRxfn main() { markers=0"; disk line 1: TRxfn main() {

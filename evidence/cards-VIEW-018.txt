@@ -1,5 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; pnpm exec vitest run --reporter=verbose src/projects/__cards__/VIEW-040.test.ts src/terminal/__cards__/VIEW-047.test.ts src/agents/__cards__/VIEW-018.test.ts
-box 1: src/agents/__cards__/VIEW-018.test.ts::box 1: Claude at 37.6 % used, preference used, shows 38 % and a local reset time on the rail footer — pass (✓ 28ms)
-box 2: src/agents/__cards__/VIEW-018.test.ts::box 2: a provider with no 5-hour window leaves the usage line empty and draws no footer — pass (✓ 1ms)
-MIRROR src/App.tsx:2287 (footer = usageLine(..., readsLeft(settings)))
-Test Files  3 passed (3) / Tests  7 passed (7)

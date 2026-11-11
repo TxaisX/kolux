@@ -1,2 +1,0 @@
-box 1: src-tauri/tests/cards_10.rs::safe019_box1_a_live_stripe_key_in_a_paused_command_shows_only_prefix_four_dots_and_last_four — cargo test --manifest-path src-tauri/Cargo.toml --test cards_10 (scratch env G:\Temp\cards-v3) — ok; test result: ok. 32 passed; 0 failed
-box 2: src-tauri/tests/cards_10.rs::safe019_box2_a_mysql_short_password_flag_a_token_flag_and_a_postgres_url_with_credentials_are_masked — cargo test --manifest-path src-tauri/Cargo.toml --test cards_10 (scratch env G:\Temp\cards-v3) — ok; test result: ok. 32 passed; 0 failed

@@ -1,8 +1,0 @@
-command: pnpm exec vitest run src/terminal/__cards__/TERM-004.test.ts — Test Files 1 passed (1); Tests 4 passed (4)
-box 1: NOT TICKED (LIVE). Model half passes: src/terminal/__cards__/TERM-004.test.ts::"box 1 (model part)..." — resizePlan(n started, n) = add 0 drop none, same pane objects. 'Same output' needs the mounted terminals in a real window
-box 2: src/terminal/__cards__/TERM-004.test.ts::"box 2: after any re-arrangement every pane is still present, in its original order" + "box 2: a resize to a preset keeps the surviving panes in order..." — pnpm exec vitest run src/terminal/__cards__/TERM-004.test.ts — passed (40 random split sequences of 8 steps: earlier panes present in original order, cellsOf lists exactly the panes, columns*rows >= count)
-
-LIVE 2026-10-26 (box 1): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-004, stand-in scripts only), driven by scripts/prove/live-TERM-004.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-004; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-004.out.txt (run-TERM-004.log).
-  Setup: Layout 6 with 4 shells (each printed its own marker) + 2 empty choosers; clicked the Layout 4 strip button.
-  Reading: 4 shells shown, 0 choosers; same 4 panes in the same order; shell process pids before [39640,55588,57916,62988] = after [39640,55588,57916,62988] (no shell started or ended, replaces the Tauri call count, since __TAURI_INTERNALS__.invoke is non-writable in the page); each pane keeps its marker line and holds no other pane's marker.
-  Screenshot: G:/Temp/live-v1-logs/TERM-004-layout4.png

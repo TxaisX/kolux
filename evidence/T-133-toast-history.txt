@@ -1,5 +1,0 @@
-Windows notification centre, Kolux test toasts only (newest first), read with ToastNotificationManager.History for the unpackaged app id, after: chime 60% (Kolux tone 880+1320 Hz, toast silent), system 80% (toast with the system sound, no Kolux tone), chime 0% (toast silent, no tone), ping 60% (tone 1568 Hz, toast silent)
-This is how a notification from Kolux looks and sounds. | silent | <audio silent="true"/>
-This is how a notification from Kolux looks and sounds. | silent | <audio silent="true"/>
-This is how a notification from Kolux looks and sounds. | with sound | (no audio element: the system default sound)
-This is how a notification from Kolux looks and sounds. | silent | <audio silent="true"/>

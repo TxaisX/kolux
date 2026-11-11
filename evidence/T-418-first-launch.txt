@@ -1,7 +1,0 @@
-T-418 live proof, 2026-10-13, lane look dev app
-Lane profile settings.json set aside (no file), app started with up.sh.
-settings.json written at first start:
-{ "uiLook": "new", "appearanceMode": "dark" }
-Page read over CDP: data-mode=dark, body background rgb(5, 4, 5). Shot: T-418-1.png (New look, dark, 1920).
-vitest related theme.ts general.ts main.tsx: 15 files, 95 tests passed. tsc --noEmit clean. plan-check OK.
-Lane settings restored afterwards.

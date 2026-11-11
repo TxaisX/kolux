@@ -1,5 +1,0 @@
-T-122 STAT-021 Pi titles (lane/fix-hooks, 2026-10-25).
-Source: Pi public extension declarations (github.com/earendil-works/pi, packages/coding-agent/src/core/extensions/types.ts): ctx.ui.setTitle(title: string), pi.getSessionName(): string | undefined, event session_info_changed (payload name).
-Built (agent_hooks/pi.rs): the generated kolux-rs.ts sets the tab title only from the extension: "pi - <session name> - <folder>" (pi sign U+03C0 first, a Pi owner mark for titleOwner.ts), nothing while Pi has no session name, control characters stripped, 80 chars per part; refreshed after session_start, agent_start, agent_settled and on session_info_changed. Outside a Kolux pane the extension returns before wiring anything, so Pi's own title stays.
-Tests: stat_021_pi_titles_come_from_the_kolux_extension_alone (also runs the generated file under node against a stand-in Pi: no title before naming, then "pi - Fix parser - my-app"), stat_021_pi_extension_is_koluxs_own_file still passes.
-REST (LIVE PROOF PENDING, batched): a real Pi session shows the title in the tab; Pi needs-you; OMP; MiMo.

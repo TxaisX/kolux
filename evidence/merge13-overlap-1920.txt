@@ -1,8 +1,0 @@
-MERGE 13 overlap check, window 1920x1040 (dev app, identifier com.txaisxiong.kolux-rs.merge, CDP 9241; pid 62096 rect 1920x1040)
-ok at 1904px: .switcher 847-1057 · .searchbox 1395-1585
-ok at 1904px: .topbar button[title="Automations"] 1335-1359 · .searchbox 1395-1585
-ok at 1904px: .pane-head .title 352-407 · .pane-head .right 1418-1587
-ok at 1904px: .switcher 847-1057 · .topbar .ib.bell 1593-1617
-ok at 1904px: .sb-foot button[title="Help"] 72-96 · .sb-foot .upd 105-240
-ok at 1904px: .sb-foot button[title^="Model routing"] 45-69 · .sb-foot button[title="Help"] 72-96
-exit 0

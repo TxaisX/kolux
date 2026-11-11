@@ -21,3 +21,38 @@ src-tauri/release.conf.json
 .DS_Store
 Thumbs.db
 .vitest/
+
+# The Hive: the private companion repository (scripts/hive.mjs) laid over this checkout. It holds the build
+# logs, the proof files, the spec and the one-off proof scripts. These lines keep every one of its paths out
+# of the public repository; scripts/hive.test.mjs fails if a line is missing or a Hive file is tracked.
+/.hive/
+/evidence/*
+!/evidence/cards-*.json
+!/evidence/T-193-b/
+/PLAN.md
+/PLAN-done.md
+/STATE.md
+/STATE-history.md
+/DECISIONS.md
+/DECISIONS-history.md
+/PRIORITIES.md
+/LOOP.md
+/SPEC.md
+/spec/
+/COMPAT.md
+/PROVENANCE.md
+/docs/history/
+/docs/research/*
+!/docs/research/kolux-slimdown-2026-11-09.md
+/docs/live-proofs-results-2026-10-31.md
+/docs/reclaim-old-kolux.md
+/docs/development/release-0.1.11-checklist.md
+/docs/development/security-lanes-backlog.md
+/scripts/prove/
+/scripts/stress/
+/scripts/firewall-check.ps1
+/scripts/firewall-allowlist.txt
+/scripts/firewall-baseline.txt
+/scripts/token-report.py
+/scripts/reclaim-old-kolux.ps1
+/HIVE.md

@@ -1,6 +1,0 @@
-box 1: src/launch/ChooserPane.test.ts::"SESS-014: three seats in Git pick separate copies; sharing them warns with a fix; outside Git separate is disabled and explained" + src/launch/seats.test.ts::"SESS-014: separate copies for 2+ seats in Git, the shared folder otherwise; sharing in Git with 2+ seats warns" — pnpm exec vitest run src/launch/ChooserPane.test.ts src/launch/seats.test.ts src/launch/__cards__ --reporter=verbose (scratch env G:\Temp\cards-v3) — Test Files 4 passed (4) / Tests 41 passed (41)
-  (3 seats in Git: defaultCopies(3,true)=separate, rendered radio "Separate copy for each AI" is checked)
-box 2: same ChooserPane test — same command — same pass line
-  (copies=shared with 3 seats: warning "Several AIs would be editing the same files at once" and button "Give each its own copy" rendered; copies=separate: no warning button, separate radio checked. The button's onClick is onCopies("separate") ChooserPane.tsx:344; glue not run live: the click and App's setChooser copies store, App.tsx:2478)
-box 3: same ChooserPane test — same command — same pass line
-  (inGit=false: "Separate copy for each AI" radio disabled, "Same folder for all" checked, caption "Not a Git project: there is nothing to copy" shown)

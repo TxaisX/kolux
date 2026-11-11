@@ -1,6 +1,0 @@
-box 1: src/automations/__cards__/AUTO-016.test.ts::box 1: a word that appears only inside one automation's prompt leaves just that automation in the table — pnpm exec vitest run src/automations/__cards__/AUTO-016.test.ts — Tests 3 passed (3)
-  (real AutomationsPage: typing "  ZebraFish " into Search automations leaves only the row whose prompt holds it; filter chain is model.ts normalizeQuery/matches)
-box 2: src/automations/__cards__/AUTO-016.test.ts::box 2: sorting by Last run lists the newest run first and puts the automations that never ran at the bottom — vitest as above — passed
-  (header button "Last run" clicked once: auto-3 (newest), auto-2, then the two never-run rows; model.ts sortRows/lastRun)
-box 3: src/automations/__cards__/AUTO-016.test.ts::box 3: a load that fails shows the error with Retry, never the nothing-created message, until a Retry succeeds — vitest as above — passed
-  (alert "Automations could not be loaded" + Retry; a still-failing Retry keeps it; a succeeding Retry then shows "No automations yet")

@@ -1,1 +1,0 @@
-stub installer ran with: /P /UPDATE   (2026-10-09, T-090 live proof: a downloaded update installed as the app quit; no /R, so the installer did not reopen the app)

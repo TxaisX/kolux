@@ -1,3 +1,0 @@
-00:48:10.401 tab menu items: ["Rename tabUnassigned","CloseCtrl+W","Close others","Close to the right","Close to the left","Close allCtrl+Alt+W"]
-00:48:10.836 shell pane runs ping -t (a child process); tabs 3; close question: "Close “Terminal 9”?A program is still running in 3 of its 3 panes. Closing the tab stops them.CancelClose tab"; focused control on open: "Cancel"
-00:48:11.520 after Enter: dialog still open false; tabs 3 (unchanged = Enter did not stop the session)

@@ -17,10 +17,9 @@ This page is the map of the repository. It names the files that matter for commo
 | `deny.toml` | Rust dependency and license policy |
 | `src/` | The React window |
 | `src-tauri/` | The Rust core, the Tauri config, the installer assets |
-| `scripts/` | Gates, tests, release, evidence, proofs |
-| `spec/` | The behaviour specification |
-| `docs/` | Public user, architecture, and development docs, plus the build record |
-| `evidence/` | Per-task proof output and screenshots |
+| `scripts/` | Gates, tests, release and the smoke harness |
+| `docs/` | Public user, architecture, and development docs |
+| `evidence/` | The fixtures the card tests read; everything else in this folder is in the private companion repository |
 
 ## Rust
 
@@ -100,37 +99,26 @@ If you add a screen, update the screen union in `src/chrome/TopBar.tsx`, the pag
 
 | Script | Purpose |
 |---|---|
-| `scripts/plan-check.mjs` | PLAN.md coverage and STATE.md counters |
+| `scripts/plan-check.mjs` | Plan coverage and status counters; skips itself where the plan is not present |
 | `scripts/license-check.mjs` | npm license allow-list |
 | `scripts/workflow-check.mjs` | CI workflow promises |
 | `scripts/invoke-contract.mjs` | Every `invoke()` has a Rust command |
 | `scripts/bundle-budget.mjs` | First-load JavaScript ceiling |
-| `scripts/firewall-check.ps1` | Clean-room spec firewall |
 | `scripts/test-env.ps1` / `.sh` | Scratch homes for Rust tests |
 | `scripts/release.mjs` | Build, smoke, sign, publish |
 | `scripts/ship.mjs` | Commit, merge, push, start a release |
 | `scripts/ci-gate.mjs` | Wait for CI on the exact commit |
 | `scripts/docs/build.mjs` | Markdown to self-contained HTML twins |
 | `scripts/evidence/` | Smoke, CDP, screenshots, proof helpers |
-| `scripts/prove/` | Live proof harnesses per card |
-| `scripts/stress/` | Load and stress scenarios |
+| `scripts/hive.mjs` | Lays the private companion repository over a checkout (see below) |
 
 ## Spec and records
 
-| Path | What it is |
-|---|---|
-| `SPEC.md` | The behaviour spec index |
-| `spec/01...21-*.md` | The 20 area files |
-| `COMPAT.md` | Contracts kept from the old app |
-| `PRIORITIES.md` | Build order and theme ranks |
-| `PLAN.md` | The ordered task list and card coverage |
-| `STATE.md` | Current counters, what works, open decisions |
-| `DECISIONS.md` | Defaults, strikes, and choices the build follows |
-| `PROVENANCE.md` | Clean-room source log |
-| `evidence/` | Per-task proof output and screenshots |
-| `docs/live-proofs-windows.md` | The installed-build proof run sheet |
+The build record is not in this repository. The behaviour specification, the plan, the status and decision logs, the provenance log, the per-task proof files and screenshots, the cycle reports and audits, and the one-off proof and stress scripts live in a private companion repository.
 
-These are build records. Read `PLAN.md` and `DECISIONS.md` before changing behaviour that a card already defines. Do not rewrite them to make a change look approved.
+For someone with access to it, `node scripts/hive.mjs attach` lays it over a checkout: its files appear at the paths the tools expect (`PLAN.md` at the root, `evidence/` beside `src/`), and this repository's `.gitignore` keeps every one of them out of a public commit. `scripts/hive.test.mjs` fails if such a file is ever tracked here. Without it, the plan check and the guide check report that they were skipped, and everything else builds and tests the same.
+
+`docs/live-proofs-windows.md`, the installed-build proof run sheet, stays public.
 
 ## Where to change what
 

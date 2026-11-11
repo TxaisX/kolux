@@ -1,4 +1,0 @@
-row 192: tray.rs icon() and close_to_tray() retired.
-callers: grep "tray::icon|tray::close_to_tray" in src-tauri/src and src -> none; the only other icon() is real::icon (separate fn, kept).
-tests: stat047_dev_copies_keep_their_marker_on_the_attention_icon_and_close_to_tray_is_off_by_default exercised only the two removed fns, removed. Live coverage kept: app_008 paint test (DEV marker/dot), app_007 close_hides tests (off unless real true).
-gates: cargo test --lib -- tray:: 18 passed (p40-tray-test.log); clippy --lib --tests -D warnings with patches 1+2+3 exit 0 (p40-clippy-192.log).

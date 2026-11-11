@@ -1,2 +1,0 @@
-box 1: src-tauri/tests/cards_10.rs::safe011_box1_database_clients_given_a_drop_or_truncate_ask — cargo test --manifest-path src-tauri/Cargo.toml --test cards_10 (scratch env G:\Temp\cards-v3) — ok; test result: ok. 18 passed; 0 failed
-box 2: src-tauri/tests/cards_10.rs::safe011_box2_the_same_words_in_a_commit_message_or_a_text_search_run — same command — ok; test result: ok. 18 passed; 0 failed

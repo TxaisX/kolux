@@ -1,5 +1,0 @@
-T-419 proof, 2026-10-13, lane look
-No visible change: every PlusMenu caller (ProjectsPanel, TerminalPane) passes onManage, so the !onManage "Hide agents.../Agent settings..." row never drew; it, its handler and its two test lines are deleted. All agent-settings links now call openSettings("agents").
-FINISH_FIELD / STOPPED_FIELD deleted; App.tsx gates on KindKey literals typed from KINDS.
-NotificationSwitches (quiet minutes) now saves through useSettings. Live: Settings > Notifications, quiet minutes set to 7 -> settings.json "quietMinutes": 7; set back to 10 -> 10.
-tsc --noEmit clean; vitest related 8 files 82 tests passed; pnpm test 95 files 551 tests passed; plan-check OK.

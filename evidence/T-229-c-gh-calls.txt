@@ -1,3 +1,0 @@
-05:22:12 pr list --state all --limit 100 --json number,url,state,title,headRefName,isDraft --repo github.com/txais/demo
-05:24:02 pr list --state all --limit 100 --json number,url,state,title,headRefName,isDraft --repo github.com/txais/demo
-05:25:18 pr list --state all --limit 100 --json number,url,state,title,headRefName,isDraft --repo github.com/txais/demo

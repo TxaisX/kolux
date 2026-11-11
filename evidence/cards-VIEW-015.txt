@@ -1,4 +1,0 @@
-command: pnpm exec vitest run --reporter=verbose src/agents/__cards__/VIEW-015.test.ts (Test Files 1 passed / Tests 2 passed; slot held; with slot-run of 10 files: 62 passed)
-box 1: src/agents/__cards__/VIEW-015.test.ts::box 1: one saved agent with two sessions plus one unmatched Codex session gives two groups, the Codex one under Other sessions — pass (real railGroups + real AgentsRail markup: 2 sections, Other sessions holds session 3, shell never listed)
-box 2: src/agents/__cards__/VIEW-015.test.ts::box 2: select a session, switch screens and back, and the same session is selected — pass (rail row onClick -> agentSel; pickSession keeps it across agents/terminals/board/agents)
-MIRROR src/App.tsx:2276-2278 (groups/selected), :2781 (onSelect sets agentSel); agentSel is App-level useState (App.tsx:301) never reset on a screen switch (only setAgentSel callers: :1348, :2295, :2781, :2946)

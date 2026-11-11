@@ -1,5 +1,0 @@
-before Board: "{\"scroll\":420,\"sel\":{\"anchor\":1544,\"head\":1551},\"line\":40,\"focus\":true,\"unsaved\":2}"
-disk line 40: // q of padding so the file scrolls
-Mod+S on Board, disk line 40: // q of padding so the file scrolls
-back on Terminals: "{\"scroll\":420,\"sel\":{\"anchor\":1544,\"head\":1551},\"line\":40,\"focus\":true,\"unsaved\":2}"
-Mod+S on Terminals, disk line 40: // qw of padding so the file scrolls; markers: 0

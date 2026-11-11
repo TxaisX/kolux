@@ -1,8 +1,0 @@
-pnpm smoke at 2026-10-19T20:51:59.404Z on 2d14c7db (G:\Dev\kolux-rs)
-args: -- --port 1433 --cdp 9241 --identifier com.txaisxiong.kolux-rs.merge.smoke --temp G:/Temp/smoke-merge; T-184 ticked: false; flow 5 report-only
-PASS 1: grid 4 -> 6 (3 shells + 1 empty -> 3 shells + 3 empty); all 3 shells echoed the marker set before the change (same PTY processes)
-PASS 2: Mod+S wrote notes.txt: disk now holds "typed by smoke 1792443026968" plus the original line (42 bytes)
-PASS 3: Discard asked first ("Discard changes to notes.txt?", buttons Cancel / Discard); after "Cancel" notes.txt and git status are unchanged
-PASS 4: Claude pane's dot reads "status: Working" after the stand-in posted SessionStart + UserPromptSubmit; hook installed into the scratch G:\Temp\smoke-merge\tmp\claude-config\settings.json, script G:/Temp/smoke-merge/home/.kolux-rs/agent-hooks/claude.cmd on disk
-FAIL 5 [report-only]: timed out after 15000 ms waiting for the old process tree to exit
-smoke: 4/4 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)

@@ -1,6 +1,0 @@
-T-787 (P3-14): the Install button's note says when Windows will ask for admin
-cargo test --lib agent_install: test result: ok. 48 passed; 0 failed
-cargo build: Finished; cargo clippy --all-targets -- -D warnings: Finished, no warnings
-pnpm exec vitest related (ChooserPane, PlusMenu, agentInstall, pickerRules, AgentInstallNote.test): Test Files 106 passed; Tests 582 passed
-Behaviour: AgentInfo.installNote is "Needs Node.js (Windows will ask for admin permission)" for the npm agents (gemini, pi, autohand, openclaude) while Node.js is not on the PC, else absent; the chooser shows it beside Install and in the Install tooltip, and the Install-agents list finds it by words.
-tsc: clean

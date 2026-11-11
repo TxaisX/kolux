@@ -1,4 +1,0 @@
-box 1: src/terminal/__cards__/TERM-025.test.ts::box 1: the four buttons appear in the same order on every pane: more, expand, split, close — pnpm exec vitest run src/terminal/__cards__/TERM-025.test.ts — ✓
-box 2: src/terminal/__cards__/TERM-025.test.ts::box 2: right-clicking the header opens the same menu as the more button (same opener, same menu state) — same command — ✓
-combined run: Test Files 5 passed (5), Tests 11 passed (11)
-note: the real TerminalPane header has a fifth button (New session plus) between split and close; the four named buttons keep their order around it.

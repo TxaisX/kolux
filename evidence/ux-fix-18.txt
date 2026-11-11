@@ -1,9 +1,0 @@
-ux fix 18: SET-010 box 2, macOS system-capture warning on the Shortcuts row
-Repro/fail (src/keys/systemCapture.test.ts, stubbed module returning no warning):
-  FAIL mac: binding Ctrl+2 shows the system-capture warning on that row
-  AssertionError: expected undefined to be ''
-  FAIL mac: every Ctrl+digit 1-9 and the Ctrl+arrow Mission Control chords are flagged
-  AssertionError: 1: expected undefined to be truthy
-Pass: pnpm exec vitest run src/settings src/keys -> Test Files 69 passed (69), Tests 364 passed (364)
-tsc --noEmit: clean. node scripts/plan-check.mjs: plan-check: OK
-Live check skipped; macOS leg open.

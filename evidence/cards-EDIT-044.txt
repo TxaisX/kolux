@@ -1,4 +1,0 @@
-EDIT-044 live evidence (boxes 1 and 2): NOT PROVEN, stays LIVE.
-
-LIVE 2026-10-26
-reason: both boxes need an Ubuntu WSL distribution (wsl.localhost project). `wsl.exe -l -v` on this machine says "Windows Subsystem for Linux has no installed distributions", so the setup cannot be reached. No script written; nothing ticked.

@@ -1,6 +1,0 @@
-box 1: src-tauri/tests/cards_01.rs::proj025_box1_a_folder_elsewhere_with_nesting_on_puts_a_inside_app_there — cargo test --manifest-path src-tauri/Cargo.toml --test cards_01 (scratch CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:/Temp/cards-v3; KOLUX_* unset) — test proj025_box1_a_folder_elsewhere_with_nesting_on_puts_a_inside_app_there ... ok
-  (workspacesDir = an absolute folder outside the project, layout nested, project "app", create "a" -> <folder>/app/a, a real checkout, nothing beside the project)
-  test result: ok. 9 passed; 0 failed (final run of cards_01)
-box 2: src-tauri/tests/cards_01.rs::proj025_box2_a_folder_set_for_one_project_leaves_the_others_on_the_global_folder — same command — test proj025_box2_a_folder_set_for_one_project_leaves_the_others_on_the_global_folder ... ok
-  (app has its own folder: a -> <own>/app/a; web keeps the global one: a -> <global>/web/a; neither folder holds the other project)
-  test result: ok. 9 passed; 0 failed (final run of cards_01)

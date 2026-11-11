@@ -1,8 +1,0 @@
-env: CLAUDE_CONFIG_DIR=CODEX_HOME=<scratch>\cards-v3\tmp USERPROFILE=<scratch>\cards-v3\home HOME=<scratch>/cards-v3/home TEMP=TMP=<scratch>\cards-v3\tmp (scratch root G:\Temp\cards-v3, .kolux-rs-scratch markers)
-cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-box 1: src-tauri/tests/cards_04.rs::stat045_box1_one_alert_per_silent_spell_after_the_threshold — cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-test stat045_box1_one_alert_per_silent_spell_after_the_threshold ... ok
-box 2: src-tauri/tests/cards_04.rs::stat045_box2_a_threshold_of_zero_raises_no_quiet_alert_and_leaving_working_cancels_it — cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-test stat045_box2_a_threshold_of_zero_raises_no_quiet_alert_and_leaving_working_cancels_it ... ok
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
-MIRROR src-tauri/src/lib.rs:446 (minutes > 0).then(Duration::from_secs(minutes*60)) is copied into the test around the real status::quiet_check and Session::quiet; the silence figure is injected (no 60 s wait)

@@ -1,3 +1,0 @@
-box 1: src/projects/__cards__/VIEW-051.test.ts::box 1 (real ProjectsPanel on fakeDom; rows data-agent cursor/gemini, mark alt "Cursor" / "Gemini", none Claude) — pnpm exec vitest run src/projects/__cards__/VIEW-051.test.ts — Tests 2 passed (2)
-box 2: src/projects/__cards__/VIEW-051.test.ts::box 2 (2 live panes -> count "2"; one exits -> count "1", one row; none live -> no count, no rows) — same command — Tests 2 passed (2)
-MIRROR: the sessions prop is built in src/App.tsx; the list and count decisions are ProjectsPanel liveIn/paneRows/liveCount (ProjectsPanel.tsx:1437-1452).

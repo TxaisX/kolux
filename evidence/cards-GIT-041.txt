@@ -1,2 +1,0 @@
-box 1: src/editor/__cards__/GIT-040-041.test.ts::GIT-041 box 1 (three notes over two files: noteBlocks holds all three; markSent marks all three sent) — pnpm exec vitest run src/scm/__cards__/GIT-016.test.ts src/editor/__cards__/GIT-040-041.test.ts src/scm/model.test.ts — Test Files 3 passed, Tests 48 passed. MIRROR App.tsx:2390-2399 (sendNotes pastes noteBlocks then saveNotes(markSent))
-box 2: src/editor/__cards__/GIT-040-041.test.ts::GIT-041 box 2 (note edited mid-send is not marked sent; clearDelivered keeps it) — same command — passed

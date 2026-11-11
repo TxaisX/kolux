@@ -1,3 +1,0 @@
-read-only file, Mod+S: toast="main.rs was not saved: could not save G:\\Temp\\release-T-093\\repo\\src\\main.rs: Access is denied. (os error 5)" markers=2
-disk line 1: xfn main() {
-writable again, Mod+S: markers=0 disk line 1: Rxfn main() {; temp files left: 0

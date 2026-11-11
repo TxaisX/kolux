@@ -1,7 +1,0 @@
-Row 494: rich-view code colour. LIVE PROOF PENDING (builders do not launch the app).
-Steps: open a .md note in the rich view; type a fenced block labelled ts with `const a = 'x' + 42; // hi`.
-Expect: const in the link tone, 'x' green, 42 amber, the comment faint grey; a block labelled brainfuck or
-with no label stays plain. Change the label with the corner list: colours follow. Switch light/dark: tones follow.
-Saved text of the note is unchanged (colour is painted with CSS highlights, no node is added).
-Unit evidence: G:/Temp/fix-other-v3-logs/p37-494-red.log (module missing) then p37-494-green.log (src/editor 78 files, 618 tests).
-Bundle: main chunk index-*.js 322.02 kB unchanged; lazy App chunk 2,251.79 -> 2,344.05 kB (gzip 696.03 -> 726.98 kB).

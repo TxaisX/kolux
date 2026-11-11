@@ -1,4 +1,0 @@
-MIRROR src-tauri/src/cli.rs:2926-2937 (orchestration send arm: Mail::post then report); the tests repeat those lines around the real Mail/report/task_list.
-box 1: src-tauri/tests/cards_08.rs::orch015_box1_a_succeeded_done_report_with_one_changed_file_shows_in_check_and_task_list_says_completed — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 — test ... ok; test result: ok. 34 passed; 0 failed (cards_08)
-box 2: src-tauri/tests/cards_08.rs::orch015_box2_a_heartbeat_after_the_worker_was_stopped_changes_nothing — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 — test ... ok; test result: ok. 34 passed; 0 failed (cards_08)
-box 3: src-tauri/tests/cards_08.rs::orch015_box3_a_done_report_the_coordinator_writes_for_the_worker_arrives_as_mail_and_the_task_stays_dispatched — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 — test ... ok; test result: ok. 34 passed; 0 failed (cards_08)

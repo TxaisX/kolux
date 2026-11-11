@@ -1,3 +1,0 @@
-box 1: src/terminal/__cards__/TERM-019.test.ts::box 1: a single-pane grid still shows the header, with the program, the session name and the usage — pnpm exec vitest run src/terminal/__cards__/TERM-019.test.ts — ✓
-box 2: src/terminal/__cards__/TERM-019.test.ts::box 2: in a split tab each pane carries its own header with its own usage percentage — same command — ✓ (10% and 75% in two headers)
-combined run: Test Files 5 passed (5), Tests 11 passed (11)

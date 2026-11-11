@@ -1,5 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; pnpm exec vitest run --reporter=verbose src/projects/__cards__/VIEW-040.test.ts src/terminal/__cards__/VIEW-047.test.ts src/agents/__cards__/VIEW-018.test.ts
-box 1: src/projects/__cards__/VIEW-040.test.ts::box 1: an agent waiting on approval with unread output shows the permission mark on its row — pass (✓ 137ms); real WorktreePalette on fakeDom, dirMark("waiting", true) -> aria-label "needs permission", no "unread"
-box 2: src/projects/__cards__/VIEW-040.test.ts::box 2: finished 50 minutes ago reads 50m; finished three days ago reads 3d — pass (✓ 53ms); palette-age cells read ["50m"] and ["3d"]
-MIRROR src/App.tsx:2541 (atOf maps dirMark result and row.changed)
-Test Files  3 passed (3) / Tests  7 passed (7)

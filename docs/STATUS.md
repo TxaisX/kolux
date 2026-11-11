@@ -16,7 +16,7 @@ Kolux is in early alpha. This page says what is verified, what is usable but unv
 
 - CI runs on every pull request and every push to `main`: TypeScript, four front-end test shards, Rust tests, clippy, cargo-deny, the license check, the invoke contract, and the bundle budget.
 - A release is published only after CI passes for that exact commit. The update manifest is signed, and installed copies verify the signature before they install.
-- The project's P0 acceptance suite is at 208 of 228 cards (`node scripts/plan-check.mjs`). The open cards are mostly live-proof checks, not missing features. The ones that affect users are listed below.
+- The project's P0 acceptance suite is at 208 of 228 cards. The open cards are mostly live-proof checks, not missing features. The ones that affect users are listed below.
 - No telemetry. A network watch of a normal session found only loopback traffic from the app and WebView2's own startup checks.
 - The installed build has been used daily on Windows 11 through the 0.1.x releases.
 - Build 0.1.11 is stricter about folders you downloaded: it does not push into local repositories or run programs named in a folder's own git config unless you trust the folder, and it marks a workspace as trusted for Claude or Codex only when its code is on your own `origin` branches. The [changelog](../CHANGELOG.md) has the wording users see.

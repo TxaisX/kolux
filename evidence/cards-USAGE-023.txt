@@ -1,4 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; (scratch env: CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:/Temp/cards-v3/) pnpm exec vitest run --reporter=verbose src/usage/__cards__/USAGE-023.test.ts
-box 1: src/usage/__cards__/USAGE-023.test.ts::box 1: with the network cut the shown figures keep their last values; restored, the next focus refreshes them — pass; real runner, fake clock + focus source: 3 failed timer reads leave shown=[41]; after the back-off a focus reads 55, failures back to 0
-box 2: src/usage/__cards__/USAGE-023.test.ts::box 2: a provider that never answers does not hold Claude or Codex back — pass; real runner with a never-answering stand-in (Kolux RS has no Grok usage read, USAGE-018 unbuilt); real claudeFetched/codexFetched runners update on start and on the 5-minute timer
-Test Files  1 passed (1) / Tests  2 passed (2)

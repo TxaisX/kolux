@@ -1,9 +1,0 @@
-ux fix 15: Settings restores a repository page used last (SET-006 box 1)
-Test file: src/settings/SettingsPage.restore.test.ts (4 tests)
-RED (before fix, vitest src/settings/SettingsPage.restore.test.ts: 2 failed | 2 passed):
-  a repository page used last comes back once the project list is read -> Error: gave up waiting for the remembered repository page
-  a repository that no longer exists shows General and the stored value is kept -> AssertionError: expected 'general' to be 'repo:gone'
-GREEN (after fix):
-  4 of 4 pass: repo page restores; fixed page restores; missing repo shows General and keeps stored value; picked page is remembered
-Gates: vitest run src/settings: 56 files, 302 tests passed; tsc --noEmit clean; plan-check: OK
-Live re-run skipped (coordinator).

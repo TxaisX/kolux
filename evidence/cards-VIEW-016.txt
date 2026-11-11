@@ -1,5 +1,0 @@
-VIEW-016. After main 43c3fce4 (AgentsRail reuses the Board chip line, src/agents/rail.ts rowStatus + src/board/chip.ts chipOf). Both boxes were ledger BUG/DRIFT; now real.
-box 1: src/agents/agentsRail.test.ts::"VIEW-016: an agent waiting on a file-edit approval has a line that names the approval" (word Needs you, line "Edit: src/app.ts") and "the rail's line equals the Board chip's line for the same session data" — pnpm exec vitest run src/agents/agentsRail.test.ts src/chrome/usagePills.test.ts src/board/chip.test.ts — Test Files 3 passed (3); Tests 18 passed (18)
-box 2: src/agents/agentsRail.test.ts::"VIEW-016: an agent idle 12 minutes reads Idle with the duration" (word Idle, line "12m"), and "with no evidence ... the line stays empty" — same command — Tests 18 passed (18)
-MIRROR none: the test calls the product's chipOf and rowStatus; AgentsRail.tsx:49 only prints st.line (data-session-line).
-gates: pnpm exec tsc --noEmit rc 0

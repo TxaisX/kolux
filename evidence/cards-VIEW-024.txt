@@ -1,4 +1,0 @@
-command: pnpm exec vitest run --reporter=verbose src/terminal/__cards__/VIEW-024.test.ts (Test Files 1 passed / Tests 2 passed; slot held)
-box 1: src/terminal/__cards__/VIEW-024.test.ts::box 1: two tabs, one split into two panes, give three cards in tab order — pass (real cellsOf + cardPanes: [1,2,3]; grouped tab sits with its cell: [1,4,2])
-box 2: src/terminal/__cards__/VIEW-024.test.ts::box 2: an editor tab and a browser tab get no card — pass (cardPanes drops kind panes)
-MIRROR src/App.tsx:2210 (cells = cellsOf(panes)), :2309 (lanes via cardPanes), :3020-3190 (kind panes render a preview, terminal/chooser panes get the card prop)

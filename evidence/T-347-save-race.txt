@@ -1,7 +1,0 @@
-T-347 live proof, dev app pid 41136, started with KOLUX_USER_DATA_PATH='G:\Temp\orchestration-T-190\old-copy-data' in its environment (as when started from another copy's terminal).
-Helper workspace pane printed: KOLUX_USER_DATA_PATH in this pane: []   (stripped at pane spawn)
-The pane then printed https://github.com/o/r/pull/347, which became the workspace's linked pull request.
-window copy read before the link was printed: scmLinkedPrs={}, quietMinutes=undefined
-window saves quietMinutes=7 from that copy; sent: {"set":{"quietMinutes":7},"remove":[]}
-after (new per-key save): scmLinkedPrs={"G:\\Temp\\orchestration-T-190\\ws\\orch-repo\\helper":"https://github.com/o/r/pull/347"}, quietMinutes=7
-for contrast, the old whole-settings save from the same copy (save_settings, no longer used by the window): scmLinkedPrs={}, quietMinutes=8

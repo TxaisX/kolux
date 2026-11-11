@@ -1,2 +1,0 @@
-box 1: cards_11.rs::git002_box1_staging_a_folder_stages_all_three_files_beneath_it_and_a_wildcard_name_matches_only_itself — cargo test --manifest-path src-tauri/Cargo.toml --test cards_11 (scratch homes under <scratch>\cards-v3) — test result: ok. 9 passed
-box 2: cards_11.rs::git002_box2_two_thousand_files_are_all_staged_with_no_error — cargo test --manifest-path src-tauri/Cargo.toml --test cards_11 (scratch homes under <scratch>\cards-v3) — test result: ok. 9 passed (2000 staged, index holds 2000, unstage 2000 back to 0)

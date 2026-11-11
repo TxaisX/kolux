@@ -1,6 +1,0 @@
-box 1: src-tauri/tests/cards_05.rs::view012_box1_add_two_files_and_the_newest_is_listed_first (real artifacts::Library, two adds, list = ["Second page","First page"]) — cargo test --manifest-path src-tauri/Cargo.toml --test cards_05 (scratch env under G:\Temp\cards-v3) — test result: ok. 11 passed; 0 failed (whole file)
-box 1: src/artifacts/__cards__/VIEW-012.test.ts::box 1 (real ArtifactsPage: Add artifact twice -> rows ["beta","alpha"]; the stand-in artifacts_list sorts newest first like Library::list) — pnpm exec vitest run src/artifacts/__cards__/VIEW-012.test.ts — Tests 3 passed (3)
-box 2: VIEW-012.test.ts::box 2 (titles "Quarterly Sales Report" and "Sales Chart"; typing "sales chart" leaves only "Sales Chart"; "sales nothing" shows the no-match message) — same command — Tests 3 passed (3)
-  also: src/artifacts/ArtifactsPage.test.ts "matches titles holding every typed word"
-box 3: VIEW-012.test.ts::box 3 (select first row -> iframe preview present; click its remove button -> row gone, no iframe, "Pick an artifact to view it here.") — same command — Tests 3 passed (3)
-box 3: src-tauri/tests/cards_05.rs::view012_box3_removing_an_entry_takes_it_out_of_the_list_and_deletes_its_stored_folder — cargo ... --test cards_05 — ok

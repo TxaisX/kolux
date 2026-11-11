@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   coverageErrors, cutlineLeft, doneLine, headCounts, mergeGate, p0Passing, parseCards, parseCutline,
   parseStrikes, planTasks, rewriteStateHead,
@@ -112,8 +114,11 @@ describe("STATE.md head (T-540 --write-state)", () => {
   });
 });
 
-describe("the real repository (T-540)", () => {
-  const r = headCounts(undefined, new Map());
+// The plan and the spec are Hive files (scripts/hive.mjs). Without the Hive attached there is no real
+// repository to read, so these are skipped, as plan-check itself is.
+const HAS_PLAN = existsSync(fileURLToPath(new URL("../PLAN.md", import.meta.url)));
+describe.skipIf(!HAS_PLAN)("the real repository (T-540)", () => {
+  const r = HAS_PLAN ? headCounts(undefined, new Map()) : { counts: {}, cards: new Map(), passing: [] };
   it("still finds all 228 P0 cards and every box in the spec", () => {
     expect(r.counts.p0Total).toBe(228);
     let boxes = 0;

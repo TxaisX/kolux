@@ -1,5 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; (scratch env: CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:/Temp/cards-v3/) pnpm exec vitest run --reporter=verbose src/agents/__cards__/USAGE-004.test.ts
-box 1: src/agents/__cards__/USAGE-004.test.ts::box 1: a Claude agent at 40% of its 5-hour window reads Claude 40% with a reset time; remaining reads 60% — pass; usageLine "Claude 40% used · resets today 15:00", with usageReads=left or usagePercentages=remaining "Claude 60% left · resets today 15:00", real AgentsRail renders rail-foot with it
-box 2: src/agents/__cards__/USAGE-004.test.ts::box 2: rows with a context reading show a ring, rows without one show none — pass; two rows, one real Ring svg in the row that has a reading (title "Context 100k / 1M (50%)"), none in the other
-MIRROR src/App.tsx:2284 (ringOf = context[p.key] ? {...} : null) and src/App.tsx:2287 (footer = usageLine(..., readsLeft(settings)))
-Test Files  3 passed (3) / Tests  7 passed (7) (run together with USAGE-001 and USAGE-023)

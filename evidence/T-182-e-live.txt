@@ -1,9 +1,0 @@
-T-182-e proof, 2026-10-13, lane release dev app (Windows host)
-1) Windows: closing the last window still quits. Dev app pid 63096 launched, moved to the second
-   screen ("moved: True"), its Close button clicked through CDP with no program running:
-   "clicked:true" -> 6 s later "app exited"; `pnpm tauri dev` finished with exit code 0.
-   (ExitRequested arrived with no code and was not held: keeps_running(false, None, false) = false.)
-2) macOS: the decision is unit-tested; the Dock reopen branch is compiled only for macOS
-   (no macOS target on this PC), while the window rebuild it calls (reopen_main) compiles here.
-   cargo test --lib app006:
-   test tests::app006_only_macos_keeps_running_when_the_last_window_closes_and_a_quit_still_quits ... ok

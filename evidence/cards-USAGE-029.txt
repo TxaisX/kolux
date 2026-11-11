@@ -1,4 +1,0 @@
-USAGE-029. Box 1 stays open (not in this pass). Box 2 after main e441f831.
-box 2: src/chrome/usagePills.test.ts::"USAGE-008: turning Claude off hides the Claude part and leaves Codex's", "USAGE-029: turning both off shows no usage pill at all", "a provider still needs its CLI, its account and a figure; other items do not matter" (hidden:["memory"] leaves Claude's pill unchanged) — pnpm exec vitest run src/agents/agentsRail.test.ts src/chrome/usagePills.test.ts src/board/chip.test.ts — Test Files 3 passed (3); Tests 18 passed (18)
-MIRROR none: logic in usagePills (statusItems.ts).
-gates: pnpm exec tsc --noEmit rc 0

@@ -1,5 +1,0 @@
-EDIT-034 (spec/12-editor-files.md), batch 2
-box 1: src-tauri/tests/cards_12.rs :: edit034_box1_create_on_a_taken_name_is_refused_and_the_original_is_untouched — cargo test --manifest-path src-tauri/Cargo.toml --test cards_12 — test result: ok. 6 passed; 0 failed
-box 2: src-tauri/tests/cards_12.rs :: edit034_box2_two_files_go_to_the_trash_in_one_call_and_undo_brings_both_back (real fsops::trash_each + fsops::restore on two scratch files, Recycle Bin) + src/editor/__cards__/EDIT-033-034.test.ts :: "EDIT-034 box 2: delete two files asks once..." (3 tests: one tops() list, undoOf = fs_restore, Mod+Z/Ctrl+Y/Delete key map) — MIRROR Explorer.tsx:402-408 — cargo: 6 passed; vitest: Tests 6 passed (6)
-box 3: src-tauri/tests/cards_12.rs :: edit034_box3_a_dropped_folder_onto_one_that_holds_the_same_name_arrives_under_a_new_name (fsops::copy_into; "proj copy", then "proj copy 2"; nested contents copied; existing folder and source untouched) — MIRROR Explorer.tsx:595-615 (desktop drop -> doCopy -> fs_copy -> copy_into) — cargo: 6 passed; 0 failed
-gates: clippy --all-targets -D warnings clean; tsc --noEmit clean

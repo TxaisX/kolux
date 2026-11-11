@@ -1,2 +1,0 @@
-box 1: src-tauri/tests/cards_02.rs::sess023_three_separate_copy_seats_get_three_distinct_creature_worktrees_and_a_second_launch_never_repeats_them (first launch part) — cargo test --manifest-path src-tauri/Cargo.toml --test cards_02 sess023 — test ... ok; test result: ok. 1 passed; 0 failed
-box 2: same test (second launch of 3 while the first stand; then first three removed via remove_worktree+forget_workspace and a third launch of 3: none repeats a current or retired name) — same command — ok. 1 passed

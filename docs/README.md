@@ -50,18 +50,15 @@ The source starting points are also stable:
 - `src-tauri/src/terminal.rs` and `src-tauri/src/pty_service.rs` hold the terminal service; `src-tauri/src/pty.rs` is the PTY layer.
 - `src-tauri/src/hooks.rs` holds the loopback listener that agents report to.
 - `src/` is the React window.
-- `SPEC.md` and `spec/` hold the behaviour specification the rebuild was built from.
 
-The project records are public too:
+Two build documents are public:
 
-| Folder | What it is |
+| File | What it is |
 |---|---|
-| [`history/`](history/) | Cycle reports and project records from the rebuild |
-| [`research/`](research/) | Read-only audits of the codebase |
 | [`live-proofs-windows.md`](live-proofs-windows.md) | The live verification run sheet for Windows |
-| [`live-proofs-results-2026-10-31.md`](live-proofs-results-2026-10-31.md) | Results from the first installed-build run |
+| [`research/kolux-slimdown-2026-11-09.md`](research/kolux-slimdown-2026-11-09.md) | The footprint report: memory and processor use, measured before and after |
 
-Those are build records, not user documentation. They are published for transparency, and they can lag the current build.
+The rest of the build record (the plan, the decisions, the behaviour specification and its provenance log, the proof files, the cycle reports and audits) is kept in a private companion repository. `scripts/hive.mjs` lays it over a checkout for the people who have access to it.
 
 ## Documentation status
 

@@ -1,7 +1,0 @@
-box 1: src-tauri/tests/cards_09.rs::auto019_box1_run_now_on_a_paused_automation_logs_a_manual_run_in_its_history — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto019 — test ... ok; test result: ok. 2 passed; 0 failed
-box 1 (window half): src/automations/__cards__/AUTO-019.test.ts::box 1: Run Now in a paused automation's quick-actions menu ... — pnpm exec vitest run src/automations/__cards__/AUTO-019.test.ts — Tests 3 passed (3)
-  (MIRROR automations.rs:1467-1470 automation_run_now = run(l, id, "manual") inside launch_for(app); the test calls the real run(), the command wrapper needs an AppHandle. The UI sends automation_run_now and shows "Run now: Nightly checks is queued")
-box 2: src/automations/__cards__/AUTO-019.test.ts::box 2: with the confirmation on (the default) Delete asks first; with it switched off the next Delete happens at once — vitest as above — passed
-  (real AutomationsPage remove()/confirmRemove(): default settings -> confirm step "Delete Nightly checks?" and no automation_delete; do-not-ask tick saves confirmAutomationDelete=false; with it off Delete sends automation_delete at once with no confirm step)
-box 3: src-tauri/tests/cards_09.rs::auto019_box3_a_paused_automation_runs_nothing_when_its_due_time_comes — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto019 — test ... ok; test result: ok. 2 passed; 0 failed
-box 3 (window half): src/automations/__cards__/AUTO-019.test.ts::box 3 (window half): the menu's Pause asks the back end to switch the automation off — vitest as above — passed

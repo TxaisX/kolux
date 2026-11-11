@@ -1,4 +1,0 @@
-box 1: src/chat/__cards__/VIEW-020.test.ts::box 1 (real viewedFirst -> makeHand/handTargets -> rendered HandOff; targets [3,2], labels api tests, docs; source session absent) — pnpm exec vitest run src/chat/__cards__/VIEW-020.test.ts — Tests 2 passed (2)
-  also: src/chat/model.test.ts "T-080 (VIEW-020): the targets are the other chat sessions, the last viewed first, capped"
-  MIRROR: src/chat/ChatView.tsx:464-468 (viewed list effect with viewedFirst), :492 (makeHand call).
-box 2: src/chat/__cards__/VIEW-020.test.ts::box 2 (makeHand.onHand -> real handOver/handText: keepDraft gets 'please review:\n\n"C:/Users/me/My Docs/report.md"', pick called) — same command — Tests 2 passed (2)

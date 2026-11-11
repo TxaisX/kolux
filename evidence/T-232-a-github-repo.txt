@@ -1,2 +1,0 @@
-scm_github_repo("G:/Temp/orchestration-T-190/ws/orch-repo/helper") with origin git@gh-work:o/r.git and ~/.ssh/config "Host gh-work / HostName github.com":
-{"host":"github.com","owner":"o","name":"r","api":"https://api.github.com","key":"github.com/o/r"}

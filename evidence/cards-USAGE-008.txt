@@ -1,4 +1,0 @@
-USAGE-008. After main e441f831 (per-provider status items pill-claude / pill-codex in src/chrome/statusItems.ts; TopBar.tsx:52 reads usagePills with the hidden list).
-box 2: src/chrome/usagePills.test.ts::"USAGE-008: turning Codex off hides the Codex part and leaves Claude's" (usagePills({..., hidden:["pill-codex"]}) -> {claude:true, codex:false, any:true}); also "the status-bar item list has a usage item per provider" — pnpm exec vitest run src/agents/agentsRail.test.ts src/chrome/usagePills.test.ts src/board/chip.test.ts — Test Files 3 passed (3); Tests 18 passed (18)
-MIRROR none: the decision logic is usagePills in statusItems.ts; TopBar only passes settings and draws the result.
-gates: pnpm exec tsc --noEmit rc 0

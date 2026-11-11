@@ -1,1 +1,0 @@
-["pr","view","txais-xiong/helper","--json","number,url,state,title,headRefName,isDraft","--repo","github.com/o/r"]

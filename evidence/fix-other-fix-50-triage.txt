@@ -1,9 +1,0 @@
-row 50 TRIAGE ONLY (no code): NEEDS RULING (no DECISIONS.md entry on GIT-006 / VIEW-065 / force push after a rebase; grep -i "rewritten|force|GIT-006|VIEW-065" finds only DT-R10 and DT-C26, unrelated).
-
-GIT-006 (spec/11-git-review.md:58) rule: "a branch that differs from its remote only by commits with identical patches, as after a rebase, leads to force push with lease; a clean, fully pushed branch leads to create a review"
-GIT-006 box 2: "Rebase a pushed branch onto its base -> force push with lease is offered, not pull."
-VIEW-065 (spec/05-views-navigation.md:1176) rule: "a branch that differs from its remote only by equivalent patches is steered to Create PR, with Force Push still in the commit area"
-
-Code: model.ts nextStep returns {Force push with lease} for s.rewritten (the GIT-006 base step, tested by GIT-006 test). rules.ts mainStep wraps it: clean + rewritten + upstream + branch -> Create/Open pull request with forceInCommitArea: true (rules.test.ts:67).
-
-Recommendation: VIEW-065 wins for the panel's main button. It is the later and more specific rule, and the code already honours both: GIT-006's force push is still offered (commit area), only the big button steers to Create PR. Suggested resolution: no code change; keep nextStep as the GIT-006 base step; add a one-line DECISIONS entry and reword GIT-006 box 2 to "force push with lease is offered in the commit area". Only if Txais wants force push on the big button instead would mainStep's rewritten branch (rules.ts:93-96) be deleted.

@@ -1,9 +1,0 @@
-row 205 (T-085-d "blocked on scm.rs"): RESOLVED, stale blocker, no code change (lane e0e82b03).
-PLAN.md T-085-d is already ticked (done 2026-10-19): the pull request poll reads each open PR's checks word
-(GIT-043 passing/running/failing) and fires "checks-failed" on the step into failing.
-In the lane tree:
-- src-tauri/src/automations.rs checks_failed / checks_round / listens / on_checks (fire once on step into failing, restart-safe via automations.checksSeen)
-- src-tauri/src/scm.rs:1530-1533 poll calls automations::on_poll, and on_checks(polled_checks(...)) only while an automation listens for "checks-failed"
-- the dialog trigger is T-085-f (ticked)
-proof: cargo test --lib -- automations::  -> 41 passed, 0 failed (incl. t085d_checks_failed_fires_once_on_the_step_into_failing_and_never_on_the_rest,
-t085d_a_restart_keeps_the_last_checks_state_so_red_checks_do_not_fire_again, t085d_a_checks_failure_in_a_watched_worktree_starts_the_listening_automation_only); log G:/Temp/fix-other-v3-logs/p41-205-auto.log

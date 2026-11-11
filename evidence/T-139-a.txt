@@ -1,6 +1,0 @@
-T-139-a live check, 2026-10-11, lane accounts (port 1421).
-Stand-in claude.cmd and aider.cmd first on PATH (they only echo and wait).
-Pane New session menu: Claude Code | Codex | Aider | Choose what to run... | Cancel.
-Chooser, Aider picked: radiogroups [Where the AIs work, Seat 1: which AI]; Start enabled.
-Chooser, Claude Code picked: radiogroups add 'Seat 1: which model: Pick a model Claude Opus Claude Sonnet Claude Haiku Program default'; Start disabled.
-App closed; no new powershell/claude/codex/aider processes left; stand-ins deleted.

@@ -1,4 +1,0 @@
-box 1: src-tauri/src/cli.rs tests::t089d_worker_show_and_read_with_stand_in_hook_state — cargo test --manifest-path src-tauri/Cargo.toml --lib -- t089d_worker_show orch021 orch020 orch022 fix7_d_stop — test cli::tests::t089d_worker_show_and_read_with_stand_in_hook_state ... ok; test result: ok. 8 passed; 0 failed (lib filter)
-  (permission hook -> waiting yes, source hook, attention approval; also cli::worker_read::tests::orch020_waiting_names_its_source_and_says_no_only_after_looking ... ok)
-box 2: same test — cargo test --manifest-path src-tauri/Cargo.toml --lib -- t089d_worker_show orch021 orch020 orch022 fix7_d_stop — ok; test result: ok. 8 passed; 0 failed (lib filter)
-  (working hook during a tool call -> waiting no, source hook; RS spells the box's "empty" as waiting: "no")

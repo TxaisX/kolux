@@ -1,8 +1,0 @@
-T-138 live check, 2026-10-11, lane accounts (port 1421, identifier com.txaisxiong.kolux-rs.accounts).
-Seeded state.db with fake accounts (no real credentials): Claude a1 sam@example.test / Example Org, a2 sam@example.test / Second Org (stale, active); Codex c1 kim@example.test (fake auth.json, active), c2 lee@example.test (no sign-in file).
-Stand-in claude.cmd and codex.cmd (exit 1) first on PATH, so no real CLI ran.
-Rows read from the page after 35 s: System default [false]; Example Org; Second Org Needs re-auth Active; Codex System default Signed in with ChatGPT; kim Active; lee Needs sign-in.
-Real click on the Example Org row -> claude_accounts active = a1.
-Remove on the active a1 -> inline confirm 'Remove sam@example.test? Its sign-in is deleted from Kolux; the System default takes over for new panes. ...'; Keep closes it; Remove -> active null, ids [a2], folder a1 deleted.
-Remove on the active Codex c1 -> confirm -> active null, ids [c2], missing [c2], home c1 deleted.
-Afterwards: app closed, seeded keys and folders removed, stand-ins deleted; new powershell/claude processes all belong to the core and orchestration lanes.

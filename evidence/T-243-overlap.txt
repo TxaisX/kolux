@@ -1,8 +1,0 @@
-ok at 1384px: .skills-search 309-589 · .skills-chips 720-1039
-ok at 1384px: .skills-chips 720-1039 · .skills-bar .spacer + * 1200-1285
-ok at 1384px: .sb-list 9-296 · .skills 297-1384
-exit 0
-ok at 1920px: .skills-search 309-589 · .skills-chips 720-1039
-ok at 1920px: .skills-chips 720-1039 · .skills-bar .spacer + * 1736-1821
-ok at 1920px: .sb-list 9-296 · .skills 297-1920
-exit 0

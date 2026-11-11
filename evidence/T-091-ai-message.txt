@@ -1,5 +1,0 @@
-== ship --no-release with the commit message written by claude -p (stand-in claude.cmd on PATH)
-commit message: Add the second rehearsal note
-Already up to date.
-pushed a50f07b to origin/two
-

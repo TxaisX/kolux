@@ -1,4 +1,0 @@
-box 1: src-tauri/tests/cards_10.rs::safe010_box1_plain_force_pushes_and_a_delete_of_main_ask — cargo test --manifest-path src-tauri/Cargo.toml --test cards_10 (scratch env G:\Temp\cards-v3) — ok; test result: ok. 18 passed; 0 failed
-box 2: src-tauri/tests/cards_10.rs::safe010_box2_the_at_sign_shorthand_for_the_current_branch_asks — same command — ok; test result: ok. 18 passed; 0 failed
-box 3: src-tauri/tests/cards_10.rs::safe010_box3_feature_branch_force_pushes_and_ordinary_pushes_run — same command — ok; test result: ok. 18 passed; 0 failed
-box 4: src-tauri/tests/cards_10.rs::safe010_box4_hard_reset_and_forced_clean_ask_soft_reset_and_dry_run_run — same command — ok; test result: ok. 18 passed; 0 failed

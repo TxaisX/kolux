@@ -35,7 +35,7 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 </p>
 <p align="center"><sub>The first of the four first-run steps. The next three connect an AI, pick a project folder and start a session.</sub></p>
 
-<p align="center"><sub>The screenshots on this page are captures of the app's own window from the project's live test runs; the originals are in <a href="evidence">evidence/</a>.</sub></p>
+<p align="center"><sub>The screenshots on this page are captures of the app's own window from the project's live test runs.</sub></p>
 
 ## What it does
 
@@ -52,7 +52,7 @@ Kolux is a Windows desktop app for people who run several AI coding agents at on
 - **Measured, not guessed.** On the project's test PC, build 0.1.11 with 12 terminals open and the window minimised keeps 226 MB in memory and uses 5 % of one processor core, down from 544 MB and 13 %. The runs, the method and the gains that have not shipped yet are in the [footprint report](docs/research/kolux-slimdown-2026-11-09.md).
 - **Sessions outlive the window.** Terminals run in a background service. Close or reload the window and the agents keep working; quit and reopen, and each tab comes back, with Claude Code and Codex resuming their own sessions.
 - **Proof you can read.** More than 6,000 front-end tests and 3,000 Rust tests run on every push, 208 of the 228 must-have acceptance cards pass, and the ones still open are listed in [Status](docs/STATUS.md) rather than left out.
-- **Every line is the project's own.** Kolux is a clean-room rebuild: written from a description of what the user sees, never from another app's code. [PROVENANCE.md](PROVENANCE.md) holds the record.
+- **Every line is the project's own.** Kolux is a clean-room rebuild: written from a description of what the user sees, never from another app's code. The record of where each part came from is kept with the project's build logs and is available on request.
 
 ## Install
 

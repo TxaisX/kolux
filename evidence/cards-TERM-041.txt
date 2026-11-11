@@ -1,7 +1,0 @@
-command: pnpm exec vitest run src/terminal/__cards__/TERM-041.test.ts — Test Files 1 passed (1); Tests 3 passed (3); cargo test --test cards_03 term041 — ok
-box 1: NOT TICKED (LIVE). Needs the menu and the pane header in a window
-box 2: src/terminal/__cards__/TERM-041.test.ts::"box 2: each agent has its own new-tab command..." — pnpm exec vitest run src/terminal/__cards__/TERM-041.test.ts — passed (every listed agent has tab.newAgent.<id>, chords [] on win32/linux/darwin) + src-tauri/tests/cards_03.rs::term041_box2_every_catalogue_agent_has_an_unbound_new_tab_command — ok (every Rust catalogue agent id has its command in actions.ts)
-
-LIVE 2026-10-26 (box 1): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-041, stand-in scripts only), driven by scripts/prove/live-TERM-041.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-041; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-041.out.txt (run-TERM-041.log).
-  Reading: New tab -> Claude Code (stand-in claude); header names Claude Code; a MutationObserver on the status label saw Starting, Starting, Working in that order; header 'Claude Code · opus Starting'.
-  Screenshot: G:/Temp/live-v1-logs/TERM-041-claude-tab.png

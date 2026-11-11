@@ -1,7 +1,0 @@
-00:38:15.183 PowerShell 5.1 pane modes: {"bracketedPasteMode":false,"windows":true}
-00:38:17.583 bash started; modes now: {"bracketedPasteMode":true,"windows":true}; prompt: "$ "
-00:38:19.101 buffer 1.5 s after the paste (no Enter sent): ["and 'wsl.exe --install <Distro>' to install.","PS G:\\Temp\\core-c32\\repo> ^C","PS G:\\Temp\\core-c32\\repo> & 'C:/Program Files/Git/bin/bash.exe' -i","","<user>@<host> MINGW64 /tmp/core-c32/repo (main)","$ echo one","echo two","echo three"]
-00:38:19.101 outputs that appeared before Enter: 0 (none)
-00:38:20.634 buffer after one Enter: ["PS G:\\Temp\\core-c32\\repo> ^C","PS G:\\Temp\\core-c32\\repo> & 'C:/Program Files/Git/bin/bash.exe' -i","","<user>@<host> MINGW64 /tmp/core-c32/repo (main)","$ echo one","echo two","echo three","one","two","three"]
-00:38:20.635 RESULT PASS: outputs before Enter 0 (bar: 0); after one Enter 3 of 3
-00:38:21.444 bash left; modes: {"bracketedPasteMode":false,"windows":true}

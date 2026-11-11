@@ -1,1 +1,0 @@
-stub installer ran with: /P /UPDATE /R /ARGS   (2026-10-09, T-090 live proof: clicking "Restart to update" on the ready pop-up closed the app and ran the downloaded installer passive with /R, so it reopens the new version)

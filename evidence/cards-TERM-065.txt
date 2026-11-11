@@ -1,4 +1,0 @@
-box 1: src/terminal/__cards__/TERM-065.test.ts::box 1 (routeKey: Ctrl+Shift+C and Ctrl+C-with-selection -> terminal.copySelection; copySelection with a refusing clipboard returns "failed", one notice "refused the copy ... selection is still here", selection intact, focus returned) — pnpm exec vitest run src/terminal/__cards__/TERM-065.test.ts — ✓
-box 2: src/terminal/__cards__/TERM-065.test.ts::box 2 (empty selection: outcome "empty", no notice, no clipboard write, also when the clipboard would fail; Ctrl+C with no selection goes to the shell) — same command — ✓
-combined run: Test Files 5 passed (5), Tests 19 passed (19)
-note: the pane shows whatever notice copySelection hands to setFlash (TerminalPane glue not rendered); the "clipboard locked by another app" is a rejected writeText stand-in.

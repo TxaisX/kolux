@@ -1,4 +1,0 @@
-row 51 (VIEW-065 main button width) SKIPPED at step 0, no code changed.
-Reason: git log main..lane/release shows lane/release has unmerged changes to src/scm/SourceControlPanel.tsx (+39/-9 area), src/scm/model.ts, src/scm/model.test.ts and src/styles.css (git diff --stat main...lane/release). The row's fix lands in SourceControlPanel/styles.css, so per the card it waits for that lane to merge.
-VIEW-065 wording to pin when rerun: "labels change width without pushing the sidebar wider".
-Plan for the rerun: one scoped rule on .scm-main (fixed width or min-width plus overflow hidden, text-overflow ellipsis, white-space nowrap) using existing tokens; CSS-only, record LIVE PROOF PENDING.

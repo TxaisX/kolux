@@ -1,7 +1,0 @@
-TERM-013: live proof evidence
-
-LIVE 2026-10-26 (box 1 + box 2): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-013, stand-in scripts only), driven by scripts/prove/live-TERM-013.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-013; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-013.out.txt (run-TERM-013.log).
-  Setup: 3 panes, pane 2 printed 200 numbered lines (line 1 .. line 200). Clicked Expand (pane 2 went 391 px -> 803 px wide), then Restore.
-  Reading box 1: every pane rect equal after Restore, max difference 0.00 px over 3 panes.
-  Reading box 2: the 200 numbered lines identical (200 -> 200, first 'line 1', last 'line 200'); first 20 and last 20 non-blank lines identical; xterm buffer length 203 -> 203.
-  Screenshot: G:/Temp/live-v1-logs/TERM-013-restored.png

@@ -1,7 +1,0 @@
-box 1: NOT PROVEN (LIVE): "never shows blank panes" is a rendering result. Decision half passes: src/terminal/__cards__/TERM-103.test.ts (ten terminals: 6 webgl + 4 dom; a GPU load failure leaves the next ones unaffected; switch off = all plain) — pnpm exec vitest run src/terminal/__cards__/TERM-103.test.ts — ✓
-box 2: NOT PROVEN (LIVE): pool half passes (same test, plus renderer.test.ts "the seventh terminal draws plain..."), "still show text" on the plain path needs a window.
-combined run: Test Files 5 passed (5), Tests 19 passed (19)
-
-LIVE 2026-10-26 (box 1 + box 2): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-103, stand-in scripts only), driven by scripts/prove/live-TERM-103.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-103; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-103.out.txt (run-TERM-103.log).
-  Reading: 10 terminal panes shown, none blank (each holds its marker); 6 draw on the GPU path (WebGL), the 4 others on the plain DOM path with their text in the DOM rows.
-  Screenshot: G:/Temp/live-v1-logs/TERM-103-ten-panes.png

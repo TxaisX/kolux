@@ -1,7 +1,0 @@
-box 1: src-tauri/tests/cards_01.rs::two_chosen_sibling_repositories_become_exactly_two_projects_and_nothing_else — cargo test --manifest-path src-tauri/Cargo.toml --test cards_01 (scratch CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:/Temp/cards-v3; lib.rs exposes git, projects, state) — test two_chosen_sibling_repositories_become_exactly_two_projects_and_nothing_else ... ok
-  test choosing_a_folder_that_is_registered_already_adds_no_second_row ... ok
-  test result: ok. 2 passed; 0 failed
-  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: Finished, no warnings
-box 2: src-tauri/src/projects.rs::tests::add_project_dedupes_and_rejects_non_repos — cargo test --manifest-path src-tauri/Cargo.toml --lib -- add_project_dedupes own_worktrees_are_managed a_picked_worktree_is_added create_and_remove_workspace_through sess037_the_advanced proj020_an_overtaken names::tests   (CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME on scratch under G:\Temp\cards-v3) — test projects::tests::add_project_dedupes_and_rejects_non_repos ... ok  (a repository added, then again through a folder inside it: same project, load_projects().len() == 1)
-  test result: ok. 12 passed; 0 failed
-  also (patched run) choosing_a_folder_that_is_registered_already_adds_no_second_row ... ok (same folder, trailing separator, upper-case spelling on Windows: one row)

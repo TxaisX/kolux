@@ -1,8 +1,0 @@
-pnpm smoke at 2026-10-14T01:05:21.600Z on 509624f (G:\Dev\kolux-rs-lanes\hooks)
-args: -- --port 1419 --cdp 9245 --identifier com.txaisxiong.kolux-rs.hooks.smoke --temp G:/Temp/hooks-t123c; T-184 ticked: true; flow 5 required
-PASS 1: grid 4 -> 6 (3 shells + 1 empty -> 3 shells + 3 empty); all 3 shells echoed the marker set before the change (same PTY processes)
-PASS 2: Mod+S wrote notes.txt: disk now holds "typed by smoke 1791939688245" plus the original line (42 bytes)
-PASS 3: Discard asked first ("Discard changes to notes.txt?", buttons Cancel / Discard); after "Cancel" notes.txt and git status are unchanged
-PASS 4: Claude pane's dot reads "status: Working" after the stand-in posted SessionStart + UserPromptSubmit; hook installed into the scratch G:\Temp\hooks-t123c\tmp\claude-config\settings.json, script G:/Temp/hooks-t123c/home/.kolux-rs/agent-hooks/claude.cmd on disk
-PASS 5: live: 2 shells, 1 Claude stand-in pane, needsStrip=false; settings.json 1632 bytes · quit: window close over CDP, exited in 2.5 s; pre-close tree 15 (msedgewebview2.exe x6, conhost.exe x4, powershell.exe x3, cmd.exe x1, PING.EXE x1); survivors 0 (none) · come back: settings.json byte-identical; needsStrip=false holds; 2/2 shells restored, 2 echoed a marker; 1 Claude pane back · storm: 10 relaunches with 12 saved shell panes; shells seen [12 12 12 12 12 12 12 12 12 12]; stalled (ThreadCount <= 1 at 15 s) [0 0 0 0 0 0 0 0 0 0] = 0; survivors per close [0 0 0 0 0 0 0 0 0 0 0]
-smoke: 5/5 flows passed

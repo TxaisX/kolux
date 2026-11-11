@@ -1,4 +1,0 @@
-ok at 1384px: .tour 270-590 · aside button[title^='New workspace'] 236-260
-ok at 1384px: .tour-label 307-335 · .tour-foot .btn 476-522
-ok at 1920px: .tour 270-590 · aside button[title^='New workspace'] 236-260
-ok at 1920px: .tour-label 307-335 · .tour-foot .btn 476-522

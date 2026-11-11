@@ -1,3 +1,0 @@
-box 1: src-tauri/tests/cards_10.rs::safe001_box1_the_status_carries_the_plan_while_claude_waits_and_drops_it_once_it_is_approved + src/terminal/__cards__/SAFE-001.test.ts::box 1 — cargo test --manifest-path src-tauri/Cargo.toml --test cards_10 ; pnpm exec vitest run src/terminal/__cards__/SAFE-001.test.ts src/terminal/__cards__/SAFE-002.test.ts src/terminal/__cards__/SAFE-004.test.ts — ok; test result: ok. 5 passed; 0 failed (cards_10); Test Files  3 passed (3); Tests  5 passed (5)
-box 2: src-tauri/tests/cards_10.rs::safe001_box2_a_shell_permission_carries_no_plan + src/terminal/__cards__/SAFE-001.test.ts::box 2 — same commands — ok
-MIRROR src/App.tsx:3287 (passes hook state + turn to the real showsReview)

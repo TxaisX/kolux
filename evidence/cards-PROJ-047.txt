@@ -1,6 +1,0 @@
-box 1: src/projects/model.test.ts::"a child sits under its parent, to any depth; a child whose parent is gone is top level" + "folding a parent hides everything under it; nesting off is one flat level" — pnpm exec vitest run src/terminal/layout.test.ts src/projects/model.test.ts -t "proj067|nest|folding|child|loop of parents" (scratch env G:\Temp\cards-v3) — Test Files 2 passed (2) / Tests 7 passed | 27 skipped (34)
-  (nestRows: p+, -child+, --grand; folding p leaves ["p+","zeta"], the child hidden)
-  backend half: cargo test --manifest-path src-tauri/Cargo.toml --lib -- create_and_remove_workspace_through_the_project — test projects::tests::create_and_remove_workspace_through_the_project ... ok / test result: ok. 1 passed; 0 failed (set_parent makes list_workspaces report the parent)
-box 2: src/projects/model.test.ts::"folding a parent hides everything under it; nesting off is one flat level" — same command — same pass line
-  (nestRows(..., false, shut) lists ["child","grand","p","zeta"], all depth 0, fold ignored)
-  glue not run live: ProjectsPanel.tsx shutKids fold state and the gear checkbox for nesting off (setting read at ProjectsPanel.tsx:145).

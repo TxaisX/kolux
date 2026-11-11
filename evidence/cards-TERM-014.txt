@@ -1,3 +1,0 @@
-command: pnpm exec vitest run src/terminal/__cards__/TERM-014.test.ts — Test Files 1 passed (1); Tests 3 passed (3)
-box 1: src/terminal/__cards__/TERM-014.test.ts::"box 1: closing the middle of three panes leaves two panes filling the area" — pnpm exec vitest run src/terminal/__cards__/TERM-014.test.ts — passed (only the closed key leaves, 2 cells, columnsFor(2)*rowsFor(2)=2, focus lands on a remaining pane). Glue note: dropPanes in App.tsx is mirrored, not rendered
-box 2: src/terminal/__cards__/TERM-014.test.ts::"box 2: closing the only pane in a tab closes that tab, other workspaces keep theirs" — pnpm exec vitest run src/terminal/__cards__/TERM-014.test.ts — passed (no pane or cell left in that workspace; other workspace untouched; neighbourTab([1],1)=null)

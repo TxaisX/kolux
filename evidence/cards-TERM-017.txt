@@ -1,8 +1,0 @@
-box 1: NOT PROVEN (LIVE): the layout functions keep every pane key and folder through 10 random splits/moves (TERM-017.test.ts box 1, passes), but "still shows its own session" is the terminal host re-parenting by group id / pane key in the DOM.
-box 2: src/terminal/__cards__/TERM-017.test.ts::box 2 (codec.forPane after 20 random split/move runs: an output event is taken by its pane only) + src-tauri/tests/cards_03.rs::term017_box2_text_printed_in_one_session_never_shows_in_another (two real shells, marker text printed in each never reaches the other; attach_answer hands a remounted pane its running session) — pnpm exec vitest run src/terminal/__cards__/TERM-017.test.ts ; cargo test --manifest-path src-tauri/Cargo.toml --test cards_03 — ✓ ; test result: ok. 6 passed; 0 failed
-gates: cargo clippy --all-targets -- -D warnings rc=0; pnpm exec tsc --noEmit rc=0
-
-LIVE 2026-10-26 (box 1): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-017, stand-in scripts only), driven by scripts/prove/live-TERM-017.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-017; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-017.out.txt (run-TERM-017.log).
-  Setup: 4 shells, each with its own marker; each xterm host element tagged. 10 seeded operations: 8 pane moves (synthetic drag/drop events on the grip and cell edge zones), 1 preset (layout 4), 1 split; 6 of them changed the layout.
-  Reading: after every operation each pane kept its own host element (tag) and showed only its own marker (10 of 10 checks clean). Shell pids before [27696,57460,70104,71536], after the same four + 1 new from the split ([6084]); ended 0.
-  Screenshot: G:/Temp/live-v1-logs/TERM-017-end.png

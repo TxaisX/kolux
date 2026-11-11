@@ -1,8 +1,0 @@
-env: CLAUDE_CONFIG_DIR=CODEX_HOME=<scratch>\cards-v3\tmp USERPROFILE=<scratch>\cards-v3\home HOME=<scratch>/cards-v3/home TEMP=TMP=<scratch>\cards-v3\tmp (scratch root G:\Temp\cards-v3, .kolux-rs-scratch markers)
-box 1: src/status/__cards__/STAT-041.test.ts 'box 1: Codex finishing in a workspace that is not active ...' — pnpm exec vitest run src/status/__cards__/STAT-041.test.ts src/status/__cards__/STAT-007.test.ts src/terminal/status.test.ts
- Test Files  3 passed (3)
-      Tests  18 passed (18)
-box 1 (the status a Codex Stop sends carries the reply): src-tauri/tests/cards_04.rs::stat041_the_status_a_codex_stop_sends_carries_its_reply_and_no_boundary — cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-test stat041_the_status_a_codex_stop_sends_carries_its_reply_and_no_boundary ... ok
-scene: Kolux window not focused (the user turned to something else), Codex pane in a workspace that is not on screen; a focused window holds the note back by default (STAT-044 rule), covered by the 'note' test
-box 2: behaviour passes (STAT-041.test.ts box 2, switch off, nothing raised) but left UNTICKED: DRIFT, the spec names the switch 'Agent Task Complete', the Notifications page labels it 'An agent finishes its task or needs permission' (src/settings/notifications.ts:13)

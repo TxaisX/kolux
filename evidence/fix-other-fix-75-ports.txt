@@ -1,8 +1,0 @@
-Row 75: ports popover. Non-Windows scan_listeners now returns an empty list (the popover says "Nothing in this
-workspace is listening on a port", no error banner); external rows are cut to MAX_EXTERNAL_ROWS (12) in ports_list
-only (cap_external), so ports_stop still sees the whole scan. Own ports are never dropped.
-Red: G:/Temp/fix-other-v3-logs/p37-75-red.log (cap_external / MAX_EXTERNAL_ROWS missing, 6 compile errors).
-Green: p37-75-green.log (cargo test --lib -- ports:: 10 passed, 2 of them row75_*; the cfg(not(windows)) test
-row75_a_system_without_a_scan_... is not compiled on this Windows box). Clippy --lib --tests -D warnings clean
-with the pending 364b lib.rs patch applied (p37-75-clippy.log).
-LIVE PROOF PENDING: on a machine with 20+ listeners the popover lists own ports then at most 12 external ones.

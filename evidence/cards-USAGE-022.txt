@@ -1,6 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; (scratch env: CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:/Temp/cards-v3/) cargo test --manifest-path src-tauri/Cargo.toml --test cards_06 (after commit "cards: expose codex_usage for tests")
-box 1: src-tauri/tests/cards_06.rs::usage022_box1_a_weekly_only_plan_shows_only_the_weekly_figure_with_its_reset_time — ok; real read_account -> read_with against a stand-in codex.cmd printing hand-written replies: five_hour None, weekly {35.0, resets 1790000000, 10080}; also with the weekly window listed second
-box 2: src-tauri/tests/cards_06.rs::usage022_box2_without_a_sign_in_the_figures_go_and_no_codex_process_is_started — ok; no auth.json (or tokens null) -> state signed-out, no figures, launched.txt marker never written
-box 2: src-tauri/tests/cards_06.rs::usage022_box2_a_sign_in_the_service_has_revoked_ends_the_read_with_a_sign_in_again_warning_and_no_figures — ok; revoked refresh token (account read) or expired token (usage read) -> state sign-in-again, no figures
-test result: ok. 3 passed; 0 failed
-note: the only Codex process Kolux ever starts is the windowless background app-server (CREATE_NO_WINDOW); the hidden-terminal /status route is not built (DT-C15)

@@ -1,8 +1,0 @@
-box 1: src/projects/__cards__/PROJ-050.test.ts::"one workspace blocked and one done: blocked is above done, whichever changed last" — pnpm exec vitest run src/projects/__cards__/PROJ-050.test.ts src/projects/rows.test.ts (scratch env G:\Temp\cards-v3) — Test Files 2 passed (2) / Tests 7 passed (7)
-  (blocked changed before, after, and at the same time as done: smartOrder lists blocked first in all three, from either input order)
-box 2: src/projects/__cards__/PROJ-050.test.ts::"an interrupted agent's workspace is not sorted among the done ones, even when it changed first" — same command — same pass line
-  (a workspace whose strongest pane state is interrupted sorts above done rows that changed later: order mixed, stopped, finishedNew, finishedOld)
-  hook side, the state the row receives: cargo test --manifest-path src-tauri/Cargo.toml --lib -- stop_after_a_kolux_cancel_reads_interrupted stat_028_a_cancel_with_no_stop
-    test status::tests::stat_028_a_cancel_with_no_stop_settles_interrupted_and_late_events_cannot_revive_it ... ok
-    test status::tests::stop_after_a_kolux_cancel_reads_interrupted_and_late_events_cannot_revive_it ... ok
-    test result: ok. 2 passed; 0 failed

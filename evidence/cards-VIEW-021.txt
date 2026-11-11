@@ -1,4 +1,0 @@
-command: pnpm exec vitest run --reporter=verbose src/agents/__cards__/VIEW-021.test.ts (Test Files 1 passed / Tests 2 passed; slot held)
-box 1: src/agents/__cards__/VIEW-021.test.ts::box 1: + under an agent adds a not-started row under that agent and selects it — pass (real AgentsRail + button 'Add a Codex session' onClick -> onAdd; row under Codex, class 'sess sel pending', 'New session', 'Not started')
-box 2: src/agents/__cards__/VIEW-021.test.ts::box 2: a fresh profile with no saved agents shows an empty state, not a blank rail — pass (No agents yet + Open Settings button calls onSettings; no rail-group)
-MIRROR src/App.tsx:2290-2296 addPreset (pane shape with seats:[{agent:id}] and setAgentSel(key) copied into the test)

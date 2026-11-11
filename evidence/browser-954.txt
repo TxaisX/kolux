@@ -1,9 +1,0 @@
-Row 954 (BROW-001 b2): a page's window.close() must not kill its tab.
-Cause, fix, node vm behaviour check and the LIVE PROOF PENDING step: see evidence/browser-955.txt (section 954, step 3 and 4).
-Test: browser::tests::row954_a_tab_page_cannot_close_its_own_tab.
-
-node vm check (script extracted from browser.rs, run against a window whose close() stands for wry's DestroyWindow):
-  before script, window.close() destroys: true
-  after script, destroyed = 0 (want 0)
-  page script calling window.close(): destroyed = 0
-  page cannot swap it in sloppy mode; destroyed = 0 swapped = false

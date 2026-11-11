@@ -1,8 +1,0 @@
-pnpm smoke at 2026-10-25T20:38:45.789Z on b93a43fd (G:\Dev\kolux-rs)
-args: -- --keep --temp G:\\Temp\\smoke-merge --cdp 9251; T-184 ticked: false; flow 5 report-only
-PASS 1: grid 4 -> 6 (3 shells + 1 empty -> 3 shells + 3 empty); all 3 shells echoed the marker set before the change (same PTY processes)
-PASS 2: Mod+S wrote notes.txt: disk now holds "typed by smoke 1792960288220" plus the original line (42 bytes)
-PASS 3: Discard asked first ("Discard changes to notes.txt?", buttons Cancel / Discard); after "Cancel" notes.txt and git status are unchanged
-PASS 4: Claude pane's dot reads "status: Working" after the stand-in posted SessionStart + UserPromptSubmit; hook installed into the scratch G:\Temp\smoke-merge\tmp\claude-config\settings.json, script G:/Temp/smoke-merge/home/.kolux-rs/agent-hooks/claude.cmd on disk
-FAIL 5 [report-only]: settings.json is not byte-identical after the relaunch (1606 -> 1657 bytes; keys that differ: uiLook, appearanceMode) · live: 2 shells, 1 Claude stand-in pane, needsStrip=false; settings.json 1606 bytes · quit: window close over CDP, exited in 3.8 s; pre-close tree 17 (msedgewebview2.exe x6, conhost.exe x5, powershell.exe x3, cmd.exe x1, git.exe x1, PING.EXE x1); survivors 0 (none) · come back: settings.json CHANGED; needsStrip=false holds; 2/2 shells restored, 2 echoed a marker; 1 Claude pane back · stress: relaunched at once after a quit (exited in 2.5 s); page up in 8.7 s; no webview failure in the log · storm: 10 relaunches with 12 saved shell panes; shells seen [12 12 12 12 12 12 12 12 12 12]; stalled (ThreadCount <= 1 at 15 s) [0 0 0 0 0 0 0 0 0 0] = 0; survivors per close [0 0 0 0 0 0 0 0 0 0 0]
-smoke: 4/4 flows passed (flow 5 report-only until T-184 is ticked in PLAN.md: FAIL)

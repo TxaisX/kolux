@@ -1,9 +1,0 @@
-00:25:00.146 connected to the page over CDP 9244; app pid 65228
-00:25:03.166 reader running; prompts in the last 60 buffer lines before the paste: 3; last line: "ext('G:\\\\Temp\\\\core-c32-logs\\\\n.txt',\"$n\")}}; \"lines=$n\""; prompt shown now: false
-00:25:03.197 paste dispatched: 1200000 chars, 100000 lines
-00:25:08.965 reader has counted 3000 of 100000 lines 5768 ms after the paste: pressing Ctrl+C now
-00:25:09.105 prompt back 137 ms after the Ctrl+C key was sent (key dispatch itself took 5 ms; 5 buffer polls at ~20 ms)
-00:25:09.105 reader count at Ctrl+C 3000, final count file 3000 of 100000 (97000 lines never reached the reader: dropped by cancel)
-00:25:09.105 buffer tail after: ["line 003210","line 003211","line 003212","line 003213","PS G:\\Temp\\core-c32\\repo> "]
-00:25:10.389 probe answered; buffer tail: ["line 003209","line 003210","line 003211","line 003212","line 003213","PS G:\\Temp\\core-c32\\repo> 'after-cancel-ok'","after-cancel-ok","PS G:\\Temp\\core-c32\\repo>"]
-00:25:10.389 RESULT PASS: Ctrl+C to prompt 137 ms (pass = under 1000), paste 1200000 chars / 100000 lines, reader at 3000 lines when Ctrl+C went

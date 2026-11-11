@@ -1,7 +1,0 @@
-T-013-c live proof, 2026-10-12: 'first' started (post-checkout hook sleeps 8 s), 'second' started 2 s later and overtook it.
-git worktree list after both answered:
-G:/Temp/worktrees-T-013-c/repo                            c28ec9a [main]
-%USERPROFILE%/kolux-rs/workspaces-worktrees/repo/second c28ec9a [t/second]
-branches:
-+ t/second
-(no t/first branch and no first folder: the half-made checkout was removed)

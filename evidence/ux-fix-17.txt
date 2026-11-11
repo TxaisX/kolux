@@ -1,7 +1,0 @@
-ux fix 17: SET-011 box 1, a null keybindings entry reads Unassigned, not Disabled
-Repro tests (src/settings/shortcutRows.test.ts): "SET-011 box 1: a null entry shows Unassigned, not Disabled"; changed expectation in "every command is listed under its area..." (zoom.in).
-FAIL (before): AssertionError: expected [ [], [ 'Disabled' ] ] to deeply equal [ [], [ 'Unassigned' ] ]
-PASS (after): shortcutRows.test.ts 10 passed
-Gates: tsc --noEmit clean; vitest run src/settings src/keys 68 files / 359 tests pass; plan-check: OK
-Disabled: no source left in shortcutRows.ts; the Badge union member stays (spec SET-008 still names it); ShortcutsPage renders the badge string with no Disabled-specific code or CSS.
-Live check skipped (coordinator).

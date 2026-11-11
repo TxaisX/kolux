@@ -1,3 +1,0 @@
-cmd: pnpm exec vitest run src/editor/__cards__/EDIT-036.test.ts src/editor/FilePicker.test.ts  (scratch HOME/CLAUDE_CONFIG_DIR/CODEX_HOME under G:\Temp\cards-v3)
-box 1: src/editor/__cards__/EDIT-036.test.ts::EDIT-036 box 1: type panel after Mod+P (Mod+P is the Quick Open action; files with panel in their name are listed before files that only sit in a panel folder) + src/editor/FilePicker.test.ts rank tests — pass line: Test Files 2 passed (2), Tests 7 passed (7)
-box 2: src/editor/__cards__/EDIT-036.test.ts::EDIT-036 box 2: hover a result (tooltip absent until pointer over a result, shows root+folder span and name strong, left/top follow each pointer move, flips to right edge, hidden on leave) — pass line: Test Files 2 passed (2), Tests 7 passed (7)

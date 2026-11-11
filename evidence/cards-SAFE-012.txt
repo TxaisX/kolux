@@ -1,3 +1,0 @@
-box 1: src-tauri/tests/cards_10.rs::safe012_box1_stripe_changes_ask_listening_and_listing_and_a_key_prefix_search_run — cargo test --manifest-path src-tauri/Cargo.toml --test cards_10 (scratch env G:\Temp\cards-v3) — ok; test result: ok. 18 passed; 0 failed
-box 2: src-tauri/tests/cards_10.rs::safe012_box2_terraform_apply_and_cdk_deploy_ask_terraform_plan_runs — same command — ok; test result: ok. 18 passed; 0 failed
-box 3: src-tauri/tests/cards_10.rs::safe012_box3_production_deploys_ask_a_deploy_without_the_flag_and_a_production_install_run — same command — ok; test result: ok. 18 passed; 0 failed

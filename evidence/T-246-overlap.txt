@@ -1,8 +1,0 @@
-ok at 1384px: .settings-title 17-287 · .settings-search 17-287
-ok at 1384px: .settings-search 17-287 · .settings-nav .settings-link 17-287
-ok at 1384px: .settings-found-title 333-1332 · .settings-found .conn-card 333-893
-ok at 1384px: .settings-head h1 333-387 · .settings-found-title 333-1332
-ok at 1920px: .settings-title 17-287 · .settings-search 17-287
-ok at 1920px: .settings-search 17-287 · .settings-nav .settings-link 17-287
-ok at 1920px: .settings-found-title 333-1868 · .settings-found .conn-card 333-893
-ok at 1920px: .settings-head h1 333-387 · .settings-found-title 333-1868

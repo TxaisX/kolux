@@ -1,9 +1,0 @@
-T-123-b (STAT 025 rest: the reply of an agent whose hook reports carry no reply text) · lane/hooks, 2026-10-13
-
-Outcome: done by the existing path; no new code.
-- Codex's own hook source builds the Stop input as StopCommandInput { session_id, turn_id, transcript_path, cwd, hook_event_name, model, permission_mode, stop_hook_active, last_assistant_message } (codex-rs hooks/src/events/stop.rs, via context7 /openai/codex), with last_assistant_message the reply text or JSON null when the turn had none. SubagentStop carries it too.
-- status.rs's Stop path reads last_assistant_message for every agent (it sets the session's reply from it), and hooks.rs's test codex_events_map_to_pane_states already feeds a Codex Stop carrying it through codex_change and reads done.
-- The rollout reader added in 684abdc (agent_hooks/transcript.rs + hooks.rs fill_codex_reply) guarded on the field being absent; a JSON null counts as present, so with real Codex it could never run: ~220 lines of dead code reading hook-named files. Reverted in 24498f0 (council MERGE 44 review, FIX-BEFORE 1).
-- Open question, now T-123-e: whether Txais's installed Codex version sends the field. Only if it does not would a reader be revived, with CODEX_HOME from the pane's launch environment and a bounded sessions walk.
-
-Proof of the existing path: cargo test --lib hooks::codex_events_map_to_pane_states (see the step-0 commit body for the run).

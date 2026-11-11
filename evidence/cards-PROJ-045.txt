@@ -1,6 +1,0 @@
-box 1: src/projects/__cards__/PROJ-045.test.ts::"Group by pull request: the workspace whose pull request merged sits in Done" — pnpm exec vitest run src/projects/__cards__/PROJ-045.test.ts src/projects/rows.test.ts (scratch env, KOLUX_* unset) — Test Files 2 passed (2), Tests 7 passed (7)
-  (poll result MERGED -> mergePoll -> rowPr "merged" -> groupRows by "pr": the merged workspace is alone in "Done"; open/none/closed land in In progress / No pull request / Closed. Also rows.test.ts "grouping: a merged pull request is done, a suppressed one in progress, queued stands alone (PROJ-045)")
-box 2: src/projects/__cards__/PROJ-045.test.ts::"each grouping chosen is the grouping in place after a restart" — same command — passed (chooses none/project/status/pr through saveChanged -> settings_patch, reads the saved file back, groupFromSetting returns the choice)
-  + src-tauri/tests/cards_01.rs::proj045_box2_the_group_by_choice_patched_into_the_settings_is_still_there_after_a_reopen — cargo test --manifest-path src-tauri/Cargo.toml --test cards_01 — ... ok (state::patched over the settings, saved, Store reopened, workspaceGroupBy equals the choice, all four values)
-  test result: ok. 9 passed; 0 failed
-  gates: pnpm exec tsc --noEmit clean; cargo clippy --all-targets -- -D warnings clean

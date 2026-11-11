@@ -1,2 +1,0 @@
-box 1: src/terminal/__cards__/SAFE-002.test.ts::box 1 — pnpm exec vitest run src/terminal/__cards__/SAFE-001.test.ts src/terminal/__cards__/SAFE-002.test.ts src/terminal/__cards__/SAFE-004.test.ts — ok; Test Files  3 passed (3); Tests  5 passed (5)
-box 2: src/terminal/__cards__/SAFE-002.test.ts::box 2 (real PlanSheet via shallow-react: Add comment on section 2, comment under section 2 only, Remove deletes) — same command — ok

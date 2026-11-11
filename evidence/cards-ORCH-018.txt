@@ -1,4 +1,0 @@
-box 1: src-tauri/tests/cards_08.rs::orch018_box1_a_claude_light_tier_worker_starts_on_haiku_with_no_effort_setting — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 — test ... ok; test result: ok. 34 passed; 0 failed (cards_08)
-  (real scratch git repo, stand-in notify: receipt model=haiku, effort null, start event extra == ["--model","haiku"]; the box has no --agent, so it relies on the default agent claude; the coordinator's own pane is not staged, tier_agent(None, Some("claude"), ..) covers it)
-box 2: src-tauri/tests/cards_08.rs::orch018_box2_a_tier_mixed_with_a_model_effort_or_reused_terminal_is_turned_away — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 — test ... ok; test result: ok. 34 passed; 0 failed (cards_08)
-  (the box's literal command carries no task, so the test adds --spec x; --tier with --model, --effort and --terminal each refused by parse)

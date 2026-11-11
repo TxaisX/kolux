@@ -1,3 +1,0 @@
-ACCT-006 box 1: NOT PROVEN (DRIFT, DT-C16). The box says a default-settings managed account close to expiry is renewed before it runs out; its own text says "Kolux RS: not built, DT-C16" and DECISIONS.md DT-C16 records that Kolux never renews a sign-in itself (Claude Code renews in its panes).
-  git grep -n -i "oauth/token\|refresh_token\|fn renew" -- src-tauri/src src (excluding provenance): no renewal code (only test fixtures in claude_accounts.rs/cli_accounts.rs and codex_usage.rs's sign-in error words).
-box 2 was already ticked by T-043-d before this lane; not touched.

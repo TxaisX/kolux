@@ -1,7 +1,0 @@
-LIVE PROOF PENDING (after the files.rs / keybindings.rs / App.tsx patches of rows 383, 435, 499 are merged)
-383: open a terminal tab in a folder that is in no project (Open folder, or cd via a new tab), close the tab,
-     press Ctrl+Shift+T. The tab returns in that folder, not in the shown workspace.
-435: fresh profile (no Open in list saved). Settings > General > Open in lists File Explorer and VS Code.
-     In Explorer, a file's Open in > VS Code launches VS Code; no "is not one of the apps" error.
-499: Settings > Shortcuts > "Open file in..." lists the saved Open in apps (not File Explorer). Pick one:
-     the shortcuts file opens in it. With an app that is not installed the card shows "<app> was not found".

@@ -1,7 +1,0 @@
-env: CLAUDE_CONFIG_DIR=CODEX_HOME=<scratch>\cards-v3\tmp USERPROFILE=<scratch>\cards-v3\home HOME=<scratch>/cards-v3/home TEMP=TMP=<scratch>\cards-v3\tmp (scratch root G:\Temp\cards-v3, .kolux-rs-scratch markers)
-cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-box 1: src-tauri/tests/cards_04.rs::stat026_box1_the_lead_shows_working_until_the_child_finishes — cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-test stat026_box1_the_lead_shows_working_until_the_child_finishes ... ok
-box 2: src-tauri/tests/cards_04.rs::stat026_box2_a_teammates_permission_raises_needs_you_and_going_idle_clears_it — cargo test --manifest-path src-tauri/Cargo.toml --test cards_04
-test stat026_box2_a_teammates_permission_raises_needs_you_and_going_idle_clears_it ... ok
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

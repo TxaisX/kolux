@@ -1,7 +1,0 @@
-command: cargo test --manifest-path src-tauri/Cargo.toml --test cards_03 (scratch HOME) — test result: ok. 3 passed; 0 failed
-box 1: NOT TICKED (LIVE). Chord half passes: src/terminal/__cards__/TERM-040.test.ts (Mod+T = tab.newTerminal on win32/linux/darwin). Glue newTab in App.tsx and 'cursor ready' need a window
-box 2: src-tauri/tests/cards_03.rs::term040_box2_a_missing_start_folder_opens_the_shell_in_the_workspace_folder — cargo test --test cards_03 — ok (start_dir falls back to the workspace; a real shell started there shows the workspace folder in its prompt; an existing relative folder is kept) + term040_an_existing_absolute_folder_outside_the_workspace_is_kept — ok
-
-LIVE 2026-10-26 (box 1): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-040, stand-in scripts only), driven by scripts/prove/live-TERM-040.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-040; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-040.out.txt (run-TERM-040.log).
-  Reading: Ctrl+T adds a pane (1 -> 2); it is a shell, shown, document.activeElement is its .xterm-helper-textarea; typing with no click ran in it and (Get-Location).Path = the workspace folder.
-  Screenshot: G:/Temp/live-v1-logs/TERM-040-ctrl-t.png

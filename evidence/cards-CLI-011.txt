@@ -1,2 +1,0 @@
-box 1: src-tauri/tests/cards_20.rs::cli011_box1_app_closed_open_launches_it_and_exits_zero_once_ready — cargo test --manifest-path src-tauri/Cargo.toml --test cards_20 (scratch env: CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under <scratch>; KOLUX_* unset) — test cli011_box1_app_closed_open_launches_it_and_exits_zero_once_ready ... ok; test result: ok. 18 passed; 0 failed (log c20-4)
-  (KOLUX_APP_EXECUTABLE points at a scratch launcher that only writes a marker; the stand-in app starts after the marker appears. box 2, the minimised window coming to the front, is LIVE)

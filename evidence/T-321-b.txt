@@ -1,8 +1,0 @@
-T-321-b onboarding follow-ups, lane onboarding from 562c8347, 2026-10-19 (NO APP LAUNCHES: text proof only)
-One commit per card; the per-card evidence holds the readings and the live-proof steps (all pending, batched):
- evidence/onboarding-ONB-016.txt  Setup Guide action panels (commit f86ea973)
- evidence/onboarding-ONB-018.txt  Connect integrations step (commit b08162d9)
- evidence/onboarding-ONB-020.txt  Sidebar entry Hide + the ONB-015 legacy-profile rule (commit 38fe159d)
- evidence/onboarding-ONB-024.txt  Explore Kolux stop setup cards, part (this card's commit); rest = T-321-c
-Patch for the coordinator: evidence/onboarding-ONB-020-DECISIONS.patch (adds DT-ONB-020 to DECISIONS.md; git apply --cached --check ok against 562c8347).
-Final VERIFY numbers: see the lane handoff and the report (cargo test, pnpm test, plan-check, firewall).

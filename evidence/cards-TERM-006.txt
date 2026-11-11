@@ -1,7 +1,0 @@
-command: pnpm exec vitest run src/terminal/__cards__/TERM-006.test.ts — Test Files 1 passed (1); Tests 2 passed (2)
-box 1: NOT TICKED (LIVE). The new pane's folder is set by the inline line 'cwd: src.cwd' in App.tsx splitPane; needs a window
-box 2: src/terminal/__cards__/TERM-006.test.ts::"box 2: Ctrl+D in a Linux shell pane is not a Kolux chord, so the shell gets end-of-input" — pnpm exec vitest run src/terminal/__cards__/TERM-006.test.ts — passed (matchEvent null on linux/win32; routeKey = {kind:shell}; encodeKitty null; latinControl null, so TerminalPane returns true and xterm sends its own 0x04). The split chords test shows Ctrl+Shift+D / Alt+Shift+D split. xterm's own 0x04 byte not run live
-
-LIVE 2026-10-26 (box 1): hidden Tauri dev app (vite 1470, CDP 9290, scratch homes under G:/Temp/live-v1/run-TERM-006, stand-in scripts only), driven by scripts/prove/live-TERM-006.mjs via bash G:/Temp/live-v1/run-batch.sh TERM-006; exit 0, RESULT: PASS. Log: G:/Temp/live-v1-logs/TERM-006.out.txt (run-TERM-006.log).
-  Reading: pane 1 cwd = scratch repo X; Ctrl+Shift+D gives a new shell whose (Get-Location).Path = X; the Split-right button gives another new shell in X.
-  Screenshot: G:/Temp/live-v1-logs/TERM-006-split-button.png

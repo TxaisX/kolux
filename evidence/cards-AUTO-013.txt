@@ -1,9 +1,0 @@
-box 1: src-tauri/tests/cards_09.rs::auto013_box1_a_run_whose_worktree_was_deleted_still_lists_with_its_saved_output_and_a_gone_flag — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto013 — test ... ok; test result: ok. 3 passed; 0 failed
-box 1 (window half): src/automations/__cards__/AUTO-013.test.ts::box 1: a run whose worktree is gone offers its saved output ... — pnpm exec vitest run src/automations/__cards__/AUTO-013.test.ts — Tests 3 passed (3)
-  (the run row's action is labelled "Saved output" (runActions "snapshot"), not "View run"; opening it shows "A snapshot: the worktree nightly-1 is gone ... not a live terminal" plus the saved output)
-box 2: src-tauri/tests/cards_09.rs::auto013_box2_deleting_an_automation_takes_its_failed_run_with_it_and_leaves_other_histories — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto013 — test ... ok; test result: ok. 3 passed; 0 failed
-box 2 (window half): src/automations/__cards__/AUTO-013.test.ts::box 2: a failed run shows Rerun; once the automation is deleted the page lists neither it nor its runs — vitest as above — passed
-  (MIRROR AutomationsPage.tsx:195 act(delete) -> load(); the page draws what automations_list returns; Rerun comes from the real runActions)
-box 3: src-tauri/tests/cards_09.rs::auto013_box3_unreadable_run_history_is_reported_as_an_error_not_as_an_empty_list — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto013 — test ... ok; test result: ok. 3 passed; 0 failed
-box 3 (window half): src/automations/__cards__/AUTO-013.test.ts::box 3: history that cannot be read shows an error with Try again ... — vitest as above — passed
-  (Try again is the page's load(): one automations_list call, then the runs come back)

@@ -1,6 +1,0 @@
-command: for v in $(env | grep -o "^KOLUX_[A-Za-z0-9_]*"); do unset $v; done; pnpm exec vitest run --reporter=verbose src/projects/__cards__/VIEW-040.test.ts src/terminal/__cards__/VIEW-047.test.ts src/agents/__cards__/VIEW-018.test.ts
-box 1: src/terminal/__cards__/VIEW-047.test.ts::box 1: two panes waiting, pressing twice visits both — pass (✓ 2ms); presses give 2 then 4
-box 2: src/terminal/__cards__/VIEW-047.test.ts::box 2: no pane waiting, focus stays where it is — pass (✓ 0ms); nextNeedsYou null, focus unchanged
-rule: ...::rule: the default chord is the palette's chord swapped per platform — pass (✓ 2ms)
-MIRROR src/App.tsx:911 (null result returns without moving focus)
-Test Files  3 passed (3) / Tests  7 passed (7)

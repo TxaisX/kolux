@@ -1,6 +1,0 @@
-box 1: src-tauri/tests/cards_09.rs::auto012_box1_an_agent_killed_before_it_works_ends_failed_and_a_ready_prompt_never_completes_it — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto012 — test ... ok; test result: ok. 3 passed; 0 failed
-  (real claim/on_status/pane_ended on a run started by automations::run; MIRROR terminal.rs:1137 calls pane_ended when a pane closes, :1798 calls claim; the kill is a pane_ended with exit code 137 before any working state, detail "The agent stopped before it began working (exit code 137)")
-box 2: src-tauri/tests/cards_09.rs::auto012_box2_a_run_in_progress_survives_a_restart_and_completes_when_the_agent_finishes — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto012 — test ... ok; test result: ok. 3 passed; 0 failed
-  (real tidy -> reconnect -> settle -> on_status: dispatched kept over the restart, terminal reconnected, not closed by settle, later "done" completes it)
-box 3: src-tauri/tests/cards_09.rs::auto012_box3_twelve_refusals_in_an_hour_for_a_gone_project_collapse_into_one_skipped_entry — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 auto012 — test ... ok; test result: ok. 3 passed; 0 failed
-  (real tick every 5 min for 12 due times, project removed: one skipped/unavailable run with repeats = 12)

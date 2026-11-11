@@ -1,4 +1,0 @@
-command (all boxes): pnpm exec vitest run src/launch/__cards__/SESS-012.test.ts src/launch/seats.test.ts src/launch/ChooserPane.test.ts -t SESS-012 — Test Files 3 passed (3); Tests 5 passed | 34 skipped (39)
-box 1: src/launch/seats.test.ts::"SESS-012: Swarm gives five seats labelled scout, builder, builder, tester, reviewer; more seats wrap round" + src/launch/ChooserPane.test.ts::"SESS-012: the lineup shows the shape row..." (rendered .seat-role chips = scout, builder, builder, tester, reviewer)
-box 2: src/launch/seats.test.ts::"SESS-012: Workbench then a count of 2 reads Custom with no roles; Pair raised to 3 stays Pair" (resizeLineup workbench -> 2: shape "custom", no roles) + ChooserPane.test.ts (custom shape renders Custom aria-pressed, no seat-role)
-box 3: src/launch/__cards__/SESS-012.test.ts::"SESS-012 box 3: Pair with a task ..." (builder and reviewer prompts start with their own ROLE_BRIEFS then the task, also with the SESS-025 rules block behind)

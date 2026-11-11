@@ -1,3 +1,0 @@
-p49 warm scan, 2000 transcripts, debug test build (information only)
-before (a thread per transcript): 3.012557s, 2000 budget threads
-after (one worker per scan):      203.0ms-273.6ms (two runs), 1 budget thread

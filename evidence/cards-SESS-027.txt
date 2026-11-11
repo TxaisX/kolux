@@ -1,3 +1,0 @@
-box 1: src-tauri/tests/cards_02.rs::sess027_box1_a_plain_claude_start_carries_permission_mode_auto — cargo test --manifest-path src-tauri/Cargo.toml --test cards_02 sess027 — ok; test result: ok. 2 passed; 0 failed
-box 1 (also): src-tauri/src/agents.rs::sess029_unpicked_claude_gets_its_top_model_at_high_effort asserts the exact plus-menu line ["--permission-mode","auto","--model","opus","--effort","high","go"]
-box 2: src-tauri/tests/cards_02.rs::sess027_box2_codex_custom_default_arguments_replace_the_built_in_ones — same command — ok; test result: ok. 2 passed; 0 failed

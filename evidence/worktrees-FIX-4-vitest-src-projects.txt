@@ -1,9 +1,0 @@
-
- RUN  v4.1.11 G:/Dev/kolux-rs-lanes/worktrees
-
-
- Test Files  24 passed (24)
-      Tests  143 passed (143)
-   Start at  17:33:15
-   Duration  6.58s (transform 1.28s, setup 0ms, import 2.72s, tests 416ms, environment 5ms)
-

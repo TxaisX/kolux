@@ -1,3 +1,0 @@
-dialog route refuses an unreadable file itself (Windows: access denied box), so the failure is shown with a file that is not UTF-8:
-failure: "notes.txt did not open: G:\\Temp\\release-T-093\\repo\\notes.txt is not UTF-8 textRetry"
-after Retry: "0 | café utf-8 now"

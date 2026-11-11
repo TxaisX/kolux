@@ -1,3 +1,0 @@
-box 1: src-tauri/tests/cards_03.rs::term022_the_head_the_chip_reads_is_the_branch_a_detached_commit_or_nothing + src/terminal/__cards__/TERM-022.test.ts::box 1 — cargo test --manifest-path src-tauri/Cargo.toml --test cards_03 ; pnpm exec vitest run src/terminal/__cards__/TERM-022.test.ts — test term022_... ok ; ✓ box 1
-box 2: src/terminal/__cards__/TERM-022.test.ts::box 2: the chip's hover (title) carries the whole branch name, and a detached checkout shows a short commit id + cards_03.rs term022_* (detached head = 40-hex commit) — same commands — ✓
-combined run: Test Files 5 passed (5), Tests 11 passed (11); cargo: test result: ok. 5 passed

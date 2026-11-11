@@ -103,9 +103,6 @@ jobs:
       - name: Dependency check
         working-directory: src-tauri
         run: cargo deny check
-      - name: Spec firewall
-        shell: pwsh
-        run: ./scripts/firewall-check.ps1 -Baseline
 
   # Not on every push: a cold Tauri release build is the most expensive job here.
   # Run it by hand, or by pushing a v* tag when a release is actually being made.

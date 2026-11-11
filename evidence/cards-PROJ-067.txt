@@ -1,5 +1,0 @@
-box 1: src/terminal/layout.test.ts::"proj067: a damaged entry is dropped and the other tabs still come back" — pnpm exec vitest run src/terminal/layout.test.ts src/projects/model.test.ts -t "proj067|nest|folding|child|loop of parents" (scratch env G:\Temp\cards-v3) — Test Files 2 passed (2) / Tests 7 passed | 27 skipped (34)
-  (garbage, no-key, unknown-agent, editor-without-path and bad-args entries are dropped; tabs 1 and 6 return; activeTab/focused/stacked keep only the valid parts)
-box 2: src/terminal/layout.test.ts::"proj067: the active workspace and tab come back when they still exist, else the tabs in a gone folder go" — same command — same pass line
-  (activeDir C:\w\b and focused 4 survive restoreLayout + stillThere when the folder exists; layoutOf writes activeDir, first test round-trips it)
-  glue not run live: App.tsx:287 (initial state from the restored layout) and App.tsx:1550 (the write as state changes), main.tsx:54.

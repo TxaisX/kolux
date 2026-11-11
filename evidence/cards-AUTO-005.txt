@@ -1,7 +1,0 @@
-box 1: src-tauri/tests/cards_09.rs::auto005_box1_a_created_automation_is_listed_at_once_with_its_upcoming_run — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 — test ... ok; test result: ok. 11 passed; 0 failed (cards_09, 2.29s)
-box 1 (window half): src/automations/__cards__/AUTO-005.test.ts::box 1: after Save the page asks for the list again and the new automation is in it, no refresh pressed — pnpm exec vitest run src/automations/__cards__ — Test Files 3 passed (3), Tests 6 passed (6)
-  (MIRROR AutomationsPage.tsx:215 saved() -> load() -> automations_list; the real page re-renders with the row and "Saved Morning checks")
-box 2: src-tauri/tests/cards_09.rs::auto005_box2_the_same_create_sent_twice_leaves_one_automation — cargo test --manifest-path src-tauri/Cargo.toml --test cards_09 — test ... ok; test result: ok. 11 passed; 0 failed (cards_09, 2.29s)
-box 2 (window half): src/automations/__cards__/AUTO-005.test.ts::box 2: a second press of Save while the first is in flight sends nothing, and every send carries the same request id — vitest as above — passed
-box 3: src/automations/__cards__/AUTO-005.test.ts::box 3: Escape shuts the find bar and the dialog stays; a second Escape shuts the dialog — vitest as above — passed
-  (MIRROR AutomationDialog.tsx:202-216 keys(): Ctrl+F opens the find bar, Escape closes it with onClose uncalled, second Escape calls onClose once)

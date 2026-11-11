@@ -1,3 +1,0 @@
-ORCH-006. Real Mail::reply/check/inbox and cli::parse flag names. MIRROR cli.rs:2976-2997 reply/inbox branches (boxes_of, run_of).
-box 1: src-tauri/tests/cards_08.rs::orch006_box1_a_workers_reply_reaches_the_coordinators_check_on_the_same_thread — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 orch00 (CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:\Temp\cards-v3\) — test result: ok. 17 passed; 0 failed; ... ok
-box 2: src-tauri/tests/cards_08.rs::orch006_box2_inbox_with_a_limit_of_five_shows_five_rows_and_full_shows_whole_bodies — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 orch00 (CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:\Temp\cards-v3\) — test result: ok. 17 passed; 0 failed; ... ok

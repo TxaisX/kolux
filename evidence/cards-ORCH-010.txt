@@ -1,4 +1,0 @@
-ORCH-010. Real o::task_create (the function the wire calls, cli.rs:3110), real task-list/task-update through cli::dispatch; task-create itself needs a bound terminal pane, so it is called directly with args from cli::parse. MIRROR cli.rs:3106-3116.
-box 1: src-tauri/tests/cards_08.rs::orch010_box1_a_task_without_deps_is_ready_one_with_deps_is_pending_and_turns_ready_when_its_dependency_completes — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 (CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:\Temp\cards-v3\) — test result: ok. 27 passed; 0 failed
-box 2: src-tauri/tests/cards_08.rs::orch010_box2_a_dependency_that_names_no_task_is_turned_away_and_no_task_is_made — cargo test --manifest-path src-tauri/Cargo.toml --test cards_08 (CLAUDE_CONFIG_DIR, CODEX_HOME, USERPROFILE, HOME under G:\Temp\cards-v3\) — test result: ok. 27 passed; 0 failed
-gates: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings: Finished, rc 0
