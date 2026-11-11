@@ -39,6 +39,8 @@ export type MenuFor = {
   /** The row is the first / last of its siblings, so Move up / Move down is off. */
   first?: boolean;
   last?: boolean;
+  /** The workspace's folder is a git repository, so it has changes to review (Review changes). */
+  git?: boolean;
   /** T-798: worktrees are off (SINGLE_FOLDER), so the main row has no New workspace. Defaults to the build-wide switch. */
   worktreesOff?: boolean;
 };
@@ -47,8 +49,14 @@ const REMOVE_PROJECT: MenuItem = { id: "proj:remove", label: "Remove project…"
 import { singleFolder } from "./singleFolder";
 
 const NEW_WORKSPACE: MenuItem = { id: "proj:new", label: "New workspace" };
-/** Right-click on a project header. */
-export const projectMenu = (worktreesOff: boolean = singleFolder()): MenuItem[] => [...(worktreesOff ? [] : [NEW_WORKSPACE]), { id: "proj:settings", label: "Project settings" }, REMOVE_PROJECT]; // T-798: no New workspace while worktrees are off
+/** Right-click on a project header. `folder`: the header is the project's one folder row (one folder per project), so it
+ *  also offers that folder's Review changes, on for a git folder. */
+export const projectMenu = (worktreesOff: boolean = singleFolder(), folder?: { git: boolean }): MenuItem[] => [
+  ...(worktreesOff ? [] : [NEW_WORKSPACE]),
+  ...(folder ? [{ id: "proj:review", label: "Review changes", disabled: !folder.git }] : []),
+  { id: "proj:settings", label: "Project settings" },
+  REMOVE_PROJECT,
+]; // T-798: no New workspace while worktrees are off
 /** Right-click on a group row. */
 export const groupMenu = (): MenuItem[] => [{ id: "grp:settings", label: "Group settings" }, { id: "grp:delete", label: "Delete group…", danger: true, sep: true }];
 
@@ -66,6 +74,8 @@ export function rowMenu(o: MenuFor): MenuItem[] {
   if (o.statuses.length > 0) items.push({ id: "status", label: "Move to status", children: [...o.statuses.map((s) => ({ id: `status:${s.id}`, label: s.label })), { id: "statuses:edit", label: "Edit statuses…" }] });
   if (one && !o.isMain) items.push({ id: "parent", label: "Set parent…" });
   if (one) items.push({ id: "details", label: "Details…" });
+  // The workspace's All Changes (review, stage, commit) without waiting for a finished agent, as the Board's Review changes.
+  if (one) items.push({ id: "review", label: "Review changes", disabled: o.deleting || !o.git });
   if (one) {
     items.push({
       id: "open-in",

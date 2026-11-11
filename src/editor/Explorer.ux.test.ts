@@ -36,6 +36,8 @@ vi.mock("@tauri-apps/api/core", () => ({
     return null;
   },
 }));
+const warmed = vi.hoisted(() => ({ n: 0 }));
+vi.mock("../lazy/panes", () => ({ EditorPane: { warm: () => void warmed.n++ } }));
 vi.mock("@tauri-apps/api/webview", () => ({ getCurrentWebview: () => ({ onDragDropEvent: () => Promise.resolve(() => {}) }) }));
 
 let doc: FakeDocument;
@@ -365,5 +367,18 @@ describe("T-710 Explorer row menu from the keyboard", () => {
     await fire(container, "contextmenu", tree, { button: 2, clientX: 300, clientY: 400 });
     await until(() => menus().length === 1, "the row menu");
     expect([menus()[0].style.left, menus()[0].style.top]).toEqual(["56px", "120px"]);
+  });
+});
+
+describe("PKG-1: the file list warms the editor's code on intent", () => {
+  it("the pointer entering the file list, or the keyboard reaching it, starts loading the editor before any click", async () => {
+    const { container } = await explorer();
+    const tree = find(container, (n) => n.attrs["data-testid"] === "explorer-tree")[0];
+    warmed.n = 0;
+    await fire(container, "pointerover", tree, { relatedTarget: null, pointerId: 1, pointerType: "mouse" });
+    expect(warmed.n).toBeGreaterThan(0);
+    warmed.n = 0;
+    await fire(container, "focusin", tree, { relatedTarget: null });
+    expect(warmed.n).toBeGreaterThan(0);
   });
 });

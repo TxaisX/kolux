@@ -64,6 +64,9 @@ import { forgetView } from "./viewKeep";
 import { invoke } from "@tauri-apps/api/core";
 import { singleFolder } from "../projects/singleFolder";
 
+/** Other words that find a Settings page in the palette. */
+const SETTINGS_WORDS: Partial<Record<PageId, string>> = { appearance: "theme dark light colours colors font" };
+
 export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSettingsPlumbing>, la: ReturnType<typeof launchActions>, x: { prRows: ReturnType<typeof usePrRows> }, late: WindowLate) {
   const {
     accountSwitcher, activeDir, activeTab, asking, classic, cliFailed, codex, dirty, focused, hist, hook, installedIds, kept, keptSetup, keymap, nextKey,
@@ -380,12 +383,15 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       },
       () => setToast("That page has closed"),
     ),
-    ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", run: () => openSettings(id) })),
+    ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", keywords: SETTINGS_WORDS[id], run: () => openSettings(id) })),
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
     // T-708: New terminal tab and Search open tabs are their Commands rows (with their keys), no longer second hand-built rows
     ...commandRows(keymap, installedIds, setToast, (id, i) => (id === TAB_SEARCH_ACTION ? openTabSearch() : runCommand(id, i, { scope: actionById.get(id)?.scope, unanswered: setToast }))), // T-611: every command, the unbound ones included, run as its shortcut runs; T-708: Search open tabs from any screen (TERM-053)
     ...screenRows((s) => (s === "skills" ? toggleSkills(screen, setScreen) : setScreen(s === screen ? "terminals" : s)), classic), // T-610 / T-708: every screen; T-756: a page already up closes, as Show Skills does; C12-R5-01: Classic keeps its one view
     { section: "Quick actions", label: "New session", run: () => addChooser() },
+    // The workspace's All Changes (review, stage, commit) without waiting for an agent to finish: the same tab the
+    // Board's Review changes opens, in the focused cell, one per cell.
+    { section: "Quick actions", label: "Open All Changes", keywords: "review changes diff commit stage git", needs: "worktree" as const, run: () => (setPage(null), setScreen("terminals"), void newTab("changes")) },
     // palette.md:7: the sidebar's Add project, New group and Scan for repos, with the sidebar shown so its panel hears them
     ...projectRows(() => (setScreen("terminals"), setSidebarOpen(true))),
     // VIEW-042: actions on the worktree in front, not runnable while none is open
@@ -645,6 +651,19 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setFocused(k);
     late.setReveal((n) => n + 1);
   };
+  // The sidebar row's Review changes: workspace `dir` comes to the front on Terminals with its All Changes, an open
+  // one focused, else a new one in the cell the focus lands on there (as the Board's Review changes opens it). Shown
+  // without the starter pane a workspace with no tabs would get: All Changes is what was asked for.
+  const openChangesIn = (dir: string, branch: string | null) => {
+    const here = panesIn(panes, dir);
+    const same = here.find((p) => p.kind === "changes");
+    const at = here.find((p) => p.key === focusIn(panes, dir, focused));
+    const key = same?.key ?? nextKey.current++;
+    if (!same) setPanes((ps) => [...ps, { key, cwd: dir, branch: at?.branch ?? branch, group: at ? groupOf(at) : undefined, agent: "shell", program: null, args: [], kind: "changes" }]);
+    showDir(dir);
+    setFocused(key);
+    late.setReveal((n) => n + 1);
+  };
   const addPreset = (id: string) => {
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: activeDir, branch: null, agent: "shell", agentId: id, program: null, args: [], seats: [seatStart(id, seatDefault(settings))] }]);
@@ -654,7 +673,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   return {
     addShell, addChooser, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, openCheck, setCount, expandPane, splitPane, setChooser,
     setSeats, stillThere, step, paletteItems, keyOfHandle, showDir, termCreate, termSwitch, renamePane, termRename, failedPane, restartPane, noticeFor,
-    orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges,
+    orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges, openChangesIn,
     addPreset,
   };
 }

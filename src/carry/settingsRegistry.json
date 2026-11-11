@@ -59,6 +59,7 @@
     "httpProxyBypass",
     "lastLineups",
     "lastScreen",
+    "leftSidebarOpen",
     "linksDestinationAsked",
     "modelRouting",
     "notificationCustomFile",

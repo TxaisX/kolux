@@ -9,6 +9,7 @@ import { applyInput } from "./inputWire";
 import { drawOptions } from "../shell/termDraw";
 import { applyLinkState } from "../shell/linkAsk";
 import { LINK_MENU_FIELD, linkMenuOn } from "./linkMenu";
+import { onlyWindowState } from "../settings/settingsSync";
 
 export const FIELDS = {
   size: "terminalFontSize",
@@ -140,7 +141,8 @@ export function applyText(s: Record<string, unknown> | null | undefined): void {
 /** Call once at start: the saved values now, and again after every settings save. */
 export function followText(saved: Record<string, unknown> | null | undefined): void {
   applyText(saved);
-  void listen("settings-saved", () => {
+  void listen("settings-saved", (e) => {
+    if (onlyWindowState(e?.payload)) return; // a layout or screen save changes no terminal setting
     invoke<Record<string, unknown>>("get_settings").then(applyText, () => {});
   }).catch(() => {});
 }

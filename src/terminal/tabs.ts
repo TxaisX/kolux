@@ -22,7 +22,8 @@ export function tabBadge(agent: string, running: boolean | undefined, needs: boo
     if (hook === "done") return unread ? "unread" : "done";
     return "working";
   }
-  return unread ? "unread" : "done";
+  // DT-C52: an agent whose program exited is Stopped on every surface
+  return unread ? "unread" : "stopped";
 }
 
 /**

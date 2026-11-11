@@ -72,23 +72,34 @@ const plain = (o: object) => {
   return p === Object.prototype || p === null;
 };
 
+/** False when the speed harness has turned the comparisons off (`window.__kxRenders = { off: 1 }`), to measure the
+ *  same build both ways in one session. */
+const comparing = () => !(globalThis as { __kxRenders?: { off?: unknown } }).__kxRenders?.off;
+
+/** The harness also counts which prop made a named comparison redraw ("terminal:focused"). */
+const changed = (name: string | undefined, prop: string) => {
+  if (name) tally(`${name}:${prop}`);
+  return false;
+};
+
 /** How one prop is compared: `same` by identity (Object.is), `data` by value (sameData), or a function. */
 export type Rule<V> = "same" | "data" | ((a: NonNullable<V>, b: NonNullable<V>) => boolean);
 
-/** A memo comparator that names every prop. A prop the rules do not list counts as changed, so a prop added
+/** A memo comparator that names every prop (`name` labels its count in the harness's tally). A prop the rules do not list counts as changed, so a prop added
  *  later redraws until someone decides how to compare it. Functions are compared by identity like any other
  *  value: the saving comes from the caller handing over callers with a fixed identity, never from ignoring them. */
-export function sameProps<P extends object>(rules: { readonly [K in keyof P]-?: Rule<P[K]> }): (a: Readonly<P>, b: Readonly<P>) => boolean {
+export function sameProps<P extends object>(rules: { readonly [K in keyof P]-?: Rule<P[K]> }, name?: string): (a: Readonly<P>, b: Readonly<P>) => boolean {
   const table = rules as Record<string, Rule<unknown>>;
   return (a, b) => {
+    if (comparing() === false) return false; // the harness's A/B switch: every compared child draws as it did before PKG-2
     const pa = a as Record<string, unknown>;
     const pb = b as Record<string, unknown>;
     for (const k of new Set([...Object.keys(pa), ...Object.keys(pb)])) {
       const rule = table[k];
-      if (rule === undefined) return false;
+      if (rule === undefined) return changed(name, k);
       const x = pa[k];
       const y = pb[k];
-      if (rule === "same" ? !Object.is(x, y) : rule === "data" ? !sameData(x, y) : !(Object.is(x, y) || (x != null && y != null && rule(x, y)))) return false;
+      if (rule === "same" ? !Object.is(x, y) : rule === "data" ? !sameData(x, y) : !(Object.is(x, y) || (x != null && y != null && rule(x, y)))) return changed(name, k);
     }
     return true;
   };

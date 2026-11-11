@@ -4,7 +4,7 @@
 // branch chip, program, status word; then gauge, more, expand, split, close on the right.
 import { trapTab } from "../chrome/dialogFocus";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { branchChip, crewLabel, crewLine, foundAgent, headerOf, takesInband, type Crew } from "./status";
+import { branchChip, crewLabel, crewLine, foundAgent, headerOf, statusAgent, takesInband, type Crew } from "./status";
 import { creditedLive, launchedAgent, titleGuess } from "../status/credit";
 import { inbandTurn } from "../status/inbandSession";
 import { followedTitle, Gate, identityPacer, IDLE, printsMarks, READY_WAIT_MS, reduceIdentity, Scanner, shownAgent, Startup, type Identity, seededIdentity, startupCommand } from "./shellMarks";
@@ -1647,7 +1647,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   // TERM-058: a shell pane running an agent the user started by hand reads as that agent's session;
   // the hook's word (pane-agent) beats the title guess, and the title counts only while a command runs.
   const shown: Agent = agent === "shell" && found ? found : shownAgent(agent, creditedLive(launched, live));
-  const header = headerOf(shown, status.kind, status.kind === "ended" ? status.code : undefined, false, finishedAt, now, hook ?? guess ?? undefined);
+  const header = headerOf(statusAgent(shown, launched), status.kind, status.kind === "ended" ? status.code : undefined, false, finishedAt, now, hook ?? guess ?? undefined);
   const { word, tone, glyph, age, needsYou } = header;
   const explain = header.state === "blocked" && stop ? `${stopLine(stop)}.` : header.explain;
   const needs = useRef(onNeedsYou);

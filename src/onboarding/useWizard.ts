@@ -5,7 +5,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { ADD_PROJECT, firstFolderAgent, oneClick, openAt, REOPEN_WIZARD, reopenWizard, wizardCloser, type Outcome } from "./firstRun";
 import { isAiAgent } from "./agentKind";
 import { projectAddedNote } from "./sidebar";
-import { startGridTour } from "./tour";
 import { starAfterClose } from "./star";
 import type { AgentInfo } from "../launch/PlusMenu";
 import { defaultAgentId, offeredAgents } from "../launch/agents";
@@ -25,6 +24,9 @@ type WizardDeps = {
 export const PICK_FOLDER_NOTE = "Add a project to finish setup. If you cancel, Help > Onboarding brings the setup back.";
 /** 49-ux2: Open a session with no AI agent installed used to do nothing. */
 export const NO_AGENT_NOTE = "No agent is installed yet, so no session was started. Install one in Settings > Agents, then open a session.";
+
+/** The grid tour after a finished setup; its code is read only then (PKG-6: tour.ts is not first-load code). */
+const startGridTour = () => void import("./tour").then((m) => m.startGridTour(), () => undefined);
 
 export function useWizard({ setToast, agents, settings, activeDir, startIn, openShell }: WizardDeps) {
   // ONB-001..005: the first-run wizard floats over the app while its record says it is open.

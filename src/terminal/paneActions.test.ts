@@ -87,3 +87,42 @@ test("shrinking the pane count moves the focus off a removed chooser tab", () =>
   a.setCount(1);
   expect(focused).toBe(1);
 });
+
+// The palette reaches All Changes without a finished agent, and finds pages and commands by the words people type.
+test("the palette finds All Changes, the Appearance page and the new shell command by everyday words", async () => {
+  const { resolve } = await import("../keys/keymap");
+  const { paletteRows, nothingFound } = await import("../projects/WorktreePalette");
+  const s = {
+    panes: [], activeDir: "C:\\\\w", keymap: resolve(null, "win32"), accountSwitcher: { groups: [] }, installedIds: [], screen: "terminals", classic: false,
+    titles: {}, running: {}, hook: {}, stamp: {}, unreadPanes: new Set(), setPage: vi.fn(), setScreen: vi.fn(), setToast: vi.fn(), setFocused: vi.fn(), setPanes: vi.fn(), nextKey: { current: 9 },
+  } as unknown as WindowState;
+  const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, {} as WindowLate);
+  const items = a.paletteItems();
+  const top = (q: string) => paletteRows(items, q).map((r) => r.label);
+  for (const q of ["changes", "review", "diff", "commit", "stage"]) expect(top(q)).toContain("Open All Changes");
+  expect(top("theme")).toContain("Appearance");
+  expect(top("new shell")).toContain("New terminal tab");
+  expect(nothingFound(paletteRows(items, "zzzqq").length, "zzzqq")).toBe(true);
+  expect(nothingFound(0, "")).toBe(false);
+});
+
+// The sidebar row's Review changes: the workspace comes to the front with its All Changes, opened once.
+test("Review changes from a workspace row opens that workspace's All Changes, or focuses the open one", () => {
+  const run = (panes: unknown[]) => {
+    let list = panes as { key: number; kind?: string; cwd: string | null; group?: number }[];
+    const calls = { setActiveDir: vi.fn(), setFocused: vi.fn(), setScreen: vi.fn(), setPage: vi.fn() };
+    const s = { panes: list, activeDir: "C:\\\\front", focused: 1, recentDirs: { current: [] }, nextKey: { current: 9 }, setPanes: vi.fn((f: (ps: typeof list) => typeof list) => (list = f(list))), ...calls } as unknown as WindowState;
+    const a = paneActions(s, {} as never, {} as never, { prRows: [] as never }, { setReveal: vi.fn() } as unknown as WindowLate);
+    a.openChangesIn("C:\\\\w", "main");
+    return { list, ...calls };
+  };
+  const front = { key: 1, cwd: "C:\\\\front", branch: null, agent: "shell", program: null, args: [] };
+  const empty = run([front]);
+  expect(empty.list.map((p) => [p.key, p.kind, p.cwd])).toEqual([[1, undefined, "C:\\\\front"], [9, "changes", "C:\\\\w"]]);
+  expect(empty.setActiveDir).toHaveBeenCalledWith("C:\\\\w");
+  expect(empty.setFocused).toHaveBeenCalledWith(9);
+  expect(empty.setScreen).toHaveBeenCalledWith("terminals");
+  const open = run([front, { key: 4, cwd: "C:\\\\w", branch: "main", agent: "shell", program: null, args: [] }, { key: 5, cwd: "C:\\\\w", branch: "main", agent: "shell", program: null, args: [], kind: "changes", group: 4 }]);
+  expect(open.list).toHaveLength(3);
+  expect(open.setFocused).toHaveBeenCalledWith(5);
+});

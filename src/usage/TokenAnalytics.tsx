@@ -288,8 +288,12 @@ export function LoadFailed({ error, onRetry, busy = false }: { error: string; on
   );
 }
 
+// The last figures read this session: going back to the Usage page draws them at once while they are read and scanned again.
+let lastUsage: Usage | null = null;
+
 export default function TokenAnalytics() {
-  const [usage, setUsage] = useState<Usage | null>(null);
+  const [usage, setUsage] = useState<Usage | null>(lastUsage);
+  useEffect(() => void (usage && (lastUsage = usage)), [usage]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   // One line per thing that failed behind the panel, keyed so the next try replaces or clears it.
@@ -358,6 +362,7 @@ export default function TokenAnalytics() {
   // Left open past midnight, the panel moves on to the new day: the figures are taken again as they are, so `today` (and the rows) follow.
   useEffect(() => watchDay(() => setUsage((u) => u && { ...u })), []);
   const today = useMemo(() => new Date(), [usage, pick]);
-  if (!usage) return loadError ? <LoadFailed error={loadError} onRetry={load} busy={loading} /> : null;
+  // The first read of a session: the card's frame is drawn at once and filled when the figures arrive.
+  if (!usage) return loadError ? <LoadFailed error={loadError} onRetry={load} busy={loading} /> : <section className="conn-card" data-ta="loading" aria-busy="true" />;
   return <TokenAnalyticsView usage={usage} pick={pick} scanning={scanning} today={today} notices={Object.values(notes)} onPick={setPick} onTrack={track} onRefresh={() => scan(shownProviders(usage, pick).filter((p) => !scanning.includes(p)))} filters={filters} onFilters={(f) => setFilters((x) => ({ ...x, ...f }))} />;
 }

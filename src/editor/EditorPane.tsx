@@ -37,6 +37,7 @@ import { useSettings } from "../settings/useSettings";
 import { prefPatch, readEditorPrefs } from "../settings/editorPrefs";
 import { undo } from "@codemirror/commands";
 import { clampView, keepView, takeView } from "../terminal/viewKeep";
+import { retryHelps } from "./buffers";
 import { attach, baseName, detach, diskOf, docText, fileTextOf, hashOf, isDirty, isStale, lineEndsFor, loadText, opening, relay, replaceAll, save, subscribe, textOf, withLineBreaks } from "./editors";
 import { keepUnsaved, keptToast } from "./unsavedCopy";
 import NamePrompt from "./NamePrompt";
@@ -49,6 +50,7 @@ import DiffPane from "./DiffPane"; // EDIT-056: the Changes view (DiffPane impor
 import { drawn, underRoot, VIEW_LABEL, viewsFor, type View } from "./viewSwitch";
 import { createAutosave, covers, movingNow, prefsReader, type Autosave } from "./autosave";
 import { drafts, restoreFrom, worktreeOf } from "./drafts";
+import { readForOpen } from "./openText";
 import { confirmed } from "./fileMoved";
 import { richBlocker, richBlockerSince, richChange, splitFront } from "./frontMatter";
 import { bannerUp, beginSave, canUndo, checkOnce, endSave, forget, holdRestored, keep, POLL_MS, readFresh, reloadNow, remember, setBanner as markBanner, UNDO_TOAST_MS, type Io, type Stamp, type UndoEntry } from "./diskChange";
@@ -313,9 +315,11 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
     setGone(false);
     setComparing(false);
     let loaded: Stamp | null = null;
-    // T-073: the stamp is taken before the text, so a write landing in between shows at the next check.
-    stampOne(path)
-      .then((st) => ((loaded = st), loadText(() => invoke<string>("file_read", { path }))))
+    // T-073: the stamp is asked for before the text, so a write landing in between shows at the next check; the read and
+    // the draft lookup go out with it instead of waiting for its answer (openText.ts).
+    const asked = readForOpen({ stamp: () => stampOne(path), read: () => loadText(() => invoke<string>("file_read", { path })), draft: readOnly ? null : () => drafts.take(wt, path) });
+    asked.read
+      .then(({ stamp, text }) => ((loaded = stamp), text))
       .then(async (text) => {
         // EDIT-032 carries unsaved text to a moved file's new path; EDIT-004 brings a draft back.
         // Row 131: carried text typed over a copy that is no longer on disk is kept beside the
@@ -330,8 +334,9 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
           }
         }
         const carried = o.text !== text || o.base !== text;
-        const draft = readOnly || carried ? null : await drafts.take(wt, path).catch(() => null);
-        const r = carried ? { text: o.text, moved: false, stale: false } : restoreFrom(text, await hashOf(text), draft);
+        const draft = readOnly || carried ? null : await asked.draft;
+        // The disk copy's hash only matters against a draft; most opens have none and skip it.
+        const r = carried ? { text: o.text, moved: false, stale: false } : restoreFrom(text, draft ? await hashOf(text) : "", draft);
         if (r.stale) void drafts.discard(wt, path);
         return { text, shown: r.text, base: o.base, draftMoved: r.moved };
       })
@@ -832,9 +837,11 @@ function TextEditorPane({ id, path, root = null, readOnly = false, follow = fals
       {error && (
         <div className="notice load-failed" role="alert">
           {name} did not open: {error}
-          <button className="btn" onClick={() => setTries((n) => n + 1)}>
-            Retry
-          </button>
+          {retryHelps(error) && (
+            <button className="btn" onClick={() => setTries((n) => n + 1)}>
+              Retry
+            </button>
+          )}
           {/outside (your projects|them)/.test(error) && (
             <button className="btn" title="Allows this one file for this run; nothing beneath it" onClick={() => void invoke("file_grant", { path }).then(() => setTries((n) => n + 1), (err) => setError(String(err)))}>
               Open this file anyway

@@ -4,6 +4,7 @@ import { saveChanged } from "./saveChanged";
 import { invoke } from "@tauri-apps/api/core";
 import { applyBroadcast, createLoadRace, readBroadcast, adoptStored, withoutSecrets } from "./settingsSync";
 import { windowSettings } from "./windowSettings";
+import { sharedRead } from "./sharedRead";
 import { tidySettings } from "./tidy";
 
 /** Runs `fn` one call at a time, in call order; a failed call does not hold up the next. */
@@ -43,8 +44,10 @@ export function useSettings() {
   const reread = useRef(() => {});
   useEffect(() => {
     let gone = false;
+    // PKG-4: the mount read shares a get_settings already in flight (the window's own start read, other mounts);
+    // saveInTurn above keeps real reads, since it reads, merges, writes and reads back.
     const read = () =>
-      invoke<Record<string, unknown>>("get_settings").then(
+      sharedRead().then(
         (s) => !gone && ((disk.current = s), setError(null), setSettings(race.current.loaded(s))),
         (e) => !gone && setError(String(e)),
       );

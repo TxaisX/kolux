@@ -120,9 +120,13 @@ test("PKG-3: a large paste arrives whole and in order, a chunk at a time, and ke
   while (b.inFlight()) await b.answer();
   const all = b.data().join("");
   expect(all).toBe(chunks[0] + "k" + chunks.slice(1).join(""));
-  for (const w of b.sent) expect(w.data.length).toBeLessThanOrEqual(JOIN_MAX + 1);
-  // Never more than one paste chunk in one write: a chunk is not joined onto a waiting key past the cap.
-  expect(b.data().filter((d) => d.length > JOIN_MAX)).toHaveLength(0);
+  expect(b.data().map((d) => d.length)).toEqual([JOIN_MAX, 1, JOIN_MAX, JOIN_MAX, JOIN_MAX, JOIN_MAX]);
+  // A joined write never carries more than one paste chunk: text past the cap starts the next write.
+  void b.q.write(1, "x");
+  void b.q.write(1, "k");
+  void b.q.write(1, chunks[0]);
+  while (b.inFlight()) await b.answer();
+  expect(b.data().slice(6)).toEqual(["x", "k", chunks[0]]);
 });
 
 test("PKG-3: a send that throws is reported like a refusal and the queue goes on", async () => {

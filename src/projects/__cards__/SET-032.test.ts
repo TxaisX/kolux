@@ -65,6 +65,7 @@ const byPath = (c: FakeNode) => find(c, (n) => n.localName === "button" && n.att
 /** The by-path form (with the workspaces folder) opens from the Add project dialog's link; the footer gear is Settings now. */
 const openByPath = async (c: FakeNode) => {
   await click(c, addButton(c));
+  await until(() => byPath(c) !== undefined, "the Add project dialog (its code is read when first opened)");
   await click(c, byPath(c));
 };
 const field = (c: FakeNode) => find(c, (n) => n.localName === "input" && n.attrs["aria-label"] === "workspaces folder")[0];

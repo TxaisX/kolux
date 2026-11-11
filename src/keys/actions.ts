@@ -116,7 +116,7 @@ export const actions: Action[] = [
   a("ui.zoomReset", "Reset Interface Zoom", "global", ["Mod+Alt+0"], { group: "menu", terminalSafe: true, keywords: ["zoom", "actual size", "interface", "scale"] }),
   a("worktree.history.back", "Worktree History Back", "global", ["Mod+Alt+ArrowLeft"]),
   a("worktree.history.forward", "Worktree History Forward", "global", ["Mod+Alt+ArrowRight"]),
-  a("tab.newTerminal", "New terminal tab", "tabs", ["Mod+T"]),
+  a("tab.newTerminal", "New terminal tab", "tabs", ["Mod+T"], { keywords: ["shell", "console", "command line"] }),
   a("tab.newAgent", "New agent tab (default agent)", "tabs", ["Mod+Alt+T"]),
   a("tab.newBrowser", "New browser tab", "tabs", ["Mod+Shift+B"]),
   a("tab.newMarkdown", "New markdown tab", "tabs", ["Mod+Shift+M"]),

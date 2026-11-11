@@ -22,7 +22,8 @@ test("box 1: a background tab's finish marks it unread (bell badge) and viewing 
   const seen = toAcknowledge({ unread, inView: open, focused: true, manual: new Set(), stampOf: stamp, acked: new Set() }).panes;
   expect(seen).toEqual([2]);
   unread = new Set([...unread].filter((k) => !seen.includes(k))); // useAgentStatus.ts:328
-  expect(tabBadge("claude", false, false, unread.has(2))).toBe("done");
+  expect(tabBadge("claude", false, false, unread.has(2))).toBe("stopped"); // DT-C52 (round 3): an exited agent's plain mark is Stopped
+  expect(tabBadge("claude", true, false, unread.has(2), "done")).toBe("done"); // a turn done, program still up: the done check
 });
 
 test("box 2: an idle shell tab carries no badge, not even with a stale question or a hook reading", () => {

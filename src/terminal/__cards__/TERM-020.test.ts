@@ -33,7 +33,7 @@ test("box 2: the status dot's label names its state: 'status: <word>', one word 
     headerOf("claude", "starting" as Kind, undefined, false, null, 0),
   ];
   const labels = cases.map(label);
-  expect(labels).toEqual(["status: Ready", "status: Working", "status: Needs you", "status: Done", "status: Failed", "status: Blocked", "status: Ended (2)", "status: Starting"]);
+  expect(labels).toEqual(["status: Ready", "status: Working", "status: Needs you", "status: Stopped", "status: Failed", "status: Blocked", "status: Ended (2)", "status: Starting"]);
   expect(new Set(labels).size).toBe(labels.length); // no two of these states share a label
   // every state the vocabulary knows has a word, so the label is never "status: "
   for (const k of Object.keys(VOCAB) as StatusKey[]) expect(VOCAB[k].word.length).toBeGreaterThan(0);

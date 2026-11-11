@@ -110,6 +110,8 @@ export function sameText(a: string, b: string): boolean {
 
 /** EDIT-046: the refusals a retry cannot change (the file is binary, over the size bound, or not UTF-8). */
 export const NOT_TEXT = /is a binary file|is too large to open|is not UTF-8 text/;
+/** P10: whether reading again can help a file that did not open: not for a binary, oversized or non-UTF-8 file. */
+export const retryHelps = (error: string): boolean => !NOT_TEXT.test(error);
 
 /** Reads a file, trying again a few times before giving up with the last error (EDIT-001). A file
  *  that is not text (EDIT-046) is given up on at once: reading it again changes nothing. */

@@ -11,6 +11,8 @@ import { clearMissing } from "../launch/seats";
 import { groupOf } from "../terminal/grid";
 import { applyAppearance, readAppearance } from "../theme";
 import { readSettingsInto } from "./settingsRead";
+import { onlyWindowState } from "../settings/settingsSync";
+import { sharedRead } from "../settings/sharedRead";
 import { sameDir } from "../workspaces";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -30,16 +32,18 @@ export function useWindowStart({ activeDir, agentPass, focused, installedIds, ne
       setAgentPass({ looking: false, done: true, error: null });
     });
     // SET-001: the saved look is put on the window every time the settings are read.
-    const readSettings = () =>
-      void readSettingsInto(() => invoke<Record<string, unknown>>("get_settings"), (s) => {
+    // PKG-4: the mount read shares a get_settings already in flight; the read after a save (settings-saved) is a real one.
+    const readSettings = (load: () => Promise<Record<string, unknown>> = () => invoke<Record<string, unknown>>("get_settings")) =>
+      void readSettingsInto(load, (s) => {
           setSettings(s);
           setSettingsRead(true);
           applyAppearance(readAppearance(s));
           applyWindowBlur(s);
           // after-list #39 / row 789: the fallback sentence is told by RecoveryMount now (its own notice, not the single slot the shortcuts file overwrote)
         });
-    readSettings();
-    const off = listen("settings-saved", () => (readSettings(), invoke<ShellInfo[]>("shell_list").then(setShells, () => {}))); // SET-026: the chosen default shell leads the list
+    readSettings(sharedRead);
+    // A save of only the window's own state (the layout, the screen: every tab opened) changes nothing read here.
+    const off = listen("settings-saved", (e) => onlyWindowState(e?.payload) || (readSettings(), invoke<ShellInfo[]>("shell_list").then(setShells, () => {}))); // SET-026: the chosen default shell leads the list
     return () => {
       void off.then((u) => u()).catch(() => {});
       void offAgents.then((u) => u()).catch(() => {});

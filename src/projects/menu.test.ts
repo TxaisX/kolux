@@ -7,13 +7,13 @@ const W = (path: string, parent?: string) => ({ path, parent });
 
 describe("PROJ-065 workspace context menu", () => {
   it("lists Delete, Sleep, Move to status, Set parent, Details and Open in for one row", () => {
-    expect(ids({})).toEqual(["delete", "sleep", "status", "parent", "details", "open-in", "hide"]);
+    expect(ids({})).toEqual(["delete", "sleep", "status", "parent", "details", "review", "open-in", "hide"]);
     expect(rowMenu(base).find((i) => i.id === "status")?.children?.map((c) => c.id)).toEqual(["status:todo", "statuses:edit"]);
   });
   it("a sleeping workspace offers Wake; the main checkout is never deleted or slept", () => {
     expect(ids({ asleep: true })).toContain("wake");
     // T-749 (DT-C185): the main row also offers New workspace, as its project header does; a selection does not.
-    expect(ids({ isMain: true, worktreesOff: false })).toEqual(["proj:new", "status", "details", "open-in", "proj:remove"]);
+    expect(ids({ isMain: true, worktreesOff: false })).toEqual(["proj:new", "status", "details", "review", "open-in", "proj:remove"]);
     expect(ids({ isMain: true, count: 3, worktreesOff: false })).not.toContain("proj:new");
   });
   it("the file manager is named for the platform and Open in has the editors and a terminal", () => {
@@ -21,6 +21,18 @@ describe("PROJ-065 workspace context menu", () => {
     expect(fileManagerName("Win32")).toBe("Explorer");
     expect(fileManagerName("Linux x86_64")).toBe("Files");
     expect(rowMenu(base).find((i) => i.id === "open-in")?.children?.map((c) => c.label)).toEqual(["Explorer", "VS Code", "Terminal"]);
+  });
+  it("Review changes opens a git workspace's All Changes; a plain folder or a deleting workspace has it off", () => {
+    const review = (o: Partial<MenuFor>) => rowMenu({ ...base, ...o }).find((i) => i.id === "review");
+    expect(review({ git: true })).toMatchObject({ label: "Review changes", disabled: false });
+    expect(review({ git: false })?.disabled).toBe(true);
+    expect(review({ git: true, deleting: true })?.disabled).toBe(true);
+    expect(review({ git: true, count: 3 })).toBeUndefined();
+  });
+  it("a project's one folder row (one folder per project) offers Review changes, on for a git folder", () => {
+    expect(projectMenu(true, { git: true }).map((i) => [i.id, !!i.disabled])).toEqual([["proj:review", false], ["proj:settings", false], ["proj:remove", false]]);
+    expect(projectMenu(true, { git: false }).find((i) => i.id === "proj:review")?.disabled).toBe(true);
+    expect(projectMenu(true).map((i) => i.id)).not.toContain("proj:review"); // a plain project header has no folder of its own
   });
   it("Open in is disabled while the workspace is being deleted", () => {
     expect(rowMenu({ ...base, deleting: true }).find((i) => i.id === "open-in")?.disabled).toBe(true);
@@ -82,7 +94,7 @@ describe("T-055 deleting a workspace with children", () => {
 describe("T-798 (P4B-01) worktrees are off", () => {
   it("is the default (one folder per project): no menu offers New workspace", () => {
     expect(projectMenu().map((i) => i.id)).toEqual(["proj:settings", "proj:remove"]);
-    expect(ids({ isMain: true })).toEqual(["status", "details", "open-in", "proj:remove"]);
+    expect(ids({ isMain: true })).toEqual(["status", "details", "review", "open-in", "proj:remove"]);
   });
   it("the main row and the header keep every other item when worktrees are off", () => {
     expect(ids({ isMain: true, worktreesOff: true })).toEqual(ids({ isMain: true, worktreesOff: false }).filter((id) => id !== "proj:new"));

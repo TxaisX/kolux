@@ -16,6 +16,7 @@
 // ponytail: which rows are folded lasts until the window closes; nothing saves it.
 // T-022: rows carry the strongest live agent state and an unread mark (PROJ-063), the list can be
 // grouped by project, status or pull request and sorted Smart or by name (PROJ-045, PROJ-050).
+import { isFolderWorkspace } from "../sessions/folderTabs";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { projectDrop } from "../editor/desktopDrops";
 import CacheTimer from "./CacheTimer";
@@ -36,8 +37,8 @@ import { ScanGate, scanProjects, type Scanned } from "./worktreeScan";
 import { createStart } from "./workspaceStart";
 import { afterScan, matchLetters, middle, nestRows, openedWorktree, parentChoices, pathHints, rankProjects, shortcodes, type ProjectMatch, orderWorktrees, relPath, placeFieldAction, previewSentence, worktreeLabel, projectLabel, type Created, type PlaceInfo, type Preview, type Project, type VisSource, type Worktree, createOpens, overtakenBy, prItems, waitsForSetup, workItem, keepOnSwitch, itemLabel, bound, stoppedNote, type Linked, type PendingCreate, type PrHead, type SetupLine, type SetupWhere } from "./model";
 import { ArrowRight, Bell, Chip, ChevronDown, Close, EyeOff, Funnel, Minus, FileCode, FolderPlus, Gear, List, Plus, Rail, Rocket, Target, Box, Pin, Moon } from "../chrome/icons";
-import { AddProject, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
-import { CleanupDialog } from "../lazy/pages";
+import { AddProject, StatusEditor, ScanRepos, StartGit, ImportSetup, KeptBranches, IconPicker } from "../lazy/menus";
+import { CleanupDialog, SettingsPage } from "../lazy/pages";
 import { addKept, type KeptBranch, type KeptItem } from "./cleanup";
 import CardLine from "../look/CardLine";
 import { HeaderBadge, HeaderColourPicker } from "../look/HeaderBadge";
@@ -95,7 +96,6 @@ import { CLEAR_FILTERS, FILTER_DEFAULT_SETTING, FILTER_PROJECTS_SETTING, filters
 import { deletePlan, groupMenu, menuGaps, menuMove, projectMenu, rowMenu, type MenuItem } from "./menu";
 import { commentBlocks, itemFromPaste, type Span } from "./details";
 import { onWorkspaceStatus } from "./statusRefresh";
-import StatusEditor from "./StatusEditorForm";
 import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
@@ -150,6 +150,8 @@ type Props = {
   onChoose: () => void;
   /** SESS-009: the dropdown's blank-terminal row (a plain shell tab). */
   onTerminal?: () => void;
+  /** A row's Review changes: that workspace on Terminals with its All Changes. */
+  onReview?: (dir: string, branch: string | null) => void;
   /** SESS-003 / SESS-002: every installed agent is off; where the agent search stands. */
   allOff?: boolean;
   pass?: AgentPass;
@@ -210,7 +212,7 @@ const noteRecent = (id: string) => {
   }
 };
 
-export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
+export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], states, unread, onUnread, settings, onSetting, activeDir, onSelect, onAdded = () => {}, onRemoved, onRemovedAll = (paths) => paths.forEach(onRemoved), onSleep, unsavedIn = () => [], onAskUnsaved = async () => true, agents, launching, onLaunch, defaultId, onSetDefault, onChoose, onTerminal, onReview, allOff, pass, onRefresh, page, onPage, refresh, onIndex, createRequest, createName = "", deleteRequest, renameRequest = 0, onRenameTaken = () => {}, onStartIn, nest, onNest, artifactsOn, onArtifacts, onPending, onSetup, skillsOn = false, onSkills = () => {} }: Props) {
   const [moving, setMoving] = useState<string | null>(null); // the workspace whose parent picker is open (PROJ-048)
   // PROJ-065: the right-click menu, PROJ-060: the details form, T-055: a parent deleted together with its children.
   const [menu, setMenu] = useState<{ x: number; y: number; projectId: string; path: string; items: MenuItem[]; label?: string } | null>(null);
@@ -1325,7 +1327,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     const deleting = busy === "removing" && confirm?.path === w.path;
     const sibs = stepSiblingsOf(p, w);
     const at = sibs.indexOf(pathKey(w.path));
-    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 }) });
+    setMenu({ x, y, projectId: p.id, path: w.path, items: rowMenu({ count: 1, isMain: w.isMain, asleep: isAsleep(w), deleting, platform: navigator.platform, alt, statuses: st.list, editors: targets.filter((t) => !t.files), git: !isFolderWorkspace(w.path, [w]), reorder: true, first: at <= 0, last: at < 0 || at >= sibs.length - 1 }) });
   };
   // A project header or a group row opens its own short list; `projectId` holds the group id for a group.
   const pop = (e: { preventDefault(): void; clientX: number; clientY: number }, id: string, items: MenuItem[], label: string) => {
@@ -1384,6 +1386,13 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (g) return id === "grp:delete" ? askGroup(g) : openGroup(g);
     const p = m && projects.find((x) => x.id === m.projectId);
     const w = m && (worktrees[m.projectId] ?? []).find((x) => x.path === m.path);
+    const pm = p && id === "proj:review" ? (worktrees[p.id] ?? []).find((x) => x.isMain) : undefined;
+    if (pm) {
+      setRead(pm, true);
+      stamp(pm.path);
+      wake(pm);
+      return onReview?.(pm.path, pm.branch);
+    }
     if (p && id.startsWith("proj:")) return id === "proj:new" ? setCreating(p.id) : id === "proj:settings" ? openSettings(p) : setDropProject(p.id);
     if (!m || !p || !w) return;
     try {
@@ -1411,6 +1420,12 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       } else if (id === "open:files") await openIn(w.path, FILE_MANAGER);
       else if (id.startsWith("open:editor:")) await openIn(w.path, { label: "", command: id.slice(12) });
       else if (id === "open:terminal") show(w);
+      else if (id === "review") {
+        setRead(w, true);
+        stamp(w.path);
+        wake(w);
+        onReview?.(w.path, w.branch);
+      }
       else if (id === "dev:copy-path") await navigator.clipboard.writeText(w.path);
       else if (id === "dev:copy-branch") await navigator.clipboard.writeText(w.branch ?? "");
     } catch (err) {
@@ -2254,7 +2269,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
               show(main);
             } : undefined}
             {...headerDrag(p.id)}
-            onContextMenu={(e) => pop(e, p.id, projectMenu(), "Project")}
+            onContextMenu={(e) => pop(e, p.id, projectMenu(singleFolder(), folder ? { git: !isFolderWorkspace(main.path, [main]) } : undefined), "Project")}
           >
             <HeaderBadge colour={headerColourOf(settings, "p", p.id)} />
             <ProjectIcon value={icons[p.id]} name={projectLabel(p)} auto={autoIcons[p.id]} />
@@ -2807,7 +2822,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
         {adding && <AddProject onBrowse={browse} onByPath={() => { setAdding(false); if (!showAdd) loadVis(null); setShowAdd(true); }} onClose={() => setAdding(false)} onAdded={(p) => { setAdding(false); void added(p, false); }} />}
         <SidebarStart />
         <div className="sb-foot">
-          <button className="ib" title={`Settings${gitVersion ? ` · ${gitVersion}` : ""}`} aria-label="Settings" data-sidebar-settings onClick={() => openSettingsPage("general")}>
+          <button className="ib" title={`Settings${gitVersion ? ` · ${gitVersion}` : ""}`} aria-label="Settings" data-sidebar-settings onPointerEnter={SettingsPage.warm} onFocus={SettingsPage.warm} onClick={() => openSettingsPage("general")}>
             <Gear />
           </button>
           {/* SET-028: until Settings > Agents exists (T-036, T-054), model routing opens from here. */}

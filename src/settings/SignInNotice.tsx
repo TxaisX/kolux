@@ -10,6 +10,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { AccountsView } from "./ClaudeAccounts";
 import type { CodexView } from "./CodexCard";
 import { startCodexSignInScan } from "./codexSignInScan";
+import { onlyWindowState } from "./settingsSync";
 
 export type Lapsed = { agent: "claude" | "codex"; id: string; label: string; busy: boolean };
 
@@ -51,7 +52,7 @@ export default function SignInNotice() {
     readCodex();
     // Asks Claude Code once at start whether the active account is still signed in.
     invoke("claude_account_check").catch(() => {});
-    const offs = [listen("claude-accounts", readClaude), listen("codex-accounts", readCodex), listen("settings-saved", readClaude)];
+    const offs = [listen("claude-accounts", readClaude), listen("codex-accounts", readCodex), listen("settings-saved", (e) => onlyWindowState(e?.payload) || readClaude())];
     // T-139-d: a sign-in error Codex prints in a pane flags its account (the codex-accounts event re-reads it).
     const stopScan = startCodexSignInScan();
     return () => {

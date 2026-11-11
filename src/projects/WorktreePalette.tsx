@@ -172,6 +172,9 @@ export function chordRow(e: { altKey: boolean; ctrlKey: boolean; metaKey: boolea
  * built once per open if lists of tens of thousands ever appear. */
 const BUDGET_MS = 40;
 
+/** The palette says so when typed text finds no row, rather than showing an empty list. */
+export const nothingFound = (rows: number, query: string): boolean => rows === 0 && query.trim() !== "";
+
 /** VIEW-038: the rows that match every word. With no query: section order, the one used last first
  * (EDIT-047), then as listed. With one: the worktree linked to a typed number first (EDIT-047), then
  * own-field matches before project-only ones, then exact intent, whole word, start of a word,
@@ -367,9 +370,9 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
               </Fragment>
             );
           })}
+          {nothingFound(rows.length, query) && <div className="menu-hint">Nothing matches.</div>}
           {create && !singleFolder() && (
             <>
-              {rows.length === 0 && <div className="menu-hint">Nothing matches.</div>}
               <button role="option" aria-selected={cur === rows.length} className={`menu-item${cur === rows.length ? " at" : ""}`} onMouseEnter={() => setAt(rows.length)} onClick={() => go(rows.length)}>
                 <span className="name">{item ? `Create workspace from ${item.kind === "pull" ? "pull request" : "issue"} #${item.number}` : `Create workspace “${create}”`}</span>
                 {item ? <span className="picker-folder">{`${item.owner}/${item.repo}, named after its title and linked to it`}</span> : into && <span className="picker-folder">{`in ${into.name}`}</span>}

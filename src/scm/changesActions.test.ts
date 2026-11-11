@@ -116,3 +116,41 @@ describe("the file tree's resize handle", () => {
     expect(treeWidthForKey(300, "a")).toBeNull();
   });
 });
+
+describe("T-061: Discard on one All Changes file asks first, worded as Source Control worded it", () => {
+  it("an untracked file is deleted from disk, and says so", async () => {
+    const { discardOne } = await import("./changesActions");
+    const d = discardOne({ rel: "notes.txt", staged: false, code: "?" }, null);
+    expect(d).toMatchObject({ title: "Delete notes.txt?", confirm: "Delete", paths: ["notes.txt"], section: "untracked" });
+    expect(d.body).toContain("deleted from disk");
+    expect(d.body).toContain("cannot be undone");
+  });
+  it("an edited file loses its unstaged changes; a staged one loses both; a staged rename sends its old name too", async () => {
+    const { discardOne } = await import("./changesActions");
+    expect(discardOne({ rel: "src/a.ts", staged: false, code: "M" }, null)).toMatchObject({ title: "Discard changes to src/a.ts?", section: "changed", paths: ["src/a.ts"] });
+    expect(discardOne({ rel: "src/a.ts", staged: true, code: "M" }, null).body).toContain("staged and unstaged changes are lost");
+    const s: Status = { ...emptyStatus, staged: [{ path: "src/new.ts", status: "R", from: "src/old.ts" }] };
+    expect(discardOne({ rel: "src/new.ts", staged: true, code: "R" }, s)).toMatchObject({ section: "staged", paths: ["src/old.ts", "src/new.ts"] });
+  });
+  it("a deleted file is restored", async () => {
+    const { discardOne } = await import("./changesActions");
+    expect(discardOne({ rel: "gone.ts", staged: true, code: "D" }, null)).toMatchObject({ title: "Restore gone.ts?", confirm: "Restore" });
+  });
+});
+
+describe("P10: a waiting button says why", () => {
+  it("Commit with nothing typed asks for a message; nothing staged and conflicts say so", async () => {
+    const { commitWait } = await import("./changesActions");
+    const staged: Status = { ...emptyStatus, branch: "main", staged: [{ path: "a", status: "M", from: null }] };
+    expect(commitWait(staged, "  ")).toBe("Write a commit message first");
+    expect(commitWait(staged, "fix")).toBeNull();
+    expect(commitWait({ ...emptyStatus, branch: "main" }, "fix")).toContain("Nothing is staged");
+    expect(commitWait({ ...staged, conflicts: [{ path: "b", status: "UU", from: null }] }, "fix")).toBe("Resolve the conflicts first");
+  });
+  it("with no remote at all, Push, Pull and Sync say there is no remote instead of 'Branch unpublished'", async () => {
+    const { remoteButtons, NO_REMOTE } = await import("./changesActions");
+    const s: Status = { ...emptyStatus, branch: "main", upstream: null };
+    expect(remoteButtons(s, true).map((b) => b.reason)).toEqual([NO_REMOTE, NO_REMOTE, NO_REMOTE]);
+    expect(remoteButtons(s).map((b) => b.reason)).toEqual(["Branch unpublished", "Branch unpublished", "Branch unpublished"]);
+  });
+});

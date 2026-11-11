@@ -63,6 +63,10 @@ export function ageLabel(finishedAt: number, now: number): string {
  *  header has no mark for, or an unclear answer, leaves the pane a shell. */
 export const foundAgent = (a: string | null): "claude" | "codex" | null => (a === "claude" || a === "codex" ? a : null);
 
+/** DT-C52: the agent a pane's status word speaks for: the one its header shows, else the agent Kolux launched in it
+ *  (an agent with no vendor mark, Gemini say, runs as a shell pane but is an agent on the Board and the Inbox). */
+export const statusAgent = (shown: string, launched: string | null): string => (shown === "shell" && launched ? launched : shown);
+
 export function headerOf(agent: string, kind: Kind, code: number | null | undefined, needs: boolean, finishedAt: number | null, now: number, hook?: AgentState | "background"): Header {
   const h = (state: StatusKey, over: Partial<Header> = {}): Header => ({ ...VOCAB[state], state, age: "", needsYou: VOCAB[state].tone === "attention", ...over });
   const done = () => h("done", { age: finishedAt === null ? "" : ageLabel(finishedAt, now) });
@@ -77,7 +81,9 @@ export function headerOf(agent: string, kind: Kind, code: number | null | undefi
     if (hook === "background") return h("background");
     return h("working");
   }
-  if (agent !== "shell" && !code) return done();
+  // DT-C52: an agent whose program has exited reads Stopped, as on the Board, the Tower and the Inbox (its program
+  // cannot say its work finished); an exit code keeps "Ended (code)" with the same Stopped meaning.
+  if (agent !== "shell" && !code) return h("stopped", { explain: stoppedLabel("exited") });
   return h("stopped", { word: `Ended${code ? ` (${code})` : ""}`, explain: stoppedLabel(code ? `exit code ${code}` : "exited") });
 }
 

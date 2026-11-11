@@ -35,6 +35,10 @@ describe("GIT-038: All Changes against the branch's base", () => {
     expect(tagOf(e({ code: "?" }), true)).toBe("Untracked");
     expect(tagOf(e({ code: "M", staged: true }), false)).toBe("Staged");
     expect(tagOf(e({ code: "M" }), false)).toBe("Unstaged");
+    // P2: a delete and a rename say so, on either side of the index
+    expect(tagOf(e({ code: "D", staged: true }), false)).toBe("Deleted, staged");
+    expect(tagOf(e({ code: "D" }), false)).toBe("Deleted, unstaged");
+    expect(tagOf(e({ code: "R", staged: true }), false)).toBe("Renamed, staged");
   });
   it("starts inline, unwrapped, whitespace hidden and the tree hidden unless a setting says otherwise", () => {
     expect(acLayoutOf(null)).toEqual({ split: false, wrap: false, spaces: false, tree: false });
@@ -146,6 +150,13 @@ describe("UX-D: the live Changes tab stages from its section headers", () => {
   it("offers nothing against a base, on a conflicted file, or when the tab gave no stage handler", () => {
     expect(html(e({}))).not.toContain("Stage a.ts");
     expect(html(e({ clash: "UU" }), { onStage: () => undefined })).not.toContain("Stage a.ts");
+  });
+  it("T-061: offers Discard on each file (not on a conflict, not against a base), and a rename names its old path", () => {
+    expect(html(e({}), { onDiscard: () => undefined })).toContain('aria-label="Discard a.ts"');
+    expect(html(e({ code: "?" }), { onDiscard: () => undefined })).toContain('title="Delete this untracked file"');
+    expect(html(e({ clash: "UU" }), { onDiscard: () => undefined })).not.toContain("Discard a.ts");
+    expect(html(e({}))).not.toContain("Discard a.ts");
+    expect(html(e({ staged: true, code: "R", from: "C:/r/old.ts" }))).toContain("renamed from old.ts");
   });
   it("disables the button while another git action runs", () => {
     const out = html(e({}), { onStage: () => undefined, stageBusy: true });

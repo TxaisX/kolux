@@ -66,3 +66,13 @@ test("SET-035: tidying touches only keys that are present and returns the same o
   expect(tidySettings(s)).toBe(s);
   expect(Object.keys(tidySettings({ theme: "dark" }))).toEqual(["theme"]);
 });
+
+test("a save of only the window's own state (the pane layout, the screen in front) is told apart, so account and key readers skip it", async () => {
+  const { onlyWindowState } = await import("./settingsSync");
+  expect(onlyWindowState({ set: { savedLayout: { panes: [] } }, remove: [] })).toBe(true);
+  expect(onlyWindowState({ set: { lastScreen: "board", savedLayout: {} }, remove: [] })).toBe(true);
+  expect(onlyWindowState({ set: { savedLayout: {}, claudeKeyMode: true }, remove: [] })).toBe(false);
+  expect(onlyWindowState({ set: {}, remove: ["claudeOauthToken"] })).toBe(false); // a secret dropped: read again
+  expect(onlyWindowState({ set: {}, remove: [] })).toBe(false);
+  expect(onlyWindowState(null)).toBe(false);
+});

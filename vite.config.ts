@@ -25,22 +25,6 @@ export default defineConfig(() => ({
     // The vendor marks (src/marks/registry.ts) were inlined as data: URIs, 22 kB of text in the first-load script.
     // As files they are read with the first icons drawn; everything else keeps Vite's default rule.
     assetsInlineLimit: (file: string) => (/[\\/]assets[\\/]vendors[\\/]/.test(file) ? false : undefined),
-    rolldownOptions: {
-      output: {
-        // The editor stack was one 900 kB chunk named after whichever small module came first (pictureBytes).
-        // Named groups keep CodeMirror, the Markdown editor (Lexical) and the code colouring in files of their
-        // own, so what a surface needs is fetched on its own and the build output says which part is big.
-        codeSplitting: {
-          groups: [
-            // Core only: the language packs (lang-*, legacy-modes) are imported one at a time on purpose and must stay out.
-            { name: "codemirror", test: /node_modules[\\/](@codemirror[\\/](state|view|language|commands|search|autocomplete|lint|merge|streamparser)|codemirror|@lezer[\\/](common|highlight|lr)|@marijn|style-mod|w3c-keyname|crelt)[\\/]/, priority: 30 },
-            { name: "lexical", test: /node_modules[\\/](lexical|@lexical|@preact[\\/]signals-core)[\\/]/, priority: 30 },
-            { name: "highlightjs", test: /node_modules[\\/]highlight\.js[\\/]/, priority: 30 },
-            { name: "markdown-tools", test: /node_modules[\\/](marked|dompurify)[\\/]/, priority: 30 },
-          ],
-        },
-      },
-    },
   },
   test: {
     // LOOP.md section 1: the PC is shared with live agents; never more than two workers.

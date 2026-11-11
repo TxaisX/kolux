@@ -25,9 +25,16 @@ import { watchCodexSignIn } from "../../settings/codexSignInScan";
 import { invoke } from "@tauri-apps/api/core";
 import { deferred } from "../../lazy/deferred";
 import SeatChooser from "./SeatChooser";
-import TerminalPane from "../../terminal/TerminalPane";
+// PKG-2: the terminal pane behind its render comparison (TerminalMemo.tsx).
+import TerminalPane from "./TerminalMemo";
 import { useWindow } from "./store";
-import { tally } from "./stable";
+import { useStableFns } from "./stable";
+import type { Identity } from "../../terminal/shellMarks";
+import type { Launch } from "../../terminal/sessionFork";
+import type { ShellEntry } from "../../terminal/shellChoice";
+import type { EntryTarget } from "../../launch/newTabEntryRun";
+import type { AgentState } from "../../projects/rows";
+import type { AgentInfo } from "../../launch/PlusMenu";
 import { EditorPane } from "../../lazy/panes";
 import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
@@ -39,12 +46,6 @@ import { openInBrowser } from "../../browser/openIn";
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
 const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
-
-// MEASURE-ONLY (temporary): counts terminal renders for the before-numbers.
-function Terminal(props: Parameters<typeof TerminalPane>[0]) {
-  tally("terminal");
-  return <TerminalPane {...props} />;
-}
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
@@ -58,6 +59,106 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
     renamePane, askName, shells, newTab, copyId, findHandle, setReviewing, setToast, failedPane, noticeFor,
     splitPane, rememberLineup, panes, activeDir, wakePane,
   } = useWindow();
+  // PKG-2: what the terminal runs from its handlers and effects, made here each render over this render's pane and
+  // window, and handed over as callers with a fixed identity, so a new closure alone never redraws the pane. The
+  // terminal calls none of these while it draws (it reads them through refs or on a click).
+  const act = useStableFns({
+    focus: () => {
+      setFocused(p.key);
+      runTabs.current = touchRunTab(runTabs.current, p.key);
+    },
+    running: (on: boolean | undefined) => {
+      // T-151-c: a program still starting reports undefined: no entry yet, so it never reads as ended
+      if (on === undefined) {
+        setRunning((r) => (p.key in r ? Object.fromEntries(Object.entries(r).filter(([k]) => Number(k) !== p.key)) : r));
+        return;
+      }
+      if (runRef.current[p.key] && !on && p.agent !== "shell") {
+        noticed(p, "finished");
+        setStamp((m) => ({ ...m, [p.key]: { at: Date.now(), interrupted: false } }));
+      }
+      setRunning((r) => (r[p.key] === on ? r : { ...r, [p.key]: on }));
+      // STAT-050: a pane that just started counts from now in the Inbox.
+      if (on) setStamp((m) => (m[p.key] ? m : { ...m, [p.key]: { at: Date.now(), interrupted: false } }));
+      // The program is gone: its last hook state goes with it everywhere. An open question or
+      // permission is remembered for the Inbox alone (T-035-b); a stop is not a prompt.
+      exitedPrompt.current = onRunning(exitedPrompt.current, p.key, on, hookRef.current[p.key]);
+      if (!on && p.key in hookRef.current) setHook((h) => Object.fromEntries(Object.entries(h).filter(([k]) => Number(k) !== p.key)));
+      const then = !on && runRef.current[p.key] && afterSetup.current[p.key];
+      if (then) {
+        delete afterSetup.current[p.key];
+        then();
+      }
+    },
+    needsYou: (on: boolean) => setNeeds((r) => (r[p.key] === on ? r : { ...r, [p.key]: on })),
+    identity: (l: Identity) => {
+      // Review of PR #16: a hand-started agent quit and the prompt is back: its last word and guess go with it,
+      // and (d) a late hook word from it is ignored until a new agent starts in the pane.
+      const muted = muteRef.current[p.key] ?? false;
+      const mute = hooksMuted(muted, p, liveRef.current[p.key], l);
+      if (mute !== muted) muteRef.current = { ...muteRef.current, [p.key]: mute };
+      if (promptReturned(p, liveRef.current[p.key], l)) {
+        setHook((h) => forget(h, p.key));
+        setGuess((g) => forget(g, p.key));
+      }
+      setLiveIds((m) => (m[p.key] === l ? m : { ...m, [p.key]: l }));
+    },
+    guess: (g: AgentState | null) => setGuess((m) => (m[p.key] === g ? m : { ...m, [p.key]: g })),
+    bell: () => noticed(p, BELL_NOTE.what, "", BELL_NOTE.gate),
+    pty: (id: number, account: string | null) => {
+      ptys.current[p.key] = id;
+      startWatch.seen(p.key);
+      // C24-R1-01: the tab has its terminal, so it is no longer a restore in flight: a later failure
+      // of this tab drops it as usual instead of being kept as a restored one.
+      restoredKeys.current.delete(p.key);
+      // SESS-032 (T-163): an agent's opening prompt is handed over by Rust exactly once; a
+      // prompt that does not go in is said in a toast.
+      if (p.typed && p.agent !== "shell") void deliverPrompt(invoke, id, p.typed, agents.find((a) => a.id === p.agentId)?.name ?? p.agent).then((lost) => lost && setToast(lost));
+      report.current();
+      if (p.batch !== undefined && p.agent !== "shell") rememberLineup(p.batch);
+      // T-139-d: a Codex pane on a managed account is watched for printed sign-in errors.
+      watchCodexSignIn(id, p.agent === "codex" ? account : null);
+      // ACCT-023: a Codex pane remembers the account it began on (and its setup, T-139-d); T-548-b: so does a Claude pane.
+      const began = spawnRecord(p, account, codexSetup(settings));
+      if (began) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, ...began } : x)));
+    },
+    failed: (error: string) => {
+      failedPane(p.key, error);
+      const then = afterSetup.current[p.key];
+      delete afterSetup.current[p.key];
+      then?.();
+    },
+    // C24-R1-01: the tab could not take its terminal back; it stays, so it is no longer a restore in
+    // flight and the loaded latch does not wait on it, and the pane's own notice is the only warning.
+    restoreFailed: () => {
+      restoredKeys.current.delete(p.key);
+      startWatch.seen(p.key);
+    },
+    split: (dir: "right" | "down") => splitPane(p.key, dir),
+    dragStart: () => void (dragging.current = { cell: groupOf(p) }),
+    dragEnd: () => (dragging.current = null, setDropHint(null)),
+    equalize: () => equalizePanes(),
+    moveToTab: () => moveOutToTab(p.key),
+    expand: () => expandPane(p.key),
+    rename: (name: string | undefined) => renamePane(p.key, name),
+    sessionLaunch: (l: Launch, fork: boolean, forkName?: string) => splitPane(p.key, "right", undefined, { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined }),
+    entry: (t: EntryTarget) => (t.kind === "browser" ? openInBrowser(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key)),
+    shell: (sh: ShellEntry) => void newTab({ shell: sh }), // TERM-043: the plus menu's shell choice, a tab like the New tab menu's
+    copyId: (what: "session" | "terminal" | "pane") => copyId(p, what),
+    findHandle: (h: string) => findHandle(h),
+    close: () => closePane(p.key),
+    reviewPlan: () => setReviewing({ key: p.key, plan: turn[p.key]?.plan ?? "", cut: !!turn[p.key]?.planCut }),
+    setDefault: (id: string) => setDefault(id),
+    launch: (a: AgentInfo) => launch(a, null),
+    choose: () => addChooser(),
+    openFile: (path: string, line?: number) => openFile(path, line),
+    toggleCard: () => setExpanded((x) => toggleCard(x, p.key)),
+    answer: (ok: boolean) => void answer(p, ok),
+    review: () => reviewChanges(p.key),
+    // ACCT-064: the question's buttons run what the newest render's question says.
+    noticePrimary: () => noticeFor(p)?.onPrimary(),
+    noticeSecondary: () => noticeFor(p)?.onSecondary?.(),
+  });
   if (p.kind === "browser") {
     return (
       <BrowserPane
@@ -141,18 +242,19 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
   if (p.kind) return <LostPane kind={p.kind} hidden={!terminals || p.key !== active} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />;
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
   if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={!board && p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
+  const notice = noticeFor(p);
   return (
-    <Terminal
+    <TerminalPane
       key={p.key}
       hidden={!board && p.key !== active}
       restored={restoredKeys.current.has(p.key)}
       identityBefore={liveRef.current[p.key]}
       resumed={p.resumed}
-      onOpenFile={openFile}
+      onOpenFile={act.openFile}
       onOpenLink={openInBrowser}
       linksOpenInKolux={settings.linksOpenInKolux === true}
       gpu={gpuOn(settings)}
-      card={board ? { expanded: expanded === p.key, onToggle: () => setExpanded((x) => toggleCard(x, p.key)), chip: chipFor(p), column: columnOf(p), onAnswer: (ok) => void answer(p, ok), onReview: () => reviewChanges(p.key), meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
+      card={board ? { expanded: expanded === p.key, onToggle: act.toggleCard, chip: chipFor(p), column: columnOf(p), onAnswer: act.answer, onReview: act.review, meter: p.seats || p.kind ? null : meterOf(context[p.key], p.agent, claudeOf(p.agent, p.account, accountSwitcher.active.claude, plan.claude, plan.claudeBy), codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) } : undefined}
       cwd={p.cwd}
       branch={p.branch}
       agent={p.agent}
@@ -165,113 +267,51 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
       context={context[p.key] ? contextFill(context[p.key], capOn(settings)) : null}
       usage={p.agent === "shell" ? undefined : readoutOf(context[p.key], capOn(settings), readsLeft(settings))}
       focused={p.key === focused}
-      onFocus={() => {
-        setFocused(p.key);
-        runTabs.current = touchRunTab(runTabs.current, p.key);
-      }}
-      onRunning={(on) => {
-        // T-151-c: a program still starting reports undefined: no entry yet, so it never reads as ended
-        if (on === undefined) {
-          setRunning((r) => (p.key in r ? Object.fromEntries(Object.entries(r).filter(([k]) => Number(k) !== p.key)) : r));
-          return;
-        }
-        if (runRef.current[p.key] && !on && p.agent !== "shell") {
-          noticed(p, "finished");
-          setStamp((m) => ({ ...m, [p.key]: { at: Date.now(), interrupted: false } }));
-        }
-        setRunning((r) => (r[p.key] === on ? r : { ...r, [p.key]: on }));
-        // STAT-050: a pane that just started counts from now in the Inbox.
-        if (on) setStamp((m) => (m[p.key] ? m : { ...m, [p.key]: { at: Date.now(), interrupted: false } }));
-        // The program is gone: its last hook state goes with it everywhere. An open question or
-        // permission is remembered for the Inbox alone (T-035-b); a stop is not a prompt.
-        exitedPrompt.current = onRunning(exitedPrompt.current, p.key, on, hookRef.current[p.key]);
-        if (!on && p.key in hookRef.current) setHook((h) => Object.fromEntries(Object.entries(h).filter(([k]) => Number(k) !== p.key)));
-        const then = !on && runRef.current[p.key] && afterSetup.current[p.key];
-        if (then) {
-          delete afterSetup.current[p.key];
-          then();
-        }
-      }}
+      onFocus={act.focus}
+      onRunning={act.running}
       hook={hook[p.key] === "working" && turn[p.key]?.monitoring ? "background" : hook[p.key]}
       pendingTool={hook[p.key] === "permission" ? turn[p.key]?.tool : undefined}
       keySettings={settings}
       crew={crew[p.key]}
-      onNeedsYou={(on) => setNeeds((r) => (r[p.key] === on ? r : { ...r, [p.key]: on }))}
-      onIdentity={(l) => {
-        // Review of PR #16: a hand-started agent quit and the prompt is back: its last word and guess go with it,
-        // and (d) a late hook word from it is ignored until a new agent starts in the pane.
-        const muted = muteRef.current[p.key] ?? false;
-        const mute = hooksMuted(muted, p, liveRef.current[p.key], l);
-        if (mute !== muted) muteRef.current = { ...muteRef.current, [p.key]: mute };
-        if (promptReturned(p, liveRef.current[p.key], l)) {
-          setHook((h) => forget(h, p.key));
-          setGuess((g) => forget(g, p.key));
-        }
-        setLiveIds((m) => (m[p.key] === l ? m : { ...m, [p.key]: l }));
-      }}
-      onGuess={(g) => setGuess((m) => (m[p.key] === g ? m : { ...m, [p.key]: g }))}
-      onBell={() => noticed(p, BELL_NOTE.what, "", BELL_NOTE.gate)}
+      onNeedsYou={act.needsYou}
+      onIdentity={act.identity}
+      onGuess={act.guess}
+      onBell={act.bell}
       unread={unreadPanes.has(p.key)}
-      onPty={(id, account) => {
-        ptys.current[p.key] = id;
-        startWatch.seen(p.key);
-        // C24-R1-01: the tab has its terminal, so it is no longer a restore in flight: a later failure
-        // of this tab drops it as usual instead of being kept as a restored one.
-        restoredKeys.current.delete(p.key);
-        // SESS-032 (T-163): an agent's opening prompt is handed over by Rust exactly once; a
-        // prompt that does not go in is said in a toast.
-        if (p.typed && p.agent !== "shell") void deliverPrompt(invoke, id, p.typed, agents.find((a) => a.id === p.agentId)?.name ?? p.agent).then((lost) => lost && setToast(lost));
-        report.current();
-        if (p.batch !== undefined && p.agent !== "shell") rememberLineup(p.batch);
-        // T-139-d: a Codex pane on a managed account is watched for printed sign-in errors.
-        watchCodexSignIn(id, p.agent === "codex" ? account : null);
-        // ACCT-023: a Codex pane remembers the account it began on (and its setup, T-139-d); T-548-b: so does a Claude pane.
-        const began = spawnRecord(p, account, codexSetup(settings));
-        if (began) setPanes((ps) => ps.map((x) => (x.key === p.key ? { ...x, ...began } : x)));
-      }}
+      onPty={act.pty}
       account={p.account}
-      notice={noticeFor(p)}
-      onFailed={(error) => {
-        failedPane(p.key, error);
-        const then = afterSetup.current[p.key];
-        delete afterSetup.current[p.key];
-        then?.();
-      }}
-      // C24-R1-01: the tab could not take its terminal back; it stays, so it is no longer a restore in
-      // flight and the loaded latch does not wait on it, and the pane's own notice is the only warning.
-      onRestoreFailed={() => {
-        restoredKeys.current.delete(p.key);
-        startWatch.seen(p.key);
-      }}
-      onSplit={(dir) => splitPane(p.key, dir)}
-      dragCell={!board && showsDragHandle(shown.length) ? { onStart: () => (dragging.current = { cell: groupOf(p) }), onEnd: () => (dragging.current = null, setDropHint(null)) } : undefined}
-      onEqualize={terminals && gridCount > 1 ? equalizePanes : undefined}
-      onMoveToTab={terminals && gridCount > 1 && moveToTab(panes, p.key) ? () => moveOutToTab(p.key) : undefined}
-      expand={board ? undefined : { on: zoomed === groupOf(p), can: canExpand(shown.length, classic), toggle: () => expandPane(p.key) }}
+      notice={notice && { ...notice, onPrimary: act.noticePrimary, onSecondary: notice.onSecondary && act.noticeSecondary }}
+      onFailed={act.failed}
+      onRestoreFailed={act.restoreFailed}
+      onSplit={act.split}
+      dragCell={!board && showsDragHandle(shown.length) ? { onStart: act.dragStart, onEnd: act.dragEnd } : undefined}
+      onEqualize={terminals && gridCount > 1 ? act.equalize : undefined}
+      onMoveToTab={terminals && gridCount > 1 && moveToTab(panes, p.key) ? act.moveToTab : undefined}
+      expand={board ? undefined : { on: zoomed === groupOf(p), can: canExpand(shown.length, classic), toggle: act.expand }}
       title={p.title || nameOf(names, p.cwd)}
       custom={!!p.title}
-      onRename={(name) => renamePane(p.key, name)}
+      onRename={act.rename}
       renameAsk={askName[p.key]}
       sessionKnown={!!p.session}
       session={p.session}
-      onSessionLaunch={(l, fork, forkName) => splitPane(p.key, "right", undefined, { agent: p.agent, agentId: p.agentId, account: p.account, setup: p.setup, env: p.env, program: l.program, args: l.args, forkOf: fork ? p.session : undefined, title: fork ? forkName : undefined })}
+      onSessionLaunch={act.sessionLaunch} // after-list #117: Continue / Fork open a second pane beside this one
       entryTabs={panes.filter((q) => sameDir(q.cwd, activeDir)).map((q) => ({ key: q.key, name: tabName(q, titles, labelOf(q), liveIds) }))}
-      onEntry={(t) => (t.kind === "browser" ? openInBrowser(t.url) : t.kind === "file" ? openFile(t.path) : setFocused(t.key))}
+      onEntry={act.entry}
       shells={shells}
-      onShell={(sh) => void newTab({ shell: sh })} // TERM-043: the plus menu's shell choice, a tab like the New tab menu's // after-list #117: Continue / Fork open a second pane beside this one
-      onCopyId={(what) => copyId(p, what)}
-      findHandle={findHandle}
+      onShell={act.shell}
+      onCopyId={act.copyId}
+      findHandle={act.findHandle}
       typed={p.typed}
       shellName={p.word}
       number={p.key}
-      onClose={() => closePane(p.key)}
-      onReviewPlan={showsReview(hook[p.key], turn[p.key]) ? () => setReviewing({ key: p.key, plan: turn[p.key]?.plan ?? "", cut: !!turn[p.key]?.planCut }) : undefined}
+      onClose={act.close}
+      onReviewPlan={showsReview(hook[p.key], turn[p.key]) ? act.reviewPlan : undefined}
       agents={agents}
       defaultId={defaultId}
-      onSetDefault={setDefault}
+      onSetDefault={act.setDefault}
       launching={launching}
-      onLaunch={(a) => launch(a, null)}
-      onChoose={addChooser}
+      onLaunch={act.launch}
+      onChoose={act.choose}
     />
   );
 }

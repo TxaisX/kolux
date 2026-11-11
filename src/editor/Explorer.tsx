@@ -35,6 +35,11 @@ import { labelOf, matchEvent } from "../keys/keymap";
 import { withChord } from "../terminal/PaneMenu";
 import { explorerSearchKey } from "../keys/useWindowKeys";
 import { announceMoves } from "./fileMoved";
+import { EditorPane } from "../lazy/panes";
+
+/** PKG-1: the editor's code is read late after start (stage 3); a pointer or the keyboard reaching the file list is the
+ *  intent to open one, so its code starts loading then and the click finds it there. */
+export const warmEditor = (): void => EditorPane.warm();
 
 export type Node = { name: string; path: string; kind: "dir" | "file" | "link" };
 export type Row = { node: Node; depth: number; parent: string | null };
@@ -938,7 +943,8 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         aria-activedescendant={index >= 0 ? `ex-row-${index}` : undefined}
         onKeyDown={onKey}
         onContextMenu={keyContext}
-        onFocus={() => index < 0 && rows.length && setAt(rows[0].node.path)}
+        onPointerEnter={warmEditor}
+        onFocus={() => (warmEditor(), index < 0 && rows.length && setAt(rows[0].node.path))}
         onScroll={(e) => setScroll(e.currentTarget.scrollTop)}
       >
         {kids[root] && !rows.length && <div className="menu-hint">{query.trim() ? "No file name matches the filter." : "This folder is empty."}</div>}

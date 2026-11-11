@@ -11,17 +11,42 @@ test("a page's code is read when the pointer or keyboard reaches its button, onc
   expect(b).not.toHaveBeenCalled();
 });
 
-test("every page's code is read at the first idle moment after Settings draws, not before, and never twice", () => {
+test("every page's code is read after Settings draws, one page per idle moment, not before, and never twice", async () => {
   const a = vi.fn(async () => ({}));
   const b = vi.fn(async () => ({}));
   const c = vi.fn(async () => ({}));
-  const w = pageWarmer<"x" | "y">({ x: [a], y: [b, c] });
+  const d = vi.fn(async () => ({}));
+  const w = pageWarmer<"x" | "y" | "z">({ x: [a], y: [b, c], z: [d] });
   w.page("x");
   let idle: (() => void) | null = null;
+  const tick = async () => {
+    const f = idle;
+    idle = null;
+    f?.();
+    await new Promise((r) => setTimeout(r, 0)); // the page asked for arrives
+  };
   w.rest((f) => ((idle = f), () => (idle = null)));
   expect(b).not.toHaveBeenCalled();
+  await tick(); // x: already read by the hover, nothing new
+  expect([a, b, c, d].map((f) => f.mock.calls.length)).toEqual([1, 0, 0, 0]);
+  await tick(); // y: both of its modules, and only its
+  expect([a, b, c, d].map((f) => f.mock.calls.length)).toEqual([1, 1, 1, 0]);
+  await tick(); // z
+  expect([a, b, c, d].map((f) => f.mock.calls.length)).toEqual([1, 1, 1, 1]);
+  expect(idle).toBeNull(); // nothing left to wait for
+});
+
+test("closing Settings stops the warm-up where it is", async () => {
+  const a = vi.fn(async () => ({}));
+  const b = vi.fn(async () => ({}));
+  const w = pageWarmer<"x" | "y">({ x: [a], y: [b] });
+  let idle: (() => void) | null = null;
+  const stop = w.rest((f) => ((idle = f), () => (idle = null)));
   idle!();
-  expect([a, b, c].map((f) => f.mock.calls.length)).toEqual([1, 1, 1]);
+  await new Promise((r) => setTimeout(r, 0));
+  stop();
+  expect(idle).toBeNull();
+  expect(b).not.toHaveBeenCalled();
 });
 
 test("a read that failed is tried again by the next warm-up", async () => {

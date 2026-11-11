@@ -7,7 +7,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { REPORT_CRASH_EVENT } from "../chrome/chromeItems";
-import { requestFeedback } from "../feedback/FeedbackDialog";
+import { requestFeedback } from "../feedback/request";
 import { openSettings } from "../settings/pages";
 import { requestUpdateCheck } from "../update/bus";
 import { milestonesShown, openExplore, openGuide, ring } from "./guide";

@@ -28,6 +28,18 @@ export function readBroadcast(payload: unknown): Broadcast | null {
   return { set: withoutSecrets(p.set as Settings), remove: remove.filter((k) => !(SECRET_KEYS as readonly string[]).includes(k)) };
 }
 
+/** The settings the window writes by itself as it is used: the pane layout (every tab opened or closed) and the screen
+ *  in front. A save of only these changes no account, key or choice, so a reader of those need not ask again. */
+export const WINDOW_STATE_KEYS: readonly string[] = ["savedLayout", "lastScreen"];
+
+/** True when a "settings-saved" event carried only window state (WINDOW_STATE_KEYS); anything else, or an event
+ *  that carried nothing usable, is false, so the caller reads again as before. */
+export function onlyWindowState(payload: unknown): boolean {
+  const b = readBroadcast(payload);
+  const keys = b ? [...Object.keys(b.set), ...b.remove] : [];
+  return keys.length > 0 && keys.every((k) => WINDOW_STATE_KEYS.includes(k));
+}
+
 /** A window's copy after another window's save. */
 export function applyBroadcast(current: Settings, b: Broadcast): Settings {
   const next = { ...current, ...b.set };
