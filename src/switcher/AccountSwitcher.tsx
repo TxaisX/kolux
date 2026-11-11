@@ -11,6 +11,7 @@ import { listen } from "@tauri-apps/api/event";
 import { activeOf, buttonText, groupsOf, pickAccount, watchEscape, type ClaudeSwitchView, type CodexSwitchView, type Group, type Provider } from "./accounts";
 import { openSettings } from "../settings/pages";
 import "./switcher.css";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 /** Both views, re-read when either provider's accounts change; the same events Settings listens to. */
 export function useAccountSwitcher(): { groups: Group[]; active: { claude: string | null; codex: string | null }; stale: boolean; loaded: boolean; read: () => void; pick: (provider: Provider, id: string | null) => Promise<string | null> } {
@@ -125,7 +126,7 @@ export function AccountSwitcherView({ groups, open, error = null, ready = true, 
         <span aria-hidden="true">▾</span>
       </button>
       {open && (
-        <>
+        <OutOfFlow>
           {/* T-620: the menu is drawn inside the top bar's drag region; "false" keeps clicks on it from moving the window. */}
           <div className="menu-backdrop" onClick={onClose} aria-hidden="true" data-tauri-drag-region="false" />
           <EscapeWatch onClose={onClose} />
@@ -151,7 +152,7 @@ export function AccountSwitcherView({ groups, open, error = null, ready = true, 
               </div>
             )}
           </div>
-        </>
+        </OutOfFlow>
       )}
     </>
   );

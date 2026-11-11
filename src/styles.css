@@ -283,6 +283,10 @@ input { font: inherit; }
    WebKit redraw the whole window under it, once when a menu or a picker opened and once when it closed.
    On a layer of its own there is nothing to draw and nothing under it is drawn again. It is always empty. */
 .menu-backdrop { position: fixed; inset: 0; z-index: var(--z-page); will-change: transform; }
+/* DT-C269: the empty box a menu or a picker goes into (chrome/OutOfFlow.tsx). Out of the flow, so adding or
+   taking away a menu lays out only this box, not the pane or the window row it sits in. No size, no stacking
+   context of its own: the menu inside stays fixed to the window, with its own z-index. */
+.out-of-flow { position: absolute; width: 0; height: 0; }
 .menu { position: fixed; z-index: var(--z-menu); min-width: 230px; padding: 6px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); font-size: 13px; max-height: calc(100vh - 16px); overflow-y: auto; }
 .menu-title { padding: 4px 8px 6px; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .menu-hint { padding: 4px 8px; font-size: 12px; color: var(--fg-faint); }

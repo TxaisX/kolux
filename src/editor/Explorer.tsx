@@ -36,6 +36,7 @@ import { withChord } from "../terminal/PaneMenu";
 import { explorerSearchKey } from "../keys/useWindowKeys";
 import { announceMoves } from "./fileMoved";
 import { EditorPane } from "../lazy/panes";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 /** PKG-1: the editor's code is read late after start (stage 3); a pointer or the keyboard reaching the file list is the
  *  intent to open one, so its code starts loading then and the click finds it there. */
@@ -857,7 +858,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
         </button>
       </header>
       {openTargets && (
-        <>
+        <OutOfFlow>
         <div className="menu-backdrop" onClick={() => setOpenTargets(null)} onContextMenu={(e) => (e.preventDefault(), setOpenTargets(null))} />
         <div ref={openMenu} className="menu open-in-menu" role="menu" aria-label="Open in" style={clampMenu(openTargets.x, openTargets.y, 240, 40 + openTargets.list.length * 28, window.innerWidth, window.innerHeight)}>
           {openTargets.list.map((t) => (
@@ -866,10 +867,10 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
             </button>
           ))}
         </div>
-        </>
+        </OutOfFlow>
       )}
       {menu && (
-        <>
+        <OutOfFlow>
           <div className="menu-backdrop" onClick={() => setMenu(null)} onContextMenu={(e) => (e.preventDefault(), setMenu(null))} />
           <div ref={menuBox} className="menu row-menu" role="menu" aria-label={`Actions for ${baseName(menu.path)}`} style={{ left: menu.x, top: menu.y }}>
             {withExtraMenu(rowMenu({ isDir: menu.dir, hasTerminal: !!onOpenTerminal, canProject: menu.dir && menu.path !== root && projectDrop.add !== null }), { isDir: menu.dir, isOpen: open.has(menu.path), single: sel.size <= 1, log: isLog(menu.path) }).map((id) => (
@@ -884,7 +885,7 @@ export default function Explorer({ root, hidden, focusAsk, onOpen, onClose, onOp
                 </button>
               ))}
           </div>
-        </>
+        </OutOfFlow>
       )}
       {openErr && (
         <div className="notice load-failed" role="alert">

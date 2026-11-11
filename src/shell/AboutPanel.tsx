@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { probeGpu } from "../terminal/inputWire";
 import type { AppInfo } from "../app-info";
 import { ABOUT_EVENT, aboutRows, type AboutFacts } from "./about";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 export default function AboutPanel() {
   const [open, setOpen] = useState(false);
@@ -25,7 +26,7 @@ export default function AboutPanel() {
   }, [open]);
   if (!open) return null;
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onMouseDown={() => setOpen(false)} />
       <div className="menu about-panel" role="dialog" aria-label="About Kolux" onKeyDown={(e) => e.key === "Escape" && setOpen(false)}>
         <h2 className="conn-name">About Kolux</h2>
@@ -41,6 +42,6 @@ export default function AboutPanel() {
           Close
         </button>
       </div>
-    </>
+    </OutOfFlow>
   );
 }

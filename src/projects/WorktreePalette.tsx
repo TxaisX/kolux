@@ -14,6 +14,7 @@ import type { AgentState } from "./rows";
 import type { Badge } from "../terminal/tabs";
 import { VOCAB } from "../terminal/status";
 import { StatusGlyph } from "../chrome/icons";
+import OutOfFlow from "../chrome/OutOfFlow";
 import { capRows, moreLabel, moreTitle, restoreFocus } from "../shell/paletteCaps";
 import { rowKeys } from "../shell/rowKeys";
 
@@ -296,7 +297,7 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
   };
 
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onMouseDown={onClose} />
       <div className="menu note-picker palette" role="dialog" aria-label="Go to / Run a command">
         <input
@@ -384,6 +385,6 @@ export default function WorktreePalette({ projects, items, prOf, atOf, recent, s
           )}
         </div>
       </div>
-    </>
+    </OutOfFlow>
   );
 }

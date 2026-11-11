@@ -3,6 +3,7 @@
 // outside. Copy keeps the menu open and says whether the copy landed; every other row closes it.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { fitIn, menuStep, outsideDismisses } from "./PaneMenu";
+import OutOfFlow from "../chrome/OutOfFlow";
 import type { LinkItem, LinkItemId } from "./linkMenu";
 
 type Props = {
@@ -61,7 +62,7 @@ export default function LinkActionMenu({ at, destination, items, onPick, onDismi
     void Promise.resolve(onPick(id)).then((ok) => setCopied(ok !== false));
   };
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onClick={outside} onContextMenu={outside} aria-hidden="true" />
       <div ref={box} className="menu pane-menu link-menu" role="menu" aria-label="Link menu" style={{ top: at.top, left: at.left, maxWidth: "min(480px, calc(100vw - 16px))" }}>
         <div className="muted" title={destination} style={{ padding: "4px 8px 6px", overflowWrap: "anywhere", userSelect: "text" }}>
@@ -74,6 +75,6 @@ export default function LinkActionMenu({ at, destination, items, onPick, onDismi
           </button>
         ))}
       </div>
-    </>
+    </OutOfFlow>
   );
 }

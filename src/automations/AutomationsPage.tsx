@@ -22,6 +22,7 @@ import { totalUsage } from "./usage";
 import { PROVIDERS, type Usage } from "../usage/tokens";
 import { folderName } from "../projects/model";
 import { agentChoices, ago, CONFIRM_DELETE_KEY, confirmDelete, deleteWords, failedLoad, holdWhile, joinNotes, runsKey, rowActions, splitWarnings, whereItRuns, keepSelection, lastRun, runActions, runStep, startedBy, type RunAction, pageKey, matches, noFilters, normalizeQuery, passes, sortRows, statusWord, triggerLabel, upcoming, graceWord, precheckWord, type Automation, type Filters, type Names, type Run, type SortKey } from "./model";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 /** `runsError` says the history could not be read (AUTO-018: the run count then reads unknown). */
 export type Data = { automations: Automation[]; runs: Run[]; runsError?: string };
@@ -480,7 +481,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                           <Dots />
                         </button>
                         {menu === a.id && (
-                          <>
+                          <OutOfFlow>
                             <div
                               className="menu-backdrop"
                               onClick={(e) => {
@@ -510,7 +511,7 @@ export default function AutomationsPage({ projects, agents, settings, onSettings
                               ),
                             )}
                           </div>
-                          </>
+                          </OutOfFlow>
                         )}
                       </td>
                     </tr>

@@ -28,6 +28,7 @@ Quicker to answer (measured on a Linux test build; Windows figures will follow):
 - **Screens.** Kolux reads its screens a little at a time after the window shows instead of all at once, and pointing at a button reads what it opens before you click. Settings and each of its pages open at once, the first time too, once the window has been up a moment.
 - **Starting.** The checks that ran before the window could load now run beside it, the backup of Kolux's own state waits ten seconds, and the script read at start is 4 % smaller. Every start writes a timing line to the diagnostics log.
 - **Opening things.** Settings, menus and files no longer wait on an opening animation, opening a file asks the backend once instead of three times, and a dialog or screen opened for the first time appears as soon as its code is read instead of about a third of a second later.
+- **Menus.** Opening or closing a menu, a picker or Go to / Run a command no longer makes the window lay out and redraw the pane or panel it opened from. On the test build the pane menu now opens in about 57 ms instead of 94 under Glass (61 instead of 76 under Flat), tab search a little sooner too, and every other menu saves the same work each time it opens and closes. Nothing looks different.
 
 New:
 - **Discard** is back in All Changes, behind a question that says exactly what will be lost. Deleted and renamed files say so.

@@ -19,6 +19,7 @@ import SkillPill from "./SkillPill";
 import { pillFor, type Load } from "./skillBar";
 import type { Checked } from "./updateNotice";
 import { AGENT_FILTERS, COPIED, COPY_FAILED, MAX_DELETE, ROW_ACTIONS, actionBlocked, INSTALL_ITEM, installBlocked, pageEscape, pageOverlay, seenBy, NO_DESCRIPTION, NO_FILTERS, QUERY_LIMIT, SOURCES, dateText, deleteBlocked, eligible, filtersOn, keepChosen, outcomeText, pickOf, rootState, shortPath, sourceCounts, sumUp, viewOf, visible, whyNot, type Done, type Filters, type Planned, type RowAction, type Scan, type Skill } from "./skills";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 type Asking = { kind: "confirm"; plan: Planned[] } | { kind: "done"; done: Done[] } | { kind: "error"; text: string };
 
@@ -175,7 +176,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
           <Dots size={14} />
         </button>
         {open === "more" && (
-          <>
+          <OutOfFlow>
             <div className="menu-backdrop" onClick={() => setOpen(null)} />
             <div className="menu skills-pop right" role="menu" aria-label="More actions" ref={focusFirst} onKeyDown={onMenuKey}>
               <button
@@ -205,7 +206,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                 <span className="name">Delete skills</span>
               </button>
             </div>
-          </>
+          </OutOfFlow>
         )}
       </header>
 
@@ -230,7 +231,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
             <Funnel size={12} /> {f.agent === "all" ? "Filter by agent" : agentLabel}
           </button>
           {open === "agent" && (
-            <>
+            <OutOfFlow>
               <div className="menu-backdrop" onClick={() => setOpen(null)} />
               <div className="menu skills-pop" role="menu" aria-label="Filter by agent" ref={focusFirst} onKeyDown={onMenuKey}>
                 {AGENT_FILTERS.map((a) => (
@@ -249,7 +250,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                   </button>
                 ))}
               </div>
-            </>
+            </OutOfFlow>
           )}
         </div>
         <div className="skills-chips" role="group" aria-label="Where skills come from">
@@ -273,7 +274,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
             Skill folders
           </button>
           {open === "folders" && (
-            <>
+            <OutOfFlow>
               <div className="menu-backdrop" onClick={() => setOpen(null)} />
               <div className="menu skills-pop right skills-folders" role="dialog" aria-label="Skill folders">
                 <div className="menu-title">Folders scanned</div>
@@ -292,7 +293,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                 ))}
                 {!scan && <div className="menu-hint">Not scanned yet.</div>}
               </div>
-            </>
+            </OutOfFlow>
           )}
         </div>
         <button className="btn" title="Scan every folder again" onClick={() => load(true)} disabled={scanning} aria-busy={scanning}>
@@ -388,7 +389,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                       <Dots size={12} />
                     </button>
                     {rowMenu === s.path && (
-                      <>
+                      <OutOfFlow>
                         <div className="menu-backdrop" onClick={() => setRowMenu(null)} />
                         <div className="menu skills-pop right" role="menu" aria-label={`Actions for ${s.name}`} ref={focusFirst} onKeyDown={onMenuKey}>
                           {ROW_ACTIONS.map((a) => (
@@ -397,7 +398,7 @@ export default function SkillsPage({ workspace, onClose }: Props) {
                             </button>
                           ))}
                         </div>
-                      </>
+                      </OutOfFlow>
                     )}
                   </div>
                 </div>

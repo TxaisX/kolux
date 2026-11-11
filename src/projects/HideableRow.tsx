@@ -1,6 +1,7 @@
 // A sidebar nav row with a right-click menu that hides it: AUTO-023's Automations row and SKILL-018's
 // Skills button. One setting drives each row and its switch in Settings > Appearance.
 import { useState, type ReactNode } from "react";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 type Props = { open: boolean; onOpen: () => void; onHide: () => void; label: string; icon: ReactNode; hideText: string };
 
@@ -22,7 +23,7 @@ export default function HideableRow({ open, onOpen, onHide, label, icon, hideTex
         {label}
       </button>
       {menu && (
-        <>
+        <OutOfFlow>
           <div
             className="menu-backdrop"
             onClick={shut}
@@ -44,7 +45,7 @@ export default function HideableRow({ open, onOpen, onHide, label, icon, hideTex
               <span className="name">{hideText}</span>
             </button>
           </div>
-        </>
+        </OutOfFlow>
       )}
     </>
   );

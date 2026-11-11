@@ -8,6 +8,7 @@ import { splitMenuState } from "../../terminal/tabSplit";
 import { closeRows } from "./tabMenu";
 import { useTabMenuKeys } from "./tabMenuKeys";
 import { useWindow } from "./store";
+import OutOfFlow from "../../chrome/OutOfFlow";
 
 export default function TabMenuView() {
   const { tabMenu, panes, pinned, tabColors, setTabMenu, setTabColors, setPinned, setRenamingTab, splitTab, closeTab, orderOf } = useWindow();
@@ -15,7 +16,7 @@ export default function TabMenuView() {
   useTabMenuKeys(tabMenu !== null, tabBox, () => setTabMenu(null)); // focus, arrows and Escape for the tab menu
   if (!tabMenu) return null;
   return (
-    <>
+    <OutOfFlow>
       <div
         className="menu-backdrop"
         aria-hidden="true"
@@ -93,6 +94,6 @@ export default function TabMenuView() {
           </button>
         ))}
       </div>
-    </>
+    </OutOfFlow>
   );
 }

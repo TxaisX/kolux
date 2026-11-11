@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { onTabSearch, tabSearcher, type TabEntry } from "./findTab";
 import { leaveTabSearch } from "./tabSearchFocus";
 import { rowKeys } from "./rowKeys";
+import OutOfFlow from "../chrome/OutOfFlow";
 
 type Props = { tabs: () => TabEntry[] };
 
@@ -42,7 +43,7 @@ export default function TabSearch({ tabs }: Props) {
     row.run();
   };
   return (
-    <>
+    <OutOfFlow>
       <div className="menu-backdrop" onMouseDown={() => close()} />
       <div className="menu note-picker palette" role="dialog" aria-label="Search open tabs">
         <input
@@ -79,6 +80,6 @@ export default function TabSearch({ tabs }: Props) {
         </div>
         {query.trim() !== "" && rows.length === 0 && <div className="menu-hint">No open tab has that in its name</div>}
       </div>
-    </>
+    </OutOfFlow>
   );
 }
