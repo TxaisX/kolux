@@ -635,6 +635,14 @@ input { font: inherit; }
 /* Txais 2026-11-08: a button per main agent on each seat, the rest behind Other. */
 .agent-btn { min-width: 84px; }
 .agent-btn-note { color: var(--fg-muted); font-weight: 400; }
+/* The seat's AI picker: a 3-wide grid of tiles (2 rows when Codex is found: Claude Code, Codex, OpenCode / Grok, Terminal, Other). */
+/* Each tile: the logo on top, the name under it (Txais 2026-11-11, from the approved mockup). */
+.agent-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: min(100%, 504px); }
+.agent-grid .agent-btn { flex-direction: column; justify-content: center; min-width: 0; height: auto; min-height: 88px; padding: 12px 8px 10px; gap: 8px; border-radius: 8px; font-size: 13px; text-align: center; }
+.agent-grid .agent-btn > svg, .agent-grid .agent-btn > img { flex: none; }
+.agent-grid .agent-btn-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-grid .agent-btn-note { margin-top: -6px; font-size: 11px; }
+.agent-grid .btn:not([aria-pressed="true"]):hover { border-color: var(--line-focus); }
 .other-agents { width: min(460px, calc(100vw - 32px)); max-height: min(520px, calc(100vh - 48px)); display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; background: var(--pane-bg); border: 1px solid var(--line-focus); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); color: var(--fg); font-size: 12px; }
 .other-agents h2 { margin: 0; font-size: 14px; font-weight: 600; }
 .other-agents-list { display: flex; flex-wrap: wrap; gap: 6px; overflow: auto; min-height: 0; }
