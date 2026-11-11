@@ -172,19 +172,22 @@
 
 /* ---- panes: a solid screen set in a glass bezel; the focused one is lit ---- */
 /* No shadow at all, the flat look's inner line included: the bezel is the border. The focused pane is lit
-   by a brighter border and a ring of the metal's light around it, which is an outline: it follows the
+   by a brighter border and a ring of the metal's light just inside it, which is an outline: it follows the
    corners, moves nothing and costs a fraction of what the glow it replaces did (only this one pane has it). */
 :root[data-finish="glass"] .pane:not(.glow) { border-color: var(--glass-line); box-shadow: none; }
+/* DT-C271: the ring is drawn just inside the pane's edge. Drawn outside it, it reached past the pane, and
+   every move of the focus (a file opening in a new tab, a click on another pane) made the web view draw the
+   whole grid again: about 30 ms a time on the Linux test build. Inside, it changes nothing beyond the pane,
+   cannot spill over the bars or a neighbour, and is not cut off at the Board's sides. */
 :root[data-finish="glass"] .pane.focused:not(.glow) {
   border-color: color-mix(in srgb, var(--metal-hi) 52%, var(--line-focus));
   outline: 3px solid color-mix(in srgb, var(--glass-tint) 22%, transparent);
+  outline-offset: -3px;
 }
-/* The ring needs room round the pane. A zoomed or classic grid has none (its panes run edge to edge, so the
-   ring would lie over the bars): there the brighter border alone shows focus, as in the flat look. On the
-   Board the cards touch the board's sides, which cut the ring off, so it is drawn just inside the card. */
+/* A zoomed or classic grid runs its panes edge to edge: there the brighter border alone shows focus, as in
+   the flat look. */
 :root[data-finish="glass"] .grid.zoomed .pane.focused:not(.glow),
 :root[data-finish="glass"] .grid.classic .pane.focused:not(.glow) { outline: none; }
-:root[data-finish="glass"] .board .pane.focused:not(.glow) { outline-offset: -3px; }
 :root[data-finish="glass"] .pane-head { background: var(--glass-glint), linear-gradient(180deg, var(--glass-head), var(--pane-bg)); }
 /* DT-C264: the Inbox's two sheets are the largest glass there is and are drawn afresh every time the Inbox
    opens, so they are the plainest: the fill alone with the stage's light coming through it (no depth laid

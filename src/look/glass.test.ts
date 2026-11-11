@@ -365,22 +365,24 @@ test("DT-C266: the focused pane is lit by its border and a ring of the metal's l
   const lit = ruleFor(".pane.focused:not(.glow)");
   expect(decl(lit, "border-color")).toMatch(/var\(--metal-hi\)/);
   const ring = decl(lit, "outline")!.match(/^([0-9]+)px solid color-mix\(in srgb, var\(--glass-tint\) ([0-9]+)%, transparent\)$/)!;
-  // it lies in the gap between two panes, which is 6px wide unless the user changed it
   expect(Number(ring[1])).toBeGreaterThanOrEqual(2);
   expect(Number(ring[1])).toBeLessThanOrEqual(3);
-  expect(baseCss).toMatch(/\n\.grid \{[^}]*gap: var\(--divider-width, 6px\);/);
   expect(Number(ring[2])).toBeGreaterThanOrEqual(15);
+  // DT-C271: drawn just inside the pane's edge, so a move of the focus changes nothing beyond the pane (outside it,
+  // every move had the whole grid drawn again), and it can neither spill over a neighbour or the bars nor be cut off
+  expect(decl(lit, "outline-offset")).toBe(`-${ring[1]}px`);
+  // and no rule draws a pane's ring outside it
+  for (const r of rules.filter((x) => /\.pane\.focused/.test(x.slice(0, x.indexOf("{"))) && /outline:\s*[1-9]/.test(x))) expect(decl(r, "outline-offset"), r.slice(0, 70)).toBe(`-${ring[1]}px`);
   expect(lit).not.toMatch(/box-shadow/);
   // every other pane has no ring, so only one is drawn
   expect(ruleFor(".pane:not(.glow)")).not.toMatch(/outline/);
-  // where there is no room round the pane there is no ring to spill: a zoomed or classic grid runs edge to edge
+  // a zoomed or classic grid runs edge to edge: the brighter border alone shows focus there, as in the flat look
   expect(baseCss).toMatch(/\n\.grid\.zoomed, \.grid\.classic \{ margin: 0;/);
   const edgeToEdge = ruleFor(".grid.zoomed .pane.focused:not(.glow)");
   expect(selectorsOf(edgeToEdge)).toEqual([".grid.zoomed .pane.focused:not(.glow)", ".grid.classic .pane.focused:not(.glow)"]);
   expect(decl(edgeToEdge, "outline")).toBe("none");
-  // and on the Board, whose sides clip what its cards draw outside themselves, the ring lies inside the card
-  expect(baseCss).toMatch(/\n\.board \{[^}]*overflow-y: auto;/);
-  expect(decl(ruleFor(".board .pane.focused:not(.glow)"), "outline-offset")).toBe(`-${ring[1]}px`);
+  // and the Board, whose sides clip what its cards draw outside themselves, needs no rule of its own any more
+  expect(css).not.toMatch(/\.board \.pane\.focused/);
 });
 
 test("DT-C266: what a side card throws on the stage is a dark strip in the gutter under it", () => {
