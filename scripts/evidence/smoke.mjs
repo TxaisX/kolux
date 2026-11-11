@@ -83,7 +83,7 @@ const flag = (name) => args.includes(`--${name}`);
 const PORT = opt("port", "1431");
 const CDP = opt("cdp", "9240");
 const IDENTIFIER = opt("identifier", "com.txaisxiong.kolux.smoke");
-const TEMP = opt("temp", "G:\\Temp\\kolux-rs-smoke");
+const TEMP = opt("temp", "G:\\Temp\\kolux-smoke");
 const ATTACH = flag("attach");
 const KEEP = flag("keep");
 const OFFSCREEN = flag("offscreen");
@@ -94,7 +94,7 @@ if (OFFSCREEN && KEEP) {
 }
 // Council FIX-1 (FIX-SOON 3): the temp folder is removed only when it carries this file, which setup()
 // writes, so a mistyped --temp never deletes a folder this script did not make.
-const TEMP_MARKER = ".kolux-rs-smoke-temp";
+const TEMP_MARKER = ".kolux-smoke-temp";
 // FIX-2 (council re-review AFTER 2): the marker names the smoke run that made the folder, so a second run
 // never deletes a folder a live run is using.
 const markerText = (pid) => `made by scripts/evidence/smoke.mjs setup(); pid ${pid}; removed with this folder\n`;

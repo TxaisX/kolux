@@ -30,7 +30,7 @@ export const SHELL_NAMES = new Set(["powershell.exe", "pwsh.exe", "cmd.exe"]);
 // Host processes a terminal pane leaves behind when it is not cleaned up.
 export const PANE_PROCS = new Set(["powershell.exe", "pwsh.exe", "cmd.exe", "conhost.exe", "OpenConsole.exe"]);
 export const IDENTIFIER = "com.txaisxiong.kolux.stress";
-export const TEMP_MARKER = ".kolux-rs-stress-temp";
+export const TEMP_MARKER = ".kolux-stress-temp";
 export const slash = (p) => p.replace(/\\/g, "/");
 
 export function stats(values) {
@@ -156,7 +156,7 @@ function useReleaseBuild(app, opts) {
   app.launch = async ({ prepare } = {}) => {
     await prepare?.();
     mkdirSync(P.claudeConfig, { recursive: true });
-    writeFileSync(join(P.claudeConfig, ".kolux-rs-scratch"), "");
+    writeFileSync(join(P.claudeConfig, ".kolux-scratch"), "");
     mkdirSync(P.codexHome, { recursive: true });
     mkdirSync(P.local, { recursive: true });
     app.buildNote = await buildRelease(app, opts);

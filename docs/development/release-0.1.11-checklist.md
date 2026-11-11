@@ -58,5 +58,5 @@ release line, which is not on GitHub `main`: `main` is still `75be2b46` = tag v0
 ## Release (needs your explicit yes in-session; nothing here pushes to main or releases)
 
 6. Merge `lane/ready-int` to `main`, then `pnpm ship --main` (or the release workflow). Signing key
-   at `~/.kolux-rs/release-signing/`. Tell users to restart agents once only when the security lanes ship
+   at `~/.kolux/release-signing/`. Tell users to restart agents once only when the security lanes ship
    (not in 0.1.11).

@@ -149,7 +149,7 @@ describe("release job publishing to GitHub, with gh stubbed (APP-059, DT-R11)", 
     fs.writeFileSync(path.join(origin, "README.md"), "x\n");
     git(origin, "add", "-A");
     git(origin, "commit", "-qm", "Agents start faster");
-    const key = path.join(root, "signing", "kolux-rs.key");
+    const key = path.join(root, "signing", "kolux.key");
     keypair(key);
     const env = { ...process.env };
     for (const k of Object.keys(env)) if (SECRET.test(k) || ["KOLUX_RELEASE_PUBLISH_DIR", "CARGO_TARGET_DIR"].includes(k)) delete env[k];

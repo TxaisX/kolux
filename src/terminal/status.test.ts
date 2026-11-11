@@ -125,7 +125,7 @@ test("a terminal title stands in for the state while no hook reports: spinners a
   expect(titleState("Needs you: allow Bash?")).toBe("permission");
   // A path, an empty title or words it does not know leave the last reading in place.
   expect(titleState("C:\\Users\\me\\notes.txt")).toBeNull();
-  expect(titleState("~/src/kolux-rs")).toBeNull();
+  expect(titleState("~/src/kolux")).toBeNull();
   expect(titleState("/usr/bin/zsh")).toBeNull();
   expect(titleState("")).toBeNull();
   expect(titleState("vim")).toBeNull();

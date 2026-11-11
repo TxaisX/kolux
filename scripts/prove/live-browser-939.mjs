@@ -151,7 +151,7 @@ export async function run939(ctx, { check, log }, p) {
   const rows1 = rowsOf(seen1);
   log(`TCP sample after opening the page (${rows1.length} distinct): ${JSON.stringify(rows1)}`);
   const toHost = rows1.filter((r) => r.includes("10.254.254.254"));
-  S(3, "no process of the app (msedgewebview2 or kolux-rs) holds a socket to the page host", toHost.length === 0, JSON.stringify(toHost));
+  S(3, "no process of the app (msedgewebview2 or kolux) holds a socket to the page host", toHost.length === 0, JSON.stringify(toHost));
   log(`non-loopback sockets of the app tree during step 1-3 (informational, not the page host): ${JSON.stringify(outsideRows(seen1))}`);
   log(`screenshot (page through the stub): ${await ctx.shot("939-step1-3")}`);
 

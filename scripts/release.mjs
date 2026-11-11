@@ -10,9 +10,11 @@
 //   --build-only   build and smoke-test, then stop before signing (release.yml's build step, T-588)
 //   --finish       sign the build --build-only recorded in <checkout>-out, then publish it (release.yml's next step)
 //
-// Environment: KOLUX_RELEASE_CHECKOUT  the build checkout (default ~/.kolux-rs/release-checkout)
+// Environment: KOLUX_RELEASE_CHECKOUT  the build checkout (default ~/.kolux/release-checkout, or the old
+//                                      ~/.kolux-rs/release-checkout while only that exists)
 //              KOLUX_RELEASE_KEY       the signing key file, its public half beside it as .pub
-//                                      (default ~/.kolux-rs/release-signing/kolux-rs.key)
+//                                      (default ~/.kolux/release-signing/kolux.key, or the old
+//                                      ~/.kolux-rs/release-signing/kolux-rs.key while only that exists)
 //              KOLUX_RELEASE_KEY_PASSWORD  the key's password, when it has one
 //              KOLUX_RELEASE_PUBLISH_DIR   publish into this folder instead of GitHub (rehearsal)
 //              KOLUX_RELEASE_ALLOW_RED=1   publish even when CI for the commit is red (recovery only)
@@ -30,11 +32,15 @@ const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),
 export const FEED_REPO = "TxaisX/kolux";
 export const NOTES_MAX = 30;
 export const STALE_MS = 3 * 60 * 60 * 1000;
-const MARKER = /<!-- kolux-rs-source: ([0-9a-f]{7,40}) -->/;
+// Reads both spellings: releases published before the rename carry the old kolux-rs-source marker.
+const MARKER = /<!-- kolux(?:-rs)?-source: ([0-9a-f]{7,40}) -->/;
 
-export const checkoutDir = (env = process.env) => path.resolve(env.KOLUX_RELEASE_CHECKOUT || path.join(os.homedir(), ".kolux-rs", "release-checkout"));
+// The data folder was ~/.kolux-rs before the rename to Kolux. The new path wins; the old one is used only
+// when the new one is missing and the old one exists, so an existing release checkout and signing key keep working.
+const pickPath = (fresh, old) => (!fs.existsSync(fresh) && fs.existsSync(old) ? old : fresh);
+export const checkoutDir = (env = process.env) => path.resolve(env.KOLUX_RELEASE_CHECKOUT || pickPath(path.join(os.homedir(), ".kolux", "release-checkout"), path.join(os.homedir(), ".kolux-rs", "release-checkout")));
 export const logDir = (env = process.env) => checkoutDir(env) + "-logs";
-const keyFile = (env) => path.resolve(env.KOLUX_RELEASE_KEY || path.join(os.homedir(), ".kolux-rs", "release-signing", "kolux-rs.key"));
+const keyFile = (env) => path.resolve(env.KOLUX_RELEASE_KEY || pickPath(path.join(os.homedir(), ".kolux", "release-signing", "kolux.key"), path.join(os.homedir(), ".kolux-rs", "release-signing", "kolux-rs.key")));
 
 // ------------------------------------------------------------------ pure rules (tested)
 
@@ -88,7 +94,7 @@ export function changelogHeading(text, version) {
  *  the last release, 30 at most; then the hidden marker. */
 export function notesBody(subjects, sha, section = null) {
   const lines = section ? [section] : subjects.filter((s) => s.trim()).slice(0, NOTES_MAX).map((s) => `- ${s.trim()}`);
-  return `${lines.join("\n")}\n\n<!-- kolux-rs-source: ${sha} -->\n`;
+  return `${lines.join("\n")}\n\n<!-- kolux-source: ${sha} -->\n`;
 }
 export const markerOf = (body) => MARKER.exec(body ?? "")?.[1] ?? null;
 
@@ -348,7 +354,7 @@ export function buildOnce(o, env = process.env, exec = sh) {
   // T-790: cargo builds the command line as kolux-cli (the app program is kolux); it ships as bin\kolux.exe.
   const resources = { [path.join(dir, "src-tauri", "cli", "kolux.cmd").replaceAll("\\", "/")]: "bin/kolux.cmd", [path.join(target, "kolux-cli.exe").replaceAll("\\", "/")]: "bin/kolux.exe" };
   fs.writeFileSync(conf, JSON.stringify({ bundle: { resources }, plugins: { updater: { pubkey } } }));
-  const benv = { ...buildEnv(env), KOLUX_RS_RELEASE_PUBKEY: pubkey };
+  const benv = { ...buildEnv(env), KOLUX_RELEASE_PUBKEY: pubkey };
   say("installing packages");
   exec("pnpm", ["install", "--frozen-lockfile"], { cwd: dir, env: benv, shim: true });
   say("building the command line, then the Windows installer that carries it");

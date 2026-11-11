@@ -1,11 +1,11 @@
-// T-816 proof: does any child of the Kolux RS app open a console window? Starts a built debug exe the way the
+// T-816 proof: does any child of the Kolux app open a console window? Starts a built debug exe the way the
 // release app runs (no console of its own) on a private desktop nobody sees (nowin-probe.ps1), drives the page over
 // the WebView2 debugging port (startup, add a project, start a plain terminal, start an agent seat, read the
 // font list and the resource sample), and prints the probe's count of visible console windows.
 //
-//   node scripts/prove/live-T-816-nowin.mjs --exe <kolux-rs.exe> --label before|after [--port 1447] [--cdp 9287]
+//   node scripts/prove/live-T-816-nowin.mjs --exe <kolux.exe> --label before|after [--port 1447] [--cdp 9287]
 //
-// The exe must be a debug build made with TAURI_CONFIG={"identifier":"com.txaisxiong.kolux-rs.ready-nowin",
+// The exe must be a debug build made with TAURI_CONFIG={"identifier":"com.txaisxiong.kolux.ready-nowin",
 // "build":{"devUrl":"http://localhost:<port>"}} so it loads this script's vite and its own profile folder.
 // Scratch folders (agent config, home, profile, throwaway repo) are all under G:\Temp\ready-nowin-T-816\<label>.
 import { spawn } from "node:child_process";
@@ -24,9 +24,9 @@ const EXE = opt("exe");
 const LABEL = opt("label", "run");
 const PORT = Number(opt("port", "1447"));
 const CDP = Number(opt("cdp", "9287"));
-const IDENTIFIER = opt("identifier", "com.txaisxiong.kolux-rs.ready-nowin");
+const IDENTIFIER = opt("identifier", "com.txaisxiong.kolux.ready-nowin");
 const TEMP = resolve(opt("temp", `G:\\Temp\\ready-nowin-T-816\\${LABEL}`));
-if (!EXE || !existsSync(EXE)) throw new Error(`--exe must be a built kolux-rs.exe (got ${EXE})`);
+if (!EXE || !existsSync(EXE)) throw new Error(`--exe must be a built kolux.exe (got ${EXE})`);
 if (!TEMP.toLowerCase().includes("ready-nowin-t-816")) throw new Error("the scratch folder must be under ready-nowin-T-816");
 const log = (...x) => console.log(...x);
 
@@ -42,7 +42,7 @@ await g(["-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-
 const app = createApp({ root, port: PORT, cdp: CDP, identifier: IDENTIFIER, temp: TEMP, suffix: ".ready-nowin", log });
 const { paths, evalJs, invoke, exists, shown, click, clickWhere, focusField, cdp } = app;
 for (const d of [paths.claudeConfig, paths.codexHome, paths.local, paths.roaming]) mkdirSync(d, { recursive: true });
-writeFileSync(join(paths.claudeConfig, ".kolux-rs-scratch"), "");
+writeFileSync(join(paths.claudeConfig, ".kolux-scratch"), "");
 const appDir = join(TEMP, "appdir");
 mkdirSync(appDir, { recursive: true });
 

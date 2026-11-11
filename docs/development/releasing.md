@@ -17,7 +17,7 @@ Tags and releases are named `v<version>`. The installer file is `Kolux_<version>
 ## Before you release
 
 - `main` is green in CI for the exact commit you are about to publish.
-- The signing key exists at `~/.kolux-rs/release-signing/kolux-rs.key` with its `.pub` beside it. A password is supported through `KOLUX_RELEASE_KEY_PASSWORD`.
+- The signing key exists at `~/.kolux/release-signing/kolux.key` with its `.pub` beside it. A password is supported through `KOLUX_RELEASE_KEY_PASSWORD`.
 - `gh` is authenticated for the `TxaisX/kolux` repository.
 - `git status` is clean. `pnpm ship` stages everything with `git add -A`, so unrelated working-tree changes would be included.
 - You have decided whether the release is a normal build or a recovery build.
@@ -47,7 +47,7 @@ pnpm release --dry-run              # print the next version and notes
 pnpm release --no-publish           # build, smoke-test, and sign, then stop
 ```
 
-`pnpm release` builds in `~/.kolux-rs/release-checkout`, not in the working tree. That checkout is kept only for releases. A lock prevents two release builds at once; a lock older than 3 hours or owned by a dead process is treated as stale.
+`pnpm release` builds in `~/.kolux/release-checkout`, not in the working tree. That checkout is kept only for releases. A lock prevents two release builds at once; a lock older than 3 hours or owned by a dead process is treated as stale.
 
 ## What the release script does
 
@@ -55,7 +55,7 @@ pnpm release --no-publish           # build, smoke-test, and sign, then stop
 
 1. Take the release lock and confirm the checkout.
 2. Compute the next version.
-3. Collect up to 30 commit subjects since the previous release marker for the notes, plus a hidden `<!-- kolux-rs-source: <sha> -->` comment.
+3. Collect up to 30 commit subjects since the previous release marker for the notes, plus a hidden `<!-- kolux-source: <sha> -->` comment.
 4. Edit the version in `package.json`, `tauri.conf.json`, and `Cargo.toml`.
 5. Run the CI gate on the exact commit.
 6. Build the release CLI with `--features release-cli`.
@@ -78,7 +78,7 @@ The release script calls the gate before the build and again immediately before 
 
 ## Signing
 
-The update manifest is signed with minisign. The public key is compiled into the app from `KOLUX_RS_RELEASE_PUBKEY`; a release build without a key refuses to update. The private key is read from `KOLUX_RELEASE_KEY` or `~/.kolux-rs/release-signing/kolux-rs.key`.
+The update manifest is signed with minisign. The public key is compiled into the app from `KOLUX_RELEASE_PUBKEY`; a release build without a key refuses to update. The private key is read from `KOLUX_RELEASE_KEY` or `~/.kolux/release-signing/kolux.key`.
 
 The release workflow keeps the private key only inside the signing step: it writes the key from a GitHub secret, runs the signer, and deletes the file on exit (`/.github/workflows/release.yml:63-81`). The build step runs without the private key.
 

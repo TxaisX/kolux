@@ -208,14 +208,14 @@ Besides Claude Code and Codex, Kolux can install status hooks for Gemini CLI, An
 | Agent | What Kolux changes (inside your user folder) | Kolux's entry |
 |---|---|---|
 | Gemini CLI | `.gemini\settings.json` | A Kolux hook added under four events: `BeforeAgent`, `AfterAgent`, `BeforeTool` and `AfterTool`. Your own hooks stay |
-| Antigravity | `.gemini\config\hooks.json` | A bundle (a named set of hooks) called `kolux-rs`, with entries for `PreInvocation`, `PreToolUse`, `PostToolUse`, `PostInvocation` and `Stop` |
-| Amp | `.config\amp\plugins\kolux-rs.js` | A plugin file (a small add-on Amp loads), written whole by Kolux. Its first line says it was written by Kolux |
+| Antigravity | `.gemini\config\hooks.json` | A bundle (a named set of hooks) called `kolux`, with entries for `PreInvocation`, `PreToolUse`, `PostToolUse`, `PostInvocation` and `Stop` |
+| Amp | `.config\amp\plugins\kolux.js` | A plugin file (a small add-on Amp loads), written whole by Kolux. Its first line says it was written by Kolux |
 
 Details that matter when you look at these files:
 
 - **Gemini CLI** runs its hook command through PowerShell on Windows, and Kolux writes the command for that. This is proven on Windows PowerShell 5.1. It is not yet tried on PowerShell 7 or against a real Gemini CLI run; that check is still to come.
-- **Antigravity** does not put the event name in what it sends, so Kolux passes the name on the command line. The command is written for the Windows command prompt; which shell Antigravity really uses has not yet been checked against a live run. If you set `"enabled": false` on the `kolux-rs` bundle yourself, Kolux keeps your choice, and `kolux agent hooks status` reports Antigravity as "disabled".
-- **Amp** gets a plugin instead of a settings entry. If a file named `kolux-rs.js` is already there and Kolux did not write it, Kolux leaves it alone and reports an error. Edits you make to Kolux's own plugin file are overwritten at the next install.
+- **Antigravity** does not put the event name in what it sends, so Kolux passes the name on the command line. The command is written for the Windows command prompt; which shell Antigravity really uses has not yet been checked against a live run. If you set `"enabled": false` on the `kolux` bundle yourself, Kolux keeps your choice, and `kolux agent hooks status` reports Antigravity as "disabled".
+- **Amp** gets a plugin instead of a settings entry. If a file named `kolux.js` is already there and Kolux did not write it, Kolux leaves it alone and reports an error. Edits you make to Kolux's own plugin file are overwritten at the next install. Builds before the rename to Kolux wrote the bundle and the plugin as `kolux-rs`; the next install replaces those old entries with the new ones.
 - **Antigravity's reply text** (the card showing its last answer) is not built yet.
 
 `kolux agent hooks status` lists each of the three with a state: installed, partial, not installed, error, or (Antigravity only) disabled. What the hooks show on the dot is under [Status words](board-agents-inbox.md#status-words); what they send, and how Kolux protects your settings files, is under [Agent status hooks](safety.md#agent-status-hooks) in Safety.

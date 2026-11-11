@@ -31,7 +31,7 @@ The Rust suite has two layers:
 - **Unit tests** in `#[cfg(test)]` modules beside the code. They cover parsers, path rules, state transitions, and the pure logic in each module.
 - **Integration tests** in `src-tauri/tests/cards_*.rs`, one file per spec area, plus `cards_19_diag.rs` and the Windows-only `shim.rs`. They drive real files, real Git, and real PTYs.
 
-The integration tests refuse to run unless the home folders point at a scratch root. The guard is in `src-tauri/tests/scratch_root/mod.rs`; it checks `USERPROFILE`, `HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` for a `.kolux-rs-scratch` marker.
+The integration tests refuse to run unless the home folders point at a scratch root. The guard is in `src-tauri/tests/scratch_root/mod.rs`; it checks `USERPROFILE`, `HOME`, `CLAUDE_CONFIG_DIR`, and `CODEX_HOME` for a `.kolux-scratch` marker.
 
 Use the provided environment:
 

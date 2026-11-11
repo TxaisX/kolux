@@ -301,7 +301,7 @@ export async function startPlain(id, opts) {
   }
   mkdirSync(TEMP, { recursive: true });
   writeFileSync(join(TEMP, ".prove-run"), "made by scripts/prove/live-common.mjs startPlain\n");
-  writeFileSync(join(TEMP, ".kolux-rs-scratch"), "");
+  writeFileSync(join(TEMP, ".kolux-scratch"), "");
   if (existsSync(repo)) rmSync(repo, { recursive: true, force: true });
   mkdirSync(repo, { recursive: true });
   const put = (name, text) => {
