@@ -85,12 +85,13 @@ test("T-817 HID-028: the delay is 30 when missing, 5 below 5 and 240 above 240",
   expect(minutesFromText("ten")).toBeNull();
 });
 
-test("T-817 HID-028: the switch is off when its key is missing, and an old profile's own sleep switch is never read", () => {
-  expect(sleepOn({})).toBe(false);
-  expect(sleepOn({ agentSleep: "true" })).toBe(false);
-  expect(sleepOn({ agentSleep: 1 })).toBe(false);
-  expect(sleepOn({ hibernation: true, agentHibernation: true, sleepAgents: true, experimental: { hibernation: true } })).toBe(false);
+test("T-817 HID-028: the switch is on when its key is missing, off only when saved false, and an old profile's own sleep switch is never read", () => {
+  expect(sleepOn({})).toBe(true);
+  expect(sleepOn({ agentSleep: "false" })).toBe(true);
+  expect(sleepOn({ agentSleep: 0 })).toBe(true);
+  expect(sleepOn({ hibernation: false, agentHibernation: false, sleepAgents: false, experimental: { hibernation: false } })).toBe(true);
   expect(sleepOn({ agentSleep: true })).toBe(true);
+  expect(sleepOn({ agentSleep: false })).toBe(false);
 });
 
 test("T-817 TERM-123: the check runs once a minute on the saved delay; a release build never reads the test-only fast setting", () => {
