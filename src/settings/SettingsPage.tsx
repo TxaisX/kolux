@@ -32,6 +32,7 @@ import { hideRule, MAX_REPOS_DRAWN, MAX_SEARCH, SearchFolds, searchRepos } from 
 import { useSettled } from "../editor/settledQuery";
 import { useSearchHits } from "./useSearchHits";
 import { pageWarmer, type Loader } from "./pageWarm";
+import "./settings.css"; // the Settings pages' own rules arrive with the page, not with the window's first stylesheet
 
 // SET-006: a page loads the first time it is opened, so Settings itself opens quickly. The loaders are named once so
 // the warm-up (pageWarm.ts) reads the very modules the pages draw.

@@ -8,7 +8,7 @@ import { CATALOGUE, tidySchemes, type CustomScheme } from "./terminal/schemes";
 import type { CustomTheme } from "./settings/customTheme";
 import { DEFAULT_TINT, STRENGTH_SPAN, sidebarBackground, sidebarLookOf, type SidebarLook } from "./look/sidebar";
 import { paletteIsDark } from "./terminal/queries";
-import { DEFAULT_METAL, GLASS_ICONS, GLASS_SPAN, GLASS_TEXT, ICON_BAR, TEXT_BAR, finishOf, glassGround, glassVars, type Finish } from "./look/glass";
+import { castOf, DEFAULT_METAL, GLASS_ICONS, GLASS_SPAN, GLASS_TEXT, ICON_BAR, TEXT_BAR, finishOf, glassGrounds, glassVars, type Finish } from "./look/glass";
 
 export const classic = {
   // surfaces and lines
@@ -205,7 +205,7 @@ export function readAppearance(s: Record<string, unknown>): Appearance {
     userThemes,
     // T-648: the custom theme in use, or "" for the built-in one; a name that no longer exists is "".
     userTheme: typeof s[FIELD.userTheme] === "string" && userThemes.some((c) => c.name === s[FIELD.userTheme]) ? (s[FIELD.userTheme] as string) : "",
-    // DT-C249: the flat look until the glass and metal finish is chosen; its colour is #rrggbb or steel.
+    // DT-C249: the glass and metal finish unless Flat is chosen; its colour is #rrggbb or the default metal.
     finish: finishOf(s[FIELD.finish]),
     finishTint: hexOrEmpty(s[FIELD.finishTint]) || DEFAULT_METAL,
     finishStrength: Math.round(clampNum(s[FIELD.finishStrength], SPAN.finishStrength)),
@@ -408,10 +408,12 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
   // The four inks the sidebar's own rules paint text with are floored against the ground, so the
   // guarantee holds on a tinted or terminal ground too. `--fg-label` and `--fg-faint` are the
   // C23-R3-06 token defect and are left as they are.
-  // DT-C249: on the glass finish a panel's ground is its fill over the glow, so text is matched to that.
-  const glass = a.finish === "glass" ? glassGround(t, a.finishTint, a.finishStrength) : null;
-  const on = bg.startsWith("#") ? bg : (glass ?? t.surface);
-  const readable = (v: string) => floorInk(v, on, SIDEBAR_FLOOR);
+  // DT-C249: on the glass finish a panel's ground is its fill over the stage, so text is matched to every
+  // ground that can put under it (the stage bare, and under each of its three lights).
+  const lights = a.finish === "glass" ? glassLights(a.finishTint) : null;
+  const glass = lights && glassGrounds(t, lights, a.finishStrength);
+  const on = bg.startsWith("#") ? [bg] : (glass ?? [t.surface]);
+  const readable = (v: string) => (on.length > 1 ? clearOf(v, on, SIDEBAR_FLOOR, luminance(v) > luminance(t.surface)) : floorInk(v, on[0], SIDEBAR_FLOOR));
   return {
     "--sidebar-bg": bg,
     "--sidebar-fg": readable(ink.fg),
@@ -436,18 +438,45 @@ export const appearanceVars = (a: Appearance, dark = isDark(a)) => {
     "--pane-dim": String(a.paneDim / 100),
     // DT-C249: what look/glass.css draws the finish from, and each text colour moved as far as it must go
     // to keep on the glass the ratio it had on the flat surface. Nothing here is written while the finish is flat.
-    ...(glass ? { ...glassVars(a.finishTint, a.finishStrength, t, bg), ...glassInks(t, glass) } : {}),
+    // The stage shows between the panes unless the user gave the gaps a colour of their own (SET-023).
+    ...(lights && glass ? { ...glassVars(a.finishStrength, t, bg, lights), "--glass-gap": (dark ? a.dividerDark : a.dividerLight) ? "none" : "var(--glass-stage), var(--glass-floor)", ...glassInks(t, glass) } : {}),
   };
 };
 
-/** DT-C249: the text and icon colours that read worse on the glass ground than on the flat surface, each moved
- *  only as far as it takes to read as it did (up to the bar: a colour under the bar on the surface keeps its own ratio). */
-export function glassInks(t: Theme, ground: string): Record<string, string> {
+/** DT-C249: the stage's three lights: the metal and its two neighbours on the colour wheel, brought to the
+ *  metal's own brightness. A cool metal takes violet and cyan beside it (an aurora), a warm one orange and
+ *  rose (a sunset), so they never fight. */
+export function glassLights(tint: string): string[] {
+  const [h, s, l] = toHsl(tint);
+  return [tint, ...(h >= 150 && h < 300 ? [40, 325] : [330, 300]).map((turn) => castOf(hsl((h + turn) % 360, s, l), tint))];
+}
+
+/** DT-C249: `ink` moved away from the surface (lighter when `up`, darker when not) until it reads at `need`
+ *  on every one of `grounds`, which is when it clears the one nearest its own side; left alone when it
+ *  already does. It never walks toward a ground: at full strength a light metal can put one on the far side
+ *  of a dim colour, and closing in on it would lose the others. */
+function clearOf(ink: string, grounds: readonly string[], need: number, up: boolean): string {
+  const ls = grounds.map(luminance);
+  const want = up ? need * (Math.max(...ls) + 0.05) - 0.05 : (Math.min(...ls) + 0.05) / need - 0.05;
+  const [h, s, l] = toHsl(ink);
+  for (let step = 0; step <= 100; step++) {
+    const out = step ? hsl(h, s, up ? l + (1 - l) * (step / 100) : l * (1 - step / 100)) : ink;
+    if (up ? luminance(out) > want - 1e-9 : luminance(out) < want + 1e-9) return out;
+  }
+  return up ? "#ffffff" : "#000000";
+}
+
+/** DT-C249: the text and icon colours that read worse on a glass ground than they did on the flat look, each
+ *  moved only as far as it takes to read as it did there, up to the bar (a colour under the bar keeps its own
+ *  ratio). One ground stands for a panel, whose text sat on the surface; the full list also holds grounds whose
+ *  text sat on the window's own ground, so each colour keeps the better of its two flat ratios on all of them. */
+export function glassInks(t: Theme, grounds: string | readonly string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [keys, bar] of [[GLASS_TEXT, TEXT_BAR], [GLASS_ICONS, ICON_BAR]] as const) {
     for (const k of keys) {
-      const need = Math.min(bar, contrast(t[k], t.surface));
-      if (contrast(t[k], ground) < need) out["--" + k] = floorInk(t[k], ground, need);
+      const need = Math.min(bar, Math.max(contrast(t[k], t.surface), typeof grounds === "string" ? 0 : contrast(t[k], t["app-bg"])));
+      const ink = clearOf(t[k], [grounds].flat(), need, luminance(t[k]) > luminance(t.surface));
+      if (ink !== t[k]) out["--" + k] = ink;
     }
   }
   return out;

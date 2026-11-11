@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettings } from "../settings/useSettings";
-import { APP_ICONS, appIcon, applyWindowBlur, BLUR_FIELD, blurOn, ICON_FIELD } from "./appLook";
+import { APP_ICONS, appIcon, applyWindowBlur, BLUR_FIELD, blurOn, blurRefused, ICON_FIELD } from "./appLook";
 
 export default function AppLookCard() {
   const { settings, error, save } = useSettings();
@@ -12,7 +12,14 @@ export default function AppLookCard() {
   const pick = (patch: Record<string, unknown>) => {
     applyWindowBlur({ ...settings, ...patch });
     setFailed(null);
-    void save(patch).then(() => invoke("app_look_apply").catch((e) => setFailed(`The window could not take the new look: ${e}`)));
+    void save(patch).then(() =>
+      invoke("app_look_apply").catch((e) => {
+        // The page must not stay see-through over a window that has nothing blurred behind it.
+        blurRefused();
+        applyWindowBlur({ ...settings, ...patch });
+        setFailed(`The window could not take the new look: ${e}`);
+      }),
+    );
   };
   const icon = appIcon(settings);
   return (
@@ -32,7 +39,7 @@ export default function AppLookCard() {
         <input type="checkbox" role="switch" checked={blurOn(settings)} onChange={(e) => pick({ [BLUR_FIELD]: e.target.checked })} />
         <span>
           Blur the window background
-          <small>Shows a blurred view of what is behind the window where the page has no colour of its own. Windows 10 and 11.</small>
+          <small>Shows a blurred view of what is behind the window, through the window's own ground. Windows 10 and 11. Text can look a little softer while it is on; if dragging the window stutters, turn it off.</small>
         </span>
       </label>
       {(error ?? failed) && <p className="conn-detail warn">{error ?? failed}</p>}

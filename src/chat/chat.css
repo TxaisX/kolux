@@ -10,7 +10,7 @@
 .chat-msg.assistant { align-self: flex-start; }
 .chat-msg.preview, .chat-msg.pending { opacity: 0.7; }
 .chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
-.chat-meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--fg-faint); opacity: 0; transition: opacity 120ms; }
+.chat-meta { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--fg-faint); opacity: 0; transition: opacity 80ms; }
 .chat-msg:hover .chat-meta, .chat-msg:focus-within .chat-meta { opacity: 1; }
 .chat-copy { background: none; border: 0; padding: 0; font: inherit; color: var(--fg-muted); cursor: pointer; }
 .chat-copy:hover { color: var(--fg); }
@@ -46,7 +46,7 @@
 .chat-toolbar button:hover, .chat-link-btn:hover { color: var(--fg); background: var(--chip-bg); }
 .chat-fold { align-self: stretch; max-width: min(760px, 100%); font-size: 12px; color: var(--fg-muted); }
 .chat-fold-head { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; font: inherit; color: inherit; cursor: pointer; text-align: left; min-width: 0; }
-.chat-fold-head::after { content: "›"; color: var(--fg-faint); transition: transform 120ms; }
+.chat-fold-head::after { content: "›"; color: var(--fg-faint); transition: transform 80ms; }
 .chat-fold-head[aria-expanded="true"]::after { transform: rotate(90deg); }
 .chat-fold-head:hover { color: var(--fg); }
 .chat-fold-body { margin: 4px 0 0 6px; padding-left: 10px; border-left: 1px solid var(--line-subtle); display: flex; flex-direction: column; gap: 8px; }

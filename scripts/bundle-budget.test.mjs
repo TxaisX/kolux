@@ -43,7 +43,9 @@ describe("first-load bundle budget", () => {
     // Cycle 3 measured 1,471,768 bytes, so the ceiling was lowered to just above it (1,485,000) and now
     // sits UNDER the 1.5 MB target: the bar is enforced, not merely aimed at, and may never be raised
     // back past it.
+    // 2026-11-11 (DT-C253): the first load is 1,427,895 bytes, so the ceiling came down with it (1,442,000);
+    // the lower bound here only guards against a ceiling typed with a digit missing.
     expect(CEILING).toBeLessThanOrEqual(1_500_000);
-    expect(CEILING).toBeGreaterThan(1_450_000);
+    expect(CEILING).toBeGreaterThan(1_400_000);
   });
 });

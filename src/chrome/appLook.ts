@@ -24,10 +24,17 @@ export function blurOn(s: Record<string, unknown>): boolean {
 
 type Host = { dataset: DOMStringMap };
 
+/** The window effect is Windows' own. Where the engine says it is on another system the page stays solid:
+ *  a see-through page with nothing blurred behind it would show the bare desktop through the window. */
+const noEffectHere = () => typeof navigator !== "undefined" && /Linux|X11|Mac|Android/.test(navigator.userAgent);
+let refused = false;
+/** The window could not take the effect (app_look_apply failed): the page stays solid for the rest of this run. */
+export const blurRefused = () => void (refused = true);
+
 /** Marks the page so styles.css lets the blurred window show through the background. */
-export function applyWindowBlur(s: Record<string, unknown>, root: Host | undefined = typeof document !== "undefined" ? document.documentElement : undefined): void {
+export function applyWindowBlur(s: Record<string, unknown>, root: Host | undefined = typeof document !== "undefined" ? document.documentElement : undefined, solid = refused || noEffectHere()): void {
   if (!root) return;
-  if (blurOn(s)) root.dataset.windowBlur = "on";
+  if (blurOn(s) && !solid) root.dataset.windowBlur = "on";
   else delete root.dataset.windowBlur;
 }
 
