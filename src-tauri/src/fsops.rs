@@ -281,14 +281,15 @@ pub struct Made {
 // ACCT-055: each command below works only on paths inside the user's projects and worktrees
 // (fence.rs) and, on top of that, never out through a link (EDIT-045's `links::fence`); a copy
 // may also take files the user just dropped in from outside.
-#[tauri::command]
+// Async: the fence may ask git for every project's worktrees (T-442-c), never on the window's thread.
+#[tauri::command(async)]
 pub fn fs_create(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, dir: String, name: String, folder: bool) -> Result<Made, String> {
     guard.allow(&dir, &store, &git, false)?;
     let p = create(&fenced(&fence_of(&store, &grants), &dir, true)?, &name, folder)?;
     Ok(Made { path: shown(&p), id: ident(&p), error: None })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_rename(store: Store<'_>, grants: Grants<'_>, guard: Guard<'_>, git: GitState<'_>, path: String, name: String, expect: Option<String>) -> Result<Made, String> {
     guard.allow(&path, &store, &git, false)?;
     let from = fenced(&fence_of(&store, &grants), &path, false)?;
@@ -517,6 +518,17 @@ mod tests {
         let _ = fs::remove_dir_all(&d);
         fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    /// A sync command runs on the main thread. These may wait on git (the fence's worktree listing),
+    /// on every PATH folder, or on a megabyte read, so they run on a worker instead.
+    #[test]
+    fn commands_that_may_wait_on_git_or_the_disk_never_run_on_the_window_thread() {
+        for (src, name) in [(include_str!("fsops.rs"), "fs_create"), (include_str!("fsops.rs"), "fs_rename"), (include_str!("agents.rs"), "agent_start_line"), (include_str!("terminal.rs"), "terminal_history")] {
+            let src = src.replace("\r\n", "\n");
+            let at = src.find(&format!("pub fn {name}(")).unwrap();
+            assert!(src[..at].trim_end().ends_with("#[tauri::command(async)]"), "{name} must be #[tauri::command(async)]");
+        }
     }
 
     #[test]

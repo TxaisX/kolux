@@ -62,13 +62,20 @@ pub fn parse_netstat(text: &str) -> Vec<Listener> {
     text.lines()
         .filter_map(|line| {
             let w: Vec<&str> = line.split_whitespace().collect();
-            if w.len() < 5 || !w[0].eq_ignore_ascii_case("TCP") || !w[3].eq_ignore_ascii_case("LISTENING") {
+            if w.len() < 5 || !w[0].eq_ignore_ascii_case("TCP") || !listening_row(&w) {
                 return None;
             }
             let (addr, port) = w[1].rsplit_once(':')?;
-            Some(Listener { port: port.parse().ok()?, addr: addr.trim_matches(['[', ']']).to_string(), pid: w[4].parse().ok()? })
+            Some(Listener { port: port.parse().ok()?, addr: addr.trim_matches(['[', ']']).to_string(), pid: w.last()?.parse().ok()? })
         })
         .collect()
+}
+
+/// Whether a split `netstat -ano` TCP row is a listening socket. Windows translates the state column
+/// (German `ABHÖREN`, French `ÉCOUTE`, Italian `IN ASCOLTO` in two words), so the row is told by its
+/// foreign address instead: port 0 for a listening socket, never for a connection.
+pub fn listening_row(w: &[&str]) -> bool {
+    w.get(2).and_then(|f| f.rsplit_once(':')).is_some_and(|(_, port)| port == "0")
 }
 
 fn norm(p: &str) -> String {
@@ -671,6 +678,16 @@ mod tests {
         assert_eq!(l.len(), 3);
         assert_eq!(l[1], Listener { port: 5173, addr: "127.0.0.1".into(), pid: 4242 });
         assert_eq!(l[2].addr, "::1");
+    }
+
+    /// Non-English Windows translates netstat's state column (German ABHÖREN/HERGESTELLT, Italian
+    /// IN ASCOLTO in two words); listening sockets are still found and connections still left out.
+    #[test]
+    fn view078_listening_sockets_are_found_on_a_translated_windows() {
+        let german = "\nAktive Verbindungen\n\n  Proto  Lokale Adresse         Remoteadresse          Status           PID\n  TCP    0.0.0.0:135            0.0.0.0:0              ABHÖREN         1004\n  TCP    127.0.0.1:5173         0.0.0.0:0              ABH\u{FFFD}REN         4242\n  TCP    [::1]:5173             [::]:0                 ABHÖREN         4242\n  TCP    127.0.0.1:5173         127.0.0.1:50000        HERGESTELLT     4242\n  UDP    0.0.0.0:5353           *:*                                    900\n";
+        assert_eq!(parse_netstat(german), parse_netstat(NETSTAT));
+        let italian = "  TCP    127.0.0.1:5173         0.0.0.0:0              IN ASCOLTO      4242\n  TCP    127.0.0.1:5173         127.0.0.1:50000        STABILITO       4242\n";
+        assert_eq!(parse_netstat(italian), vec![Listener { port: 5173, addr: "127.0.0.1".into(), pid: 4242 }]);
     }
 
     #[test]

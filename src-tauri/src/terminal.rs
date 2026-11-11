@@ -623,18 +623,27 @@ pub fn screen_owner(prev: u8, chunk: &[u8]) -> u8 {
             continue;
         }
         let mut j = i + 3;
-        // An overflowing mode number is an unknown mode (none), never a wrapped known one.
-        let mut n: Option<u32> = Some(0);
-        while j < chunk.len() && chunk[j].is_ascii_digit() {
-            n = n.and_then(|n| n.checked_mul(10)?.checked_add(u32::from(chunk[j] - b'0')));
-            j += 1;
-        }
-        if j < chunk.len() && matches!(chunk[j], b'h' | b'l') {
-            let bit = match n {
+        // One sequence may set several modes (`ESC[?1049;1000h`); each counts.
+        let mut bit = 0;
+        loop {
+            // An overflowing mode number is an unknown mode (none), never a wrapped known one.
+            let mut n: Option<u32> = Some(0);
+            while j < chunk.len() && chunk[j].is_ascii_digit() {
+                n = n.and_then(|n| n.checked_mul(10)?.checked_add(u32::from(chunk[j] - b'0')));
+                j += 1;
+            }
+            bit |= match n {
                 Some(47 | 1047 | 1049) => ALT,
                 Some(1000..=1003) => MOUSE,
                 _ => 0,
             };
+            if j < chunk.len() && chunk[j] == b';' {
+                j += 1;
+            } else {
+                break;
+            }
+        }
+        if j < chunk.len() && matches!(chunk[j], b'h' | b'l') {
             if chunk[j] == b'h' {
                 owned |= bit;
             } else {
@@ -2932,6 +2941,17 @@ mod tests {
         assert_eq!(screen_owner(0, b"\x1b[?1049h...\x1b[?1049l$ "), 0);
     }
 
+    /// One sequence may name several modes; each counts, so a program that leaves with a combined
+    /// sequence does not keep the pane "busy" for good (and one that enters with it is seen).
+    #[test]
+    fn term_132_modes_set_together_in_one_sequence_each_count() {
+        assert_eq!(screen_owner(0, b"\x1b[?1049;1000h"), ALT | MOUSE);
+        assert_eq!(screen_owner(0, b"\x1b[?25;1049h"), ALT, "an unrelated mode before it");
+        assert_eq!(screen_owner(ALT | MOUSE, b"\x1b[?1000;1006;1049l"), 0);
+        assert_eq!(screen_owner(ALT, b"\x1b[?1;1000h"), ALT | MOUSE);
+        assert_eq!(screen_owner(ALT, b"\x1b[?1049;"), ALT, "an unfinished sequence changes nothing");
+    }
+
     #[test]
     fn term_116_diagnostics_carry_no_token_and_no_home_path() {
         let text = diagnostics_text(
@@ -3371,7 +3391,8 @@ pub fn terminal_kill(terminals: tauri::State<'_, Terminals>, id: u32) -> Result<
 }
 
 /// TERM-106: what pane `pane_key` printed before the last restart, base64 (empty when nothing was saved).
-#[tauri::command]
+// Async: up to a megabyte read and encoded per restored pane at start, off the window's thread.
+#[tauri::command(async)]
 pub fn terminal_history(app: AppHandle, pane_key: u32) -> Result<String, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let bytes = std::fs::read(history_file(&dir, pane_key)).unwrap_or_default();

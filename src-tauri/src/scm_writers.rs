@@ -260,7 +260,9 @@ fn single_quoted(text: &str) -> Vec<String> {
 
 /// Words in double quotes after `choices:` / `possible values:` (Copilot-style help).
 fn double_quoted_choices(text: &str) -> Vec<String> {
-    let low = text.to_lowercase();
+    // ASCII only: a full lowercase can change a character's byte length (the Kelvin sign, Turkish İ), and an
+    // offset found in it then cuts `text` inside a character, a panic that ends the app.
+    let low = text.to_ascii_lowercase();
     let Some(at) = low.find("choices:").or_else(|| low.find("possible values:")) else { return Vec::new() };
     let rest = &text[at..];
     let end = rest.find(')').unwrap_or(rest.len());
@@ -727,6 +729,12 @@ mod tests {
         assert_eq!((m[0].id.as_str(), m[0].name.as_str(), m[0].efforts.clone()), ("model-a", "Model A", vec!["low".to_string(), "high".to_string()]));
         assert_eq!(m[1].name, "model-c");
         assert!(parse_codex_models("not json").is_empty() && parse_codex_models("{}").is_empty());
+    }
+
+    #[test]
+    fn git018_d_choices_after_a_character_whose_lowercase_changes_length_parse_without_a_panic() {
+        let help = "  --model <model>        \u{212A} help \u{e9}(Choices: \"gpt-5\")\n";
+        assert_eq!(parse_choices(help, "--model").iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), ["gpt-5"]);
     }
 
     #[test]

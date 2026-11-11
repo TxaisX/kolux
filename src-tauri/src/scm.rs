@@ -2563,7 +2563,9 @@ pub fn parse_status(text: &str) -> Status {
             continue;
         }
         let (kind, rest) = item.split_at(1);
-        let rest = rest.trim_start();
+        // Exactly the one separating space: an untracked name may itself start with spaces, and a
+        // trimmed one would stage or (git clean) delete another file.
+        let rest = rest.strip_prefix(' ').unwrap_or(rest);
         match kind {
             "?" => st.untracked.push(change(rest, 'U', None)),
             "1" | "2" | "u" => {
@@ -4170,6 +4172,21 @@ and more
         let detached = parse_status("# branch.oid e2b3\0# branch.head (detached)\0");
         assert_eq!(detached, Status { head: Some("e2b3".into()), ..Status::default() });
         assert_eq!(parse_status("# branch.oid (initial)\0# branch.head main\0").head, None);
+    }
+
+    /// An untracked name that starts with a space is listed as it is; read trimmed, discarding it
+    /// ran git clean on the other, unspaced file and deleted that one for good.
+    #[test]
+    fn an_untracked_name_with_a_leading_space_is_kept_whole_and_discards_only_itself() {
+        let repo = temp_repo("lead-space");
+        fs::write(repo.join(" notes.txt"), "spaced\n").unwrap();
+        fs::write(repo.join("notes.txt"), "keep me\n").unwrap();
+        let st = status(&repo).unwrap();
+        assert_eq!(paths(&st.untracked), [" notes.txt", "notes.txt"]);
+        discard(&repo, "untracked", &[" notes.txt".to_string()]).unwrap();
+        assert!(!repo.join(" notes.txt").exists(), "the discarded file is gone");
+        assert_eq!(fs::read_to_string(repo.join("notes.txt")).unwrap(), "keep me\n", "the other file is untouched");
+        let _ = fs::remove_dir_all(&repo);
     }
 
     #[test]

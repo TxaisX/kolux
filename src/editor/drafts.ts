@@ -50,9 +50,16 @@ export function createDrafts(io: DraftIo, ms = 600, timers: Timers = real) {
   };
   /** Writes the draft for the file as it is now (or clears it when the tab is clean).
    *  False only when the draft of a dirty tab could not be written. */
+  // Bumped by discard: a write already on its way (waiting on the mirror or the hash) then stands down, so a draft
+  // the user threw away is not written back after the clear.
+  const gens = new Map<string, number>();
   const flushOne = async (worktree: string, path: string): Promise<boolean> => {
-    stop(pk(worktree, path));
+    const k = pk(worktree, path);
+    const gen = gens.get(k) ?? 0;
+    const gone = () => (gens.get(k) ?? 0) !== gen;
+    stop(k);
     const m = await mirror(worktree);
+    if (gone()) return true;
     const text = textOf(path);
     if (text === null) {
       open.delete(pk(worktree, path));
@@ -64,6 +71,7 @@ export function createDrafts(io: DraftIo, ms = 600, timers: Timers = real) {
       return true;
     }
     const base = await hashOf(diskOf(path) ?? "");
+    if (gone()) return true;
     m.set(keyOf(path), { path, text, base });
     return io.set(worktree, path, text, base).then(() => true, () => false);
   };
@@ -89,6 +97,7 @@ export function createDrafts(io: DraftIo, ms = 600, timers: Timers = real) {
       (await Promise.all([...new Map([...timersOf, ...open]).values()].map(({ worktree, path }) => flushOne(worktree, path)))).every(Boolean),
     /** The user closed the tab or chose to drop the edits: the draft goes. */
     async discard(worktree: string, path: string) {
+      gens.set(pk(worktree, path), (gens.get(pk(worktree, path)) ?? 0) + 1);
       stop(pk(worktree, path));
       open.delete(pk(worktree, path));
       (await mirror(worktree)).delete(keyOf(path));
