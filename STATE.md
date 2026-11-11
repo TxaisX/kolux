@@ -57,6 +57,7 @@ agent mark, name, branch (a detached checkout shows its short commit; a plain fo
 13 open decisions in `DECISIONS.md` section 2 are marked "confirm". The loop builds each one's
 recorded default until told otherwise; nothing here blocks a pass.
 
+- [coordinator] 2026-11-10 · **0.1.11 is released** (v0.1.11, from `acb30816`, CI green on that commit). It ships the Kolux identity (productName Kolux, identifier com.txaisxiong.kolux, T-790, DT-C221), the untrusted-folder fixes (T-779, T-793, T-780 with its gaps rounds) and the perf lanes. Smoke, signature and the old-profile migration passed in release.mjs; latest.json serves 0.1.11. Report: docs/research/release-0.1.11-2026-11-10.md. Still open: T-778.
 - [coordinator] 2026-11-04 · **Wave 201 is closed.** Trains 26, 27 and 28 are on main (`5050c4e2`) and
   the artifacts work is PR #223; the P0 guards and the artifacts render/seek proof passed live. What is
   left of the wave: the rest of T-775 (Source Control from the app, real-key page chords, the T-765
