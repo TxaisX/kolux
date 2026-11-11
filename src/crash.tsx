@@ -5,8 +5,12 @@
 // The crash screen (src/recovery/ScreenBoundary.tsx) replaces the whole App, which unmounts the box
 // App.tsx mounts, so the screen mounts its own `CrashFeedback` beside the button
 // (evidence/core-T-249-c-ScreenBoundary.tsx.patch).
-import FeedbackDialog, { requestFeedback } from "./feedback/FeedbackDialog";
+import { requestFeedback } from "./feedback/request";
+import { deferred } from "./lazy/deferred";
 import { scrub } from "./feedback/scrub";
+
+// Loaded when the crash screen draws, not at start: the box is only wanted once something has broken.
+const FeedbackDialog = deferred(() => import("./feedback/FeedbackDialog"));
 
 /** How many stack lines go into the report (the top of the stack names the broken part). */
 export const STACK_LINES = 12;

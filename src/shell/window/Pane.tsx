@@ -27,6 +27,7 @@ import { deferred } from "../../lazy/deferred";
 import SeatChooser from "./SeatChooser";
 import TerminalPane from "../../terminal/TerminalPane";
 import { useWindow } from "./store";
+import { tally } from "./stable";
 import { EditorPane } from "../../lazy/panes";
 import { DiffPane } from "../../lazy/panes";
 import { AllChangesPane } from "../../lazy/panes";
@@ -38,6 +39,12 @@ import { openInBrowser } from "../../browser/openIn";
 /** A restored tab that lost its data is rare: its placeholder loads when one is drawn, not at start. */
 const LostPane = deferred(() => import("./LostPane"));
 const AsleepPane = deferred(() => import("../../sleep/AsleepPane"));
+
+// MEASURE-ONLY (temporary): counts terminal renders for the before-numbers.
+function Terminal(props: Parameters<typeof TerminalPane>[0]) {
+  tally("terminal");
+  return <TerminalPane {...props} />;
+}
 
 export default function WindowPane({ pane: p, active }: { pane: Pane; active: number }) {
   const {
@@ -135,7 +142,7 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
   // TERM-123 (T-817): a sleeping agent pane shows its placeholder; its terminal is unmounted (ended). Wake remounts it as a restored tab.
   if (p.asleep) return <AsleepPane asleep={p.asleep} hidden={!board && p.key !== active} onWake={() => (setFocused(p.key), void wakePane(p.key))} />;
   return (
-    <TerminalPane
+    <Terminal
       key={p.key}
       hidden={!board && p.key !== active}
       restored={restoredKeys.current.has(p.key)}

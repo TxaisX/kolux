@@ -18,6 +18,14 @@
 // outputFlood.test.ts), so 128 KB is ~7 ms of a 16.7 ms frame, and a pane gets its share of that.
 // What the queue does not do is decide what is drawn: the reader's own window (512 KB unacked) is
 // what stops a program that runs ahead, so a slow frame delays output instead of losing it.
+//
+// PKG-3 (typing): a key's echo is one small chunk for a pane that had nothing to draw, and waiting for
+// the next frame to hand it over cost up to a frame before xterm (which parses the first write after a
+// key at once) could even start. So a quiet pane on screen writes its first small chunk as it arrives,
+// through the same write and the same callback (the acknowledgement, the one write in flight), and
+// counted against the frame's allowance. Only the first: the pane is busy from that chunk on, and
+// quiet again only after a whole frame in which nothing arrived and nothing was left to draw, so a
+// flood still goes one write a frame and costs at most one early write when it starts.
 
 import { heldBytes } from "./codec";
 
@@ -63,6 +71,8 @@ export const FRAME_BYTES = 128 * 1024;
 export const HIDDEN_BYTES = 8 * 1024;
 /** How often an off-screen pane draws a step. */
 export const HIDDEN_MS = 200;
+/** The largest chunk a quiet pane on screen writes as it arrives (a key's echo, a prompt). */
+export const FAST_BYTES = 4 * 1024;
 
 const now = () => performance.now();
 
@@ -96,6 +106,13 @@ export function frameBudget(perFrame = FRAME_BYTES, frameMs = FRAME_MS, clock: (
       const n = Math.max(0, Math.min(want, Math.floor(left)));
       left -= n;
       return n;
+    },
+    /** Takes all `want` bytes if the allowance holds them, else nothing. */
+    takeAll(want: number): boolean {
+      this.take(0); // brings the allowance up to now
+      if (left < want) return false;
+      left -= want;
+      return true;
     },
     /** What one of `waiting` panes may take in a frame when they all have output. */
     share(waiting: number): number {
@@ -155,6 +172,11 @@ export function frameOutputs(options: Options = {}) {
     private cancel: (() => void) | null = null;
     private due: Mode | null = null;
     private closed = false;
+    /** PKG-3: a whole frame went by with nothing arriving and nothing to draw; the next small chunk may go at once. */
+    private quiet = false;
+    /** A chunk arrived since the settle frame was asked for. */
+    private stirred = false;
+    private settling: (() => void) | null = null;
 
     constructor(private readonly sink: FrameSink) {}
 
@@ -179,8 +201,18 @@ export function frameOutputs(options: Options = {}) {
       // A shown pane drains within a frame or two, so its chunks stay views over the batch they came in
       // (DT-C246, no copy); a hidden pane trickles and holds them for seconds, up to FLOW_HIGH bytes deep,
       // where a small view would pin its whole 192 KB batch, so those are copied.
-      this.parts.push({ bytes: this.offScreen() ? heldBytes(bytes) : bytes, ack, seq });
+      const off = this.offScreen();
+      // PKG-3: nothing is waiting or in xterm's hands, so this chunk is next in order whichever way it goes.
+      const fast =
+        this.quiet && bytes.length <= FAST_BYTES && !off && this.inflight === 0 && !this.parts.length && !this.sink.unseen?.() && budget.takeAll(bytes.length);
+      this.quiet = false;
+      this.stirred = true;
+      this.parts.push({ bytes: off ? heldBytes(bytes) : bytes, ack, seq });
       this.bytes += bytes.length;
+      if (fast) {
+        this.writeUpTo(bytes.length);
+        return;
+      }
       waiting.add(this);
       this.plan();
     }
@@ -221,8 +253,25 @@ export function frameOutputs(options: Options = {}) {
       this.cancel?.();
       this.cancel = null;
       this.due = null;
+      this.settling?.();
+      this.settling = null;
       this.drop();
     }
+
+    /** PKG-3: everything is drawn; a frame from now, the pane is quiet unless something came meanwhile. */
+    private settleSoon(): void {
+      // Off screen or out of sight nothing is drawn early, and no animation frame may come.
+      if (this.settling || this.mode() !== "frame") return;
+      this.stirred = false;
+      this.settling = scheduler.frame(this.settle);
+    }
+
+    private readonly settle = () => {
+      this.settling = null;
+      if (this.closed || this.parts.length || this.inflight > 0) return; // the write that drains them asks again
+      if (this.stirred) this.settleSoon();
+      else this.quiet = true;
+    };
 
     private plan(): void {
       if (this.closed || this.inflight > 0 || !this.parts.length) return;
@@ -302,6 +351,7 @@ export function frameOutputs(options: Options = {}) {
         this.sink.ack(ack);
         if (this.closed) this.drop();
         else if (this.parts.length) this.plan();
+        else if (this.inflight === 0) this.settleSoon();
       };
       try {
         this.sink.write(bytes, done);

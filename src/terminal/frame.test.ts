@@ -2,7 +2,7 @@
 // 200 chunks in one frame were 200 writes and 200 parse jobs; the first case here is exactly that
 // stream and expects one write. Driven by a hand clock and scheduler, so a frame is a frame.
 import { expect, test } from "vitest";
-import { FRAME_BYTES, FRAME_MS, HIDDEN_BYTES, HIDDEN_MS, frameBudget, frameOutputs, type FrameSink } from "./frame";
+import { FAST_BYTES, FRAME_BYTES, FRAME_MS, HIDDEN_BYTES, HIDDEN_MS, frameBudget, frameOutputs, type FrameSink } from "./frame";
 
 const enc = (s: string) => new TextEncoder().encode(s);
 const text = (b: Uint8Array) => new TextDecoder().decode(b);
@@ -336,4 +336,153 @@ test("DT-C246 review: a chunk waiting in a hidden pane's queue does not pin the 
   v.push(batch.subarray(1000, 1011), 11, 3);
   v.flushNow();
   expect(shown.writes[0].buffer).toBe(batch.buffer);
+});
+
+/** A pane that has drawn and then sat a whole frame with nothing arriving: quiet. */
+function quietPane(c: ReturnType<typeof manual>, out: ReturnType<typeof frameOutputs>, s: ReturnType<typeof sink>) {
+  const pane = out.pane(s.frameSink);
+  pane.push(enc("$ "), 2);
+  c.frame(); // drawn
+  if (s.held()) s.release();
+  c.frame(); // a frame with nothing new: quiet from here
+  s.writes.length = 0;
+  return pane;
+}
+
+test("PKG-3: a quiet pane's first small chunk (a key's echo) reaches xterm with no frame wait; the rest of the frame is one write", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler });
+  const s = sink();
+  const pane = quietPane(c, out, s);
+  const before = s.acked();
+  let want = "";
+  let settled = 0;
+  for (let i = 0; i < 200; i++) {
+    want += `${i}\n`;
+    settled += i + 2;
+    pane.push(enc(`${i}\n`), i + 2);
+    if (i === 0) expect(s.writes.map(text)).toEqual(["0\n"]); // at once, before any frame
+  }
+  expect(s.writes).toHaveLength(1); // only the first: the pane is busy now and the rest wait for the frame
+  c.frame();
+  expect(s.writes).toHaveLength(2); // the frame's one write
+  expect(s.joined()).toBe(want);
+  expect(s.acked() - before).toBe(settled);
+});
+
+test("PKG-3: early and queued chunks reach xterm in arrival order, one write in flight, acked on xterm's callback", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler });
+  const s = sink({ hold: true });
+  const pane = quietPane(c, out, s);
+  const base = s.acked();
+  pane.push(enc("a"), 1); // early: written now, held by xterm
+  expect(s.joined()).toBe("a");
+  expect(s.acked() - base).toBe(0); // not acknowledged before xterm's callback
+  const burst = "B".repeat(10 * 1024); // over the early size
+  pane.push(enc(burst), burst.length); // waits behind a
+  c.frame();
+  expect(s.joined()).toBe("a");
+  s.release();
+  expect(s.acked() - base).toBe(1);
+  c.frame();
+  expect(s.joined()).toBe("a" + burst); // the burst, in flight now
+  pane.push(enc("c"), 1); // small, but not early: the burst is in xterm's hands and the pane is busy
+  c.frame();
+  expect(s.joined()).toBe("a" + burst);
+  s.release();
+  c.frame();
+  expect(s.joined()).toBe("a" + burst + "c");
+  s.release();
+  expect(s.acked() - base).toBe(2 + burst.length);
+  // A chunk that arrives before a whole frame has passed since the last draw waits for the frame.
+  pane.push(enc("d"), 1);
+  expect(s.joined()).toBe("a" + burst + "c");
+  c.frame();
+  expect(s.joined()).toBe("a" + burst + "cd");
+  pane.push(enc("e"), 1); // d is in flight
+  s.release();
+  c.frame();
+  expect(s.joined()).toBe("a" + burst + "cde");
+  s.release();
+  c.frame(); // the whole frame after the last draw, nothing new: quiet
+  pane.push(enc("f"), 1);
+  expect(s.joined()).toBe("a" + burst + "cdef"); // early again
+  s.release();
+  expect(s.acked() - base).toBe(5 + burst.length);
+});
+
+test("PKG-3: panes flooding cost one write a frame each, plus at most one early write per pane when the flood starts", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler });
+  const panes = Array.from({ length: 6 }, () => sink());
+  const queues = panes.map((s) => quietPane(c, out, s));
+  const want = panes.map(() => "");
+  let frames = 0;
+  for (let f = 0; f < 30; f++) {
+    queues.forEach((q, p) => {
+      for (let i = 0; i < 20; i++) {
+        const line = `${p}:${f}:${i}\n`;
+        want[p] += line;
+        q.push(enc(line), line.length);
+      }
+    });
+    c.frame();
+    frames++;
+  }
+  c.frame();
+  panes.forEach((s, p) => {
+    expect(s.joined()).toBe(want[p]);
+    expect(s.writes.length).toBeLessThanOrEqual(frames + 1); // today's one a frame, plus the first chunk early
+  });
+});
+
+test("PKG-3: nothing goes early for a pane behind another tab, in a window out of sight, or when the frame's allowance is spent", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler, onVisibility: () => {} });
+  let away = false;
+  let behind = false;
+  const s = sink({ hidden: () => behind, unseen: () => away });
+  const pane = quietPane(c, out, s);
+  behind = true;
+  pane.push(enc("x"), 1);
+  expect(s.writes).toHaveLength(0); // the hidden tab's trickle
+  c.advance(HIDDEN_MS);
+  expect(s.joined()).toBe("x");
+  behind = false;
+  c.frame();
+  c.frame();
+  away = true;
+  pane.push(enc("y"), 1);
+  expect(s.joined()).toBe("x"); // minimised: the timer step, nothing painted anyway
+  c.advance(FRAME_MS);
+  expect(s.joined()).toBe("xy");
+  away = false;
+  // Another pane takes the whole frame; this pane's small chunk then waits for the next frame.
+  const flood = sink();
+  const big = out.pane(flood.frameSink);
+  c.frame();
+  pane.push(enc("q"), 1);
+  pane.push(enc("r"), 1);
+  c.frame();
+  c.frame();
+  c.frame(); // drawn, and a quiet frame after it
+  big.push(new Uint8Array(FRAME_BYTES), FRAME_BYTES);
+  c.frame();
+  expect(flood.all()).toBe(FRAME_BYTES);
+  pane.push(enc("z"), 1);
+  expect(s.joined()).toBe("xyqr"); // no allowance left in this frame
+  c.frame();
+  expect(s.joined()).toBe("xyqrz");
+});
+
+test("PKG-3: a chunk over the early size waits for the frame as before", () => {
+  const c = manual();
+  const out = frameOutputs({ clock: c.clock, scheduler: c.scheduler });
+  const s = sink();
+  const pane = quietPane(c, out, s);
+  pane.push(new Uint8Array(FAST_BYTES + 1), FAST_BYTES + 1);
+  expect(s.writes).toHaveLength(0);
+  c.frame();
+  expect(s.all()).toBe(FAST_BYTES + 1);
 });

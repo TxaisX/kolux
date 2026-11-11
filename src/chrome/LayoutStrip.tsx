@@ -6,7 +6,7 @@
 // workspace's token and spend ribbon (usage/WorkspaceSpend.tsx).
 import { useEffect, useRef, useState } from "react";
 import { MAX_PANES, PANE_COUNTS } from "../terminal/grid";
-import WorkspaceSpend from "../usage/WorkspaceSpend";
+import { WorkspaceSpend } from "../lazy/menus";
 
 type Props = { count: number; onLayout: (n: number) => void; workspace?: string | null };
 

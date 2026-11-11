@@ -47,6 +47,7 @@ import { fromThisService, needsSize, orphanOf, reattach, type Attach, type Reatt
 import { keepsTab } from "./restoreAsk";
 import { batchAcks, memoryProfile } from "./flow";
 import { frameOutputs, type FrameOutput } from "./frame";
+import { writeQueue } from "./writeQueue";
 import { explain as explainError, exitAdvice } from "./errors";
 import { DIVIDER_DONE, dragging } from "./dividers";
 import { currentDark, currentTerminal, TERMINAL_EVENT, termFont } from "../theme";
@@ -817,7 +818,18 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
     const held = new HeldKeys();
     // TERM-071: writes go one after another (terminal_write is async, so two in flight could land out
     // of order); a chunked paste then reaches the program in order, and a key typed during it waits its turn.
-    let chain: Promise<unknown> = Promise.resolve();
+    // PKG-3: one write in flight; what is typed meanwhile goes as one write when it answers (writeQueue.ts).
+    const writes = writeQueue(
+      ({ id, data, auto, only }) => {
+        // TERM-074: the terminal changed (a restart) while the drop waited its turn: nothing is pasted.
+        if (only !== undefined && idRef.current !== only) {
+          setFlash("The terminal changed before the drop landed; nothing was typed");
+          return Promise.resolve();
+        }
+        return invoke("terminal_write", { id, data, generation: serviceRef.current?.generation ?? null, auto });
+      },
+      (e) => setFlash(`Typing could not reach the program (${explainError(String(e))})`),
+    );
     // TERM-123 (DT-C247): `auto` marks the terminal's own answer to the program (never typed by the user), which
     // the terminal service lets through without counting it as typing; see inputSource.ts.
     const write = (data: string, only?: number, { auto = false }: { auto?: boolean } = {}): Promise<unknown> | void => {
@@ -834,16 +846,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
         if (!held.push(data, auto)) setFlash("Keys typed before the shell started were dropped past 16 KB");
         return;
       }
-      return (chain = chain
-        .then(() => {
-          // TERM-074: the terminal changed (a restart) while the drop waited its turn: nothing is pasted.
-          if (only !== undefined && idRef.current !== only) {
-            setFlash("The terminal changed before the drop landed; nothing was typed");
-            return;
-          }
-          return invoke("terminal_write", { id, data, generation: serviceRef.current?.generation ?? null, auto });
-        })
-        .catch((e) => setFlash(`Typing could not reach the program (${explainError(String(e))})`)));
+      return writes.write(id, data, auto, only);
     };
     // TERM-123 (DT-C247): onData carries the user's keys, pastes and mouse reports, and also xterm's own focus,
     // cursor-position, device-attributes, mode and colour answers; the core marks which is which right before

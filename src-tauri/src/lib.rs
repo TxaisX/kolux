@@ -81,6 +81,7 @@ mod scm_stack;
 mod pr_review;
 mod skills;
 mod star;
+mod startup_marks;
 mod pasted_image;
 mod pr_checkout;
 mod auto_pr;
@@ -234,6 +235,7 @@ pub fn tower_may_run(label: &str, command: &str) -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    startup_marks::begin();
     diag::catch_panics();
     // T-552: the config's windows are opened by tools::guarded_setup instead, which waits out a
     // quitting Kolux whose WebView2 processes still hold the profile folder, and turns any setup
@@ -258,7 +260,9 @@ pub fn run() {
             // T-182 (APP-001): one copy at a time. A second launch hands its request to the running
             // copy, brings its window forward and exits before any window (or WebView2 profile) is touched.
             lifecycle::claim_or_forward(app);
+            startup_marks::mark("claimed");
             tools::guarded_setup(app, &windows, |app| {
+            startup_marks::mark("window");
             // APP-053: everything the app starts from here on ends with it; outside its own job (a job the
             // launcher owns without breakaway, say) the children would outlive a crash, so that is logged.
             let job_ok = procs::app_job_start();
@@ -266,6 +270,7 @@ pub fn run() {
             // T-790: the first start under the new identifier copies the old profile in (never deletes it),
             // before anything writes into the new folder; what it did is logged once the log has a place.
             let moved = profile_move::run(&dir);
+            startup_marks::mark("moved");
             diag::set_dir(&dir);
             if let Some(m) = &moved {
                 diag::write(&dir, &format!("kolux-rs: {}", m.summary()));
@@ -288,6 +293,7 @@ pub fn run() {
             // T-183 (APP-021): the profile folder must take a write and every install file must read; a
             // per-user install is repaired with icacls, anything else is only named.
             let perms = resources::recovery::startup_check_here(&dir);
+            startup_marks::mark("perms");
             for p in &perms.repaired {
                 diag::write(&dir, &format!("permissions repaired: {} (APP-021)", p.display()));
             }
@@ -300,6 +306,7 @@ pub fn run() {
             // T-183 (APP-049): a damaged state.db is set aside and the last good copy restored before the
             // store opens; one that cannot be set aside leaves saving frozen on a scratch store.
             let prep = resources::recovery::prepare_state(&dir, &resources::recovery::frozen_dir());
+            startup_marks::mark("checked");
             for n in &prep.notes {
                 diag::write(&dir, n);
             }
@@ -310,10 +317,12 @@ pub fn run() {
                 if let Err(e) = resources::recovery::backup_state(&dir) {
                     diag::write(&dir, &format!("the last good copy of state.db could not be refreshed: {e} (APP-049)"));
                 }
+                startup_marks::mark("backup");
             }
             #[cfg(debug_assertions)]
             dev_inject()?;
             let store = Store::open(&prep.open_dir)?;
+            startup_marks::mark("store");
             store.stamp_look(); // row 785: the look and mode are written now, not left to a page read that may time out
             // SKILL-023: an interrupted skill delete is undone or completed under the skill lock (a busy
             // lock or a lock that cannot be opened is logged; the latter still recovers).
@@ -355,6 +364,8 @@ pub fn run() {
             app.manage(links::Grants::default());
             // APP-041: the app's own start-and-stop record, next to what the terminals report.
             diag::write(&dir, &format!("app start {starts}, Kolux {}", app.package_info().version));
+            // PKG-5: the start-up timeline reaches the log even when the page never reports it.
+            startup_marks::report_later(&dir);
             // SET-004: the window starts hidden and the page shows it once its first frame has the saved
             // look; this is the backstop for a page that never gets that far.
             // T-286-b (APP-040): the app's own view reports its engine's process failures.
@@ -394,6 +405,7 @@ pub fn run() {
             // Git is checked once here; every project and workspace action runs through it. Without
             // Git the app still opens, and the landing screen says so (APP-023).
             app.manage(git::Git::detect().unwrap_or(git::Git { version: String::new() }));
+            startup_marks::mark("git");
             projects::forget_gone_at_start(app.handle().clone()); // APP-051
             app.manage(tools::Cache::default());
             // ACCT-055: picked-file grants saved by the last run come back.
@@ -498,6 +510,7 @@ pub fn run() {
                     let _ = tauri::Emitter::emit(&handle, "agent-quiet", status::Quiet { pane_key, minutes });
                 }
             });
+            startup_marks::mark("setup");
             Ok(())
         })
         })
@@ -1001,6 +1014,7 @@ pub fn run() {
             resources::recovery::ui_heartbeat,
             webview_power::window_background, // DT-C236: the engine's default background follows the theme
             resources::recovery::startup_recovery_notes,
+            startup_marks::startup_report, // PKG-5: the page's start-up marks join the Rust ones in one log line
             resources::recovery::graphics_crash_noted,
             resources::recovery::graphics_keep_running,
             resources::recovery::graphics_restart_safe,

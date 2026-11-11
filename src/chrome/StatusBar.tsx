@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { formatMemory, pollWhileVisible } from "../status/memory";
-import ResourceManager from "../status/ResourceManager";
+import { ResourceManager } from "../lazy/menus";
 import { Chip, Cup, Plug, Shell } from "./icons";
 import { STATUS_ITEMS } from "./statusItems";
 import { useMenuFocus } from "./dialogFocus";
