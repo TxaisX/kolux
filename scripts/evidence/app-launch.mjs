@@ -258,9 +258,26 @@ export function createApp(opts) {
     const r = await evalJs(`(() => { const e = [...document.querySelectorAll(${JSON.stringify(sel)})].find(x => ${textRe}.test((x.querySelector(".name") ?? x).textContent || "")); if (!e) return "missing"; e.click(); return "clicked"; })()`);
     if (r !== "clicked") throw new Error(`no ${sel} whose text matches ${textRe}`);
   };
-  const focusField = async (sel) => {
-    const r = await cdp("focus", sel);
-    if (r !== "focused") throw new Error(`could not focus ${sel}: ${r}`);
+  // Focuses the first on-screen match of sel and returns "focused" once it really holds the focus.
+  // c1-coord's gate hit "not-focused" on the add-project path field with the window off-screen: the page can refuse
+  // focus for a frame while a sidebar form is still mounting, so this retries instead of failing on the first try.
+  const focusField = async (sel, ms = 5000) => {
+    const end = Date.now() + ms;
+    let last = "no attempt";
+    for (;;) {
+      last = await evalJs(`(() => {
+        const els = [...document.querySelectorAll(${JSON.stringify(sel)})];
+        if (els.length === 0) return "missing";
+        const e = els.find((x) => x.offsetParent !== null) ?? els[0];
+        e.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        e.focus();
+        if (typeof e.select === "function") e.select();
+        return document.activeElement === e ? "focused" : "not-focused";
+      })()`);
+      if (last === "focused") return last;
+      if (Date.now() > end) throw new Error(`could not focus ${sel}: ${last}`);
+      await sleep(400);
+    }
   };
   // The n-th shown pane takes the focus the way a click would (App.tsx listens for mousedown), then its text field.
   // T-545: a pane makes its input field in its mount effect, so poll for the field up to 10 s; the pane itself is never waited for.

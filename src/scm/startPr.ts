@@ -62,7 +62,5 @@ export const dismiss = (book: ErrorBook, dir: string): ErrorBook => {
   return rest;
 };
 
-/** Where the review link opens: the setting's browser, or the other one with a modifier (Ctrl, Cmd or Alt). */
-export const reviewWhere = (e: { ctrlKey: boolean; metaKey: boolean; altKey: boolean }, inKolux: boolean): "kolux" | "system" => ((e.ctrlKey || e.metaKey || e.altKey ? !inKolux : inKolux) ? "kolux" : "system");
-/** The hint beside the review link: where a plain click goes and where a modifier-click goes. */
-export const reviewHint = (inKolux: boolean): string => (inKolux ? "Opens in the Kolux browser; Ctrl-click opens it in the system browser" : "Opens in the system browser; Ctrl-click opens it in the Kolux browser");
+/** The hint beside the review link. Kolux draws no web pages (Goal 0), so the review opens in the system browser, every click. */
+export const REVIEW_HINT = "Opens in your browser";

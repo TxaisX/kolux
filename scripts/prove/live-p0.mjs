@@ -9,9 +9,10 @@ import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-// Before live-common reads them: the two ports this seat owns, fixed so the run is reproducible.
-process.env.PROVE_PORT = "1492";
-process.env.PROVE_CDP = "9312";
+// Before live-common reads them: this run's own ports. A value the harness passed in (a slot from run-all.mjs) wins,
+// so two runs never share a page; the defaults are this seat's own fixed pair.
+process.env.PROVE_PORT ||= "1492";
+process.env.PROVE_CDP ||= "9312";
 
 const { reporter, startPlain, finish, sleep, git } = await import("./live-common.mjs");
 const { checker } = await import("./live-views-dom.mjs");

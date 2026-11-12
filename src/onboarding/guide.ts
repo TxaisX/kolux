@@ -6,21 +6,20 @@
 import { invoke } from "@tauri-apps/api/core";
 import { locale } from "../language";
 import type { FirstRun } from "./newcomer";
-import { noteUse, type Features } from "./features";
+import { type Features } from "./features";
 import { movedHint, type MovedId } from "./moved";
 import { isAiAgent } from "./agentKind";
 
-export type StepId = "browser" | "notifications" | "agent" | "cli" | "integrations" | "multitask" | "automate" | "repos";
+export type StepId = "notifications" | "agent" | "cli" | "integrations" | "multitask" | "automate" | "repos";
 type Words = { name: string; about: string };
 export type Step = { id: StepId; group: "setup" | "parallel"; core: boolean; en: Words; ko: Words };
 
-/** The eight steps: the Setup group first, then the numbered parallel-work group. Connect
- *  integrations and the browser are optional, so they never keep Milestones in the help menu. */
+/** The seven steps: the Setup group first, then the numbered parallel-work group. Connect
+ *  integrations is optional, so it never keeps Milestones in the help menu. */
 export const STEPS: Step[] = [
   { id: "notifications", group: "setup", core: true, en: { name: "Turn on notifications", about: "Hear when an agent finishes or needs you, even with Kolux in the background." }, ko: { name: "알림 켜기", about: "Kolux가 백그라운드에 있어도 에이전트가 끝나거나 도움이 필요할 때 알려 줍니다." } },
   { id: "agent", group: "setup", core: true, en: { name: "Choose a default agent", about: "Pick the AI that starts when you open a new session." }, ko: { name: "기본 에이전트 선택", about: "새 세션을 열 때 시작할 AI를 고릅니다." } },
   { id: "cli", group: "setup", core: true, en: { name: "Enable Kolux CLI", about: "Let your agents drive Kolux: open terminals, run orchestration and read the skills that teach them how." }, ko: { name: "Kolux CLI 사용", about: "에이전트가 Kolux를 직접 다루게 합니다: 터미널 열기, 오케스트레이션 실행, 사용법을 알려 주는 스킬 읽기." } },
-  { id: "browser", group: "setup", core: false, en: { name: "Use Kolux's browser", about: "Open web pages beside your terminals so an agent's work and its preview sit together." }, ko: { name: "Kolux 브라우저 사용", about: "터미널 옆에서 웹 페이지를 열어 에이전트의 작업과 미리보기를 함께 봅니다." } },
   { id: "integrations", group: "setup", core: false, en: { name: "Connect integrations", about: "Bring in GitHub reviews and tasks so work arrives where you run it." }, ko: { name: "통합 연결", about: "GitHub 리뷰와 작업을 가져와 일하는 곳에서 바로 받습니다." } },
   { id: "multitask", group: "parallel", core: true, en: { name: "Multi-task", about: "Run more than one agent at once, each in its own pane." }, ko: { name: "멀티태스킹", about: "여러 에이전트를 각자의 창에서 동시에 실행합니다." } },
   { id: "automate", group: "parallel", core: true, en: { name: "Automate workspace setup", about: "Have each new workspace install and prepare itself before an agent starts." }, ko: { name: "작업 공간 설정 자동화", about: "새 작업 공간마다 에이전트가 시작하기 전에 스스로 설치하고 준비하게 합니다." } },
@@ -99,7 +98,6 @@ export const WORKFLOWS: Workflow[] = [
     stops: [
       { id: "terminal", title: "Terminal", caption: "Terminals in a grid of one, two, four or six panes." },
       { id: "editor", title: "Editor", caption: "Open and edit the files an agent touched without leaving Kolux." },
-      { id: "browser", title: "Browser", caption: "Preview what was built in a browser tab beside the terminal.", optional: true },
     ],
   },
   {
@@ -186,8 +184,6 @@ export type Facts = {
   workspaces: Place[][] | null;
   /** The git projects seen together at the most, kept on the profile (the lasting count). */
   gitProjects: number | null;
-  /** A page other than a blank one was shown in Kolux's browser (kept on the profile). */
-  pageShown: boolean;
   /** "checking" while the provider checks are still out. */
   integrations: "connected" | "checking" | "none" | null;
   /** The CLI step's capabilities, all in place. */
@@ -207,18 +203,11 @@ export type Facts = {
  *  for it) never counts, nor does a placeholder still being made (no commit yet). */
 export const realWorkspace = (list: readonly Place[]): boolean => list.some((w) => !w.isMain && w.kind !== "main" && w.head.trim() !== "");
 
-/** ONB-015: a blank page never counts as the browser having been used. */
-export const pageCounts = (url: string | null | undefined): boolean => {
-  const u = (url ?? "").trim().toLowerCase();
-  return u !== "" && u !== "about:blank" && !u.startsWith("about:");
-};
-
 /** ONB-015: the steps done, each from the thing it stands for. */
 export function doneFrom(f: Facts): Set<StepId> {
   if (f.legacy === true) return new Set(STEPS.map((s) => s.id)); // the legacy rule, everywhere
   const done = new Set<StepId>();
   if (f.workspaces?.some(realWorkspace) || f.splitCredit === true) done.add("multitask");
-  if (f.pageShown) done.add("browser");
   if ((f.gitProjects ?? 0) >= 2) done.add("repos");
   if (f.integrations === "connected") done.add("integrations");
   if (f.cli) done.add("cli");
@@ -246,8 +235,7 @@ export const checklistHidden = (settings: Record<string, unknown> | null | undef
 /** The one settings patch a Hide click saves. */
 export const HIDE_PATCH: Record<string, unknown> = { [HIDDEN_FIELD]: true };
 
-/** The tried-list ids that keep facts on the profile: the browser page and the lasting repo count. */
-export const PAGE_SHOWN = "browser-page";
+/** The tried-list ids that keep facts on the profile: the lasting repo count. */
 export const TWO_REPOS = "repos-two";
 
 /** ONB-015 setup-script step: answers to an older check are dropped. `begin` starts a check for new
@@ -272,7 +260,6 @@ export type Setup = { taskSource: boolean; skills: readonly string[] };
 const NEEDS: Record<string, (s: Setup) => boolean> = {
   tasks: (s) => s.taskSource,
   orchestration: (s) => s.skills.includes("orchestration"),
-  browser: (s) => s.skills.includes("browser-use"),
 };
 
 /** Every id the tour knows: the workflows and their stops. */
@@ -301,29 +288,8 @@ export const withRecord = (seen: ReadonlySet<string>, kept: ReadonlySet<string>,
   kept: new Set([...kept, ...g.tried]),
 });
 
-/** ONB-015: the browser pane calls this when a page finishes loading; the first page other than a
- *  blank one marks the Browser step's fact on the profile and notes the use (ONB-042), once per
- *  window, so later page loads write nothing. A write that fails frees the note again, so the next
- *  page load tries once more (FIX-2); the use is still noted only once (FIX-4). */
-export const pageNoter = (mark: typeof markGuide = markGuide, use: (id: string) => unknown = noteUse) => {
-  let done = false;
-  let used = false;
-  return (url: string | null | undefined): void => {
-    if (done || !pageCounts(url)) return;
-    done = true;
-    void mark("tried", PAGE_SHOWN).catch(() => {
-      done = false;
-    });
-    // FIX-4: the use is noted once per window, so a retry of the write does not count the first page twice.
-    if (!used) {
-      used = true;
-      use("browser-page");
-    }
-  };
-};
-
-/** The one page note the window shares (the browser pane calls `notePage(url)`). */
-export const notePage = pageNoter();
+/** Kept only so src/browser/BrowserPane.tsx still compiles: remove when src/browser is deleted. */
+export const notePage = (_url: string | null | undefined): void => {};
 
 // ---- ONB-029: the command palette tip's one-time demo ----
 

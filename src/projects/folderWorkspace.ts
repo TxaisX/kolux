@@ -49,7 +49,4 @@ export function folderResult(folder: string, all: Attached[], resultOf: (path: s
   return worstOf(attachedTo(folder, all).flatMap((w) => resultOf(w.path) ?? []));
 }
 
-/** The project's root folder workspace is never deleted or forgotten. */
-export const isRoot = (path: string, projectRoot: string): boolean => key(path) === key(projectRoot);
-
 export const folderMissingNote = "This folder is missing on disk.";

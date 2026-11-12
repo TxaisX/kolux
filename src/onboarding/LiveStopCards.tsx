@@ -1,6 +1,6 @@
 // ONB-024 (T-321-c): the two Explore Kolux stop cards that read live facts. Usage lists which agents are
-// connected (managed accounts, the Claude key, or an agent's own default sign-in); the orchestration and
-// browser stops show the skill they need, and its installer command, which a small inline terminal types
+// connected (managed accounts, the Claude key, or an agent's own default sign-in); the orchestration
+// stop shows the skill it needs, and its installer command, which a small inline terminal types
 // without running. The rules are in stopCards.ts; nothing here runs an installer.
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";

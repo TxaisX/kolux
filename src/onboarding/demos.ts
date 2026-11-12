@@ -31,10 +31,10 @@ export function createLoop(frames: number, frameMs: number) {
  *  Mac. A double tap reads "Shift Shift" (one cap, no plus). */
 export const keysText = (action: string, platform: Platform): string => labelOf(defaultsOnly(platform), action).join("+");
 
-export type Demo = { id: "workspaces" | "workbench" | "statuses" | "browser"; frames: string[] };
+export type Demo = { id: "workspaces" | "workbench" | "statuses"; frames: string[] };
 
 /** Which demo a workflow or stop carries; the others carry none. */
-export const demoFor = (id: string): Demo["id"] | null => (id === "workspaces" || id === "workbench" || id === "statuses" || id === "browser" ? id : null);
+export const demoFor = (id: string): Demo["id"] | null => (id === "workspaces" || id === "workbench" || id === "statuses" ? id : null);
 
 /** The frames of a demo, in their fixed order. Words only; the keys come from the platform. */
 export function framesOf(id: Demo["id"], platform: Platform): string[] {
@@ -47,7 +47,5 @@ export function framesOf(id: Demo["id"], platform: Platform): string[] {
       return [`Run queue: 1 of 3 running (${palette} to switch)`, "Run queue: 2 of 3 running", `Run queue: 3 of 3 running (${newTab} for a new tab)`];
     case "statuses":
       return ["Working", "Waiting for you", "Done"];
-    case "browser":
-      return ["1 Open the page", "2 Grab an element", "3 Write a note", "4 Send it to the agent"];
   }
 }

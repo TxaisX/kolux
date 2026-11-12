@@ -118,6 +118,25 @@ test("one-folder mode selects the project row as the folder and hides the old wo
   expect(h.calls).toContain(`select:${main.path}`);
 });
 
+test("own-folder mode (the default) shows the same folder row: worktree rows stay out of sight and nothing offers New workspace (Txais 2026-11-12)", async () => {
+  setOwnFolders({}); // own folders on
+  const c = await panel();
+  const folder = find(c, (n) => hasClass(n, "proj") && hasClass(n, "folder"))[0];
+  expect(folder).toBeDefined();
+  expect(folder.attrs["data-path"]).toBe(main.path);
+  const hidden = find(c, (n) => hasClass(n, "old-workspaces"));
+  const inHidden = (n: FakeNode): boolean => hidden.some((h) => h === n || find(h, (x) => x === n).length > 0);
+  const wtRows = find(c, (n) => n.attrs["data-worktree"] !== undefined);
+  expect(wtRows.length).toBeGreaterThan(0);
+  expect(wtRows.every(inHidden), "every worktree row is in a hidden wrapper").toBe(true);
+  expect(find(c, (n) => String(n.attrs.title ?? "").startsWith("New workspace"))).toEqual([]);
+  await rightClick(c, folder);
+  expect(items(c)).toEqual(["Review changes", "Project settings", "Remove project…"]);
+  await fire(doc, "keydown", doc, { key: "Escape" });
+  await click(c, folder);
+  expect(h.calls).toContain(`select:${main.path}`);
+});
+
 test("the main checkout row has a menu with Remove project and the header X asks the same question", async () => {
   const c = await panel();
   await rightClick(c, find(c, (n) => hasClass(n, "branch"))[0]);

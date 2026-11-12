@@ -1,3 +1,4 @@
+// retired: the Untracked section it discards from was removed with the Source Control panel (T-644); discarding now sits on each All Changes file row (ac-discard-file)
 // LIVE proof, GIT-003 box 2 (spec/11): discarding the Untracked section while it holds 40 files -> the dialog names the number 40 and its
 // buttons are inside the window and clickable without resizing it. Cancelling keeps every file; the confirm then removes all 40.
 import { mkdirSync, readdirSync, writeFileSync } from "node:fs";

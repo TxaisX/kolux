@@ -17,7 +17,6 @@ import { alreadyListed, editApp } from "../editor/openInEdit";
 import { applyDraft, PROXY_FIELD, readProxyRest, type ProxyDraft } from "./proxy";
 import { ResetButton } from "./SafetyRules";
 import CliCard from "./CliCard";
-import { LINKS_IN_KOLUX_FIELD, linksOpenInKolux } from "../chat/chatLinks";
 import ExperimentalCard from "./ExperimentalCard";
 
 /** A row of buttons that behaves as one radio group. */
@@ -327,18 +326,8 @@ function ProxyCard({ settings, onSave }: { settings: Record<string, unknown>; on
   );
 }
 
-/** T-329-b (TERM-092, CHAT-025): links in terminals, chat replies and pull-request checks open in Kolux's own viewer when this is on. */
-function LinksCard({ settings, onSave }: { settings: Record<string, unknown>; onSave: (patch: Record<string, unknown>) => void }) {
-  return (
-    <section className="conn-card" data-section="links">
-      <h2 className="conn-name">Links</h2>
-      <label className="conn-switch">
-        <input type="checkbox" role="switch" checked={linksOpenInKolux(settings)} onChange={(e) => onSave({ [LINKS_IN_KOLUX_FIELD]: e.target.checked })} /> Open links in Kolux
-      </label>
-      <p className="conn-detail">Off: a link goes to your system browser. On: it opens in Kolux's own browser pane, and the system browser stays one Shift-click away.</p>
-    </section>
-  );
-}
+/** T-329-b (TERM-092, CHAT-025): links in terminals, chat replies and pull-request checks always open in the system
+ * browser, so this card is gone: Kolux no longer draws web pages (Goal 0, Txais 2026-11-12). */
 
 export default function GeneralPage() {
   const { settings, error, save, retry } = useSettings();
@@ -348,7 +337,6 @@ export default function GeneralPage() {
       {settings && <GeneralView settings={settings} onSave={save} />}
       {settings && <Confirmations settings={settings} onSave={save} />}
       {settings && <EditorCard settings={settings} onSave={save} />}
-      {settings && <LinksCard settings={settings} onSave={save} />}
       {settings && <OpenInCard settings={settings} onSave={save} />}
       {settings && <ProxyCard settings={settings} onSave={save} />}
       {settings && <ExperimentalCard settings={settings} onSave={save} />}

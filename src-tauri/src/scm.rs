@@ -822,8 +822,14 @@ pub(crate) fn gh_repo_arg(worktree: &Path, ssh_config: &str) -> Option<String> {
 /// GIT-060: the worktree's GitHub repository, for grouping checkouts (the Tasks picker, T-231-b).
 #[tauri::command]
 pub async fn scm_github_repo(worktree: String) -> Option<GhRepo> {
-    let url = run(&["remote", "get-url", "origin"], Some(Path::new(&worktree))).ok()?;
-    github_repo(&url, &ssh_config())
+    // Runs git and reads the ssh config: off the async workers, like its neighbours.
+    tauri::async_runtime::spawn_blocking(move || {
+        let url = run(&["remote", "get-url", "origin"], Some(Path::new(&worktree))).ok()?;
+        github_repo(&url, &ssh_config())
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 /// GIT-066: the signed-in gh login, read from gh's own config (no network); None without gh.
@@ -2822,7 +2828,9 @@ fn count_paths(st: &Status) -> usize {
 /// GIT-012: the cut-short banner's offer; only inside a project or worktree (ACCT-055, fence.rs).
 #[tauri::command]
 pub async fn scm_ignore_heavy(worktree: String, folders: Vec<String>, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, crate::git::Git>) -> Result<(), String> {
-    ignore_heavy(&fence.allow(&worktree, &store, &git, false)?, &folders)
+    let dir = fence.allow(&worktree, &store, &git, false)?;
+    // Writes .git/info/exclude and probes folders: off the async workers.
+    tauri::async_runtime::spawn_blocking(move || ignore_heavy(&dir, &folders)).await.map_err(|e| e.to_string())?
 }
 
 /// GIT-038 (T-033-c): All Changes measured against the branch's base: `against` is the pinned
@@ -2920,7 +2928,8 @@ pub async fn scm_watch(app: tauri::AppHandle, path: String) -> Result<watch::Wat
             crate::diag::write(d, line);
         }
     });
-    watch::watch_with(Path::new(&path), sink, ended, log)
+    // Walks the folder's ancestors and runs git rev-parse, which stalls on network or WSL paths.
+    tauri::async_runtime::spawn_blocking(move || watch::watch_with(Path::new(&path), sink, ended, log)).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
