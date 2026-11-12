@@ -8,9 +8,11 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 
 import { MoreSessions, TrackingOff } from "./InsightsPanel";
-import source from "./InsightsPanel.tsx?raw";
 const nodeFs = (globalThis as unknown as { process: { getBuiltinModule(name: string): { readFileSync(p: URL, enc: string): string } } }).process.getBuiltinModule("node:fs");
 const css = nodeFs.readFileSync(new URL("./insights.css", import.meta.url), "utf8");
+// Read from disk, not through a `?raw` import: Vite's transform cache can serve the pre-change
+// text and fail this row on correct code.
+const source = nodeFs.readFileSync(new URL("./InsightsPanel.tsx", import.meta.url), "utf8");
 
 test('usage-status.md:6: "Turn it on in Settings → Usage" is a button, wired to open the Usage page of Settings', () => {
   const html = renderToStaticMarkup(createElement(TrackingOff, { onOpen: () => {} }));

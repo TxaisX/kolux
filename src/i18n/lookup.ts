@@ -49,6 +49,16 @@ export function loadPack(lang: Language = locale()): Promise<Pack> {
   return p;
 }
 
+/** Fetches the pack for `lang` now rather than at its first `t()`: a pack that arrives after the first paint leaves that paint in English until something else re-renders. */
+export function preload(lang: Language = locale()): Promise<Pack> {
+  return loadPack(lang);
+}
+
+/** Whether `lang`'s pack is here already (English, which needs none, always is). */
+export function packReady(lang: Language = locale()): boolean {
+  return lang === "en" || packs.has(lang);
+}
+
 /** Called when a pack has arrived, so a screen showing the English stand-in can draw again. */
 export function onPackLoaded(f: (lang: Language) => void): () => void {
   listeners.add(f);

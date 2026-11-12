@@ -1,7 +1,7 @@
 // USAGE-023 (T-070): the usage refresh scheduler, decided as pure functions of time and the last
 // result, and the runner that drives one provider's reads from them. Fake clocks throughout.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BACKOFF_MS, EVERY_MS, MOMENTS_MS, backoffMs, began, claudeFetched, codexFetched, ended, fresh, refreshAll, runner, shouldFetch, type Fetched, type Sched } from "./refresh";
+import { BACKOFF_MS, EVERY_MS, MOMENTS_MS, backoffMs, began, claudeFetched, codexFetched, ended, fresh, published, refreshAll, runner, shouldFetch, type Fetched, type Sched } from "./refresh";
 
 const MIN = 60_000;
 const t0 = 1_000_000;
@@ -125,8 +125,7 @@ describe("runner", () => {
     c.r.stop();
   });
 
-  it("fetches at start, then every five minutes; stop ends it", async () => {
-    const st = stub(() => ({ kind: "ok", value: 1 }));
+  it("fetches at start, then every five minutes; stop ends it", async () => {    const st = stub(() => ({ kind: "ok", value: 1 }));
     const { r, oks } = make(st);
     r.start();
     await vi.advanceTimersByTimeAsync(10);
@@ -212,6 +211,19 @@ describe("runner", () => {
     expect(st.calls).toBe(3);
     r.stop();
     expect(refreshAll()).toBe(0);
+  });
+
+  // USAGE-023: a screen reads the published state by provider name, so a runner that has stopped
+  // must not leave its last state under that name for the next screen to read.
+  it("a stopped runner publishes no state under its name", async () => {
+    const st = stub(() => ({ kind: "ok", value: 1 }));
+    const { r } = make(st, "probe");
+    r.start();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(published("probe")).toMatchObject({ inFlight: false, lastOk: t0 });
+    r.stop();
+    expect(published("probe")).toEqual(fresh());
+    expect(published("never-started")).toEqual(fresh());
   });
 });
 

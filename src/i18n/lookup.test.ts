@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "vitest";
 import { applyLanguage } from "../language";
 import { CONNECT, GLOSSARY, glossaryEntry } from "../glossary";
 import { EN, type TextKey } from "./en";
-import { loadPack, missing, onPackLoaded, packJargon, registerPack, t, type Pack } from "./lookup";
+import { loadPack, missing, onPackLoaded, packJargon, packReady, preload, registerPack, t, type Pack } from "./lookup";
 
 afterEach(() => void applyLanguage("en"));
 
@@ -50,6 +50,19 @@ test("T-210-b SET-017: a pack that fails to load leaves English showing and allo
   expect(t("connect.codex")).toBe(EN["connect.codex"]);
   await expect(loadPack("ko")).resolves.toEqual({ "glossary.shell.plain": "터미널" });
   expect(t("glossary.shell.plain")).toBe("터미널");
+});
+
+test("T-210-b SET-017: a pack can be fetched before its first read, and its readiness is readable", async () => {
+  let loads = 0;
+  registerPack("es", async () => (loads++, { "glossary.worktree.plain": "espacio de trabajo" }));
+  applyLanguage("es");
+  expect(packReady("es")).toBe(false);
+  await preload("es");
+  expect(loads).toBe(1);
+  expect(packReady("es")).toBe(true);
+  expect(t("glossary.worktree.plain")).toBe("espacio de trabajo");
+  expect(packReady("en"), "English needs no pack").toBe(true);
+  applyLanguage("en");
 });
 
 test("T-210-b SET-017: product and provider names pass through as values, untranslated", () => {
