@@ -21,8 +21,8 @@ const check = (name, ok, detail) => {
 
 /** One CDP call on the page target (the same target live-common's shot() uses). */
 async function cdpCall(method, params = {}) {
-  const targets = await (await fetch("http://127.0.0.1:9290/json")).json();
-  const t = targets.find((x) => x.type === "page" && /localhost:1470|tauri\.localhost/.test(x.url));
+  const targets = await (await fetch(`http://127.0.0.1:${process.env.PROVE_CDP || "9290"}/json`)).json();
+  const t = targets.find((x) => x.type === "page" && new RegExp(`localhost:${process.env.PROVE_PORT || "1470"}|tauri\.localhost`).test(x.url));
   const ws = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
   const res = await new Promise((resolve) => {

@@ -28,7 +28,7 @@ const PANE = `(() => {
   const cut = vis.filter((e) => e.children.length === 0 && e.textContent.trim() && e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow === "ellipsis");
   const untipped = cut.filter((e) => !e.closest("[title]") && !e.closest("[aria-label]")).map((e) => e.textContent.trim().slice(0, 40));
   return { inner: innerWidth, sidebarW: Math.round(sr.width), out: out.slice(0, 8), scrollers, cut: cut.length, untipped,
-    paneRows: s.querySelectorAll(".pane-row").length, updButton: [...s.querySelectorAll("button")].filter((b) => /check for updates/i.test(b.getAttribute("aria-label") + " " + b.textContent)).length };
+    paneRows: s.querySelectorAll(".sess[role=button]").length, updButton: [...s.querySelectorAll("button")].filter((b) => /check for updates/i.test(b.getAttribute("aria-label") + " " + b.textContent)).length };
 })()`;
 
 let ctx;

@@ -5,8 +5,7 @@ import { pathToFileURL } from "node:url";
 import { mkdirSync, writeFileSync, readFileSync, rmSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { reporter, startPlain, finish, sleep, poll, checker, LIVE_LOGS } from "./live-proj-common.mjs";
-import { ROOT, LIVE_BASE, writeStandinClaude } from "./live-common.mjs";
-import { TODAY } from "./live-browser-common.mjs";
+import { ROOT, LIVE_BASE, TODAY, writeStandinClaude } from "./live-common.mjs";
 
 const CHORD = { key: "F8", code: "F8", vk: 119, mods: 2 | 8 }; // Ctrl+Shift+F8 (Ctrl+Alt+letter hits the AltGr guard), bound to tab.newAgent through the scratch keybindings.json
 const ID = "SET-027";
@@ -20,7 +19,8 @@ const SELECT = 'select[aria-label="default agent"]';
 const settingsNow = (app) => app.evalJs(`window.__TAURI_INTERNALS__.invoke("get_settings").then((s) => JSON.stringify({ defaultAgent: s.defaultAgent ?? null, disabledAgents: s.disabledAgents ?? [] }))`).then(JSON.parse);
 const agentList = (app) => app.evalJs(`window.__TAURI_INTERNALS__.invoke("agent_list").then((l) => JSON.stringify(l.map((a) => ({ id: a.id, program: a.program, installed: a.installed }))))`).then(JSON.parse);
 const page = (app) => app.evalJs(`(() => { const s = document.querySelector(${JSON.stringify(SELECT)}); if (!s) return null; return { value: s.value, selected: s.selectedOptions[0]?.textContent.trim(), options: [...s.options].map((o) => o.textContent.trim()), chips: [...document.querySelectorAll(".conn-chip")].filter((c) => /^default$/i.test(c.textContent.trim())).map((c) => c.closest("[data-agent]")?.dataset.agent ?? "?"), refresh: [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Refresh"), note: document.body.innerText.includes("No agent CLI was found") }; })()`);
-const sessions = (app) => app.evalJs(`[...document.querySelectorAll(".pane-row[data-agent]")].map((r) => r.dataset.agent + ":" + r.dataset.pane)`);
+// The panes themselves: the sidebar lists workspaces, not one row per session, so the panes are what a new session adds.
+const sessions = (app) => app.evalJs(`[...document.querySelectorAll("section.pane[data-agent]")].map((p) => p.dataset.agent + ":" + (p.dataset.key ?? "?"))`);
 const openSettingsAgents = async (app, ctx) => {
   if (!(await app.exists('.settings[role=dialog][aria-label="Settings"]'))) await ctx.rawKey({ key: ",", code: "Comma", vk: 188, mods: 2 });
   await app.waitFor("Settings", () => app.exists('.settings[role=dialog][aria-label="Settings"]'), 10000);

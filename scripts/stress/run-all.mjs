@@ -9,7 +9,6 @@
 //     --instances <1..10>       Number of parallel worker slots (default: 4; max 10: Vite 1500-1590, CDP 9350-9359)
 //     --only <csv>              Run only live-*.mjs whose name contains any comma-separated token
 //     --include-real-claude     Include scripts that invoke real signed-in Claude (off by default: no AI quota)
-//     --include-browser         Include deprecated embedded-browser scripts (off by default: Goal 0 removal)
 //     --include-installed       Include scripts targeting %LOCALAPPDATA%\Kolux\kolux.exe (off by default)
 //     --timeout <minutes>       Per-script timeout in minutes (default: 10)
 //     --temp <dir>              Scratch root (default: G:/Temp/o2-run-all)
@@ -77,7 +76,6 @@ export function parseArgs(argv) {
     timeoutMinutes,
     only,
     includeRealClaude: flag("include-real-claude"),
-    includeBrowser: flag("include-browser"),
     includeInstalled: flag("include-installed"),
     noWarmup: flag("no-warmup"),
     dryRun: flag("dry-run"),
@@ -93,7 +91,7 @@ export function parseArgs(argv) {
  *   attach         - attaches to an already-running installed app (live-installed / live-checks)
  *   installed      - requires pre-installed %LOCALAPPDATA%\Kolux\kolux.exe or --exe arg
  *   real-claude    - requires real signed-in Claude account A (uses AI quota)
- *   browser        - tests the deprecated embedded browser pane (Goal 0 removal)
+ *   retired-browser- tests the embedded browser pane that Goal 0 removed (kept as a guard, never runs)
  *   standin        - self-contained live check runnable with stand-in agents (no AI quota)
  */
 export function classifyProveScript(filename, source) {
@@ -113,35 +111,96 @@ export function classifyProveScript(filename, source) {
   if (/from\s+["']\.\/live-claude-common\.mjs["']/.test(source) || /\bstartProve\s*\(/.test(source)) {
     return { category: "real-claude", runnableByDefault: false, reason: "requires real Claude sign-in / AI quota" };
   }
-  const browserFiles = new Set([
-    "live-BROW.mjs",
-    "live-browser-939.mjs",
-    "live-browser-954.mjs",
-    "live-browser-977.mjs",
-    "live-T-323-proxy.mjs",
-    "live-T-656.mjs",
-    "live-T-657.mjs",
-    "live-T-659.mjs",
-    "live-T-661.mjs",
-  ]);
-  if (browserFiles.has(filename) || /section\.pane\.browser/.test(source)) {
-    return { category: "browser", runnableByDefault: false, reason: "embedded browser pane (Goal 0 removal)" };
+  // Goal 0 removed the embedded browser pane, and its proofs with it. A script that still drives section.pane.browser
+  // is not a live check of anything any more: skip it instead of reporting a failure for a feature that is gone.
+  if (/section\.pane\.browser|kolux-open-in-browser/.test(source)) {
+    return { category: "retired-browser", runnableByDefault: false, reason: "embedded browser pane (removed: Goal 0)" };
   }
+  return { category: "standin", runnableByDefault: true, reason: "stand-in / headless live check", warnings: warningsFor(source) };
+}
+
+// A file extension is not a class name: `.mjs`, `.json` and `.cmd` appear in every selector-heavy script.
+// Names that look like a class in a quoted string but are a property or a word in a message, not a selector.
+const NOT_A_CLASS = new Set(["aria", "ppid", "pid", "argv", "eval", "snaps", "survivors", "stdout", "stderr", "cdp", "json", "real"]);
+const EXTENSIONS = new Set([
+  "mjs", "js", "cjs", "ts", "tsx", "jsx", "json", "txt", "md", "css", "html", "htm", "svg", "png", "jpg", "jpeg", "webp", "ico",
+  "exe", "cmd", "bat", "ps1", "sh", "py", "rs", "toml", "yml", "yaml", "lock", "log", "out", "zip", "gz", "dll", "node", "map",
+  "com", "org", "io", "ai", "dev", "invalid", "local", "app", "test", "spec",
+]);
+
+/**
+ * Every class token and data-testid any src/ file mentions: what a live check may legitimately query. Reading src/ once
+ * per run beats a hand-kept list of four patterns, which reported "no warnings" for a check whose selector had been
+ * dead for three rounds (.pane-row, removed when the sidebar went to .sess rows).
+ */
+export function srcSelectorTokens(srcDir = join(ROOT, "src")) {
+  const tokens = new Set();
+  const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) return e.name === "__cards__" ? [] : walk(p);
+      return /\.(tsx|ts|css|html)$/.test(e.name) && !/\.test\./.test(e.name) ? [p] : [];
+    });
+  for (const file of walk(srcDir)) {
+    const text = readFileSync(file, "utf8");
+    for (const m of text.matchAll(/className\s*=\s*["']([^"']+)["']/g)) for (const t of m[1].split(/\s+/)) if (t) tokens.add(t);
+    for (const m of text.matchAll(/className\s*=\s*\{`([^`]*)`\}/g))
+      for (const t of m[1].replace(/\$\{[^}]*\}/g, " ").split(/\s+/)) if (t) tokens.add(t);
+    for (const m of text.matchAll(/data-testid\s*=\s*["']([^"']+)["']/g)) tokens.add(m[1]);
+    for (const m of text.matchAll(/data-testid=\{`([^`]+)`\}/g)) tokens.add(m[1].replace(/\$\{[^}]*\}/g, "x"));
+    // CSS rules and any other .token in the source (a class the app styles or queries): a superset is safe here, because
+    // this set only decides what is NOT missing.
+    for (const m of text.matchAll(/\.([A-Za-z][\w-]*)/g)) tokens.add(m[1]);
+  }
+  return tokens;
+}
+
+/**
+ * Class tokens a live check queries that no src/ file mentions: a selector that can never match, which used to be
+ * reported as "no warnings". File extensions and one- and two-letter fragments are left out (they are not classes).
+ */
+export function selectorDrift(source, known) {
+  const found = new Set();
+  // Only quoted strings that read as a selector: brackets, a combinator, or a leading . or #. A bare `.eval` or
+  // `.argv` is a property access on an object, not something the DOM is asked for.
+  for (const quoted of source.matchAll(/["'`]([^"'`\n]{2,300})["'`]/g)) {
+    const text = quoted[1];
+    if (!/[\[#>]/.test(text) && !/^\s*[.#]/.test(text)) continue;
+    // A quoted JS snippet (an eval body) is not a selector: it has statements, arrows or calls in it.
+    if (/=>|;|const |return |querySelector\(/.test(text)) continue;
+    for (const m of text.matchAll(/\.([a-z][a-z0-9]*(?:-[a-z0-9]+)*)/g)) {
+      const token = m[1];
+      if (token.length < 3 || EXTENSIONS.has(token) || NOT_A_CLASS.has(token)) continue;
+      found.add(token);
+    }
+  }
+  return [...found].filter((t) => !known.has(t)).sort();
+}
+
+/** The warnings shown beside a check in the summary: port overrides it would collide on, and selectors src/ cannot match. */
+export function warningsFor(source, known = null) {
   const warnings = [];
   if (/PROVE_PORT\s*=|PROVE_CDP\s*=/.test(source)) warnings.push("overrides PROVE_PORT/PROVE_CDP");
-  if (/9290|1470/.test(source)) warnings.push("hardcodes 9290/1470");
-  if (/button\.newtab|chooser select|Source Control|aria-label="New tab"/.test(source)) warnings.push("uses stale UI selector");
-  return { category: "standin", runnableByDefault: true, reason: "stand-in / headless live check", warnings };
+  // A fallback (`PROVE_CDP || "9290"`) is fine; an unconditional port assignment or a literal URL is what collides.
+  if (/PROVE_(?:PORT|CDP)\s*=\s*["'`]|127\.0\.0\.1:9290\/|localhost:1470/.test(source)) warnings.push("hardcodes 9290/1470");
+  // The old selectors a comment may still name (this file's own text names them) only count as code when they are quoted.
+  if (/["'`]button\.newtab|["'`][^"'`]*Source Control|chooser select["'`]|aria-label="New tab"/.test(source)) warnings.push("uses stale UI selector");
+  const drift = known ? selectorDrift(source, known) : [];
+  if (drift.length > 0) warnings.push(`selector(s) no src/ file mentions: ${drift.slice(0, 8).join(", ")}${drift.length > 8 ? ` (+${drift.length - 8})` : ""}`);
+  return warnings;
 }
 
 export function discoverProveScripts(proveDir = join(ROOT, "scripts", "prove")) {
   const files = readdirSync(proveDir)
     .filter((f) => f.startsWith("live-") && f.endsWith(".mjs"))
     .sort();
+  // src/ is read once: every check's selectors are compared against the classes and test ids the app really has.
+  const known = srcSelectorTokens();
   return files.map((file) => {
     const fullPath = join(proveDir, file);
     const source = readFileSync(fullPath, "utf8");
     const meta = classifyProveScript(file, source);
+    if (meta.category === "standin") meta.warnings = warningsFor(source, known);
     return { file, fullPath, ...meta };
   });
 }
@@ -156,7 +215,8 @@ export function shouldRun(entry, opts) {
   if (entry.category === "real-claude" && !opts.includeRealClaude) {
     return { run: false, skipReason: entry.reason };
   }
-  if (entry.category === "browser" && !opts.includeBrowser) {
+  if (entry.category === "retired-browser") {
+    // The embedded browser pane is gone (Goal 0): a proof for it has nothing left to check and never runs.
     return { run: false, skipReason: entry.reason };
   }
   if (entry.category === "installed" && !opts.includeInstalled) {
@@ -235,6 +295,8 @@ function cleanSlotEnv(slot, standinDir) {
   env.PROVE_IDENTIFIER = slot.identifier;
   env.PROVE_BASE = slot.baseDir;
   env.PROVE_LOGS = slot.logsDir;
+  // live-common.mjs wipes a profile only when its identifier carries the suffix it was given (app-launch.mjs rule).
+  env.PROVE_SUFFIX = `.o2-${slot.index}`;
   return env;
 }
 

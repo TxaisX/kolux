@@ -8,8 +8,10 @@ import {
   formatSummaryMarkdown,
   parseArgs,
   parseProveOutput,
+  selectorDrift,
   shouldRun,
   slotConfig,
+  warningsFor,
 } from "./run-all.mjs";
 
 const { test } = process.env.VITEST ? await import("vitest") : await import("node:test");
@@ -50,7 +52,7 @@ test("parseArgs validates --instances, --timeout, --only, and boolean flags", ()
   assert.throws(() => parseArgs(["--instances", "0"]), /1\.\.10/);
 });
 
-test("classifyProveScript separates helpers, real-Claude, browser, installed, and stand-in scripts", () => {
+test("classifyProveScript separates helpers, real-Claude, retired-browser, installed, and stand-in scripts", () => {
   assert.equal(classifyProveScript("live-common.mjs", "").category, "helper");
   assert.equal(classifyProveScript("live-views-dom.mjs", "").category, "helper");
   assert.equal(classifyProveScript("live-installed.mjs", "").category, "attach");
@@ -59,13 +61,45 @@ test("classifyProveScript separates helpers, real-Claude, browser, installed, an
     classifyProveScript("live-SAFE-003.mjs", 'import { scenario } from "./live-claude-common.mjs";').category,
     "real-claude",
   );
-  assert.equal(classifyProveScript("live-BROW.mjs", 'document.querySelector("section.pane.browser")').category, "browser");
+  assert.equal(classifyProveScript("live-BROW.mjs", 'document.querySelector("section.pane.browser")').category, "retired-browser");
   const s = classifyProveScript("live-SESS-004.mjs", 'import { startPlain } from "./live-proj-common.mjs";');
   assert.equal(s.category, "standin");
   assert.equal(s.runnableByDefault, true);
 });
 
-test("discoverProveScripts finds scripts in scripts/prove and excludes real-Claude/browser by default", () => {
+test("a script that still drives the removed embedded browser pane never runs", () => {
+  const entry = classifyProveScript("live-BROW.mjs", 'document.querySelector("section.pane.browser")');
+  assert.equal(entry.runnableByDefault, false);
+  assert.match(entry.reason, /removed/);
+  assert.equal(shouldRun(entry, parseArgs([])).run, false);
+});
+
+test("selectorDrift flags a class no src/ file mentions and leaves the real ones alone", () => {
+  const known = new Set(["sess", "pane", "terminal-pane", "pane-new-session"]);
+  const source = [
+    'const row = ".sess.pane-row[data-pane]";',
+    'await click("[data-testid=\"pane-new-session\"]");',
+    'const t = await app.evalJs("document.querySelector(\".terminal-pane\").clientWidth");',
+  ].join("\n");
+  const drift = selectorDrift(source, known);
+  assert.deepEqual(drift, ["pane-row"]);
+});
+
+test("warningsFor reports a dead selector beside the check, not only the four hand-kept patterns", () => {
+  const warnings = warningsFor('const row = ".sess.pane-row[data-pane]";', new Set(["sess"]));
+  assert.ok(warnings.some((w) => /pane-row/.test(w)), warnings.join("; "));
+});
+
+test("every stand-in check's selectors are compared against src/ at discovery time", () => {
+  const all = discoverProveScripts();
+  assert.ok(all.every((e) => e.category !== "browser"), "no script is classified as a live browser check any more");
+  assert.ok(
+    all.some((e) => (e.warnings ?? []).some((w) => /no src\/ file mentions/.test(w))),
+    "selector drift is reported against src/, not against a hand-kept pattern list",
+  );
+});
+
+test("discoverProveScripts finds scripts in scripts/prove and excludes real-Claude by default", () => {
   const all = discoverProveScripts();
   assert.ok(all.length > 80);
   const opts = parseArgs([]);
