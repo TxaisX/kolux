@@ -235,3 +235,46 @@ Noted: the external kolux-cli and computer-use skill descriptions now say Kolux 
 Txais decided (~14:10), recorded as DT-C279: Rune no-go for this wave (spike and findings kept;
 re-measure after the native terminal is proven); lane lock added to lane-loop.ps1; external skill
 text no longer mentions a built-in browser.
+
+## Round 6 (2026-11-12, coordinator, final round)
+
+### Merges into integrate/wave-1
+- All five lanes had finished round 6 when this round began (15:02), so no wait was needed. o2-tests
+  wrote no round-6 handoff note; its round-6 commit 6801c25d (smoke flows 6 and 7 pass, two audit P2s
+  closed) was already merged.
+- lane/c3-terminal (clean): 17ae2786 (a new pane starts on the plain renderer and loads WebGL after
+  its first paint; Kolux's part of opening a new terminal 336.5 -> 68.8 ms live; the remaining ~700 ms
+  is Windows PowerShell 5.1 starting) and cc3c9e66 (c3 lane report).
+- c2-agents, o1-tools, o2-tests, o3-rune: no new commits since round 5.
+- The LANE-REPORT.md keep-own-report rule held: integrate/wave-1 still carries c1-coord's report. c3's
+  "integrate carries c2's report" note traces to b3acc348 (13:14), before the rule was in force.
+
+### Gate (logs: _shared/logs/c1-gate/r6/)
+- `npx tsc --noEmit` -> exit 0.
+- `pnpm check` -> exit 1 at guide-check (feature-map.md marker, o2-tests/1400). Run alone after it:
+  invoke-contract FAILED (`browser_go` from src/browser/useBrowserChords.ts:45, o1-tools/1415);
+  workflow-check and kolux-memory tests pass.
+- `npx vitest run --no-fsModuleCache` -> `Test Files 2 failed | 891 passed (893)`,
+  `Tests 2 failed | 6605 passed (6607)`: invoke-contract.test.mjs and src/privacy/hosts.test.ts
+  (o3-rune/1420), the same two as round 5.
+- `cargo test` under `. scripts/test-env.ps1` -> lib `2940 passed; 0 failed; 9 ignored` (272 s, quiet
+  PC), every integration binary ok, `cargo exit 0`.
+- Smoke (`--port 1430 --cdp 9341 --temp G:/Temp/kolux-rs-smoke-c1 --offscreen`): `smoke: 6/6 flows
+  passed` (flow 5 report-only until T-184). Flow 7 read 9 session rows vs 8 panes: P3 filed to o2-tests.
+
+### Main not merged
+The final merge into main needs a fully green gate. Three leftovers keep it red, each in another lane's
+files: delete src/browser/ (o1-tools/1415), drop `example.com` from the privacy hosts list
+(o3-rune/1420), re-check feature-map.md and move its marker (o2-tests/1400); then repoint glossary
+"Tab" off src/browser/BrowserPane.tsx. Txais was asked in round 5 whether the coordinator may finish
+them ("coordinator may finish the leftovers"); no answer was on disk, so they stay with their lanes and
+main was not touched. About 15 minutes of work once approved, then rerun the gate and run the
+`merge --no-ff integrate/wave-1` in the main checkout.
+
+### Bugs
+Opened: o2-tests/1545 (P3, smoke flow 7 rows vs panes). Progress noted on c3-terminal/1155 (Kolux's
+part fixed; PowerShell start remains; kept-warm shell is Txais's call). Open after this round: P0 0,
+P1 4, P2 6, P3 1.
+
+### Changelog
+A new terminal shows up faster (Kolux's share about 340 -> 70 ms).

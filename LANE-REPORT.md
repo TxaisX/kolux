@@ -3,30 +3,29 @@
 NOTE: this file is committed on integrate/wave-1; the merge=ours rule in .git/info/attributes keeps each side's own report on lane merges.
 
 ## Status (plain words, 3 lines max)
-The web pane's Rust side is merged and the combined app still starts and runs all five agent types (smoke 6/6); Rust tests fully pass.
-Still red: pnpm check (feature-map marker, o2; src/browser still calling removed browser_go, o1) and vitest 6602/6604 (same browser_go + stale example.com in o3's hosts test).
+Final round: every lane finished; c3's faster-new-terminal work is merged and the combined app runs all five agent types (smoke 6/6); Rust tests fully green.
+Not merged into main: pnpm check and vitest (6605/6607) stay red on the same three leftovers in o1/o3/o2 files; Txais has not approved the coordinator fixing them.
 
-## Done this round (round 5, 2026-11-12)
-Logs: G:\Dev\kolux-lanes\_shared\logs\c1-gate\r5\
-- Merges, clean: lane/c3-terminal 4446d52d + 19d996a3 (eee9c39d), then 6fa43c7a + 48b9bb41 (e86e8e28). c2-agents, o1-tools, o2-tests, o3-rune: 0 new commits.
-- Gate fixes in unowned gate files: scripts/privacy-audit.test.mjs browser.rs -> net.rs (`npx vitest run scripts/privacy-audit.test.mjs` -> `Tests  5 passed (5)`); docs/guide/safety.md browser-tab section -> project icons, marker moved (guide-check now fails only on feature-map.md); COMPAT.md retirement note.
+## Done this round (round 6, 2026-11-12)
+Logs: _shared/logs/c1-gate/r6/ under the lanes folder.
+- Wait for round-6 handoffs: not needed; all five lanes' round-6 logs had ended by 15:02 (o2-tests wrote no handoff; its commit 6801c25d was already merged).
+- Merge, clean: lane/c3-terminal 17ae2786 + cc3c9e66. Other lanes: 0 new commits.
 - Merged gate:
-  - `npx tsc --noEmit` -> `tsc exit 0` (eee9c39d and again on e86e8e28).
-  - `pnpm check` -> exit 1: `guide-check: docs/guide/feature-map.md changed after its marker commit 080e4346`. Steps after it, run alone: `invoke-contract: FAILED` (`not a registered command: browser_go (src/browser/useBrowserChords.ts:28)`), workflow-check exit 0.
-  - `npx vitest run --no-fsModuleCache` -> `Test Files  2 failed | 890 passed (892)` / `Tests  2 failed | 6602 passed (6604)` (invoke-contract.test.mjs, src/privacy/hosts.test.ts; hosts fails alone too). After the second c3 merge: `npx vitest run src/shell src/terminal/layout src/keys src/chrome` -> `Tests  524 passed (524)`.
-  - `. .\scripts\test-env.ps1; cargo test --manifest-path src-tauri/Cargo.toml` -> `test result: FAILED. 2939 passed; 1 failed; 9 ignored ... finished in 518.31s`; the failure `status::tests::p81_a_deny_settle...` alone -> `test result: ok. 1 passed`. `cargo test ... --test '*'` -> 20 binaries, 247 passed, 0 failed, `cargo exit 0`.
-  - Smoke: `node scripts/evidence/smoke.mjs --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --temp G:/Temp/kolux-rs-smoke-c1 --offscreen` -> `smoke: 6/6 flows passed` (flow 5 report-only FAIL savedLayout). evidence/smoke-r5.txt (local).
-- Kept c3's merge rather than reverting: the two red tests are stale references to code goal 0 told c3 to delete.
-- DECISIONS DT-C278 (privacy pin follows code to net.rs), DT-C279 (Txais 14:10: Rune no-go, lane lock, skill text). CHANGELOG: kolux CLI web commands removed.
-- Bugs: opened o1-tools/1415 (delete src/browser/), o3-rune/1420 (example.com line); closed c1-coord/1118 (lane lock, Txais); progress notes on c1-coord/1105 x2.
-- History round 5, WAVE-STATUS rewritten (Txais's three answers moved to "Recorded"), handoff _shared/handoff/c1-coord-r5.md.
+  - `npx tsc --noEmit` -> `tsc exit 0`.
+  - `pnpm check` -> exit 1: `guide-check: docs/guide/feature-map.md changed after its marker commit 080e4346`. Alone after it: `node scripts/invoke-contract.mjs` -> `not a registered command: browser_go (src/browser/useBrowserChords.ts:45)` / `invoke-contract: FAILED`; workflow-check exit 0; kolux-memory test exit 0.
+  - `npx vitest run --no-fsModuleCache` -> `Test Files  2 failed | 891 passed (893)` / `Tests  2 failed | 6605 passed (6607)` (invoke-contract.test.mjs, src/privacy/hosts.test.ts).
+  - `. scripts/test-env.ps1; cargo test --manifest-path src-tauri/Cargo.toml` -> `test result: ok. 2940 passed; 0 failed; 9 ignored ... finished in 272.24s`, every integration binary ok, `cargo exit 0`.
+  - Smoke: `node scripts/evidence/smoke.mjs --port 1430 --cdp 9341 --identifier com.txaisxiong.kolux.c1.smoke --temp G:/Temp/kolux-rs-smoke-c1 --offscreen` -> `smoke: 6/6 flows passed` (flow 5 report-only FAIL). evidence/smoke-r6.txt (local).
+- Main merge skipped: gate not green, and no "coordinator may finish the leftovers" approval on disk.
+- CHANGELOG: faster new terminal (Kolux share ~340 -> ~70 ms). History round 6, WAVE-STATUS rewritten, handoff c1-coord-r6.md.
+- Bugs: opened o2-tests/1545 (P3, flow 7 9 rows vs 8 panes); progress note on c3-terminal/1155.
 
-## Next round (6, final)
-1. Re-merge every lane. Wait for every other lane's round-6 handoff (check every 5 min, up to 90 min; c3 runs behind). Full gate.
-2. If o1 has not deleted src/browser/ or o3 has not dropped the example.com line, and Txais approved ("coordinator may finish the leftovers"), apply them; then repoint glossary "Tab" (scripts/glossary-check.mjs:29) off src/browser/BrowserPane.tsx. Also clear docs/architecture/{frontend,overview,security}.md + docs/development/code-map.md browser mentions.
-3. Only with a fully green gate: `git -C G:\Dev\kolux merge --no-ff integrate/wave-1` (main checkout must have no tracked changes). Never push. Say in WAVE-STATUS which lane was left out, if any.
+## Next round (if Txais starts one)
+1. With approval: delete src/browser/ (o1/1415), drop example.com from src/privacy hosts list (o3/1420), re-check feature-map.md + move its marker (o2/1400), repoint glossary "Tab" (scripts/glossary-check.mjs:29). Also docs/architecture/{frontend,overview,security}.md + docs/development/code-map.md browser mentions.
+2. Full gate, all green.
+3. Main checkout clean of tracked changes -> `merge --no-ff integrate/wave-1` there. Never push.
 
 ## For the coordinator
-- Pending Txais decision: whether c1 may finish other lanes' leftovers in round 6 so the main merge can happen.
-- c2 decisions asked, not yet recorded (need Txais): agents start through Windows PowerShell 5.1 when PowerShell 7 is absent; should OpenCode lead the New session dropdown.
-- Cargo lib under load takes ~9 min: run it with a background limit over 10 min.
+- Pending Txais: (1) coordinator may finish the leftovers; (2) kept-warm shell per open folder (~56 MB each) for the 300 ms new-terminal target.
+- c2 decisions asked, not yet recorded (need Txais): Windows PowerShell 5.1 fallback when PowerShell 7 is absent; OpenCode first in the New session dropdown.
+- The clean-room hook matches the main checkout's path case-insensitively in any Bash command text; run the final main merge from the PowerShell tool, or keep the literal path out of Bash heredocs.

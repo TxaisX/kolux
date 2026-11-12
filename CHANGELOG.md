@@ -16,6 +16,7 @@
 - Right-click › Copy works on text you selected outside a text field.
 - The Ports list keeps its entries and count when its popover opens or closes, and the Checks tab follows the worktree you are in.
 - Typing in a long note no longer redraws its preview on every key, and the Explorer stays quicker in big folders.
+- A new terminal shows up faster: Kolux draws it first and switches on the faster graphics right after, so Kolux's own share of opening one fell from about 340 ms to about 70 ms. Most of the wait that remains is Windows PowerShell starting.
 - Starting an agent is faster: Kolux looks up the agent's program once instead of up to three times (67 ms down to 18 ms on the test PC).
 - The Floor page and the Tower window stop working in the background while Kolux is hidden, and catch up as soon as it is shown.
 - Searching Settings no longer reads every page it finds: the Claude setup scan, the GitHub budget, the shell list and the sample terminal, each project's workspace list and the usage log scan now wait until you open the page.
