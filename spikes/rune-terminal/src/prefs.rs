@@ -42,12 +42,59 @@ pub struct Layout {
     pub status_bar: bool,
     /// Draw the demo banner (a coloured line of text) into every pane.
     pub banner: bool,
+    /// Panes that get their own shell, theme or font size instead of the grid's.
+    pub pane_overrides: Vec<PaneOverride>,
 }
 
 impl Default for Layout {
     fn default() -> Self {
-        Self { panes: 4, columns: 0, gap: 6.0, outer_pad: 8.0, header: true, status_bar: true, banner: true }
+        Self {
+            panes: 4,
+            columns: 0,
+            gap: 6.0,
+            outer_pad: 8.0,
+            header: true,
+            status_bar: true,
+            banner: true,
+            pane_overrides: Vec::new(),
+        }
     }
+}
+
+/// One pane that does not match the rest of the grid. `pane` is 1-based, the same number the
+/// pane's title strip shows, so a user can point at what they see.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PaneOverride {
+    pub pane: usize,
+    pub theme: ThemeOverride,
+    pub font: FontOverride,
+    /// This pane's own program; unset means the grid's `shell`.
+    pub shell: Option<Shell>,
+}
+
+/// The theme fields one pane may change. Everything left out keeps the grid's value.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ThemeOverride {
+    pub pane_bg: Option<String>,
+    pub text: Option<String>,
+    pub text_dim: Option<String>,
+    pub border_active: Option<String>,
+    pub cursor_bg: Option<String>,
+    pub cursor_fg: Option<String>,
+    pub cursor_unfocused: Option<String>,
+    /// All 16, in `theme.ansi` order, or none at all.
+    pub ansi: Option<Vec<String>>,
+}
+
+/// The cell metrics one pane may change. Padding stays global: it is a frame measurement, not ink.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct FontOverride {
+    pub size: Option<f32>,
+    pub line_height: Option<f32>,
+    pub cell_width: Option<f32>,
 }
 
 impl Layout {
@@ -181,8 +228,19 @@ impl Default for Keys {
 pub struct Resolved {
     pub raw: Prefs,
     pub colors: Colors,
-    pub palette: Palette,
     pub keys: Bindings,
+    /// One per pane, index 0 = pane 1, after that pane's override (if any) is applied.
+    pub looks: Vec<Look>,
+}
+
+/// What one pane draws with: its ink, its ANSI palette and its cell metrics.
+#[derive(Clone, Debug)]
+pub struct Look {
+    pub palette: Palette,
+    pub text: rune::Color,
+    pub text_dim: rune::Color,
+    pub border_active: rune::Color,
+    pub font: Font,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -236,10 +294,21 @@ fn parse_hex_bytes(s: &str) -> Result<[u8; 3], String> {
 }
 
 impl Prefs {
-    /// Parses the file's contents. Errors name the field and the reason.
+    /// Which program pane `index` (0-based) runs: its own override, else the grid's shell.
+    pub fn shell_for(&self, index: usize) -> &Shell {
+        self.layout
+            .pane_overrides
+            .iter()
+            .find(|o| o.pane == index + 1)
+            .and_then(|o| o.shell.as_ref())
+            .unwrap_or(&self.shell)
+    }
+
+    /// Parses the file's contents. Errors name the field and the reason, and — when the field is
+    /// in the file rather than missing — the line it sits on.
     pub fn from_json(text: &str) -> Result<Self, String> {
         let p: Prefs = serde_json::from_str(text).map_err(|e| format!("prefs: {e}"))?;
-        p.validate()?;
+        p.validate().map_err(|e| at_line(text, e))?;
         Ok(p)
     }
 
@@ -255,21 +324,33 @@ impl Prefs {
         if self.font.size < 6.0 || self.font.size > 48.0 {
             return Err(format!("font.size must be 6..48, not {}", self.font.size));
         }
+        for (i, o) in self.layout.pane_overrides.iter().enumerate() {
+            if o.pane == 0 || o.pane > self.layout.panes {
+                return Err(format!(
+                    "pane_overrides[{i}].pane must be 1..{} (1-based), not {}",
+                    self.layout.panes, o.pane
+                ));
+            }
+            if self.layout.pane_overrides.iter().take(i).any(|seen| seen.pane == o.pane) {
+                return Err(format!("pane_overrides[{i}].pane = {} is listed twice", o.pane));
+            }
+        }
         self.resolve().map(|_| ())
     }
 
-    /// Turns the strings into colours, a terminal palette and key bindings.
+    /// Turns the strings into colours, a terminal palette, key bindings and one look per pane.
     pub fn resolve(&self) -> Result<Resolved, String> {
         let t = &self.theme;
+        let hex = |field: &str, s: &str| parse_hex(s).map_err(|e| format!("theme.{field} {e}"));
         let colors = Colors {
-            app_bg: parse_hex(&t.app_bg)?,
-            pane_bg: parse_hex(&t.pane_bg)?,
-            header_bg: parse_hex(&t.header_bg)?,
-            header_active_bg: parse_hex(&t.header_active_bg)?,
-            border_idle: parse_hex(&t.border_idle)?,
-            border_active: parse_hex(&t.border_active)?,
-            text: parse_hex(&t.text)?,
-            text_dim: parse_hex(&t.text_dim)?,
+            app_bg: hex("app_bg", &t.app_bg)?,
+            pane_bg: hex("pane_bg", &t.pane_bg)?,
+            header_bg: hex("header_bg", &t.header_bg)?,
+            header_active_bg: hex("header_active_bg", &t.header_active_bg)?,
+            border_idle: hex("border_idle", &t.border_idle)?,
+            border_active: hex("border_active", &t.border_active)?,
+            text: hex("text", &t.text)?,
+            text_dim: hex("text_dim", &t.text_dim)?,
         };
         if t.ansi.len() != 16 {
             return Err(format!("theme.ansi needs exactly 16 colours, has {}", t.ansi.len()));
@@ -281,9 +362,9 @@ impl Prefs {
         let palette = Palette {
             bg: colors.pane_bg,
             fg: colors.text,
-            cursor_bg: parse_hex(&t.cursor_bg)?,
-            cursor_fg: parse_hex(&t.cursor_fg)?,
-            cursor_unfocused: parse_hex(&t.cursor_unfocused)?,
+            cursor_bg: hex("cursor_bg", &t.cursor_bg)?,
+            cursor_fg: hex("cursor_fg", &t.cursor_fg)?,
+            cursor_unfocused: hex("cursor_unfocused", &t.cursor_unfocused)?,
             ansi,
         };
         let chord = |what: &str, s: &str| Chord::parse(s).map_err(|e| format!("keys.{what} {s:?}: {e}"));
@@ -293,8 +374,83 @@ impl Prefs {
             reload: chord("reload", &self.keys.reload)?,
             quit: chord("quit", &self.keys.quit)?,
         };
-        Ok(Resolved { raw: self.clone(), colors, palette, keys })
+        let looks = (0..self.layout.panes)
+            .map(|i| self.look_for(i, &palette, &colors))
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Resolved { raw: self.clone(), colors, keys, looks })
     }
+
+    /// Pane `index` (0-based) with its override, if any, laid over the grid's look.
+    fn look_for(&self, index: usize, base: &Palette, colors: &Colors) -> Result<Look, String> {
+        let mut font = self.font.clone();
+        let mut look = Look {
+            palette: *base,
+            text: colors.text,
+            text_dim: colors.text_dim,
+            border_active: colors.border_active,
+            font: font.clone(),
+        };
+        let Some(o) = self.layout.pane_overrides.iter().find(|o| o.pane == index + 1) else {
+            return Ok(look);
+        };
+        let at = format!("pane_overrides[pane={}].theme", o.pane);
+        let hex = |field: &str, s: &str| parse_hex(s).map_err(|e| format!("{at}.{field} {e}"));
+        let t = &o.theme;
+        if let Some(s) = &t.text {
+            look.text = hex("text", s)?;
+            look.palette.fg = look.text;
+        }
+        if let Some(s) = &t.text_dim {
+            look.text_dim = hex("text_dim", s)?;
+        }
+        if let Some(s) = &t.border_active {
+            look.border_active = hex("border_active", s)?;
+        }
+        if let Some(s) = &t.pane_bg {
+            look.palette.bg = hex("pane_bg", s)?;
+        }
+        if let Some(s) = &t.cursor_bg {
+            look.palette.cursor_bg = hex("cursor_bg", s)?;
+        }
+        if let Some(s) = &t.cursor_fg {
+            look.palette.cursor_fg = hex("cursor_fg", s)?;
+        }
+        if let Some(s) = &t.cursor_unfocused {
+            look.palette.cursor_unfocused = hex("cursor_unfocused", s)?;
+        }
+        if let Some(list) = &t.ansi {
+            if list.len() != 16 {
+                return Err(format!("{at}.ansi needs exactly 16 colours, has {}", list.len()));
+            }
+            for (i, s) in list.iter().enumerate() {
+                look.palette.ansi[i] = parse_hex_bytes(s).map_err(|e| format!("{at}.ansi[{i}] {e}"))?;
+            }
+        }
+        font.size = o.font.size.unwrap_or(font.size);
+        font.line_height = o.font.line_height.unwrap_or(font.line_height);
+        font.cell_width = o.font.cell_width.unwrap_or(font.cell_width);
+        if font.size < 6.0 || font.size > 48.0 {
+            return Err(format!("pane_overrides[pane={}].font.size must be 6..48, not {}", o.pane, font.size));
+        }
+        look.font = font;
+        Ok(look)
+    }
+}
+
+/// Adds the line a field sits on to a validation error, so a user can go straight to it.
+/// `serde_json` already reports line and column for shape errors; this covers the rules we check
+/// after parsing. Something we cannot place (a missing file, an override rule) is returned as-is.
+fn at_line(text: &str, err: String) -> String {
+    if err.contains("at line ") {
+        return err;
+    }
+    let Some(field) = err.split_whitespace().next() else { return err };
+    let leaf = field.rsplit('.').next().unwrap_or(field);
+    let leaf = leaf.split('[').next().unwrap_or(leaf);
+    let needle = format!("\"{leaf}\"");
+    let Some(pos) = text.find(&needle) else { return err };
+    let line = text[..pos].matches('\n').count() + 1;
+    format!("{err} (line {line})")
 }
 
 /// Watches the preferences file's modification time. `stamp` is taken at load time, so an edit
@@ -388,6 +544,75 @@ mod tests {
         assert_eq!(r.keys.next_pane.to_string(), "alt+n");
         assert_eq!(r.keys.quit.to_string(), "ctrl+shift+q");
         assert_eq!(r.keys.prev_pane.to_string(), "ctrl+shift+tab", "unset bindings keep the default");
+    }
+
+    const SIXTEEN: &str = r##"["#000000","#111111","#222222","#333333","#444444","#555555","#666666","#777777","#888888","#999999","#aaaaaa","#bbbbbb","#cccccc","#dddddd","#eeeeee","#ffffff"]"##;
+
+    #[test]
+    fn a_pane_override_changes_only_that_pane() {
+        let text = format!(
+            r##"{{
+              "layout": {{ "panes": 3, "pane_overrides": [
+                {{ "pane": 2, "theme": {{ "pane_bg": "#101020", "text": "#e0d0ff", "ansi": {SIXTEEN} }},
+                   "font": {{ "size": 16, "line_height": 22 }},
+                   "shell": {{ "program": "cmd.exe", "args": ["/k", "echo hi"] }} }}
+              ] }}
+            }}"##
+        );
+        let p = Prefs::from_json(&text).unwrap();
+        let r = p.resolve().unwrap();
+        assert_eq!(r.looks.len(), 3, "one look per pane");
+        assert_eq!(r.looks[1].font.size, 16.0, "pane 2's own font size");
+        assert_eq!(r.looks[1].font.line_height, 22.0);
+        assert_eq!(r.looks[0].font.size, Font::default().size, "the other panes keep the grid's");
+        assert_eq!(r.looks[2].font.size, Font::default().size);
+        assert_ne!(r.looks[1].palette.bg, r.looks[0].palette.bg, "pane 2's own background");
+        assert_eq!(r.looks[1].palette.ansi[15], [255, 255, 255], "pane 2's own ANSI palette");
+        assert_ne!(r.looks[0].palette.ansi[15], [255, 255, 255], "pane 1 keeps the theme's");
+        let shell = p.layout.pane_overrides[0].shell.as_ref().unwrap();
+        assert_eq!(shell.program.as_deref(), Some("cmd.exe"));
+        assert_eq!(shell.args, vec!["/k", "echo hi"]);
+    }
+
+    #[test]
+    fn an_override_that_points_nowhere_is_named() {
+        let past_the_end = Prefs::from_json(r#"{"layout":{"panes":2,"pane_overrides":[{"pane":5}]}}"#).unwrap_err();
+        assert!(past_the_end.contains("pane_overrides[0].pane must be 1..2"), "{past_the_end}");
+        let zero = Prefs::from_json(r#"{"layout":{"panes":2,"pane_overrides":[{"pane":0}]}}"#).unwrap_err();
+        assert!(zero.contains("1-based"), "{zero}");
+        let twice = Prefs::from_json(
+            r#"{"layout":{"panes":2,"pane_overrides":[{"pane":1},{"pane":1}]}}"#,
+        )
+        .unwrap_err();
+        assert!(twice.contains("listed twice"), "{twice}");
+        let bad_colour = Prefs::from_json(
+            r##"{"layout":{"panes":1,"pane_overrides":[{"pane":1,"theme":{"text":"#zz"}}]}}"##,
+        )
+        .unwrap_err();
+        assert!(bad_colour.contains("pane_overrides[pane=1].theme.text"), "{bad_colour}");
+        let short_ansi = Prefs::from_json(
+            r##"{"layout":{"panes":1,"pane_overrides":[{"pane":1,"theme":{"ansi":["#000"]}}]}}"##,
+        )
+        .unwrap_err();
+        assert!(short_ansi.contains("needs exactly 16"), "{short_ansi}");
+    }
+
+    #[test]
+    fn a_typo_in_the_file_says_which_line_it_is_on() {
+        let text = "{\n  \"font\": {\n    \"size\": 3\n  }\n}";
+        let err = Prefs::from_json(text).unwrap_err();
+        assert!(err.contains("font.size must be 6..48"), "{err}");
+        assert!(err.contains("(line 3)"), "the line is named too: {err}");
+
+        let colour = "{\n  \"theme\": {\n    \"cursor_bg\": \"#nope\"\n  }\n}";
+        let err = Prefs::from_json(colour).unwrap_err();
+        assert!(err.contains("theme.cursor_bg"), "{err}");
+        assert!(err.contains("(line 3)"), "{err}");
+
+        // serde's own shape errors already carry a line and column.
+        let shape = Prefs::from_json("{\n  \"layout\": {\n    \"panes\": \"three\"\n  }\n}").unwrap_err();
+        assert!(shape.contains("at line 3"), "{shape}");
+        assert!(!shape.contains("(line 3)"), "not double-labelled: {shape}");
     }
 
     #[test]

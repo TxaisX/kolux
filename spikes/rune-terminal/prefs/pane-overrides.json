@@ -1,0 +1,80 @@
+{
+  "layout": {
+    "panes": 4,
+    "columns": 2,
+    "gap": 10,
+    "outer_pad": 12,
+    "header": true,
+    "status_bar": true,
+    "banner": true,
+    "pane_overrides": [
+      {
+        "pane": 2,
+        "theme": {
+          "pane_bg": "#1a1030",
+          "text": "#e9d5ff",
+          "text_dim": "#a78bfa",
+          "border_active": "#c084fc"
+        },
+        "font": { "size": 12, "line_height": 17 },
+        "shell": { "program": "cmd.exe", "args": ["/k", "chcp.com", "65001", ">nul"] }
+      },
+      {
+        "pane": 4,
+        "theme": {
+          "pane_bg": "#fffdf5",
+          "text": "#073642",
+          "text_dim": "#93a1a1",
+          "border_active": "#cb4b16",
+          "cursor_bg": "#cb4b16",
+          "cursor_fg": "#fffdf5",
+          "ansi": [
+            "#073642", "#dc322f", "#859900", "#b58900",
+            "#268bd2", "#d33682", "#2aa198", "#eee8d5",
+            "#586e75", "#cb4b16", "#93a1a1", "#657b83",
+            "#839496", "#6c71c4", "#93a1a1", "#fdf6e3"
+          ]
+        },
+        "font": { "size": 15, "line_height": 21 }
+      }
+    ]
+  },
+  "theme": {
+    "name": "midnight-plus-two",
+    "app_bg": "#0b0d10",
+    "pane_bg": "#101216",
+    "header_bg": "#16191f",
+    "header_active_bg": "#1d2430",
+    "border_idle": "#272c36",
+    "border_active": "#60a5fa",
+    "text": "#f1f5f9",
+    "text_dim": "#94a3b8",
+    "cursor_bg": "#60a5fa",
+    "cursor_fg": "#101216",
+    "cursor_unfocused": "#64748b",
+    "ansi": [
+      "#181a1f", "#ef5350", "#81c784", "#ffd54f",
+      "#64b5f6", "#ba68c8", "#4dd0e1", "#cbd5e1",
+      "#64748b", "#f87171", "#4ade80", "#facc15",
+      "#60a5fa", "#d8b4fe", "#22d3ee", "#f8fafc"
+    ]
+  },
+  "font": {
+    "size": 13,
+    "line_height": 18,
+    "cell_width": 0,
+    "pad_x": 8,
+    "pad_y": 6
+  },
+  "shell": {
+    "program": null,
+    "args": [],
+    "env": { "KOLUX_PROFILE": "mixed" }
+  },
+  "keys": {
+    "next_pane": "ctrl+tab",
+    "prev_pane": "ctrl+shift+tab",
+    "reload": "ctrl+r",
+    "quit": "ctrl+q"
+  }
+}

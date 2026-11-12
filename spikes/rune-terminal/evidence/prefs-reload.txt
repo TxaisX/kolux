@@ -1,3 +1,6 @@
-PREFS_RELOAD file=evidence/_live-prefs.json panes=3 columns=3 theme=daylight-paper font=15/22 shell=powershell.exe gap=18
+PREFS_RELOAD file=evidence/_live-prefs.json panes=3 columns=3 theme=daylight-paper font=15/22 shell=powershell.exe gap=18 overrides=0
+PREFS_RELOAD file=evidence/_live-prefs.json panes=4 columns=2 theme=midnight-plus-two font=13/18 shell=kolux-default gap=10 overrides=2
+PREFS_ERROR theme.cursor_bg colour "#nope" must be #rrggbb, not 4 digits (line 3)
+PREFS_ERROR pane_overrides[0].pane must be 1..2 (1-based), not 7 (line 1)
 PREFS_ERROR prefs: invalid type: string "three", expected usize at line 1 column 30
-PREFS_RELOAD file=evidence/_live-prefs.json panes=3 columns=3 theme=daylight-paper font=15/22 shell=powershell.exe gap=18
+PREFS_RELOAD file=evidence/_live-prefs.json panes=4 columns=2 theme=midnight-plus-two font=13/18 shell=kolux-default gap=10 overrides=2
