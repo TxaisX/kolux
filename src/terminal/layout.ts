@@ -1,7 +1,7 @@
 // PROJ-067: the workspaces' tabs and layout are written to the settings as they change and read
 // back at start. Only what a fresh start can rebuild is kept: a terminal tab comes back as its
 // program in its folder (an agent with its last known session resumed, SESS-030, else at its prompt),
-// a browser or editor tab as the same kind on the same path. A saved entry that cannot be read is
+// an editor tab as the same kind on the same path. A saved entry that cannot be read is
 // dropped on its own; the rest comes back. A tab whose folder is gone is dropped, and the active
 // workspace and tab return only while they still exist.
 
@@ -12,8 +12,8 @@ import { isTabColor, type TabColors } from "./tabColor";
 
 export const LAYOUT_FIELD = "savedLayout";
 
-export type PaneKind = "browser" | "editor" | "preview" | "diff" | "changes" | "check";
-const KINDS: PaneKind[] = ["browser", "editor", "preview", "diff", "changes", "check"];
+export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";
+const KINDS: PaneKind[] = ["editor", "preview", "diff", "changes", "check"];
 const AGENTS: Agent[] = ["claude", "codex", "shell"];
 
 export type SavedPane = {
@@ -183,7 +183,7 @@ export function restoreAsks(p: Pick<SavedPane, "agent" | "agentId" | "program" |
 /** DT-C27 (Txais, 2026-11-08: start fresh, "no ai slop"): every terminal tab that ran an agent comes
  *  back as a new plain shell in its folder, so no agent is started or resumed on its own, and a Setup
  *  tab does not run its setup script again. Plain shells,
- *  empty choosers and browser, editor and other tabs come back as saved. */
+ *  empty choosers and editor and other tabs come back as saved. */
 export function freshShells(l: SavedLayout): SavedLayout {
   const panes = l.panes.map((p) => {
     if (p.kind || p.chooser || (p.agent === "shell" && !p.agentId && !p.setupScript)) return p;
@@ -212,7 +212,7 @@ function readPane(v: unknown): SavedPane | null {
   if (o.kind !== undefined) {
     if (!KINDS.includes(o.kind as PaneKind)) return null;
     p.kind = o.kind as PaneKind;
-    if (o.kind !== "browser" && o.kind !== "changes" && !str(o.path)) return null;
+    if (o.kind !== "changes" && !str(o.path)) return null;
   }
   if (o.view !== undefined && strOrNull(o.view)) p.view = o.view;
   if (str(o.agentId)) p.agentId = o.agentId;

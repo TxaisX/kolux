@@ -38,7 +38,7 @@ import { AUTO, autoSender, trackInputSource } from "./inputSource";
 import { chunkBytes, chunkLength, decodeOutput, endedLabel, forPane, type ExitEvent } from "./codec";
 // DT-C243: output comes batched per frame window; the bus hands it over one chunk at a time, in order.
 import { onTerminalOutput, onTerminalExit } from "./outputBus";
-import { notePrinted } from "../browser/preview";
+import { notePrinted } from "./printedAddresses";
 import { afterReplay, encodeHistory, replay, replayGate, viewTop } from "./history";
 import { modeView, resetAfterExit } from "./modeReset";
 import { dragWantsHint, SHIFT_HINT, shownAgain, WheelDrain, type KeptView } from "./mouseFeel";

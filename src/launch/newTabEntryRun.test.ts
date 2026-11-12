@@ -13,13 +13,13 @@ describe("after776 TERM-042 what a row opens", () => {
     expect(invoke).toHaveBeenCalledWith("open_external", { url: "https://example.com/" });
   });
   it("an address row opens the system browser, a file row the editor, a tab row jumps to the tab", () => {
-    expect(entryTarget(row({ kind: "url", url: "http://192.168.1.10:3000" }))).toEqual({ kind: "browser", url: "http://192.168.1.10:3000" });
+    expect(entryTarget(row({ kind: "url", url: "http://192.168.1.10:3000" }))).toEqual({ kind: "web", url: "http://192.168.1.10:3000" });
     expect(entryTarget(row({ kind: "file", path: "C:/w/notes.md" }))).toEqual({ kind: "file", path: "C:/w/notes.md" });
     expect(entryTarget(row({ kind: "tab", key: 7 }))).toEqual({ kind: "tab", key: 7 });
   });
   it("a remembered entry is read again: an address opens the system browser, a path a file, anything else nothing", () => {
-    expect(entryTarget(row({ kind: "recent", value: "https://example.com/a" }))).toEqual({ kind: "browser", url: "https://example.com/a" });
-    expect(entryTarget(row({ kind: "history", value: "localhost:5173" }))).toEqual({ kind: "browser", url: "http://localhost:5173" });
+    expect(entryTarget(row({ kind: "recent", value: "https://example.com/a" }))).toEqual({ kind: "web", url: "https://example.com/a" });
+    expect(entryTarget(row({ kind: "history", value: "localhost:5173" }))).toEqual({ kind: "web", url: "http://localhost:5173" });
     expect(entryTarget(row({ kind: "recent", value: "C:/w/a.txt" }))).toEqual({ kind: "file", path: "C:/w/a.txt" });
     expect(entryTarget(row({ kind: "recent", value: "just words" }))).toBeNull();
   });

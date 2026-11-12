@@ -7,9 +7,7 @@
 // finds every terminal as it was (T-006). The grid tiles 1..24 cells in balanced rows; the
 // layout strip sets the count, a pane splits right or down and closes (T-009, src/terminal/grid.ts).
 // A cell holds tabs: Ctrl+T adds a shell tab beside the focused pane, and the pane header's plus
-// (or the sidebar's New session) starts a session in a new pane, in the workspace folder (T-010). A browser tab is a pane whose page is
-// a child web view laid over its body by the back end (T-012-a, src/browser/BrowserPane.tsx);
-// its shortcuts (bar, back, forward, reload) apply while a browser pane is focused (T-012-b).
+// (or the sidebar's New session) starts a session in a new pane, in the workspace folder (T-010).
 // Insights is a card on the right (Mod+L or the top bar's panel button): tokens, estimated cost
 // and what every open agent session is doing, across all workspaces (T-646, src/insights/; it
 // replaced Source Control in the layout, T-644).
@@ -52,7 +50,6 @@ import { tabName } from "./terminal/tabName";
 import { useWindowStart } from "./shell/useWindowStart";
 import { useSettingsPlumbing } from "./settings/useSettingsPlumbing";
 import { useWindowChrome } from "./chrome/useWindowChrome";
-import { useBrowserChords } from "./browser/useBrowserChords";
 import { useRestoredStatus } from "./status/useRestoredStatus";
 import { useNotificationClick } from "./status/notificationClick";
 import { useGone } from "./status/gone";
@@ -66,7 +63,7 @@ import { hearStates, setHooksOn } from "./chat/send";
 export type ShellTarget = { dir: string | null; branch: string | null };
 
 /** A pane with `seats` is a chooser (SESS-007): nothing runs in it until Start. */
-export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; /** DT-C274: the folder whose grid shows the pane when not its own `cwd` (workspaces.ts `viewOf`). */ view?: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes the recorded session (sleep/agentSleep.ts); not saved with the layout. */ asleep?: { since: number; idleMin: number; session: string }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "browser" | "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
+export type Pane = { /** EDIT-026: an editor tab that follows a growing log (read-only). */ follow?: boolean; key: number; cwd: string | null; /** DT-C274: the folder whose grid shows the pane when not its own `cwd` (workspaces.ts `viewOf`). */ view?: string | null; branch: string | null; agent: Agent; agentId?: string; program: string | null; args: string[]; session?: string; /** T-066-e: `session` is the agent's sessions list's guess, not the agent's own word (terminal/layout.ts). */ sessionListed?: boolean; forkOf?: string; resumed?: boolean; /** TERM-123 (T-817): the pane's agent is asleep to save memory; Wake resumes the recorded session (sleep/agentSleep.ts); not saved with the layout. */ asleep?: { since: number; idleMin: number; session: string }; env?: [string, string][]; account?: string | null; /** T-139-d: the Codex setup (command, arguments, variables, permissions) it started with. */ setup?: string; seats?: Seat[]; copies?: Copies; shape?: Shape; task?: string; title?: string; /** DT-C27: a workspace Setup tab; a fresh start reopens it as a plain shell. */ setupScript?: true; word?: string; batch?: number; typed?: string; group?: number; kind?: "editor" | "preview" | "diff" | "changes" | "check"; /** T-235-b: the check a check tab was opened from. */ check?: CheckRef; path?: string; url?: string; staged?: boolean; ask?: string; preview?: boolean; jump?: { line: number; at: number; col?: number; side?: "old" } };
 
 /** Columns for a pane count: 1, side by side for 2, two rows for 3-4, then three across. */
 /** `initial`: the settings read before the first frame (main.tsx), so the first screen is right at once. */
@@ -90,7 +87,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     keymap, info, setInfo, screen, setScreen, settingsOpen, setSettingsOpen, setSettingsAt, zoom, setSidebarOpen, page, setPage, setExplorerFocus, dragLeft,
     panes, setPanes, focused, setFocused, activeTab, setActiveTab, agentSel, setAgentSel, activeDir, setActiveDir, running, reviewing, plan, accountSwitcher,
     needs, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, setCrew, hookRef, unreadPanes, setUnreadPanes, winFocused,
-    markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, setTitles, liveIds, muteRef, guess, agentOf, statusOf, setAgents, agentPass, setAgentPass,
+    markDir, rowRef, ptys, cliFailed, pinned, tabColors, titles, liveIds, muteRef, guess, agentOf, statusOf, setAgents, agentPass, setAgentPass,
     setShells, settings, setSettings, settingsRead, setSettingsRead, classic, agents, dirty, installedIds, owner, refresh, setRefresh, recentDirs, activeRef,
     setHist, stacked, setStacked, setNotice, setToast
   } = store;
@@ -102,7 +99,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
 
   // App info, agents, shells and settings, read at start (shell/useWindowStart.ts).
   const start = useWindowStart({
-    activeDir, agentPass, focused, installedIds, nextKey, panes, setAgentPass, setAgents, setFocused, setInfo, setPanes, setSettings, setSettingsRead,
+    agentPass, installedIds, setAgentPass, setAgents, setInfo, setPanes, setSettings, setSettingsRead,
     setShells
   });
   // The settings writes, review notes, the right sidebar and the menu bar (settings/useSettingsPlumbing.ts).
@@ -111,11 +108,8 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
     setSidebarOpen, setToast, settings
   });
   const { settingsRef, saveSetting } = plumb;
-  // The title's waiting count, page titles, the shortcuts notice, Classic and Settings links (chrome/useWindowChrome.ts).
-  const chrome = useWindowChrome({ classic, info, keymap, needs, panes, setNotice, setScreen, setSettingsAt, setSettingsOpen, setTitles, statusOf });
-
-  // BROW-003, BROW-005: the browser chords (browser/useBrowserChords.ts).
-  const chords = useBrowserChords({ setFocused });
+  // The title's waiting count, the shortcuts notice, Classic and Settings links (chrome/useWindowChrome.ts).
+  const chrome = useWindowChrome({ classic, info, keymap, needs, panes, setNotice, setScreen, setSettingsAt, setSettingsOpen, statusOf });
 
   // The global shortcuts and the Ctrl+Tab switcher (keys/useWindowKeys.ts), read from `w` when they run.
   useWindowKeys(w);
@@ -218,7 +212,7 @@ function Window({ initial, layout, read, late }: { initial: Record<string, unkno
   useNotificationClick(panesRef, jumpToPane);
   // Cycle 2: everything this render made, for the actions, the key handler and the drawing (shell/windowBag.ts).
   const bag: WindowBag = {
-    ...state, ...plumb, ...chrome, ...start, ...chords, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
+    ...state, ...plumb, ...chrome, ...start, ...launchA, ...paneA, ...reviewA, ...workspaceActions, ...save, ...cliBridge, ...wizardState,
     ...screenState, ...surfaces, ...grid, ...rail, ...layoutReport, ...sleep, noticed, reviewTargets, reviewPane, pendingLineup, setupExits, exitedPrompt, guard, panesRef, wsUnsaved, askWsUnsaved,
   };
   Object.assign(w, bag);

@@ -136,7 +136,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
   const [dropHint, setDropHint] = useState<{ group: number; zone?: Zone; tab?: number; half?: "before" | "after" } | null>(null);
   const recentTabs = useRef<number[]>([]); // TERM-044: panes focused, newest first, so a closed tab returns to the one used before it
   // Escape, the arrows and focus for the tab menu are in window/tabMenuKeys.ts (UX lane A): it listens before a focused pane does.
-  const [titles, setTitles] = useState<Record<number, string>>({}); // browser tabs' page titles
+  const [titles] = useState<Record<number, string>>({}); // tab titles to show instead of the program's own (none are set since the browser tabs went)
   const [liveIds, setLiveIds] = useState<Record<number, Identity>>({}); // TERM-058: terminal panes' running program, from the shell marks
   const liveRef = useRef(liveIds);
   liveRef.current = liveIds;
@@ -199,7 +199,7 @@ export function useWindowStore(initial: Record<string, unknown>, layout: SavedLa
     setActiveDir, running, setRunning, codex, setCodex, kept, setKept, keptSetup, setKeptSetup, reviewing, setReviewing, planDrafts, setPlanDrafts,
     plan, accountSwitcher, needs, setNeeds, hook, setHook, stamp, setStamp, turn, setTurn, stale, setStale, context, setContext, crew, setCrew,
     hookRef, runRef, unreadPanes, setUnreadPanes, unreadDirs, winFocused, markDir, rowRef, ptys, cliFailed, asking, setAsking, pinned, setPinned,
-    switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles, setTitles,
+    switcher, setSwitcher, switcherRef, tabMenu, setTabMenu, tabColors, setTabColors, dragging, dropHint, setDropHint, recentTabs, titles,
     liveIds, setLiveIds, liveRef, muteRef, guess, setGuess, agentOf, statusOf, allAgents, setAgents, agentPass, setAgentPass, shells, setShells,
     settings, setSettings, settingsRead, setSettingsRead, classic, sheet, setSheet, teamsHost, agents, dirty, setDirty, picking, setPicking,
     defaultId, installedIds, renameRequest, setRenameRequest, projects, setProjects, owner, setOwner, names, setNames, refresh, setRefresh,

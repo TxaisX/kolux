@@ -12,7 +12,7 @@ test("proj067: what is written down is each started tab, stripped to what a rest
     { ...shell(2, "C:\\w\\a"), agent: "claude" as const, agentId: "claude", program: "claude", args: ["--prompt", "do the thing"], env: [["X", "1"]], typed: "do", task: "t", account: "acct-1", title: "Claude", group: 2 },
     shell(3, "C:\\w\\a", { seats: [{}] }), // a chooser never started
     shell(4, "C:\\w\\b", { kind: "editor", path: "C:\\w\\b\\README.md", group: 4 }),
-    shell(5, "C:\\w\\b", { kind: "browser" }),
+    shell(5, "C:\\w\\b", { kind: "changes", path: "C:\\w\\b" }),
   ];
   const l = layoutOf(panes, { 1: 1, 2: 2, 4: 4, 9: 3 }, 2, "C:\\w\\a", { "C:\\w\\b": true });
   expect(l.panes.map((p) => p.key)).toEqual([1, 2, 3, 4, 5]);
@@ -35,6 +35,7 @@ test("proj067: a damaged entry is dropped and the other tabs still come back", (
       { key: "two", cwd: null, branch: null, agent: "shell", program: null, args: [] }, // no key
       { ...shell(3, "C:\\w\\a"), agent: "gemini" }, // unknown agent
       { ...shell(4, "C:\\w\\a"), kind: "editor" }, // an editor tab without a path
+      { ...shell(4, "C:\\w\\a"), kind: "browser" }, // a retired tab kind
       { ...shell(5, "C:\\w\\a"), args: [1, 2] },
       { ...shell(6, "C:\\w\\a"), kind: "diff", path: "x.ts", staged: true, group: 6, title: 7 },
       shell(6, "C:\\w\\c"), // a repeated key: the first one stands
@@ -262,7 +263,7 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
       { key: 2, cwd: "C:/b", branch: null, agent: "shell", agentId: "gemini", program: "gemini", args: [] },
       { key: 3, cwd: "C:/c", branch: null, agent: "shell", program: "pwsh", args: ["-NoLogo"] },
       { key: 4, cwd: "C:/d", branch: null, agent: "shell", program: null, args: [], chooser: true, agentId: "codex" },
-      { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "browser" },
+      { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "changes", path: "C:/x" },
       { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true },
     ],
     activeTab: { 0: 1 }, focused: 1, activeDir: "C:/a", stacked: {},
@@ -272,7 +273,7 @@ test("dtc27: a fresh start brings agent tabs back as plain shells in their folde
   expect(l.panes.slice(2)).toEqual([
     { key: 3, cwd: "C:/c", branch: null, agent: "shell", program: "pwsh", args: ["-NoLogo"] },
     { key: 4, cwd: "C:/d", branch: null, agent: "shell", program: null, args: [], chooser: true, agentId: "codex" },
-    { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "browser" },
+    { key: 5, cwd: null, branch: null, agent: "shell", program: null, args: [], kind: "changes", path: "C:/x" },
     { key: 6, cwd: "C:/e", branch: null, agent: "shell", program: null, args: [], title: "Setup" },
   ]);
   const saved = layoutOf([{ key: 6, cwd: "C:/e", branch: null, agent: "shell", program: "npm", args: ["install"], title: "Setup", setupScript: true }], {}, 6, "C:/e", {});

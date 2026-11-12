@@ -15,8 +15,5 @@ export const AllChangesPane = deferred(() => import("../editor/AllChangesPane"))
 /** T-093-b: the read-only Markdown preview, with its diagrams and highlighted code. */
 export const PreviewPane = deferred(() => import("../editor/PreviewPane"));
 
-/** T-012-a: a page in its own web view, laid over the pane body by the back end. */
-export const BrowserPane = deferred(() => import("../browser/BrowserPane"), undefined, { warm: 3 }); // DT-C230: read 8 s after the first frame, when the user is not typing
-
 /** The CI check tab: one pull request check with its log excerpt and Fix with AI. */
 export const CheckPane = deferred(() => import("../scm/CheckPane"));

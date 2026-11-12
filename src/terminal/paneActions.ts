@@ -12,8 +12,7 @@ import type { WindowLate } from "../shell/windowLate";
 import { forgetRunTab, runPaneKey } from "../automations/runTab";
 import { needsYou } from "../board/chip";
 import { reviewTab } from "../board/review";
-import { openInBrowser } from "../browser/openIn";
-import { livePages, pageRows, rememberClosed } from "../browser/pages";
+import { openExternal } from "../open/openExternal";
 import { fileJump } from "../chat/chatLinks";
 import { savedArgs } from "../chat/controls";
 import type { NewTab } from "./newTab";
@@ -176,17 +175,11 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
       if (typeof path === "string") openFile(path);
       return;
     }
-    const a = what === "browser" ? null : what;
+    const a = what;
     if (a && activeDir === null) return launch(a, null);
     const here = panes.find((p) => p.key === focused && sameDir(viewOf(p), activeDir));
     const key = nextKey.current++;
     const base = { key, ...besideOf(here), group: here ? groupOf(here) : undefined };
-    if (what === "browser") {
-      // BROW-001: a New Tab in the focused split, selected straight away.
-      setPanes((ps) => [...ps, { ...base, agent: "shell", program: null, args: [], kind: "browser" }]);
-      setFocused(key);
-      return;
-    }
     try {
       if (a) await pretrust(a.id, [base.cwd ?? activeDir]);
       const line = a ? await invoke<StartLine>("agent_start_line", { id: a.id, extra: savedArgs(a.id), prompt: "" }) : null;
@@ -221,10 +214,10 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setPanes((ps) => [...ps, { key, ...besideOf(here), group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "editor", path, jump, ...(follow ? { follow: true } : {}) }]);
     setFocused(key);
   };
-  // EDIT-014: a Mod+clicked link in a note. Web links open in the Kolux browser (Shift: the system browser),
+  // EDIT-014: a Mod+clicked link in a note. Web links open in the system browser,
   // notes inside the worktree as previews, anything else as an editor tab at its line.
-  const followLink = (a: Action, shift: boolean) => {
-    if (a.kind === "web") return shift ? void invoke("open_external", { url: a.url }).catch((err) => setToast(String(err))) : openInBrowser(a.url);
+  const followLink = (a: Action) => {
+    if (a.kind === "web") return void openExternal(a.url).catch((err) => setToast(String(err)));
     // EDIT-014: a link to a file that is not there shows a toast instead of an empty tab
     if (a.kind === "file") return void missingFileToast(a.path, (ps) => invoke<unknown[]>("file_stamps", { paths: ps })).then((gone) => (gone ? setToast(gone) : a.how === "preview" ? openPreview(a.path) : openFile(a.path, a.line)));
   };
@@ -363,7 +356,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   // palette's own surface, shell/window/Dialogs.tsx, which reads them only while it is open).
   const paletteItems = (): PaletteItem[] => [
     ...panes
-      .filter((p) => !p.seats && p.kind !== "browser")
+      .filter((p) => !p.seats)
       .map((p) => ({
         section: "Open tabs",
         label: tabName(p, titles),
@@ -380,23 +373,6 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
           setFocused(p.key);
         },
       })),
-    // T-239 (BROW-022): browser pages, by title and site, the current worktree's first (browser/pages.ts).
-    ...pageRows(
-      livePages(),
-      activeDir,
-      (id) => {
-        const p = panes.find((x) => x.key === id);
-        if (!p) return false;
-        setScreen("terminals");
-        if (!sameDir(viewOf(p), activeDir)) {
-          setPage(null);
-          setActiveDir(viewOf(p));
-        }
-        setFocused(id);
-        return true;
-      },
-      () => setToast("That page has closed"),
-    ),
     ...(Object.keys(PAGES) as PageId[]).map((id) => ({ section: "Settings", label: PAGES[id], hint: "Settings page", keywords: SETTINGS_WORDS[id], run: () => openSettings(id) })),
     ...paletteRows(accountSwitcher.groups, switchAccount), // T-548: Switch Claude to ...
     // T-708: New terminal tab and Search open tabs are their Commands rows (with their keys), no longer second hand-built rows
@@ -554,8 +530,7 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
     setTabColors((c) => forgetColors(c, keys));
     // TERM-106: a tab closed on purpose is not brought back after a restart.
     keys.forEach((k) => void invoke("terminal_forget_history", { paneKey: k }).catch(() => {}));
-    // T-239 (BROW-019): a browser page closed on purpose can be reopened (Reopen Closed Tab).
-    closedPanes.remember(panes, keys, rememberClosed); // TERM-047: terminal tabs too, in close order with the pages
+    closedPanes.remember(panes, keys); // TERM-047: a terminal tab closed on purpose can be reopened (Reopen Closed Tab)
     setPanes((ps) => ps.filter((p) => !gone.has(p.key)));
     setRunning((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !gone.has(Number(k)))));
     setDirty((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !gone.has(Number(k)))));

@@ -8,9 +8,9 @@ test("the launch record names the agent: its catalogue id first, then the pane's
   expect(launchedAgent({ agent: "claude", program: "claude" })).toBe("claude");
   expect(launchedAgent({ agent: "shell", program: "C:/tools/mimo.exe" })).toBe("mimo-code");
   expect(launchedAgent({ agent: "shell", program: null })).toBeNull();
-  // A browser tab or a kit's multi-seat tab is not one launched agent.
+  // An editor tab or a kit's multi-seat tab is not one launched agent.
   expect(launchedAgent({ agent: "shell", agentId: "claude", program: null, seats: [{}] })).toBeNull();
-  expect(launchedAgent({ agent: "claude", kind: "browser", program: null })).toBeNull();
+  expect(launchedAgent({ agent: "claude", kind: "editor", program: null })).toBeNull();
   expect(launchedName({ agent: "shell", agentId: "mimo-code", program: "mimo" })).toBe("MiMo Code");
   expect(launchedName({ agent: "shell", agentId: "cursor", program: "cursor-agent" })).toBe("Cursor");
   expect(launchedName({ agent: "shell", program: null })).toBeNull();

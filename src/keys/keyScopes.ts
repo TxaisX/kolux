@@ -3,7 +3,7 @@
 // explorer tree included, so the tree never swallows it.
 import type { Scope } from "./actions";
 
-export type KeySurface = { screen: string; kind?: "browser" | "editor" | "preview" | "diff" | "changes" | "check"; inTree: boolean };
+export type KeySurface = { screen: string; kind?: "editor" | "preview" | "diff" | "changes" | "check"; inTree: boolean };
 
 export function scopesFor({ screen, kind, inTree }: KeySurface): Scope[] {
   if (inTree) return ["global", "tabs"]; // the explorer's own keys come with T-094-b

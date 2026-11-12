@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { Terminal } from "@xterm/xterm";
 import { decodeOutput } from "./codec";
 import { Gate, Scanner } from "./shellMarks";
-import { notePrinted } from "../browser/preview";
+import { notePrinted } from "./printedAddresses";
 import { batchAcks } from "./flow";
 
 const MB = 1024 * 1024;
