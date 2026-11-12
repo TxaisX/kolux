@@ -29,8 +29,14 @@ export default function FloorView({ initial, now: fixed, load = () => invoke<Tra
         (e) => setError(String(e)),
       );
     tick();
-    const id = setInterval(tick, 5_000);
-    return () => clearInterval(id);
+    // Audit 34: no reads while the window is hidden; one read the moment it is shown again.
+    const id = setInterval(() => document.hidden || tick(), 5_000);
+    const onShow = () => document.hidden || tick();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onShow);
+    };
   }, []);
   const stale = staleNote(error, tracks.length > 0);
   const from = rangeStart(range, now);
