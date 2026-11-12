@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { span, type Lane } from "../board/chip";
 import { agents as AGENTS } from "../keys/actions";
 import { NAMES, type Usage } from "../usage/tokens";
-import { compactCount as compact, formatUsd } from "../usage/format";
+import { compactCount as compact, usd2 as money } from "../usage/format";
 import { openSettings } from "../settings/pages";
 import { anyTracked, chipOfLive, costKind, countedAt, dueForCount, sessionsOf, totals, usageFor, type Figure, type LiveSession } from "./model";
 import "./insights.css";
@@ -22,7 +22,6 @@ const TICK_MS = 30_000;
 // A count older than this is redone (incremental: the scan keeps what it read) when the panel reads usage.
 const COUNT_MS = 10 * 60_000;
 const SESSION_ROWS = 8;
-const money = (usd: number) => formatUsd(usd, 2);
 const PRICE_NOTE = "Estimated from Kolux's local price table at list price. It is not a bill.";
 
 /** "≈ $1.23 est.", "at least ≈ $1.23 est." when some model has no price, "—" when none has. */
