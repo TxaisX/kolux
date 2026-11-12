@@ -1,65 +1,60 @@
-# Lane o1-tools — Round 3 Report
+# Lane o1-tools — Round 4 Report
 
 ## Status
 
-The editor passes on Lexical 0.53 with one small change, so the dependency bump is ready for the coordinator.
-Four audit findings are fixed: the Checks tab follows the worktree instead of reading git once, right-click
-copies a text selection anywhere, the preview stops re-drawing per keystroke, and Ports keeps its list.
-The queued native-terminal switch exists, and c3-terminal's scope removal can no longer break my files.
+Both queued bugs are fixed, so the merged gate's two red marks in my files are gone (tsc on
+`shortcutRows.ts`, the `windowsHide` check on `scripts/local-run.mjs`). Five audit findings closed:
+one shared disk-stamp poll for every editor tab, a cheap comparison on the All Changes watcher tick,
+one path key across the editor, a tested answer behind the Checks panel's empty state, and the
+CodeMirror theme moved out of the 900-line pane.
 
 ## Done this round
 
-### 1. Queued bugs
+### 1. Queued bugs (both done, files moved to `_shared/bugs/done/`)
 
 | Bug | Result |
 |---|---|
-| `20261112-1130-native-terminal-toggle` | **fixed** (`64917622`). New `src/settings/NativeTerminalCard.tsx` on Settings > Terminal, Windows only, off by default: saves `terminalNative` (the field `inputPrefs.ts` reads as `INPUT_FIELDS.native`, which `TerminalPane.tsx:417` hands to the engine), carries the DLL hint, and shows `native_term_available`'s own reason when the engine is missing. Search entry `terminal/native`. Tests: `NativeTerminalCard.test.ts` (3), plus `search.test.ts` now knows the file. |
-| `20261112-1152-lexical-053-markdown-roundtrip` | **fixed and reported** (`d00de81c`). Root cause: 0.53's markdown **export** escapes `[ ] < &` as `&#91;`/`&#60;`/`&#38;` (`@lexical/markdown` dist `LexicalMarkdown.dev.js:1653`, against `:1280` in 0.52). Kolux's rich view must write back what was typed, so 21 editor tests failed. `src/editor/mdExport.ts` turns those four entities back in the one place the editor, the round-trip check and a `<details>` body export through. Deps reverted to `^0.52.0` as asked; the bump is filed to c1-coord. |
-| `20261112-1730-browser-scope-gone-settings-and-imports` | **fixed ahead of the merge** (`ed23998a`). `SourceControlPanel` opens a commit through `openExternal`; two tests stopped mocking `../browser/*`; the Shortcuts area map is `{...} as Record<Scope, string>` so it compiles with the browser scope present or gone (ShortcutsPage draws no area with no rows). |
+| `20261112-1250-shortcutrows-browser-scope-tsc` | **fixed** (`5f4b9ba5`). The `browser` row in `AREAS` could not be hidden by a type assertion once c3-terminal removed the scope (TS2353 is an excess-property check, which a cast does not silence). The row is gone and the map is `Record<Scope, string>` with exactly the live scopes; `shortcutRows.test.ts` counts 128 rows (136 − the 8 browser commands). |
+| `20261112-1305-local-run-spawns-windowshide` | **fixed** (`5f4b9ba5`). `windowsHide: true` on both spawns in `scripts/local-run.mjs` (the `tauri build` and the detached launch). `npx vitest run scripts/nowin-spawns.test.mjs` → 2 passed. |
 
-### 2. Audit findings fixed (highest severity first)
+### 2. Audit findings (highest severity first)
 
 | # | Fix | Commit |
 |---|---|---|
-| N-01 (P1) | Already closed by round 2: `htmlPreview.ts` opens the served address through `openExternal`. Verified, no change needed. | — |
-| N-15 (P1) | Already closed by round 2: `ChecksPanel.tsx:156` calls `openOut(pr.url)` → `openExternal`. Verified, no change needed. | — |
-| N-16 (P2) | `PrStart` subscribes to `watchStatus(dir)`, re-renders when the five-minute readiness answer goes stale, and reads once when nothing on screen answers. Commit in a terminal now moves the offer. | `d5d771ea` |
-| N-07 (P2) | Right-click on a text selection outside a field gets a Copy-only row (`editMenuItems` gains `plainSelection`); `runEdit` copies the selection through the clipboard without focusing, since focusing drops it. No selection: menu stays hidden as before. | `a5703046` |
-| N-04 (P2) | The preview draws from the text once it has settled (300 ms, the same wait the editor's own preview uses) instead of re-parsing and re-sanitising the whole note per transaction. | `979ecaf7` |
-| N-17 (P2) | The ports scan only clears the list when the workspace changed, not when the popover opens or closes, so the count and the last good list survive a click and a failed scan. | `4b76b9e6` |
-| N-06 (P2) | The Explorer's dotfile pass, ignored pass, flattened rows and selected index are memoised on what they read, so a scroll tick no longer walks every folder. | `93f9719e` |
+| N-05 (P2) | `All Changes` no longer `JSON.stringify`s every file's old and new text on each watcher tick. `listSignature` reads only what the pane draws plus the per-file `stamp` Rust sends, which changes whenever the change does; a tick that finds the same signature keeps the list. Two tests: same change → same signature however the array was built; any drawn field, the order, or the membership → different. | `f3497eaa` |
+| N-03 (P2) | One disk-stamp poll for every visible editor tab. Before: N tabs → N `file_stamps` calls per 2 s, each running `fence.allow` (which lists the worktrees under the fence mutex). After: one call per 2 s for all of them, one interval, one window focus listener; a tab coming forward is still checked at once. The gone/EDIT-032 wording stays per tab, on the rare null answer. Five tests, including "three watchers → one call" and "the answer lines up with the paths". | `01e62fad` |
+| N-11 (P3) | `buffers.ts` `keyOf` is now the only path key in the editor: `rail.ts` (WSL notes never matched their file — the real bug), `desktopDrops.ts` (a drop with two spellings of one file opened it twice) and `closeGuard.ts` (an open file under another spelling was missed, so its empty note could be deleted). `noteLinks.ts` already used it. WSL test added. | `a2c071d7` |
+| N-20 (P2) | The Checks panel's empty state draws from `startPr.offerUi` — the block reason, the "checking" line, the create button's wording and the one-click — so ten plain tests cover the gating that used to be inline conditionals with no test. New `PrStart.test.ts` renders the panel (nothing to click, says "checking", asks Rust nothing during render) and `CommentsPanel.test.ts` renders the hidden tab. `useSyncExternalStore` got React's server snapshot in `prDraft.ts` and `oneClick.ts`, which is what makes a panel renderable without a DOM. The `act()` → `rowError` wire stays covered at the model level (`panelUx.test.ts`): a click cannot be driven here. | `4d02b88a` |
+| N-14 (P3) | `look` (the CodeMirror theme, ~20 lines) moved to `src/editor/editorTheme.ts`. The diff, All Changes and the disk banner each imported the 933-line `EditorPane` for that one object — the cycle the build warned about. | `93809bb1` |
 
-## Proof
+## Proof (run fresh after the last change, `93809bb1`)
 
-- `npx tsc --noEmit` → exit 0, no output (run after the last change, `ed23998a`).
-- `npx vitest run src/settings src/scm src/ports src/editor` →
-  `Test Files 259 passed (259) · Tests 2192 passed (2192)`.
-- On Lexical 0.53 in this worktree (deps since reverted): `npx vitest run src/editor` →
-  `Test Files 112 passed (112) · Tests 1264 passed (1264)`; tsc clean. Back on 0.52: the same 112/1264.
-- No UI screenshot this round: every fix here is logic a test covers, and no dev instance was started
-  (the harness launch was not needed to prove them). The native-terminal switch is drawn by a test, not
-  by a screenshot — that is the one gap in this report.
+- `npx tsc --noEmit` → `tsc exit: 0`, no output.
+- `npx vitest run src/editor src/scm src/settings src/ports src/artifacts src/automations src/skills src/chat src/open scripts/nowin-spawns.test.mjs`
+  → `Test Files  321 passed (321) · Tests  2807 passed (2807)`.
+- `npx vitest run scripts/nowin-spawns.test.mjs` alone → `2 passed`.
+- `git merge --no-edit integrate/wave-1` merged clean (115 files) at the top of the round.
+- No UI screenshot: every change this round is logic behind a panel (polls, comparisons, path keys,
+  gating rules) and each has a test; no dev instance was started, so nothing is claimed about pixels.
 
 ## Next round
 
-1. **N-03**: every visible editor tab still runs its own 2 s `file_stamps` poll (`EditorPane.tsx:446-450`),
-   and each poll lists worktrees under the fence mutex. One shared poller for all visible paths.
-2. **N-05 / N-11**: All Changes stringifies old and new on every watcher tick; the path key is
-   re-implemented four times and the rail's copy mangles WSL paths.
-3. **N-20**: `PrStart.tsx` and `CommentsPanel.tsx` have no test. There is no DOM environment in this repo,
-   so either add one (a dependency, so c1-coord) or pull their logic into pure helpers and test those.
+1. **N-09**: `frontMatter.ts` is 777 lines and 90% a gap-placement engine; split `richPlacement.ts`.
+2. **N-23 / N-39**: `scm/model.ts` (686) has three clean seams; `automations/AutomationsPage.tsx` (760)
+   can lose `Detail` and `HermesRuns` to `AutomationDetail.tsx`.
+3. **The feature walk** the lane brief asks for (item 2) is still not done: nobody has walked my
+   screens against `docs/guide/feature-index.md` with the app running. It needs a `pnpm local` build
+   and one harness instance; do it before more refactoring.
 
 ## For the coordinator
 
 - **CHANGELOG lines:**
-  - "The Checks tab follows your branch: commit in a terminal and the Create pull request button appears without leaving the tab."
-  - "Right-click copies selected text anywhere in Kolux — previews, chat messages and diffs — not just in text boxes."
-  - "A preview no longer re-draws on every keystroke, and the Ports list keeps its count when you open it."
-  - "Settings > Terminal has a switch for the experimental Windows Terminal engine (Windows only, off by default)."
-- **DECISIONS row requested:** the eight Lexical packages move to `^0.53.0`; the rich view keeps the
-  characters the user typed by undoing Lexical's four text entities in `src/editor/mdExport.ts`. Known
-  cost, stated: a note literally containing `&#60;`/`&#91;`/`&#93;`/`&#38;` would save the character.
-- **Dependency ask (c1-coord):** `src/editor` is green on 0.53 — take the bump when convenient
-  (`_shared/bugs/c1-coord/20261112-1310-lexical-053-verified-take-the-bump.md`).
-- **Still red from round 2:** `guide-check` names four deleted files in `docs/guide/files-and-browser.md`
-  (c1's file). Nothing else in `pnpm check` was re-run this round.
+  - "Editor tabs share one disk check, so a window full of open files asks Rust once per two seconds instead of once per tab."
+  - "Notes and dragged files match their file however its path is spelled, including inside a WSL distribution."
+  - "The Checks tab says why it cannot offer a pull request, in one tested place, and no longer offers anything before it knows the branch's state."
+- **DECISIONS row requested (small):** the editor's path key is `buffers.ts` `keyOf` and nothing else
+  normalises paths in `src/editor`. Cost, stated: a Linux file inside WSL keeps its letter case, so
+  `a.md` and `A.md` stay two files (as Linux does).
+- **Nothing needed from another lane this round.** The two bug files I was sent are closed.
+- **Round 3's dependency ask still stands:** `src/editor` is green on Lexical 0.53, the bump is
+  c1-coord's call (`_shared/bugs/c1-coord/20261112-1310-lexical-053-verified-take-the-bump.md`).

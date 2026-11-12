@@ -378,3 +378,14 @@ tell me to delete the control.
 | N-17 | FIXED `4b76b9e6`: the ports list is cleared only by a change of workspace. | `src/ports/PortsItem.tsx` |
 | N-06 | FIXED `93f9719e`: the tree passes are memoised on what they read. | `src/editor/Explorer.tsx` |
 | N-18 | NOT fixed: still two `git status` reads per Checks-tab open (Rust `scm_pr_checks` + the panel's seed read). The seed read stays because `scm_watch` sends no first status (its first read is after the 30 s safety tick). | `PrStart.tsx` + `src-tauri/src/scm_watch.rs:725` |
+
+## Round 4 closures (2026-11-12)
+
+| # | State | Where |
+|---|---|---|
+| N-03 | FIXED `01e62fad`: one `file_stamps` round for every visible tab, one interval and one window focus listener; a tab coming forward still checks at once. Before: one call (and one `fence.allow` worktree listing) per visible tab per 2 s. After: one for all of them. The gone/EDIT-032 wording stays per tab. | `src/editor/stampPoll.ts` (new) + `EditorPane.tsx` |
+| N-05 | FIXED `f3497eaa`: `listSignature` compares what the pane draws plus Rust's per-file stamp instead of `JSON.stringify` of every file's old and new text, on the UI thread per watcher tick. | `src/editor/AllChangesPane.tsx` |
+| N-11 | FIXED `a2c071d7`: `rail.ts`, `desktopDrops.ts` and `closeGuard.ts` use `buffers.ts` `keyOf`. WSL notes now match their file under either share name, and closing tabs no longer misses a file open under another spelling (an empty note could be deleted). `noteLinks.ts` already used it. | 3 files |
+| N-20 | FIXED `4d02b88a`: the empty state's gating is `startPr.offerUi` (block reason, checking line, create label, one-click), tested for every branch in `startPr.test.ts`; `PrStart.test.ts` and `CommentsPanel.test.ts` render both panels (React server snapshot added to `prDraft`/`oneClick` so a panel can render without a DOM). The `act()` → `rowError` wire stays covered by `panelUx.test.ts`: no DOM environment exists for a click. | `startPr.ts`, `PrStart.tsx` |
+| N-14 | FIXED `93809bb1`: `look` (the CodeMirror theme) moved to `src/editor/editorTheme.ts`, so the diff, All Changes and the disk banner no longer import the 900-line EditorPane for a style object (the build's cycle warning). | `editorTheme.ts` (new) |
+| N-18 | Still open: two `git status` reads per Checks-tab open, as round 3 recorded. | — |
