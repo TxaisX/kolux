@@ -18,6 +18,7 @@ import AiRecipesSection from "./AiRecipesSection";
 import AutoPrSettings from "./autoPr";
 import { useDraft } from "./useDraft";
 import { useLeaveSave } from "./leave";
+import { useSettled } from "../editor/settledQuery";
 import { REVIEW_BOTS_KEY } from "../scm/review";
 import { botsText, parseBots } from "./reviewBots";
 
@@ -184,19 +185,21 @@ export default function GitPage() {
   const [draft, setDraft] = useState<string | null>(null);
   const [check, setCheck] = useState<PrefixCheck | null>(null);
   const typed = draft ?? String(settings?.branchPrefixCustom ?? "");
+  // The sample re-checks the prefix in Rust, so it follows a pause in typing rather than every keystroke (audit N-46).
+  const settled = useSettled(typed);
   // SET-036: the custom prefix saves on leaving the field; changing page or closing must keep it too.
   useLeaveSave(() => settings && draft !== null && draft !== String(settings.branchPrefixCustom ?? "") && void save({ branchPrefixCustom: draft }));
   const mode = settings ? modeOf(settings) : null;
   useEffect(() => {
     if (!mode) return;
     let live = true;
-    invoke<PrefixCheck>("branch_prefix_check", { mode, custom: typed })
+    invoke<PrefixCheck>("branch_prefix_check", { mode, custom: settled })
       .then((c) => live && setCheck(c))
       .catch(() => live && setCheck(null));
     return () => {
       live = false;
     };
-  }, [mode, typed]);
+  }, [mode, settled]);
   // GIT-066 / GIT-028: the GitHub API budget, read when the page opens and on request.
   const [budget, setBudget] = useState<{ rows: Budget[] | null; error: string | null; at: number }>({ rows: null, error: null, at: 0 });
   const readBudget = () =>
