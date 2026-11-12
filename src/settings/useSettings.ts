@@ -34,6 +34,13 @@ const saveInTurn = inTurn((patch: Record<string, unknown>) =>
   invoke<Record<string, unknown>>("get_settings").then((s) => saveChanged(s, tidySettings({ ...s, ...patch }))).then(() => invoke<Record<string, unknown>>("get_settings")),
 );
 
+/**
+ * A settings write from code with no page around it (the setup card's resume switch, a Claude
+ * account's upkeep). It takes the same turn as every page save, so it cannot interleave with one,
+ * and the values are tidied in (SET-035) — audit N-49. Resolves the copy that was stored.
+ */
+export const patchSettings = (patch: Record<string, unknown>): Promise<Record<string, unknown>> => saveInTurn(patch);
+
 /** The saved settings for a Settings page, and `save(patch)`, which merges into what is on disk
  * and settles true once it is written, or false when it failed: the page then shows why and takes
  * back what is stored (T-598: a draft field keeps its typed text). The page follows saves made in
