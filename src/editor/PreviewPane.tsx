@@ -100,8 +100,19 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
     void loadRenderers();
     return watchRenderers(() => setLibs((n) => n + 1));
   }, []);
+  // N-04: the page is drawn from the note once it has settled (the editor's own preview waits 300 ms too). Drawing
+  // per keystroke re-parsed and re-sanitised the whole note on the UI thread.
+  const [settled, setSettled] = useState<string | null>(null);
+  useEffect(() => {
+    if (text === null) {
+      setSettled(null);
+      return;
+    }
+    const id = window.setTimeout(() => setSettled(text), 300);
+    return () => window.clearTimeout(id);
+  }, [text]);
   // EDIT-019 (row 94): front matter is its own block above the note, shown at first and remembered per file (VIEW-113); the page below is the body.
-  const { front, body } = useMemo(() => splitFront(text ?? ""), [text]);
+  const { front, body } = useMemo(() => splitFront(settled ?? ""), [settled]);
   // The choice is held with its path and saved on the click, so a pane moved to another file reads that file's own choice.
   const [held, setHeld] = useState({ path, hide: false });
   const hideFront = hideFrontFor(held, path, (p) => mdPrefs(p).hideFront);
@@ -110,7 +121,7 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
     setMdPrefs(path, { hideFront: !hideFront });
   };
   const frontCtl = frontControl(front, hideFront);
-  const html = useMemo(() => (text === null ? "" : renderNote(body, (md) => renderMarkdown(md, true))), [text, body, libs]);
+  const html = useMemo(() => (settled === null ? "" : renderNote(body, (md) => renderMarkdown(md, true))), [settled, body, libs]);
   useEffect(() => {
     let alive = true;
     if (page.current) void drawDiagrams(page.current, true, () => alive);
@@ -144,9 +155,9 @@ export default function PreviewPane({ id, path, hidden = false, focused = false,
 
   // GIT-042: the add-note shortcut reads the selection in the rendered page.
   useEffect(() => {
-    selections.set(id, () => domPick(document.querySelector(`.pane.preview[data-key="${id}"] .md-preview`), path, text ?? ""));
+    selections.set(id, () => domPick(document.querySelector(`.pane.preview[data-key="${id}"] .md-preview`), path, settled ?? ""));
     return () => void selections.delete(id);
-  }, [id, path, text]);
+  }, [id, path, settled]);
 
   // A preview opened from the explorer or Quick Open takes the keyboard, so Mod+F answers at once.
   useEffect(() => {
