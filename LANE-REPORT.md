@@ -1,69 +1,56 @@
 # LANE-REPORT: c3-terminal
 
 ## Status (plain words, 3 lines max)
-With the native terminal setting on, the engine window now steps aside when a menu or dialog opens over the pane and comes back after.
-Clicking a session row in the sidebar can now focus that pane once c2-agents adds its half (the shell side is in).
-Open question found: round 3's "engine draws the prompt" screenshot may have been xterm's text, not the engine's (see Done 2).
+New agent sessions now start inside the user's own PowerShell (or login shell), as if the user typed `claude`; Kolux no longer runs the agent program directly.
+The embedded web pane is gone from both the screens and the Rust core (about 14,000 lines less); updates, project icons, the Tower window, PDF export and HTML preview kept.
+New terminal start (about 1 s against a 300 ms target) is measured but not yet fixed: first job next round.
 
-## Done this round (round 4)
-Merged integrate/wave-1 first (katex/vite/crate bumps, round-1 audit report). Queue read: 7 files.
+## Done this round (round 5)
+Merged integrate/wave-1 first (it now has o1-tools 30830263 and c2-agents 2d4bd3cc). Queue: 11 files; 9 fixed and moved to done/, 1 already fixed last round (1200), 1 open (1155 latency).
 
-1. **Sidebar session row focuses its pane, shell side** (a1255a15, bug 20261112-1200). Sidebar.tsx passes
-   `onFocusPane={act.focusPane}` (openPane). projectsProps.ts declares `FocusPane = { onFocusPane?: (key) => void }`
-   and lists `onFocusPane: "same"`, so this compiles before AND after c2-agents adds the prop to ProjectsPanel.
-   Also fixed a tsc error from the merge: remove.test.ts node:fs import now carries the same @ts-expect-error as the
-   other source-reading tests.
-2. **Native terminal step 2** (df8b9f9e, b83a2885).
-   - nativeView.ts `overlayOver()`: an open `[role=menu|dialog|alertdialog|listbox]` or `.menu` overlapping the pane,
-     or anything else on top of the pane's centre (sheet, full-page screen), hides the engine window; it returns when
-     the overlay goes. `body[data-native]` is now on / under / off.
-   - `onShown` tells the pane when the engine draws; the pane then counts as hidden for its GPU slot (parkWhenHidden
-     gives the WebGL context back after the usual 30 s).
-   - Live proof, `node artifacts/c3-round4/live4.mjs on` (vite 1450, CDP 9430, com.txaisxiong.kolux.c3-0.smoke,
-     log artifacts/c3-round4/live4-on.log):
-     `MENU_OPEN true` / `MENU_NATIVE_STATE ["under"]` / `HwndTerminalClass vis=False`;
-     after removal `AFTER_NATIVE_STATE ["on"]` / `HwndTerminalClass vis=True`.
-   - **Finding:** I also hid xterm under the engine (CSS visibility) to save painting. The capture then showed a BLANK
-     pane (artifacts/c3-round4/r4-native.png), where round 3's capture showed the PowerShell prompt. So either the engine
-     draws nothing visible, or PrintWindow (shot.ps1) cannot capture the engine's DirectX surface. Not known which.
-     I took the CSS rule back out (b83a2885) so the setting never shows a blank pane. Round 3's claim "prompt drawn by
-     the WT engine" is unproven until this is settled.
-   - Also seen: after the overlay test the engine window measured 1621x873 while the pane layout had changed to 6
-     panes in the capture; needs a second look next round.
-3. **Refactor** (e6f8f65a): the pane's link wiring (term-N handles, web/file links, OSC 8, link click, link-menu
-   right-click, ~105 lines) moved from TerminalPane.tsx's mount effect to `paneLinks.ts` `wireLinks()`, cleanup returned.
-   TerminalPane.tsx 2172 -> 2073 lines. PaneMenu.test T-710 now reads paneLinks.ts for the moved line.
+1. **Agents start through the user's shell** (2cb2e273, bug 1600). terminal.rs Terminals::spawn takes `agent_settings` and wraps a
+   credited agent with `crate::agents::agent_shell::via_shell`, falling back to program_command; pty_service.rs's program fallback does the
+   same with `a["settings"]`. (c) Mark.program / started() already report the logical program; (d) start failures already reach kolux.log.
+   Proof: `cargo test --lib -- agent_shell terminal:: pty_service` -> `test result: ok. 100 passed; 0 failed; 1 ignored`; clippy --lib clean on both files.
+2. **Start-up gate tests** (fea2fb3c, bugs 1240, 1242). main.slowStart's language mock lacked `locale`/`onLanguageChange` (the pack preload
+   reads them), so start() threw; app code unchanged. wave3 F4 now matches the sidebar's fixed `<h2 className="sb-heading">Folders</h2>`.
+   src/tower/entry.test.ts has the same mock gap: c2-agents' file, bug filed (c2-agents/20261112-1700-tower-entry-stub-createElement.md).
+3. **Web pane, frontend side** (f642b4c2, bugs 1215, 1105-status, 1220, 1241; 58 files, +250/-380). openInBrowser -> openExternal;
+   notePrinted moved to src/terminal/printedAddresses.ts; "browser" pane kind, 8 browser actions + scope, chords, page ring, browserOpen,
+   .pane.browser CSS removed; entry kind browser -> web (c2's newTabEntryRun.ts + test, as agreed in bug 1220); space copy now
+   "In use: a tab is open or an agent is running".
+4. **Web pane, Rust side** (HEAD commit, bugs 1105-backend, 1143, 1601; 42 files, +1538/-13692). 23 pane modules and the browser CLI verbs
+   deleted. Kept: net.rs (URL policy + HTTP client for update.rs and web_icon.rs), webview_args.rs, webview_engine.rs (app crash watch, PDF
+   print), tower_window.rs, pdf_export.rs, html_preview.rs, engine_crash.rs. Command names unchanged, so no frontend change needed.
+   Proof: `cargo test --lib` -> 2937 passed, 2 failed before the CLI test fix; after: `cargo test --lib cli::` -> `165 passed; 0 failed`;
+   `cargo test --test '*'` -> every file ok except cards_10 (34 fail on its scratch-home guard: "no .kolux-rs-scratch marker", environment,
+   not code); `cargo clippy --all-targets` -> no warnings; `node scripts/invoke-contract.mjs` -> only failure is src/browser/useBrowserChords.ts
+   (o1-tools' leftover folder, to be deleted).
+   Behaviour note: an HTML preview's relative CSS/images now get 403 (the "Allow folder" button was in the pane) -> bug to o1-tools 1830.
 
-Checked, nothing to do:
-- "Context used" ring (top work 2): already gone; UsageReadout.tsx header says removed 2026-11-12; no ContextGauge left.
-- GPU drawing (top work 3): panes already default to WebGL with a clean fallback (renderer.ts attachRenderer:
-  WebGL2 not software -> GPU; context loss -> DOM; 12-context pool, park after 30 s hidden). The 8-pane CPU/GPU/frame
-  measurement is still not done.
+Proof (frontend, run fresh at end of round):
+- `npx tsc --noEmit` -> 1 error, `src/settings/shortcutRows.ts(9,102): 'browser' does not exist in type 'Record<Scope, string>'` (o1-tools'
+  file; my removal of the browser key scope exposes it; bug o1-tools/20261112-1730 has the one-line fix).
+- `npx vitest run src/terminal src/shell src/chrome src/keys src/status src/look src/sleep src/space src/lazy src/launch src/main.slowStart.test.ts`
+  -> `Test Files 282 passed (282)  Tests 1739 passed (1739)`
 
-Blocked (unchanged): browser Rust removal and repointing my src/browser imports both need o1-tools' commit 30830263
-(adds src/open/openExternal.ts) merged into integrate/wave-1; it is not there yet. Agent-shell wrap (a)/(b) needs
-c2's agent_shell.rs (2d4bd3cc) merged; also not there yet.
-
-Proof:
-- `npx tsc --noEmit` -> no output (clean)
-- `npx vitest run src/terminal src/shell src/chrome src/keys src/status src/look src/sleep` ->
-  `Test Files 246 passed (246)  Tests 1517 passed (1517)`
-- `npx vitest run src/settings/__cards__/SET-001-005.test.ts src/settings/__cards__/SET-028.test.ts` -> `12 passed`
-- No Rust touched this round.
+Investigated, not fixed: bug 1155 (new terminal ~1.05 s; Kolux part 156-352 ms, shell start 647-698 ms). TerminalPane registers its event
+listeners together (Promise.all, TerminalPane.tsx ~938) before terminal_spawn, so that is not the delay. Needs a live profile of split ->
+mount -> xterm open/WebGL context -> spawn.
 
 ## Next round
-1. Settle whether the engine draws on screen: capture with a screen copy (CopyFromScreen/DXGI), not PrintWindow, or
-   type into the pane and read the engine's buffer. If it draws, hide xterm under it (one CSS line, see b83a2885). If not,
-   look at z-order against WebView2's own child window and at the feed path. Then the 1621x873 size after the overlay.
-2. As soon as integrate/wave-1 has o1-tools' 30830263 and c2's 2d4bd3cc: repoint the browser imports
-   (list in bug 20261112-1215), cut browser*.rs down per bugs 1143/1601, and land agent-shell wrap (a)/(b).
-3. 8-pane GPU measurement (CPU %, GPU %, frame time, keystroke-to-screen), then the next TerminalPane split.
+1. Bug 1155: profile the new-pane path live (o2's `node scripts/stress/run-all.mjs --instances 1 --only latency`), cut Kolux's part, and
+   propose a kept-warm shell (one pre-started pty per folder) to Txais as the way to 300 ms with a real PowerShell profile.
+2. Native terminal: settle whether the engine draws on screen (screen capture, not PrintWindow), then the 1621x873 size after overlays.
+3. Retitle zoom.in/out/reset ("Zoom Browser In" ...) if they now zoom the window; 8-pane GPU measurement; next TerminalPane split.
 
 ## For the coordinator
-- Please merge lane/o1-tools 30830263 and lane/c2-agents 2d4bd3cc into integrate/wave-1; three of my queued bugs wait on them.
-- Reply to c2-agents (bug 20261112-1200): shell side landed in a1255a15. ProjectsPanel can now add
-  `onFocusPane?: (key: number) => void` to its Props and call it from openSession; projectsProps already lists it.
-- CHANGELOG (experimental): "With the native terminal setting on, menus and dialogs now show over terminal panes."
-- DECISIONS row: "2026-11-12: native terminal is unproven on screen; xterm keeps painting under the engine until a
-  screen capture shows the engine's own text."
-- Evidence is in artifacts/c3-round4/ (local, not committed).
+- Merge order: o1-tools must apply bug 20261112-1730 (drop `browser` from shortcutRows AREAS + test ids, repoint scm/ports/editor
+  imports) in the same rotation, or tsc is red after merging lane/c3-terminal. Then src/browser/ can be deleted.
+- c2-agents: the agent-shell wrap (a)/(b) landed in 2cb2e273; (c)/(d) already held. tower/entry.test.ts needs the language mock fix (bug 1700).
+- CHANGELOG: "Agents now start inside your own shell, the same as typing `claude` yourself." / "The built-in web pane is gone; web
+  addresses open in your own browser." / "Kolux's core is about 14,000 lines smaller."
+- DECISIONS rows: "2026-11-12: agent panes run the user's shell, which starts the agent (agents::agent_shell::via_shell in Terminals::spawn)."
+  "2026-11-12: web pane Rust side removed; net.rs keeps the update/icon HTTP client; Tower window, PDF export and HTML preview keep their command names."
+- Decision for Txais (via o1-tools bug 1830): HTML preview should auto-allow its own folder, or show the document only.
+- Evidence local only: test output above; no screenshots this round (no visual change).
