@@ -96,9 +96,6 @@ test("SET-019 (T-246-c): the interface zoom has its own keys, apart from the ter
 // AFTER row 382 (T-164-b): a command nothing runs yet is not offered as a row to rebind.
 test("commands with no handler yet are not listed, wired ones still are", () => {
   const ids = rows().map((r) => r.id);
-  expect(ids).toContain("browser.hardReload"); // T-611: it runs as Reload (keys/actions.ts sameAs)
-  expect(ids).toContain("browser.grabElement"); // T-240: the browser pane runs it
-  expect(ids).toContain("browser.find");
   expect(ids).toContain("editor.replace");
   expect(ids).toContain("editor.toggleWordWrap");
 });

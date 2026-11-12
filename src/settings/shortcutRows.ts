@@ -6,7 +6,10 @@ import { labelParts, parseChord, type Keymap } from "../keys/keymap";
 import type { NativeChord } from "../chrome/chromeItems";
 import { systemCapturedChord, systemCaptureWarning } from "../keys/systemCapture";
 
-export const AREAS: Record<Scope, string> = { global: "General", tabs: "Tabs", terminal: "Terminal", browser: "Browser", editor: "Editor", explorer: "File explorer", settings: "Settings" };
+// Goal 0: the "browser" area goes with the web pane. The assertion keeps this file compiling on the branch
+// where c3-terminal has removed the scope and on the one where it has not; ShortcutsPage draws no area with
+// no rows, so a stale entry shows nothing either way.
+export const AREAS = { global: "General", tabs: "Tabs", terminal: "Terminal", browser: "Browser", editor: "Editor", explorer: "File explorer", settings: "Settings" } as Record<Scope, string>;
 export type Badge = "Modified" | "Unassigned" | "Disabled" | "Conflicts";
 export type Filter = "all" | "modified" | "unassigned" | "conflicting";
 export const FILTERS: Array<[Filter, string]> = [["all", "All"], ["modified", "Modified"], ["unassigned", "Unassigned"], ["conflicting", "Conflicting"]];

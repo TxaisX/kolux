@@ -31,7 +31,7 @@ import { forkNotice, loadPushTarget, type PushTarget } from "./forkPush";
 import { watchStatus } from "./watch";
 import { afterRefresh, commitBox, mainStep, noErrors, statusGuard, afterReload, type PanelErrors } from "./rules";
 import { DIFF_SPLITS, type DiffSplit } from "./split";
-import { openInBrowser } from "../browser/openIn";
+import { openExternal } from "../open/openExternal";
 import { HistoryLoads, acceptHistory, historyFor, type LoadedHistory } from "./history";
 import { LINES_SKIPPED_NOTE, canCommit, changeCount, cutBanner, conflictPrompt, grouped, savedFixAgent, isCommitShortcut, nextStep, remoteItems, summaryLabel, summaryRows, summaryTotal, type ActionOutcome, type Change, type CommitOutcome, type RemoteAction, type Status, type Summary, bulk, rowOrder, rowKeys, selectRows, spanRuns, type RowKey, discardAsk, type DiscardAsk, type Section, mergeActions, mergeLabel, type MergeAction, type MergeInfo, abortLabel, capped, clashWord, CONFLICT_CAP, filesWord, graph, graphLines, commitUrl, explainPrompt, type Commit, type GraphRow, prMismatch, prStateWord, scmGroups, prLooked, prRefreshDelay, PR_STALE_MS, prReason, prRowText, withPr, needsGitHub, type Pr, type PrAnswer, type PrLook, commitItems, failureTitle, discardPlan, fileTree, reviewPrompt, SECTION_CAP, tooManyLine, filterRows, fullPath } from "./model";
 import OutOfFlow from "../chrome/OutOfFlow";
@@ -1319,7 +1319,7 @@ export default function SourceControlPanel({ dir, initialStatus, writer = DEFAUL
                   {[
                     { id: "hash", label: "Copy hash", run: () => copy(ctx.commit.hash, "commit hash") },
                     { id: "message", label: "Copy message", run: () => copy(ctx.commit.message, "commit message") },
-                    ...(ghRepo ? [{ id: "open", label: "Open in browser", run: () => openInBrowser(commitUrl(ghRepo, ctx.commit.hash)!) }] : []),
+                    ...(ghRepo ? [{ id: "open", label: "Open in browser", run: () => void openExternal(commitUrl(ghRepo, ctx.commit.hash)!) }] : []),
                     { id: "explain", label: "Explain changes", run: () => explain(ctx.commit) },
                   ].map((item) => (
                     <button
