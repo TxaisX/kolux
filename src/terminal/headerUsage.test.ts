@@ -79,7 +79,7 @@ test("USAGE-034: shrinking the header drops the cost, then the countdowns, then 
     last = now;
   }
   expect(order).toEqual(["cost", "countdowns", "plan", "tokens"]);
-  // At the narrowest only the ring and percentage remain.
+  // At the narrowest nothing remains.
   expect(piecesFor(0, have)).toEqual({ tokens: false, plan: false, countdowns: false, cost: false });
 });
 
@@ -100,16 +100,15 @@ test("USAGE-034: with no measurement yet every piece shows (nothing to measure, 
 
 test("USAGE-034: the hover gains one line per window naming its reset time", () => {
   const w = windowsOf("claude", claude, null);
-  const lines = hoverLines("Context used: 78% of the agent's context window", w, false, new Date(NOW));
-  expect(lines[0]).toBe("Context used: 78% of the agent's context window");
-  expect(lines).toHaveLength(3);
-  expect(lines[1]).toMatch(/^5-hour: 34% used, resets /);
-  expect(lines[2]).toMatch(/^Weekly: 61% used, resets /);
+  const lines = hoverLines(w, false, new Date(NOW));
+  expect(lines).toHaveLength(2);
+  expect(lines[0]).toMatch(/^5-hour: 34% used, resets /);
+  expect(lines[1]).toMatch(/^Weekly: 61% used, resets /);
   // 5-hour resets later the same day: no weekday; the weekly one is days away: names a weekday.
-  expect(lines[1]).toMatch(/resets \d{1,2}:\d{2}\s?(AM|PM)?$/i);
-  expect(lines[2]).toMatch(/resets (Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w* \d{1,2}:\d{2}/);
-  expect(hoverLines("t", w, true, new Date(NOW))[1]).toMatch(/^5-hour: 66% left, resets /);
-  expect(hoverLines("t", [{ label: "5h", name: "5-hour", usedPercent: 10, resetsAt: null }], false, new Date(NOW))[1]).toBe("5-hour: 10% used, reset time unknown");
+  expect(lines[0]).toMatch(/resets \d{1,2}:\d{2}\s?(AM|PM)?$/i);
+  expect(lines[1]).toMatch(/resets (Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w* \d{1,2}:\d{2}/);
+  expect(hoverLines(w, true, new Date(NOW))[0]).toMatch(/^5-hour: 66% left, resets /);
+  expect(hoverLines([{ label: "5h", name: "5-hour", usedPercent: 10, resetsAt: null }], false, new Date(NOW))[0]).toBe("5-hour: 10% used, reset time unknown");
 });
 
 test("USAGE-034: the ticker moves the clock at least every 30 seconds and stops when cleared", () => {
@@ -128,7 +127,7 @@ test("USAGE-034: the ticker moves the clock at least every 30 seconds and stops 
   expect(seen).toHaveLength(3);
 });
 
-test("USAGE-034: with no plan windows nothing but the ring is drawn, at any width", () => {
+test("USAGE-034: with no plan windows nothing is drawn, at any width", () => {
   const none = { tokens: false, plan: false, countdowns: false, cost: false };
   expect(piecesFor(FULL_WIDTH, { tokens: true, windows: 0, cost: true })).toEqual(none);
   expect(piecesFor(undefined, { tokens: true, windows: 0, cost: true })).toEqual(none);

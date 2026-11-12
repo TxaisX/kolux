@@ -65,7 +65,7 @@ import { openSettings } from "../settings/pages";
 import { answerKeys, buttonsShown, canAnswer, nextPrompt } from "./permissionAnswer";
 import { Close, Dots, Expand, Plus, SplitRight, StatusGlyph } from "../chrome/icons";
 import VendorMark, { type Agent } from "../chrome/VendorMark";
-import { ContextGauge, HeaderUsage } from "./UsageReadout";
+import { HeaderUsage } from "./UsageReadout";
 import type { Readout } from "./headerUsage";
 import { meterText, shortTokens, tone as toneOf, type Meter } from "../usage/meter";
 import PlusMenu, { programWord, shellWord, type AgentInfo } from "../launch/PlusMenu";
@@ -142,10 +142,7 @@ type Props = {
   crew?: Crew;
   /** STAT-022: why the agent halted while `hook` is blocked; the header's tooltip says it. */
   stop?: StopInfo;
-  /** STAT-040: how full the agent's context is, 0 to 100, from its last status-line report;
-   * null or left out while no reading has come in yet (USAGE-001: a greyed 0%). */
-  context?: number | null;
-  /** USAGE-004: the agent's plan figures beside the gauge on the Agents screen. Shown only while `usage`
+  /** USAGE-004: the agent's plan figures in the header on the Agents screen. Shown only while `usage`
    * is left out; with it the header's full readout carries the plan figures on every screen. */
   plan?: string;
   /** USAGE-034: the pane's reading for the full usage readout (tokens against the effective window,
@@ -271,7 +268,7 @@ const stagger = () =>
 // T-765: one byte budget for the whole window, so ten panes flooding cost the frame no more than one.
 const outputFrames = frameOutputs();
 
-export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, context, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
+export default function TerminalPane({ hidden = false, gpu = true, name, plan, usage, cwd = null, branch = null, focused = false, agent = "shell", program = null, args = [], env, onRunning, onNeedsYou, onIdentity, onGuess, hook, pendingTool, keySettings = null, crew, stop, onBell, unread = false, onPty, onFailed, onRestoreFailed, title: jobTitle, typed, shellName, custom = false, onRename, renameAsk = 0, sessionKnown = false, onCopyId, findHandle, number, onFocus, onClose, onReviewPlan, session, onSessionLaunch, entryTabs, onEntry, shells, onShell, agents = [], launching = false, onLaunch, defaultId, onSetDefault, onChoose, onSplit, dragCell, onEqualize, onMoveToTab, expand, card, account, notice = null, restored = false, identityBefore, clipboardFromPrograms = true, linksOpenInKolux = false, onOpenLink, onOpenFile, resumed }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const keySettingsRef = useRef(keySettings);
   keySettingsRef.current = keySettings;
@@ -1854,7 +1851,7 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
               Review plan
             </button>
           )}
-          {usage ? <HeaderUsage context={context} agent={agent} readout={usage} account={account} /> : <ContextGauge context={context} agent={agent} />}
+          {usage && <HeaderUsage agent={agent} readout={usage} account={account} />}
           <button
             className="ib"
             title="Pane menu"
@@ -2164,5 +2161,3 @@ export default function TerminalPane({ hidden = false, gpu = true, name, plan, u
   );
 }
 
-// USAGE-001: the gauge lives with the rest of the header readout (UsageReadout.tsx); kept importable from here.
-export { ContextGauge };
