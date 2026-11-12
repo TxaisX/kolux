@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { READINESS_TTL_MS, assess, canStartReview, confirmed, createBlock, dismiss, errorShown, offerFor, offerOf, raise, readinessKey, reviewHint, reviewWhere } from "./startPr";
+import { READINESS_TTL_MS, REVIEW_HINT, assess, canStartReview, confirmed, createBlock, dismiss, errorShown, offerFor, offerOf, raise, readinessKey } from "./startPr";
 import type { Status } from "./model";
 
 const st = (over: Partial<Status> = {}): Status =>
@@ -47,14 +47,8 @@ test("VIEW-074 a hard error clears when the state is fixed and a check for one w
   expect(errorShown(dismiss(book, "/a"), "/b", "kb")).toBe("other failure");
 });
 
-test("VIEW-074 a modifier-click opens the review in the other browser and the hint names which", () => {
-  const plain = { ctrlKey: false, metaKey: false, altKey: false };
-  expect(reviewWhere(plain, true)).toBe("kolux");
-  expect(reviewWhere({ ...plain, ctrlKey: true }, true)).toBe("system");
-  expect(reviewWhere(plain, false)).toBe("system");
-  expect(reviewWhere({ ...plain, metaKey: true }, false)).toBe("kolux");
-  expect(reviewHint(true)).toContain("Ctrl-click opens it in the system browser");
-  expect(reviewHint(false)).toContain("Ctrl-click opens it in the Kolux browser");
+test("VIEW-074 the review hint says the pull request opens in your browser", () => {
+  expect(REVIEW_HINT).toContain("your browser");
 });
 
 // Row 76: a remote that is not GitHub never gets a create action or the one-click button (the one-click path

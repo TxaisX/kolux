@@ -22,7 +22,7 @@ import { filterDataPictures } from "./notePictures";
 import { showPicturesIn } from "./pictureDom";
 import { readPicture } from "./pictureBytes";
 import { mimeOf } from "./imageFiles";
-import { bytesToDataUri, exportNotePdf, noteTitle } from "../browser/notePdf";
+import { bytesToDataUri, exportNotePdf, noteTitle } from "./notePdf";
 import { useKeymap } from "../keys/KeymapContext";
 import { withChord } from "../terminal/PaneMenu";
 import { labelOf, matchEvent } from "../keys/keymap";

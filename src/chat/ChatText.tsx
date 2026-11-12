@@ -116,7 +116,6 @@ export function BrowserChoice({ url, at, onPick, onClose }: { url: string; at: {
   return (
     <div ref={box} className="chat-browser-menu" role="menu" aria-label="Open link in" style={{ left: Math.max(8, at.x), top: Math.max(8, at.y) }} onKeyDown={onKeyDown}>
       <div className="chat-browser-url" title={url}>{url}</div>
-      <button type="button" role="menuitem" onClick={() => pick("kolux")}>Open in Kolux</button>
       <button type="button" role="menuitem" onClick={() => pick("system")}>Open in your browser</button>
       <button type="button" role="menuitem" onClick={onClose}>Cancel</button>
     </div>

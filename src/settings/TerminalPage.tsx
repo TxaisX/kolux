@@ -24,7 +24,6 @@ import { openSettings } from "./pages";
 import { useSettings } from "./useSettings";
 import { SettingsError } from "./SettingsError";
 import { DENSITIES, DENSITY_FIELD, readDensity } from "../shell/paneChrome";
-import { KOLUX_FIELD, switchPatch } from "../shell/linkAsk";
 
 /** TERM-119: on unless switched off; the app reads the same field when it starts a shell. */
 const SHELL_HISTORY_FIELD = "shellHistoryPerWorktree";
@@ -219,10 +218,9 @@ export default function TerminalPage() {
       {text && (
         <section className="conn-card" data-section="links">
           <h2 className="conn-name">Links</h2>
-          <Switch label="Open web links from the terminal in the Kolux browser" checked={settings?.[KOLUX_FIELD] === true} onChange={(on) => save(switchPatch(on))} />
-          <p className="conn-detail">Off opens them in your system browser. Hold Shift with Ctrl (Cmd on macOS) and click to use the system browser for a single link. Turning this switch yourself also stops the first-click question.</p>
+          <p className="conn-detail">A web link in a terminal opens in your own browser; Kolux no longer draws web pages.</p>
           <Switch label="Link menu on Ctrl+right-click (Cmd+right-click on macOS)" checked={text.linkMenu} onChange={(on) => save({ [FIELDS.linkMenu]: on })} />
-          <p className="conn-detail">Offers opening a link in either browser, copying it, or coming back here. Off also drops it from the hint shown over a link.</p>
+          <p className="conn-detail">Offers opening a link in your browser, copying it, or coming back here. Off also drops it from the hint shown over a link.</p>
         </section>
       )}
       {text && (
