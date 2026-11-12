@@ -44,7 +44,7 @@ fn cli_listener() -> (u16, Arc<AtomicUsize>) {
 }
 
 fn req(token: &str, id: &str) -> Request {
-    Request { id: id.into(), token: token.into(), command: "browser.tabs".into(), cwd: String::new(), args: json!({}), pane: None, cli: String::new(), arrived: None }
+    Request { id: id.into(), token: token.into(), command: "worktree.list".into(), cwd: String::new(), args: json!({}), pane: None, cli: String::new(), arrived: None }
 }
 
 /// What a browser sends for the page's own fetch, form post, img/script tag and preflight, each

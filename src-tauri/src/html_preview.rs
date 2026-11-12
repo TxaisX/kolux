@@ -1,13 +1,10 @@
-//! BROW-039: a worktree's HTML document previewed in a browser tab. The file's folder is served
-//! from a loopback port (http://127.0.0.1:<port>/<token>/<file>), so the page's relative styles,
-//! scripts and images resolve and the tab's address gate (T-500: http/https only, never a
-//! `*.localhost` host) stays as it is. One token per folder; a path may not leave its folder.
-//! T-159 (BROW-040): the fence. A preview serves only the documents themselves until the user
-//! allows its folder (`grant`); every path is checked before it is joined (no parent steps,
-//! roots, drive prefixes, backslash or NUL tricks) and after (the real file, links followed, must
-//! lie under the real folder), a file past FILE_MAX is explained, and the tab showing a preview
-//! (`loading`/`rendered`, one `Page` per tab) gets outbound navigations offered once instead of
-//! followed, downloads refused with one notice per burst, and agent commands only once rendered.
+//! BROW-039: a worktree's HTML document previewed in the user's own browser. The file's folder is
+//! served from a loopback port (http://127.0.0.1:<port>/<token>/<file>). One token per folder; a
+//! path may not leave its folder.
+//! T-159 (BROW-040): the fence. A preview serves only the documents opened (`granted` stays off now
+//! that the in-app pane and its Allow folder chip are gone); every path is checked before it is
+//! joined (no parent steps, roots, drive prefixes, backslash or NUL tricks) and after (the real
+//! file, links followed, must lie under the real folder), and a file past FILE_MAX is explained.
 //! T-659 (DT-C95, X-sec.3, R07-browser.4): each folder's token is 128 random bits from the
 //! system, kept in memory for the run; the server answers only requests addressed to its own
 //! loopback host and port; a preview is made, and its folder allowed, only for a folder inside a
@@ -18,7 +15,6 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
 
 #[derive(Clone, Debug)]
 pub struct Preview {
@@ -35,10 +31,6 @@ static PORT: OnceLock<u16> = OnceLock::new();
 const REQUEST_MAX: usize = 8 * 1024;
 /// The largest file a preview serves; a worktree document past it is explained instead.
 pub const FILE_MAX: u64 = 32 * 1024 * 1024;
-/// Download refusals inside this window are one burst: one notice.
-const BURST: Duration = Duration::from_secs(2);
-/// How long a navigation the app itself asked for may take to start before the fence closes again.
-const EXPECTED_FOR: Duration = Duration::from_secs(5);
 pub const EXTENSIONS: &[&str] = &["html", "htm"];
 
 fn port() -> Result<u16, String> {
@@ -122,7 +114,7 @@ pub fn host_ok(head: &str, port: u16) -> bool {
     matches!(hosts.as_slice(), [h] if ours.iter().any(|o| h.eq_ignore_ascii_case(o)))
 }
 
-/// Is this address an HTML document on disk? (`tab create --url` takes a path as well.)
+/// Is this path an HTML document on disk?
 pub fn is_document(path: &str) -> bool {
     let p = Path::new(path);
     p.is_file() && p.extension().and_then(|e| e.to_str()).is_some_and(|e| EXTENSIONS.contains(&e.to_lowercase().as_str()))
@@ -162,59 +154,9 @@ pub fn add(path: &str, open: &dyn Fn(&Path) -> bool) -> Result<Value, String> {
 }
 
 /// A preview address taken apart: its token and the rest (the file, query and fragment).
-pub fn split(url: &str, port: u16) -> Option<(&str, &str)> {
+#[cfg(test)]
+fn split(url: &str, port: u16) -> Option<(&str, &str)> {
     url.strip_prefix(&format!("http://127.0.0.1:{port}/"))?.split_once('/')
-}
-
-/// What a tab's address previews, if it is one of ours: folder, file, the file's full path and
-/// whether the folder is allowed. An address that would leave the folder is not a preview.
-pub fn of(url: &str) -> Option<Value> {
-    let (token, file) = split(url, *PORT.get()?)?;
-    let file = decode(file.split(['?', '#']).next().unwrap_or_default());
-    let (root, granted) = PREVIEWS.lock().ok()?.iter().find(|p| p.token == token).map(|p| (p.root.clone(), p.granted))?;
-    let path = fenced(&root, &file).ok()?;
-    Some(json!({ "folder": plain(&root), "file": file, "path": plain(&path), "granted": granted }))
-}
-
-/// The user allows the folder of the preview a tab shows (`url`): from here on every file under
-/// it is served, not only the documents opened. The grant lasts for the run. T-659 (DT-C95): only
-/// while `open` still holds the folder (it is checked without the lock: it may ask Git).
-pub fn grant(url: &str, open: &dyn Fn(&Path) -> bool) -> Result<(), String> {
-    let (token, _) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;
-    let root = PREVIEWS.lock().map_err(|e| e.to_string())?.iter().find(|p| p.token == token).map(|p| p.root.clone()).ok_or("no such preview")?;
-    if !open(&root) {
-        return Err(format!("{} is not inside a project or workspace open in Kolux, so its folder cannot be allowed", plain(&root)));
-    }
-    if let Some(p) = PREVIEWS.lock().map_err(|e| e.to_string())?.iter_mut().find(|p| p.token == token) {
-        p.granted = true;
-    }
-    Ok(())
-}
-
-/// T-733 (DT-C169): the user takes back the folder allowed for the preview a tab shows (`url`): it
-/// reads only the documents opened again, until the folder is allowed once more. The page the tab
-/// shows counts as opened, so a page reached by a link while allowed still loads after the reload.
-pub fn revoke(url: &str) -> Result<(), String> {
-    let (token, rest) = PORT.get().and_then(|p| split(url, *p)).ok_or("the tab is not showing a preview")?;
-    let file = decode(rest.split(['?', '#']).next().unwrap_or_default());
-    let mut previews = PREVIEWS.lock().map_err(|e| e.to_string())?;
-    let p = previews.iter_mut().find(|p| p.token == token).ok_or("no such preview")?;
-    p.granted = false;
-    if !file.is_empty() && !p.files.contains(&file) {
-        p.files.push(file);
-    }
-    Ok(())
-}
-
-/// APP-015: allowances last until the main page is rebuilt (a reload); a folder allowed before it asks again.
-pub fn clear_grants() {
-    if let Ok(mut p) = PREVIEWS.lock() {
-        revoke_all(&mut p);
-    }
-}
-
-fn revoke_all(previews: &mut [Preview]) {
-    previews.iter_mut().for_each(|p| p.granted = false);
 }
 
 /// The folder path a request's rest names, or why it may not: a parent step (`..`, in either
@@ -363,172 +305,6 @@ pub async fn browser_preview(app: tauri::AppHandle, path: String) -> Result<Valu
     tauri::async_runtime::spawn_blocking(move || add(&path, &opened(&app))).await.map_err(|e| e.to_string())?
 }
 
-/// Whether a tab's address is a preview of ours, and of which file (the pane shows a folder/file
-/// chip instead of the address).
-#[tauri::command]
-pub fn browser_preview_of(url: String) -> Option<Value> {
-    of(&url)
-}
-
-/// T-159 (BROW-040): the user allows the folder of the preview the tab is on (`url`), from the
-/// chip's Allow folder button; the pane reloads the page afterwards.
-#[tauri::command]
-pub async fn browser_preview_grant(app: tauri::AppHandle, url: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || grant(&url, &opened(&app))).await.map_err(|e| e.to_string())?
-}
-
-/// T-733 (DT-C169): the chip's Stop allowing button; the pane reloads the page afterwards.
-#[tauri::command]
-pub fn browser_preview_revoke(url: String) -> Result<(), String> {
-    revoke(&url)
-}
-
-// ---- The tab that shows a preview (T-159, BROW-040) ----
-
-/// A tab's page while it is a preview: set at the load's start, gone when another page starts.
-#[derive(Clone, Debug)]
-pub struct Page {
-    pub id: u32,
-    pub token: String,
-    /// The load finished: agent commands may drive the page.
-    pub rendered: bool,
-    /// An outside address was offered once for this page; the next ones are dropped.
-    pub offered: bool,
-    /// The last download refused with a notice (one per burst).
-    pub noticed: Option<Instant>,
-}
-
-static PAGES: Mutex<Vec<Page>> = Mutex::new(Vec::new());
-/// Tabs the app itself just told to navigate (the bar, the command line, Back/Forward): the next
-/// navigation is theirs, not the page's, so it is not fenced.
-static EXPECTED: Mutex<Vec<(u32, Instant)>> = Mutex::new(Vec::new());
-
-/// What the fence makes of a navigation the page asks for while `page` is a preview.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Verdict {
-    Load,
-    /// Offered to the user once, with the full address; nothing loads.
-    Offer,
-    Drop,
-}
-
-/// Pure: a preview tab follows addresses inside its own preview (and the blank page) and what
-/// the app asked for (`expected`); the first outside address is offered, later ones are dropped.
-pub fn verdict(page: Option<&Page>, url: &str, port: u16, expected: bool) -> Verdict {
-    let Some(page) = page else { return Verdict::Load };
-    if expected || url == "about:blank" || split(url, port).is_some_and(|(t, _)| t == page.token) {
-        return Verdict::Load;
-    }
-    if page.offered {
-        Verdict::Drop
-    } else {
-        Verdict::Offer
-    }
-}
-
-/// Pure: whether a refused download gets its notice, given the last one's time.
-pub fn notice_due(noticed: Option<Instant>, now: Instant) -> bool {
-    noticed.is_none_or(|t| now.duration_since(t) >= BURST)
-}
-
-/// A page load started in tab `id` at `url`: a preview address makes the tab a preview tab, any
-/// other address frees it. An expectation the app set is met.
-pub fn loading(id: u32, url: &str) {
-    let token = PORT.get().and_then(|p| split(url, *p)).map(|(t, _)| t.to_string());
-    if let Ok(mut e) = EXPECTED.lock() {
-        e.retain(|e| e.0 != id);
-    }
-    let Ok(mut pages) = PAGES.lock() else { return };
-    pages.retain(|p| p.id != id);
-    if let Some(token) = token {
-        pages.push(Page { id, token, rendered: false, offered: false, noticed: None });
-    }
-}
-
-/// The preview's load finished: agent commands may drive it.
-pub fn rendered(id: u32) {
-    if let Ok(mut pages) = PAGES.lock() {
-        if let Some(p) = pages.iter_mut().find(|p| p.id == id) {
-            p.rendered = true;
-        }
-    }
-}
-
-/// The app itself is about to navigate tab `id`: the fence lets that navigation (and its
-/// redirects) through for a moment.
-pub fn expect(id: u32) {
-    if let Ok(mut e) = EXPECTED.lock() {
-        e.retain(|e| e.0 != id);
-        e.push((id, Instant::now()));
-    }
-}
-
-fn expected(id: u32, now: Instant) -> bool {
-    EXPECTED.lock().is_ok_and(|e| e.iter().any(|e| e.0 == id && now.duration_since(e.1) < EXPECTED_FOR))
-}
-
-/// The tab asks to go to `url` (a link, a script, a popup): the fence's verdict when the tab
-/// shows a preview (`None` when it does not), remembering an offer so the page gets one.
-pub fn navigating(id: u32, url: &str) -> Option<Verdict> {
-    let port = *PORT.get()?;
-    let mut pages = PAGES.lock().ok()?;
-    let page = pages.iter_mut().find(|p| p.id == id)?;
-    let v = verdict(Some(page), url, port, expected(id, Instant::now()));
-    if v == Verdict::Offer {
-        page.offered = true;
-    }
-    Some(v)
-}
-
-/// Pure (after-list 285): an embedded frame of a preview may load only a blank page or an address
-/// inside its own preview; a tab that shows no preview is not fenced.
-pub fn frame_allowed(page: Option<&Page>, url: &str, port: u16) -> bool {
-    let Some(page) = page else { return true };
-    matches!(url, "about:blank" | "about:srcdoc") || split(url, port).is_some_and(|(t, _)| t == page.token)
-}
-
-/// An embedded frame of tab `id` starts loading `url`: whether the fence lets it.
-pub fn frame_may_load(id: u32, url: &str) -> bool {
-    let Some(port) = PORT.get() else { return true };
-    let Ok(pages) = PAGES.lock() else { return true };
-    frame_allowed(pages.iter().find(|p| p.id == id), url, *port)
-}
-
-/// Whether tab `id` shows a preview now.
-pub fn is_preview(id: u32) -> bool {
-    PAGES.lock().is_ok_and(|p| p.iter().any(|p| p.id == id))
-}
-
-/// A download asked for from tab `id`: `None` when the tab is not a preview; `Some(true)` when
-/// it is and this refusal gets a notice, `Some(false)` when the notice went out this burst.
-pub fn download_refused(id: u32) -> Option<bool> {
-    let mut pages = PAGES.lock().ok()?;
-    let p = pages.iter_mut().find(|p| p.id == id)?;
-    let now = Instant::now();
-    let due = notice_due(p.noticed, now);
-    if due {
-        p.noticed = Some(now);
-    }
-    Some(due)
-}
-
-/// Agent tools drive a preview only once it has rendered.
-pub fn drivable(id: u32) -> Result<(), String> {
-    match PAGES.lock().ok().and_then(|p| p.iter().find(|p| p.id == id).map(|p| p.rendered)) {
-        Some(false) => Err("the preview has not rendered yet; wait for it to load".to_string()),
-        _ => Ok(()),
-    }
-}
-
-pub fn forget(id: u32) {
-    if let Ok(mut pages) = PAGES.lock() {
-        pages.retain(|p| p.id != id);
-    }
-    if let Ok(mut e) = EXPECTED.lock() {
-        e.retain(|e| e.0 != id);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -562,18 +338,6 @@ mod tests {
         p[0].granted = true;
         assert_eq!(respond(&p, "/t1/css/a.css").0, 200);
         assert_eq!(respond(&p, "/t1/a%20b.html").0, 200);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn app015_a_rebuilt_window_forgets_every_allowed_folder_but_keeps_the_documents_opened() {
-        let dir = site("revoke");
-        let mut p = vec![open(&dir, true)];
-        assert_eq!(respond(&p, "/t1/css/a.css").0, 200);
-        revoke_all(&mut p);
-        assert!(!p[0].granted);
-        assert_eq!(respond(&p, "/t1/css/a.css").0, 403, "the folder must be allowed again");
-        assert_eq!(respond(&p, "/t1/index.html").0, 200, "the opened document still reads");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -641,26 +405,6 @@ mod tests {
     }
 
     #[test]
-    fn brow040_a_preview_tab_follows_its_own_files_offers_an_outside_address_once_and_drops_the_rest() {
-        let page = Page { id: 1, token: "t1".into(), rendered: true, offered: false, noticed: None };
-        let v = |url: &str, expected: bool| verdict(Some(&page), url, 4000, expected);
-        assert_eq!(verdict(None, "https://example.com/", 4000, false), Verdict::Load, "a tab without a preview is not fenced");
-        assert_eq!(v("http://127.0.0.1:4000/t1/other.html", false), Verdict::Load, "another file of the preview");
-        assert_eq!(v("about:blank", false), Verdict::Load);
-        assert_eq!(v("http://127.0.0.1:4000/t2/index.html", false), Verdict::Offer, "another folder's preview is outside");
-        assert_eq!(v("https://example.com/", false), Verdict::Offer);
-        assert_eq!(v("https://example.com/", true), Verdict::Load, "the app asked (bar, command line, Back)");
-        let offered = Page { offered: true, ..page.clone() };
-        assert_eq!(verdict(Some(&offered), "https://example.com/", 4000, false), Verdict::Drop, "offered once");
-        assert_eq!(verdict(Some(&offered), "https://example.com/", 4000, true), Verdict::Load);
-        // Download notices: one per burst.
-        let now = Instant::now();
-        assert!(notice_due(None, now));
-        assert!(!notice_due(Some(now), now + Duration::from_millis(500)));
-        assert!(notice_due(Some(now), now + BURST));
-    }
-
-    #[test]
     fn brow039_a_preview_serves_its_folder_and_nothing_outside_it() {
         let dir = site("serve");
         let p = vec![open(&dir, true)];
@@ -690,30 +434,14 @@ mod tests {
         let url = v["url"].as_str().unwrap();
         assert!(url.starts_with("http://127.0.0.1:") && url.ends_with("/index.html"), "{url}");
         assert_eq!(v["file"], "index.html");
-        let back = of(url).unwrap();
-        assert_eq!(back["file"], "index.html");
-        assert_eq!(back["folder"], v["folder"]);
-        assert!(of("https://example.com/").is_none());
+        assert_eq!(split(url, *PORT.get().unwrap()).map(|(_, f)| f), Some("index.html"), "the address names the document");
+        assert!(split("https://example.com/", *PORT.get().unwrap()).is_none());
         assert!(add(&dir.join("css").join("a.css").to_string_lossy(), &within(&open)).unwrap_err().contains("not an HTML document"));
         // The same folder keeps one token, so two documents share the port and prefix.
         let v2 = add(&dir.join("a b.html").to_string_lossy(), &within(&open)).unwrap();
         assert_eq!(v2["url"].as_str().unwrap().rsplit_once('/').unwrap().0, url.rsplit_once('/').unwrap().0);
         assert!(v2["url"].as_str().unwrap().ends_with("/a%20b.html"));
         let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn after285_a_preview_frame_loads_only_from_its_own_folder() {
-        let page = Page { id: 1, token: "t1".into(), rendered: true, offered: false, noticed: None };
-        let f = |url: &str| frame_allowed(Some(&page), url, 4000);
-        assert!(f("http://127.0.0.1:4000/t1/css/a.css"), "inside the preview");
-        assert!(f("http://127.0.0.1:4000/t1/"));
-        assert!(f("about:blank"));
-        assert!(f("about:srcdoc"));
-        for out in ["https://example.com/", "http://127.0.0.1:4000/t2/x.html", "http://127.0.0.1:4001/t1/x.html", "http://127.0.0.1:4000@evil.test/t1/x", "http://localhost:4000/t1/x", "file:///C:/x.html", "data:text/html,x", "javascript:alert(1)", "http://127.0.0.1:4000/", ""] {
-            assert!(!f(out), "{out}");
-        }
-        assert!(frame_allowed(None, "https://example.com/", 4000), "a tab that shows no preview is not fenced");
     }
 
     #[test]
@@ -766,36 +494,13 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    #[test]
-    fn t733_an_allowed_folder_can_be_taken_back_and_allowed_again() {
-        let dir = site("stop");
-        let doc = dir.join("index.html").to_string_lossy().to_string();
-        let parent = dir.parent().unwrap().to_string_lossy().to_string();
-        let url = add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["url"].as_str().unwrap().to_string();
-        grant(&url, &within(std::slice::from_ref(&parent))).unwrap();
-        assert_eq!(of(&url).unwrap()["granted"], true);
-        revoke(&url).unwrap();
-        assert_eq!(of(&url).unwrap()["granted"], false, "taken back");
-        assert_eq!(add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["granted"], false, "opening the document again does not allow it");
-        grant(&url, &within(&[parent])).unwrap();
-        assert_eq!(of(&url).unwrap()["granted"], true, "and it can be allowed again");
-        // a page reached by a link while allowed still loads after Stop allowing; its neighbours do not
-        let linked = url.replace("index.html", "a%20b.html");
-        revoke(&linked).unwrap();
-        let token = linked.split('/').nth(3).unwrap().to_string();
-        assert_eq!(respond(&PREVIEWS.lock().unwrap(), &format!("/{token}/a%20b.html")).0, 200, "the page the tab shows");
-        assert_eq!(respond(&PREVIEWS.lock().unwrap(), &format!("/{token}/css/a.css")).0, 403, "the files beside it");
-        assert!(revoke("http://example.com/x").is_err(), "a tab not on a preview is refused");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
     /// The open-folder test the commands use, for a fixed list of folders.
     fn within(folders: &[String]) -> impl Fn(&Path) -> bool + '_ {
         move |r| inside(r, folders)
     }
 
     #[test]
-    fn t659_a_document_outside_every_open_folder_is_not_previewed_and_its_folder_not_allowed() {
+    fn t659_a_document_outside_every_open_folder_is_not_previewed() {
         let dir = site("fence");
         let doc = dir.join("index.html").to_string_lossy().to_string();
         let parent = dir.parent().unwrap().to_string_lossy().to_string();
@@ -807,11 +512,7 @@ mod tests {
         assert!(add(&doc, &within(&[])).unwrap_err().contains("not inside a project or workspace"));
         assert!(add(&doc, &within(std::slice::from_ref(&sibling))).is_err(), "a folder whose name it only starts with does not hold it");
         assert!(add(&doc, &within(&[dir.join("css").to_string_lossy().to_string(), ".".into(), String::new()])).is_err(), "a subfolder, a relative path or nothing does not hold it");
-        let url = add(&doc, &within(std::slice::from_ref(&parent))).unwrap()["url"].as_str().unwrap().to_string();
-        assert!(grant(&url, &within(&[sibling])).unwrap_err().contains("cannot be allowed"));
-        assert_eq!(of(&url).unwrap()["granted"], false);
-        grant(&url, &within(&[parent])).unwrap();
-        assert_eq!(of(&url).unwrap()["granted"], true);
+        assert!(add(&doc, &within(&[parent])).is_ok(), "the open folder that holds it does");
         let _ = std::fs::remove_dir_all(&dir);
         let _ = std::fs::remove_dir(&prefix);
     }

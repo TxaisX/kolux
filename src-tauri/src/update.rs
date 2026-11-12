@@ -160,7 +160,7 @@ async fn installer_missing(app: &AppHandle, url: &tauri::Url) -> bool {
     if !release_host(url.as_str()) {
         return false;
     }
-    matches!(crate::browser::head(app, url, false, CHECK_TIMEOUT).await, Ok(a) if matches!(a.status, 404 | 410))
+    matches!(crate::net::head(app, url, false, CHECK_TIMEOUT).await, Ok(a) if matches!(a.status, 404 | 410))
 }
 
 /// APP-028: what the next launch says about the last install attempt (read once, then removed).
@@ -545,7 +545,7 @@ mod tests {
         let src = include_str!("update.rs");
         let body = &src[src.find("async fn installer_missing").unwrap()..src.find("pub fn update_last_attempt").unwrap()];
         assert!(body.contains("404 | 410"), "410 Gone is a missing installer like 404");
-        assert!(body.find("release_host(url.as_str())").unwrap() < body.find("browser::head").unwrap(), "non-GitHub hosts are never asked");
+        assert!(body.find("release_host(url.as_str())").unwrap() < body.find("net::head").unwrap(), "non-GitHub hosts are never asked");
     }
 
     #[test]

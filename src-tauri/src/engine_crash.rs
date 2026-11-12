@@ -5,11 +5,10 @@
 //! the runtime gives them, and the faulting module where it names one. Only real crashes become
 //! records in the app's crash store (resources::recovery, the one the startup prompt and Help >
 //! Report Crash read):
-//! - an exit during the app's own shutdown (including the helpers the app stops itself), an exit
-//!   from a tab that was closing, a hang, a kill, a deleted profile and a process that never started
-//!   are not crashes (each still leaves one diagnostics line);
-//! - a browser page's own renderer ending is the site's page failing, not Kolux: not a record; the
-//!   app's own view's renderer ending (its interface process) is;
+//! - an exit during the app's own shutdown (including the helpers the app stops itself), a hang, a
+//!   kill, a deleted profile and a process that never started are not crashes (each still leaves
+//!   one diagnostics line);
+//! - the app's own view's renderer ending (its interface process) is;
 //! - the browser process, the graphics process outside shutdown, and any other helper ending on a
 //!   crash, out of memory or for an unknown reason are crashes.
 //!
@@ -19,7 +18,7 @@
 //! reading taken as the engine reported the failure (physical and commit; free disk space is never
 //! shown, since it proves nothing about swap) and the faulting module when the engine names one.
 //!
-//! Pure functions here, tested; the event glue is in browser_engine.rs.
+//! Pure functions here, tested; the event glue is in webview_engine.rs.
 
 use crate::resources::recovery::{self, Crash};
 use std::path::Path;
@@ -51,15 +50,6 @@ pub const REASON_LAUNCH_FAILED: i32 = 4;
 pub const REASON_OUT_OF_MEMORY: i32 = 5;
 pub const REASON_PROFILE_DELETED: i32 = 6;
 
-/// Which view reported the failure.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Source {
-    /// The app's own window (its interface).
-    App,
-    /// A browser pane's page, by tab id.
-    Page(u32),
-}
-
 /// What the engine said about one process failure.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Failure {
@@ -83,12 +73,9 @@ pub struct Memory {
 }
 
 /// Whether a failure is a real crash: `Ok(())` to record it, or why it is not one.
-pub fn classify(f: &Failure, source: Source, quitting: bool, tab_open: bool) -> Result<(), &'static str> {
+pub fn classify(f: &Failure, quitting: bool) -> Result<(), &'static str> {
     if quitting {
         return Err("an exit during the app's own shutdown");
-    }
-    if matches!(source, Source::Page(_)) && !tab_open {
-        return Err("the tab was closing");
     }
     if f.kind == KIND_RENDER_UNRESPONSIVE {
         return Err("a page stopped responding (a hang, not an exit)");
@@ -99,9 +86,6 @@ pub fn classify(f: &Failure, source: Source, quitting: bool, tab_open: bool) -> 
         Some(REASON_LAUNCH_FAILED) => return Err("the process never started"),
         Some(REASON_PROFILE_DELETED) => return Err("the profile folder was deleted"),
         _ => {}
-    }
-    if matches!(source, Source::Page(_)) && (f.kind == KIND_RENDER || f.kind == KIND_FRAME_RENDER) {
-        return Err("a web page's own renderer ended (the site's page, not Kolux)");
     }
     Ok(())
 }
@@ -256,12 +240,9 @@ fn write_retry(dir: &Path, all: &[Crash]) -> Result<(), String> {
 
 /// One failure the engine reported: a diagnostics line always, and a crash record (new or merged)
 /// when it is a real crash. Returns the record's id when one was written.
-pub fn report(dir: &Path, f: &Failure, source: Source, tab_open: bool, memory: Option<Memory>, when: u64) -> Option<String> {
-    let who = match source {
-        Source::App => "the app's view".to_string(),
-        Source::Page(id) => format!("browser tab {id}"),
-    };
-    if let Err(why) = classify(f, source, is_quitting(), tab_open) {
+pub fn report(dir: &Path, f: &Failure, memory: Option<Memory>, when: u64) -> Option<String> {
+    let who = "the app's view";
+    if let Err(why) = classify(f, is_quitting()) {
         crate::diag::write(dir, &format!("engine {} {} in {who}: not a crash ({why}) (APP-040)", process_name(f.kind), reason_name(f.reason)));
         return None;
     }
@@ -308,29 +289,25 @@ mod tests {
     #[test]
     fn t286b_shutdown_exits_and_kills_are_not_crashes() {
         for kind in [KIND_BROWSER, KIND_GPU, KIND_UTILITY, KIND_RENDER] {
-            assert!(classify(&fail(kind, Some(REASON_CRASHED)), Source::App, true, true).is_err(), "kind {kind} at quit");
+            assert!(classify(&fail(kind, Some(REASON_CRASHED)), true).is_err(), "kind {kind} at quit");
         }
-        assert!(classify(&fail(KIND_BROWSER, Some(REASON_TERMINATED)), Source::App, false, true).is_err(), "a kill");
-        assert!(classify(&fail(KIND_BROWSER, Some(REASON_CRASHED)), Source::Page(4), false, false).is_err(), "a closing tab");
-        assert!(classify(&fail(KIND_RENDER_UNRESPONSIVE, None), Source::App, false, true).is_err(), "a hang");
-        assert!(classify(&fail(KIND_RENDER, Some(REASON_UNRESPONSIVE)), Source::App, false, true).is_err());
-        assert!(classify(&fail(KIND_BROWSER, Some(REASON_LAUNCH_FAILED)), Source::App, false, true).is_err());
-        assert!(classify(&fail(KIND_BROWSER, Some(REASON_PROFILE_DELETED)), Source::App, false, true).is_err());
+        assert!(classify(&fail(KIND_BROWSER, Some(REASON_TERMINATED)), false).is_err(), "a kill");
+        assert!(classify(&fail(KIND_RENDER_UNRESPONSIVE, None), false).is_err(), "a hang");
+        assert!(classify(&fail(KIND_RENDER, Some(REASON_UNRESPONSIVE)), false).is_err());
+        assert!(classify(&fail(KIND_BROWSER, Some(REASON_LAUNCH_FAILED)), false).is_err());
+        assert!(classify(&fail(KIND_BROWSER, Some(REASON_PROFILE_DELETED)), false).is_err());
     }
 
     // "Interface process crashes and unknown child crashes still are."
     #[test]
     fn t286b_interface_and_unknown_child_crashes_are_crashes() {
-        assert_eq!(classify(&fail(KIND_RENDER, Some(REASON_CRASHED)), Source::App, false, true), Ok(()), "the app's own interface");
-        assert_eq!(classify(&fail(KIND_FRAME_RENDER, Some(REASON_OUT_OF_MEMORY)), Source::App, false, true), Ok(()));
+        assert_eq!(classify(&fail(KIND_RENDER, Some(REASON_CRASHED)), false), Ok(()), "the app's own interface");
+        assert_eq!(classify(&fail(KIND_FRAME_RENDER, Some(REASON_OUT_OF_MEMORY)), false), Ok(()));
         for kind in [KIND_BROWSER, KIND_GPU, KIND_UTILITY, KIND_SANDBOX_HELPER, KIND_PPAPI_PLUGIN, KIND_PPAPI_BROKER, KIND_UNKNOWN] {
             for reason in [Some(REASON_CRASHED), Some(REASON_UNEXPECTED), Some(REASON_OUT_OF_MEMORY), None] {
-                assert_eq!(classify(&fail(kind, reason), Source::Page(1), false, true), Ok(()), "kind {kind} reason {reason:?}");
+                assert_eq!(classify(&fail(kind, reason), false), Ok(()), "kind {kind} reason {reason:?}");
             }
         }
-        // A web page's own renderer is the site's failure, not Kolux's.
-        assert!(classify(&fail(KIND_RENDER, Some(REASON_CRASHED)), Source::Page(1), false, true).is_err());
-        assert!(classify(&fail(KIND_FRAME_RENDER, Some(REASON_CRASHED)), Source::Page(1), false, true).is_err());
     }
 
     // "Only the newest five reports are kept": the seventh crash leaves five, the newest ones.
@@ -411,14 +388,14 @@ mod tests {
         let mut f = fail(KIND_UTILITY, Some(REASON_CRASHED));
         f.exit_code = Some(0x7272_0286);
         f.module = "C:\\Users\\someone\\AppData\\x.dll".into();
-        let id = report(&dir, &f, Source::Page(7), true, None, 100).expect("recorded");
-        let again = report(&dir, &f, Source::App, true, None, 101).expect("merged");
+        let id = report(&dir, &f, None, 100).expect("recorded");
+        let again = report(&dir, &f, None, 101).expect("merged");
         assert_eq!(again, id);
         let all = recovery::crashes_read(&dir);
         assert_eq!(all.len(), 1, "{all:?}");
         assert!(all[0].summary.contains("seen by 2 views"), "{}", all[0].summary);
         assert!(all[0].summary.contains("<home>") && !all[0].summary.contains("someone"), "{}", all[0].summary);
-        assert!(report(&dir, &fail(KIND_RENDER, Some(REASON_CRASHED)), Source::Page(7), true, None, 102).is_none(), "a site's page");
+        assert!(report(&dir, &fail(KIND_RENDER, Some(REASON_TERMINATED)), None, 102).is_none(), "a kill");
         assert_eq!(recovery::crashes_read(&dir).len(), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
