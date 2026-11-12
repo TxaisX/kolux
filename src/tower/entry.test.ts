@@ -22,7 +22,7 @@ vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ show: asyn
 vi.mock("../theme", () => ({ applyAppearance: () => {}, cachedAppearance: () => null, followSystemMode: () => {}, readAppearance: () => null }));
 vi.mock("../settings/general", () => ({ stampLook: () => null }));
 vi.mock("../settings/saveChanged", () => ({ saveChanged: async () => {} }));
-vi.mock("../language", () => ({ applyLanguage: () => {}, LANGUAGE_FIELD: "language" }));
+vi.mock("../language", () => ({ applyLanguage: () => {}, LANGUAGE_FIELD: "language", locale: () => "en", onLanguageChange: () => () => {} }));
 vi.mock("../settings/zoom", () => ({ applyZoom: () => {}, ZOOM_FIELD: "zoom" }));
 vi.mock("../terminal/text", () => ({ followText: () => {} }));
 vi.mock("../settings/menuWheel", () => ({ installMenuWheel: () => {} }));

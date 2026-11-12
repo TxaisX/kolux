@@ -12,6 +12,7 @@ import { ClaudeCard } from "../settings/SettingsPage";
 import CodexCard from "../settings/CodexCard";
 import GrokCard from "../settings/GrokCard";
 import { t } from "../i18n/lookup";
+import { usePackLoaded } from "../shell/usePackLoaded";
 import { chordFires, escapeLeaves, leaveKey, milestone, SCREENS } from "./firstRun";
 import { isAiAgent, TERMINAL_ID } from "./agentKind";
 import { defaultAgentId, menuAgents, offeredAgents } from "../launch/agents";
@@ -242,6 +243,7 @@ type Props = {
 };
 
 export default function Wizard(props: Props) {
+  usePackLoaded();
   const [at, setAt] = useState(props.start);
   const [on, setOn] = useState<Record<string, boolean>>({});
   // ONB-006: Escape, a click on the dimmed app or the corner close asks first; one question at a time.

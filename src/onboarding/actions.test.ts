@@ -32,8 +32,8 @@ describe("Multi-task picks the project for a new workspace (ONB-016)", () => {
     // the active workspace belongs to a non-git folder: it never qualifies, so the first git project is used
     expect(composeTarget(ps, lists, "C:\\work\\plain")).toEqual({ kind: "project", project: ps[1] });
   });
-  it("finds the project's own New workspace button by its path", () => {
-    expect(plusFor(proj("a"))).toBe('.proj[title="C:\\\\work\\\\a"] button[title^=\'New workspace\']');
+  it("shows the project's folder row (found by its path), then presses New session", () => {
+    expect(plusFor(proj("a"))).toEqual(['.proj[title="C:\\\\work\\\\a"]', "button.sb-new"]);
   });
 });
 
@@ -47,7 +47,7 @@ describe("the composer request (ONB-016)", () => {
     const { clicks, hands } = fake();
     const r = composerRequests(hands);
     expect(await r.open({ kind: "project", project: proj("a") })).toBe("opened");
-    expect(clicks).toEqual([plusFor(proj("a"))]);
+    expect(clicks).toEqual([...plusFor(proj("a"))]);
   });
   it("with no git project it opens the Add project form instead", async () => {
     const { clicks, hands } = fake();
@@ -77,7 +77,7 @@ describe("the composer request (ONB-016)", () => {
     // what the step does: void the older requests, close the guide, ask for the composer
     r.reset();
     expect(await r.open({ kind: "project", project: proj("a") })).toBe("opened");
-    expect(clicks).toEqual([plusFor(proj("a"))]);
+    expect(clicks).toEqual([...plusFor(proj("a"))]);
   });
   it("the guide opening does void a request left from before a close and reopen", async () => {
     const { clicks, hands } = fake({ onScreen: () => false });
@@ -95,7 +95,7 @@ describe("the composer request (ONB-016)", () => {
     const { clicks, hands } = fake({ onScreen: () => ++looks >= 3 });
     expect(await composerRequests(hands).open({ kind: "project", project: proj("a") })).toBe("opened");
     expect(looks).toBe(3);
-    expect(clicks).toHaveLength(1);
+    expect(clicks).toHaveLength(2);
     const off = fake({ onScreen: () => false });
     expect(await composerRequests(off.hands).open({ kind: "project", project: proj("a") })).toBe("gone");
     expect(off.clicks).toEqual([]);
@@ -104,7 +104,7 @@ describe("the composer request (ONB-016)", () => {
     let n = 0;
     const { hands } = fake({ click: () => ++n >= 4 });
     expect(await composerRequests(hands).open({ kind: "project", project: proj("a") })).toBe("opened");
-    expect(n).toBe(4);
+    expect(n).toBe(5); // three misses on the folder row, then the folder row and New session
   });
 });
 
