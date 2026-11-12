@@ -7,7 +7,7 @@
 import AgentMark from "../marks/AgentMark";
 import { Shell } from "./icons";
 
-export type Agent = "claude" | "codex" | "copilot" | "cursor" | "shell";
+export type Agent = "claude" | "codex" | "copilot" | "cursor" | "grok" | "opencode" | "shell";
 
 export default function VendorMark({ agent, size = 13 }: { agent: Agent; size?: number }) {
   if (agent === "shell") return <Shell size={size} />;

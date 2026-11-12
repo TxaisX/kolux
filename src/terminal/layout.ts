@@ -14,7 +14,7 @@ export const LAYOUT_FIELD = "savedLayout";
 
 export type PaneKind = "editor" | "preview" | "diff" | "changes" | "check";
 const KINDS: PaneKind[] = ["editor", "preview", "diff", "changes", "check"];
-const AGENTS: Agent[] = ["claude", "codex", "shell"];
+const AGENTS: Agent[] = ["claude", "codex", "copilot", "cursor", "grok", "opencode", "shell"];
 
 export type SavedPane = {
   key: number;
