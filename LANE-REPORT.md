@@ -9,7 +9,7 @@ Four lanes merged clean (c3 had nothing committed). Type check green; live smoke
 Still red: pnpm check on one feature-map marker (o2) and vitest exit 1 from one jsdom test that cannot start (c3), though all 6604 tests pass.
 
 ## Done this round (round 4, 2026-11-12)
-Logs: G:\Dev\kolux-lanes\_shared\logs\c1-gate4- Merges, all clean: lane/c2-agents, lane/o1-tools e1cbed90, lane/o2-tests f613f6e3, lane/o3-rune 06ee585d. lane/c3-terminal: 0 new commits.
+Logs: G:\Dev\kolux-lanes\_shared\logs\c1-gate4\n- Merges, all clean: lane/c2-agents, lane/o1-tools e1cbed90, lane/o2-tests f613f6e3, lane/o3-rune 06ee585d. lane/c3-terminal: 0 new commits.
 - Merged gate on 06ee585d:
   - `npx tsc --noEmit` -> `tsc exit 0`.
   - `pnpm check` -> exit 1: `guide-check: docs/guide/feature-map.md changed after its marker commit 080e4346` (P2 o2-tests/20261112-1400). Other steps OK.
