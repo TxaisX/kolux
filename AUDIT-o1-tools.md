@@ -177,3 +177,165 @@ Per Txais (2026-11-12), the embedded browser pane goes away; agents and users op
 2. **Fast local loop:** Measure dev launch + Rust rebuild baseline, implement `pnpm local` (`scripts/local-run.mjs`) with shared `CARGO_TARGET_DIR` and `com.txaisxiong.kolux.local` identifier, and write `docs/dev-loop.md` with before/after timings.
 3. **Verify owned screens live in the harness** against `docs/guide/feature-index.md` and fix any broken UI/features.
 4. **Fix audit findings & refactor:** Break `EditorPane.tsx` circular/static imports (`F-02`, eliminating `INEFFECTIVE_DYNAMIC_IMPORT`), split `EditorPane.tsx` and `Explorer.tsx` below 800 lines (`F-04`), fix `Explorer` `relative()` Windows case sensitivity (`F-03`), fix `AutomationsPage` `CSS.escape` (`F-16`), remove dead `pickers.ts` (`F-11`) and shadowed CSS (`F-12`), clean up `SourceControlPanel.tsx` if coordinator approves (`F-09`), deduplicate helpers (`F-05`, `F-13`), and add missing tests (`F-06`, `F-07`, `F-10`, `F-14`, `F-17`).
+
+---
+
+# 4. Second pass (2026-11-12 11:43) — measurements, hazards, new findings
+
+This pass re-measured the build loop with hard numbers, checked what the Goal 0 removal
+*breaks inside Rust*, and audited render-path cost. Findings that repeat section 2 are
+cross-referenced by their F-number and not relisted.
+
+## 4.1 Measured on this PC (quoted commands)
+
+| Step | Command | Time |
+|---|---|---|
+| Warm dependency install | `pnpm install --prefer-offline` | **0.8 s** (`Done in 24ms`) |
+| Frontend build (`tsc && vite build`) | `pnpm build` | **31 s** (`✓ built in 5.12s` for vite) |
+| Rust **debug**, app-crate rebuild, target warm | `cargo build --manifest-path src-tauri/Cargo.toml` in `G:\Dev\kolux` | **2 m 42 s** (`Finished dev profile [unoptimized + debuginfo] target(s) in 2m 42s`) |
+| Rust **release**, app-crate rebuild, deps already compiled | `cargo build --release …` in `~/.kolux-rs/release-checkout` (target 4.3 GB) | **19 m 55 s** (`Finished release profile [optimized] target(s) in 19m 55s`) |
+
+Same crate, same source, same machine: **release costs 7x debug**. The release step is ~95% of
+the 30-45 minutes Txais waits; `scripts/release.mjs:356` adds only NSIS + smoke + sign on top.
+
+Target dirs on disk: `G:\Dev\kolux\src-tauri\target` **56 GB**, release checkout **4.3 GB**,
+this lane's worktree: **none** (so any run here is a cold build).
+
+## 4.2 The local loop: the new findings
+
+| # | Finding | Severity | State | Evidence | Fix | Cost |
+|---|---|---|---|---|---|---|
+| L-1 | **`lto = true` + `codegen-units = 1` are what make a release build 7x a debug build.** Both a "try my change" build and the shipped installer pay them; a local build needs neither. | P1 | CONFIRMED | `src-tauri/Cargo.toml` `[profile.release]` (`codegen-units = 1, lto = true, opt-level = 3, panic = "abort", strip = true`); 2m42s vs 19m55s above | add `[profile.local] inherits = "release"` with `lto = "thin"`, `codegen-units = 16`, `strip = false`, `incremental = true`, `opt-level = 2`; `pnpm local` builds `--profile local` | 20 min + one timed run |
+| L-2 | `tauri build --no-bundle` exists (tauri-cli 2.12.4) and is unused: every local try also builds NSIS + updater artifacts + signature. | P1 | CONFIRMED | `npx tauri build --help` lists `--no-bundle`; the only build call is `scripts/release.mjs:356` | `pnpm local` = `tauri build --no-bundle --profile local --config <local.json>` then launch the exe | 30 min |
+| L-3 | The harness already honours `CARGO_TARGET_DIR` (`scripts/evidence/app-launch.mjs:468`) but nothing sets it, so every lane and checkout rebuilds from cold. | P1 | CONFIRMED | code quoted; `src-tauri/target` absent here | default `CARGO_TARGET_DIR` to one shared folder for local builds; document "one local build at a time" (cargo takes the target lock) | 40 min |
+| L-4 | The identifier is compiled in, so the local build must pass `--config` at build time or it shares Txais's installed profile. | P2 | CONFIRMED | `src-tauri/tauri.conf.json` `identifier: com.txaisxiong.kolux`; harness writes its own `tauri.dev.json` (`app-launch.mjs:369,453`) | `local.json`: `identifier: com.txaisxiong.kolux.local`, `productName: "Kolux Local"`, updater off | in L-2 |
+| L-5 | Ceiling: the app's own Rust is **one 168k-line crate** (210 files), so the smallest Rust edit recompiles the whole binary. No profile tweak beats that. | P2 | CONFIRMED | `find src-tauri/src -name '*.rs'` → 210 files, 167,815 lines, one `Cargo.toml` | split into crates — days, not this wave; record it so nobody promises "seconds" for Rust edits | days |
+
+`docs/dev-loop.md` (round 2) will carry this table:
+
+| Change | Command | Expected |
+|---|---|---|
+| CSS / TSX / logic | dev build with `--config` (harness or `pnpm local:dev`) | ~2 s per save (HMR) |
+| Rust | same dev build | ~2-3 min (measured 2m42s, whole crate) |
+| Whole app at release speed, no installer | `pnpm local` | target ~4 min (measure after L-1) |
+| Installer | `pnpm release` | 30-45 min, unchanged, releases only |
+
+## 4.3 Hazards: what breaks inside Rust if `browser*` is deleted as-is
+
+Section 1.2 lists `browser_pdf.rs`, `browser_tower.rs`, `browser_preview.rs` and the
+`web_icon.rs` helpers as KEEP. This pass found a fourth, and it is the dangerous one:
+
+| # | Hazard | Severity | State | Evidence | Owner |
+|---|---|---|---|---|---|
+| H-1 | **The update check calls `crate::browser::head(...)`** — the app's only HTTP client with its proxy/cert policy. Deleting the browser modules silently removes the ability to update: no error, the check just stops working. | **P0** | CONFIRMED | `src-tauri/src/update.rs:163`; the same module's test at `update.rs:548` asserts call order against `browser::head` | c3-terminal |
+| H-2 | Project icons call `browser::allowed`, `local_host`, `icon_clients`, `fetch_icon_within`, `public_addrs`, `hop_ok`. | P1 | CONFIRMED | `src-tauri/src/web_icon.rs:46,81-83,94,214-251`; `src-tauri/src/projects.rs:3237-3300` | c3-terminal + c2-agents |
+| H-3 | The Tower's window is built by `browser::tower::tower_window_open` — a plain `WebviewWindowBuilder` that only happens to live in the browser module. | P1 | CONFIRMED | `src-tauri/src/browser_tower.rs:45`, registered `lib.rs:887`, called from `src/tower/ownWindow.ts:133`; `lib.rs:233` gates it | c3-terminal |
+| H-4 | The startup-order test names `browser::helpers::sweep_at_start` as a startup mark. | P3 | CONFIRMED | `src-tauri/src/startup_marks.rs:238` | c3-terminal |
+| H-5 | Tab state is persisted to `browser-tabs.json` in the app data folder; nothing cleans it after removal. | P3 | CONFIRMED | `src-tauri/src/browser_session.rs:4,21` | c3-terminal |
+
+**Safe shape for the Rust cut:** reduce `browser.rs` to a ~600-line `net.rs`
+(`head`/`get`, `allowed`, `local_host`, `public_addrs`, `hop_ok`, `icon_clients`,
+`fetch_icon_within`), move `tower_window_open` beside the other window builders, then delete the
+remaining 27 modules / ~14,000 lines. Filed as
+`_shared/bugs/c3-terminal/20261112-1143-browser-net-helpers-must-survive.md`.
+
+## 4.4 New findings — `src/editor/` + `src/editmenu/`
+
+| # | Finding | Severity | State | Evidence | Fix | Cost |
+|---|---|---|---|---|---|---|
+| N-01 | HTML "Preview" becomes a silent no-op: it opens the pane, and an event with no listener shows nothing. | P1 | CONFIRMED | `EditorPane.tsx:791`, `DiffPane.tsx:576` → `htmlPreview.ts:15` dispatches `openInBrowser`; the only listener is `shell/useWindowStart.ts:94` | repoint the default `open` to `invoke("open_external")`, or drop the button | 30 min |
+| N-02 | `notePdf.ts` (100 lines) and `openIn.ts` (15 lines) inside `src/browser/` have **zero imports of their own** and are imported from outside; every other file in `src/browser/` is internal. | P3 | CONFIRMED | `grep '^import' src/browser/notePdf.ts src/browser/openIn.ts` → none | move them out first, then the delete is trivial | 20 min |
+| N-03 | Every visible editor tab runs a **2 s `file_stamps` poll**, and each poll lists worktrees under the fence mutex while an agent-worktree file is open. N tabs = N IPC calls per 2 s serialised on one mutex, competing with agents writing files. | P2 | CONFIRMED | `EditorPane.tsx:446-450` including its own comment describing the upgrade | one shared poller for all visible paths, or cache the fence decision per tab | 2 h |
+| N-04 | Preview re-parses and re-sanitises the entire note on **every keystroke**; EditorPane debounces the same job at 300 ms. | P2 | CONFIRMED | `PreviewPane.tsx:135-138` (`tell` fires per transaction) vs `EditorPane.tsx:353-355` | copy the 300 ms debounce | 20 min |
+| N-05 | All Changes `JSON.stringify`s the whole change list (old and new) on every watcher tick, on the UI thread. | P2 | CONFIRMED | `AllChangesPane.tsx:186` | compare a cheap signature (length + first/last stamp) or a back-end list hash | 45 min |
+| N-06 | Explorer re-flattens the whole tree in the render body, once per scroll tick too. | P2 | CONFIRMED | `Explorer.tsx:382-384`; scroll handler `:212` sets state per wheel event | three `useMemo`s: `visible`, `rows`, `index` | 30 min |
+| N-07 | **Right-click gives no menu at all on non-editable text**, and the host cancels the webview's own menu: no right-click Copy in the preview, chat, diff cards or PDF view, anywhere in the app. | P2 | CONFIRMED | `EditMenuHost.tsx:92-95` (`kind === "none"` → `preventDefault(); return`), `editMenuModel.ts:31` | for `"none"` with a non-empty selection show a Copy-only menu; suppress only when there is no selection | 1 h |
+| N-08 | Save guard is a clean 90-line seam inside a 933-line component, forcing two `await import("./EditorPane")` calls to dodge the cycle. | P3 | CONFIRMED | `EditorPane.tsx:95-183`; `CloseDialog.tsx:15`, `NotebookView.tsx:122` | move to `editor/saveGuards.ts` (fold into F-02) | 45 min |
+| N-09 | `frontMatter.ts` (777) is 90% a list-gap placement engine; the real front-matter surface is ~30 lines. | P3 | CONFIRMED | `splitFront` `:13`, `hideFrontFor` `:775`; the engine is `:117-604`; `collapseGaps`/`blockSpans` have no callers outside the file | split `richPlacement.ts` | 1 h |
+| N-10 | Dead exports: `viewSwitch.ts:25,28,32` (`changesBanner`, `viewEditable`, `headSides`) and `diskChange.ts:18` (`sameStamp`) have test-only callers. | P3 | CONFIRMED | grep across `src/` excluding tests → 0 hits | delete, or wire `viewEditable` into the table view's read-only | 15 min |
+| N-11 | The path key is re-implemented four times; the rail's copy mangles WSL paths, so review notes never match a WSL file. | P3 | CONFIRMED | `buffers.ts:141` (`keyOf`) vs `rail.ts:12`, `desktopDrops.ts:19`, `noteLinks.ts:78` | import `keyOf` in all three | 20 min |
+| N-12 | `EditorPane.tsx` (933) has no test of its own: the poll effect, editors latch and rich/source switch are untested. | P3 | CONFIRMED | no `EditorPane.test.ts` | one test for latch lifecycle + poll guard | 3 h |
+| N-13 | `htmlPreview.test.ts:4` mocks `../browser/BrowserPane` — a module the code never imports; it passes only because `open` is injected. | P3 | CONFIRMED | `htmlPreview.ts:5` imports `../browser/openIn` | delete the mock line | 5 min |
+| N-14 | Moving `look` (a 30-line theme at `EditorPane.tsx:188`) is the smallest fix for F-02's warning; `DiskBanner.tsx:16` is a third static importer not named in F-02. | P3 | CONFIRMED | `pnpm build` warning text | `editor/editorTheme.ts` | 20 min |
+
+## 4.5 New findings — `src/scm/` + `src/ports/` + `src/artifacts/`
+
+| # | Finding | Severity | State | Evidence | Fix | Cost |
+|---|---|---|---|---|---|---|
+| N-15 | Checks panel's PR link: a **plain click** goes to the pane, so after removal the link does nothing and says nothing. `openOut` already exists in the same file. | P1 | CONFIRMED | `ChecksPanel.tsx:157` vs `:47` | replace the branch with `openOut(pr.url)`; drop `inKolux`, `reviewHint`, the title hint and the `useSettings` import | 15 min |
+| N-16 | Checks-tab create block freezes: **one** `scm_status` read on mount, no watcher — commit in the terminal and it still says "Commit your changes first". After the 5-minute readiness TTL it renders "Checking whether this branch is ready…" forever (no button, no timer). | P2 | CONFIRMED | `PrStart.tsx:52-74`, `:92`, `:237`; `watch.ts:27` exists and is unused here | subscribe to `watchStatus(dir)` and seed from its first push | 45 min |
+| N-17 | Opening Ports wipes the list and the count, and drops the last good list on a scan error (which makes the "Showing the last list." note a lie). | P2 | CONFIRMED | `PortsItem.tsx:61-70` — the clear sits in an effect keyed on `[active, open]` | clear only when `active` changed | 20 min |
+| N-18 | Two `git status` runs per Checks-tab open, one thrown away (Rust `scm_pr_checks` + frontend `scm_status`). | P2 | CONFIRMED | `PrStart.tsx:54` vs `src-tauri/src/scm.rs:2326` | fixed by N-16 | — |
+| N-19 | Four hand-rolled "open in the system browser + show the failure" copies with four different sinks; `PrStart.tsx:217` also carries a dead ternary inside a `kind === "found"` branch. | P2 | CONFIRMED | `ChecksPanel.tsx:47`, `StackMap.tsx:103`, `AutoPrStatus.tsx:69`, `PrStart.tsx:217` | one `openOut` in `panelUx.ts` beside `openLinkFailed` | 20 min |
+| N-20 | `PrStart.tsx` (280) and `CommentsPanel.tsx` (418) are live-logic components with **no test**; `PrStart` is reached only through `?raw` source-text assertions, `CommentsPanel` through nothing at all. | P2 | CONFIRMED | `commitShortcut.test.ts:9`, `panelUx.test.ts:5` are `?raw`; no `CommentsPanel.test.ts` | one render test each (readiness gating; `act()` failure lands in `rowError`) | 1.5 h |
+| N-21 | Artifacts rescans every 3 s with **no visibility guard** and swallows scan errors, so a broken folder looks idle. | P3 | CONFIRMED | `ArtifactsPage.tsx:294` (`.catch(() => {})`), `:297` (`setInterval(scan, 3000)`) | pause on `visibilitychange`; toast the first error | 20 min |
+| N-22 | Two more dead exports: `model.ts:207` (`withLink`), `:327` (`acLayoutOf`) — test-only callers, and `AllChangesPane.tsx:45` builds the layout itself instead of calling the tested helper. | P3 | CONFIRMED | grep | delete, or make `AllChangesPane` call it | 10 min |
+| N-23 | `model.ts` (686) has three clean seams: commit graph `:143-192`, merge box `:548-592`, AI budget `:593-604` (budget used only by `settings/GitPage.tsx:9`). | P3 | CONFIRMED | traced | split `graph.ts` / `mergeBox.ts` / `budget.ts`; re-export for one release | 40 min |
+| N-24 | Every emoji reaction re-reads the whole review from GitHub (all threads, all comments), and `replyAndResolve` adds another full read. | P3 | CONFIRMED | `CommentsPanel.tsx:130-143`, `:187` | patch the changed row locally; reconcile on the next explicit refresh | 30 min |
+| N-25 | The port list can never show a UDP listener, though the panel promises "the ports this workspace is listening on"; a Rust test locks the TCP-only behaviour in. | P3 | CONFIRMED | `src-tauri/src/ports.rs:2,65,676` | parse UDP (1 h) or reword the two doc lines (5 min) | 5 min |
+
+## 4.6 New findings — `src/chat/` + `src/skills/` + `src/automations/`
+
+| # | Finding | Severity | State | Evidence | Fix | Cost |
+|---|---|---|---|---|---|---|
+| N-26 | Chat's link flow points at the pane: `webClick` can return `"kolux"` and the composer offers a "choose browser" menu. This is F-15's other half and the piece that **stops the pane deletion from compiling** once `openInBrowser` is gone. | P1 | CONFIRMED | `chatLinks.ts:140-145`; callers `ChatText.tsx:6,38`, `chatLinks.test.ts:85-100`; `StepRows.tsx:10,58-63` via `openLink`; host passed from `shell/window/Content.tsx:159` | make `webClick` system-only: drop `inKolux`/`viewer`, the `Browser` `"kolux"` value, the `ask` state, `BrowserChoice` (`ChatText.tsx:84`), `LinkHost.chooseBrowser`/`inKolux`, and the menu in `ChatView.tsx:198-213,346` | 60-90 min |
+| N-27 | The composer's `commands` prop is declared and threaded but **never passed**, so the reported-command path always falls back to the built-in list; the feature is reachable only from a test. | P2 | CONFIRMED | `MessageBox.tsx:39-40,45,66`; the only render site `ChatView.tsx:347` passes none; `complete.ts:99` | delete the prop and the `reported` plumbing | 20 min |
+| N-28 | The automation dialog still carries the deleted "new worktree per run" plumbing: `mode`, `base` and `runSetup` are constants and `setupChoice()` has no product caller. | P2 | CONFIRMED | `AutomationDialog.tsx:91-98,123-126,188,276`, `model.ts:22` | delete `setupChoice` and the three dead keys | 30 min |
+| N-29 | Chat re-renders and re-parses markdown for the whole transcript on every poll: `takeRead` returns a fresh object each poll, `ViewRow` is a plain function, and each plan row re-runs `renderMarkdown` + `dangerouslySetInnerHTML`. | P2 | PLAUSIBLE | `ChatView.tsx:99,110,347,360`, `StepRows.tsx:123`, `reading.ts:71` | `memo(ViewRow)`, `useMemo` the markdown per row and the link-host object | 45 min |
+| N-30 | Five files with real IPC logic and no test: `ChatView.tsx`, `MessageBox.tsx`, `AutomationsPage.tsx` (SSR-only test, so no effect ever runs), `RunsDashboard.tsx`, `SkillUpdate.tsx`. | P2 | CONFIRMED | `AutomationsPage.test.ts` uses `renderToString`; `SkillUpdate` has only source-text assertions | one fake-DOM test each for the handler that calls `invoke` | 2 h |
+| N-31 | `linksOpenInKolux` is read as a raw literal in two files and as a second constant (`KOLUX_FIELD`) in a third — changing the key means four edits. | P3 | CONFIRMED | `chatLinks.ts:148-149`, `shell/linkAsk.ts:6`, `shell/window/Pane.tsx:255`, `scm/ChecksPanel.tsx:45` | one import; collapses to zero readers after N-26 | 15 min |
+| N-32 | Every Hermes/OpenClaw row action reads the automation list **twice** (`act` ends in `load`, and `refresh` already ends in `load`). | P3 | CONFIRMED | `AutomationsPage.tsx:242-245` + `:112-125` | drop the second load | 10 min |
+| N-33 | The 30 s clock keeps ticking while the window is hidden, re-sorting and re-rendering 760 lines each tick. The pattern to copy already exists. | P3 | CONFIRMED | `AutomationsPage.tsx:158,169-172`; `chat/ux.ts:26` (`pollMs`/`watchHidden`) | reuse `watchHidden` | 20 min |
+| N-34 | A repeated identical hook reply is silently dropped (dedupe on text alone), though the comment only justifies a per-millisecond id. | P3 | PLAUSIBLE | `ChatView.tsx:89` | dedupe on `(text, at)` | 15 min |
+| N-35 | "Rerun" clears its pending state after a fixed 1.5 s whatever happened, and the timer is not cleared on unmount. | P3 | CONFIRMED | `AutomationsPage.tsx:553` | hold the id in the parent's running list, as `runNow` does | 20 min |
+| N-36 | A swallowed hook-subscription failure turns into a misleading "Kolux can't see this agent's prompts. Type in its terminal." on every send, with no cause shown. | P3 | CONFIRMED | `ChatView.tsx:68`, `send.ts:125`, `StepRows.tsx:58-60` | surface the failure, or gate the note on a `hearingFailed` flag | 10 min |
+| N-37 | Three list-search implementations with three normalisations. | P3 | CONFIRMED | `automations/model.ts:96`, `:314`, `skills/skills.ts:54` | one shared `includesQuery` | 25 min |
+| N-38 | The chat imports `renderMarkdown` from `editor/PreviewPane.tsx`, dragging the whole markdown/PDF/diagram module graph into the chat chunk for one function. | P3 | CONFIRMED | `StepRows.tsx:6` | move `renderMarkdown` to `editor/markdown.ts` | 20 min |
+| N-39 | `AutomationsPage.tsx` (760) has one clean split: `Detail` (`:532`) and `HermesRuns` (`:721`) take props only. | P3 | CONFIRMED | traced | move to `AutomationDetail.tsx` | 40 min |
+
+## 4.7 New findings — `src/settings/`
+
+| # | Finding | Severity | State | Evidence | Fix | Cost |
+|---|---|---|---|---|---|---|
+| N-40 | Two browser-only controls must go with the pane: General's "Open links in Kolux" (`GeneralPage.tsx:336`, writes `linksOpenInKolux`) and Terminal's "Open web links from the terminal in the Kolux browser" (`TerminalPage.tsx:222-225`). Both become visible switches nothing reads. | P1 | CONFIRMED | traced | delete with N-26; keep the system-browser wording only | 20 min |
+| N-41 | A secret settings key exists only for the browser (`browserSearchSessionUrl`) and is exported, imported and listed in the lost-key notice. | P3 | CONFIRMED | `settingsSync.ts:10`, `KeyLostNotice.tsx:15` | drop it from `SECRET_KEYS` and the notice | 10 min |
+| N-42 | Shortcut help still advertises a **Browser** area with 7 actions. | P3 | CONFIRMED | `shortcutRows.ts:9,40,47` | drop the `browser` area | 10 min |
+| N-43 | Settings search returns entries for the removed controls. | P3 | CONFIRMED | `search.ts:19,63`; also `zoom.ts:3` mentions browser panes | rewrite the two entries | 10 min |
+
+`src/settings/` is 10.2k lines across 82 files. A full dead-code/duplication pass there is
+round-2 work, not done this pass; section 2 (F-11 to F-14) already covers the four items this
+lane can act on today.
+
+## 4.8 Severity counts for this second pass
+
+| Severity | Count |
+|---|---|
+| **P0** | 1 (H-1: the update check depends on the browser module's HTTP client) |
+| **P1** | 7 (L-1..L-3, H-2, H-3, N-01, N-15, N-26, N-40) |
+| **P2** | 15 |
+| **P3** | 20 |
+
+## 4.9 Round-2 order for this lane
+
+1. **Goal 0, my half** — it is the work other lanes are waiting on, in this order: move
+   `notePdf.ts` to `editor/`, add `src/open/openExternal.ts` (one wrapper around the existing
+   `open_external`, `src-tauri/src/artifacts.rs:1405`), repoint Checks (N-15), Ports (F-18),
+   HTML preview (N-01) and chat links (N-26), delete the two settings controls (N-40), then
+   delete `src/browser/` and its cards in one commit.
+2. **Local loop** (L-1..L-4): the `[profile.local]` from c3-terminal, `scripts/local-run.mjs`,
+   a shared `CARGO_TARGET_DIR`, and `docs/dev-loop.md` carrying the 4.1 table plus one new
+   timed run proving the improvement.
+3. **Correctness fixes that do not wait on the removal**: N-03 (per-tab 2 s poll + fence mutex),
+   N-16 (Checks tab frozen on one status read), N-05/N-06 (render-path string building and
+   re-flattening), N-07 (no right-click Copy anywhere), F-09 (delete the dead 1,367-line panel).
+4. **Refactor seams**, one commit each: F-02 + N-08 + N-14 (one move), N-09, N-23, N-39, N-11.
+
+## 4.10 Bug files filed this pass
+
+| Owner | File | Why | New? |
+|---|---|---|---|
+| c3-terminal | `20261112-1143-browser-net-helpers-must-survive.md` | H-1..H-5: the update check, project icons and the Tower window live inside `browser*` | **new** — the 11:05 batch lists KEEPs but misses the update check, which is the P0 |
+| c3-terminal | `20261112-1144-add-a-local-build-profile.md` | L-1: `[profile.local]` so `pnpm local` can exist | **new** |
+| c3-terminal | `20261112-1147-right-sidebar-polls-behind-settings.md` | the right panel keeps polling behind a full-page screen (`Right.tsx:62` ignores `fullPage`) | **new** |
+
+Everything else this pass found is either already filed by the 11:05 batch or is mine to fix.
