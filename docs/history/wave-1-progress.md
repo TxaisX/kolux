@@ -85,3 +85,59 @@ o1-tools, o2-tests, o3-rune.
 - CHANGELOG: seven user-facing lines from the lanes plus one "Under the hood" line for the
   dependency updates.
 - Handoff note written for the lanes (gate owners, Lexical hold, delete node_modules/.vite first).
+
+## Round 3 (2026-11-12, coordinator)
+
+### Merges
+All five lane branches merged into integrate/wave-1 with no conflict, in order c2-agents (8d97512f),
+c3-terminal (b4b3de62), o1-tools (67cc47b7), o2-tests (3968453f), o3-rune (93e9e24f).
+
+### What each lane shipped (as merged)
+- c2-agents: agents start inside the user's own shell (Terminals::spawn wraps them, 2cb2e273); one
+  agent start reads the search path once (67 ms -> 18 ms, e3fd1fb4); projects.rs tests moved to
+  projects_tests.rs (6921 -> 3323 lines); sidebar workspace row test id; onboarding step and language
+  redraw fixes.
+- c3-terminal: the web pane's last frontend wiring removed (browser scope, actions, chords, CSS;
+  f642b4c2); pane link wiring moved to paneLinks.ts; native terminal steps aside for menus and
+  dialogs, xterm keeps painting until the engine's own drawing is proven; three stale contract tests
+  from round 2 fixed.
+- o1-tools: Lexical 0.53 escape fix (mdExport.ts), Settings > Terminal native engine switch,
+  `pnpm local`, audit fixes N-04/N-06/N-07/N-16/N-17 (preview, explorer, right-click copy, checks,
+  ports).
+- o2-tests: live controls proof (four controls), cleanup of a failed check's app and vite.
+- o3-rune: spike prefs file (layout, theme, palette, shell, keys) with live reload; the idle memory
+  growth is headless-only. Still recommends no-go for this wave.
+
+### Dependency changes
+| Group | Change | Result |
+|---|---|---|
+| lexical + @lexical/* | 0.52.0 -> 0.53.0 (99b4d2ac) | kept: tsc only fails on an unrelated merge error (below); `npx vitest run src/editor` 1264/1264 |
+
+### Decisions
+- The seven web-pane P0 cards (BROW-001, 002, 003, 005, 008, 009, 051) moved to tier H, "retired
+  2026-11-12". plan-check now lets a card whose State says retired keep its finished plan tasks as
+  history (a skipped H card still may not be planned); P0 total 228 -> 221 (7016988c).
+- src/open/ granted to o1-tools (shared "open in the system browser" wrapper), recorded in its brief.
+- No merge reverted: the red items below are one-line follow-ups in o1-tools' own files, and
+  reverting c3's merge would undo the web pane removal.
+
+### Gate on the merged branch (logs: _shared/logs/c1-gate/r3/)
+- `npx tsc --noEmit`: 1 error, src/settings/shortcutRows.ts(9): `browser` is no longer a shortcut
+  scope (c3 removed it; o1's area list still names it). P1 to o1-tools.
+- `pnpm check`: stops at that tsc error. Steps run one by one: license, plan, glossary, workflow,
+  invoke-contract OK; guide-check: feature-map.md marker missing (o2's fix is written but not yet
+  committed); kolux-memory pass.
+- `npx vitest run --no-fsModuleCache`: 886 files, 7 failed / 6570 passed. Alone: shortcutRows x3
+  (same cause, o1), nowin-spawns (scripts/local-run.mjs spawns without windowsHide, o1),
+  raw-cache-probe CRLF (o2, fix written not committed); plan-check x2 were my own mid-run edit and
+  pass now (11/11).
+- `cargo test`: 3182 passed, 1 failed (row965 hung-probe, load); alone 3 passed. Load flake, not filed.
+- Smoke (own temp folder): 4/6 flows. Flow 6 (Grok pane did not appear in 30 s) filed to o2 to
+  re-run with its pending first-run-dialog fix; flow 7 asserts the retired "folder row only" rule,
+  o2's pending change moves it to folder + session rows. The default smoke temp folder is shared by
+  every lane and its cleanup ended processes it did not start: P2 to o2.
+
+### Bugs
+Opened: o1-tools x2 (shortcutRows browser scope + its tests; local-run windowsHide), o2-tests x2
+(smoke shared temp folder; flow 6 Grok). Closed: lexical 0.53 bump, web-pane cards and ownership.
+Open after this round: P0 1, P1 7, P2 4.

@@ -12,8 +12,13 @@
 - The pane header no longer shows the "Context used" ring and percentage.
 - A saved language other than English is in place from the first frame, instead of switching after start-up.
 - Experimental: a native terminal setting (off by default) draws panes with the Windows Terminal engine; menus and dialogs show over those panes.
+- Settings › Terminal has a switch for the native Windows Terminal engine (experimental, Windows only, off by default).
+- Right-click › Copy works on text you selected outside a text field.
+- The Ports list keeps its entries and count when its popover opens or closes, and the Checks tab follows the worktree you are in.
+- Typing in a long note no longer redraws its preview on every key, and the Explorer stays quicker in big folders.
+- Starting an agent is faster: Kolux looks up the agent's program once instead of up to three times (67 ms down to 18 ms on the test PC).
 - For trying changes: `pnpm local` builds and starts Kolux in a few minutes beside the installed app, with no installer.
-- Under the hood: library updates. Math in previews uses KaTeX 0.19.0 (its makers flagged 0.18.11 as a bad release); Markdown reader marked 18.2.0, build tools Vite 8.3.8 and its React plugin 6.3.0, diagram layout cytoscape 3.35.0; on the Rust side the window library wry 0.57.2, notifications plugin 2.8.1, zip 9.5.1 and small fixes in crc32fast, errno, jiff, rustls-pki-types and sqlite-wasm-rs. The rich editor stays on Lexical 0.52 for now.
+- Under the hood: library updates. Math in previews uses KaTeX 0.19.0 (its makers flagged 0.18.11 as a bad release); Markdown reader marked 18.2.0, build tools Vite 8.3.8 and its React plugin 6.3.0, diagram layout cytoscape 3.35.0; on the Rust side the window library wry 0.57.2, notifications plugin 2.8.1, zip 9.5.1 and small fixes in crc32fast, errno, jiff, rustls-pki-types and sqlite-wasm-rs. The rich editor moves to Lexical 0.53; notes still save exactly what you typed.
 
 ## 0.1.13
 
