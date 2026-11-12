@@ -1,13 +1,14 @@
 // PROJ-012 / PROJ-013: what the scan dialog shows. Events from the scan arrive one repository at a
 // time; stopping keeps everything found so far selectable. Repositories that can be opened as
 // projects start ticked; a bare repository is listed but cannot be ticked.
+import { sameDir } from "../workspaces";
 export type Found = { path: string; name: string; bare: boolean; linked: string | null };
 export type ScanEvent = { scanId: number; found: Found | null; visited: number; count: number; done: boolean; stopped: boolean; limit: string | null };
 export type ScanState = { scanId: number; found: Found[]; ticked: string[]; visited: number; running: boolean; stopped: boolean; limit: string | null };
 
 export const begin = (scanId: number): ScanState => ({ scanId, found: [], ticked: [], visited: 0, running: true, stopped: false, limit: null });
 
-const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+const same = sameDir;
 
 /** Folds one event in; another scan's events, and a repository already listed, change nothing. */
 export function take(s: ScanState, e: ScanEvent): ScanState {

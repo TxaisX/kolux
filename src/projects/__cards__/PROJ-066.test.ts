@@ -8,7 +8,7 @@ const W = "C:\\ws\\app\\doomed";
 const B = "C:\\ws\\app\\keeper";
 const pane = (key: number, cwd: string | null, extra: Record<string, unknown> = {}) => ({ key, cwd, branch: null, agent: "shell" as const, program: null, args: [] as string[], ...extra });
 
-test("deleting a workspace removes its terminals, agent, editor, diff and browser tabs from the panes, the layout and the saved copy", () => {
+test("deleting a workspace removes its terminals, agent, editor, diff and preview tabs from the panes, the layout and the saved copy", () => {
   const panes = [
     pane(1, null),
     pane(2, W, { group: 2 }),
@@ -16,7 +16,7 @@ test("deleting a workspace removes its terminals, agent, editor, diff and browse
     { ...pane(4, W, { group: 4 }), agent: "claude" as const, agentId: "claude", program: "claude" },
     pane(5, W, { group: 5, kind: "editor", path: W + "\\README.md" }),
     pane(6, W, { group: 6, kind: "diff", path: "a.ts", staged: false }),
-    pane(7, W, { group: 7, kind: "browser" }),
+    pane(7, W, { group: 7, kind: "preview" }),
     pane(8, B, { group: 8 }),
     pane(9, B, { group: 9, kind: "editor", path: B + "\\x.ts" }),
   ];
@@ -51,7 +51,7 @@ test("switching A to B and back shows A's very same terminals and tabs, in the s
     { ...pane(2, A, { group: 2 }), agent: "claude" as const, agentId: "claude", program: "claude" },
     pane(3, A, { group: 3, kind: "editor", path: A + "\\main.rs" }),
     pane(4, B, { group: 4 }),
-    pane(5, B, { group: 5, kind: "browser" }),
+    pane(5, B, { group: 5, kind: "preview" }),
   ];
   const activeTab = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 };
   const before = panesIn(panes, A);

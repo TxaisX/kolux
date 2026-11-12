@@ -1,5 +1,6 @@
 // PROJ-048: a workspace row dropped on the middle of another row becomes its child; the edges still reorder.
 import { parentChoices, type Worktree } from "./model";
+import { sameDir } from "../workspaces";
 
 export type DropBand = "above" | "parent" | "below";
 
@@ -10,8 +11,7 @@ export function dropBand(offsetY: number, height: number): DropBand {
   return f < 0.25 ? "above" : f > 0.75 ? "below" : "parent";
 }
 
-const norm = (p: string) => p.replace(/[\\/]+/g, "/").replace(/\/$/, "").toLowerCase();
-const same = (a: string, b: string) => norm(a) === norm(b);
+const same = sameDir;
 
 /**
  * The new parent for `dragged` when it is dropped on `target`'s middle band, else null (the drop

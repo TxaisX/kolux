@@ -39,7 +39,7 @@ describe("DT-C250 own folder for each agent", () => {
   it("off: every launch shares the project folder, whatever the last launch chose", () => {
     expect(defaultCopies(1, true)).toBe("shared");
     expect(defaultCopies(5, true)).toBe("shared");
-    expect(sheetStart({ shape: "custom", copies: "separate", seats: [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }] }, true).copies).toBe("shared");
+    expect(sheetStart({ shape: "custom", copies: "separate", seats: [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }] }, true).copies ?? defaultCopies(2, true)).toBe("shared");
     expect(projectMenu().map((i) => i.id)).toEqual(["proj:settings", "proj:remove"]);
     expect(worktreesOffNote("workspace.create")).toBe(WORKTREES_OFF);
   });
@@ -55,10 +55,13 @@ describe("DT-C250 own folder for each agent", () => {
   it("on: the launch sheet brings back the last launch's choice, and never offers own folders outside Git", () => {
     setOwnFolders({ [OWN_FOLDERS_FIELD]: true });
     const two = [{ agent: "claude", model: "default" }, { agent: "codex", model: "default" }];
-    expect(sheetStart({ shape: "custom", copies: "shared", seats: two }, true).copies).toBe("shared");
-    expect(sheetStart({ shape: "custom", copies: "separate", seats: two }, true).copies).toBe("separate");
-    expect(sheetStart({ shape: "custom", copies: "separate", seats: two }, false).copies).toBe("shared");
-    expect(sheetStart(undefined, true).copies, "a first launch is one seat, so it shares").toBe("shared");
+    // What the chooser shows: a picked choice, else the default for the live seat count.
+    const shown = (last: Parameters<typeof sheetStart>[0], inGit: boolean, seats: number) => sheetStart(last, inGit).copies ?? defaultCopies(seats, inGit);
+    expect(shown({ shape: "custom", copies: "shared", seats: two }, true, 2)).toBe("shared");
+    expect(shown({ shape: "custom", copies: "separate", seats: two }, true, 2)).toBe("separate");
+    expect(shown({ shape: "custom", copies: "separate", seats: two }, false, 2)).toBe("shared");
+    expect(shown(undefined, true, 1), "a first launch is one seat, so it shares").toBe("shared");
+    expect(shown(undefined, true, 2), "raising to two seats switches to a folder each").toBe("separate");
   });
 
   it("on: the sidebar's menus, the palette and the worktree commands work again", () => {

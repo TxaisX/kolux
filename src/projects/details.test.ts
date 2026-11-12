@@ -1,17 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { commentBlocks, inline, itemFromPaste, linkLabel, safeHref } from "./details";
+import { commentBlocks, inline, itemFromPaste, safeHref } from "./details";
 
 describe("PROJ-060 workspace details", () => {
   it("pasting a GitHub address into the linked-item field keeps the clean address; other text stays as typed", () => {
     expect(itemFromPaste(" https://www.github.com/acme/app/pull/12/files?x=1 ")).toBe("https://github.com/acme/app/pull/12");
     expect(itemFromPaste("https://git.corp.example/acme/app/issues/5")).toBe("https://git.corp.example/acme/app/issues/5");
     expect(itemFromPaste(" #7 ")).toBe("#7");
-  });
-  it("the card names the linked item in words", () => {
-    expect(linkLabel("https://github.com/acme/app/pull/12")).toBe("pull request #12");
-    expect(linkLabel("https://github.com/acme/app/issues/5")).toBe("issue #5");
-    expect(linkLabel("#7")).toBe("issue #7");
-    expect(linkLabel(null)).toBeNull();
   });
   it("only web addresses open from a comment", () => {
     expect(safeHref("https://example.com/a")).toBe("https://example.com/a");

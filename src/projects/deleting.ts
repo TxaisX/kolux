@@ -1,5 +1,6 @@
 // PROJ-070: deleting a workspace safely. What the backend found, what the question shows, and
 // whether the question can be skipped.
+import { sameDir } from "../workspaces";
 
 /** What `workspace_remove_check` returns. T-613: `commits` are the ones on its branch (or detached HEAD)
  *  found on no other branch and on no remote, newest first, as `<short id> <subject>`. */
@@ -64,9 +65,7 @@ export type PointerRow = { path: string; isMain: boolean; head: string };
  */
 export function pointerDelete(row: PointerRow | null, opts: { fieldFocused: boolean; deleting: ReadonlySet<string> }): { action: "delete" | "forget"; path: string } | null {
   if (row === null || opts.fieldFocused || row.isMain) return null;
-  const norm = (p: string) => p.replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
-  const k = norm(row.path);
-  if ([...opts.deleting].some((d) => norm(d) === k)) return null;
+  if ([...opts.deleting].some((d) => sameDir(d, row.path))) return null;
   return { action: row.head === "" ? "forget" : "delete", path: row.path };
 }
 
